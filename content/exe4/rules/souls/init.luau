@@ -9,6 +9,7 @@
 -- (0x0800E0A0 by soul), is the soul's (docs/design/exe4-map.md §18 item 74).
 
 local custom = require("@self/custom")
+local dark = require("@self/dark")
 local megaman = require("../navis/megaman").megaman
 local revert = require("@self/revert")
 local turns = require("@self/turns")
@@ -41,12 +42,13 @@ local function window_of(window: SoulWindow): WindowSpec
     }
 end
 
--- What the rules list of Double Soul's: its actions, which reach the rules' state (./turns): the revert, and each
--- soul's change (its chip's use, ./change's maker), gathered from MegaMan's souls (his form list); and its part
+-- What the rules list of Double Soul's: its actions, which reach the rules' state (./turns): the revert, each
+-- soul's change (its chip's use, ./change's maker), gathered from MegaMan's souls (his form list), and the dark
+-- soul's (./dark); and its part
 -- of the custom screen: the UNITE button and the soul's choice (./custom), and what each soul adds to the screen
 -- (its form's `custom`: its buttons and windows by name, a button's the key of its look in a pack, and the state
 -- fields it keeps). A name is one of Double Soul's: two souls can't both add a button, a window or a field of one.
-local actions: { Action } = { revert.action }
+local actions: { Action } = { revert.action, dark.change }
 local buttons: { [string]: ButtonSpec } = { soul = custom.button }
 local windows: { [string]: WindowSpec } = { double_soul = custom.window }
 local screen: StateSchema = {}
@@ -80,6 +82,7 @@ for _, set in forms do
 end
 souls.actions = actions
 souls.custom = custom
+souls.dark = dark
 souls.buttons = buttons
 souls.windows = windows
 
@@ -100,29 +103,38 @@ for name, kind in screen do
     assert(souls.state[name] == nil, `a soul's screen field \`{name}\` is one of Double Soul's own`)
     souls.state[name] = kind
 end
+-- And the dark soul's (./dark).
+for name, kind in dark.state do
+    souls.state[name] = kind
+end
 
 -- 0x0800B658, each tick of MegaMan's intake but a dimmed one (`battle_isTimeStop`): held by his change (the frozen
 -- flag, 0x10000) he asks for nothing; with a soul's chip next in his hand (its family special, 15: 0x0800B924's chip
 -- less 0x160, the soul OK gave, which the engine's change targets) he asks for the change; in a soul whose turns are
--- over (AIData +0x18 at its +0x19) for the revert (+0x44's 0x40); else for nothing (+0x10 0xFF). (The dark soul's
--- countdown, NaviStats +0x24 15, is the story's: no netbattle's navi is in it.)
+-- over (AIData +0x18 at its +0x19) for the revert (+0x44's 0x40), and in the dark soul (NaviStats +0x24 15) once its
+-- ticks are (./dark, 0x0800B6A4); else for nothing (+0x10 0xFF). Then, as the status routine looks for a change to
+-- start (0x0800B8B0), the dark soul asked for is the one, whatever this found (./dark); and in the dark soul no hit
+-- reaches him this tick (0x0800C43C, the intake's next call).
 function souls.navi_intake(side: number, navi: Object)
-    if battle.dimmed() then
-        return
+    if not battle.dimmed() then
+        if navi:status("frozen") then
+            navi:set_request("form_change", false)
+        else
+            local next = navi:next_chip()
+            if next ~= nil and next.family == "special" then
+                navi:set_request("form_change", true)
+            else
+                navi:set_request("form_change", false)
+                if dark.united(side) then
+                    dark.countdown(navi)
+                elseif battle.navi(side).form.soul ~= nil and turns.over() then
+                    navi:set_request("revert_form", true)
+                end
+            end
+            dark.asked(side, navi)
+        end
     end
-    if navi:status("frozen") then
-        navi:set_request("form_change", false)
-        return
-    end
-    local next = navi:next_chip()
-    if next ~= nil and next.family == "special" then
-        navi:set_request("form_change", true)
-        return
-    end
-    navi:set_request("form_change", false)
-    if battle.navi(side).form.soul ~= nil and turns.over() then
-        navi:set_request("revert_form", true)
-    end
+    dark.navi_intake(side, navi)
 end
 
 -- 0x08012FB6, each tick of a player's intake (0x08013858; the navis' own, 0x0801393E, has none) after the panel's

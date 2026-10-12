@@ -28,6 +28,8 @@ sys-locale = "0.3"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # The screenshot pass's pictures.
 png = "0.17"
+# A replay's video: its errors are worded here (`errors.rs`); the Replays screen runs the export.
+nettai-video = { path = "../nettai-video" }
 # Netplay's link: WebRTC through a room of the signaling server.
 nettai-rtc = { path = "../nettai-rtc" }
 # A build from a save: each game's own reader of its saves.

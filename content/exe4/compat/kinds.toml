@@ -341,6 +341,7 @@
 "junksoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
 "aquasoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
 "woodsoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
+"darksoul/image" = { pool = "effect", index = 0x13, scratch_position = true }
 # The NaviCust supports (0x0800C7D8, 0x0800C838, 0x0800C8C0): their controller (0x080EA2BC), Rush, Beat and Tango
 # (0x080CA4C4, 0x080CA76C, 0x080CA9B4) and Tango's heal (0x080E0CD4).
 "support/controller" = { pool = "effect", index = 0x74 }
@@ -522,3 +523,12 @@
 "duo/navi" = { pool = "actor", index = 0x52 }
 "duo/fist" = { pool = "attack", index = 0x66 }
 "duo/other-fist" = { pool = "attack", index = 0x66 }
+# PrixPowr (chip 0x138, an e-Reader card's): its controller (0x080EA900; its position the dimming handler's
+# registers), its VideoMan (0x080CBB40), LaserMan (0x080CBCB0) and KendoMan (0x080CBE40), and his rush's hit (the
+# lingering hit, 0x080DCC5C, at its spawner's registers but for its height). Its LaserMan's laser is the LaserMan
+# chips' kind.
+"prixpowr/controller" = { pool = "effect", index = 0x7A, scratch_position = true }
+"prixpowr/videoman" = { pool = "actor", index = 0x53 }
+"prixpowr/laserman" = { pool = "actor", index = 0x54 }
+"prixpowr/kendoman" = { pool = "actor", index = 0x55 }
+"prixpowr/rush-hit" = { pool = "attack", index = 0x7C, scratch_position = true }

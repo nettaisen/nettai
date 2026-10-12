@@ -18,6 +18,7 @@ local drkrecov: Chip = {
     lockout = 0,
     flags = { "dark" },
     action = recov.action { id = "drkrecov/action", hp = 1000, mood = 0 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 return { drkrecov = drkrecov }

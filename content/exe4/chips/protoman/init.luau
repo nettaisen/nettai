@@ -26,6 +26,7 @@ local protoman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "protoman/controller", palette = 0 }.hook,
     megaman = "light",
+    auto_battle = { class = "when_enemy_approachable" },
 }
 
 local protom_sp: Chip = {
@@ -42,6 +43,7 @@ local protom_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "protom-sp/controller", palette = 4 }.hook,
     megaman = "light",
+    auto_battle = { class = "when_enemy_approachable" },
 }
 
 local protom_ds: Chip = {
@@ -57,6 +59,7 @@ local protom_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "protom-ds/controller", palette = 6 }.hook,
     megaman = "dark",
+    auto_battle = { class = "when_enemy_approachable" },
 }
 
 return { protoman = protoman, ["protom-sp"] = protom_sp, ["protom-ds"] = protom_ds }

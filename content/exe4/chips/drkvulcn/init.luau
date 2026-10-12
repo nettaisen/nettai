@@ -39,6 +39,7 @@ local drkvulcn: Chip = {
         shots = 24,
         shot = SHOT,
     },
+    auto_battle = { class = "behind_target" },
 }
 
 return { drkvulcn = drkvulcn }

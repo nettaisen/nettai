@@ -50,6 +50,18 @@ pub enum UserError {
     ConnectionLost,
     /// A replay is from another version.
     ReplayVersion,
+    /// A file isn't a replay.
+    NotAReplay,
+    /// A replay is damaged: it doesn't read, or its match isn't one.
+    ReplayDamaged,
+    /// A replay is of another game than the one selected: `game` is its own, as shown.
+    ReplayOtherGame { game: String },
+    /// A video can't be made because ffmpeg can't be started.
+    NoFfmpeg,
+    /// A video's file can't be written.
+    CantWriteVideo,
+    /// A video couldn't be made for another reason: the details are in the log.
+    ExportFailed,
     /// A save is another game's: `game` is the game it was to be of, as shown (EXE6).
     WrongGameSave { game: String },
     /// Anything else: the details are in the log.
@@ -75,6 +87,12 @@ impl UserError {
             UserError::PortInUse => (ErrorKind::PortInUse, ""),
             UserError::ConnectionLost => (ErrorKind::ConnectionLost, ""),
             UserError::ReplayVersion => (ErrorKind::ReplayVersion, ""),
+            UserError::NotAReplay => (ErrorKind::NotAReplay, ""),
+            UserError::ReplayDamaged => (ErrorKind::ReplayDamaged, ""),
+            UserError::ReplayOtherGame { game } => (ErrorKind::ReplayOtherGame, game),
+            UserError::NoFfmpeg => (ErrorKind::NoFfmpeg, ""),
+            UserError::CantWriteVideo => (ErrorKind::CantWriteVideo, ""),
+            UserError::ExportFailed => (ErrorKind::ExportFailed, ""),
             UserError::WrongGameSave { game } => (ErrorKind::WrongGameSave, game),
             UserError::Other => (ErrorKind::Other, ""),
         }
@@ -127,6 +145,43 @@ impl UserError {
             Reason::NoAnswer => UserError::NoAnswer,
             Reason::Left | Reason::Protocol => UserError::Other,
         })
+    }
+
+    /// Why a file doesn't read as a replay (nettai-replay's), while `doing` something.
+    pub fn of_replay_read(doing: &str, error: &nettai_frontend::replay::ReadError) -> UserError {
+        use nettai_frontend::replay::ReadError as E;
+        log(doing, error);
+        match error {
+            E::NotAReplay => UserError::NotAReplay,
+            E::OtherLayout { .. } => UserError::ReplayVersion,
+            E::Damaged(_) => UserError::ReplayDamaged,
+        }
+    }
+
+    /// Why a replay isn't played on the content loaded, while `doing` something.
+    pub fn of_refusal(doing: &str, refused: &nettai_frontend::replay::Refused) -> UserError {
+        use nettai_frontend::replay::Refused as R;
+        log(doing, refused);
+        match refused {
+            R::OtherGame { replay, .. } => UserError::ReplayOtherGame { game: crate::shell::Shell::game_name(replay) },
+            R::OtherVersion(_) => UserError::ReplayVersion,
+            R::BadMatch(_) => UserError::ReplayDamaged,
+            R::NoSide(_) => UserError::Other,
+        }
+    }
+
+    /// Why a video wasn't made (nettai-video's). None where the player canceled it: nothing went wrong.
+    pub fn of_export(error: &nettai_video::Error) -> Option<UserError> {
+        use nettai_video::Error as E;
+        let said = match error {
+            E::Canceled => return None,
+            E::Replay(refused) => return Some(UserError::of_refusal("exporting a video", refused)),
+            E::NoFfmpeg(_) => UserError::NoFfmpeg,
+            E::Write(_) | E::Disk(_) => UserError::CantWriteVideo,
+            E::NoSuchPart(_) | E::Scale(_) | E::Stopped { .. } | E::FfmpegFailed { .. } => UserError::ExportFailed,
+        };
+        log("exporting a video", error);
+        Some(said)
     }
 
     /// Why a battle stopped, as the player reads it. None where it came to its end: nothing went wrong. (The
@@ -208,6 +263,12 @@ mod tests {
         assert_eq!(lobby(Reason::YourBuild), Some(UserError::BuildUnusable { reason: None }));
         assert_eq!(lobby(Reason::TheirBuild), Some(UserError::TheirBuildUnusable));
         assert_eq!(lobby(Reason::Protocol), Some(UserError::Other));
+        use nettai_frontend::replay::{ReadError, Refused};
+        assert_eq!(UserError::of_replay_read("testing", &ReadError::OtherLayout { layout: 1 }), UserError::ReplayVersion);
+        assert_eq!(UserError::of_replay_read("testing", &ReadError::NotAReplay), UserError::NotAReplay);
+        assert_eq!(UserError::of_refusal("testing", &Refused::OtherGame { replay: "exe5".into(), here: "exe6".into() }), UserError::ReplayOtherGame { game: "EXE5".into() });
+        assert_eq!(UserError::of_export(&nettai_video::Error::Canceled), None, "canceling is no failure");
+        assert_eq!(UserError::of_export(&nettai_video::Error::NoFfmpeg(std::io::ErrorKind::NotFound.into())), Some(UserError::NoFfmpeg));
         assert_eq!(UserError::of_stop(StopReason::Finished), None);
         assert_eq!(UserError::of_stop(StopReason::OpponentLeft), Some(UserError::OpponentLeft));
     }

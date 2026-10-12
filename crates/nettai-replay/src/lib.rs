@@ -16,11 +16,13 @@
 //! player refuses another's ([`Head::require`]).
 //!
 //! ```text
-//! file   := "NTRP", layout (a byte: 1), head, info, match, input
+//! file   := "NTRP", layout (a byte: 2), head, info, match, input
 //! head   := "HEAD", length (u32), engine version (string), game (string),
 //!           content hash (u64), the first battle's digest before any tick (u64)
 //! info   := "INFO", length (u32), when (u64: unix seconds), the side that
-//!           recorded (a byte: 0, 1), the players' names by side (two strings)
+//!           recorded (a byte: 0, 1), the kind of match (a byte: 0 offline,
+//!           1 online), closed builds (a byte: 0 no, 1 yes), the players'
+//!           names by side (two strings)
 //! match  := "MTCH", length (u32), the match in nettai-match's binary
 //! input  := "TICK", then a record per tick to the end of the file
 //! record := control (a byte), then what its bits announce, in their order:
@@ -37,14 +39,29 @@
 //! held, and they carry across a round's end. A writer flushes each record
 //! as it is written, so a file cut short (a crash) holds every tick before
 //! the cut, and a reader says it was cut ([`End::Cut`]).
+//!
+//! **What a replay says of each side** is its player's name (the info) and
+//! its setup (the match: the navi, the folder and whatever else its game's
+//! rules take, each a number or a definition's handle). The setup is what
+//! the simulation is made from, so it stays. A build's name is the
+//! player's own business and is in neither: the info has no place for one,
+//! and a match in binary holds no text at all. A viewer that should not
+//! show the setups either is told so by the info ([`Info::closed_builds`]).
+//!
+//! **Layouts.** Layout 2 added the kind of match and closed builds to the
+//! info. A file of another layout is refused as one from another version
+//! of nettai ([`ReadError::OtherLayout`]): a replay plays only on the
+//! engine and content it was made with, so an older file would not play
+//! here whatever its layout.
 
+use std::fmt;
 use std::io::{self, Write};
 
 /// The file's first bytes.
 pub const MAGIC: &[u8; 4] = b"NTRP";
 
 /// The layout this crate writes and reads.
-pub const LAYOUT: u8 = 1;
+pub const LAYOUT: u8 = 2;
 
 /// What a replay is played on: the engine, the game and its content, and
 /// the battle they make before any tick.
@@ -64,32 +81,101 @@ pub struct Head {
 
 impl Head {
     /// That a replay of this head plays on `engine`'s build of `game`'s
-    /// `content`: or why not.
-    pub fn require(&self, engine: &str, game: &str, content: u64) -> Result<(), String> {
+    /// `content`: or what differs.
+    pub fn require(&self, engine: &str, game: &str, content: u64) -> Result<(), Mismatch> {
         if self.game != game {
-            return Err(format!("the replay is of {}, not {game}", self.game));
+            return Err(Mismatch::Game { replay: self.game.clone(), here: game.to_string() });
         }
         if self.content != content {
-            return Err(format!("the replay was made on other content (its hash {:016x}, this one's {content:016x})", self.content));
+            return Err(Mismatch::Content { replay: self.content, here: content });
         }
         if self.engine != engine {
-            return Err(format!("the replay was made on engine {}, this is {engine}", self.engine));
+            return Err(Mismatch::Engine { replay: self.engine.clone(), here: engine.to_string() });
         }
         Ok(())
     }
 }
 
-/// What a replay says about itself besides: when, who recorded it, the
-/// players' names.
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// Why a replay doesn't play here: what its head names that isn't what it
+/// is asked to play on ([`Head::require`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Mismatch {
+    /// It is a replay of another game.
+    Game { replay: String, here: String },
+    /// It was made on other content (the hashes).
+    Content { replay: u64, here: u64 },
+    /// It was made on another engine (the versions).
+    Engine { replay: String, here: String },
+}
+
+impl fmt::Display for Mismatch {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            Mismatch::Game { replay, here } => write!(f, "the replay is of {replay}, not {here}"),
+            Mismatch::Content { replay, here } => write!(f, "the replay was made on other content (its hash {replay:016x}, this one's {here:016x})"),
+            Mismatch::Engine { replay, here } => write!(f, "the replay was made on engine {replay}, this is {here}"),
+        }
+    }
+}
+
+impl std::error::Error for Mismatch {}
+
+/// The kind of match a replay is of.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum MatchKind {
+    /// Played on one machine: no other player over a network.
+    Offline,
+    /// Played against another player over the network.
+    Online,
+}
+
+impl MatchKind {
+    /// The kind's byte in the info.
+    fn byte(self) -> u8 {
+        match self {
+            MatchKind::Offline => 0,
+            MatchKind::Online => 1,
+        }
+    }
+
+    fn of_byte(b: u8) -> Option<MatchKind> {
+        match b {
+            0 => Some(MatchKind::Offline),
+            1 => Some(MatchKind::Online),
+            _ => None,
+        }
+    }
+}
+
+/// What a replay says about itself besides: when, who recorded it, what
+/// kind of match it was and whether its builds were closed, the players'
+/// names. (Nothing of a player's build but what the match holds of it: no
+/// build's name.)
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Info {
     /// When the set started, in seconds since 1970 (UTC).
     pub when: u64,
     /// The side whose player recorded it (0 or 1): the one a viewer is
     /// shown by default.
     pub side: u8,
+    /// The kind of match it was.
+    pub kind: MatchKind,
+    /// The match was played with closed builds: neither player was shown
+    /// the other's, and a viewer of the replay isn't shown them either.
+    /// (The match still holds both setups: the simulation is made from
+    /// them.)
+    pub closed_builds: bool,
     /// The players' names by side; empty where none is known.
     pub names: [String; 2],
+}
+
+impl Info {
+    /// The info of a match of `kind` recorded from `side`, with open
+    /// builds, at no stated time, by players without names: for the rest
+    /// to be filled in.
+    pub fn of(kind: MatchKind, side: u8) -> Info {
+        Info { when: 0, side, kind, closed_builds: false, names: Default::default() }
+    }
 }
 
 /// One tick: both players' buttons by side, and what a recording marks of
@@ -165,6 +251,8 @@ impl<W: Write> Writer<W> {
         section(&mut b, b"HEAD", &h);
         let mut i = info.when.to_le_bytes().to_vec();
         i.push(info.side);
+        i.push(info.kind.byte());
+        i.push(info.closed_builds as u8);
         for name in &info.names {
             string(&mut i, name);
         }
@@ -316,22 +404,55 @@ impl<'a> Bytes<'a> {
     }
 }
 
+/// Why bytes don't read as a replay ([`Replay::read`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ReadError {
+    /// They aren't a replay: no "NTRP" at their start.
+    NotAReplay,
+    /// A replay of another layout than this crate reads: one written by
+    /// another version of nettai.
+    OtherLayout { layout: u8 },
+    /// A replay of this layout that no writer writes: its head, info or
+    /// match cut short or running on, a value none of them holds, a
+    /// tick's record with unknown bits. What is wrong, for a log.
+    Damaged(String),
+}
+
+impl fmt::Display for ReadError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            ReadError::NotAReplay => write!(f, "not a replay (no \"NTRP\" at its start)"),
+            ReadError::OtherLayout { layout } => write!(f, "a replay of layout {layout}; this reads layout {LAYOUT}"),
+            ReadError::Damaged(why) => write!(f, "{why}"),
+        }
+    }
+}
+
+impl std::error::Error for ReadError {}
+
 impl Replay {
     /// A replay from a file's bytes. Refused, saying why: bytes that aren't
-    /// a replay (another file, another layout), a head, info or match cut
-    /// short or running on, and a tick's record no writer writes (unknown
-    /// bits, a round's end without its digest, the set's end without a
-    /// round's, buttons past the GBA's, anything after the set's end). A
-    /// record cut short ends the input there ([`End::Cut`]).
-    pub fn read(bytes: &[u8]) -> Result<Replay, String> {
+    /// a replay, a replay of another layout (another version's), and one
+    /// of this layout that is damaged: a head, info or match cut short or
+    /// running on, and a tick's record no writer writes (unknown bits, a
+    /// round's end without its digest, the set's end without a round's,
+    /// buttons past the GBA's, anything after the set's end). A record cut
+    /// short ends the input there ([`End::Cut`]).
+    pub fn read(bytes: &[u8]) -> Result<Replay, ReadError> {
+        if bytes.get(..4) != Some(MAGIC.as_slice()) {
+            return Err(ReadError::NotAReplay);
+        }
+        match bytes.get(4) {
+            Some(&LAYOUT) => Replay::read_sections(&bytes[5..]).map_err(ReadError::Damaged),
+            Some(&layout) => Err(ReadError::OtherLayout { layout }),
+            None => Err(ReadError::Damaged("the file ends inside its start".into())),
+        }
+    }
+
+    /// A replay of this crate's layout from what follows the layout byte:
+    /// or what is wrong with it.
+    fn read_sections(bytes: &[u8]) -> Result<Replay, String> {
         let mut b = Bytes { rest: bytes, what: "start" };
-        if b.take(4).ok() != Some(MAGIC.as_slice()) {
-            return Err("not a replay (no \"NTRP\" at its start)".into());
-        }
-        match b.u8()? {
-            LAYOUT => {}
-            n => return Err(format!("a replay of layout {n}; this reads layout {LAYOUT}")),
-        }
         let mut h = b.section(b"HEAD", "head")?;
         let head = Head { engine: h.string()?, game: h.string()?, content: h.u64()?, start: h.u64()? };
         h.done()?;
@@ -341,7 +462,14 @@ impl Replay {
         if side > 1 {
             return Err(format!("the info's recording side is {side}, not 0 or 1"));
         }
-        let info = Info { when, side, names: [i.string()?, i.string()?] };
+        let kind = i.u8()?;
+        let kind = MatchKind::of_byte(kind).ok_or_else(|| format!("the info's kind of match is {kind}, not 0 (offline) or 1 (online)"))?;
+        let closed_builds = match i.u8()? {
+            0 => false,
+            1 => true,
+            n => return Err(format!("the info's closed builds is {n}, not 0 or 1")),
+        };
+        let info = Info { when, side, kind, closed_builds, names: [i.string()?, i.string()?] };
         i.done()?;
         let match_bytes = b.section(b"MTCH", "match")?.rest.to_vec();
         b.what = "input";
@@ -413,134 +541,20 @@ impl Replay {
         }
         out
     }
+
+    /// The tick each round starts on, counted through the set from 0, in
+    /// order: the first round's 0, each later one's the tick after a
+    /// round's end (a mark on the input's last tick starts none).
+    pub fn round_starts(&self) -> Vec<u32> {
+        let mut out = vec![0];
+        for (i, t) in self.ticks.iter().enumerate() {
+            if t.round_ended && i + 1 < self.ticks.len() {
+                out.push(i as u32 + 1);
+            }
+        }
+        out
+    }
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn head() -> Head {
-        Head { engine: "0.1.0".into(), game: "exe6".into(), content: 0x0123_4567_89AB_CDEF, start: 42 }
-    }
-
-    fn info() -> Info {
-        Info { when: 1_790_000_000, side: 1, names: ["Lan".into(), String::new()] }
-    }
-
-    /// A set of two rounds: buttons that change now and then, a digest
-    /// every 60 ticks and at each round's end.
-    fn ticks() -> Vec<Tick> {
-        let mut out: Vec<Tick> = (0..300u32)
-            .map(|i| Tick {
-                buttons: [if i % 20 < 5 { 0x001 } else { 0 }, if i % 33 < 3 { 0x220 } else { 0x200 }],
-                digest: (i % 60 == 59).then_some(i as u64 * 7),
-                ..Tick::default()
-            })
-            .collect();
-        out[149].round_ended = true;
-        out[149].digest = Some(1);
-        out[299].round_ended = true;
-        out[299].set_ended = true;
-        out[299].digest = Some(2);
-        out
-    }
-
-    fn written(ticks: &[Tick]) -> Vec<u8> {
-        let mut w = Writer::new(Vec::new(), &head(), b"the match", &info()).unwrap();
-        for t in ticks {
-            w.tick(t).unwrap();
-        }
-        w.into_inner()
-    }
-
-    /// A replay reads back as it was written, each round where its mark
-    /// is; a tick that changes nothing is one byte.
-    #[test]
-    fn a_replay_reads_back() {
-        let ticks = ticks();
-        let bytes = written(&ticks);
-        let r = Replay::read(&bytes).unwrap();
-        assert_eq!((r.head, r.match_bytes.as_slice(), r.info), (head(), b"the match".as_slice(), info()));
-        assert_eq!((r.ticks, r.end), (ticks.clone(), End::Set));
-        let r = Replay::read(&bytes).unwrap();
-        assert_eq!(r.rounds().iter().map(|t| t.len()).collect::<Vec<_>>(), [150, 150]);
-        let header = bytes.len() - written(&[]).len();
-        assert!(header < 300 * 3, "{header} bytes of input");
-        // (The head, the info, the match, the input: a reader that wants
-        // who played when reads no match.)
-        let at = |tag: &[u8]| bytes.windows(4).position(|w| w == tag).unwrap();
-        assert!(at(b"HEAD") < at(b"INFO") && at(b"INFO") < at(b"MTCH") && at(b"MTCH") < at(b"TICK"));
-    }
-
-    /// A file cut short: every whole tick before the cut, and the cut
-    /// said; one that stops between ticks is open; the head cut short
-    /// isn't a replay.
-    #[test]
-    fn a_cut_file_reads_to_its_cut() {
-        let ticks = ticks();
-        let bytes = written(&ticks);
-        let start = written(&[]).len();
-        // (Tick 59's record: its control, then its digest.)
-        let at = written(&ticks[..59]).len();
-        let r = Replay::read(&bytes[..at + 3]).unwrap();
-        assert_eq!((r.ticks.len(), r.end), (59, End::Cut));
-        let r = Replay::read(&bytes[..at]).unwrap();
-        assert_eq!((r.ticks.len(), r.end), (59, End::Open));
-        assert_eq!(Replay::read(&bytes[..start - 1]).unwrap_err(), "the file ends inside its input");
-        assert_eq!(Replay::read(&bytes[..20]).unwrap_err(), "the file ends inside its head");
-    }
-
-    /// What no writer writes is refused, saying what.
-    #[test]
-    fn a_garbled_file_is_refused() {
-        let bytes = written(&ticks());
-        let start = written(&[]).len();
-        assert_eq!(Replay::read(b"PK\x03\x04").unwrap_err(), "not a replay (no \"NTRP\" at its start)");
-        let mut layout = bytes.clone();
-        layout[4] = 2;
-        assert_eq!(Replay::read(&layout).unwrap_err(), "a replay of layout 2; this reads layout 1");
-        let mut bits = bytes.clone();
-        bits[start] |= 0x20;
-        assert_eq!(Replay::read(&bits).unwrap_err(), "tick 0: its record's bits 0x23 are none a writer writes");
-        let mut more = bytes.clone();
-        more.push(0);
-        assert_eq!(Replay::read(&more).unwrap_err(), "1 bytes after the set's end");
-        let mut tag = bytes.clone();
-        tag[5..9].copy_from_slice(b"HEAP");
-        assert_eq!(Replay::read(&tag).unwrap_err(), "no head where it goes (\"HEAP\" there)");
-        // The first tick's record: side 0's buttons, then side 1's, past
-        // the GBA's.
-        let mut held = bytes.clone();
-        held[start + 3..start + 5].copy_from_slice(&0x0400u16.to_le_bytes());
-        assert_eq!(Replay::read(&held).unwrap_err(), "tick 0: side 1's buttons 0x0400 are past the GBA's");
-    }
-
-    /// A writer refuses what a reader would.
-    #[test]
-    fn a_writer_refuses_what_isnt_a_set() {
-        let mut w = Writer::new(Vec::new(), &head(), b"", &info()).unwrap();
-        let end = Tick { round_ended: true, ..Tick::default() };
-        assert!(w.tick(&end).is_err());
-        assert!(w.tick(&Tick { set_ended: true, digest: Some(0), ..Tick::default() }).is_err());
-        assert!(w.tick(&Tick { buttons: [0x400, 0], ..Tick::default() }).is_err());
-        w.tick(&Tick { set_ended: true, ..end.clone() }.with_digest()).unwrap();
-        assert!(w.ended());
-        assert!(w.tick(&Tick::default()).is_err());
-    }
-
-    /// The head names what a replay plays on.
-    #[test]
-    fn the_head_says_what_it_plays_on() {
-        let h = head();
-        assert_eq!(h.require("0.1.0", "exe6", h.content), Ok(()));
-        assert_eq!(h.require("0.1.0", "exe5", h.content).unwrap_err(), "the replay is of exe6, not exe5");
-        assert_eq!(h.require("0.1.0", "exe6", 1).unwrap_err(), "the replay was made on other content (its hash 0123456789abcdef, this one's 0000000000000001)");
-        assert_eq!(h.require("0.2.0", "exe6", h.content).unwrap_err(), "the replay was made on engine 0.1.0, this is 0.2.0");
-    }
-
-    impl Tick {
-        fn with_digest(self) -> Tick {
-            Tick { digest: Some(9), ..self }
-        }
-    }
-}
+mod tests;

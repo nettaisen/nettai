@@ -24,6 +24,7 @@ local chip: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "library" },
+    auto_battle = { class = "at_once" },
 }
 
 return { fullcust = chip }

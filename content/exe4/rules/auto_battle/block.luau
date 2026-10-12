@@ -45,6 +45,25 @@ function block.swap(side: number, i: number)
     places.swap(rules.state_of(side).auto_battle_places, i)
 end
 
+-- 0x0800E910 (the data's first 30 places) and 0x0800E952 (its 42): the first chip, among the first `limit` places to
+-- the first empty one, that answers the loss `loss` (its record's byte 14: bit 0 a loss of the side's area, PanlGrab's
+-- kind; bit 1 its spoiled panels, Snctuary's kind: its `auto_battle.answers`), which changes places with the first
+-- entry; none: nil.
+function block.answer(side: number, loss: string, limit: number): Chip?
+    local sent: { Place } = rules.state_of(side).auto_battle_places
+    for i = 1, math.min(#sent, limit) do
+        local chip: Chip? = sent[i].chip
+        if chip ~= nil then
+            local record: { answers: string? }? = (chip :: any).auto_battle
+            if record ~= nil and record.answers == loss then
+                places.swap(sent, i)
+                return chip
+            end
+        end
+    end
+    return nil
+end
+
 -- 0x0800E9B4's list part: the first entry goes last, the rest move up (0x08000CFC packs the entries but the emptied
 -- first; the count stays).
 function block.turn(side: number)

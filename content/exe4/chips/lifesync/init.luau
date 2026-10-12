@@ -19,6 +19,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = lifesync.hook,
+    auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 
 return { lifesync = chip }

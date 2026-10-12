@@ -49,6 +49,7 @@ local chip: Chip = {
     dimming = function(user: Object, spec: DimmingChipSpec): Object?
         return dimming_chips.spawn(controller, user, spec, true)
     end,
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { signlred = chip }
