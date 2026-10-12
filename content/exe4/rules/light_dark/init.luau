@@ -18,8 +18,8 @@
 --   0x0800BFFE picks it): a player whose param is set 1; in soul 15 1; in any other soul 0; else 4 in Full Synchro
 --   (mood 0xFF), else by the value's tier (0x0800C052: from 1000 4, from 500 0, from 470 3, else 2); then, but in a
 --   soul other than 15, 5 more for each step of his color (NaviStats +0x27: the rules' stat `color`, patch cards 59,
---   60, 89 and 90's 1 to 4). Presentation: the sprite's palette. (Another navi's palette is 0x0800B95E's table: EXE4's content has MegaMan
---   alone. No player the engine spawns has a param, and no soul is ported yet.) Tango's light saves hold 1000, its
+--   60, 89 and 90's 1 to 4). Presentation: the sprite's palette. (Another navi's palette is 0x0800B95E's table:
+--   EXE4's content has MegaMan alone. No player the engine spawns has a param.) Tango's light saves hold 1000, its
 --   dark ones 460.
 -- - **The chips a MegaMan may use** (a chip's `megaman`, its record's +0x15: 1 a light MegaMan's, 2 a dark one's; 94
 --   chips state one). The use's preparation ends with the check (0x0800D5D0, in 0x0800D4B4): a light one's chip
@@ -132,8 +132,11 @@ function light_dark.navi_palette(side: number, _navi: Object): number?
     if stats.navi ~= megaman then
         return nil
     end
-    if not stats.form.base then
-        -- (A soul's: 0, no color; soul 15's 1 and the color's. No soul is ported yet.)
+    if stats.form == megaman.forms.souls.dark_soul then
+        -- (Soul 15's: 1, and the color's.)
+        return 1 + 5 * stats.color
+    elseif not stats.form.base then
+        -- (A soul's: 0, no color.)
         return 0
     end
     local palette = if stats.mood == 0xFF then 4 else tier((rules.setup() :: Setup).karma)
