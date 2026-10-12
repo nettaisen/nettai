@@ -1636,9 +1636,10 @@ is said with where it is:
   says and knows none of it). EXE6's and EXE5's say:
 - the folder keeps the game's rules (EXE6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
-  copies by MB, each chip in one of its codes, at most three dark
-  chips, chips the chip pack lists, the Regular chip within the Regular
-  memory, the tag chips two other entries of 60 MB together at most). The
+  copies by MB, each chip in one of its codes, the chips a save of the
+  side's version can collect (a version's own Giga chips are its alone), the
+  Regular chip within the Regular memory, the tag chips two other entries of
+  60 MB together at most). The
   Mega, Giga and Regular limits are the navi's stats as the round starts them
   (after the rules' `round_setup`: the NaviCust's and the patch cards' folder
   limits, as the original's folder editor and link battle check read the
@@ -1646,7 +1647,8 @@ is said with where it is:
   another game's folder rules are its own Luau: EXE5's
   (content/exe5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
-  levels, at most three dark chips, the chips its pack lists, the Regular
+  levels, at most three dark chips, the chips a save can collect (and of
+  the Giga chips those its setup's `giga_chips` hold: a version's), the Regular
   chip within the Regular memory, and no tag chips. A folder holds the
   game's chips alone (the rules' pool is the game's). Live play's random
   folders are drawn from the rules' pool and kept only
