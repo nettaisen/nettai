@@ -118,15 +118,18 @@ function pile.make_kind(look: Look): Kind
         action(me)
     end
 
-    -- Its sprite (animation 0, a frame in, its first part drawn with it), shown, facing its way, on its panel on the
-    -- ground; its first update.
+    -- Its sprite (its first part drawn with it), shown, facing its way, on its panel on the ground; its first update.
+    -- Animation 0 is asked for, to be loaded by the update that follows. What the init itself loads and steps is the
+    -- 0xFF left in the register (EXE5's 0x080D9C5C, EXE4's 0x080E0358), an animation the sheet doesn't have: no palette
+    -- offset. A game whose dimmed update loads alone (EXE4's) so shows the pile a tick in its own colors before its
+    -- first frame's white.
     local function init(me: Object)
         local sprite = me.sprite
         sprite:load(look.sprite)
         -- sprite_noShadow: the first part is drawn with the sprite.
         sprite.shadow = "with_sprite"
         me.anim, me.anim_loaded = 0, 0xFF
-        sprite:set_animation(0)
+        sprite:set_animation(0xFF)
         sprite:step()
         me.visible = true
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
