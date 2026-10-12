@@ -631,9 +631,10 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
    was over, and the other still lacked its last inputs (or the word that its player left the match). So a peer
    back in the lobby **says its player's last frame again** with its lobby's messages, every 100 ms, until it
    hears the other's lobby, which a peer says only once its match has ended. That frame holds every input the
-   other hadn't acknowledged (§4.6), so it ends the other's match whatever was lost before it. (Without it the
-   other's player would wait ten seconds and give the connection up: a test takes it out and sees that.) A
-   `NetPlayer` whose set is over doesn't give the other up for silence, and one dropped then, on a lobby's
+   other hadn't acknowledged (§4.6), so it ends the other's match whatever was lost before it. (The frontend's
+   test `the_player_back_in_the_lobby_first_leaves_the_other_its_last_frames` loses everything else the first
+   peer had sent. With the frame not said again, tried by hand in that test, the other's player waited ten
+   seconds and gave the connection up.) A `NetPlayer` whose set is over doesn't give the other up for silence, and one dropped then, on a lobby's
    channel, says nothing of leaving (`Channel::outlives_match`); one dropped before its set is over says it
    leaves the match (`MatchEnd`, §4.6), and the other's player stops with `StopReason::OpponentLeft`, the link
    and the lobby still there for both.
