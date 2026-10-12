@@ -677,6 +677,12 @@ impl Battle {
         self.rules_chip_answer(side, navi, chip, RulesHook::ChipCheck)
     }
 
+    /// The rules' `cut_in_barred(side, navi, chip)` as a navi asks to cut
+    /// in with its next chip: whether they bar it.
+    pub(crate) fn rules_cut_in_barred(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> bool {
+        self.call_rules(side, RulesHook::CutInBarred, Some(navi), chip, None) == Some(Value::Bool(true))
+    }
+
     /// The rules' `chip_cost(side, navi, chip)`, earlier in the
     /// preparation: as `rules_chip_check`.
     pub(crate) fn rules_chip_cost(&mut self, side: u8, navi: ObjectRef, chip: Option<ChipHandle>) -> Option<ChipHandle> {
@@ -883,7 +889,8 @@ mod tests {
     /// The per-tick and chip-use hooks (docs/design/exe5-map.md §15.3 item
     /// 14): the rules' `navi_intake` is called with the side and its navi,
     /// and their `chip_check` with the chip about to be used, whose answer
-    /// takes the chip's place; rules that lack them call nothing. (Rules
+    /// takes the chip's place, and their `cut_in_barred` with the chip a
+    /// navi asks to cut in with; rules that lack them call nothing. (Rules
     /// that count the side's navi intakes, keep its panel, and refuse the
     /// test bomb, giving the test seed instead.)
     #[test]
@@ -893,7 +900,7 @@ mod tests {
             ("local save = require(\"@self/save\")\n", "local save = require(\"@self/save\")\nlocal test_chips = require(\"./chips/test\")\n"),
             (
                 "    hooks = {\n",
-                "    hooks = {\n        navi_intake = function(_side: number, navi: Object)\n            local s = rules.state() :: { intakes: number, x: number, y: number }\n            s.intakes += 1\n            s.x, s.y = navi.panel_x, navi.panel_y\n        end,\n        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?\n            return if chip == test_chips[\"test/bomb\"] then test_chips[\"test/seed\"] else nil\n        end,\n",
+                "    hooks = {\n        navi_intake = function(_side: number, navi: Object)\n            local s = rules.state() :: { intakes: number, x: number, y: number }\n            s.intakes += 1\n            s.x, s.y = navi.panel_x, navi.panel_y\n        end,\n        chip_check = function(_side: number, _navi: Object, chip: Chip?): Chip?\n            return if chip == test_chips[\"test/bomb\"] then test_chips[\"test/seed\"] else nil\n        end,\n        cut_in_barred = function(_side: number, _navi: Object, chip: Chip?): boolean\n            return chip == test_chips[\"test/bomb\"]\n        end,\n",
             ),
         ]);
         let mut b = started_on(scenario::setup_on(&content), content.clone());
@@ -908,10 +915,15 @@ mod tests {
         assert_eq!(b.rules_chip_check(1, navi, Some(bomb)), Some(seed));
         assert_eq!(b.rules_chip_check(1, navi, Some(seed)), None);
         assert_eq!(b.rules_chip_check(1, navi, None), None);
-        // The test content's own rules have neither hook.
+        // And their `cut_in_barred` with the chip a navi asks to cut in with:
+        // true bars it.
+        assert!(b.rules_cut_in_barred(1, navi, Some(bomb)));
+        assert!(!b.rules_cut_in_barred(1, navi, Some(seed)));
+        // The test content's own rules have none of the hooks.
         let mut stock = started(scenario::setup());
         let navi0 = stock.player(0).expect("side 0's navi");
         assert_eq!(stock.rules_chip_check(0, navi0, Some(bomb)), None);
+        assert!(!stock.rules_cut_in_barred(0, navi0, Some(bomb)));
     }
 
     /// Records, lists and chip codes in the rules' state (step c1): a

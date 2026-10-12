@@ -40,6 +40,7 @@ local shadmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "shadmn-sp/controller", palette = 6 }.hook,
+    megaman = "light",
 }
 
 local shadmn_ds: Chip = {
@@ -54,6 +55,7 @@ local shadmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "shadmn-ds/controller", palette = 14 }.hook,
+    megaman = "dark",
 }
 
 return { shademan = shademan, ["shadmn-sp"] = shadmn_sp, ["shadmn-ds"] = shadmn_ds }

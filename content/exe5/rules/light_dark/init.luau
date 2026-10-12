@@ -9,7 +9,8 @@
 -- - **The chips a MegaMan may use** (0x08010118, at the end of a chip use's preparation, 0x080100E6): a chip's
 --   `megaman` field (its record's +0x15) asks for a light MegaMan (a value of 470 or more) or a dark one (less);
 --   any navi but MegaMan (NaviStats +0x29 not 0) may use it. A chip he may not use becomes the invalid chip
---   (0x080100EC: chip 0x185, action 0x1A's variant 3 with no parameters), which shows a sparkle.
+--   (0x080100EC: chip 0x185, action 0x1A's variant 3 with no parameters), which shows a sparkle. A cut-in asks the
+--   same check first (0x0801452E, in 0x080144F6) and doesn't start with such a chip.
 -- - **The dark chips** (flag 0x20; 0x08010030, before that check): one fizzles in a battle that bars them (battle
 --   effect 0x100000), in a link battle for a light MegaMan (the chips' threshold), and for any navi but MegaMan
 --   (or EXE5's navi 23). Used, it breaks a soul (0x08010070: the weakness request, 0x080122C8), marks its side
@@ -307,6 +308,12 @@ function light_dark.chip_check(side: number, _navi: Object, chip: Chip?): Chip?
         return nil
     end
     return invalid
+end
+
+-- 0x0801452E: a navi asking to cut in is asked the same check before anything of the chip's use is prepared; a
+-- chip its MegaMan may not use doesn't cut in (and spends nothing: no Full Synchro, no navi chip count).
+function light_dark.cut_in_barred(side: number, navi: Object, chip: Chip?): boolean
+    return light_dark.chip_check(side, navi, chip) ~= nil
 end
 
 return light_dark

@@ -776,9 +776,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 - **Slasher** (action 0x35, `chips/slasher`: EXE4's own, EXE5's action 0x29 grew from it): while A is held it waits for
   an enemy navi on its side's area, then slashes that column (the region word 0x0705FF04, 16 pixels up), naming
   Slasher to the other player again as it slashes (0x080164B4: `battle.show_used_chip`, new); no invulnerability, no
-  stun strike. In chips/0x038-slasher/side1 the original doesn't name Slasher as side 1 uses it (frames 384 to 415),
-  where the engine's chip use does (its `show_used_chip` at a chip's start): which EXE4 code names a used chip, and
-  why not this one, is the HUD's to read (group A's; item 71).
+  stun strike. The idle names no Slasher to the other player at its use (0x080EECF6 tests chip 0x38 before
+  0x080164B4): the chip's trait `not_named_on_use` (§18 item 71). chips/0x038-slasher/side1 compares every frame.
 - **CustSwrd and Muramasa** (the swords' variants 7 and 8, `chips/custswrd`, `chips/muramasa`): their slashes by the
   variants' rows (region 0x11 and region 2, effect rows 0x41 and 0x4A), their damage formulas 45 (the gauge's, a full
   gauge giving 0 where EXE6's and EXE5's give 10: the formula's `full`) and 46 (the HP lost, at most 999). The lab's
@@ -1570,7 +1569,8 @@ restating theirs the same.
     to confirm (§16).
 - **chip_use**: a dimming chip's action (0x0C, 0x080EB9EA) is EXE5's dimming handler and leaves the action on the
   frame it runs (`leave_on_use`); AntiNavi's sparkle (0x0800815C) is EXE5's, the panel's center 16 up; no mixed
-  modifiers (EXE4 has no capsules).
+  modifiers (EXE4 has no capsules); a use the rules refuse keeps its chip and takes only the fizzle's action
+  (`refused_keeps_chip`, 0x0800D5F6: §18 item 65).
 - **effects**: the shake (0x08025FE0) draws from RNG2 and holds while paused without dimming (EXE5's `battle_rng`); a
   hit spark (EXE5's 0x080E0870, the same code), afterimages (the same code) as EXE5's; the retype
   (0x08012ED0) EXE5's, storing what it hits to the row number plus 0x5C (`is_alone`); the palette flash (0x080E2A34)
@@ -2433,7 +2433,49 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Muramasa's and CustSwrd's frame reports had shown the run
     since the chips were ported (custom screen 271 to 285, in (49, 83) to (71, 94)); only the fight's frames were
     read then.
-
+65. **The chips of one kind of MegaMan** (group B; done but for the glitch at the end). A chip record's +0x15 says
+    who may use it: 1 a light MegaMan, 2 a dark one, 0 anyone. 94 records have one, the same in the four ROMs.
+    Light (63): the navi chips and their SPs but ShadeMan's and LaserMan's own (those two are anyone's), GunSol1 to
+    3 and GunSolEX, the three Barriers, HolyPanl, the RollAros, GutPnchs, HawkCuts and NumbrBls, BugFix, Snctuary,
+    DeltaRay, HolyDrem and PDriver. Dark (31): the 20 DS navi chips, Static, Hole, Muramasa, Anubis, ElemDark,
+    BlakWing, DrkLine, BugCurse, BlakBarr, BugCharg and DarkNeo. Each chip states it (`megaman`, written by
+    gen_content.py; the rules' extension).
+    Two routines read the byte, both in the fight. The custom screen, the deal and the HUD don't: such a chip is
+    dealt, shown and picked as any other.
+    - **The use** (0x0800D5D0, the end of the preparation 0x0800D4B4): a light one's chip wants a light/dark value of
+      470 or more, a dark one's less. A chip of the other kind fizzles: its action becomes 0x20 with variant 4, the
+      invalid chip's sparkle (sound 0x124), and nothing else changes. The attack keeps its chip, so its lockout, the
+      Full Synchro it spent and what follows the use (Beat and Rush, RollSoul's heal, 0x080EECA4 on) are the chip's,
+      and its name still shows on the other console (0x080EECF0) unless it is a dimming chip. The rules' hook
+      `chip_check` (rules/light_dark) and the rule `chip_use.refused_keeps_chip` (EXE4 true; EXE5 stores its invalid
+      chip, 0x080100F6).
+    - **The cut-in** (0x08010C38, the dimmed player's: request 0x800 in a link battle). It asks 0x0800D608 before it
+      prepares anything (0x08010C64): the same test at **480**. A chip of the other kind doesn't cut in and stays in
+      the hand. The rules' hook `cut_in_barred`, new: EXE5's cut-in asks its one check the same way (0x0801452E),
+      which the engine had left out (it prepared the use, spending a Full Synchro, and only then refused).
+    - **EXE4's cut-in had no recording and didn't run**: the role `effects.cut_in_flash` wasn't filled. Its flash is
+      effect row 0x22 (0x08008BB6: 14-07's animation 0, 120 pixels up at panel (2 + 3 x the other side, 4)) and plays
+      no sound, where EXE5's and EXE6's play 0xA5: the sound role `cut_in` is optional now, and the trap's mark has
+      its own, `trap_mark`.
+    The lab's megaman/ (17): each kind of chip used by the other kind of MegaMan, on both consoles; the cut-in, and
+    the cut-in barred both ways; the use at values 469 and 470 and the cut-in at 479 and 480 (the value poked into
+    the save's block and its shadow, 0x4E96 and 0x5E18: a value whose shadow doesn't match is sent as 500,
+    0x08006570). All replay, sound for sound, and every frame compares at the replay's known shift.
+    **Not ported: the cut-in between the two tests.** At a value of 470 to 479 a dark one's dimming chip passes the
+    cut-in's test and fails the use's. The cut-in doesn't look at the action it got back: it runs the dimming
+    table's entry of the attack's variant (0x08010C88), now the fizzle's 4, FireMan's controller (0x080E31C4), with
+    the refused chip's attack. Seen on the console at 475 with Anubis: the telop says Anubis, FireMan breathes fire
+    for Anubis's 1 damage, and the chip is spent. His palette goes by the chip's first parameter (0x0800B950: 0 for
+    Anubis, BlakWing, BugCurse, BugCharg and DarkNeo, the SP's for BlakBarr and Hole, the DS's for the DS navi
+    chips, one no chip has for DrkLine). The engine starts no cut-in there and the chip stays. Porting it needs each
+    dark dimming chip to state that parameter, or FireMan's controller to read it some other way: a decision. The
+    lab lists megaman/cut-in-475-dark and doesn't record it.
+66. **Done: EXE5's Slasher isn't named at its use either** (group B, from item 65's routine; EXE4's own is item
+    71's, found the same day: the trait `not_named_on_use`). EXE5's idle has the same test of chip 0x38 before it
+    names a used chip (0x080F04A4, beside its invalid chip's) and its Slasher the same call as it slashes
+    (0x080ED41E). EXE5's content had neither: it named Slasher at the use and never at the slash. Its Slasher has
+    the trait now and its action names it at the slash. EXE5's chips/0x038-slasher/side1 (it differed at frames 431
+    to 489) and hit compare every frame; EXE4's side1, grabbed and hit too.
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
