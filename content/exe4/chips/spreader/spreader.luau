@@ -15,12 +15,15 @@ local spreader = {}
 -- The navi's number: what it holds animates by it (NaviStats +0x23, MegaMan's 0).
 local NAVI_NUMBER = 0
 
+-- 0x080EC796: EXE4's own attachment in the slot (the related one), its animation twice the navi's number. (H-Burst
+-- holds its spreader the same way, 0x080EE96C.)
+function spreader.hold(me: Object, look: AttachmentLook, which: Slot)
+    attachment.attach(me, look, which, 2 * NAVI_NUMBER)
+end
+
 local LOOK: SpreaderLook = {
     sound = asset.sound("spreader"),
-    -- 0x080EC796: EXE4's own attachment in the related slot, its animation twice the navi's number.
-    hold = function(me: Object, look: AttachmentLook, which: Slot)
-        attachment.attach(me, look, which, 2 * NAVI_NUMBER)
-    end,
+    hold = spreader.hold,
     slot = "related",
     bullet_kind = bullet.kind,
     -- The navi fires in its animation 14 (0x080EC788).

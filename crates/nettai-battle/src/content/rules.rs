@@ -57,6 +57,10 @@ pub struct FlowRules {
     pub sequencer_at_turn_start: bool,
     /// How a player asks for the custom screen with a full gauge.
     pub custom_request: CustomRequest,
+    /// The battle's two counts of fight ticks (BattleState +0x0E and +0x16,
+    /// counted while neither paused nor dimmed), by their periods: EXE6's
+    /// and EXE5's 20 and 180 (0x08006EF6), EXE4's 10 and 2 (0x08006D08).
+    pub fight_cycles: [u8; 2],
 }
 
 /// A link battle's navi body damage (the rules' `status.link_body_damage`):

@@ -27,4 +27,6 @@ return {
     -- L or R with a full gauge: the navi's input decode asks for the custom screen (`sub_8012FC8` sets battle flag
     -- 0x10), which the fight reads the next tick (`sub_800A1D0`).
     custom_request = "navi_input",
+    -- The battle's counts of fight ticks (BattleState +0x0E and +0x16, while neither paused nor dimmed): 20 and 180.
+    fight_cycles = { 20, 180 },
 }

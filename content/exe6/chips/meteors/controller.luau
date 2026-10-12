@@ -11,6 +11,11 @@ local controller = {}
 
 controller.make = common.make
 
-controller.hook = common.make("meteors/controller", falling_meteor.kind, falling_meteor.row)
+controller.hook = common.make {
+    id = "meteors/controller",
+    meteor = falling_meteor.kind,
+    row = falling_meteor.row,
+    targets = common.listed,
+}
 
 return controller
