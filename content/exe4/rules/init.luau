@@ -17,6 +17,10 @@ local sent_chips = require("@self/sent_chips")
 local souls = require("@self/souls")
 local soul_turns = require("@self/souls/turns")
 
+-- What the tools read of the game's builds, as data (./builds: the versions, a new save's folder): loaded with the
+-- rules, which read none of it.
+require("@self/builds")
+
 -- What a side keeps through a round: the dark chips' (./dark_chips), the chips sent (./sent_chips), Double Soul's
 -- (./souls), its NaviCust bugs' counts (./navicust) and its auto battle data as sent (./auto_battle).
 local state: StateSchema = {}
@@ -93,6 +97,10 @@ local rules: Rules = {
         -- no UNITE button.
         souls = "form[12]",
         double_soul = "bool",
+        -- The Giga chips the save can have (./folder: a folder holds no other): a save's are its version's, as its
+        -- souls are (each version's game gives its own five, and a Giga chip isn't traded; a tool's version presets
+        -- name each version's). A side that states none has every one.
+        giga_chips = "chip[12]",
         -- Their auto battle data as their save holds it (./auto_battle/block: the block's 42 places), which the dark
         -- soul of a dark MegaMan plays of his own player as their console sends it.
         auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
@@ -123,6 +131,19 @@ local rules: Rules = {
             "woodsoul",
         },
         double_soul = true,
+        giga_chips = {
+            "bass",
+            "bassanly",
+            "blakbarr",
+            "bluemoon",
+            "bugcharg",
+            "bugcurse",
+            "deltaray",
+            "duo",
+            "holydrem",
+            "redsun",
+            "signlred",
+        },
     },
     state = state,
     -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of.
@@ -138,6 +159,8 @@ local rules: Rules = {
             sp = "u16[11]",
             -- The MegaMan who may use it (./light_dark; its record's +0x15): none, anyone.
             megaman = { "light", "dark" },
+            -- A chip a save can collect though no library lists it (./folder: an e-Reader card's, Duo).
+            collectible = "bool",
         },
         form = {
             soul = {
@@ -221,8 +244,8 @@ local rules: Rules = {
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
-            local function problem(text: string, field: string?, entry: number?)
-                table.insert(out, { text = text, field = field, entry = entry })
+            local function problem(p: SetupProblem)
+                table.insert(out, p)
             end
             save.validate(side, problem)
             navicust.validate(side, problem)
@@ -231,8 +254,17 @@ local rules: Rules = {
             auto_battle.block.validate(side, problem)
             return out
         end,
-        -- What rules a folder a tool asks of breaks (./folder).
+        -- What rules a folder a tool asks of breaks, and what they allow of one (./folder).
         folder_check = folder.check,
+        folder_view = folder.view,
+        -- What a tool shows of the side's setup that the rules alone know: what gives the navi its abilities, its
+        -- bugs, the patch cards' MB.
+        overview = function(side: number): SetupOverview?
+            local out: SetupOverview = { abilities = {}, bugs = {}, lists = {} }
+            navicust.overview(side, out)
+            patch_cards.overview(side, out)
+            return out
+        end,
         -- The NaviCust bug a hit inflicts, by its code (./navicust/bugs).
         navi_bug = navicust_bugs.navi_bug,
     },

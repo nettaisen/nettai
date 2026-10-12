@@ -42,16 +42,19 @@ set = { version = "falzar", crosses = { forms_of = "falzar" } }
 # EXE5's team, Team ProtoMan or Team Colonel: EXE5's rules have no version (its two play alike), so the team is its
 # souls, the six a save of that version can have (0x08024BF0, the soul button's table: Team ProtoMan's souls 1 to 6,
 # Team Colonel's 7 to 12, by content/exe5/compat/records.toml's numbers; exe5-compat's `Version::soul_flag`, which the
-# app's test holds these to). The content names no soul's team, so they are named here.
+# app's test holds these to). The content names no soul's team, so they are named here. A team's Giga chips are set
+# with its souls (`giga_chips`: the folder holds no other team's; content/exe5/rules/folder). The new build screens
+# read the versions from the game's own data instead (content/<game>/rules/builds, nettai-match's `build`): this file
+# goes with the old creator.
 [[presets.exe5.souls]]
 choice = "protoman"
 title = "team"
-set = { souls = ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"] }
+set = { souls = ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"], giga_chips = ["bass", "deltaray", "bugcurse", "holydrem", "bighook", "dethphnx", "chaoslrd"] }
 
 [[presets.exe5.souls]]
 choice = "colonel"
 title = "team"
-set = { souls = ["colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul"] }
+set = { souls = ["colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul"], giga_chips = ["metrknuk", "omegarkt", "bassanly", "crossdiv", "bugcharg", "phoenix", "chaoslrd"] }
 
 # EXE5's light and dark MegaMan, as Tango's EXE5 save templates have them (tango-gamesupport-bn5's src/saves/*.raw,
 # light and dark of each team and region alike; MegaMan's NaviStats at the image's 0x52A8): the light/dark value
@@ -92,9 +95,9 @@ set = { karma = 460, hp = 997 }
 [[presets.exe4.souls]]
 choice = "redsun"
 title = "version"
-set = { souls = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"] }
+set = { souls = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"], giga_chips = ["bass", "redsun", "holydrem", "blakbarr", "bugcharg", "duo"] }
 
 [[presets.exe4.souls]]
 choice = "bluemoon"
 title = "version"
-set = { souls = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"] }
+set = { souls = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"], giga_chips = ["deltaray", "bugcurse", "signlred", "bassanly", "bluemoon", "duo"] }

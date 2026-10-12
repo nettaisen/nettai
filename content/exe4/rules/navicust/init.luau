@@ -395,10 +395,14 @@ end
 
 -- `validate`'s part: each program in one of its colors, turned 0 to 3 quarters, every cell it covers on the board, over
 -- no other.
-local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+local function validate(side: number, problem: (p: SetupProblem) -> ())
     local parts = rules.setup_of(side).navicust_programs :: { Placed }
     if #parts > 0 and battle.navi(side).navi.forms == nil then
-        problem("a NaviCust, but the navi's stats aren't a NaviCust's (only MegaMan's compiles)", "navicust_programs", nil)
+        problem({
+            kind = "not_taken",
+            field = "navicust_programs",
+            text = "a NaviCust, but the navi's stats aren't a NaviCust's (only MegaMan's compiles)",
+        })
         return
     end
     local grid: { [number]: number } = {}
@@ -406,10 +410,18 @@ local function validate(side: number, problem: (text: string, field: string?, en
         local def = p.program
         local what = string.format("navicust program %d (%s)", i, battle.name(def))
         if table.find(def.colors, p.color) == nil then
-            problem(string.format("%s: a color it doesn't come in", what), "navicust_programs", i)
+            problem({ kind = "invalid", field = "navicust_programs", entry = i, text = string.format("%s: a color it doesn't come in", what) })
         end
         if p.rotation > 3 then
-            problem(string.format("%s: turned %d quarters (0 to 3)", what, p.rotation), "navicust_programs", i)
+            problem({
+                kind = "range",
+                field = "navicust_programs",
+                entry = i,
+                value = p.rotation,
+                least = 0,
+                most = 3,
+                text = string.format("%s: turned %d quarters (0 to 3)", what, p.rotation),
+            })
         end
         local s = shape(def, p.rotation, p.compressed)
         local center = SIZE // 2
@@ -423,12 +435,23 @@ local function validate(side: number, problem: (text: string, field: string?, en
         end
         local on = cells(s, p.x, p.y)
         if #on ~= covered then
-            problem(string.format("%s at (%d, %d): off the board", what, p.x - center + 2, p.y - center + 2), "navicust_programs", i)
+            problem({
+                kind = "off_board",
+                field = "navicust_programs",
+                entry = i,
+                text = string.format("%s at (%d, %d): off the board", what, p.x - center + 2, p.y - center + 2),
+            })
         end
         for _, c in on do
             local at = c[2] * SIZE + c[1]
             if grid[at] ~= nil then
-                problem(string.format("%s is over program %d", what, grid[at]), "navicust_programs", i)
+                problem({
+                    kind = "overlap",
+                    field = "navicust_programs",
+                    entry = i,
+                    other = grid[at],
+                    text = string.format("%s is over program %d", what, grid[at]),
+                })
                 break
             end
             grid[at] = i
@@ -469,9 +492,79 @@ local function bug_kinds(side: number): number
     return n
 end
 
+-- The kinds of effect that change a number a tool shows beside the navi's others, and those no netbattle reads: a
+-- program with any other kind of effect gives the navi an ability.
+local NUMBERS: { [string]: boolean } = {
+    hp = true,
+    attack = true,
+    rapid = true,
+    charge = true,
+    attack_max = true,
+    rapid_max = true,
+    charge_max = true,
+    custom = true,
+    mega_folder = true,
+    giga_folder = true,
+    outside = true,
+}
+
+-- `overview`'s part, into `out`: the programs at work that give the navi an ability, and the navi's bugs. A program is
+-- at work as the compile's step 3 runs it: on the command line, the rightmost of its part (program and color); a plus
+-- part, anywhere. The bugs are the side's counts as the compile left them, the patch cards' with them, each at its
+-- count's level, 1 to 3.
+local function overview(side: number, out: SetupOverview)
+    if battle.navi(side).navi.forms == nil then
+        return
+    end
+    local parts = rules.setup_of(side).navicust_programs :: { Placed }
+    local grid: { [number]: number } = {}
+    for i, p in parts do
+        for _, c in cells(shape(p.program, p.rotation, p.compressed), p.x, p.y) do
+            grid[c[2] * SIZE + c[1]] = i
+        end
+    end
+    local on_line: { [number]: boolean } = {}
+    local at_work: { [number]: boolean } = {}
+    local ran: { string } = {}
+    for x = SIZE - 1, 0, -1 do
+        local i = grid[COMMAND_LINE * SIZE + x]
+        if i ~= nil and not on_line[i] then
+            on_line[i] = true
+            local p = parts[i]
+            local part = (p.program.id :: string) .. "/" .. p.color
+            if p.program.plus then
+                at_work[i] = true
+            elseif table.find(ran, part) == nil then
+                table.insert(ran, part)
+                at_work[i] = true
+            end
+        end
+    end
+    for i, p in parts do
+        if (at_work[i] or (not on_line[i] and p.program.plus)) then
+            for _, e in p.program.effects or {} do
+                if not NUMBERS[e.kind] then
+                    local source: SetupSource = { entry = p.program }
+                    table.insert(out.abilities, source)
+                    break
+                end
+            end
+        end
+    end
+    local kept = (rules.state_of(side) :: State).bug_counts
+    for _, bug in programs.BUGS do
+        local level = math.min(kept[bug], 3)
+        if level > 0 then
+            local brought: SetupBug = { name = bug, level = level }
+            table.insert(out.bugs, brought)
+        end
+    end
+end
+
 return {
     run = run,
     validate = validate,
+    overview = overview,
     raise_bug = raise_bug,
     fix_bugs = fix_bugs,
     -- The side's state (./init.luau gathers it).
