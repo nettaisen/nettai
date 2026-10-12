@@ -2383,6 +2383,21 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `stops_at_control`) counts them, so the move bug's start confusion (NaviStats +0x0D = 0xFF) spawns its visual on
     the intro's first tick (`navicust/bug-humor`, `bug-undersht`). The rule `status.timers_while_paused` (EXE4 true;
     EXE6, EXE5 false); the visual's own EXE4 differences (its sound, offset and role) are group A's.
+111. **Done: what a panel is drawn as** (group C, from B's frame comparisons: a cracked panel's hole a frame early).
+    EXE4 keeps the type and the owner each panel is drawn as in tables of their own (0x02037AE6, 0x02037B0E; EXE6 and
+    EXE5 in the panel, +6 and +7, which the panel's refresh writes), and the panel update alone writes them
+    (0x08009240): nothing while paused; a tick's column return (0x0800986C) draws every owner, with the return's
+    blink, and its per-panel tick (0x08009740) ends by drawing the panel as the type it began the tick with
+    (0x08009842), which a mend, an expiry and a pitfall's crumble set to what they leave and a cracked panel's
+    step-off break (0x080097C8) doesn't: the hole shows a tick late. A dimmed tick's update copies every panel's
+    type and owner (0x08009A38, from 0x080092A0): a mending hole's blink and a returning column's show through no
+    dimming. The rule `panels.drawn` (EXE4 `own_tables`; EXE6, EXE5 `in_panel`). Frame comparisons:
+    panels/cracked-step-off (frame 384) and chips/0x0ce-bugfix/bugs (868) pixel-exact; the lab's new
+    panels/mend-blink-dimming-540 and -542 (CrakOut's hole in its last second, SloGauge's dimming in either blink
+    phase) and panels/areagrab-return-dimming-1954 and -1958 (a returned column's blink) pixel-exact, where the
+    in-panel rule differs through the whole dimming (540: frames 967 to 1124; 1954: 2360 to 2517). EXE5's
+    stages/cracked-row/mend and EXE6's forms/falzar/bare-stage-cracked, which draw the hole at once, are exact as
+    they were.
 
 ### 18.7 The HUD
 
