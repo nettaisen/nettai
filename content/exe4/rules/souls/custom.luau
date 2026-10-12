@@ -5,7 +5,9 @@
 -- (0x0801FF84, the screen's +0x0D); A on it (0x0801F8BC) and the soul's choice, the window `double_soul` (the
 -- selection's state 0x10, 0x08020814: EXE5's soul choice's steps, its own code); the soul's chip put first in the hand
 -- at OK, its soul the turn's form (0x0801F0A0) and the soul given this round (0x0801F1FE: 0x0203BF88, which the
--- battle's start zeroes, 0x0801594E).
+-- battle's start zeroes, 0x0801594E). What the soul the navi is in does at the screen (the screen keeps it as it
+-- opens, 0x0801DC82: its +0x0F) is the soul's own, its form's `custom` (a `SoulCustom`, in the soul's folder:
+-- navis/megaman/forms/<soul>), asked here; ./init gathers the souls' buttons, windows and state fields.
 
 local dark_chips = require("../dark_chips")
 local turns = require("./turns")
@@ -206,6 +208,19 @@ function custom_souls.open(_side: number)
     (rules.state() :: State).offer = nil
 end
 
+-- What the soul the side's navi is in does at the screen, if anything.
+local function united(side: number): SoulCustom?
+    return battle.navi(side).form.custom
+end
+
+-- 0x0801DD0C, as the screen deals: the soul's own (JunkSoul's chips offered again, SearchSoul's shuffles).
+function custom_souls.deal(side: number)
+    local part = united(side)
+    if part ~= nil and part.deal ~= nil then
+        part.deal(side, rules.state())
+    end
+end
+
 -- 0x0801F1FE, at OK with the soul picked: the turn's form is the soul (its turns are its own, ./turns), and the soul
 -- is given this round.
 function custom_souls.confirmed(side: number)
@@ -219,8 +234,16 @@ function custom_souls.confirmed(side: number)
     s.souls_used[#s.souls_used + 1] = soul
 end
 
+-- As OK builds the hand: the part of the soul the navi is in.
+function custom_souls.built(side: number)
+    local part = united(side)
+    if part ~= nil and part.confirmed ~= nil then
+        part.confirmed(side, rules.state())
+    end
+end
+
 -- 0x0801F1B0, 0x0801F1E2, as OK builds a hand in a soul (the screen's +0x0F, the navi's soul as the screen opened,
--- 0x0801DC82; it is the navi's still as the hand is installed): the soul's own doing to it, its form's `hand`
+-- 0x0801DC82; it is the navi's still as the hand is installed): the soul's own doing to it, its `custom.built`
 -- (WoodSoul's fold on the screen's list, 0x0801F226; GutsSoul's, WindSoul's and NumberSoul's bonus stored in each
 -- slot, 0x0801F29A). A screen with nothing picked sends no hand, and the hand the navi has stays as it is.
 function custom_souls.installed(side: number)
@@ -229,9 +252,9 @@ function custom_souls.installed(side: number)
         return
     end
     s.soul_hand_sent = false
-    local hand = battle.navi(side).form.hand
-    if hand ~= nil then
-        hand.built(side)
+    local part = united(side)
+    if part ~= nil and part.built ~= nil then
+        part.built(side)
     end
 end
 
@@ -246,8 +269,5 @@ function custom_souls.hand_size(side: number): number
     end
     return navi.custom_level
 end
-
-custom_souls.buttons = { soul = custom_souls.button }
-custom_souls.windows = { double_soul = custom_souls.window }
 
 return custom_souls
