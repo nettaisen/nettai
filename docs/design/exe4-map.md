@@ -2322,6 +2322,19 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      0x080EB93A, the objects 0x080CB4B0, 0x080CC648, 0x080CC750, 0x080CC960, 0x080CCAF0, 0x080CCF7C, 0x080D7590,
      0x080DD7BC, 0x080EA744): the swords' and cannons' afterimages *done* (the form's sprite: lib/swords'
      `navi_afterimage`, lib/cannon; souls/proto/chip), the rest *open*: each with the chip that spawns it.
+   - **The custom screen's soul** (F's find, from the soul cards' recordings: reads the getters' count misses). The
+     screen keeps the navi's soul as it opens (0x0801DC82: 0x0800F49C's r1, the dark soul's as none, into its +0x0F)
+     and reads it there: the hand of ten (0x0801DC92, NumberSoul's below); as OK builds a hand in the soul, soul 12's
+     fold on the screen's list (0x0801F1B0: 0x0801F226, which adds the Null chip's damage and Atk+ bonus to the Wood
+     chip's and moves the later chips up with their damage alone, the list's +12, +36 and +48: each slot's Atk+ bonus
+     and marks, +24 and +60, stay, so a chip that moved up has the bonus of the slot before; `battle.fold_hand_chip`
+     with `whole` false) and each slot's bonus stored into the hand's +0x26 (0x0801F1E2: 0x0801F29A, soul 8's 10 on a
+     damaging Null chip, soul 2's 30 on a damaging Null or Break chip, soul 3's 10 on a damaging Wind chip) *done*:
+     each form's `hand`, applied as the hand is installed (rules/souls/custom's `installed`; souls/guts/turn2, F's;
+     souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left behind). JunkSoul's
+     recycling as its screen opens (0x0801DD0C: 0x0801DFBC, up to two of the chips used this battle dealt again)
+     *open*; SearchSoul's SHUFFLE button, drawn 16 frames late as a screen opens (the original has it from the
+     screen's first frame: souls/search/turns frames 1108 to 1120) *open*.
    - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
      that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
      (souls/roll/heal).
