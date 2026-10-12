@@ -29,6 +29,13 @@ local board = require("@self/board")
 local compile = require("@exelib/navicust/compile")
 local programs = require("@self/programs")
 
+-- What the panel, custom and buster bugs write: the cracked trail's steps in 8 by the bug's level (+0x13), the
+-- custom screen's damage more by its level (+0x54), and the buster's blank and charged shots of 16 at any level
+-- (+0x14, +0x15).
+local PANEL_STEPS: { number } = { 2, 4, 8 }
+local CUSTOM_DAMAGE: { number } = { 20, 40, 80 }
+local BLANKS, CHARGED = 4, 2
+
 -- Each bug at its level, 1 to 3 (0x08140054's routines).
 local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     step = function(stats, _)
@@ -39,10 +46,10 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     end,
     panel = function(stats, level)
         stats.panel_trail = 3
-        stats.panel_trail_level = ({ 2, 4, 8 })[level]
+        stats.panel_trail_level = PANEL_STEPS[level]
     end,
     custom = function(stats, level)
-        stats.custom_damage = bit32.band(stats.custom_damage + ({ 20, 40, 80 })[level], 0xFFFF)
+        stats.custom_damage = bit32.band(stats.custom_damage + CUSTOM_DAMAGE[level], 0xFFFF)
     end,
     encounter = function(stats, _)
         stats.encounters = 1
@@ -51,8 +58,8 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
         stats.chip_drops = 1
     end,
     buster = function(stats, _)
-        stats.buster_blanks = 4
-        stats.buster_charged = 2
+        stats.buster_blanks = BLANKS
+        stats.buster_charged = CHARGED
     end,
     support = function(stats, _)
         stats.support_bug = true
@@ -77,11 +84,51 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     end,
 }
 
+-- A patch card's bug effect as a tool lists it (../patch_cards' `overview`): the bug it is, by the effect's own key
+-- in the locales (its kind, and its trail or status), which is the name the NaviCust's bug of the same stat has, and
+-- how much of it: its level, or its amount, never both.
+--
+-- - The step bug, the emotion bug and a hit's status are on or off: level 1.
+-- - The battle start's bug: level 1 (+0x1A = 9, the NaviCust's `status`) or 2 (10, `status-strong`).
+-- - An HP drain, the fight's or the custom screen's: its level is the stat's own, 1 to 7, which the card adds to.
+-- - The custom screen's damage: the level whose damage the card's is (`CUSTOM_DAMAGE`: 20, 40, 80); any other, the
+--   amount, the damage itself. (EXE5's cards are at 50, 100 and 200: none a level's.)
+-- - The blank shots: level 1 where the card's blank and charged shots are the NaviCust's bug's (4 and 2, the same
+--   at every level); any other, the amount: the blank shots of the buster's 16.
+-- - A trail: the cracked one at a level's steps (`PANEL_STEPS`), that level; any other, and every other trail, the
+--   amount: the steps in 8 that leave it (the stat is a step's chance in 8).
+local function card_bug(e: PatchCardEffect): SetupBug
+    local kind = e.kind
+    local any = e :: any
+    if kind == "panel_trail" then
+        local steps: number = any.level
+        local level: number? = if any.trail == "crack" then table.find(PANEL_STEPS, steps) else nil
+        local name: string = "panel_trail." .. any.trail
+        return if level ~= nil then { name = name, level = level } else { name = name, amount = steps, of = 8 }
+    elseif kind == "hit_status" then
+        return { name = "hit_status." .. any.status, level = 1 }
+    elseif kind == "buster_blanks" then
+        local blanks: number = any.blanks
+        return if blanks == BLANKS and any.charged == CHARGED
+            then { name = kind, level = 1 }
+            else { name = kind, amount = blanks, of = 16 }
+    elseif kind == "custom_damage" then
+        local level = table.find(CUSTOM_DAMAGE, e.amount or 0)
+        return if level ~= nil then { name = kind, level = level } else { name = kind, amount = e.amount }
+    elseif kind == "status_bug" then
+        return { name = kind, level = math.min(e.amount or 0, 2) }
+    elseif kind == "hp_drain" or kind == "custom_hp_drain" then
+        return { name = kind, level = e.amount }
+    end
+    return { name = kind, level = 1 }
+end
+
 -- EXE5's compile.
 local EXE5: NaviCustGame = {
     name = "EXE5",
     board = board,
     bugs = programs.BUGS,
+    bug_names = programs.BUG_NAMES,
     bug_work = BUG_WORK,
     -- 0x0813F5A8: a program that says so (HubBatc, in any color) counts its own bug once more.
     extra = function(part: PlacedProgram, count: (bug: string?, n: number?) -> ())
@@ -110,6 +157,7 @@ local EXE5: NaviCustGame = {
 }
 
 return {
+    card_bug = card_bug,
     -- What is wrong with the NaviCust on EXE5's board (@exelib/navicust/compile's check).
     validate = function(side: number, problem: (p: SetupProblem) -> ())
         local setup = rules.setup_of(side)

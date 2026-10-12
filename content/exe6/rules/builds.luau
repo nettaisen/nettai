@@ -15,6 +15,8 @@ return {
     -- The facts a build never states: every build plays at the most the game allows, so these are always the rules'
     -- defaults (the most HP and Regular memory, the sun, a link navi's last level, every SP navi deleted in no time).
     at_defaults = { "hp", "reg_up", "sun", "level", "sp_times" },
+    -- A new build is its version, with this. (EXE6's builds have no other choice of presets: its MegaMan is neither
+    -- light nor dark.)
     new = {
         -- What a new build states besides its version: the most BugFrags a save holds, which the dark chips' parts
         -- spend (Tango's four EXE6 netplay saves hold 9999, the word at their image's 0x1BE0).

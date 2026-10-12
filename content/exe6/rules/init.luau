@@ -294,7 +294,7 @@ local rules: Rules = {
         overview = function(side: number): SetupOverview?
             local out: SetupOverview = { abilities = {}, bugs = {}, lists = {} }
             navicust.overview(side, out)
-            patch_cards.overview(side, out)
+            patch_cards.overview(side, navicust.card_bug, out)
             return out
         end,
         -- What is wrong with a side's setup, which tools ask (the simulation never does): what the save brings, the
