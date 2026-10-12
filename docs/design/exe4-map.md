@@ -1022,6 +1022,23 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   stepping on) through the form's `put_on`, so FireSoul's and NumberSoul's (item 74) come with their overlays. The
   lab's chips/0x085-invis and chips/0x086-popup (hit, miss, adjacent, side1) replay every frame; the hit recordings'
   fight frames, the glow and the hole among them, are pixel-exact.
+- **BugCharg** (the dimming chips' variant 0x4A, Red Sun's, a dark MegaMan's, `chips/bugcharg`, group B): EXE5's
+  controller and stand-in, now @exelib/bugcharg, in EXE4's look: the controller (effect #0x7C, 0x080EAB58, the same
+  code) sends out EXE4's stand-in (actor #0x59, 0x080CC72C): drawn as the user in what its form wears (0x0800B812),
+  standing in animation 10, never hidden from a blind viewer, its charger (attachment row 0x2E, 0c-43) raised in
+  animation 13 with sound 0xA0, its shots the flying shot's row 14 (0x080CE690) with sound 0xBF. It takes in no bugs:
+  its shots are as many as BattleState +8, the custom screens so far, at most 10 (0x080CC826: "Gets powr with turn";
+  under event flag 0x1187, never a netbattle's, 5), where EXE5's fires one and one more for each NaviCust bug it takes
+  in. The lab's chips/0x136-bugcharg (hit, miss, adjacent, side1: five shots, the chip dug out by the fifth screen;
+  late: nine screens passed first, ten shots) replay every frame with the same sounds; the hit recording's fight
+  frames are pixel-exact but for the custom screens' known shift. EXE5's BugCharg recordings still match.
+- **ShotStar** (the dimming chips' variant 0x19, `chips/shotstar`, group B): the meteor shower EXE6's and EXE5's
+  Meteors chips kept (effect #0x34, 0x080E5C90: @exelib/meteors/controller, each game stating its meteor and its
+  targets): thirty of EXE4's meteors (chips/meteors' kind, row 1: hit modifier 3) on the enemy's area, one every 10
+  ticks. EXE4's finds each meteor's panel as the last one falls (0x080E5D9A, `controller.scanned`: the next panel of
+  the other side's down the column, then column by column toward the user's side, then again from the far column),
+  where EXE6's and EXE5's list the panels as the effect starts (`controller.listed`). The lab's chips/0x0d2-shotstar
+  (4) replay every frame with the same sounds, pixel-exact; EXE5's and EXE6's Meteors recordings still match.
 - **Magnum** (the dimming chips' variant 0x16, `chips/magnum`, group B): EXE5's controller and gunner, now
   @exelib/magnum, in EXE4's look: the controller (effect #0x30, 0x080E57F8, the same code) sends out EXE4's gunner,
   an attack object (#0x50, 0x080D756C; EXE5's actor #2) drawn as the user and wearing nothing, its sounds 0x128 (a

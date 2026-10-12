@@ -105,6 +105,7 @@ barrier = "0c-3d"  # a barrier of types 1 to 3: its visual's look (effect 7, 0x0
 holy-dream-shot = "0c-3e"
 bug-curse = "0c-3f"
 black-wing = "0c-42"
+bug-charger = "0c-43"  # BugCharg's charger and its shots: attachment row 0x2E (0x080CD524), the flying shot's row 14 (0x080CE690)
 black-barrier = "0c-44"  # a barrier of type 4 (BlakBarr's): its visual's look (effect 7, 0x080E23D8's row 4)
 rage-claw = "0c-45"  # the Elem chips' claw: attachment row 0x2C (0x080CD524), action 0x60 (0x080EE362), EXE5's ElemRage claw's
 pile-driver = "0c-46"
