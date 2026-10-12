@@ -6,13 +6,17 @@
 //!   rules/builds module): the versions a build is one of, in the order
 //!   every list shows them, and what each sets of a side; a new build of a
 //!   version ([`Builds::new_build`]: the game's navi that changes form, the
-//!   version, the folder a new save of the game starts with); and the facts
-//!   no build states, kept at the rules' defaults ([`Builds::as_built`]:
-//!   every build plays at the most its game allows).
+//!   version, the folder a new save of the game starts with); a build's
+//!   other choices, each of a few presets that set their facts together
+//!   ([`Choice`]: EXE4's and EXE5's light or dark MegaMan; a navi the choice
+//!   isn't of has none of it); and the facts no build states, kept at the
+//!   rules' defaults ([`Builds::as_built`]: every build plays at the most
+//!   its game allows).
 //! - **A build checked** ([`Checked`]): what is wrong with it, typed
 //!   ([`crate::Wrong`]), and its round set up, which the other questions are
-//!   asked of: the folder's view ([`Checked::folder_view`]) and the overview
-//!   ([`Checked::overview`]).
+//!   asked of: the folder's view ([`Checked::folder_view`]), the overview
+//!   ([`Checked::overview`]) and the face its navi starts the round with
+//!   ([`Checked::face`]).
 //! - **The overview** ([`Overview`]): each number a round starts the navi
 //!   with, as the navi alone has it and as the build's installed entries
 //!   leave it (the NaviCust's programs, the patch cards); what gives the
@@ -37,7 +41,7 @@ use nettai_battle::custom::FolderChip;
 use nettai_battle::custom::folder::FOLDER_SIZE;
 use nettai_battle::rules::Fact;
 use nettai_battle::setup::NaviStats;
-use nettai_content_api::{ChipHandle, Data, DataKey, EntryHandle, FieldType, Registry, Value};
+use nettai_content_api::{ChipHandle, Data, DataKey, EntryHandle, FieldType, FormHandle, NaviHandle, Registry, Value};
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -50,12 +54,66 @@ pub struct Version {
     set: Data,
 }
 
+/// One of a choice's presets: its id, by which a screen words it, the least
+/// value of the choice's fact that is this preset's (the game's line, where
+/// a number tells the presets apart), and the facts it sets together.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Preset {
+    pub id: String,
+    from: Option<i64>,
+    set: Data,
+}
+
+/// A choice a build makes beside its version, of a few presets, each of
+/// which sets its facts together (EXE4's and EXE5's light or dark MegaMan:
+/// the light/dark value and the base HP): its id, by which a screen words
+/// it, and its presets in the order a screen offers them, the first a new
+/// build's. A choice may be one navi's alone (`navi`): a build of another
+/// navi has none of it, and its facts are the rules' defaults there. A build
+/// is on a preset by the fact that tells them apart (`fact`).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Choice {
+    pub id: String,
+    pub presets: Vec<Preset>,
+    navi: Option<NaviHandle>,
+    fact: String,
+}
+
+impl Choice {
+    /// The preset named `id`.
+    pub fn preset(&self, id: &str) -> Option<&Preset> {
+        self.presets.iter().find(|p| p.id == id)
+    }
+
+    /// The facts the choice's presets set, by name, each once.
+    fn facts(&self) -> Vec<&str> {
+        let mut names: Vec<&str> = self.presets.iter().flat_map(|p| fields(&p.set)).map(|(name, _)| name).collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+}
+
+/// A preset a build was put on that changed it ([`Builds::settle`]): the
+/// choice, the preset, and the value the choice's fact had (a number's: a
+/// save's light/dark value of 100 is the dark preset's), for an import to
+/// say.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Taken {
+    pub choice: String,
+    pub preset: String,
+    pub was: Option<i64>,
+}
+
 /// What a game says of its builds (its rules/builds module's data).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Builds {
     game: String,
     /// The versions, in the order every list shows them.
     pub versions: Vec<Version>,
+    /// A build's other choices, each of a few presets (none in a game
+    /// without: EXE6).
+    pub choices: Vec<Choice>,
     at_defaults: Vec<String>,
     new_set: Data,
     /// The folder a new save of the game starts with.
@@ -135,6 +193,27 @@ impl Builds {
         if versions.is_empty() {
             return Err(format!("{module}: no `versions`"));
         }
+        let mut choices: Vec<Choice> = Vec::new();
+        for c in items(data.field("choices")) {
+            let (Data::Str(id), Data::Str(fact)) = (c.field("id"), c.field("fact")) else { return Err(format!("{module}: a choice has its `id` and the `fact` that tells its presets apart")) };
+            facts::field(content, fact).ok_or_else(|| format!("{module}: choice {id}: {}", facts::no_field(content, fact)))?;
+            let navi = match c.field("navi") {
+                Data::Nil => None,
+                Data::Str(name) => Some(ids::navi(content, game, name).ok_or_else(|| format!("{module}: choice {id}: {game} has no navi {name:?}"))?),
+                other => return Err(format!("{module}: choice {id}: its navi is a navi's name, not {other:?}")),
+            };
+            let presets: Vec<Preset> = items(c.field("presets"))
+                .iter()
+                .map(|p| match p.field("id") {
+                    Data::Str(preset) => Ok(Preset { id: preset.clone(), from: p.field("from").int(), set: p.field("set").clone() }),
+                    _ => Err(format!("{module}: choice {id}: a preset has its `id`")),
+                })
+                .collect::<Result<_, _>>()?;
+            if presets.is_empty() {
+                return Err(format!("{module}: choice {id} has no presets"));
+            }
+            choices.push(Choice { id: id.clone(), presets, navi, fact: fact.clone() });
+        }
         let at_defaults = items(data.field("at_defaults")).iter().filter_map(|f| if let Data::Str(f) = f { Some(f.clone()) } else { None }).collect();
         let new = data.field("new");
         let mut new_folder = Folder::EMPTY;
@@ -148,7 +227,7 @@ impl Builds {
             let code = code.chars().next().and_then(ChipCode::from_letter).ok_or_else(|| format!("{module}: {code:?} is no chip code"))?;
             *slot = Some(FolderChip::new(id, code));
         }
-        Ok(Builds { game: game.to_string(), versions, at_defaults, new_set: new.field("set").clone(), new_folder })
+        Ok(Builds { game: game.to_string(), versions, choices, at_defaults, new_set: new.field("set").clone(), new_folder })
     }
 
     /// The game these are the builds of.
@@ -191,17 +270,109 @@ impl Builds {
             .map(|v| v.id.as_str())
     }
 
+    /// The choice named `id`.
+    pub fn choice(&self, id: &str) -> Option<&Choice> {
+        self.choices.iter().find(|c| c.id == id)
+    }
+
+    /// Whether `side` has choice `c`: any navi's, or its own navi's.
+    fn offers(&self, content: &Content, side: &Side, c: &Choice) -> bool {
+        c.navi.is_none_or(|n| side.stated_navi(content) == Some(n))
+    }
+
+    /// The choices `side` has, in the game's order: a choice of one navi
+    /// alone is none of another navi's build (EXE5's light or dark is
+    /// MegaMan's: a team navi's build has no such choice).
+    pub fn choices_of(&self, content: &Content, side: &Side) -> Vec<&Choice> {
+        self.choices.iter().filter(|c| self.offers(content, side, c)).collect()
+    }
+
+    /// The preset of choice `choice` that `side` is on: where a number tells
+    /// the presets apart, the one with the highest line the side's value
+    /// reaches (EXE5's light/dark value: 470 or more is light's, under it
+    /// dark's); else the first whose facts are all the side's; else the
+    /// first. None: the game has no such choice, or the side's navi none of
+    /// it.
+    pub fn preset_of(&self, content: &Content, side: &Side, choice: &str) -> Option<&Preset> {
+        let c = self.choice(choice).filter(|c| self.offers(content, side, c))?;
+        let on_the_line = match side.facts.get(content, &c.fact) {
+            Some(Stated::Number(n) | Stated::Optional(Some(n))) => c.presets.iter().filter(|p| p.from.is_some_and(|from| from <= n)).max_by_key(|p| p.from),
+            _ => None,
+        };
+        let exactly = || c.presets.iter().find(|p| self.sets(content, side, &p.set));
+        on_the_line.or_else(exactly).or(c.presets.first())
+    }
+
+    /// Whether every fact of `set` is `side`'s already.
+    fn sets(&self, content: &Content, side: &Side, set: &Data) -> bool {
+        let mut as_it = side.clone();
+        state(content, &self.game, &mut as_it, set).is_ok() && as_it.facts == side.facts
+    }
+
+    /// Put `side` on preset `preset` of choice `choice`: its facts, set
+    /// together. An error: no such choice or preset, or the side's navi has
+    /// none of the choice.
+    pub fn take_preset(&self, content: &Content, side: &mut Side, choice: &str, preset: &str) -> Result<(), String> {
+        let c = self.choice(choice).ok_or_else(|| format!("{} has no choice {choice:?}", self.game))?;
+        if !self.offers(content, side, c) {
+            return Err(format!("{choice} is no choice of the side's navi"));
+        }
+        let p = c.preset(preset).ok_or_else(|| {
+            let known: Vec<&str> = c.presets.iter().map(|p| p.id.as_str()).collect();
+            format!("{choice} has no preset {preset:?} (its are {})", known.join(", "))
+        })?;
+        let mut made = side.clone();
+        state(content, &self.game, &mut made, &p.set)?;
+        *side = made;
+        Ok(())
+    }
+
+    /// Settle `side`'s choices, as a build read from a file or made from a
+    /// save is settled: each choice it has, on the preset it is on
+    /// ([`Builds::preset_of`]: a value that is neither preset's takes the
+    /// one on its side of the game's line), with every fact that preset
+    /// sets; and each choice its navi has none of, with its facts back at
+    /// the rules' defaults. The presets that changed the side, for an import
+    /// to say which it took.
+    pub fn settle(&self, content: &Content, side: &mut Side) -> Vec<Taken> {
+        let mut taken = Vec::new();
+        for c in &self.choices {
+            if !self.offers(content, side, c) {
+                for name in c.facts() {
+                    side.facts.reset(content, name);
+                }
+                continue;
+            }
+            let Some(p) = self.preset_of(content, side, &c.id) else { continue };
+            let was = match side.facts.get(content, &c.fact) {
+                Some(Stated::Number(n) | Stated::Optional(Some(n))) => Some(n),
+                _ => None,
+            };
+            let before = side.facts.clone();
+            let mut made = side.clone();
+            if state(content, &self.game, &mut made, &p.set).is_ok() && made.facts != before {
+                *side = made;
+                taken.push(Taken { choice: c.id.clone(), preset: p.id.clone(), was });
+            }
+        }
+        taken
+    }
+
     /// Whether fact `name` is one no build states: always the rules'
     /// default (the game's `at_defaults`, and the facts of the engine's
     /// level and base HP roles; every build plays at the most its game
-    /// allows).
+    /// allows). A fact a choice's presets set is stated by them (EXE5's
+    /// base HP, with its light or dark MegaMan).
     pub fn never_stated(&self, content: &Content, name: &str) -> bool {
-        self.at_defaults.iter().any(|f| f == name) || matches!(facts::role_of(content, name), Some(PlayerFact::Level | PlayerFact::BaseHp))
+        let by_a_choice = self.choices.iter().any(|c| c.facts().contains(&name));
+        !by_a_choice && (self.at_defaults.iter().any(|f| f == name) || matches!(facts::role_of(content, name), Some(PlayerFact::Level | PlayerFact::BaseHp)))
     }
 
     /// Set `side` to what every build is: the facts no build states back at
-    /// the rules' defaults, and a navi that must have a level at its last.
-    /// The facts that changed, by name (a save's import says them).
+    /// the rules' defaults, a navi that must have a level at its last, and
+    /// its choices settled ([`Builds::settle`]: an import that says which
+    /// presets it took settles first, and reads them). The facts that
+    /// changed, by name (a save's import says them).
     pub fn as_built(&self, content: &Content, side: &mut Side) -> Vec<String> {
         let before = side.clone();
         for f in facts::fields(content) {
@@ -214,19 +385,38 @@ impl Builds {
         {
             let _ = side.set_level(content, crate::play_level(content, navi));
         }
+        self.settle(content, side);
         facts::fields(content).into_iter().filter(|f| before.facts.get(content, f.name) != side.facts.get(content, f.name)).map(|f| f.name.to_string()).collect()
+    }
+
+    /// Make `side` a build of navi `navi`, as a build is: its level at its
+    /// last, its form list its own of the side's version (none for a navi
+    /// without), and its choices settled (one that isn't this navi's back at
+    /// the rules' defaults: a team navi is neither light nor dark, and its
+    /// HP its story's). What the side has installed stays as it is.
+    pub fn set_navi(&self, content: &Content, side: &mut Side, navi: NaviHandle) -> Result<(), String> {
+        let mut made = side.clone();
+        made.set_navi(content, navi)?;
+        made.state_own_forms(content);
+        self.as_built(content, &mut made);
+        *side = made;
+        Ok(())
     }
 
     /// A new build of version `version`: the game's navi that changes form
     /// (MegaMan), the version, the folder a new save of the game starts
-    /// with (no Regular or tag chip, as a new save's), what the game says a
-    /// new build states besides, and every other fact the rules' default
-    /// (an empty NaviCust on the largest board, no patch cards). It keeps
-    /// its game's rules ([`Checked::of`] finds nothing wrong with it).
+    /// with (no Regular or tag chip, as a new save's), the first preset of
+    /// each of its choices (a light MegaMan), what the game says a new build
+    /// states besides, and every other fact the rules' default (an empty
+    /// NaviCust on the largest board, no patch cards). It keeps its game's
+    /// rules ([`Checked::of`] finds nothing wrong with it).
     pub fn new_build(&self, content: &Content, version: &str) -> Result<Side, String> {
         let mut side = Side::fresh(content, &self.game)?;
         state(content, &self.game, &mut side, &self.new_set)?;
         self.take_version(content, &mut side, version)?;
+        for c in self.choices_of(content, &side) {
+            state(content, &self.game, &mut side, &c.presets[0].set)?;
+        }
         side.set_folder(content, &self.new_folder)?;
         self.as_built(content, &mut side);
         Ok(side)
@@ -309,6 +499,27 @@ impl Checked {
         self.battle.as_mut().map(|b| folders::mark_problems(b, 0, folder)).unwrap_or_default()
     }
 
+    /// The face the build's navi starts its round with (the round's first
+    /// tick puts the navi on the field, whose start sets its mood: a dark
+    /// MegaMan's is his dark face). None: the round doesn't start, or no
+    /// navi is on the field by then.
+    pub fn face(&self) -> Option<Face> {
+        use nettai_battle::kinds::player;
+        let mut b = self.battle.clone()?;
+        std::panic::catch_unwind(std::panic::AssertUnwindSafe(move || {
+            b.tick(&Default::default(), Default::default());
+            b.player(0)?;
+            let stats = &b.stats[0];
+            if !b.content.navi(stats.navi).changes_form() {
+                return Some(Face::Navi(stats.navi));
+            }
+            let emotion = b.game_rules().emotion.name(player::emotion(&b, 0)).to_string();
+            Some(Face::Form(stats.form, emotion, player::shows_face_variant(&b, 0)))
+        }))
+        .ok()
+        .flatten()
+    }
+
     /// The build's overview. None: the round doesn't start.
     pub fn overview(&mut self, content: &Arc<Content>, side: &Side) -> Option<Overview> {
         let b = self.battle.as_mut()?;
@@ -363,6 +574,15 @@ impl Checked {
             lists,
         })
     }
+}
+
+/// The face the emotion window shows of a navi: its form's for an emotion
+/// (by the emotion's name in the game's rules; of the form's second set
+/// where the rules ask), or a navi's own where it doesn't change form.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Face {
+    Form(FormHandle, String, bool),
+    Navi(NaviHandle),
 }
 
 /// `side` with nothing installed: each of its lists of entries of the game's
@@ -867,5 +1087,136 @@ mod tests {
         set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 6, y: 3, rotation: 0, compressed: false }], 2);
         let checked = Checked::of(&content, "exe5", &side);
         assert!(checked.problems.iter().any(|p| (&p.what, p.field.as_deref(), p.entry) == (&Wrong::OffBoard, Some("navicust_programs"), Some(0))), "{:?}", checked.problems);
+    }
+
+    /// A side's number fact.
+    fn number(content: &Content, side: &Side, fact: &str) -> Option<i64> {
+        match side.facts.get(content, fact) {
+            Some(Stated::Number(n)) => Some(n),
+            _ => None,
+        }
+    }
+
+    /// EXE5's and EXE4's light or dark MegaMan: one choice of two presets,
+    /// light first, each the light/dark value and the base HP together (as
+    /// Tango's saves have them). A new build is light; a dark one is ready
+    /// too, with its 997 HP in the round's stats and the overview, and
+    /// starts the round with another face. EXE6 has no such choice.
+    #[test]
+    fn megaman_is_light_or_dark() {
+        // (The game, light's and dark's value and HP.)
+        for (content, game, light, dark) in [(exe5_content(), "exe5", (1000, 1000), (0, 997)), (exe4_content(), "exe4", (1000, 1000), (460, 997))] {
+            let builds = Builds::of(&content, game).unwrap();
+            assert_eq!(builds.choices.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(), ["light_dark"], "{game}");
+            assert_eq!(builds.choices[0].presets.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), ["light", "dark"], "{game}");
+            let mut side = builds.new_build(&content, &builds.versions[0].id.clone()).unwrap();
+            let facts = |side: &Side| (number(&content, side, "karma").unwrap(), number(&content, side, "hp").unwrap());
+            let on = |side: &Side| builds.preset_of(&content, side, "light_dark").map(|p| p.id.clone());
+            assert_eq!((on(&side).as_deref(), facts(&side)), (Some("light"), light), "{game}");
+            assert_eq!(builds.choices_of(&content, &side).len(), 1);
+            assert!(!builds.never_stated(&content, "hp") && !builds.never_stated(&content, "karma"), "{game}: the choice states them");
+            let light_face = Checked::of(&content, game, &side).face();
+            builds.take_preset(&content, &mut side, "light_dark", "dark").unwrap();
+            assert_eq!((on(&side).as_deref(), facts(&side)), (Some("dark"), dark), "{game}");
+            // As built, a dark build stays dark: nothing to mend.
+            assert_eq!(builds.as_built(&content, &mut side), Vec::<String>::new(), "{game}");
+            let mut checked = Checked::of(&content, game, &side);
+            assert_eq!(checked.problems, Vec::new(), "{game}");
+            assert_eq!(checked.stats().map(|s| (s.max_base_hp, s.max_hp, s.hp)), Some((997, 997, 997)), "{game}");
+            let o = checked.overview(&content, &side).unwrap();
+            assert_eq!(o.hp, Stat { base: 997, value: 997 }, "{game}");
+            let dark_face = checked.face();
+            assert!(matches!((&light_face, &dark_face), (Some(Face::Form(..)), Some(Face::Form(..)))), "{game}: {light_face:?}, {dark_face:?}");
+            assert_ne!(light_face, dark_face, "{game}: a dark MegaMan starts with his dark face");
+            // The folder's rules are the same for both: a dark build's new
+            // folder is as legal as a light one's.
+            assert_eq!(checked.folder_view(&content, &side.folder(&content)).unwrap().problems, Vec::new());
+            builds.take_preset(&content, &mut side, "light_dark", "light").unwrap();
+            assert_eq!(facts(&side), light, "{game}");
+            assert!(builds.take_preset(&content, &mut side, "light_dark", "grey").unwrap_err().contains("no preset"));
+            assert!(builds.take_preset(&content, &mut side, "mood", "light").unwrap_err().contains("no choice"));
+        }
+        let six = exe6_content();
+        let builds = Builds::of(&six, "exe6").unwrap();
+        let side = builds.new_build(&six, "gregar").unwrap();
+        assert!(builds.choices.is_empty() && builds.preset_of(&six, &side, "light_dark").is_none());
+        assert!(matches!(Checked::of(&six, "exe6", &side).face(), Some(Face::Form(..))));
+    }
+
+    /// A build read from a file or made from a save whose light/dark value
+    /// is neither preset's takes the preset on its side of the game's line
+    /// (EXE5's 470, EXE4's 500), with that preset's HP, and the settling
+    /// says which it took and the value it was.
+    #[test]
+    fn a_value_between_takes_its_side_of_the_line() {
+        for (content, game, line, dark) in [(exe5_content(), "exe5", 470, (0, 997)), (exe4_content(), "exe4", 500, (460, 997))] {
+            let builds = Builds::of(&content, game).unwrap();
+            let new = builds.new_build(&content, &builds.versions[1].id.clone()).unwrap();
+            let settled = |value: i64| {
+                let mut side = new.clone();
+                side.set_fact(&content, "karma", &[Fact::Value(Value::Int(value))]).unwrap();
+                let on = builds.preset_of(&content, &side, "light_dark").map(|p| p.id.clone());
+                let taken = builds.settle(&content, &mut side);
+                (on, taken, number(&content, &side, "karma").unwrap(), number(&content, &side, "hp").unwrap())
+            };
+            let took = |preset: &str, was: i64| vec![Taken { choice: "light_dark".into(), preset: preset.into(), was: Some(was) }];
+            assert_eq!(settled(line - 1), (Some("dark".into()), took("dark", line - 1), dark.0, dark.1), "{game}");
+            assert_eq!(settled(line), (Some("light".into()), took("light", line), 1000, 1000), "{game}");
+            assert_eq!(settled(100), (Some("dark".into()), took("dark", 100), dark.0, dark.1), "{game}");
+            // A preset's own value: nothing to take.
+            assert_eq!(settled(1000), (Some("light".into()), Vec::new(), 1000, 1000), "{game}");
+            // A dark value with a light HP (a file's): the dark preset's HP.
+            let mut mixed = new.clone();
+            mixed.set_fact(&content, "karma", &[Fact::Value(Value::Int(dark.0))]).unwrap();
+            assert_eq!(builds.settle(&content, &mut mixed), took("dark", dark.0), "{game}");
+            assert_eq!(number(&content, &mixed, "hp"), Some(997), "{game}");
+            // A side nothing was chosen for (the rules' default, a fresh
+            // save's 500) is light's, and as built it is the light preset.
+            let mut fresh = Side::fresh(&content, game).unwrap();
+            let mut changed = builds.as_built(&content, &mut fresh);
+            changed.sort();
+            assert_eq!((changed, number(&content, &fresh, "karma")), (vec!["karma".to_string()], Some(1000)), "{game}");
+        }
+    }
+
+    /// The choice is MegaMan's alone: a build of an EXE5 team navi has no
+    /// light or dark (its light/dark value and its base HP the rules'
+    /// defaults: a team navi's are its own block's and its story's), is
+    /// ready, and is neither preset's; back on MegaMan it is light again.
+    #[test]
+    fn a_team_navi_is_neither_light_nor_dark() {
+        let content = exe5_content();
+        let builds = Builds::of(&content, "exe5").unwrap();
+        let megaman = crate::first_navi(&content, "exe5").unwrap();
+        let protoman = ids::navi(&content, "exe5", "protoman").unwrap();
+        let mut side = builds.new_build(&content, "protoman").unwrap();
+        builds.take_preset(&content, &mut side, "light_dark", "dark").unwrap();
+        builds.set_navi(&content, &mut side, protoman).unwrap();
+        assert_eq!(side.navi(&content), protoman);
+        assert!(builds.choices_of(&content, &side).is_empty() && builds.preset_of(&content, &side, "light_dark").is_none());
+        assert!(side.facts.is_default(&content, "karma") && side.facts.is_default(&content, "hp"));
+        assert!(builds.take_preset(&content, &mut side, "light_dark", "dark").unwrap_err().contains("no choice of the side's navi"));
+        assert_eq!(side.level(&content), crate::play_level(&content, protoman));
+        // (Its version stays: the team's souls and Giga chips are the save's.)
+        assert_eq!(builds.version_of(&content, &side), Some("protoman"));
+        let mut checked = Checked::of(&content, "exe5", &side);
+        assert_eq!(checked.problems, Vec::new());
+        assert_eq!(checked.face(), Some(Face::Navi(protoman)));
+        let o = checked.overview(&content, &side).unwrap();
+        assert_eq!(o.hp.added(), 0);
+        assert_eq!(builds.settle(&content, &mut side), Vec::new(), "nothing of the choice to settle");
+        builds.set_navi(&content, &mut side, megaman).unwrap();
+        assert_eq!(builds.preset_of(&content, &side, "light_dark").map(|p| p.id.as_str()), Some("light"));
+        assert_eq!((number(&content, &side, "karma"), number(&content, &side, "hp")), (Some(1000), Some(1000)));
+        // EXE6: a link navi's build has no Crosses, and MegaMan's has his
+        // version's five again.
+        let six = exe6_content();
+        let builds = Builds::of(&six, "exe6").unwrap();
+        let mut side = builds.new_build(&six, "falzar").unwrap();
+        builds.set_navi(&six, &mut side, ids::navi(&six, "exe6", "elecman").unwrap()).unwrap();
+        assert!(side.facts.form_list(&six).is_empty());
+        assert_eq!(Checked::of(&six, "exe6", &side).problems, Vec::new());
+        builds.set_navi(&six, &mut side, crate::first_navi(&six, "exe6").unwrap()).unwrap();
+        assert_eq!(side.facts.form_list(&six).len(), 5);
     }
 }
