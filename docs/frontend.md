@@ -598,8 +598,11 @@ panel is said in the audits, not counted.
   `kinds::player::next_chip_bonus`) at the bottom left, while the navi can
   use it (`Battle::chip_hud_for`);
 - the chip icons over the local navi (and over both in a battle that is no
-  netbattle), among the field's sprites by depth; the opponent's
-  defensive chip as "????";
+  netbattle), among the field's sprites by depth; a side's defensive chip
+  as "????" (beside the mugshot, the other side's at the right edge), in
+  the HUD's plain colors whatever the HP box's: off while a message shows
+  and, where the message ends once the battle is over, from then on
+  (`Battle::hud_hidden`), and off from the round's result;
 - the HP numbers under objects, in the console's four places
   (`Battle::hp_numbers`): the opponent's navi's, LilBoiler's damage taken
   (rolling, colored);
@@ -621,6 +624,11 @@ panel is said in the audits, not counted.
   player's used chip turns the name's first two glyphs into pieces of the
   banner, in the banners' colors);
 - the damage judge's numbers, rolling and real;
+- the turn timer's text and the message's ("COUNTER HIT!") in one line of
+  tiles, as the original renders them: the timer's eight glyphs over the
+  message's first eight every tick the fight runs from the 15th turn, so a
+  message there reads "    1    HIT!" after its first frame (on which the
+  timer's row reads the message's start); the font mode draws both whole;
 - the HUD's text lines: the turn timer's seconds and "TIME UP!" from a
   netbattle's 15th turn, "COUNTER HIT!" (`Battle::message`);
 - "Cstmzing..." while the opponent is still choosing, "PAUSE".

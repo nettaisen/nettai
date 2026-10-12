@@ -65,6 +65,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "library" },
     dimming = CONTROLLER.spawn,
+    megaman = "light",
 }
 
 return { bugfix = chip }

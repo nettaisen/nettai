@@ -625,6 +625,17 @@ fn gauge_shown(b: &Battle, state: &HudState) -> bool {
         && !transform_hides(b, state).1
 }
 
+/// The round's result has started: the fight's win, loss or draw past its
+/// first tick, which hides the HUD's parts (`sub_80081A4`, `sub_800825A`
+/// and `sub_80082DC`: `sub_801DACC(0xE4C53)`; EXE4's 0x080071A6, 0x0800725C
+/// and 0x080072FA with 0x33449A), the defensive chips' marks among them;
+/// the damage judge before it hides none of them.
+fn result_started(b: &Battle) -> bool {
+    b.round.top == top::END
+        || b.round.mode == mode::FADE_OUT
+        || (b.round.mode == mode::FIGHTING && matches!(b.fight.state, fight::WIN | fight::LOSE | fight::DRAW) && b.fight.init != 0)
+}
+
 /// Whether the round has been decided (the HUD thins out).
 fn decided(b: &Battle) -> bool {
     b.round.top == top::END
@@ -739,9 +750,14 @@ pub fn draw<'a>(
     // (`sub_801DACC(0x400)`), and they are back with the gauge, once the
     // local result is sent. A message takes them off too, for as long as it
     // shows (`sub_801E1E4`: "COUNTER HIT!" is laid from column 7, over the
-    // local side's; the same routine in EXE5).
-    if !open && !hide_boxes && !crate::custom::gauge_held(b) && b.message.is_none() {
-        let pal = &hud.hp_palettes[color.min(2)];
+    // local side's; the same routine in EXE5), and for good where its end
+    // finds the battle over (`sub_801E1A4`: `Battle::hud_hidden`). The
+    // round's result takes them off with the gauge (`result_started`).
+    // (Their tiles keep the HUD's plain colors while the HP box's turn with
+    // the HP: `byte_801D964`'s entries, laid once.)
+    let marks_hidden = b.message.is_some() || b.hud_hidden.defensive_marks || result_started(b);
+    if !open && !hide_boxes && !crate::custom::gauge_held(b) && !marks_hidden {
+        let pal = &hud.hp_palettes[0];
         for (side, column) in [(local, 6), (local ^ 1, 26)] {
             if b.linked[side as usize & 1].chip.is_none() {
                 continue;
@@ -800,17 +816,38 @@ pub fn draw<'a>(
         fight::JUDGE => b.fight.sub == 0,
         _ => false,
     };
-    if b.late_turns() && b.round.mode == mode::FIGHTING && timed {
-        draw_text(layer, text, hud, text_palette, TEXT_TIME_UP + (b.fight.turn_timer / 60) as usize, (11, 0, 8), problems);
-    }
-    // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
-    // the pack's place).
-    if let Some(m) = b.message {
+    // The timer's text and a message's are rendered into one line of tiles,
+    // the timer's eight glyphs over the message's first eight
+    // (`sub_801E398` and `sub_801E270`, both to 0x6009560; EXE4's
+    // 0x08016362 and 0x080162CC to 0x06009580): the timer's every tick the
+    // fight runs from the 15th turn (`sub_800A1AA`'s caller; EXE4's
+    // 0x08008094), the message's as it starts, later in its tick. So on a
+    // message's first frame the timer's row reads the message's first
+    // eight glyphs, and from the next the message's row starts with the
+    // timer's ("    1    HIT!", "TIME UP! HIT!"). (The original's tiles:
+    // the font mode's lines stay whole.)
+    let timer_line = TEXT_TIME_UP + (b.fight.turn_timer / 60) as usize;
+    let late = b.late_turns() && b.round.mode == mode::FIGHTING;
+    let one_line = late && text.mode == TextMode::Original;
+    let message = b.message.map(|m| {
         let line = match m.message {
             nettai_battle::hud::Message::CounterHit => TEXT_COUNTER_HIT,
         };
+        (line, m.ticks == nettai_battle::hud::MessageLine::SHOWN_TICKS - 1)
+    });
+    if late && timed {
+        let line = match message {
+            Some((line, true)) if one_line => line,
+            _ => timer_line,
+        };
+        draw_text(layer, text, hud, text_palette, line, (11, 0, 8), problems);
+    }
+    // The message under the gauge (`sub_801E270`: 17 glyphs from column 7;
+    // the pack's place).
+    if let Some((line, first)) = message {
         let (column, row, width) = hud.layout.message;
-        draw_text(layer, text, hud, text_palette, line, (column as i32, row as i32, width as usize), problems);
+        let over = (one_line && !first).then_some(timer_line);
+        draw_text_under(layer, text, hud, text_palette, line, over, (column as i32, row as i32, width as usize), problems);
     }
 
     // The next chip's name (and damage) at the bottom left, while the
@@ -1155,6 +1192,36 @@ fn draw_text(
     let Some(glyphs) = crate::lookups::text_line(hud, line, problems) else { return };
     let shown = &glyphs[..glyphs.len().min(width)];
     fonts::layer_line(text, Plane::Hud, layer, hud, shown, pal, (col * 8, row * 8));
+}
+
+/// [`draw_text`], with the pack's text line `over` (if any) in the place
+/// of the line's first glyphs: the lines' tiles are one line's (the turn
+/// timer's eight glyphs, rendered over a message's).
+#[allow(clippy::too_many_arguments)]
+fn draw_text_under(
+    layer: &mut Layer,
+    text: &mut TextSink,
+    hud: &Hud,
+    pal: &Palette,
+    line: usize,
+    over: Option<usize>,
+    (col, row, width): (i32, i32, usize),
+    problems: &mut Problems,
+) {
+    let Some(glyphs) = crate::lookups::text_line(hud, line, problems) else { return };
+    let over = over.and_then(|o| crate::lookups::text_line(hud, o, problems));
+    let shown = line_under(glyphs, over.unwrap_or(&[]), width);
+    fonts::layer_line(text, Plane::Hud, layer, hud, &shown, pal, (col * 8, row * 8));
+}
+
+/// The first `width` glyphs of a line whose first glyphs the line `over`
+/// was rendered over.
+fn line_under(glyphs: &[u16], over: &[u16], width: usize) -> Vec<u16> {
+    let mut shown = glyphs[..glyphs.len().min(width)].to_vec();
+    for (cell, &g) in shown.iter_mut().zip(over) {
+        *cell = g;
+    }
+    shown
 }
 
 /// An 8x16 glyph (tiles 2k and 2k + 1 of `tiles`) as a sprite.
@@ -1676,6 +1743,17 @@ mod tests {
 
     fn glyph_of(c: char) -> usize {
         2 * CHARS.find(c).unwrap()
+    }
+
+    /// The turn timer's eight glyphs are rendered over a message's first
+    /// eight (EXE4's " COUNTER HIT! " under "    1   ").
+    #[test]
+    fn the_timers_text_takes_a_messages_first_glyphs() {
+        let message: Vec<u16> = (10..24).collect();
+        let timer = [0, 0, 0, 0, 2, 0, 0, 0];
+        assert_eq!(line_under(&message, &timer, 14), [0, 0, 0, 0, 2, 0, 0, 0, 18, 19, 20, 21, 22, 23]);
+        assert_eq!(line_under(&message, &[], 14), message);
+        assert_eq!(line_under(&message, &timer, 6), [0, 0, 0, 0, 2, 0], "cut to the message's place");
     }
 
     #[test]

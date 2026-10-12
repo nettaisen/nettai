@@ -25,6 +25,7 @@ local hawkcut1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("hawkcut1/controller"),
+    megaman = "light",
 }
 
 -- HawkCut2 (EXE4 chip 0x0AA).
@@ -40,6 +41,7 @@ local hawkcut2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("hawkcut2/controller"),
+    megaman = "light",
 }
 
 -- HawkCut3 (EXE4 chip 0x0AB).
@@ -55,6 +57,7 @@ local hawkcut3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("hawkcut3/controller"),
+    megaman = "light",
 }
 
 return { hawkcut1 = hawkcut1, hawkcut2 = hawkcut2, hawkcut3 = hawkcut3 }

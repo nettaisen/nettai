@@ -25,6 +25,7 @@ local windman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "windman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local windmn_sp: Chip = {
@@ -40,6 +41,7 @@ local windmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "windmn-sp/controller", palette = 4 }.hook,
+    megaman = "light",
 }
 
 local windmn_ds: Chip = {
@@ -54,6 +56,7 @@ local windmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "windmn-ds/controller", palette = 6 }.hook,
+    megaman = "dark",
 }
 
 return { windman = windman, ["windmn-sp"] = windmn_sp, ["windmn-ds"] = windmn_ds }

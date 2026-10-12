@@ -1,9 +1,9 @@
 //! What a save or a recording states of a player as EXE4's rules' setup
 //! facts (content/exe4/rules/init.luau): its NaviCust's programs, its Mod
-//! Cards.
+//! Cards, its auto battle data.
 
 use crate::Compat;
-use crate::save::Part;
+use crate::save::{AUTO_BATTLE_EMPTY, AUTO_BATTLE_PATTERN, AUTO_BATTLE_PATTERNS, Part};
 use nettai_battle::Content;
 use nettai_battle::rules::Fact;
 use nettai_content_api::{Registry, Value};
@@ -36,6 +36,49 @@ pub fn navicust<'c>(content: &'c Content, compat: &Compat, parts: &[Option<Part>
         ]));
     }
     Ok(out)
+}
+
+/// A player's auto battle data's places (a save's block's 42 halfwords, or
+/// those a recording carries of it) as the setup's `auto_battle_places`,
+/// place for place to the last one that isn't empty: a chip by its number
+/// (`chip` gives the content's, `{ chip }`), a pattern entry by its
+/// record's number from 1 (`{ pattern }`), a 0 (`{ zero = true }`), an empty
+/// place `{}`. What a setup can't state of it is left empty and comes back
+/// apart, said: a chip's number `chip` has none for, an entry for a pattern
+/// record past the block's eight.
+pub fn auto_battle<'c>(places: &[u16], chip: impl Fn(u16) -> Option<nettai_content_api::ChipHandle>) -> (Vec<Fact<'c>>, Vec<String>) {
+    let mut left_out = Vec::new();
+    let mut nameless: Vec<u16> = Vec::new();
+    let mut out: Vec<Fact> = Vec::new();
+    for (i, &h) in places.iter().enumerate() {
+        out.push(Fact::Record(match h {
+            AUTO_BATTLE_EMPTY => Vec::new(),
+            0 => vec![("zero", Fact::Value(Value::Bool(true)))],
+            h if h & AUTO_BATTLE_PATTERN != 0 => match (h & !AUTO_BATTLE_PATTERN) as usize {
+                n if n < AUTO_BATTLE_PATTERNS => vec![("pattern", Fact::Value(Value::Int(n as i64 + 1)))],
+                n => {
+                    left_out.push(format!("place {} of the auto battle data names pattern {}, past its eight: left empty", i + 1, n + 1));
+                    Vec::new()
+                }
+            },
+            h => match chip(h) {
+                Some(c) => vec![("chip", Fact::Value(Value::Def(Registry::Chip, c.0)))],
+                None => {
+                    if !nameless.contains(&h) {
+                        nameless.push(h);
+                    }
+                    Vec::new()
+                }
+            },
+        }));
+    }
+    let used = out.iter().rposition(|p| !matches!(p, Fact::Record(f) if f.is_empty())).map_or(0, |i| i + 1);
+    out.truncate(used);
+    if !nameless.is_empty() {
+        let numbers: Vec<String> = nameless.iter().map(|n| format!("{n:#05x}")).collect();
+        left_out.push(format!("the auto battle data holds chip numbers the content has no chip for ({}): their places are left empty", numbers.join(", ")));
+    }
+    (out, left_out)
 }
 
 /// A save's patch card slots switched on (by slot: a card's number, none for an

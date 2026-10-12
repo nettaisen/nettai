@@ -145,6 +145,7 @@ custom_description = 0x09C
 custom_description_close = 0x09E
 pause = 0x09F
 cut_in = 0x0A5
+trap_mark = 0x0A5
 obstacle_throw = 0x10C
 custom_redeal_shuffle = 0x113
 freeze = 0x118

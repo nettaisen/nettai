@@ -4,6 +4,7 @@
 -- The port is under way (docs/design/exe4-map.md): a section's value the engine can't say EXE4's way yet is the nearest
 -- it can, each one an entry of exe4-map.md §18, which lists what is still to port.
 
+local auto_battle = require("@self/auto_battle")
 local dark_chips = require("@self/dark_chips")
 local folder = require("@self/folder")
 local fresh_stats = require("@self/fresh_stats")
@@ -17,9 +18,9 @@ local souls = require("@self/souls")
 local soul_turns = require("@self/souls/turns")
 
 -- What a side keeps through a round: the dark chips' (./dark_chips), the chips sent (./sent_chips), Double Soul's
--- (./souls) and its NaviCust bugs' counts (./navicust).
+-- (./souls), its NaviCust bugs' counts (./navicust) and its auto battle data as sent (./auto_battle).
 local state: StateSchema = {}
-for _, part in { dark_chips.state, sent_chips.state, souls.state, navicust.state } do
+for _, part in { dark_chips.state, sent_chips.state, souls.state, navicust.state, auto_battle.state } do
     for name, field in part do
         state[name] = field
     end
@@ -92,6 +93,9 @@ local rules: Rules = {
         -- no UNITE button.
         souls = "form[12]",
         double_soul = "bool",
+        -- Their auto battle data as their save holds it (./auto_battle/block: the block's 42 places), which the dark
+        -- soul of a dark MegaMan plays of his own player as their console sends it.
+        auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
     },
     -- A setup that says nothing: what every save brings at its highest (the sun too); the default block's light/dark
     -- value (500:
@@ -132,6 +136,8 @@ local rules: Rules = {
     extends = {
         chip = {
             sp = "u16[11]",
+            -- The MegaMan who may use it (./light_dark; its record's +0x15): none, anyone.
+            megaman = { "light", "dark" },
         },
         form = {
             soul = {
@@ -178,6 +184,10 @@ local rules: Rules = {
         round_setup = function(side: number)
             save.round_setup(side)
             navicust.run(side)
+            -- The auto battle data both consoles send, shuffled alike, once for the round (./auto_battle/block).
+            if side == 0 then
+                auto_battle.block.send()
+            end
         end,
         -- A navi that starts the round in a soul (a soul patch card's, ./patch_cards): its turns are never counted
         -- (./souls/turns: the navi's init, 0x08010828).
@@ -200,6 +210,10 @@ local rules: Rules = {
             light_dark.navi_intake(side, navi)
             souls.navi_intake(side, navi)
         end,
+        -- Light and dark MegaMan (./light_dark): a chip of the other kind of MegaMan fizzles at its use, and doesn't
+        -- cut in.
+        chip_check = light_dark.chip_check,
+        cut_in_barred = light_dark.cut_in_barred,
         -- A soul's turns, counted as a custom screen is asked for (./souls).
         custom_requested = souls.custom_requested,
         -- Light and dark MegaMan (./light_dark): his palette.
@@ -214,6 +228,7 @@ local rules: Rules = {
             navicust.validate(side, problem)
             patch_cards.validate(side, problem)
             folder.validate(side, problem)
+            auto_battle.block.validate(side, problem)
             return out
         end,
         -- What rules a folder a tool asks of breaks (./folder).

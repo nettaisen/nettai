@@ -30,6 +30,7 @@ local muramasa: Chip = {
     hit_param = 50,
     lockout = 0,
     flags = { "has_damage", "damage_shown_variable", "library", "variable_damage" },
+    megaman = "dark",
 }
 
 return { muramasa = muramasa }

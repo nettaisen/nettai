@@ -211,7 +211,7 @@ impl ChipTraits {
     pub const NO_ICON_WHEN_NEXT: u16 = 0x800;
     /// Its use isn't named to the other player: its own action names it
     /// when it comes to (EXE4's 0x080EECF6: chip 0x38, Slasher, named as
-    /// it slashes, 0x080ED642).
+    /// it slashes, 0x080ED642; EXE5's 0x080F04A4 and 0x080ED41E).
     pub const NOT_NAMED_ON_USE: u16 = 0x1000;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
