@@ -113,6 +113,7 @@ return merge {
     require("@self/serchman"),
     require("@self/shademan"),
     require("@self/sidbmbo"),
+    require("@self/signlred"),
     require("@self/silence"),
     require("@self/slasher"),
     require("@self/slogauge"),
