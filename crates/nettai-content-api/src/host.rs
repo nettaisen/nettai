@@ -443,6 +443,11 @@ pub enum RulesHook {
     /// `sub_801002C`, EXE5's 0x0800DD94: rules/light_dark's). The
     /// first part that answers decides; none, the framework's (EXE6's).
     NaviPalette,
+    /// `navi_shader(side, navi)`: each tick of the navi's status routine's
+    /// tail, after its status shaders and the counter's, the color shader
+    /// the rules put over them (presentation; EXE4's 0x0800BB18: the dark
+    /// soul's last 90 ticks pulse blue). None: the shader stays.
+    NaviShader,
     /// `charge_released(side, navi)`: a full B charge is released while the
     /// rules' own B charge is armed (`b_charge_time`; EXE5's Chaos Unison,
     /// 0x0801086E): the rules note what it does (EXE5's: by its cycle's
@@ -604,6 +609,7 @@ impl RulesHook {
             RulesHook::NaviTick => "navi_tick",
             RulesHook::StartingMood => "starting_mood",
             RulesHook::NaviPalette => "navi_palette",
+            RulesHook::NaviShader => "navi_shader",
             RulesHook::NaviBug => "navi_bug",
             RulesHook::HitBug => "hit_bug",
             RulesHook::ChargeReleased => "charge_released",
@@ -631,7 +637,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 47] = [
+    pub const ALL: [RulesHook; 48] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -655,6 +661,7 @@ impl RulesHook {
         RulesHook::NaviTick,
         RulesHook::StartingMood,
         RulesHook::NaviPalette,
+        RulesHook::NaviShader,
         RulesHook::NaviBug,
         RulesHook::HitBug,
         RulesHook::ChargeReleased,
