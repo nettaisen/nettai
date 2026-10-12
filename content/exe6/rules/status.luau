@@ -109,6 +109,7 @@ local status = {
         hp_drain = { periods = { 0, 40, 35, 30, 25, 20, 15, 10 }, stops_while_paused = true },
         custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = 0x5 },
         form_tick = true,
+        form_keeps_back_special = false,
         -- The mercy flash hides the navi while its timer's bit 1 is set (`sub_8016934`).
         flash_hides_on_clear = false,
         -- What a navi's status word reads as while it has no collision data: the opcode the BIOS last fetched, the

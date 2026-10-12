@@ -1,6 +1,6 @@
 --!strict
--- The Anubis statue, as EXE5 and EXE6 share it (EXE6's attack object #0x55, `sub_80CF0D0`; EXE5's #0x55, 0x080D0868;
--- EXE6's docs/engine/dimming-chip-effects.md §7): Anubis's and PoisPhar's. It drops onto the panel in front of the
+-- The Anubis statue, as the three games share it (EXE6's attack object #0x55, `sub_80CF0D0`; EXE5's #0x55, 0x080D0868;
+-- EXE4's 0x080D82F8; EXE6's docs/engine/dimming-chip-effects.md §7): Anubis's and PoisPhar's. It drops onto the panel in front of the
 -- user; on anything but free solid ground it breaks at once. Standing, it drains every enemy panel's navi 1 HP each
 -- period (its variant's), with bubbles rising over the enemy's area every 16 ticks, for its lifetime (a field
 -- obstacle's, counting only ticks it runs) or until time is up.
@@ -8,8 +8,10 @@
 -- Each game makes its own kind (`statue.make`) with its look: the sprite, sounds, collision types (what the statue
 -- is and reaches, and what its drain is: EXE6's row 0x52, EXE5's 0x31) and how it leaves when removed (EXE6's
 -- `sub_80CF1DC`: absorbed, blinking out or a puff; EXE5's 0x080D0970, which neither absorbs nor blinks obstacles
--- out: a puff for any removal). EXE5's lifetime is 3000 for either variant (0x080D08E2), EXE6's its variant's: each
--- game's variants say it.
+-- out: a puff for any removal; EXE4's 0x080D83F8, which reads no removal: it breaks however it goes,
+-- `reads_no_removal`). EXE5's and EXE4's lifetime is 3000 for either variant (0x080D08E2, 0x080D836A), EXE6's its
+-- variant's: each game's variants say it. EXE4's releases no tracking (`untracked`), has its own obstacle rows
+-- (`actions`) and no NameID (a variant's `identity` none).
 --
 -- An obstacle: its update runs the obstacle framework's steps (the `obstacle` service) around its own actions.
 
@@ -42,6 +44,11 @@ export type Look = {
     effects: { puff: Effect, explosion: Effect },
     -- The game's rising bubble kind (objects/rising_bubble).
     bubble: Kind,
+    -- EXE4's older code: it reads no removal as it goes (it breaks however it goes), releases no tracking, and has
+    -- its own obstacle rows (1, 3 to 7, by the framework's numbers) in place of the shared ones.
+    reads_no_removal: boolean?,
+    untracked: boolean?,
+    actions: { [number]: (Object) -> () }?,
 }
 
 export type Statue = {
@@ -159,7 +166,7 @@ function statue.make(look: Look): Statue
     local function destroyed(me: Object)
         me.collision:set_region(nil)
         me:unreserve_panel(me.future_panel_x, me.future_panel_y)
-        local how = obstacle.removal(me)
+        local how = if look.reads_no_removal then "broken" else obstacle.removal(me)
         if absorbed and how == "absorbed" then
             obstacle.fly_to_absorber(me, absorbed)
         elseif how ~= "broken" then
@@ -176,7 +183,9 @@ function statue.make(look: Look): Statue
             battle.effect(Vec3.new(p.x, p.y, p.z + 0x10_0000), look.effects.explosion)
         end
         me.visible = false
-        obstacle.release_tracking(me)
+        if not look.untracked then
+            obstacle.release_tracking(me)
+        end
         obstacle.unregister(me)
         me:set_lifecycle("destroy")
     end
@@ -194,6 +203,14 @@ function statue.make(look: Look): Statue
         [7] = obstacle.bubbled,
         [8] = poison,
     }
+    if look.actions then
+        for a = 3, 7 do
+            actions[a] = nil
+        end
+        for a, f in look.actions do
+            actions[a] = f
+        end
+    end
 
     -- `sub_80CF18C`: hits (a push keeps the damage), the lifetime, the reaction, its action; then present, and the
     -- sprite.
@@ -228,7 +245,9 @@ function statue.make(look: Look): Statue
         me:set_coordinates_from_panel()
         me.pos = Vec3.new(me.pos.x, me.pos.y, HEIGHT)
         me.future_panel_x, me.future_panel_y = me.panel_x, me.panel_y
-        me.identity = v.identity
+        if v.identity then
+            me.identity = v.identity
+        end
         me.vel = Vec3.new(me.vel.x, me.vel.y, FALL_SPEED)
         me.element = 0
         me.timer = v.lifetime

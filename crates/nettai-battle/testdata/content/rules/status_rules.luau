@@ -10,6 +10,7 @@ return {
     custom_drain = { periods = { 0, 40, 30, 20, 10, 5, 3, 2 }, status = 0x5 },
     -- The per-form tick runs (the Fire chips' charge, a form's height).
     form_tick = true,
+    form_keeps_back_special = false,
     -- The mercy flash hides the navi while its timer's bit 1 is set.
     flash_hides_on_clear = false,
     -- A navi without collision data reads as blind (the word's blind bit,

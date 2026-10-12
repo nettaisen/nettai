@@ -81,6 +81,8 @@ return merge {
     require("@self/071_b_left_ability_activation"),
     require("@self/072_b_left_ability_activation"),
     require("@self/073_b_left_ability_activation"),
+    require("@self/074_triple_supporter_1_2"),
+    require("@self/075_triple_supporter_2_2"),
     require("@self/076_all_guard_1_2"),
     require("@self/077_all_guard_2_2"),
     require("@self/078_first_life_aura"),
