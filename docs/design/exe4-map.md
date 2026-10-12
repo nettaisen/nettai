@@ -747,7 +747,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 - **CustSwrd and Muramasa** (the swords' variants 7 and 8, `chips/custswrd`, `chips/muramasa`): their slashes by the
   variants' rows (region 0x11 and region 2, effect rows 0x41 and 0x4A), their damage formulas 45 (the gauge's, a full
   gauge giving 0 where EXE6's and EXE5's give 10: the formula's `full`) and 46 (the HP lost, at most 999). The lab's
-  chips/0x036-custswrd/full-gauge matches.
+  chips/0x036-custswrd/full-gauge matches. The chip window shows "???" for both (their flags' 0x10: §18 item 64).
 - **GrabRvng and GrabBnsh** (the dimming chips' variant 0x0D, `chips/grabbnsh`): @exelib/grabbnsh's controller (effect
   0x22) and hand (attack 0x46) with EXE4's look (the hand from 256 pixels, a thrown break of hit modifier 0x0B) and its
   own taking back (0x080E4836: it counts the panels of the user's home columns the other side holds, each flashing,
@@ -1345,7 +1345,10 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   window (0x0801DC28: the map 0x0870CC80, its patch list 0x0801DD90 from tile 0x9C, one frame color for every chip,
   0x0870C340) and the HUD's load list (the frame's tiles, the picked column's cells, "FINAL TURN", the UNITE button's
   and the emblem's tiles); the chip window (0x0801FC40: the name, picture, code and damage; the element icon a sprite
-  of its own palette, 0x0801EECC, by the record's element byte in EXE5's order); the slots (0x0801FB00: palettes 11,
+  of its own palette, 0x0801EECC, by the record's element byte in EXE5's order; the damage by the record's flags'
+  0x12, 0x0801FCBC: neither bit nothing, bit 0x10 "???" whatever the chip and its code, 0x0801FCE2, else the damage
+  as it stands, 0x08019348: the rules' `custom_screen.variable_damage_shows`, where EXE5's and EXE6's draw "???"
+  for a few chips' copies of code A, the chips' trait); the slots (0x0801FB00: palettes 11,
   12 gray, 9 picked); OK's two pictures; the cursor's corners (0x0801EDB4's tables, its own palette 0x0870C360,
   sprite palette 13); the Regular chip's frame. What EXE5 doesn't have, the pack says (`CustomScreen`'s
   `element_sprite`, `cursor_palette`, `window_emblem`, a button's `place`): the emblem over the picked column is the
@@ -2309,6 +2312,21 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     a message (item 130). To decide: the two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
     ROM; their names and images are the card's). Everything else missing is the story's enemies, the other navis,
     subsystem 0x0E's battle (item 49), or named by nothing. Run the tool again as content grows.
+64. **Done: the chip window's "???"** (group B; found by the Program Advances' pa/0x15c-bodygrd/sequence7, whose
+    Muramasa showed 0 at frames 4237 to 4246 and 4274 to 4279). EXE4's chip window (0x0801FC40) reads the record's
+    flags' 0x12 (0x0801FCBC): with neither bit it draws no damage; with bit 0x10 it draws "???" (0x0801FCE2: three
+    of digit 10), whatever the chip and its code; else the damage as it stands (0x08019348). EXE6's and EXE5's draw
+    the number for either bit, and "???" for a few chips' copies of code A (the trait `hides_damage_as_a`: EXE5's
+    0x080243C0 compares the chip word). So the rule `custom_screen.variable_damage_shows`, the renderer's: EXE4's
+    `"question_marks"`, EXE5's and EXE6's `"damage"`. EXE4's chips of the bit are CustSwrd and Muramasa. The fight
+    HUD's damage reads bit 2 alone (0x080148D8) and draws the number for both, as it did.
+    Every chip whose power is a formula was compared on the custom screen (verify's lab-compare): chips/0x0ca-muramasa
+    (hit, hurt), 0x036-custswrd (hit, full-gauge), the three NumbrBls (hit; numbrbl1/hp), dark/drkcanon and drksword,
+    and the 20 SP and 20 DS navi chips' hit. Every custom screen frame is exact but the late OK's known shift;
+    dark/drklance is exact up to its known stop at frame 917 (item 72). RedSun and BlueMoon (formulas 47 and 48,
+    without bit 0x10: the number) aren't in content yet. Muramasa's and CustSwrd's frame reports had shown the run
+    since the chips were ported (custom screen 271 to 285, in (49, 83) to (71, 94)); only the fight's frames were
+    read then.
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul

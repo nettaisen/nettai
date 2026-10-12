@@ -20,7 +20,7 @@ use crate::vfont::Role;
 use nettai_assets::{Bundle, ButtonPictures, ButtonSets, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
-use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, PlayerFact, WindowView};
+use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, PlayerFact, VariableDamageShows, WindowView};
 use nettai_battle::rules::Flight;
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, Phase, Screen, Side, SlotKind, SlotState};
@@ -1015,8 +1015,10 @@ impl Window {
     /// `sub_80284E2`: a chip's name (8 cells of the 8x16 font in the
     /// window's colors), its picture and palette, the window's colors by
     /// the chip's class, its code, its element's icon (and colors), and
-    /// its damage if it shows ("???" for a chip that hides it as an A:
-    /// `ChipTraits::HIDES_DAMAGE_AS_A`), right-aligned in three cells.
+    /// its damage if it shows, right-aligned in three cells: "???" for a
+    /// chip that hides it as an A (`ChipTraits::HIDES_DAMAGE_AS_A`), and
+    /// for a chip of `damage_shown_variable` where the game's rule says so
+    /// (`custom_screen.variable_damage_shows`: EXE4's 0x0801FCE2).
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let data = v.b.content.chip(c.id);
@@ -1033,9 +1035,12 @@ impl Window {
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
         let digits: Vec<usize> = if !shows {
             Vec::new()
-        } else if data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0 {
-            // (The original compares the whole chip word, number and code,
-            // with Muramasa's number: only an A matches.)
+        } else if (data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0)
+            || (data.flags.0 & ChipFlags::DAMAGE_SHOWN_VARIABLE != 0
+                && v.b.content.rules().custom_screen.variable_damage_shows == VariableDamageShows::QuestionMarks)
+        {
+            // (The trait: the original compares the whole chip word,
+            // number and code, with Muramasa's number: only an A matches.)
             vec![DIGIT_UNKNOWN; 3]
         } else {
             let damage = nettai_battle::hand::chip_damage(v.b, Some(c.id), v.side);
