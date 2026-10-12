@@ -576,11 +576,9 @@ impl Battle {
             }
             self.custom.committed = true;
             // loc_8026E14: the consoles' chip icons are back
-            // (sub_801DA48(2)), and the chip window with them where the
-            // game's close starts it (`close_shows_chip_window`).
-            let window = self.content.rules().custom_screen.close_shows_chip_window;
+            // (sub_801DA48(2)), and the chip window with them (`ChipHud`).
             for hud in &mut self.chip_hud {
-                *hud = crate::hud::ChipHud { icons: true, window, from_close: true, ..*hud };
+                *hud = crate::hud::ChipHud { icons: true, window: true, from_close: true, ..*hud };
             }
         }
     }
