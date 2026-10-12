@@ -145,4 +145,7 @@ return {
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x0800AFF8 and its kin), the sea's
     -- 0x20000 among them.
     type_mask = 0x00023F5F,
+    -- What each panel is drawn as is in the panel (+6 its type, +7 its owner), which its refresh writes (0x0800AFE8):
+    -- a change shows at once, and a dimmed tick, which runs no panel update, leaves a blink as it is.
+    drawn = "in_panel",
 }

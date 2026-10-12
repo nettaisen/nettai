@@ -12,7 +12,8 @@
 -- button's routine (+0x0D: the buster's, routine 0, but WindSoul's and MetalSoul's), the A charge's (+0x0E: FireSoul's,
 -- ProtoSoul's, MetalSoul's and AquaSoul's) and the charged shot's (+0x0F), each soul's own (./<soul>/charge); its B+Left
 -- special stays the base form's (AIData +0x00, which only ProtoSoul's status reset sets). What each soul does besides
--- (its status reset's routine, 0x0800E0A0 by soul) is still to port (docs/design/exe4-map.md §18 item 74).
+-- (its status reset's routine, 0x0800E0A0 by soul, and the rest: docs/design/exe4-map.md §18 item 74) is its own
+-- (./<soul>).
 
 local attachment = require("../../../objects/attachment")
 local base = require("./base").base
@@ -25,8 +26,6 @@ local soul = {}
 -- MetalSoul fire on B, his base form's.
 soul.revert = soul_revert.action
 soul.buster = base.weapons.buster
--- The weapons of a soul whose own are still to port: his base form's (§18 item 74).
-soul.weapons = base.weapons
 
 -- A soul's image at the change: its navi's sprite (rules/souls/image), and the part it holds as it comes, where the
 -- soul has one (0x080E36AC by the navi: an attachment row, held at the image's +0x60, animation 0, which the image

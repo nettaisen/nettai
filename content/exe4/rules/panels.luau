@@ -132,4 +132,8 @@ return {
     -- The flags' bits a type owns, which a crack, a break or poison clears (0x08009AEC and its kin), metal's
     -- 0x20000 among them.
     type_mask = 0x00023F5F,
+    -- What each panel is drawn as is in tables of their own (0x02037AE6 its type, 0x02037B0E its owner), which the
+    -- panel update alone writes (0x08009240): a cracked panel a body stepped off shows its hole a tick after it
+    -- breaks (0x080097C8), and a dimmed tick draws every panel as it is, no blink showing (0x08009A38).
+    drawn = "own_tables",
 }

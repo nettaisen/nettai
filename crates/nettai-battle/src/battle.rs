@@ -95,9 +95,9 @@ pub struct RoundState {
     pub running: u8,
     pub time_up: u8,
     pub local_side: u8,
-    /// Cycles mod 20 and mod 180 (grass healing).
-    pub cycle20: u8,
-    pub cycle180: u8,
+    /// The two counts of fight ticks, each modulo its period (the rules'
+    /// `flow.fight_cycles`; grass heals by them).
+    pub cycles: [u8; 2],
     pub mode_copy: u8,
     pub winner: u8,
     /// Alive navis per side.
@@ -1035,9 +1035,7 @@ impl Battle {
         self.run_mode_handler();
         self.run_objects();
         self.update_cameras();
-        if !self.paused && !self.is_dimmed() {
-            self.tick_panels();
-        }
+        self.update_panels();
         self.update_player_hands();
         self.run_hud_tasks();
         self.update_emotion_windows();
@@ -1045,8 +1043,10 @@ impl Battle {
         self.refresh_variable_damage();
         if !self.paused {
             if !self.is_dimmed() {
-                self.round.cycle20 = (self.round.cycle20 + 1) % 20;
-                self.round.cycle180 = (self.round.cycle180 + 1) % 180;
+                let periods = self.game_rules().flow.fight_cycles;
+                for (count, period) in self.round.cycles.iter_mut().zip(periods) {
+                    *count = (*count + 1) % period;
+                }
             }
             self.shift_damage_carry();
         }
@@ -1094,7 +1094,18 @@ impl Battle {
             }
         }
         self.run_objects();
-        if !self.paused && !self.is_dimmed() {
+        self.update_panels();
+    }
+
+    /// The tick's panel update: none while paused; the panels' tick, or a
+    /// dimmed tick's.
+    fn update_panels(&mut self) {
+        if self.paused {
+            return;
+        }
+        if self.is_dimmed() {
+            self.tick_panels_dimmed();
+        } else {
             self.tick_panels();
         }
     }
@@ -1784,8 +1795,11 @@ impl Battle {
             self.paused = true;
             self.set_fight_state(fight::PAUSE);
             // The HUD's pause display (`sub_801E15C`): "PAUSE" shows, with
-            // its sound, and the opponent's used chip name goes.
-            self.used_chips = [None; 2];
+            // its sound, and the opponent's used chip name goes, where the
+            // game's does (`used_chips_end_early`).
+            if self.game_rules().effects.used_chips_end_early {
+                self.used_chips = [None; 2];
+            }
             self.sound(SoundRole::Pause);
             return;
         }

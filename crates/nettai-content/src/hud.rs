@@ -14,7 +14,7 @@ use crate::report::Report;
 use crate::sprite::read_json;
 use crate::stage::json_lines;
 use crate::tiles::{self, Layout, TileImage};
-use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLayout, HudLettering, MapEntry, NaviMugshot, Palette, TelopLook, Tiles};
+use nettai_assets::{BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLayout, HudLettering, MapEntry, NaviMugshot, Palette, TelopLook, TelopTiles, Tiles};
 use std::collections::BTreeMap;
 use serde::{Deserialize, Serialize};
 use std::path::Path;
@@ -146,6 +146,19 @@ pub struct TelopDoc {
     /// The damage digits 0 to 9, '+', '×' and '2', with the telops'
     /// palette.
     pub glyphs: TileImage,
+    /// Where the telops' sprite tiles are among the banners' (none: apart).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub tiles: Option<TelopTilesDoc>,
+}
+
+/// `nettai_assets::TelopTiles`: VRAM tile numbers.
+#[derive(Serialize, Deserialize, Debug, PartialEq)]
+#[serde(deny_unknown_fields)]
+pub struct TelopTilesDoc {
+    pub banner: u16,
+    pub names: [u16; 2],
+    pub signs: u16,
+    pub pause_loads_banner_palette: bool,
 }
 
 /// Another language's lettering of the HUD: its own files, named with the
@@ -382,6 +395,12 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         telop: h.layout.telop.as_ref().map(|t| TelopDoc {
             places: t.places.map(|(x, y)| [x, y]),
             glyphs: image("telop-glyphs.png", &t.glyphs, GLYPHS(TelopLook::GLYPHS as u32), &[t.palette], 1),
+            tiles: t.tiles.map(|t| TelopTilesDoc {
+                banner: t.banner,
+                names: t.names,
+                signs: t.signs,
+                pause_loads_banner_palette: t.pause_loads_banner_palette,
+            }),
         }),
     };
     let dialogue_font = {
@@ -549,7 +568,13 @@ pub fn import(dir: &Path, prefix: &str, report: &mut Report) -> Option<Hud> {
                 report.error(&name, format!("{} has {} glyphs, not the telop's {}", t.glyphs.file, glyphs.len() / 2, TelopLook::GLYPHS));
                 return None;
             }
-            Some(TelopLook { places: t.places.map(|[x, y]| (x, y)), glyphs, palette: palette[0] })
+            let tiles = t.tiles.as_ref().map(|t| TelopTiles {
+                banner: t.banner,
+                names: t.names,
+                signs: t.signs,
+                pause_loads_banner_palette: t.pause_loads_banner_palette,
+            });
+            Some(TelopLook { places: t.places.map(|[x, y]| (x, y)), glyphs, palette: palette[0], tiles })
         }
         None => None,
     };

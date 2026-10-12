@@ -1166,9 +1166,10 @@ declare battle: {
     -- The same as the routines that read its Z flag see it: true only once
     -- time is up (a KO reads false).
     time_up: () -> boolean,
-    -- The battle's count of fight ticks modulo `period` (20 or 180), which
-    -- grass heals by.
-    cycle: (period: number) -> number,
+    -- The battle's count `which` (1 or 2) of fight ticks, modulo its period
+    -- (the rules' `flow.fight_cycles`: EXE6's and EXE5's 20 and 180, EXE4's
+    -- 10 and 2), which grass heals by.
+    cycle: (which: number) -> number,
     -- The shift a hit of element `hitter` takes against a body of element
     -- `receiver` (the rules' `elements.weakness`).
     weakness: (receiver: number, hitter: number) -> number,
@@ -1232,6 +1233,9 @@ declare battle: {
     -- `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
     -- shake even while the battle is paused (EXE5's TomahawkSoul's change).
     set_shake_through_pause: (on: boolean) -> (),
+    -- `sub_8001382` / `sub_800138E` with a side's chips-enabled bit (set as
+    -- a round starts): the side's navi may use chips, or not.
+    set_chips_enabled: (side: number, on: boolean) -> (),
     -- `sub_80302B6`: the cameras' second shake.
     shake_camera_secondary: (magnitude: number, ticks: number) -> (),
     -- `sub_80EA438`: a burst around the navi's panel (effect #0x90, which
@@ -1419,6 +1423,10 @@ declare battle: {
     -- A side's hand has a chip at i and it does damage (its record's
     -- "has_damage" flag).
     hand_chip_damages: (side: number, i: number) -> boolean,
+    -- The chip after i of a side's hand folds into the chip at i (its
+    -- damage, Atk+ bonus and charge bonus added) and leaves the hand, the
+    -- chips after it moving up one (EXE4's WoodSoul's status reset).
+    fold_hand_chip: (side: number, i: number) -> (),
     -- The chip at i of a side's hand (from its first chip, used ones too),
     -- if any.
     hand_chip: (side: number, i: number) -> Chip?,
@@ -1842,6 +1850,10 @@ export type KindSpec = {
     -- An object of it brought a navi chip's navi itself (passing itself as
     -- the navi's controller): the navi is done (`navi_chip.navi_left`).
     navi_left: ((me: Object) -> ())?,
+    -- An obstacle of it starts being encased (in ice or a bubble: the
+    -- obstacle framework's encasing calls it in its first step; the
+    -- encasing ends the obstacle without its own destroyed action).
+    encased: ((me: Object) -> ())?,
 }
 export type Kind = KindSpec
 
