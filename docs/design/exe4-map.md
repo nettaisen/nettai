@@ -1182,6 +1182,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   holes-columns stage, the hole behind the opponent's hammer leaves it an ice block), 0x10b-coldmnsp and
   0x10c-coldmnds (14) replay every frame and sound the same; their fights are pixel-exact but for one frame of `ice`
   (440: the user's chip label goes a frame late as the opponent, just moved, uses BigHamr1: the HUD's, not ColdMan's).
+  BlakWing (the dimming chips' variant 0x29, 0x080E80CA) is EXE5's (now @exelib/blakwing for both; EXE5's chip is a
+  thin user of it): its controller (effect #0x54, 0x080E8014), flock (attack #0x7E, 0x080DD0AC), perches (effect
+  #0x55, 0x080E80EC) and wings (attack #0x7F, 0x080DD254), the same code but for two things the maker takes. EXE4's
+  flock looks over the enemy area's columns left to right (4 to 6, or 1 to 3: 0x080DD1BA) and keeps each perch in
+  its column's slot, the rightmost column's first (EXE5's from the area's front along its facing, listed as found):
+  `perches_by_column`; a wing's column is its slot's (0x080DD1B8's 6 or 3 less the slot: the perch's own). And as
+  EXE4's controller ends (0x080E80B6) the panel its user stands on becomes a hole (type 11, the Hole chip's):
+  `ends_with_hole`. Its start sounds the place sound (0xAA) and its flap 0x87 (ShadeMan's call). The lab's
+  chips/0x0d6-blakwing (4, a dark MegaMan's) replay every frame, sound the same and are pixel-exact but for the
+  custom screens' known shift; EXE5's BlakWing recordings (4) still match.
 
 **For the next steps:**
 
