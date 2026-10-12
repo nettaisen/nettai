@@ -167,6 +167,12 @@ export enum ErrorKind {
     port-in-use,
     connection-lost,
     replay-version,
+    not-a-replay,
+    replay-damaged,
+    replay-other-game,
+    no-ffmpeg,
+    cant-write-video,
+    export-failed,
     wrong-game-save,
     other,
 }
@@ -223,6 +229,24 @@ export global Errors {
         if kind == ErrorKind.replay-version {
             return @tr("This replay is from a different version and can't be played.");
         }
+        if kind == ErrorKind.not-a-replay {
+            return @tr("That file isn't a replay.");
+        }
+        if kind == ErrorKind.replay-damaged {
+            return @tr("This replay is damaged and can't be played.");
+        }
+        if kind == ErrorKind.replay-other-game {
+            return @tr("This is an {} replay. Pick {} to watch it.", detail, detail);
+        }
+        if kind == ErrorKind.no-ffmpeg {
+            return @tr("ffmpeg wasn't found. Install it to export video.");
+        }
+        if kind == ErrorKind.cant-write-video {
+            return @tr("The video's file couldn't be written. Check the folder and the space left.");
+        }
+        if kind == ErrorKind.export-failed {
+            return @tr("The video couldn't be made. Details are in the log file.");
+        }
         if kind == ErrorKind.wrong-game-save {
             return @tr("Not an {} save.", detail);
         }
@@ -278,6 +302,24 @@ export global Errors {
         if kind == ErrorKind.replay-version {
             return @tr("Different version");
         }
+        if kind == ErrorKind.not-a-replay {
+            return @tr("That file isn't a replay");
+        }
+        if kind == ErrorKind.replay-damaged {
+            return @tr("This replay is damaged");
+        }
+        if kind == ErrorKind.replay-other-game {
+            return @tr("This is an {} replay", detail);
+        }
+        if kind == ErrorKind.no-ffmpeg {
+            return @tr("ffmpeg wasn't found");
+        }
+        if kind == ErrorKind.cant-write-video {
+            return @tr("The video's file couldn't be written");
+        }
+        if kind == ErrorKind.export-failed {
+            return @tr("The video couldn't be made");
+        }
         if kind == ErrorKind.wrong-game-save {
             return @tr("Not an {} save", detail);
         }
@@ -332,6 +374,24 @@ export global Errors {
         if kind == ErrorKind.replay-version {
             return @tr("This replay is from a different version and can't be played.");
         }
+        if kind == ErrorKind.not-a-replay {
+            return "";
+        }
+        if kind == ErrorKind.replay-damaged {
+            return @tr("It can't be played.");
+        }
+        if kind == ErrorKind.replay-other-game {
+            return @tr("Pick {} to watch it.", detail);
+        }
+        if kind == ErrorKind.no-ffmpeg {
+            return @tr("Install it to export video.");
+        }
+        if kind == ErrorKind.cant-write-video {
+            return @tr("Check the folder and the space left.");
+        }
+        if kind == ErrorKind.export-failed {
+            return @tr("Details are in the log file.");
+        }
         if kind == ErrorKind.wrong-game-save {
             return "";
         }
@@ -342,8 +402,6 @@ export global Errors {
         return @tr("OK");
     }
 }
-
-// ---- The ground and the cursor -------------------------------------------------------------------------
 
 // A set piece over the layout: something that flies from one place to another (a chip from its library row to
 // its slot). The app sets where from and where to (`Shell::fly`, by two controls' names) and counts the flights;

@@ -508,8 +508,8 @@ declare extern type Object with
     charge_glow: Object?
     full_synchro_aura: Object?
     -- The charge: level 0 none, 1 charging, 2 full; source 0 none, 1 A, 2 B.
-    -- The level and the source are writable (EXE4's dark soul's AI shows a
-    -- B charge as it dodges).
+    -- The source and the counter are writable (EXE4's dark soul's AI shows a
+    -- B charge as it dodges; the level follows the count).
     charge_level: number
     charge_source: number
     charge_counter: number
@@ -3068,11 +3068,13 @@ export type RolesSpec = {
         program_advance_part: Sound?,
         program_advance: Sound?,
     }?,
-    -- The music the rules start themselves: a link battle's, the winner's
-    -- (in special battles, and otherwise) and the loser's. A stage's music
-    -- is its own.
+    -- The music the rules start themselves: a link battle's (and a single
+    -- battle's, a link battle that is no set, in a game with another song
+    -- for it: the link battle's otherwise), the winner's (in special
+    -- battles, and otherwise) and the loser's. A stage's music is its own.
     music: {
         link_battle: Sound?,
+        link_battle_single: Sound?,
         winner_special: Sound?,
         winner: Sound?,
         loser: Sound?,

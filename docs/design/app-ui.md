@@ -60,7 +60,9 @@ Each is settled unless the user changes it.
 10. **The NaviCust:** EXE4 and EXE5 draw only their 5x5 board (they have no out-of-bounds cells); EXE6 draws its 7x7
     with the out-of-bounds ring and the command line clearly marked. Out of bounds "is fine, it's not an error", and
     "bugs can sometimes be good in a build", so neither is styled as a warning. A bug is shown by its name and its
-    level. **Every bug, everywhere, is purple.** A plus part is a cell with a cross that reaches its edges, with no
+    level. A bug's name is a full name spelled out from the game's own patch card effect name for the same bug
+    ("MoveBug" is Movement Bug, "BatHPbug" is Battle HP Bug), not the abbreviation and not a word of ours; a card's
+    own lines stay the game's strings. **Every bug, everywhere, is purple.** A plus part is a cell with a cross that reaches its edges, with no
     border around the cell.
 11. **Chips show their element** with the game's own element icon, at the right of the row, just left of the code.
     Chip icons and chip art are the pack's own.
@@ -81,8 +83,8 @@ Each is settled unless the user changes it.
 19. **Patch cards are shown comprehensively**, have no image area ("patch cards don't have images"), have no on/off
     switch ("nettai doesn't support turning them off"), and a card that doesn't fit says so in the error red
     ("Needs 24 MB"), "like how errors in the folder editor get surfaced".
-20. **EXE4's patch card slots are named 0A to 0F**, and not every card fits every slot. (On 2026-10-12 another
-    agent was adding each card's slots to the content's metadata.)
+20. **EXE4's patch card slots are named 0A to 0F**, and not every card fits every slot: each card states the one
+    slot it belongs in (`slot = cards.SLOT_0A` to `SLOT_0F` in its definition).
 21. **Phone (upright) layouts are in scope.**
 
 ## 3. Chosen where the user gave no answer
@@ -96,7 +98,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | A build's version | Fixed when the build is made, as a save's is ("It can't be changed later") |
 | Netplay rounds | A single battle or best of 3, a shared setting either player can change |
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
-| What "export" makes | A `nettai-video` crate writes a NUT stream (raw frames and PCM); the app pipes it to ffmpeg for an MP4, and can save the `.nut` itself |
+| What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
 | The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
 | The dummy while waiting online | A copy of the player's own build, standing still, with the training menu there to change it |
 | Training's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last |
@@ -300,8 +302,9 @@ Each is in the mockups under the same name.
   panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
   same lines, and the strip across the top lays the card under the cursor out in its two groups. EXE4: six slots
-  named 0A to 0F, each with its card or Empty; a library row names the slots the card fits; a two-part card says
-  where its other half must be; a card shows its effect and the bugs it adds to or clears.
+  named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
+  puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
+  shows its effect and the bugs it adds to or clears.
 - **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel.
 
 ### Replays
@@ -312,8 +315,11 @@ Each is in the mockups under the same name.
   each round begins, the length; then to the round's start, a frame back, play or pause, a frame on, the next
   round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, Left and Right seek 5 seconds, comma and
   period step a frame, the brackets go a round.
-- **Export:** a dialog of one size from start to finish: Size (whole multiples of 240 by 160), View, Part, Save as,
-  the progress bar and its line, CANCEL and EXPORT.
+- **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
+  first), View, Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
+  keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
+  against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".
+  (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.)
 
 ### In an online match
 - The picture fills the window, with no header or footer.

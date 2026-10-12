@@ -6,7 +6,7 @@
 //! versions, the other a dummy that stands still. The screen's own way in (two builds, START TRAINING)
 //! replaces it.
 
-use crate::battle::{BattleEvent, BattleStart};
+use crate::battle::{BattleEvent, BattleStart, Play};
 use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress};
@@ -55,7 +55,7 @@ impl Screen for Training {
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match event {
-            BattleEvent::Started => {}
+            BattleEvent::Started | BattleEvent::Watching(_) => {}
             BattleEvent::Finished(_) => shell.end_battle(),
             BattleEvent::Stopped(reason) => {
                 shell.end_battle();
@@ -84,7 +84,7 @@ impl Screen for Training {
 fn restart(shell: &mut Shell) -> bool {
     let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training && b.playing()) else { return false };
     b.stage.player.restart();
-    b.stage.stale = true;
+    b.stage.surface.stale = true;
     true
 }
 
@@ -118,7 +118,7 @@ pub fn start_development_battle(shell: &mut Shell, seed: u32) {
         kind: BattleKind::Training,
         game: game.clone(),
         set: nettai_match::Set::of(content, &m, seed),
-        driver: Box::new(driver),
+        play: Play::Drive(Box::new(driver)),
         viewer: 0,
         recorder: None,
         cards: Some(cards),

@@ -23,6 +23,7 @@ local thunsoul: Chip = {
     action = change.make {
         id = "thunsoul",
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { thunsoul = thunsoul }

@@ -13,6 +13,9 @@ path = "src/main.rs"
 nettai-frontend = { path = "../nettai-frontend" }
 nettai-battle = { path = "../nettai-battle" }
 nettai-render = { path = "../nettai-render" }
+# A replay as video: its NUT stream, and ffmpeg run for an MP4 (`--nut`,
+# `--mp4`).
+nettai-video = { path = "../nettai-video" }
 # The recording replay (src/trace.rs): a recording is the original's
 # numbers, which a game's compat crate reads and compares.
 exe6-compat = { path = "../exe6-compat", features = ["trace"] }

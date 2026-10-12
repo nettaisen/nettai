@@ -192,6 +192,54 @@ msgstr "このリプレイは別のバージョンのもので、再生できま
 msgid "Different version"
 msgstr "別のバージョン"
 
+msgid "That file isn't a replay."
+msgstr "そのファイルはリプレイではありません。"
+
+msgid "That file isn't a replay"
+msgstr "そのファイルはリプレイではありません"
+
+msgid "This replay is damaged and can't be played."
+msgstr "このリプレイは壊れていて、再生できません。"
+
+msgid "This replay is damaged"
+msgstr "このリプレイは壊れています"
+
+msgid "It can't be played."
+msgstr "再生できません。"
+
+msgid "This is an {} replay. Pick {} to watch it."
+msgstr "これは {} のリプレイです。{} を選ぶと見られます。"
+
+msgid "This is an {} replay"
+msgstr "これは {} のリプレイです"
+
+msgid "Pick {} to watch it."
+msgstr "{} を選ぶと見られます。"
+
+msgid "ffmpeg wasn't found. Install it to export video."
+msgstr "ffmpeg が見つかりません。動画を書き出すにはインストールしてください。"
+
+msgid "ffmpeg wasn't found"
+msgstr "ffmpeg が見つかりません"
+
+msgid "Install it to export video."
+msgstr "動画を書き出すにはインストールしてください。"
+
+msgid "The video's file couldn't be written. Check the folder and the space left."
+msgstr "動画ファイルを書き込めませんでした。フォルダと空き容量を確認してください。"
+
+msgid "The video's file couldn't be written"
+msgstr "動画ファイルを書き込めませんでした"
+
+msgid "Check the folder and the space left."
+msgstr "フォルダと空き容量を確認してください。"
+
+msgid "The video couldn't be made. Details are in the log file."
+msgstr "動画を作成できませんでした。詳しくはログファイルをご覧ください。"
+
+msgid "The video couldn't be made"
+msgstr "動画を作成できませんでした"
+
 msgid "Not an {} save."
 msgstr "{} のセーブデータではありません。"
 

@@ -58,7 +58,8 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
             Some((rom, a)) => hud(rom, a, names),
             None => {
                 let (font, font_chars) = placeholder_font((names.glyphs.as_slice(), names.dialogue_glyphs.as_slice()));
-                Hud { font, font_chars, ..crate::placeholders::hud(names, super::hud::BANNER_COUNT as usize) }
+                let banners = crate::placeholders::banners(super::hud::BANNER_COUNT as usize, &super::hud::BANNER_RECORDS);
+                Hud { font, font_chars, banners, ..crate::placeholders::hud(names, 0) }
             }
         };
         hud.chip_icons = chip_icons(roms, names);
@@ -75,6 +76,9 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
             HudLettering { font, font_chars, ..crate::placeholders::lettering(&hud, names, LANGUAGE) }
         }
     };
+    // (The Japanese games place the chatbox's text themselves: code, the
+    // same with or without their ROMs.)
+    let lettering = HudLettering { chatbox_text: Some(super::hud::CHATBOX_TEXT_JA), ..lettering };
     hud.languages.push((LANGUAGE.to_string(), lettering));
     hud.language = BASE_LANGUAGE.into();
     // The custom screen (exe4/custom.rs), Red Sun US's; its Japanese

@@ -48,6 +48,7 @@ local chip: Chip = {
     program_advances = { { order = 5, sequence = { gunsols.gunsol1, gunsols.gunsol2, gunsols.gunsol3 } } },
     dimming = CONTROLLER.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { pdriver = chip }

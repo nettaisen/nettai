@@ -250,8 +250,8 @@
 "guard1/action" = 0x25
 "guard2/action" = 0x25
 "guard3/action" = 0x25
-# Double Soul's (rules/souls): each soul's change, its chip's use (action 0x0D, 0x080EBA44), and the revert out of a
-# soul (action 0x11, 0x080EBE90).
+# Double Soul's (rules/souls): each soul's change, its chip's use (action 0x0D, 0x080EBA44), the dark soul's
+# (rules/souls/dark: the same action for soul 15), and the revert out of a soul (action 0x11, 0x080EBE90).
 "rollsoul/change" = 0x0D
 "gutssoul/change" = 0x0D
 "windsoul/change" = 0x0D
@@ -264,6 +264,7 @@
 "junksoul/change" = 0x0D
 "aquasoul/change" = 0x0D
 "woodsoul/change" = 0x0D
+"darksoul/change" = 0x0D
 "souls/revert" = 0x11
 # H-Burst (the chips' action 0x71, 0x080EE93A).
 "h-burst/action" = 0x71

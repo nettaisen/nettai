@@ -29,7 +29,6 @@ local made = common.make({
     center_x = function(me: Object, _swing: number, turn: number): number
         return -me.facing * CENTER_BACK + (me.panel_x - (4 - turn)) * COLUMN
     end,
-    sets_look = true,
     hit_shakes = false,
 }, trajectory.sine)
 

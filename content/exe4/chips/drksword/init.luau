@@ -32,6 +32,7 @@ local drksword: Chip = {
         effect = SLASH,
         sound = swords.swing,
     },
+    auto_battle = { class = "into_target_row" },
 }
 
 return { drksword = drksword }

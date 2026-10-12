@@ -20,6 +20,7 @@ local invalid: Chip = {
     lockout = 0,
     flags = {},
     action = spawners.action { id = "invalid/action", spawn = plus.spawner(0) },
+    auto_battle = { class = "at_once" },
 }
 
 return { invalid = invalid }

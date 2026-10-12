@@ -14,7 +14,8 @@ own fonts, exactly as the original does.
 
 It plays a set live from a player's buttons, or against another player over
 the network, replays a golden trace (the recorded inputs of a real match) or
-a replay, and draws chosen frames to PNG. Its hosts are nettai, the app
+a replay (which it seeks about in, and writes as video), and draws chosen
+frames to PNG. Its hosts are nettai, the app
 (docs/app.md), and nettai-tools, the command line with no window
 (docs/tools.md); the commands in this document are nettai-tool's.
 
@@ -42,8 +43,13 @@ a match waits for before its first tick: §9.)
   the sound as it is driven; what drives a session is a driver (`driver`:
   live play of a set from the GBA button mask; `netplay`: another player,
   over a channel the host provides: it has no socket; `replay`: a replay).
+  A replay has a player of its own besides (`viewer`), which seeks (§8).
   It draws the battle's picture and nothing over it: it has no text of its
   own.
+
+A third crate is over them: **nettai-video** writes a replay as video, a NUT
+stream of raw frames and PCM sound, and runs ffmpeg for an MP4 of one (§8,
+"Video").
 
 ## 1. The content pack
 
@@ -543,8 +549,10 @@ host calls, in order:
     (`Agreement::closed_builds`): the host then shows its player their own
     build only (`agreement.sides[agreement.side]`), where with open builds
     it may show both. Both programs hold both sides either way, as the
-    shared simulation needs them. A recording that is to hide the builds
-    again must keep the setting: the replay file doesn't yet.
+    shared simulation needs them. A recording keeps the setting: a host
+    makes a netplay match's recorder of the agreement
+    (`Recorder::of_agreement`, §8), so the replay's info says the builds
+    were closed and whoever shows it again hides both.
   - **Loaded before the first tick.** Agreed, the lobby says
     `Status::Loading` with the agreement, and the host makes the match
     ready: a `preload::Preload` of the agreement's set for this player's
@@ -2022,11 +2030,19 @@ battle's digest now and then, to tell a replay that reproduces from one that
 doesn't. A replay plays only on the engine and the content it was made with;
 it names them, and another build or pack refuses it with what differs.
 
-**Recording.** nettai records every set it plays, alone or netplay, to its
+**Recording.** nettai records the sets it plays to its
 replays folder (docs/app.md §2), and `nettai-tool --match FILE --headless F
 --record set.ntrp` a set played headless; in the library,
 `Player::record(Recorder::new(sink, &content, &m, &info)?)` before the first
-tick. Live play writes each tick as it runs; netplay each as it settles
+tick. The `info` says when, which side recorded, the players' names, the
+kind of match (`MatchKind::Offline` or `Online`) and whether its builds were
+closed (`Info::of(kind, side)` is one with the rest left out). **A netplay
+match's recorder is made of its agreement**, `Recorder::of_agreement(sink,
+&content, &agreement, when)`: the lobby's `Agreement` has the match and its
+seed, this peer's side, both names and the closed builds the players agreed
+(`Agreement::closed_builds`, §2), so the info is all the agreement's and a
+host passes the setting on by recording at all. Live play
+writes each tick as it runs; netplay each as it settles
 (confirmed, never a prediction), so both players' replays of a match hold the
 same match and ticks, and differ only in who recorded. Each tick is flushed as
 it is written: a crash leaves every tick before it, and the file reads as cut
@@ -2034,29 +2050,163 @@ short. A round of netplay ends on the tick it ended on, which both peers know
 however late they see it settle (rollback.md §4.6, "Rounds"), so the replay's
 marks are the simulation's.
 
-**Playing back.** nettai's Replays screen watches one from either console;
-`nettai-tool --replay set.ntrp` plays one out and says whether it reproduces,
-and with `--headless F` renders the set's ticks F (`--side left|right`: the
-console shown; default the recorder's); in the library, `ReplayPlayer::new(&content, &replay, side)?` is a driver
-like any other, and `replay::play_out(&content, &replay)` plays one to its end
-with no picture or sound (the ticks, each round's winner, the set's result,
-how the file ends, and the first difference). In a release build it plays
-about 200,000 ticks a second: a 10.4-minute EXE6 set of three rounds (37,187
-ticks, one side mashing) in 0.18 s, about 0.05 s for three minutes of play
-(`cargo test --release -p nettai-frontend play_out_timing -- --ignored
---nocapture`); a host listing replays can afford to play each one out. A digest or a round's or the
-set's end that differs from the recording is reported as a difference
-(`Player::diverged`), with its tick; the simulation is side 0's on every
-console, so a replay shown from side 1 compares the same digests.
+**What a replay says of each side** is its player's name and its setup: the
+navi, the folder and whatever else its game's rules take, each a number or a
+definition's handle (the match, below). The setup stays, because the
+simulation is made from it. **A build's name is not in a replay**, nor
+anything else of a build that the battle doesn't use: the info has no place
+for one (nettai-replay's test
+`a_replay_holds_no_more_of_a_side_than_its_name_and_setup` pins the head and
+the info to their listed fields), and a match in binary holds no text at all
+(nettai-match's `no_fact_holds_text`: no fact's type holds a string). Where
+the players agreed that neither sees the other's build, the info says so
+(`Info::closed_builds`, which a host reads from the replay or from
+`Viewer::info()`), and whoever shows the replay hides both setups too
+(docs/design/app-ui.md §3): the file still holds them, as it must.
 
-**The file** (nettai-replay, which holds the format alone and runs no engine):
+**Playing back.** `nettai-tool --replay set.ntrp` plays one out and says
+whether it reproduces, and with `--headless F` renders the set's ticks F
+(`--side left|right`: the console shown; default the recorder's). In the
+library there are three ways, by what is wanted:
+
+- `replay::play_out(&content, &replay)` plays one to its end with no picture
+  or sound: the ticks, each round's winner, the set's result, how the file
+  ends, and the first difference. In a release build it plays about 200,000
+  ticks a second: a 10.4-minute EXE6 set of three rounds (37,187 ticks, one
+  side mashing) in 0.18 s, about 0.05 s for three minutes of play (`cargo test
+  --release -p nettai-frontend play_out_timing -- --ignored --nocapture`); a
+  host listing replays can afford to play each one out.
+- `ReplayPlayer::new(&content, &replay, side)?` is a driver like any other,
+  for a `Player`: straight playback, start to end.
+- `viewer::Viewer::open(&game, &replay, side)?` is a replay's own player,
+  with a transport ("Seeking", below): what a Replays screen shows.
+
+A digest or a round's or the set's end that differs from the recording is
+reported as a difference (`Player::diverged`, `Viewer::diverged`), with its
+tick; the simulation is side 0's on every console, so a replay shown from
+side 1 compares the same digests. A console shown hears its own side's
+sound (`session::heard`: the charge only its player hears, its own navi's
+hit, the music of its own result).
+
+**A replay that isn't played** says why as a type, for a host to say in its
+own words (docs/design/app-ui.md §7), with the detail as its `Display`, for a
+log:
+
+| | |
+|---|---|
+| `ReadError::NotAReplay` | the bytes aren't a replay's |
+| `ReadError::OtherLayout { layout }` | a replay of another layout: another version of nettai's |
+| `ReadError::Damaged(why)` | a replay of this layout that no writer writes (cut inside its head, a value none holds) |
+| `Refused::OtherVersion(why)` | made on another engine or other content, or its match makes another first battle here |
+| `Refused::OtherGame { replay, here }` | of another game than the content given |
+| `Refused::BadMatch(why)` | its match doesn't read or breaks the rules: a damaged or changed file |
+| `Refused::NoSide(side)` | asked to be shown from a side a match doesn't have |
+
+`ReadError::OtherLayout` and `Refused::OtherVersion` are "this replay is from
+a different version".
+
+### Seeking
+
+`Viewer` plays a replay back for a host to show and hear, as a `Player` does
+(`advance(elapsed)`, `present(buffer, width, height)`, `take_samples(&mut
+out)`, `set_language`), and has a transport:
+
+| | |
+|---|---|
+| `length()`, `duration()` | the replay's ticks and its time, known as it opens (the file's) |
+| `info()` | what the replay says of itself: the names, the kind of match, closed builds |
+| `rounds()` | each round's first tick, in order (the file's marks): the bar's marks |
+| `position()`, `time()`, `round()`, `at_end()` | where it is |
+| `seek(tick)`, `seek_time(time)` | go there (past the end: the end) |
+| `skip(seconds)` | five seconds on, or back with -5 (299 ticks) |
+| `previous_round()`, `next_round()` | to the round's start (from it, or from its first second while playing, to the round before's); to the next round's |
+| `step_forward()`, `step_back()` | a frame on (with its sound), a frame back |
+| `set_speed(Speed)` | `Half`, `Normal`, `Double`, `Quadruple`; the sound follows as a tape's does, so the host gets as much sound a second at any speed |
+| `set_view(side)` | either console's picture, HUD and sound, switched while it plays |
+| `set_paused(bool)` | pause, or go on |
+| `result()`, `stopped()`, `diverged()` | the set's result for the console shown (at the end of a whole set), why the engine stopped short of the end, the first difference from the recording |
+| `index(ticks)`, `indexed()` | play ahead without moving (below) |
+
+**A seek lands in the state straight playback reaches**, all of it: the
+battle (its digest is straight playback's), what the drawing follows over
+time (the HUD's rolling numbers and timers, for both consoles) and the sound,
+to the sample, for both consoles. So after a seek, a frame back or a change
+of console, what is shown and heard is what was shown and heard there the
+first time: a note that was sounding sounds on from where it was, the music
+is where it was in its loop, and nothing of the ticks passed over is heard (no
+burst), nor anything of where the viewer came from (no note left hanging).
+The simulation is asked nothing a tick doesn't ask: a seek restores a state
+the replay passed through and plays the recorded buttons on from it.
+
+A viewer has no pause of the battle's. A match's host answers START in a
+fight (§2), so a replay holds the presses and reports each again as it plays
+(`Battle::pause_requests`); a viewer drops them, playing, seeking or
+indexing, and is paused by its own host alone (`set_paused`).
+
+**How.** As the replay plays, or is sought through, the viewer keeps a copy
+of everything it is at every 240th tick (`KEYFRAME_EVERY`: four seconds) and
+at each round's first tick: the battle (`Battle::save_state`, the snapshot
+rollback uses: docs/design/rollback.md §1.3), each console's HUD state, and
+each console's sound (`BattleAudio` is plain state over its shared banks,
+and so `Clone`). A seek goes on from the nearest kept state at or before its
+target, or from where it is if that is nearer, and plays the ticks between in
+silence. Both consoles' HUD states and sounds run every tick, whichever is
+shown, so a change of console is a swap. The ticks a seek plays through
+leave states of their own every 16th tick (`NEAR_EVERY`), of that one
+stretch between two kept states, so a frame back and the next each go on
+from a tick or so before: only the first of them into a stretch plays the
+stretch. Reaching a tick for the first time
+plays every tick up to it; `index(ticks)` does that ahead of time, a slice
+a call, leaving the viewer exactly where and as it is (a host calls it a
+slice a frame, or all behind its loading screen, until it returns true). A
+replay is made ready as any match is besides (§9): `replay::set_of(&content,
+&replay)?` is its set for a `Preload`, and `Preload::viewer(&replay, side)?`
+the viewer with what was made ready.
+
+**What it costs**, measured on EXE6's own packs by `examples/seek.rs` in a
+release build, in processor time (the machine was busy with other builds),
+on a set of 16,506 ticks (4 minutes 36 seconds, two rounds, both navis
+mashing):
+
+- **Memory:** a kept state is 61 KB (the battle's snapshot 32 KB, each
+  console's sound 15 KB), and the set keeps 70: 4.3 MB. Five minutes keep
+  about 77, 4.7 MB. The states of the stretch last sought through are up to
+  14 more, under 1 MB.
+- **Indexing the whole set:** 1.19 s, 72 µs a tick, so 1.3 s for five
+  minutes. Most of a tick is the two consoles' sound, made and thrown away:
+  a viewer without sound takes 17.5 µs a tick (0.29 s for the set). A viewer
+  that never indexes pays this once, on its first seek to the end (1.18 s
+  measured), or as much of it as lies before wherever it first seeks.
+  Playing the set straight with its picture takes 17 s, so the index is a
+  fourteenth of that.
+- **A seek in what was reached before:** 4.7 ms (the median of 300 seeks of
+  every kind; 20 ms at worst: at most 239 ticks are played).
+- **A frame back:** 0.5 ms (the median of 480 in a row; 16 ms for the one
+  that goes into a new stretch and plays it).
+
+The example also checks what it measures: after each of those seeks, and
+after the frames back, the battle's digest, the picture presented at twice
+the frame with its text, the HUD's state and the sound of the ticks that
+follow are straight playback's, from both consoles and across changes of
+console, on the game's real graphics and sound (`cargo run --release -p
+nettai-frontend --example seek -- --game exe6 --seed 7`).
+
+Kept states at each round's start make a round's start exact and at once;
+a smaller `KEYFRAME_EVERY` buys shorter first seeks into a stretch for more
+memory in proportion.
+
+### The file
+
+nettai-replay holds the format alone and runs no engine:
 
 ```text
-file   := "NTRP", layout (a byte: 1), head, info, match, input
+file   := "NTRP", layout (a byte: 2), head, info, match, input
 head   := "HEAD", length (u32), engine version (string), game (string),
           content hash (u64), the first battle's digest before any tick (u64)
 info   := "INFO", length (u32), when (u64: unix seconds), the side that
-          recorded (a byte), the players' names by side (two strings)
+          recorded (a byte), the kind of match (a byte: 0 offline, 1 online),
+          closed builds (a byte: 0 no, 1 yes), the players' names by side
+          (two strings)
 match  := "MTCH", length (u32), the match in nettai-match's binary
 input  := "TICK", then a record per tick to the end of the file
 record := control (a byte), then what its bits announce, in their order:
@@ -2073,7 +2223,14 @@ Numbers are little-endian; a side's buttons are written when they change
 is kept every 60 ticks of the set and at each round's end (the reader takes
 any). A tick that changes nothing is one byte: a three-minute round is about
 15 KB. The layout byte is the container's; what a match holds is pinned by the
-content hash, nothing else.
+content hash, nothing else. Layout 2 added the kind of match and closed
+builds to the info; a file of another layout, layout 1's included, is refused
+as another version's (`ReadError::OtherLayout`). No layout 1 file would play
+here whatever was done for its layout: every battle's digest changed when a
+round's setup gained the host's keys (`RoundSetup::host_keys`, §2), so a
+replay from before is refused as one whose match makes another first battle
+(`Refused::OtherVersion`), as any is once the engine or the content has moved
+on.
 
 **The match** (nettai-match's `binary`, which the netplay offer uses too) is
 read against the content the head names: definitions by their handles (the
@@ -2099,6 +2256,113 @@ about 210 bytes, EXE5's about 540 (its auto battle data included); a whole
 match 410 and 1,060. A reader refuses bytes that end early or run on, a handle
 past the content's, a background the pack hasn't and a value no fact may hold,
 saying where; the match's checks then judge what it read, as for a match file.
+
+### Video
+
+nettai-video writes a replay as video. It is a crate of its own over the
+viewer, with no encoder and no ffmpeg library in it, in three pieces that
+are each used alone:
+
+- **`nut`**: FFmpeg's NUT container, written to any `std::io::Write`: raw
+  frames and PCM sound in one stream, which `ffmpeg -f nut -i -` reads from a
+  pipe. It knows nothing of replays.
+- **`write(&mut viewer, scale, &part, out, progress)`** and
+  **`export(&game, &replay, &options, out, progress)`**: a replay through a
+  viewer into such a stream.
+- **`mp4::Encoder`**: `ffmpeg` run as a child that reads a NUT stream from a
+  pipe and writes an MP4; `export_mp4` and `write_mp4` are the two together.
+
+**What a video holds:** one frame of the picture a tick and the sound the tick
+made, as a viewer playing the part straight presents and plays them
+(`Viewer::present`, text and all; `Viewer::take_samples`). The part is the
+whole replay, a round (`Part::Round(n)`) or a range of ticks
+(`Part::Ticks(a..b)`: what playing from position `a` to position `b` shows),
+from either console (`Options::view`). A part starts in the state straight
+playback reaches there, sound included (the viewer's seek), so a part's
+frames and samples are the whole video's for those ticks.
+
+**The stream**, in NUT's terms (the specification is the NUT repository's
+`docs/nut.txt`, version 3, and `nut4cc.txt` for the raw formats' names):
+
+| | |
+|---|---|
+| the picture | stream 0, `RGB[24]` (8-bit red, green, blue; square pixels), 240·N by 160·N |
+| its time base | 4389/262144 s: a tick exactly (280,896 cycles of the GBA's 16,777,216 Hz clock: `player::TICK_SECONDS`); frame `n`'s pts is `n` |
+| the sound | stream 1, `PFD[32]` (32-bit little-endian floats, left and right), 32768 Hz; none from a viewer without sound |
+| its time base | 1/32768 s; a frame's pts is the samples before it (4389 samples every 8 ticks, by the same clock) |
+| order | frames in time order across the streams, each a keyframe behind a syncpoint of its own (a raw frame is far past `max_distance`), its header checked |
+| headers | at the start, after each of 8, 64, 512 MiB..., and at the end before the index: three times at least |
+| index | the last packet: a reader of a file has the length and every frame's place from it; a reader of a pipe skips it |
+
+Nothing in it varies: no time of day, no name, no encoder string. **The same
+replay gives the same bytes** (nettai-video's test
+`the_same_replay_gives_the_same_bytes`, and the same from a viewer that had
+been sought about first).
+
+**The picture is scaled here, by whole multiples and the nearest pixel**
+(`Options::scale`, 1 to 16), not left at 240x160 for ffmpeg to scale: in the
+font text mode the battle's words are drawn at the output's resolution over
+the scaled frame, so only a frame presented at its final size has them sharp.
+The cost is the stream's size, which is raw: 115 KB a frame at 240x160, 1.04
+MB at three times (62 MB a second), so the stream is for a pipe or a short
+part, and a long video at a large size goes to ffmpeg as it is made.
+
+**To an MP4:** `mp4::Encoder::start(to, &settings)` starts ffmpeg, is written
+the stream, and `finish()` gives the file its name. The file is written as
+`NAME.part` beside its place and renamed when ffmpeg has ended well; canceled
+(`cancel()`), failed or dropped, the child is stopped and the part removed,
+so no half-written file is ever under either name (and a file of that name
+from before stays until the new one is whole). The command line is in the
+module (`mp4::Settings::arguments`): H.264 by libx264 (`-preset medium -tune
+animation -crf 16`), 4:2:0, the colors converted and tagged as BT.709; AAC at
+192 kb/s resampled to 48 kHz (the GBA's 32768 Hz is no rate AAC has);
+`+faststart`. The picture isn't scaled by ffmpeg. What 4:2:0 costs depends on
+the size: at an even multiple of the frame every game pixel covers whole
+color samples and edges stay clean, at an odd one every edge gets a fringe
+of mixed color. Measured on 120 frames of an EXE6 fight (the decoded MP4
+against the stream, RGB PSNR): 40 dB at twice the frame and 44 dB at four
+times, about 2 Mb/s each; 25 dB at three times, at 4 Mb/s; 38 dB at three
+times in 4:4:4 (`Chroma::Full`, which fewer players take). So a host offers
+even sizes first.
+
+**Progress, canceling, errors.** `progress` is called before the first frame
+and after each with a `Progress` (the frames written and to write, so a
+fraction, and the round being written), and answers
+`ControlFlow::Break(())` to cancel. An export plays the replay on the thread
+it is called on, so a host calls it on a thread of its own (a loaded game is
+`Sync`: the thread borrows what the window plays from). That thread loads the
+content's runtime first, if it hasn't one: about a second (§9), with nothing
+written yet. `nettai_video::Error`
+says what went wrong as a type, with the detail as its `Display`:
+
+| | |
+|---|---|
+| `NoFfmpeg(e)` | ffmpeg couldn't be started: not installed, or not where the settings say |
+| `FfmpegFailed { code, log }` | ffmpeg ran and failed: its exit code and the last of what it wrote to its standard error |
+| `Disk(e)` | the file couldn't be made there, or the disk is full |
+| `Canceled` | the caller stopped it; nothing is left |
+| `Replay(refused)`, `NoSuchPart(what)`, `Scale(n)` | the replay isn't played here; a round or range the replay hasn't; a size not 1 to 16 times |
+| `Stopped { tick, why }` | the engine stopped before the part's end |
+| `Write(e)` | the sink's own error (`write` and `export` to a caller's sink) |
+
+**Checked against ffmpeg** (9.0.2): nettai-video's test
+`ffmpeg_reads_the_stream_and_makes_the_mp4` (not run by default: it needs
+`ffmpeg` and `ffprobe`) has ffprobe read a stream as `rawvideo`, `rgb24`,
+262144/4389 frames a second and `pcm_f32le`, 32768 Hz, stereo, with its
+length from the index and nothing said at `-v error`; ffmpeg decode its
+frames and samples to exactly the bytes written; and the MP4 hold every
+frame, as H.264 and AAC. On EXE6's own packs, a part's stream decoded by
+ffmpeg is byte for byte the PNGs `nettai-tool --headless` writes for the same
+ticks (the picture the renderer presents: 120 frames at twice the frame with
+the font mode's text from the left console, 60 at three times in the
+original text mode from the right), a part's pictures and sound are the
+whole's for its ticks (120 frames of 900, the part's 65,835 samples the
+whole's from sample 328,626, where tick 599 starts by the clock), the sound
+is the picture's length to the sample (493,762 samples for 900 ticks;
+493,762.5 by the clock), a round alone is its 6,565 frames, and `nettai-tool
+--nut - | ffmpeg -f nut -i - out.mp4` makes the MP4 with nothing said. The
+tool writes 900 frames at the frame's size in 0.8 s, and a round of 110
+seconds as an MP4 at twice the frame in 8.5 s.
 
 ## 9. Loading, and what a match waits for
 

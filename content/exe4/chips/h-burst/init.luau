@@ -45,6 +45,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 36, code_run = { chip = spreaders.spreader, count = 3 } } },
+    auto_battle = { class = "behind_target" },
 }
 
 return { ["h-burst"] = chip }

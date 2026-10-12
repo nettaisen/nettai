@@ -31,6 +31,11 @@ m4a.workspace = true
 # the other's.
 sha2 = "0.10"
 
+[features]
+# What tests of a set played back are made from (`testing`), for the tests
+# of the crates over this one.
+testing = []
+
 [dev-dependencies]
 nettai-battle = { path = "../nettai-battle", features = ["test-content"] }
 nettai-match = { path = "../nettai-match", features = ["testing"] }

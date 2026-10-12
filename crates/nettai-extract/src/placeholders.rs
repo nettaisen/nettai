@@ -123,6 +123,34 @@ pub fn hud(names: &AssetNames, banners: usize) -> Hud {
         ..Default::default()
     }
 }
+/// A banner's record but for its words (`BannerLayout`): its number / 4,
+/// its kind, its place, and where its number goes (kind 1).
+pub type BannerRecord = (usize, u8, (u8, u8), Option<(u8, u8)>);
+
+/// `count` placeholder banners, those of `records` (a game's
+/// `BANNER_RECORDS`: its banners that aren't plain) as the ROMs' records
+/// have them. How a banner behaves (one with a number, one that holds
+/// until removed, a telop's, the judge's) and where a held one sits are
+/// the game's, whichever ROMs a pack is built from: only a banner's
+/// picture is a placeholder.
+pub fn banners(count: usize, records: &[BannerRecord]) -> Vec<BannerLayout> {
+    let mut out = vec![
+        BannerLayout {
+            x: 40,
+            y: 64,
+            glyphs: tiles(40),
+            ..Default::default()
+        };
+        count
+    ];
+    for &(id, kind, (x, y), number_at) in records {
+        // (A telop's banner, kind 3, has no glyphs of its own.)
+        let glyphs = if kind == 3 { Tiles::default() } else { tiles(40) };
+        out[id] = BannerLayout { x, y, kind, glyphs, number_at };
+    }
+    out
+}
+
 pub fn lettering(base: &Hud, names: &AssetNames, language: &str) -> HudLettering {
     let (cell, dialogue) = names
         .language_glyphs
@@ -148,6 +176,7 @@ pub fn lettering(base: &Hud, names: &AssetNames, language: &str) -> HudLettering
         waiting: tiles(16),
         waiting_palette: PALETTE,
         gauge_tiles: tiles(base.gauge_tiles.len()),
+        chatbox_text: None,
     }
 }
 pub fn slot_pictures() -> SlotPictures {
