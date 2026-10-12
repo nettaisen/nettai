@@ -2879,10 +2879,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      dimmed, once a battle; the buttons, the hand and the custom screen in it; each side and version; the third
      object as the first target, an invisible one, the chips barred; a pattern entry; the answers; every class by
      a chip of it alone in the data, some twenty of them under both answers of their test) replays every frame,
-     states and sounds. Frame comparisons, 25 of them (the change with DarkMega's image, the black MegaMan
+     states and sounds. Frame comparisons, 37 of them (the change with DarkMega's image, the black MegaMan
      flashing, the blue pulse and the revert in each; the chip window hidden at the AI's buster and the charge's
-     glow in its dodge; the hand, the buttons and the custom screen in it; each side, Blue Moon; ten classes'
-     chips): every frame exact but the replay's known shift. What they found besides:
+     glow in its dodge; the hand, the buttons and the custom screen in it; each side, Blue Moon; what bars it;
+     sixteen classes' chips): every frame exact but the replay's known shift. (A soul card of the other version's
+     soul, JunkSoul's on a Red Sun console, shows no face in the original's emotion window: its tiles are past
+     the version's six, 0x08014BF6. nettai has every soul's face on every console.) What they found besides:
      - **The replay's feed** (exe4-compat `Round::fed`): the frame a custom screen opens on is the fight's still
        (its tick takes the L or R: 0x08007A2E), so it is fed the fight's buttons; the lab's own recordings press L
        again four frames on, which hid it.
