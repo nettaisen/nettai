@@ -508,7 +508,7 @@ its code is:
   BigHook, DeltaRay, ColForce, BugRSwrd: the other five Giga chips'
   copied in): the pack has the Gregar ROM's, on either console.
 - **The Cybeasts' sprites**: a ROM has its own version's (Gregar's in
-  slot 08-14, `wide-navi`; Falzar's in 08-15) and a placeholder archive in
+  slot 08-14, `gregar-cybeast`; Falzar's in 08-15, `falzar-cybeast`) and a placeholder archive in
   the other's slot. The pack has each from a ROM of its version.
 - **What the US release cut** (docs/engine/jp-differences.md §4.4, §4.5):
   six sprites the US ROMs fill with a placeholder archive (`count`,
