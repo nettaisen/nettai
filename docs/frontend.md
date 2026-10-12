@@ -1039,8 +1039,8 @@ them).
   differ** (the user's: "nettai should not have any region specific code").
   The pack has the Japanese ROMs' art where the US ROMs have a placeholder
   (six sprites, fifteen chips' pictures: asset-formats.md §4) or differ
-  (a pixel or two of BassAnly's icon and Gregar's Beast Out picture;
-  EXE5's background 0x05), the content
+  (a pixel or two of BassAnly's icon and Gregar's Beast Out picture; the
+  flames HeatMan wears, in his throw; EXE5's background 0x05), the content
   draws Otenko's statue and CrosOver's gun with the Japanese games' sprites
   (0C-49, 0C-0F) where the US games draw others, and EXE6's custom screen
   starts the chip window as it closes (`HudState`), on every
@@ -1054,8 +1054,9 @@ them).
   knows a console's region or which of these it shows: the verification's
   frame comparison does (its table, consoles.tsv, by game, region and
   version), and asks the headless frontend to mark where it draws those
-  things (`--mark sprite:NAME,background:NAME,chip:KEY,button:NAME,
-  chip-icon:KEY,chip-description:KEY,chip-window-at-close`; `marks.tsv`
+  things (`--mark sprite:NAME,sprite:NAME:ANIM,background:NAME,chip:KEY,
+  button:NAME,chip-icon:KEY,chip-description:KEY,chip-window-at-close`;
+  `marks.tsv`
   beside the frames: frame, rectangle,
   what), which it counts as known on that console's recordings, with the
   table's margin around each (a sprite's 48 pixels: the US's sprite there
