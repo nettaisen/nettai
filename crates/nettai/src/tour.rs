@@ -1,4 +1,4 @@
-//! The screenshot pass (`NETTAI_TOUR=<folder>`; docs/app.md §7): the app walks its own screens, in each
+//! The screenshot pass (`NETTAI_TOUR=<folder>`; docs/app.md §13): the app walks its own screens, in each
 //! language bundled and at a desktop's and an upright phone's size, and writes the window as each shows to a PNG
 //! (`Window::take_snapshot`: the window's own renderer's picture). The pictures are for comparing with the
 //! mockups by eye. Two things it checks itself, writes to `report.txt` in the folder, and fails on (the
@@ -60,6 +60,8 @@ struct Tour {
     pairs: Cell<u32>,
     moved: RefCell<Vec<String>>,
     shots: Cell<u32>,
+    /// What the next step waits for, beyond its time (a language's graphics, loaded on a thread).
+    until: RefCell<Option<Until>>,
     /// The motion probe's burst under way: when it began, and each shot with its time and the controls' sizes.
     burst: RefCell<Option<Burst>>,
     /// What the motion probe found wrong, and what it saw of the focus.
@@ -78,6 +80,7 @@ struct Burst {
 }
 
 type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
+type Until = Box<dyn Fn(&App) -> bool>;
 
 /// Whether the pass found something wrong (the process's status).
 pub fn failed() -> bool {
@@ -99,6 +102,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         pairs: Cell::new(0),
         moved: Default::default(),
         shots: Cell::new(0),
+        until: Default::default(),
         burst: Default::default(),
         resized: Default::default(),
         late: Default::default(),
@@ -168,6 +172,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         add(
             90,
             Box::new(move |ui, app, tour| {
+                // (The audit is on for the shot alone: what is cut for a moment between two, as the window
+                // changes its size or a screen arrives, isn't a shot's.)
+                ui.global::<Theme>().set_audit(false);
                 let Some(picture) = write(ui, tour, &tag) else { return };
                 let cursor = app.borrow().shell.nav.cursor();
                 match pair {
@@ -203,13 +210,27 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             app.shell.nav.show_cursor(true, false);
         }),
     );
-    // (The language's graphics are loaded on a thread.)
-    add(SETTLE * 4, Box::new(|_, _, _| {}));
+    // (The language's graphics are loaded on a thread: the next step waits for them.)
+    add(
+        SETTLE,
+        Box::new(move |_, _, tour| {
+            *tour.until.borrow_mut() = Some(Box::new(move |app| app.shell.ready().is_some_and(|(_, ready)| ready.has_language(lang))));
+        }),
+    );
+    add(SETTLE * 2, Box::new(|_, _, _| {}));
 
     // Loading, as the app starts.
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = Some(0.62)));
     shot(&mut add, "loading", Pair::None);
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = None));
+    add(SETTLE, Box::new(|ui, _, _| ui.global::<nettai_ui::Shell>().set_no_games(true)));
+    shot(&mut add, "no-games", Pair::None);
+    add(
+        SETTLE,
+        Box::new(|ui, app, _| {
+            ui.global::<nettai_ui::Shell>().set_no_games(false);
+            app.borrow_mut().shell.hold_loading = None;
+        }),
+    );
 
     // The main menu: the focus a step down, and the pad's hints.
     shot(&mut add, "menu", Pair::First);
@@ -476,11 +497,19 @@ fn when_ready(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, tour: Rc<Tour>,
 
 fn run(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, tour: Rc<Tour>, steps: Rc<Vec<(u64, Step)>>, at: usize) {
     let Some((wait, _)) = steps.get(at) else { return };
-    Timer::single_shot(Duration::from_millis(*wait), move || {
-        let Some(window) = ui.upgrade() else { return };
-        (steps[at].1)(&window, &app, &tour);
-        run(ui, app, tour, steps, at + 1);
-    });
+    Timer::single_shot(Duration::from_millis(*wait), move || waited(ui, app, tour, steps, at, 0));
+}
+
+/// A step's time is up: it is run, once what the pass waits for has come (or after a minute).
+fn waited(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, tour: Rc<Tour>, steps: Rc<Vec<(u64, Step)>>, at: usize, tries: u32) {
+    let come = tour.until.borrow().as_ref().is_none_or(|until| app.try_borrow().is_ok_and(|app| until(&app)));
+    if !come && tries < 600 {
+        return Timer::single_shot(Duration::from_millis(100), move || waited(ui, app, tour, steps, at, tries + 1));
+    }
+    *tour.until.borrow_mut() = None;
+    let Some(window) = ui.upgrade() else { return };
+    (steps[at].1)(&window, &app, &tour);
+    run(ui, app, tour, steps, at + 1);
 }
 
 /// The window, as it is drawn, to `<tag>.png`.

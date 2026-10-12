@@ -71,6 +71,8 @@ pub struct Sound {
     owed: f64,
     mix: Vec<[f32; 2]>,
     tune: Vec<[f32; 2]>,
+    /// `NETTAI_PLAY_STATS`: since when, and the loudest sample of the title music and of the whole stream since.
+    stats: Option<(Instant, f32, f32)>,
 }
 
 impl Sound {
@@ -85,12 +87,12 @@ impl Sound {
                 None
             }
         };
-        Sound { out, ..Sound::silent() }
+        Sound { out, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0.0, 0.0)), ..Sound::silent() }
     }
 
     /// No device: nothing is heard (the screenshot pass).
     pub fn silent() -> Sound {
-        Sound { out: None, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 0.0, leaving: None, faded: Vec::new(), last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new() }
+        Sound { out: None, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 0.0, leaving: None, faded: Vec::new(), last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new(), stats: None }
     }
 
     /// The sound queued for the device, in seconds.
@@ -231,6 +233,15 @@ impl Sound {
             let leaving = self.music * (left.0 + (left.1 - left.0) * along);
             b[0] += effect[0] * self.effects + tune[0] * level + old[0] * leaving;
             b[1] += effect[1] * self.effects + tune[1] * level + old[1] * leaving;
+        }
+        // (`NETTAI_PLAY_STATS`: what can't be seen in a screenshot, said each second.)
+        if let Some((since, tune, stream)) = &mut self.stats {
+            let peak = |samples: &[[f32; 2]], from: f32| samples.iter().fold(from, |p, s| p.max(s[0].abs()).max(s[1].abs()));
+            (*tune, *stream) = (peak(&self.tune, *tune), peak(battle, *stream));
+            if now.saturating_duration_since(*since) >= Duration::from_secs(1) {
+                eprintln!("sound stats: the title music at {:.2} of its level (its samples' peak {tune:.3}); the stream's peak {stream:.3}", self.fade);
+                (*since, *tune, *stream) = (now, 0.0, 0.0);
+            }
         }
         if let Some(out) = &self.out
             && !battle.is_empty()

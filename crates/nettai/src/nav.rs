@@ -1,4 +1,4 @@
-//! Focus and navigation (docs/design/app-ui.md §5, rules 5 to 10; docs/app.md §3).
+//! Focus and navigation (docs/design/app-ui.md §5, rules 5 to 10; docs/app.md §11).
 //!
 //! There is one focus, and it is here. Every focusable control tells this module where it is in the window (the
 //! [`Registry`], which the UI's `Focusable`, `ScrollPage` and `ListView` fill), so the neighbor in a direction is
@@ -274,7 +274,8 @@ impl Registry {
 
 /// The neighbor of `from` in direction `dir` among `candidates`. One that lies in `from`'s beam (it overlaps
 /// `from` across the direction: beside it, for Up and Down) is taken before any that doesn't; among those in
-/// the beam the nearest along the direction, among the others the nearest counting the way across twice.
+/// the beam the nearest along the direction, among the others the nearest counting the way across twice; of two
+/// equally near, the one whose leading edge is nearest `from`'s.
 pub fn neighbor(from: Rect, dir: Direction, candidates: &[(Key, Rect)]) -> Option<Key> {
     const EDGE: f32 = 0.5;
     let mut best: Option<(bool, f32, f32, &Key)> = None;
@@ -299,9 +300,11 @@ pub fn neighbor(from: Rect, dir: Direction, candidates: &[(Key, Rect)]) -> Optio
         };
         let beam = across <= 0.0;
         let score = if beam { gap } else { gap + 2.0 * across };
+        // Between two equally near, the one that starts where `from` does: under a wide item, the first of
+        // the small ones in its row (Settings before Exit under REPLAYS), not the one nearest its middle.
         let off = match dir {
-            Direction::Up | Direction::Down => (cx - fx).abs(),
-            Direction::Left | Direction::Right => (cy - fy).abs(),
+            Direction::Up | Direction::Down => (c.x - from.x).abs(),
+            Direction::Left | Direction::Right => (c.y - from.y).abs(),
         };
         let better = match best {
             None => true,
@@ -652,8 +655,13 @@ impl Nav {
             }
             None => {
                 let (Some((name, view)), Some(rect)) = (registry.page_of(&key.id), registry.rect(key)) else { return };
-                // (Room for the group's title over a control at the view's top.)
-                (name, view, Rect { y: rect.y - 12.0, h: rect.h + 24.0, ..rect })
+                // The page's first control shows the page's start, and its last the end (a note under it, the
+                // room under that): the page clamps what is asked.
+                // Otherwise there is room for the group's title over a control at the view's top.
+                let others = || registry.items.iter().filter(|(k, _)| *k != key && k.id.starts_with(name)).map(|(_, item)| item.rect.y);
+                let above = if others().all(|y| y > rect.y) { 10_000.0 } else { 12.0 };
+                let below = if others().all(|y| y < rect.y) { 10_000.0 } else { 12.0 };
+                (name, view, Rect { y: rect.y - above, h: rect.h + above + below, ..rect })
             }
         };
         let dy = if rect.y < view.y {

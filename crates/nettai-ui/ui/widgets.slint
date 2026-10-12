@@ -1073,13 +1073,16 @@ export component Rule inherits Rectangle {
     background: Theme.line;
 }
 
-// A group's title over its line (a settings group, a menu's section).
+// A group's title over its line (a settings group, a menu's section). It sits nearer its own group than the
+// one above: 8 of room over it, but for a page's first.
 export component GroupTitle inherits Rectangle {
     in property <string> text;
-    height: 28px;
+    in property <bool> first;
+    property <length> lead: root.first ? 0px : 8px;
+    height: 22px + root.lead;
     Label {
         x: 0;
-        y: 0;
+        y: root.lead;
         width: parent.width;
         height: 20px;
         text: root.text;

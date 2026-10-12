@@ -105,9 +105,9 @@ export component VersusScreen inherits Rectangle {
     }
 
     Text {
-        x: (parent.width - root.middle) / 2;
+        x: Theme.phone ? 0px : (parent.width - root.middle) / 2;
         y: Theme.phone ? root.top + root.card-height : root.top;
-        width: root.middle;
+        width: Theme.phone ? parent.width : root.middle;
         height: Theme.phone ? root.middle : root.card-height;
         text: @tr("VS");
         color: Theme.dim;

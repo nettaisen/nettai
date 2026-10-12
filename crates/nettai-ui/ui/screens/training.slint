@@ -33,19 +33,23 @@ export component TrainingMenu inherits MenuOverlay {
     side: true;
     Button {
         x: 0;
-        y: root.inner-height - 40px;
-        width: (root.inner-width - 8px) / 2;
+        y: root.inner-height - (Theme.phone ? 88px : 40px);
+        width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
         nav: "menu.resume";
         text: @tr("RESUME");
         kind: ButtonKind.main;
     }
 
     Button {
-        x: (root.inner-width + 8px) / 2;
+        x: Theme.phone ? 0px : (root.inner-width + 8px) / 2;
         y: root.inner-height - 40px;
-        width: (root.inner-width - 8px) / 2;
+        width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
         nav: "menu.quit";
         text: @tr("QUIT TO MENU");
         kind: ButtonKind.ghost;
     }
 }
+
+// What opens over Training: its dialogs, and on a phone its sheets. It covers the whole window, over the screen
+// and under the shell's own dialogs; empty, it takes no clicks.
+export component TrainingOverlay inherits Rectangle { }

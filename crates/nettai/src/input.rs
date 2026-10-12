@@ -1,5 +1,5 @@
 //! The player's hands: the keyboard and a gamepad, as the GBA's buttons for the battle and as actions for the
-//! menus (docs/app.md §1, "The keys", and §3).
+//! menus (docs/app.md §1, "The keys", and §11).
 //!
 //! The keys come from the window's events before Slint sees them (`main`'s winit hook), read by where they are
 //! on the keyboard, whatever its layout, and timestamped as they arrive. The battle's buttons are the player's

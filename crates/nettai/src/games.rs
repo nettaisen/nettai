@@ -62,7 +62,7 @@ impl Ready {
     }
 
     /// Whether `lang`'s graphics need no loading: they are loaded, or the content has none in it.
-    fn has_language(&self, lang: &str) -> bool {
+    pub fn has_language(&self, lang: &str) -> bool {
         lang == locale::OWN || self.graphics.borrow().contains_key(lang) || !locale::languages(&self.loaded.game.dir).iter().any(|l| l == lang)
     }
 }

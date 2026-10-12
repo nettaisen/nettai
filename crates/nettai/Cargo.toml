@@ -6,7 +6,7 @@ license.workspace = true
 description = "The nettai app: the menus, the builds, netplay and the replays around a battle played through nettai-frontend, in a Slint window (the UI itself is nettai-ui)"
 
 [dependencies]
-# The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §8).
+# The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).
 nettai-ui = { path = "../nettai-ui" }
 nettai-frontend = { path = "../nettai-frontend" }
 nettai-battle = { path = "../nettai-battle" }
@@ -47,6 +47,12 @@ arboard = { version = "3", default-features = false }
 rfd = "0.15"
 # The picture's texture, kept and written in place in the window's OpenGL.
 glow = "0.16"
+
+# Keeping the app's time while a battle runs in a covered window (`awake.rs`): Foundation's process activity.
+# (Both are in the tree already, for the window.)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
 [dev-dependencies]
 # The tests: a signaling server in process, the content of the repository.

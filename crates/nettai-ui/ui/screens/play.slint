@@ -42,3 +42,7 @@ export component MatchMenu inherits MenuOverlay {
         danger: true;
     }
 }
+
+// What opens over Play: its dialogs, and on a phone its sheets. It covers the whole window, over the screen
+// and under the shell's own dialogs; empty, it takes no clicks.
+export component PlayOverlay inherits Rectangle { }
