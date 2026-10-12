@@ -103,6 +103,7 @@ return merge {
     require("@self/panlgrab"),
     require("@self/panlsht"),
     require("@self/pnlretrn"),
+    require("@self/poltrgst"),
     require("@self/popup"),
     require("@self/propbom"),
     require("@self/protoman"),
