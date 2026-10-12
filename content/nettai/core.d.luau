@@ -508,8 +508,7 @@ declare extern type Object with
     charge_glow: Object?
     full_synchro_aura: Object?
     -- The charge: level 0 none, 1 charging, 2 full; source 0 none, 1 A, 2 B.
-    -- The level and the source are writable (EXE4's dark soul's AI shows a
-    -- B charge as it dodges).
+    -- Writable (EXE4's dark soul's AI shows a B charge as it dodges).
     charge_level: number
     charge_source: number
     charge_counter: number
