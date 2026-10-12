@@ -457,7 +457,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         frame_counts_first = true,
         states_in_choosing = true,
         chatbox_end_clears_tiles = true,
-        chatbox_character_ends_tick = true,"#,
+        chatbox_character_ends_tick = true,
+        variable_damage_shows = "question_marks","#,
             ),
             (
                 "effects",
@@ -678,7 +679,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 122, "every field of every section");
+        assert_eq!(fields, 123, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

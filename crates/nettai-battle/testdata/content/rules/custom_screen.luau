@@ -87,4 +87,5 @@ return {
     chatbox_end_clears_tiles = false,
     -- The interpreter goes on after a character.
     chatbox_character_ends_tick = false,
+    variable_damage_shows = "damage",
 }
