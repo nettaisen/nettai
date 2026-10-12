@@ -328,6 +328,15 @@ from the ROM and its code, read routine by routine):
   is one `*` doesn't stand for (`special_codes`). **OK's hand** (0x0801F034): no Program Advance record, no Regular
   mark on it, the entries past the selection cleared, a modifier's mark kept (`program_advances`,
   `modifier_passes_regular`). The hand is the custom level, uncapped (rules/custom: `hand_size`, 0x0801DC8E).
+- **Program Advances** (0x0801F390): the recipe table is the pointer list at 0x080212B0, 37 recipes, each a count, a
+  kind (0: a code run of one chip, else a sequence of chips whatever their codes), the result (chips 0x140 to 0x15D)
+  and its chips; each start in the selection in turn, the recipes in the table's order. The content states each in
+  its chip (`program_advances`, `order` the table's index). The code run's test (0x0801F46A) walks on from the first
+  chip (a `*` first takes the second's code less one) where EXE6's walks back from the last; the two differ only for
+  Y**, Z** and *Z*, which no EXE4 code-run chip's codes reach (none has Y or Z), so the engine's test serves. The
+  animation is the screen's own state 0x10 (0x0801E608: its first tick runs its first step, 0x0801E8AC goes on to
+  the send; `program_advances.in_screen_state`); its steps are EXE6's but for the fade out split in two
+  (0x0801E640, 0x0801E68C), which takes the same ticks.
 - **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
   (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
 - **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
@@ -615,8 +624,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   picks in the original) sweeps the columns from the user's back one, a column every 11 ticks, raising an aqua tower
   from each cracked panel of the other side's holding its navi, a wood tower from each grass one (objects/tower, attack
   0x92's rows 0 and 1: each chip's own with its look), or striking a lightning onto each panel holding an
-  obstacle (objects/lightning, attack 0x8E: EXE5's unused code; its eight hits around and its ring of sparks). The
-  lightning waits on RockCube's recordings (the lab's ligtnin*/obstacle). The towers' frames differ from mGBA's on a
+  obstacle (objects/lightning, attack 0x8E: EXE5's unused code; its eight hits around and its ring of sparks): the
+  lab's ligtnin*/obstacle, on RockCube's cube, replay every frame. The towers' frames differ from mGBA's on a
   few ticks where mGBA shows the tower's previous frame or a mix of two (big sprites: the original's display falling
   a frame behind, not its state).
 - **Counter1** (with Counter2 and 3: action 0x20's variant 0, `chips/counter`): EXE4's own spawner and EXE5's unused
@@ -712,7 +721,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   sequences. The match (0x0800D486) also tests, as a step matches, the word at the sequence's next step and picks at
   once at 0, which no step of the two tables reaches (each test reads a step before or after it). Their picks past
   the library are chips of their own (gen_content.py's USED_CHIPS: FtrSword, SonicBom, CrosSwrd, SprSonic, DblDream;
-  LifeSrd a Program Advance's, without its recipes): the swords' variants 9, 10, 11 and 5 (lib/swords), and SonicBom's
+  LifeSrd a Program Advance's): the swords' variants 9, 10, 11 and 5 (lib/swords), and SonicBom's
   and SprSonic's action 0x37 (`chips/sonicbom/action`: EXE4's own, EXE5's 0x2B grew from it; a charged one steps two
   panels ahead, without afterimages; ProtoSoul's blade 13). The chips/0x037-varswrd and 0x0d9-neovari `cmd-*`
   scenarios enter each sequence.
@@ -902,6 +911,28 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   0x47 (14-13), collision rows 0x33 and 0x2A. Its init frees it without leaving its side's field-object slots when no
   collision record is left (0x080D6F5C); the shared code leaves them (a collision pool run dry, which no recording
   reaches). The lab's chips/ (5) replay every frame; the hit is pixel-exact.
+- **RockCube** (the dimming chips' variant 0x1B, `chips/rockcube`): EXE6's and EXE5's controller (effect #0x37,
+  0x080E60AC: @exelib/rockcube/cube) with EXE4's rock (objects/rock, attack #0x59) and the place sound (0xAA). Its
+  spawn (0x080E612C) copies the user's side byte alone (the cube's `side_only`) and its effect places the rock by the
+  side's way (object_getEnemyDirection, 0x080E60F8, where EXE6's and EXE5's take the facing): the same panel for the
+  unflipped controller. The record's parameter word, 1, is the rock's row of 0x080D89C0 (the cube, 200 HP, as the
+  weapon bug's rock cube's), class 0, rising: the chip's own `rock.variant`. The lab's chips/ (4) replay every frame,
+  and so do the 14 recordings that waited on it as an obstacle (ligtnin*/obstacle, junkman*/obstacle,
+  drag/airshot-obstacle, hits/own-rock and rock-*, panels/lava-dimming-32 to 34); JunkMan's throws needed the roles
+  `sounds.obstacle_lift` and `obstacle_throw` (0x08011616: 0xFA; 0x08011690: 0x146), `sparks.thrown_obstacle` and
+  `collision.thrown_obstacle` and its target (0x080116CA: the region word 0x06050001), filled as EXE5's and EXE6's.
+  RockCube's hit (chips/0x063-rockcube/hit) is pixel-exact.
+- **ColorPt, DblPoint** (the dimming chips' variant 0x27, `chips/colorpt`): EXE6's and EXE5's controller and points
+  (effects #0x50, 0x080E7BF0, and #0x51, 0x080E7CE0: @exelib/colorpt) in EXE4's look (the points' sheet 0c-13, their
+  sounds 0xCE, 0xFA, 0x10E), with EXE4's own: the controller's spawn (0x080E7C58) copies the side byte alone; a row's
+  point leaves from the front of the user's area found from the far edge (0x080E7C7A:
+  `object_getClosestPanelMatchingRowFiltered` with 0x080E7CCC's owner filter), unless that is the user's back column
+  (the controller's `front`; EXE6's and EXE5's ask whether the user may lose the panel, `sub_800D668`); a point's
+  spawn (0x080E7E96) leaves 0xD9 in its element (+0x17: the low byte of 0x0800A3D9, which its controller's panel test
+  leaves in r2: the point's `element`); and the side's special bonus is a point's only under event flag 0x1187
+  (0x080E7E38), which no netbattle sets. The points' palette is the record's parameter times 4 (0x080E7D46: DblPoint's
+  1, palette 4). The lab's chips/ (10) replay every frame. ColorPt's boost
+  (chips/0x07f-colorpt/boost: its points, the Cannon's bonus) and DblPoint's hit, from either side, are pixel-exact.
 - **Anubis** (the dimming chips' variant 0x18, `chips/anubis`): EXE6's code (@exelib/anubis: controller #0x33,
   0x080E5BF4; statue #0x55, 0x080D82F8) in EXE4's look: sheet 0c-30, 0xA2 landing, 0x70 breaking over effect row 0;
   no NameID; the lifetime 3000 for either variant (0x080D836A); its end reads no removal (0x080D83F8: it breaks however
@@ -1043,8 +1074,9 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
   #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
   by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
-  when they are ported. Its throws wait on RockCube (the lab's junkman*/obstacle). NumberMan (actor #0x0F), his face
-  (actor #0x5C) and his die (attack #5) are EXE5's (@exelib/numbrman), EXE4's differences their specs': the face, with
+  when they are ported. Its throws of RockCube's cube (the lab's junkman*/obstacle) replay every frame. NumberMan
+  (actor #0x0F), his face (actor #0x5C) and his die (attack #5) are EXE5's (@exelib/numbrman), EXE4's differences
+  their specs': the face, with
   the fight on, follows him from its first update (its action 8; its action 4, a random battle's intro, is never
   reached); the die states its own 40 HP and hit modifier 3, places itself on its panel, has no markers and no face 9,
   and multiplies its damage's whole halfword by its face. The die's other throwers, the NumberMan boss's (0x080EC1E4,
@@ -1433,8 +1465,7 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   through a pause (`poison-pause`: the player doesn't run paused); a player landing on lava burns the tick after
   it lands even while the battle is dimmed (`lava-dimming-33`, RockCube's dimming: the burn at 418, its flinch at
   565 as the dimming ends; `-32` and `-34` the dimming before the landing and after the burn), not while it blinks
-  (`lava-blinking`: the burn on the tick f1's 0x200 clears). The lava ones wait for their stage (layout 0x71,
-  §18 item 19) and RockCube.
+  (`lava-blinking`: the burn on the tick f1's 0x200 clears). `lava-dimming-32` to `-34` replay every frame.
 
 ## 17. The recordings
 

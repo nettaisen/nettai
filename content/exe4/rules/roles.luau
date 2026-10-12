@@ -44,11 +44,16 @@ local roles: RolesSpec = {
     sparks = {
         plain = sparks.plain,
         guard = sparks.guard,
+        -- A thrown obstacle's landing hit (0x080116CA: the region word 0x06050001, its spark row 0, its collision
+        -- rows 6 and 5).
+        thrown_obstacle = sparks.plain,
     },
     collision = {
         navi = collision.navi,
         floating_navi = collision.floating_navi,
         navi_target = collision.navi_target,
+        thrown_obstacle = collision.breaking,
+        thrown_obstacle_target = collision.hits_navis,
     },
     regions = {
         anchor = regions.single,
@@ -116,6 +121,10 @@ local roles: RolesSpec = {
         recovery = asset.sound("heal"),
         -- A trap springs (the trap's mark, 0x0800815C: 0x10D).
         cut_in = asset.sound("dimming-sparkle"),
+        -- A thrown obstacle (JunkMan's, the obstacles' throw request) lifted (0x08011616: 0xFA, ColorPt's points' rise)
+        -- and flying (0x08011690: 0x146, the meteors' fall).
+        obstacle_lift = asset.sound("point-rise"),
+        obstacle_throw = asset.sound("justice-one"),
     },
     effects = {
         -- HP recovered (the heal, 0x0800ABCA: effect row 7, 0x080E16B4).

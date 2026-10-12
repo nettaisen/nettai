@@ -266,6 +266,7 @@ standard = [
     "boybomb3",
     "timebomb",
     "mine",
+    "rockcube",
     "wind",
     "fan",
     "fanfare",
@@ -319,6 +320,7 @@ standard = [
     "lifesync",
     "atk-10",
     "navi-20",
+    "colorpt",
 ]
 mega = [
     "suprvulc",
@@ -331,6 +333,7 @@ mega = [
     "lifeaura",
     "snctuary",
     "atk-30",
+    "dblpoint",
     "muramasa",
     "anubis",
     "elemdark",
@@ -445,5 +448,10 @@ secret = [
     "z-saver",
 ]
 program_advance = [
+    "gigacan1",
+    "gigacan2",
+    "gigacan3",
+    "heatsprd",
+    "bubsprd",
     "lifesrd",
 ]
