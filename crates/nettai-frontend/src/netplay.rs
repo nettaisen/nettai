@@ -571,12 +571,12 @@ mod tests {
 
     impl Channel for Rtc {
         fn send(&mut self, frame: &[u8]) -> Result<(), String> {
-            self.0.borrow_mut().send(frame).map_err(|e| e.0)
+            self.0.borrow_mut().send(frame).map_err(|e| e.detail)
         }
 
         fn recv(&mut self) -> Result<Option<&[u8]>, String> {
             let mut link = self.0.borrow_mut();
-            let Some(frame) = link.recv().map_err(|e| e.0)? else { return Ok(None) };
+            let Some(frame) = link.recv().map_err(|e| e.detail)? else { return Ok(None) };
             self.1 = frame.to_vec();
             Ok(Some(&self.1))
         }
@@ -606,15 +606,17 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let server = nettai_rtc::testing::Server::start();
         let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, silence: Duration::from_secs(1), ..nettai_rtc::Config::default() };
-        // (The first in the room hosts: the host is let in first.)
-        let mut host = nettai_rtc::Link::room(&server.url(), "a-set", config.clone()).unwrap();
+        // (The host asks the server for a room; the joiner comes by the
+        // code the server gave it.)
+        let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
         let start = Instant::now();
         while host.role().is_none() {
             assert!(start.elapsed() < Duration::from_secs(10), "not let in");
             host.poll().unwrap();
             std::thread::sleep(Duration::from_millis(1));
         }
-        let links = [host, nettai_rtc::Link::room(&server.url(), "a-set", config).unwrap()].map(|l| Rc::new(RefCell::new(l)));
+        let code = host.code().expect("the room's code").to_string();
+        let links = [host, nettai_rtc::Link::join_room(&server.url(), &code, config).unwrap()].map(|l| Rc::new(RefCell::new(l)));
         let sinks = [Shared::default(), Shared::default()];
         let mut playing: Vec<Session> = Vec::new();
         for (side, crate::lobby::Agreement { set, m, .. }) in agreed(&content, &Settings::of_match(&m), m.sides.clone()).into_iter().enumerate() {

@@ -23,18 +23,25 @@
 //!   directly.
 //!
 //! While it is down, what is sent is dropped and nothing comes, and
-//! [`Link::down_for`] says how long it has been; after
-//! [`Config::reconnect_timeout`] the link gives up, and every call after
-//! errs, saying so. Before it is first open nothing is down: it is still
-//! connecting, and how long to wait for the other player is the caller's to
-//! say (its lobby's timeout).
+//! [`Link::down_for`] says how long it has been ([`Link::gives_up_in`], how
+//! long it has left); after [`Config::reconnect_timeout`] the link gives
+//! up ([`ErrorKind::ConnectionLost`]), and every call after errs the same.
+//! Before it is first open nothing is down: it is still connecting. How
+//! long to wait for the other player to come is the caller's to say (a host
+//! waits on its invite as long as its player likes); once they are there
+//! (in the room, or dialed directly) and no connection opens in
+//! [`Config::connect_timeout`], the link gives up
+//! ([`ErrorKind::CantConnect`]).
+//!
+//! **Errors** are [`Error`]s: a kind a player can be told, and a detail for
+//! a log. The first one a link meets is the one every later call returns.
 
 // (On the web a room is the one way to meet.)
 #![cfg_attr(target_arch = "wasm32", allow(irrefutable_let_patterns))]
 
 use crate::room::{Room, RoomEvent};
 use crate::signal::Signal;
-use crate::{Config, Duration, Error, Instant, PeerConnection, PeerEvent, Role};
+use crate::{Config, Duration, Error, ErrorKind, Instant, PeerConnection, PeerEvent, Role};
 
 #[cfg(not(target_arch = "wasm32"))]
 use crate::native::{Servers, direct::Listener};
@@ -70,6 +77,11 @@ pub struct Link {
     generation: u32,
     /// Its channel is open.
     open: bool,
+    /// A channel has been open.
+    ever_open: bool,
+    /// Since when the other player is there to connect to, before the
+    /// first connection opens.
+    meeting: Option<Instant>,
     /// When the open channel last heard from the other side.
     heard: Instant,
     /// Since when it is down, and why (it was open before).
@@ -102,6 +114,8 @@ impl Link {
             pc: None,
             generation: 0,
             open: false,
+            ever_open: false,
+            meeting: None,
             heard: now,
             down: None,
             next_dial: Some(now),
@@ -117,18 +131,35 @@ impl Link {
         }
     }
 
-    /// Meet the other player in room `code` of the signaling server at
-    /// `server` (`wss://...`): the first in the room hosts. The STUN and
-    /// TURN servers' names are resolved now (natively: which may wait).
-    pub fn room(server: &str, code: &str, config: Config) -> Result<Link, Error> {
+    /// Ask the signaling server at `server` (`wss://...`) for a new room,
+    /// which this player hosts: an invite. The server picks the room's code
+    /// and says it as it lets this player in ([`Link::code`], none until
+    /// then), for the other player to join by ([`Link::join_room`]). The
+    /// STUN and TURN servers' names are resolved now (natively: which may
+    /// wait).
+    pub fn create_room(server: &str, config: Config) -> Link {
         let peer = format!("{:016x}", crate::random_u64());
-        let room = Room::new(server, code, &peer)?;
+        let room = Room::create(server, &peer, config.server_timeout);
+        let servers = Servers::resolve(&config);
+        Link::new(config, servers, Way::Room(room), None)
+    }
+
+    /// Join the room with `code` on the signaling server at `server`
+    /// (`wss://...`): the code a host was given by the server and gave this
+    /// player, as typed ([`crate::signal::normalize_code`]). No room is made
+    /// of a code no room has: that errs ([`ErrorKind::NoSuchRoom`]), here
+    /// for a code that can't be one, else when the server says so. The STUN
+    /// and TURN servers' names are resolved now (natively: which may wait).
+    pub fn join_room(server: &str, code: &str, config: Config) -> Result<Link, Error> {
+        let peer = format!("{:016x}", crate::random_u64());
+        let room = Room::join(server, code, &peer, config.server_timeout)?;
         let servers = Servers::resolve(&config);
         Ok(Link::new(config, servers, Way::Room(room), None))
     }
 
     /// Host directly: listen on UDP `port` of every IPv4 interface (0: one
-    /// the system picks, [`Link::port`]) for the joiner.
+    /// the system picks, [`Link::port`]) for the joiner. A port that can't
+    /// be listened on errs ([`ErrorKind::PortUnavailable`]).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn host(port: u16, config: Config) -> Result<Link, Error> {
         let listener = Listener::bind(port)?;
@@ -136,15 +167,16 @@ impl Link {
     }
 
     /// Join the host at `addr` (`host:port`) directly (resolving its name
-    /// now, which may wait).
+    /// now, which may wait). An address that names no machine errs
+    /// ([`ErrorKind::BadAddress`]).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn join(addr: &str, config: Config) -> Result<Link, Error> {
         use std::net::ToSocketAddrs;
         let host = addr
             .to_socket_addrs()
-            .map_err(|e| Error(format!("can't resolve {addr}: {e}")))?
+            .map_err(|e| Error::new(ErrorKind::BadAddress, format!("can't resolve {addr}: {e}")))?
             .min_by_key(|a| !a.is_ipv4())
-            .ok_or_else(|| Error(format!("{addr} resolves to nothing")))?;
+            .ok_or_else(|| Error::new(ErrorKind::BadAddress, format!("{addr} resolves to nothing")))?;
         let nonce = crate::random_u64() as u32;
         Ok(Link::new(config, Servers::default(), Way::Dial { host, nonce }, Some(Role::Join)))
     }
@@ -164,11 +196,22 @@ impl Link {
         }
     }
 
-    /// Who the other player is, as far as this side knows: the room, or
-    /// the address.
+    /// The room's code: the one joined by, or the one the server gave the
+    /// room this player asked it to make, once it has (with its welcome,
+    /// when [`Link::role`] is known). None on a direct link.
+    pub fn code(&self) -> Option<&str> {
+        match &self.way {
+            Way::Room(r) => r.code(),
+            #[cfg(not(target_arch = "wasm32"))]
+            _ => None,
+        }
+    }
+
+    /// Who the other player is, as far as this side knows, for a log: the
+    /// room, or the address.
     pub fn describe(&self) -> String {
         match &self.way {
-            Way::Room(r) => format!("room {}", r.code()),
+            Way::Room(r) => r.code().map_or_else(|| "a new room".to_string(), |code| format!("room {code}")),
             #[cfg(not(target_arch = "wasm32"))]
             Way::Listen(l) => format!("UDP port {}", l.port()),
             #[cfg(not(target_arch = "wasm32"))]
@@ -176,11 +219,13 @@ impl Link {
         }
     }
 
-    /// What keeps it from connecting, if something does (the signaling
-    /// server can't be reached).
-    pub fn problem(&self) -> Option<String> {
+    /// What keeps a new connection from being made, if something does: the
+    /// signaling server's socket dropped and isn't back
+    /// ([`ErrorKind::ServerUnreachable`]; it is being made again, and a
+    /// connection that is up doesn't need it).
+    pub fn problem(&self) -> Option<Error> {
         match &self.way {
-            Way::Room(r) if !r.is_open() => r.last_error().map(str::to_string),
+            Way::Room(r) if !r.is_open() => r.last_error().map(|why| Error::new(ErrorKind::ServerUnreachable, why)),
             _ => None,
         }
     }
@@ -194,6 +239,13 @@ impl Link {
     /// being made again).
     pub fn down_for(&self) -> Option<Duration> {
         self.down.as_ref().map(|(since, _)| since.elapsed())
+    }
+
+    /// How long the link goes on making the channel again before it gives
+    /// up ([`Config::reconnect_timeout`], less [`Link::down_for`]), while it
+    /// is down: what a "reconnecting" countdown shows.
+    pub fn gives_up_in(&self) -> Option<Duration> {
+        self.down_for().map(|down| self.config.reconnect_timeout.saturating_sub(down))
     }
 
     /// The connection's generation (1 for the first; one more each
@@ -309,10 +361,31 @@ impl Link {
         if let Some((since, why)) = &self.down
             && now.duration_since(*since) >= self.config.reconnect_timeout
         {
-            return Err(Error(format!(
-                "the connection to the other player dropped ({why}) and didn't come back within {} seconds",
-                self.config.reconnect_timeout.as_secs()
-            )));
+            return Err(Error::new(
+                ErrorKind::ConnectionLost,
+                format!("the connection to the other player dropped ({why}) and didn't come back within {} seconds", self.config.reconnect_timeout.as_secs()),
+            ));
+        }
+        // Before the first connection: the other player is there to connect
+        // to (in the room; dialed; dialing this host), and for how long.
+        let meeting = !self.ever_open
+            && match &self.way {
+                Way::Room(_) => self.peer && self.role.is_some(),
+                #[cfg(not(target_arch = "wasm32"))]
+                Way::Dial { .. } => true,
+                #[cfg(not(target_arch = "wasm32"))]
+                Way::Listen(_) => self.generation > 0,
+            };
+        match (meeting, self.meeting) {
+            (false, _) => self.meeting = None,
+            (true, None) => self.meeting = Some(now),
+            (true, Some(since)) if now.duration_since(since) >= self.config.connect_timeout => {
+                return Err(Error::new(
+                    ErrorKind::CantConnect,
+                    format!("no connection to the other player ({}) within {} seconds", self.describe(), self.config.connect_timeout.as_secs()),
+                ));
+            }
+            (true, Some(_)) => {}
         }
         Ok(())
     }
@@ -321,7 +394,7 @@ impl Link {
         match event {
             RoomEvent::Welcome { role, peer } => {
                 if self.role.is_some_and(|r| r != role) {
-                    return Err(Error("the signaling server forgot this player's place in the room".into()));
+                    return Err(Error::internal("the signaling server forgot this player's place in the room"));
                 }
                 self.role = Some(role);
                 self.peer_here(now, peer);
@@ -361,7 +434,7 @@ impl Link {
                 if let Some(pc) = &mut self.pc
                     && let Err(e) = pc.set_answer(&sdp)
                 {
-                    self.lost(now, e.0);
+                    self.lost(now, e.detail);
                 }
             }
             (_, Signal::Candidate { generation, candidate }) if generation == self.generation => {
@@ -423,6 +496,7 @@ impl Link {
             }
             PeerEvent::Open => {
                 self.open = true;
+                self.ever_open = true;
                 self.heard = now;
                 self.down = None;
                 self.dialed = None;
@@ -496,7 +570,7 @@ impl Link {
             // (No socket, say: try again after the wait.)
             Err(e) => {
                 self.generation = generation;
-                self.lost(now, e.0);
+                self.lost(now, e.detail);
             }
         }
         Ok(())
