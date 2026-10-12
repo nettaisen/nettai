@@ -632,7 +632,8 @@ reconnecting, so that a drop the link mends doesn't end the lobby. Then, each fr
 
 1. Take every datagram the link has and give each to `Lobby::receive`, a frame too.
 2. `Lobby::poll`: `Pending` (show the lobby: `settings`, `ready`, `their_ready`, `their_name`, `their_present`,
-   `ping`); `Loading` (show the loading: load, and say how far); `Start` (make the `NetPlayer` of the
+   `ping`); `Loading` (show the loading: step the match's `preload::Preload`, docs/frontend.md §9, and say how far
+   it is, `set_loading(preload.fraction())`, then `set_loaded()`); `Start` (make the `NetPlayer` of the
    agreement's set on the same link, its frames under `Kind::Frame`); or `Failed`.
 3. Send what `Lobby::outgoing` has, also after a failure (a refusal) and after `leave`.
 
