@@ -61,7 +61,7 @@ Each is settled unless the user changes it.
     with the out-of-bounds ring and the command line clearly marked. Out of bounds "is fine, it's not an error", and
     "bugs can sometimes be good in a build", so neither is styled as a warning. A bug is shown by its name and its
     level. A bug's name is a full name spelled out from the game's own patch card effect name for the same bug
-    ("MoveBug" is Move Bug, "BatHPbug" is Battle HP Bug), not the abbreviation and not a word of ours; a card's
+    ("MoveBug" is Movement Bug, "BatHPbug" is Battle HP Bug), not the abbreviation and not a word of ours; a card's
     own lines stay the game's strings. **Every bug, everywhere, is purple.** A plus part is a cell with a cross that reaches its edges, with no
     border around the cell.
 11. **Chips show their element** with the game's own element icon, at the right of the row, just left of the code.
