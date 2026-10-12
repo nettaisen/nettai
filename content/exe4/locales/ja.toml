@@ -327,11 +327,16 @@ language = "ja"
 "magnum" = { name = "マグナム", description = "カーソルをとめて\nパネルをはかいする\nマグナムをハッシャ" }
 "bugcharg" = { name = "バグチャージ", description = "あんこくチップ!\nターンがすすむほど\nつよくなる!" }
 "shotstar" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
+"bugchain" = { name = "バグチェーン", description = "自分に発生している\nバグをあいてにも\nうつしてしまう!" }
 "pitrng1" = { name = "ヘルブーメラン1", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "pitrng2" = { name = "ヘルブーメラン2", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "pitrng3" = { name = "ヘルブーメラン3", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "timebom" = { name = "ギガカウントボム", description = "あいてエリアに\nギガカウントボムを\nおく!" }
 "h-burst" = { name = "ハイパーバースト", description = "まわり1マスに\nばくふうがひろがる\nさくれつだん!" }
+"poisphar" = { name = "ポイズンファラオ", description = "てきエリアにどくを\n発生させる\nファラオぞうをおく" }
+"bodygrd" = { name = "ボディガード", description = "ウラのあんさつしゃ\nをやとい てきを\nはいじょしてもらう" }
+"pdriver" = { name = "パイルドライバー", description = "目の前に たいよう\nジェネレーター!\n日の光でやきつくす" }
+"poltrgst" = { name = "ポルターガイスト", description = "" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
@@ -530,4 +535,16 @@ language = "ja"
 "118-charge-shot-switch" = { name = "チャージ武器を変更" }
 "119-charge-shot-switch" = { name = "チャージ武器を変更" }
 "120-charge-shot-switch" = { name = "チャージ武器を変更" }
+"121-roll-soul" = { name = "ロールソウル" }
+"122-guts-soul" = { name = "ガッツソウル" }
+"123-wind-soul" = { name = "ウインドソウル" }
+"124-search-soul" = { name = "サーチソウル" }
+"125-fire-soul" = { name = "ファイアソウル" }
+"126-thunder-soul" = { name = "サンダーソウル" }
+"127-proto-soul" = { name = "ブルースソウル" }
+"128-number-soul" = { name = "ナンバーソウル" }
+"129-metal-soul" = { name = "メタルソウル" }
+"130-junk-soul" = { name = "ジャンクソウル" }
+"131-aqua-soul" = { name = "アクアソウル" }
+"132-wood-soul" = { name = "ウッドソウル" }
 "133-weapon-change" = { name = "ウェポンチェンジ" }

@@ -338,6 +338,7 @@
 "crosswrd" = { id = 0x176 }
 "sprsonic" = { id = 0x177 }
 "dbldream" = { id = 0x178 }
+"poltrgst" = { id = 0x17d }
 "rush" = { id = 0x17f }
 "beat" = { id = 0x180 }
 "tango" = { id = 0x181 }

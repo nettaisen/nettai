@@ -1508,10 +1508,11 @@ pub trait CoreApi {
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
     /// The chip after `i` of a side's hand folds into the chip at `i` (its
-    /// damage, Atk+ bonus and charge bonus added) and leaves the hand, the
-    /// chips after it moving up one (EXE4's WoodSoul's status reset,
-    /// 0x0800E294).
-    fn fold_hand_chip(&mut self, side: u8, i: u8);
+    /// damage and bonuses added) and leaves the hand, the chips after it
+    /// moving up one: with every per-slot field (`whole`: EXE4's WoodSoul's
+    /// status reset, 0x0800E294), or with their damage alone, each slot's
+    /// bonuses and marks staying (its custom screen's, 0x0801F242).
+    fn fold_hand_chip(&mut self, side: u8, i: u8, whole: bool);
     /// The chip at `i` of a side's hand, if any (the hand from its first
     /// chip, used ones too).
     fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle>;

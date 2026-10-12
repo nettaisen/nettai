@@ -169,6 +169,13 @@ pub fn chip_icon<'a>(packs: &Packs<'a>, c: &Content, chip: ChipHandle, problems:
     Some((icon?, &packs.game(c).hud.icon_palette))
 }
 
+/// What the caller names to have a chip's icon marked wherever a frame
+/// draws it (`Problems::marking`): `chip-icon:KEY`, the chip's key in its
+/// game.
+pub fn chip_icon_mark(c: &Content, chip: ChipHandle) -> String {
+    format!("chip-icon:{}", nettai_content_api::keys::local(key(c, chip)))
+}
+
 /// A chip's picture in the chip window: its game's pack's, under its key
 /// there.
 pub fn chip_art<'a>(packs: &Packs<'a>, c: &Content, chip: ChipHandle, problems: &mut Problems) -> Option<&'a ChipArt> {
