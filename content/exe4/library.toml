@@ -326,6 +326,7 @@ standard = [
 mega = [
     "suprvulc",
     "neovari",
+    "shotstar",
     "godhammr",
     "guardian",
     "jealousy",
@@ -402,6 +403,7 @@ mega = [
 ]
 giga = [
     "bass",
+    "bugcharg",
     "blakbarr",
     "bassanly",
     "bugcurse",
