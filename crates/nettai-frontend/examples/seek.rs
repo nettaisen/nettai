@@ -17,8 +17,9 @@
 //!   take (a battle's snapshot and a console's sound, by counting what
 //!   copying each allocates), the time to index the whole replay, the
 //!   first far seek of a viewer that hasn't, and a seek and a frame back
-//!   in an indexed one. The times are the best slice's and the median
-//!   seek's, so that a machine busy with something else says the same.
+//!   in an indexed one, with sound and without. The times are of the
+//!   processor (the C library's `clock`), not of the wall, so that a
+//!   machine busy with something else says the same.
 //!
 //! ```text
 //! cargo run --release -p nettai-frontend --example seek -- --game exe6 --seed 7 [--ticks 18000] [--save set.ntrp]
@@ -30,7 +31,7 @@
 
 use nettai_battle::battle::mode;
 use nettai_frontend::Player;
-use nettai_frontend::driver::{LivePlayer, Opponent, bot_buttons};
+use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, bot_buttons};
 use nettai_frontend::game::{self, Loaded, Options};
 use nettai_frontend::player::time_of;
 use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay, ReplayPlayer};
@@ -38,7 +39,33 @@ use nettai_frontend::session::Session;
 use nettai_frontend::viewer::{KEYFRAME_EVERY, Viewer};
 use std::alloc::{GlobalAlloc, Layout, System};
 use std::sync::atomic::{AtomicUsize, Ordering};
-use std::time::{Duration, Instant};
+use std::time::Duration;
+
+unsafe extern "C" {
+    /// The C library's `clock`: the processor time this process has used,
+    /// in millionths of a second (POSIX's `CLOCKS_PER_SEC`).
+    fn clock() -> std::ffi::c_ulong;
+}
+
+/// The processor time this process has used.
+fn used() -> Duration {
+    // SAFETY: `clock` takes nothing and touches nothing of ours.
+    Duration::from_micros(unsafe { clock() } as u64)
+}
+
+/// A moment of processor time, to measure from.
+#[derive(Clone, Copy)]
+struct Instant(Duration);
+
+impl Instant {
+    fn now() -> Instant {
+        Instant(used())
+    }
+
+    fn elapsed(&self) -> Duration {
+        used().saturating_sub(self.0)
+    }
+}
 
 /// The system's allocator, counting the bytes held: what a copy of a
 /// battle or of a console's sound takes is the difference across making
@@ -188,7 +215,8 @@ fn run() -> Result<String, String> {
     let m = nettai_match::Match { seed: Some(seed), ..m };
     let path = save.clone().unwrap_or_else(|| std::env::temp_dir().join(format!("nettai-seek-{}.ntrp", std::process::id())));
     let file = std::fs::File::create(&path).map_err(|e| format!("can't write {}: {e}", path.display()))?;
-    let driver = LivePlayer::against(nettai_match::Set::of(content, &m, seed), Opponent::Masher, seed as u64);
+    let opponent = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst };
+    let driver = LivePlayer::against(nettai_match::Set::of(content, &m, seed), opponent, seed as u64);
     let mut s = Session::new(Box::new(driver));
     s.record(Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &Info::of(MatchKind::Offline, 0))?)?;
     let mut masher = nettai_netplay_masher(seed as u64);
@@ -229,22 +257,20 @@ fn run() -> Result<String, String> {
     same(&mut fresh, &sides[0], &mut buffer, "a first seek to the end")?;
     drop(fresh);
 
+    // The same without sound: what of a tick is the battle's and the
+    // HUDs', and what the two consoles' sound.
+    let mut silent = Viewer::with(&game.game.content, &replay, Some(0), game.renderer(), None, None).map_err(|e| e.to_string())?;
+    let started = Instant::now();
+    silent.seek(length);
+    let silent_far = started.elapsed();
+    drop(silent);
+
     // Indexing the whole replay, a slice at a time: the whole's time, and
     // the best slice's a tick.
     let mut v = Viewer::open(&game, &replay, Some(0)).map_err(|e| e.to_string())?;
     const SLICE: u32 = 1000;
     let started = Instant::now();
-    let mut best = f64::MAX;
-    loop {
-        let (from, slice) = (v.indexed(), Instant::now());
-        let whole = v.index(SLICE);
-        if v.indexed() - from == SLICE {
-            best = best.min(slice.elapsed().as_secs_f64() * 1e6 / SLICE as f64);
-        }
-        if whole {
-            break;
-        }
-    }
+    while !v.index(SLICE) {}
     let indexing = started.elapsed();
     let kept = v.kept();
     same(&mut v, &sides[0], &mut buffer, "after indexing")?;
@@ -321,8 +347,9 @@ fn run() -> Result<String, String> {
          every seek lands where straight playback is: {seeks} seeks and {steps} frames back, the battle's digest, the picture at \
          {}x{} with its text, the HUD's state and the sound of the ticks after, from both consoles ({differ} of their pictures differ)\n\
          states kept: {kept} (one every {KEYFRAME_EVERY} ticks and at each round's start), {:.1} MB ({:.0} KB each: a battle's snapshot {:.0} KB, each console's sound {:.0} KB)\n\
-         indexing the whole replay: {indexing:.2?} ({best:.1} us a tick in its best slice of {SLICE}: {:.2} s for the set; playing it straight with its picture took {played:.2?})\n\
-         a first seek to the end, nothing indexed: {first_far:.2?}\n\
+         indexing the whole replay, in slices of {SLICE} ticks: {indexing:.2?} of processor time ({:.1} us a tick; {:.2} s for five minutes); \
+         playing it straight with its picture: {played:.2?}\n\
+         a first seek to the end, nothing indexed: {first_far:.2?}; without sound, {silent_far:.2?} ({:.1} us a tick)\n\
          a seek in the indexed replay: {median:.2?} (the median; {worst:.2?} at worst); a frame back: {step:.2?} (the median; {worst_step:.2?} at worst)",
         seconds,
         rounds.len(),
@@ -333,7 +360,9 @@ fn run() -> Result<String, String> {
         state_bytes as f64 / 1e3,
         battle_bytes as f64 / 1e3,
         sound_bytes as f64 / 1e3,
-        best * length as f64 / 1e6,
+        indexing.as_secs_f64() * 1e6 / length as f64,
+        indexing.as_secs_f64() / length as f64 * 17_918.0,
+        silent_far.as_secs_f64() * 1e6 / length as f64,
     ))
 }
 

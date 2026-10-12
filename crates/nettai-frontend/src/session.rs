@@ -36,6 +36,10 @@ pub struct Session {
     /// is the next round's by then): for whoever wants more of that tick
     /// than `sound` (the other console's cues).
     pub ended: Option<Box<Battle>>,
+    /// The players who asked for the pause since the host last took the
+    /// requests, by side (`Battle::pause_requests`, of a round whose host
+    /// answers the pause; `Player::take_pause_requests`).
+    pub pause_requests: [bool; 2],
     /// The replay being written of what is played, if one is.
     pub recorder: Option<Recorder>,
 }
@@ -56,6 +60,7 @@ impl Session {
             new_round: false,
             sound: None,
             ended: None,
+            pause_requests: [false; 2],
             recorder: None,
         }
     }
@@ -81,6 +86,7 @@ impl Session {
         self.diverged = None;
         self.frame = None;
         self.ticks = 0;
+        self.pause_requests = [false; 2];
     }
 
     /// Go on from another place in what the driver plays: `battle` as it
@@ -97,6 +103,7 @@ impl Session {
         (self.fresh, self.new_round) = (false, false);
         self.sound = None;
         self.ended = None;
+        self.pause_requests = [false; 2];
     }
 
     /// Run one tick (one wall-clock frame of a driver that runs the battle
@@ -120,10 +127,11 @@ impl Session {
         }
         match ran {
             Ok(None) => {}
-            Ok(Some(Ok(Ran { advanced, new_round, sound }))) => {
+            Ok(Some(Ok(Ran { advanced, new_round, sound, pause_requests }))) => {
                 self.fresh = advanced;
                 self.new_round = new_round;
                 self.sound = Some(sound);
+                self.ask_pause(pause_requests);
                 if advanced {
                     self.ticks += 1;
                 }
@@ -156,6 +164,7 @@ impl Session {
             self.stopped = Some(format!("engine stopped at {}: {}", self.driver.position(), panic_message(e.as_ref())));
             return false;
         }
+        self.ask_pause(self.battle.pause_requests());
         if self.diverged.is_none() {
             let diffs = self.driver.check(&self.battle);
             if !diffs.is_empty() {
@@ -197,6 +206,15 @@ impl Session {
     }
 }
 
+impl Session {
+    /// Keep a tick's pause requests until the host takes them.
+    fn ask_pause(&mut self, asked: [bool; 2]) {
+        for (kept, asked) in self.pause_requests.iter_mut().zip(asked) {
+            *kept |= asked;
+        }
+    }
+}
+
 /// The last tick's sound cues as the console `b` is shown from hears
 /// them: the viewer's (`setup.local_side`, which a replay shown from the
 /// other side sets), not the simulation's own side's.
@@ -210,6 +228,16 @@ fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
 
 thread_local! {
     static IN_ENGINE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
+}
+
+/// Run `f`, which may stop as the engine does (a panic), as the session
+/// runs a tick: the stop is the result, and the host's quiet hook
+/// ([`quiet_engine_panics`]) keeps it off stderr.
+pub(crate) fn in_engine<R>(f: impl FnOnce() -> R) -> std::thread::Result<R> {
+    IN_ENGINE.with(|flag| flag.set(true));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+    IN_ENGINE.with(|flag| flag.set(false));
+    result
 }
 
 /// Keep engine panics off stderr (the session reports them); other panics

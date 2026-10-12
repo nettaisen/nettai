@@ -14,6 +14,11 @@
 //! asked anything a tick doesn't ask: a seek restores a state the replay
 //! passed through and plays the recorded buttons on from it.
 //!
+//! A viewer has no pause of the battle's: where a match's host answers
+//! START (`HostKeys::pause`), the presses a replay recorded are reported
+//! again as it plays, and a viewer drops them. Its pause is
+//! [`Viewer::set_paused`], its host's own.
+//!
 //! **How.** As the replay plays (or is sought through), the viewer keeps a
 //! copy of everything it is at every [`KEYFRAME_EVERY`]th tick and at each
 //! round's first tick: the battle (`Battle::save_state`), each console's
@@ -522,6 +527,10 @@ impl Viewer {
             self.whole |= self.session.stopped.is_some();
             return false;
         }
+        // (A START a player pressed in a fight asks its host for the pause
+        // again as the replay plays, `Battle::pause_requests`; nobody is
+        // asked here: a viewer's pause is its own host's.)
+        self.session.pause_requests = [false; 2];
         let view = self.view;
         if self.session.new_round {
             self.renderer.reset();

@@ -82,6 +82,7 @@ pub fn setup_on(content: &Content) -> RoundSetup {
         score: SetScore::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
+        host_keys: crate::setup::HostKeys::NONE,
         players: [player.clone(), player],
     }
 }

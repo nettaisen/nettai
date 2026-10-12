@@ -35,7 +35,7 @@ pub mod testing;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::content::{Content, PlayerFact};
 use nettai_battle::custom::{BattleFolder, PlayerSetup};
-use nettai_battle::setup::{BattleSettings, NaviStats, RoundSetup, SetScore, Stage};
+use nettai_battle::setup::{BattleSettings, HostKeys, NaviStats, RoundSetup, SetScore, Stage};
 use nettai_battle::Rng;
 use nettai_content_api::{NaviHandle, StageHandle};
 
@@ -163,6 +163,14 @@ pub struct Match {
 /// were, 0x600).
 pub const MATCH_EFFECTS: u32 = 0x600;
 
+/// The keys a match's host answers in the battle's place: both. A match is
+/// played in nettai, whose own menu START opens where the game's pause
+/// was, and which nobody runs from (the user, 2026-10-12: "in battle pause
+/// should be replaced with nettai's pause menu", "disable L to run in
+/// battle"). Every match has them, so both players of one and its replay do:
+/// no setting, and nothing to agree.
+pub const HOST_KEYS: HostKeys = HostKeys { pause: true, run: true };
+
 /// The background a match of `game` names `name`: its handle, if the
 /// game's pack has it.
 pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_battle::content::BackgroundId> {
@@ -273,6 +281,7 @@ impl Match {
             score: SetScore::default(),
             later_stages: places.collect(),
             low_hp_music_latched: false,
+            host_keys: HOST_KEYS,
             players: [player(0), player(1)],
         }
     }
