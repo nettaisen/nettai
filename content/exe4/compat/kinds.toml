@@ -484,3 +484,13 @@
 "pitrng/thrower" = { pool = "effect", index = 0x6C, scratch_position = true }
 # H-Burst's shot (0x080E0B46), spawned at the spawner's registers until its init places it (0x080E0CB4).
 "h-burst/burst" = { pool = "attack", index = 0x9E, scratch_position = true }
+# BodyGrd's controller (0x080E9A50; its position the dimming handler's registers), its striker (0x080E9AE0, spawned
+# at the spawner's registers) and its shuriken (0x080D8EFC).
+"bodygrd/controller" = { pool = "effect", index = 0x6D, scratch_position = true }
+"bodygrd/striker" = { pool = "effect", index = 0x6E, scratch_position = true }
+"bodygrd/shuriken" = { pool = "attack", index = 0x5C }
+# P.Driver's controller (0x080E9C30; its position the dimming handler's registers), its piles (0x080E0318) and
+# their beams (0x080E04A4).
+"pdriver/controller" = { pool = "effect", index = 0x6F, scratch_position = true }
+"pdriver/pile" = { pool = "attack", index = 0x99 }
+"pdriver/beam" = { pool = "attack", index = 0x9A }

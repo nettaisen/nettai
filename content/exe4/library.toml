@@ -492,4 +492,7 @@ program_advance = [
     "pitrng3",
     "lifesrd",
     "timebom",
+    "bodygrd",
+    "poisphar",
+    "pdriver",
 ]
