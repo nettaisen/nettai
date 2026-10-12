@@ -479,6 +479,7 @@ impl UserData for Object {
         });
         methods.add_method("chips_enabled", |_, this, ()| with(|api, _| api.chips_enabled(this.0).map_err(api_error)));
         methods.add_method("move_lag", |_, this, ()| with(|api, _| api.move_lag(this.0).map_err(api_error)));
+        methods.add_method("hide_chip_window", |_, this, ()| with(|api, _| api.hide_chip_window(this.0).map_err(api_error)));
         methods.add_method("drop_links", |_, this, ()| with(|api, _| api.drop_links(this.0).map_err(api_error)));
         methods.add_method("drop_status_visuals", |_, this, ()| with(|api, _| api.drop_status_visuals(this.0).map_err(api_error)));
         methods.add_method("drop_chip", |_, this, ()| with(|api, _| api.drop_chip(this.0).map_err(api_error)));
