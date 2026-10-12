@@ -44,9 +44,6 @@ return {
     first_choosing_tick_reads_keys = true,
     -- L's no-running message starts on the tick after the key, with its sound (EXE6's `sub_8026E98`, `sub_8026EC8`).
     run_message_at_key = false,
-    -- The screen's close starts the HUD's chip window with the chip icons (0x080230CC: the icons, then 0x08023128
-    -- calls the window's starter, 0x0801A916): the next chip's name shows from the screens' exchange.
-    close_shows_chip_window = true,
     -- A chip that counts as the invalid chip is picked as it (0x080248FC), and the selection counts each chip as
     -- checked (0x08024A44).
     invalid_picks = "picked",
