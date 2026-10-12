@@ -15,4 +15,6 @@ return {
     -- A navi's idle, its attacks and a dimming's start hide the chip window on the navi's own console only
     -- (0x080F02E6 on, 0x08009FBA: EXE6's `sub_80F0354` and `object_timefreezeBegin`).
     window_hides_every_console = false,
+    -- A charged chip is used with its charge, whatever its family (0x0800D9CC).
+    charged_null_alt_routine = false,
 }

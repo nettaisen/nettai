@@ -1,13 +1,13 @@
 --!strict
 -- A point of ColorPt's and DblPoint's, as EXE5 and EXE6 share it (EXE6's effect object #0x51, `sub_80E655C`; EXE5's
--- #0x51, 0x080E65E8; EXE6's docs/engine/dimming-chips.md §10.2): it gives its panel to the other side (the
+-- #0x51, 0x080E65E8; EXE4's #0x51, 0x080E7CE0; EXE6's docs/engine/dimming-chips.md §10.2): it gives its panel to the other side (the
 -- stolen-area return brings it back), rises, and flies to its side's navi; there the chip at the hand's cursor, if it
 -- does damage, gets its bonus (or the side's special bonus does). It tells its controller (the holder) when it is
 -- gone.
 --
 -- Each game makes its own kind (`point.make`) with its look and its test for the special bonus: EXE6's while a
 -- special chip is in use (its player's AI+0xBB), EXE5's with each side keeping its own gauge (battle flag 0x40,
--- 0x080E6746).
+-- 0x080E6746), EXE4's under event flag 0x1187 (0x080E7E38), which no netbattle sets.
 
 
 local point = {}
@@ -32,6 +32,10 @@ export type Look = {
     special: (side: number, navi: Object) -> boolean,
     -- The game's aiming helpers (its sine table's: lib/trajectory).
     trajectory: Trajectory,
+    -- The element byte its spawn leaves, register garbage where the game reads nothing of it but the recordings show
+    -- it (EXE4's 0x080E7EAA: the low byte of the address its controller's panel test leaves in r2, 0x0800A3D9);
+    -- none: the element it spawns with (EXE6's and EXE5's, whose garbage goes elsewhere).
+    element: number?,
 }
 
 export type Point = {
@@ -197,6 +201,9 @@ function point.make(look: Look): Point
         o.panel_x, o.panel_y = x, y
         o:set_damage_word(y)
         o.alliance, o.flip = holder.alliance, holder.flip
+        if look.element then
+            o.element = look.element
+        end
         o.run_while_dimmed = true
         local s = o.state :: State
         s.holder, s.slot = holder, slot

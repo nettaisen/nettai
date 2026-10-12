@@ -287,10 +287,24 @@ language = "en"
 "blinder" = { name = "Blinder", description = "Blinds\nenemy w/\nlight" }
 "mine" = { name = "Mine", description = "Places a\nmine in\nenmy area" }
 "bassanly" = { name = "BassAnly", description = "A ring\nthat hits\n4 times" }
+"rockcube" = { name = "RockCube", description = "Places a\nrock cube\nin front" }
+"colorpt" = { name = "ColorPt", description = "+10 for\nnext chip\nattack" }
+"dblpoint" = { name = "DblPoint", description = "+20 for\nnext chip\nattack" }
 "anubis" = { name = "Anubis", description = "EvilChip!\nAnubis\npoisons" }
 "guardian" = { name = "Guardian", description = "Statue\nretaliate\nwhen hit" }
 "punisher" = { name = "Punisher", description = "" }
 "jealousy" = { name = "Jealousy", description = "More chip\nmean more\ndamage" }
+"snake" = { name = "Snake", description = "Snake\nfrom hole\nin area" }
+"bugcurse" = { name = "BugCurse", description = "EvilChip!\nMake enmy\nbuggy!" }
+"bugfix" = { name = "BugFix", description = "Repairs &\nremoves\nbugs" }
+"coldman" = { name = "ColdMan", description = "Ices over\nall and\nslides!" }
+"coldmn-sp" = { name = "ColdMnSP", description = "Ices over\nall and\nslides!" }
+"coldmn-ds" = { name = "ColdMnDS", description = "Ices over\nall and\nslides!" }
+"gigacan1" = { name = "GigaCan1", description = "A cannon\ndriven by\nGigaPower" }
+"gigacan2" = { name = "GigaCan2", description = "A cannon\ndriven by\nGigaPower" }
+"gigacan3" = { name = "GigaCan3", description = "A cannon\ndriven by\nGigaPower" }
+"heatsprd" = { name = "HeatSprd", description = "Explosion\nby Wide\nattack" }
+"bubsprd" = { name = "BubSprd", description = "Bubbles\nby Wide\nattack" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

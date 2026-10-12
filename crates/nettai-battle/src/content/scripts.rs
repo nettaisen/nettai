@@ -432,7 +432,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         anti_navi_sparkle = { dy = 0, z = 16 },
         mixed_modifiers = false,
         beat_spares_dark = false,
-        window_hides_every_console = false,"#,
+        window_hides_every_console = false,
+        charged_null_alt_routine = true,"#,
             ),
             (
                 "custom_screen",
@@ -445,7 +446,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         run_message_at_key = true,
         invalid_picks = "refused",
         special_codes = "unstarred",
-        program_advances = { once_a_round = false, keeps_regular = true, clears_past_end = true },
+        program_advances = { once_a_round = false, keeps_regular = true, clears_past_end = true, in_screen_state = true },
         modifier_passes_regular = true,
         status_until = "sending",
         hover = { runs = "while_choosing", to_dark = { {}, { music = 0x60, screen = 0xC0 } }, to_clear = { {} }, players = { 31, 9 }, sound = { counts = "while_dark", every = 61 } },
@@ -675,7 +676,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 119, "every field of every section");
+        assert_eq!(fields, 120, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

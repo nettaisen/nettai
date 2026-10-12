@@ -137,8 +137,9 @@ return {
     -- The code 27, the dark chips' (0x0801DF7E), is one `*` doesn't stand for (0x0801FA96).
     special_codes = "unstarred",
     -- A Program Advance forms whenever its recipe is picked (0x0801F390 keeps no record), it isn't the Regular chip
-    -- (0x0801F404 clears its flags), and the entries past the selection's end are cleared (0x0801F438).
-    program_advances = { once_a_round = false, keeps_regular = false, clears_past_end = true },
+    -- (0x0801F404 clears its flags), and the entries past the selection's end are cleared (0x0801F438); its animation
+    -- is the screen's own state 0x10 (0x0801E608 runs its first step on its first tick, 0x0801E8AC goes on to the send).
+    program_advances = { once_a_round = false, keeps_regular = false, clears_past_end = true, in_screen_state = true },
     -- A modifier's Regular chip mark stays on the chip it folds into (0x0801F17E).
     modifier_passes_regular = true,
     -- The console says its custom screen is open until it sends (bit 4: 0x08007618 to 0x0801E986; bit 1 from the
