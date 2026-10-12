@@ -85,10 +85,24 @@ pub mod pflags {
     pub const BODY: u32 = 0x0F80_0000;
 }
 
+/// What a panel showed when it was last drawn (drawn only): whether it
+/// was visible, its highlight, and the type and side it was drawn as.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PanelLook {
+    pub visible: bool,
+    pub highlight: u8,
+    pub kind: PanelType,
+    pub alliance: u8,
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct Panel {
     pub visible: bool,
     pub highlight: u8,
+    /// What it last showed, where the game's drawing leaves a panel as it
+    /// was (`PanelDrawn::OwnTables`: a highlighted panel that isn't
+    /// visible); as at the start elsewhere.
+    pub kept: PanelLook,
     pub kind: PanelType,
     /// Current owner.
     pub alliance: u8,
@@ -285,6 +299,7 @@ impl Field {
                 let t = if is_valid(x, y) { rows[y as usize - 1][x as usize - 1] } else { rules.roles.missing };
                 let home = columns[x as usize].home;
                 panels[y as usize][x as usize] = Panel {
+                    kept: PanelLook::default(),
                     visible: rules.start_visible[y as usize][x as usize],
                     kind: t,
                     display_kind: t,
@@ -429,6 +444,25 @@ impl Battle {
                 let cracked = self.content.rules().panels.roles.cracked;
                 let p = &mut self.field.panels[y as usize][x as usize];
                 p.latch = if p.kind == cracked { p.flags } else { 0 };
+            }
+        }
+    }
+
+    /// The field's drawing, for what the next ones need of it. Where the
+    /// game keeps what its panels are drawn as in tables of its own
+    /// (`PanelDrawn::OwnTables`), its drawing looks at a panel's highlight
+    /// first (EXE4's 0x080092E8) and draws a highlighted panel only while
+    /// it is visible (0x0800932C): one that isn't keeps the tiles it had,
+    /// what it last showed (`Panel::kept`). Every other panel is drawn, a
+    /// panel that isn't visible as none.
+    pub fn keep_panel_looks(&mut self) {
+        if self.content.rules().panels.drawn != crate::content::PanelDrawn::OwnTables {
+            return;
+        }
+        for p in self.field.panels.iter_mut().flatten() {
+            if p.visible || p.highlight == 0 {
+                let (kind, alliance) = p.blink.unwrap_or((p.display_kind, p.display_alliance));
+                p.kept = PanelLook { visible: p.visible, highlight: p.highlight, kind, alliance };
             }
         }
     }
@@ -988,6 +1022,37 @@ mod tests {
         let (cracked, broken, normal) = (panel("cracked"), panel("broken"), panel("normal"));
         assert_eq!(run(PanelDrawn::InPanel), ((broken, broken), broken, normal, false));
         assert_eq!(run(PanelDrawn::OwnTables), ((broken, cracked), broken, broken, true));
+    }
+
+    /// Where a game draws its panels from tables of its own, a highlighted
+    /// panel that isn't visible is left as it was: it keeps what it last
+    /// showed, its highlight if it was highlighted while visible, nothing
+    /// once it was drawn while neither. Elsewhere nothing is kept.
+    #[test]
+    fn a_highlighted_panel_that_isnt_visible_keeps_what_it_last_showed() {
+        use super::PanelLook;
+        use crate::content::PanelDrawn;
+        let run = |drawn: PanelDrawn| {
+            let mut b = Battle::new(scenario::setup(), scenario::content());
+            let mut c = (*b.content).clone();
+            c.rules_mut().panels.drawn = drawn;
+            b.content = std::sync::Arc::new(c);
+            let mut kept = Vec::new();
+            // Visible and highlighted; then hidden, still highlighted; then
+            // hidden with no highlight; then highlighted again.
+            for (visible, highlight) in [(true, 1), (false, 1), (false, 0), (false, 1)] {
+                let p = &mut b.field.panels[2][1];
+                (p.visible, p.highlight) = (visible, highlight);
+                b.keep_panel_looks();
+                kept.push(b.field.panels[2][1].kept);
+            }
+            kept
+        };
+        let p = Battle::new(scenario::setup(), scenario::content()).field.panels[2][1];
+        let lit = PanelLook { visible: true, highlight: 1, kind: p.display_kind, alliance: p.display_alliance };
+        let none = PanelLook { visible: false, highlight: 0, kind: p.display_kind, alliance: p.display_alliance };
+        assert_eq!(run(PanelDrawn::OwnTables), [lit, lit, none, none]);
+        assert_eq!(run(PanelDrawn::InPanel), [PanelLook::default(); 4]);
     }
 
     /// The content API names a panel type as its game's rules do, both
