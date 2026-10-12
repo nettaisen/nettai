@@ -1,4 +1,4 @@
-//! Watching a replay: the library's `Viewer` on screen, with its transport (docs/app.md §8).
+//! Watching a replay: the library's `Viewer` on screen, with its transport (docs/app.md §15).
 //!
 //! Each frame runs the ticks due at the speed set, presents the picture if one ran, and hands the sound on. So
 //! that no seek stalls the window, the replay is indexed ahead a slice a frame, each held to a budget of time,
@@ -98,7 +98,7 @@ impl Watching {
     }
 
     /// Whether ticks run: it isn't paused, held by a seek or a drag, at its end, or stopped.
-    fn playing(&self) -> bool {
+    pub fn playing(&self) -> bool {
         !self.viewer.paused() && self.pending.is_none() && self.drag.is_none() && !self.viewer.at_end() && self.viewer.stopped().is_none()
     }
 

@@ -4,7 +4,7 @@
 //! selected replay's sheet.
 //!
 //! The pass has replays of its own, made here the first time through (`crate::replays::folder` is the pass's
-//! folder while it runs): a few sets of the selected game played by themselves and recorded, written again
+//! folder while it runs): three sets of the selected game played by themselves and recorded, written again
 //! under other names, days and kinds of match, with a few files that don't read beside them. So its pictures
 //! don't depend on what the player has recorded.
 //!
@@ -17,6 +17,7 @@ use crate::input::{Action, KeyPress};
 use crate::nav::{Key, Rect};
 use crate::screens::ScreenId;
 use crate::shell::{App, Shell};
+use nettai_battle::Content;
 use nettai_battle::battle::mode;
 use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, bot_buttons};
 use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay};
@@ -30,7 +31,11 @@ use std::rc::Rc;
 use std::sync::{Arc, Mutex};
 
 /// The most ticks a set made for the pass is played for.
-const MOST_TICKS: u64 = 14_000;
+const MOST_TICKS: u64 = 30_000;
+
+/// The seeds of the sets made for the pass. (Of EXE6's they make a set of three rounds won 2–1 in eight minutes,
+/// and two of two rounds, won and lost, in four.)
+const SEEDS: [u32; 3] = [29, 11, 33];
 
 /// A sink a recording is written to, to be read back.
 #[derive(Clone, Default)]
@@ -47,18 +52,17 @@ impl Write for Sink {
     }
 }
 
-/// A set of the selected game played by itself from `seed` (both navis pressing at random), recorded.
-fn record(shell: &Shell, seed: u32) -> Result<Replay, String> {
-    let (game, ready) = shell.ready().ok_or("no game is ready")?;
-    let content = ready.content();
-    let m = nettai_match::Match { seed: Some(seed), ..nettai_match::pick::live(content, &game, seed, None)? };
+/// A set of `game` played by itself from `seed` (both navis pressing at random) for `most` ticks at the most,
+/// recorded.
+fn record(content: &Arc<Content>, game: &str, seed: u32, most: u64) -> Result<Replay, String> {
+    let m = nettai_match::Match { seed: Some(seed), ..nettai_match::pick::live(content, game, seed, None)? };
     let sink = Sink::default();
     let opponent = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst };
     let mut s = Session::new(Box::new(LivePlayer::against(nettai_match::Set::of(content, &m, seed), opponent, seed as u64)));
     s.record(Recorder::new(Box::new(sink.clone()), content, &m, &Info::of(MatchKind::Offline, 0))?)?;
     // (The left navi's own presses: a direction, the buster and a chip now and then, from the seed.)
     let (mut random, mut held) = (seed as u64 | 1, 0u16);
-    while s.ticks < MOST_TICKS {
+    while s.ticks < most {
         use nettai_battle::input::keys;
         random ^= random << 13;
         random ^= random >> 7;
@@ -98,7 +102,9 @@ fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
         return Ok(());
     }
     std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    let sets = [record(shell, 7)?, record(shell, 11)?, record(shell, 23)?];
+    let (game, ready) = shell.ready().ok_or("no game is ready")?;
+    let set = |seed: u32| record(ready.content(), &game, seed, MOST_TICKS);
+    let sets = [set(SEEDS[0])?, set(SEEDS[1])?, set(SEEDS[2])?];
     let save = |name: &str, bytes: &[u8], when: u64| -> Result<(), String> {
         let path = dir.join(name);
         std::fs::write(&path, bytes).map_err(|e| format!("{}: {e}", path.display()))?;
@@ -383,4 +389,64 @@ fn export(add: &mut dyn FnMut(u64, Step)) {
             let _ = std::fs::write(tour.dir.join("export.txt"), said);
         }),
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::replays::{Found, Library};
+    use nettai_frontend::replay::{ReadError, Refused};
+
+    /// Take what the library's thread finds until `enough` says so of all it found (a minute at the most).
+    fn wait(library: &mut Library, enough: impl Fn(&[Found]) -> bool) {
+        let (began, mut found) = (std::time::Instant::now(), Vec::new());
+        while !enough(&found) {
+            assert!(began.elapsed() < std::time::Duration::from_secs(60), "the replays' thread didn't answer");
+            std::thread::sleep(std::time::Duration::from_millis(5));
+            found.extend(library.poll());
+        }
+    }
+
+    /// A folder is listed on the library's thread, newest first, a file that doesn't read among the rest with
+    /// why (and by when it was written), and other files left out. Each replay is then played out there: one
+    /// whole, one cut short, and one of other content, which is told as refused and not as a failure.
+    #[test]
+    fn a_folder_is_listed_and_its_replays_played_out_off_the_thread() {
+        let content = nettai_match::testing::exe6_content();
+        let dir = std::env::temp_dir().join(format!("nettai-replays-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let replay = record(&content, "exe6", 7, 900).unwrap();
+        let info = |when: u64, side: u8| Info { when, names: ["Lan".into(), "Chaud".into()], ..Info::of(MatchKind::Online, side) };
+        let mut other = replay.clone();
+        other.head.content ^= 1;
+        std::fs::write(dir.join("first.ntrp"), written(&replay, &info(100, 0), None)).unwrap();
+        std::fs::write(dir.join("second.ntrp"), written(&replay, &info(300, 1), Some(600))).unwrap();
+        std::fs::write(dir.join("other.ntrp"), written(&other, &info(200, 0), None)).unwrap();
+        std::fs::write(dir.join("old.ntrp"), b"NTRP\x01an older nettai's").unwrap();
+        std::fs::write(dir.join("notes.txt"), b"not a replay, and not named as one").unwrap();
+
+        let mut library = Library::default();
+        library.list(&dir);
+        wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));
+        let entries = library.entries.clone();
+        let names: Vec<&str> = entries.iter().map(|e| e.path.file_name().unwrap().to_str().unwrap()).collect();
+        assert_eq!(names, ["old.ntrp", "second.ntrp", "other.ntrp", "first.ntrp"]);
+        assert!(matches!(entries[0].read, Err(ReadError::OtherLayout { layout: 1 })));
+        let second = entries[1].read.as_ref().unwrap();
+        assert_eq!((second.ticks, second.rounds.as_slice(), second.info.side, second.head.game.as_str()), (600, &[0][..], 1, "exe6"));
+
+        for entry in &entries[1..] {
+            library.play(entry, &content);
+            // (Asked twice, it is played once.)
+            library.play(entry, &content);
+        }
+        wait(&mut library, |found| found.iter().filter(|f| matches!(f, Found::Played(_))).count() == 3);
+        let played = |at: usize| library.played(&entries[at]).unwrap();
+        assert!(matches!(played(1), Ok(out) if out.ticks == 600 && out.diverged.is_none() && out.result.is_none()), "{:?}", played(1));
+        assert!(matches!(played(2), Err(Refused::OtherVersion(_))), "{:?}", played(2));
+        assert!(matches!(played(3), Ok(out) if out.ticks == 900 && out.diverged.is_none()), "{:?}", played(3));
+        assert!(library.played(&entries[0]).is_none());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
 }

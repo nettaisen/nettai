@@ -1,4 +1,4 @@
-//! The replays folder, read off the window's thread (docs/app.md §8): what the Replays screen lists and the
+//! The replays folder, read off the window's thread (docs/app.md §15): what the Replays screen lists and the
 //! main menu's reel plays.
 //!
 //! Nothing here runs on the frame path. A [`Library`] has a thread of its own, started when it is first asked
@@ -347,5 +347,54 @@ impl Reel {
             // (The one after it is next.)
             self.next = at;
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_frontend::replay::{End, MatchKind};
+
+    /// A replay that says nothing but when it was played.
+    fn replay(when: u64) -> Replay {
+        let head = nettai_replay::Head { engine: String::new(), game: "a-game".into(), content: 0, start: 0 };
+        Replay { head, match_bytes: Vec::new(), info: Info { when, ..Info::of(MatchKind::Online, 0) }, ticks: Vec::new(), end: End::Open }
+    }
+
+    fn given(reel: &mut Reel) -> Option<u64> {
+        match reel.next() {
+            Next::Replay(replay) => Some(replay.info.when),
+            Next::Nothing => None,
+            Next::Wait => panic!("the reel has its replays"),
+        }
+    }
+
+    /// The reel gives its replays one after another, around from the last to the first; one that didn't play
+    /// isn't given again, and the one after it is next; with none left it has nothing.
+    #[test]
+    fn the_reel_goes_around_and_passes_over_what_doesnt_play() {
+        let mut reel = Reel { found: channel().1, replays: Some(vec![replay(3), replay(2), replay(1)]), next: 0 };
+        assert_eq!([given(&mut reel), given(&mut reel), given(&mut reel), given(&mut reel)], [Some(3), Some(2), Some(1), Some(3)]);
+        assert_eq!(given(&mut reel), Some(2));
+        reel.skip();
+        assert_eq!([given(&mut reel), given(&mut reel), given(&mut reel)], [Some(1), Some(3), Some(1)]);
+        reel.skip();
+        assert_eq!(given(&mut reel), Some(3));
+        reel.skip();
+        assert_eq!(given(&mut reel), None);
+        assert_eq!(given(&mut Reel::empty()), None);
+    }
+
+    /// Until the thread has read the replays the reel says to wait; a thread that went without saying is a
+    /// reel with none.
+    #[test]
+    fn the_reel_waits_for_its_replays() {
+        let (tell, found) = channel();
+        let mut reel = Reel { found, replays: None, next: 0 };
+        assert!(matches!(reel.next(), Next::Wait));
+        tell.send(vec![replay(7)]).unwrap();
+        assert_eq!(given(&mut reel), Some(7));
+        let mut gone = Reel { found: channel().1, replays: None, next: 0 };
+        assert!(matches!(gone.next(), Next::Nothing));
     }
 }
