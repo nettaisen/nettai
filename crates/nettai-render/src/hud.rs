@@ -1341,6 +1341,15 @@ fn icon_parts<'a>(
         let x = if a * f > 0 { x0 - back } else { x0 };
         problems.known(x, y0 - back, 16 + back, 16 + back, crate::lookups::OTHER_VERSIONS_ART);
     }
+    // (The stack's reach, where the caller asks for the chip's icon.)
+    if !hidden && !problems.marking.is_empty() {
+        let what = crate::lookups::chip_icon_mark(&b.content, chip);
+        if problems.wants(&what) {
+            let back = 2 * (count - 1);
+            let x = if a * f > 0 { x0 - back } else { x0 };
+            problems.mark([x, y0 - back, x + 16 + back, y0 + 16], what);
+        }
+    }
     for k in 0..count {
         let icon = block(tiles, 16, 16, *icon_palette, x0 - 2 * k * a * f, y0 - 2 * k);
         list.insert_at(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, vec![icon]);
@@ -1390,6 +1399,12 @@ fn own_icon_parts<'a>(
         let (x, y) = (x0 - 2 * k as i32, y0 - 2 * k as i32);
         if crate::lookups::other_versions_icon(packs, b, chip) {
             problems.known(x, y, 16, 16, crate::lookups::OTHER_VERSIONS_ART);
+        }
+        if !problems.marking.is_empty() {
+            let what = crate::lookups::chip_icon_mark(&b.content, chip);
+            if problems.wants(&what) {
+                problems.mark([x, y, x + 16, y + 16], what);
+            }
         }
         let icon = SpritePart { priority: OWN_ICON_PRIORITY, ..block(tiles, 16, 16, *palette, x, y) };
         list.insert_at(FIELD_LAYER, count - k, vec![icon]);
