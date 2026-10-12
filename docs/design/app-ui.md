@@ -281,7 +281,9 @@ Each is in the mockups under the same name.
   be changed later." The folder starts as a new save's of that game. There are no random builds anywhere.
 - **The editor's** header has the build's name, its version, and "✓ Ready to play" or how many problems; its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
-  them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents.
+  them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
+  keeps MegaMan's NaviCust, cards and auto battle data aside, outside the side it hands to a match (the rules
+  refuse a NaviCust on a navi that compiles none), and puts them back when MegaMan is chosen again.
 - **Navi:** the game's navis as a grid of cards; the chosen one's HP, element and charge shot beside it; "NaviCust
   and patch cards are MegaMan only." In EXE4 and EXE5, MegaMan's panel also has Light or Dark, a stepper, with the face the
   round starts him with.
