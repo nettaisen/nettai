@@ -108,7 +108,8 @@ fn sprites(roms: &Roms, names: &nettai_content::names::AssetNames) -> Vec<Sprite
 
 /// The portraits content names (the chatbox's speakers), each from the
 /// ROM that has its true face: the Falzar ROM's unless it has the black
-/// placeholder there.
+/// placeholder there. DustMan's is in the Gregar ROMs too, where their
+/// table has the black one for it (`gregar::DUSTMAN_PORTRAIT`).
 fn portraits(roms: &Roms, names: &nettai_content::names::AssetNames) -> Vec<SpriteSheet> {
     let sources = [
         roms.us_of(Version::Falzar),
@@ -133,6 +134,14 @@ fn portraits(roms: &Roms, names: &nettai_content::names::AssetNames) -> Vec<Spri
                     }
                     let data = archive(rom, p)?;
                     portrait_sheet(&data, category, index)
+                })
+                .or_else(|| {
+                    let (orphan, place) = crate::exe6::gregar::DUSTMAN_PORTRAIT;
+                    let src = roms.of(Version::Gregar);
+                    if index != orphan || !src.is_present() {
+                        return None;
+                    }
+                    portrait_sheet(&archive(src.rom, src.at(place))?, category, index)
                 })
         })
         .collect()
