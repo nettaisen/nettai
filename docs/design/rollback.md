@@ -582,7 +582,11 @@ its lobby messages and refusals, and nothing after that field is read of it).
    has heard that the other has: by its loading message, or by a frame of the match, which a peer sends only once
    it has started. So neither runs a tick before both have loaded, and a peer whose last loading message is lost
    still starts, on the other's first frame. (The two start a moment apart, as they did when each started on its
-   own agreement; clock sync levels them, §4.3.) A host must go on polling its link and its lobby while it loads,
+   own agreement; clock sync levels them, §4.3.) One peer can take the match for agreed when the other doesn't:
+   the other player took their ready back while the Reveals crossed, so its lobby went on to another revision
+   before this peer's Reveal came. When this peer hears that lobby again it goes back to the lobby with it (`poll`
+   says `Pending` after `Loading`), its player not ready, and what its host had loaded is for nothing. A host must
+   go on polling its link and its lobby while it loads,
    every frame: load on another thread, or a little a frame. A link nobody polls for 3 seconds reads as a dropped
    connection on the other side (§4.8).
 
@@ -713,7 +717,7 @@ ticks of unconfirmed input, about half a second after the drop), still sending t
 gap can't pass twice the stall guard, inside the horizon (§4.6); when it is back, the next datagrams carry what each
 side hasn't acknowledged, rollback corrects what was predicted, and clock sync levels the peers again. What the
 frontend does is not give up: `NetPlayer` ends a match after 10 seconds with nothing from the other player, but not
-while the channel says it is down (`Channel::down_for`), counting again from when it is back; giving up is the
+while the channel says it is down (`Channel::reconnecting`), counting again from when it is back; giving up is the
 transport's. The players see the battle stop within half a second; a host says that it is reconnecting, and
 counts down what the link has left (`NetStatus::reconnecting`: how long it has been down, and
 `gives_up_in`, §4.11); the battle goes on where it was, or the match ends after 30 seconds with the error above.
