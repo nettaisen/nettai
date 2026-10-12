@@ -2427,9 +2427,12 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     19's bottom halves and its colors into the banner's (stages/lava-middle-close/flag-break-bluemoon, frames 3241 to
     3250); a pause turns its colors (flag-pause). The pack's `layout.telop.tiles`; the renderer follows the loads
     (`hud::SharedLoads`) and makes the glyphs up (`hud::shared_glyphs`), the other way round too (a telop that
-    starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). Not modeled: the
-    right-hand telop's "×2" reads tiles 0x3A4 to 0x3A7, which nothing loads, so a doubled used chip's "×2" shows what
-    they hold; no recording has one yet.
+    starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). A doubled chip's
+    "×2" is one 16x16 sprite at 0x380 for either place (0x08015522 adds no 36: emotions/counter-side1 shows the other
+    player's "Cannon 40×2"), so a banner's load turns it into the tops of the banner's glyphs 16 to 19, the '×' the
+    left column (ported with the name's; no recording reaches it: a navi's deletion banner starts after the name has
+    run out, the flag's break is the case, and breaking a flag with a Full Synchro chip takes a counter hit on the
+    last turn).
 
 ### 18.8 The chips (group F)
 
