@@ -2,14 +2,15 @@
 //! yet: the screen has its header and Back, and the training menu what leaves a battle.
 //!
 //! What is here is what a battle's owner needs at the least, and a way into a battle for development and the
-//! screenshot pass ([`start_development_battle`], `NETTAI_TRAINING=<game>`): a picked match against a dummy that
-//! stands still. The screen's own way in (two builds, START TRAINING) replaces it.
+//! screenshot pass ([`start_development_battle`], `NETTAI_TRAINING=<game>`): new builds of the game's first two
+//! versions, the other a dummy that stands still. The screen's own way in (two builds, START TRAINING)
+//! replaces it.
 
 use crate::battle::{BattleEvent, BattleStart};
-use crate::builds::presets;
 use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress};
+use crate::screens::menu::{starter_match, version_tag};
 use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
 use nettai_frontend::driver::{LivePlayer, Opponent};
@@ -87,14 +88,14 @@ fn restart(shell: &mut Shell) -> bool {
     true
 }
 
-/// Start a training battle of the selected game: a match picked from `seed`, against a dummy that stands still
-/// and picks its first chips.
+/// Start a training battle of the selected game: new builds of its first two versions on arenas picked from
+/// `seed`, the other side a dummy that stands still and picks its first chips.
 pub fn start_development_battle(shell: &mut Shell, seed: u32) {
     let Some((game, ready)) = shell.ready() else { return };
     let content = ready.content();
-    let m = match nettai_match::pick::live(content, &game, seed, None) {
+    let m = match starter_match(content, &game, seed) {
         Ok(m) => m,
-        Err(why) => return crate::errors::log("picking a training match", &why),
+        Err(why) => return crate::errors::log("making a training match", &why),
     };
     let graphics = ready.graphics(shell.lang);
     let names = Names::of(content, &graphics);
@@ -104,7 +105,7 @@ pub fn start_development_battle(shell: &mut Shell, seed: u32) {
         role,
         name: name.into(),
         build: Default::default(),
-        version: presets::version(content, &game, side).to_uppercase().into(),
+        version: version_tag(content, &game, side).into(),
         navi: names.navi(side.navi(content)).into(),
         progress: 0.0,
     };
