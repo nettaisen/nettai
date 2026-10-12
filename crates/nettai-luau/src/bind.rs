@@ -1453,6 +1453,28 @@ fn schema_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     Ok(t)
 }
 
+/// A chip code as the rules write it: a letter, `*`, or nil for the code
+/// outside the alphabet (its number: A 0, `*` 26; none).
+fn code_arg(v: &LuaValue, what: &str) -> mlua::Result<Option<u8>> {
+    match v {
+        LuaValue::Nil => Ok(None),
+        LuaValue::String(s) => {
+            let s = s.to_str()?.to_string();
+            match s.as_bytes() {
+                [b'*'] => Ok(Some(26)),
+                [c] if c.is_ascii_uppercase() => Ok(Some(c - b'A')),
+                _ => Err(mlua::Error::runtime(format!("{what}: {s:?} is not a chip code (A-Z or *)"))),
+            }
+        }
+        other => Err(mlua::Error::runtime(format!("{what}: a code is a letter or nil, not {}", other.type_name()))),
+    }
+}
+
+/// ... and as they read it.
+fn code_letter(code: Option<u8>) -> Option<String> {
+    code.map(|c| if c == 26 { "*".to_string() } else { ((b'A' + c) as char).to_string() })
+}
+
 /// `custom`: a side's custom screen, in the rules' custom hooks
 /// (docs/design/rules-in-luau.md §4.4).
 fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
@@ -1471,12 +1493,44 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let list = lua.create_table()?;
         for (i, chip) in chips.into_iter().enumerate() {
             let v = match chip {
-                Some(_) => bound(|b| chip_value(b, chip))?,
+                Some((chip, code)) => {
+                    let entry = lua.create_table()?;
+                    entry.raw_set("chip", bound(|b| chip_value(b, Some(chip)))?)?;
+                    entry.raw_set("code", code_letter(code))?;
+                    LuaValue::Table(entry)
+                }
                 None => LuaValue::Boolean(false),
             };
             list.raw_set(i + 1, v)?;
         }
         Ok(list)
+    });
+    lib_fn!(lua, t, "set_folder", |_, (side, place, chip, code): (LuaValue, LuaValue, LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let place = match u8_arg(place, "place")? {
+            n @ 1..=30 => n - 1,
+            n => return Err(mlua::Error::runtime(format!("custom.set_folder: a place is 1 to 30, not {n}"))),
+        };
+        let chip = bound(|b| chip_arg(b, &chip, "chip"))?.ok_or_else(|| mlua::Error::runtime("custom.set_folder: no chip"))?;
+        let code = code_arg(&code, "custom.set_folder")?;
+        with(|api, _| api.custom_set_folder(side, place, chip, code).map_err(api_error))
+    });
+    lib_fn!(lua, t, "slot", |lua, (side, slot): (LuaValue, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let slot = u8_arg(slot, "slot")?;
+        let Some(s) = with(|api, _| api.custom_slot(side, slot).map_err(api_error))? else { return Ok(LuaValue::Nil) };
+        let t = lua.create_table()?;
+        t.raw_set("chip", bound(|b| chip_value(b, Some(s.chip)))?)?;
+        t.raw_set("code", code_letter(s.code))?;
+        t.raw_set("place", s.place.map(|p| p as i64 + 1))?;
+        t.raw_set("regular", s.regular)?;
+        t.raw_set("picked", s.picked)?;
+        Ok(LuaValue::Table(t))
+    });
+    lib_fn!(lua, t, "picks", |lua, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        let picks = with(|api, _| api.custom_picks(side).map_err(api_error))?;
+        lua.create_sequence_from(picks)
     });
     lib_fn!(lua, t, "swap_folder", |_, (side, a, b): (LuaValue, LuaValue, LuaValue)| {
         let side = u8_arg(side, "side")? & 1;
@@ -1494,18 +1548,7 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let side = u8_arg(side, "side")? & 1;
         let slot = u8_arg(slot, "slot")?;
         let chip = bound(|b| chip_arg(b, &chip, "chip"))?.ok_or_else(|| mlua::Error::runtime("custom.offer: no chip"))?;
-        let code = match &code {
-            LuaValue::Nil => None,
-            LuaValue::String(s) => {
-                let s = s.to_str()?.to_string();
-                match s.as_bytes() {
-                    [b'*'] => Some(26),
-                    [c] if c.is_ascii_uppercase() => Some(c - b'A'),
-                    _ => return Err(mlua::Error::runtime(format!("custom.offer: {s:?} is not a chip code (A-Z or *)"))),
-                }
-            }
-            other => return Err(mlua::Error::runtime(format!("custom.offer: a code is a letter or nil, not {}", other.type_name()))),
-        };
+        let code = code_arg(&code, "custom.offer")?;
         with(|api, _| api.custom_offer(side, slot, chip, code).map_err(api_error))
     });
     lib_fn!(lua, t, "hand_size", |_, side: LuaValue| {
@@ -1698,6 +1741,19 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "draw_regular", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_draw_regular(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "draw_cursor", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_draw_cursor(side).map_err(api_error))
+    });
+    lib_fn!(lua, t, "button_uses", |_, (side, button): (LuaValue, String)| {
+        let side = u8_arg(side, "side")? & 1;
+        with(|api, _| api.custom_button_uses(side, &button).map_err(api_error))
+    });
+    lib_fn!(lua, t, "set_button_uses", |_, (side, button, uses): (LuaValue, String, LuaValue)| {
+        let side = u8_arg(side, "side")? & 1;
+        let uses = u8_arg(uses, "uses")?;
+        with(|api, _| api.custom_set_button_uses(side, &button, uses).map_err(api_error))
     });
     lib_fn!(lua, t, "draw_held", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;

@@ -56,14 +56,12 @@ function soul.chip_charge(id: string, ticks: { number }): Weapon
     return new.weapon { id = id, charge_ticks = ticks, charged_chip = "bonus" }
 end
 
--- What a soul does to a hand OK builds in it (the custom screen keeps the navi's soul as it opens, 0x0801DC82: its
--- +0x0F, which the build reads, 0x0801F1B0 and 0x0801F1E2), its form's `hand`: `built(side)` on the hand as it is
--- installed, its cursor at its first chip and no charge bonus on it yet (rules/souls/custom's `installed`). The
--- status reset's part, at the change, is the form's `reset`.
-export type SoulHand = { built: (side: number) -> () }
-
-function soul.hand(built: (side: number) -> ()): SoulHand
-    return new.record("soul-hand", { built = built })
+-- What a soul does at the custom screen, its form's `custom` (a `SoulCustom`, types.d.luau: the screen keeps the
+-- navi's soul as it opens, 0x0801DC82: its +0x0F, and reads it as it deals, 0x0801DD0C, and as OK builds the hand,
+-- 0x0801F1B0 and 0x0801F1E2), which rules/souls gathers and asks while the side's navi is in the soul. (The status
+-- reset's part, at the change, is the form's `reset`.)
+function soul.custom(spec: SoulCustom): SoulCustom
+    return new.record("soul-custom", spec)
 end
 
 -- What a soul wears (0x0800B7E8: 0x08018068 by the soul, FireSoul's and NumberSoul's; its form's `put_on` and
