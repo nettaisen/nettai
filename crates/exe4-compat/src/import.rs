@@ -53,9 +53,9 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
     // Full Synchro at the start, +0x1F, is patch card 45's.)
     let block = crate::codec::navi_stats(&save.navi_stats());
     state(side, "karma", &[Fact::Value(Value::Int(block.light_dark as i64))]);
-    // Its wins over losses against the other version (0x21D6: EXE4's
-    // rules/sun_and_moon).
-    state(side, "version_wins", &[Fact::Value(Value::Int(save.version_wins() as i64))]);
+    // Its wins less its losses against the other version's players (0x21D6:
+    // EXE4's rules/sun_and_moon).
+    state(side, "rival_wins", &[Fact::Value(Value::Int(save.rival_wins() as i64))]);
     // Its equipped folder, by the chips' numbers' names.
     let mut chips = [None; 30];
     let mut nameless: Vec<u16> = Vec::new();
@@ -162,7 +162,7 @@ mod tests {
             (get("karma"), get("hp"), get("reg_up")),
             (Some(Stated::Number(460)), Some(Stated::Number(760)), Some(Stated::Number(10)))
         );
-        assert_eq!(get("version_wins"), Some(Stated::Number(35)));
+        assert_eq!(get("rival_wins"), Some(Stated::Number(35)));
         let Some(Stated::List(programs)) = get("navicust_programs") else { panic!("{:?}", get("navicust_programs")) };
         let Stated::Record(fields) = &programs[0] else { panic!("{programs:?}") };
         let field = |name: &str| fields.iter().find(|(n, _)| n == name).map(|(_, v)| v.clone());
