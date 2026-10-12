@@ -432,7 +432,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         anti_navi_sparkle = { dy = 0, z = 16 },
         mixed_modifiers = false,
         beat_spares_dark = false,
-        dimming_hides_every_window = false,"#,
+        window_hides_every_console = false,"#,
             ),
             (
                 "custom_screen",
@@ -483,7 +483,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         rng1_per_frame = true,
         chip_icons = "attach_point",
         used_chip_ticks = 0x3C,
-        telop_ends_used_chips = true,
+        used_chips_end_early = true,
         bug_flicker = true,
         panel_trail = "by_chance",
         status_visual = { place = "attach_point" },
