@@ -952,14 +952,17 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   there that resolves while dimmed (the region word 0x1505FF01: a thrown break at navis, hit modifier 3) with the
   chip's damage, the 3x3 panels around cracked (0x080DDD84), a shake (3, 60), a burst (effect row 6) and silent
   sparkles of explosions (0x10000); 61 ticks later the controller goes on. Its damage is formula 47 (0x080195CE,
-  rules/sun_and_moon): 100 and 40 for each ten of the side's wins over losses against the other version, up to 100,
-  none under ten (300 under event flag 0x1187). The count is the save's signed halfword at 0x21D6 (the game state's
-  struct at the toolkit's +0x44, its +0x22: the status screen's "VS BM Battles: +100 W", 0x0803A978), which each
-  side's link record carries (+0xB6, 0x08008784) and the battle keeps at 0x0203BE72 + 8 a side (0x080087A8): the
-  setup's `version_wins` (Tango's netplay saves hold 100, the setup's default), which exe4-compat's import reads from
-  a save and its trace from a recording's setup line. The lab's chips/ (5: wins-35, 220 damage with the save's count
-  poked to 35, among them) replay every frame and sound call; the hit, from either side, is pixel-exact but for the
-  known shift.
+  rules/sun_and_moon): 100 and 40 for each ten of the side's wins less its losses against the other version's
+  players, up to 100, none under ten (300 under event flag 0x1187). The count is the save's signed halfword at 0x21D6
+  (the game state's struct at the toolkit's +0x44, its +0x22: the status screen's "VS BM Battles: +100 W", "VS BM
+  しょうり数" in Japanese, 0x0803A978; after a link battle whose menu state, the toolkit's +0x40, has 0x4A at +0x0B,
+  the one whose result messages speak of the "RS Tournament" or the "BM Tournament", a win adds 1 up to 100 and a
+  loss takes 1 down to -100, 0x0803AB90), which each side's link record carries (+0xB6, 0x08008784) and the battle
+  keeps at 0x0203BE72 + 8 a side (0x080087A8): the setup's `rival_wins` (named for what it counts: the content states
+  no version; Tango's netplay saves hold 100, the setup's default), which exe4-compat's import reads from a save and
+  its trace from a recording's setup line. The lab's chips/ (6: among them wins-35, 220 damage with the save's count
+  poked to 35, and wins-under, 100 with it poked to -5) replay every frame and sound call; the hit, from either side,
+  is pixel-exact but for the known shift.
 - **BlueMoon** (Blue Moon's chip 0x135, the dimming chips' variant 0x2E, `chips/bluemoon`: EXE4's own): its
   controller (effect #0x5B, 0x080E865C: lib/sun_and_moon's, the same code) sends out the moon (attack #0x86,
   0x080DDFEC) on the user's panel (0xA0, 0x19E); after 45 and 21 ticks it shines its ray (attack #0x87, 0x080DE160:
@@ -1573,8 +1576,9 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
   `navicusts` (each side's save's NaviCust: `parts`, the 25 parts of 8 bytes at save 0x4564; `grid`, the 5x5 grid at
   0x4540; `color_bar`, 6 bytes at 0x190) and `patch_cards` (each side's save's six slots: `on` at 0x464C, `off` at
   0x4653, a card's number or 0xFF); `game_regions`; `background` (the game state's +0x0F, the background the loader
-  picks first, 0xFF none); `version_wins` (both sides' wins over losses against the other version as the battle keeps
-  them, 0x0203BE72 and 0x0203BE7A: the recordings from 2026-10-11 on; one without them took its saves', Tango's 100). **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
+  picks first, 0xFF none); `rival_wins` (both sides' wins less their losses against the other version's players as the
+  battle keeps them, 0x0203BE72 and 0x0203BE7A: the recordings from 2026-10-11 on; one without them took its saves',
+  Tango's 100). **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
   chip flags) come only when the traced console is side 1: side 0's console runs its frame before side 1's in a tick,
   so the other console's last capture is a frame behind when side 0's setup line is written (EXE5's side-0 recordings
   lack them for the same reason). A decode reads them when present and doesn't expect them on a side-0 recording.
@@ -1750,10 +1754,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      again (0x08042AE0, the battle's stats; HubBatc's writes the game state's maximum HP, which no battle reads); then
      the abilities come back (0x0800D906, EXE6's `sub_801393A`: the answer "edited"). The rules' `navi_bug`
      (content/exe4/rules/navicust/bugs), an if-chain on the codes EXE4's objects set: ShadeMan's crush 0x0D (the move
-     bug); BlueMoon's ray's stripping hits (attack 0x87) 1 to 7, 0x0A and 0x0C; attack 0x41's (effect 0x1B) those and 0x12;
-     weapon routine 0x5C's hit 0x0E (the HP bug's period); BugBomb (attack 0x77: kinds 1, 2, 3, 4, 6, 8) and BugCurse
-     (attack 0x80: kinds 2, 3, 4, 6) 0xFF. The original allows any other code (the byte it numbers); no object sets
-     one. Kind 8 (the weapon bug: the charged shot becomes weapon routine 0x1F, 0x20 or 0x21) waits on routines 0x1F
+     bug); BlueMoon's ray's stripping hits (attack 0x87) 1 to 7, 0x0A and 0x0C; attack 0x41's (effect 0x1B) those and
+     0x12; weapon routine 0x5C's hit 0x0E (the HP bug's period); BugBomb (attack 0x77: kinds 1, 2, 3, 4, 6, 8) and
+     BugCurse (attack 0x80: kinds 2, 3, 4, 6) 0xFF. The original allows any other code (the byte it numbers); no
+     object sets one. Kind 8 (the weapon bug: the charged shot becomes weapon routine 0x1F, 0x20 or 0x21) waits on routines 0x1F
      and 0x20, which BugBomb's port brings. Open: 0x0800D906 copies the weapon bytes in any form where the engine's
      refresh keeps a form's own, which no recording tells apart yet.
    - With others: the emotions (item 8, group A); a soul's break by a weakness hit (`form_break`,

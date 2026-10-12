@@ -70,7 +70,8 @@ local function fire(me: Object, s: State)
         field.set_type(s.x, s.y, "normal")
     end
     local p = me.pos
-    local o = shot.spawn(me, Vec3.new(int.i32(p.x + me.facing * MUZZLE_X * 0x1_0000), p.y, int.i32(p.z + MUZZLE_Z * 0x1_0000)))
+    local muzzle = Vec3.new(int.i32(p.x + me.facing * MUZZLE_X * 0x1_0000), p.y, int.i32(p.z + MUZZLE_Z * 0x1_0000))
+    local o = shot.spawn(me, muzzle)
     if o then
         o.run_while_dimmed = true
     end
