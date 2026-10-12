@@ -195,9 +195,8 @@ pub(super) fn prepare(b: &mut Battle, r: ObjectRef, charge: u8) -> super::NaviAc
 /// game, r7), so the navi's own attack and action are untouched. The
 /// cut-in's r4 is the AI index times 4, never the slot-in bit, so the
 /// chip always comes from the hand. Every other side effect of a use still
-/// happens (the Full Synchro and anger doubling, the heal on use, the navi
-/// chip count, a dark chip's cost). Returns the chip's action and the
-/// filled variables.
+/// happens (the Full Synchro and anger doubling, the heal on use, a dark
+/// chip's cost). Returns the chip's action and the filled variables.
 pub(super) fn prepare_detached(b: &mut Battle, r: ObjectRef) -> (super::NaviAction, AttackVars) {
     let own = ai(b, r).attack.clone();
     let action = prepare_from(b, r, 0, false);
@@ -286,9 +285,9 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     }
     ai_mut(b, r).attack.damage = damage;
     heal_on_use(b, r, e.chip, mixed && e.modifiers & modifier_bits::HEAL != 0);
-    if cd.flags.has(ChipFlags::NAVI) {
-        b.bump_side_stat(side, 6, 1);
-    }
+    // (The original adds one to the side's count 6 for a navi chip here,
+    // `sub_800AB46(side, 6, 1)`; the engine keeps no such count: no game
+    // reads it in a netbattle. docs/design/exe5-map.md §6.1.)
     // sub_800B79A: the side's rules' (EXE6's dark chips worsen the HP
     // bug).
     let used = b.content.chip_or_zeroed(e.chip);

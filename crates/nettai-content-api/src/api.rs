@@ -315,12 +315,13 @@ named_fields! {
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura", Object, rw;
         /// The charge: 0 none, 1 charging, 2 full; its source (0 none, 1
-        /// A, 2 B); its counter. The level and the source are writable:
+        /// A, 2 B); its counter. The source and the counter are writable:
         /// EXE4's dark soul's AI shows a B charge as it dodges (0x0800E69C:
-        /// AIData +9, and +0x32 against a +0x36 of 40).
-        ChargeLevel = "charge_level", U8, rw;
+        /// AIData +9 and its count, +0x32, of which the next tick's input
+        /// makes the level, 0x0800BB66).
+        ChargeLevel = "charge_level", U8, ro;
         ChargeSource = "charge_source", U8, rw;
-        ChargeCounter = "charge_counter", U8, ro;
+        ChargeCounter = "charge_counter", U16, rw;
         /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
         /// counted toward a form's `rapid_presses`, and the ticks left for
         /// the next (the forced charged shot clears both as it ends).

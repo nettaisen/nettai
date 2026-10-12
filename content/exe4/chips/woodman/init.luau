@@ -26,6 +26,7 @@ local woodman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "woodman/controller", palette = 0 }.hook,
     megaman = "light",
+    auto_battle = { class = "at_once" },
 }
 
 local woodmn_sp: Chip = {
@@ -42,6 +43,7 @@ local woodmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "woodmn-sp/controller", palette = 4 }.hook,
     megaman = "light",
+    auto_battle = { class = "at_once" },
 }
 
 local woodmn_ds: Chip = {
@@ -57,6 +59,7 @@ local woodmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "woodmn-ds/controller", palette = 6 }.hook,
     megaman = "dark",
+    auto_battle = { class = "at_once" },
 }
 
 return { woodman = woodman, ["woodmn-sp"] = woodmn_sp, ["woodmn-ds"] = woodmn_ds }

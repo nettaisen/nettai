@@ -36,6 +36,7 @@ local vulcan1: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "behind_target" },
 }
 
 local vulcan2: Chip = {
@@ -50,6 +51,7 @@ local vulcan2: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "behind_target" },
 }
 
 local vulcan3: Chip = {
@@ -64,6 +66,7 @@ local vulcan3: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "behind_target" },
 }
 
 return { vulcan1 = vulcan1, vulcan2 = vulcan2, vulcan3 = vulcan3 }

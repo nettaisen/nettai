@@ -149,6 +149,8 @@ fn hud_of(
         waiting: tiles(rom, a.waiting.0, a.waiting.1),
         waiting_palette: palette(rom, a.banner_palette),
         gauge_tiles: tiles(rom, a.gauge_tiles, GAUGE_BYTES),
+        // (Its text where the US games' is.)
+        chatbox_text: None,
     }
 }
 

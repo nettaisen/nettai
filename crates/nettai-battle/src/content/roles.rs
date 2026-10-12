@@ -426,10 +426,24 @@ definition_roles! {
     MusicRole {
         /// A link battle's, whatever its stage's.
         LinkBattle = "link_battle",
+        /// A link battle's that is no set (a single battle), in a game
+        /// with another song for it; the link battle's where there is none
+        /// (EXE4's battle start picks by the battle's type, 0x080074A4's
+        /// table 0x08007510: a single battle's 0x14, a triple battle's
+        /// 0x15; EXE6's and EXE5's play one).
+        LinkBattleSingle = "link_battle_single",
         /// The winner's, in special battles and otherwise; the loser's.
         WinnerSpecial = "winner_special",
         Winner = "winner",
         Loser = "loser",
+    }
+}
+
+impl MusicRole {
+    /// Whether a game may leave the role unfilled: one for a song some
+    /// game hasn't.
+    pub fn optional(self) -> bool {
+        matches!(self, MusicRole::LinkBattleSingle)
     }
 }
 
@@ -693,6 +707,18 @@ impl Roles {
             .sounds
             .get(&role)
             .unwrap_or_else(|| panic!("the role sounds.{} is not filled (the rules' roles, rules/roles.luau)", role.name()))
+    }
+
+    /// The music of a role a game may leave unfilled.
+    pub fn try_music(&self, role: MusicRole) -> Option<SoundId> {
+        self.music.get(&role).copied()
+    }
+
+    /// A link battle's song: a set's, or a single battle's where the game
+    /// has one of its own.
+    pub fn link_battle_music(&self, set: bool) -> SoundId {
+        let single = if set { None } else { self.try_music(MusicRole::LinkBattleSingle) };
+        single.unwrap_or_else(|| self.music(MusicRole::LinkBattle))
     }
 
     pub fn music(&self, role: MusicRole) -> SoundId {

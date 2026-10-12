@@ -25,6 +25,7 @@ local firesoul: Chip = {
         id = "firesoul",
         shake = true,
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { firesoul = firesoul }

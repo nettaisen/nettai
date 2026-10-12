@@ -253,6 +253,15 @@ impl Preload {
         Player::with(self.renderer, self.text, audio, driver)
     }
 
+    /// The viewer of `replay` (the replay whose set this was made for:
+    /// `crate::replay::set_of`), shown from `view`'s side, with what was
+    /// made ready, as [`Preload::player`] gives a player. Refused as
+    /// [`crate::viewer::Viewer::open`] refuses a replay.
+    pub fn viewer(mut self, replay: &crate::replay::Replay, view: Option<u8>) -> Result<crate::viewer::Viewer, crate::replay::Refused> {
+        let audio = self.audio.take().or_else(|| self.sound.take().map(|(banks, songs)| BattleAudio::with_banks(banks, songs)));
+        crate::viewer::Viewer::with(&self.content, replay, view, self.renderer, self.text, audio)
+    }
+
     fn run(&mut self, i: usize) {
         self.steps[i].done = true;
         match self.steps[i].work {
