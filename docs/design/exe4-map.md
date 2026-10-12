@@ -988,7 +988,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the engine's `battle.set_chips_enabled`), which the navis' chip input reads (0x08007C3E, with the lockout at AIData
   +0x3A) and the computer navis' AI (0x08007C20); exe4-compat compares them every frame. Its obstacle code is EXE4's
   older: its own seven rows (0x080DD5F8), a crushing touch destroying it with its HP kept (0x08013F3E), no NameID, no
-  tracking. Under event flag 0x1187 (never in a netbattle) each green light and its end would also hide the other
+  tracking. An encasing (ColdMan's ice or bubble) ends it without its own leaving, so the encasing's first step
+  calls its ending (0x08011704: 0x080DD73C for attack #0x81): a kind's `encased`, the signal's turning the other
+  side's chips on again; the lab's chips/0x10a-coldman/signal (side 0's SignlRed, then its ColdMan while the signal
+  is red) has them on again at frame 4554, 60 ticks before the ice cube, and replays every frame. Under event flag
+  0x1187 (never in a netbattle) each green light and its end would also hide the other
   side's console's HUD draw task 17 (the levels gauge's sprite, which no netbattle shows): documented, not ported. The
   lab's chips/ (4) and status/signlred replay every frame (hit: side 1's chips off from frame 3173; side1: side 0's
   from 1181).
