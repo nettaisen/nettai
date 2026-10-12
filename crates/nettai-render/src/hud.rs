@@ -47,17 +47,6 @@ pub struct HudState {
     gauge_was_on: bool,
     is_over: bool,
     gauge_is_on: bool,
-    /// A Japanese console's chip window, from the custom screen's close
-    /// until the fight's decisions set it (`tick`), the fight's ticks it
-    /// has run through, and the battle's mode and the chip icons as of the
-    /// previous tick.
-    early_window: bool,
-    early_fight_ticks: u8,
-    /// The local navi was changing form the previous tick (EXE4's soul
-    /// change as the fight starts, which decides nothing).
-    changing_was: bool,
-    mode_was: u8,
-    icons_were: bool,
     /// The custom screen showed the form chosen there in the emotion window
     /// as it was last up (EXE6's Beast Out and Crosses: `eStruct2035280`
     /// +0x4C, which takes the window down as the screen closes; EXE5's soul
@@ -435,55 +424,6 @@ fn roll(shown: u16, target: u16, extra: u16) -> u16 {
 impl HudState {
     /// Follow one tick of the battle.
     pub fn tick(&mut self, b: &Battle) {
-        // The custom screen, as it closes, starts the chip window's HUD task
-        // too, as both games' do (EXE6's Japanese games' `sub_8026DC4`
-        // calling `sub_801E012`, task 0x40, besides the icons' task; EXE5's
-        // 0x080230CC; nettai has the Japanese games' presentation on every
-        // console, where the US EXE6 games' name waits for the navi's first
-        // decision): the next chip's name shows with the icons through the
-        // turn's banner, then the fight's decisions set the window
-        // (`Battle::chip_hud`). (The task starts as the screens' results are
-        // exchanged, on the tick the icons come back.)
-        let fighting = b.round.mode == mode::FIGHTING;
-        let icons = b.chip_hud_for(b.setup.local_side).icons;
-        if icons && !self.icons_were && (b.round.mode == mode::CUSTOM || self.mode_was == mode::CUSTOM) {
-            (self.early_window, self.early_fight_ticks) = (true, 0);
-        }
-        if self.early_window {
-            // Through the screen's closing and the turn's banner, then the
-            // fight's first ticks until a decision shows the window (or
-            // four went by: one that keeps it off). (A later turn's fight
-            // resumes in the state its screen was asked from: EXE6's flow
-            // has moved it on to the sequence's, 0x24, by then; EXE5's, which
-            // opens the screen from the reversions' state, 0x08007774, is
-            // still in that one, 0x20.)
-            let closing = b.round.mode == mode::CUSTOM && icons;
-            let banner = fighting
-                && matches!(b.fight.state, fight::CUSTOM_REVERT | fight::CUSTOM_SEQUENCE | fight::SETUP | fight::START_BANNER);
-            // (A navi changing form as the fight starts, EXE4's soul change
-            // from its status routine, decides nothing until it is done:
-            // the task the screen's close started stays on through it and
-            // the tick after, 0x080EBA44; the next tick's decision sets the
-            // window.)
-            // (A change the turn's sequencer runs before the fight, EXE5's
-            // Soul Unison through the banner, is no such change: the fight's
-            // first ticks keep the window as ever.)
-            let in_fight = fighting && b.fight.state == fight::FIGHTING;
-            let changing =
-                in_fight && b.player(b.setup.local_side).is_some_and(|r| nettai_battle::kinds::player::changing_form(b, r));
-            let ended = self.changing_was && !changing && in_fight;
-            let undecided = in_fight
-                && !b.chip_hud_for(b.setup.local_side).window
-                && (self.early_fight_ticks < 4 || changing || ended);
-            self.early_window = closing || banner || undecided;
-            if ended {
-                self.early_fight_ticks = 4;
-            } else if undecided && !changing {
-                self.early_fight_ticks += 1;
-            }
-            self.changing_was = changing;
-        }
-        (self.mode_was, self.icons_were) = (b.round.mode, icons);
         self.shared.tick(b);
         if crate::custom::screens_open(b) {
             self.form_face_shown = crate::custom::face(b, b.setup.local_side as usize).is_some();
@@ -855,17 +795,17 @@ pub fn draw<'a>(
     if let Some(r) = player {
         let o = b.objects.get(r);
         let hand = &b.hands[local as usize];
-        if (b.chip_hud_for(local).window || state.early_window)
+        if b.chip_hud_for(local).window
             && o.chips_held != 0
             && let Some(chip) = hand.ids.get(hand.cursor as usize).copied().flatten()
         {
             let bonus = nettai_battle::kinds::player::next_chip_bonus(b, r);
             let doubled = nettai_battle::kinds::player::next_chip_doubles(b, r);
             let end = draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
-            // (Shown from the screen's close, before the navi's first
+            // (Shown by the screen's close, before the navi's first
             // decision, where the caller asks.)
             const AT_CLOSE: &str = "chip-window-at-close";
-            if !b.chip_hud_for(local).window && problems.wants(AT_CLOSE) {
+            if b.chip_hud_for(local).from_close && problems.wants(AT_CLOSE) {
                 problems.mark([0, 18 * 8, end, 20 * 8], AT_CLOSE.to_string());
             }
         }
