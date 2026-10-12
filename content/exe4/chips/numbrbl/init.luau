@@ -27,7 +27,9 @@ local BALL = common_ball.make {
 }
 
 -- NumberMan (0x080C8CE8): sheet 08-08 in palette 0 (0x0800B950 by navi 8 and the chip's level 0), appearing with
--- 0xB0, throwing in his animation 7; his init loads his standing animation.
+-- 0xB0, throwing in his animation 7; his init loads his standing animation. (The US games' init. The Japanese
+-- games', 0x080C8C28, stores the 0xFF meant for the animation's copy to the animation byte too and sets his sprite's
+-- animation 255 for his first, unseen tick: a slip the US release fixed, which nettai has.)
 local NUMBERMAN = common_numberman.make {
     id = "numbrbl/numberman",
     sprite = asset.sprite("numberman"),
