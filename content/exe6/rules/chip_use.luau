@@ -11,8 +11,9 @@ return {
     mixed_modifiers = false,
     -- Beat takes any Mega or Giga chip, dark or not.
     beat_spares_dark = false,
-    -- A dimming's start hides the chip window on its starter's console only (`object_timefreezeBegin`).
-    dimming_hides_every_window = false,
+    -- A navi's idle, its attacks and a dimming's start hide the chip window on the navi's own console only
+    -- (`sub_80F0354`, `object_timefreezeBegin`: `battle_networkInvert`).
+    window_hides_every_console = false,
     -- A charged Null chip runs the alternative A-charge routine, the attack's chip cleared (`sub_800FB54`).
     charged_null_alt_routine = true,
 }
