@@ -494,3 +494,11 @@
 "pdriver/controller" = { pool = "effect", index = 0x6F, scratch_position = true }
 "pdriver/pile" = { pool = "attack", index = 0x99 }
 "pdriver/beam" = { pool = "attack", index = 0x9A }
+# DarkNeo: its controller (0x080EA668; its position the dimming handler's registers, then its user's), its Bass
+# (0x080CB320), his ghosts (0x080E6F94, spawned at the spawner's registers), his user's image (0x080E1028) and its
+# waves (0x080E128C).
+"darkneo/controller" = { pool = "effect", index = 0x78, scratch_position = true }
+"darkneo/navi" = { pool = "actor", index = 0x51 }
+"darkneo/ghost" = { pool = "effect", index = 0x47, scratch_position = true }
+"darkneo/image" = { pool = "attack", index = 0xA1 }
+"darkneo/wave" = { pool = "attack", index = 0xA2 }

@@ -337,6 +337,7 @@ language = "en"
 "bodygrd" = { name = "BodyGrd", description = "Assassin\nwho sneak\ninto enmy" }
 "pdriver" = { name = "P.Driver", description = "A sun\ngenerator\nfries all" }
 "poltrgst" = { name = "Poltrgst", description = "" }
+"darkneo" = { name = "DarkNeo", description = "Fuses the\npowr into\ndarkness!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
