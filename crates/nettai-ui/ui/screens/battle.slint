@@ -8,8 +8,10 @@ import { Theme } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
 import { Shell, BattleKind, Picture } from "../shell.slint";
 import { Cut, Heading, Note, Mono, Bars, Button } from "../widgets.slint";
+import { Tween } from "../motion.slint";
 
-// A menu over the battle: a shade, and a panel with its title, one line under it, and what is put inside it
+// A menu over the battle: a shade, and a panel (which slides in from the left as the shade fades in) with its
+// title, one line under it, and what is put inside it
 // (rows of `OptionRow`, `MenuItem`, `Button`), in an area `inner-width` by `inner-height` that they measure
 // from (`parent` in the menu's own file is the whole window). `side` puts the panel at the left, the battle in
 // view beside it (the training menu); else it is in the middle, as tall as `content-height` asks (the match
@@ -22,16 +24,21 @@ export component MenuOverlay inherits Rectangle {
     out property <length> inner-width: panel.width - 48px;
     out property <length> inner-height: panel.height - 48px - root.head;
     property <length> head: root.note == "" ? 56px : 76px;
+    // The shade fades in as the panel slides in from the left.
+    arrive := Tween { }
+
     Rectangle {
         background: root.side ? @linear-gradient(90deg, Theme.shade 0%, Theme.shade 46%, transparent 74%) : Theme.shade;
+        opacity: arrive.t;
         TouchArea { }
     }
 
     panel := Rectangle {
-        x: root.side ? Theme.margin : (parent.width - self.width) / 2;
+        x: (root.side ? Theme.margin : (parent.width - self.width) / 2) - (1 - arrive.t) * 40px;
         y: root.side ? 24px : (parent.height - self.height) / 2;
         width: min(parent.width - 2 * Theme.margin, root.side ? 500px : 340px);
         height: root.side ? parent.height - 48px : min(parent.height - 48px, root.head + root.content-height + 48px);
+        opacity: arrive.t;
         Cut {
             cut: 18px;
         }
@@ -39,7 +46,7 @@ export component MenuOverlay inherits Rectangle {
         Rectangle {
             x: 0;
             y: 0;
-            width: 72px;
+            width: 72px * arrive.t;
             height: 2px;
             background: @linear-gradient(90deg, Theme.cursor 0%, Theme.clear 100%);
         }

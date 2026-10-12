@@ -2,8 +2,8 @@
 //!
 //! The menus' sounds are the selected game's own: its custom screen's cursor, pick and taking back, and its
 //! refusal, as its rules' sound roles name them (the app names no sound of a pack). The title music is the
-//! game's too: the sound its pack names `title-screen`, played across the menu screens and faded out as a
-//! battle starts (docs/design/app-ui.md §6).
+//! game's too: the sound its pack names `title-screen`, played across the menu screens, faded out as a battle
+//! starts, and crossfaded with the next game's as the game changes (docs/design/app-ui.md §6).
 //!
 //! The device gets one stream at the battle's rate. While a battle runs, the menus' sounds are ticked with
 //! its ticks and added to its samples; with none running they run on their own clock at the same rate
@@ -19,8 +19,9 @@ use std::time::{Duration, Instant};
 /// The name a pack gives its title screen's music.
 const TITLE_MUSIC: &str = "title-screen";
 
-/// How long the title music takes to fade out.
+/// How long the title music takes to fade out, and to fade in.
 const FADE: f32 = 0.9;
+const FADE_IN: f32 = 0.45;
 
 /// The device's level at full volume (the GBA's full scale is loud).
 const FULL: f32 = 0.8;
@@ -60,9 +61,12 @@ pub struct Sound {
     /// The levels, 0 to 1: the music's, and the effects' (the battle's sound is at the effects').
     music: f32,
     effects: f32,
-    /// The title music is wanted (a menu screen shows), and how much of it is left as it fades (1 to 0).
+    /// The title music is wanted (a menu screen shows), and how much of it there is as it fades (0 to 1).
     wanted: bool,
     fade: f32,
+    /// The game before's title music, fading out under this one's, and how much of it is left.
+    leaving: Option<(BattleAudio, f32)>,
+    faded: Vec<[f32; 2]>,
     last: Option<Instant>,
     owed: f64,
     mix: Vec<[f32; 2]>,
@@ -81,12 +85,12 @@ impl Sound {
                 None
             }
         };
-        Sound { out, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 1.0, last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new() }
+        Sound { out, ..Sound::silent() }
     }
 
     /// No device: nothing is heard (the screenshot pass).
     pub fn silent() -> Sound {
-        Sound { out: None, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 1.0, last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new() }
+        Sound { out: None, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 0.0, leaving: None, faded: Vec::new(), last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new() }
     }
 
     /// The sound queued for the device, in seconds.
@@ -109,6 +113,11 @@ impl Sound {
         let content = &game.game.content;
         let roles = &content.defs.roles().sounds;
         let cue = |role| roles.get(&role).map(|&id| SoundCue::Effect(id));
+        // The music of the game before fades out under this one's.
+        if let Some(old) = self.menu.take().filter(|m| m.playing) {
+            self.leaving = Some((old.music, self.fade));
+        }
+        self.fade = 0.0;
         self.menu = Some(Menu {
             effects: BattleAudio::with_banks(sound.banks.clone(), sound.songs.clone()),
             cursor: cue(SoundRole::CustomCursor),
@@ -162,30 +171,43 @@ impl Sound {
         };
         self.mix.clear();
         self.tune.clear();
+        self.faded.clear();
         let mut fade = (self.fade, self.fade);
         if let Some(m) = &mut self.menu {
-            // The title music: started when it is wanted, faded and then stopped when it isn't.
+            // The title music: started (from nothing, fading in) when it is wanted, faded out and then
+            // stopped when it isn't.
             if self.wanted && !m.playing {
                 if let Some(title) = m.title {
                     m.music.handle(&[title]);
                     m.playing = true;
                 }
-                self.fade = 1.0;
-                fade = (1.0, 1.0);
-            } else if self.wanted {
-                self.fade = 1.0;
-                fade.1 = 1.0;
+            }
+            if self.wanted {
+                self.fade = (self.fade + elapsed.as_secs_f32() / FADE_IN).min(1.0);
             } else if m.playing {
                 self.fade = (self.fade - elapsed.as_secs_f32() / FADE).max(0.0);
-                fade.1 = self.fade;
                 if self.fade == 0.0 {
                     m.music.handle(&[SoundCue::StopMusic]);
                     m.playing = false;
                 }
             }
+            fade.1 = self.fade;
             for _ in 0..due {
                 m.effects.tick(&mut self.mix);
                 m.music.tick(&mut self.tune);
+            }
+        }
+        // The game before's music, on its way out.
+        let mut left = (0.0, 0.0);
+        if let Some((music, level)) = &mut self.leaving {
+            left.0 = *level;
+            *level = (*level - elapsed.as_secs_f32() / FADE).max(0.0);
+            left.1 = *level;
+            for _ in 0..due {
+                music.tick(&mut self.faded);
+            }
+            if *level == 0.0 {
+                self.leaving = None;
             }
         }
         for s in battle.iter_mut() {
@@ -203,9 +225,12 @@ impl Sound {
         for (i, b) in battle.iter_mut().enumerate() {
             let effect = self.mix.get(i).copied().unwrap_or_default();
             let tune = self.tune.get(i).copied().unwrap_or_default();
-            let level = self.music * (fade.0 + (fade.1 - fade.0) * i as f32 / count);
-            b[0] += effect[0] * self.effects + tune[0] * level;
-            b[1] += effect[1] * self.effects + tune[1] * level;
+            let old = self.faded.get(i).copied().unwrap_or_default();
+            let along = i as f32 / count;
+            let level = self.music * (fade.0 + (fade.1 - fade.0) * along);
+            let leaving = self.music * (left.0 + (left.1 - left.0) * along);
+            b[0] += effect[0] * self.effects + tune[0] * level + old[0] * leaving;
+            b[1] += effect[1] * self.effects + tune[1] * level + old[1] * leaving;
         }
         if let Some(out) = &self.out
             && !battle.is_empty()

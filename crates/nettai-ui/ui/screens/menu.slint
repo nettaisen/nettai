@@ -6,6 +6,7 @@ import { Theme } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture } from "../shell.slint";
 import { MenuItem, Value, Pill, Rule } from "../widgets.slint";
+import { Arrive, Tween } from "../motion.slint";
 
 // What the main menu shows: src/screens/menu.rs sets these.
 export global MenuView {
@@ -15,6 +16,8 @@ export global MenuView {
     in property <string> left-version;
     in property <string> right-navi;
     in property <string> right-version;
+    // It counts the reel's battles: each fades in.
+    in property <int> reel-seq;
 }
 
 // Settings and Exit: less than the four above them.
@@ -52,123 +55,152 @@ export component MenuScreen inherits Page {
         { key: "Enter", pad: PadButton.south, text: @tr("Open") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
-    MenuItem {
-        x: 0;
-        y: root.items-top;
-        width: root.column;
-        nav: "play";
-        text: @tr("PLAY");
-        big: true;
+    // (The parts assemble in turn as the menu arrives: the four words, what is under them, the reel.)
+    Arrive {
+        order: 0;
+        MenuItem {
+            x: 0;
+            y: root.items-top;
+            width: root.column;
+            nav: "play";
+            text: @tr("PLAY");
+            big: true;
+        }
     }
 
-    MenuItem {
-        x: 0;
-        y: root.items-top + root.item + 8px;
-        width: root.column;
-        nav: "training";
-        text: @tr("TRAINING");
-        big: true;
+    Arrive {
+        order: 1;
+        MenuItem {
+            x: 0;
+            y: root.items-top + root.item + 8px;
+            width: root.column;
+            nav: "training";
+            text: @tr("TRAINING");
+            big: true;
+        }
     }
 
-    MenuItem {
-        x: 0;
-        y: root.items-top + 2 * (root.item + 8px);
-        width: root.column;
-        nav: "builds";
-        text: @tr("BUILDS");
-        big: true;
+    Arrive {
+        order: 2;
+        MenuItem {
+            x: 0;
+            y: root.items-top + 2 * (root.item + 8px);
+            width: root.column;
+            nav: "builds";
+            text: @tr("BUILDS");
+            big: true;
+        }
     }
 
-    MenuItem {
-        x: 0;
-        y: root.items-top + 3 * (root.item + 8px);
-        width: root.column;
-        nav: "replays";
-        text: @tr("REPLAYS");
-        big: true;
+    Arrive {
+        order: 3;
+        MenuItem {
+            x: 0;
+            y: root.items-top + 3 * (root.item + 8px);
+            width: root.column;
+            nav: "replays";
+            text: @tr("REPLAYS");
+            big: true;
+        }
     }
 
-    Rule {
-        x: 0;
-        y: root.items-top + 4 * root.item + 40px;
-        width: root.column;
-    }
+    Arrive {
+        order: 4;
+        Rule {
+            x: 0;
+            y: root.items-top + 4 * root.item + 40px;
+            width: root.column;
+        }
 
-    settings := MinorItem {
-        x: Theme.phone ? 8px : 16px;
-        y: root.items-top + 4 * root.item + 59px;
-        nav: "settings";
-        text: @tr("Settings");
-    }
+        settings := MinorItem {
+            x: Theme.phone ? 8px : 16px;
+            y: root.items-top + 4 * root.item + 59px;
+            nav: "settings";
+            text: @tr("Settings");
+        }
 
-    MinorItem {
-        x: settings.x + settings.width + 16px;
-        y: settings.y;
-        nav: "exit";
-        text: @tr("Exit");
+        MinorItem {
+            x: settings.x + settings.width + 16px;
+            y: settings.y;
+            nav: "exit";
+            text: @tr("Exit");
+        }
     }
 
     // The reel. (`parent` here is the screen's root, where this is written; the page's body is where it is put.)
-    Picture {
-        x: root.body-width - root.reel-width;
-        y: root.reel-top;
-        width: root.reel-width;
-        height: root.reel-height;
-        ground: Theme.inset;
+    // Each battle of the reel fades in.
+    fade := Tween {
+        seq: MenuView.reel-seq;
+        duration: Theme.settle;
     }
 
-    Rectangle {
-        x: root.body-width - root.reel-width + 12px;
-        y: root.reel-top + root.reel-height - 12px - self.height;
-        width: demo.preferred-width + 16px;
-        height: 22px;
-        visible: MenuView.playing;
-        background: Theme.shade;
-        demo := Text {
-            text: @tr("DEMO");
-            color: Theme.text;
-            font-family: Theme.display;
-            font-size: 11px;
-            font-weight: 700;
-            letter-spacing: Theme.label-tracking;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-    }
-
-    // Who is fighting.
-    HorizontalLayout {
-        x: root.body-width - root.reel-width;
-        y: root.reel-top + root.reel-height + 12px;
-        width: root.reel-width;
-        height: 24px;
-        visible: MenuView.playing && !Theme.phone;
-        spacing: 8px;
-        alignment: start;
-        Value {
-            text: MenuView.left-navi;
-            font-size: 13px;
+    Arrive {
+        order: 2;
+        from-x: 24px;
+        Rectangle {
+            opacity: fade.t;
+            Picture {
+                x: root.body-width - root.reel-width;
+                y: root.reel-top;
+                width: root.reel-width;
+                height: root.reel-height;
+                ground: Theme.inset;
+            }
         }
 
-        Pill {
-            text: MenuView.left-version;
-            tone: Theme.p1;
+        Rectangle {
+            x: root.body-width - root.reel-width + 12px;
+            y: root.reel-top + root.reel-height - 12px - self.height;
+            width: demo.preferred-width + 16px;
+            height: 22px;
+            visible: MenuView.playing;
+            background: Theme.shade;
+            demo := Text {
+                text: @tr("DEMO");
+                color: Theme.text;
+                font-family: Theme.display;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: Theme.label-tracking;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
         }
 
-        Value {
-            text: @tr("vs");
-            color: Theme.muted;
-            font-size: 13px;
-        }
+        // Who is fighting.
+        HorizontalLayout {
+            x: root.body-width - root.reel-width;
+            y: root.reel-top + root.reel-height + 12px;
+            width: root.reel-width;
+            height: 24px;
+            visible: MenuView.playing && !Theme.phone;
+            spacing: 8px;
+            alignment: start;
+            Value {
+                text: MenuView.left-navi;
+                font-size: 13px;
+            }
 
-        Value {
-            text: MenuView.right-navi;
-            font-size: 13px;
-        }
+            Pill {
+                text: MenuView.left-version;
+                tone: Theme.p1;
+            }
 
-        Pill {
-            text: MenuView.right-version;
-            tone: Theme.p2;
+            Value {
+                text: @tr("vs");
+                color: Theme.muted;
+                font-size: 13px;
+            }
+
+            Value {
+                text: MenuView.right-navi;
+                font-size: 13px;
+            }
+
+            Pill {
+                text: MenuView.right-version;
+                tone: Theme.p2;
+            }
         }
     }
 }

@@ -55,6 +55,12 @@ struct Picking {
     key: Key,
 }
 
+/// The screen on screen is leaving: the one to show once it has, and when.
+struct Swap {
+    to: ScreenId,
+    at: Instant,
+}
+
 /// What a screen asks of the app that is done once the screen has returned.
 enum Ask {
     Go(ScreenId),
@@ -107,6 +113,11 @@ pub struct Shell {
     /// holds the window still: the bar is drawn first).
     runtime_due: u8,
     screen: ScreenId,
+    /// The screen shown is still the one before `screen`, leaving (docs/app.md §10).
+    swap: Option<Swap>,
+    /// Motion is turned down: the player's setting, else the system's.
+    reduce_motion: bool,
+    flights: i32,
     asks: Vec<Ask>,
     pub(crate) dialog: Option<Asked>,
     picking: Option<Picking>,
@@ -278,21 +289,72 @@ impl Shell {
         shell.set_key_r(crate::input::key_cap(self.bindings.key(keys::R)).into());
     }
 
+    // ---- Motion ------------------------------------------------------------------------------------------
+
+    /// Whether motion is turned down (the player's Reduce motion, else the system's).
+    pub fn reduces_motion(&self) -> bool {
+        self.reduce_motion
+    }
+
+    /// Turn motion down or up, and keep the choice.
+    pub fn set_reduce_motion(&mut self, reduce: bool) {
+        self.settings.reduce_motion = Some(reduce);
+        self.save_settings();
+        self.apply_motion();
+    }
+
+    /// Tell the UI whether things move: not with motion turned down, and not in the screenshot pass.
+    pub(crate) fn apply_motion(&mut self) {
+        self.reduce_motion = self.settings.reduce_motion.unwrap_or_else(crate::settings::system_reduces_motion);
+        self.ui().global::<Theme>().set_motion(!self.reduce_motion && !self.still);
+    }
+
+    /// Have something fly over the layout from one control to another (a chip from its library row to its
+    /// slot): `image` at 16 by 16 with `text` beside it, for the theme's `settle`. Each is a control's name and
+    /// index; nothing flies if either isn't on screen.
+    pub fn fly(&mut self, from: (&str, i32), to: (&str, i32), image: slint::Image, text: &str) {
+        let registry = self.nav.registry();
+        let registry = registry.borrow();
+        let (Some(a), Some(b)) = (registry.rect(&Key::new(from.0, from.1)), registry.rect(&Key::new(to.0, to.1))) else { return };
+        let ui = self.ui();
+        let fx = ui.global::<nettai_ui::Fx>();
+        fx.set_fly_from_x(a.x + 8.0);
+        fx.set_fly_from_y(a.y + (a.h - 20.0) / 2.0);
+        fx.set_fly_to_x(b.x + 8.0);
+        fx.set_fly_to_y(b.y + (b.h - 20.0) / 2.0);
+        fx.set_fly_image(image);
+        fx.set_fly_text(text.into());
+        self.flights += 1;
+        fx.set_fly_seq(self.flights);
+    }
+
+    /// The screen that was leaving has left (or is cut short): the next is shown.
+    fn finish_swap(&mut self) {
+        let Some(swap) = self.swap.take() else { return };
+        let ui = self.ui();
+        let shell = ui.global::<nettai_ui::Shell>();
+        shell.set_screen(swap.to.view());
+        shell.set_leaving(false);
+        self.nav.hold(false);
+    }
+
     // ---- Dialogs and lists of choices --------------------------------------------------------------------
 
     /// Ask the player something: the screen shown hears the answer (`Screen::answered`).
     pub fn ask(&mut self, dialog: Dialog) {
         let owner = Some(self.battle.as_ref().map_or(self.screen, |b| b.owner));
-        self.open_dialog(dialog, owner);
+        self.open_dialog(dialog, owner, false);
     }
 
-    fn open_dialog(&mut self, dialog: Dialog, owner: Option<ScreenId>) {
+    fn open_dialog(&mut self, dialog: Dialog, owner: Option<ScreenId>, shake: bool) {
+        self.finish_swap();
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         self.close_picker();
         shell.set_dialog_title(dialog.title.as_str().into());
         shell.set_dialog_message(dialog.message.as_str().into());
         shell.set_dialog_buttons(ModelRc::new(VecModel::from(dialog.buttons)));
+        shell.set_dialog_shake(shake);
         shell.set_dialog(true);
         self.dialog = Some(Asked { tag: dialog.tag, owner, cancel: dialog.cancel });
         self.keys.release();
@@ -307,14 +369,15 @@ impl Shell {
         let (title, message) = error.dialog(&ui);
         let ok = ui.global::<nettai_ui::Errors>().invoke_ok();
         self.sound.play(Cue::Refused);
-        self.open_dialog(Dialog { tag: "", title, message, buttons: vec![button(&ok, ButtonKind::Main)], focus: 0, cancel: 0 }, None);
+        self.open_dialog(Dialog { tag: "", title, message, buttons: vec![button(&ok, ButtonKind::Main)], focus: 0, cancel: 0 }, None, true);
     }
 
     /// As [`Shell::fail`], with the screen's own button (BACK TO PLAY) and the answer told to it by `tag`.
     pub fn fail_with(&mut self, error: UserError, tag: &'static str, button_text: &str) {
         let (title, message) = error.dialog(&self.ui());
         self.sound.play(Cue::Refused);
-        self.ask(Dialog { tag, title, message, buttons: vec![button(button_text, ButtonKind::Main)], focus: 0, cancel: 0 });
+        let owner = Some(self.battle.as_ref().map_or(self.screen, |b| b.owner));
+        self.open_dialog(Dialog { tag, title, message, buttons: vec![button(button_text, ButtonKind::Main)], focus: 0, cancel: 0 }, owner, true);
     }
 
     fn close_dialog(&mut self) -> Option<Asked> {
@@ -475,6 +538,9 @@ pub struct App {
     pub shell: Shell,
     /// The screens' modules, by [`ScreenId::ALL`]'s order. One is taken out while it is called.
     screens: Vec<Option<Box<dyn Screen>>>,
+    /// Presses that came before the controls they are for existed (a screen just shown): done at the next
+    /// frames, in order, each with the frames it has waited.
+    pending: Vec<(Action, u8)>,
 }
 
 impl App {
@@ -505,6 +571,9 @@ impl App {
             announced: None,
             runtime_due: 0,
             screen: ScreenId::Menu,
+            swap: None,
+            reduce_motion: false,
+            flights: 0,
             asks: Vec::new(),
             dialog: None,
             picking: None,
@@ -518,7 +587,7 @@ impl App {
             composing: false,
             keep_nothing: still,
         };
-        App { shell, screens: screens::all().into_iter().map(Some).collect() }
+        App { shell, screens: screens::all().into_iter().map(Some).collect(), pending: Vec::new() }
     }
 
     /// The app starts: on the main menu, the game last used loading first.
@@ -531,6 +600,7 @@ impl App {
         if ui.window().is_fullscreen() != self.shell.settings.full_screen {
             ui.window().set_fullscreen(self.shell.settings.full_screen);
         }
+        self.shell.apply_motion();
         self.shell.show_bindings();
         let games = self.shell.games.playable();
         let first = self.shell.settings.game.clone().filter(|g| games.contains(g)).or_else(|| games.first().cloned());
@@ -593,14 +663,28 @@ impl App {
         if from == to {
             return;
         }
+        // (A screen that was still leaving is gone at once.)
+        self.shell.finish_swap();
         self.call(from, |s, shell| s.hide(shell));
         self.shell.close_picker();
         self.shell.screen = to;
         self.shell.lock_game(false);
-        self.shell.ui().global::<nettai_ui::Shell>().set_screen(to.view());
+        let ui = self.shell.ui();
+        // Back's way: its screens leave and arrive the other way.
+        ui.global::<Theme>().set_back(to == ScreenId::Menu);
         let main = self.screen(to).map_or("back", |s| s.main());
         self.shell.nav.enter(to.name(), main);
         self.call(to, |s, shell| s.show(shell));
+        // On screen, the one before leaves first: its body slides and fades for the theme's `leave`, and
+        // then this one is shown. What the player presses meanwhile cuts that short (`App::act`).
+        let leave = ui.global::<Theme>().get_leave();
+        if leave > 0 {
+            ui.global::<nettai_ui::Shell>().set_leaving(true);
+            self.shell.nav.hold(true);
+            self.shell.swap = Some(Swap { to, at: Instant::now() + std::time::Duration::from_millis(leave as u64) });
+        } else {
+            ui.global::<nettai_ui::Shell>().set_screen(to.view());
+        }
     }
 
     /// Go to a screen at once (the screenshot pass, and the development variables).
@@ -638,6 +722,8 @@ impl App {
             }
             Did::Step(key, by) => {
                 self.shell.sound.play(Cue::Cursor);
+                // (The value slides the way the step went.)
+                self.shell.ui().global::<nettai_ui::Nav>().set_step_dir(by.signum());
                 if key.id == "game" {
                     self.shell.step_game(by);
                 } else {
@@ -691,8 +777,17 @@ impl App {
         self.settle();
     }
 
-    /// One of the menus' actions, from a key or a pad's button.
+    /// One of the menus' actions, from a key or a pad's button. It acts at once: a screen still leaving is
+    /// gone, and if the controls it is for don't exist yet (the screen was shown this frame) it is done as
+    /// soon as they do.
     pub fn act(&mut self, action: Action) {
+        self.shell.finish_swap();
+        if self.shell.nav.waiting() {
+            if self.pending.len() < 8 {
+                self.pending.push((action, 0));
+            }
+            return;
+        }
         // A field being edited is left first: Back restores its text, anything else confirms it; a move then
         // moves on, and a press was the edit's own.
         if self.shell.nav.editing() {
@@ -728,12 +823,14 @@ impl App {
             Action::Home => self.shell.nav.rows(&ui, i32::MIN, false),
             Action::End => self.shell.nav.rows(&ui, i32::MAX, false),
             Action::Confirm => {
+                self.shell.nav.pressed(&ui);
                 let did = self.shell.nav.confirm(&ui);
                 self.did(did);
             }
             // (The pad's Start: nettai's menu in a battle, shut again by it; Enter's in a menu.)
             Action::Menu if self.shell.battle.as_ref().is_some_and(Battle::menu_open) && !over => self.shell.close_menu(),
             Action::Menu => {
+                self.shell.nav.pressed(&ui);
                 let did = self.shell.nav.confirm(&ui);
                 self.did(did);
             }
@@ -757,6 +854,10 @@ impl App {
 
     /// What the UI's callbacks say: a click, an arrow, a field's edit.
     pub fn input(&mut self, input: NavInput) {
+        // (A click on a screen that is leaving is on nothing: its controls are going.)
+        if self.shell.swap.is_some() && matches!(input, NavInput::Activate(..) | NavInput::Step(..) | NavInput::Choose(..) | NavInput::Point(..)) {
+            return;
+        }
         let ui = self.shell.ui();
         match input {
             NavInput::Activate(id, index) => {
@@ -951,9 +1052,26 @@ impl App {
         let in_battle = self.shell.battle.is_some() || self.shell.loading.is_some();
         self.shell.sound.want_music(!in_battle && self.shell.ready().is_some());
         self.shell.sound.frame(now, ticks, &mut samples);
+        // The screen that was leaving has left.
+        if self.shell.swap.as_ref().is_some_and(|s| now >= s.at) {
+            self.shell.finish_swap();
+        }
         // The one focus, and where it is.
         let ui = self.shell.ui();
-        if let Some(key) = self.shell.nav.settle(&ui)
+        let moved = self.shell.nav.settle(&ui);
+        // What was pressed before its controls existed, now that they do (or after a few frames without).
+        if !self.pending.is_empty() && self.shell.swap.is_none() {
+            let waiting = self.shell.nav.waiting();
+            let pending = std::mem::take(&mut self.pending);
+            for (action, waited) in pending {
+                if !waiting {
+                    self.act(action);
+                } else if waited < 6 {
+                    self.pending.push((action, waited + 1));
+                }
+            }
+        }
+        if let Some(key) = moved
             && !matches!(key.id.as_str(), "back" | "game")
             && !key.id.starts_with("dialog.")
             && !key.id.starts_with("pick.")

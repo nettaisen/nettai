@@ -21,7 +21,7 @@ const SIZES: u32 = 8;
 fn group_of(id: &str) -> Option<i32> {
     Some(match id {
         "set.name" | "set.language" => 0,
-        "set.picture" | "set.fullscreen" | "set.text" => 1,
+        "set.picture" | "set.fullscreen" | "set.motion" | "set.text" => 1,
         "set.music" | "set.effects" => 2,
         "set.delay" => 3,
         "set.key" | "set.button" | "set.reset" => 4,
@@ -90,6 +90,11 @@ impl Settings {
         self.show(shell);
     }
 
+    fn set_reduce_motion(&mut self, shell: &mut Shell, reduce: bool) {
+        shell.set_reduce_motion(reduce);
+        self.show(shell);
+    }
+
     fn set_sharp_text(&mut self, shell: &mut Shell, sharp: bool) {
         shell.settings.sharp_text = sharp;
         shell.save_settings();
@@ -117,6 +122,7 @@ impl Screen for Settings {
         view.set_language(crate::lang::name(shell.lang).into());
         view.set_picture_size(if s.picture_size == 0 { Default::default() } else { Settings::size_label(s.picture_size).into() });
         view.set_full_screen(s.full_screen);
+        view.set_reduce_motion(shell.reduces_motion());
         view.set_sharp_text(s.sharp_text);
         view.set_music(s.music as i32);
         view.set_effects(s.effects as i32);
@@ -143,6 +149,7 @@ impl Screen for Settings {
                 shell.pick(id, 0, options, shell.settings.picture_size as usize);
             }
             "set.fullscreen" => self.set_full_screen(shell, !shell.settings.full_screen),
+            "set.motion" => self.set_reduce_motion(shell, !shell.reduces_motion()),
             "set.text" => self.set_sharp_text(shell, !shell.settings.sharp_text),
             "set.key" | "set.button" => {
                 self.asking = Some((index.clamp(0, 9) as usize, id == "set.button"));
@@ -162,6 +169,7 @@ impl Screen for Settings {
             "set.language" => self.set_language(shell, crate::lang::step(shell.lang, by)),
             "set.picture" => self.set_picture_size(shell, (shell.settings.picture_size as i32 + by).rem_euclid(SIZES as i32 + 1) as u32),
             "set.fullscreen" => self.set_full_screen(shell, by > 0),
+            "set.motion" => self.set_reduce_motion(shell, by > 0),
             // (Sharp is the first of the two.)
             "set.text" => self.set_sharp_text(shell, by < 0),
             "set.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
@@ -187,6 +195,7 @@ impl Screen for Settings {
             }
             "set.picture" => self.set_picture_size(shell, choice.max(0) as u32),
             "set.fullscreen" => self.set_full_screen(shell, choice == 1),
+            "set.motion" => self.set_reduce_motion(shell, choice == 1),
             "set.text" => self.set_sharp_text(shell, choice == 0),
             "set.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "set.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),

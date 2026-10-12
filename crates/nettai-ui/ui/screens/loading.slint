@@ -5,13 +5,20 @@
 import { Theme } from "../theme.slint";
 import { Shell } from "../shell.slint";
 import { Label, Mono, Bar, Note } from "../widgets.slint";
+import { Tween } from "../motion.slint";
 
 export component LoadingScreen inherits Rectangle {
     property <length> column: min(480px, self.width - 2 * Theme.margin);
     property <length> top: (self.height - 158px) / 2;
+    // The logo settles into place as the app starts.
+    arrive := Tween {
+        duration: Theme.set-piece;
+    }
+
     Text {
-        y: root.top;
+        y: root.top + (1 - arrive.t) * 10px;
         height: 90px;
+        opacity: arrive.t;
         text: "nettai";
         color: Theme.text;
         font-family: "Chakra Petch";
