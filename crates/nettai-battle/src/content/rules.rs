@@ -1955,7 +1955,11 @@ pub enum PanelDrawn {
     /// breaks in that tick (0x080097C8), shows its hole a tick late (a mend,
     /// an expiry and a crumble set what they draw). A dimmed tick's update
     /// draws every panel as the type and the owner it is (0x08009A38): a
-    /// blink shows through no dimming.
+    /// blink shows through no dimming. Its drawing (0x080092AC) reads a
+    /// panel's highlight, a table too (0x02037ABE), before whether it is
+    /// visible, and draws a highlighted panel only while it is (0x0800932C):
+    /// one that isn't keeps what it last showed, where the in-panel drawing
+    /// draws any panel that isn't visible as none (`sub_800C5E0`).
     OwnTables,
 }
 

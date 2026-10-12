@@ -1022,6 +1022,7 @@ impl Battle {
             top::END => self.tick_end(input, &events),
             _ => {}
         }
+        self.keep_panel_looks();
         self.end_console_frames();
         self.round.frames = self.round.frames.wrapping_add(1);
         self.fade.step(self.content.rules().effects.fade_clear);

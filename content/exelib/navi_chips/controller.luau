@@ -13,6 +13,8 @@
 -- - EXE4's short course (TopMan's 0x080E2B9C and its copies), counted in the phase's init byte: the user warps out;
 --   a wait; the navi, which it waits on, then a second wait from the navi's leaving; then the undim, the user warping
 --   back in as it starts.
+-- - a chip's own (`course`: EXE4's PrixPowr's, three navis one after the other, 0x080EA948), which brings its navis
+--   itself (`controller.damage`, `controller.await`, `controller.waiting`) and ends with `controller.undim`.
 --
 -- AntiNavi (the other side's defensive chip, a trap) turns a chip of the navi chips' block around: a sparkle on the
 -- controller's panel, 31 ticks, AntiNavi's telop, and the chip changes sides, its navi coming for AntiNavi's user
@@ -41,11 +43,12 @@ export type Spec = {
     id: string,
     name: string,
     -- The chip's navi for `user`, on the controller's panel, of the user's side, with the damage word (bonus
-    -- included), reporting to the controller: nil when it couldn't come.
-    spawn: (controller: Object, user: Object, damage: number) -> Object?,
-    -- The effect's course: steps by phase, or EXE4's short one.
+    -- included), reporting to the controller: nil when it couldn't come. (None for a chip with its own course.)
+    spawn: ((controller: Object, user: Object, damage: number) -> Object?)?,
+    -- The effect's course: steps by phase, EXE4's short one, or the chip's own, run each tick of the effect.
     steps: { Step }?,
     short: Short?,
+    course: ((controller: Object) -> ())?,
     -- How the controller's user warps out (`out`) or back in (EXE4's 0x080E2D26 by its side; EXE6's and EXE5's actor
     -- #0x2D for the user, `sub_80E1332`): where a course warps.
     warp: ((controller: Object, out: boolean) -> ())?,
@@ -65,6 +68,25 @@ local DIM, ANTI_NAVI, NAME, EFFECT, UNDIM = 0x0, 0x4, 0x8, 0xC, 0x10
 -- The navi is done (it writes 0 through the pointer its spawn was given).
 function controller.done(me: Object)
     (me.state :: State).busy = false
+end
+
+-- For a chip's own course: the damage word its navis come with (the controller's plus its bonus); a navi was
+-- brought, which the controller waits on (its spawn writes 1 through the pointer it was given); whether it still
+-- does; and the course's end, the undim.
+function controller.damage(me: Object): number
+    return dimming_chips.damage_plus(me, (me.state :: State).bonus)
+end
+
+function controller.await(me: Object)
+    (me.state :: State).busy = true
+end
+
+function controller.waiting(me: Object): boolean
+    return (me.state :: State).busy
+end
+
+function controller.undim(me: Object)
+    me:set_action(UNDIM)
 end
 
 -- How long the sparkle shows before AntiNavi's telop, in ticks after the first (`sub_800BE0C`).
@@ -179,7 +201,11 @@ function controller.make(spec: Spec): Controller
     local function bring(me: Object)
         local s = me.state :: State
         local damage = dimming_chips.damage_plus(me, s.bonus)
-        if spec.spawn(me, me.related1 :: Object, damage) then
+        local spawn = spec.spawn
+        if not spawn then
+            error(string.format("%s's controller's course brings a navi, but its chip names none", spec.name))
+        end
+        if spawn(me, me.related1 :: Object, damage) then
             s.busy = true
         end
         if spec.keep and controller.in_block(s.chip, spec.navi_block) then
@@ -256,6 +282,8 @@ function controller.make(spec: Spec): Controller
             by_phase(me, spec.steps)
         elseif spec.short then
             short(me, spec.short)
+        elseif spec.course then
+            spec.course(me)
         else
             error(string.format("%s's controller has no course", spec.name))
         end
