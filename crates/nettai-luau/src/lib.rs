@@ -387,10 +387,14 @@ impl ContentHost for LuauContent {
             _ => None,
         };
         let v: LuaValue = self.call(f, api, rules, args)?;
-        // (What `validate` answers is a list of problems, which the battle
-        // keeps for the tool that asked.)
-        if let HookCall::Rules { hook: nettai_content_api::RulesHook::Validate, .. } = call {
-            return bind::setup_problems(v, api).map(|()| Value::Nil).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))));
+        // (What a tool's hook answers is plain data, which the battle keeps
+        // for the tool that asked.)
+        if let HookCall::Rules { hook, .. } = call
+            && hook.for_tools()
+        {
+            let data = bind::plain_data(&v, &self.bound, 0).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))))?;
+            api.tool_answer(data);
+            return Ok(Value::Nil);
         }
         bind::hook_result(v, call, &self.bound).map_err(|e| ContentError::new(format!("{}: {e}", self.describe(f))))
     }
