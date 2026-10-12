@@ -609,7 +609,14 @@ panel is said in the audits, not counted.
 - banners with their squash and stretch; a telop (the chip's name, its
   damage and bonus, "x2"; "????" for a trap's, to the opponent) on its
   user's half of the screen (`Battle::telop_for`); the chip the other
-  player just used, named for a second (`Battle::used_chip_for`);
+  player just used, named for a second (`Battle::used_chip_for`). Where
+  the game loads the banners' and the telops' glyphs into sprite tiles
+  they share, and one palette (the pack's `layout.telop.tiles`: EXE4's),
+  each shows what the other loaded last: `HudState` follows the loads as
+  the pieces start (`SharedLoads`), and `hud::shared_glyphs` makes up the
+  glyphs whose tiles another load took (a deletion banner over the other
+  player's used chip turns the name's first two glyphs into pieces of the
+  banner, in the banners' colors);
 - the damage judge's numbers, rolling and real;
 - the HUD's text lines: the turn timer's seconds and "TIME UP!" from a
   netbattle's 15th turn, "COUNTER HIT!" (`Battle::message`);
@@ -1034,14 +1041,18 @@ them).
   console. A US console's original shows its placeholder (a purple picture,
   a dot) or its other sprite, and its chip window waits for the navi's
   first decision; an EXE5 Japanese console's background 0x05 is the bubbles
-  without the goldfish. No part of the frontend knows a console's region:
-  the verification's frame comparison does (its table, consoles.tsv, by
-  game, region and version), and asks the headless frontend to mark where
-  it draws those things (`--mark sprite:NAME,background:NAME,chip:KEY,
+  without the goldfish; an EXE4 Blue Moon console draws rows 12 and 13 of
+  four chips' icons (Blizzard, HeatBrth, ElecShok, WoodPwdr) as a dark bar,
+  where the pack has one icon a chip, Red Sun's. No part of the frontend
+  knows a console's region or which of these it shows: the verification's
+  frame comparison does (its table, consoles.tsv, by game, region and
+  version), and asks the headless frontend to mark where it draws those
+  things (`--mark sprite:NAME,background:NAME,chip:KEY,chip-icon:KEY,
   chip-window-at-close`; `marks.tsv` beside the frames: frame, rectangle,
   what), which it counts as known on that console's recordings, with the
   table's margin around each (a sprite's 48 pixels: the US's sprite there
-  may reach past the Japanese one).
+  may reach past the Japanese one), or only the part of the mark the
+  table names (an icon's two rows).
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
   other version's counterparts: EXE6's five Giga chips a version (Bass and

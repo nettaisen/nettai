@@ -1273,6 +1273,35 @@ impl Window {
         }
     }
 
+    /// The chips' icons in the slots and the picked chips' column, where
+    /// they show, marked for the caller that asks for a chip's
+    /// (`lookups::chip_icon_mark`).
+    fn mark_icons(&self, v: &View, place: Placement, problems: &mut Problems) {
+        if problems.marking.is_empty() {
+            return;
+        }
+        let mut cells: Vec<(u16, String)> = Vec::new();
+        for (s, slot) in v.screen.slots.iter().enumerate().take(10) {
+            let shown = matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) && !v.screen.look.slot_picked[s];
+            if let (true, Some(c)) = (shown, v.screen.look.slot_chips[s]) {
+                // (The slot's 2x2 icon cells: `slots`.)
+                cells.push((self.map[(13 + 3 * (s / 5)) * COLUMNS + 1 + 2 * (s % 5)].tile, crate::lookups::chip_icon_mark(&v.b.content, c.id)));
+            }
+        }
+        for i in 0..5usize {
+            if let Some(c) = v.screen.look.column[i] {
+                cells.push((self.layout.column_icons + 4 * i as u16, crate::lookups::chip_icon_mark(&v.b.content, c.id)));
+            }
+        }
+        for (first, what) in cells {
+            if problems.wants(&what)
+                && let Some(rect) = self.tiles_rect(place, first..first + 4)
+            {
+                problems.mark(rect, what);
+            }
+        }
+    }
+
     /// The window's cells that show `tiles` of its block, where they show,
     /// as a known difference.
     fn known_tiles(&self, place: Placement, tiles: std::ops::Range<u16>, why: &'static str, problems: &mut Problems) {
@@ -1683,6 +1712,7 @@ pub fn draw<'a>(
         }
     }
     w.known_icons(&v, place, problems);
+    w.mark_icons(&v, place, problems);
     w.name_item(text, place);
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.

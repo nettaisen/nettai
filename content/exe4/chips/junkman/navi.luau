@@ -1,12 +1,12 @@
 --!strict
 -- JunkMan, the navi of EXE4's JunkMan chips (EXE4's actor object #0x48, 0x080C95E8: EXE4's own, on the navi chips'
 -- template), and each chip's controller, which brings him. He fades in on his user's panel (and goes if it isn't solid,
--- a tick later), raises the poltergeist (@exelib/poltergeist, EXE4's effect object #0x73: every obstacle on the field
+-- a tick later), raises the poltergeist (objects/poltergeist, EXE4's effect object #0x73: every obstacle on the field
 -- thrown at the nearest panel holding the other side's navi in front of it) and waits until it is done; 21 ticks; and
 -- goes.
 
-local common = require("@exelib/poltergeist")
 local navi_chips = require("../../lib/navi_chips")
+local poltergeist = require("../../objects/poltergeist")
 
 local junkman = {}
 
@@ -25,9 +25,6 @@ local SPRITE = asset.sprite("junkman")
 local SOUND_APPEAR = asset.sound("appear")
 local FADE_GRAY = 0x1F
 local SOLID = 0x10
-
--- EXE4's poltergeist (effect object #0x73, 0x080EA13C).
-local POLTERGEIST = common.make("junkman/poltergeist")
 
 -- Action 0, phase 0 (0x080C96A0): he fades in from gray 31, 2 a tick, flickering.
 local function fade_in(me: Object)
@@ -80,7 +77,7 @@ local function raise(me: Object)
     local s = me.state :: State
     if me.phase_init == 0 then
         me.anim = 0
-        POLTERGEIST.spawn(me, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), true)
+        poltergeist.spawn(me, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)), true)
         me.phase_init = 4
         return
     end

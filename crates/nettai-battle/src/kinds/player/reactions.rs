@@ -281,14 +281,19 @@ fn let_go_overlay(b: &mut Battle, r: ObjectRef) {
 // ---- Flinch (action 3) --------------------------------------------------------------
 
 /// Action 3, `sub_80174FE`: 24 ticks of flinching; ends paralysis,
-/// freeze and bubble.
+/// freeze and bubble. (Plain, EXE4's 0x08010960, ends paralysis alone:
+/// the bubble's end would put the navi back at its resting height, and a
+/// plain flinch keeps the height it has, a dimmed shake's last offset
+/// too.)
 pub(super) fn flinch(b: &mut Battle, r: ObjectRef) {
     if b.objects.get(r).phase_init == 0 {
         flinch_hook(b, r);
         set_flag1(b, r, in_use(b) | f1::FLINCHING);
         clear_paralysis(b, r);
-        clear_freeze(b, r);
-        clear_bubble(b, r);
+        if !plain(b) {
+            clear_freeze(b, r);
+            clear_bubble(b, r);
+        }
         cancel_submerged(b, r);
         ai_mut(b, r).status &= !0x20_005F;
         clear_flag1(b, r, f1::DRAG | f1::MOVING | f1::GUARD);
@@ -749,6 +754,25 @@ mod tests {
         };
         assert_eq!(run(false), ((2, true, 1), (NaviAction::Paralysis, true)));
         assert_eq!(run(true), ((1, false, 0), (NaviAction::Idle, true)));
+    }
+
+    /// A plain flinch (EXE4's 0x08010960) ends no bubble and keeps the
+    /// navi's height, what a shake while dimmed left of it too; a marked
+    /// one (the test content's, EXE6's) puts the navi back on the ground.
+    #[test]
+    fn a_plain_flinch_keeps_the_navis_height() {
+        let run = |plain: bool| {
+            let (mut b, [_, r]) = fight_with(|rules| {
+                rules.reaction_actions = if plain { ReactionActions::Plain } else { ReactionActions::Marked };
+            });
+            let o = b.objects.get_mut(r);
+            o.pos.z = -0x1_0000;
+            o.phase_init = 0;
+            flinch(&mut b, r);
+            b.objects.get(r).pos.z
+        };
+        assert_eq!(run(false), 0);
+        assert_eq!(run(true), -0x1_0000);
     }
 
     /// A drag's pose and end by the game's `drag` (the status section's):
