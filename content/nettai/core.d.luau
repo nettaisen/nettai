@@ -801,6 +801,10 @@ declare extern type Object with
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
     function form_change_target(self): FormDef?
+    -- The rules ask for its change into `form` as the fight runs (EXE4's
+    -- dark soul, 0x0800B8B0): its side's target this turn, and the request
+    -- "form_change".
+    function ask_form_change(self, form: FormDef): ()
     -- The terms of the change its side asked for: its turns, and whether it is
     -- the alternate (EXE5's Soul Unison: the soul's turns, and Chaos Unison).
     function form_change_terms(self): (number, boolean)

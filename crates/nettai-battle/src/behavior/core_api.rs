@@ -2510,6 +2510,14 @@ impl CoreApi for Battle {
         kinds::player::form_change_target(self, o)
     }
 
+    fn ask_form_change(&mut self, o: ObjectRef, form: nettai_content_api::FormHandle) -> ApiResult<()> {
+        self.actor_of(o)?;
+        let side = self.objects.get(o).alliance as usize & 1;
+        self.turn_transforms[side].form = Some(form);
+        self.actor_of_mut(o)?.requests |= crate::actor::request::FORM_CHANGE;
+        Ok(())
+    }
+
     fn stop_moving(&mut self, o: ObjectRef) -> ApiResult<()> {
         self.actor_of(o)?;
         kinds::player::actions::transform::stop_moving(self, o);
