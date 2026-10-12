@@ -98,6 +98,8 @@ pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames, base_present: bool) -> HudL
         waiting: tiles(jp, WAITING.0, WAITING.1),
         waiting_palette: palette(jp, BANNER_PALETTE),
         gauge_tiles: tiles(jp, GAUGE_TILES.0, GAUGE_TILES.1),
+        // (Its text where the US games' is.)
+        chatbox_text: None,
     }
 }
 
