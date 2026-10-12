@@ -76,6 +76,7 @@ local chip: Chip = {
         { order = 3, sequence = { recipe_drkline, recipe_bugchain, recipe_bassanly } },
     },
     dimming = CONTROLLER.hook,
+    megaman = "dark",
 }
 
 return { darkneo = chip }

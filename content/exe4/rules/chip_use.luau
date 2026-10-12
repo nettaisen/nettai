@@ -18,4 +18,8 @@ return {
     -- A charged chip is used with its charge, whatever its family (0x0800B72C: FireSoul's, soul 5, through its flame,
     -- 0x0800D638, any other's through 0x0800D4B4 with the charge).
     charged_null_alt_routine = false,
+    -- A use the rules refuse (rules/light_dark: a chip of the other kind of MegaMan) keeps its chip: only the action
+    -- and its variant become the fizzle's (0x0800D5F6: action 0x20, variant 4), so the other console still shows the
+    -- chip's name (0x080EECF0) and what follows the use reads the chip's own record (Beat and Rush, RollSoul's heal).
+    refused_keeps_chip = true,
 }

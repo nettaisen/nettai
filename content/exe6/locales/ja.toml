@@ -202,12 +202,12 @@ language = "ja"
 "heatpres" = { name = "ヒートプレス", description = "3マス前方に\nとびこんで十字に\nひろがる炎攻撃!" }
 "hiboomer" = { name = "ハイブーメラン", description = "バトルフィールドの\nはしにそってとぶ\nかんつうブーメラン" }
 "hicannon" = { name = "ハイキャノン", description = "前方のてき1たいを\n攻撃できる\nキャノンほう" }
-"hidden" = { description = "ミテイ" }
+"hidden" = { name = "????", description = "ミテイ" }
 "holypanl" = { name = "ホーリーパネル", description = "目の前のパネルを\nダメージはんげんの\nホーリーパネルに!" }
 "hubbatc" = { name = "サイトバッチ", description = "ロックマンのデータ\nを光彩斗のいでんし\nデータにあわせる!" }
 "icecube" = { name = "アイスキューブ", description = "1つ前にえらんだ\n攻撃チップに\nこんらんをつける" }
 "iceseed" = { name = "アイスシード", description = "3マス前にタネ!\n9マス分のパネルを\nこおりにする!" }
-"invalid" = { description = "" }
+"invalid" = { name = "", description = "" }
 "invisibl" = { name = "インビジブル", description = "少しの間とうめいに\nなって ほとんどの\n攻撃にあたらない" }
 "ironshl1" = { name = "アイアンシェル1", description = "かんつうするこうら\nを前方へはっしゃ!\n画面はしで2ヒット" }
 "ironshl2" = { name = "アイアンシェル2", description = "かんつうするこうら\nを前方へはっしゃ!\n画面はしで2ヒット" }

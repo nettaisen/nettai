@@ -16,4 +16,7 @@ return {
     window_hides_every_console = false,
     -- A charged Null chip runs the alternative A-charge routine, the attack's chip cleared (`sub_800FB54`).
     charged_null_alt_routine = true,
+    -- A chip the rules put in a use's place is the attack's chip (no rule of EXE6's refuses a use: its dark chips'
+    -- substitute comes before the record is loaded, `sub_8010D58`).
+    refused_keeps_chip = false,
 }

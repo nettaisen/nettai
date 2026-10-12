@@ -302,6 +302,9 @@ netplay templates 1000. Three rules read it, with two thresholds:
   the DS navi chips, Static, Muramasa, Anubis, BlakWing, BugCurse, BugCharg. The same in both versions. The dark
   chips (flag 0x20) need a dark MegaMan as well, by their flag. A use the field refuses fizzles: the navi enters
   action 0x1A for a frame and a puff of smoke appears, nothing else.
+  The cut-in (0x080144F6) asks the same check before it prepares the chip's use (0x0801452E): with such a chip it
+  doesn't start, and nothing of a use happens (no Full Synchro spent, no navi chip counted). The rules' hook
+  `cut_in_barred`; until EXE4's item 65 the engine prepared the use first and refused it after.
 - **A dark MegaMan on a holy panel turns it Normal** (0x08017136, EXE5's own): when the panel under the object is
   holy (EXE5's type 9) and its side's meter is ≤ 499, the panel is set Normal (the panel setter). It runs **every
   tick**, from the object's per-tick intake update (the counterpart of EXE6's `sub_801AC6C`, 0x080178EC, and of its
@@ -367,6 +370,8 @@ reach_exe5.py); a few chips hit nobody standing anywhere, and their code says wh
   a panel of the user's alliance (`sub_801273E`'s counterpart, panel flags: the opponent navi's body bit, and the
   panel's alliance); only then it strikes. So it needs the opponent standing on a panel of the user's area (the lab's
   user takes the opponent's panel with a PanlGrab).
+  The idle names no Slasher on the other console at its use (0x080F04A4 tests chip 0x38); its slash does
+  (0x080ED41E): the chip's trait `not_named_on_use`, and the action's `battle.show_used_chip` (EXE4's item 66).
 - The others need what their kind does (recorded, not read): the time bombs' countdown, BoyBomb's bomb hit by its user's buster, the
   guards' reflection, Snake from holes in the user's area, Mine waiting for a step, the Anti traps (sprung by the
   opponent's chip of their element when it is used; a thrown BlkBomb doesn't spring AntiFire, a FireHit does),
@@ -581,8 +586,11 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
 - **Left out:**
   - The Japanese ROMs' one different sprite (14-17, the "BLOCK!" label, ブロック! there): the US release localized
     it rather than cut it, so the pack keeps the US's, as EXE6's does; no content draws it.
-  - The Japanese ROMs' background 0x05, which is another picture than the US ROMs' (bubbles in the dark for the
-    goldfish): no netbattle's stage shows it, and the pack keeps the US's. The extractor says both.
+  - The US ROMs' background 0x05 (Yai's HP), which is another picture than the Japanese ROMs' (goldfish, scrolling,
+    for bubbles in the dark, still): the pack's backgrounds are the Japanese Team of Blues ROM's (the other 28 are
+    the same in both releases, pictures, scrolls and animations), and what a US console draws there is the
+    verification's to know (its consoles.tsv; `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared,
+    2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content

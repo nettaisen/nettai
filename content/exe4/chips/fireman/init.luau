@@ -25,6 +25,7 @@ local fireman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "fireman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local firemn_sp: Chip = {
@@ -40,6 +41,7 @@ local firemn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "firemn-sp/controller", palette = 2 }.hook,
+    megaman = "light",
 }
 
 local firemn_ds: Chip = {
@@ -54,6 +56,7 @@ local firemn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "firemn-ds/controller", palette = 3 }.hook,
+    megaman = "dark",
 }
 
 return { fireman = fireman, ["firemn-sp"] = firemn_sp, ["firemn-ds"] = firemn_ds }

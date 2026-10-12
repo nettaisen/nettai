@@ -40,13 +40,23 @@ const PANEL_PALETTE_ANIMS: u32 = 0x0800_A7AC;
 /// The palette buffer's background palette 0 (EXE6 0x03001960).
 const PALETTE_BUFFER: u32 = 0x0300_3960;
 
-/// The backgrounds' load data by background id (EXE6 `off_8080F98`), their
-/// scroll callbacks (16 bytes each, the second scrolls BG1) and their GFX
-/// animation lists.
-const BACKGROUNDS: u32 = 0x0808_C578;
+/// A ROM's background tables: the load data by background id (EXE6
+/// `off_8080F98`), the scroll callbacks (16 bytes each, the second scrolls
+/// BG1) and the GFX animation lists.
+struct BackgroundTables {
+    load: u32,
+    scroll: u32,
+    anims: u32,
+}
+/// The US Team ProtoMan ROM's.
+const BACKGROUNDS: BackgroundTables = BackgroundTables { load: 0x0808_C578, scroll: 0x0808_C32C, anims: 0x0808_C96C };
+/// The Japanese Team of Blues ROM's (the same loader's literals,
+/// 0x0808C2C8 in the US ROM). The scroll callbacks are at the US ROM's
+/// addresses. One background differs from the US ROMs': 0x05, Yai's HP,
+/// which the Japanese ROMs draw as bubbles in the dark, still, its palette
+/// its animations' (the US ROMs': goldfish, scrolling).
+const JP_BACKGROUNDS: BackgroundTables = BackgroundTables { load: 0x0808_BEC4, scroll: 0x0808_BC78, anims: 0x0808_C2B8 };
 const BACKGROUND_COUNT: u32 = 29;
-const BACKGROUND_SCROLL: u32 = 0x0808_C32C;
-const BACKGROUND_ANIMS: u32 = 0x0808_C96C;
 /// The scroll callbacks and their counters' steps (1/16 pixel a frame): the
 /// same code as EXE6's `BGScrollCB_*`. 0x08001A24 does nothing (drawn
 /// still); EXE5's own at 0x080019EC (nebulagray's, 0x1B) is a `speeding`
@@ -98,11 +108,13 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     custom
         .languages
         .push((ja, crate::exe5::lettering::custom(roms)));
-    // The pack's backgrounds are the US ROMs' (the Japanese ROMs have
-    // another picture of 0x05: the verification knows what their consoles
-    // show there).
-    let backgrounds = if rom.is_present() {
-        backgrounds(rom)
+    // The pack's backgrounds are the Japanese ROMs' where there is one
+    // (they have another picture of 0x05: the verification knows what a
+    // US console shows there).
+    let backgrounds = if roms.protoman_jp.is_present() {
+        backgrounds(roms.protoman_jp, &JP_BACKGROUNDS)
+    } else if rom.is_present() {
+        backgrounds(rom, &BACKGROUNDS)
     } else {
         Vec::new()
     };
@@ -245,12 +257,12 @@ fn field(rom: &Rom) -> Field {
 /// number and its area's), the pack has the first's, and the others must be
 /// the same (their load data, their scroll callbacks and their animations),
 /// or the extraction fails.
-fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
-    let mut out = pictures(rom);
+fn backgrounds(rom: &Rom, tables: &BackgroundTables) -> Vec<Option<Background>> {
+    let mut out = pictures(rom, tables);
     let raw = |id: u32| {
-        let d = rom.u32(BACKGROUNDS + 4 * id);
+        let d = rom.u32(tables.load + 4 * id);
         let load: Vec<u32> = (0..7).map(|i| rom.u32(d + 4 * i)).collect();
-        let scroll: Vec<u32> = (0..4).map(|i| rom.u32(BACKGROUND_SCROLL + 16 * id + 4 * i)).collect();
+        let scroll: Vec<u32> = (0..4).map(|i| rom.u32(tables.scroll + 16 * id + 4 * i)).collect();
         (load, scroll)
     };
     for (name, numbers) in &exe5_compat::Compat::exe5().assets.backgrounds {
@@ -268,19 +280,19 @@ fn backgrounds(rom: &Rom) -> Vec<Option<Background>> {
 
 /// Each background number's picture as its load data, scroll callback and
 /// animations make it.
-fn pictures(rom: &Rom) -> Vec<Option<Background>> {
+fn pictures(rom: &Rom, tables: &BackgroundTables) -> Vec<Option<Background>> {
     (0..BACKGROUND_COUNT)
         .map(|id| {
             let (tiles, first_tile, map, map_width, map_height, palette) =
-                background_picture(rom, rom.u32(BACKGROUNDS + 4 * id))?;
-            let cb = rom.u32(BACKGROUND_SCROLL + 16 * id + 4) & !1;
+                background_picture(rom, rom.u32(tables.load + 4 * id))?;
+            let cb = rom.u32(tables.scroll + 16 * id + 4) & !1;
             let scroll = SCROLLERS
                 .iter()
                 .find(|(a, _)| *a == cb)
                 .map(|(_, v)| *v)
                 .unwrap_or((0, 0));
             let speeding = speeding_scroll(rom, cb);
-            let anims = gfx_anims(rom, rom.u32(BACKGROUND_ANIMS + 4 * id), PALETTE_BUFFER);
+            let anims = gfx_anims(rom, rom.u32(tables.anims + 4 * id), PALETTE_BUFFER);
             Some(Background {
                 tiles,
                 first_tile,

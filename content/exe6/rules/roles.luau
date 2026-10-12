@@ -153,8 +153,9 @@ local roles: RolesSpec = {
         pause = asset.sound("pause"),
         gauge_full = asset.sound("gauge-full"),
         low_hp = asset.sound("low-hp"),
-        -- A side cuts in, a trap springs; a telop shows.
+        -- A side cuts in, a trap springs (the same sound); a telop shows.
         cut_in = asset.sound("dimming-sparkle"),
+        trap_mark = asset.sound("dimming-sparkle"),
         telop = asset.sound("telop"),
         -- The buster starts charging, and is charged.
         buster_charge = asset.sound("buster-charge"),
