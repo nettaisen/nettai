@@ -13,9 +13,9 @@
 //!   block) in the US ROMs: the eleven the US release cut, and BatCan1 to
 //!   BatCan4, which it kept the names of. The Japanese ROMs have their
 //!   art.
-//! - **The chip records otherwise**: a chip's icon and picture are its
-//!   Japanese ROM's where there is one (`gregar::chip_source`). Two differ
-//!   from the US ROMs': the Falzar ROMs' icon for Bass and BassAnly (one
+//! - **The chip records otherwise**: a chip's icon and picture are its US
+//!   ROM's where there is one (`gregar::chip_source`). Two differ in the
+//!   Japanese ROMs: the Falzar ROMs' icon for Bass and BassAnly (one
 //!   pixel, (0, 8): color 3 in the Japanese ROM, 9 in the US one) and the
 //!   Gregar ROMs' Beast Out picture (two pixels, (53, 31) and (52, 32):
 //!   clear in the Japanese ROM, color 14 in the US one).
@@ -23,7 +23,9 @@
 //! The pack has one picture of each: nettai draws it on every console. A US
 //! console shows the placeholder there, which the verification's frame
 //! comparison knows (its table of what a console shows otherwise); the
-//! pack keeps no mark of whose ROM a picture is from.
+//! pack keeps no mark of whose ROM a picture is from. Everything else is
+//! the US ROMs' where the releases differ, and the Japanese ROMs' in a pack
+//! of no US ROM.
 
 use crate::exe6::{Rom, u32at};
 

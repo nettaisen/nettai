@@ -705,17 +705,44 @@ language = "ja"
 "tango" = "タンゴサポート"
 "undershirt" = "アンダーシャツ"
 
-# The NaviCust's bugs' names (en.toml's `[bugs]` says what they are).
+# The bugs' names (en.toml's `[bugs]` says what they are): a bug a patch card can bring by its effect's line in
+# [patch_card_effects], which the Japanese cards already write in full; the rest the content's own.
 [bugs]
-"buster" = "バスターバグ"
-"custom" = "カスタムバグ"
-"emotion" = "ココロバグ"
+# The card line.
+"buster_blanks" = "バスターからうち"
+# The card line.
+"custom_damage" = "カスタムダメージ"
+# The card line.
+"custom_hp_drain" = "カスタムHPバグ"
+# The card line.
+"emotion_bug" = "ココロバグ"
+# Ours.
 "encounter" = "エンカウントバグ"
-"hp" = "HPバグ"
-"hub" = "ヒューバッチバグ"
-"panel" = "パネルバグ"
+# The card line.
+"hit_status.blind" = "ダメージもうもく"
+# The card line.
+"hit_status.confuse" = "ダメージこんらん"
+# EXE6's card line.
+"hit_status.hp_bug" = "ダメージHPバグ"
+# The card line.
+"hp_drain" = "バトルHPバグ"
+# Ours (サイトバッチ, the program).
+"hub" = "サイトバッチバグ"
+# The card line of `panel_trail.none`, as the English.
+"panel_trail.crack" = "パネルバグ"
+# The card line.
+"panel_trail.grass" = "いどうでクサムラ"
+# The card line.
+"panel_trail.hole" = "いどうであな"
+# The card line.
+"panel_trail.ice" = "いどうでこおり"
+# The card line.
+"panel_trail.water" = "いどうで水"
+# Ours.
 "result" = "リザルトバグ"
-"status" = "ステータスバグ"
-"status-strong" = "ステータスバグ"
-"step" = "いどうバグ"
+# The card line.
+"status_bug" = "ステータスバグ"
+# The card line.
+"step_bug" = "いどうバグ"
+# Ours.
 "support" = "サポートバグ"

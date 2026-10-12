@@ -555,15 +555,26 @@ language = "ja"
 "132-wood-soul" = { name = "ウッドソウル" }
 "133-weapon-change" = { name = "ウェポンチェンジ" }
 
-# The NaviCust's bugs' names (en.toml's `[bugs]` says what they are).
+# The bugs' names (en.toml's `[bugs]` says what they are): where EXE5's or EXE6's patch cards name the same bug,
+# that effect's line, which the Japanese cards already write in full; the rest the content's own.
 [bugs]
-"buster" = "バスターバグ"
-"custom" = "カスタムバグ"
+# As EXE5's and EXE6's.
+"buster" = "バスターからうち"
+# EXE5's and EXE6's "カスタムHPバグ".
+"custom" = "カスタムHPバグ"
+# Ours.
 "encounter" = "エンカウントバグ"
-"hp" = "HPバグ"
-"hub" = "ヒューバッチバグ"
+# EXE5's and EXE6's "バトルHPバグ".
+"hp" = "バトルHPバグ"
+# Ours (サイトバッチ, the program).
+"hub" = "サイトバッチバグ"
+# As EXE5's and EXE6's.
 "move" = "いどうバグ"
+# As EXE5's and EXE6's.
 "panel" = "パネルバグ"
+# Ours.
 "result" = "リザルトバグ"
+# Ours.
 "support" = "サポートバグ"
+# Ours.
 "weapon" = "ウェポンバグ"

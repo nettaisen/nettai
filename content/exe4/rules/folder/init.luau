@@ -6,10 +6,11 @@
 --
 -- - A folder is 30 chips.
 -- - The chips a folder can hold are those a save can collect: the Standard, Mega and Giga chips its library lists
---   (the record's flags 0x40), each with a code, and the e-Reader's chips no library lists (`collectible`: Duo). EXE4's
---   dark chips have no library flag: the custom screen offers them in battle, and no folder holds one.
+--   (the record's flags 0x40), each with a code, and the e-Reader's chips no library lists (`collectible`: Duo and
+--   PrixPowr). EXE4's dark chips have no library flag: the custom screen offers them in battle, and no folder holds
+--   one.
 -- - A save of one version holds none of the other's Giga chips: its setup's `giga_chips` are the Giga chips it can have
---   (its version's five and the e-Reader's, which a tool's version presets name; a side that states none has every
+--   (its version's five and the e-Reader's Duo, which a tool's version presets name; a side that states none has every
 --   one).
 -- - Copies of one chip, in any codes: four of a Standard chip (0x080314F0: the folder's count of it against 4), one of
 --   a Mega or of a Giga chip (0x0803153C, 0x080315BC).

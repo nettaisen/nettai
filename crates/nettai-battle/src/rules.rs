@@ -504,6 +504,15 @@ impl Battle {
         Problem::list(self.ask_rules(side, RulesHook::Validate, None), "validate")
     }
 
+    /// What side `side`'s rules say is wrong with its setup as a player's
+    /// build (their `build_check`), beside what [`Battle::validate`] says of
+    /// any setup: what a round would play and no save made by play holds.
+    /// Nothing when they find none, or have no such hook. For tools (the
+    /// build screens, a netplay offer): no part of the simulation.
+    pub fn build_problems(&mut self, side: u8) -> Vec<Problem> {
+        Problem::list(self.ask_rules(side, RulesHook::BuildCheck, None), "build_check")
+    }
+
     /// For tools: what module `module` of the content (by its name,
     /// `exe6:rules/navicust/board`) returned as it loaded, as plain data, a
     /// function in it left out; nothing is called (the build creator reads the
