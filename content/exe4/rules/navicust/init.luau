@@ -41,7 +41,7 @@ export type Work = { hp: number, bug_stop: boolean }
 
 -- What a side keeps of its NaviCust through the round: its bugs' counts by kind as the compile left them (the battle's
 -- copy, 0x0203F6E0, side 1's 0x0203F6F0), which a hit's bug code 0xFF raises (`raise_bug`).
-type State = { bug_counts: { [string]: number } }
+type State = { bug_counts: { [string]: number }, start_charge_shot: Weapon? }
 
 local function filled(rows: { string }, x: number, y: number): boolean
     return string.sub(rows[y + 1], x + 1, x + 1) == "#"
@@ -191,9 +191,9 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, work: Work) -> () } = {
 -- The setup's programs as placed parts.
 type Placed = { program: NaviCustProgram, color: string, x: number, y: number, rotation: number, compressed: boolean }
 
--- `round_setup`: `side`'s NaviCust compiled into its stats, and its patch cards applied, if its navi is MegaMan (the navi
--- that changes form: the PET compiles its own navi's).
-local function run(side: number)
+-- `side`'s NaviCust compiled into its stats, and its patch cards applied, if its navi is MegaMan (the navi that changes
+-- form: the PET compiles its own navi's).
+local function compile(side: number)
     local parts = rules.setup_of(side).navicust_programs :: { Placed }
     local stats = battle.navi(side)
     if stats.navi.forms == nil then
@@ -353,6 +353,15 @@ local function run(side: number)
     end
 end
 
+-- `round_setup`: the round's stats for side `side`: its NaviCust compiled (MegaMan's alone), then the battle's start
+-- copy of them (0x0203BCC0 + 0x40 a side, written with the battle's at its init, 0x080087A8): of it the charged shot,
+-- which BugFix's fix reads again (`fix_bugs`).
+local function run(side: number)
+    compile(side)
+    local state = rules.state() :: State
+    state.start_charge_shot = battle.navi(side).charge_shot_weapon
+end
+
 -- 0x0804770C, then 0x08042AE0: side `side`'s bug `bug` one count more, and every bug of the side's at its count's level
 -- (1 to 3) again, on the battle's stats. (Their routines for the battle write its stats, but HubBatc's, which writes
 -- the game state's maximum HP, which no battle reads.)
@@ -367,6 +376,21 @@ local function raise_bug(side: number, bug: string)
             BUG_WORK[b](stats, level, work)
         end
     end
+end
+
+-- 0x080E641E: BugFix's fix (EXE4's own, chips/bugfix) of side `side`'s stats: no move bug (+0x0D), no buster blanks
+-- (+0x08), no HP or custom drain (+0x0E, +0x0F), no panel trail (+0x1B = 0xFF: a patch card's goes too), and the
+-- charged shot the battle started with (+0x0A from the start copy, 0x0800D81E: a NaviCust weapon bug stays; what came
+-- later, a raised bug's or DrkCanon's taunt, goes); then the navi's weapons are reloaded (0x0800BD48, which the
+-- engine's intake does each tick). The bugs' counts stay: the next raised bug runs them all again (`raise_bug`).
+local function fix_bugs(side: number)
+    local s = battle.navi(side)
+    s.move_bug = 0
+    s.buster_blanks = 0
+    s.hp_drain = 0
+    s.custom_drain = 0
+    s.panel_trail = 0xFF
+    s.charge_shot_weapon = (rules.state_of(side) :: State).start_charge_shot
 end
 
 -- `validate`'s part: each program in one of its colors, turned 0 to 3 quarters, every cell it covers on the board, over
@@ -449,6 +473,7 @@ return {
     run = run,
     validate = validate,
     raise_bug = raise_bug,
+    fix_bugs = fix_bugs,
     -- The side's state (./init.luau gathers it).
     state = {
         bug_counts = {
@@ -463,6 +488,7 @@ return {
             result = "u8",
             hub = "u8",
         },
+        start_charge_shot = "weapon",
     } :: StateSchema,
     bug_kinds = bug_kinds,
 }

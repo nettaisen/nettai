@@ -15,4 +15,6 @@ return {
     -- A dimming's start hides the chip window on its starter's console only (0x08009FBA, EXE6's
     -- `object_timefreezeBegin`).
     dimming_hides_every_window = false,
+    -- A charged chip is used with its charge, whatever its family (0x0800D9CC).
+    charged_null_alt_routine = false,
 }
