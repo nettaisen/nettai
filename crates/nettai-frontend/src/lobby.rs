@@ -55,6 +55,14 @@
 //!    this peer has loaded and has heard the other has: by its Loading, or
 //!    by a frame of the match, which it sends only once it has started.
 //!
+//!    One peer can take the match for agreed when the other doesn't: the
+//!    other player took their ready back (or changed something) while the
+//!    Reveals crossed, and its lobby went on to another revision before
+//!    this peer's Reveal came. Such a peer isn't in that match. When this
+//!    one hears its lobby again, it goes back to the lobby with it
+//!    ([`Status::Pending`] after [`Status::Loading`]), its player not
+//!    ready, and what its host had loaded is for nothing.
+//!
 //! A **Refuse** ends it: the compatibility fields, a reason and, for a log,
 //! the detail. The peer that refuses and the one that is refused each end
 //! with a [`Failure`], whose [`Reason`] is what a host tells its player, in
@@ -412,7 +420,9 @@ pub enum Status<'a> {
     Pending,
     /// The match is agreed and both sides are revealed: the host loads what
     /// it needs of it, saying how far it is ([`Lobby::set_loading`]) and
-    /// when it is done ([`Lobby::set_loaded`]), and polls on.
+    /// when it is done ([`Lobby::set_loaded`]), and polls on. (The next
+    /// poll may say `Pending` again: the other player took their ready back
+    /// as the match was agreed, and both are back in the lobby.)
     Loading(&'a Agreement),
     /// Both players have loaded: the match starts now (a `NetPlayer` of the
     /// agreement's set, on the same datagrams).
@@ -498,6 +508,8 @@ pub struct Lobby {
     their_loading: Option<(u32, u8, bool)>,
     their_frame: bool,
     started: bool,
+    /// The other peer's lobby revision the agreed match is of.
+    agreed_with: u32,
     /// The round trip, timed by the lobby's own messages: the other's
     /// clock as its latest message said it, and when that came; and the
     /// ping so far.
@@ -542,6 +554,7 @@ impl Lobby {
             their_loading: None,
             their_frame: false,
             started: false,
+            agreed_with: 0,
             their_clock: None,
             ping: None,
             outgoing: Vec::new(),
@@ -829,6 +842,16 @@ impl Lobby {
                 self.ping = Some(Ping::after(self.ping, sample as f64));
             }
         }
+        // The other's lobby went on after the revision this peer agreed the
+        // match with: it never took the match for agreed (a peer that did
+        // says nothing more of its lobby). Back to the lobby with it.
+        if matches!(self.phase, Phase::Done(_)) && !self.started && revision > self.agreed_with {
+            self.phase = Phase::Lobby;
+            self.nonce = self.nonces.next_u64();
+            (self.loading, self.their_loading, self.their_frame) = ((0, false), None, false);
+            (self.their_hello, self.their_reveal) = (None, None);
+            self.change(false);
+        }
         if self.settled() || self.theirs.as_ref().is_some_and(|t| revision <= t.revision) {
             return;
         }
@@ -946,6 +969,7 @@ impl Lobby {
             match self.agree(&c, &commitment, &reveal) {
                 Ok(a) => {
                     self.phase = Phase::Done(Box::new(a));
+                    self.agreed_with = c.revisions.1;
                     // (The loading is said at once.)
                     self.changed = true;
                 }
@@ -1488,6 +1512,43 @@ mod tests {
         load(&mut lobbies, now);
         let [h, j] = [started(&mut lobbies[0], now), started(&mut lobbies[1], now)];
         assert_eq!((h.seed, &h.m), (j.seed, &j.m));
+    }
+
+    /// One player takes their ready back just as the match is agreed: the
+    /// other's peer, which has their Reveal and took the match for agreed,
+    /// was loading it, and goes back to the lobby with them, not ready.
+    /// Both ready again: a new agreement, which both load and start.
+    #[test]
+    fn a_match_only_one_peer_agreed_goes_back_to_the_lobby() {
+        let content = nettai_match::testing::exe6_content();
+        let now = Instant::now();
+        let s = settings(3);
+        let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
+        // The host's Reveal doesn't arrive: the host has the joiner's, and
+        // is loading; the joiner still waits for the host's.
+        run(&mut lobbies, now, 6, &mut |from, d| {
+            if from == 0 && d[0] == Kind::Reveal as u8 {
+                d.clear();
+            }
+        });
+        let Status::Loading(first) = lobbies[0].poll(now) else { panic!("the host has the joiner's Reveal") };
+        let first = first.seed;
+        assert!(matches!(lobbies[1].poll(now), Status::Pending));
+        lobbies[0].set_loading(0.5);
+        // The joiner's player takes their ready back.
+        lobbies[1].set_ready(false);
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)), "both are back in the lobby");
+        assert_eq!((lobbies[0].ready(), lobbies[1].their_ready(), lobbies[0].loading()), (false, false, 0.0));
+        // Both ready again: agreed anew (another seed: the Reveals of the
+        // first were spent), loaded, started.
+        lobbies[0].set_ready(true);
+        lobbies[1].set_ready(true);
+        run(&mut lobbies, now, 20, &mut |_, _| {});
+        load(&mut lobbies, now);
+        let [h, j] = [started(&mut lobbies[0], now), started(&mut lobbies[1], now)];
+        assert_eq!((h.seed, &h.m), (j.seed, &j.m));
+        assert_ne!(h.seed, first);
     }
 
     /// Peers that can't play together stop, each with a reason its host can
