@@ -584,8 +584,9 @@ function compile.overview(side: number, game: NaviCustGame, expansions: number?,
             end
         end
     end
+    local cards = game.bug_cards or {}
     for _, bug in bugs do
-        local brought: SetupBug = { name = bug.name, level = bug.level }
+        local brought: SetupBug = { name = bug.name, level = bug.level, card = cards[bug.name] }
         table.insert(out.bugs, brought)
     end
 end
