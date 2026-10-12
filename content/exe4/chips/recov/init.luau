@@ -18,6 +18,7 @@ local recov10: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov10/action", hp = 10, mood = 30 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 local recov30: Chip = {
@@ -32,6 +33,7 @@ local recov30: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov30/action", hp = 30, mood = 30 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 local recov50: Chip = {
@@ -46,6 +48,7 @@ local recov50: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov50/action", hp = 50, mood = 40 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 local recov80: Chip = {
@@ -60,6 +63,7 @@ local recov80: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov80/action", hp = 80, mood = 40 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 local recov120: Chip = {
@@ -74,6 +78,7 @@ local recov120: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov120/action", hp = 120, mood = 50 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 local recov150: Chip = {
@@ -88,6 +93,7 @@ local recov150: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov150/action", hp = 150, mood = 50 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 local recov200: Chip = {
@@ -102,6 +108,7 @@ local recov200: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov200/action", hp = 200, mood = 50 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 local recov300: Chip = {
@@ -116,6 +123,7 @@ local recov300: Chip = {
     lockout = 30,
     flags = { "standard_library", "library" },
     action = recov.action { id = "recov300/action", hp = 300, mood = 50 },
+    auto_battle = { class = "when_hp_low" },
 }
 
 return { recov10 = recov10, recov30 = recov30, recov50 = recov50, recov80 = recov80, recov120 = recov120, recov150 = recov150, recov200 = recov200, recov300 = recov300 }

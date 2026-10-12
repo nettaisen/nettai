@@ -17,6 +17,7 @@ local twnfng1: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "spot_test", range = "a_row_off" },
 }
 
 local twnfng2: Chip = {
@@ -31,6 +32,7 @@ local twnfng2: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "spot_test", range = "a_row_off" },
 }
 
 local twnfng3: Chip = {
@@ -45,6 +47,7 @@ local twnfng3: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "spot_test", range = "a_row_off" },
 }
 
 return { twnfng1 = twnfng1, twnfng2 = twnfng2, twnfng3 = twnfng3 }

@@ -26,6 +26,7 @@ local laserman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "laserman/controller", palette = 0, aims = false }.hook,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local lasrmn_sp: Chip = {
@@ -42,6 +43,7 @@ local lasrmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "lasrmn-sp/controller", palette = 10, aims = true }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local lasrmn_ds: Chip = {
@@ -57,6 +59,7 @@ local lasrmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "lasrmn-ds/controller", palette = 11, aims = true }.hook,
     megaman = "dark",
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { laserman = laserman, ["lasrmn-sp"] = lasrmn_sp, ["lasrmn-ds"] = lasrmn_ds }

@@ -474,7 +474,8 @@ pub struct HudLayout {
     pub judge_from_hold: bool,
     /// Where the chatbox's text starts (its sprites' top left:
     /// `chatbox_runScript`'s text place, EXE6's (0x33, 0x6C); EXE4's
-    /// 0x0804E3B4: (0x3F, 0x6D)).
+    /// 0x0804E3B4: (0x3F, 0x6D) in the US games, which a language's
+    /// lettering may place itself, `HudLettering::chatbox_text`).
     pub chatbox_text: (u8, u8),
     /// Where the chatbox's key-wait arrow is, in the message box and in the
     /// description box (EXE6's `byte_8045DCC`: (0xE2, 0x8D), and the

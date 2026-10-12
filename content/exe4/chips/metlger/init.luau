@@ -70,6 +70,7 @@ local metlger1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = hook,
+    auto_battle = { class = "into_open_row" },
 }
 
 -- MetlGer2 (EXE4 chip 0x0B0).
@@ -85,6 +86,7 @@ local metlger2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = hook,
+    auto_battle = { class = "into_open_row" },
 }
 
 -- MetlGer3 (EXE4 chip 0x0B1).
@@ -100,6 +102,7 @@ local metlger3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = hook,
+    auto_battle = { class = "into_open_row" },
 }
 
 return { metlger1 = metlger1, metlger2 = metlger2, metlger3 = metlger3 }

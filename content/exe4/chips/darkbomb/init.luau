@@ -39,6 +39,7 @@ local darkbomb: Chip = {
             explosion = EXPLOSION,
         }),
     },
+    auto_battle = { class = "into_reach", range = "columns_two_to_four" },
 }
 
 return { darkbomb = darkbomb }

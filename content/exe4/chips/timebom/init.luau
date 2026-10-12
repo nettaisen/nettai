@@ -31,6 +31,7 @@ local timebom: Chip = {
     flags = { "dimming", "has_damage" },
     program_advances = { { order = 35, code_run = { chip = timebombs.timebomb, count = 3 } } },
     dimming = bomb.controller.hook(BIG_BOMB),
+    auto_battle = { class = "when_far_front_free" },
 }
 
 return { timebom = timebom }

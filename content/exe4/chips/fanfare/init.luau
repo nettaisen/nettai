@@ -39,6 +39,7 @@ local chip: Chip = {
         tune = asset.sound("fanfare"),
         effect = cheer,
     }),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { fanfare = chip }

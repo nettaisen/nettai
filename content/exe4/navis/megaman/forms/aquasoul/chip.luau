@@ -23,6 +23,7 @@ local aquasoul: Chip = {
     action = change.make {
         id = "aquasoul",
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { aquasoul = aquasoul }

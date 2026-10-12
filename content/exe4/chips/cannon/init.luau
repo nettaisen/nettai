@@ -37,6 +37,7 @@ local cannon: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     action = cannon_lib.action { id = "cannon/action", arm = CANNON_ARM, shot = SHOT },
+    auto_battle = { class = "into_target_row" },
 }
 
 local hicannon: Chip = {
@@ -51,6 +52,7 @@ local hicannon: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     action = cannon_lib.action { id = "hicannon/action", arm = HICANNON_ARM, shot = SHOT },
+    auto_battle = { class = "into_target_row" },
 }
 
 local m_cannon: Chip = {
@@ -65,6 +67,7 @@ local m_cannon: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     action = cannon_lib.action { id = "m-cannon/action", arm = M_CANNON_ARM, shot = SHOT },
+    auto_battle = { class = "into_target_row" },
 }
 
 return { cannon = cannon, hicannon = hicannon, ["m-cannon"] = m_cannon }

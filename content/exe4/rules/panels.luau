@@ -135,7 +135,7 @@ return {
     -- What each panel is drawn as is in tables of their own (0x02037AE6 its type, 0x02037B0E its owner), which the
     -- panel update alone writes (0x08009240): a cracked panel a body stepped off shows its hole a tick after it
     -- breaks (0x080097C8), and a dimmed tick draws every panel as it is, no blink showing (0x08009A38). The drawing
-    -- (0x080092AC) reads a panel's highlight (0x02037ABE) before whether it is visible, and draws a highlighted panel
-    -- only while it is (0x0800932C): one that isn't keeps what it last showed.
+    -- (0x080092AC) reads a panel's highlight (0x02037ABE) first (0x080092E8): a highlight shows through a blink, and a
+    -- highlighted panel is drawn only while it is visible (0x0800932C): one that isn't keeps what it last showed.
     drawn = "own_tables",
 }

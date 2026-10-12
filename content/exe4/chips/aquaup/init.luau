@@ -42,6 +42,7 @@ local aquaup1: Chip = {
     hit_param = 30,
     lockout = 45,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_enemy_on_cracked" },
 }
 
 local aquaup2: Chip = {
@@ -56,6 +57,7 @@ local aquaup2: Chip = {
     hit_param = 30,
     lockout = 45,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_enemy_on_cracked" },
 }
 
 local aquaup3: Chip = {
@@ -70,6 +72,7 @@ local aquaup3: Chip = {
     hit_param = 30,
     lockout = 45,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_enemy_on_cracked" },
 }
 
 return { aquaup1 = aquaup1, aquaup2 = aquaup2, aquaup3 = aquaup3 }

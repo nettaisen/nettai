@@ -79,13 +79,24 @@ const PAUSE: u32 = 0x086E_611C;
 /// and deletion banners), their glyph filler, digits and palette.
 const BANNERS: u32 = 0x0801_EF84;
 const BANNER_COUNT: u32 = 47;
-/// The telops' banners (0x4C, the console's own, and 0x50, the other
-/// player's) and their places: their records' kind is 3
-/// (`BannerLayout::kind`), a banner with no glyphs of its own, where a
-/// frontend draws the chip's name. A HUD of placeholders states the two as
-/// what they are, not as plain banners with placeholder words: the content
-/// shows its telops with them.
-const TELOP_BANNERS: [(usize, (u8, u8)); 2] = [(0x4C / 4, (0, 32)), (0x50 / 4, (120, 32))];
+/// The banners that aren't plain, as the US ROMs' records have them (the
+/// kind, the place, a kind-1 banner's number's place), for a HUD of
+/// placeholders (`placeholders::banners`): the turn's and the round's
+/// numbered banners, the Program Advance's two that hold, the judge's, and
+/// the telops' (the console's own and the other player's, with no glyphs:
+/// a frontend draws the chip's name there).
+const BANNER_RECORDS: [crate::placeholders::BannerRecord; 10] = [
+    (0x0C / 4, 1, (48, 64), Some((104, 64))),
+    (0x20 / 4, 1, (68, 64), Some((140, 64))),
+    (0x24 / 4, 2, (12, 24), None),
+    (0x28 / 4, 4, (40, 16), None),
+    (0x30 / 4, 1, (40, 64), Some((112, 64))),
+    (0x34 / 4, 2, (132, 24), None),
+    (0x3C / 4, 1, (44, 64), Some((108, 64))),
+    (0x4C / 4, 3, (0, 32), None),
+    (0x50 / 4, 3, (120, 32), None),
+    (0x60 / 4, 1, (40, 64), Some((56, 64))),
+];
 const BANNER_FILLER: u32 = 0x0801_FDC0;
 const BANNER_DIGITS: u32 = 0x086F_1DC0;
 const BANNER_PALETTE: u32 = 0x086F_2900;
@@ -156,9 +167,7 @@ pub fn hud(roms: &crate::exe6::Roms, names: &AssetNames) -> Hud {
     let (rom, gregar) = (roms.falzar, roms.gregar);
     if !rom.is_present() {
         let mut h = crate::placeholders::hud(names, BANNER_COUNT as usize);
-        for (id, (x, y)) in TELOP_BANNERS {
-            h.banners[id] = nettai_assets::BannerLayout { x, y, kind: 3, ..Default::default() };
-        }
+        h.banners = crate::placeholders::banners(BANNER_COUNT as usize, &BANNER_RECORDS);
         h.chip_icons = chip_icons(roms, names);
         h.mugshots = (0..MUGSHOT_COUNT)
             .map(|_| (crate::placeholders::tiles(8), crate::placeholders::PALETTE))

@@ -1,10 +1,10 @@
 --!strict
--- The patch card PET Menu Color Change (29, PET画面カラー変更).
+-- The patch card PET Menu Color Change (29, PET画面カラー変更), slot 0F's.
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cards = require("../rules/patch_cards/cards")
 
 -- (No effect in battle: a card of the PET's menu.)
-local card: PatchCard = { effects = {} }
+local card: SlottedPatchCard = { slot = cards.SLOT_0F, effects = {} }
 
 return { ["029-pet-menu-color-change"] = card }

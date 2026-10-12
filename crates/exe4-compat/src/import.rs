@@ -159,6 +159,50 @@ mod tests {
         img
     }
 
+    /// Every patch card states its catalog slot: the slot's number as the
+    /// save and the setup count it, 0 to 5 (its definition's `slot`, which
+    /// the card writes by its name, rules/patch_cards/cards' `SLOT_0A` to
+    /// `SLOT_0F`: a card's fact for what lists and files cards; nothing in a
+    /// battle reads it). The six slots hold 27, 16, 16, 20, 50 and 4 of the
+    /// 133 cards (Tango's table, which the verification workspace's
+    /// gen_patch_cards.py holds each card to), and a pair's half reads for
+    /// its other half the slot that half states (the handlers' own numbers,
+    /// 0x080424F4 on: Triple Supporter's halves in slots 1 and 2, All
+    /// Guard's in 2 and 3, Charge FullCustom's in 3 and 4).
+    #[test]
+    fn every_patch_card_states_its_catalog_slot() {
+        let content = exe4_content();
+        let spec = |h| {
+            let key = &content.defs.entry(h).key;
+            content.defs.definitions.get(Registry::Entry, key).expect("its definition").spec.clone()
+        };
+        let slot = |h| spec(h).field("slot").int();
+        let cards = content.defs.entries_of("patch_cards");
+        assert_eq!(cards.len(), 133);
+        let mut held = [0usize; 6];
+        for &h in &cards {
+            match slot(h) {
+                Some(n @ 0..=5) => held[n as usize] += 1,
+                other => panic!("{}: its slot is {other:?}", content.defs.entry(h).key),
+            }
+        }
+        assert_eq!(held, [27, 16, 16, 20, 50, 4], "the cards of slots 0A to 0F");
+        let of = |id: &str| content.defs.entry_in("patch_cards", id).unwrap_or_else(|| panic!("no card {id}"));
+        assert_eq!(slot(of("017-custom2")), Some(0));
+        assert_eq!(slot(of("028-pet-menu-color-change")), Some(5));
+        for (half, other, at) in [
+            ("074-triple-supporter-1-2", "075-triple-supporter-2-2", 2),
+            ("075-triple-supporter-2-2", "074-triple-supporter-1-2", 1),
+            ("076-all-guard-1-2", "077-all-guard-2-2", 3),
+            ("077-all-guard-2-2", "076-all-guard-1-2", 2),
+            ("103-fullcustom-charge-1-2", "104-fullcustom-charge-2-2", 4),
+            ("104-fullcustom-charge-2-2", "103-fullcustom-charge-1-2", 3),
+        ] {
+            let reads = spec(of(half)).field("effects").item(1).field("pair").field("slot").int();
+            assert_eq!((reads, slot(of(other))), (Some(at), Some(at)), "{half} reads slot {at} for {other}");
+        }
+    }
+
     #[test]
     fn an_exe4_save_gives_its_side() {
         let content = exe4_content();
@@ -203,22 +247,27 @@ mod tests {
         );
     }
 
-    /// An e-Reader card's chip in a save's folder (Duo, chip number 0x137,
-    /// in its code D) comes into the side's as any chip does: its record is
-    /// every ROM's, and what the card brings (its name, its picture) the
-    /// pack has whether or not the save holds the card's data.
+    /// The e-Reader cards' chips in a save's folder (Duo, chip number 0x137,
+    /// in its code D, and PrixPowr, 0x138, in its code G) come into the
+    /// side's as any chip does: their records are every ROM's, and what the
+    /// cards bring (their names, their pictures) the pack has whether or not
+    /// the save holds the cards' data.
     #[test]
-    fn an_e_reader_cards_chip_comes_into_the_folder() {
+    fn the_e_reader_cards_chips_come_into_the_folder() {
         let content = exe4_content();
         let mut img = image();
         let folder = 0x262C + 2 * 30;
         img[folder + 2..folder + 4].copy_from_slice(&(0x137u16 | 3 << 9).to_le_bytes());
+        img[folder + 4..folder + 6].copy_from_slice(&(0x138u16 | 6 << 9).to_le_bytes());
         let save = read(&img).unwrap();
         let mut side = Side::fresh(&content, "exe4").unwrap();
         let notes = import(&content, "exe4", &mut side, &save);
         let chips = side.folder(&content).chips;
         let named = |c: Option<FolderChip>| c.map(|c| (ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter()));
-        assert_eq!((named(chips[0]), named(chips[1])), (Some(("cannon".to_string(), 'A')), Some(("duo".to_string(), 'D'))));
+        assert_eq!(
+            [named(chips[0]), named(chips[1]), named(chips[2])],
+            [Some(("cannon".to_string(), 'A')), Some(("duo".to_string(), 'D')), Some(("prixpowr".to_string(), 'G'))]
+        );
         assert!(!notes.iter().any(|n| n.contains("folder")), "{notes:?}");
     }
 }

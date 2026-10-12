@@ -1,12 +1,13 @@
 --!strict
--- The patch card Triple Supporter 1/2 (74, トリプルサポーター1/2).
+-- The patch card Triple Supporter 1/2 (74, トリプルサポーター1/2), slot 0B's.
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cards = require("../rules/patch_cards/cards")
 
-local card: PatchCard = {
+local card: SlottedPatchCard = {
+    slot = cards.SLOT_0B,
     effects = {
-        cards.pair(2, "075-triple-supporter-2-2", { cards.all_supports(), cards.clear_bug("support") }),
+        cards.pair(cards.SLOT_0C, "075-triple-supporter-2-2", { cards.all_supports(), cards.clear_bug("support") }),
     },
 }
 
