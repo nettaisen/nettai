@@ -1621,7 +1621,12 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   knows the shift itself (§17's known deviations: `shifted.tsv`, "exact at the replay's known shift").
   The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
   only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
-  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). The Japanese games' text
+  starts at (0x33, 0x6C), EXE6's place (Red Sun Japan's 0x0804E2A4, the same routine: the US games moved it twelve
+  pixels right and one down for their font; the glyphs' advances are the ROM's table, 11 a glyph in Japanese): the
+  place goes with the language's lettering (`HudLettering::chatbox_text`, the pack's `languages.ja.chatbox_text`),
+  so Japanese words are drawn where the Japanese games draw them and English ones where the US games do
+  (chips/0x137-duo/jp, the first comparison on a Japanese console, had every description twelve pixels right). Its end matches too: the
   text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
   zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
   on the tick the screen sees the box closed (`states_in_choosing`).
