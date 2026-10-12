@@ -45,6 +45,8 @@ return {
     stance_counter = "next_tick",
     -- The counter a trap's catch starts runs its first step at once (`sub_801056A`).
     trap_counter = "at_once",
+    -- The idle's entry starts it before the navi's own idle runs (`sub_80EA734`).
+    idle_entry_counter = true,
     -- A deleted player's object lets go of its reservations and collision data and counts one actor fewer, then stays
     -- in its slot (`sub_8016C4E`).
     dead_player = "kept",

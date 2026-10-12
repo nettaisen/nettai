@@ -70,6 +70,8 @@ return {
     overlay_restart = "reload",
     stance_counter = "at_once",
     trap_counter = "at_once",
+    -- The idle's entry starts a trap's counter before the navi's own idle runs (0x080EAFEA).
+    idle_entry_counter = true,
     -- A deleted player's object stays in its slot, as EXE6's.
     dead_player = "kept",
     -- An attack's end hands its lockout on, as EXE6's (0x0800F2D0).
