@@ -655,7 +655,7 @@ struct Window {
     /// it isn't: a known difference (`known_picture`).
     picture_known: Option<&'static str>,
     /// The chip window's picture's mark, where the caller names its chip
-    /// (`chip:KEY`, `Problems::marking`).
+    /// (`chip:KEY`, or a button's `button:NAME`: `Problems::marking`).
     picture_mark: Option<String>,
     /// In the font text mode, the strings whose tiles were left blank for
     /// the text layer: the chip window's name, and the Program Advance
@@ -970,7 +970,7 @@ impl Window {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
                 blank_details(self, p);
             }
-            SlotKind::Button { button, cell } => {
+            SlotKind::Button { button, .. } => {
                 if let Some(chip) = v.screen.slots[slot as usize].face {
                     // EXE5's capsules (0x08024422): the chip's name and
                     // picture alone; the frame's colors stay the last
@@ -991,12 +991,17 @@ impl Window {
                         0
                     };
                     blank_details(self, &look.details(palette));
+                    // (The button's picture is marked where the caller
+                    // names the button: `button:NAME`.)
+                    let what = format!("button:{}", nettai_content_api::keys::local(&v.b.content.defs.button(button).name));
+                    if problems.wants(&what) {
+                        self.picture_mark = Some(what);
+                    }
                     if look.pack.uses_digit {
                         // 0x080245C8: the uses left (the button's first
-                        // cell's, +4), over the damage's last cell.
-                        let first = if cell == ButtonCell::Right { slot - 1 } else { slot };
-                        let uses = v.screen.slots[first as usize].uses_left as usize;
-                        self.tiles.put_part(self.layout.digits + 4, &a.digits, 2 * uses.min(9), 2);
+                        // cell's, +4) as the window was drawn, over the
+                        // damage's last cell.
+                        self.tiles.put_part(self.layout.digits + 4, &a.digits, 2 * (cw.uses as usize).min(9), 2);
                     }
                 }
             }
@@ -1652,8 +1657,8 @@ fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Probl
 
 fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
     SpritePart {
-        x: 2,
-        y: 100,
+        x: (a.layout.regular.0 & 0x1FF) as u16,
+        y: (a.layout.regular.1 & 0xFF) as u8,
         width: 32,
         height: 32,
         tiles: &a.regular,
@@ -1712,8 +1717,11 @@ pub fn draw<'a>(
     }
     if let Some(what) = w.picture_mark.take() {
         let tiles = w.layout.art..w.layout.art + PICTURE_TILES;
-        if let Some(rect) = w.tiles_rect(place, tiles) {
-            problems.mark(rect, what);
+        if let Some([x0, y0, x1, y1]) = w.tiles_rect(place, tiles) {
+            // (Where the layer's shake leaves it: a button's window shakes
+            // the layer, `hud_jitter`.)
+            let (jx, jy) = hud_jitter(b);
+            problems.mark([x0 - jx, y0 - jy, x1 - jx, y1 - jy], what);
         }
     }
     w.known_icons(&v, place, problems);
@@ -1755,6 +1763,14 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
+    // Where the screen's states are the choosing's, its tick queues the
+    // Regular chip's frame before the state's own sprites (EXE4's
+    // 0x0801E3FC, then 0x0801E41E: the cursor is over the frame); else
+    // after the cursor (EXE6's `sub_8026CCC`).
+    let regular_first = b.content.rules().custom_screen.states_in_choosing;
+    if drawn.regular && regular_first {
+        queue.push(regular_part(&v, a));
+    }
     // The offered form's flying icon (EXE5's soul choice's: its state 9's
     // routines draw it before the screen's others).
     if window_view(b, screen) == Some(WindowView::OfferFlight)
@@ -1779,7 +1795,7 @@ pub fn draw<'a>(
         }
         queue.push(part);
     }
-    if drawn.regular {
+    if drawn.regular && !regular_first {
         queue.push(regular_part(&v, a));
     }
     if drawn.held {

@@ -142,6 +142,10 @@ pub struct CustomLayout {
     pub empty_palette: Option<u8>,
     /// The cursor over OK (a button's is its own: `ButtonPictures::cursor`).
     pub ok_cursor: CursorPlace,
+    /// Where the Regular chip's frame is drawn, a 32x32 sprite around the
+    /// first slot (EXE6's `sub_802899C` and EXE5's: (2, 100); EXE4's
+    /// 0x0801EF28: (1, 100)).
+    pub regular: (i16, i16),
 }
 
 /// Where the cursor's corners go over a slot (`sub_8028820`): the slot's

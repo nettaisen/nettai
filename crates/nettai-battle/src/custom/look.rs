@@ -118,6 +118,10 @@ pub struct ChipWindow {
     /// button's picture was. A button that shows a chip (`Slot::face`)
     /// leaves the frame as it was (EXE5's capsules, 0x08024422).
     pub framed: Option<super::FolderChip>,
+    /// A button's uses left as the window was drawn (EXE4's SHUFFLE,
+    /// 0x0801FEA2: the digit stays through a shuffle, which took a use at
+    /// its start and draws the window again at its end).
+    pub uses: u8,
 }
 
 /// The sprites a tick of the screen queued.
@@ -306,7 +310,7 @@ impl ScreenLook {
             window_fade: CLEAR_WINDOW_FADE,
             shade: ChipShade::Clear,
             drawn: Drawn::default(),
-            chip_window: ChipWindow { slot: 0, picks: 0, last_chip, framed: None },
+            chip_window: ChipWindow { slot: 0, picks: 0, last_chip, framed: None, uses: 0 },
             form_list_tab,
             column: [None; 5],
             column_kept: None,
