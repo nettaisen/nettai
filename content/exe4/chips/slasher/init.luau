@@ -151,6 +151,8 @@ local slasher: Chip = {
     hit_param = 40,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    -- The idle names no Slasher to the other player at its use (0x080EECF6 tests chip 0x38): its slash does.
+    traits = { "no_name_at_use" },
 }
 
 return { slasher = slasher }

@@ -102,6 +102,12 @@ slasher.action = new.action {
                 attachment.attach(me, swords.held_blade(me), "related", { anim = swords.blade_anim(me) })
                 me:set_status("using_action", true)
                 s.timer = 0x15
+                -- 0x080ED40E: Slasher's name to the other player, as it slashes (the idle shows none at its use).
+                local chip = me.attack_chip
+                if chip == nil then
+                    error("Slasher's slash names chip 0x38: its action runs without the chip")
+                end
+                battle.show_used_chip(me.alliance, chip, me.attack_damage, me.extra)
                 me.step_init = 4
             end
             if s.timer == 0x0C then
