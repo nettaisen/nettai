@@ -81,8 +81,8 @@ Each is settled unless the user changes it.
 19. **Patch cards are shown comprehensively**, have no image area ("patch cards don't have images"), have no on/off
     switch ("nettai doesn't support turning them off"), and a card that doesn't fit says so in the error red
     ("Needs 24 MB"), "like how errors in the folder editor get surfaced".
-20. **EXE4's patch card slots are named 0A to 0F**, and not every card fits every slot. (On 2026-10-12 another
-    agent was adding each card's slots to the content's metadata.)
+20. **EXE4's patch card slots are named 0A to 0F**, and not every card fits every slot: each card states the one
+    slot it belongs in (`slot = cards.SLOT_0A` to `SLOT_0F` in its definition).
 21. **Phone (upright) layouts are in scope.**
 
 ## 3. Chosen where the user gave no answer
@@ -300,8 +300,9 @@ Each is in the mockups under the same name.
   panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
   same lines, and the strip across the top lays the card under the cursor out in its two groups. EXE4: six slots
-  named 0A to 0F, each with its card or Empty; a library row names the slots the card fits; a two-part card says
-  where its other half must be; a card shows its effect and the bugs it adds to or clears.
+  named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
+  puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
+  shows its effect and the bugs it adds to or clears.
 - **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel.
 
 ### Replays
@@ -312,8 +313,10 @@ Each is in the mockups under the same name.
   each round begins, the length; then to the round's start, a frame back, play or pause, a frame on, the next
   round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, Left and Right seek 5 seconds, comma and
   period step a frame, the brackets go a round.
-- **Export:** a dialog of one size from start to finish: Size (whole multiples of 240 by 160), View, Part, Save as,
-  the progress bar and its line, CANCEL and EXPORT.
+- **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
+  first), View, Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
+  keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
+  against 40 and 44 at 2 and 4). A raw `.nut` is tens of megabytes a second, so it is offered for a part only.
 
 ### In an online match
 - The picture fills the window, with no header or footer.
