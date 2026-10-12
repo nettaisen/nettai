@@ -706,6 +706,40 @@ Japan against US: moves of −0x110, +0x3C, −0x20, −0xAC, −0x12C and −0x
 US ROMs and 0x0801972C in both Japanese ones; the NaviCust part tables and the name pointers move by 8 to 0xC between
 the versions (T).
 
+**What the Japanese code does otherwise** (verify's `tools/cross-rom/code.py B4WE B4WJ`: the two Red Sun ROMs'
+code compared instruction by instruction, addresses and pointers aside; read in full for the battle HUD,
+0x08014000 to 0x08016C04, the custom screen, 0x0801D800 to 0x08022400, and the chatbox, 0x0804D800 to 0x0804F400).
+nettai has the US games' behavior where the two differ (the user, 2026-10-12); a Japanese console's recording that
+shows the other is a listed deviation (verify's deviations.rs) or a known difference of its frames.
+- **The chatbox's text** starts at (0x33, 0x6C) in Japan and (0x3F, 0x6D) in the US (0x0804E2A4, 0x0804E3B4): by
+  language, the lettering's (§14: `HudLettering::chatbox_text`). Its pace is by the US strings on every console (the
+  simulation reads the content's own strings, `locales/en.toml`: a description's lines, a message's characters), so
+  a Japanese console prints its no-running message at another pace (its lines are 14 and 4 characters against 20
+  and 19) and takes keys from 19 of the 328 descriptions a tick earlier or later (15 have two lines where the
+  English has three, 4 the other way). The speaker's mouth goes by the character's class in each (0x0804E7A4,
+  0x0804E8B4: the US letters and digits; the Japanese glyphs below 120 and 132, 133 and those past 147).
+- **The chip window's damage** (HUD task 4): its row holds nine cells in the US (0x08015078, clearing seventeen with
+  the name) and eight in Japan (0x08015018, sixteen). At nine cells ("120+120×2": three digits, a bonus of 100 or
+  more, doubled) the Japanese code writes past its buffer: the "2" isn't drawn and its upper half lands on the lower
+  half of the first digit. nettai draws the nine (emotions/full-synchro-long-damage, and its jp copy).
+- **A message's end** (0x08015CAA): the US clears the messages' draw bit (0x40) too; the draw routine for that bit
+  does nothing in either.
+- **NumbrBl's NumberMan** (actor #0x45): the Japanese init (0x080C8C28) stores the 0xFF meant for the animation's
+  copy to the animation byte and sets his sprite's animation 255 for his first, unseen tick; the US init
+  (0x080C8CE8) is the fix, and nettai's (jp/chips/0x0ac-numbrbl1/hp is a listed deviation at its frame 485).
+  PrixPowr's KendoMan (§13) is the other one found by a recording.
+- **Not a netbattle's**: the enemies' names (HUD tasks 11 and 18: eleven cells in the US where 0x08044AEC says so),
+  the story timer's blinking label (task 19: eight tiles at column 11 against ten at column 10), "PLAN-B..." (task
+  23: seven tiles at column 22 against ten at column 19), the chatbox's choice cursor (0x0804E73C), and the result
+  record's reward (§18 item 23).
+- The custom screen's code differs in nothing but its pictures and tables. Its close starts the HUD's chip window in
+  both regions (0x0801E9D8 and 0x0801E918: the rules' `custom_screen.close_shows_chip_window`), as EXE5's does in
+  both (0x08023128, 0x080230E4); EXE6's does in Japan alone (`sub_8026DC4`'s call of `sub_801E012`, 0x08027230 in
+  the Japanese Falzar ROM), and nettai's EXE6 follows the US games'.
+The rest of the first megabyte is not read (the tool shows about 5,000 places in all that decode as instructions on
+both sides, most of them the story's, the menus' and data that happens to decode): a difference in an object's routine shows only
+when a recording reaches it.
+
 ## 12. Saves
 
 Tango's BN4 save support (T): the image is 0x73D2 bytes; the mask word at 0x1554, the shift word at 0x1550 (a region
@@ -2262,6 +2296,18 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     NaviStats and seeds the battle's RNG2 from side 0's record (0x0203E394). **Done:** exe4-compat's
     `codec::LinkRecord` (the magic checked; the RNG2, the settings record and the NaviStats by their fields, the rest
     kept whole: nothing in the battle reads it past the unpack).
+    **The result record** (read for the regions' difference; Red Sun Japan's addresses). As a link battle ends, the
+    battle's result state (0x080076F0) has each console build 12 bytes at 0x0203BD44 (0x08021D86: +0 the result's
+    kind, +1 BattleState +0x1E, +3 the number of rewards, +4 a word from 0x08007BB4, +8 the reward: in a link battle
+    a chip drawn by 0x080F5944 with a draw of RNG2, or 0xFFFF 8 times in 256 where 0x080F5AE0 returns 0), send them
+    with 40 bytes of its library's bits under the magic 0x1F2F3F4F (0x0800893A), and, the other's received
+    (0x08008964: the records into 0x020363D0 and 0x020363DC, the two libraries' bits combined into 0x02037B90
+    by 0x080F5C94), hand the reward word from one record to the other (0x08021E4C; the US games' 0x08021F0C) for the
+    result screen (0x0802180A fills its block 0x0203B830 from the local record). The Japanese routine alone then
+    replaces a reward halfword of 0xFFFF by a chip of the combined libraries (0x08021E6C: 0x080F5CB0 by the record's
+    +1); the US games' leaves it (what their result screen makes of 0xFFFF isn't read). All of this is the result
+    screen's, after the battle is over: nettai has no result screen and no reward, no recording reaches it, and
+    nothing in a battle reads the records. Not ported, and where it would be, the US games' is nettai's.
 
 ### 18.4 MegaMan, his weapons, the objects
 
@@ -3039,6 +3085,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
        step as its own screen opened (only a driven navi's can be) lost the name until it landed. The engine's
        `ChipHud` holds it now (`window` on from the close, `from_close` until a decision or a hide), and the
        renderer's count is gone; EXE5's and EXE6's frames stay exact (ten scenarios each, both regions' consoles).
+       Whether a close starts the window is each game's rule since (`custom_screen.close_shows_chip_window`): EXE4's
+       does in both regions (0x0801E9D8 and Red Sun Japan's 0x0801E918 call the starter, 0x08015B54 and 0x08015AB0,
+       which starts the chip name's task where the icons' runs), EXE5's too (0x08023128, Team of Blues' 0x080230E4);
+       EXE6's US games' starts the icons alone, which nettai follows (the Japanese games' also start the window).
      - **An obstacle's push went the wrong way**: 0x0800B1C0 turns its copy of the navi's rows (0x0800B218) by
        the obstacle's front as if it faced its pusher (-1 unless a side 1 hit pushed it; no push when both sides'
        did), where the engine turns an obstacle's rows toward the pusher, as EXE5's and EXE6's tables hold
