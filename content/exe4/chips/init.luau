@@ -62,6 +62,7 @@ return merge {
     require("@self/drkstage"),
     require("@self/drksword"),
     require("@self/drkvulcn"),
+    require("@self/duo"),
     require("@self/elem"),
     require("@self/energbom"),
     require("@self/fanfare"),

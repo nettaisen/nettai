@@ -70,6 +70,8 @@ return {
     overlay_restart = "reload",
     stance_counter = "at_once",
     trap_counter = "at_once",
+    -- The idle's entry starts a trap's counter before the navi's own idle runs (0x080EAFEA).
+    idle_entry_counter = true,
     -- A deleted player's object stays in its slot, as EXE6's.
     dead_player = "kept",
     -- An attack's end hands its lockout on, as EXE6's (0x0800F2D0).
@@ -77,12 +79,14 @@ return {
     -- What the ends of a navi's actions clear of its requests besides the attacks' six: the Chaos Unison releases,
     -- at an attack's end (0x0800F2DA: 0x1803F); at a paralysis's, a flinch's and a drag's (0x080142A6, 0x080141D0,
     -- 0x080144E0: 0x1843F) the anti-sword trigger too. (A navi's own requests, GyroMan's take-off and landing,
-    -- are his idle's to clear.)
+    -- are his idle's to clear.) A cut-in's ask clears the chip's and the charged chip's requests with itself
+    -- (0x080145AC: 0x80C).
     request_clears = {
         attack = { "rules_release" },
         paralysis = { "anti_sword_triggered", "rules_release" },
         flinch = { "anti_sword_triggered", "rules_release" },
         drag = { "anti_sword_triggered", "rules_release" },
+        cut_in = { "chip", "charged_chip" },
     },
     -- What a navi's statuses' end clears (as EXE6's `sub_801A264`): the six statuses' flags (0x8001E800), the requests
     -- 0x300E8 and the six timers.

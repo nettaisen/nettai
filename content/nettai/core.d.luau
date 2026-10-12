@@ -1511,6 +1511,10 @@ declare field: {
     -- `object_setPanelTypeBlink`: this frame the panel is drawn as `kind`
     -- of `side` (drawn only).
     blink: (x: number, y: number, kind: PanelType, side: number) -> (),
+    -- The panel is drawn, or not, from now on (drawn only; its front edge
+    -- with it): the original's panel display byte's bit 0x40 (EXE4's
+    -- 0x08009E5C sets it, 0x08009E74 clears it).
+    set_visible: (x: number, y: number, visible: boolean) -> (),
 }
 
 -- Where an object's HP number shows (`battle.show_hp`): `dx`, `dy` pixels
