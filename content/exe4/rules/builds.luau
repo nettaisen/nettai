@@ -43,6 +43,17 @@ return {
             },
         },
     },
+    -- The build's list whose entries go in slots: the patch cards (the setup's `patch_cards`, each a `card` in a
+    -- `slot`). A card belongs in one of the six catalog slots (`own`, the field of its definition that says which:
+    -- ./patch_cards/cards' `SLOT_0A` to `SLOT_0F`, 0 to 5), and a build keeps each card in its own (./patch_cards'
+    -- `build_check`); `names` are the labels the game shows the slots under, by their numbers.
+    slots = {
+        field = "patch_cards",
+        entry = "card",
+        slot = "slot",
+        own = "slot",
+        names = { "0A", "0B", "0C", "0D", "0E", "0F" },
+    },
     -- The facts a build never states: every build plays at the most the game allows, so these are always the rules'
     -- defaults (the most Regular memory, the sun, Double Soul, the rival wins at the 100 RedSun's and BlueMoon's damage
     -- counts).
