@@ -15,8 +15,10 @@ local sparks = require("../../lib/sparks")
 return common.make {
     id = "metrknuk/fist",
     sprite = asset.sprite("justice-one"),
+    anim = 0,
     sound = asset.sound("justice-one"),
     burst = effects.burst,
+    burst_on_fist = false,
     self_type = collision.thrown_break,
     target = collision.hits_navis,
     spark = sparks.of_element(0),

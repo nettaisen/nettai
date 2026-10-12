@@ -354,13 +354,18 @@ fn lettering(rom: &Rom, a: &Addresses, base: &Hud, names: &AssetNames) -> HudLet
 // ---- Chips -----------------------------------------------------------------------------
 
 /// A chip's picture and icon, from its version's ROM (a version's own chip)
-/// or Red Sun US's (any other; else whichever ROM is present).
+/// or Red Sun US's (any other; else whichever ROM is present). An e-Reader
+/// card's chip's record points at RAM for them: its icon is the ROM's all
+/// the same, its picture the extractor's own (cards.rs).
 fn chip_media(roms: &Roms, id: u16) -> (Picture, Tiles) {
     let source = match version_of(id) {
         Some(v) => roms.of(v),
         None => roms.any(),
     };
     let Some((rom, a)) = source else { return (Picture::default(), Tiles::default()) };
+    if let Some(media) = super::cards::media(rom, a, id, ICON_BYTES) {
+        return media;
+    }
     let r = a.chip_table + 0x2C * id as u32;
     let (icon, gfx, pal) = (rom.u32(r + 0x20), rom.u32(r + 0x24), rom.u32(r + 0x28));
     let picture = if rom.contains(gfx) {

@@ -1271,7 +1271,17 @@ below: each game states them).
   EXE6's are 0x1000003F and, at a flinch's and a drag's, 0x1000043F (the mode-9 A press; the anti-sword trigger);
   EXE5's are 0x1803F at an attack's end and 0x1843F at the three reactions' (the Chaos Unison releases; the
   anti-sword trigger). A navi's own requests (EXE5's GyroMan's take-off and landing, exe5-map.md §15.16) are in
-  none: its own idle clears them.
+  none: its own idle clears them. A fifth list, `cut_in`, is what a cut-in's ask clears besides itself as the
+  dimmed player's routine drops it, whether or not the chip cut in: EXE6's (`sub_8017AB4`, 0x08017B5E: 0x80C) and
+  EXE5's (0x080145AC) the chip's and the charged chip's requests, EXE4's (0x08010CB8: 0x800) nothing, so a chip
+  asked for before the field dimmed (A pressed in a step) is used after the dimming with no further press
+  (exe4-map.md §18 item 67).
+- **Where the idle starts a trap's counter.** The `reactions` section's `idle_entry_counter`: EXE6's idle entry
+  (`sub_80EA734`) and EXE5's (0x080EAFEA) start a sprung trap's counter before the navi's own idle runs (`true`).
+  EXE4's entry (0x080EB0D6) does so for a navi in auto battle alone (NaviStats +0x26 = 1, a story's navi), so a
+  netbattle's navi's idle starts it in its turn (0x080EEBD0: after the phase's timer, the chip window and a revert
+  asked for; `false`). It shows when a navi comes back to its idle with the trap already sprung (exe4-map.md §18
+  item 67).
 - **The souls' engine items (exe5-map.md §15.8).** The `reactions` section's `stance_counter`, the navi's game's:
   the counter a stance's caught hit starts runs from the next tick in EXE6 (`sub_80105F2`, `"next_tick"`), its
   first step at once in EXE5 (0x0800E340, `"at_once"`). (EXE5's hit kernel is the `reactions` section's
