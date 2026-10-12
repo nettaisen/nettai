@@ -6,7 +6,12 @@
 //! What it gives a host:
 //!
 //! - **a game, loaded** ([`game`]): the packs found, the game's content,
-//!   its graphics and strings in a language, the text's font, its sound;
+//!   its graphics and strings in a language, the text's font, its sound,
+//!   in one call or a part at a time with how far it is
+//!   ([`game::Loading`]);
+//! - **a match made ready** ([`preload`]): what its first tick would
+//!   otherwise wait for (the content's runtime on the thread, the first
+//!   battle and picture), a step at a time, by side;
 //! - **a player** ([`Player`]) over **a driver** ([`driver`]: live play of
 //!   a set from the buttons; [`netplay`]: another player over the
 //!   network): the host gives it the GBA buttons held and the time that
@@ -24,6 +29,7 @@ pub mod game;
 pub mod lobby;
 pub mod netplay;
 pub mod player;
+pub mod preload;
 pub mod replay;
 pub mod session;
 
