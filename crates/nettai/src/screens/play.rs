@@ -19,7 +19,7 @@ use crate::battle::{BattleEvent, BattleStart, Play as Played};
 use crate::builds::store;
 use crate::errors::UserError;
 use crate::games::{Names, Ready};
-use crate::input::{Action, key_cap, pad_cap};
+use crate::input::{Action, KeyPress, key_cap, pad_cap};
 use crate::nav::Key;
 use crate::screens::menu::{clock_seed, version_tag};
 use crate::screens::{Screen, ScreenId};
@@ -33,6 +33,7 @@ use nettai_frontend::lobby::{Agreement, Settings};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
 use nettai_frontend::replay::Recorder;
 use nettai_match::Side;
+use nettai_rtc::signal::{ALPHABET, CODE_LENGTH};
 use nettai_ui::{BattleKind, LobbyNote, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
 use session::{Net, Session, Stands, Way};
 use slint::{ComponentHandle, ModelRc, VecModel};
@@ -131,6 +132,9 @@ pub struct Play {
     code: String,
     problem: Option<UserError>,
     direct: Option<Direct>,
+    /// The code's six boxes are open (a pad can't type): the character each is on, by its place in the
+    /// alphabet codes are written in.
+    boxes: Option<[usize; CODE_LENGTH]>,
     /// The lobby's list of builds is open.
     changing: bool,
     session: Option<Session>,
@@ -159,6 +163,7 @@ impl Default for Play {
             code: String::new(),
             problem: None,
             direct: None,
+            boxes: None,
             changing: false,
             session: None,
             stage: Stage::Idle,
@@ -175,10 +180,15 @@ impl Default for Play {
     }
 }
 
+/// A box of the code's six, by its place: its control's name.
+fn code_box(at: usize) -> String {
+    format!("boxes.{at}")
+}
+
 /// A code as it is kept while typed: its letters in capitals and its digits, at most a code's six; whatever
 /// else was typed (spaces, hyphens) left out.
 fn code_typed(text: &str) -> String {
-    text.chars().filter(|c| c.is_ascii_alphanumeric()).map(|c| c.to_ascii_uppercase()).take(nettai_rtc::signal::CODE_LENGTH).collect()
+    text.chars().filter(|c| c.is_ascii_alphanumeric()).map(|c| c.to_ascii_uppercase()).take(CODE_LENGTH).collect()
 }
 
 /// A code as it is shown: in threes.
@@ -382,7 +392,8 @@ impl Play {
         let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side()) else { return };
         let content = ready.content();
         let seed = if shell.still { 7 } else { clock_seed() };
-        let m = match nettai_match::pick::live(content, &game, seed, None) {
+        // (A new match's rounds, each place picked from the seed, with the build on both sides.)
+        let m = match nettai_match::Match::empty(content, &game) {
             Ok(m) => nettai_match::Match { sides: [side.clone(), side], ..m },
             Err(why) => return crate::errors::log("making the training match beside an invite", &why),
         };
@@ -434,8 +445,7 @@ impl Play {
     /// A match is agreed: the two cards, and the match made ready behind them; each side's bar is its own
     /// machine's.
     fn load(&mut self, shell: &mut Shell, agreed: Agreement) {
-        let Some((game, ready)) = shell.ready() else { return };
-        let content = ready.content();
+        let Some((game, _)) = shell.ready() else { return };
         let (me, other) = (agreed.side, 1 - agreed.side);
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
@@ -457,7 +467,9 @@ impl Play {
             // (Its driver is the lobby's to give: the match's channel is there once both sides have loaded.)
             play: Played::Make(Box::new(move || made.driver.borrow_mut().take())),
             viewer: me as u8,
-            recorder: recorder(content, &agreed, &game),
+            // (Recorded from its first tick: `Play::battle`. A match that is agreed and never starts leaves no
+            // file.)
+            recorder: None,
             cards: Some(cards),
             full: true,
             gate: Some(Box::new(move |mine| {
@@ -644,6 +656,58 @@ impl Play {
         }
     }
 
+    // ---- The code's six boxes ----------------------------------------------------------------------------
+
+    /// Open the code's boxes, each on the character the field has there (the first of the alphabet where it
+    /// has none, or one no code is written in).
+    fn open_boxes(&mut self, shell: &mut Shell) {
+        let mut rows = [0; CODE_LENGTH];
+        for (row, c) in rows.iter_mut().zip(self.code.chars()) {
+            *row = ALPHABET.find(c).unwrap_or(0);
+        }
+        // (The focus comes to each box on the character it shows, not the one it last left it on.)
+        for (at, row) in rows.iter().enumerate() {
+            shell.nav.set_row(&code_box(at), *row as i32);
+        }
+        self.boxes = Some(rows);
+        self.problem = None;
+        shell.nav.open("boxes.", Key::new(&code_box(0), rows[0] as i32));
+        self.show(shell);
+    }
+
+    fn close_boxes(&mut self, shell: &mut Shell) {
+        // (What the boxes say is the code now.)
+        if let Some(rows) = self.boxes.take() {
+            self.code = rows.iter().filter_map(|row| ALPHABET.chars().nth(*row)).collect();
+        }
+        shell.nav.close("boxes.");
+        self.show(shell);
+    }
+
+    /// Put box `at` on the character at `row`.
+    fn set_box(&mut self, shell: &Shell, at: usize, row: usize) {
+        let Some(rows) = &mut self.boxes else { return };
+        if at >= CODE_LENGTH || row >= ALPHABET.len() {
+            return;
+        }
+        rows[at] = row;
+        self.show_boxes(shell);
+    }
+
+    fn show_boxes(&self, shell: &Shell) {
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        view.set_boxes(self.boxes.is_some());
+        view.set_code_set(ALPHABET.len() as i32);
+        let characters: Vec<slint::SharedString> = self.boxes.iter().flatten().map(|row| ALPHABET[*row..*row + 1].into()).collect();
+        view.set_box_characters(ModelRc::new(VecModel::from(characters)));
+    }
+
+    /// The box the focus is on.
+    fn box_focused(shell: &Shell) -> Option<usize> {
+        shell.nav.focused().and_then(|k| k.id.strip_prefix("boxes.")).and_then(|at| at.parse().ok())
+    }
+
     // ---- The direct connection's dialog ------------------------------------------------------------------
 
     fn open_direct(&mut self, shell: &mut Shell) {
@@ -711,13 +775,17 @@ impl Screen for Play {
         // The list's cursor is on the chosen build (the chosen one is the one under it): as the screen is
         // shown, and when the list was read again under the cursor. With no build, the one button.
         if part == PlayPart::Builds {
-            let on_list = shell.nav.focused().is_some_and(|k| k.id == "builds");
+            let on_list = shell.nav.focused().is_some_and(|k| k.id == "builds" || k.id == "build");
             if self.builds.is_empty() {
                 if self.fresh || on_list {
                     shell.nav.focus("create", 0);
                 }
             } else if self.fresh || on_list {
-                shell.nav.focus("builds", if shell.scale.phone { 0 } else { self.chosen as i32 });
+                match shell.scale.phone {
+                    // (On a phone the builds are one box.)
+                    true => shell.nav.focus("build", 0),
+                    false => shell.nav.focus("builds", self.chosen as i32),
+                }
             }
         }
         self.fresh = false;
@@ -728,6 +796,7 @@ impl Screen for Play {
         view.set_chosen(self.chosen as i32);
         view.set_build(self.build().map(|b| b.row.clone()).unwrap_or_default());
         view.set_code(code_shown(&self.code).into());
+        self.show_boxes(shell);
         // The space beside JOIN: a problem, or that a link is being made.
         let meeting = matches!(self.stage, Stage::Meeting);
         let asked_directly = self.session.as_ref().is_some_and(|s| matches!(s.way, Way::Address(_)));
@@ -769,17 +838,32 @@ impl Screen for Play {
         self.drop_session(shell);
         self.direct = None;
         shell.nav.close("direct.");
+        self.boxes = None;
+        shell.nav.close("boxes.");
         self.problem = None;
         self.fresh = true;
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        // (A control of a part that isn't shown any more does nothing: a press may come as the part changes.)
+        let part = self.part();
+        let of_its_part = match id {
+            "builds" | "build" | "create" | "invite" | "join" | "direct" => part == PlayPart::Builds,
+            "wait.copy" | "wait.cancel" => part == PlayPart::Waiting,
+            _ if id.starts_with("direct.") => self.direct.is_some(),
+            _ if id.starts_with("boxes.") => self.boxes.is_some(),
+            _ if id.starts_with("lobby.") || id.starts_with("change.") => matches!(self.stage, Stage::Lobby),
+            _ => true,
+        };
+        if !of_its_part {
+            return;
+        }
         match id {
             // ---- The builds, and the row.
             // (On a phone the builds are one box, which opens them as a sheet.)
-            "builds" if shell.scale.phone => {
+            "build" => {
                 let names = self.builds.iter().map(|b| b.name.clone()).collect();
-                shell.pick("builds", 0, names, self.chosen);
+                shell.pick("build", 0, names, self.chosen);
             }
             "builds" => {
                 self.choose_build(shell, index.max(0) as usize);
@@ -795,6 +879,20 @@ impl Screen for Play {
                 self.refuse_or_show(shell);
             }
             "direct" => self.open_direct(shell),
+            // ---- The code's boxes: Enter on one goes to the next, and from the last to JOIN.
+            "boxes.join" => {
+                self.close_boxes(shell);
+                self.problem = self.connect(shell, Way::Code(self.code.clone())).err();
+                self.refuse_or_show(shell);
+            }
+            "boxes.cancel" => self.close_boxes(shell),
+            _ if id.starts_with("boxes.") => match Play::box_focused(shell) {
+                Some(at) if at + 1 < CODE_LENGTH => {
+                    let row = self.boxes.map_or(0, |rows| rows[at + 1]);
+                    shell.nav.focus(&code_box(at + 1), row as i32);
+                }
+                _ => shell.nav.focus("boxes.join", 0),
+            },
             // ---- The direct connection's dialog.
             "direct.copy" => {
                 let address = self.direct.as_ref().map(|d| d.host_address.clone()).unwrap_or_default();
@@ -881,7 +979,7 @@ impl Screen for Play {
 
     fn step(&mut self, shell: &mut Shell, id: &str, _index: i32, by: i32) {
         match id {
-            "builds" => {
+            "build" => {
                 let count = self.builds.len() as i32;
                 if count > 0 {
                     self.choose_build(shell, (self.chosen as i32 + by).rem_euclid(count) as usize);
@@ -901,7 +999,7 @@ impl Screen for Play {
 
     fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
         match id {
-            "builds" => self.choose_build(shell, choice.max(0) as usize),
+            "build" => self.choose_build(shell, choice.max(0) as usize),
             "lobby.closed" => self.set_closed(choice == 1),
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
@@ -936,8 +1034,12 @@ impl Screen for Play {
 
     fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
         // The list's row under the cursor is the build chosen: the overview beside it follows.
-        if id == "builds" && !shell.scale.phone {
+        if id == "builds" {
             self.choose_build(shell, index.max(0) as usize);
+        }
+        // A box of the code's: the character the focus is on in it.
+        if let Some(at) = id.strip_prefix("boxes.").and_then(|at| at.parse::<usize>().ok()) {
+            self.set_box(shell, at, index.max(0) as usize);
         }
     }
 
@@ -952,8 +1054,35 @@ impl Screen for Play {
         true
     }
 
+    /// In the code's boxes, a character typed goes into the box the focus is on, and the focus to the next.
+    fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
+        let (Some(rows), Some(at)) = (self.boxes, Play::box_focused(shell)) else { return false };
+        let typed = key.text.as_deref().and_then(|t| t.chars().next()).map(|c| c.to_ascii_uppercase());
+        let Some(row) = typed.and_then(|c| ALPHABET.find(c)) else { return false };
+        self.set_box(shell, at, row);
+        shell.nav.set_row(&code_box(at), row as i32);
+        match at + 1 < CODE_LENGTH {
+            true => shell.nav.focus(&code_box(at + 1), rows[at + 1] as i32),
+            false => shell.nav.focus("boxes.join", 0),
+        }
+        true
+    }
+
+    /// A pad can't type a code: its confirm on the code's field opens the six boxes.
+    fn button(&mut self, shell: &mut Shell, button: Button) -> bool {
+        let on_field = shell.nav.focused().is_some_and(|k| k.id == "code") && !shell.nav.editing();
+        if button != Button::South || !on_field || !matches!(self.stage, Stage::Idle | Stage::Meeting) || self.boxes.is_some() {
+            return false;
+        }
+        shell.sound.play(Cue::Pick);
+        self.open_boxes(shell);
+        true
+    }
+
     fn back(&mut self, shell: &mut Shell) -> bool {
-        if self.direct.is_some() {
+        if self.boxes.is_some() {
+            self.close_boxes(shell);
+        } else if self.direct.is_some() {
             self.close_direct(shell);
         } else if self.changing {
             self.close_change(shell);
@@ -967,7 +1096,18 @@ impl Screen for Play {
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match (event, &self.stage) {
-            (BattleEvent::Started, Stage::Loading { .. }) => self.stage = Stage::Match { result: None },
+            // The match begins: it is recorded from its first tick, by its agreement.
+            (BattleEvent::Started, Stage::Loading { .. }) => {
+                self.stage = Stage::Match { result: None };
+                // (Not in the screenshot pass, which keeps nothing, unless it is told where the replays go.)
+                if (!shell.still || std::env::var_os("NETTAI_REPLAYS").is_some())
+                    && let (Some(agreed), Some((game, ready)), Some(b)) = (&self.agreed, shell.ready(), shell.battle.as_mut())
+                    && let Some(recorder) = recorder(ready.content(), agreed, &game)
+                    && let Err(why) = b.stage.player.record(recorder)
+                {
+                    crate::errors::log("recording the match", &why);
+                }
+            }
             // The training battle beside an invite has no end: its set over, another starts.
             (BattleEvent::Finished(_) | BattleEvent::Stopped(_), Stage::Waiting) => {
                 shell.end_battle();
