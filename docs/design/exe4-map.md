@@ -2433,7 +2433,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Muramasa's and CustSwrd's frame reports had shown the run
     since the chips were ported (custom screen 271 to 285, in (49, 83) to (71, 94)); only the fight's frames were
     read then.
-65. **The chips of one kind of MegaMan** (group B; done but for the glitch at the end). A chip record's +0x15 says
+65. **Done: the chips of one kind of MegaMan** (group B; the glitch at the end is left out by the user's decision). A
+    chip record's +0x15 says
     who may use it: 1 a light MegaMan, 2 a dark one, 0 anyone. 94 records have one, the same in the four ROMs.
     Light (63): the navi chips and their SPs but ShadeMan's and LaserMan's own (those two are anyone's), GunSol1 to
     3 and GunSolEX, the three Barriers, HolyPanl, the RollAros, GutPnchs, HawkCuts and NumbrBls, BugFix, Snctuary,
@@ -2461,21 +2462,58 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     the cut-in barred both ways; the use at values 469 and 470 and the cut-in at 479 and 480 (the value poked into
     the save's block and its shadow, 0x4E96 and 0x5E18: a value whose shadow doesn't match is sent as 500,
     0x08006570). All replay, sound for sound, and every frame compares at the replay's known shift.
-    **Not ported: the cut-in between the two tests.** At a value of 470 to 479 a dark one's dimming chip passes the
+    **Left out by the user's decision (2026-10-13): the cut-in between the two tests.** Not open: the glitch is not
+    ported, and no chip gains a field for it. At a value of 470 to 479 a dark one's dimming chip passes the
     cut-in's test and fails the use's. The cut-in doesn't look at the action it got back: it runs the dimming
     table's entry of the attack's variant (0x08010C88), now the fizzle's 4, FireMan's controller (0x080E31C4), with
     the refused chip's attack. Seen on the console at 475 with Anubis: the telop says Anubis, FireMan breathes fire
     for Anubis's 1 damage, and the chip is spent. His palette goes by the chip's first parameter (0x0800B950: 0 for
     Anubis, BlakWing, BugCurse, BugCharg and DarkNeo, the SP's for BlakBarr and Hole, the DS's for the DS navi
-    chips, one no chip has for DrkLine). The engine starts no cut-in there and the chip stays. Porting it needs each
-    dark dimming chip to state that parameter, or FireMan's controller to read it some other way: a decision. The
-    lab lists megaman/cut-in-475-dark and doesn't record it.
+    chips, one no chip has for DrkLine). The engine starts no cut-in there and the chip stays in the hand. The lab
+    lists megaman/cut-in-475-dark and leaves it unrecorded, with that reason beside it.
 66. **Done: EXE5's Slasher isn't named at its use either** (group B, from item 65's routine; EXE4's own is item
     71's, found the same day: the trait `not_named_on_use`). EXE5's idle has the same test of chip 0x38 before it
     names a used chip (0x080F04A4, beside its invalid chip's) and its Slasher the same call as it slashes
     (0x080ED41E). EXE5's content had neither: it named Slasher at the use and never at the slash. Its Slasher has
     the trait now and its action names it at the slash. EXE5's chips/0x038-slasher/side1 (it differed at frames 431
     to 489) and hit compare every frame; EXE4's side1, grabbed and hit too.
+67. **Done: the cut-in's coverage** (group B; the routine is item 65's, 0x08010C38, run by the dimmed player's
+    whatever its navi does, 0x08013C38). The lab's cut-in/ (37) plays what a netbattle reaches of it:
+    - **What cuts in on what**: a navi chip, on a navi chip, on a trap chip and a trap chip's own (their telops
+      hidden), a Program Advance (TimeBom+), from either side and on either console; an answer to the cut-in, and
+      five AreaGrabs against five PanlGrabs answering one another until both hands are empty (each new controller
+      ends its side's earlier one, 0x080090E2).
+    - **The test** (0x08009086): no cut-in on a side's own telop, on a NaviCust support's (Beat) or on JunkSoul's
+      charged Poltrgst (chips from 0x170, registered with 1: 0x080090B8); both sides' chips used on one tick register
+      two dimmings and no cut-in.
+    - **The ask** (the dimmed decode, 0x0800BDE0): a press, not a held A; a chip next; no chip lockout running
+      (0x08007C3E: after a Recov10's 30 ticks, which the dimming holds). A chip that doesn't dim next (a Cannon)
+      cuts in with nothing.
+    - **The window**: a press 13 to 61 ticks after the field dims cuts in (while the other side's record shows its
+      name, state 2), one at 12 or 62 doesn't (a sweep of the wait, 0 to 89).
+    - **Whatever the navi does**: mid-buster, flinching, paralyzed, with a full gauge.
+    - **What the use prepares** (0x0800D4B4, the use's own): Full Synchro doubles Roll and is spent; a soul's chip
+      (FireSoul) and one on a soul; a dark MegaMan's chip (Anubis) and a dark chip (DrkStage).
+    - **A trap the cut-in's chip springs**: AntiNavi takes the cutting-in Roll (the trap's mark), AntiDmg catches her
+      hit.
+    Two differences found and fixed, each a rule every game states:
+    - `reactions.request_clears.cut_in`: the routine's end clears the ask alone (0x08010CB8: 0x800), where EXE5's
+      (0x080145AC) and EXE6's (0x08017B5E) clear the chip's and the charged chip's requests too (0x80C). So a chip
+      asked for before the field dimmed (A pressed in a step, which holds the ask until the step ends) is used after
+      the dimming with no press: cut-in/pending-chip (it stopped at frame 697; EXE5's megaman/cut-in-pending-chip is
+      the other side of the rule, and stops at 754 on EXE4's value).
+    - `reactions.idle_entry_counter`: EXE4's idle entry starts a trap's counter for a navi in auto battle alone
+      (0x080EB0D6: NaviStats +0x26 = 1, no netbattle's; the dark soul is soul 15, +0x24), and a netbattle's navi's
+      idle starts it in its turn (0x080EEBD0), after the phase's timer, the chip window and a revert asked for. A
+      navi back in its idle with the trap already sprung (AntiDmg catching the cut-in's Roll through the dimming) is
+      armed first, its timer 9 as the counter starts: cut-in/antidmg (it stopped at frame 1100).
+    All 37 replay state for state and sound for sound, and every fight frame compares (the flash, the telops on
+    their two blocks, the used chips' names, the trap's mark); chain, chain-side0 and gauge-full show the full gauge
+    at the replay's known shift. EXE5's megaman/ gains four: a refused RollDS in Full Synchro (the Full Synchro
+    stays: the engine before item 65's bar spent it and stops at frame 732), a refused RollDS alone, Roll's cut-in
+    in Full Synchro (doubled, spent) and the pending chip. (A refused navi chip's count, the side's count 6 at
+    0x0801002C, is a count no routine reads back, 0x0800931C's fourteen calls ask for others, and no recording
+    carries the counts: that recording replays the same with the bar and without.)
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:

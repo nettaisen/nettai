@@ -45,6 +45,8 @@ return {
     stance_counter = "next_tick",
     -- The counter a trap's catch starts runs its first step at once (`sub_801056A`).
     trap_counter = "at_once",
+    -- The idle's entry starts it before the navi's own idle runs (`sub_80EA734`).
+    idle_entry_counter = true,
     -- A deleted player's object lets go of its reservations and collision data and counts one actor fewer, then stays
     -- in its slot (`sub_8016C4E`).
     dead_player = "kept",
@@ -53,12 +55,14 @@ return {
     attack_end_lockout = "by_kind",
     -- What the ends of a navi's actions clear of its requests besides the attacks' six: the mode-9 A press, at an
     -- attack's end (`sub_801171C`: 0x1000003F) and a paralysis's, a freeze's or a bubble's; at a flinch's and a
-    -- drag's (0x1000043F) the anti-sword trigger too.
+    -- drag's (0x1000043F) the anti-sword trigger too. A cut-in's ask clears the chip's and the charged chip's requests
+    -- with itself (`sub_8017AB4`, 0x08017B5E: 0x80C).
     request_clears = {
         attack = { "mode9_a" },
         paralysis = { "mode9_a" },
         flinch = { "anti_sword_triggered", "mode9_a" },
         drag = { "anti_sword_triggered", "mode9_a" },
+        cut_in = { "chip", "charged_chip" },
     },
     -- What a navi's statuses' end clears (`sub_801A264`): the six statuses' flags (0x8001E800), the requests 0x300E8
     -- and the six timers.
