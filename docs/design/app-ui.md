@@ -336,6 +336,8 @@ The mockups show no screen for this; it is decided here.
 - **Online:** the result stays on the picture (who won and the rounds' score, in the game's own way), then both
   players are back in the lobby on the same link, neither ready, with the same settings. Either can change build,
   play again or leave. Another match with the same opponent needs no new invite code.
+- **LEAVE MATCH** in the match menu ends the match for both players and puts both back in the lobby, as a
+  match's end does. Leaving the opponent altogether is the lobby's LEAVE.
 - **Training** has no end: the training menu's RESTART and QUIT TO MENU are the ways out of a set.
 - **A replay** stops at its end with the transport still there.
 

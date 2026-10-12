@@ -115,6 +115,18 @@ pub trait Channel {
     fn reconnecting(&self) -> Option<Reconnecting> {
         None
     }
+
+    /// Whether the two players stay together once this match's set is over,
+    /// on what the channel goes over: a lobby's channel
+    /// (`crate::lobby::MatchChannel`), whose lobby goes on for another match
+    /// (`Lobby::reopen`). A player dropped once its set is over then says
+    /// nothing of leaving: it sends its last frame once more and is gone,
+    /// and a player who does leave says so in the lobby. False (the
+    /// default): the channel is this match's alone, and a player dropped
+    /// tells the other it leaves, its set over or not.
+    fn outlives_match(&self) -> bool {
+        false
+    }
 }
 
 /// How a netplay match plays, as this player chose (none of it goes to the
@@ -134,8 +146,10 @@ pub struct NetOptions {
     /// waits for them.
     pub max_lead: u32,
     /// Nothing from the other side this long ends the match (but not while
-    /// the channel says it is down and being made again:
-    /// [`Channel::reconnecting`]).
+    /// the channel says it is down and being made again,
+    /// [`Channel::reconnecting`]; and not once the set is over, when this
+    /// player needs nothing more of the other, who may be back in the lobby
+    /// already).
     pub timeout: Duration,
 }
 
@@ -274,6 +288,8 @@ const _: () = {
         }
     }
     send::<NetPlayer<Sendable>>();
+    send::<NetPlayer<crate::lobby::MatchChannel>>();
+    send::<crate::lobby::Lobby>();
 };
 
 /// Plays a match against another player over the host's channel `C`.
@@ -391,7 +407,7 @@ impl<C: Channel> NetPlayer<C> {
         if self.channel.reconnecting().is_some() {
             self.last_frame = Instant::now();
         }
-        if self.last_frame.elapsed() > self.options.timeout {
+        if self.over.is_none() && self.last_frame.elapsed() > self.options.timeout {
             return Err(Stop::new(StopReason::ConnectionLost, format!("nothing from the other player for {} seconds: the connection is lost", self.options.timeout.as_secs())));
         }
         let mut ran = Ran::default();
@@ -533,10 +549,19 @@ impl<C: Channel> Driver for NetPlayer<C> {
 
 impl<C: Channel> Drop for NetPlayer<C> {
     /// Tell the other player this one leaves (a few times: datagrams get
-    /// lost; if all are, the other side's timeout ends its match).
+    /// lost; if all are, the other side's timeout ends its match). Not
+    /// once the set is over on a channel whose players stay together
+    /// ([`Channel::outlives_match`]): the player sends its last frame once
+    /// more (the inputs the other hasn't acknowledged, which the other may
+    /// need to end the set too), and nobody has left.
     fn drop(&mut self) {
-        self.peer.leave();
         let now = self.now();
+        if self.over.is_some() && self.channel.outlives_match() {
+            let datagram = self.peer.datagram(now);
+            let _ = self.channel.send(&datagram);
+            return;
+        }
+        self.peer.leave();
         for _ in 0..3 {
             let datagram = self.peer.datagram(now);
             let _ = self.channel.send(&datagram);
@@ -698,43 +723,127 @@ mod tests {
         }
     }
 
-    /// A link as a match's channel once its lobby says the match starts, as
-    /// a host has it: the match's frames go under their kind byte; a Hello
-    /// or a Reveal that comes again is answered with this peer's Reveal (the
-    /// other side hasn't it yet); what else the lobby said, come late, is
-    /// left.
-    struct Framed {
+    /// One player's end of an online session, as a host holds it: the link
+    /// to the other player, the lobby over it, and the match's player while
+    /// one is up.
+    struct Seat {
         link: nettai_rtc::Link,
-        answer: Vec<u8>,
-        frame: Vec<u8>,
+        lobby: crate::lobby::Lobby,
+        player: Option<crate::Player>,
     }
 
-    impl Channel for Framed {
-        fn send(&mut self, frame: &[u8]) -> Result<(), String> {
-            let mut out = vec![crate::lobby::Kind::Frame as u8];
-            out.extend_from_slice(frame);
-            self.link.send(&out).map_err(|e| e.detail)
-        }
+    /// How a seat's lobby stands after a frame.
+    #[derive(Clone, Debug, PartialEq, Eq)]
+    enum Stands {
+        Agreeing,
+        Loading,
+        Start,
+        Playing,
+        Failed(crate::lobby::Reason),
+    }
 
-        fn recv(&mut self) -> Result<Option<&[u8]>, String> {
-            use crate::lobby::Kind;
-            loop {
-                let Some(d) = self.link.recv().map_err(|e| e.detail)? else { return Ok(None) };
-                match d.split_first().map(|(&k, body)| (Kind::of(k), body)) {
-                    Some((Some(Kind::Frame), body)) => {
-                        self.frame.clear();
-                        self.frame.extend_from_slice(body);
-                        return Ok(Some(&self.frame));
-                    }
-                    Some((Some(Kind::Hello | Kind::Reveal), _)) => self.link.send(&self.answer).map_err(|e| e.detail)?,
-                    _ => {}
-                }
+    impl Seat {
+        /// One frame of a host, the same whatever its screen shows: what the
+        /// link brings goes to the lobby (a match's frames too), which is
+        /// told how the link is; the match's player, if one is up, runs a
+        /// frame on `keys` (told the battle it shows); the lobby is polled;
+        /// and what the lobby has to say, the player's frame with it, is
+        /// sent.
+        fn frame(&mut self, keys: impl FnOnce(&Battle) -> u16) -> Stands {
+            use crate::lobby::Status;
+            let now = Instant::now();
+            while let Some(d) = self.link.recv().unwrap() {
+                self.lobby.receive(now, d);
             }
+            self.lobby.set_link_down(self.link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: self.link.gives_up_in() }));
+            if let Some(player) = &mut self.player {
+                let keys = keys(player.battle());
+                // (One that has stopped runs no more: a test looks at why.)
+                let _ = player.tick(keys);
+            }
+            let stands = match self.lobby.poll(now) {
+                Status::Pending => Stands::Agreeing,
+                Status::Loading(_) => Stands::Loading,
+                Status::Start(_) => Stands::Start,
+                Status::Playing => Stands::Playing,
+                Status::Failed(failure) => Stands::Failed(failure.reason.clone()),
+            };
+            for d in self.lobby.outgoing() {
+                self.link.send(&d).unwrap();
+            }
+            stands
         }
 
-        fn reconnecting(&self) -> Option<Reconnecting> {
-            self.link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: self.link.gives_up_in() })
+        fn player(&self) -> &crate::Player {
+            self.player.as_ref().expect("a match is up")
         }
+    }
+
+    /// Frames of both seats, each match's player on the keys `keys` gives
+    /// its side, until `done` (told how each lobby stands).
+    fn until(seats: &mut [Seat; 2], what: &str, keys: impl Fn(&Battle, usize, u32) -> u16, mut done: impl FnMut(&[Seat; 2], &[Stands; 2]) -> bool) {
+        let start = Instant::now();
+        for frame in 0u32.. {
+            let stands = [0, 1].map(|i| seats[i].frame(|b| keys(b, i, frame)));
+            if done(seats, &stands) {
+                return;
+            }
+            // (Long: the tests run beside each other, on a machine that may
+            // be busy.)
+            if start.elapsed() > Duration::from_secs(120) {
+                let players = seats.each_ref().map(|seat| seat.player.as_ref().map(|p| (p.position(), p.result(), p.stopped().map(str::to_string))));
+                panic!("{what}: not within two minutes, {frame} frames (the lobbies stand {stands:?}; the players: {players:?})");
+            }
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    }
+
+    /// No keys: a player that presses nothing.
+    fn idle(_: &Battle, _: usize, _: u32) -> u16 {
+        0
+    }
+
+    /// Two players meet on WebRTC links: one asks the signaling server for
+    /// a room and is given its code, the other joins by the code as typed
+    /// (in small letters, in two groups). Each one's lobby is made once the
+    /// links are open, in its link's role, holding its own settings and
+    /// bringing its side (the host's, then the joiner's). The seats, and the
+    /// room's code.
+    fn meet(content: &Arc<Content>, server: &nettai_rtc::testing::Server, settings: [Settings; 2], sides: [Side; 2]) -> ([Seat; 2], String) {
+        use crate::lobby::{Lobby, Role, entropy};
+        let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, ..nettai_rtc::Config::default() };
+        let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
+        let start = Instant::now();
+        while host.role().is_none() {
+            assert!(start.elapsed() < Duration::from_secs(60), "not let in");
+            host.poll().unwrap();
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        let code = host.code().expect("the room's code").to_string();
+        let typed = format!("{} {}", &code[..3], &code[3..]).to_lowercase();
+        let mut join = nettai_rtc::Link::join_room(&server.url(), &typed, config).unwrap();
+        while !(host.is_open() && join.is_open()) {
+            assert!(start.elapsed() < Duration::from_secs(120), "the links don't open");
+            host.poll().unwrap();
+            join.poll().unwrap();
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert_eq!((host.role(), join.role()), (Some(nettai_rtc::Role::Host), Some(nettai_rtc::Role::Join)));
+        let timeout = Duration::from_secs(60);
+        let [host_settings, join_settings] = settings;
+        let [host_side, join_side] = sides;
+        let mut seats = [
+            Seat { link: host, lobby: Lobby::new(Role::Host, content, host_settings, host_side, entropy(), timeout), player: None },
+            Seat { link: join, lobby: Lobby::new(Role::Join, content, join_settings, join_side, entropy() ^ 1, timeout), player: None },
+        ];
+        seats[0].lobby.set_name("Lan");
+        seats[1].lobby.set_name("Chaud");
+        (seats, code)
+    }
+
+    /// A renderer of a pack with nothing in it.
+    fn renderer() -> crate::Renderer {
+        crate::Renderer::new(Arc::new(nettai_assets::Bundle::default()))
     }
 
     /// The whole way from an invite to a match, as a host's Play screen
@@ -747,81 +856,22 @@ mod tests {
     /// and each host preloads it (`crate::preload`), saying how far it is as
     /// it goes, which the other sees; nothing starts while one is still
     /// loading. Both loaded: both start the same match, closed builds with
-    /// it, and play it over the links with the players their preloads made
-    /// (nothing is loaded late), each at its own input delay, with the
-    /// connection's quality to show. One leaves, and the other is told.
+    /// it, and play it on the lobby's channel with the players their
+    /// preloads made (nothing is loaded late), each at its own input delay,
+    /// with the connection's quality to show. One leaves the match, and the
+    /// other's player is told; both are back in the lobby. Then that one
+    /// leaves for good, and the other's lobby is told.
     #[test]
     fn an_invite_becomes_a_match() {
-        use crate::lobby::{Lobby, Role, Status, entropy};
+        use crate::lobby::{Reason, Status};
         use crate::preload::Preload;
-
-        struct Seat {
-            link: nettai_rtc::Link,
-            lobby: Lobby,
-        }
-        /// One frame of a seat: what its link brings goes to its lobby, the
-        /// lobby is polled, and what it says is sent. How the lobby stands:
-        /// 0 agreeing, 1 loading, 2 starting.
-        fn frame(seat: &mut Seat) -> u8 {
-            let now = Instant::now();
-            while let Some(d) = seat.link.recv().unwrap() {
-                seat.lobby.receive(now, d);
-            }
-            let stands = match seat.lobby.poll(now) {
-                Status::Pending => 0,
-                Status::Loading(_) => 1,
-                Status::Start(_) => 2,
-                Status::Failed(failure) => panic!("{:?}: {}", failure.reason, failure.detail),
-            };
-            for d in seat.lobby.outgoing() {
-                seat.link.send(&d).unwrap();
-            }
-            stands
-        }
-        /// Frames of both seats until `done` (told how each lobby stands).
-        fn until(seats: &mut [Seat; 2], what: &str, mut done: impl FnMut(&[Seat; 2], [u8; 2]) -> bool) {
-            let start = Instant::now();
-            loop {
-                let stands = [frame(&mut seats[0]), frame(&mut seats[1])];
-                if done(seats, stands) {
-                    return;
-                }
-                assert!(start.elapsed() < Duration::from_secs(20), "{what}: not within 20 seconds (the lobbies stand {stands:?})");
-                std::thread::sleep(Duration::from_millis(2));
-            }
-        }
-
         let content = exe6_test_content();
         let server = nettai_rtc::testing::Server::start();
-        let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, ..nettai_rtc::Config::default() };
-        // The invite: the server makes the room and says its code.
-        let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
-        let start = Instant::now();
-        while host.role().is_none() {
-            assert!(start.elapsed() < Duration::from_secs(10), "not let in");
-            host.poll().unwrap();
-            std::thread::sleep(Duration::from_millis(1));
-        }
-        let code = host.code().expect("the room's code").to_string();
-        // The other player types it, in small letters, in two groups.
-        let typed = format!("{} {}", &code[..3], &code[3..]).to_lowercase();
-        let mut join = nettai_rtc::Link::join_room(&server.url(), &typed, config).unwrap();
-        while join.role().is_none() {
-            assert!(start.elapsed() < Duration::from_secs(10), "not let in");
-            join.poll().unwrap();
-            std::thread::sleep(Duration::from_millis(1));
-        }
-        assert_eq!((host.role(), join.role()), (Some(nettai_rtc::Role::Host), Some(nettai_rtc::Role::Join)));
         // Each one's lobby: the host's a triple battle, the joiner's what
         // it last played, a single battle.
-        let timeout = Duration::from_secs(60);
-        let mut seats = [
-            Seat { link: host, lobby: Lobby::new(Role::Host, &content, Settings::new("exe6", TRIPLE_BATTLE), side(&content, 3), entropy(), timeout) },
-            Seat { link: join, lobby: Lobby::new(Role::Join, &content, Settings::new("exe6", 1), side(&content, 4), entropy() ^ 1, timeout) },
-        ];
-        seats[0].lobby.set_name("Lan");
-        seats[1].lobby.set_name("Chaud");
-        until(&mut seats, "the lobbies meet", |s, _| s.iter().all(|seat| seat.lobby.their_present() && seat.lobby.ping().is_some()) && s[1].lobby.settings() == s[0].lobby.settings());
+        let (mut seats, code) = meet(&content, &server, [Settings::new("exe6", TRIPLE_BATTLE), Settings::new("exe6", 1)], [side(&content, 3), side(&content, 4)]);
+        assert_eq!(server.codes(), [code]);
+        until(&mut seats, "the lobbies meet", idle, |s, _| s.iter().all(|seat| seat.lobby.their_present() && seat.lobby.ping().is_some()) && s[1].lobby.settings() == s[0].lobby.settings());
         assert_eq!(seats[1].lobby.settings(), &Settings::new("exe6", TRIPLE_BATTLE), "the joiner takes the host's settings");
         assert_eq!((seats[0].lobby.their_name(), seats[1].lobby.their_name()), (Some("Chaud"), Some("Lan")));
         for seat in &seats {
@@ -834,11 +884,11 @@ mod tests {
         seats[0].lobby.set_rounds(1);
         seats[0].lobby.set_closed_builds(true);
         let single = Settings { closed_builds: true, ..Settings::new("exe6", 1) };
-        until(&mut seats, "the settings are both players'", |s, _| s.iter().all(|seat| *seat.lobby.settings() == single && !seat.lobby.ready() && !seat.lobby.their_ready()));
+        until(&mut seats, "the settings are both players'", idle, |s, _| s.iter().all(|seat| *seat.lobby.settings() == single && !seat.lobby.ready() && !seat.lobby.their_ready()));
         // Both ready: agreed, and loading.
         seats[0].lobby.set_ready(true);
         seats[1].lobby.set_ready(true);
-        until(&mut seats, "the match is agreed", |_, stands| stands == [1, 1]);
+        until(&mut seats, "the match is agreed", idle, |_, stands| *stands == [Stands::Loading, Stands::Loading]);
         // Each host preloads the match it agreed, on the thread that will
         // play it, and says how far its preload is; the other sees it.
         let mut preloads: Vec<Preload> = seats
@@ -846,22 +896,22 @@ mod tests {
             .map(|seat| {
                 let Status::Loading(a) = seat.lobby.poll(Instant::now()) else { panic!("loading") };
                 // (A pack with nothing in it: the steps are the match's.)
-                let renderer = crate::Renderer::new(Arc::new(nettai_assets::Bundle::default()));
-                Preload::with(renderer, None, None, &a.set, a.side as u8, (240, 160))
+                Preload::with(renderer(), None, None, &a.set, a.side as u8, (240, 160))
             })
             .collect();
         while preloads[0].fraction() < 0.5 && preloads[0].step() {}
         let half = preloads[0].fraction();
         assert!((0.5..1.0).contains(&half), "{half}");
         seats[0].lobby.set_loading(half);
-        until(&mut seats, "the joiner sees the host loading", |s, _| (s[1].lobby.their_loading() - half).abs() < 0.01 && !s[1].lobby.their_loaded());
+        until(&mut seats, "the joiner sees the host loading", idle, |s, _| (s[1].lobby.their_loading() - half).abs() < 0.01 && !s[1].lobby.their_loaded());
         // The host done and the joiner not begun: nothing starts.
         while preloads[0].step() {}
         assert!(preloads[0].done() && preloads[0].stopped().is_none());
         seats[0].lobby.set_loaded();
-        until(&mut seats, "the joiner sees the host loaded", |s, _| s[1].lobby.their_loaded());
+        until(&mut seats, "the joiner sees the host loaded", idle, |s, _| s[1].lobby.their_loaded());
+        let loading = [Stands::Loading, Stands::Loading];
         for _ in 0..50 {
-            assert_eq!([frame(&mut seats[0]), frame(&mut seats[1])], [1, 1], "a match starts once both have loaded");
+            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], loading, "a match starts once both have loaded");
             std::thread::sleep(Duration::from_millis(2));
         }
         // The joiner's, a step a frame, said as it goes (a loading screen's
@@ -872,35 +922,38 @@ mod tests {
             if !more {
                 break;
             }
-            assert_eq!([frame(&mut seats[0]), frame(&mut seats[1])], [1, 1], "a match starts once both have loaded");
+            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], loading, "a match starts once both have loaded");
             std::thread::sleep(Duration::from_millis(1));
         }
         assert!(preloads[1].done());
-        until(&mut seats, "the host sees the joiner's bar full", |s, stands| s[0].lobby.their_loading() > 0.99 && !s[0].lobby.their_loaded() && stands == [1, 1]);
+        until(&mut seats, "the host sees the joiner's bar full", idle, |s, stands| s[0].lobby.their_loading() > 0.99 && !s[0].lobby.their_loaded() && *stands == loading);
         seats[1].lobby.set_loaded();
-        until(&mut seats, "the match starts", |_, stands| stands == [2, 2]);
-        // The same match on both, closed builds with it; played over the
-        // links by the players the preloads made, each player at their own
-        // input delay.
-        let mut playing: Vec<crate::Player> = Vec::new();
+        until(&mut seats, "the match starts", idle, |_, stands| *stands == [Stands::Start, Stands::Start]);
+        // The same match on both, closed builds with it; played on the
+        // lobby's channel by the players the preloads made, each player at
+        // their own input delay.
         let mut seeds = Vec::new();
-        for (i, (Seat { link, mut lobby }, preload)) in seats.into_iter().zip(preloads).enumerate() {
-            let Status::Start(a) = lobby.poll(Instant::now()) else { panic!("started") };
+        for (i, (seat, preload)) in seats.iter_mut().zip(preloads).enumerate() {
+            let Status::Start(a) = seat.lobby.poll(Instant::now()) else { panic!("started") };
             assert!(a.closed_builds() && a.m.rounds.len() == 1 && a.side == i);
             assert_eq!(a.names, ["Lan".to_string(), "Chaud".to_string()]);
             seeds.push(a.seed);
-            let channel = Framed { link, answer: a.answer.clone(), frame: Vec::new() };
+            let (side, set) = (a.side, a.set.clone());
+            let channel = seat.lobby.channel().expect("the match's channel");
             let options = NetOptions { input_delay: [DEFAULT_INPUT_DELAY, 2][i], ..NetOptions::default() };
-            playing.push(preload.player(Box::new(NetPlayer::new(channel, a.side, a.set.clone(), options))));
+            seat.player = Some(preload.player(Box::new(NetPlayer::new(channel, side, set, options))));
         }
         assert_eq!(seeds[0], seeds[1]);
+        let playing = [Stands::Playing, Stands::Playing];
         for _ in 0..300 {
-            for (i, player) in playing.iter_mut().enumerate() {
-                assert!(player.tick(0), "side {i}: {:?} {:?}", player.stop_reason(), player.stopped());
+            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], playing);
+            for (i, seat) in seats.iter().enumerate() {
+                assert!(seat.player().stop_reason().is_none(), "side {i}: {:?}", seat.player().stopped());
             }
             std::thread::sleep(Duration::from_millis(2));
         }
-        for (i, player) in playing.iter().enumerate() {
+        for (i, seat) in seats.iter().enumerate() {
+            let player = seat.player();
             let status = player.net_status().expect("a netplay match");
             assert!(player.ticks() > 100, "side {i} played {} ticks", player.ticks());
             assert_eq!(status.input_delay, [4, 2][i]);
@@ -908,14 +961,233 @@ mod tests {
             let late = player.late();
             assert_eq!((late.runtimes, late.reads), (0, 0), "side {i} loaded nothing late");
         }
-        // One leaves; the other is told so.
-        drop(playing.pop());
-        let start = Instant::now();
-        while playing[0].tick(0) {
-            assert!(start.elapsed() < Duration::from_secs(10), "the host isn't told the joiner left");
+        // The joiner leaves the match (its player is dropped before the set
+        // is over): the host's player is told so.
+        seats[1].player = None;
+        until(&mut seats, "the host is told the joiner left the match", idle, |s, _| s[0].player().stop_reason().is_some());
+        assert_eq!(seats[0].player().stop_reason(), Some(StopReason::OpponentLeft), "{:?}", seats[0].player().stopped());
+        // The match stopped with the link still up: both go back to the
+        // lobby, where the settings are as they were and nobody is ready.
+        seats[0].player = None;
+        assert!(seats[0].lobby.reopen() && seats[1].lobby.reopen());
+        let since = Instant::now();
+        until(&mut seats, "both are back in the lobby", idle, |_, stands| {
+            assert_eq!(*stands, [Stands::Agreeing, Stands::Agreeing]);
+            since.elapsed() > Duration::from_millis(300)
+        });
+        assert!(seats.iter().all(|seat| !seat.lobby.ready() && !seat.lobby.their_ready() && *seat.lobby.settings() == single));
+        // Then the joiner leaves for good, and says so: the host's lobby
+        // ends, told.
+        seats[1].lobby.leave();
+        until(&mut seats, "the host is told the joiner left", idle, |_, stands| stands[0] != Stands::Agreeing);
+        assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], [Stands::Failed(Reason::OpponentLeft), Stands::Failed(Reason::Left)]);
+    }
+
+    /// The player who is back in the lobby first leaves the other what it
+    /// needs to end the match. The host's frames reach the joiner ten frames
+    /// late, so the host's set is over while the joiner still lacks the
+    /// host's last inputs; the host's player is dropped then and its lobby
+    /// reopened, and everything the host had sent that was on its way is
+    /// lost, with all it says for the next 150 ms. The host's lobby says
+    /// its player's last frame again with its own messages, every 100 ms:
+    /// the joiner's player has the inputs from it, and its set ends too,
+    /// lost as the host's was won. Then the joiner comes back, and
+    /// the two are in the lobby. (In memory: the two lobbies' datagrams
+    /// handed across by the test.)
+    #[test]
+    fn the_player_back_in_the_lobby_first_leaves_the_other_its_last_frames() {
+        use crate::driver::short_set;
+        use crate::lobby::{Status, testing};
+        const LATE: u32 = 10;
+        let content = exe6_test_content();
+        let m = short_set::of(&content, "exe6", 7);
+        let single = Settings::new("exe6", 1);
+        let mut lobbies = testing::pair(&content, [single.clone(), single], m.sides.clone());
+        testing::run(&mut lobbies, Instant::now(), 20, &mut |_, _| {});
+        testing::load(&mut lobbies, Instant::now());
+        let mut players = [0, 1].map(|i| {
+            let Status::Start(a) = lobbies[i].poll(Instant::now()) else { panic!("started") };
+            let (side, set) = (a.side, a.set.clone());
+            let mut player = NetPlayer::new(lobbies[i].channel().expect("the match's channel"), side, set, no_delay());
+            let shown = player.start();
+            Some((player, shown))
+        });
+        // The host's datagrams on their way to the joiner, with the frame
+        // each arrives on.
+        let mut on_the_way: VecDeque<(u32, Vec<u8>)> = VecDeque::new();
+        let (mut host_back, mut results) = (None::<(u32, Instant)>, [None, None]);
+        for frame in 1u32.. {
+            assert!(frame < 30_000, "the joiner's set doesn't end: the host back in the lobby at frame {host_back:?}");
+            let now = Instant::now();
+            for side in 0..2 {
+                let Some((player, shown)) = &mut players[side] else { continue };
+                let keys = if side == 0 { short_set::shooter(shown, side, frame) } else { crate::driver::bot_buttons(shown, side, frame) };
+                player.run_frame(keys, shown).unwrap().unwrap();
+                results[side] = player.result();
+            }
+            // The host's set is over, the joiner's isn't: the host goes back
+            // to the lobby, and what it had sent that hasn't arrived is lost.
+            if host_back.is_none() && results[0].is_some() {
+                assert_eq!(results, [Some(BattleResult::Won), None], "the joiner hasn't the host's last inputs yet");
+                players[0] = None;
+                assert!(lobbies[0].reopen());
+                on_the_way.clear();
+                host_back = Some((frame, now));
+            }
+            let _ = lobbies[0].poll(now);
+            let said = lobbies[0].outgoing();
+            // (And what it says in the lobby's first 150 ms.)
+            if host_back.is_none_or(|(_, at)| now.duration_since(at) >= Duration::from_millis(150)) {
+                on_the_way.extend(said.into_iter().map(|d| (frame + LATE, d)));
+            }
+            let _ = lobbies[1].poll(now);
+            for d in lobbies[1].outgoing() {
+                lobbies[0].receive(now, &d);
+            }
+            while on_the_way.front().is_some_and(|(at, _)| *at <= frame) {
+                lobbies[1].receive(now, &on_the_way.pop_front().unwrap().1);
+            }
+            if results[1].is_some() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(host_back.is_some());
+        assert_eq!(results, [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+        assert!(matches!(lobbies[0].poll(Instant::now()), Status::Pending) && matches!(lobbies[1].poll(Instant::now()), Status::Playing));
+        assert!(lobbies[1].their_reopened());
+        // The joiner comes back too.
+        players[1] = None;
+        assert!(lobbies[1].reopen());
+        testing::run(&mut lobbies, Instant::now(), 4, &mut |_, _| {});
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(Instant::now()), Status::Pending) && !l.ready() && !l.their_ready()));
+    }
+
+    /// Two matches in a row over one link, as "play again" goes: no new
+    /// invite, the same room. The first match (a single battle: the host's
+    /// navi shoots, the joiner's has 1 HP) is played to its end on both. The
+    /// host goes back to the lobby while the joiner still looks at the
+    /// result: the host's lobby shows the same settings and nobody ready,
+    /// through a second and a half of the joiner's match frames, which are
+    /// none of its; nothing stops the joiner's player, whose lobby knows the
+    /// host is back. The host brings another build and readies. The joiner
+    /// comes back, sees the host ready, readies: a second match is agreed,
+    /// of another seed, with the host's new build; a frame of the first
+    /// match, come late into its loading, starts nothing. It is played to
+    /// its end too. Both back in the lobby, the host leaves, and the joiner
+    /// is told.
+    #[test]
+    fn two_matches_in_a_row_over_one_link() {
+        use crate::driver::short_set;
+        use crate::lobby::{Agreement, Reason, Status, frame_datagram};
+        /// Both lobbies say a match starts: each seat takes its channel,
+        /// once, and makes its player. What each agreed.
+        fn start(seats: &mut [Seat; 2], options: [NetOptions; 2]) -> [Agreement; 2] {
+            [0, 1].map(|i| {
+                let seat = &mut seats[i];
+                let Status::Start(a) = seat.lobby.poll(Instant::now()) else { panic!("started") };
+                let a = a.clone();
+                let channel = seat.lobby.channel().expect("the match's channel");
+                assert!(seat.lobby.channel().is_none(), "a match has one channel");
+                seat.player = Some(crate::Player::with(renderer(), None, None, Box::new(NetPlayer::new(channel, a.side, a.set.clone(), options[i]))));
+                a
+            })
+        }
+        let results = |seats: &[Seat; 2]| seats.each_ref().map(|seat| seat.player().result());
+        let content = exe6_test_content();
+        let server = nettai_rtc::testing::Server::start();
+        let m = short_set::of(&content, "exe6", 7);
+        let single = Settings::new("exe6", 1);
+        let (mut seats, code) = meet(&content, &server, [single.clone(), single.clone()], m.sides.clone());
+        let keys = |b: &Battle, side: usize, frame: u32| if side == 0 { short_set::shooter(b, side, frame) } else { crate::driver::bot_buttons(b, side, frame) };
+        let (agreeing, loading, starting, playing) =
+            ([Stands::Agreeing, Stands::Agreeing], [Stands::Loading, Stands::Loading], [Stands::Start, Stands::Start], [Stands::Playing, Stands::Playing]);
+
+        // ---- The first match, to its end.
+        for seat in &mut seats {
+            seat.lobby.set_ready(true);
+        }
+        until(&mut seats, "the first match is agreed", keys, |_, stands| *stands == loading);
+        for seat in &mut seats {
+            seat.lobby.set_loaded();
+        }
+        until(&mut seats, "the first match starts", keys, |_, stands| *stands == starting);
+        let first = start(&mut seats, [NetOptions::default(); 2]);
+        assert_eq!((first[0].seed, &first[0].sides), (first[1].seed, &m.sides));
+        until(&mut seats, "the first match is played to its end", keys, |s, stands| {
+            assert_eq!(*stands, playing);
+            results(s).iter().all(Option::is_some)
+        });
+        assert_eq!(results(&seats), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+
+        // ---- The host is back in the lobby; the joiner looks at the result.
+        seats[0].player = None;
+        assert!(seats[0].lobby.reopen());
+        let since = Instant::now();
+        until(&mut seats, "the host waits in the lobby", keys, |s, stands| {
+            assert_eq!(*stands, [Stands::Agreeing, Stands::Playing]);
+            assert!(s[1].player().stop_reason().is_none(), "the joiner's match is over, and nothing stops it: {:?}", s[1].player().stopped());
+            assert!(!s[0].lobby.ready() && !s[0].lobby.their_ready(), "nobody is ready");
+            since.elapsed() > Duration::from_millis(1500) && s[1].lobby.their_reopened()
+        });
+        assert_eq!(seats[0].lobby.settings(), &single);
+        // The host brings another build, and is ready for another match.
+        let another = side(&content, 21);
+        assert_ne!(another, m.sides[0]);
+        seats[0].lobby.set_side(another.clone());
+        seats[0].lobby.set_ready(true);
+        // The joiner comes back: the same settings, the host ready, itself
+        // not.
+        seats[1].player = None;
+        assert!(seats[1].lobby.reopen());
+        until(&mut seats, "the joiner is back in the lobby", keys, |s, stands| *stands == agreeing && s[1].lobby.their_ready());
+        assert_eq!(seats[1].lobby.settings(), &single);
+        assert!(!seats[1].lobby.ready() && !seats[0].lobby.their_ready() && seats[0].lobby.ready());
+        assert_eq!(server.codes(), [code], "the room they met in, kept");
+
+        // ---- The second match.
+        seats[1].lobby.set_ready(true);
+        until(&mut seats, "the second match is agreed", keys, |_, stands| *stands == loading);
+        // The host has loaded and waits for the joiner; a frame of the first
+        // match, come late, isn't the joiner starting.
+        seats[0].lobby.set_loaded();
+        let late = frame_datagram(first[0].seed, &[0, 0, 0]);
+        for _ in 0..20 {
+            seats[0].lobby.receive(Instant::now(), &late);
+            assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], loading, "a frame of the match before starts nothing");
             std::thread::sleep(Duration::from_millis(2));
         }
-        assert_eq!(playing[0].stop_reason(), Some(StopReason::OpponentLeft), "{:?}", playing[0].stopped());
+        seats[1].lobby.set_loaded();
+        until(&mut seats, "the second match starts", keys, |_, stands| *stands == starting);
+        let second = start(&mut seats, [NetOptions::default(); 2]);
+        assert_ne!(second[0].seed, first[0].seed, "another match, another seed");
+        assert_eq!((second[0].seed, &second[0].sides), (second[1].seed, &second[1].sides));
+        assert_eq!(second[0].sides, [another, m.sides[1].clone()], "the host's new build, the joiner's as it was");
+        // (Nor is such a frame the second match's player's.)
+        seats[1].lobby.receive(Instant::now(), &late);
+        until(&mut seats, "the second match is played to its end", keys, |s, stands| {
+            assert_eq!(*stands, playing);
+            for (i, seat) in s.iter().enumerate() {
+                assert!(seat.player().stop_reason().is_none(), "side {i}: {:?}", seat.player().stopped());
+            }
+            results(s).iter().all(Option::is_some)
+        });
+        assert_eq!(results(&seats), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
+
+        // ---- Both back in the lobby; the host leaves, and says so.
+        for seat in &mut seats {
+            seat.player = None;
+            assert!(seat.lobby.reopen());
+        }
+        let since = Instant::now();
+        until(&mut seats, "both are in the lobby again", keys, |_, stands| {
+            assert_eq!(*stands, agreeing);
+            since.elapsed() > Duration::from_millis(300)
+        });
+        assert!(seats.iter().all(|seat| !seat.lobby.ready() && !seat.lobby.their_ready() && *seat.lobby.settings() == single));
+        seats[0].lobby.leave();
+        until(&mut seats, "the joiner is told the host left", keys, |_, stands| stands[1] != Stands::Agreeing);
+        assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], [Stands::Failed(Reason::Left), Stands::Failed(Reason::OpponentLeft)]);
     }
 
     /// Two players on WebRTC links through a room of a signaling server (in
