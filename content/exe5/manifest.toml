@@ -6,5 +6,5 @@ kind = "game"
 depends = ["exelib"]
 # Its locales' text tables (top-level tables of key to text that no definition owns; a top-level table that is no
 # collection and not one of these the locales' check refuses): `patch_card_effects`, each patch card effect's line on
-# the card screen, by the effect's kind and choice.
-text = ["patch_card_effects"]
+# the card screen, by the effect's kind and choice; `bugs`, each NaviCust bug's name.
+text = ["patch_card_effects", "bugs"]

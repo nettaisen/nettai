@@ -437,8 +437,19 @@ impl Battle {
         self.call_rules(side, hook, None, None, None);
     }
 
+    /// What the rules' tool hook `hook` answers for side `side` (plain
+    /// data), `folder` the folder it asks of, if any; none when the rules
+    /// have no such hook, or it answers nothing.
+    fn ask_rules(&mut self, side: u8, hook: RulesHook, folder: Option<nettai_content_api::api::CheckedFolder>) -> Option<nettai_content_api::Data> {
+        self.folder_check = folder;
+        self.tool_answer = None;
+        self.notify_side(side & 1, hook);
+        self.folder_check = None;
+        self.tool_answer.take().filter(|d| *d != nettai_content_api::Data::Nil)
+    }
+
     /// What side `side`'s rules say of a folder (their `folder_check`:
-    /// EXE6's folder rules), each rule it breaks named and said; nothing
+    /// EXE6's folder rules), each rule it breaks a problem; nothing
     /// when it keeps them, or when the rules have none. The folder's chips
     /// in order, its Regular and tag chips (entries of `chips`); `complete`:
     /// all of a folder, else the chips so far (the rules about a whole
@@ -452,19 +463,36 @@ impl Battle {
         regular: Option<u8>,
         tags: Option<(u8, u8)>,
         complete: bool,
-    ) -> Vec<FolderProblem> {
-        self.folder_check = Some(FolderCheck {
-            folder: nettai_content_api::api::CheckedFolder {
-                side: side & 1,
-                chips: chips.iter().map(|c| (c.id.0, c.code.0)).collect(),
-                regular,
-                tags,
-                complete,
-            },
-            problems: Vec::new(),
-        });
-        self.notify_side(side & 1, RulesHook::FolderCheck);
-        self.folder_check.take().map(|c| c.problems).unwrap_or_default()
+    ) -> Vec<Problem> {
+        let folder = checked_folder(side, chips, regular, tags, complete, &[]);
+        Problem::list(self.ask_rules(side, RulesHook::FolderCheck, Some(folder)), "folder_check")
+    }
+
+    /// What side `side`'s folder rules allow of a folder (their
+    /// `folder_view`): its limits, what the folder holds against them, and
+    /// each chip of the game that can't go into it now with why, as plain
+    /// data a tool reads (nettai-match's `folders::View`). The folder as
+    /// [`Battle::check_folder`] takes one, the chips so far. None: the
+    /// rules have no such hook. `offered`: the chips the tool asks whether
+    /// the folder can take one more of. For tools: no part of the
+    /// simulation.
+    pub fn folder_view(
+        &mut self,
+        side: u8,
+        chips: &[crate::custom::FolderChip],
+        regular: Option<u8>,
+        tags: Option<(u8, u8)>,
+        offered: &[ChipHandle],
+    ) -> Option<nettai_content_api::Data> {
+        self.ask_rules(side, RulesHook::FolderView, Some(checked_folder(side, chips, regular, tags, false, offered)))
+    }
+
+    /// What side `side`'s rules say its setup comes to, of what they alone
+    /// know (their `overview`: the NaviCust programs at work, the bugs they
+    /// bring), as plain data a tool reads (nettai-match's `build`). None:
+    /// the rules have no such hook. For tools: no part of the simulation.
+    pub fn overview(&mut self, side: u8) -> Option<nettai_content_api::Data> {
+        self.ask_rules(side, RulesHook::Overview, None)
     }
 
     /// What side `side`'s rules say is wrong with its setup (their
@@ -473,9 +501,7 @@ impl Battle {
     /// as the round set them up. For tools (a match's checks, netplay's
     /// offer, the build creator): no part of the simulation.
     pub fn validate(&mut self, side: u8) -> Vec<Problem> {
-        self.validation = Some(Vec::new());
-        self.notify_side(side & 1, RulesHook::Validate);
-        self.validation.take().unwrap_or_default()
+        Problem::list(self.ask_rules(side, RulesHook::Validate, None), "validate")
     }
 
     /// For tools: what module `module` of the content (by its name,
@@ -713,30 +739,76 @@ impl Battle {
     }
 }
 
-/// A folder being checked (`Battle::check_folder`) and what it breaks.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FolderCheck {
-    pub folder: nettai_content_api::api::CheckedFolder,
-    pub problems: Vec<FolderProblem>,
+/// A folder as a tool asks the rules of it (`Battle::check_folder`,
+/// `Battle::folder_view`).
+fn checked_folder(
+    side: u8,
+    chips: &[crate::custom::FolderChip],
+    regular: Option<u8>,
+    tags: Option<(u8, u8)>,
+    complete: bool,
+    offered: &[ChipHandle],
+) -> nettai_content_api::api::CheckedFolder {
+    nettai_content_api::api::CheckedFolder {
+        side: side & 1,
+        chips: chips.iter().map(|c| (c.id.0, c.code.0)).collect(),
+        regular,
+        tags,
+        complete,
+        offered: offered.iter().map(|c| c.0).collect(),
+    }
 }
 
-/// A problem of a side's setup, as its rules' `validate` says it: what to
-/// say, and the setup field it is of and the entry of a list field (from
+/// A problem of a side's setup, as its rules say it (their `validate`, and
+/// of a folder their `folder_check`): what is wrong by the rules' name for
+/// it (`kind`: a tool knows the kinds and words each in its own language,
+/// nettai-match's `Wrong`), with the kind's own numbers and definitions
+/// (`data`: the problem's table as the rules wrote it, a definition by its
+/// key); the sentence the rules give for a log (`text`: never a screen's
+/// words); and the setup field it is of and the entry of a list field (from
 /// 0), where the rules say (a tool shows it there).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Problem {
+    pub kind: String,
     pub text: String,
     pub field: Option<String>,
     pub entry: Option<usize>,
+    pub data: nettai_content_api::Data,
 }
 
-/// A folder rule broken: the rule's name (the game's own: EXE6's `chip`,
-/// `code`, `copies`, `mega`, `giga`, `dark`, `regular`, `tags`, `size`) and
-/// what to say.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct FolderProblem {
-    pub rule: String,
-    pub text: String,
+impl Problem {
+    /// The problems a tool hook answered (`hook`, for a message): a list of
+    /// tables, each with its `kind` and `text`. The rules answering anything
+    /// else is the content's error, which stops the tool's question as any
+    /// content error does.
+    fn list(answer: Option<nettai_content_api::Data>, hook: &str) -> Vec<Problem> {
+        use nettai_content_api::Data;
+        let items = match answer {
+            None => return Vec::new(),
+            Some(Data::List(items)) => items,
+            // (An empty Luau table is no list to the reader: no problems.)
+            Some(Data::Map(m)) if m.is_empty() => return Vec::new(),
+            Some(other) => panic!("the rules' {hook} answers a list of problems, not {other:?}"),
+        };
+        items
+            .into_iter()
+            .map(|p| {
+                let (Data::Str(kind), Data::Str(text)) = (p.field("kind"), p.field("text")) else {
+                    panic!("the rules' {hook}: a problem is a table with its `kind` and its `text`, not {p:?}");
+                };
+                let field = match p.field("field") {
+                    Data::Str(f) => Some(f.clone()),
+                    _ => None,
+                };
+                let entry = match p.field("entry") {
+                    Data::Int(e) if *e >= 1 => Some((*e - 1) as usize),
+                    Data::Nil => None,
+                    other => panic!("the rules' {hook}: a problem's entry is a list's place, from 1, not {other:?}"),
+                };
+                Problem { kind: kind.clone(), text: text.clone(), field, entry, data: p }
+            })
+            .collect()
+    }
 }
 
 /// A view's byte field (its type was checked as the content loaded).

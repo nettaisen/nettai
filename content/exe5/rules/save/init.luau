@@ -72,7 +72,7 @@ local MAX_REG_UP = 50
 -- story's (0 to its last), always stated (the tools state its last when a side states none); none for a navi without
 -- a story. The base HP is MegaMan's (the navi that compiles a NaviCust): a team navi's HP is its level's, so a side of
 -- one that states another than the default states what has no effect.
-local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+local function validate(side: number, problem: (p: SetupProblem) -> ())
     local setup = rules.setup_of(side)
     local navi: NaviDef? = setup.navi
     if navi == nil then
@@ -83,15 +83,26 @@ local function validate(side: number, problem: (text: string, field: string?, en
     local story = navi.story
     if level ~= nil then
         if story == nil then
-            problem(string.format("level %d: %s takes no level", level, name), "level")
+            problem({ kind = "not_taken", field = "level", text = string.format("level %d: %s takes no level", level, name) })
         elseif level > story.max_level then
-            problem(string.format("level %d: %s's level is 0 to %d", level, name, story.max_level), "level")
+            problem({
+                kind = "range",
+                field = "level",
+                value = level,
+                least = 0,
+                most = story.max_level,
+                text = string.format("level %d: %s's level is 0 to %d", level, name, story.max_level),
+            })
         end
     elseif story ~= nil then
-        problem(string.format("%s has no level (0 to %d)", name, story.max_level), "level")
+        problem({ kind = "missing", field = "level", text = string.format("%s has no level (0 to %d)", name, story.max_level) })
     end
     if navi.forms == nil and setup.hp ~= MAX_HP then
-        problem(string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name), "hp")
+        problem({
+            kind = "not_taken",
+            field = "hp",
+            text = string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name),
+        })
     end
 end
 

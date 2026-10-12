@@ -377,7 +377,14 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
    pseudo-locale).
 6. **Title music** from each game's own data.
 7. **New builds** start with the game's new-save folder; folder rules follow Tango's, including the Giga chips of
-   one version.
+   one version. The build screens ask nettai-match's `build` for all of it, and it asks the game's rules: the
+   versions in §2.2's order and a new build (`build::Builds`, from the game's rules/builds data), a build checked
+   with its problems typed (`build::Checked`, `Wrong`: a screen words each kind, with its numbers, in its
+   language), the folder editor's limits and each library row's reason (`folders::View`, read per row), the
+   Regular and tag marks (`build::mark`, `folders::mark_problems`), the overview (`Checked::overview`: each stat
+   with what was added, what gives the abilities, the bugs by name and level, the patch cards' MB) and a chip's
+   row with its sort keys (`build::ChipInfo`, `build::sorted`). docs/design/rules-in-luau.md's last section says
+   how the rules answer.
 8. **Replays:** seeking, by keeping snapshots; export through `nettai-video` and ffmpeg; no build names in the file.
 9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds and Closed builds as
    shared settings; and holds the start until both sides have loaded.
