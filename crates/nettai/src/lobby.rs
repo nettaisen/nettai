@@ -385,11 +385,10 @@ impl App {
                 let (driver, agreement) = agreed.player(NetOptions::default());
                 let content = ready.content().clone();
                 let mut player = self.player(&ready, Box::new(driver), true);
-                let m = nettai_match::Match { seed: Some(agreement.seed), ..agreement.m.clone() };
                 let names = agreement.names.clone();
-                let recorded = self
-                    .recorder(&content, &m, agreement.seed, &game, agreement.side as u8, Some(names.clone()))
-                    .and_then(|(r, path)| player.record(r).ok().map(|_| path));
+                // (The recording's info is the agreement's: closed builds
+                // with it.)
+                let recorded = self.netplay_recorder(&content, &agreement, &game).and_then(|(r, path)| player.record(r).ok().map(|_| path));
                 let graphics = ready.graphics(self.lang);
                 let navi_names = Names::of(&content, &graphics);
                 let navi = |side: usize| navi_names.navi(agreement.m.sides[side].navi(&content));

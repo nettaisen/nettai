@@ -22,10 +22,10 @@ use nettai_battle::content::Content;
 use nettai_battle::{Battle, BattleResult, RoundEnd, TickInput};
 use nettai_match::{After, Match, Set};
 // (What a host reads of a replay, without naming nettai-replay.)
-pub use nettai_replay::{End, Info, Replay, Tick};
+pub use nettai_replay::{End, Info, MatchKind, Mismatch, ReadError, Replay, Tick};
 use nettai_replay::{Head, Writer};
 
-use crate::driver::{Driver, Step};
+use crate::driver::{Driver, Place, Step};
 
 /// The engine's version as a replay's head states it (the frontend's:
 /// the engine's crates are versioned together).
@@ -69,6 +69,20 @@ impl Recorder {
         Ok(Recorder { writer, ticks: 0, failed: None })
     }
 
+    /// A recording of the netplay match the lobby agreed (`agreed`: its
+    /// match and seed, this peer's side, both players' names, and whether
+    /// they closed their builds) to `out`, started at `when` (seconds since
+    /// 1970). The replay's info is the agreement's: an online match,
+    /// recorded from this peer's side, by these names, with closed builds
+    /// where the players agreed them. So a host that records a netplay
+    /// match passes the flag on by making the recorder here, and a viewer
+    /// reads it back as `Replay::info.closed_builds` (`Viewer::info`).
+    pub fn of_agreement(out: Box<dyn Write + Send>, content: &Arc<Content>, agreed: &crate::lobby::Agreement, when: u64) -> Result<Recorder, String> {
+        let info = Info { when, side: agreed.side as u8, kind: MatchKind::Online, closed_builds: agreed.closed_builds(), names: agreed.names.clone() };
+        let m = Match { seed: Some(agreed.seed), ..agreed.m.clone() };
+        Recorder::new(out, content, &m, &info)
+    }
+
     /// Whether the battle's digest is kept after the next tick.
     pub fn digest_due(&self) -> bool {
         digest_due(self.ticks)
@@ -108,6 +122,46 @@ fn simulation_digest(b: &Battle, local_side: u8) -> u64 {
     b.digest()
 }
 
+/// Why a replay isn't played on the content given ([`ReplayPlayer::new`],
+/// [`play_out`], [`crate::viewer::Viewer::open`]). The variant is what a
+/// host tells its user; what it says (`Display`) is the detail, for a log.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Refused {
+    /// It is a replay of another game than the content's.
+    OtherGame { replay: String, here: String },
+    /// It was made by another version of nettai: on another engine or
+    /// other content, or its match makes another first battle here than
+    /// the one it recorded (an engine that differs under the same
+    /// version).
+    OtherVersion(String),
+    /// Its match doesn't read, or breaks the game's rules: a file that
+    /// was damaged or changed.
+    BadMatch(String),
+    /// It is asked to be shown from a side a match doesn't have.
+    NoSide(u8),
+}
+
+impl std::fmt::Display for Refused {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            Refused::OtherGame { replay, here } => write!(f, "the replay is of {replay}, not {here}"),
+            Refused::OtherVersion(why) | Refused::BadMatch(why) => write!(f, "{why}"),
+            Refused::NoSide(side) => write!(f, "no side {side}: a match has sides 0 and 1"),
+        }
+    }
+}
+
+impl std::error::Error for Refused {}
+
+impl From<Mismatch> for Refused {
+    fn from(m: Mismatch) -> Refused {
+        match m {
+            Mismatch::Game { replay, here } => Refused::OtherGame { replay, here },
+            other => Refused::OtherVersion(other.to_string()),
+        }
+    }
+}
+
 /// Plays a replay back, tick by tick, shown from one side: each tick's
 /// buttons as the recording has them, the set going on round after round
 /// where it marks a round's end. It compares the battle with what the
@@ -127,29 +181,38 @@ pub struct ReplayPlayer {
     end: End,
 }
 
+/// The set a replay plays on `content`: its match, read and checked, from
+/// its seed. Refused: a replay of another engine, game or content, a match
+/// that doesn't read or that the checks refuse, and a first battle other
+/// than the recording's. (What a host makes ready before it opens the
+/// replay: `crate::preload::Preload::new` takes the set.)
+pub fn set_of(content: &Arc<Content>, replay: &Replay) -> Result<Set, Refused> {
+    replay.head.require(ENGINE, content.game(), content.hash().0)?;
+    let m = nettai_match::binary::read_match(content, &replay.match_bytes).map_err(|e| Refused::BadMatch(format!("the replay's match doesn't read: {e}")))?;
+    let problems = nettai_match::check_match(content, &m);
+    if !problems.is_empty() {
+        return Err(Refused::BadMatch(format!("the replay's match breaks the rules: {}", problems.join("; "))));
+    }
+    let set = Set::of(content, &m, m.seed.expect("a replay's match states its seed"));
+    let start = set.start().digest();
+    if start != replay.head.start {
+        return Err(Refused::OtherVersion(format!(
+            "the replay's match makes another battle on this engine (its first battle's digest {start:016x}, the recording's {:016x})",
+            replay.head.start
+        )));
+    }
+    Ok(set)
+}
+
 impl ReplayPlayer {
     /// A replay's playback on `content`, shown from `viewer`'s side (none:
-    /// the side that recorded it). Refused: a replay of another engine,
-    /// game or content, a match that doesn't read or that the checks
-    /// refuse, and a first battle other than the recording's.
-    pub fn new(content: &Arc<Content>, replay: &Replay, viewer: Option<u8>) -> Result<ReplayPlayer, String> {
-        replay.head.require(ENGINE, content.game(), content.hash().0)?;
-        let m = nettai_match::binary::read_match(content, &replay.match_bytes).map_err(|e| format!("the replay's match doesn't read: {e}"))?;
-        let problems = nettai_match::check_match(content, &m);
-        if !problems.is_empty() {
-            return Err(format!("the replay's match breaks the rules: {}", problems.join("; ")));
-        }
-        let set = Set::of(content, &m, m.seed.expect("a replay's match states its seed"));
-        let start = set.start().digest();
-        if start != replay.head.start {
-            return Err(format!(
-                "the replay's match makes another battle on this engine (its first battle's digest {start:016x}, the recording's {:016x})",
-                replay.head.start
-            ));
-        }
+    /// the side that recorded it). Refused as [`set_of`] refuses a replay,
+    /// and for a side a match doesn't have.
+    pub fn new(content: &Arc<Content>, replay: &Replay, viewer: Option<u8>) -> Result<ReplayPlayer, Refused> {
+        let set = set_of(content, replay)?;
         let viewer = viewer.unwrap_or(replay.info.side);
         if viewer > 1 {
-            return Err(format!("no side {viewer}: a match has sides 0 and 1"));
+            return Err(Refused::NoSide(viewer));
         }
         let local_side = set.first().local_side;
         Ok(ReplayPlayer { set, ticks: replay.ticks.clone(), at: 0, round: 1, viewer, local_side, end: replay.end })
@@ -218,6 +281,14 @@ impl Driver for ReplayPlayer {
     fn position(&self) -> String {
         format!("replay round {} tick {} of {}", self.round, self.at, self.ticks.len())
     }
+
+    fn go_to(&mut self, place: Place) -> bool {
+        if place.tick as usize > self.ticks.len() || place.viewer > 1 {
+            return false;
+        }
+        (self.at, self.round, self.viewer) = (place.tick as usize, place.round, place.viewer);
+        true
+    }
 }
 
 /// What playing a replay to its end made: for a list of replays, which
@@ -242,7 +313,7 @@ pub struct Outcome {
 /// Play a replay to its end on `content`, with no picture and no sound:
 /// what happened in it (who won each round and the set), and whether it
 /// reproduced. Refused as [`ReplayPlayer::new`] refuses one.
-pub fn play_out(content: &Arc<Content>, replay: &Replay) -> Result<Outcome, String> {
+pub fn play_out(content: &Arc<Content>, replay: &Replay) -> Result<Outcome, Refused> {
     let mut d = ReplayPlayer::new(content, replay, Some(0))?;
     let mut b = d.start();
     let mut out = Outcome { ticks: 0, rounds: Vec::new(), result: None, end: d.end, diverged: None, stopped: None };
@@ -292,30 +363,10 @@ pub fn play_out(content: &Arc<Content>, replay: &Replay) -> Result<Outcome, Stri
     Ok(out)
 }
 
-/// A sink tests write a replay to and read it back from.
+/// (The sink tests write a replay to and read it back from.)
 #[cfg(test)]
 pub(crate) mod testing {
-    use std::io::Write;
-    use std::sync::{Arc, Mutex};
-
-    #[derive(Clone, Default)]
-    pub struct Shared(pub Arc<Mutex<Vec<u8>>>);
-
-    impl Shared {
-        pub fn bytes(&self) -> Vec<u8> {
-            self.0.lock().unwrap().clone()
-        }
-    }
-
-    impl Write for Shared {
-        fn write(&mut self, b: &[u8]) -> std::io::Result<usize> {
-            self.0.lock().unwrap().extend_from_slice(b);
-            Ok(b.len())
-        }
-        fn flush(&mut self) -> std::io::Result<()> {
-            Ok(())
-        }
-    }
+    pub use crate::testing::Shared;
 }
 
 #[cfg(test)]
@@ -354,7 +405,7 @@ mod tests {
             let sink = Shared::default();
             let live = LivePlayer::new(Set::of(content, &m, 7));
             let mut s = Session::new(Box::new(short_set::Scripted { live, winners: winners.to_vec() }));
-            s.record(Recorder::new(Box::new(sink.clone()), content, &m, &Info::default()).unwrap()).unwrap();
+            s.record(Recorder::new(Box::new(sink.clone()), content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
             let mut scores = Vec::new();
             while s.step(0) {
                 assert!(s.ticks < 60_000, "{case}: the set doesn't end ({})", s.driver.position());
@@ -406,7 +457,7 @@ mod tests {
         let m = short_set::of(content, game, 7);
         let sink = Shared::default();
         let mut s = Session::new(Box::new(LivePlayer::new(Set::of(content, &m, 7))));
-        let info = Info { when: 1_790_000_000, side: 0, names: ["Lan".into(), String::new()] };
+        let info = Info { when: 1_790_000_000, names: ["Lan".into(), String::new()], ..Info::of(MatchKind::Offline, 0) };
         s.record(Recorder::new(Box::new(sink.clone()), content, &m, &info).unwrap()).unwrap();
         while s.step(short_set::shooter(&s.battle, 0, s.ticks as u32)) {}
         assert_eq!(s.result, Some(BattleResult::Won), "{game}");
@@ -477,7 +528,7 @@ mod tests {
         }
         let sink = Shared::default();
         let mut s = Session::new(Box::new(LivePlayer::new(Set::of(&content, &m, 11))));
-        s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::default()).unwrap()).unwrap();
+        s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
         let mut masher = nettai_netplay::standin::Masher::new(11);
         let started = std::time::Instant::now();
         while s.ticks < 60_000 {
@@ -527,9 +578,24 @@ mod tests {
         let out = play_out(&content, &cut).unwrap();
         assert_eq!((out.ticks, out.result, out.diverged, out.end), (100, None, None, End::Cut));
         let five = nettai_match::testing::exe5_content();
-        assert_eq!(ReplayPlayer::new(&five, &replay, None).err().unwrap(), "the replay is of exe6, not exe5");
+        let other_game = ReplayPlayer::new(&five, &replay, None).err().unwrap();
+        assert_eq!(other_game, Refused::OtherGame { replay: "exe6".into(), here: "exe5".into() });
+        assert_eq!(other_game.to_string(), "the replay is of exe6, not exe5");
+        // Another version's: the content's hash, the engine's version, or
+        // a first battle that isn't the recording's.
+        let changes: [fn(&mut Replay); 3] = [|r| r.head.content ^= 1, |r| r.head.engine.push('x'), |r| r.head.start ^= 1];
+        for change in changes {
+            let mut other = replay.clone();
+            change(&mut other);
+            let refused = ReplayPlayer::new(&content, &other, None).err().unwrap();
+            assert!(matches!(refused, Refused::OtherVersion(_)), "{refused:?}");
+        }
         let mut moved = replay.clone();
         moved.head.start ^= 1;
-        assert!(ReplayPlayer::new(&content, &moved, None).err().unwrap().starts_with("the replay's match makes another battle on this engine"));
+        assert!(play_out(&content, &moved).unwrap_err().to_string().starts_with("the replay's match makes another battle on this engine"));
+        let mut cut_match = replay.clone();
+        cut_match.match_bytes.truncate(3);
+        assert!(matches!(ReplayPlayer::new(&content, &cut_match, None).err().unwrap(), Refused::BadMatch(_)));
+        assert_eq!(ReplayPlayer::new(&content, &replay, Some(2)).err().unwrap(), Refused::NoSide(2));
     }
 }
