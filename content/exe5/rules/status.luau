@@ -419,8 +419,7 @@ local status = {
         drag = { poses = { super_armor = 0, otherwise = 1 }, ending = "stands" },
         bugs_before_drain = true,
         -- DarkInvs's no-charge drive: its ticks count down at the intake's end (0x0800DBE0) and their end asks for the
-        -- stun strike (action 0x49, the drive's end: chips/darkinvs); the idle hands the step to the rules (the
-        -- auto battle AI, 0x080F03E4); the last 180 ticks flicker gray (0x080136E0).
+        -- stun strike (action 0x49, the drive's end: chips/darkinvs); the last 180 ticks flicker gray (0x080136E0).
         no_charge_drive = true,
         -- EXE5's loss of HP (object_subtractHP, 0x0800C6E0; applyDamageToPlayer, 0x080185A2): a player's loss drains
         -- its side's gauge too, a loss to 0 asks the rules' `hp_emptied` (0x0802C16C: a dark MegaMan, emotion 5,
@@ -479,6 +478,9 @@ local status = {
         timers_while_paused = false,
         -- Its idle (0x080F0254) leaves the navi's pose, as EXE6's.
         idle_stands = false,
+        -- Its idle hands the step it would take to the rules (0x080F03E4: the auto battle AI under the no-charge
+        -- drive, else its state's reset: ./auto_battle's `controller`).
+        idle_asks_controller = true,
         -- In a link battle a navi's body hits for 10, its damage as it is set up (0x080119AC, EXE6's `sub_80142B0`);
         -- its status reset (0x08011B3C) doesn't set it again (EXE6's `sub_80142C2` has no counterpart).
         link_body_damage = { damage = 10, again_at_reset = false },
