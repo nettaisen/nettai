@@ -55,6 +55,8 @@ local BOMB = common.make {
         [5] = obstacle.knocked_back,
     },
     breaks_while_dimmed = true,
+    -- 0x08013F3E: a crushing touch destroys it, its HP as it is.
+    crush = "destroys",
     side_only = true,
 }
 
