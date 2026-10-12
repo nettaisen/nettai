@@ -250,7 +250,7 @@ flag): each draws 0x15 until its typhoon virus is beaten, then 0x10.
 | 0x02 | `lans-hp` | Lan's HP (0x88:0) | the menu | a link battle | `soccer-balls` (soccer balls) |
 | 0x03 | `mayls-hp` | Mayl's HP (0x88:1) | the menu | a link battle | `rabbits-and-apples` (rabbits and apples with hearts, on pink) |
 | 0x04 | `dexs-hp` | Dex's HP (0x88:2) | the menu | a link battle | `faces-and-crosses` (faces and crosses) |
-| 0x05 | `yais-hp` | Yai's HP (0x88:3) | the menu | a link battle | `goldfish` (bubbles in the dark (the US ROMs': goldfish)) |
+| 0x05 | `yais-hp` | Yai's HP (0x88:3) | the menu | a link battle | `goldfish` (goldfish (the Japanese ROMs': bubbles in the dark)) |
 | 0x06 | `comp` | DoghouseComp (0x8c:0); KitchenComp (0x8c:2); ElctLockComp (0x8c:3); EngineComp (0x8c:7); ViewComp (0x8c:8); ChipMkrComp (0x8c:9); AirFilterCmp (0x8c:10); ArmorComp (0x8c:11); HelmetComp (0x8c:12); KatanaComp (0x8c:13); FurnaceComp (0x8c:15); ElevatorComp (0x8d:0); CraneComp (0x8d:1); TreeComp (0x8d:2); OldComp (0x8d:3); Dad'sComp (0x8d:4); SculptureCmp (0x8d:5); TerminalComp (0x8d:6); NetBattleCmp (0x8d:7); WineCaseComp (0x8d:8); DumplingComp (0x8d:9); ExpServComp (0x8d:10); WindGodComp (0x8d:11); PipeComp (0x8d:12); SquirrelCmp1, 3, 4, 5, 6, 8 (0x8e:0, 2, 3, 4, 5, 7); SquirelCmp10, 11, 13, 15, 16 (0x8e:9, 10, 12, 14, 15); the default: every real-world map | **no one area: the default, which the comps without their own draw** | 108 battle settings state it; a link battle | `calendar-squares` (yellow turning rings) |
 | 0x07 | `comp-alt` | OldTrmnlComp (0x8c:1); RadarComp (0x8c:4); AirConComp (0x8c:5); ScrewComp (0x8c:6); ServerComp (0x8c:14); MessageComp (0x8d:13); SquirrelCmp2, 7, 9 (0x8e:1, 6, 8); SquirelCmp12, 14 (0x8e:11, 13) | **no one area: the default's picture in its second palette** | 1 battle settings state it (0x08113bf0); a link battle | `rings-blue` (0x06's turning rings in light blue) |
 | 0x08 | `acdc-area` | ACDC Area1, 2 (0x90:0, 1) | the menu | a link battle | `calendar-blue` (blue diamonds rising on black) |
@@ -1228,20 +1228,22 @@ them).
   differs at the emblem on purpose; it is listed as known (`known.tsv`: the
   emblem sprite's 32x32). EXE5's ROMs are the same (MegaMan's and their own
   team's six navis', 0x08023F68), for the team navis the content has.
-- **Deliberate: one presentation, the Japanese games' where the releases
-  differ** (the user's: "nettai should not have any region specific code").
+- **Deliberate: one presentation, whatever the console's region** (the
+  user's: "nettai should not have any region specific code").
   The pack has the Japanese ROMs' art where the US ROMs have a placeholder
-  (six sprites, fifteen chips' pictures: asset-formats.md §4) or differ
-  (a pixel or two of BassAnly's icon and Gregar's Beast Out picture; the
-  flames HeatMan wears, in his throw; EXE5's background 0x05), the content
+  (six sprites, fifteen chips' pictures: asset-formats.md §4) and the US
+  ROMs' where both releases have their own (the user's, 2026-10-12: "you
+  should use the US assets where regions differ": a pixel or two of
+  BassAnly's icon and Gregar's Beast Out picture; the flames HeatMan
+  wears, in his throw; EXE5's background 0x05 and its hit sound), the content
   draws Otenko's statue and CrosOver's gun with the Japanese games' sprites
   (0C-49, 0C-0F) where the US games draw others, and EXE6's custom screen
   starts the chip window as it closes (`HudState`), on every
   console. A US console's original shows its placeholder (a purple picture,
   a dot) or its other sprite, and its chip window waits for the navi's
-  first decision; an EXE5 US console's background 0x05 has goldfish and
-  scrolls, where the pack has the Japanese ROMs' bubbles in the dark; an
-  EXE4 Blue Moon console draws rows 12 and 13 of
+  first decision; a Japanese console shows its own art where the releases
+  differ (EXE5's background 0x05 as bubbles in the dark, HeatMan's flames
+  in his throw, the two pictures' pixels); an EXE4 Blue Moon console draws rows 12 and 13 of
   four chips' icons (Blizzard, HeatBrth, ElecShok, WoodPwdr) as a dark bar,
   where the pack has one icon a chip, Red Sun's. No part of the frontend
   knows a console's region or which of these it shows: the verification's
