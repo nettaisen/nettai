@@ -186,7 +186,8 @@ megaman-portrait = "20-40"  # the no-running message's speaker, F4 00 40 (0x0804
 
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
-netbattle = 0x015  # a netbattle's music, which the fight's setup starts (the lab's flow/buster-duel, frame 130)
+netbattle-single = 0x014  # a single battle's music, which the fight's setup starts by the battle's type (0x080074A4, the table 0x08007510: types 0x46 and 0x47; the lab's timer/win, frame 130)
+netbattle = 0x015  # a triple battle's music (the same table: types 0x48 and 0x49; the lab's flow/buster-duel, frame 130)
 winner-special = 0x018  # the winner's music in a special battle, battle flag 2 (0x080071F8)
 loser = 0x019  # a netbattle's loser's music, battle type 0x46 and on (0x0800727C)
 winner = 0x01e  # the winner's music (0x080071F8)

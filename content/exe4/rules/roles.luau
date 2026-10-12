@@ -171,7 +171,10 @@ local roles: RolesSpec = {
         hit_marker = asset.sprite("hit-marker"),
     },
     music = {
+        -- The battle start's song by the battle's type (0x080074A4, the table 0x08007510: types 0x46 and 0x47 song
+        -- 0x14, 0x48 and 0x49 song 0x15): a triple battle's, and a single battle's.
         link_battle = asset.sound("netbattle"),
+        link_battle_single = asset.sound("netbattle-single"),
         -- The round's end (0x080071F8): the winner's, a special battle's (battle flag 2); a netbattle's loser's
         -- (0x0800727C).
         winner = asset.sound("winner"),

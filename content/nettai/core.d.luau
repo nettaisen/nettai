@@ -3002,11 +3002,13 @@ export type RolesSpec = {
         program_advance_part: Sound?,
         program_advance: Sound?,
     }?,
-    -- The music the rules start themselves: a link battle's, the winner's
-    -- (in special battles, and otherwise) and the loser's. A stage's music
-    -- is its own.
+    -- The music the rules start themselves: a link battle's (and a single
+    -- battle's, a link battle that is no set, in a game with another song
+    -- for it: the link battle's otherwise), the winner's (in special
+    -- battles, and otherwise) and the loser's. A stage's music is its own.
     music: {
         link_battle: Sound?,
+        link_battle_single: Sound?,
         winner_special: Sound?,
         winner: Sound?,
         loser: Sound?,
