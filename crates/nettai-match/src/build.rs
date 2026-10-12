@@ -624,3 +624,191 @@ pub fn sorted(content: &Content, chips: &[ChipInfo], sort: Sort, descending: boo
     });
     rows.into_iter().map(|(c, code)| FolderChip::new(c.chip, code)).collect()
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::testing::{PlacedProgram, exe4_content, exe5_content, exe6_content, patch_cards, program_colors, set_navicust};
+
+    /// The three games, each with its versions in the order every list shows
+    /// them.
+    fn games() -> [(Arc<Content>, &'static str, [&'static str; 2]); 3] {
+        [(exe4_content(), "exe4", ["redsun", "bluemoon"]), (exe5_content(), "exe5", ["protoman", "colonel"]), (exe6_content(), "exe6", ["gregar", "falzar"])]
+    }
+
+    /// Each game's versions are listed in the user's order, and a new build
+    /// of each is MegaMan of that version with the folder a new save starts
+    /// with, at the most its game allows; nothing is wrong with it.
+    #[test]
+    fn a_new_build_of_each_version_is_ready() {
+        for (content, game, versions) in games() {
+            let builds = Builds::of(&content, game).unwrap();
+            assert_eq!(builds.versions.iter().map(|v| v.id.as_str()).collect::<Vec<_>>(), versions, "{game}");
+            assert_eq!(builds.new_folder.chips().count(), FOLDER_SIZE, "{game}");
+            for version in versions {
+                let side = builds.new_build(&content, version).unwrap();
+                assert_eq!(Some(side.navi(&content)), crate::first_navi(&content, game), "{game} {version}");
+                assert_eq!(builds.version_of(&content, &side), Some(version), "{game}");
+                assert_eq!(side.folder(&content), builds.new_folder, "{game} {version}");
+                let mut checked = Checked::of(&content, game, &side);
+                assert_eq!(checked.problems, Vec::new(), "{game} {version}");
+                assert!(checked.ready());
+                let st = *checked.stats().unwrap();
+                assert_eq!((st.max_hp, st.hp, st.reg_up, st.mega_level, st.giga_level), (1000, 1000, 50, 5, 1), "{game} {version}");
+                // Nothing installed: nothing added, no ability, no bug.
+                let o = checked.overview(&content, &side).unwrap();
+                assert_eq!((o.hp, o.mega, o.giga, o.regular_memory), (Stat { base: 1000, value: 1000 }, Stat { base: 5, value: 5 }, Stat { base: 1, value: 1 }, Stat { base: 50, value: 50 }));
+                assert_eq!((o.attack.value, o.rapid.value, o.charge.value), (1, 1, 1), "{game} {version}");
+                assert_eq!((o.abilities.len(), o.bugs.len()), (0, 0), "{game} {version}");
+                assert_eq!(o.tag_memory, (game == "exe6").then_some(60), "{game}");
+                // Made again as built, it is the same: no fact to mend.
+                let mut again = side.clone();
+                assert_eq!(builds.as_built(&content, &mut again), Vec::<String>::new(), "{game} {version}");
+            }
+            assert!(builds.new_build(&content, "nowhere").unwrap_err().contains("no version"));
+        }
+    }
+
+    /// A build of one version holds none of the other's Giga chips: the
+    /// rules refuse one in its folder as another version's, and a build made
+    /// the other version takes it.
+    #[test]
+    fn a_version_holds_its_own_giga_chips() {
+        for (content, game, versions, own) in [
+            (exe4_content(), "exe4", ["redsun", "bluemoon"], ["redsun", "bluemoon"]),
+            (exe5_content(), "exe5", ["protoman", "colonel"], ["dethphnx", "phoenix"]),
+            (exe6_content(), "exe6", ["gregar", "falzar"], ["colforce", "hubbatc"]),
+        ] {
+            let builds = Builds::of(&content, game).unwrap();
+            let chip = |key: &str| ids::chip(&content, game, key).unwrap();
+            for (v, version) in versions.iter().enumerate() {
+                let mut side = builds.new_build(&content, version).unwrap();
+                let mut folder = side.folder(&content);
+                let theirs = chip(own[1 - v]);
+                folder.chips[0] = Some(FolderChip::new(theirs, content.chip(theirs).codes[0]));
+                side.set_folder(&content, &folder).unwrap();
+                let checked = Checked::of(&content, game, &side);
+                assert_eq!(checked.problems.len(), 1, "{game} {version}: {:?}", checked.problems);
+                let p = &checked.problems[0];
+                assert_eq!((&p.what, p.entry, p.field.as_deref()), (&Wrong::ChipOfAnotherVersion { chip: theirs }, Some(0), Some("folder")), "{game} {version}");
+                // The other version, with the same folder, takes it.
+                builds.take_version(&content, &mut side, versions[1 - v]).unwrap();
+                assert_eq!(Checked::of(&content, game, &side).problems, Vec::new(), "{game} {version}");
+                assert_eq!(builds.version_of(&content, &side), Some(versions[1 - v]));
+            }
+        }
+    }
+
+    /// EXE6's overview: what the NaviCust's programs and a patch card add to
+    /// the navi's numbers, what gives it its abilities, its bugs by name and
+    /// level, and the patch cards' MB.
+    #[test]
+    fn an_overview_says_what_a_build_comes_to() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let program = |name: &str| ids::entry(&content, "exe6", "navicust_programs", name).unwrap();
+        let placed = |name: &str, color: &str, x: u8, y: u8| {
+            let color = program_colors(&content, program(name)).iter().position(|c| *c == color).unwrap() as u8;
+            PlacedProgram { program: program(name), color, x, y, rotation: 0, compressed: false }
+        };
+        let overview = |side: &Side| Checked::of(&content, "exe6", side).overview(&content, side).unwrap();
+        // UnderSht on the command line, Attack+1 and HP+100 off it: no bug.
+        let mut side = builds.new_build(&content, "falzar").unwrap();
+        set_navicust(&content, &mut side, &[placed("undersht", "white", 1, 3), placed("attack-1", "pink", 5, 2), placed("hp-100", "white", 3, 2)], 2);
+        let o = overview(&side);
+        assert_eq!((o.hp, o.attack), (Stat { base: 1000, value: 1100 }, Stat { base: 1, value: 2 }));
+        assert_eq!((o.hp.added(), o.attack.added(), o.mega.added()), (100, 1, 0));
+        assert_eq!(o.abilities, [Source::Entry(program("undersht"))]);
+        assert_eq!(o.bugs, Vec::new());
+        // UnderSht off the command line: its bug at level 1, and no UnderSht.
+        set_navicust(&content, &mut side, &[placed("undersht", "white", 1, 2)], 2);
+        let o = overview(&side);
+        assert_eq!(o.abilities, Vec::new());
+        let [Bug::Named { key, level: 1 }] = &o.bugs[..] else { panic!("{:?}", o.bugs) };
+        assert!(content.strings.text(BUGS_TABLE, key).is_some(), "{key}");
+        // A patch card: its MB against the list's, its lines under the
+        // abilities as its effects, and what it does to the numbers.
+        set_navicust(&content, &mut side, &[], 2);
+        side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "canodumb")).unwrap();
+        let canodumb = ids::entry(&content, "exe6", "patch_cards", "canodumb").unwrap();
+        let o = overview(&side);
+        let budget = o.budget("patch_cards").unwrap().clone();
+        assert_eq!((budget.count, budget.once, budget.cost_of(&content, canodumb)), (Count { used: 10, limit: 80 }, true, 10));
+        assert_eq!((o.hp, o.attack), (Stat { base: 1000, value: 960 }, Stat { base: 1, value: 2 }));
+        assert!(matches!(o.abilities[..], [Source::Effect(card, _)] if card == canodumb), "{:?}", o.abilities);
+        assert_eq!(budget.refusal(&content, &side, canodumb), Some(EntryRefusal::Installed));
+        let other = ids::entry(&content, "exe6", "patch_cards", "amonicul").unwrap();
+        assert_eq!(budget.refusal(&content, &side, other), None);
+        let tight = Budget { count: Count { used: 70, limit: 80 }, ..budget };
+        assert_eq!(tight.refusal(&content, &side, other), Some(EntryRefusal::Needs { needs: 16, free: 10 }));
+    }
+
+    /// Every bug a game's NaviCust can bring has its name in the game's
+    /// strings (the `bugs` table, by the rules' name for the bug).
+    #[test]
+    fn every_bug_has_its_name() {
+        for (content, game, _) in games() {
+            let programs = nettai_battle::behavior::content_module_data(&content, &format!("{game}:rules/navicust/programs")).unwrap().unwrap();
+            let bugs = items(programs.field("BUGS"));
+            assert!(bugs.len() >= 10, "{game}");
+            for bug in bugs {
+                let Data::Str(name) = bug else { panic!("{bug:?}") };
+                assert!(content.strings.text(BUGS_TABLE, name).is_some(), "{game}: no name for the bug {name}");
+            }
+        }
+    }
+
+    /// A chip's row, and a library's rows sorted.
+    #[test]
+    fn a_library_lists_and_sorts_its_chips() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let side = builds.new_build(&content, "gregar").unwrap();
+        let view = Checked::of(&content, "exe6", &side).folder_view(&content, &side.folder(&content)).unwrap();
+        // (A library's order for the test: three chips' places, the rest
+        // none.)
+        let rank = |key: &str| ["cannon", "hicannon", "m-cannon"].iter().position(|k| *k == key).map(|i| (0, i));
+        let chip = |key: &str| ids::chip(&content, "exe6", key).unwrap();
+        let cannon = chip_info(&content, chip("cannon"), &rank);
+        assert_eq!((cannon.family_name.as_deref(), cannon.class, cannon.dark, cannon.attack, cannon.library), (Some("null"), ChipClass::Standard, false, 40, Some((0, 0))));
+        assert_eq!(cannon.codes.iter().map(|c| c.letter()).collect::<String>(), "ABC*");
+        assert_eq!(chip_info(&content, chip("firebrn1"), &rank).family_name.as_deref(), Some("fire"));
+        let chips = library(&content, "exe6", &view, &rank);
+        assert!(chips.len() > 250 && chips.iter().all(|c| view.lists(c.chip)));
+        assert_eq!(chips[..3].iter().map(|c| c.chip).collect::<Vec<_>>(), [chip("cannon"), chip("hicannon"), chip("m-cannon")]);
+        // The other version's Giga chips are listed (and refused).
+        assert!(chips.iter().any(|c| c.chip == chip("falzar")) && matches!(view.refusal(chip("falzar")), Some(Wrong::ChipOfAnotherVersion { .. })));
+        let name = |c: ChipHandle| crate::names::chip(&content, c).to_string();
+        let rows = sorted(&content, &chips, Sort::Library, false, &name);
+        assert_eq!(rows[..4].iter().map(|c| (c.id, c.code.letter())).collect::<Vec<_>>(), [(chip("cannon"), 'A'), (chip("cannon"), 'B'), (chip("cannon"), 'C'), (chip("cannon"), '*')]);
+        assert_eq!(rows.len(), chips.iter().map(|c| c.codes.len()).sum::<usize>());
+        let by = |sort: Sort, descending: bool| sorted(&content, &chips, sort, descending, &name);
+        let mb = |c: &FolderChip| content.chip(c.id).mb;
+        assert!(by(Sort::Mb, false).windows(2).all(|w| mb(&w[0]) <= mb(&w[1])));
+        assert!(by(Sort::Mb, true).windows(2).all(|w| mb(&w[0]) >= mb(&w[1])));
+        assert!(by(Sort::Attack, true).windows(2).all(|w| content.chip(w[0].id).damage >= content.chip(w[1].id).damage));
+        assert!(by(Sort::Code, false).windows(2).all(|w| w[0].code.0 <= w[1].code.0));
+        assert!(by(Sort::Element, false).windows(2).all(|w| content.chip(w[0].id).family <= content.chip(w[1].id).family));
+        assert!(by(Sort::Name, false).windows(2).all(|w| name(w[0].id).to_lowercase() <= name(w[1].id).to_lowercase()));
+        // The marks of a folder's entries.
+        let folder = Folder { regular: Some(4), tags: Some((7, 2)), ..side.folder(&content) };
+        assert_eq!([2, 4, 7, 9].map(|e| mark(&folder, e)), [Some(Mark::Tag2), Some(Mark::Regular), Some(Mark::Tag1), None]);
+    }
+
+    /// A build is set to what every build is: the facts no build states back
+    /// at the rules' defaults, the rest as it was.
+    #[test]
+    fn a_build_is_as_built() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let mut side = builds.new_build(&content, "gregar").unwrap();
+        let before = side.clone();
+        side.set_fact(&content, "hp", &[Fact::Value(Value::Int(600))]).unwrap();
+        side.set_fact(&content, "sun", &[Fact::Value(Value::Bool(false))]).unwrap();
+        assert!(builds.never_stated(&content, "hp") && !builds.never_stated(&content, "folder"));
+        let mut changed = builds.as_built(&content, &mut side);
+        changed.sort();
+        assert_eq!(changed, ["hp", "sun"]);
+        assert_eq!(side, before);
+    }
+}
