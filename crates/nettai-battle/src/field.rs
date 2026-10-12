@@ -433,6 +433,23 @@ impl Battle {
         }
     }
 
+    /// The panel update of a dimmed tick: none where the panels hold what
+    /// they are drawn as (the callers skip `sub_800BFC4`); where the game
+    /// keeps that in tables of its own (`PanelDrawn::OwnTables`), every
+    /// panel is drawn as the type and the owner it is (EXE4's 0x08009A38,
+    /// from 0x080092A0).
+    pub fn tick_panels_dimmed(&mut self) {
+        if self.content.rules().panels.drawn != crate::content::PanelDrawn::OwnTables {
+            return;
+        }
+        for row in &mut self.field.panels {
+            for p in row {
+                p.display_kind = p.kind;
+                p.display_alliance = p.alliance;
+            }
+        }
+    }
+
     /// `sub_800C380` (EXE5's 0x0800A998: its lava and sea expire as EXE6's
     /// roads do, each with its own timer, which a panel's new type sets).
     fn tick_panel(&mut self, x: u8, y: u8) {
@@ -461,7 +478,13 @@ impl Battle {
             if latch & pflags::BODY != 0 && latch & pflags::FLOATING == 0 && p.flags & pflags::OCCUPIED == 0 {
                 p.kind = roles.broken;
                 self.field.refresh(&self.content.rules().panels, &self.collision, x, y);
-                self.field.panels[y as usize][x as usize].hole_timer = h;
+                let late = self.content.rules().panels.drawn == crate::content::PanelDrawn::OwnTables;
+                let p = &mut self.field.panels[y as usize][x as usize];
+                p.hole_timer = h;
+                if late {
+                    // (Its next update draws the hole.)
+                    p.display_kind = roles.cracked;
+                }
                 self.sound(SoundRole::PanelCrack);
             }
         } else {
@@ -931,6 +954,40 @@ mod tests {
         // (The first stood on, cracked; the second poisoned.)
         assert_eq!(run(0x3F5F), (cracked(0x20000 | 0x10000), 0x20000 | 0x10000 | 0x114));
         assert_eq!(run(0x23F5F), (cracked(0x10000), 0x10000 | 0x114));
+    }
+
+    /// Where a game keeps what its panels are drawn as (`PanelDrawn`): in
+    /// the panel, a cracked panel a body stepped off shows its hole on the
+    /// tick it breaks, and a dimmed tick leaves a blink as it is; in tables
+    /// of their own (EXE4's), the hole shows a tick late, and a dimmed tick
+    /// draws every panel as the type and the owner it is.
+    #[test]
+    fn panels_drawn_from_their_own_tables_show_a_step_off_break_late_and_no_blink_dimmed() {
+        use super::pflags;
+        use crate::content::PanelDrawn;
+        let run = |drawn: PanelDrawn| {
+            let mut b = Battle::new(scenario::setup(), scenario::content());
+            let mut c = (*b.content).clone();
+            c.rules_mut().panels.drawn = drawn;
+            b.content = std::sync::Arc::new(c);
+            // A cracked panel a body stood on last tick and left.
+            b.set_panel_type(2, 1, panel("cracked"));
+            b.field.panels[1][2].latch = b.field.panels[1][2].flags | pflags::BODY;
+            b.tick_panels();
+            let broke = (b.field.panels[1][2].kind, b.field.panels[1][2].display_kind);
+            b.tick_panels();
+            let next = b.field.panels[1][2].display_kind;
+            // A hole blinking as mended, and a returned panel blinking as
+            // the other side's, through a dimmed tick.
+            b.field.panels[1][2].display_kind = panel("normal");
+            b.field.panels[1][2].display_alliance ^= 1;
+            b.tick_panels_dimmed();
+            let p = b.field.panels[1][2];
+            (broke, next, p.display_kind, p.display_alliance == p.alliance)
+        };
+        let (cracked, broken, normal) = (panel("cracked"), panel("broken"), panel("normal"));
+        assert_eq!(run(PanelDrawn::InPanel), ((broken, broken), broken, normal, false));
+        assert_eq!(run(PanelDrawn::OwnTables), ((broken, cracked), broken, broken, true));
     }
 
     /// The content API names a panel type as its game's rules do, both

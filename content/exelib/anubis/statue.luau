@@ -49,6 +49,9 @@ export type Look = {
     reads_no_removal: boolean?,
     untracked: boolean?,
     actions: { [number]: (Object) -> () }?,
+    -- How a crushing touch ends it (the obstacle framework's `react`): none, EXE6's and EXE5's (its HP drops to 0);
+    -- EXE4's reaction (0x08013F3E) destroys it with its HP as it is.
+    crush: ObstacleCrush?,
 }
 
 export type Statue = {
@@ -219,7 +222,7 @@ function statue.make(look: Look): Statue
         me.sprite.white = false
         obstacle.take_hits(me, "keeps_damage")
         obstacle.tick_lifetime(me)
-        local a = obstacle.react(me)
+        local a = obstacle.react(me, look.crush)
         if a then
             local action = actions[a]
             if not action then
