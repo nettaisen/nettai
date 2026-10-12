@@ -125,9 +125,16 @@ const SOUL_ICONS: (u32, usize) = (0x0874_7878, 13 * 0x80);
 const SOUL_ICON_PALETTE: u32 = 0x0874_7FF8;
 const UNITE_PLACE: ButtonPlace = ButtonPlace { x: 11, y: 17, first_tile: 0x52, palette: 9 };
 const WINDOW_FILL_TILE: usize = 0x2A;
-/// The SHUFFLE button over slots 8 and 9 (0x0801F6C2: twelve tiles a
-/// state, by the screen's +0x13).
+/// The SHUFFLE button over slots 8 and 9: 4x3 cells at column 7, row 16,
+/// in palette 9, numbered on from slot 8's first tile (0x0801DD34: the
+/// slots' tiles are from 0xDE, six a slot, 0x0801F680); its twelve tiles a
+/// look, by the screen's +0x13 (0x0801F6C2): as it is, shuffling (0x080209BA)
+/// and with no shuffle left (0x080209B8). The pack has a button's sets as
+/// selectable, unavailable and picked: its looks 0, 2 and 1.
 const SHUFFLE_TILES: (u32, usize) = (0x0870_9E00, 0x480);
+const SHUFFLE_PLACE: ButtonPlace = ButtonPlace { x: 7, y: 16, first_tile: 0x10E, palette: 9 };
+const SHUFFLE_SIZE: (u8, u8) = (4, 3);
+const SHUFFLE_SETS: [usize; 3] = [0, 2, 1];
 /// The names EXE4's rules give their buttons (as EXE5's: the soul button's
 /// `soul`, Shuffle's `redeal`), which the pack has their looks by.
 pub(crate) const SOUL_BUTTON: &str = "soul";
@@ -214,7 +221,10 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         c.layout = LAYOUT;
         let mut soul = crate::placeholders::button(3, 2);
         soul.place = Some(UNITE_PLACE);
-        c.buttons = vec![(SOUL_BUTTON.into(), soul), (REDEAL_BUTTON.into(), crate::placeholders::button(2, 3))];
+        let mut redeal = crate::placeholders::button(SHUFFLE_SIZE.0, SHUFFLE_SIZE.1);
+        redeal.place = Some(SHUFFLE_PLACE);
+        redeal.uses_digit = true;
+        c.buttons = vec![(SOUL_BUTTON.into(), soul), (REDEAL_BUTTON.into(), redeal)];
         c.versioned = Versioned::new(Version::RedSun.name(), VersionPictures::default());
         c.chip_art = chip_art;
         return c;
@@ -246,14 +256,27 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         ..ButtonPictures::default()
     };
     let shuffle_picture = picture(rom, SHUFFLE_PICTURE);
+    let shuffle_looks = block(rom, SHUFFLE_TILES);
+    let mut shuffle_tiles = Tiles::default();
+    let cells = SHUFFLE_SIZE.0 as usize * SHUFFLE_SIZE.1 as usize;
+    for look in SHUFFLE_SETS {
+        for k in 0..cells {
+            if let Some(tile) = shuffle_looks.get(look * cells + k) {
+                shuffle_tiles.push(tile);
+            }
+        }
+    }
     let redeal = ButtonPictures {
-        width: 2,
-        height: 3,
-        tiles: block(rom, SHUFFLE_TILES),
+        width: SHUFFLE_SIZE.0,
+        height: SHUFFLE_SIZE.1,
+        tiles: shuffle_tiles,
         sets: ButtonSets::Each,
         cursor: CursorPlace { x: ROW_BUTTON_CURSOR.0, y: ROW_BUTTON_CURSOR.1, corners: cursor_corners(rom, ROW_BUTTON_CORNERS) },
         palettes: vec![shuffle_picture.palette],
         picture: shuffle_picture,
+        // 0x0801FEA2: the shuffles left, in the damage's last cell.
+        uses_digit: true,
+        place: Some(SHUFFLE_PLACE),
         ..ButtonPictures::default()
     };
     // The slots' codes, the last the empty slot's.
