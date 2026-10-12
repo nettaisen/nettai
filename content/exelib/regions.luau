@@ -93,6 +93,10 @@ regions.area = {
     [1] = new.region { field = { require = 0x00000020, forbid = 0x00000000 } },
 }
 
+-- The other side's area: side 0's target (region 0x82) and side 1's (0x81)
+-- (EXE5's and EXE4's Discord).
+regions.other_area = { [0] = regions.area[1], [1] = regions.area[0] }
+
 -- Every panel (region 0x80: Silence).
 regions.field = new.region { field = { require = 0x00000000, forbid = 0x00000000 } }
 

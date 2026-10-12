@@ -12,11 +12,28 @@ local collision = require("../../../rules/collision")
 local soul = require("./soul")
 local wind = require("../../../objects/wind")
 
--- What its status reset gives the hand's wind chips.
+-- What its status reset gives the hand's wind chips, and the custom screen as OK builds a hand in it.
 local BONUS = 10
+
+-- 0x0800E208, and 0x0801F29A's for soul 3 on the hand installed: 10 more on each damaging Wind chip of the hand from
+-- its cursor on.
+local function hand(side: number)
+    local i = battle.hand_cursor(side)
+    while true do
+        local c = battle.hand_chip(side, i)
+        if c == nil then
+            break
+        end
+        if battle.hand_chip_damages(side, i) and c.family == "wind" then
+            battle.add_hand_charge_bonus(side, i, BONUS)
+        end
+        i += 1
+    end
+end
 
 local form: FormDef = {
     soul = { family = "wind", turns = 3 },
+    hand = soul.hand(hand),
     chip = chip,
     change = chip.action,
     revert = soul.revert,
@@ -34,18 +51,7 @@ local form: FormDef = {
         navi:set_status("float_shoe", true)
         navi:reset_collision_types(collision.floating_navi, collision.navi_target, 0)
         navi.reset_linked_object = wind.navi(navi)
-        local side = navi.alliance
-        local i = battle.hand_cursor(side)
-        while true do
-            local c = battle.hand_chip(side, i)
-            if c == nil then
-                break
-            end
-            if battle.hand_chip_damages(side, i) and c.family == "wind" then
-                battle.add_hand_charge_bonus(side, i, BONUS)
-            end
-            i += 1
-        end
+        hand(navi.alliance)
     end,
     palette = 0,
     mugshot = { normal = asset.mugshot("windsoul") },

@@ -31,8 +31,9 @@ return {
     -- Presentation: its flash is a palette transform in slot 9 (0x080E104C), before the fade system's (slots 18 on), so
     -- a dimming darkens the white it put in the stage's palettes: a flash under a dimming is white a quarter down.
     palette_flash_order = "before_fades",
-    -- Its afterimages (0x080E35F4) and form overlays don't run while paused (no header flag 0x04).
-    overlays_run_while_paused = false,
+    -- Its afterimages (0x080E35F4) and form overlays (the form overlay's `run_while_paused`) don't run while paused
+    -- (no header flag 0x04).
+    afterimages_run_while_paused = false,
     -- A form overlay (0x080C379C) waits for every navi to be in, then follows (0x080C3868), and each tick takes its
     -- owner's facing (0x080C3842), as EXE6's. Its tick (0x080C37FA) restarts no sprite and takes no palette (its init
     -- takes its owner's, 0x080C37D0); these state the engine's run of EXE5's overlays so far, EXE6's.
@@ -42,6 +43,7 @@ return {
         palette_each_tick = true,
         facing_each_tick = true,
         waiting_steps = false,
+        run_while_paused = false,
     },
     -- Its afterimage (0x080E3550) is a sprite alone: its spawners give it the owner's battle sprite (0x0800DA72) and it
     -- takes no NameID, so an afterimage of a navi that wears something (KnightMan's ball, NumberMan's face) wears none.
@@ -99,4 +101,9 @@ return {
     status_visual = { place = "attach_point" },
     -- A pool's objects are drawn in update order, as EXE6's.
     draw_order = "update_list",
+    -- What a frame's sprite draw has room for (0x03006190, each drawn object's sprite in draw order): tiles under the
+    -- cap (0x0300656C: the allocator, 1 as a frame starts, less 0x30 plus the frame's tiles) and a palette slot
+    -- (0x03006590), a sprite past either left out. A battle sets 10 slots and 0x2FF (0x08002740), battle mode 1 8
+    -- slots (0x08002750; 0x0800665C picks by the battle's mode).
+    sprite_budget = { tiles = 0x2FF, palettes = 10, palettes_in_battle_mode_1 = 8 },
 }
