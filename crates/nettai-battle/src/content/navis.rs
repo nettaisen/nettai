@@ -744,7 +744,8 @@ impl FormTraits {
     /// The B button asks for nothing and no charge counts, under the
     /// per-button controls (EXE4's dark soul: its decode skips the buster,
     /// the rapid presses and the B+Left special, 0x0800BE28, and its charge
-    /// counts neither button, what it holds left as it is, 0x0800BBB2).
+    /// counts neither button, 0x0800BBB2; the level follows the count as it
+    /// is, which the dark soul's AI writes).
     pub const IGNORES_B: u16 = 0x400;
     /// Its side's emotion is found as out of a form (EXE4's dark soul,
     /// which the emotion's routine reads as no soul, 0x0800F4BA).

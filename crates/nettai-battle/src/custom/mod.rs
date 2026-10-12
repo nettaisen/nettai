@@ -580,9 +580,10 @@ impl Battle {
                 }
             }
             self.custom.committed = true;
-            // loc_8026E14: the consoles' chip icons are back (sub_801DA48(2)).
+            // loc_8026E14: the consoles' chip icons are back
+            // (sub_801DA48(2)), and the chip window with them (`ChipHud`).
             for hud in &mut self.chip_hud {
-                hud.icons = true;
+                *hud = crate::hud::ChipHud { icons: true, window: true, from_close: true, ..*hud };
             }
         }
     }

@@ -60,6 +60,37 @@ fn empty_sets_make_loadable_packs_and_language_variants() {
     }
 }
 
+/// The banners that aren't plain, by game: each one's number / 4 and its
+/// kind (`BannerLayout::kind`: 1 with a number, 2 held until removed, 3 a
+/// telop's, 4 the judge's), as the ROMs' records state them
+/// (`every_source_subset` holds a pack of all four ROMs to this list). How
+/// a banner behaves is the game's, whichever ROMs a pack is built from:
+/// only its picture may be a placeholder.
+fn banner_kinds(game: Game) -> Vec<(usize, u8)> {
+    let mut kinds = vec![(0x0C / 4, 1), (0x20 / 4, 1), (0x24 / 4, 2), (0x28 / 4, 4), (0x30 / 4, 1), (0x34 / 4, 2)];
+    match game {
+        Game::Exe4 => {}
+        Game::Exe5 => kinds.extend([(0x3C / 4, 1), (0x4C / 4, 3), (0x50 / 4, 3), (0x90 / 4, 1)]),
+        Game::Exe6 => kinds.extend([(0x3C / 4, 1), (0x4C / 4, 3), (0x50 / 4, 3), (0x60 / 4, 1)]),
+    }
+    kinds
+}
+
+/// Hold a pack's banners to `banner_kinds`, in its own words and in
+/// Japanese: the kinds, a number's place for the banners with one and for
+/// no other, and no glyphs for a telop's.
+fn check_banner_kinds(game: Game, graphics: &nettai_assets::Bundle, what: &str) {
+    for lang in ["en", "ja"] {
+        let hud = graphics.clone().in_language(lang).unwrap().hud;
+        let stated: Vec<(usize, u8)> = hud.banners.iter().enumerate().filter(|(_, b)| b.kind != 0).map(|(id, b)| (id, b.kind)).collect();
+        assert_eq!(stated, banner_kinds(game), "{} {what} ({lang}): the banners' kinds", game.id());
+        for (id, b) in hud.banners.iter().enumerate() {
+            assert_eq!(b.number_at.is_some(), b.kind == 1, "{} {what} ({lang}): banner {:#04x}'s number", game.id(), 4 * id);
+            assert_eq!(b.glyphs.is_empty(), b.kind == 3, "{} {what} ({lang}): banner {:#04x}'s glyphs", game.id(), 4 * id);
+        }
+    }
+}
+
 /// EXE4's pack from no ROMs: placeholders under compat's names, in the
 /// game's own shape (its screen's own emblem and cursor colors, where the
 /// other games' take a navi's), written and read back.
@@ -76,12 +107,14 @@ fn an_empty_set_makes_an_exe4_pack() {
 }
 
 /// A pack of no ROMs answers every lookup the content audit makes, in each
-/// game: a placeholder stands wherever a frontend looks (the telops'
-/// banners as telops', EXE4's fonts with every character a ROM's have).
+/// game: a placeholder stands wherever a frontend looks (EXE4's fonts with
+/// every character a ROM's have). And its banners are the kinds the ROMs'
+/// are: a placeholder is a picture, not another behavior.
 #[test]
 fn empty_sets_pass_the_content_audit() {
     for game in [Game::Exe4, Game::Exe5, Game::Exe6] {
         let assets = extract(game, &RomSet::default()).unwrap();
+        check_banner_kinds(game, &assets.graphics, "from no ROMs");
         let dir = tempfile::tempdir().unwrap();
         assets.write(dir.path()).unwrap();
         let problems = audit(game, dir.path());
@@ -121,6 +154,8 @@ fn rejects_unknown_truncated_and_duplicate_roms() {
 /// BR6J.gba, BR5J.gba). Every subset of a game's four ROMs, the empty one
 /// too, makes a pack that writes, reads back, loads a battle and passes the
 /// content audit: a missing ROM's assets are placeholders, never an error.
+/// Each pack's banners are the kinds a pack of all four ROMs has
+/// (`banner_kinds`).
 /// No copyrighted fixtures are needed for the normal tests.
 #[test]
 #[ignore = "requires local ROMs via NETTAI_EXTRACT_ROM_DIR"]
@@ -144,6 +179,7 @@ fn every_source_subset() {
                 extract(game, &roms).unwrap_or_else(|e| panic!("{} {mask:04b}: {e}", game.id()));
             assert_eq!(assets.missing_roms.len(), 4 - mask.count_ones() as usize);
             assets.graphics.clone().in_language("ja").unwrap();
+            check_banner_kinds(game, &assets.graphics, &format!("{mask:04b}"));
             let out = tempfile::tempdir().unwrap();
             assets
                 .write(out.path())

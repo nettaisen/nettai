@@ -150,6 +150,7 @@ local heatbrth: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local blizzard: Chip = {
@@ -164,6 +165,7 @@ local blizzard: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local elecshok: Chip = {
@@ -178,6 +180,7 @@ local elecshok: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local woodpwdr: Chip = {
@@ -192,6 +195,7 @@ local woodpwdr: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { heatbrth = heatbrth, blizzard = blizzard, elecshok = elecshok, woodpwdr = woodpwdr }

@@ -37,6 +37,7 @@ local drkcanon: Chip = {
     lockout = 0,
     flags = { "has_damage", "dark", "variable_damage" },
     action = cannon.action { id = "drkcanon/action", arm = ARM, shot = SHOT },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { drkcanon = drkcanon }

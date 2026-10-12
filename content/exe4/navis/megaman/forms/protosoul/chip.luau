@@ -23,6 +23,7 @@ local protsoul: Chip = {
     action = change.make {
         id = "protsoul",
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { protsoul = protsoul }

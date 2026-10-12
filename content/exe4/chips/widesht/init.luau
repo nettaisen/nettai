@@ -19,6 +19,7 @@ local widesht1: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "spot_test", range = "ahead_within_a_row" },
 }
 
 local widesht2: Chip = {
@@ -34,6 +35,7 @@ local widesht2: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "spot_test", range = "ahead_within_a_row" },
 }
 
 local widesht3: Chip = {
@@ -49,6 +51,7 @@ local widesht3: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "spot_test", range = "ahead_within_a_row" },
 }
 
 return { widesht1 = widesht1, widesht2 = widesht2, widesht3 = widesht3 }

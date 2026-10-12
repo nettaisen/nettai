@@ -6,18 +6,22 @@
 
 return {
     -- A push reads the first of bits 2 to 7 of the hits' final modifier (0x0800ACAA): back, forward, a panel back, a
-    -- panel forward, up, down, toward the navi's front; an obstacle's the same from its copy of the rows (0x0800B1C0,
-    -- 0x0800B218), toward the pusher. A push with the flinch bit is a drag (0x08013858: 0x080138D8), and an obstacle's
-    -- push (0x0801393E); whatever started it, a slide and a drag read the push (0x08010294, 0x08010ABC).
+    -- panel forward, up, down, toward the navi's front. An obstacle's (0x0800B1C0) reads its copy of those rows
+    -- (0x0800B218) as a navi facing its pusher would: turned by -1 unless a side 1 hit pushed it, by 1 when side 1's
+    -- hits alone did, and no push when both sides' did. Its rows are stated here toward the pusher, as EXE5's and
+    -- EXE6's tables hold theirs (the copy's, negated across). (A push no side's hit made would go as side 0's: no
+    -- hit without a side pushes an obstacle, a gust's having no flinch bit.) A push with the flinch bit is a drag
+    -- (0x08013858: 0x080138D8), and an obstacle's push (0x0801393E); whatever started it, a slide and a drag read the
+    -- push (0x08010294, 0x08010ABC).
     push_reading = {
         reads = "final",
         bits = 6,
         drag_bit = 0x01,
         obstacle_rows = {
-            { dx = 1, dy = 0, panels = 6 },
             { dx = -1, dy = 0, panels = 6 },
-            { dx = 1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 6 },
             { dx = -1, dy = 0, panels = 1 },
+            { dx = 1, dy = 0, panels = 1 },
             { dx = 0, dy = -1, panels = 1 },
             { dx = 0, dy = 1, panels = 1 },
             { dx = 0, dy = 0, panels = 0 },

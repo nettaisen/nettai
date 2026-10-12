@@ -19,6 +19,7 @@ local counter1: Chip = {
     hit_param = 50,
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_counterable" },
 }
 
 local counter2: Chip = {
@@ -33,6 +34,7 @@ local counter2: Chip = {
     hit_param = 50,
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_counterable" },
 }
 
 local counter3: Chip = {
@@ -47,6 +49,7 @@ local counter3: Chip = {
     hit_param = 50,
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_counterable" },
 }
 
 return { counter1 = counter1, counter2 = counter2, counter3 = counter3 }

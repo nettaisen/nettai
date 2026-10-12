@@ -171,6 +171,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "library" },
     dimming = hook,
+    auto_battle = { class = "when_bugged" },
 }
 
 return { bugchain = chip }

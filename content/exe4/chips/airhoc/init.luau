@@ -30,6 +30,7 @@ local airhoc1: Chip = {
     hit_param = 20,
     lockout = 15,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "to_front" },
 }
 
 local airhoc2: Chip = {
@@ -51,6 +52,7 @@ local airhoc2: Chip = {
     hit_param = 20,
     lockout = 40,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "to_front" },
 }
 
 local airhoc3: Chip = {
@@ -72,6 +74,7 @@ local airhoc3: Chip = {
     hit_param = 20,
     lockout = 50,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "to_front" },
 }
 
 return { airhoc1 = airhoc1, airhoc2 = airhoc2, airhoc3 = airhoc3 }
