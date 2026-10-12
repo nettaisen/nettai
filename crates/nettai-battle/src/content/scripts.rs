@@ -483,6 +483,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         steps = { keys = { "up", "down", "right", "left" }, confused = { up = "down", down = "up", left = "right", right = "left" }, idle_checks_target = false },
         fade_clear = "at_target",
         banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
+        telops = "banners",
         rng1_per_frame = true,
         chip_icons = "attach_point",
         used_chip_ticks = 0x3C,

@@ -759,11 +759,11 @@ impl Round {
 /// while a banner shows, as the recordings have it from a round's start
 /// banner to a KO's).
 const BANNER_TASK: u32 = 0x20;
-/// A telop's bits there: the recording console's own (on the banner block,
-/// 0x08016454: 0x100) and the other player's (on the second block,
-/// 0x080164B4: 0x8000).
+/// The recording console's own telop's bit there (on the banner block,
+/// 0x08016454), and the second block's (0x080164B4: the other player's
+/// telop, or the name of the chip that player just used).
 const TELOP_TASK: u32 = 0x100;
-const REMOTE_TELOP_TASK: u32 = 0x8000;
+const SECOND_BLOCK_TASK: u32 = 0x8000;
 
 /// The chip lab's emulated cable's delay, in ticks.
 const LINK_DELAY: u8 = 4;
@@ -1020,22 +1020,22 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
     // The gauge as the recording console holds it (EXE4 keeps it full until
     // its own send), on the frame its screen is as late as the banner.
     check("gauge", format!("{:#x}", b.gauge_for(r.local_side)), format!("{:#x}", banner.gauge));
-    // The banner: its task (EXE4's HUD's task mask, +0x48, bit 5; EXE6's
-    // bit 15; a telop's its own bit) and, while it shows on the recording
-    // console's block, the number the block holds (its +1; a telop's 0).
-    let telop = b.telop_for(r.local_side);
-    let bit = match telop {
-        Some(t) if t.remote => REMOTE_TELOP_TASK,
-        Some(_) => TELOP_TASK,
-        None => BANNER_TASK,
-    };
-    let task = banner.hud_tasks & bit != 0;
-    check("banner", (b.banner.active as u8).to_string(), (task as u8).to_string());
-    if let (Some(id), true, false) = (b.banner_for(r.local_side), task, telop.is_some_and(|t| t.remote)) {
-        let ours = match telop {
-            Some(_) => Some(0),
-            None => b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8),
-        };
+    // The HUD's pieces by their tasks (EXE4's HUD's task mask, +0x48): on
+    // the banner block a banner's (bit 5; EXE6's bit 15) or the recording
+    // console's own telop's, and the second block's (the other player's
+    // telop, or the name of the chip that player just used); and, while a
+    // banner shows, the number its block holds (its +1).
+    let tasks = banner.hud_tasks;
+    let own_telop = b.banner.shows_telop();
+    let shows = |ours: bool, task: u32| ((ours as u8).to_string(), ((tasks & task != 0) as u8).to_string());
+    let (ours, theirs) = shows(b.banner.active && !own_telop, BANNER_TASK);
+    check("banner", ours, theirs);
+    let (ours, theirs) = shows(own_telop, TELOP_TASK);
+    check("telop", ours, theirs);
+    let (ours, theirs) = shows(b.remote_telop.active || b.used_chip_for(r.local_side).is_some(), SECOND_BLOCK_TASK);
+    check("second block", ours, theirs);
+    if let (Some(id), true) = (b.banner_for(r.local_side), tasks & BANNER_TASK != 0) {
+        let ours = b.content.assets.number(nettai_content_api::AssetKind::Banner, id.0).map(|n| n.id as u8);
         let theirs = unhex(&banner.banner).ok().and_then(|x| x.get(1).copied());
         let show = |n: Option<u8>| n.map_or("none".to_string(), |n| format!("{n:#04x}"));
         check("banner number", show(ours), show(theirs));

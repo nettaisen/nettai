@@ -209,11 +209,10 @@ impl ChipTraits {
     /// start with the chip after it (EXE4's 0x0801502E: chips 0x160 to
     /// 0x16F, the souls' chips).
     pub const NO_ICON_WHEN_NEXT: u16 = 0x800;
-    /// Its use from idle shows no name on the other console: its own action
-    /// names it when it strikes (the idle's test of chip 0x38, Slasher:
-    /// EXE4's 0x080EECF6, EXE5's 0x080F04A4; its slash names it, 0x080ED41E
-    /// in EXE5).
-    pub const NO_NAME_AT_USE: u16 = 0x1000;
+    /// Its use isn't named to the other player: its own action names it
+    /// when it comes to (EXE4's 0x080EECF6: chip 0x38, Slasher, named as
+    /// it slashes, 0x080ED642; EXE5's 0x080F04A4 and 0x080ED41E).
+    pub const NOT_NAMED_ON_USE: u16 = 0x1000;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x01, "no_chain"),
         (0x02, "aura_bonus"),
@@ -222,7 +221,7 @@ impl ChipTraits {
         (0x100, "goes_with_any"),
         (0x400, "hides_damage_as_a"),
         (0x800, "no_icon_when_next"),
-        (0x1000, "no_name_at_use"),
+        (0x1000, "not_named_on_use"),
     ];
 
     pub fn has(self, bit: u16) -> bool {

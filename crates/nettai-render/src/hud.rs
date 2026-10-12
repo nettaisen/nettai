@@ -20,7 +20,7 @@ use nettai_battle::content::{BannerId, ChipFlags, ChipIcons};
 use nettai_battle::kinds::player::{Emotion, EmotionRole, emotion, emotion_role};
 use nettai_content_api::FormHandle;
 use nettai_content_api::ChipHandle;
-use nettai_battle::hud::HpNumber;
+use nettai_battle::hud::{Banner, HpNumber};
 use nettai_battle::object::ObjectRef;
 use nettai_battle::perspective::{ShownTelop, TelopName};
 
@@ -96,16 +96,19 @@ struct SharedLoads {
     signs: Load,
     palette: Load,
     was_banner: Option<(BannerId, u8)>,
-    was_telop: Option<(ShownTelop, u8)>,
+    /// The telops (`Battle::telops_for`: the banner block's, the other
+    /// player's block's), each with its block's step.
+    was_telops: [Option<(ShownTelop, u8)>; 2],
     was_used: Option<(ChipHandle, u8)>,
     was_paused: bool,
 }
 
 impl SharedLoads {
     /// Follow a tick: "PAUSE" (the fight's state), a banner (the flow's),
-    /// a telop on the banner block and the other player's used chip (the
-    /// navis' chips), in the order a tick starts them; each start loads
-    /// what it shares (the original reloads nothing while a piece shows).
+    /// a telop on the banner block, one on the other player's block and the
+    /// other player's used chip (the navis' chips), in the order a tick
+    /// starts them; each start loads what it shares (the original reloads
+    /// nothing while a piece shows).
     fn tick(&mut self, b: &Battle) {
         let local = b.setup.local_side;
         let paused = b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE;
@@ -113,22 +116,25 @@ impl SharedLoads {
             self.palette = Load::Pause;
         }
         self.was_paused = paused;
+        let restarted = |step: u8, was: Option<u8>| was.is_some_and(|w| step == 0 && w != 0);
+        let telops = b.telops_for(local);
         let step = b.banner.step;
-        let restarted = |was: Option<u8>| was.is_some_and(|w| step == 0 && w != 0);
-        let telop = b.telop_for(local);
-        let banner = b.banner_for(local).filter(|_| telop.is_none());
+        let banner = b.banner_for(local).filter(|_| telops[0].is_none());
         if let Some(id) = banner
-            && (self.was_banner.map(|(w, _)| w) != Some(id) || restarted(self.was_banner.map(|(_, s)| s)))
+            && (self.was_banner.map(|(w, _)| w) != Some(id) || restarted(step, self.was_banner.map(|(_, s)| s)))
         {
             (self.right, self.signs, self.palette) = (Load::Banner(id), Load::Banner(id), Load::Banner(id));
         }
         self.was_banner = banner.map(|id| (id, step));
-        if let Some(t) = telop
-            && (self.was_telop.map(|(w, _)| w) != Some(t) || restarted(self.was_telop.map(|(_, s)| s)))
-        {
-            self.telop_started(t.name, t.remote);
+        for (k, telop) in telops.into_iter().enumerate() {
+            let was = self.was_telops[k];
+            self.was_telops[k] = telop.map(|(t, block)| (t, block.step));
+            if let Some((t, block)) = telop
+                && (was.map(|(w, _)| w) != Some(t) || restarted(block.step, was.map(|(_, s)| s)))
+            {
+                self.telop_started(t.name, t.remote);
+            }
         }
-        self.was_telop = telop.map(|t| (t, step));
         let used = b.used_chip_for(local);
         if let Some(u) = used
             && self.was_used.is_none_or(|(chip, ticks)| chip != u.chip || u.ticks > ticks)
@@ -254,8 +260,9 @@ pub fn shared_glyphs<'a>(
         Some((0..8).map(|k| fonts::cell_glyph(hud, codes.get(k).copied().unwrap_or(0))).collect())
     };
     let in_banner = |tile: u16| tile.checked_sub(t.banner).filter(|&o| o < TelopTiles::BANNER_TILES).map(|o| o as usize);
+    let telops = b.telops_for(local);
     // The right-hand telop's name where a banner loaded over it.
-    let right_shown = b.used_chip_for(local).is_some() || b.telop_for(local).is_some_and(|x| x.remote);
+    let right_shown = b.used_chip_for(local).is_some() || telops.iter().flatten().any(|(x, _)| x.remote);
     if right_shown
         && let Load::Banner(id) = s.right
         && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
@@ -273,7 +280,7 @@ pub fn shared_glyphs<'a>(
     // the '×' its left column, 0x08015522) where a banner loaded over them.
     // (The font mode's telops keep their glyphs: their names are the text
     // layer's.)
-    let telop_shown = b.used_chip_for(local).is_some() || b.telop_for(local).is_some();
+    let telop_shown = b.used_chip_for(local).is_some() || telops.iter().any(Option::is_some);
     if telop_shown
         && text.mode == TextMode::Original
         && let Load::Banner(id) = s.signs
@@ -285,7 +292,7 @@ pub fn shared_glyphs<'a>(
         }
     }
     // The banner's glyphs where a telop loaded over them.
-    let banner_shown = b.banner_for(local).is_some() && b.telop_for(local).is_none();
+    let banner_shown = b.banner_for(local).is_some() && telops[0].is_none();
     let signs = matches!(s.signs, Load::Telop(_));
     let right = match s.right {
         Load::Telop(name) => name_tiles(name, problems),
@@ -901,50 +908,46 @@ pub fn draw<'a>(
         }
         list.insert_at(FRONT_LAYER, 0, group);
     }
+    // The banner block's banner, where no telop lays on it. (The banner's
+    // own pack's HUD draws it, by its number there.)
+    let banner = b.banner_for(local);
+    let telops = b.telops_for(local);
+    if let (Some(id), None) = (banner, telops[0]) {
+        let mut group = Vec::new();
+        if let Some((h, layout, number)) = crate::lookups::banner(packs, &b.content, id, problems) {
+            banner_parts(b, h, layout, number, &mut group);
+            // (The glyphs and the palette a telop loaded over the banner's:
+            // `TelopTiles`.)
+            let at = if layout.number_at.is_some() { 2 } else { 0 };
+            shared.patch(&mut group, &shared.banner, at, 20);
+            if let Some(p) = shared.banner_palette {
+                group.iter_mut().for_each(|part| part.palette = p);
+            }
+        }
+        list.insert_at(FRONT_LAYER, 0, group);
+    }
+    // The telops: the banner block's, and the other player's on its own
+    // block where telops run apart from the banners (beside a banner, then).
     // (A telop shows whether or not its banner has an id: a game whose telop
     // has no banner of its own, EXE4's, draws it in its HUD's own look.)
-    let banner = b.banner_for(local);
-    let telop = b.telop_for(local);
-    if banner.is_some() || telop.is_some() {
+    for (telop, block) in telops.into_iter().flatten() {
         let mut group = Vec::new();
-        // (The banner's own pack's HUD draws it, by its number there.)
-        let (bucket, name) = match (telop, banner) {
-            (Some(telop), _) => {
-                let style = match (&hud.layout.telop, banner) {
-                    (Some(look), _) => Some(TelopStyle::own(hud, look, telop.remote)),
-                    (None, Some(id)) => {
-                        crate::lookups::telop(packs, &b.content, id, problems).map(|(h, layout, _)| TelopStyle::banner(h, layout))
-                    }
-                    (None, None) => {
-                        crate::lookups::telop_without_look(problems);
-                        None
-                    }
-                };
-                let style = style.map(|s| shared.telop_style(s));
-                let named = style.map(|style| telop_parts(b, style, telop, &mut group, text, problems));
-                let laid = named.unwrap_or_default();
-                if telop.remote {
-                    shared.patch(&mut group, &shared.right, 0, laid.glyphs);
-                }
-                shared.patch_signs(&mut group, laid.signs);
-                (NAME_BUCKET, laid.name)
+        let style = match (&hud.layout.telop, banner) {
+            (Some(look), _) => Some(TelopStyle::own(hud, look, telop.remote)),
+            (None, Some(id)) => crate::lookups::telop(packs, &b.content, id, problems).map(|(h, layout, _)| TelopStyle::banner(h, layout)),
+            (None, None) => {
+                crate::lookups::telop_without_look(problems);
+                None
             }
-            (None, Some(id)) => {
-                if let Some((h, layout, number)) = crate::lookups::banner(packs, &b.content, id, problems) {
-                    banner_parts(b, h, layout, number, &mut group);
-                    // (The glyphs and the palette a telop loaded over the
-                    // banner's: `TelopTiles`.)
-                    let at = if layout.number_at.is_some() { 2 } else { 0 };
-                    shared.patch(&mut group, &shared.banner, at, 20);
-                    if let Some(p) = shared.banner_palette {
-                        group.iter_mut().for_each(|part| part.palette = p);
-                    }
-                }
-                (0, None)
-            }
-            (None, None) => unreachable!("a banner or a telop shows"),
         };
-        insert_named(list, text, bucket, group, name);
+        let style = style.map(|s| shared.telop_style(s));
+        let named = style.map(|style| telop_parts(b, style, telop, &block, &mut group, text, problems));
+        let laid = named.unwrap_or_default();
+        if telop.remote {
+            shared.patch(&mut group, &shared.right, 0, laid.glyphs);
+        }
+        shared.patch_signs(&mut group, laid.signs);
+        insert_named(list, text, NAME_BUCKET, group, laid.name);
     }
     if let Some(used) = b.used_chip_for(local) {
         let mut group = Vec::new();
@@ -1418,7 +1421,7 @@ const OWN_ICON_PRIORITY: u8 = 1;
 /// squash: grow over 5 frames, hold, shrink (`sub_801CE28`).
 /// `layout` is banner `id`'s (its number in `hud`'s pack).
 fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerLayout, id: u8, out: &mut Vec<SpritePart<'a>>) {
-    let vscale = Some(banner_scale(b));
+    let vscale = Some(banner_scale(&b.banner));
     let pal = hud.banner_palette;
     for k in 0..20usize {
         out.push(glyph(&layout.glyphs, k, pal, layout.x as i32 + 8 * k as i32, layout.y as i32, 0, vscale));
@@ -1438,12 +1441,13 @@ fn banner_parts<'a>(b: &Battle, hud: &'a Hud, layout: &'a nettai_assets::BannerL
 /// 0x40 (whole) at its last, a line, and back so sliding out (EXE6's
 /// `sub_801CE28`: 0xE0 less 0x20 a tick, 5 ticks; EXE4's 0x08014994: 0xD0
 /// less 0x10, 9 ticks); holding, whole, but for a game's bounce (EXE6's:
-/// 0x34 and 0x38 at its hold's first two ticks and last two).
-fn banner_scale(b: &Battle) -> i32 {
-    let t = b.banner.timer as i32;
-    let steps = b.banner.steps;
+/// 0x34 and 0x38 at its hold's first two ticks and last two). `block`: the
+/// block it runs on (a telop's may be the other player's).
+fn banner_scale(block: &Banner) -> i32 {
+    let t = block.timer as i32;
+    let steps = block.steps;
     let slope = |ticks: Option<u8>| 0x80 / (ticks.unwrap_or(5) as i32 - 1).max(1);
-    let scale = match b.banner.step {
+    let scale = match block.step {
         0 => {
             let n = steps.map_or(5, |s| s.slide_in as i32);
             0x40 + slope(steps.map(|s| s.slide_in)) * (n - t)
@@ -1510,11 +1514,12 @@ impl<'a> TelopStyle<'a> {
 /// A telop (`sub_801E95C` lays it out, `sub_801CF9E` draws it): the chip's
 /// name in the font's glyphs, then for a chip whose damage shows the
 /// damage, "+bonus" and "x2", centered in the viewer's half of the screen,
-/// with the banners' squash.
+/// with the banners' squash, its block's (`block`).
 fn telop_parts<'a>(
     b: &Battle,
     style: TelopStyle<'a>,
     telop: ShownTelop,
+    block: &Banner,
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
     problems: &mut Problems,
@@ -1532,7 +1537,7 @@ fn telop_parts<'a>(
         }
     };
     let numbers = (telop.damage, telop.bonus, telop.doubled);
-    name_parts(style, name, numbers, telop.remote, Some(banner_scale(b)), out, text)
+    name_parts(style, name, numbers, telop.remote, Some(banner_scale(block)), out, text)
 }
 
 /// The chip the other player just used (`sub_801EB18` lays it out as a
@@ -1685,7 +1690,7 @@ mod tests {
         // Its user's console: "SunGun3" "120" "+10" is 13 glyphs, centered as
         // 15 are, then "x2".
         let mut parts = Vec::new();
-        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems);
         let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
         assert_eq!(xs, (0..15).map(|i| 8 + 8 * i).collect::<Vec<u16>>());
         assert!(parts.iter().all(|p| p.y == 32 && p.priority == 0 && p.vscale.is_some()));
@@ -1698,7 +1703,7 @@ mod tests {
         assert_eq!(after, [digit(1), digit(2), digit(0), signs[0], digit(1), digit(0), signs[1], signs[2]]);
         // The other player's console: on the right, moved over for the "x2".
         let mut parts = Vec::new();
-        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x50 / 4]), b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x50 / 4]), b.telop_for(1).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts[0].x, 120 + 8 - 16);
         assert!(problems.is_empty(), "{:?}", problems.lines());
     }
@@ -1755,12 +1760,12 @@ mod tests {
         let hud = hud();
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x50 / 4]), b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x50 / 4]), b.telop_for(1).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), [glyph_of('?'); 4]);
         // Four glyphs centered as fifteen are, from the right banner's place.
         assert_eq!(parts[0].x, 120 + 44);
         let mut parts = Vec::new();
-        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts.len(), 7, "its user sees the name");
     }
 
@@ -1776,7 +1781,7 @@ mod tests {
         let text = TextSink::new(crate::textlayer::TextMode::Font, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems).name.unwrap();
+        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems).name.unwrap();
         // The same parts where the original's go (so the sprite limit
         // counts the same), the name's blank; the item in the name's cells.
         let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
@@ -1788,7 +1793,7 @@ mod tests {
         assert_eq!((item.face, item.shadow), (hud.hp_palettes[0][1], Some(hud.hp_palettes[0][2])));
         // In the original mode there is none.
         let mut parts = Vec::new();
-        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems).name.is_none());
+        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &TextSink::original(), &mut problems).name.is_none());
     }
 
     #[test]
@@ -1805,7 +1810,7 @@ mod tests {
         let text = TextSink::original().with_language(Some(&strings));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems);
         assert_eq!(parts.iter().map(|p| p.first_tile).collect::<Vec<_>>(), "Sol".chars().map(glyph_of).collect::<Vec<_>>());
         // Centered as fifteen glyphs are: the translation's three.
         assert_eq!(parts[0].x, 6 * 8);
@@ -1814,7 +1819,7 @@ mod tests {
         let empty = nettai_content::locale::parse("language = \"xx\"\n", "xx.toml").unwrap();
         let text = TextSink::original().with_language(Some(&empty));
         let mut parts = Vec::new();
-        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems);
+        telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems);
         assert_eq!(parts.len(), 7);
         assert_eq!(text.strings.take_missing(), [format!("chips.{key}.name")]);
     }

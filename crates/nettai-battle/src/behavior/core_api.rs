@@ -321,6 +321,8 @@ impl Battle {
     }
 }
 
+/// A chip code's number as the rules read it (A 0, `*` 26); none: a code
+/// outside the alphabet (the dark chips' 27).
 /// `CoreApi::shuffle_order` on `rng`: `n` indices shuffled over `rounds`
 /// rounds of two draws.
 fn shuffle_order(rng: &mut crate::rng::Rng, n: usize, rounds: usize) -> ApiResult<Vec<usize>> {
@@ -331,6 +333,10 @@ fn shuffle_order(rng: &mut crate::rng::Rng, n: usize, rounds: usize) -> ApiResul
     let mut order: Vec<usize> = (0..n).collect();
     crate::custom::folder::shuffle(&mut order, draws, || rng.next_positive().into());
     Ok(order)
+}
+
+fn code_number(code: crate::content::ChipCode) -> Option<u8> {
+    (code.0 <= 26).then_some(code.0)
 }
 
 impl CoreApi for Battle {
@@ -793,9 +799,45 @@ impl CoreApi for Battle {
         }
     }
 
-    fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<ChipHandle>>> {
+    fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<(ChipHandle, Option<u8>)>>> {
         let folder = self.custom.sides[side as usize & 1].folder;
-        Ok(folder.chips.iter().map(|c| c.map(|c| c.id)).collect())
+        Ok(folder.chips.iter().map(|c| c.map(|c| (c.id, code_number(c.code)))).collect())
+    }
+
+    fn custom_set_folder(&mut self, side: u8, place: u8, chip: ChipHandle, code: Option<u8>) -> ApiResult<()> {
+        let folder = &mut self.custom.sides[side as usize & 1].folder;
+        let n = folder.chips.len();
+        let Some(at) = folder.chips.get_mut(place as usize) else {
+            return Err(ApiError::Other(format!("custom.set_folder: the folder has {n} places")));
+        };
+        let code = crate::content::ChipCode(code.unwrap_or(crate::custom::screen::INVALID_CODE.0));
+        *at = Some(crate::custom::FolderChip { id: chip, code });
+        Ok(())
+    }
+
+    fn custom_slot(&self, side: u8, slot: u8) -> ApiResult<Option<nettai_content_api::api::CustomSlot>> {
+        use crate::custom::screen::{SlotKind, SlotState};
+        let screen = self.custom_screen(side)?;
+        let Some(here) = screen.slots.get(slot as usize) else {
+            return Err(ApiError::Other(format!("custom.slot: a slot is 0 to 11, not {slot}")));
+        };
+        let (place, regular) = match here.kind {
+            SlotKind::Chip { index, regular } => (Some(index), regular),
+            SlotKind::Offered(_) => (None, false),
+            _ => return Ok(None),
+        };
+        let folder = &self.custom.sides[side as usize & 1].folder;
+        Ok(screen.chip_in(slot, folder).map(|c| nettai_content_api::api::CustomSlot {
+            chip: c.id,
+            code: code_number(c.code),
+            place,
+            regular,
+            picked: here.state == SlotState::Selected,
+        }))
+    }
+
+    fn custom_picks(&self, side: u8) -> ApiResult<Vec<u8>> {
+        Ok(self.custom_screen(side)?.selection().to_vec())
     }
 
     fn custom_swap_folder(&mut self, side: u8, a: u8, b: u8) -> ApiResult<()> {
@@ -949,6 +991,23 @@ impl CoreApi for Battle {
         Ok(())
     }
 
+    fn custom_button_uses(&self, side: u8, button: &str) -> ApiResult<u8> {
+        use crate::custom::screen::SlotKind;
+        let h = self.own_button(button)?;
+        let screen = self.custom_screen(side)?;
+        let slot = screen.slots.iter().find(|s| matches!(s.kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right));
+        Ok(slot.ok_or_else(|| ApiError::Other(format!("custom.button_uses: {button:?} isn't on the screen")))?.uses_left)
+    }
+
+    fn custom_set_button_uses(&mut self, side: u8, button: &str, uses: u8) -> ApiResult<()> {
+        use crate::custom::screen::SlotKind;
+        let h = self.own_button(button)?;
+        let screen = self.custom_screen_mut(side)?;
+        let slot = screen.slots.iter_mut().find(|s| matches!(s.kind, SlotKind::Button { button, cell } if button == h && cell != crate::custom::ButtonCell::Right));
+        slot.ok_or_else(|| ApiError::Other(format!("custom.set_button_uses: {button:?} isn't on the screen")))?.uses_left = uses;
+        Ok(())
+    }
+
     fn custom_update_availability(&mut self, side: u8) -> ApiResult<()> {
         self.with_custom_screen(side, |screen, view, folder, _, extras| screen.update_availability(view, folder, extras))
             .ok_or_else(|| ApiError::Other("no custom screen is open".into()))
@@ -1073,6 +1132,11 @@ impl CoreApi for Battle {
         // (Drawn after the tick's count where the choosing counts first.)
         let counted = self.content.rules().custom_screen.frame_counts_first;
         self.custom_screen_mut(side)?.look.draw_regular(folder.regular_pending, counted);
+        Ok(())
+    }
+
+    fn custom_draw_cursor(&mut self, side: u8) -> ApiResult<()> {
+        self.custom_screen_mut(side)?.look.draw_cursor();
         Ok(())
     }
 
@@ -2942,8 +3006,8 @@ impl CoreApi for Battle {
         crate::dimming::chip_telop(self, side, chip);
     }
 
-    fn dimming_telop_done(&self) -> bool {
-        crate::dimming::telop_done(self)
+    fn dimming_telop_done(&self, side: u8) -> bool {
+        crate::dimming::telop_done(self, side)
     }
 
     fn dimming_turn(&mut self, o: ObjectRef) {
