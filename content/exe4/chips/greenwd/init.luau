@@ -41,6 +41,7 @@ local greenwd1: Chip = {
     hit_param = 30,
     lockout = 45,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_enemy_on_grass" },
 }
 
 local greenwd2: Chip = {
@@ -55,6 +56,7 @@ local greenwd2: Chip = {
     hit_param = 30,
     lockout = 45,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_enemy_on_grass" },
 }
 
 local greenwd3: Chip = {
@@ -69,6 +71,7 @@ local greenwd3: Chip = {
     hit_param = 30,
     lockout = 45,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_enemy_on_grass" },
 }
 
 return { greenwd1 = greenwd1, greenwd2 = greenwd2, greenwd3 = greenwd3 }

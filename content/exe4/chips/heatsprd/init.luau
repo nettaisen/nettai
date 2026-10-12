@@ -40,6 +40,7 @@ local chip: Chip = {
         { order = 10, code_run = { chip = heatshots["heat-v"], count = 3 } },
         { order = 12, code_run = { chip = heatshots.heatside, count = 3 } },
     },
+    auto_battle = { class = "behind_target" },
 }
 
 return { heatsprd = chip }
