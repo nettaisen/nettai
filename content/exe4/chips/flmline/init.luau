@@ -18,6 +18,7 @@ local flmline1: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 local flmline2: Chip = {
@@ -32,6 +33,7 @@ local flmline2: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 local flmline3: Chip = {
@@ -46,6 +48,7 @@ local flmline3: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 return { flmline1 = flmline1, flmline2 = flmline2, flmline3 = flmline3 }

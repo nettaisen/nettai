@@ -24,6 +24,7 @@ local binder1: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 
 local binder2: Chip = {
@@ -38,6 +39,7 @@ local binder2: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 
 local binder3: Chip = {
@@ -52,6 +54,7 @@ local binder3: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "two_ahead" },
 }
 
 return { binder1 = binder1, binder2 = binder2, binder3 = binder3 }

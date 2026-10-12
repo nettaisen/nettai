@@ -361,7 +361,12 @@ fn shown<'f>(
             Art::Tint => None,
         }
     };
-    if p.highlight != 0 && p.blink.is_none() {
+    // A blink shows over a highlight where the panel holds what it is drawn
+    // as (`sub_800C5E0` reads the blink's latch first); where the game keeps
+    // that in tables of its own, its drawing reads the highlight first
+    // (`PanelDrawn::OwnTables`), and the highlight shows through a blink.
+    let highlight_first = c.rules().panels.drawn == nettai_battle::content::PanelDrawn::OwnTables;
+    if p.highlight != 0 && (p.blink.is_none() || highlight_first) {
         return match art.highlight(p.highlight) {
             Art::Field(from) => Some((from, &field_of(from).highlights[highlight_index(p.highlight)][..], false)),
             Art::Tint => tinted(lookups::HIGHLIGHT_TINT + highlight_index(p.highlight) as u8 + 1, problems),
@@ -538,6 +543,44 @@ mod tests {
         assert_ne!(tint(RED), RED);
         assert_eq!(at(&layer, 100, 84), RED, "a normal panel");
         assert_eq!(at(&layer, 20, 108), tint(RED), "highlight 2, tinted");
+    }
+
+    /// Where a game keeps what its panels are drawn as in tables of its own,
+    /// its drawing reads a panel's highlight first: a highlight shows
+    /// through a blink, and a highlighted panel that isn't visible keeps
+    /// what it last showed. Where the panel holds what it is drawn as, the
+    /// blink shows, and a panel that isn't visible is drawn as none.
+    #[test]
+    fn a_highlight_comes_first_where_panels_are_drawn_from_their_own_tables() {
+        use nettai_battle::content::PanelDrawn;
+        const GREEN: u16 = 0x03E0;
+        let draw = |drawn: PanelDrawn| {
+            let mut b = battle(["normal", "normal", "normal"]);
+            let mut c = (*b.content).clone();
+            c.rules_mut().panels.drawn = drawn;
+            b.content = std::sync::Arc::new(c);
+            // (1, 1): highlighted under a blink. (2, 1): highlighted while
+            // visible, then not visible, still highlighted.
+            let normal = testing::panel("normal");
+            b.field.panels[1][1].highlight = 1;
+            b.field.panels[1][1].blink = Some((normal, 0));
+            b.field.panels[1][2].highlight = 1;
+            b.keep_panel_looks();
+            b.field.panels[1][2].visible = false;
+            b.keep_panel_looks();
+            let c = &b.content;
+            let types: Vec<&str> = c.rules().panels.names.iter().map(String::as_str).collect();
+            let a = Bundle { field: field(&types, 1, [RED, GREEN]), ..Bundle::default() };
+            let packs = Packs::one(&a);
+            let stage = Stage::new(&packs, c, None, StageClock::default(), false);
+            let mut layer = Layer::new(2, 2);
+            let view = crate::objects::View { camera: (0, 0, 0), mirror: false, fade: Default::default() };
+            stage.draw_field(&b, &mut layer, 0, &view, &mut Problems::default());
+            let at = |x: usize, y: usize| layer.pixels[y * WIDTH + x];
+            (at(20, 84), at(60, 84))
+        };
+        assert_eq!(draw(PanelDrawn::OwnTables), (GREEN, GREEN), "the highlight through the blink; the highlight kept");
+        assert_eq!(draw(PanelDrawn::InPanel), (RED, crate::compose::CLEAR), "the blink; none");
     }
 
     /// A flash before the fades fills the stage's nine palettes with white

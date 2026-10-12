@@ -413,6 +413,50 @@ from the ROM and its code, read routine by routine):
   visible as none (`sub_800C5E0`, 0x0800ABFC). It follows from where the game keeps what its panels are drawn as
   (`panels.drawn = "own_tables"`: `Panel::kept`). Not reached: a soul changes nothing of the chip, and nothing
   hurts its user while it runs (he is warped out, the field dimmed).
+  PrixPowr (variant 0x48, 0x080EAA64: chips/prixpowr) brings three navis one after the other. Its controller
+  (effect #0x7A, 0x080EA900) is the navi chips' (the dim, AntiNavi, the name, the undim) with a course of its own
+  (0x080EA948; @exelib/navi_chips/controller's `course`): the user warps out; 11 ticks; VideoMan on the user's
+  panel; 31 ticks after he left, LaserMan on the panel ahead if it is solid with nothing on it (0x080EA9BE: require
+  0x10, forbid 0x0F800000), else neither he nor KendoMan comes; 6 ticks after he left, KendoMan in the user's row
+  from behind its side's edge; 6 ticks after he left, the undim with the user warping back in. The three are its
+  own actors, not the navi chips': VideoMan (#0x53, 0x080CBB40) raises a projector (his sheet's animation 18, an
+  attachment; sound 0xE1) and shows LaserMan's silhouette on the panel ahead for 60 ticks (sprite 10-3E through the
+  afterimage, effect #0x28), hitting nothing; LaserMan (#0x54, 0x080CBCB0) charges until his animation ends, fires
+  the LaserMan chips' laser in its course 5 (attack #0xA0's first parameter: course 0's list taken two steps a
+  strike, 0x080E0EFC, so the hit alone and half the wait; the aimed courses' palette, the left course's shader),
+  stands 51 ticks and leaves his silhouette for 18; KendoMan (#0x55, 0x080CBE40) rushes 8 pixels a tick, sword out,
+  an afterimage each fourth tick, with the lingering hit on his panel (attack #0x7C: single, hit modifier 3, 100
+  ticks), which he makes again a panel after it ended on a body (0x080CBFF0), until a panel inside the field isn't
+  solid or holds a blocker (0x080CBFD0: forbid 0x03800000) or he reaches the column past the far edge. Each comes
+  with the chip's damage word and bonus. The lab's chips/0x138-prixpowr (22: the templates, whose `adjacent` is the
+  opponent standing where LaserMan would; its description and pick, a Blue Moon and a dark user, the opponent at
+  the front, the user forward and back, a rock cube on LaserMan's panel, one the laser breaks and one behind
+  LaserMan that stops KendoMan, an opponent the laser deletes, AntiNavi, Navi+20 and Atk+10, a cut-in on it and it
+  as the cut-in, a hole where LaserMan would come and one in KendoMan's way, side 1's with the opponent at the
+  front) replay every frame with the same sounds, and all 22 are frame-compared, every fight frame exact and the
+  custom screen's name, picture, icon and description with them.
+  **The Japanese ROMs.** Both chips' code is the same in the Japanese ROMs (the controllers, Duo and his fists,
+  VideoMan, LaserMan, the laser, the lingering hit: diffed routine by routine, B4WE against B4WJ) but for PrixPowr's
+  KendoMan (US 0x080CBE40, Japan 0x080CBD80), which the US release reworked:
+  - the Japanese routine passes the number 96 where the US passes the address of his slot (Japan 0x080CBE62,
+    `movs r2, #96`; US 0x080CC032, `movs r2, #96; adds r2, r2, r5`), so his rush's hit is never kept: he can't cut it
+    short as he stops (0x080DCD84 gets 0), and it lives its 100 ticks or until it lands, following an owner that is
+    gone;
+  - its first tick runs on into the rush (Japan 0x080CBE80 to 0x080CBE82; the US returns after the set-up,
+    0x080CBF30), so he moves and leaves his first afterimage a tick earlier, and everything after him is a tick
+    earlier;
+  - it makes no second hit (the US added 0x080CBFF0 and the two words at +0x64 and +0x68 its init clears).
+  **Decided (the user, 2026-10-12: "use the fixed routine please"):** the engine has the US routine on every
+  console, with no rule field and no region switch. The standing rule is the Japanese games' behavior where the
+  releases differ; here the Japanese routine is the defective one, and nettai uses the fixed one. A Japanese
+  console's PrixPowr is so the other region's: verify's lab has an `exe4-jp` base (Red Sun Japan traced against
+  Blue Moon Japan, Tango's Japanese templates) and each chip's `jp` scenario (its `custom` on that base).
+  chips/0x137-duo/jp replays every frame; chips/0x138-prixpowr/jp matches to KendoMan's first tick and stops there,
+  frame 800, a known deviation with this cause (trace-tests' deviations.rs), so it still checks every frame before
+  him. On the Japanese console the names (デューオ, グランプリパワー), pictures
+  and icons compare exact; the description's text is the same but drawn about 12 pixels further left with wider
+  advances than the engine draws it, as every chip's is there (Recov10's too): the first Japanese EXE4 frame compare,
+  not the e-Reader chips' own, left for the custom screen's owner.
 - **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
   (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
 - **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
@@ -2001,6 +2045,25 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     Stated: `start_visible` all true (what the engine reads of it, the valid panels', is EXE5's grid), `front_edges`
     row 3, written by gen_rules.py from that code. The any-side step: EXE4 has no `sub_800E680` (EXE5 neither), so its
     rows are EXE6's, for EXE6's code (a chip's) in an EXE4 arena.
+    **The drawing's order** (found by the e-Reader chips' frame compares). For each valid panel the drawing reads the
+    highlight first, a table of its own (0x080092E8: 0x02037ABE, which the frame routine clears every frame,
+    0x08009A60, and 0x08009DA0 sets): a highlighted panel is drawn as the highlight (0x0800948A) if its visible bit
+    is set, and not drawn at all if it isn't (0x0800932C), so it keeps the tiles it had; any other panel is drawn as
+    none when it isn't visible, else as its blink (0x08009302: the flags byte's bit 0x80, which 0x08009E38 sets and
+    the drawing's end clears, 0x080093C2) or as its drawn type and owner. EXE6's and EXE5's (`sub_800C5E0`,
+    0x0800ABFC) read the visible byte first (not visible: drawn as none), then the blink's latch, then the highlight.
+    So in EXE4 a highlight shows through a blink, and a highlighted panel that isn't visible keeps what it last
+    showed; both follow from `panels.drawn = "own_tables"` (the stage's `shown` and `kept_look`, the field's
+    `Panel::kept`). A netbattle reaches both: 0x08009E38's callers are the panel changer (effect #0x1F: Snctuary,
+    HolyPanl, PnlRetrn, Hole, DrkLine, DrkStage, the Elem chips, AntiRecv), FireSoul's grass (effect #0x12) and
+    DarkNeo's Bass (actor #0x51), and a stage's gear highlights its panel every frame, dimmed or not (attack #0x76,
+    0x080DBEA4), as do the chips' objects that warn (0x08009DA0's 44 callers: WoodMan's towers, the flames, the
+    breaths, Lance, the shurikens, the tapes, the tornadoes, ThunMan's thunder, Bass's shots, Meteors' marker).
+    The lab's stages/type5/gears-snctuary (Snctuary's 64 ticks of flicker over a gear's panel: the highlight shows,
+    frames 521 to 584) and chips/0x137-duo/stage-type5 (a gear's panel on the columns Duo blinks away: it keeps its
+    highlight, frames 3139 on) are frame-compared, exact. (A stolen panel's return and a mending hole blink in the
+    drawn tables, 0x02037AE6 and 0x02037B0E, not through 0x08009E38: under a highlight they showed the highlight in
+    the engine already.)
 15. **Done** (battle mode 1's mend and the reservations).
     - **The mend:** 600 ticks in every battle: the field's init (0x08009132) and the panel tick (0x0800976C) store
       the one constant whatever the battle's mode (`mend = { normal = 600, battle_mode_1 = 600 }`, now asserted).
@@ -2210,10 +2273,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     +0x30, +0x32 counters; 0x0800BDAA clears them), not EXE6's one counter. **Done:** the init's part,
     `effects.charge_glow` (`with_navi`: EXE6, EXE5; `with_charge`: EXE4); the counting (item 47); the glow, the role
     `kinds.charge_glow` (content/exe4/objects/charge_glow), which the navi's tail spawns as the charge gets a level.
-    Its per-navi offset is MegaMan's (none) alone: EXE4's content has no other navi. Unported: the tail's color
-    shader before it (0x0800BB18: AIData +0x2C in 1 to 90, a shader from 0x0800BB40 by the battle timer). +0x2C is the
-    dark soul's ticks (set at the soul change from the table 0x08018088 by soul, 0x0800B93C; set to 1 by 0x0800E256
-    for a soul but 0 and 15): the souls' (item 74).
+    Its per-navi offset is MegaMan's (none) alone: EXE4's content has no other navi. **Done:** the tail's color
+    shader before it (0x0800BB18: AIData +0x2C in 1 to 90, a shader from 0x0800BB40 by the battle timer), the rules'
+    hook `navi_shader`. +0x2C is the dark soul's ticks (set at the soul change from the table 0x08018088 by soul,
+    0x0800B93C; 0x0800E256, which would set it to 1 for a soul but 0 and 15, nothing calls): the dark soul's (item
+    74).
 40. **The intro's first tick.** EXE4's intro (0x08007464) goes on from its init to the HUD's setup on the same tick
     (state [4,0,4,4] after the round's first tick). **Done:** `flow.intro_steps_on_init`. (Its init's one RNG2 draw is
     the actors' spawn's last call, 0x080F576C, where EXE6's is `sub_8014178`'s: the same draw.)
@@ -2240,7 +2304,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     counter and level standing for EXE4's two (only the charging source's is ever nonzero).
 48. **The souls' buttons** (with the souls, §18.4 item 25): in 0x0800BDE0 soul 2 asks for the charged shot (request
     0x20) at six B presses each within 10 ticks of the last (AIData +0x11, +0x12), soul 15 decodes neither the buster
-    nor the B+Left special and charges nothing (0x0800BBB2); whether a chip charges on A is 0x0800BC78's test by soul and
+    nor the B+Left special and charges nothing (0x0800BBB2: the form trait `ignores_b`, item 74); whether a chip
+    charges on A is 0x0800BC78's test by soul and
     the chip's +7 and +9 (souls 5, 7, 9, 11), which the engine asks of the form's `charged_chips`.
 49. **Controller 2** (NaviStats +0x26 = 2; 0x0800BF1C, 0x0800BCD4): Right and Left presses move a per-side column
     (0x0802E070's +0x11) and the B count runs only under request 0x80. Unreachable in a netbattle. Two places set
@@ -2462,8 +2527,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `tools/exe4/completeness.py`): every entry of the chip table, the weapon routines, the player's actions, the
     dimming variants, the three object tables, the link stages' entry types, the NaviCust handlers and bugs, the
     patch cards and the HUD's draw tasks, against content. What a netbattle reaches and content lacks (main at
-    c4bef02ee): DarkNeo; the dark soul (item 74); "????" after a message (item 130: not as the audit read it). The two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
-    ROM; their names and images are the card's) are being ported (§13's e-Reader paragraph: Duo done). Everything else missing is the story's enemies, the other navis,
+    c4bef02ee): DarkNeo; "????" after a message (item 130: not as the audit read it). The two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
+    ROM; their names and images are the card's) are ported (§13's e-Reader paragraph). Everything else missing is the story's enemies, the other navis,
     subsystem 0x0E's battle (item 49), or named by nothing. Run the tool again as content grows.
 64. **Done: the chip window's "???"** (group B; found by the Program Advances' pa/0x15c-bodygrd/sequence7, whose
     Muramasa showed 0 at frames 4237 to 4246 and 4274 to 4279). EXE4's chip window (0x0801FC40) reads the record's
@@ -2808,12 +2873,101 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      ElecShok and WoodPwdr, chips 0x05, 0x06, 0x2A, 0x2B) differ between the versions (Blue Moon's rows 12 and 13 a dark
      bar, palette index 6), and the pack has one (Red Sun's, `chip_media`'s any ROM): a Blue Moon console's frames
      differ there (souls/wood's WoodPwdr, in the hand and over MegaMan; every other pixel exact).
-   - **The dark soul (15).** A worn-out MegaMan (emotion 5) at 0 HP, once a battle, holds at 1 HP and asks for it
-     (0x0800EBC8, 0x08013AB8: request 0x1000, then 0x0800B8CA: soul 15); its status reset (0x0800E17E: the mood 0,
-     flag1 0x08000000, 0x0800EAC6); 960 ticks (0x0800B93C, 0x08018088) counted down to the revert (0x0800B6A4) with
-     the tail's shader its last 90 (0x0800BB18, item 39); its collision (0x0800C43C: +0x18 3, flag1 2); no buster,
-     B+Left or charge (0x0800BBB2, 0x0800BE28); its chip use (0x080EEC78: 0x0800E4F8), no hand advance after the change
-     (0x080EBC8E), GunSol without A held (0x080EDF12) *open*.
+   - **Done: the dark soul (15)** (group A; `navis/megaman/forms/darksoul`, `rules/souls/dark`,
+     `rules/auto_battle`). A worn-out MegaMan (emotion 5: a dark one, his mood 0, out of a soul and unangry) whose HP
+     a hit empties holds at 1 HP, once a battle (0x0800EBC8, from the player's damage, 0x08013AB0: the rules'
+     `hp_emptied`; AIData +0x1B), and the dark soul is asked for (AIData +0x44's 0x1000), which the status routine
+     takes for soul 15 whatever the hand's next chip (0x0800B8B0: `navi:ask_form_change`). (0x0800EBC8 also tests
+     NaviStats +0x26, a story navi's, and an enemy whose +0x0F is 224 to 227, and sets the side's statistic 1, which
+     only a story battle's karma reads, 0x0800F5E2: none of it a netbattle's.) The change is the souls' (action 0x0D)
+     with DarkMega's image (`megaman-ds`, 08-0f), but the hand stays as it is (0x080EBC8E); his sprite stays his own
+     (0x0800B90A) in palette 1, black (0x0800C018), and he wears nothing. Its status reset (0x0800E17E) leaves him
+     untouchable (flag 0x08000000, the form's `status_reset`) and zeroes the AI's block. In it:
+     - 960 ticks (0x0800B93C: 0x08018088's row 15) run down in the intake, and at 0 the revert is asked for
+       (0x0800B6A4); the last 90 he pulses blue (0x0800BB18 in the status routine's tail, by 0x0800BB40 and the
+       battle's ticks: the rules' hook `navi_shader`, item 39).
+     - Each tick of the intake he is invisible and flashing for three ticks more (0x0800C43C: the collision's flash
+       timer and the flag 2), so nothing reaches him; as the soul ends the flash runs out with Invis's sound.
+     - The input skips the B button (0x0800BE28: no buster, rapid presses or B+Left special) and counts no charge
+       (0x0800BBB2): the form trait `ignores_b`. A still uses the hand's chips, and each use from idle zeroes the AI's
+       block (0x080EED38: the rules' `chip_used`). The custom screen opens as ever (L or R with the gauge full) and
+       deals a dark MegaMan's screen: the emotion's routine reads soul 15 as none (0x0800F4BA: the form trait
+       `emotions_as_base`), so his emotion is the worn-out one, his face his base form's, and the screen keeps no
+       soul (0x0801DC82). GunSol fires its time out with no A held (0x080EDF12).
+     - Where his idle would read the pad for a step, the auto battle AI decides (0x080EEC78: 0x0800E4F8; the status
+       rule `idle_asks_controller` and the rules' `controller`), its counts taken every tick but a dimmed one
+       (0x080EAED2: 0x0800E9E0; the rules' `navi_tick`).
+
+     **The auto battle AI** (0x0800E4F8, `rules/auto_battle/ai`; its state 64 bytes a side at 0x02035A70, the
+     chip's target index AIData +0x17) is the forerunner of EXE5's 0x0802B4AC, and plays the navi's own player's auto
+     battle data (0x020358B0, 0xE0 bytes a side: 42 halfword places, a count, eight pattern records). A player's
+     setup states the places as the save holds them (`auto_battle_places`, save 0x5064), and both consoles send them
+     as the battle starts (0x0800F208, from 0x080088AE: EXE5's routine, 84 draws of RNG2 that shuffle both sides'
+     alike; `@exelib/auto_battle/places`, which EXE5's rules share now). A decision (0x0800E548), with its side's
+     chips enabled: a loss that has weighed long enough (its seconds times its panels at 50: the panels of its half
+     it doesn't hold, 0x0800EA16, or its own broken and poison panels, 0x0800EA5E) is answered by the first chip of
+     the data whose record's byte 14 has the bit (bit 0 among the first 30 places, 0x0800E910: PanlGrab, AreaGrab,
+     MetaGel, GrabRvng, GrabBnsh; bit 1 among the 42, 0x0800E952: Snctuary, PnlRetrn: a chip's
+     `auto_battle.answers`), used where he stands; else after five misses the first entry changes places with
+     another (0x0800EB60); one time in four, or with no entry, the buster (below); else the first entry: a pattern
+     (a miss, the next target and a step: its step test is handed the move lag and the NaviStats' address where its
+     place should be, 0x0800E742, as EXE5's is, so no pattern's place or chips ever play and the setup states no
+     records), a dimming chip before any miss (a step anywhere first), or a chip, which it gets in place for and
+     uses on the tick it is ready (0x0800E7D8), a miss when it isn't. "The buster" is a draw: his buster from an
+     enemy's row, twice (0x0800E61C: the chip window hidden, `navi:hide_chip_window`), or 50 ticks of steps up and
+     down with a B charge showing and then his charged shot from an enemy's row (0x0800E67C: the AI writes the
+     charge's source and count, AIData +9 and +0x32, and the input makes the level of the count as any charge's,
+     0x0800BB50; the 40 it writes for the full charge's time, +0x36, the intake's reload of the charge times takes
+     back before it is read, 0x0800DA16, so the glow turns full at the charged shot's own time). Differences from
+     EXE5's that a netbattle shows: the answers are live code (EXE5's counters stay 0); no first place of 0 is
+     tested (0x0800E5AA: the place plays the chip table's record 0, which no save the game wrote holds: the rules'
+     `validate` refuses it); the choice between the buster's run and the dodge; no step faces a target; a target is
+     found, placed for and tested on one tick. Its targets (0x0800E884): 0, the other side's **third** field object
+     (BattleState +0x70 and 12 a side, where the registry starts at +0x68: EXE5's reads the first), then the other
+     side's navi; a netbattle's search goes round those two (0x0800E8B6).
+
+     **Getting in place** (0x0800F394, `rules/auto_battle/place`; its state 16 bytes a side at 0x0203C030): the
+     chip record's byte 13 names one of 46 classes (0x0800F3C8; each chip's `auto_battle.class`, with its reach list
+     or spot test, byte 23, the lists 0x0801DAD0: `rules/auto_battle/data`), all of them some folder chip's. About
+     half are the classes EXE5 kept (the same names there); the rest are EXE4's own, each read from its routine.
+     What they read of the field is the two games' shared searches (`@exelib/auto_battle/panels`). Two read the
+     original's console-ordered navi list (BattleState +0x44, `lib/navi_list`) from the other side's place, three
+     entries when that side is the console's and one when it isn't (0x080238E0): BlkBomb's search before enemies
+     (0x0802385C) finds only the other navi on the user's own console and, on the other console, the user itself
+     too, whose panel three back can be a step of its own once it stands in column 4 or beyond (the original's two
+     consoles would part there; the replay follows the recording console, `battle.local_side`); NrthWind's test of a
+     barrier (0x08024014) means every entry but reads the first each time, the other navi on both. BugFix's and
+     BugChain's test (0x080245B8) asks for **side 0's** bugs whoever plays it: the routine that counts a side's
+     kinds of bug (0x08043014) is handed the 0 just written to the busy flag.
+
+     The engine's part, each its own commit: the status rule `idle_asks_controller` (split from EXE5's
+     `no_charge_drive`), the form traits `ignores_b` and `emotions_as_base`, `navi:ask_form_change`,
+     `navi:hide_chip_window`, the rules' hook `navi_shader`, a navi's `charge_source` and `charge_counter`
+     writable. The lab's darksoul/ (87: the trigger and what bars it, a soul, a light MegaMan, a hit taken while
+     dimmed, once a battle; the buttons, the hand and the custom screen in it; each side and version; the third
+     object as the first target, an invisible one, the chips barred; a pattern entry; the answers; every class by
+     a chip of it alone in the data, some twenty of them under both answers of their test) replays every frame,
+     states and sounds. Frame comparisons, 37 of them (the change with DarkMega's image, the black MegaMan
+     flashing, the blue pulse and the revert in each; the chip window hidden at the AI's buster and the charge's
+     glow in its dodge; the hand, the buttons and the custom screen in it; each side, Blue Moon; what bars it;
+     sixteen classes' chips): every frame exact but the replay's known shift. (A soul card of the other version's
+     soul, JunkSoul's on a Red Sun console, shows no face in the original's emotion window: its tiles are past
+     the version's six, 0x08014BF6. nettai has every soul's face on every console.) What they found besides:
+     - **The replay's feed** (exe4-compat `Round::fed`): the frame a custom screen opens on is the fight's still
+       (its tick takes the L or R: 0x08007A2E), so it is fed the fight's buttons; the lab's own recordings press L
+       again four frames on, which hid it.
+     - **The chip window from the screen's close** (in every game): the close starts the window's task, and the
+       renderer counted the fight's first four ticks for the navi's first decision; a navi in the middle of a
+       step as its own screen opened (only a driven navi's can be) lost the name until it landed. The engine's
+       `ChipHud` holds it now (`window` on from the close, `from_close` until a decision or a hide), and the
+       renderer's count is gone; EXE5's and EXE6's frames stay exact (ten scenarios each, both regions' consoles).
+     - **An obstacle's push went the wrong way**: 0x0800B1C0 turns its copy of the navi's rows (0x0800B218) by
+       the obstacle's front as if it faced its pusher (-1 unless a side 1 hit pushed it; no push when both sides'
+       did), where the engine turns an obstacle's rows toward the pusher, as EXE5's and EXE6's tables hold
+       theirs: the rules' `obstacle_rows` are the copy's negated across. The lab had no pushed obstacle
+       (drag/cube-*, 12, now: AirShot at either side's RockCube from either side, and Wind's and Fan's gusts,
+       which push none: no flinch bit). A push no side's hit made would go as side 0's; no such hit pushes an
+       obstacle, so no rule states it.
 75. **Done: DS chips' code and damage on the custom screen** (group A; F's frame comparisons, chips/0x0df-rollds and
     the other DS chips, frames 269 to 283). The DS scenarios' MegaMan is dark, so the screen offers dark chips and the
     cursor starts on one: the hover (0x0801E478) darkens the screen, its window fade (0x0801E520's second slot)

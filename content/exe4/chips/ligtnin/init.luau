@@ -34,6 +34,7 @@ local ligtnin1: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_any_obstacle" },
 }
 
 local ligtnin2: Chip = {
@@ -48,6 +49,7 @@ local ligtnin2: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_any_obstacle" },
 }
 
 local ligtnin3: Chip = {
@@ -62,6 +64,7 @@ local ligtnin3: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "when_any_obstacle" },
 }
 
 return { ligtnin1 = ligtnin1, ligtnin2 = ligtnin2, ligtnin3 = ligtnin3 }

@@ -25,6 +25,7 @@ local gutssoul: Chip = {
         id = "gutssoul",
         shake = true,
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { gutssoul = gutssoul }

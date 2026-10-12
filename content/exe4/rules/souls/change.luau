@@ -9,8 +9,8 @@
 -- Its steps (AIAttackVars +0, the attack's step):
 --
 -- - 0 (0x080EBA70): the battle dimmed (battle flag 4) and MegaMan white, each tick; first: held (the frozen flag,
---   0x10000, which EXE4 keeps on a navi changing form), the dark soul's flag cleared (AIData +0x44's 0x1000: no dark
---   soul in a netbattle's code ported), the screen fading out (0x44 at 16), onto his future panel, the flash (effect
+--   0x10000, which EXE4 keeps on a navi changing form), the dark soul's flag cleared (AIData +0x44's 0x1000: the
+--   dark soul's own change's, ./dark), the screen fading out (0x44 at 16), onto his future panel, the flash (effect
 --   row 3, 16 pixels up) and its sound (0x129), no longer moving (flag 0x40) nor asked to revert (+0x44's 0x40), the
 --   soul's own part (its change's `prepare`: WindSoul's north wind, 0x080EBAD2 for AIData +0x10 3), the emotion
 --   window hidden (HUD task 20), his collision region gone; then once the fade is done the HP box and the gauge hidden
@@ -18,15 +18,16 @@
 -- - 4 (0x080EBB14): the soul's image (./image) and 60 ticks; at 10 the second flash and its sound (0x158), and the
 --   soul's screen flash (JunkSoul's, 0x080EBB50: 0x080E2B38).
 -- - 8 (0x080EBB6C): white; first: MegaMan in the soul (NaviStats +0x24: his sprite in it, 0x0800B90A, his form; he
---   is taken for his navi still), its overlay (0x0800B7E8: the soul's own, its form's `put_on`), the dark soul's ticks (0x0800B93C:
---   AIData +0x2C, read only in the dark soul), his statuses ended (0x08013218), 10 ticks, and the cameras' shake
+--   is taken for his navi still), its overlay (0x0800B7E8: the soul's own, its form's `put_on`), the dark soul's
+--   ticks (0x0800B93C: AIData +0x2C, read only in the dark soul, ./dark), his statuses ended (0x08013218), 10 ticks,
+--   and the cameras' shake
 --   (0x080EBC00 by soul: GutsSoul's and FireSoul's, 2 for 50 ticks).
 -- - 0xC (0x080EBC20): the screen fading in (0x40 at 16); once done the HUD back (tasks 0, 1 and 20; in a link battle's
 --   last turns 0 and 20, no gauge), the status reset (0x0800E05C: the soul's turns, ./init, and its own routine,
 --   0x0800E0A0 by soul) and the charge's state (0x0800C5EA).
--- - 0x10 (0x080EBC68): 20 ticks; then no longer held, the hand's next chip (sub_800FC7C: past the soul's), the battle
---   no longer dimmed, his collision region back, no soul asked for (AIData +0x10 0xFF), and the attack's end
---   (0x0800C9FC).
+-- - 0x10 (0x080EBC68): 20 ticks; then no longer held, the hand's next chip (sub_800FC7C: past the soul's; not in the
+--   dark soul, 0x080EBC8E, which no chip's use brought), the battle no longer dimmed, his collision region back, no
+--   soul asked for (AIData +0x10 0xFF), and the attack's end (0x0800C9FC).
 
 local hooks = require("./hooks")
 local image = require("./image")
@@ -65,6 +66,12 @@ export type Spec = {
     flash: boolean?,
     -- What else the first step does, as it starts (WindSoul's north wind).
     prepare: ((navi: Object) -> ())?,
+    -- What else his emerging in the soul does (the dark soul's ticks, 0x0800B93C), and its status reset
+    -- (0x0800E0A0's routine by soul: the part of it that is the rules', the dark soul's).
+    emerged: ((navi: Object) -> ())?,
+    reset: ((navi: Object) -> ())?,
+    -- The hand stays as it is at the change's end (0x080EBC8E: the dark soul's, which no chip's use brought).
+    keeps_hand: boolean?,
 }
 
 local function set_step(me: Object, step: number)
@@ -134,6 +141,9 @@ local function emerge(me: Object, s: State, soul: FormDef, spec: Spec)
         hooks.identity(me, soul)
         hooks.start(me, soul)
         me.related1 = nil
+        if spec.emerged then
+            spec.emerged(me)
+        end
         s.timer = 10
         me:end_statuses()
         me.sprite.white = true
@@ -150,7 +160,7 @@ local function emerge(me: Object, s: State, soul: FormDef, spec: Spec)
 end
 
 -- 0x080EBC20
-local function fade_in(me: Object)
+local function fade_in(me: Object, spec: Spec)
     if me.step_init == 0 then
         battle.screen_fade("transform_in", FADE_SPEED)
         me.step_init = 4
@@ -162,11 +172,14 @@ local function fade_in(me: Object)
     battle.show_hud(if battle.late_turns() then { "hp_box", "emotion_window" } else { "hp_box", "gauge", "emotion_window" }, true)
     turns.start(battle.navi(me.alliance).form)
     hooks.settle(me)
+    if spec.reset then
+        spec.reset(me)
+    end
     set_step(me, SETTLE)
 end
 
 -- 0x080EBC68
-local function settle(me: Object, s: State)
+local function settle(me: Object, s: State, spec: Spec)
     if me.step_init == 0 then
         s.timer = 20
         me.step_init = 4
@@ -176,7 +189,9 @@ local function settle(me: Object, s: State)
         return
     end
     me:set_status("frozen", false)
-    battle.advance_hand(me.alliance)
+    if spec.keeps_hand ~= true then
+        battle.advance_hand(me.alliance)
+    end
     battle.set_dimmed(false)
     me.collision:set_region(regions.single)
     me:set_navi_state("form_change", false)
@@ -192,7 +207,7 @@ function change.make(spec: Spec): Action
         -- One tick of the change.
         update = function(me: Object, s: State)
             local soul = me:form_change_target()
-            if soul == nil or soul.soul == nil then
+            if soul == nil then
                 error("EXE4's soul change asked for no soul (0x080EBA44: AIData +0x10)")
             end
             local step = me.step
@@ -203,9 +218,9 @@ function change.make(spec: Spec): Action
             elseif step == EMERGE then
                 emerge(me, s, soul, spec)
             elseif step == FADE_IN then
-                fade_in(me)
+                fade_in(me, spec)
             elseif step == SETTLE then
-                settle(me, s)
+                settle(me, s, spec)
             else
                 error(string.format("the soul change's step %#x runs off its table (0x080EBA5C)", step))
             end
