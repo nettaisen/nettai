@@ -337,6 +337,30 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
         }
         return;
     }
+    let (pressed, source, level) = {
+        let a = ai(b, r);
+        (a.pad.pressed, a.charge_source, a.charge_level)
+    };
+    // (0x0800BE28: a form that ignores B, the dark soul, goes straight to
+    // the chip's part.)
+    if !form_of(b, r).traits.has(crate::content::FormTraits::IGNORES_B) {
+        decode_b(b, r, f0);
+    }
+    if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r).is_none() {
+        return;
+    }
+    let edge = if chip_charges_on_a(b, r) { ai(b, r).pad.released } else { pressed };
+    if edge & keys::A == 0 {
+        return;
+    }
+    let full = source == 1 && level == 2;
+    let a = ai_mut(b, r);
+    a.requests |= if full { request::CHARGED_CHIP } else { request::CHIP };
+}
+
+/// The B button's part of EXE4's decode (0x0800BE2C to 0x0800BECA): the
+/// buster, a form's rapid presses, the B+Left special.
+fn decode_b(b: &mut Battle, r: ObjectRef, f0: u32) {
     let (pressed, released, source, level) = {
         let a = ai(b, r);
         (a.pad.pressed, a.pad.released, a.charge_source, a.charge_level)
@@ -386,16 +410,6 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
             }
         }
     }
-    if !chips_enabled(b, r) || f0 & (request::CHIP | request::CHARGED_CHIP) != 0 || next_chip(b, r).is_none() {
-        return;
-    }
-    let edge = if chip_charges_on_a(b, r) { ai(b, r).pad.released } else { pressed };
-    if edge & keys::A == 0 {
-        return;
-    }
-    let full = source == 1 && level == 2;
-    let a = ai_mut(b, r);
-    a.requests |= if full { request::CHARGED_CHIP } else { request::CHIP };
 }
 
 /// EXE4's 0x0800BBA4 and 0x0800BB50: the charge, by the button held. Not
@@ -408,7 +422,9 @@ fn decode_per_button(b: &mut Battle, r: ObjectRef) {
 /// 510 by turns). The level: full at the source's threshold, else 1 from 10
 /// ticks.
 fn accumulate_per_button(b: &mut Battle, r: ObjectRef) {
-    if b.is_dimmed() {
+    // (0x0800BBB2: nor in a form that ignores B, the dark soul, whose
+    // charge stays what it is.)
+    if b.is_dimmed() || form_of(b, r).traits.has(crate::content::FormTraits::IGNORES_B) {
         return;
     }
     let (f, status, held, pressed, source) = {

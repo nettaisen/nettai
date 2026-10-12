@@ -741,6 +741,11 @@ impl FormTraits {
     /// Its palette follows the mood: 4 in Full Synchro (mood 0xFF), else
     /// 0, in place of its `palette` (`sub_80100EC`: Beast Out's).
     pub const MOOD_PALETTE: u16 = 0x200;
+    /// The B button asks for nothing and no charge counts, under the
+    /// per-button controls (EXE4's dark soul: its decode skips the buster,
+    /// the rapid presses and the B+Left special, 0x0800BE28, and its charge
+    /// counts neither button, what it holds left as it is, 0x0800BBB2).
+    pub const IGNORES_B: u16 = 0x400;
     pub(crate) const NAMES: &[(u32, &str)] = &[
         (0x001, "status_immune"),
         (0x002, "erases"),
@@ -752,6 +757,7 @@ impl FormTraits {
         (0x080, "alt_charge_time"),
         (0x100, "doubles_null"),
         (0x200, "mood_palette"),
+        (0x400, "ignores_b"),
     ];
 
     pub fn has(self, bit: u16) -> bool {
