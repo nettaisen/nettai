@@ -51,7 +51,7 @@ pub enum Wrong {
     /// A chip no folder holds.
     ChipNotAllowed { chip: ChipHandle },
     /// A chip the saves of another version of the game hold, not this
-    /// side's ([`crate::build::Builds::version_with`] says whose it is).
+    /// side's ([`crate::build::Builds::version_chips`] says whose it is).
     ChipOfAnotherVersion { chip: ChipHandle },
     /// A chip in a code it doesn't come in.
     ChipCode { chip: ChipHandle, code: ChipCode },
@@ -171,4 +171,82 @@ impl Wrong {
         "overlap",
         "invalid",
     ];
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every kind the rules may name types to its own variant when its
+    /// numbers are there, and to `Invalid` when they aren't.
+    #[test]
+    fn every_kind_of_the_rules_is_typed() {
+        let content = crate::testing::exe6_content();
+        let cannon = crate::ids::chip(&content, "exe6", "cannon").unwrap();
+        let whole = Data::map([
+            ("chip", Data::Ref(Registry::Chip, content.defs.chip(cannon).key.clone())),
+            ("code", Data::Str("B".into())),
+            ("used", Data::Int(6)),
+            ("limit", Data::Int(5)),
+            ("value", Data::Int(9)),
+            ("least", Data::Int(0)),
+            ("most", Data::Int(3)),
+            ("other", Data::Int(2)),
+        ]);
+        let count = Count { used: 6, limit: 5 };
+        for kind in Wrong::RULES_KINDS {
+            let typed = Wrong::of_rules(&content, kind, &whole);
+            assert_eq!(typed == Wrong::Invalid, kind == "invalid", "{kind}");
+        }
+        assert_eq!(Wrong::of_rules(&content, "copies", &whole), Wrong::Copies { chip: cannon, count });
+        assert_eq!(Wrong::of_rules(&content, "giga", &whole), Wrong::Class { class: ChipClass::Giga, count });
+        assert_eq!(Wrong::of_rules(&content, "chip_code", &whole), Wrong::ChipCode { chip: cannon, code: ChipCode(1) });
+        assert_eq!(Wrong::of_rules(&content, "range", &whole), Wrong::Range { value: 9, least: 0, most: 3 });
+        assert_eq!(Wrong::of_rules(&content, "overlap", &whole), Wrong::Overlap { other: 1 });
+        assert_eq!(Wrong::of_rules(&content, "budget", &whole), Wrong::Budget(count));
+        assert_eq!((count.free(), Count { used: 56, limit: 80 }.free()), (0, 24));
+        // Without its numbers, or of no kind this crate knows: invalid.
+        assert_eq!(Wrong::of_rules(&content, "copies", &Data::Nil), Wrong::Invalid);
+        assert_eq!(Wrong::of_rules(&content, "a_new_kind", &whole), Wrong::Invalid);
+    }
+
+    /// Every problem the content's rules say is of a kind this crate types:
+    /// each table of the content's Luau that has a `kind` and a `text` (a
+    /// problem: no other table has both).
+    #[test]
+    fn the_contents_problems_are_of_known_kinds() {
+        fn luau(dir: &std::path::Path, out: &mut Vec<std::path::PathBuf>) {
+            for entry in std::fs::read_dir(dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    luau(&path, out);
+                } else if path.extension().is_some_and(|e| e == "luau") {
+                    out.push(path);
+                }
+            }
+        }
+        let mut files = Vec::new();
+        luau(std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content")), &mut files);
+        let mut seen: Vec<String> = Vec::new();
+        for file in files {
+            let text = std::fs::read_to_string(&file).unwrap();
+            for (at, _) in text.match_indices("kind = \"") {
+                let (open, close) = (text[..at].rfind('{'), text[at..].find('}').map(|i| at + i));
+                let (Some(open), Some(close)) = (open, close) else { continue };
+                if !text[open..close].contains("text = ") {
+                    continue;
+                }
+                let name = &text[at + 8..];
+                let name = &name[..name.find('"').unwrap()];
+                assert!(Wrong::RULES_KINDS.contains(&name), "{}: a problem of kind {name:?}, which nettai-match doesn't type", file.display());
+                if !seen.iter().any(|k| k == name) {
+                    seen.push(name.to_string());
+                }
+            }
+        }
+        // (The folder's kinds and the others are all said somewhere.)
+        for kind in ["folder_size", "chip_of_another_version", "copies", "mega", "giga", "dark", "tag_memory", "range", "budget", "overlap"] {
+            assert!(seen.iter().any(|k| k == kind), "no problem of kind {kind} in the content");
+        }
+    }
 }

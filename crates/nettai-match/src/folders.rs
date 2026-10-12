@@ -450,7 +450,9 @@ mod tests {
         for (i, key) in ["recov10", "recov10", "recov10", "recov10", "recov10", "roll", "roll2", "heatman", "elecman", "slashman"].iter().enumerate() {
             f.chips[i] = chip(key);
         }
-        f.chips[10] = chip(if b.setup.players[0].rules.is_some() && crate::Facts::of_block(b.setup.players[0].rules.clone().unwrap()).version(&content) == Some("gregar") { "bass" } else { "bassanly" });
+        // (A Giga chip of the side's own version, whichever it drew.)
+        let gregar = crate::Facts::of_block(b.setup.players[0].rules.clone().unwrap()).version(&content) == Some("gregar");
+        f.chips[10] = chip(if gregar { "bass" } else { "bassanly" });
         let v = View::of(&content, "exe6", &mut b, 0, &f).unwrap();
         assert_eq!((v.size, v.chips, v.mega, v.giga, v.dark), (30, 11, Count { used: 5, limit: 5 }, Count { used: 1, limit: 1 }, None));
         assert_eq!((v.regular_memory, v.tag_memory), (b.stats[0].reg_up as u32, Some(60)));
