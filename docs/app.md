@@ -8,9 +8,9 @@ screen is added or filled in (§2), and the parts every screen shares (§3, §9 
 
 What exists: the design system, focus and navigation, the keyboard, mouse, touch and gamepads, scaling and the
 upright-phone switch, the languages, the errors and the log, Loading, the main menu with its reel and the title
-music, Settings, the two cards before a battle, and the battle's host with its menu overlay. Play, Training,
-Builds and Replays are registered and reachable, each with its header and Back and an empty body: each is one
-Slint file and one Rust module, to be filled in without editing a shared file (§2).
+music, Settings, the two cards before a battle, and the battle's host with its menu overlay. Training is built
+(§15). Play, Builds and Replays are registered and reachable, each with its header and Back and an empty body:
+each is one Slint file and one Rust module, to be filled in without editing a shared file (§2).
 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
 the command line with no window, for frames, audits and checks (docs/tools.md).
@@ -28,7 +28,7 @@ names the signaling server (§4). Some variables are for development:
 | Variable | What it does |
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
-| `NETTAI_TRAINING=<game>` | Starts straight into a training battle of the game: new builds of its first two versions, the other a dummy that stands still. |
+| `NETTAI_TRAINING=<game>` | Starts straight into a training session of the game: new builds of its first two versions, the other a dummy that stands still. |
 | `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle and on the main menu. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
@@ -190,10 +190,11 @@ again, and so that the UI can be built without optimization (§14).
                       battle.rs stage.rs gl.rs sound.rs games.rs      the battle's host (§1)
                       awake.rs                                          the app's time kept (§1)
                       settings.rs lang.rs paths.rs errors.rs tour.rs  §9, §3, §12, §13
-                      lobby.rs netplay.rs replays.rs arenas.rs builds/  kept for the screens to come (§4, §8)
+                      tour/<name>.rs                                    a screen's steps of the screenshot pass
+                      lobby.rs netplay.rs replays.rs builds/            kept for the screens to come (§4, §8)
                       screens/<name>.rs
 
-**A screen is one Slint file and one Rust module.** Menu and Settings are built; Play, Training, Builds and
+**A screen is one Slint file and one Rust module.** Menu, Settings and Training are built; Play, Builds and
 Replays are their headers. `ui/screens/play.slint` holds:
 
 - `PlayView`, a global: the screen's data, which its Rust module sets (and may read back). A struct or an enum
@@ -224,7 +225,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 | `key`, `button` | A key or a pad's button the screen may want for itself, before the menus read it (a key being bound; R in training). |
 | `action` | Previous and next (the shoulders, the keys bound to L and R), delete, the pad's north button. The shell changes the game with the first two unless the screen takes them. |
 | `back` | Esc or Back: true if the screen went back within itself; false and the shell goes to the menu. |
-| `answered(tag, choice)` | A dialog the screen asked was answered. |
+| `answered(tag, choice)` | A dialog the screen asked was answered; or something it asked of another screen was (`Shell::tell`: a row it added to the training menu was chosen). |
 | `dropped(path)` | A file was dropped on the window. |
 | `battle(event)` | A battle the screen started began, ended (with its result) or stopped (with its reason); or the replay it asked for is ready to watch. |
 | `frame`, `frame_end` | Every frame, shown or not: before the battle's ticks, and after them. |
@@ -246,8 +247,12 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
   two cards, whether it fills the window, and for an online match a `gate` that is told this side's fraction
   each frame and answers the other side's (the lobby's `set_loading` and `their_loading`: the battle starts when
   both are 1). Then `open_menu`, `close_menu`, `end_battle`, and `battle` for the player itself
-  (`battle.stage.player`: the dummy's choices, a restart). The shell owns no link and no lobby, and decides
-  nothing when a battle ends: the owner is told the result or the reason and says what is next.
+  (`battle.stage.player`: the dummy's choices) and `battle.restart()` (a battle that can stop, from its start:
+  it runs again, and its owner will hear of its next end). `loading_of(owner)` says whose battle the cards are
+  making ready. The shell owns no link and no lobby, and decides nothing when a battle ends: the owner is told
+  the result or the reason and says what is next.
+- *Another screen:* `tell(screen, tag, choice)` has that screen hear `answered(tag, choice)` once the caller
+  has returned (how Training tells the screen that added a row to its menu).
 - *A replay:* `start_battle` with `Play::Watch(replay, side)` makes its viewer ready behind the same cards and
   hands it over (`BattleEvent::Watching`); the screen shows it in a `Picture` of its own with
   `show_surface(surface, present)` and plays its sound with `play_samples`.
@@ -583,8 +588,8 @@ durations. A screen uses these and writes no color, size or duration of its own.
 | `Cut`, `PanelBack`, `Panel` | The rectangle with one line and its bottom right corner cut (9 on a button, 12 on a panel, 18 on a dialog or a menu); a panel's back with the cyan accent, or a player's color; a panel with something in it |
 | `Button` | Default, the main action (amber), ghost, unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
 | `Field` | A text field (§11) |
-| `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`) |
-| `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked` |
+| `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`); `focusable` off where its row is what is focused |
+| `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked`; `focusable` off where its row is what is focused |
 | `Seg` | One of two |
 | `Slider` | A level, with its number in a box of its own |
 | `TabBar` | A row of tabs, the chosen one's underline sliding |
@@ -642,6 +647,12 @@ Four rules hold for all of it:
 4. *It can be turned down.* With `Theme.motion` off every clock is at its end and nothing moves by itself:
    Settings' Reduce motion (as the system asks, until the player says: macOS's and GNOME's settings are read),
    and the screenshot pass.
+
+**A row that is focused as a whole** (the design's rows are: the cursor is around the label and its control
+together) has a `Focusable` of its own under its control, named as the control is, and the control's own is
+turned off (`focusable: false` on a `Stepper` or a `Select`): the arrows' clicks still step it, a click anywhere
+else on the row activates it, and the list `Shell::pick` opens is as wide as the row. Training's rows are so
+(`BuildOption` and `MenuRow` in training.slint); `OptionRow` here is the other way, the stepper alone focused.
 
 **What has run.** Everything the built screens use is in the screenshot pass and the motion probe (§13). The
 components no built screen uses yet (`TabBar`, `ListView`, `Panel`, `OptionRow`, `Count`, `Flash`, `Shake`, and
@@ -748,7 +759,14 @@ in every shot each control is the size it has at rest, and that a press acts at 
 same instant as a screen change land on the new screen's controls, and a direction held down a scrolling page
 moves the focus at every repeat).
 
-A screen added to the app adds its steps to `tour::walk`.
+A screen's steps are a file of its own, `src/tour/<name>.rs` (a child module of `tour`, so it has the pass's
+own `write` and `compare`), with a function for the pass and one for the motion probe, each called from
+`tour::walk` and `tour::motion_walk` with one line (`training::steps(&mut add, lang, size)`). A pair's second
+shot may be given more to differ in than the two cursors (`training.rs`'s `Differs::Builds`: where the entry
+shows the builds chosen), found from where the screen's controls are.
+
+The pass has nothing of the player's to go by: its settings are the defaults, and Training lists a new build of
+each of the game's versions (and one that can't be used) in place of the player's builds.
 
 ## 14. Build time
 
@@ -829,3 +847,79 @@ and a half minutes of a clean build on the loaded machine (gilrs, which it repla
 **What trades against it.** Motion (§10) added 0.43 MB of generated Rust (2.76 to 3.19 MB: the clocks and the
 offsets they drive), which is in the figures above. The accessibility backend is off: a screen reader sees
 nothing of the app. And with one renderer, a machine without OpenGL can't run it.
+
+## 15. Training
+
+docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
+`src/screens/training.rs` and `ui/screens/training.slint`.
+
+**The entry.** Two rows, Your build and Dummy's build, and START TRAINING at the column's foot; beside them (on a
+phone, under them) the two builds as cards over the arena.
+
+- Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
+  opened as a list with Enter. Both are remembered by game between runs (the settings' `remembered`:
+  `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
+  the first build.
+- A card says its build's name, its version's tag and its navi.
+- The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
+  held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
+  is. It is made once the builds chosen have stayed 160 ms (making a round holds the window about 20 ms: a
+  step through the builds doesn't make one each time), and what the session will be picked from is drawn as the
+  entry lists a game's builds and after each session, so the arena shown is the one START TRAINING opens on.
+- With no build of the game there is one button, CREATE A BUILD, which goes to Builds.
+- A build is checked as the lobby will check one (`nettai_match::build::Checked`), once for what its file
+  says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
+  can't be used."), START TRAINING is unavailable and no arena is drawn. *The rule it breaks isn't said yet:*
+  `Wrong`'s kinds are the Builds screen's to word (§12), and `training::rule` is where that wording goes, as
+  the line's own `{}`; meanwhile each problem is in the log.
+
+**A session** (its interface is §2's "A training session, from any screen"). `training::start` checks the
+match of the two builds (`nettai_match::check::problems`), shows the two cards while the library's `Preload`
+makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)`. It isn't recorded.
+
+- It has no end: when the set is decided the shell says `Finished` and Training starts the battle over
+  (`Battle::restart`), as RESTART does, and R or F5 on the keyboard and the pad's north button without opening
+  the menu (unless the player bound them to a button).
+- The session is the shell's (`Shell::training`), and gone with its battle however that went: ended by
+  `training::end`, by a battle another screen started in its place, or, shown in another screen's `Picture`,
+  by that screen being left.
+
+**The training menu** (Start or Esc; the battle is paused behind it, the dummy in view beside the panel). Its
+rows are a model (`TrainingView.rows`: one row component under one `for`), made from one list,
+`training::ROWS`:
+
+| Row | Values | What it sets |
+|---|---|---|
+| Dummy: Action | Stands still, Moves around, Attacks at random | the library's `Opponent::in_fight`, from the next tick |
+| Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
+| Display: Input display | Off, On | the app's own drawing, below |
+
+A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
+value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
+MENU. The menu opens where the focus last was in it. The dummy's setup and the input display are remembered
+between runs (`training.action`, `training.custom-screen`, `training.inputs`); a session another screen started
+begins as that screen says and keeps nothing of the dummy's.
+
+*Adding a row* (the design's Your HP, Dummy's HP, Custom gauge, Chip draw, Recording and a second pad wait for
+the engine, and aren't shown): a value of `TrainingOption` and its words in training.slint (`label`, `value`),
+its place in `ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row
+too.
+
+**The input display** (`TrainingInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
+SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
+each side's custom screen reads (`Battle::custom.sides[n].joypad.held`: this tick's buttons, not the fight's
+delayed ones) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
+corner, under the eighth the battle's own text takes there; on a phone, under MENU.
+
+**On a phone** the entry is one column (the rows, the line, the cards side by side, the arena, START TRAINING at
+the foot), the menu's rows have their label over their arrows and its buttons are one over the other, and in
+battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, which a battle's owner sets).
+
+**What isn't there.**
+
+- The rule a build breaks, in the reserved line (above).
+- A choice of arena: it is picked from the seed, as a match's is.
+- A list of more builds than the window is tall: `Shell::pick`'s list doesn't scroll, so past about fourteen
+  builds it runs off the window's foot. Left and Right on the row reach every build.
+- A real key press: the screenshot pass drives the screens through the same calls a key becomes (`App::act`)
+  and holds the battle's buttons directly; the window's own key events were not sent to it.

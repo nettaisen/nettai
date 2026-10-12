@@ -10,7 +10,6 @@
 //! `NETTAI_KEY_PROBE` presses the right arrow now and then to measure it; `NETTAI_TOUR=<folder>` walks every
 //! screen and writes each to a PNG (`tour`).
 
-mod arenas;
 mod awake;
 mod battle;
 mod builds;

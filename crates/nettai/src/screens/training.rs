@@ -704,16 +704,18 @@ impl Screen for Training {
     }
 
     fn frame(&mut self, shell: &mut Shell, now: Instant, shown: bool) {
-        // `NETTAI_TRAINING=<game>`: straight into a training battle of it, once it is ready.
-        if !self.started
-            && let Ok(game) = std::env::var("NETTAI_TRAINING")
-        {
-            if shell.game() != Some(game.as_str()) {
-                shell.select_game(&game);
-            } else if shell.ready().is_some() {
-                self.started = true;
-                shell.go(ScreenId::Training);
-                start_development_battle(shell, clock_seed());
+        // `NETTAI_TRAINING=<game>`: straight into a training battle of it, once it is ready. (Asked until it is
+        // answered, and not at all without the variable: this runs every frame.)
+        if !self.started {
+            match std::env::var("NETTAI_TRAINING") {
+                Ok(game) if shell.game() != Some(game.as_str()) => shell.select_game(&game),
+                Ok(_) if shell.ready().is_some() => {
+                    self.started = true;
+                    shell.go(ScreenId::Training);
+                    start_development_battle(shell, clock_seed());
+                }
+                Ok(_) => {}
+                Err(_) => self.started = true,
             }
         }
         // The session on: gone with its battle, however that went (another battle started in its place); and
@@ -767,7 +769,8 @@ impl Screen for Training {
         let Some(b) = shell.battle.as_ref().filter(|b| b.owner == ScreenId::Training) else { return };
         let Some(session) = shell.training.session.as_mut() else { return };
         let battle = b.stage.player.battle();
-        let round = battle.round.round;
+        // (The round's number is counted as the round opens: before its first tick it is the one before.)
+        let round = battle.round.round.max(1);
         let held = if inputs_on(&shell.settings) { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {
@@ -777,7 +780,7 @@ impl Screen for Training {
         let ui = shell.ui();
         let view = ui.global::<TrainingView>();
         if new_round {
-            ui.global::<nettai_ui::Shell>().set_battle_note(view.invoke_round_note(round as i32 + 1));
+            ui.global::<nettai_ui::Shell>().set_battle_note(view.invoke_round_note(round as i32));
         }
         if pressed {
             view.set_held_yours(held[0] as i32);
