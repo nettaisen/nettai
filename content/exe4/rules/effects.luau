@@ -80,6 +80,14 @@ return {
     -- holds until let go (its table's state 2) doesn't count its hold, and let go (0x0801616C) slides out at once. Its
     -- hold sets no squash (0x080149CE): it doesn't bounce.
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out", bounces = false },
+    -- A telop is no banner (0x0801650C lays the chip's name on a block, in the banners' steps). The console's own
+    -- player's lays on the banner block under a task of its own (0x08016454, task 0x100): not while a banner or the
+    -- judge's tallies show (0x0801627C), in the place of a telop that does; its controller waits for it alone
+    -- (0x08016440), and the flow's wait for a banner doesn't see it (0x08016148). The other player's lays on the second
+    -- block (0x080164B4, task 0x8000), beside whatever the banner block shows and in the place of what the second
+    -- block shows, a telop or that player's used chip's name (which takes a telop's place the same way); its controller
+    -- waits for the second block (0x080164A4).
+    telops = "apart",
     -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
     rng1_per_frame = false,
     -- The chip icons over the local navi (0x08014860, 0x08015000): at its identity's `chip_icons_at` from its place on
