@@ -1406,6 +1406,12 @@ pub trait CoreApi {
     fn custom_set_face(&mut self, side: u8, form: Option<crate::FormHandle>) -> ApiResult<()>;
     fn custom_pick_first(&mut self, side: u8, icon: Option<crate::ChipHandle>) -> ApiResult<()>;
     fn custom_set_button_state(&mut self, side: u8, button: &str, state: &str) -> ApiResult<()>;
+    /// `custom.button_uses(side, button)` and `custom.set_button_uses(side,
+    /// button, uses)`: the uses the rules' button `button` has left on this
+    /// screen (its `uses` as the screen opened), for a button whose rules
+    /// count them (EXE4's SHUFFLE takes one as A is pressed, 0x08020376).
+    fn custom_button_uses(&self, side: u8, button: &str) -> ApiResult<u8>;
+    fn custom_set_button_uses(&mut self, side: u8, button: &str, uses: u8) -> ApiResult<()>;
     fn custom_update_availability(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_emblem(&mut self, side: u8, x: u32) -> ApiResult<()>;
     /// The form a pick holds for the turn's start, with the transform
@@ -1455,11 +1461,13 @@ pub trait CoreApi {
     /// The screen's drawing, for a window of the rules: the window's sprites
     /// (`sub_80279C8`: the emblem, the Regular chip's frame and the last
     /// turns' block), the Regular chip's frame alone (`sub_802899C`), the
-    /// Cross window's cursor (`sub_80289E4`), the chip window showing the
-    /// slot under the cursor (`sub_8028476`), and the window's Cross tab
-    /// (`sub_8026840`).
+    /// screen's cursor where it is (`sub_8028820`: EXE4's shuffle draws the
+    /// button's, 0x08020E08), the Cross window's cursor (`sub_80289E4`), the
+    /// chip window showing the slot under the cursor (`sub_8028476`), and
+    /// the window's Cross tab (`sub_8026840`).
     fn custom_draw_window(&mut self, side: u8) -> ApiResult<()>;
     fn custom_draw_regular(&mut self, side: u8) -> ApiResult<()>;
+    fn custom_draw_cursor(&mut self, side: u8) -> ApiResult<()>;
     /// The icon of the chip a button holds (`custom_hold_last_pick`), over
     /// the button (EXE5's 0x080254F4): nothing while none holds one.
     fn custom_draw_held(&mut self, side: u8) -> ApiResult<()>;
