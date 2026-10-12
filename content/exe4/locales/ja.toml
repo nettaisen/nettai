@@ -309,6 +309,7 @@ language = "ja"
 "magnum" = { name = "マグナム", description = "カーソルをとめて\nパネルをはかいする\nマグナムをハッシャ" }
 "bugcharg" = { name = "バグチャージ", description = "あんこくチップ!\nターンがすすむほど\nつよくなる!" }
 "shotstar" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
+"bugchain" = { name = "バグチェーン", description = "自分に発生している\nバグをあいてにも\nうつしてしまう!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

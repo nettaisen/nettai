@@ -30,6 +30,7 @@ return merge {
     require("@self/bubbler"),
     require("@self/bubsprd"),
     require("@self/bugbomb"),
+    require("@self/bugchain"),
     require("@self/bugcharg"),
     require("@self/bugcurse"),
     require("@self/bugfix"),
