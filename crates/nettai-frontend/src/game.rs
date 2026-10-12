@@ -292,27 +292,175 @@ impl Loaded {
 
 /// Load game `name` to play it: the packs found, its content, its graphics
 /// and strings in the language, the text's font and (if asked) its sound.
-/// A failure carries what every step reported up to it.
+/// A failure carries what every step reported up to it. ([`Loading`] is
+/// the same a step at a time, for a host that shows how far it is.)
 pub fn load(name: &str, options: &Options) -> Result<Loaded, LoadError> {
-    // (A later step's failure, with the earlier steps' reports before its own.)
-    fn after(before: &[&Report], mut e: LoadError) -> LoadError {
-        let mut issues: Vec<_> = before.iter().flat_map(|r| r.issues.iter().cloned()).collect();
-        issues.append(&mut e.report.issues);
-        e.report.issues = issues;
-        e
+    let mut loading = Loading::new(name, options.clone());
+    while loading.step()? {}
+    Ok(loading.finish().expect("every step ran"))
+}
+
+/// A part of a game's loading: a step of [`Loading`].
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Part {
+    /// The packs found.
+    Packs,
+    /// The game's battle content: its Luau modules read and defined.
+    Content,
+    /// The pack's graphics, and the content's strings in the language.
+    Graphics,
+    /// The text's font.
+    Font,
+    /// The pack's sound.
+    Sound,
+}
+
+impl Part {
+    /// Every part, in the order they load.
+    pub const ALL: [Part; 5] = [Part::Packs, Part::Content, Part::Graphics, Part::Font, Part::Sound];
+
+    /// The share of a game's loading the part takes, out of 100: what
+    /// [`Loading::fraction`] counts a part done as. From the three games'
+    /// packs (crates/nettai-frontend/examples/preload.rs prints each part's
+    /// time; docs/frontend.md §9 has them): the content is more than half
+    /// of every game's, the sound a quarter.
+    pub fn share(self) -> u32 {
+        match self {
+            Part::Packs => 1,
+            Part::Content => 62,
+            Part::Graphics => 11,
+            Part::Font => 1,
+            Part::Sound => 25,
+        }
     }
-    let found = Found::find(&options.packs_dir, &options.packs)?;
-    let game = Game::load(&found, options.content.as_deref(), name).map_err(|e| after(&[&found.report], e))?;
-    let graphics = game.graphics(&options.lang).map_err(|e| after(&[&found.report, &game.report], e))?;
-    let so_far = [&found.report, &game.report, &graphics.report];
-    let font = font(options.text, options.font.as_deref()).map_err(|e| after(&so_far, e))?;
-    let sound = if options.sound { Some(game.sound().map_err(|e| after(&so_far, e))?) } else { None };
-    Ok(Loaded { found, game, graphics, text: options.text, font, sound })
+}
+
+/// A game being loaded, a part at a time ([`Part::ALL`]): everything a
+/// battle of it reads from disk, which is all read here and none of it
+/// during a match (a pack loads whole; docs/frontend.md §9). A host that
+/// shows a loading bar runs [`Loading::step`] until it says there is no
+/// more, on a thread of its own or between its frames, shows
+/// [`Loading::fraction`] meanwhile, and takes the game with
+/// [`Loading::finish`]. Each step runs one part to its end: the content's
+/// is the longest (seconds; it runs the game's Luau), so a host with
+/// threads steps this on one and its window stays live.
+///
+/// What is left for the thread that will run the battles is that thread's
+/// own: `crate::preload`.
+pub struct Loading {
+    name: String,
+    options: Options,
+    /// How many of [`Loading::parts`] are loaded.
+    done: usize,
+    found: Option<Found>,
+    game: Option<Game>,
+    graphics: Option<Graphics>,
+    font: Option<Arc<VectorFont>>,
+    sound: Option<Sound>,
+}
+
+impl Loading {
+    /// Game `name`, to load as `options` say; nothing is read yet.
+    pub fn new(name: &str, options: Options) -> Loading {
+        Loading { name: name.to_string(), options, done: 0, found: None, game: None, graphics: None, font: None, sound: None }
+    }
+
+    /// The parts this loads, in order (the sound only if asked for).
+    pub fn parts(&self) -> impl Iterator<Item = Part> + '_ {
+        Part::ALL.into_iter().filter(|&p| p != Part::Sound || self.options.sound)
+    }
+
+    /// The part the next step loads; none once all are.
+    pub fn next(&self) -> Option<Part> {
+        self.parts().nth(self.done)
+    }
+
+    /// How far the loading is, from 0 to 1: the shares of the parts loaded
+    /// ([`Part::share`]) over all its parts'.
+    pub fn fraction(&self) -> f32 {
+        let all: u32 = self.parts().map(Part::share).sum();
+        let done: u32 = self.parts().take(self.done).map(Part::share).sum();
+        done as f32 / all as f32
+    }
+
+    /// Load the next part. True while a part is left after it; a failure
+    /// carries what every part reported up to it, and the loading can't go
+    /// on.
+    pub fn step(&mut self) -> Result<bool, LoadError> {
+        // (A later part's failure, with the earlier parts' reports before
+        // its own.)
+        fn after(before: &[Option<&Report>], mut e: LoadError) -> LoadError {
+            let mut issues: Vec<_> = before.iter().flatten().flat_map(|r| r.issues.iter().cloned()).collect();
+            issues.append(&mut e.report.issues);
+            e.report.issues = issues;
+            e
+        }
+        let Some(part) = self.next() else { return Ok(false) };
+        let reports = [self.found.as_ref().map(|f| &f.report), self.game.as_ref().map(|g| &g.report), self.graphics.as_ref().map(|g| &g.report)];
+        let loaded = |what: &str| -> ! { unreachable!("the {what} loads before this part") };
+        match part {
+            Part::Packs => self.found = Some(Found::find(&self.options.packs_dir, &self.options.packs)?),
+            Part::Content => {
+                let Some(found) = &self.found else { loaded("packs") };
+                let game = Game::load(found, self.options.content.as_deref(), &self.name).map_err(|e| after(&reports, e))?;
+                self.game = Some(game);
+            }
+            Part::Graphics => {
+                let Some(game) = &self.game else { loaded("content") };
+                let graphics = game.graphics(&self.options.lang).map_err(|e| after(&reports, e))?;
+                self.graphics = Some(graphics);
+            }
+            Part::Font => self.font = font(self.options.text, self.options.font.as_deref()).map_err(|e| after(&reports, e))?,
+            Part::Sound => {
+                let Some(game) = &self.game else { loaded("content") };
+                let sound = game.sound().map_err(|e| after(&reports, e))?;
+                self.sound = Some(sound);
+            }
+        }
+        self.done += 1;
+        Ok(self.next().is_some())
+    }
+
+    /// The game, once every part is loaded; none before.
+    pub fn finish(self) -> Option<Loaded> {
+        if self.next().is_some() {
+            return None;
+        }
+        Some(Loaded { found: self.found?, game: self.game?, graphics: self.graphics?, text: self.options.text, font: self.font, sound: self.sound })
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// A game loads a part at a time, each counted by its share: the parts
+    /// in their order, the sound only if asked for; a part that fails
+    /// stops the loading there with what failed, and no game comes of it.
+    #[test]
+    fn a_game_loads_a_part_at_a_time() {
+        let dir = std::env::temp_dir().join(format!("nettai-frontend-loading-{}", std::process::id()));
+        std::fs::create_dir_all(&dir).unwrap();
+        let options = Options { packs_dir: dir.clone(), ..Options::default() };
+        let mut loading = Loading::new("exe6", options.clone());
+        assert_eq!(loading.parts().collect::<Vec<_>>(), Part::ALL);
+        assert_eq!(Part::ALL.map(Part::share).iter().sum::<u32>(), 100);
+        assert_eq!((loading.next(), loading.fraction()), (Some(Part::Packs), 0.0));
+        // The packs directory is found (with no pack in it).
+        assert!(loading.step().unwrap());
+        assert_eq!((loading.next(), loading.fraction()), (Some(Part::Content), 0.01));
+        // No pack of the game: its content can't load, and the loading
+        // stays where it was.
+        let Err(e) = loading.step() else { panic!("loaded exe6 with no pack of it") };
+        assert_eq!(e.what, Failed::Content { game: "exe6".into() });
+        assert_eq!((loading.next(), loading.fraction()), (Some(Part::Content), 0.01));
+        assert!(loading.finish().is_none());
+        // Without sound, the sound is no part and the others are the whole.
+        let silent = Loading::new("exe6", Options { sound: false, ..options });
+        assert_eq!(silent.parts().collect::<Vec<_>>(), [Part::Packs, Part::Content, Part::Graphics, Part::Font]);
+        assert_eq!(silent.fraction(), 0.0);
+        let _ = std::fs::remove_dir_all(dir);
+    }
 
     /// A failure is a value that says what failed: with no pack of the
     /// game anywhere, its content can't load, and the report says why.
