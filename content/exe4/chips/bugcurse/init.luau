@@ -31,6 +31,7 @@ local chip: Chip = {
     },
     damage = 0,
     megaman = "dark",
+    auto_battle = { class = "at_once" },
 }
 
 return { bugcurse = chip }

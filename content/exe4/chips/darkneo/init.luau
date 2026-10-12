@@ -77,6 +77,7 @@ local chip: Chip = {
     },
     dimming = CONTROLLER.hook,
     megaman = "dark",
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { darkneo = chip }

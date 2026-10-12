@@ -26,6 +26,7 @@ local rollaro1: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("rollaro1/controller"),
     megaman = "light",
+    auto_battle = { class = "into_target_row" },
 }
 
 -- RollAro2 (EXE4 chip 0x098).
@@ -42,6 +43,7 @@ local rollaro2: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("rollaro2/controller"),
     megaman = "light",
+    auto_battle = { class = "into_target_row" },
 }
 
 -- RollAro3 (EXE4 chip 0x099).
@@ -58,6 +60,7 @@ local rollaro3: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("rollaro3/controller"),
     megaman = "light",
+    auto_battle = { class = "into_target_row" },
 }
 
 return { rollaro1 = rollaro1, rollaro2 = rollaro2, rollaro3 = rollaro3 }

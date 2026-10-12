@@ -28,6 +28,7 @@ local elemflar: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "three_in_row" },
 }
 
 local elemice: Chip = {
@@ -48,6 +49,7 @@ local elemice: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "three_in_row" },
 }
 
 local elemleaf: Chip = {
@@ -68,6 +70,7 @@ local elemleaf: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "three_in_row" },
 }
 
 local elemsand: Chip = {
@@ -88,6 +91,7 @@ local elemsand: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "three_in_row" },
 }
 
 local elemdark: Chip = {
@@ -111,6 +115,7 @@ local elemdark: Chip = {
     lockout = 0,
     flags = { "has_damage", "library" },
     megaman = "dark",
+    auto_battle = { class = "into_reach", range = "three_in_row" },
 }
 
 return { elemflar = elemflar, elemice = elemice, elemleaf = elemleaf, elemsand = elemsand, elemdark = elemdark }

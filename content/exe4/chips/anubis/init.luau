@@ -21,6 +21,7 @@ local chip: Chip = {
     flags = { "dimming", "library" },
     dimming = anubis.controller.hook(VARIANT),
     megaman = "dark",
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { anubis = chip }

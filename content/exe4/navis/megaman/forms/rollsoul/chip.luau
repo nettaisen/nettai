@@ -23,6 +23,7 @@ local rollsoul: Chip = {
     action = change.make {
         id = "rollsoul",
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { rollsoul = rollsoul }

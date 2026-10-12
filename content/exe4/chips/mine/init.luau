@@ -37,6 +37,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = CONTROLLER.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { mine = chip }

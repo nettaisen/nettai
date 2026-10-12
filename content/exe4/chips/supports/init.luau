@@ -21,6 +21,7 @@ local rush: Chip = {
     flags = { "dimming", "library" },
     traits = { "no_cut_in" },
     dimming = supports.dimming("rush"),
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local beat: Chip = {
@@ -36,6 +37,7 @@ local beat: Chip = {
     flags = { "dimming", "library" },
     traits = { "no_cut_in" },
     dimming = supports.dimming("beat"),
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local tango: Chip = {
@@ -51,6 +53,7 @@ local tango: Chip = {
     flags = { "dimming", "library" },
     traits = { "no_cut_in" },
     dimming = supports.dimming("tango"),
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { rush = rush, beat = beat, tango = tango }

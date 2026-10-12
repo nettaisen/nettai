@@ -24,6 +24,7 @@ local chip: Chip = {
     flags = { "dimming", "library" },
     program_advances = { { order = 6, sequence = { recipe_hole, recipe_drkline, recipe_anubis } } },
     dimming = anubis.controller.hook(STATUE),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { poisphar = chip }
