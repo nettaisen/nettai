@@ -69,6 +69,20 @@ impl Recorder {
         Ok(Recorder { writer, ticks: 0, failed: None })
     }
 
+    /// A recording of the netplay match the lobby agreed (`agreed`: its
+    /// match and seed, this peer's side, both players' names, and whether
+    /// they closed their builds) to `out`, started at `when` (seconds since
+    /// 1970). The replay's info is the agreement's: an online match,
+    /// recorded from this peer's side, by these names, with closed builds
+    /// where the players agreed them. So a host that records a netplay
+    /// match passes the flag on by making the recorder here, and a viewer
+    /// reads it back as `Replay::info.closed_builds` (`Viewer::info`).
+    pub fn of_agreement(out: Box<dyn Write + Send>, content: &Arc<Content>, agreed: &crate::lobby::Agreement, when: u64) -> Result<Recorder, String> {
+        let info = Info { when, side: agreed.side as u8, kind: MatchKind::Online, closed_builds: agreed.closed_builds(), names: agreed.names.clone() };
+        let m = Match { seed: Some(agreed.seed), ..agreed.m.clone() };
+        Recorder::new(out, content, &m, &info)
+    }
+
     /// Whether the battle's digest is kept after the next tick.
     pub fn digest_due(&self) -> bool {
         digest_due(self.ticks)

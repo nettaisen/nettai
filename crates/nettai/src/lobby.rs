@@ -1,8 +1,8 @@
 //! Play: online, as Tango's Play tab. The selector strip's game and build
 //! (`App::select`) are what this player brings, its sheet shows the build,
 //! and the band at the foot makes the link: in a room of the signaling
-//! server (the code typed, or none: a new room, its code given to the other
-//! player) or directly (the host's address typed, or none: this player hosts
+//! server (the code typed, or none: a new room, whose code the server picks
+//! and this player gives the other) or directly (the host's address typed, or none: this player hosts
 //! on a port of their own), when FIGHT is pressed. Once linked, the band is
 //! the room's: its code to share, READY and LEAVE; both players' cards, the
 //! link's standing; and the battle it leads to, a `NetPlayer` over the link
@@ -12,9 +12,9 @@
 //! The signaling server is `$NETTAI_SIGNAL` (`ws://127.0.0.1:8787` for
 //! signaling/ run by `npx wrangler dev`).
 
-use crate::app::{App, Battle, Kind, clock_seed, game_names};
+use crate::app::{App, Battle, Kind, clock_seed};
 use crate::games::{Names, Ready};
-use crate::netplay::{Agreeing, Progress, Standing, room_code, signal_server};
+use crate::netplay::{Agreeing, Progress, Standing, signal_server};
 use crate::stage::Stage;
 use crate::{BattleKind, Connection, LinkState, Peer, Screen, Side, Strings};
 use nettai_frontend::lobby::Settings;
@@ -50,7 +50,8 @@ impl Mode {
 /// The link's way, as FIGHT makes it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Way {
-    MakeRoom(String),
+    /// A new room: the signaling server picks its code.
+    MakeRoom,
     JoinRoom(String),
     Host,
     Join(String),
@@ -109,18 +110,12 @@ impl App {
     /// What this player proposes: the game's triple battle, each place left
     /// to the seed, and their side: the strip's build, else a random one.
     fn play_proposal(&self, game: &str, ready: &Ready) -> Option<(Settings, nettai_match::Side)> {
-        let settings = Settings { game: game.to_string(), rounds: vec![nettai_match::RoundSettings::default(); nettai_match::TRIPLE_BATTLE] };
+        let settings = Settings::new(game, nettai_match::TRIPLE_BATTLE);
         if let Some(side) = self.selected_side() {
             return Some((settings, side));
         }
         let m = nettai_match::pick::live(ready.content(), game, self.lobby.seed, None).ok()?;
         Some((settings, m.sides[0].clone()))
-    }
-
-    /// The build this player brings, as the other player's card shows it:
-    /// its name (none for a random side), its version by its preset's name.
-    fn play_label(&self, game: &str, ready: &Ready, side: &nettai_match::Side) -> (String, String) {
-        (self.selected_name().unwrap_or_default(), crate::builds::presets::version(ready.content(), game, side))
     }
 
     /// Make the link `way` says, leaving any other.
@@ -132,13 +127,15 @@ impl App {
             return;
         };
         let Some((settings, side)) = self.play_proposal(&game, &ready) else { return };
-        let label = self.play_label(&game, &ready, &side);
         let config = nettai_rtc::Config::default();
         let link = match &way {
-            Way::MakeRoom(code) | Way::JoinRoom(code) => {
+            Way::MakeRoom => {
                 let Some(server) = signal_server() else { return };
-                // (The room's name on the server: its code, in lowercase.)
-                nettai_rtc::Link::room(&server, &code.to_ascii_lowercase(), config)
+                Ok(nettai_rtc::Link::create_room(&server, config))
+            }
+            Way::JoinRoom(code) => {
+                let Some(server) = signal_server() else { return };
+                nettai_rtc::Link::join_room(&server, code, config)
             }
             #[cfg(not(target_arch = "wasm32"))]
             Way::Host => nettai_rtc::Link::host(DIRECT_PORT, config),
@@ -151,10 +148,9 @@ impl App {
             Ok(link) => {
                 let mut a = Agreeing::new(link, ready.content(), settings, side, WAIT);
                 a.set_name(&self.name);
-                a.set_build(&label.0, &label.1);
                 self.lobby.room = Some((a, way));
             }
-            Err(e) => self.lobby.problem = Some(e.0),
+            Err(e) => self.lobby.problem = Some(e.detail),
         }
     }
 
@@ -190,7 +186,8 @@ impl App {
     fn follow_lobby(&mut self) {
         let ui = self.ui();
         // Your build: its name (a random side: so said), its version, its
-        // navi where it isn't the game's own; theirs as their lobby says.
+        // navi where it isn't the game's own. Theirs is their own until
+        // the match: their card has their name and whether they are ready.
         let random = ui.global::<Strings>().invoke_random().to_string();
         let build = self.selected_name().unwrap_or_else(|| random.clone());
         let (navi, version) = self
@@ -202,15 +199,6 @@ impl App {
                 Some((crate::builds::view::odd_navi(r.content(), &names, &g, &side), crate::builds::presets::version(r.content(), &g, &side)))
             })
             .unwrap_or_default();
-        let their_navi = |key: Option<&str>| -> String {
-            let (Some(key), Some((g, r))) = (key, self.play_game_ready()) else { return String::new() };
-            let Some(n) = nettai_match::ids::navi(r.content(), &g, key) else { return String::new() };
-            if nettai_match::first_navi(r.content(), &g) == Some(n) {
-                return String::new();
-            }
-            let graphics = r.graphics(self.lang);
-            Names::of(r.content(), &graphics).navi(n)
-        };
         let direct = self.lobby.mode == Mode::Direct;
         let (link, ready, them, ping) = match &self.lobby.room {
             None if signal_server().is_none() && !direct => (LinkState::NoServer, false, Peer::default(), -1),
@@ -223,19 +211,9 @@ impl App {
                     Standing::Open => LinkState::Open,
                     Standing::Reconnecting(_) => LinkState::Reconnecting,
                 };
-                // (Their build, by the label they say; their game before it
-                // where it isn't this one.)
-                let (their_build, their_version) = a.their_build().unwrap_or_default();
-                let mut build = if their_build.is_empty() { random.clone() } else { their_build.to_string() };
-                if let Some(Ok(s)) = a.theirs()
-                    && self.select.game.as_deref() != Some(s.game.as_str())
-                {
-                    build = format!("{}  ·  {build}", game_names(&s.game).0);
-                }
-                let present = link == LinkState::Open || a.theirs().is_some();
+                let present = link == LinkState::Open || a.their_present();
                 let name = a.their_name().unwrap_or_default();
-                let navi = their_navi(a.their_navi());
-                let peer = Peer { present, name: name.into(), build: build.into(), version: their_version.into(), navi: navi.into(), ready: a.their_ready() };
+                let peer = Peer { present, name: name.into(), build: SharedString::default(), version: SharedString::default(), navi: SharedString::default(), ready: a.their_ready() };
                 (link, a.ready(), peer, -1)
             }
         };
@@ -245,10 +223,12 @@ impl App {
         ui.set_play_ping(ping);
         ui.set_play_linked(self.lobby.linked());
         ui.set_room_open(self.lobby.linked());
-        let room = match self.lobby.room.as_ref().map(|(_, w)| w) {
-            Some(Way::MakeRoom(code) | Way::JoinRoom(code)) => code.clone(),
-            Some(Way::Host) => host_address(),
-            Some(Way::Join(address)) => address.clone(),
+        let room = match self.lobby.room.as_ref() {
+            // (A new room's code is the server's to say.)
+            Some((a, Way::MakeRoom)) => a.code().unwrap_or_default().to_string(),
+            Some((_, Way::JoinRoom(code))) => code.clone(),
+            Some((_, Way::Host)) => host_address(),
+            Some((_, Way::Join(address))) => address.clone(),
             None => String::new(),
         };
         ui.set_play_room(room.into());
@@ -284,7 +264,7 @@ impl App {
     /// address's, or this player hosting).
     pub fn play_fight(&mut self) {
         let way = match self.lobby.mode {
-            Mode::Room if self.lobby.code.is_empty() => Way::MakeRoom(room_code(clock_seed() as u64)),
+            Mode::Room if self.lobby.code.is_empty() => Way::MakeRoom,
             Mode::Room if self.lobby.code.len() == 6 => Way::JoinRoom(self.lobby.code.clone()),
             Mode::Room => {
                 self.lobby.problem = Some("A room's code has six letters".into());
@@ -314,12 +294,9 @@ impl App {
     pub fn propose(&mut self) {
         if let Some((id, ready)) = self.play_game_ready()
             && let Some((settings, side)) = self.play_proposal(&id, &ready)
+            && let Some((a, _)) = &mut self.lobby.room
         {
-            let label = self.play_label(&id, &ready, &side);
-            if let Some((a, _)) = &mut self.lobby.room {
-                a.propose(ready.content(), settings, side);
-                a.set_build(&label.0, &label.1);
-            }
+            a.propose(ready.content(), settings, side);
         }
     }
 
@@ -343,10 +320,11 @@ impl App {
         }
     }
 
-    /// `NETTAI_NETPLAY=<game>:<make|join>:<CODE>` (or `<game>:host:` and
-    /// `<game>:direct:<HOST:PORT>`): once `game` is loaded, straight into
-    /// Play, linked that way, ready (two windows on one machine, and the
-    /// tour).
+    /// `NETTAI_NETPLAY=<game>:make:` or `<game>:join:<CODE>` (or
+    /// `<game>:host:` and `<game>:direct:<HOST:PORT>`): once `game` is
+    /// loaded, straight into Play, linked that way, ready (two windows on
+    /// one machine, and the tour). A made room's code is the signaling
+    /// server's: the band shows it, for the other window's `join`.
     pub fn auto_netplay(&mut self, game: &str) {
         let Ok(spec) = std::env::var("NETTAI_NETPLAY") else { return };
         let mut parts = spec.splitn(3, ':');
@@ -371,7 +349,7 @@ impl App {
             }
             _ => {
                 self.lobby.mode = Mode::Room;
-                Way::MakeRoom(code.to_ascii_uppercase())
+                Way::MakeRoom
             }
         };
         self.enter_room(way);
@@ -407,11 +385,10 @@ impl App {
                 let (driver, agreement) = agreed.player(NetOptions::default());
                 let content = ready.content().clone();
                 let mut player = self.player(&ready, Box::new(driver), true);
-                let m = nettai_match::Match { seed: Some(agreement.seed), ..agreement.m.clone() };
                 let names = agreement.names.clone();
-                let recorded = self
-                    .recorder(&content, &m, agreement.seed, &game, nettai_frontend::replay::MatchKind::Online, agreement.side as u8, Some(names.clone()))
-                    .and_then(|(r, path)| player.record(r).ok().map(|_| path));
+                // (The recording's info is the agreement's: closed builds
+                // with it.)
+                let recorded = self.netplay_recorder(&content, &agreement, &game).and_then(|(r, path)| player.record(r).ok().map(|_| path));
                 let graphics = ready.graphics(self.lang);
                 let navi_names = Names::of(&content, &graphics);
                 let navi = |side: usize| navi_names.navi(agreement.m.sides[side].navi(&content));
@@ -437,10 +414,10 @@ impl App {
         self.ui().set_battle_connection(Connection {
             ping: n.ping_ms.map_or(-1, |ms| ms.round() as i32),
             loss_percent: (n.loss * 100.0).round() as i32,
-            delay: n.present_delay as i32,
+            delay: n.input_delay as i32,
             rollback: n.last_rollback as i32,
             max_rollback: n.max_rollback as i32,
-            down: n.reconnecting.map_or(-1, |d| d.as_secs() as i32),
+            down: n.reconnecting.map_or(-1, |d| d.elapsed.as_secs() as i32),
         });
     }
 }

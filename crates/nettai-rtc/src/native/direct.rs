@@ -43,7 +43,7 @@ use rtc::stun::message::{BINDING_REQUEST, Message, is_stun_message};
 use rtc::stun::textattrs::TextAttribute;
 
 use super::{PeerConnection, Sock, answering, direct_settings, err, host, settings};
-use crate::{Config, Error};
+use crate::{Config, Error, ErrorKind};
 
 const HOST_UFRAG: &str = "nettaihost";
 const HOST_PWD: &str = "nettaidirectconnecthostpwd";
@@ -89,9 +89,9 @@ impl PeerConnection {
     /// a new socket: dialing at once.
     pub(crate) fn direct_dial(config: &Config, host_addr: SocketAddr, nonce: u32, generation: u32) -> Result<PeerConnection, Error> {
         let any = if host_addr.is_ipv4() { SocketAddr::from((Ipv4Addr::UNSPECIFIED, 0)) } else { SocketAddr::from((Ipv6Addr::UNSPECIFIED, 0)) };
-        let socket = UdpSocket::bind(any).map_err(|e| Error(format!("can't bind a UDP socket: {e}")))?;
-        socket.set_nonblocking(true).map_err(|e| Error(e.to_string()))?;
-        let local = socket.local_addr().map_err(|e| Error(e.to_string()))?;
+        let socket = UdpSocket::bind(any).map_err(|e| Error::internal(format!("can't bind a UDP socket: {e}")))?;
+        socket.set_nonblocking(true).map_err(|e| Error::internal(e.to_string()))?;
+        let local = socket.local_addr().map_err(|e| Error::internal(e.to_string()))?;
         let settings = direct_settings(settings(config), &join_ufrag(nonce, generation), JOIN_PWD);
         let pc = RTCPeerConnectionBuilder::new().with_setting_engine(settings).build(Instant::now()).map_err(err("can't make a connection"))?;
         let mut c = PeerConnection::new(pc, vec![Sock { socket, local, read: true }])?;
@@ -107,7 +107,7 @@ impl PeerConnection {
     /// `generation`, on the listener's socket (whose datagrams the listener
     /// reads and hands in).
     fn direct_answer(config: &Config, listener: &Listener, nonce: u32, generation: u32) -> Result<PeerConnection, Error> {
-        let socket = listener.socket.try_clone().map_err(|e| Error(e.to_string()))?;
+        let socket = listener.socket.try_clone().map_err(|e| Error::internal(e.to_string()))?;
         let settings = direct_settings(answering(config), HOST_UFRAG, HOST_PWD);
         let pc = RTCPeerConnectionBuilder::new().with_setting_engine(settings).build(Instant::now()).map_err(err("can't make a connection"))?;
         let mut c = PeerConnection::new(pc, vec![Sock { socket, local: listener.local, read: false }])?;
@@ -131,9 +131,9 @@ impl Listener {
     /// Listen on UDP `port` of every IPv4 interface (0: a port the system
     /// picks).
     pub(crate) fn bind(port: u16) -> Result<Listener, Error> {
-        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port)).map_err(|e| Error(format!("can't listen on UDP port {port}: {e}")))?;
-        socket.set_nonblocking(true).map_err(|e| Error(e.to_string()))?;
-        let local = socket.local_addr().map_err(|e| Error(e.to_string()))?;
+        let socket = UdpSocket::bind((Ipv4Addr::UNSPECIFIED, port)).map_err(|e| Error::new(ErrorKind::PortUnavailable, format!("can't listen on UDP port {port}: {e}")))?;
+        socket.set_nonblocking(true).map_err(|e| Error::internal(e.to_string()))?;
+        let local = socket.local_addr().map_err(|e| Error::internal(e.to_string()))?;
         Ok(Listener { socket, local, nonce: None })
     }
 
