@@ -12,13 +12,14 @@ local patch_cards = require("@self/patch_cards")
 local navicust = require("@self/navicust")
 local navicust_bugs = require("@self/navicust/bugs")
 local save = require("@self/save")
+local sent_chips = require("@self/sent_chips")
 local souls = require("@self/souls")
 local soul_turns = require("@self/souls/turns")
 
--- What a side keeps through a round: the dark chips' (./dark_chips), Double Soul's (./souls) and its NaviCust bugs'
--- counts (./navicust).
+-- What a side keeps through a round: the dark chips' (./dark_chips), the chips sent (./sent_chips), Double Soul's
+-- (./souls) and its NaviCust bugs' counts (./navicust).
 local state: StateSchema = {}
-for _, part in { dark_chips.state, souls.state, navicust.state } do
+for _, part in { dark_chips.state, sent_chips.state, souls.state, navicust.state } do
     for name, field in part do
         state[name] = field
     end
@@ -63,6 +64,12 @@ local rules: Rules = {
         sun = "bool",
         -- MegaMan's light/dark value (NaviStats +0x36): ./light_dark.
         karma = "u16",
+        -- Their wins less their losses in link battles against the rival game's players, -100 to 100 (the save's
+        -- signed halfword at 0x21D6, the game state's struct the toolkit's +0x44 points at, its +0x22: the status
+        -- screen's "VS BM Battles: +100 W", 0x0803A978; such a battle's win adds 1 and its loss takes 1, 0x0803AB90),
+        -- which each side's link record carries (+0xB6), the battle keeps at 0x0203BE72 + 8 a side and RedSun's and
+        -- BlueMoon's damage reads (./sun_and_moon).
+        rival_wins = "i16",
         -- Their NaviCust (./navicust): the programs placed on its 5x5 board (the engine's 7x7 grid's middle) in its
         -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
         -- `rotation` quarters clockwise, compressed or not.
@@ -95,6 +102,8 @@ local rules: Rules = {
         reg_up = save.MAX_REG_UP,
         sun = true,
         karma = 500,
+        -- (Tango's twelve netplay saves hold 100, the most the damage counts.)
+        rival_wins = 100,
         souls = {
             "rollsoul",
             "gutssoul",
@@ -117,7 +126,9 @@ local rules: Rules = {
     -- What a soul's form says for Double Soul (./souls; a soul is named by its form's id, the original's number for it,
     -- NaviStats +0x24, is compat's): the family of the chips given up for it (0x08020008's table) and its turns
     -- (0x080180A8's: 3 every one), its chip (which OK puts in the hand for it, its use the soul's change:
-    -- ./souls/change), and its navi's image at the change (./souls/image, a `SoulImage`).
+    -- ./souls/change), and its navi's image at the change (./souls/image, a `SoulImage`). And what it wears, if
+    -- anything (0x08018068 by the soul: FireSoul's flames and NumberSoul's overlay), for what shows that beside the
+    -- form's own `put_on`: a GigaCan's afterimages (lib/cannon).
     extends = {
         chip = {
             sp = "u16[11]",
@@ -132,24 +143,32 @@ local rules: Rules = {
             },
             chip = "chip",
             image = "record:soul-image",
-            hand = "record:soul-hand",
+            wears = "sprite",
+            custom = "record:soul-custom",
         },
     },
     -- Its own actions, which reach its state: the souls' changes and the revert (./souls).
     actions = souls.actions,
-    -- The custom screen's buttons and windows: Double Soul's (./souls/custom).
-    buttons = souls.custom.buttons,
-    windows = souls.custom.windows,
-    -- The custom screen's: the hand's size (./souls/custom); the dark chips' offer as it deals and what is sent of them
-    -- (./dark_chips); Double Soul's offer as the screen opens and the soul given at OK (./souls/custom).
+    -- The custom screen's buttons and windows: Double Soul's, and each soul's own (./souls).
+    buttons = souls.buttons,
+    windows = souls.windows,
+    -- The custom screen's: the hand's size (./souls/custom); the dark chips' offer as it deals (./dark_chips), then
+    -- what the soul the navi is in does there (./souls/custom); what OK sends: the dark chips (./dark_chips), the
+    -- folder's chips (./sent_chips), the soul given and the soul's own part (./souls/custom); Double Soul's offer as
+    -- the screen opens.
     custom = {
         hand_size = souls.custom.hand_size,
         open = souls.custom.open,
-        deal = dark_chips.deal,
+        deal = function(side: number)
+            dark_chips.deal(side)
+            souls.custom.deal(side)
+        end,
         chip_picked = dark_chips.chip_picked,
         chip_taken_back = dark_chips.chip_taken_back,
         confirmed = function(side: number)
             dark_chips.confirmed(side)
+            sent_chips.confirmed(side)
+            souls.custom.built(side)
             souls.custom.confirmed(side)
         end,
     },
@@ -165,8 +184,10 @@ local rules: Rules = {
         round_start = function(side: number)
             soul_turns.round_start(battle.navi(side).form)
         end,
-        -- As each hand is installed, its dark chips' costs (./dark_chips).
+        -- As each hand is installed: its folder chips listed (./sent_chips), its dark chips' costs (./dark_chips), and
+        -- what the soul the navi is in does to it (./souls/custom).
         custom_result = function(side: number)
+            sent_chips.installed(side)
             dark_chips.custom_result(side)
             souls.custom.installed(side)
         end,

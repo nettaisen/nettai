@@ -99,4 +99,7 @@ return {
     chatbox_end_clears_tiles = false,
     -- The interpreter goes on after a character, as EXE6's: its delay counts down on its own tick.
     chatbox_character_ends_tick = false,
+    -- The chip window draws the damage of a chip whose flags have `damage_shown_variable` as it draws any other, as
+    -- EXE6's (0x080243B8: either flag shows the number; the "???" of 0x080243C0 is its chips' trait).
+    variable_damage_shows = "damage",
 }

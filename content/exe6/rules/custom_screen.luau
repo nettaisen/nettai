@@ -95,4 +95,7 @@ return {
     chatbox_end_clears_tiles = false,
     -- The interpreter goes on after a character (`chatbox_interpreteAndDrawDialogChar`): its delay counts down on its own tick.
     chatbox_character_ends_tick = false,
+    -- The chip window draws the damage of a chip whose flags have `damage_shown_variable` as it draws any other
+    -- (`sub_80284E2`: either flag shows the number; Muramasa's "???" is its chip's trait).
+    variable_damage_shows = "damage",
 }

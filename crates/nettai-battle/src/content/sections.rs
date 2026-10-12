@@ -193,6 +193,7 @@ struct CustomScreenSection {
     states_in_choosing: bool,
     chatbox_end_clears_tiles: bool,
     chatbox_character_ends_tick: bool,
+    variable_damage_shows: super::custom::VariableDamageShows,
 }
 
 #[derive(Deserialize)]
@@ -783,6 +784,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     states_in_choosing: s.states_in_choosing,
                     chatbox_end_clears_tiles: s.chatbox_end_clears_tiles,
                     chatbox_character_ends_tick: s.chatbox_character_ends_tick,
+                    variable_damage_shows: s.variable_damage_shows,
                     left_scan_top: s.left_scan_top,
                     left_scan_bottom: s.left_scan_bottom,
                     right_scan_top: s.right_scan_top,

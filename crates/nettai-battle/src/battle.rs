@@ -430,8 +430,13 @@ pub struct Battle {
     pub fight: FightMachine,
     pub gauge: CustomGauge,
     pub banner: Banner,
+    /// The other player's telop, where the game lays it on a block of its
+    /// own (the rules' `effects.telops`: EXE4's second block, 0x02037CF0).
+    pub remote_telop: Banner,
     /// The chip each side last used, while the other player's console
-    /// names it (presentation only; left out of the digest).
+    /// names it (what it says is presentation; how long it shows is in the
+    /// digest: where telops run apart, the other player's shares its block
+    /// with that player's telop, whose controller waits on the block).
     pub used_chips: [Option<crate::hud::UsedChip>; 2],
     /// What each side's console shows of its own navi's chips
     /// (presentation only; left out of the digest).
@@ -756,6 +761,7 @@ impl Battle {
             fight: FightMachine::default(),
             gauge: CustomGauge::new(),
             banner: Banner::default(),
+            remote_telop: Banner::default(),
             used_chips: [None; 2],
             chip_hud: Default::default(),
             hud_hidden: Default::default(),
@@ -888,6 +894,17 @@ impl Battle {
             Some(id) => self.start_banner(id),
             None => self.banner.start_as(None, false, self.content.rules().effects.banner),
         }
+    }
+
+    /// What the flow sees of the banner (`sub_801E754`). Where telops run
+    /// apart from the banners, the local player's telop on the banner block
+    /// is none of the flow's (EXE4's 0x08016148 reads the banners' task
+    /// alone).
+    pub(crate) fn banner_status(&self) -> BannerStatus {
+        if self.game_rules().effects.telops == crate::content::Telops::Apart && self.banner.telop.is_some() {
+            return BannerStatus::Done;
+        }
+        self.banner.status()
     }
 
     pub fn is_dimmed(&self) -> bool {
@@ -1354,7 +1371,7 @@ impl Battle {
                 if self.round.init == 0 {
                     self.start_banner(self.roles().banner(BannerRole::RoundStart));
                     self.round.init = 4;
-                } else if self.banner.status() == BannerStatus::Done {
+                } else if self.banner_status() == BannerStatus::Done {
                     self.round.sub = 8;
                     self.round.init = 0;
                 }
@@ -1497,7 +1514,7 @@ impl Battle {
             self.start_banner(self.roles().banner(BannerRole::Draw));
         }
         self.fight.timer = self.fight.timer.wrapping_sub(1);
-        if self.banner.status() != BannerStatus::Done {
+        if self.banner_status() != BannerStatus::Done {
             return;
         }
         if self.setup.settings.effects & effects::SET != 0 {
@@ -1743,7 +1760,7 @@ impl Battle {
                 self.start_banner(self.roles().banner(BannerRole::TurnStart));
             }
         }
-        if self.banner.status() == BannerStatus::Done {
+        if self.banner_status() == BannerStatus::Done {
             self.fight.state = fight::FIGHTING;
             self.fight.sub = 0;
             self.fight.init = 0;
@@ -2046,7 +2063,7 @@ impl Battle {
             }
         }
         self.fight.timer -= 1;
-        if self.banner.status() == BannerStatus::Done && self.fight.timer <= 0 {
+        if self.banner_status() == BannerStatus::Done && self.fight.timer <= 0 {
             self.fight.result = if self.fight.state == fight::WIN { 1 } else { 2 };
         }
     }
@@ -2205,10 +2222,15 @@ impl Battle {
     /// `sub_801EB18(chip, damage, bonus)` on the other player's console:
     /// `side` used `chip`, whose name (with the attack's damage word and
     /// bonus, for a chip whose damage shows) that console shows for the
-    /// rules' `effects.used_chip_ticks`.
+    /// rules' `effects.used_chip_ticks`. Where telops run apart (EXE4's
+    /// 0x080164B4, the second block), the name takes the place of the
+    /// side's telop there.
     pub(crate) fn show_used_chip(&mut self, side: u8, chip: ChipHandle, damage: u16, bonus: u16) {
         let shows_damage = self.content.chip(chip).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0;
         let (damage, bonus) = if shows_damage { (damage, bonus) } else { (0, 0) };
+        if self.game_rules().effects.telops == crate::content::Telops::Apart && self.is_remote(side & 1) {
+            self.remote_telop = Banner::default();
+        }
         self.used_chips[side as usize & 1] = Some(crate::hud::UsedChip {
             chip,
             damage: damage & 0x7FF,
@@ -2247,6 +2269,8 @@ impl Battle {
                 }
             }
         }
+        // (The other player's telop, on the block their names show on.)
+        self.remote_telop.tick();
         // sub_801CA0C: so does the message.
         if let Some(m) = &mut self.message {
             m.ticks -= 1;

@@ -421,6 +421,19 @@
 # (0x080E7CE0; their height's fraction the spawner's registers).
 "colorpt/controller" = { pool = "effect", index = 0x50, scratch_position = true }
 "colorpt/point" = { pool = "effect", index = 0x51, scratch_z_fraction = true }
+# HolyDrem's controller (0x080E8418; its position the dimming handler's registers), its stand-in (0x080DD798) and its
+# shot (0x080DD9EC).
+"holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
+"holydrem/stand-in" = { pool = "attack", index = 0x82 }
+"holydrem/shot" = { pool = "attack", index = 0x83 }
+# RedSun's controller (0x080E8534; its position the dimming handler's registers), its sun (0x080DDB34) and its meteors
+# (0x080DDDEE); BlueMoon's controller (0x080E865C), its moon (0x080DDFEC) and its ray (0x080DE160).
+"redsun/controller" = { pool = "effect", index = 0x5A, scratch_position = true }
+"redsun/sun" = { pool = "attack", index = 0x84 }
+"redsun/meteor" = { pool = "attack", index = 0x85 }
+"bluemoon/controller" = { pool = "effect", index = 0x5B, scratch_position = true }
+"bluemoon/moon" = { pool = "attack", index = 0x86 }
+"bluemoon/ray" = { pool = "attack", index = 0x87 }
 # TimeBomb's controller (0x080E4C3C; its position the dimming handler's registers) and its bomb (0x080D6BF8).
 "timebomb/controller" = { pool = "effect", index = 0x27, scratch_position = true }
 "timebomb/countdown" = { pool = "attack", index = 0x4B }
@@ -494,3 +507,11 @@
 "pdriver/controller" = { pool = "effect", index = 0x6F, scratch_position = true }
 "pdriver/pile" = { pool = "attack", index = 0x99 }
 "pdriver/beam" = { pool = "attack", index = 0x9A }
+# DarkNeo: its controller (0x080EA668; its position the dimming handler's registers, then its user's), its Bass
+# (0x080CB320), his ghosts (0x080E6F94, spawned at the spawner's registers), his user's image (0x080E1028) and its
+# waves (0x080E128C).
+"darkneo/controller" = { pool = "effect", index = 0x78, scratch_position = true }
+"darkneo/navi" = { pool = "actor", index = 0x51 }
+"darkneo/ghost" = { pool = "effect", index = 0x47, scratch_position = true }
+"darkneo/image" = { pool = "attack", index = 0xA1 }
+"darkneo/wave" = { pool = "attack", index = 0xA2 }

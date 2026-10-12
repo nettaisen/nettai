@@ -36,9 +36,11 @@ end
 
 local form: FormDef = {
     soul = { family = "wood", turns = 3 },
-    hand = soul.hand(function(side: number)
-        fold(side, false)
-    end),
+    custom = soul.custom {
+        built = function(side: number)
+            fold(side, false)
+        end,
+    },
     chip = chip,
     change = chip.action,
     revert = soul.revert,

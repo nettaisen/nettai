@@ -608,7 +608,10 @@ panel is said in the audits, not counted.
   counter;
 - banners with their squash and stretch; a telop (the chip's name, its
   damage and bonus, "x2"; "????" for a trap's, to the opponent) on its
-  user's half of the screen (`Battle::telop_for`); the chip the other
+  user's half of the screen (`Battle::telops_for`: the banner block's,
+  and where a game's telops run apart from its banners the other
+  player's on its own block, each with its block's squash; a banner may
+  show beside that one); the chip the other
   player just used, named for a second (`Battle::used_chip_for`). Where
   the game loads the banners' and the telops' glyphs into sprite tiles
   they share, and one palette (the pack's `layout.telop.tiles`: EXE4's),
@@ -871,8 +874,9 @@ the ones the state digest leaves out).
   frozen, the counter-able blink) every tick.
 - `hud::Banner::id`, the banner showing, and `Banner::telop`, what a telop
   says; `Object::telop_chip`, what a dimming's controller will name
-  (`Battle::telop_for` is the viewer's side of it: a trap's name is hidden
-  from the opponent).
+  (`Battle::telops_for` is the viewer's side of it: a trap's name is hidden
+  from the opponent). That a block shows a telop is simulation state where
+  telops run apart from the banners (the rules' `effects.telops`).
 - `Battle::used_chips`, `Battle::chip_hud` (whether a console shows its
   navi's icons and chip window), `Battle::message`, `Battle::warnings`,
   `Battle::hp_numbers` (each console's HP numbers by place: what asked for

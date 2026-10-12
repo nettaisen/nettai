@@ -552,7 +552,11 @@ impl Screen {
 
     /// Where a direction key takes the cursor from the slot it is on: its
     /// neighbor (the neighbors model, fixed up as the screen opened; a
-    /// button's own), else the first slot of its list that is there.
+    /// button's own), else the first slot of its list that is there. (A
+    /// button two cells wide is left by its ends: LEFT from its right cell
+    /// reads its left cell's list, RIGHT from its left cell its right
+    /// cell's. EXE4's SHUFFLE: LEFT from either cell is slot 8's,
+    /// 0x0802044E, RIGHT goes on to OK, 0x0802041C.)
     fn target(&self, key: ScreenKey, layout: &CustomScreenLayout) -> Option<u8> {
         let here = &self.slots[self.cursor as usize];
         let own = match key {
@@ -561,18 +565,22 @@ impl Screen {
             ScreenKey::Right => here.right,
             _ => None,
         };
-        match &layout.slots[self.cursor as usize].moves {
-            SlotMoves::Neighbors { .. } => own,
-            SlotMoves::Candidates { up, down, left, right, .. } => own.or_else(|| {
-                let list = match key {
-                    ScreenKey::Up => up,
-                    ScreenKey::Down => down,
-                    ScreenKey::Left => left,
-                    _ => right,
-                };
-                list.iter().copied().find(|&s| !self.slots[s as usize].kind.is_absent())
-            }),
+        if own.is_some() || matches!(layout.slots[self.cursor as usize].moves, SlotMoves::Neighbors { .. }) {
+            return own;
         }
+        let end = match (here.kind, key) {
+            (SlotKind::Button { cell: ButtonCell::Right, .. }, ScreenKey::Left) => self.cursor - 1,
+            (SlotKind::Button { cell: ButtonCell::Left, .. }, ScreenKey::Right) => self.cursor + 1,
+            _ => self.cursor,
+        };
+        let SlotMoves::Candidates { up, down, left, right, .. } = &layout.slots[end as usize].moves else { return None };
+        let list = match key {
+            ScreenKey::Up => up,
+            ScreenKey::Down => down,
+            ScreenKey::Left => left,
+            _ => right,
+        };
+        list.iter().copied().find(|&s| !self.slots[s as usize].kind.is_absent())
     }
 
     /// `sub_8027F42`: point neighbors that are absent at the next slot
@@ -731,7 +739,7 @@ impl Screen {
                 if counts_first {
                     self.count_choosing_frame();
                 }
-                let request = self.choose(joy, view, folder, extras);
+                let request = self.choose(joy, view, folder, console, extras);
                 // (OK takes the Regular chip out of the folder before the
                 // frame is drawn: `sub_80293F8`.)
                 let regular_taken = request == Some(Request::Confirm)
@@ -1056,7 +1064,14 @@ impl Screen {
     /// the directions by their auto-repeat, then A, B, START, SELECT, R and
     /// L pressed; EXE4's: each place's own, 0x08020350, 0x08020620,
     /// 0x08020728).
-    fn choose(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
+    fn choose(
+        &mut self,
+        joy: &Joypad,
+        view: &PlayerView,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        extras: &mut dyn super::Extras,
+    ) -> Option<Request> {
         // The side's rules first (EXE6's UP opening the Cross window, which
         // the original asks before the cursor's UP).
         if (joy.repeat | joy.pressed) != 0 && extras.keys(self, folder, joy) {
@@ -1080,7 +1095,7 @@ impl Screen {
                     self.show_chip_window(folder, view);
                 }
             }
-            ScreenKey::A => return self.press_a(view, folder, extras),
+            ScreenKey::A => return self.press_a(view, folder, console, extras),
             ScreenKey::B => self.deselect(view, folder, extras),
             ScreenKey::Start => {
                 if self.cursor != OK_SLOT {
@@ -1123,7 +1138,7 @@ impl Screen {
     }
 
     /// A on the slot under the cursor (`off_8028C9C`).
-    fn press_a(&mut self, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
+    fn press_a(&mut self, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
         let cursor = self.cursor;
         let here = self.slots[cursor as usize];
         match here.kind {
@@ -1161,8 +1176,10 @@ impl Screen {
             }
             // A button of the rules (EXE6's: the scrap, `sub_8028E04`; the
             // re-deal, `sub_8028DD6`): its `pressed`, which may start the
-            // shared machinery (`custom.sacrifice`, `custom.redeal`).
-            SlotKind::Button { button, .. } => extras.button_pressed(self, folder, button),
+            // shared machinery (`custom.sacrifice`, `custom.redeal`), on
+            // the side's console (EXE4's SHUFFLE makes its deal with the
+            // press, 0x0802037E: its RNG1's draws).
+            SlotKind::Button { button, .. } => extras.button_pressed(self, folder, console, button),
             SlotKind::Empty | SlotKind::Hidden => {}
         }
         None
@@ -1360,10 +1377,14 @@ impl Screen {
         self.look.column[0] = first;
     }
 
-    /// `sub_8028250`: the slots' tiles show the chips dealt now.
+    /// `sub_8028250`: the slots' tiles show the chips dealt now: a chip
+    /// that counts as the invalid chip as that chip, or, where such a chip
+    /// is never picked, as it is (EXE4's 0x0801F6D6 reads the slot's own
+    /// entry, 0x0801EF4C: the chip's icon and code, selectable to look at).
     fn draw_slots(&mut self, folder: &BattleFolder, view: &PlayerView) {
+        let as_it_is = view.library.layout().invalid_picks == InvalidPicks::Refused;
         for s in 0..SLOTS as u8 {
-            self.look.slot_chips[s as usize] = self.chip_in(s, folder).map(|c| checked(c, view));
+            self.look.slot_chips[s as usize] = self.chip_in(s, folder).map(|c| if as_it_is { c } else { checked(c, view) });
             self.look.slot_picked[s as usize] = self.slots[s as usize].state == SlotState::Selected;
         }
     }
@@ -1372,9 +1393,11 @@ impl Screen {
     pub(crate) fn show_chip_window(&mut self, folder: &BattleFolder, view: &PlayerView) {
         let chip = self.chip_in(self.cursor, folder).map(|c| checked(c, view));
         let here = self.slots[self.cursor as usize];
+        let uses = self.cursor_button_slot().map_or(0, |s| self.slots[s as usize].uses_left);
         let w = &mut self.look.chip_window;
         w.slot = self.cursor;
         w.picks = self.selected;
+        w.uses = uses;
         if chip.is_some() {
             w.last_chip = chip;
         }

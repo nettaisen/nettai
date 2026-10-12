@@ -20,7 +20,7 @@ use crate::vfont::Role;
 use nettai_assets::{Bundle, ButtonPictures, ButtonSets, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
-use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, PlayerFact, WindowView};
+use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, PlayerFact, VariableDamageShows, WindowView};
 use nettai_battle::rules::Flight;
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, Phase, Screen, Side, SlotKind, SlotState};
@@ -970,7 +970,7 @@ impl Window {
                 let p = if cw.picks == 0 { &a.pictures.ok } else { &a.pictures.ok_picked };
                 blank_details(self, p);
             }
-            SlotKind::Button { button, cell } => {
+            SlotKind::Button { button, .. } => {
                 if let Some(chip) = v.screen.slots[slot as usize].face {
                     // EXE5's capsules (0x08024422): the chip's name and
                     // picture alone; the frame's colors stay the last
@@ -999,10 +999,9 @@ impl Window {
                     }
                     if look.pack.uses_digit {
                         // 0x080245C8: the uses left (the button's first
-                        // cell's, +4), over the damage's last cell.
-                        let first = if cell == ButtonCell::Right { slot - 1 } else { slot };
-                        let uses = v.screen.slots[first as usize].uses_left as usize;
-                        self.tiles.put_part(self.layout.digits + 4, &a.digits, 2 * uses.min(9), 2);
+                        // cell's, +4) as the window was drawn, over the
+                        // damage's last cell.
+                        self.tiles.put_part(self.layout.digits + 4, &a.digits, 2 * (cw.uses as usize).min(9), 2);
                     }
                 }
             }
@@ -1021,8 +1020,10 @@ impl Window {
     /// `sub_80284E2`: a chip's name (8 cells of the 8x16 font in the
     /// window's colors), its picture and palette, the window's colors by
     /// the chip's class, its code, its element's icon (and colors), and
-    /// its damage if it shows ("???" for a chip that hides it as an A:
-    /// `ChipTraits::HIDES_DAMAGE_AS_A`), right-aligned in three cells.
+    /// its damage if it shows, right-aligned in three cells: "???" for a
+    /// chip that hides it as an A (`ChipTraits::HIDES_DAMAGE_AS_A`), and
+    /// for a chip of `damage_shown_variable` where the game's rule says so
+    /// (`custom_screen.variable_damage_shows`: EXE4's 0x0801FCE2).
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let data = v.b.content.chip(c.id);
@@ -1039,9 +1040,12 @@ impl Window {
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
         let digits: Vec<usize> = if !shows {
             Vec::new()
-        } else if data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0 {
-            // (The original compares the whole chip word, number and code,
-            // with Muramasa's number: only an A matches.)
+        } else if (data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0)
+            || (data.flags.0 & ChipFlags::DAMAGE_SHOWN_VARIABLE != 0
+                && v.b.content.rules().custom_screen.variable_damage_shows == VariableDamageShows::QuestionMarks)
+        {
+            // (The trait: the original compares the whole chip word,
+            // number and code, with Muramasa's number: only an A matches.)
             vec![DIGIT_UNKNOWN; 3]
         } else {
             let damage = nettai_battle::hand::chip_damage(v.b, Some(c.id), v.side);
@@ -1653,8 +1657,8 @@ fn held_part<'a>(v: &View, packs: &crate::packs::Packs<'a>, problems: &mut Probl
 
 fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
     SpritePart {
-        x: 2,
-        y: 100,
+        x: (a.layout.regular.0 & 0x1FF) as u16,
+        y: (a.layout.regular.1 & 0xFF) as u8,
         width: 32,
         height: 32,
         tiles: &a.regular,
@@ -1759,6 +1763,14 @@ pub fn draw<'a>(
     // one before).
     let drawn = screen.look.drawn;
     let mut queue: Vec<SpritePart<'a>> = Vec::new();
+    // Where the screen's states are the choosing's, its tick queues the
+    // Regular chip's frame before the state's own sprites (EXE4's
+    // 0x0801E3FC, then 0x0801E41E: the cursor is over the frame); else
+    // after the cursor (EXE6's `sub_8026CCC`).
+    let regular_first = b.content.rules().custom_screen.states_in_choosing;
+    if drawn.regular && regular_first {
+        queue.push(regular_part(&v, a));
+    }
     // The offered form's flying icon (EXE5's soul choice's: its state 9's
     // routines draw it before the screen's others).
     if window_view(b, screen) == Some(WindowView::OfferFlight)
@@ -1783,7 +1795,7 @@ pub fn draw<'a>(
         }
         queue.push(part);
     }
-    if drawn.regular {
+    if drawn.regular && !regular_first {
         queue.push(regular_part(&v, a));
     }
     if drawn.held {
