@@ -658,6 +658,10 @@ impl UserData for Object {
                 None => Ok(LuaValue::Nil),
             }
         });
+        methods.add_method("ask_form_change", |_, this, form: LuaValue| {
+            let form = nettai_content_api::FormHandle(bound(|b| def_arg(b, &form, Registry::Form, "ask_form_change"))?);
+            with(|api, _| api.ask_form_change(this.0, form).map_err(api_error))
+        });
         methods.add_method("form_change_terms", |_, this, ()| with(|api, _| Ok(api.form_change_terms(this.0))));
         methods.add_method("stop_moving", |_, this, ()| with(|api, _| api.stop_moving(this.0).map_err(api_error)));
         methods.add_method("pin_overlay", |_, this, ()| with(|api, _| Ok(api.pin_overlay(this.0))));
