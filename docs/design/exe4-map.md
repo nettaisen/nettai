@@ -1022,6 +1022,18 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   stepping on) through the form's `put_on`, so FireSoul's and NumberSoul's (item 74) come with their overlays. The
   lab's chips/0x085-invis and chips/0x086-popup (hit, miss, adjacent, side1) replay every frame; the hit recordings'
   fight frames, the glow and the hole among them, are pixel-exact.
+- **BugChain** (the dimming chips' variant 0x1F, `chips/bugchain`, group B): EXE4's own. Its controller (effect
+  #0x3F, 0x080E65E0) puts a mark over each side's navi (effect #0x40, 0x080E6718: sheet 0c-32 for 51 ticks, sound
+  0x15D eight ticks in) and 61 ticks on gives the user's bugs to the other side (0x080E668E), each stat where the
+  user's is the worse: the move bug (+0x0D, but the confusion at the start, 0xFF), the HP and custom drains (+0x0E,
+  +0x0F: where the other side has none or the user's is the faster), the panel trail (+0x1B, by its rank,
+  0x080E670C: poison 3, broken 2, cracked 1, a patch card's metal or holy none), the buster's blanks (+0x08, the
+  more) and the charged shot where the user's is the taunt (+0x0A = 0x21); NaviStats +0x1A, which nothing writes, is
+  copied too. (In a battle of type under 0x46 the effect ends at once.) The lab's chips/0x0d3-bugchain (hit, miss,
+  adjacent, side1; bugs: the blanks, the HP drain, a cracked trail and the move bug 0x10 given to side 1; taunt:
+  after DrkCanon's cost, side 1 given the taunt) replay every frame; the fight frames, the marks among them, are
+  pixel-exact but for the custom screens' known shift. Sounds the same, but taunt's frame 932: the engine's one sound
+  more on the dark chip's custom screen, as dark/drkcanon and dark/drkcanon-taunt have.
 - **BugCharg** (the dimming chips' variant 0x4A, Red Sun's, a dark MegaMan's, `chips/bugcharg`, group B): EXE5's
   controller and stand-in, now @exelib/bugcharg, in EXE4's look: the controller (effect #0x7C, 0x080EAB58, the same
   code) sends out EXE4's stand-in (actor #0x59, 0x080CC72C): drawn as the user in what its form wears (0x0800B812),

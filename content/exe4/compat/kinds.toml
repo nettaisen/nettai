@@ -456,3 +456,7 @@
 "bugcharg/actor" = { pool = "actor", index = 0x59 }
 # ShotStar's controller (0x080E5C90; its position the dimming handler's registers); its meteors are Meteors'.
 "shotstar/controller" = { pool = "effect", index = 0x34, scratch_position = true }
+# BugChain's controller (0x080E65E0; its position the dimming handler's registers) and the mark over each navi
+# (0x080E6718).
+"bugchain/controller" = { pool = "effect", index = 0x3F, scratch_position = true }
+"bugchain/mark" = { pool = "effect", index = 0x40 }
