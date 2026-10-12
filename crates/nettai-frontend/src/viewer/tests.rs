@@ -131,6 +131,32 @@ fn a_seek_lands_where_playing_straight_gets() {
             kept.dedup();
             assert_eq!(v.keyframes.iter().map(|k| k.tick).collect::<Vec<_>>(), kept, "{game}");
             assert_eq!((v.indexed(), v.index(1)), (length, true), "{game}");
+            // Frames back through more than a whole stretch between two kept
+            // states: each is straight playback's. The seek there and the
+            // frame back into each earlier stretch play the stretch and
+            // leave a state every NEAR_EVERYth tick of it; every other
+            // frame back goes on from the nearest of those, fewer than
+            // NEAR_EVERY ticks before. Those states are of one stretch at
+            // a time.
+            let from = length / KEYFRAME_EVERY * KEYFRAME_EVERY - 2;
+            let frames = KEYFRAME_EVERY + 40;
+            v.seek(from);
+            let (mut long, mut all) = (0, 0);
+            for back in 1..=frames {
+                let before = v.sought();
+                v.step_back();
+                let played = (v.sought() - before) as u32;
+                let to = from - back;
+                same(&mut v, &s, to, "a frame back");
+                assert!(played < KEYFRAME_EVERY, "{game}: a frame back to tick {to} played {played} ticks");
+                long += (played >= NEAR_EVERY) as u32;
+                all += played;
+                let one_stretch = v.near.iter().all(|n| n.tick / KEYFRAME_EVERY == to / KEYFRAME_EVERY && n.tick % NEAR_EVERY == 0);
+                assert!(one_stretch && v.near.len() as u32 <= KEYFRAME_EVERY / NEAR_EVERY, "{game}: at tick {to}");
+            }
+            // (Two stretches were stepped back into: at most two long ones.)
+            assert!(long <= 2 && all < 2 * KEYFRAME_EVERY + frames * NEAR_EVERY, "{game}: {long} long frames back, {all} ticks played for {frames}");
+            follow(&mut v, &s, 20, "frames on after many frames back");
         }
     }
 }
@@ -410,4 +436,30 @@ fn a_recorded_start_asks_a_viewer_for_nothing() {
     v.seek(asked[0] - 2);
     let ran = v.advance(Duration::from_secs_f64(10.2 / FRAME_RATE));
     assert_eq!((ran, v.position(), v.paused(), v.session.pause_requests), (10, asked[0] + 8, false, [false; 2]));
+}
+
+/// A replay is made ready as any match is: its set (`replay::set_of`) is
+/// preloaded, and the viewer the preload gives is the one opened outright,
+/// at its start and wherever it is sought to.
+#[test]
+fn a_preloaded_viewer_is_the_viewer() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let set = crate::replay::set_of(&content, &replay).unwrap();
+    let renderer = graphics(&content, 0x001F).renderer(TextMode::Original, None);
+    let mut preload = crate::preload::Preload::with(renderer, None, None, &set, 1, (240, 160));
+    while preload.step() {}
+    assert_eq!(preload.stopped(), None);
+    let mut v = preload.viewer(&replay, Some(1)).unwrap();
+    let s = straight(&content, &replay, 1);
+    assert_eq!((v.view(), v.length(), v.has_sound()), (1, ticks as u32, false));
+    same(&mut v, &s, 0, "a preloaded viewer");
+    v.seek(ticks as u32 / 2);
+    for tick in ticks as u32 / 2..ticks as u32 / 2 + 30 {
+        same(&mut v, &s, tick, "a preloaded viewer, sought");
+        assert!(v.step_forward());
+    }
+    // (A replay of another game has no set on this content.)
+    let five = nettai_match::testing::exe5_content();
+    assert!(matches!(crate::replay::set_of(&five, &replay), Err(Refused::OtherGame { .. })));
 }

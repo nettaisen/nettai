@@ -1,8 +1,8 @@
 # The command line (`nettai-tools`)
 
 `nettai-tool` is nettai's command line with no window, for the developer and the verification: a battle's chosen
-frames written to PNGs (a golden trace's, a match file's, a replay's), the content and trace audits, a match's setup
-said, and a replay checked. It is a host of nettai-frontend (docs/frontend.md §7) as nettai is; a battle is played in
+frames written to PNGs (a golden trace's, a match file's, a replay's), a replay written as video, the content and
+trace audits, a match's setup said, and a replay checked. It is a host of nettai-frontend (docs/frontend.md §7) as nettai is; a battle is played in
 a window by nettai (docs/app.md).
 
     cargo run -p nettai-tools -- <trace.jsonl> --headless 150,300,600 --out <dir>
@@ -11,6 +11,9 @@ a window by nettai (docs/app.md).
     cargo run -p nettai-tools -- --match match.toml --show-folders            # the setup, said
     cargo run -p nettai-tools -- --match match.toml --save-match played.toml  # keep the seed played
     cargo run -p nettai-tools -- --replay set.ntrp                            # does it reproduce?
+    cargo run -p nettai-tools -- --replay set.ntrp --nut set.nut              # the replay as video (NUT)
+    cargo run -p nettai-tools -- --replay set.ntrp --nut - --scale 2 | ffmpeg -f nut -i - out.mp4
+    cargo run -p nettai-tools -- --replay set.ntrp --mp4 round2.mp4 --round 2 --scale 4
     cargo run -p nettai-tools -- --match match.toml --audit-content           # what is missing?
     cargo run -p nettai-tools -- --audit <trace.jsonl>...                     # and in these traces?
 
@@ -24,8 +27,9 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
 
 - `--pack <dir>` names a content pack elsewhere and `--content <dir>` the battle content (default
   `$NETTAI_CONTENT`, else this repository's `content/`).
-- `--mute` turns the audits' sound off (headless rendering never plays any).
-- `--round N` starts a trace at round N (later rounds follow when a round's input runs out).
+- `--mute` turns the audits' sound off (headless rendering never plays any), and leaves a video without sound.
+- `--round N` starts a trace at round N (later rounds follow when a round's input runs out); of a replay's video
+  it is the round shown alone.
 - `--png-scale N` scales headless output (the text layer is drawn at that scale too).
 - `--text font|original` chooses how strings are drawn (default `font`: the names, the telop, the chatbox and
   the HUD's lines in a vector font over the scaled frame; `original` in the game's own fonts into the frame, as
@@ -38,7 +42,8 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
   to play again; `--record FILE` writes the set played headless as a replay (docs/frontend.md §8).
 - `--replay FILE` plays a replay to its end and checks it against the digests it kept: what happened, and
   whether it reproduces (it exits 1 where it doesn't); with `--headless F`, its ticks F are rendered, from the
-  console `--side left|right` (default: the side that recorded it).
+  console `--side left|right` (default: the side that recorded it); with `--nut OUT` or `--mp4 OUT` it is written
+  as video ("A replay as video", below).
 
 A trace is rendered or audited: it is no longer watched in a window.
 
@@ -62,6 +67,39 @@ tick compared with what the original recorded; the first difference is printed.
   `--keys 160-161:up,215:a,260:start,266:a` opens the first screen's Cross window (a direction acts on a hold's
   second tick), chooses its first Cross and presses OK. The buttons are `a b l r up down left right start
   select`; the right navi is the stand-in, standing still and picking its first chip.
+
+## A replay as video
+
+`--replay FILE --nut OUT` writes the replay as a NUT stream (FFmpeg's container: raw RGB frames and PCM sound in
+one stream, on exact time bases; docs/frontend.md §8, "Video") to the file `OUT`, or to standard output for `-`:
+
+    nettai-tool --replay set.ntrp --nut - | ffmpeg -f nut -i - out.mp4
+    nettai-tool --replay set.ntrp --nut - --scale 4 | ffmpeg -f nut -i - -c:v libx264 -crf 16 -pix_fmt yuv420p -c:a aac -ar 48000 out.mp4
+
+It holds one frame a tick, the picture a viewer playing the replay straight is shown (the text included) and the
+sound the tick made, so `ffplay`, `mpv` and `ffmpeg` take it as it is. Everything the tool says goes to standard
+error (a line every tenth of the way, then what it wrote), so the pipe carries the stream alone. The stream is raw:
+115 KB a frame at the frame's own size, 7 MB a second, and sixteen times that at `--scale 4`; a long replay at a
+large size is for the pipe, not for a file.
+
+`--replay FILE --mp4 OUT` writes an MP4 instead, by running `ffmpeg` (which must be installed) on that stream as
+nettai's Replays screen does (nettai-video's `mp4`: H.264 at CRF 16 in 4:2:0, AAC at 48 kHz, the pixels not
+scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whether ffmpeg wasn't found, ffmpeg failed
+(with what it said) or the file couldn't be written.
+
+- `--scale N` makes the picture N times the frame's 240x160 (1 to 16; default 1). The scaling is the nearest
+  pixel's, and the font mode's text is drawn at that size, as `--png-scale` does for a PNG. For an MP4, an even N
+  keeps every pixel's edge clean in 4:2:0; an odd one leaves a fringe of mixed color at each (docs/frontend.md §8).
+- `--side left|right` is the console shown (default: the side that recorded the replay).
+- `--round N` shows that round alone, and `--ticks A-B` the frames A to B alone, numbered as `--headless` numbers
+  them (the pictures after the set's ticks A to B: `--ticks 600-719` is the 120 frames `--headless 600-719` writes
+  as PNGs, and is byte for byte those pictures). A part starts as playing straight to it leaves the battle, its
+  sound in mid-note included.
+- `--mute` leaves the sound out (a stream of the picture alone); `--text` and `--lang` are the picture's, as for
+  headless frames.
+
+The same replay and options give the same bytes. It exits 1 if the replay doesn't reproduce, as `--replay FILE`
+alone does.
 
 ## The audits
 
