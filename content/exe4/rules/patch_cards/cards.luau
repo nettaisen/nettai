@@ -70,6 +70,12 @@ function cards.all_supports(): PatchCardEffect
     return effect { kind = "all_supports" }
 end
 
+-- The soul the navi starts the battle in (+0x24, the form's number: his form from his init on, 0x0801079C, whose
+-- turns are then never counted, ../souls/turns).
+function cards.soul(form: FormDef): PatchCardEffect
+    return effect { kind = "soul", form = form }
+end
+
 -- MegaMan's color (+0x27: the rules' stat `color`, which his palette reads).
 function cards.color(n: number): PatchCardEffect
     return effect { kind = "color", amount = n }
@@ -138,6 +144,9 @@ function cards.apply(stats: Navi, e: PatchCardEffect, work: PatchCardWork, count
         stats.all_guard = true
     elseif k == "all_supports" then
         stats.rush, stats.beat, stats.tango, stats.support_bug = true, true, true, false
+    elseif k == "soul" then
+        local form = e.form :: FormDef
+        stats.form, stats.starting_form = form, form
     elseif k == "color" then
         stats.color = n
     elseif k == "panel_trail" then
