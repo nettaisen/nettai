@@ -28,8 +28,14 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker: a player asks
   it for a room, it picks the room's code, and the other player joins by that code) or directly (a host's UDP port,
   joined by its address); a dropped connection is made again and the match goes on where it was. What goes wrong is
-  a kind a host can say to its player in its own words, with the detail apart, for a log (§4.9). A handshake checks the protocol, the engine and the content,
-  swaps what each player brings and agrees the seed (§4.7, §4.8).
+  a kind a host can say to its player in its own words, with the detail apart, for a log (§4.8, §4.9).
+- **Before the match**: a lobby checks the protocol, the engine, the game and the content; holds the match's
+  settings, which are both players' (the rounds, and whether builds are closed: either changes them, both see the
+  same, and both ready marks clear); says nothing of either player's build; then the handshake swaps what each
+  player brings and agrees the seed, each host loads the match, and the first tick runs once both have (§4.7).
+- **Each player's own**: the input delay (4 ticks unless they say, 0 to 10: getgud's present delay, §4.10), and
+  what they see of the connection: the ping, how unsteady it is, a quality of four levels, and a countdown while
+  it reconnects (§4.11).
 - **Snapshots**: `Battle` is plain data, `Clone`, `Send` and `Sync` (checked at compile time); a snapshot
   (`save_state` / `load_state`) is a boxed copy, `Send` as getgud requires, and a whole session on a battle world
   is `Send`, so it can run on a network thread. About 22 KB (8.6 KB inline plus the
@@ -97,8 +103,8 @@ both peers receive them like any input, and a peer that predicted "no events" ro
 Prediction repeats the buttons and never repeats events (`Game::predict` for `Battle`).
 
 The engine has no link of its own: the fight and the custom screens read a tick's buttons at once. The only
-delay is the netplay layer's present delay (`NetOptions::present_delay`, default 0: each player's own, changed
-during a match), and prediction. The original's link queue (4 ticks in the recordings) is the recordings' cable,
+delay is the netplay layer's present delay, which is the player's input delay (`NetOptions::input_delay`, 4 ticks
+unless they say: each player's own, changed during a match; §4.10), and prediction. The original's link queue (4 ticks in the recordings) is the recordings' cable,
 which their replay reproduces at its boundary (battle-flow.md §6.1).
 
 For live netplay and synthetic matches, `standin::StandInBattle` closes the link at once at the end of a round;
@@ -307,7 +313,7 @@ The inputs go between the peers on rennet (Tango's netplay transport, §4.6), ov
 | `World::recycle` | Not implemented: `Battle`'s `clone_from` is the derived one, which reuses no allocation, so pooling snapshots would save nothing |
 | `World::settled` | `Observer::confirmed(frame, state)`: each frame as it settles, with the settled state where getgud kept one |
 | `Session::world` | How the host reads the observer (the sound feed's actions, the simulator's counts) |
-| Present delay | `NetConfig::present_delay`, the input delay: a peer presents the frame that many ticks behind its newest local input, so that much of the lead needs no prediction. The frontend's is the player's own (`NetOptions::present_delay`, default 0, never sent to the other peer), changed during a match with `Session::set_present_delay` (`Peer::set_present_delay`, kept for the rounds after) |
+| Present delay | `NetConfig::present_delay`, the input delay: a peer presents the frame that many ticks behind its newest local input, so that much of the lead needs no prediction. The frontend's is the player's own setting (`NetOptions::input_delay`, 4 by default, 0 to 10, never sent to the other peer: §4.10), changed during a match with `Session::set_present_delay` (`Peer::set_present_delay`, kept for the rounds after) |
 | Settled state, `Advance::confirmed` | The confirmed state and rows, each with its tick, how it settled and its state where kept (§1.5): the digest checks, and the rows the simulator checks against what the players decided |
 | `Session::drain` | The end of the input (`max_frames` in the simulator): the last ticks settle without anything speculated past them |
 | Speculative tail, promote or roll back | The frames a peer speculates to present. A prefix whose predictions held is promoted without simulating it again; from the first wrong prediction, getgud loads the settled state and simulates the rest again. `last_misprediction_depth` is the number of frames it threw away |
@@ -500,50 +506,104 @@ predicted past the end before it noticed, are dropped (they come before their `R
 inputs, if they started it first, wait for this peer's next round. The protocol's `MatchEnd` tells the other peer
 that a player left (`Peer::leave`).
 
-### 4.7 The transport and the handshake
+### 4.7 The transport, the lobby and the handshake
 
-The transport is the host's: nettai-netplay and nettai-frontend have no socket and no handshake. The frontend's
+The transport is the host's: nettai-netplay and nettai-frontend have no socket of their own. The frontend's
 `NetPlayer` plays on a `netplay::Channel` the host implements (send a frame to the other player, take the next one
-that came, neither ever waiting; nothing is assumed of delivery; and, if it can tell, how long it has been down
-while it is being made again, `down_for`, §4.8), and the match is agreed before it (`lobby::Lobby` over the host's
-datagrams, below). nettai's transport is a WebRTC data channel, nettai-rtc's `Link` (§4.8), and nettai's
-`netplay` runs the handshake over it.
+that came, neither ever waiting; nothing is assumed of delivery; and, if it can tell, that it is down while it is
+being made again, for how long and with how long left, `reconnecting`, §4.8), and the match is agreed before it
+(`lobby::Lobby` over the host's datagrams, below). nettai's transport is a WebRTC data channel, nettai-rtc's `Link`
+(§4.8), and nettai's `netplay` runs the lobby over it.
 
-`netplay::Link` is all nettai's handshake needs of a transport: send a datagram to the other peer, and take the
+nettai's `netplay::Link` is all its lobby needs of a transport: send a datagram to the other peer, and take the
 next one that arrived, neither ever waiting; and this side's role, once it is known (directly at once; in a room
-when the signaling server lets the player in, so the handshake makes its lobby then). nettai-rtc's `Link` is one.
+when the signaling server lets the player in, so the lobby is made then). nettai-rtc's `Link` is one.
 
 Every datagram on the channel starts with a byte that says what it is (`lobby::Kind`): a protocol frame, a lobby
-message, a Hello, a Reveal, or a refusal. A frame needs that byte because a handshake message can come late or
-twice, into the match, and must not be read as a frame. The lobby's messages share the frames' unreliable channel:
-the lobby says its part every 100 ms until it is answered, and a Hello or a Reveal that comes twice is answered
-again, so a reliable channel of their own would add nothing.
+message, a Hello, a Reveal, a refusal, or a loading message. A frame needs that byte because a handshake message
+can come late or twice, into the match, and must not be read as a frame. The lobby's messages share the frames'
+unreliable channel: the lobby says its part every 100 ms until it is answered, and a Hello or a Reveal that comes
+twice is answered again, so a reliable channel of their own would add nothing.
 
-**The lobby and the handshake** (nettai-frontend's `lobby::Lobby`, without IO: the host feeds it the datagrams
-that arrive and sends what it hands back; nettai's `netplay::Agreeing` runs it over the link, polled each
-frame):
+**The lobby, the handshake and the loading** are nettai-frontend's `lobby::Lobby`, without IO: the host feeds it
+every datagram that arrives (`receive`), polls it each frame (`poll`), and sends what it hands back (`outgoing`).
+This is version 6 of the protocol (`protocol::VERSION`; a peer of another version is told from the first field of
+its lobby messages and refusals, and nothing after that field is read of it).
 
-1. **Lobby.** Each peer says its proposal, the match's settings (the game and the rounds, each round's stage and
-   background by name or left to the seed), and whether it is ready, when it changes and every 100 ms, with the
-   compatibility fields: the protocol's version (`protocol::VERSION`), the engine's (the crate version: peers must
-   run the same engine, since the digest covers the state's layout and the simulation must be the same code), the
-   content's hash (`Content::hash`) and the role. The lobby is symmetric: any change by either peer clears both
-   readies, and the settings are agreed when both are ready on the same. (The program proposes each player's match
-   file's settings, ready, and stops on settings of the other's that differ, saying what differs.)
-2. **Hello.** A peer that sees the settings agreed commits: its Hello carries the compatibility fields, the lobby
-   revisions it agrees to and the rounds' count, in the clear, and SHA-256 of the agreed settings' hash and the
-   bytes of the Reveal it will send. It reveals nothing before it has the other's Hello; a change in the lobby takes
-   the commitment back (and a Reveal already sent is spent: the next one has a fresh nonce).
-3. **Reveal.** A peer's half of the seed (a 64-bit nonce from the clock and the process) and its side (the player's
-   setup, in nettai-match's binary). Each peer checks the other's Reveal against its commitment, and stops on one
-   that doesn't match, saying so; then reads the other's side and checks it against the content as a match file's
-   side is. The seed comes from both nonces (SplitMix64), and the match is the agreed rounds, each part they leave
-   picked from the seed alike on both, with both sides (`netplay::netplay_setup`).
+1. **Lobby.** Each peer says its lobby state when it changes and every 100 ms:
+   - **The compatibility fields**: the protocol's version, the engine's (the crate version: peers must run the same
+     engine, since the digest covers the state's layout and the simulation must be the same code), the game (a
+     match is of one), the content's hash (`Content::hash`) and the role. A peer that can't play with the other
+     refuses at once (below).
+   - **The match's settings** (`lobby::Settings`): the game, the rounds (each round's stage and background by name
+     or left to the seed; one round is a single battle, three a best of three, and a set takes 1 to 99) and
+     `closed_builds`. They are **the match's, not a player's**. Either player changes them (`Lobby::propose`, or
+     `set_rounds` and `set_closed_builds`), the other peer adopts the change, so both lobbies show the same
+     (`Lobby::settings`), and both players' ready marks clear. It sits on the proposal model the lobby had: each
+     peer still says the settings it holds, and they are agreed when both are ready on the same. What is new is
+     how two peers' settings become the same without the players doing it. Every change carries a **stamp**, one
+     above every stamp its peer has seen; a peer that hears settings of a higher stamp than its own takes them (and
+     says them back at once, so the other sees them taken). Where both players changed them at once, the stamps
+     are the same and the settings differ: the host's stand and the joiner takes them, as a joiner coming into the
+     lobby takes the host's (both start at stamp 0). The peers agree only on settings of the same stamp.
+   - **Whether its player is ready** to play the settings as they stand, and **the player's name** (shown, never
+     taken for who they are; its control characters dropped, 16 characters at most).
+   - **A clock**, and the other's clock said back with how long it was held: the round trip (§4.11).
 
-A peer that can't play with the other (another protocol or engine, other content, the same role) sends a refusal
-with the reason three times and stops; the other stops on reading it, so both say why. There is no third message:
-the frames follow the Reveals, and a Hello or a Reveal that comes again, into the match, is answered with this
-peer's Reveal (its `Connection`, the player's channel, does).
+   **Nothing of a player's build is in it** (the user's instruction: "the lobby shouldn't show build name or which
+   game, since that's private information to the player"; "the build name should not really be visible across the
+   wire or in replays or anything"). Version 5's lobby said each build's name, its version and its navi; version 6
+   says none of them, and a test holds a peer's lobby messages to the same bytes whatever build its player brings.
+   A player who changes their build in the lobby says nothing by it: if they were ready they no longer are, which
+   is all the other sees, and the other's own ready mark stays. A build's name is sent in no message at all: what
+   the Reveal carries is the side, which is its facts and has no name.
+2. **Hello.** A peer that sees the settings agreed (both ready, on the same settings of the same stamp) commits:
+   its Hello carries the compatibility fields, the lobby revisions it agrees to and the rounds' count, in the
+   clear, and SHA-256 of the agreed settings' hash and the bytes of the Reveal it will send. The settings' hash
+   covers `closed_builds`, so both commit to it. A peer reveals nothing before it has the other's Hello; a change
+   in the lobby takes the commitment back (and a Reveal already sent is spent: the next one has a fresh nonce).
+3. **Reveal.** The lobby revisions it is of (as its Hello said them), a peer's half of the seed (a 64-bit nonce
+   from the clock and the process) and its side (the player's setup, in nettai-match's binary). A Reveal of other
+   revisions is one of an agreement that was taken back, come late: it is left. Each peer checks the other's
+   Reveal against its commitment, and stops on one that doesn't match; then reads the other's side and checks it
+   against the content as a match file's side is. The seed comes from both nonces (SplitMix64), and the match is
+   the agreed rounds, each part they leave picked from the seed alike on both, with both sides
+   (`netplay::netplay_setup`). From here each peer has both sides, as the shared simulation needs them:
+   `closed_builds` is not secrecy between the two programs, it is what each host shows its player
+   (`Agreement::closed_builds`: the player's own build only, where with open builds a host may show both). (The
+   commitment keeps a peer from choosing its side or its nonce after seeing the other's. It doesn't keep a peer
+   that has committed from taking the other's Reveal and then leaving: such a peer has seen a build it didn't
+   play, having first fixed its own.)
+4. **Loading.** The match is agreed (`Status::Loading`, with the `Agreement`: the settings, the seed, both sides,
+   the set and its match with every place stated, both names), and each host loads what it will draw and play of
+   it. Each peer says how far its host has got, when it changes and every 100 ms: the match's seed, a part of 255
+   and whether it is done (`Lobby::set_loading(fraction)`, `set_loaded()`), which the other host shows
+   (`their_loading()`, 0 to 1; `their_loaded()`). The match starts (`Status::Start`) once this peer has loaded and
+   has heard that the other has: by its loading message, or by a frame of the match, which a peer sends only once
+   it has started. So neither runs a tick before both have loaded, and a peer whose last loading message is lost
+   still starts, on the other's first frame. (The two start a moment apart, as they did when each started on its
+   own agreement; clock sync levels them, §4.3.) A host must go on polling its link and its lobby while it loads,
+   every frame: load on another thread, or a little a frame. A link nobody polls for 3 seconds reads as a dropped
+   connection on the other side (§4.8).
+
+**A refusal** ends a lobby: the compatibility fields, a reason (a byte) and, for a log, the detail. A peer that
+can't play with the other sends it three times and stops; the other stops on reading it. Each side ends with a
+`lobby::Failure`: a `Reason` its host can say to its player, and the detail (§4.9). A player who leaves the lobby
+says so the same way (`Lobby::leave`), so the other is told at once instead of watching the link go quiet. There is
+no message after the loading: the frames follow, and a Hello or a Reveal that comes again, into the match, is
+answered with this peer's Reveal (the host's channel does, with `Agreement::answer`).
+
+**What a host does** with a link and a lobby (nettai's `netplay::Agreeing` and `Framed` are this; the frontend's
+test `an_invite_becomes_a_match` goes the whole way, from an invite to a match that one player leaves). It makes
+the lobby once the link is open (`Link::is_open`: the other player has come; until then a host waits on its
+invite as long as its player likes), in the link's role, with a timeout longer than the link's 30 seconds of
+reconnecting, so that a drop the link mends doesn't end the lobby. Then, each frame:
+
+1. Take every datagram the link has and give each to `Lobby::receive`, a frame too.
+2. `Lobby::poll`: `Pending` (show the lobby: `settings`, `ready`, `their_ready`, `their_name`, `their_present`,
+   `ping`); `Loading` (show the loading: load, and say how far); `Start` (make the `NetPlayer` of the
+   agreement's set on the same link, its frames under `Kind::Frame`); or `Failed`.
+3. Send what `Lobby::outgoing` has, also after a failure (a refusal) and after `leave`.
 
 ### 4.8 WebRTC: rooms, direct connect, reconnection
 
@@ -634,8 +694,10 @@ connection under way), or directly the joiner's checks, whose username fragment 
 reads its socket itself, and takes only the joiner whose nonce came first). After 30 seconds down the link gives
 up, and every call after errs (`ErrorKind::ConnectionLost`; its detail: "the connection to the other player dropped
 (WHY) and didn't come back within 30 seconds"); while it is down, `Link::down_for` says for how long and
-`Link::gives_up_in` how long is left. The signaling WebSocket reconnects on its own, with the same ID; the
-connection doesn't need it while it is up.
+`Link::gives_up_in` how long is left. What a connection had taken before it dropped is still handed over
+(`Link::recv` gives it first): a player who leaves says so in their last datagrams, which come with the close that
+follows them. The signaling WebSocket reconnects on its own, with the same ID; the connection doesn't need it while
+it is up.
 
 **Before the first connection** nothing is down, and two waits end the link instead. The signaling server not
 letting the player in within 10 seconds (`Config::server_timeout`), or its socket not opening at all, is
@@ -652,9 +714,9 @@ gap can't pass twice the stall guard, inside the horizon (§4.6); when it is bac
 side hasn't acknowledged, rollback corrects what was predicted, and clock sync levels the peers again. What the
 frontend does is not give up: `NetPlayer` ends a match after 10 seconds with nothing from the other player, but not
 while the channel says it is down (`Channel::down_for`), counting again from when it is back; giving up is the
-transport's. The players see the battle stop within half a second; nettai's battle says "reconnecting (N s)"
-(`NetStatus::reconnecting`); the battle goes on where it was, or the match ends after 30 seconds with the error
-above.
+transport's. The players see the battle stop within half a second; a host says that it is reconnecting, and
+counts down what the link has left (`NetStatus::reconnecting`: how long it has been down, and
+`gives_up_in`, §4.11); the battle goes on where it was, or the match ends after 30 seconds with the error above.
 
 ### 4.9 What a player is told when it goes wrong
 
@@ -679,7 +741,108 @@ link that has ended (the first error a link meets is the one every later call re
 | `ConnectionLost` | The connection dropped and didn't come back within `Config::reconnect_timeout` |
 | `Internal` | Anything else (no socket, no cryptography, a server that broke its protocol): nothing the player did or can mend |
 
-The lobby's and the match's own are §4.7's (`lobby::Failure`) and docs/frontend.md §2's (`driver::StopReason`).
+**The lobby** (nettai-frontend): `lobby::Failure { reason: Reason, detail: String }`, from `Status::Failed`. A
+refusal crosses the wire as a reason byte and the detail, and each side has its own reason for it: the peer that
+finds the other's build broken has `TheirBuild`, and the other, refused, has `YourBuild`.
+
+| `Reason` | When |
+|---|---|
+| `DifferentVersion` | The two programs differ: another netplay protocol, or another engine. (A refusal from a peer of another protocol, in whatever form that protocol has, reads as this.) |
+| `DifferentGame { theirs }` | The other player's match is of another game, `theirs` by its id |
+| `DifferentContent` | The same game, but other content: the two players' packs differ |
+| `YourBuild` | This player's build breaks a rule of the game by the other side's checks, which refused it |
+| `TheirBuild` | The other player's build breaks a rule of the game (their Reveal's side didn't pass the checks a match file's side does) |
+| `OpponentLeft` | The other player left the lobby |
+| `Left` | This player left the lobby (`Lobby::leave`) |
+| `NoAnswer` | Nothing came from the other side for the lobby's timeout |
+| `Protocol` | The other side didn't keep the handshake (a Reveal that isn't what it committed to, settings that don't read, the same role), or says this side didn't: nothing a player can mend |
+
+**The match** (nettai-frontend): `driver::StopReason`, from `Player::stop_reason` (`Player::stopped` is the detail).
+
+| `StopReason` | When |
+|---|---|
+| `Finished` | What was played came to its end: the set was decided, or a recording's input ran out |
+| `OpponentLeft` | The other player left the match (before its end, or after it: the result says which) |
+| `ConnectionLost` | The channel gave up (nettai-rtc's `ConnectionLost`, through the host's `Channel`), or nothing came from the other player for 10 seconds while it was up |
+| `Internal` | The engine stopped, or the other side's datagrams stopped making sense (not the protocol's, or input past the rollback horizon) |
+
+The app's first list of messages (docs/design/app-ui.md §7) is made of these: "Can't reach the server" is
+`ServerUnreachable`; "No match with that code" is `NoSuchRoom`; "That match is full" is `RoomFull`; "Your opponent
+has a different version of nettai" is `DifferentVersion` (and `ServerVersion`, which is the program's own being out
+of date) and `DifferentContent`; "This build can't be used" is `YourBuild` (what breaks is the build's own check
+to say, before the lobby: `nettai_match::check_side`); "Connection lost. The match has ended." is `ConnectionLost`
+of either layer; and "Something went wrong" is `Internal` and `Protocol`. The rest have no message in that list yet
+(`DifferentGame`, `TheirBuild`, `OpponentLeft`, `NoAnswer`, `CantConnect`, `BadAddress`, `PortUnavailable`).
+
+### 4.10 The input delay
+
+The user's instruction: "input delay should be configurable and not fixed and default to 4". It is each player's
+own setting, in ticks: `NetOptions::input_delay`, `netplay::DEFAULT_INPUT_DELAY` (4), `netplay::INPUT_DELAY` (the
+range a host offers, 0 to 10; a value outside it is brought inside), `Player::set_input_delay` during a match, and
+`NetStatus::input_delay` to show.
+
+**It is getgud's present delay**, and that is what "input delay" means in a rollback fighter. Two things were
+candidates, and they turn out to be one:
+
+- The frontend's "present delay" (`Player::set_present_delay` until now, default 0): the peer shows the frame
+  that many ticks behind the player's newest input.
+- A delay under it, in the rollback layer, that would hold a press back before it is simulated or sent, as GGPO's
+  "frame delay" is usually described. getgud has no such second knob: its one knob is the present delay, which its
+  own documentation calls "the classic input-delay knob". nettai-netplay's own session, before getgud, called the
+  same thing `input_delay` (§4.4), and the engine has no link delay of its own (§1.1).
+
+They are the same delay counted from either end. A fighter with a frame delay of `d` schedules a press for the
+frame `d` ahead and shows the present frame. getgud takes the press for the newest tick and shows the tick `d`
+behind it. Either way the player sees their press take effect `d` frames after they make it, and the other
+player's input for the frame shown has had `d` frames longer to arrive: a one-way trip of up to `d` ticks needs no
+prediction, so nothing is rolled back. What differs is only which tick is called "now". In both, the press goes
+to the other peer in the frame it is made, whatever the delay.
+
+So the setting is the present delay under the player's name for it, and there is nothing else to set. It never
+crosses the wire and no tick depends on it: both peers settle the same ticks from the same inputs whatever each
+one's delay is (the frontend's set test plays one player at 3 and the other at 0, changed mid-round, and the
+settled states agree). 4 is also the delay of the original's own link queue (4 ticks in the recordings, §1.1), so
+a match at the default answers a press when the original's netbattles did; and it hides a round trip of some
+130 ms (§4.11's "good"). The range ends at 10 ticks, a sixth of a second, past which a navi answers too late
+to play; 0 shows every tick as soon as it can be, all of the other player's late input predicted.
+
+### 4.11 Connection quality
+
+The user's instruction: "in play you should show connection quality". A host's indicator of four bars needs a
+level; the level needs two figures, both in milliseconds (`nettai_frontend::connection`):
+
+- **The ping**: the round trip of a message to the other player and back, smoothed.
+- **The jitter**: how unsteady it is, the smoothed distance of each round trip from the ping.
+
+They are RFC 6298's SRTT and RTTVAR: each new round trip moves the ping an eighth of the way to it and the jitter
+a quarter of the way to its distance from the ping; the first round trip is the ping, and half of it the jitter.
+
+**Where they are measured.** In a match, by the input link (nettai-netplay's `LinkStats::srtt` and `rttvar`): each
+datagram's newest element is timed until an ack covers it, 60 times a second. That round trip includes the wait
+for the frame that takes the datagram on each side, a tick or so in all, which is right for a figure about how
+late the other player's input is. In the lobby, by the lobby's own messages (`Lobby::ping`): each carries its
+sender's clock, and the other's latest clock said back with how long it was held, so a peer times the trip without
+the 100 ms between messages in it.
+
+**The quality** (`connection::Quality::of(ping, jitter)`, and `NetStatus::quality`) goes by the ping plus twice
+the jitter, a round trip few are slower than. What a rollback match feels is the other player's input arriving
+late, by half the round trip; an input later than the player's input delay is predicted, and a wrong prediction is
+a rollback. So the thresholds are ticks each way (a tick is 16.7 ms):
+
+| `Quality` | Bars | Ping + 2 × jitter | Each way |
+|---|---|---|---|
+| `Excellent` | 4 | up to 70 ms | about 2 ticks |
+| `Good` | 3 | up to 135 ms | about 4 ticks: the default input delay hides it |
+| `Fair` | 2 | up to 200 ms | about 6 ticks: rollbacks of a tick or two at the default input delay |
+| `Poor` | 1 | more | more |
+
+The loss is a figure of its own (`NetStatus::loss`) and doesn't move the level: a lost datagram's inputs come with
+the next one, so loss costs a frame per datagram lost in a row (§5.1), and shows as jitter where it matters.
+
+**While the connection is down** there is no quality to show. `NetStatus::reconnecting` is then
+`Reconnecting { elapsed, gives_up_in }`: how long it has been down, and how long the transport goes on trying
+(nettai-rtc's `Link::gives_up_in`, of its 30 seconds), which is what a "reconnecting" countdown shows. In the lobby
+the link says the same itself (`Link::down_for`, `Link::gives_up_in`).
 
 ## 5. Results
 
@@ -749,8 +912,11 @@ has 1 HP) is cut mid-round-one by three seconds of the joiner's network going: b
 connection comes back about 0.1 s after the network does, and the set goes on to its end, both replays the same but
 for who recorded, one playing back with no difference. nettai-rtc's tests open links on loopback (directly in about
 0.1 s, through a room in about 0.15 s), bring them back after outages of either side (one generation an outage),
-give up after the reconnection timeout, and refuse a third player in a room; the same tests pass against the
-Worker under `wrangler dev`, and in a browser (headless Chrome) two connections in a page, two links in a room, and
+give up after the reconnection timeout, and are refused, each by its kind, where they should be: a third player in
+a room, a code no room has (one that can't be a code, one that was never a room's, one whose room both players
+left, one whose room's time ran out), a server that isn't there or doesn't answer or speaks another version, a
+direct address that names nothing, a port that is taken, a host that never answers. The same tests pass against the
+Worker under `wrangler dev` (but the one that needs a room's time to run out), and in a browser (headless Chrome) two connections in a page, two links in a room, and
 a browser's link and a native one in the same room trade datagrams. nettai's `netplay` test agrees a match in a
 room of an in-process server, both sides polled on one thread, and plays it over the links (nettai-demo's `net`
 tests, retired with it, did the same directly and in a room). (Earlier, over plain UDP, two
