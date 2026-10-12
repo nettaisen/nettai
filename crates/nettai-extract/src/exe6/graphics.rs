@@ -63,16 +63,16 @@ fn sprites(
     names: &nettai_content::names::AssetNames,
 ) -> Vec<SpriteSheet> {
     let mut out = portraits(roms, names);
-    // The Japanese ROM before the US one: the releases' sheets are the same
-    // but for the six the US ROMs have a placeholder for (`jp::SPRITES`)
-    // and the flames HeatMan wears (10-19), whose throw (animation 6) has
-    // four frames of 3 ticks in the Japanese ROMs and three of 5, 4 and 3
-    // in the US ones.
+    // A US ROM before a Japanese one: the releases' sheets are the same but
+    // for the six the US ROMs have a placeholder for (`jp::SPRITES`, the
+    // Japanese ROMs' whichever this is) and the flames HeatMan wears
+    // (10-19), whose throw (animation 6) has three frames of 5, 4 and 3
+    // ticks in the US ROMs and four of 3 in the Japanese ones.
     let Some((rom, list)) = [
-        (roms.falzar_jp, crate::exe6::jp::SPRITE_LIST),
         (roms.falzar, SPRITE_LIST),
-        (roms.gregar_jp, crate::exe6::jp::SPRITE_LIST),
         (roms.gregar, SPRITE_LIST),
+        (roms.falzar_jp, crate::exe6::jp::SPRITE_LIST),
+        (roms.gregar_jp, crate::exe6::jp::SPRITE_LIST),
     ]
     .into_iter()
     .find(|(r, _)| r.is_present()) else {
