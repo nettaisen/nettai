@@ -595,12 +595,17 @@ export type PlacedProgram = {
 -- errors), its board, its bugs in the order the bugs' routine runs them and what each writes by its level (1 to 3;
 -- `hp`, what the HP programs add), what a placed program counts besides (EXE5's HubBatc), whether any bug sets the
 -- emotion window's glitch, and what stops the bugs or keeps them whatever BugStop says (`bug_stop`: EXE5's patch
--- cards; nil, nothing).
+-- cards; nil, nothing). And `bug_cards`: for a bug that a patch card can bring or fix too, the kind of the card
+-- effect that writes the stat the bug writes (the same bug, on a card): a card's effect of that kind takes the
+-- NaviCust's bug's place in the stats, so a tool's overview lists the card's and not the NaviCust's
+-- (@exelib/patch_cards/apply's `overview`), and the bug's name in the game's strings is spelled out from that
+-- effect's line (the locales' `bugs`).
 export type NaviCustGame = {
     name: string,
     board: NaviCustBoard,
     bugs: { string },
     bug_work: { [string]: (stats: Navi, level: number, hp: number) -> () },
+    bug_cards: { [string]: string }?,
     extra: ((part: PlacedProgram, count: (bug: string?, n: number?) -> ()) -> ())?,
     glitch: boolean,
     bug_stop: ((side: number) -> boolean?)?,

@@ -159,7 +159,7 @@ local rules: Rules = {
             sp = "u16[11]",
             -- The MegaMan who may use it (./light_dark; its record's +0x15): none, anyone.
             megaman = { "light", "dark" },
-            -- A chip a save can collect though no library lists it (./folder: an e-Reader card's, Duo).
+            -- A chip a save can collect though no library lists it (./folder: an e-Reader card's: Duo, PrixPowr).
             collectible = "bool",
             -- What the auto battle AI reads of it (./auto_battle/place; the record's bytes 13, 14 and 23): how the navi
             -- gets in place for it, its positioning class, for the classes that read one its reach list
@@ -302,6 +302,15 @@ local rules: Rules = {
             patch_cards.validate(side, problem)
             folder.validate(side, problem)
             auto_battle.block.validate(side, problem)
+            return out
+        end,
+        -- What is wrong with a side's setup as a player's build, beside what `validate` says of any setup: a patch
+        -- card out of its own slot (./patch_cards).
+        build_check = function(side: number): { SetupProblem }
+            local out: { SetupProblem } = {}
+            patch_cards.build_check(side, function(p: SetupProblem)
+                table.insert(out, p)
+            end)
             return out
         end,
         -- What rules a folder a tool asks of breaks, and what they allow of one (./folder).

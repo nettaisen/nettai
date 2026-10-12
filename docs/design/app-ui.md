@@ -388,8 +388,11 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
    language), the folder editor's limits and each library row's reason (`folders::View`, read per row), the
    Regular and tag marks (`build::mark`, `folders::mark_problems`), the overview (`Checked::overview`: each stat
    with what was added, what gives the abilities, the bugs by name and level, the patch cards' MB) and a chip's
-   row with its sort keys (`build::ChipInfo`, `build::sorted`). docs/design/rules-in-luau.md's last section says
-   how the rules answer.
+   row with its sort keys (`build::ChipInfo`, `build::sorted`). Light or Dark is a choice of the game's builds data
+   (`Builds::choices_of`, `preset_of`, `take_preset`; `settle` for a build from a file or a save; none for a navi
+   but MegaMan), with the face the round starts him with (`Checked::face`); EXE4's slots are `Builds::slots`
+   (`Slots::own` and `name`, `held`, `put`). docs/design/rules-in-luau.md's last section says how the rules
+   answer.
 8. **Replays:** seeking, by keeping snapshots; export through `nettai-video` and ffmpeg; no build names in the file.
 9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds and Closed builds as
    shared settings; and holds the start until both sides have loaded.

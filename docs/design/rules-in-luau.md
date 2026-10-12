@@ -3408,5 +3408,39 @@ the default chips for an empty save for the game". No screen is in this step.
   ROM's folder table, which its new game routine copies into the save (EXE6: US Falzar's `byte_80213AC`, copied by
   `sub_8021AB4` from `reqBBS_init_8004DF0`; the other games' addresses are in their builds modules): the four ROMs
   of a game hold the same table, so a game has one new folder for both versions.
-- **The bugs' names** are the game's strings (its locales' text table `bugs`, by the rules' name for the bug; the
-  games name no NaviCust bug on a screen, so these are the content's own).
+- **The bugs' names** are the game's strings (its locales' text table `bugs`, by the rules' name for the bug): full
+  names, written out (the user: "the bug names should be full names actually rather than from the card effects, but
+  you should derive the bug names from the card effect name"; "MoveBug maybe should be Movement Bug"). Where the
+  game's patch cards name the same bug, the name is that card effect's line spelled out ("EmoBug": Emotion Bug;
+  "BatHPbug": Battle HP Bug), and each entry of the table says which line it is from; the rest are the content's
+  own, in the same style. Which card effect is the same bug is told by the stat each writes, never by the names
+  looking alike: a game's rules/navicust states it (`BUG_CARDS`: the bug, and the kind of the card effect that
+  writes its stat, with the bytes), and nettai-match's test holds five of EXE6's pairs to the round's stats. So
+  EXE6's `custom` (the hand shrinks) is no "CustDmg", EXE5's `custom` is, and EXE4's is the "CusHPbug" the other two
+  games' cards name; EXE5's `hp` (a hit gives the HP bug) is the "DmgHPbug", not the "BatHPbug" EXE6's and EXE4's
+  are. A patch card's own lines stay as the card screen has them.
+- **A card's effect takes the NaviCust's bug's place** in the overview where it does in the stats: the cards' copy
+  sets the stat a bug effect names (the last card's write holds), so the NaviCust's bug of that stat is gone,
+  whether the card's effect is the bug again (listed as the card's line) or its fix (nothing listed, and no ability
+  either); an HP drain adds instead, so one of 0 clears the NaviCust's and any other stands beside it. The cards'
+  bug effects are left out where a card's BugStop holds them back, and all of a card's where the navi isn't the one
+  the cards apply to. (EXE4 counts its cards' bugs with the NaviCust's, so its overview reads the counts.)
+- **A build's choices of presets** (`rules/builds`' `choices`): a choice has an id, the presets in the order a
+  screen offers them (the first a new build's), the fact that tells them apart with each preset's line (`from`),
+  and the navi it is of. EXE5's and EXE4's one is MegaMan light or dark, each the light/dark value and the base HP
+  together as Tango's saves have them (EXE5 1000 and 1000, or 0 and 997, the line 470; EXE4 1000 and 1000, or 460 and
+  997, the line 500). `Builds::preset_of`, `take_preset` and `settle` read, set and settle them (a build from a file
+  or a save whose value is neither preset's takes the one on its side of the line, and `settle` says which it took
+  and the value it was). A build of another navi has no such choice and the rules' defaults for its facts: a team
+  navi's block has a light/dark value of its own (500 to 608 in Tango's dark saves) and its HP is its story's.
+  `Checked::face` is the face the build's navi starts its round with (a dark MegaMan's is his dark face).
+- **A build is held to more than a match's side.** `validate` says what is wrong with any setup, and a match file,
+  a recording's setup and the game's own reload pass it. `build_check` (a tool hook beside it,
+  `Battle::build_problems`) says what a round would play and no save made by play holds, which only a player's
+  build is held to (nettai-match's `build::Checked`; `check::problems` doesn't ask it). EXE4's patch cards are the
+  one case: the reload runs whatever card each of the save's seven slots holds (the ROMs hold no table of which slot
+  a card belongs in), so `validate` checks the slot's range and one card a slot; a scanned card goes into its own
+  catalog slot (its definition's `slot`, 0A to 0F), so `build_check` says a card in another slot, the seventh among
+  them (`Wrong::Slot`: the card, the slot it is in, its own). `rules/builds`' `slots` names the list and its slots,
+  and `build::Slots` gives a card's own slot and its name, what each slot of a build holds, and puts a card in its
+  own slot in place of what was there.

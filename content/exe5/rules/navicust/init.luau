@@ -77,11 +77,40 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
     end,
 }
 
+-- The bugs a patch card can bring or fix too, each with the kind of the card effect that writes the stat the bug
+-- writes (../patch_cards' copy):
+--
+-- - `step`: the step bug's byte (NaviStats +0x31), which the cards' step bug writes (its line "MoveBug");
+-- - `emotion`: the emotion bug's (+0x24), the cards' "EmoBug";
+-- - `panel`: the panel trail (+0x12 and +0x13), which the cards' trails write: the bug's is the cracked one, and the
+--   trail of none is what a card clears the bug with ("PanelBug", the cards' name for it);
+-- - `custom`: the custom screen's damage (+0x54), 20, 40 or 80 more by the bug's level, which the cards' "CustDmg"
+--   sets (EXE6's `custom` bug is another, the hand's shrinking: no card's);
+-- - `buster`: the blank and charged shots (+0x14 and +0x15: 4 and 2), the cards' "BstBlank";
+-- - `hp`: the hit status (+0x16 = 3, a hit gives the HP bug), which the cards' hit statuses write (EXE6's card
+--   screen calls this one "DmgHPbug"; no EXE5 card has it, and the one that clears it is "DmgBug"). EXE5's `hp`
+--   raises no HP drain (EXE6's does: its is the cards' "BatHPbug");
+-- - `status`, `status-strong`: the battle start's bug (+0x1A = 9 and 10), the cards' "StatBug" for 1 and for more.
+--
+-- The others no card effect writes: `encounter` and `result` (+0x28, +0x26), `support` (+0x0D = 0xFF, where a card's
+-- Rush, Beat and Tango set its bits) and `hub`, which halves what the HP programs add.
+local BUG_CARDS: { [string]: string } = {
+    step = "step_bug",
+    emotion = "emotion_bug",
+    panel = "panel_trail",
+    custom = "custom_damage",
+    buster = "buster_blanks",
+    hp = "hit_status",
+    status = "status_bug",
+    ["status-strong"] = "status_bug",
+}
+
 -- EXE5's compile.
 local EXE5: NaviCustGame = {
     name = "EXE5",
     board = board,
     bugs = programs.BUGS,
+    bug_cards = BUG_CARDS,
     bug_work = BUG_WORK,
     -- 0x0813F5A8: a program that says so (HubBatc, in any color) counts its own bug once more.
     extra = function(part: PlacedProgram, count: (bug: string?, n: number?) -> ())

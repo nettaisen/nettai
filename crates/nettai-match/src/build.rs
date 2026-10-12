@@ -9,11 +9,14 @@
 //!   version, the folder a new save of the game starts with); a build's
 //!   other choices, each of a few presets that set their facts together
 //!   ([`Choice`]: EXE4's and EXE5's light or dark MegaMan; a navi the choice
-//!   isn't of has none of it); and the facts no build states, kept at the
+//!   isn't of has none of it); a list whose entries go in slots ([`Slots`]:
+//!   EXE4's patch cards, each in its own); and the facts no build states, kept at the
 //!   rules' defaults ([`Builds::as_built`]: every build plays at the most
 //!   its game allows).
 //! - **A build checked** ([`Checked`]): what is wrong with it, typed
-//!   ([`crate::Wrong`]), and its round set up, which the other questions are
+//!   ([`crate::Wrong`]: what a match's checks say of any side, and what the
+//!   rules hold a build to besides, their `build_check`), and its round set
+//!   up, which the other questions are
 //!   asked of: the folder's view ([`Checked::folder_view`]), the overview
 //!   ([`Checked::overview`]) and the face its navi starts the round with
 //!   ([`Checked::face`]).
@@ -105,6 +108,94 @@ pub struct Taken {
     pub was: Option<i64>,
 }
 
+/// A list of a build whose entries go in slots (EXE4's patch cards: six
+/// catalog slots, each shown under its label, a card belonging in one): the
+/// setup field, and the slots' names by number, as the game shows them. An
+/// entry's own slot is its definition's ([`Slots::own`]); a build keeps
+/// each entry in its own (the rules' `build_check`: [`crate::Wrong::Slot`]),
+/// so putting one in puts it there ([`Slots::put`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Slots {
+    pub field: String,
+    pub names: Vec<String>,
+    /// The fields of the list's records that hold the entry and its slot,
+    /// and the field of an entry's data that says its own slot.
+    entry: String,
+    slot: String,
+    own: String,
+}
+
+impl Slots {
+    /// The slot `entry` belongs in (from 0), if its definition says one.
+    pub fn own(&self, content: &Content, entry: EntryHandle) -> Option<usize> {
+        let key = &content.defs.entry(entry).key;
+        let own = content.defs.definitions.get(Registry::Entry, key)?.spec.field(&self.own).int()?;
+        usize::try_from(own).ok()
+    }
+
+    /// The name the game shows slot `slot` under ("0A").
+    pub fn name(&self, slot: usize) -> Option<&str> {
+        self.names.get(slot).map(String::as_str)
+    }
+
+    /// `side`'s list: each entry and the slot it is in, in the list's order.
+    fn stated(&self, content: &Content, side: &Side) -> Vec<(EntryHandle, usize)> {
+        let Some(Stated::List(items)) = side.facts.get(content, &self.field) else { return Vec::new() };
+        let of = |record: &Stated| -> Option<(EntryHandle, usize)> {
+            let Stated::Record(fields) = record else { return None };
+            let get = |name: &str| fields.iter().find(|(k, _)| k == name).map(|(_, v)| v);
+            match (get(&self.entry)?, get(&self.slot)?) {
+                (Stated::Def(Registry::Entry, Some(h)), Stated::Number(n)) => Some((EntryHandle(*h), usize::try_from(*n).ok()?)),
+                _ => None,
+            }
+        };
+        items.iter().filter_map(of).collect()
+    }
+
+    /// What each of the slots holds in `side`'s build, by the slot's number
+    /// (as many as the slots have names; an entry in a slot past them is in
+    /// none of these, and the build's check says so).
+    pub fn held(&self, content: &Content, side: &Side) -> Vec<Option<EntryHandle>> {
+        let mut out = vec![None; self.names.len()];
+        for (entry, slot) in self.stated(content, side) {
+            if let Some(place) = out.get_mut(slot) {
+                *place = Some(entry);
+            }
+        }
+        out
+    }
+
+    fn state(&self, content: &Content, side: &mut Side, mut list: Vec<(EntryHandle, usize)>) -> Result<(), String> {
+        list.sort_by_key(|&(_, slot)| slot);
+        let records: Vec<Fact> = list
+            .iter()
+            .map(|&(entry, slot)| {
+                Fact::Record(vec![(self.entry.as_str(), Fact::Value(Value::Def(Registry::Entry, entry.0))), (self.slot.as_str(), Fact::Value(Value::Int(slot as i64)))])
+            })
+            .collect();
+        side.set_fact(content, &self.field, &records)
+    }
+
+    /// Put `entry` in `side`'s build: in its own slot, in place of what that
+    /// slot held (and out of any other slot it sat in). The slot it went
+    /// into. An error: its definition says no slot.
+    pub fn put(&self, content: &Content, side: &mut Side, entry: EntryHandle) -> Result<usize, String> {
+        let own = self.own(content, entry).ok_or_else(|| format!("{} says no slot it belongs in", content.defs.entry(entry).key))?;
+        let mut list = self.stated(content, side);
+        list.retain(|&(e, slot)| e != entry && slot != own);
+        list.push((entry, own));
+        self.state(content, side, list)?;
+        Ok(own)
+    }
+
+    /// Empty slot `slot` of `side`'s build.
+    pub fn clear(&self, content: &Content, side: &mut Side, slot: usize) -> Result<(), String> {
+        let mut list = self.stated(content, side);
+        list.retain(|&(_, s)| s != slot);
+        self.state(content, side, list)
+    }
+}
+
 /// What a game says of its builds (its rules/builds module's data).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Builds {
@@ -114,6 +205,9 @@ pub struct Builds {
     /// A build's other choices, each of a few presets (none in a game
     /// without: EXE6).
     pub choices: Vec<Choice>,
+    /// The build's list whose entries go in slots, in a game that has one
+    /// (EXE4's patch cards).
+    pub slots: Option<Slots>,
     at_defaults: Vec<String>,
     new_set: Data,
     /// The folder a new save of the game starts with.
@@ -214,6 +308,22 @@ impl Builds {
             }
             choices.push(Choice { id: id.clone(), presets, navi, fact: fact.clone() });
         }
+        let slots = match data.field("slots") {
+            Data::Nil => None,
+            s => {
+                let text = |name: &str| match s.field(name) {
+                    Data::Str(v) => Ok(v.clone()),
+                    _ => Err(format!("{module}: `slots` has its `{name}`")),
+                };
+                let field = text("field")?;
+                facts::field(content, &field).ok_or_else(|| format!("{module}: slots: {}", facts::no_field(content, &field)))?;
+                let names: Vec<String> = items(s.field("names")).iter().filter_map(|n| if let Data::Str(n) = n { Some(n.clone()) } else { None }).collect();
+                if names.is_empty() {
+                    return Err(format!("{module}: `slots` names no slot"));
+                }
+                Some(Slots { field, names, entry: text("entry")?, slot: text("slot")?, own: text("own")? })
+            }
+        };
         let at_defaults = items(data.field("at_defaults")).iter().filter_map(|f| if let Data::Str(f) = f { Some(f.clone()) } else { None }).collect();
         let new = data.field("new");
         let mut new_folder = Folder::EMPTY;
@@ -227,7 +337,7 @@ impl Builds {
             let code = code.chars().next().and_then(ChipCode::from_letter).ok_or_else(|| format!("{module}: {code:?} is no chip code"))?;
             *slot = Some(FolderChip::new(id, code));
         }
-        Ok(Builds { game: game.to_string(), versions, choices, at_defaults, new_set: new.field("set").clone(), new_folder })
+        Ok(Builds { game: game.to_string(), versions, choices, slots, at_defaults, new_set: new.field("set").clone(), new_folder })
     }
 
     /// The game these are the builds of.
@@ -447,7 +557,12 @@ impl Builds {
 
 /// A build checked: what is wrong with it, and its round set up (the side on
 /// both sides of a match of its game), which the folder's view and the
-/// overview are asked of. Made again after each edit.
+/// overview are asked of. Made again after each edit. A build is held to
+/// more than a match's side is: what a match's checks say of any side
+/// (`check::problems`: the facts, the rules' `validate`), and what the rules
+/// hold a player's build to besides (their `build_check`: what the game
+/// would run and no save made by play holds). A netplay offer is a build:
+/// it is checked so too.
 pub struct Checked {
     game: String,
     /// What is wrong with the build, typed; empty: it can be played.
@@ -457,7 +572,8 @@ pub struct Checked {
 
 impl Checked {
     /// `side` checked as a build of `game`: every problem nettai-match's
-    /// checks and the game's rules find with it.
+    /// checks and the game's rules find with it, of any side's and of a
+    /// build's.
     pub fn of(content: &Arc<Content>, game: &str, side: &Side) -> Checked {
         let none = |problems: Vec<Problem>| Checked { game: game.to_string(), problems, battle: None };
         let m = match Match::empty(content, game) {
@@ -469,7 +585,11 @@ impl Checked {
             return none(alone);
         }
         match check::start(content, &m) {
-            Ok(mut b) => Checked { game: game.to_string(), problems: check::validated(&mut b, 0, side), battle: Some(b) },
+            Ok(mut b) => {
+                let mut problems = check::validated(&mut b, 0, side);
+                problems.extend(check::built(&mut b, 0));
+                Checked { game: game.to_string(), problems, battle: Some(b) }
+            }
             Err(e) => none(vec![Problem { side: Some(0), field: None, entry: None, what: Wrong::Internal, text: e }]),
         }
     }
@@ -944,8 +1064,43 @@ mod tests {
         set_navicust(&content, &mut side, &[placed("undersht", "white", 1, 2)], 2);
         let o = overview(&side);
         assert_eq!(o.abilities, Vec::new());
-        let [Bug::Named { key, level: 1 }] = &o.bugs[..] else { panic!("{:?}", o.bugs) };
-        assert!(content.strings.text(BUGS_TABLE, key).is_some(), "{key}");
+        let step = |level: u8| Bug::Named { key: "step".into(), level };
+        assert_eq!(o.bugs, [step(1)]);
+        assert_eq!(content.strings.text(BUGS_TABLE, "step"), Some("Movement Bug"));
+        // A patch card's effect of the kind that writes the bug's stat takes
+        // its place: BomBoy's fixes the step bug (no bug of it left; the card's
+        // own bug line is its charged shot's), and BeastMan's is the step
+        // bug again, listed as the card's line. A fix is no ability.
+        let card = |name: &str| ids::entry(&content, "exe6", "patch_cards", name).unwrap();
+        let with = |cards: &str| {
+            let mut side = side.clone();
+            side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", cards)).unwrap();
+            overview(&side)
+        };
+        let fixed = with("bomboy");
+        assert_eq!(fixed.bugs, [Bug::From(Source::Effect(card("bomboy"), 1))]);
+        assert_eq!(fixed.abilities, [Source::Effect(card("bomboy"), 0)]);
+        let again = with("beastman");
+        assert_eq!(again.bugs, [Bug::From(Source::Effect(card("beastman"), 4))]);
+        // The HP drain adds: EraseMan's stands beside the NaviCust's HP bug
+        // (an HP program on the command line), and Kettle's 0 clears it.
+        set_navicust(&content, &mut side, &[placed("hp-100", "white", 3, 4)], 2);
+        let hp = Bug::Named { key: "hp".into(), level: 1 };
+        assert_eq!((overview(&side).bugs, content.strings.text(BUGS_TABLE, "hp")), (vec![hp.clone()], Some("Battle HP Bug")));
+        let with = |cards: &str| {
+            let mut side = side.clone();
+            side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", cards)).unwrap();
+            overview(&side)
+        };
+        assert_eq!(with("eraseman").bugs, [hp, Bug::From(Source::Effect(card("eraseman"), 3))]);
+        assert_eq!(with("kettle").bugs, [Bug::From(Source::Effect(card("kettle"), 3))]);
+        // A link navi's cards do nothing: nothing of them is listed but their MB.
+        let mut link = side.clone();
+        link.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "beastman")).unwrap();
+        set_navicust(&content, &mut link, &[], 2);
+        builds.set_navi(&content, &mut link, ids::navi(&content, "exe6", "elecman").unwrap()).unwrap();
+        let o = overview(&link);
+        assert_eq!((o.abilities.len(), o.bugs.len(), o.budget("patch_cards").map(|b| b.count.used)), (0, 0, Some(33)));
         // A patch card: its MB against the list's, its lines under the
         // abilities as its effects, and what it does to the numbers.
         set_navicust(&content, &mut side, &[], 2);
@@ -964,18 +1119,37 @@ mod tests {
     }
 
     /// Every bug a game's NaviCust can bring has its name in the game's
-    /// strings (the `bugs` table, by the rules' name for the bug).
+    /// strings (the `bugs` table, by the rules' name for the bug), in each
+    /// language the content has, and no name there is of no bug. The names
+    /// are full names: one bug that the games' cards name alike reads alike
+    /// in the three games.
     #[test]
     fn every_bug_has_its_name() {
+        let mut names: HashMap<(&str, String), String> = HashMap::new();
         for (content, game, _) in games() {
             let programs = nettai_battle::behavior::content_module_data(&content, &format!("{game}:rules/navicust/programs")).unwrap().unwrap();
-            let bugs = items(programs.field("BUGS"));
+            let mut bugs: Vec<String> = items(programs.field("BUGS")).iter().map(|b| if let Data::Str(name) = b { name.clone() } else { panic!("{b:?}") }).collect();
             assert!(bugs.len() >= 10, "{game}");
+            bugs.sort();
+            for lang in ["en", "ja"] {
+                let path = format!("{}/../../content/{game}/locales/{lang}.toml", env!("CARGO_MANIFEST_DIR"));
+                let table: toml::Table = toml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
+                let named: Vec<String> = table[BUGS_TABLE].as_table().unwrap().keys().cloned().collect();
+                assert_eq!(named, bugs, "{path}");
+            }
             for bug in bugs {
-                let Data::Str(name) = bug else { panic!("{bug:?}") };
-                assert!(content.strings.text(BUGS_TABLE, name).is_some(), "{game}: no name for the bug {name}");
+                let name = content.strings.text(BUGS_TABLE, &bug).unwrap_or_else(|| panic!("{game}: no name for the bug {bug}"));
+                assert!(name.split(' ').all(|word| word.starts_with(|c: char| c.is_uppercase())), "{game}: {name:?} is no full name in the others' style");
+                names.insert((game, bug), name.to_string());
             }
         }
+        let name = |game: &'static str, bug: &str| names[&(game, bug.to_string())].as_str();
+        // The same bug by what it writes, the same name; and a bug of the
+        // same name in the rules that writes another stat, another.
+        assert_eq!((name("exe6", "step"), name("exe5", "step"), name("exe4", "move")), ("Movement Bug", "Movement Bug", "Movement Bug"));
+        assert_eq!((name("exe6", "hp"), name("exe4", "hp"), name("exe5", "hp")), ("Battle HP Bug", "Battle HP Bug", "Damage HP Bug"));
+        assert_eq!((name("exe6", "custom"), name("exe5", "custom"), name("exe4", "custom")), ("Custom Bug", "Custom Damage", "Custom HP Bug"));
+        assert_eq!((name("exe6", "buster"), name("exe5", "panel"), name("exe4", "panel")), ("Buster Blank", "Panel Bug", "Panel Bug"));
     }
 
     /// A chip's row, and a library's rows sorted.
@@ -1054,8 +1228,8 @@ mod tests {
             ("compressed", Fact::Value(Value::Bool(false))),
         ]);
         side.set_fact(&content, "navicust_programs", &[placed]).unwrap();
-        // Custom2 (the custom level +2, and its custom bug once) in slot 3.
-        side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", int(3))])]).unwrap();
+        // Custom2 (the custom level +2, and its custom bug once) in its slot, 0A.
+        side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", int(0))])]).unwrap();
         let mut checked = Checked::of(&content, "exe4", &side);
         assert_eq!(checked.problems, Vec::new());
         let o = checked.overview(&content, &side).unwrap();
@@ -1064,7 +1238,7 @@ mod tests {
         assert_eq!(o.bugs, [Bug::Named { key: "custom".into(), level: 1 }]);
         assert_eq!((o.tag_memory, o.lists.len()), (None, 0));
         // Two cards in one slot: said of the second, typed.
-        side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", int(3))]), Fact::Record(vec![("card", entry(custom2)), ("slot", int(3))])]).unwrap();
+        side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", int(0))]), Fact::Record(vec![("card", entry(custom2)), ("slot", int(0))])]).unwrap();
         let checked = Checked::of(&content, "exe4", &side);
         let got: Vec<(Wrong, Option<&str>, Option<usize>)> = checked.problems.iter().map(|p| (p.what.clone(), p.field.as_deref(), p.entry)).collect();
         assert_eq!(got, [(Wrong::Twice, Some("patch_cards"), Some(1))]);
@@ -1087,6 +1261,124 @@ mod tests {
         set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 6, y: 3, rotation: 0, compressed: false }], 2);
         let checked = Checked::of(&content, "exe5", &side);
         assert!(checked.problems.iter().any(|p| (&p.what, p.field.as_deref(), p.entry) == (&Wrong::OffBoard, Some("navicust_programs"), Some(0))), "{:?}", checked.problems);
+    }
+
+    /// EXE4's patch cards go in six slots, 0A to 0F, each card in its own:
+    /// a card put in goes to its own slot in place of what was there, and a
+    /// build with a card elsewhere (the seventh slot among them) has a typed
+    /// problem, which a match's checks, as the game's reload, leave be.
+    #[test]
+    fn exe4s_cards_go_in_their_own_slots() {
+        let content = exe4_content();
+        let builds = Builds::of(&content, "exe4").unwrap();
+        let slots = builds.slots.clone().unwrap();
+        assert_eq!((slots.field.as_str(), slots.names.join(" ")), ("patch_cards", "0A 0B 0C 0D 0E 0F".to_string()));
+        assert!(Builds::of(&exe5_content(), "exe5").unwrap().slots.is_none() && Builds::of(&exe6_content(), "exe6").unwrap().slots.is_none());
+        // Every card states its slot, one of the six; the cards of slot 0A
+        // and one of another.
+        let cards = content.defs.entries_of("patch_cards");
+        assert!(cards.iter().all(|&c| slots.own(&content, c).is_some_and(|s| s < 6)));
+        let custom2 = ids::entry(&content, "exe4", "patch_cards", "017-custom2").unwrap();
+        assert_eq!((slots.own(&content, custom2), slots.name(0)), (Some(0), Some("0A")));
+        let another_0a = cards.iter().copied().find(|&c| c != custom2 && slots.own(&content, c) == Some(0)).unwrap();
+        let elsewhere = cards.iter().copied().find(|&c| slots.own(&content, c) == Some(4)).unwrap();
+        let mut side = builds.new_build(&content, "redsun").unwrap();
+        assert_eq!(slots.held(&content, &side), vec![None; 6]);
+        assert_eq!(slots.put(&content, &mut side, custom2), Ok(0));
+        assert_eq!(slots.put(&content, &mut side, elsewhere), Ok(4));
+        assert_eq!(slots.held(&content, &side), [Some(custom2), None, None, None, Some(elsewhere), None]);
+        assert_eq!(Checked::of(&content, "exe4", &side).problems, Vec::new());
+        // Another card of 0A takes Custom2's place; a slot is emptied.
+        assert_eq!(slots.put(&content, &mut side, another_0a), Ok(0));
+        assert_eq!(slots.held(&content, &side), [Some(another_0a), None, None, None, Some(elsewhere), None]);
+        slots.clear(&content, &mut side, 4).unwrap();
+        assert_eq!(slots.held(&content, &side), [Some(another_0a), None, None, None, None, None]);
+        // A card out of its slot (a file's): a build's problem, with the
+        // card, the slot it is in and its own; the seventh slot too. A
+        // match's checks say nothing of either.
+        let entry = |h: EntryHandle| Fact::Value(Value::Def(Registry::Entry, h.0));
+        let stated = |side: &mut Side, at: i64| side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", Fact::Value(Value::Int(at)))])]).unwrap();
+        for at in [3, 6] {
+            stated(&mut side, at);
+            let checked = Checked::of(&content, "exe4", &side);
+            let got: Vec<(&Wrong, Option<&str>, Option<usize>)> = checked.problems.iter().map(|p| (&p.what, p.field.as_deref(), p.entry)).collect();
+            assert_eq!(got, [(&Wrong::Slot { entry: custom2, slot: at as u32, own: 0 }, Some("patch_cards"), Some(0))], "slot {at}");
+            assert!(!checked.ready());
+            let m = Match { sides: [side.clone(), side.clone()], ..Match::empty(&content, "exe4").unwrap() };
+            assert_eq!(check::problems(&content, &m), Vec::new(), "slot {at}: the reload runs a card in any of its seven slots");
+        }
+        // (A card of slot 0A as the held slots show it out of place: slot 3 holds it.)
+        stated(&mut side, 3);
+        assert_eq!(slots.held(&content, &side)[3], Some(custom2));
+        // Put in, it goes back to its own.
+        assert_eq!(slots.put(&content, &mut side, custom2), Ok(0));
+        assert_eq!(Checked::of(&content, "exe4", &side).problems, Vec::new());
+        // An eighth slot is no slot of a save's: any side's problem.
+        stated(&mut side, 7);
+        let checked = Checked::of(&content, "exe4", &side);
+        assert_eq!(checked.problems.iter().map(|p| &p.what).collect::<Vec<_>>(), [&Wrong::Range { value: 7, least: 0, most: 6 }]);
+    }
+
+    /// A NaviCust bug and the patch card effect its name is from are the
+    /// same bug by what each writes: in EXE6, a build whose NaviCust brings
+    /// the bug and a build with a card whose one bug effect is of that kind
+    /// have the same bug stats changed (the NaviCust's HP bug, which sets
+    /// the hit status besides, the drain among its two).
+    #[test]
+    fn a_bug_and_its_cards_effect_write_the_same_stat() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let clean = builds.new_build(&content, "gregar").unwrap();
+        let stats = |side: &Side| *Checked::of(&content, "exe6", side).stats().unwrap();
+        // The engine's bug stats, by name.
+        let bug_stats = |s: &NaviStats| {
+            let b = &s.bugs;
+            [
+                ("auto_step", b.auto_step as u32),
+                ("panel_trail_kind", b.panel_trail_kind as u32),
+                ("panel_trail_level", b.panel_trail_level as u32),
+                ("buster_blanks", b.buster_blanks as u32),
+                ("buster_charged", b.buster_charged as u32),
+                ("hit_status", b.hit_status as u32),
+                ("hp_drain", b.hp_drain as u32),
+                ("custom_drain", b.custom_drain as u32),
+                ("battle_start", b.battle_start as u32),
+                ("emotion", b.emotion as u32),
+                ("processing", b.processing as u32),
+                ("starting_damage", b.starting_damage as u32),
+                ("custom_damage", b.custom_damage as u32),
+                ("hand_shrink_turn", b.hand_shrink_turn as u32),
+            ]
+        };
+        let base = bug_stats(&stats(&clean));
+        let changed = |side: &Side| -> Vec<&'static str> { bug_stats(&stats(side)).iter().zip(&base).filter(|(now, was)| now.1 != was.1).map(|(now, _)| now.0).collect() };
+        let program = |name: &str| ids::entry(&content, "exe6", "navicust_programs", name).unwrap();
+        // (The bug, a program placed so that it brings it, a card whose one
+        // bug effect is of the bug's kind, and the stats both write.)
+        for (bug, placed, card, same) in [
+            ("step", ("undersht", 1, 2), "beastman", vec!["processing"]),
+            ("emotion", ("humor", 2, 5), "volcano", vec!["emotion"]),
+            ("panel", ("flotshoe", 2, 5), "dustman", vec!["panel_trail_kind", "panel_trail_level"]),
+            ("buster", ("attack-1", 5, 4), "knigtman", vec!["buster_blanks", "buster_charged"]),
+            ("hp", ("hp-100", 3, 4), "eraseman", vec!["hp_drain"]),
+        ] {
+            let mut by_navicust = clean.clone();
+            set_navicust(&content, &mut by_navicust, &[PlacedProgram { program: program(placed.0), color: 0, x: placed.1, y: placed.2, rotation: 0, compressed: false }], 2);
+            let mut checked = Checked::of(&content, "exe6", &by_navicust);
+            assert_eq!(checked.problems, Vec::new(), "{bug}");
+            let brought: Vec<String> = checked.overview(&content, &by_navicust).unwrap().bugs.iter().filter_map(|b| if let Bug::Named { key, .. } = b { Some(key.clone()) } else { None }).collect();
+            assert_eq!(brought, [bug], "{bug}: the program placed brings it alone");
+            let mut by_card = clean.clone();
+            by_card.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", card)).unwrap();
+            let (of_navicust, of_card) = (changed(&by_navicust), changed(&by_card));
+            assert_eq!(of_card, same, "{bug}: {card}'s bug effect");
+            assert!(same.iter().all(|s| of_navicust.contains(s)), "{bug}: the NaviCust's writes {of_navicust:?}");
+            if bug != "hp" {
+                assert_eq!(of_navicust, same, "{bug}");
+            } else {
+                assert_eq!(of_navicust, ["hit_status", "hp_drain"], "the HP bug sets the hit status too");
+            }
+        }
     }
 
     /// A side's number fact.
