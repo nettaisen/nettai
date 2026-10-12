@@ -549,6 +549,7 @@ const ROLE_SOUNDS: &[(&str, u16)] = &[
     ("gauge-full", 0x8f),
     ("low-hp", 0x84),
     ("cut-in", 0xa5),
+    ("trap-mark", 0xa5),
     ("telop", 0x173),
     ("buster-charge", 0x71),
     ("buster-charged", 0x72),
