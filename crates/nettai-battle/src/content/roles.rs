@@ -330,8 +330,10 @@ definition_roles! {
         GaugeFull = "gauge_full",
         /// The low-HP alarm, every 45 ticks to the navi's player.
         LowHp = "low_hp",
-        /// A side cuts in; a trap springs (`sub_800ABC6`).
+        /// A side cuts in (`sub_800B8EE`, with its flash).
         CutIn = "cut_in",
+        /// A trap springs (`sub_800ABC6`, with its mark).
+        TrapMark = "trap_mark",
         /// A telop (the chip's name) shows.
         Telop = "telop",
         /// The buster starts charging, and is fully charged.
@@ -402,11 +404,13 @@ impl SoundRole {
     /// A sound some game hasn't: a game that leaves the role unfilled plays
     /// none there (EXE6's screen plays no hover sound; EXE4's pause, SELECT's
     /// hiding, L's message and a description's close play none: 0x080078F4,
-    /// 0x0801E59C, 0x080205C6, 0x080209F8; nor does its telop: 0x08008C2A).
+    /// 0x0801E59C, 0x080205C6, 0x080209F8; nor does its telop: 0x08008C2A;
+    /// nor its cut-in's flash: 0x08008BB6).
     pub fn optional(self) -> bool {
         matches!(
             self,
             SoundRole::Pause
+                | SoundRole::CutIn
                 | SoundRole::CustomShade
                 | SoundRole::CustomHide
                 | SoundRole::CustomRunMessage
