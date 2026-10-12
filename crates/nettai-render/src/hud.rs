@@ -194,6 +194,13 @@ impl SharedGlyphs {
     }
 }
 
+/// Which of a banner's glyph tiles (two a glyph: its top, its bottom) is its
+/// VRAM tile `o` from its first: its twenty glyphs are five 32x16 sprites,
+/// each four tiles of tops then four of bottoms (0x0801617E's transfers).
+fn banner_tile(o: usize) -> usize {
+    2 * (4 * (o / 8) + o % 4) + (o % 8) / 4
+}
+
 /// What the banners and the telops show of each other's loads this frame
 /// (`TelopTiles`): the tiles a load put where the other's glyphs are (a
 /// banner's 40 tiles from `banner` as five 32x16 sprites: tile `o` glyph
@@ -239,7 +246,6 @@ pub fn shared_glyphs<'a>(
         && let Load::Banner(id) = s.right
         && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
     {
-        let banner_tile = |o: usize| 2 * (4 * (o / 8) + o % 4) + (o % 8) / 4;
         // (A glyph whose two tiles the banner's load covers: EXE4's first
         // two, tiles 0x384 to 0x387, whose glyphs fall in or out whole.)
         for k in 0..(TelopTiles::NAME_TILES / 2) as usize {
@@ -1638,6 +1644,48 @@ mod tests {
         telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x50 / 4]), b.telop_for(1).unwrap(), &mut parts, &TextSink::original(), &mut problems);
         assert_eq!(parts[0].x, 120 + 8 - 16);
         assert!(problems.is_empty(), "{:?}", problems.lines());
+    }
+
+    /// EXE4's shared tiles: a banner's 40 from 0x360, the right-hand
+    /// telop's name from 0x384.
+    #[test]
+    fn a_banners_tiles_are_its_sprites_rows() {
+        // Glyph 0's top and bottom, glyph 4's (the second sprite's first).
+        assert_eq!([banner_tile(0), banner_tile(4), banner_tile(8), banner_tile(12)], [0, 1, 8, 9]);
+        // Tiles 0x384 to 0x387, the right-hand telop's first two glyphs:
+        // the bottoms of the banner's glyphs 16 to 19.
+        assert_eq!([36, 37, 38, 39].map(banner_tile), [33, 35, 37, 39]);
+    }
+
+    #[test]
+    fn the_last_start_owns_the_shared_tiles_and_palette() {
+        let mut b = battle();
+        let chip = testing::chip_in(&b.content, testing::SUN_GUN_3);
+        let used = nettai_battle::hud::UsedChip { chip, damage: 0, doubled: false, bonus: 0, ticks: 33 };
+        let local = b.setup.local_side as usize;
+        let mut loads = SharedLoads::default();
+        // The other player's chip, then a banner over it: the banner's.
+        b.used_chips[local ^ 1] = Some(used);
+        loads.tick(&b);
+        let name = Load::Telop(TelopName::Chip(chip));
+        assert_eq!((loads.right, loads.signs, loads.palette), (name, name, name));
+        assert!(b.start_banner(BannerId(0x10)));
+        loads.tick(&b);
+        let banner = Load::Banner(BannerId(0x10));
+        assert_eq!((loads.right, loads.signs, loads.palette), (banner, banner, banner));
+        // The name runs on (fewer ticks left): no new load.
+        b.used_chips[local ^ 1] = Some(nettai_battle::hud::UsedChip { ticks: 32, ..used });
+        loads.tick(&b);
+        assert_eq!(loads.right, banner);
+        // The chip used again: its telop's start loads over the banner's.
+        b.used_chips[local ^ 1] = Some(used);
+        loads.tick(&b);
+        assert_eq!((loads.right, loads.signs, loads.palette), (name, name, name));
+        // "PAUSE" loads the palette alone.
+        b.round.mode = mode::FIGHTING;
+        b.fight.state = fight::PAUSE;
+        loads.tick(&b);
+        assert_eq!((loads.right, loads.palette), (name, Load::Pause));
     }
 
     #[test]

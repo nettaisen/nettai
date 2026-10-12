@@ -601,7 +601,14 @@ panel is said in the audits, not counted.
 - banners with their squash and stretch; a telop (the chip's name, its
   damage and bonus, "x2"; "????" for a trap's, to the opponent) on its
   user's half of the screen (`Battle::telop_for`); the chip the other
-  player just used, named for a second (`Battle::used_chip_for`);
+  player just used, named for a second (`Battle::used_chip_for`). Where
+  the game loads the banners' and the telops' glyphs into sprite tiles
+  they share, and one palette (the pack's `layout.telop.tiles`: EXE4's),
+  each shows what the other loaded last: `HudState` follows the loads as
+  the pieces start (`SharedLoads`), and `hud::shared_glyphs` makes up the
+  glyphs whose tiles another load took (a deletion banner over the other
+  player's used chip turns the name's first two glyphs into pieces of the
+  banner, in the banners' colors);
 - the damage judge's numbers, rolling and real;
 - the HUD's text lines: the turn timer's seconds and "TIME UP!" from a
   netbattle's 15th turn, "COUNTER HIT!" (`Battle::message`);
