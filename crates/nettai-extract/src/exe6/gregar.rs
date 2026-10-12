@@ -18,8 +18,10 @@
 //!   custom screen's versioned pictures, `custom::version_pictures`).
 //! - The Cybeasts' sprites (`SPRITES`): a ROM has its own version's and a
 //!   placeholder archive in the other's slot.
+//! - One portrait the Gregar ROMs hold of a Falzar navi, DustMan's, that
+//!   their table doesn't point at (`DUSTMAN_PORTRAIT`).
 
-use crate::exe6::{Roms, Source, Version};
+use crate::exe6::{Place, Roms, Source, Version};
 
 /// The chips whose picture and icon the Falzar ROM has wrong and the
 /// Gregar ROM right: Bass, BigHook, DeltaRay, ColForce, BugRSwrd (their
@@ -47,6 +49,15 @@ pub const OWN_NAVI_FACES: u32 = 5;
 /// the US ROMs have in `jp::SPRITES`' slots): the Cybeasts, Gregar and
 /// Falzar. The pack has each from a ROM of its version.
 pub const SPRITES: [((u8, u8), Version); 2] = [((0x08, 0x14), Version::Gregar), ((0x08, 0x15), Version::Falzar)];
+
+/// DustMan's portrait (the portraits' index 0x4E) in the Gregar ROMs. Its
+/// archive is there, after SlashMan's, though DustMan is Falzar's and the
+/// Gregar ROMs have none of Falzar's other four link navis' portraits; no
+/// entry of the portraits' table points at it (theirs for DustMan is the
+/// black one), and an archive doesn't say where it ends, so the place
+/// can't be reckoned from the one before. It is stated: the US Gregar
+/// ROM's and the Japanese one's.
+pub const DUSTMAN_PORTRAIT: (u8, Place) = (0x4E, Place::stated([0, 0x084F_2AE8, 0, 0x0850_2254]));
 
 /// The version chip `id` belongs to, whose ROMs alone have its picture
 /// and icon (the library flag of its record, +0x09's 0x40, is set there);
