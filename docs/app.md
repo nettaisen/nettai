@@ -292,8 +292,9 @@ Play is Tango's Play tab: the strip's game and build are what this player brings
 players' cards face each other beside it, and the band at the foot makes the link when FIGHT is pressed
 (`lobby.rs`):
 
-- **A room** of nettai-rtc's signaling server: its code typed (six letters and digits) joins it; none makes a new
-  room (its code, none of its letters read as another, is shown in large type in the band; a click copies it).
+- **A room** of nettai-rtc's signaling server: its code typed (six letters and digits) joins it; none asks the
+  server for a new room, whose code the server picks (none of its letters read as another; it is shown in large
+  type in the band once the server has said it, and a click copies it).
 - **Direct**: an address typed (`host:port`) is joined (`Link::join`); none hosts on UDP port 47474
   (`Link::host`), and the band shows the address to give the other player (this machine's on its network; a
   click copies it). No signaling server is needed.
@@ -304,21 +305,23 @@ another tab is shown (the bar marks PLAY with a dot), and the match starts on wh
 In a room, the first in it hosts. The library's lobby and handshake run over the link (`netplay::Agreeing`, the
 datagrams of `nettai_frontend::lobby`):
 
-1. Each player proposes the game, a triple battle with its places left to the seed, and their side: the build
-   they chose (§8), else a random side of the game.
-2. Each player's name goes with their lobby state (protocol version 4): it is shown on the other's card and kept
-   in the replay's names, never taken for who they are; its control characters are dropped and it is cut to 16
-   characters (`lobby::player_name`). With it go the navi their side plays, by its name, and their build's label,
-   its name and version (protocol version 5; cut to 40 characters, shown and never taken for the side, which only
-   the handshake's Reveal brings). Each card leads with the player, then their build and its version; a navi other
-   than the game's own is marked on it (gold, NAVI · its name), so the other player knows before the match.
-   Changing the build while linked says the new one, and the side revealed is the one brought at agreement.
-3. Readiness is each player's toggle, and each sees the other's. Changing the game or the build clears both.
-4. Once both are ready on the same settings, the match is agreed and the battle is a `NetPlayer` over the link
-   (`netplay::Framed`: the link as the library's `Channel`, frames told from the lobby's datagrams by their first
-   byte, as nettai-demo's connection did). It is recorded, with both names.
+1. Each player's lobby holds the match's settings, a triple battle with its places left to the seed (the
+   settings are the match's since protocol version 6: a joiner takes the host's; this app never changes them),
+   and their side: the build they chose (§8), else a random side of the game.
+2. Each player's name goes with their lobby state: it is shown on the other's card and kept in the replay's
+   names, never taken for who they are; its control characters are dropped and it is cut to 16 characters
+   (`lobby::player_name`). Nothing of a build goes with it: protocol version 5 said each build's name, version and
+   navi, and version 6 says none (a build is its player's own until the handshake's Reveal, and its name is never
+   sent). So the other player's card has their name and whether they are ready, and your own card alone has a
+   build. Changing the build while linked clears your ready, and the side revealed is the one brought at
+   agreement.
+3. Readiness is each player's toggle, and each sees the other's.
+4. Once both are ready, the match is agreed; this app loads nothing ahead of its battle, so it says at once that
+   it has loaded, and when the other has too the battle is a `NetPlayer` over the link (`netplay::Framed`: the
+   link as the library's `Channel`, frames told from the lobby's datagrams by their first byte, as nettai-demo's
+   connection did). It is recorded, with both names.
 
-The battle shows the connection's figures (ping, present delay, rollbacks) and "reconnecting (N s)" while the link
+The battle shows the connection's figures (ping, input delay, rollbacks) and "reconnecting (N s)" while the link
 is down (`NetStatus::reconnecting`). Netplay can't pause: the pause's panel says so and holds no buttons.
 
 The signaling server isn't deployed. Run it locally:
@@ -327,8 +330,9 @@ The signaling server isn't deployed. Run it locally:
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
 
 Without `$NETTAI_SIGNAL` the lobby says there is none (a direct link still works). Two windows on one machine
-meet with `NETTAI_NETPLAY=exe6:make:ROOM42` and `NETTAI_NETPLAY=exe6:join:ROOM42`, or directly with
-`NETTAI_NETPLAY=exe6:host:` and `NETTAI_NETPLAY=exe6:direct:127.0.0.1:47474`.
+meet with `NETTAI_NETPLAY=exe6:make:` (its band shows the code the server gave the room) and
+`NETTAI_NETPLAY=exe6:join:CODE` with that code, or directly with `NETTAI_NETPLAY=exe6:host:` and
+`NETTAI_NETPLAY=exe6:direct:127.0.0.1:47474`.
 
 A room's link finds its way through NATs with nettai-rtc's default STUN server (`stun:stun.l.google.com:19302`)
 and checks the certificates its descriptions name; a direct link authenticates nobody, as plain UDP doesn't. Over
@@ -336,8 +340,10 @@ the Internet, the host forwards UDP port 47474 on its router to its machine, and
 router's public address. What the library does when the link drops, and what the handshake checks, is
 docs/frontend.md §2's.
 
-What's missing: the present delay can't be set on the screen (the library's `Player::set_present_delay`), and no
-TURN server can be given, so two players whose NATs need a relay can't meet (nettai-rtc's `Config` takes
+What's missing: the input delay can't be set on the screen (the library's `Player::set_input_delay`; a match plays
+at the library's default, 4 ticks), nor the rounds or closed builds (`Lobby::set_rounds`,
+`Lobby::set_closed_builds`); what goes wrong is shown as the library's detail, where it is meant for a log (each
+error has a kind to word instead); and no TURN server can be given, so two players whose NATs need a relay can't meet (nettai-rtc's `Config` takes
 one, an `IceServer` with its credentials, in its `ice_servers`; Cloudflare's TURN service hands out short-lived
 credentials from its API).
 
