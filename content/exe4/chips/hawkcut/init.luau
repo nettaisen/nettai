@@ -26,6 +26,7 @@ local hawkcut1: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("hawkcut1/controller"),
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 -- HawkCut2 (EXE4 chip 0x0AA).
@@ -42,6 +43,7 @@ local hawkcut2: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("hawkcut2/controller"),
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 -- HawkCut3 (EXE4 chip 0x0AB).
@@ -58,6 +60,7 @@ local hawkcut3: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("hawkcut3/controller"),
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { hawkcut1 = hawkcut1, hawkcut2 = hawkcut2, hawkcut3 = hawkcut3 }

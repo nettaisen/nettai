@@ -20,6 +20,7 @@ local chip: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "standard_library", "library" },
+    auto_battle = { class = "at_once" },
 }
 
 return { ["navi-20"] = chip }

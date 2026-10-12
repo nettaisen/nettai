@@ -21,6 +21,7 @@ local circgun1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = circgun.hook(circgun.variant { period = 6, shots = 4, palette = 0, hit = collision.thrown }),
+    auto_battle = { class = "spot_test", range = "on_far_ring" },
 }
 
 -- CircGun2 (EXE4 chip 0x043): a step every 5 ticks.
@@ -36,6 +37,7 @@ local circgun2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = circgun.hook(circgun.variant { period = 4, shots = 4, palette = 0, hit = collision.thrown }),
+    auto_battle = { class = "spot_test", range = "on_far_ring" },
 }
 
 -- CircGun3 (EXE4 chip 0x044): a step every 3 ticks.
@@ -51,6 +53,7 @@ local circgun3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = circgun.hook(circgun.variant { period = 2, shots = 4, palette = 0, hit = collision.thrown }),
+    auto_battle = { class = "spot_test", range = "on_far_ring" },
 }
 
 return { circgun1 = circgun1, circgun2 = circgun2, circgun3 = circgun3 }

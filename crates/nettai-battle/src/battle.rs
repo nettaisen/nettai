@@ -1283,7 +1283,7 @@ impl Battle {
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
             let link = self.setup.settings.effects & effects::LINK != 0;
             let music = if link {
-                Some(self.roles().music(MusicRole::LinkBattle))
+                Some(self.roles().link_battle_music(self.setup.settings.effects & effects::SET != 0))
             } else {
                 self.content.stage(self.setup.settings.stage).music
             };

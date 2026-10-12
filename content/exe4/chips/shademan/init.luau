@@ -25,6 +25,7 @@ local shademan: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "shademan/controller", palette = 0 }.hook,
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local shadmn_sp: Chip = {
@@ -41,6 +42,7 @@ local shadmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "shadmn-sp/controller", palette = 6 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local shadmn_ds: Chip = {
@@ -56,6 +58,7 @@ local shadmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "shadmn-ds/controller", palette = 14 }.hook,
     megaman = "dark",
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { shademan = shademan, ["shadmn-sp"] = shadmn_sp, ["shadmn-ds"] = shadmn_ds }
