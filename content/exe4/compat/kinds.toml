@@ -376,6 +376,9 @@
 # BugCurse's controller (0x080E81C4; its position the dimming handler's registers) and its curse (0x080DD39C).
 "bugcurse/controller" = { pool = "effect", index = 0x56, scratch_position = true }
 "bugcurse/curse" = { pool = "attack", index = 0x80 }
+# SignlRed's controller (0x080E83F8; its position the dimming handler's registers) and its signal (0x080DD538).
+"signlred/controller" = { pool = "effect", index = 0x58, scratch_position = true }
+"signlred/signal" = { pool = "attack", index = 0x81 }
 # LifeSync's controller (0x080E8784; its position the dimming handler's registers) and its marker (0x080E8C78; its
 # position the spawner's registers, which its init replaces).
 "lifesync/controller" = { pool = "effect", index = 0x5C, scratch_position = true }

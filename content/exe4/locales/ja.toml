@@ -298,6 +298,7 @@ language = "ja"
 "coldmn-sp" = { name = "コールドマンSP", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
 "coldmn-ds" = { name = "コールドマンDS", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
 "lifesync" = { name = "ライフシンクロ", description = "2マス前のてきに\nカーソル!てきの\nHPをおなじにする" }
+"signlred" = { name = "シグナルレッド", description = "あかいあいだは\nあいてがチップを\nつかえなくなる!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
