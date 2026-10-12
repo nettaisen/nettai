@@ -1285,6 +1285,11 @@ pub trait CoreApi {
     /// shake even while the battle is paused (EXE5's TomahawkSoul's change,
     /// 0x08012138; the change's end clears it, 0x080121B6).
     fn set_shake_through_pause(&mut self, on: bool);
+    /// `sub_8001382` / `sub_800138E` with a side's chips-enabled bit (the
+    /// intro bits' 0x04 for side 0, 0x08 for side 1, which a round starts
+    /// with set; `sub_800A772` reads them): the side's navi may use chips,
+    /// or not.
+    fn set_chips_enabled(&mut self, side: u8, on: bool);
     /// `sub_80EA438`: a burst around `navi`'s panel (effect object #0x90,
     /// which runs while paused).
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef>;

@@ -993,6 +993,14 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
     check("state", format!("{:?}", [r.top, r.mode, r.sub, r.init]), format!("{:?}", f.state));
     check("rng2", format!("{:#010x}", b.rng.state), format!("{:#010x}", f.rng2));
     check("paused", (b.paused as u8).to_string(), f.paused.to_string());
+    // Each side's chips-enabled bit (BattleState +0x64's 0x04 and 0x08,
+    // EXE6's +0x5C's: the engine's intro bits'; SignlRed's signal clears and
+    // sets its other side's).
+    if let Ok(bs) = unhex(&f.bs) {
+        if let Some(&bits) = bs.get(0x64) {
+            check("chips enabled", format!("{:#x}", r.intro_bits & 0x0C), format!("{:#x}", bits & 0x0C));
+        }
+    }
     // The gauge as the recording console holds it (EXE4 keeps it full until
     // its own send), on the frame its screen is as late as the banner.
     check("gauge", format!("{:#x}", b.gauge_for(r.local_side)), format!("{:#x}", banner.gauge));
