@@ -14,10 +14,22 @@
 //! The app is held still for it: no animation, no sound device, the menu's reel stopped on one picture, the
 //! settings at their defaults and never written. `NETTAI_TOUR_LANGS=en,ja,pseudo` picks the languages,
 //! `NETTAI_TOUR_SIZES=desktop,phone` the sizes, `NETTAI_TOUR_GAME=<game>` the game selected.
+//!
+//! **The motion probe** (`NETTAI_TOUR_MOTION=1`, with the same folder) is the pass with things moving: a
+//! still picture can't show an animation, so it takes a burst of shots through each (a screen leaving and the
+//! next arriving, the cursor's glide, a value sliding, a press, a list opening, a page scrolling, a dialog,
+//! the cards and the wipe into a battle, a menu over it), each named for the milliseconds since the animation
+//! began. Two things it checks itself and fails on:
+//!
+//! - **Motion changes no size.** In every shot of a burst, each control on screen is the size it has in the
+//!   burst's last, when everything has come to rest. (Where it is may differ: that is what moves.)
+//! - **A press acts at once.** A move pressed in the same instant as a screen change lands on the new screen's
+//!   controls, and a direction held through a scrolling page moves the focus at every repeat, whatever is
+//!   still sliding.
 
 use crate::errors::UserError;
 use crate::input::Action;
-use crate::nav::Rect;
+use crate::nav::{Key, Rect};
 use crate::screens::ScreenId;
 use crate::shell::App;
 use nettai_ui::{AppWindow, Audit, BattleKind, Theme};
@@ -27,7 +39,7 @@ use std::collections::BTreeSet;
 use std::fmt::Write as _;
 use std::path::PathBuf;
 use std::rc::Rc;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 /// How long a step is given to be drawn before the next: a few frames.
 const SETTLE: u64 = 260;
@@ -48,6 +60,21 @@ struct Tour {
     pairs: Cell<u32>,
     moved: RefCell<Vec<String>>,
     shots: Cell<u32>,
+    /// The motion probe's burst under way: when it began, and each shot with its time and the controls' sizes.
+    burst: RefCell<Option<Burst>>,
+    /// What the motion probe found wrong, and what it saw of the focus.
+    resized: RefCell<Vec<String>>,
+    late: RefCell<Vec<String>>,
+    seen: RefCell<Vec<String>>,
+}
+
+/// A shot of a burst: the milliseconds since it began, the picture, and each control's size.
+type BurstShot = (u128, SharedPixelBuffer<Rgba8Pixel>, Vec<(Key, (f32, f32))>);
+
+struct Burst {
+    name: &'static str,
+    began: Instant,
+    shots: Vec<BurstShot>,
 }
 
 type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
@@ -72,6 +99,10 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         pairs: Cell::new(0),
         moved: Default::default(),
         shots: Cell::new(0),
+        burst: Default::default(),
+        resized: Default::default(),
+        late: Default::default(),
+        seen: Default::default(),
     });
     let t = tour.clone();
     ui.global::<Audit>().on_clipped(move |text| {
@@ -85,6 +116,16 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     let sizes: Vec<(&str, u32, u32)> = SIZES.into_iter().filter(|(name, ..)| asked("NETTAI_TOUR_SIZES").is_none_or(|l| l.iter().any(|a| a == name))).collect();
 
     let mut steps: Vec<(u64, Step)> = Vec::new();
+    if std::env::var_os("NETTAI_TOUR_MOTION").is_some() {
+        {
+            let mut app = app.borrow_mut();
+            app.shell.probe_motion = true;
+            app.shell.apply_motion();
+        }
+        motion_walk(&mut steps);
+        steps.push((SETTLE, Box::new(|_, _, tour| finish(tour))));
+        return when_ready(ui.as_weak(), app.clone(), tour, Rc::new(steps), 0);
+    }
     for (size, width, height) in sizes {
         steps.push((
             SETTLE * 3,
@@ -269,6 +310,162 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     );
 }
 
+/// The motion probe's steps: at the desktop's size, in English.
+fn motion_walk(steps: &mut Vec<(u64, Step)>) {
+    let mut add = |wait: u64, step: Step| steps.push((wait, step));
+    // A burst: `trigger` starts an animation, and a shot is taken at each of `at` (milliseconds after it); the
+    // shots are written, and their controls' sizes compared, once the last is taken.
+    let burst = |add: &mut dyn FnMut(u64, Step), name: &'static str, at: &[u64], trigger: Step| {
+        add(
+            SETTLE * 2,
+            Box::new(move |ui, app, tour| {
+                trigger(ui, app, tour);
+                *tour.burst.borrow_mut() = Some(Burst { name, began: Instant::now(), shots: Vec::new() });
+            }),
+        );
+        let mut last = 0;
+        for &ms in at {
+            add(
+                ms - last,
+                Box::new(|ui, app, tour| {
+                    let Ok(picture) = ui.window().take_snapshot() else { return };
+                    let sizes = app.borrow().shell.nav.registry().borrow().sizes();
+                    if let Some(burst) = tour.burst.borrow_mut().as_mut() {
+                        burst.shots.push((burst.began.elapsed().as_millis(), picture, sizes));
+                    }
+                }),
+            );
+            last = ms;
+        }
+        add(10, Box::new(|_, _, tour| flush_burst(tour)));
+    };
+    let go = |to: ScreenId| -> Step { Box::new(move |_, app, _| app.borrow_mut().go_now(to)) };
+    let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
+    let focus = |id: &'static str, index: i32| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index)) };
+
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.shell.set_name("bigfarts");
+            app.go_now(ScreenId::Menu);
+            app.shell.nav.focus("play", 0);
+            app.shell.nav.show_cursor(true, false);
+        }),
+    );
+    burst(&mut add, "cursor-glide", &[0, 30, 60, 100, 180], act(Action::Down));
+    burst(&mut add, "screen-to-settings", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Settings));
+    burst(&mut add, "screen-back-to-menu", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Menu));
+
+    // A press in the same instant as a screen change: Settings is asked for, and Down pressed twice before a
+    // frame has passed. The focus must end two controls down the new screen (Name, Language, Picture size).
+    add(
+        SETTLE * 2,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.go_now(ScreenId::Settings);
+            app.act(Action::Down);
+            app.act(Action::Down);
+        }),
+    );
+    add(
+        SETTLE * 2,
+        Box::new(|_, app, tour| {
+            let focus = app.borrow().shell.nav.focused().map(|k| k.id.clone()).unwrap_or_default();
+            tour.seen.borrow_mut().push(format!("Settings asked for and Down pressed twice at once: the focus is on {focus:?}"));
+            if focus != "set.picture" {
+                tour.late.borrow_mut().push(format!("two presses made with a screen change ended on {focus:?}, not on the second control down the new screen (set.picture)"));
+            }
+        }),
+    );
+
+    // A direction held down a scrolling page: every repeat moves the focus, in the same call.
+    add(SETTLE, focus("set.name", 0));
+    for repeat in 0..14 {
+        add(
+            45,
+            Box::new(move |_, app, tour| {
+                let mut app = app.borrow_mut();
+                let before = app.shell.nav.focused().cloned();
+                app.act(Action::Down);
+                let after = app.shell.nav.focused().cloned();
+                let name = |k: &Option<crate::nav::Key>| k.as_ref().map(|k| format!("{}[{}]", k.id, k.index)).unwrap_or_default();
+                tour.seen.borrow_mut().push(format!("Down held, repeat {repeat}: {} to {}", name(&before), name(&after)));
+                if before == after {
+                    tour.late.borrow_mut().push(format!("Down held, repeat {repeat}: the focus stayed on {}", name(&before)));
+                }
+            }),
+        );
+    }
+
+    add(SETTLE, focus("set.delay", 0));
+    burst(&mut add, "stepper-slide", &[0, 30, 60, 100, 180], act(Action::Right));
+    add(SETTLE, focus("set.text", 0));
+    burst(&mut add, "switch-slide", &[0, 40, 80, 180], act(Action::Right));
+    add(SETTLE, focus("set.reset", 0));
+    burst(&mut add, "button-press", &[0, 30, 70, 120, 220], act(Action::Confirm));
+    add(SETTLE, focus("set.language", 0));
+    burst(&mut add, "list-opens", &[0, 30, 60, 140], act(Action::Confirm));
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, focus("set.name", 0));
+    burst(&mut add, "page-scrolls", &[0, 30, 60, 100, 200], focus("set.folder", 0));
+    burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, go(ScreenId::Training));
+    burst(
+        &mut add,
+        "battle-entered",
+        &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100],
+        Box::new(|_, app, _| crate::screens::training::start_development_battle(&mut app.borrow_mut().shell, 7)),
+    );
+    add(1500, Box::new(|_, _, _| {}));
+    burst(&mut add, "menu-over-battle", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.shell.end_battle();
+            app.go_now(ScreenId::Menu);
+        }),
+    );
+}
+
+/// Write a burst's shots (at half their size: they are many), and hold each to its last: every control the size
+/// it is at rest.
+fn flush_burst(tour: &Tour) {
+    let Some(burst) = tour.burst.borrow_mut().take() else { return };
+    let Some((_, _, rest)) = burst.shots.last() else { return };
+    let rest: std::collections::HashMap<&Key, (f32, f32)> = rest.iter().map(|(k, s)| (k, *s)).collect();
+    for (ms, picture, sizes) in &burst.shots {
+        for (key, size) in sizes {
+            // (A control not yet laid out has no size; one that is gone by the end has none to hold it to.)
+            if let Some(at_rest) = rest.get(key)
+                && size.0 > 0.0
+                && ((size.0 - at_rest.0).abs() > 0.5 || (size.1 - at_rest.1).abs() > 0.5)
+            {
+                tour.resized.borrow_mut().push(format!("{} at {ms} ms: {}[{}] is {} by {}, and {} by {} at rest", burst.name, key.id, key.index, size.0, size.1, at_rest.0, at_rest.1));
+            }
+        }
+        let (w, h) = (picture.width() / 2, picture.height() / 2);
+        let mut half = Vec::with_capacity((w * h * 4) as usize);
+        let pixels = picture.as_slice();
+        for y in 0..h {
+            for x in 0..w {
+                let p = pixels[(y * 2 * picture.width() + x * 2) as usize];
+                half.extend_from_slice(&[p.r, p.g, p.b, p.a]);
+            }
+        }
+        let path = tour.dir.join(format!("motion-{}-{ms:04}ms.png", burst.name));
+        let Ok(file) = std::fs::File::create(&path) else { continue };
+        let mut enc = png::Encoder::new(std::io::BufWriter::new(file), w, h);
+        enc.set_color(png::ColorType::Rgba);
+        enc.set_depth(png::BitDepth::Eight);
+        if enc.write_header().and_then(|mut w| w.write_image_data(&half)).is_ok() {
+            tour.shots.set(tour.shots.get() + 1);
+        }
+    }
+}
+
 /// Walk once the selected game is ready, or after five minutes.
 fn when_ready(ui: slint::Weak<AppWindow>, app: Rc<RefCell<App>>, tour: Rc<Tour>, steps: Rc<Vec<(u64, Step)>>, waited: u32) {
     if app.borrow().shell.ready().is_some() || waited >= 600 {
@@ -355,7 +552,22 @@ fn compare(ui: &AppWindow, tour: &Tour, first: &str, before: &SharedPixelBuffer<
 fn finish(tour: &Tour) {
     let mut report = String::new();
     let (cut, moved) = (tour.cut.borrow(), tour.moved.borrow());
+    let (resized, late, seen) = (tour.resized.borrow(), tour.late.borrow(), tour.seen.borrow());
     let _ = writeln!(report, "{} shots, {} pairs compared.", tour.shots.get(), tour.pairs.get());
+    if std::env::var_os("NETTAI_TOUR_MOTION").is_some() {
+        let _ = writeln!(report, "\nControls whose size differed while something moved: {}", resized.len());
+        for line in resized.iter() {
+            let _ = writeln!(report, "  {line}");
+        }
+        let _ = writeln!(report, "\nPresses that didn't act at once: {}", late.len());
+        for line in late.iter() {
+            let _ = writeln!(report, "  {line}");
+        }
+        let _ = writeln!(report, "\nWhat the focus did:");
+        for line in seen.iter() {
+            let _ = writeln!(report, "  {line}");
+        }
+    }
     let _ = writeln!(report, "\nPairs that differ outside the controls their step touched: {}", moved.len());
     for line in moved.iter() {
         let _ = writeln!(report, "  {line}");
@@ -369,6 +581,6 @@ fn finish(tour: &Tour) {
         eprintln!("tour: {}: {e}", path.display());
     }
     eprint!("tour: {report}");
-    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty()));
+    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty()));
     let _ = slint::quit_event_loop();
 }
