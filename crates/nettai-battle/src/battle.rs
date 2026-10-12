@@ -1035,9 +1035,7 @@ impl Battle {
         self.run_mode_handler();
         self.run_objects();
         self.update_cameras();
-        if !self.paused && !self.is_dimmed() {
-            self.tick_panels();
-        }
+        self.update_panels();
         self.update_player_hands();
         self.run_hud_tasks();
         self.update_emotion_windows();
@@ -1096,7 +1094,18 @@ impl Battle {
             }
         }
         self.run_objects();
-        if !self.paused && !self.is_dimmed() {
+        self.update_panels();
+    }
+
+    /// The tick's panel update: none while paused; the panels' tick, or a
+    /// dimmed tick's.
+    fn update_panels(&mut self) {
+        if self.paused {
+            return;
+        }
+        if self.is_dimmed() {
+            self.tick_panels_dimmed();
+        } else {
             self.tick_panels();
         }
     }
@@ -1786,8 +1795,11 @@ impl Battle {
             self.paused = true;
             self.set_fight_state(fight::PAUSE);
             // The HUD's pause display (`sub_801E15C`): "PAUSE" shows, with
-            // its sound, and the opponent's used chip name goes.
-            self.used_chips = [None; 2];
+            // its sound, and the opponent's used chip name goes, where the
+            // game's does (`used_chips_end_early`).
+            if self.game_rules().effects.used_chips_end_early {
+                self.used_chips = [None; 2];
+            }
             self.sound(SoundRole::Pause);
             return;
         }

@@ -865,8 +865,8 @@ pub fn navi_stats(content: &Content, compat: &Compat, s: &NaviStats) -> Result<E
 /// What the NaviCust and the patch cards compile into a side's stats (rules/navicust), as EXE4's block's bytes say
 /// them: the abilities (+0x01 to +0x04), the buster's levels and blanks (+0x05 to +0x08), the weapon level and the
 /// move bug (+0x0B, +0x0D), the drains (+0x0E, +0x0F), the custom level and chip limits (+0x12 to +0x14), the supports
-/// (+0x18), the panel trail (+0x1B), the Full Synchro at the start (+0x1F), MegaMan's color (+0x27), All Guard (+0x28),
-/// the max HP (+0x32).
+/// (+0x18), the panel trail (+0x1B), the Full Synchro at the start (+0x1F), the soul (+0x24: the form's number, a soul
+/// patch card's from the start), MegaMan's color (+0x27), All Guard (+0x28), the max HP (+0x32).
 pub fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
     let game = |name: &str| match s.game_stat(&b.content, name) {
         Some(nettai_content_api::FieldValue::U8(n)) => n,
@@ -877,6 +877,8 @@ pub fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
         None => 0xFF,
         Some(n) => (n.rush as u8) | (n.beat as u8) << 1 | (n.tango as u8) << 2,
     };
+    // (A form compat doesn't number reads 0xFF, which no block holds.)
+    let soul = Compat::exe4().form_number(nettai_content_api::keys::local(&b.content.defs.form(s.form).key)).unwrap_or(0xFF);
     compiled_bytes(
         [
             s.super_armor as u8,
@@ -897,6 +899,7 @@ pub fn compiled(b: &Battle, s: &EngineNaviStats) -> String {
             supports,
             s.bugs.panel_trail_kind,
             game("full_synchro_start"),
+            soul,
             game("color"),
             game("all_guard"),
         ],
@@ -910,14 +913,14 @@ pub fn compiled_of(s: &NaviStats) -> String {
     compiled_bytes(
         [
             b[0x01], b[0x02], b[0x03], b[0x04], b[0x05], b[0x06], b[0x07], b[0x08], b[0x0B], b[0x0D], b[0x0E], b[0x0F], b[0x12], b[0x13], b[0x14], b[0x18], b[0x1B],
-            b[0x1F], b[0x27], b[0x28],
+            b[0x1F], b[0x24], b[0x27], b[0x28],
         ],
         s.max_hp,
     )
 }
 
-fn compiled_bytes(v: [u8; 20], max_hp: u16) -> String {
-    const NAMES: [&str; 20] = [
+fn compiled_bytes(v: [u8; 21], max_hp: u16) -> String {
+    const NAMES: [&str; 21] = [
         "super armor",
         "float shoes",
         "air shoes",
@@ -936,6 +939,7 @@ fn compiled_bytes(v: [u8; 20], max_hp: u16) -> String {
         "supports",
         "panel trail",
         "full synchro",
+        "soul",
         "color",
         "all guard",
     ];

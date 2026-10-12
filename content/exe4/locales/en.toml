@@ -327,11 +327,13 @@ language = "en"
 "magnum" = { name = "Magnum", description = "Cursor\ndestroys\npanel!" }
 "bugcharg" = { name = "BugCharg", description = "EvilChip!\nGets powr\nwith turn" }
 "shotstar" = { name = "ShotStar", description = "Drop many\nmeteor on\nenmy area" }
+"bugchain" = { name = "BugChain", description = "Fires\nbugs into\nenmy area" }
 "pitrng1" = { name = "PitRng1", description = "3 boome-\nrang atk\nenemies" }
 "pitrng2" = { name = "PitRng2", description = "3 boome-\nrang atk\nenemies" }
 "pitrng3" = { name = "PitRng3", description = "3 boome-\nrang atk\nenemies" }
 "timebom" = { name = "TimeBom+", description = "Sets a\nTimeBom" }
 "h-burst" = { name = "H-Burst", description = "Explosion\nspreads\ninto 1!" }
+"poltrgst" = { name = "Poltrgst", description = "" }
 "redsun" = { name = "RedSun", description = "A RedSun\nbombards\n3 ahead" }
 "bluemoon" = { name = "BlueMoon", description = "Blue moon\ndrains\n3 ahead" }
 "holydrem" = { name = "HolyDrem", description = "Holy shot\nsucks in\nHolyPanl!" }
@@ -533,4 +535,16 @@ language = "en"
 "118-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
+"121-roll-soul" = { name = "Roll Soul" }
+"122-guts-soul" = { name = "Guts Soul" }
+"123-wind-soul" = { name = "Wind Soul" }
+"124-search-soul" = { name = "Search Soul" }
+"125-fire-soul" = { name = "Fire Soul" }
+"126-thunder-soul" = { name = "Thunder Soul" }
+"127-proto-soul" = { name = "Proto Soul" }
+"128-number-soul" = { name = "Number Soul" }
+"129-metal-soul" = { name = "Metal Soul" }
+"130-junk-soul" = { name = "Junk Soul" }
+"131-aqua-soul" = { name = "Aqua Soul" }
+"132-wood-soul" = { name = "Wood Soul" }
 "133-weapon-change" = { name = "Weapon Change" }

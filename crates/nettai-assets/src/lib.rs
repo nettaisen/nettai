@@ -513,6 +513,40 @@ pub struct TelopLook {
     /// doubled chip (8x16 glyphs).
     pub glyphs: Tiles,
     pub palette: Palette,
+    /// Where the game loads the telops' sprite tiles among the banners',
+    /// and the palette they share; none: apart.
+    pub tiles: Option<TelopTiles>,
+}
+
+/// The sprite tiles (VRAM tile numbers) and the palette the telops share
+/// with the banners, each load overwriting what an earlier one put there
+/// (EXE4's: a banner's twenty glyphs from tile 0x360 as five 32x16
+/// sprites, 0x0801617E; a telop's eight name glyphs, two tiles each, from
+/// 0x360 on the left and from 0x384 on the right, 0x0801650C; every
+/// telop's '×' and '2' pieces into 0x380 to 0x383 as a 16x16 sprite, its
+/// list 0x08016680; one sprite palette, 11, which a banner, a telop and
+/// "PAUSE" load as each starts).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct TelopTiles {
+    /// A banner's first tile.
+    pub banner: u16,
+    /// Each place's first name tile (the user's, the other player's).
+    pub names: [u16; 2],
+    /// The '×' and '2' pieces' first tile.
+    pub signs: u16,
+    /// "PAUSE" loads the banners' palette into the shared one (EXE4's list
+    /// 0x080166D0).
+    pub pause_loads_banner_palette: bool,
+}
+
+impl TelopTiles {
+    /// The tiles a banner's glyphs take: twenty, two tiles each.
+    pub const BANNER_TILES: u16 = 40;
+    /// The tiles a telop's name takes: eight glyphs, the name padded with
+    /// blanks.
+    pub const NAME_TILES: u16 = 16;
+    /// The '×' and '2' pieces: a 16x16 sprite.
+    pub const SIGN_TILES: u16 = 4;
 }
 
 impl TelopLook {
