@@ -475,6 +475,15 @@ impl CoreApi for Battle {
         }
     }
 
+    fn set_chips_enabled(&mut self, side: u8, on: bool) {
+        let bit = 0x04 << (side & 1);
+        if on {
+            self.round.intro_bits |= bit;
+        } else {
+            self.round.intro_bits &= !bit;
+        }
+    }
+
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef> {
         kinds::burst::spawn(self, navi)
     }

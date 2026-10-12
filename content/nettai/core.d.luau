@@ -1232,6 +1232,9 @@ declare battle: {
     -- `battle_setFlags(0x20)` / `battle_clearFlags(0x20)`: the cameras
     -- shake even while the battle is paused (EXE5's TomahawkSoul's change).
     set_shake_through_pause: (on: boolean) -> (),
+    -- `sub_8001382` / `sub_800138E` with a side's chips-enabled bit (set as
+    -- a round starts): the side's navi may use chips, or not.
+    set_chips_enabled: (side: number, on: boolean) -> (),
     -- `sub_80302B6`: the cameras' second shake.
     shake_camera_secondary: (magnitude: number, ticks: number) -> (),
     -- `sub_80EA438`: a burst around the navi's panel (effect #0x90, which
