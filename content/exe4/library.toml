@@ -257,6 +257,7 @@ standard = [
     "circgun1",
     "circgun2",
     "circgun3",
+    "snake",
     "bighamr1",
     "bighamr2",
     "bighamr3",
@@ -265,6 +266,7 @@ standard = [
     "boybomb3",
     "timebomb",
     "mine",
+    "rockcube",
     "wind",
     "fan",
     "fanfare",
@@ -317,6 +319,7 @@ standard = [
     "copydmg",
     "atk-10",
     "navi-20",
+    "colorpt",
 ]
 mega = [
     "suprvulc",
@@ -324,10 +327,12 @@ mega = [
     "godhammr",
     "guardian",
     "jealousy",
+    "bugfix",
     "fullcust",
     "lifeaura",
     "snctuary",
     "atk-30",
+    "dblpoint",
     "muramasa",
     "anubis",
     "elemdark",
@@ -374,6 +379,9 @@ mega = [
     "burnman",
     "burnmn-sp",
     "burnmn-ds",
+    "coldman",
+    "coldmn-sp",
+    "coldmn-ds",
     "sparkman",
     "sprkmn-sp",
     "sprkmn-ds",
@@ -394,6 +402,7 @@ giga = [
     "bass",
     "blakbarr",
     "bassanly",
+    "bugcurse",
     "deltaray",
 ]
 secret = [
@@ -437,5 +446,10 @@ secret = [
     "z-saver",
 ]
 program_advance = [
+    "gigacan1",
+    "gigacan2",
+    "gigacan3",
+    "heatsprd",
+    "bubsprd",
     "lifesrd",
 ]

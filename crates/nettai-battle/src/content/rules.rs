@@ -184,6 +184,11 @@ pub struct ChipUseRules {
     /// (0x080F02E6 on) only on the navi's own console
     /// (`battle_networkInvert`). Presentation: the HUD's (`ChipHud`).
     pub window_hides_every_console: bool,
+    /// A charged use of a Null-family chip runs the form's alternative
+    /// A-charge routine, the attack's chip cleared (EXE6's `sub_800FB54`:
+    /// the Beast forms'); EXE5's (0x0800D9CC) and EXE4's (0x0800B72C) use
+    /// any charged chip with its charge, Null or not.
+    pub charged_null_alt_routine: bool,
 }
 
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and

@@ -15,4 +15,7 @@ return {
     -- 0x080EED3E), a dimming's start (0x08008BD8). The other player's attack takes the window down until the
     -- navi's own idle shows it again (0x080EEB6C, on its own console).
     window_hides_every_console = true,
+    -- A charged chip is used with its charge, whatever its family (0x0800B72C: FireSoul's, soul 5, through its flame,
+    -- 0x0800D638, any other's through 0x0800D4B4 with the charge).
+    charged_null_alt_routine = false,
 }
