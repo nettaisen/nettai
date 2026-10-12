@@ -14,7 +14,7 @@ use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
 use nettai_match::{After, Set};
 use nettai_netplay::standin::Masher;
-#[cfg(test)]
+#[cfg(any(test, feature = "testing"))]
 use std::sync::Arc;
 
 /// One tick's inputs.
@@ -108,6 +108,25 @@ pub trait Driver {
     fn feed_shift(&self) -> FeedShift {
         FeedShift::default()
     }
+    /// Go on from another place in what it plays, of a driver that plays a
+    /// recording it can go about in (a replay's: `crate::viewer::Viewer`
+    /// puts the battle as it stood there in the session, and this tells
+    /// the driver where it is); false, and nothing changes, from one that
+    /// can't.
+    fn go_to(&mut self, _place: Place) -> bool {
+        false
+    }
+}
+
+/// A place in a set being played back (`Driver::go_to`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Place {
+    /// The set's ticks played before it, through every round.
+    pub tick: u32,
+    /// The round it is in, from 1.
+    pub round: u32,
+    /// The side whose console is shown.
+    pub viewer: u8,
 }
 
 /// What a recording's replay shows later than the original did
@@ -382,8 +401,10 @@ impl Driver for LivePlayer {
     }
 }
 
-#[cfg(test)]
-pub(crate) mod short_set {
+/// A short set for tests (`crate::testing`): a match a shot decides, the
+/// buttons that win it, and a driver that plays both sides of one.
+#[cfg(any(test, feature = "testing"))]
+pub mod short_set {
     use super::*;
 
     /// A match of `game` picked from `seed` (two MegaMen, the first a

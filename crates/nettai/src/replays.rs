@@ -27,7 +27,7 @@ pub fn scan(dir: &Path) -> Vec<Entry> {
         .map(|e| e.path())
         .filter(|p| p.extension().is_some_and(|e| e == "ntrp"))
         .map(|path| {
-            let replay = std::fs::read(&path).map_err(|e| e.to_string()).and_then(|bytes| Replay::read(&bytes));
+            let replay = std::fs::read(&path).map_err(|e| e.to_string()).and_then(|bytes| Replay::read(&bytes).map_err(|e| e.to_string()));
             Entry { path, replay, outcome: None }
         })
         .collect();

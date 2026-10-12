@@ -538,7 +538,7 @@ mod tests {
         let mut playing: Vec<Session> = Vec::new();
         for (side, (hand, crate::lobby::Agreement { set, m, .. })) in hands.into_iter().zip(agreed(&content, &triple("exe6"), mine)).enumerate() {
             let mut s = Session::new(Box::new(NetPlayer::new(hand, side, set, NetOptions::default())));
-            let info = nettai_replay::Info { when: 0, side: side as u8, names: Default::default() };
+            let info = nettai_replay::Info::of(nettai_replay::MatchKind::Online, side as u8);
             s.record(Recorder::new(Box::new(sinks[side].clone()), &content, &m, &info).unwrap()).unwrap();
             playing.push(s);
         }
@@ -620,7 +620,7 @@ mod tests {
         for (side, crate::lobby::Agreement { set, m, .. }) in agreed(&content, &Settings::of_match(&m), m.sides.clone()).into_iter().enumerate() {
             let channel = Rtc(links[side].clone(), Vec::new());
             let mut s = Session::new(Box::new(NetPlayer::new(channel, side, set, NetOptions::default())));
-            let info = nettai_replay::Info { when: 0, side: side as u8, names: Default::default() };
+            let info = nettai_replay::Info::of(nettai_replay::MatchKind::Online, side as u8);
             s.record(Recorder::new(Box::new(sinks[side].clone()), &content, &m, &info).unwrap()).unwrap();
             playing.push(s);
         }

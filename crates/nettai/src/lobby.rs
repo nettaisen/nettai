@@ -410,7 +410,7 @@ impl App {
                 let m = nettai_match::Match { seed: Some(agreement.seed), ..agreement.m.clone() };
                 let names = agreement.names.clone();
                 let recorded = self
-                    .recorder(&content, &m, agreement.seed, &game, agreement.side as u8, Some(names.clone()))
+                    .recorder(&content, &m, agreement.seed, &game, nettai_frontend::replay::MatchKind::Online, agreement.side as u8, Some(names.clone()))
                     .and_then(|(r, path)| player.record(r).ok().map(|_| path));
                 let graphics = ready.graphics(self.lang);
                 let navi_names = Names::of(&content, &graphics);
