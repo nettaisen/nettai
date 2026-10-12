@@ -40,21 +40,30 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// - the stream's elements and their wire form (this module): a tick is its
 ///   buttons and its flags (`battle::flags`: the link closing), and the
 ///   round's and the match's end are markers;
-/// - the lobby and the handshake (nettai-frontend's `lobby`): the
-///   settings' messages (the game and the rounds by name, with the
-///   compatibility fields, the player's name: version 4; the navi their
-///   side plays, by its name, and their build's label: version 5), the
-///   Hello's
-///   commitment (SHA-256 of the agreed
-///   settings' hash and the Reveal's bytes), the Reveal (a nonce and the
-///   side, in nettai-match's binary: a side's facts in the order of its
-///   game's rules' setup, definitions by their handles in the content both
-///   name);
+/// - the lobby and the handshake (nettai-frontend's `lobby`): the lobby's
+///   messages (the compatibility fields, the match's settings with their
+///   stamp, the player's name, a clock for the round trip), the Hello's
+///   commitment (SHA-256 of the agreed settings' hash and the Reveal's
+///   bytes), the Reveal (the revisions it is of, a nonce and the side, in
+///   nettai-match's binary: a side's facts in the order of its game's
+///   rules' setup, definitions by their handles in the content both name),
+///   the loading that follows it, and a refusal's reason;
 /// - how the match is set up from the agreed settings, both sides and both
 ///   nonces (the seed), which both peers must do alike.
 ///
-/// A change to any of them is a new version.
-pub const VERSION: u16 = 5;
+/// A change to any of them is a new version. Version 4 added the player's
+/// name; version 5 each build's label and navi, which version 6 took out
+/// again (a build is its player's own until the Reveal, and its name is
+/// never sent). Version 6 also made the settings the match's (either player
+/// changes them and the other adopts them: the rounds, and whether builds
+/// are closed), put the game among the compatibility fields, gave a
+/// refusal a reason beside its words, tied a Reveal to the revisions it is
+/// of, and added the loading before the first tick.
+///
+/// A peer of another version is told from its first field, which every
+/// version's lobby messages and refusals start with, and nothing after it
+/// is read of such a peer.
+pub const VERSION: u16 = 6;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer
