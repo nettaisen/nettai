@@ -147,6 +147,40 @@ cyan accent, 72 by 2, at its top left. Nothing is slanted and nothing is rounded
 outside the focused control. It is one object that slides from control to control; it takes no space, and nothing
 under it changes size. It shows only when a keyboard or a pad is the last thing used.
 
+**Motion.** The user: "you should have way more ui animations so it feels like an actual game". Everything
+moves, briefly, and nothing waits on it.
+
+- *It never changes a size.* Motion is transforms, opacity, clipping and overlays; rule 2 of §5 stands.
+- *It never blocks input.* A press acts at once; a transition under way is cut short or redirected; the cursor
+  never trails the focus by more than its own travel.
+- *It is short.* 90 to 160 ms for a control, 180 to 260 for a panel or a screen, up to 500 for the two set pieces
+  (entering a battle, a result). Things arriving ease out; things leaving ease in. One table of durations and
+  curves in the theme; no screen invents its own.
+- *It can be turned down.* Video has "Reduce motion" (on by default where the system asks for it): everything
+  becomes a cut or a short fade. The screenshot pass runs with motion settled.
+
+What moves:
+
+| Where | What |
+|---|---|
+| the field | the hexagons drift slowly and a soft pulse crosses them now and then; they rush as a battle is entered |
+| the cursor | it glides between controls, its brackets breathe 2 in and out while idle, and they snap inward on Enter |
+| a screen | leaving, the body slides 16 and fades (120); arriving, the title wipes in behind its cyan bar and the panels come one after another, 30 apart, each rising 12 as it fades in (200); Back runs the other way |
+| the main menu | at start the logo, the four words and the reel assemble in turn; the chosen word's bar grows from the left and its tint sweeps in; changing the game slides the name out and in the arrow's way and crossfades the reel and the music |
+| a panel | its cyan accent draws from the left as it arrives |
+| a button | a press flashes its fill and dips it 1; the main action has a slow sheen |
+| a stepper, a tab | the value slides out and in within its box, the way pressed; a tab's underline slides and the body follows that way |
+| a list | the chosen row's bar and tint slide to the next row; scrolling is smooth, never a jump |
+| the folder | a chip put in flies from its library row to its slot, which flashes; a count that changes ticks to its number; a refusal shakes the row 4, twice, and flashes its reason |
+| the NaviCust | a piece picked up lifts (to 1.06, with a shadow), turns as a quarter turn, and drops with a pulse along its cells; the command line's arrows pulse; a bug that appears pulses purple once |
+| a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the training and match menus slide in from the left |
+| loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps, and when both are full the screen wipes into the battle |
+| the lobby | the opponent's card slides in as they join; READY stamps with a flash |
+| an error | a field's message fades in; a failure's dialog shakes once |
+
+Every move of the cursor, confirm, back and refusal also has the selected game's own menu sound, as the old app
+had.
+
 **Metrics.** Page margins 32. The header is 64 tall and the footer 44, the same on every menu screen. A control is
 40 tall. A list row is 44, or 26 with a 2 gap where chips or cards are listed (the build overview's spacing, which
 the editors share). Gaps are 8, 12, 16, 24.
@@ -299,7 +333,7 @@ The mockups show no screen for this; it is decided here.
 
 ### Settings
 One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
-Video (Picture size, Full screen, Battle text: sharp or original), Audio (Music, Sound effects), Online (Input
+Video (Picture size, Full screen, Battle text: sharp or original, Reduce motion), Audio (Music, Sound effects), Online (Input
 delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
 button, each rebindable), About.
 
