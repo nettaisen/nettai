@@ -104,6 +104,9 @@ return {
     status_visual = { place = "attach_point" },
     -- A pool's objects are drawn in update order, as EXE6's.
     draw_order = "update_list",
+    -- A sprite part's depth bucket is its sprite's ground row, as EXE6's (the part list's bucket, the ROM's
+    -- 0x081C84AC, has no priority term).
+    sprite_depth = "ground",
     -- What a frame's sprite draw has room for (0x03006190, each drawn object's sprite in draw order): tiles under the
     -- cap (0x0300656C: the allocator, 1 as a frame starts, less 0x30 plus the frame's tiles) and a palette slot
     -- (0x03006590), a sprite past either left out. A battle sets 10 slots and 0x2FF (0x08002740), battle mode 1 8
