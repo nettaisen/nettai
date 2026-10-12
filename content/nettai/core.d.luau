@@ -1537,8 +1537,8 @@ declare dimming: {
     -- A telop for `side` naming `chip` (nil: the zeroed chip's) without
     -- damage, and its sound; a used chip's name makes way.
     chip_telop: (side: number, chip: Chip?) -> (),
-    -- The telop's banner is done.
-    telop_done: () -> boolean,
+    -- `side`'s telop is done.
+    telop_done: (side: number) -> boolean,
     -- The dimming changes sides (`sub_800BE2C`'s): `controller`'s side's
     -- dimming is over (its user stays recorded), and `controller` takes the
     -- other side, which now owns, runs and started the dimming (its own
@@ -2268,7 +2268,9 @@ export type ChipSpec = {
     -- screen, and leaves the selection's rules alone: EXE6's BeastOut chip),
     -- "hides_damage_as_a" (the custom screen shows its damage as "???" on a
     -- copy of code A), "no_icon_when_next" (next in the hand it shows no icon
-    -- over its user: EXE4's souls' chips).
+    -- over its user: EXE4's souls' chips), "not_named_on_use" (its use isn't
+    -- named to the other player: its own action names it, EXE4's Slasher as
+    -- it slashes).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
