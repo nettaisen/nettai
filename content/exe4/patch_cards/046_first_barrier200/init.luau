@@ -1,11 +1,12 @@
 --!strict
--- The patch card First Barrier200 (46, ファーストバリア200).
+-- The patch card First Barrier200 (46, ファーストバリア200), slot 0C's.
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cards = require("../rules/patch_cards/cards")
 local barriers = require("../lib/barriers")
 
-local card: PatchCard = {
+local card: SlottedPatchCard = {
+    slot = "0C",
     effects = {
         cards.aura(barriers.barrier_200),
         cards.bug("hp", 1),

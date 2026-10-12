@@ -1,10 +1,11 @@
 --!strict
--- The patch card All Guard 2/2 (77, オールガード1/2).
+-- The patch card All Guard 2/2 (77, オールガード1/2), slot 0D's.
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cards = require("../rules/patch_cards/cards")
 
-local card: PatchCard = {
+local card: SlottedPatchCard = {
+    slot = "0D",
     effects = {
         cards.pair(2, "076-all-guard-1-2", { cards.all_guard(), cards.bug("hp", 3) }),
     },
