@@ -5,9 +5,9 @@
 local cards = require("../rules/patch_cards/cards")
 
 local card: SlottedPatchCard = {
-    slot = "0B",
+    slot = cards.SLOT_0B,
     effects = {
-        cards.pair(2, "075-triple-supporter-2-2", { cards.all_supports(), cards.clear_bug("support") }),
+        cards.pair(cards.SLOT_0C, "075-triple-supporter-2-2", { cards.all_supports(), cards.clear_bug("support") }),
     },
 }
 

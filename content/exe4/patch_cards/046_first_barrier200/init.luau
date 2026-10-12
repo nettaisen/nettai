@@ -6,7 +6,7 @@ local cards = require("../rules/patch_cards/cards")
 local barriers = require("../lib/barriers")
 
 local card: SlottedPatchCard = {
-    slot = "0C",
+    slot = cards.SLOT_0C,
     effects = {
         cards.aura(barriers.barrier_200),
         cards.bug("hp", 1),

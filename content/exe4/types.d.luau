@@ -3,17 +3,16 @@
 -- a module and the modules that require it both name, declared once for
 -- the pack. (The engine's API is in content/nettai/core.d.luau.)
 
--- The catalog slot an EXE4 patch card belongs in, as the game shows it: the six slots 0A to 0F (a save's slots 0 to
--- 5). A card belongs in one slot, and a slot holds one card.
-export type PatchCardSlot = "0A" | "0B" | "0C" | "0D" | "0E" | "0F"
-
 -- An EXE4 patch card (patch_cards/<card>): what every game's card is (@exelib's `PatchCardSpec`, EXE4's without an
--- MB) and its catalog slot. The slot is the printed card's (a scanned card's own data names it: no ROM holds a table
--- of them; tools/exe4/gen_patch_cards.py, bn6battle-verify), a fact of the card for the tools that list and file
--- cards. Nothing in a battle reads it: the reload runs whatever card each slot of the setup holds (rules/patch_cards).
+-- MB) and its catalog slot: the slot's number as the save and the setup count it, 0 to 5, which the card writes by
+-- its name (rules/patch_cards/cards' `SLOT_0A` to `SLOT_0F`, the labels the game shows: a card belongs in one slot,
+-- and a slot holds one card). The slot is the printed card's (a scanned card's own data names it: no ROM holds a
+-- table of them; tools/exe4/gen_patch_cards.py, bn6battle-verify, whose check holds each to its number), a fact of
+-- the card for the tools that list and file cards. Nothing in a battle reads it: the reload runs whatever card each
+-- slot of the setup holds (rules/patch_cards).
 export type SlottedPatchCard = {
     id: string?,
-    slot: PatchCardSlot,
+    slot: number,
     effects: { any },
 }
 
