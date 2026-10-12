@@ -139,9 +139,17 @@ fn main() -> Result<(), slint::PlatformError> {
                 EventResult::Propagate
             }
             WindowEvent::CursorMoved { .. } | WindowEvent::MouseInput { .. } | WindowEvent::MouseWheel { .. } | WindowEvent::Touch(_) => {
-                if let Ok(mut app) = state.try_borrow_mut() {
-                    app.pointer();
-                }
+                let taken = state.try_borrow_mut().map_or(true, |mut app| app.pointer());
+                if taken { EventResult::Propagate } else { EventResult::PreventDefault }
+            }
+            // (After Slint has taken the new size: the layout's scale is set from it.)
+            WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                let state = state.clone();
+                slint::Timer::single_shot(Duration::ZERO, move || {
+                    if let Ok(mut app) = state.try_borrow_mut() {
+                        app.resized();
+                    }
+                });
                 EventResult::Propagate
             }
             WindowEvent::Focused(false) => {

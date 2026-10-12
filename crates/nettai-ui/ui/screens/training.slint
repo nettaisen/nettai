@@ -33,17 +33,17 @@ export component TrainingMenu inherits MenuOverlay {
     side: true;
     Button {
         x: 0;
-        y: parent.height - 40px;
-        width: (parent.width - 8px) / 2;
+        y: root.inner-height - 40px;
+        width: (root.inner-width - 8px) / 2;
         nav: "menu.resume";
         text: @tr("RESUME");
         kind: ButtonKind.main;
     }
 
     Button {
-        x: (parent.width + 8px) / 2;
-        y: parent.height - 40px;
-        width: (parent.width - 8px) / 2;
+        x: (root.inner-width + 8px) / 2;
+        y: root.inner-height - 40px;
+        width: (root.inner-width - 8px) / 2;
         nav: "menu.quit";
         text: @tr("QUIT TO MENU");
         kind: ButtonKind.ghost;

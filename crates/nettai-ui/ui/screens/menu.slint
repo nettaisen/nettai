@@ -18,7 +18,7 @@ export global MenuView {
 }
 
 // Settings and Exit: less than the four above them.
-component MinorItem {
+component MinorItem inherits Rectangle {
     in property <string> text;
     in property <string> nav;
     height: 32px;
@@ -108,9 +108,9 @@ export component MenuScreen inherits Page {
         text: @tr("Exit");
     }
 
-    // The reel.
+    // The reel. (`parent` here is the screen's root, where this is written; the page's body is where it is put.)
     Picture {
-        x: parent.width - root.reel-width;
+        x: root.body-width - root.reel-width;
         y: root.reel-top;
         width: root.reel-width;
         height: root.reel-height;
@@ -118,7 +118,7 @@ export component MenuScreen inherits Page {
     }
 
     Rectangle {
-        x: parent.width - root.reel-width + 12px;
+        x: root.body-width - root.reel-width + 12px;
         y: root.reel-top + root.reel-height - 12px - self.height;
         width: demo.preferred-width + 16px;
         height: 22px;
@@ -138,7 +138,7 @@ export component MenuScreen inherits Page {
 
     // Who is fighting.
     HorizontalLayout {
-        x: parent.width - root.reel-width;
+        x: root.body-width - root.reel-width;
         y: root.reel-top + root.reel-height + 12px;
         width: root.reel-width;
         height: 24px;

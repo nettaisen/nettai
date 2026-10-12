@@ -216,6 +216,13 @@ impl Shell {
 
     // ---- The settings and the language -------------------------------------------------------------------
 
+    /// The player's name: kept, and shown where the shell shows it.
+    pub fn set_name(&mut self, name: &str) {
+        self.settings.name = crate::settings::clean_name(name);
+        self.ui().global::<nettai_ui::Shell>().set_player(self.settings.name.as_str().into());
+        self.save_settings();
+    }
+
     /// Keep the settings as they are now.
     pub fn save_settings(&self) {
         if self.keep_nothing {
@@ -686,6 +693,15 @@ impl App {
 
     /// One of the menus' actions, from a key or a pad's button.
     pub fn act(&mut self, action: Action) {
+        // A field being edited is left first: Back restores its text, anything else confirms it; a move then
+        // moves on, and a press was the edit's own.
+        if self.shell.nav.editing() {
+            let did = self.shell.nav.end_edit(action != Action::Back);
+            self.did(did);
+            if matches!(action, Action::Back | Action::Confirm | Action::Menu) {
+                return;
+            }
+        }
         let ui = self.shell.ui();
         let over = self.shell.dialog.is_some() || self.shell.picking.is_some();
         match action {
@@ -793,9 +809,22 @@ impl App {
         self.shell.composing = composing;
     }
 
-    /// The pointer moved, clicked or scrolled: the cursor hides.
-    pub fn pointer(&mut self) {
+    /// The window's size or the display's scale changed: the layout is fitted to it before the next frame.
+    pub fn resized(&mut self) {
+        if self.shell.fit_window() {
+            self.shell.refresh();
+            self.settle();
+        }
+    }
+
+    /// The pointer moved, clicked or scrolled: the cursor hides. False in the screenshot pass, which takes no
+    /// pointer (a mouse left over its window would light what it is on).
+    pub fn pointer(&mut self) -> bool {
+        if self.shell.still {
+            return false;
+        }
         self.shell.nav.used_pointer();
+        true
     }
 
     /// The window lost the keyboard: nothing is held.
@@ -978,15 +1007,6 @@ impl App {
             return;
         }
         for action in events.actions {
-            // (A field being edited is left by the pad as by the keys: up and down confirm and move on.)
-            if self.shell.nav.editing() {
-                let keep = action != Action::Back;
-                let did = self.shell.nav.end_edit(keep);
-                self.did(did);
-                if matches!(action, Action::Back | Action::Confirm | Action::Menu) {
-                    continue;
-                }
-            }
             self.act(action);
         }
     }

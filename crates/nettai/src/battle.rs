@@ -356,8 +356,13 @@ impl Shell {
         if let stage::Shown::New(image) = stage.picture(fit, self.gl.as_mut()) {
             shell.set_picture(image);
         }
-        shell.set_picture_width(nettai_render::compose::WIDTH as f32 * fit.scale as f32 / factor);
-        shell.set_picture_height(nettai_render::compose::HEIGHT as f32 * fit.scale as f32 / factor);
+        let size = (nettai_render::compose::WIDTH as f32 * fit.scale as f32, nettai_render::compose::HEIGHT as f32 * fit.scale as f32);
+        shell.set_picture_width(size.0 / factor);
+        shell.set_picture_height(size.1 / factor);
+        // In the room's middle, on the display's pixels: each of the game's pixels is one square of them.
+        let room = (shell.get_picture_room_x() * factor, shell.get_picture_room_y() * factor);
+        shell.set_picture_x(((room.0 + (width - size.0) / 2.0).round() - room.0) / factor);
+        shell.set_picture_y(((room.1 + (height - size.1) / 2.0).round() - room.1) / factor);
     }
 
     /// A recorder of a set to a new file in the replays folder, this player on `side`, both players' names by
