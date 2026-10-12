@@ -2,7 +2,7 @@
 -- EXE4's patch cards (改造カード: docs/design/exe4-map.md §8): what each card does, the constructors the cards' modules
 -- call (content/exe4/patch_cards, written by tools/exe4/gen_patch_cards.py from the cards' handlers, the table at
 -- 0x08041E8C) and what each effect does to the stats (`apply`); ./init.luau runs a side's cards in the reload. A card
--- is a `PatchCard` (@exelib's type: EXE4's have no MB, a card a slot) of these effects.
+-- is a `SlottedPatchCard` (EXE4's own type: no MB, and the catalog slot it belongs in, 0A to 0F) of these effects.
 
 local cards = {}
 
