@@ -62,20 +62,65 @@ end
 
 -- What is wrong with `installed` (a side's setup's `patch_cards`), each said with `problem(text, entry)` (a card's
 -- place in the list, from 1): a card installed twice; the cards' MB together past `mb` (the game's list's).
-function apply.check(installed: { PatchCard }, mb: number, problem: (text: string, entry: number?) -> ())
+function apply.check(installed: { PatchCard }, mb: number, problem: (p: SetupProblem) -> ())
     local total = 0
     for i, c in installed do
         for j = 1, i - 1 do
             if installed[j] == c then
-                problem(string.format("the patch card %s is installed twice", battle.name(c)), i)
+                problem({
+                    kind = "twice",
+                    field = "patch_cards",
+                    entry = i,
+                    text = string.format("the patch card %s is installed twice", battle.name(c)),
+                })
                 break
             end
         end
         total += c.mb or 0
     end
     if total > mb then
-        problem(string.format("the patch cards are %d MB, past %d", total, mb), nil)
+        problem({
+            kind = "budget",
+            field = "patch_cards",
+            used = total,
+            limit = mb,
+            text = string.format("the patch cards are %d MB, past %d", total, mb),
+        })
     end
+end
+
+-- A game's `overview`'s part: of the cards `installed`, into `out`, what its card screen lists under their abilities
+-- (an effect's `group`), each as its card's effect: the bugs (an effect the card shows as one), and the abilities,
+-- the rest. Of two cards' effects of one kind the later is listed, as its write is the one that holds. And the list
+-- itself: its cards' MB together against the most a list holds (`mb`), a card once.
+function apply.overview(installed: { PatchCard }, mb: number, out: SetupOverview)
+    local last: { [string]: number } = {}
+    for i, c in installed do
+        local effects: { PatchCardEffect } = c.effects
+        for _, e in effects do
+            if e.group == "ability" then
+                last[e.kind] = i
+            end
+        end
+    end
+    local total = 0
+    for i, c in installed do
+        total += c.mb or 0
+        local effects: { PatchCardEffect } = c.effects
+        for at, e in effects do
+            if e.group == "ability" and last[e.kind] == i then
+                if e.bug then
+                    local bug: SetupBug = { entry = c, effect = at }
+                    table.insert(out.bugs, bug)
+                else
+                    local source: SetupSource = { entry = c, effect = at }
+                    table.insert(out.abilities, source)
+                end
+            end
+        end
+    end
+    local list: SetupList = { field = "patch_cards", cost = "mb", used = total, limit = mb, once = true }
+    table.insert(out.lists, list)
 end
 
 -- The cards of `installed` over the block (`slot`, seeded by the game; `hp` the working HP, EXE6's

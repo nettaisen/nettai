@@ -17,6 +17,7 @@
 #![allow(dead_code)]
 
 use nettai_battle::Content;
+use nettai_frontend::connection::Reconnecting;
 use nettai_frontend::lobby::{Agreement, Kind, Lobby, Role, Settings, Status};
 use nettai_frontend::netplay::{Channel, NetOptions, NetPlayer};
 use nettai_match::Side;
@@ -41,6 +42,11 @@ pub trait Link {
     /// What keeps it from connecting, if something does (the signaling
     /// server can't be reached).
     fn problem(&self) -> Option<String>;
+    /// The room's code, once the signaling server has said it (none on a
+    /// direct link).
+    fn code(&self) -> Option<&str> {
+        None
+    }
 }
 
 impl Link for nettai_rtc::Link {
@@ -52,11 +58,11 @@ impl Link for nettai_rtc::Link {
     }
 
     fn send(&mut self, datagram: &[u8]) -> Result<(), String> {
-        nettai_rtc::Link::send(self, datagram).map_err(|e| e.0)
+        nettai_rtc::Link::send(self, datagram).map_err(|e| e.detail)
     }
 
     fn recv(&mut self) -> Result<Option<&[u8]>, String> {
-        nettai_rtc::Link::recv(self).map_err(|e| e.0)
+        nettai_rtc::Link::recv(self).map_err(|e| e.detail)
     }
 
     fn is_open(&self) -> bool {
@@ -68,7 +74,11 @@ impl Link for nettai_rtc::Link {
     }
 
     fn problem(&self) -> Option<String> {
-        nettai_rtc::Link::problem(self)
+        nettai_rtc::Link::problem(self).map(|e| e.detail)
+    }
+
+    fn code(&self) -> Option<&str> {
+        nettai_rtc::Link::code(self)
     }
 }
 
@@ -122,9 +132,6 @@ pub struct Agreeing<L: Link> {
     timeout: Duration,
     /// This player's name, said in the lobby.
     name: String,
-    /// The build this player brings, as the app labels it (its name, its
-    /// version), said in the lobby.
-    build: (String, String),
 }
 
 impl<L: Link> Agreeing<L> {
@@ -132,7 +139,7 @@ impl<L: Link> Agreeing<L> {
     /// `side`; it fails if nothing comes from the other player for
     /// `timeout` once the lobby is made.
     pub fn new(link: L, content: &Arc<Content>, settings: Settings, side: Side, timeout: Duration) -> Agreeing<L> {
-        Agreeing { link: Some(link), content: content.clone(), settings, side, ready: false, lobby: None, timeout, name: String::new(), build: Default::default() }
+        Agreeing { link: Some(link), content: content.clone(), settings, side, ready: false, lobby: None, timeout, name: String::new() }
     }
 
     /// Propose other settings and side (another game's, on its content):
@@ -180,36 +187,14 @@ impl<L: Link> Agreeing<L> {
         }
     }
 
-    /// Say the build this player brings (its name, its version) to the
-    /// other.
-    pub fn set_build(&mut self, name: &str, version: &str) {
-        self.build = (name.to_string(), version.to_string());
-        if let Some(l) = &mut self.lobby {
-            l.set_build(name, version);
-        }
-    }
-
-    /// The build the other player brings, as they said it (shown, not
-    /// trusted).
-    pub fn their_build(&self) -> Option<(&str, &str)> {
-        self.lobby.as_ref().and_then(Lobby::their_build)
-    }
-
     /// The other player's name, as they said it (shown, not trusted).
     pub fn their_name(&self) -> Option<&str> {
         self.lobby.as_ref().and_then(Lobby::their_name)
     }
 
-    /// The navi the other player's side plays, by its name, as they said
-    /// it (shown before the match).
-    pub fn their_navi(&self) -> Option<&str> {
-        self.lobby.as_ref().and_then(Lobby::their_navi)
-    }
-
-    /// The other player's settings, once they have said them (or why they
-    /// don't read here).
-    pub fn theirs(&self) -> Option<&Result<Settings, String>> {
-        self.lobby.as_ref().and_then(Lobby::theirs)
+    /// Whether the other player's lobby has been heard.
+    pub fn their_present(&self) -> bool {
+        self.lobby.as_ref().is_some_and(Lobby::their_present)
     }
 
     /// How the link stands.
@@ -226,6 +211,11 @@ impl<L: Link> Agreeing<L> {
     /// What keeps the link from connecting, if it knows.
     pub fn problem(&self) -> Option<String> {
         self.link.as_ref().and_then(Link::problem)
+    }
+
+    /// The room's code, once the signaling server has said it.
+    pub fn code(&self) -> Option<&str> {
+        self.link.as_ref().and_then(Link::code)
     }
 
     /// Step at `now`, without waiting: the datagrams that came to the
@@ -259,20 +249,22 @@ impl<L: Link> Agreeing<L> {
             let mut lobby = Lobby::new(role, &self.content, self.settings.clone(), self.side.clone(), nettai_frontend::lobby::entropy(), self.timeout);
             lobby.set_ready(self.ready);
             lobby.set_name(&self.name);
-            lobby.set_build(&self.build.0, &self.build.1);
             self.lobby = Some(lobby);
         }
         let lobby = self.lobby.as_mut().expect("made above");
         while let Some(d) = link.recv()? {
-            if d.first().is_some_and(|&k| k != Kind::Frame as u8) {
-                lobby.receive(now, d);
-            }
+            lobby.receive(now, d);
         }
-        let done = match lobby.poll(now) {
-            Status::Pending => None,
-            Status::Agreed(a) => Some(Ok(a.clone())),
-            Status::Failed(why) => Some(Err(why.to_string())),
+        let (done, agreed) = match lobby.poll(now) {
+            Status::Pending => (None, false),
+            // (Nothing is loaded ahead of this app's battle: it has loaded.)
+            Status::Loading(_) => (None, true),
+            Status::Start(a) => (Some(Ok(a.clone())), false),
+            Status::Failed(failure) => (Some(Err(failure.detail.clone())), false),
         };
+        if agreed {
+            lobby.set_loaded();
+        }
         for d in lobby.outgoing() {
             link.send(&d)?;
         }
@@ -316,24 +308,9 @@ impl<L: Link> Channel for Framed<L> {
         }
     }
 
-    fn down_for(&self) -> Option<Duration> {
-        self.link.down_for()
+    fn reconnecting(&self) -> Option<Reconnecting> {
+        self.link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: None })
     }
-}
-
-/// A room's code: six letters and digits, none that read as another (no
-/// 0/O, 1/I/L).
-pub fn room_code(seed: u64) -> String {
-    const ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-    let mut x = seed | 1;
-    (0..6)
-        .map(|_| {
-            x ^= x << 13;
-            x ^= x >> 7;
-            x ^= x << 17;
-            ALPHABET[(x % ALPHABET.len() as u64) as usize] as char
-        })
-        .collect()
 }
 
 /// The signaling server: `$NETTAI_SIGNAL` (`ws://127.0.0.1:8787` for
@@ -370,15 +347,17 @@ mod tests {
         let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, ..nettai_rtc::Config::default() };
         let m = nettai_match::pick::live(&content, "exe6", 9, None).unwrap();
         let settings = Settings::of_match(&m);
-        // (The first in the room hosts: the host is let in first.)
-        let mut host = nettai_rtc::Link::room(&server.url(), "lobby-test", config.clone()).unwrap();
+        // (The host asks the server for a room; the joiner comes by the
+        // code the server gave it.)
+        let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
         let start = Instant::now();
         while nettai_rtc::Link::role(&host).is_none() {
             assert!(start.elapsed() < Duration::from_secs(10), "not let in");
             host.poll().unwrap();
             std::thread::sleep(Duration::from_millis(1));
         }
-        let join = nettai_rtc::Link::room(&server.url(), "lobby-test", config).unwrap();
+        let code = nettai_rtc::Link::code(&host).expect("the room's code").to_string();
+        let join = nettai_rtc::Link::join_room(&server.url(), &code, config).unwrap();
         let timeout = Duration::from_secs(20);
         let mut both = [
             Agreeing::new(host, &content, settings.clone(), m.sides[0].clone(), timeout),
@@ -414,14 +393,5 @@ mod tests {
             }
             std::thread::sleep(Duration::from_millis(2));
         }
-    }
-
-    #[test]
-    fn room_codes_read_alike_aloud() {
-        let code = room_code(12345);
-        assert_eq!(code.len(), 6);
-        assert!(code.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
-        assert!(!code.contains(['0', 'O', '1', 'I', 'L']));
-        assert_ne!(room_code(1), room_code(2));
     }
 }

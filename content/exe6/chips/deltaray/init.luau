@@ -10,6 +10,8 @@ local chip: Chip = {
     element = "null",
     family = "sword",
     class = "giga",
+    -- The version whose saves hold it (rules/folder).
+    version = "gregar",
     rarity = 4,
     mb = 82,
     damage = 260,

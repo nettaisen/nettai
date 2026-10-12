@@ -7,6 +7,7 @@
 
 use crate::battle::{BattleEvent, BattleStart};
 use crate::builds::presets;
+use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress};
 use crate::screens::{Screen, ScreenId};
@@ -52,8 +53,15 @@ impl Screen for Training {
     }
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
-        if matches!(event, BattleEvent::Finished(_) | BattleEvent::Stopped) {
-            shell.end_battle();
+        match event {
+            BattleEvent::Started => {}
+            BattleEvent::Finished(_) => shell.end_battle(),
+            BattleEvent::Stopped(reason) => {
+                shell.end_battle();
+                if let Some(error) = UserError::of_stop(reason) {
+                    shell.fail(error);
+                }
+            }
         }
     }
 

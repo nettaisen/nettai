@@ -33,7 +33,7 @@
 //! }
 //! ```
 
-use crate::driver::{Driver, NetStatus, Opponent};
+use crate::driver::{Driver, NetStatus, Opponent, StopReason};
 use crate::game::{Graphics, Loaded};
 use crate::preload::Late;
 use crate::session::Session;
@@ -366,17 +366,19 @@ impl Player {
     // ---- What a host may show ------------------------------------------------
 
     /// How the connection to the other player is doing, in a netplay match
-    /// (its ping, loss, present delay and rollbacks); none for a battle
-    /// without one.
+    /// (its ping, jitter and quality, the loss, the input delay and the
+    /// rollbacks; and while it is down, for how long and how long is left);
+    /// none for a battle without one.
     pub fn net_status(&self) -> Option<NetStatus> {
         self.session.driver.net_status()
     }
 
-    /// In a netplay match, show the frame `ticks` behind the player's
-    /// newest input from the next frame on (the present delay, the
-    /// player's own); false for a battle without one.
-    pub fn set_present_delay(&mut self, ticks: u32) -> bool {
-        self.session.driver.set_present_delay(ticks)
+    /// In a netplay match, the player's input delay from the next frame on,
+    /// in ticks (`crate::netplay::NetOptions::input_delay`: the player's
+    /// own, never sent; kept within `crate::netplay::INPUT_DELAY`); false
+    /// for a battle without one.
+    pub fn set_input_delay(&mut self, ticks: u32) -> bool {
+        self.session.driver.set_input_delay(ticks)
     }
 
     /// Where playback is, in a few words.
@@ -384,10 +386,19 @@ impl Player {
         self.session.driver.position()
     }
 
-    /// Why the battle stopped, once it has: the engine stopped, the input
-    /// ran out, the set is over, the other player left.
+    /// Why the battle stopped, once it has, in words for a log: the engine
+    /// stopped, the input ran out, the set is over, the other player left.
+    /// What a host tells its player is [`Player::stop_reason`], in its own
+    /// words.
     pub fn stopped(&self) -> Option<&str> {
         self.session.stopped.as_deref()
+    }
+
+    /// Why the battle stopped, once it has, as a host can tell its player
+    /// (the set ended, the other player left, the connection was lost,
+    /// something internal).
+    pub fn stop_reason(&self) -> Option<StopReason> {
+        self.session.stop_reason
     }
 
     /// It stopped because what the driver plays came to its end (a

@@ -47,15 +47,54 @@ function patch_cards.run(side: number, stats: Navi, work: PatchCardWork, counts:
 end
 
 -- `validate`'s part: one card a slot, the slots the save has.
-function patch_cards.validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+function patch_cards.validate(side: number, problem: (p: SetupProblem) -> ())
     local seen: { [number]: boolean } = {}
     for i, c in rules.setup_of(side).patch_cards :: { { card: PatchCard, slot: number } } do
         if c.slot >= patch_cards.SLOTS then
-            problem(string.format("patch card %d: slot %d (0 to %d)", i, c.slot, patch_cards.SLOTS - 1), "patch_cards", i)
+            problem({
+                kind = "range",
+                field = "patch_cards",
+                entry = i,
+                value = c.slot,
+                least = 0,
+                most = patch_cards.SLOTS - 1,
+                text = string.format("patch card %d: slot %d (0 to %d)", i, c.slot, patch_cards.SLOTS - 1),
+            })
         elseif seen[c.slot] then
-            problem(string.format("patch card %d: slot %d holds another", i, c.slot), "patch_cards", i)
+            problem({
+                kind = "twice",
+                field = "patch_cards",
+                entry = i,
+                text = string.format("patch card %d: slot %d holds another", i, c.slot),
+            })
         end
         seen[c.slot] = true
+    end
+end
+
+-- The kinds of effect that change a number a tool shows beside the navi's others, or a bug's count: a card with any
+-- other kind of effect gives the navi an ability.
+local NUMBERS: { [string]: boolean } = {
+    hp = true,
+    buster_attack = true,
+    custom = true,
+    custom_down = true,
+    mega_folder = true,
+    giga_folder = true,
+    bug = true,
+    clear_bug = true,
+}
+
+-- `overview`'s part, into `out`: each of the side's cards' effects that gives the navi an ability, as its card's
+-- effect. (Their bugs are counted with the NaviCust's: ../navicust says them.)
+function patch_cards.overview(side: number, out: SetupOverview)
+    for _, c in rules.setup_of(side).patch_cards :: { { card: PatchCard, slot: number } } do
+        for at, e in c.card.effects :: { PatchCardEffect } do
+            if not NUMBERS[e.kind] then
+                local source: SetupSource = { entry = c.card, effect = at }
+                table.insert(out.abilities, source)
+            end
+        end
     end
 end
 

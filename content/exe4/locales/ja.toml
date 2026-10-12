@@ -553,3 +553,16 @@ language = "ja"
 "131-aqua-soul" = { name = "アクアソウル" }
 "132-wood-soul" = { name = "ウッドソウル" }
 "133-weapon-change" = { name = "ウェポンチェンジ" }
+
+# The NaviCust's bugs' names (en.toml's `[bugs]` says what they are).
+[bugs]
+"buster" = "バスターバグ"
+"custom" = "カスタムバグ"
+"encounter" = "エンカウントバグ"
+"hp" = "HPバグ"
+"hub" = "ヒューバッチバグ"
+"move" = "いどうバグ"
+"panel" = "パネルバグ"
+"result" = "リザルトバグ"
+"support" = "サポートバグ"
+"weapon" = "ウェポンバグ"
