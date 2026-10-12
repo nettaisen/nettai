@@ -555,8 +555,8 @@ language = "ja"
 "132-wood-soul" = { name = "ウッドソウル" }
 "133-weapon-change" = { name = "ウェポンチェンジ" }
 
-# The NaviCust's bugs' names (en.toml's `[bugs]` says what they are): where the game's patch cards name the same
-# bug, that effect's line, which the Japanese cards already write in full; the rest the content's own.
+# The bugs' names (en.toml's `[bugs]` says what they are): where EXE5's or EXE6's patch cards name the same bug,
+# that effect's line, which the Japanese cards already write in full; the rest the content's own.
 [bugs]
 # As EXE5's and EXE6's.
 "buster" = "バスターからうち"

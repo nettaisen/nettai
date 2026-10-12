@@ -572,7 +572,8 @@ local NUMBERS: { [string]: boolean } = {
 }
 
 -- A game's `overview`'s part: of `side`'s NaviCust, into `out`, the programs at work that give the navi an ability
--- (each as its entry) and the bugs it brings (each by its name and level).
+-- (each as its entry) and the bugs it brings (each by its name in the game's strings, `game.bug_names`, and its
+-- level).
 function compile.overview(side: number, game: NaviCustGame, expansions: number?, parts: { PlacedProgram }, out: SetupOverview)
     local ran, bugs = compile.at_work(side, game, expansions, parts)
     for _, p in ran do
@@ -584,10 +585,13 @@ function compile.overview(side: number, game: NaviCustGame, expansions: number?,
             end
         end
     end
-    local cards = game.bug_cards or {}
+    local names = game.bug_names or {}
     for _, bug in bugs do
-        local brought: SetupBug = { name = bug.name, level = bug.level, card = cards[bug.name] }
-        table.insert(out.bugs, brought)
+        local own: { BugName } = { { name = bug.name } }
+        for _, named in names[bug.name] or own do
+            local brought: SetupBug = { name = named.name, level = bug.level, card = named.kind }
+            table.insert(out.bugs, brought)
+        end
     end
 end
 

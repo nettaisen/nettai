@@ -2768,14 +2768,25 @@ export type FolderView = {
 -- What a side's setup comes to, of what the rules alone know (the rules' `overview`): what gives the navi its
 -- abilities, each the entry of one of the game's collections that does (a NaviCust program at work, a patch card) and,
 -- where the entry lists its effects, which of them (`effect`, a place in its `effects`, from 1); and the navi's bugs,
--- each by its name in the game's locales' `bugs` table and its level, or as an entry's effect (a patch card's line;
--- `card` is the rules' own note of the kind of card effect that writes the stat a named bug writes, which a tool
--- reads nothing of);
+-- each by its name in the game's locales' `bugs` table, whoever brings it, the NaviCust or a patch card, with how
+-- much of it there is: its level (where what it writes is what a level of the bug writes), or else its amount (the
+-- number it writes: a damage; or, with what it is `of`, the blank shots of the buster's 16, the steps in 8 that leave
+-- a trail), one of the two; or as an entry's effect (a patch card's line: an ordinary effect the card marks as a
+-- drawback). `card` is the rules' own note of the kind of card effect that writes the stat a named bug writes, which
+-- a tool reads nothing of;
 -- and each list of the setup whose entries cost against a budget (the patch cards' MB): its setup field, the field of
 -- its entries' data that is an entry's cost, what the list's entries cost together and the most they may, and
 -- whether an entry goes into it once.
 export type SetupSource = { entry: any, effect: number? }
-export type SetupBug = { name: string?, level: number?, entry: any?, effect: number?, card: string? }
+export type SetupBug = {
+    name: string?,
+    level: number?,
+    amount: number?,
+    of: number?,
+    entry: any?,
+    effect: number?,
+    card: string?,
+}
 export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean }
 export type SetupOverview = {
     abilities: { SetupSource },
