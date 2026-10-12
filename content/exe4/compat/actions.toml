@@ -237,6 +237,8 @@
 "aquasoul/charged-shot/action" = 0x1E
 # WoodSoul's charged shot (weapon routine 0x57's action 0x28, the fan's, its variant 0).
 "woodsoul/charged-shot/action" = 0x28
+# NumberSoul's charged shot (weapon routine 0x11's action 0x15, 0x080EC164: the die's throw).
+"numbersoul/charged-shot/action" = 0x15
 # The guard (0x080ECCF2) as the Shield and Reflect programs' B+Left specials.
 "megaman/shield/action" = 0x25
 "megaman/reflect/action" = 0x25
