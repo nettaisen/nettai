@@ -89,10 +89,24 @@ pub struct Telop {
 /// (task 6), as the navis' and the flow's HUD calls turn them on and off
 /// (`sub_801DA48`, `sub_801DACC`). Presentation only: the engine keeps one
 /// for each side, since each player's console shows its own.
+///
+/// The custom screen's close starts the window's task with the icons', as
+/// the Japanese games' does (EXE6's `sub_8026DC4` calling `sub_801E012`,
+/// task 0x40; EXE5's 0x080230CC; EXE4's): the next chip's name shows from
+/// the screens' exchange, through the turn's banner, and on until
+/// something hides it: a navi that doesn't decide at once keeps it
+/// meanwhile (one in the middle of a step as its screen opened, a driven
+/// navi's; EXE4's soul change as the fight starts, 0x080EBA44). (The US
+/// EXE6 games' close starts the icons' task alone, and their name waits
+/// for the navi's first decision.)
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ChipHud {
     pub icons: bool,
     pub window: bool,
+    /// The window is on by the custom screen's close alone: its navi
+    /// hasn't decided since, and nothing has hidden it (what a US EXE6
+    /// console doesn't show: for a comparison with one).
+    pub from_close: bool,
     /// The console's chip-icon table has the opponent's navi too (EXE5's
     /// SearchSoul's status reset adds it in a link battle, 0x08011C0C; any
     /// status reset takes it out again, 0x08011B20's part, EXE6's
