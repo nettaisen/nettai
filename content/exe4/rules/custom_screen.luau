@@ -204,4 +204,8 @@ return {
     -- A character printed ends the tick's printing (0x0804E1B2 goes on only while rushing, at speed 0 or after a
     -- command that says so): a message prints a character every third tick.
     chatbox_character_ends_tick = true,
+    -- The chip window draws "???" for the damage of a chip whose flags have `damage_shown_variable` (0x0801FCE2: the
+    -- flag alone, whatever the chip's code): CustSwrd and Muramasa. A formula chip without the flag shows its damage
+    -- as it stands (0x08019348).
+    variable_damage_shows = "question_marks",
 }

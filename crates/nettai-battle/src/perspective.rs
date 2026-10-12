@@ -11,9 +11,11 @@
 //!   victory or defeat music);
 //! - banners: [`Battle::banner_for`] (the telops say whose chip
 //!   it is, the result banner shows the viewer's navi winning or losing)
-//!   and [`Battle::telop_for`] (a hidden chip's telop names it only to its
-//!   user, if to anyone) and [`Battle::used_chip_for`] (the other player's
-//!   chip, named for a second);
+//!   and [`Battle::telops_for`] (a hidden chip's telop names it only to its
+//!   user, if to anyone; where telops run apart from the banners each
+//!   console lays its own player's on the banner block) and
+//!   [`Battle::used_chip_for`] (the other player's chip, named for a
+//!   second);
 //! - the result: [`Battle::round_end_for`];
 //! - what each player sees of the objects: [`Battle::visible_to`] (a blind
 //!   player doesn't see the other side's objects, the Beast Out lock-on
@@ -30,10 +32,10 @@
 
 use crate::battle::{Battle, BattleResult, RoundEnd, fight};
 use crate::object::{ObjectRef, Sight, flags};
-use crate::content::BannerId;
+use crate::content::{BannerId, Telops};
 use crate::setup::SetScore;
 use crate::dimming::telop_banner;
-use crate::hud::TelopHidden;
+use crate::hud::{Banner, Telop, TelopHidden};
 use nettai_content_api::ChipHandle;
 
 /// A telop as one player's console shows it.
@@ -58,6 +60,22 @@ pub enum TelopName {
     Hidden,
     /// The engine wasn't told which chip the telop names.
     Unknown,
+}
+
+/// `t` as `viewer`'s console shows it: whose chip it is, and "????" for a
+/// chip hidden from that player.
+fn shown(t: Telop, viewer: u8) -> ShownTelop {
+    let remote = t.side != viewer;
+    let hidden = match t.hidden {
+        TelopHidden::No => false,
+        TelopHidden::FromOpponent => remote,
+        TelopHidden::FromBoth => true,
+    };
+    if hidden {
+        return ShownTelop { remote, name: TelopName::Hidden, damage: 0, bonus: 0, doubled: false };
+    }
+    let name = t.chip.map_or(TelopName::Unknown, TelopName::Chip);
+    ShownTelop { remote, name, damage: t.damage, bonus: t.bonus, doubled: t.doubled }
 }
 
 impl BattleResult {
@@ -183,20 +201,28 @@ impl Battle {
         Some(id)
     }
 
-    /// The telop on screen as `viewer`'s console shows it.
+    /// The telop on `viewer`'s console's banner block: either player's
+    /// where a telop is a banner; the viewer's own where telops run apart
+    /// (the rules' `effects.telops`; the other player's is the second of
+    /// [`Battle::telops_for`]).
     pub fn telop_for(&self, viewer: u8) -> Option<ShownTelop> {
-        let t = self.banner.telop.filter(|_| self.banner.active)?;
-        let remote = t.side != viewer;
-        let hidden = match t.hidden {
-            TelopHidden::No => false,
-            TelopHidden::FromOpponent => remote,
-            TelopHidden::FromBoth => true,
-        };
-        if hidden {
-            return Some(ShownTelop { remote, name: TelopName::Hidden, damage: 0, bonus: 0, doubled: false });
+        self.telops_for(viewer)[0].map(|(t, _)| t)
+    }
+
+    /// The telops on screen as `viewer`'s console shows them, each with the
+    /// block it runs on (its step and timer: how far it has slid): the one
+    /// on the banner block, and the one on the other player's block (none
+    /// where a telop is a banner). Where telops run apart each console lays
+    /// its own player's on the banner block: the other viewer's are the
+    /// simulation's two the other way round (beside the simulation's
+    /// banner, which that console might not have started).
+    pub fn telops_for(&self, viewer: u8) -> [Option<(ShownTelop, Banner)>; 2] {
+        let on = |block: &Banner| block.telop.filter(|_| block.active).map(|t| (shown(t, viewer), *block));
+        let (banner, other) = (on(&self.banner), on(&self.remote_telop));
+        match self.game_rules().effects.telops {
+            Telops::Apart if viewer != self.round.local_side => [other, banner],
+            _ => [banner, other],
         }
-        let name = t.chip.map_or(TelopName::Unknown, TelopName::Chip);
-        Some(ShownTelop { remote, name, damage: t.damage, bonus: t.bonus, doubled: t.doubled })
     }
 
     /// What `viewer`'s console shows of its navi's chips.

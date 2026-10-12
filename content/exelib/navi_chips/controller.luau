@@ -119,14 +119,14 @@ function controller.anti_navi(me: Object, in_block: boolean)
             me.phase, me.phase_init = 8, 0
         end
     elseif p == 8 then
+        local other = bit32.bxor(side, 1)
         if me.phase_init == 0 then
             -- (AntiNavi: the chip its user's record holds.)
-            local other = bit32.bxor(side, 1)
             dimming.chip_telop(other, battle.linked(other).chip)
             me.phase_init = 4
             return
         end
-        if not dimming.telop_done() then
+        if not dimming.telop_done(other) then
             return
         end
         dimming.turn(me)

@@ -268,6 +268,8 @@ pub struct EffectsRules {
     pub fade_clear: FadeClear,
     /// A banner's steps (`hud::Banner`).
     pub banner: BannerSteps,
+    /// How a dimming chip's telop shares the HUD with the banners.
+    pub telops: Telops,
     /// Each console's RNG1 advances once a frame, after the battle's (EXE6's
     /// main loop, `main_`'s `GetRNG1` after the subsystem; EXE5's). EXE4's
     /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
@@ -304,6 +306,36 @@ pub struct EffectsRules {
     /// The order the objects of a pool are drawn in. Presentation: the
     /// renderer's.
     pub draw_order: DrawOrder,
+    /// What a frame's sprite draw has room for. Presentation: the
+    /// renderer's.
+    pub sprite_budget: SpriteBudgetRules,
+}
+
+/// A frame's sprite budget (the effects section's `sprite_budget`). The
+/// sprite draw hands each drawn object's sprite, in draw order, the VRAM
+/// tiles of its frame and a palette slot (EXE6's `sub_3006028`, EXE5's
+/// 0x03006190; EXE4's 0x03005C00), and a sprite the frame has no room
+/// left for isn't drawn (its flag 0x10, which the part list's builder
+/// skips, `sub_3006440`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpriteBudgetRules {
+    /// The tile cap. A frame's allocator starts at 1 (`sub_80027B4`), and
+    /// a sprite whose frame no sprite before it reserved this frame is left
+    /// out when the allocator less 0x30 plus its frame's tiles reaches the
+    /// cap (`sub_3006404`): a battle's 0x2FF (EXE6's `sub_80027D4`, EXE5's
+    /// 0x08002740; EXE4's 0x03005FD4 in mode 8, the battle's).
+    pub tiles: u16,
+    /// The palette slots. A sprite's palette shares the slot of an equal
+    /// one or takes a new one, and the sprite is left out when they are all
+    /// taken (`sub_3006428`): a battle's 10 (the same presets; EXE4's
+    /// 0x03006010 in mode 8).
+    pub palettes: u8,
+    /// The slots in battle mode 1: EXE6's and EXE5's 8 (`sub_80027E4`,
+    /// 0x08002750, picked by `GetBattleMode` at `sub_8007224`'s place);
+    /// none: the same as any battle's (EXE4's).
+    #[serde(default)]
+    pub palettes_in_battle_mode_1: Option<u8>,
 }
 
 /// The order a pool's objects are drawn in, each pool in turn (actors,
@@ -366,6 +398,32 @@ pub enum BannerRelease {
     /// Its hold doesn't count while it holds; let go, it slides out at once
     /// (EXE4's 0x080149CE, 0x0801616C).
     SlidesOut,
+}
+
+/// How a telop (a dimming chip's name across the screen) shares the HUD with
+/// the banners, and what its controller waits on (`dimming`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Telops {
+    /// A telop is a banner (EXE6's `sub_801E792` with banners 0x4C and
+    /// 0x50; EXE5's): it doesn't start while a banner or a telop shows, its
+    /// controller waits for whatever the banner block shows to end
+    /// (`sub_801E754`), and the flow waits on it as on any banner.
+    Banners,
+    /// Each player's telop is a piece of its own (EXE4's), in the banners'
+    /// steps.
+    /// - The local player's lays on the banner block (0x08016454, the
+    ///   HUD's task 0x100): not while a banner shows (0x0801627C), and in
+    ///   the place of a telop that does. Its controller waits for it alone
+    ///   (0x08016440), not for a banner; no banner starts while it shows,
+    ///   and the flow's wait for a banner doesn't see it (0x08016148).
+    /// - The other player's lays on a second block (0x080164B4, task
+    ///   0x8000) beside whatever the banner block shows, in the place of
+    ///   what the second block shows: a telop, or the name of the chip that
+    ///   player just used, which lays there too (`Battle::used_chips`) and
+    ///   takes a telop's place the same way. Its controller waits for the
+    ///   second block (0x080164A4).
+    Apart,
 }
 
 /// When a screen fade toward clear (the intro's, a dimming's end) ends.
