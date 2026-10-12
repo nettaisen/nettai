@@ -207,7 +207,7 @@ function fan.make(look: FanLook): Fan
         me.sprite.white = false
         obstacle.take_hits(me, "keeps_damage")
         obstacle.tick_lifetime(me)
-        local a = obstacle.react(me)
+        local a = obstacle.react(me, look.crush)
         if a then
             local action = ACTIONS[a]
             if not action then
