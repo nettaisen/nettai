@@ -1510,5 +1510,17 @@ mod tests {
         assert_eq!(Checked::of(&six, "exe6", &side).problems, Vec::new());
         builds.set_navi(&six, &mut side, crate::first_navi(&six, "exe6").unwrap()).unwrap();
         assert_eq!(side.facts.form_list(&six).len(), 5);
+        // What a build has installed stays through a change of navi, and the
+        // rules refuse a NaviCust on a navi that compiles none: a screen that
+        // keeps MegaMan's programs for a link navi's build keeps them aside,
+        // or the build isn't ready. (Patch cards kept do nothing, and are
+        // nothing wrong.)
+        let undersht = ids::entry(&six, "exe6", "navicust_programs", "undersht").unwrap();
+        set_navicust(&six, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 1, y: 3, rotation: 0, compressed: false }], 2);
+        side.set_fact(&six, "patch_cards", &patch_cards(&six, "exe6", "canodumb")).unwrap();
+        builds.set_navi(&six, &mut side, ids::navi(&six, "exe6", "elecman").unwrap()).unwrap();
+        let checked = Checked::of(&six, "exe6", &side);
+        let got: Vec<(&Wrong, Option<&str>)> = checked.problems.iter().map(|p| (&p.what, p.field.as_deref())).collect();
+        assert_eq!(got, [(&Wrong::NotTaken, Some("navicust_programs"))]);
     }
 }
