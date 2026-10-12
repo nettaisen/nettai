@@ -60,9 +60,12 @@ Each is settled unless the user changes it.
 10. **The NaviCust:** EXE4 and EXE5 draw only their 5x5 board (they have no out-of-bounds cells); EXE6 draws its 7x7
     with the out-of-bounds ring and the command line clearly marked. Out of bounds "is fine, it's not an error", and
     "bugs can sometimes be good in a build", so neither is styled as a warning. A bug is shown by its name and its
-    level. A bug's name is a full name spelled out from the game's own patch card effect name for the same bug
-    ("MoveBug" is Movement Bug, "BatHPbug" is Battle HP Bug), not the abbreviation and not a word of ours; a card's
-    own lines stay the game's strings. **Every bug, everywhere, is purple.** A plus part is a cell with a cross that reaches its edges, with no
+    level, whoever brings it, the NaviCust or a patch card. A bug's name is a full name spelled out from the game's
+    own patch card effect name for the same bug ("MoveBug" is Movement Bug, "BatHPbug" is Battle HP Bug, "CustDmg"
+    is Custom Damage), not the abbreviation and not a word of ours; a card's own lines stay the game's strings. A
+    card's bug that writes what no level of the bug does is shown with its amount in the level's place (Custom
+    Damage 50; Buster Blank 4 of 16; Movement Grass 2 of 8), and a card's drawback that is no bug of its own kind
+    (Super Armor off) stays the card's line. **Every bug, everywhere, is purple.** A plus part is a cell with a cross that reaches its edges, with no
     border around the cell.
 11. **Chips show their element** with the game's own element icon, at the right of the row, just left of the code.
     Chip icons and chip art are the pack's own.
@@ -394,7 +397,8 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
    with its problems typed (`build::Checked`, `Wrong`: a screen words each kind, with its numbers, in its
    language), the folder editor's limits and each library row's reason (`folders::View`, read per row), the
    Regular and tag marks (`build::mark`, `folders::mark_problems`), the overview (`Checked::overview`: each stat
-   with what was added, what gives the abilities, the bugs by name and level, the patch cards' MB) and a chip's
+   with what was added, what gives the abilities, the bugs by name with a level or an amount, `build::Extent`,
+   whoever brings them, the patch cards' MB) and a chip's
    row with its sort keys (`build::ChipInfo`, `build::sorted`). Light or Dark is a choice of the game's builds data
    (`Builds::choices_of`, `preset_of`, `take_preset`; `settle` for a build from a file or a save; none for a navi
    but MegaMan), with the face the round starts him with (`Checked::face`); EXE4's slots are `Builds::slots`
