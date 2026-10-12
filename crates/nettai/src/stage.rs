@@ -102,6 +102,9 @@ pub enum Shown {
 /// A battle being shown: the player, and its picture.
 pub struct Stage {
     pub player: Player,
+    /// Which stage this is, of those made: the window's one texture holds the picture of the stage last
+    /// shown, and another stage shown after it presents its own whether or not a tick ran (`Shell::show`).
+    pub id: u64,
     last: Option<Instant>,
     /// The picture is out of date: a tick ran, or the space or the
     /// language changed.
@@ -118,8 +121,10 @@ pub struct Stage {
 
 impl Stage {
     pub fn new(player: Player) -> Stage {
+        static MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
         Stage {
             player,
+            id: MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed),
             last: None,
             stale: true,
             fit: None,
@@ -211,6 +216,14 @@ impl Stage {
             Some(image) => Shown::New(image),
             None => Shown::Written,
         }
+    }
+
+    /// Present the picture for `fit` into the stage's own buffer and nowhere else: what a first picture takes
+    /// once (the text's glyphs drawn at that size) is taken before the battle's first frame.
+    pub fn warm(&mut self, fit: Fit) {
+        let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
+        self.buffer.resize(w * h, 0);
+        self.player.present(&mut self.buffer, w, h);
     }
 
     /// Show the picture again from the start (the window's texture was

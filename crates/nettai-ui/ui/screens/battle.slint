@@ -1,0 +1,276 @@
+// The battle (docs/design/app-ui.md §6, "In an online match"; docs/app.md §1): the picture fills the window,
+// with no header or footer. Over it: the connection's corner while online; nettai's menu, which Start or Esc
+// opens in place of the game's own pause (the training menu or the match menu: each is its screen's own
+// component, in training.slint and play.slint, built on `MenuOverlay` here); on a phone, the pad under the
+// picture.
+
+import { Theme } from "../theme.slint";
+import { Nav, Focusable } from "../nav.slint";
+import { Shell, BattleKind, Picture } from "../shell.slint";
+import { Cut, Heading, Note, Mono, Bars, Button } from "../widgets.slint";
+
+// A menu over the battle: a shade, and a panel with its title, one line under it, and what is put inside it
+// (rows of `OptionRow`, `MenuItem`, `Button`, laid out in a column `content-width` wide). `side` puts the panel
+// at the left, the battle in view beside it (the training menu); else it is in the middle, as tall as
+// `content-height` asks (the match menu). Its controls' names begin with `menu.`: while it is open the keys
+// reach nothing else.
+export component MenuOverlay {
+    in property <string> title;
+    in property <string> note;
+    in property <bool> side;
+    in property <length> content-height;
+    out property <length> content-width: panel.width - 48px;
+    property <length> head: root.note == "" ? 56px : 76px;
+    Rectangle {
+        background: root.side ? @linear-gradient(90deg, Theme.shade 0%, Theme.shade 46%, transparent 74%) : Theme.shade;
+        TouchArea { }
+    }
+
+    panel := Rectangle {
+        x: root.side ? Theme.margin : (parent.width - self.width) / 2;
+        y: root.side ? 24px : (parent.height - self.height) / 2;
+        width: min(parent.width - 2 * Theme.margin, root.side ? 500px : 340px);
+        height: root.side ? parent.height - 48px : min(parent.height - 48px, root.head + root.content-height + 48px);
+        Cut {
+            cut: 18px;
+        }
+
+        Rectangle {
+            x: 0;
+            y: 0;
+            width: 72px;
+            height: 2px;
+            background: @linear-gradient(90deg, Theme.cursor 0%, Theme.clear 100%);
+        }
+
+        Heading {
+            x: 24px;
+            y: 24px;
+            width: parent.width - 48px;
+            height: 36px;
+            text: root.title;
+            font-size: 28px;
+        }
+
+        Note {
+            x: 24px;
+            y: 62px;
+            width: parent.width - 48px;
+            height: 18px;
+            text: root.note;
+            wrap: no-wrap;
+            overflow: elide;
+        }
+
+        Rectangle {
+            x: 24px;
+            y: 24px + root.head;
+            width: parent.width - 48px;
+            height: parent.height - 48px - root.head;
+            @children
+        }
+    }
+}
+
+// The connection's quality, in a corner for the whole match: four bars and the round trip, or how long the link
+// has been down.
+component Connection {
+    width: 132px;
+    height: 30px;
+    Rectangle {
+        background: Theme.shade;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    Bars {
+        x: 12px;
+        visible: Shell.connection-down < 0;
+        level: Shell.connection-level;
+    }
+
+    Mono {
+        x: Shell.connection-down < 0 ? 42px : 12px;
+        width: parent.width - self.x - 12px;
+        text: Shell.connection-down >= 0 ? @tr("Reconnecting {} s", Shell.connection-down) : (Shell.connection-ping < 0 ? "" : @tr("{} ms", Shell.connection-ping));
+        color: Shell.connection-down >= 0 ? Theme.bad : Theme.text;
+        font-family: Shell.connection-down >= 0 ? Theme.body : Theme.mono;
+        horizontal-alignment: right;
+    }
+}
+
+// A button of the on-screen pad: held while a finger is on it.
+component PadKey {
+    in property <string> text;
+    // An arrow, as a path in a box of 14, in place of a text.
+    in property <string> shape;
+    in property <int> button;
+    in property <bool> round;
+    Rectangle {
+        background: touch.pressed ? Theme.line : Theme.raised;
+        border-width: 1px;
+        border-color: Theme.line;
+        border-radius: root.round ? self.width / 2 : 0px;
+    }
+
+    Text {
+        text: root.text;
+        color: Theme.text;
+        font-family: "Chakra Petch";
+        font-size: 16px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    Path {
+        width: 14px;
+        height: 14px;
+        commands: root.shape;
+        fill: Theme.text;
+        viewbox-width: 14;
+        viewbox-height: 14;
+    }
+
+    touch := TouchArea {
+        pointer-event(e) => {
+            if e.kind == PointerEventKind.down {
+                Shell.touch(root.button, true);
+            } else if e.kind == PointerEventKind.up || e.kind == PointerEventKind.cancel {
+                Shell.touch(root.button, false);
+            }
+        }
+    }
+}
+
+// The pad under the picture on a phone: the GBA's buttons where thumbs reach, and MENU.
+component TouchPad {
+    Button {
+        x: 0;
+        y: 0;
+        width: 96px;
+        nav: "pad.menu";
+        text: @tr("MENU");
+    }
+
+    PadKey {
+        x: 0;
+        y: parent.height - 300px;
+        width: 120px;
+        height: 48px;
+        text: "L";
+        button: 9;
+    }
+
+    PadKey {
+        x: parent.width - 120px;
+        y: parent.height - 300px;
+        width: 120px;
+        height: 48px;
+        text: "R";
+        button: 8;
+    }
+
+    PadKey {
+        x: 56px;
+        y: parent.height - 228px;
+        width: 56px;
+        height: 56px;
+        shape: "M 7 1 L 13 12 L 1 12 Z";
+        button: 6;
+    }
+
+    PadKey {
+        x: 0;
+        y: parent.height - 172px;
+        width: 56px;
+        height: 56px;
+        shape: "M 1 7 L 12 1 L 12 13 Z";
+        button: 5;
+    }
+
+    PadKey {
+        x: 112px;
+        y: parent.height - 172px;
+        width: 56px;
+        height: 56px;
+        shape: "M 13 7 L 2 1 L 2 13 Z";
+        button: 4;
+    }
+
+    PadKey {
+        x: 56px;
+        y: parent.height - 116px;
+        width: 56px;
+        height: 56px;
+        shape: "M 7 13 L 13 2 L 1 2 Z";
+        button: 7;
+    }
+
+    PadKey {
+        x: parent.width - 76px;
+        y: parent.height - 228px;
+        width: 76px;
+        height: 76px;
+        text: "A";
+        button: 0;
+        round: true;
+    }
+
+    PadKey {
+        x: parent.width - 164px;
+        y: parent.height - 154px;
+        width: 76px;
+        height: 76px;
+        text: "B";
+        button: 1;
+        round: true;
+    }
+
+    PadKey {
+        x: parent.width / 2 - 104px;
+        y: parent.height - 36px;
+        width: 96px;
+        height: 36px;
+        text: "SELECT";
+        button: 2;
+    }
+
+    PadKey {
+        x: parent.width / 2 + 8px;
+        y: parent.height - 36px;
+        width: 96px;
+        height: 36px;
+        text: "START";
+        button: 3;
+    }
+}
+
+// The battle's own part of the window: the picture, the connection's corner, the phone's pad. The menus over it
+// are put in by app.slint, each from its screen's file.
+export component BattleScreen {
+    property <length> picture-height: Theme.phone ? min(self.height, (self.width - 2 * Theme.margin) * 2 / 3) : self.height;
+    Rectangle {
+        background: Theme.phone ? transparent : #000000;
+    }
+
+    Picture {
+        x: Theme.phone ? Theme.margin : 0px;
+        y: Theme.phone ? Theme.margin : 0px;
+        width: Theme.phone ? parent.width - 2 * Theme.margin : parent.width;
+        height: root.picture-height;
+    }
+
+    Connection {
+        x: parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
+        y: (Theme.phone ? Theme.margin + root.picture-height : parent.height) - self.height - 16px;
+        visible: Shell.connection-shown;
+    }
+
+    if Theme.phone: TouchPad {
+        x: Theme.margin;
+        y: Theme.margin + root.picture-height + 16px;
+        width: parent.width - 2 * Theme.margin;
+        height: parent.height - self.y - Theme.margin;
+    }
+}
