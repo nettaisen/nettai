@@ -113,6 +113,8 @@ struct PanelsSection {
     type_mask: u32,
     #[serde(default)]
     cycle: Option<u32>,
+    #[serde(default)]
+    drawn: super::rules::PanelDrawn,
 }
 
 #[derive(Deserialize)]
@@ -735,6 +737,7 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                     mend_in_battle_mode_1: s.mend.battle_mode_1,
                     reservations: s.reservations,
                     type_mask: s.type_mask,
+                    drawn: s.drawn,
                 });
             }
             "reactions" => stated.reactions = Some(r.read(spec, &at).map_err(e)?),

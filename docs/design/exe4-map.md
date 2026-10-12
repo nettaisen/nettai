@@ -908,7 +908,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   user flashes, then a screen flash and the blinding hit over the other side's area (row 0x34, blindness for 480
   ticks). The lab's chips/ (4) and status/ blindness replay every frame; the hit is pixel-exact.
 - **Mine** (the dimming chips' variant 0x12, `chips/mine`): EXE6's Mine (@exelib/mine: controller #0x29, 0x080E4F5C;
-  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID, sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
+  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID (an identity that says only that the poltergeist and ColdMan
+  leave it, item 151), sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
   0x47 (14-13), collision rows 0x33 and 0x2A. Its init frees it without leaving its side's field-object slots when no
   collision record is left (0x080D6F5C); the shared code leaves them (a collision pool run dry, which no recording
   reaches). The lab's chips/ (5) replay every frame; the hit is pixel-exact.
@@ -987,7 +988,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the engine's `battle.set_chips_enabled`), which the navis' chip input reads (0x08007C3E, with the lockout at AIData
   +0x3A) and the computer navis' AI (0x08007C20); exe4-compat compares them every frame. Its obstacle code is EXE4's
   older: its own seven rows (0x080DD5F8), a crushing touch destroying it with its HP kept (0x08013F3E), no NameID, no
-  tracking. Under event flag 0x1187 (never in a netbattle) each green light and its end would also hide the other
+  tracking. An encasing (ColdMan's ice or bubble) ends it without its own leaving, so the encasing's first step
+  calls its ending (0x08011704: 0x080DD73C for attack #0x81): a kind's `encased`, the signal's turning the other
+  side's chips on again; the lab's chips/0x10a-coldman/signal (side 0's SignlRed, then its ColdMan while the signal
+  is red) has them on again at frame 4554, 60 ticks before the ice cube, and replays every frame. Under event flag
+  0x1187 (never in a netbattle) each green light and its end would also hide the other
   side's console's HUD draw task 17 (the levels gauge's sprite, which no netbattle shows): documented, not ported. The
   lab's chips/ (4) and status/signlred replay every frame (hit: side 1's chips off from frame 3173; side1: side 0's
   from 1181).
@@ -2467,6 +2472,30 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `stops_at_control`) counts them, so the move bug's start confusion (NaviStats +0x0D = 0xFF) spawns its visual on
     the intro's first tick (`navicust/bug-humor`, `bug-undersht`). The rule `status.timers_while_paused` (EXE4 true;
     EXE6, EXE5 false); the visual's own EXE4 differences (its sound, offset and role) are group A's.
+111. **Done: what a panel is drawn as** (group C, from B's frame comparisons: a cracked panel's hole a frame early).
+    EXE4 keeps the type and the owner each panel is drawn as in tables of their own (0x02037AE6, 0x02037B0E; EXE6 and
+    EXE5 in the panel, +6 and +7, which the panel's refresh writes), and the panel update alone writes them
+    (0x08009240): nothing while paused; a tick's column return (0x0800986C) draws every owner, with the return's
+    blink, and its per-panel tick (0x08009740) ends by drawing the panel as the type it began the tick with
+    (0x08009842), which a mend, an expiry and a pitfall's crumble set to what they leave and a cracked panel's
+    step-off break (0x080097C8) doesn't: the hole shows a tick late. A dimmed tick's update copies every panel's
+    type and owner (0x08009A38, from 0x080092A0): a mending hole's blink and a returning column's show through no
+    dimming. The rule `panels.drawn` (EXE4 `own_tables`; EXE6, EXE5 `in_panel`). Frame comparisons:
+    panels/cracked-step-off (frame 384) and chips/0x0ce-bugfix/bugs (868) pixel-exact; the lab's new
+    panels/mend-blink-dimming-540 and -542 (CrakOut's hole in its last second, SloGauge's dimming in either blink
+    phase) and panels/areagrab-return-dimming-1954 and -1958 (a returned column's blink) pixel-exact, where the
+    in-panel rule differs through the whole dimming (540: frames 967 to 1124; 1954: 2360 to 2517). EXE5's
+    stages/cracked-row/mend and EXE6's forms/falzar/bare-stage-cracked, which draw the hole at once, are exact as
+    they were.
+112. **Done: a crushed obstacle keeps its HP** (group C). EXE4's obstacle reaction (0x08013F3E, EXE6's `sub_801B394`'s
+    place) destroys an obstacle a crushing touch reaches (a body's, another obstacle's or a breaking hit's:
+    0x0C800002) with its HP as it is, and reads no removal; EXE6's and EXE5's drop the HP to 0. Its ten callers:
+    RockCube, the gears, Guardian's statue and VDoll's doll stated the engine's `destroys` already; TimeBomb's bomb,
+    BoyBomb's, Anubis's statue, the instruments, Wind's and Fan's fan and BigHamr's hammer ran the default (`breaks`):
+    their looks state `crush = "destroys"` now (@exelib's makers take it). The lab's new hits/silence-crushed
+    (Silence's instrument, 100 HP, and AirHoc1's puck, a breaking hit of 50, from the next panel) leaves the
+    instrument destroyed at 50 HP (frame 616), which `breaks` replays as 0; it and the six chips' recordings replay
+    every frame.
 
 ### 18.7 The HUD
 
@@ -2545,6 +2574,7 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
 151. **What the poltergeist leaves** (JunkMan's, @exelib/poltergeist). EXE4's 0x080EA16C and 0x0800B3E8 take every
     field object but attack objects #0x4C and #0x8C and effect object #0x6E, tested by kind (EXE5's by NameID); the
     engine asks the identity (`throwable`). **Done for #0x8C**, PropBom's bomb (chips/propbom/bomb: a field object's
-    identity with `throwable = false`; its recordings, JunkMan's and ColdMan's still match). Attack #0x4C is Mine's
-    land mine (chips/mine, @exelib/mine/land_mine's `identity`), ported with no identity, so both still take it: its
-    identity is to state `throwable = false`; effect #0x6E isn't ported.
+    identity with `throwable = false`; its recordings, JunkMan's and ColdMan's still match). **Done for #0x4C**, Mine's
+    land mine (chips/mine: the same identity through @exelib/mine/land_mine's `identity`): the lab's new
+    chips/0x10a-coldman/mine (the opponent's Mine hidden on (3,2), ColdMan's own cube formed over it) replays every
+    frame, where ColdMan took the mine before (its side at frame 734). Effect #0x6E isn't ported.
