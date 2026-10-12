@@ -104,7 +104,7 @@ impl Settings {
 
     fn set_levels(&mut self, shell: &mut Shell, music: u32, effects: u32) {
         (shell.settings.music, shell.settings.effects) = (music.min(100), effects.min(100));
-        shell.sound.set_levels(shell.settings.music, shell.settings.effects);
+        shell.set_sound_levels(shell.settings.music, shell.settings.effects);
         shell.save_settings();
         self.show(shell);
     }

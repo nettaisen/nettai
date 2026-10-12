@@ -12,14 +12,14 @@ use crate::errors::UserError;
 use crate::games::{Games, Ready, State};
 use crate::gl::GlPicture;
 use crate::input::{Action, Bindings, KeyPress, Keys, Pad, menu_action};
-use crate::nav::{Did, Direction, Key, Nav};
+use crate::nav::{Did, Direction, Key, Nav, Rect};
 use crate::screens::{self, Screen, ScreenId};
 use crate::settings::Settings;
 use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
 use slint::winit_030::WinitWindowAccessor;
-use slint::winit_030::winit::event::{ElementState, KeyEvent};
+use slint::winit_030::winit::event::{ElementState, KeyEvent, TouchPhase};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::rc::Rc;
@@ -95,7 +95,9 @@ pub struct Shell {
     /// The battle's buttons as bound (the settings', read once).
     pub bindings: Bindings,
     /// The GBA buttons the on-screen pad holds.
-    pub touch: u16,
+    pub touch: crate::input::TouchPad,
+    /// The on-screen pad's buttons as the UI was last told they are held.
+    pad_shown: u16,
     /// The language shown, by its code.
     pub lang: &'static str,
     /// The window's texture the picture is written into (femtovg's OpenGL); none: a new image each picture.
@@ -285,6 +287,26 @@ impl Shell {
             b.stage.surface.stale = true;
         }
         self.refresh();
+    }
+
+    /// The Music and Sound effects levels, each 0 to 100: the menus' and the title music's, and the battle's
+    /// own music and effects (a screen with a replay's viewer gives it `sound.battle_levels()` itself).
+    pub fn set_sound_levels(&mut self, music: u32, effects: u32) {
+        self.sound.set_levels(music, effects);
+        let (music, effects) = self.sound.battle_levels();
+        if let Some(b) = &mut self.battle {
+            b.stage.player.set_sound_levels(music, effects);
+        }
+    }
+
+    /// Tell the UI which of the on-screen pad's buttons are held, if that changed: it draws them pressed.
+    pub(crate) fn show_pad(&mut self) {
+        let held = self.touch.held();
+        if held != self.pad_shown {
+            self.pad_shown = held;
+            let buttons: Vec<bool> = (0..10).map(|bit| held & 1 << bit != 0).collect();
+            self.ui().global::<nettai_ui::Shell>().set_pad_held(ModelRc::new(VecModel::from(buttons)));
+        }
     }
 
     /// The battle's buttons bound anew: kept, and told to the hints.
@@ -546,6 +568,8 @@ pub enum NavInput {
     EditDone(String),
     /// The on-screen pad: a GBA button's bit number, held or let go.
     Touch(i32, bool),
+    /// The UI laid one of the on-screen pad's buttons out: its bit number and its place.
+    PadKey(i32, Rect),
 }
 
 pub struct App {
@@ -579,7 +603,8 @@ impl App {
             keys: Keys::default(),
             pad: Pad::start(),
             bindings,
-            touch: 0,
+            touch: Default::default(),
+            pad_shown: 0,
             lang,
             gl: None,
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },
@@ -917,14 +942,12 @@ impl App {
                 let did = self.shell.nav.end_edit(true);
                 self.did(did);
             }
+            // (The mouse on the on-screen pad: one pointer, through the UI. Fingers come by `touched`.)
             NavInput::Touch(bit, down) => {
-                let bit = 1u16 << bit.clamp(0, 9);
-                if down {
-                    self.shell.touch |= bit;
-                } else {
-                    self.shell.touch &= !bit;
-                }
+                self.shell.touch.press(down.then_some(bit.clamp(0, 9) as u8));
+                self.shell.show_pad();
             }
+            NavInput::PadKey(bit, rect) => self.shell.touch.place(bit.clamp(0, 9) as u8, rect),
         }
         self.settle();
     }
@@ -961,6 +984,34 @@ impl App {
     /// The window lost the keyboard: nothing is held.
     pub fn unfocused(&mut self) {
         self.shell.keys.release();
+        self.shell.touch.clear();
+        self.shell.show_pad();
+    }
+
+    /// A finger on the window (`main`'s winit hook, before Slint; `x` and `y` in the display's pixels): the
+    /// on-screen pad's, if it came down on one of its buttons while the battle has them. True if it was the
+    /// pad's (Slint doesn't get it); false and it goes on to Slint, as a pointer.
+    pub fn touched(&mut self, finger: u64, phase: TouchPhase, x: f64, y: f64) -> bool {
+        if !(self.shell.scale.phone && self.shell.battle_has_keys()) {
+            self.shell.touch.clear();
+            self.shell.show_pad();
+            return false;
+        }
+        let unit = (self.shell.scale.os * self.shell.scale.unit).max(0.01);
+        let (x, y) = (x as f32 / unit, y as f32 / unit);
+        let before = self.shell.touch.held();
+        let taken = match phase {
+            TouchPhase::Started => self.shell.touch.down(finger, x, y),
+            TouchPhase::Moved => self.shell.touch.moved(finger, x, y),
+            TouchPhase::Ended | TouchPhase::Cancelled => self.shell.touch.up(finger),
+        };
+        // (A button newly held is a press, timed as a key's is.)
+        if self.shell.touch.held() & !before != 0 {
+            self.shell.keys.pressed.push(Instant::now());
+            self.shell.nav.used_pointer();
+        }
+        self.shell.show_pad();
+        taken
     }
 
     /// A key of the window, before Slint sees it. True if it was the app's (Slint doesn't get it); false and
