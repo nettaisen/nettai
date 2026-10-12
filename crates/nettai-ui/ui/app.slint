@@ -13,7 +13,7 @@ import { MenuScreen } from "screens/menu.slint";
 import { SettingsScreen } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
-import { PlayScreen, PlayOverlay, MatchMenu } from "screens/play.slint";
+import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek } from "screens/play.slint";
 import { TrainingScreen, TrainingOverlay, TrainingMenu } from "screens/training.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
@@ -62,6 +62,8 @@ export component AppWindow inherits Window {
     if root.in-battle: BattleScreen { }
     if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu { }
     if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu { }
+    // (Both builds, while Tab is held in a match.)
+    if root.in-battle && Shell.battle == BattleKind.online && !Shell.battle-menu: MatchPeek { }
     if Shell.picker: PickerLayer { }
     if Shell.dialog: DialogLayer { }
     // The cursor: one object that glides from control to control. (The app moves it, a share of the way each
