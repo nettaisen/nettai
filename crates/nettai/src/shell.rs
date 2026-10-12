@@ -23,7 +23,7 @@ use slint::winit_030::winit::event::{ElementState, KeyEvent};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::rc::Rc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// A dialog a screen asks: its title, its message, its buttons. The screen hears the answer by `tag`
 /// (`Screen::answered`).
@@ -138,6 +138,10 @@ pub struct Shell {
     /// battle runs (`awake.rs`).
     pub stay_awake: bool,
     awake: Option<crate::awake::Awake>,
+    /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
+    /// hidden, covered), a timer runs the frames instead, and no picture is presented in them: there is no
+    /// frame to show it in, and the window's OpenGL isn't the thread's.
+    pub(crate) drawing: bool,
     /// Ctrl, Alt or the system's key is held (the key is the system's, or a text field's).
     chord: bool,
     shift: bool,
@@ -551,6 +555,10 @@ pub struct App {
     /// Presses that came before the controls they are for existed (a screen just shown): done at the next
     /// frames, in order, each with the frames it has waited.
     pending: Vec<(Action, u8)>,
+    /// When the window last drew a frame.
+    drawn_at: Option<Instant>,
+    /// `NETTAI_PLAY_STATS`: since when, the frames the window drew and the frames the timer ran since.
+    clock_stats: Option<(Instant, u32, u32)>,
 }
 
 impl App {
@@ -597,12 +605,19 @@ impl App {
             probe_motion: false,
             stay_awake: false,
             awake: None,
+            drawing: true,
             chord: false,
             shift: false,
             composing: false,
             keep_nothing: still,
         };
-        App { shell, screens: screens::all().into_iter().map(Some).collect(), pending: Vec::new() }
+        App {
+            shell,
+            screens: screens::all().into_iter().map(Some).collect(),
+            pending: Vec::new(),
+            drawn_at: None,
+            clock_stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0, 0)),
+        }
     }
 
     /// The app starts: on the main menu, the game last used loading first.
@@ -1039,7 +1054,51 @@ impl App {
 
     /// Before a frame is drawn at `now`: the window's scale, the pad, the games loading, the screens, the
     /// battle's ticks and its picture, the sound, the focus.
+    /// A frame the window is about to draw: the app's clock (docs/app.md §1).
     pub fn frame(&mut self, now: Instant) {
+        self.drawn_at = Some(now);
+        self.shell.drawing = true;
+        self.count(now, true);
+        self.run(now);
+    }
+
+    /// How long the window may go without drawing a frame before the timer runs the app's: three of a 60 Hz
+    /// display's frames.
+    const UNDRAWN: Duration = Duration::from_millis(50);
+
+    /// The timer's turn (every 16 ms: `main.rs`): if the window hasn't drawn a frame for a while (it is
+    /// minimized, hidden, covered or on another desktop: the system draws no frames for it) and something must
+    /// go on all the same (a battle, the cards before one, a screen's link), the frame is run here, without
+    /// its picture. So an online match keeps ticking and its link keeps being polled, and the other player
+    /// doesn't see a stalled peer. True if it ran one. While the window draws, this does nothing: the frames
+    /// are the window's, at its rate.
+    pub fn idle(&mut self, now: Instant) -> bool {
+        let wanted = self.shell.battle.is_some() || self.shell.loading_battle() || self.shell.stay_awake;
+        if !wanted || self.drawn_at.is_some_and(|at| now.saturating_duration_since(at) < App::UNDRAWN) {
+            return false;
+        }
+        self.shell.drawing = false;
+        self.count(now, false);
+        self.run(now);
+        self.shell.drawing = true;
+        true
+    }
+
+    /// `NETTAI_PLAY_STATS`: every two seconds, how many frames the window drew and how many the timer ran.
+    fn count(&mut self, now: Instant, drawn: bool) {
+        let Some((since, by_window, by_timer)) = &mut self.clock_stats else { return };
+        if drawn {
+            *by_window += 1;
+        } else {
+            *by_timer += 1;
+        }
+        if now.saturating_duration_since(*since) >= Duration::from_secs(2) {
+            eprintln!("clock stats: {by_window} frames drawn by the window, {by_timer} run by the timer");
+            (*since, *by_window, *by_timer) = (now, 0, 0);
+        }
+    }
+
+    fn run(&mut self, now: Instant) {
         // (The last frame was drawn, if the renderer didn't say so.)
         self.drawn();
         if self.shell.fit_window() {
