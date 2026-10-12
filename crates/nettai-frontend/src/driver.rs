@@ -14,6 +14,8 @@ use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
 use nettai_match::{After, Set};
 use nettai_netplay::standin::Masher;
+
+use crate::connection::{Quality, Reconnecting};
 #[cfg(test)]
 use std::sync::Arc;
 
@@ -61,9 +63,10 @@ pub trait Driver {
     }
     /// For a driver that runs the battle itself (netplay's rollback
     /// session), one wall-clock frame with the local player's buttons:
-    /// put the frame to show in `shown` and say what happened. None: the
-    /// driver gives each tick's inputs instead (`next`).
-    fn run_frame(&mut self, _keys: u16, _shown: &mut Battle) -> Option<Result<Ran, String>> {
+    /// put the frame to show in `shown` and say what happened, or why the
+    /// battle can't go on. None: the driver gives each tick's inputs instead
+    /// (`next`).
+    fn run_frame(&mut self, _keys: u16, _shown: &mut Battle) -> Option<Result<Ran, Stop>> {
         None
     }
     /// How the connection to the other player is doing, of a driver that
@@ -93,10 +96,10 @@ pub trait Driver {
     fn set_opponent(&mut self, _opponent: Opponent) -> bool {
         false
     }
-    /// Show the frame `ticks` behind the player's newest input, of a
-    /// driver that presents behind it (netplay's present delay); false
+    /// The player's input delay from the next frame on, in ticks, of a
+    /// driver that has one (netplay's: `crate::netplay::NetOptions`); false
     /// from one that doesn't.
-    fn set_present_delay(&mut self, _ticks: u32) -> bool {
+    fn set_input_delay(&mut self, _ticks: u32) -> bool {
         false
     }
     /// Record what it plays from now on as a replay (`crate::replay`), of
@@ -139,19 +142,63 @@ pub struct FeedShift {
     pub hud_late: u32,
 }
 
+/// Why a battle stopped, as a host can tell its player: each reason in the
+/// host's own words (a catalog's string, in the player's language). The
+/// detail beside it (`Player::stopped`, `Session::stopped`) is for a log.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum StopReason {
+    /// What was played came to its end: the set was decided, or the input
+    /// ran out (a recording's round). Nothing went wrong.
+    Finished,
+    /// The other player left the match (before its end, or after: the
+    /// result, if there is one, says which).
+    OpponentLeft,
+    /// The connection to the other player was lost for good: it dropped
+    /// and didn't come back, or nothing came from them for too long.
+    ConnectionLost,
+    /// The engine stopped, or the other side's datagrams stopped making
+    /// sense: nothing the player did or can mend.
+    Internal,
+}
+
+/// A battle that can't go on, from a driver that runs it itself
+/// (`Driver::run_frame`): the reason, for the player, and the detail, in
+/// English, for a log.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Stop {
+    pub reason: StopReason,
+    pub detail: String,
+}
+
+impl Stop {
+    pub fn new(reason: StopReason, detail: impl Into<String>) -> Stop {
+        Stop { reason, detail: detail.into() }
+    }
+}
+
 /// How a netplay match's connection and rollback are doing
 /// (`Driver::net_status`, `Player::net_status`): what a host shows of them
-/// is its own to compose.
+/// is its own to compose. An indicator of four bars shows `quality` (and
+/// `ping_ms` beside it), or, while `reconnecting` is some, that and its
+/// countdown instead.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct NetStatus {
-    /// The smoothed round trip, in milliseconds; none until one is
-    /// measured.
+    /// The ping: the smoothed round trip, in milliseconds; none until one
+    /// is measured. (As the match sees it: a datagram's trip, and the wait
+    /// for the frame that takes it on each side, a tick or so in all.)
     pub ping_ms: Option<f64>,
+    /// The jitter: how unsteady the round trip is, the smoothed distance of
+    /// each from the ping, in milliseconds (`crate::connection`).
+    pub jitter_ms: Option<f64>,
+    /// The connection's quality, from the ping and the jitter
+    /// (`crate::connection::Quality::of`, which documents the levels); none
+    /// until a round trip is measured.
+    pub quality: Option<Quality>,
     /// The share of the other player's datagrams lost, 0 to 1.
     pub loss: f64,
-    /// How many ticks the frame shown is behind the player's newest input
-    /// (the present delay).
-    pub present_delay: u32,
+    /// The player's input delay, in ticks: how many the frame shown is
+    /// behind their newest input (`crate::netplay::NetOptions`).
+    pub input_delay: u32,
     /// The last rollback's depth in ticks, the deepest so far, and how many
     /// there have been.
     pub last_rollback: u32,
@@ -159,9 +206,10 @@ pub struct NetStatus {
     pub rollbacks: u64,
     /// Frames the battle waited on the other player (stalled or parked).
     pub waits: u64,
-    /// The connection is down and its transport is making it again, this
-    /// long so far (the battle waits meanwhile); none while it is up.
-    pub reconnecting: Option<std::time::Duration>,
+    /// The connection is down and its transport is making it again (the
+    /// battle waits meanwhile): for how long so far, and how long the
+    /// transport has left; none while it is up.
+    pub reconnecting: Option<Reconnecting>,
 }
 
 /// What a frame of a driver that runs the battle itself did

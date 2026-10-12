@@ -141,10 +141,19 @@ export global Shell {
 // words for it go to the log file, never here.
 export enum ErrorKind {
     server-unreachable,
+    app-too-old,
     no-such-match,
     match-full,
     version-mismatch,
+    other-game,
     build-unusable,
+    build-refused,
+    their-build-unusable,
+    opponent-left,
+    no-answer,
+    cant-connect,
+    bad-address,
+    port-in-use,
     connection-lost,
     replay-version,
     wrong-game-save,
@@ -153,10 +162,13 @@ export enum ErrorKind {
 
 export global Errors {
     // The whole of it on one line: a field's reserved line, a row's end. `detail` is the rule a build breaks
-    // (a sentence of the catalogs), or the game a save was to be of.
+    // (a sentence of the catalogs), or a game's name.
     public pure function line(kind: ErrorKind, detail: string) -> string {
         if kind == ErrorKind.server-unreachable {
             return @tr("Can't reach the server. Check your connection.");
+        }
+        if kind == ErrorKind.app-too-old {
+            return @tr("This version of nettai is too old for the server. Get the latest.");
         }
         if kind == ErrorKind.no-such-match {
             return @tr("No match with that code.");
@@ -167,8 +179,32 @@ export global Errors {
         if kind == ErrorKind.version-mismatch {
             return @tr("Your opponent has a different version of nettai. You both need the latest.");
         }
+        if kind == ErrorKind.other-game {
+            return @tr("Your opponent is on {}. Pick the same game.", detail);
+        }
         if kind == ErrorKind.build-unusable {
             return @tr("This build can't be used: {}.", detail);
+        }
+        if kind == ErrorKind.build-refused {
+            return @tr("This build can't be used.");
+        }
+        if kind == ErrorKind.their-build-unusable {
+            return @tr("Your opponent's build can't be used.");
+        }
+        if kind == ErrorKind.opponent-left {
+            return @tr("Your opponent left.");
+        }
+        if kind == ErrorKind.no-answer {
+            return @tr("No answer from your opponent.");
+        }
+        if kind == ErrorKind.cant-connect {
+            return @tr("Couldn't connect to your opponent.");
+        }
+        if kind == ErrorKind.bad-address {
+            return @tr("That isn't an address. Use host:port.");
+        }
+        if kind == ErrorKind.port-in-use {
+            return @tr("That port is already in use.");
         }
         if kind == ErrorKind.connection-lost {
             return @tr("Connection lost. The match has ended.");
@@ -186,6 +222,9 @@ export global Errors {
         if kind == ErrorKind.server-unreachable {
             return @tr("Can't reach the server");
         }
+        if kind == ErrorKind.app-too-old {
+            return @tr("This version of nettai is too old for the server");
+        }
         if kind == ErrorKind.no-such-match {
             return @tr("No match with that code");
         }
@@ -195,8 +234,32 @@ export global Errors {
         if kind == ErrorKind.version-mismatch {
             return @tr("Different versions");
         }
+        if kind == ErrorKind.other-game {
+            return @tr("Your opponent is on {}", detail);
+        }
         if kind == ErrorKind.build-unusable {
             return @tr("This build can't be used");
+        }
+        if kind == ErrorKind.build-refused {
+            return @tr("This build can't be used");
+        }
+        if kind == ErrorKind.their-build-unusable {
+            return @tr("Your opponent's build can't be used");
+        }
+        if kind == ErrorKind.opponent-left {
+            return @tr("Your opponent left");
+        }
+        if kind == ErrorKind.no-answer {
+            return @tr("No answer from your opponent");
+        }
+        if kind == ErrorKind.cant-connect {
+            return @tr("Couldn't connect to your opponent");
+        }
+        if kind == ErrorKind.bad-address {
+            return @tr("That isn't an address");
+        }
+        if kind == ErrorKind.port-in-use {
+            return @tr("That port is already in use");
         }
         if kind == ErrorKind.connection-lost {
             return @tr("Connection lost");
@@ -213,6 +276,9 @@ export global Errors {
         if kind == ErrorKind.server-unreachable {
             return @tr("Check your connection.");
         }
+        if kind == ErrorKind.app-too-old {
+            return @tr("Get the latest.");
+        }
         if kind == ErrorKind.no-such-match {
             return "";
         }
@@ -222,8 +288,32 @@ export global Errors {
         if kind == ErrorKind.version-mismatch {
             return @tr("Your opponent has a different version of nettai. You both need the latest.");
         }
+        if kind == ErrorKind.other-game {
+            return @tr("Pick the same game.");
+        }
         if kind == ErrorKind.build-unusable {
             return @tr("{}.", detail);
+        }
+        if kind == ErrorKind.build-refused {
+            return "";
+        }
+        if kind == ErrorKind.their-build-unusable {
+            return "";
+        }
+        if kind == ErrorKind.opponent-left {
+            return "";
+        }
+        if kind == ErrorKind.no-answer {
+            return "";
+        }
+        if kind == ErrorKind.cant-connect {
+            return "";
+        }
+        if kind == ErrorKind.bad-address {
+            return @tr("Use host:port.");
+        }
+        if kind == ErrorKind.port-in-use {
+            return "";
         }
         if kind == ErrorKind.connection-lost {
             return @tr("The match has ended.");

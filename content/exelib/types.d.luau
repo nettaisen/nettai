@@ -606,6 +606,20 @@ export type NaviCustGame = {
     bug_stop: ((side: number) -> boolean?)?,
 }
 
+-- What a game's folder rules are made of besides the shared ones (@exelib/folder_rules; each game's rules/folder
+-- states its own): a folder's size; whether a folder can ever hold a chip (the chips a save can collect); whether the
+-- side's save can hold it (`owned`: a version's own chips, by the side's setup; nil, any); how many copies of a chip a
+-- folder holds; the most dark chips (nil: the game's folders hold none); and the tag chips' MB together at most (nil:
+-- the game's folders have no tag chips).
+export type FolderRules = {
+    size: number,
+    in_pack: (chip: Chip) -> boolean,
+    owned: ((chip: Chip, setup: any) -> boolean)?,
+    copies: (chip: Chip) -> number,
+    dark: number?,
+    tag_memory: number?,
+}
+
 -- What AirSpin sends from the panel ahead (@exelib/airspin/action): the
 -- whirlwind top that rolls and spins there (its palette, its spins), EXE6's
 -- seeking whirlwind no chip sends, or EXE5's AqWhirl whirlpool.

@@ -15,6 +15,7 @@
 //! the game's namespace alone (`ids`). There is no mixing of games.
 
 pub mod binary;
+pub mod build;
 pub mod check;
 pub mod pick;
 pub mod facts;
@@ -28,6 +29,7 @@ mod link_navis;
 pub mod names;
 mod set;
 pub mod sp_times;
+mod wrong;
 pub mod story;
 #[cfg(any(test, feature = "testing"))]
 pub mod testing;
@@ -45,6 +47,7 @@ pub use pick::Picks;
 pub use file::{parse, write};
 pub use folders::Folder;
 pub use set::{After, Set};
+pub use wrong::{Count, Wrong};
 
 /// A round of a match as the match states it: where it is fought, its
 /// stage (one of the game's link battle stages) and the background shown

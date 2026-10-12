@@ -16,7 +16,7 @@ use crate::screens::ScreenId;
 use crate::shell::Shell;
 use crate::stage::{self, Stage};
 use nettai_battle::BattleResult;
-use nettai_frontend::driver::Driver;
+use nettai_frontend::driver::{Driver, StopReason};
 use nettai_frontend::game::TextMode;
 use nettai_frontend::preload::{Part, Preload};
 use nettai_frontend::replay::Recorder;
@@ -65,8 +65,9 @@ pub enum BattleEvent {
     Started,
     /// The set is over: how it went for this player (none: nobody's).
     Finished(Option<BattleResult>),
-    /// It stopped without ending (the other player left, the engine stopped: why is in the log).
-    Stopped,
+    /// It stopped without ending: why, as a player can be told it (`UserError::of_stop`). The detail is in
+    /// the log.
+    Stopped(StopReason),
 }
 
 /// The battle on screen.
@@ -292,20 +293,12 @@ impl Shell {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         if let Some(net) = b.stage.player.net_status() {
-            let ping = net.ping_ms.map(|ms| ms.round() as i32);
-            let level = match ping {
-                None => 0,
-                Some(ms) if ms < 70 => 4,
-                Some(ms) if ms < 130 => 3,
-                Some(ms) if ms < 220 => 2,
-                Some(_) => 1,
-            };
-            // (A link that loses packets is a bar worse than its time says.)
-            let level = if net.loss > 0.05 && level > 1 { level - 1 } else { level };
+            // (The bars are the library's quality, from the round trip and how steady it is; while the link
+            // is down, the seconds until it gives up, or those it has been down where it never does.)
             shell.set_connection_shown(true);
-            shell.set_connection_level(level);
-            shell.set_connection_ping(ping.unwrap_or(-1));
-            shell.set_connection_down(net.reconnecting.map_or(-1, |d| d.as_secs() as i32));
+            shell.set_connection_level(net.quality.map_or(0, |q| q.bars() as i32));
+            shell.set_connection_ping(net.ping_ms.map_or(-1, |ms| ms.round() as i32));
+            shell.set_connection_down(net.reconnecting.map_or(-1, |r| r.gives_up_in.unwrap_or(r.elapsed).as_secs() as i32));
         }
         // How it ended, told once.
         let mut event = None;
@@ -314,9 +307,10 @@ impl Shell {
                 b.over = true;
                 event = Some(BattleEvent::Finished(b.stage.player.result()));
             } else if let Some(why) = b.stage.player.stopped() {
-                crate::errors::log("the battle stopped", &why);
+                let reason = b.stage.player.stop_reason().unwrap_or(StopReason::Internal);
+                crate::errors::log("the battle stopped", &format_args!("{reason:?}: {why}"));
                 b.over = true;
-                event = Some(BattleEvent::Stopped);
+                event = Some(if reason == StopReason::Finished { BattleEvent::Finished(b.stage.player.result()) } else { BattleEvent::Stopped(reason) });
             }
         }
         let owner = b.owner;

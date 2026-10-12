@@ -56,7 +56,7 @@ local MAX_REG_UP = 50
 -- when a side states none) and MegaMan may leave out (no code received); none for a navi without levels. The base HP
 -- is MegaMan's (the navi that compiles a NaviCust): any other's HP is its level's, so a side of one that states
 -- another than the default states what has no effect.
-local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+local function validate(side: number, problem: (p: SetupProblem) -> ())
     local setup = rules.setup_of(side)
     local navi: NaviDef? = setup.navi
     if navi == nil then
@@ -67,15 +67,30 @@ local function validate(side: number, problem: (text: string, field: string?, en
     local by_level = if navi.levels ~= nil then navi.levels.by_level else nil
     if level ~= nil then
         if by_level == nil then
-            problem(string.format("level %d: %s takes no level", level, name), "level")
+            problem({ kind = "not_taken", field = "level", text = string.format("level %d: %s takes no level", level, name) })
         elseif level > #by_level - 1 then
-            problem(string.format("level %d: a navi code's level is 0 to %d", level, #by_level - 1), "level")
+            problem({
+                kind = "range",
+                field = "level",
+                value = level,
+                least = 0,
+                most = #by_level - 1,
+                text = string.format("level %d: a navi code's level is 0 to %d", level, #by_level - 1),
+            })
         end
     elseif by_level ~= nil and navi.forms == nil then
-        problem(string.format("%s has no level (0 to %d): a link navi exists only through its navi code", name, #by_level - 1), "level")
+        problem({
+            kind = "missing",
+            field = "level",
+            text = string.format("%s has no level (0 to %d): a link navi exists only through its navi code", name, #by_level - 1),
+        })
     end
     if navi.forms == nil and setup.hp ~= MAX_HP then
-        problem(string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name), "hp")
+        problem({
+            kind = "not_taken",
+            field = "hp",
+            text = string.format("hp: %s's HP is its level's; a side states the base HP of the navi that compiles a NaviCust", name),
+        })
     end
 end
 

@@ -150,13 +150,17 @@ end
 local LIST_MB = 80
 
 -- `validate`'s part: no card installed twice, and the cards' MB together at most the list's.
-local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
-    apply_cards.check(rules.setup_of(side).patch_cards, LIST_MB, function(text: string, entry: number?)
-        problem(text, "patch_cards", entry)
-    end)
+local function validate(side: number, problem: (p: SetupProblem) -> ())
+    apply_cards.check(rules.setup_of(side).patch_cards, LIST_MB, problem)
+end
+
+-- `overview`'s part: the cards' abilities and bugs, and their MB against the list's.
+local function overview(side: number, out: SetupOverview)
+    apply_cards.overview(rules.setup_of(side).patch_cards, LIST_MB, out)
 end
 
 return {
     apply = apply,
     validate = validate,
+    overview = overview,
 }

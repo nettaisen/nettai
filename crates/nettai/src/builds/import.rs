@@ -84,7 +84,7 @@ mod tests {
         // (A Team ProtoMan save with no souls: its team's six, as every build.)
         let team: Vec<String> = side.facts.get(&five, "souls").unwrap().defs().iter().map(|&h| five.defs.form(nettai_content_api::FormHandle(h)).key.clone()).collect();
         assert_eq!(team, ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"]);
-        assert!(notes.iter().any(|n| n == "souls none is protoman's: the protoman preset (souls: 6), as every build in the app"), "{notes:?}");
+        assert!(notes.iter().any(|n| n == "souls none is protoman's: the protoman preset (giga_chips: 7, souls: 6), as every build in the app"), "{notes:?}");
         let six = exe6_content();
         let e = side_of_save(&six, "exe6", &image).unwrap_err();
         assert!(e.starts_with("not a save of exe6"), "{e}");

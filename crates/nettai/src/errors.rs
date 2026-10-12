@@ -1,10 +1,16 @@
-//! What can go wrong, as the player reads it (docs/design/app-ui.md §7), and the log.
+//! What can go wrong, as the player reads it (docs/design/app-ui.md §7), and the log (docs/app.md §12).
 //!
 //! No string from a library's error is ever shown. A failure the player can see is one of [`UserError`]'s
 //! kinds, each a sentence of the catalogs (the UI's `Errors`, shell.slint); what the code said goes to the log
 //! file alone ([`log`]: `crate::paths::log`). A problem with one field is shown in that field's reserved line
 //! ([`UserError::line`]); a failure that ends what the player was doing is a dialog (`Shell::fail`).
+//!
+//! The netplay libraries' errors are typed the same way, a kind for the player and a detail in English for
+//! the log (docs/design/rollback.md §4.9): [`UserError::of_link`], [`UserError::of_lobby`] and
+//! [`UserError::of_stop`] write the detail to the log and give the kind's sentence.
 
+use nettai_frontend::driver::StopReason;
+use nettai_frontend::lobby::{Failure, Reason};
 use nettai_ui::{AppWindow, ErrorKind, Errors};
 use slint::ComponentHandle;
 use std::io::Write;
@@ -15,14 +21,31 @@ use std::sync::Mutex;
 pub enum UserError {
     /// The signaling server can't be reached.
     ServerUnreachable,
+    /// The signaling server speaks a newer protocol than this app.
+    AppTooOld,
     /// No match has that invite code.
     NoSuchMatch,
     /// The match already has two players.
     MatchFull,
-    /// The two apps differ.
+    /// The two apps (or their packs) differ.
     VersionMismatch,
-    /// A build breaks a rule: `reason` is the rule's own sentence, from the catalogs ("2 Giga chips, limit 1").
-    BuildUnusable { reason: String },
+    /// The opponent chose another game: `game` is theirs, as shown (EXE5).
+    OtherGame { game: String },
+    /// This player's build breaks a rule: `reason` is the rule's own sentence, from the catalogs ("2 Giga
+    /// chips, limit 1"), where the app's own check found it; none where the other side refused it.
+    BuildUnusable { reason: Option<String> },
+    /// The opponent's build breaks a rule.
+    TheirBuildUnusable,
+    /// The opponent left the lobby or the match.
+    OpponentLeft,
+    /// The opponent never answered.
+    NoAnswer,
+    /// No connection to the opponent could be made.
+    CantConnect,
+    /// A direct address names no machine.
+    BadAddress,
+    /// The port to host on is taken.
+    PortInUse,
     /// The link dropped for good.
     ConnectionLost,
     /// A replay is from another version.
@@ -37,10 +60,19 @@ impl UserError {
     fn kind(&self) -> (ErrorKind, &str) {
         match self {
             UserError::ServerUnreachable => (ErrorKind::ServerUnreachable, ""),
+            UserError::AppTooOld => (ErrorKind::AppTooOld, ""),
             UserError::NoSuchMatch => (ErrorKind::NoSuchMatch, ""),
             UserError::MatchFull => (ErrorKind::MatchFull, ""),
             UserError::VersionMismatch => (ErrorKind::VersionMismatch, ""),
-            UserError::BuildUnusable { reason } => (ErrorKind::BuildUnusable, reason),
+            UserError::OtherGame { game } => (ErrorKind::OtherGame, game),
+            UserError::BuildUnusable { reason: Some(reason) } => (ErrorKind::BuildUnusable, reason),
+            UserError::BuildUnusable { reason: None } => (ErrorKind::BuildRefused, ""),
+            UserError::TheirBuildUnusable => (ErrorKind::TheirBuildUnusable, ""),
+            UserError::OpponentLeft => (ErrorKind::OpponentLeft, ""),
+            UserError::NoAnswer => (ErrorKind::NoAnswer, ""),
+            UserError::CantConnect => (ErrorKind::CantConnect, ""),
+            UserError::BadAddress => (ErrorKind::BadAddress, ""),
+            UserError::PortInUse => (ErrorKind::PortInUse, ""),
             UserError::ConnectionLost => (ErrorKind::ConnectionLost, ""),
             UserError::ReplayVersion => (ErrorKind::ReplayVersion, ""),
             UserError::WrongGameSave { game } => (ErrorKind::WrongGameSave, game),
@@ -59,6 +91,53 @@ impl UserError {
         let (kind, detail) = self.kind();
         let errors = ui.global::<Errors>();
         (errors.invoke_title(kind, detail.into()).into(), errors.invoke_body(kind, detail.into()).into())
+    }
+
+    /// A link's error (nettai-rtc's), while `doing` something: its detail to the log, its kind as the player
+    /// reads it.
+    pub fn of_link(doing: &str, error: &nettai_rtc::Error) -> UserError {
+        use nettai_rtc::ErrorKind as K;
+        log(doing, &error.detail);
+        match error.kind {
+            K::ServerUnreachable => UserError::ServerUnreachable,
+            K::ServerVersion => UserError::AppTooOld,
+            K::NoSuchRoom => UserError::NoSuchMatch,
+            K::RoomFull => UserError::MatchFull,
+            K::BadAddress => UserError::BadAddress,
+            K::PortUnavailable => UserError::PortInUse,
+            K::CantConnect => UserError::CantConnect,
+            K::ConnectionLost => UserError::ConnectionLost,
+            K::Internal => UserError::Other,
+        }
+    }
+
+    /// A lobby that ended without a match, as [`UserError::of_link`]. None where this player left it: nothing
+    /// went wrong.
+    pub fn of_lobby(failure: &Failure) -> Option<UserError> {
+        if failure.reason == Reason::Left {
+            return None;
+        }
+        log("the lobby ended", &failure.detail);
+        Some(match &failure.reason {
+            Reason::DifferentVersion | Reason::DifferentContent => UserError::VersionMismatch,
+            Reason::DifferentGame { theirs } => UserError::OtherGame { game: crate::shell::Shell::game_name(theirs) },
+            Reason::YourBuild => UserError::BuildUnusable { reason: None },
+            Reason::TheirBuild => UserError::TheirBuildUnusable,
+            Reason::OpponentLeft => UserError::OpponentLeft,
+            Reason::NoAnswer => UserError::NoAnswer,
+            Reason::Left | Reason::Protocol => UserError::Other,
+        })
+    }
+
+    /// Why a battle stopped, as the player reads it. None where it came to its end: nothing went wrong. (The
+    /// shell writes the detail to the log as the battle stops.)
+    pub fn of_stop(reason: StopReason) -> Option<UserError> {
+        match reason {
+            StopReason::Finished => None,
+            StopReason::OpponentLeft => Some(UserError::OpponentLeft),
+            StopReason::ConnectionLost => Some(UserError::ConnectionLost),
+            StopReason::Internal => Some(UserError::Other),
+        }
     }
 }
 
@@ -103,5 +182,33 @@ impl ::log::Log for Sink {
 pub fn catch_library_logs() {
     if ::log::set_logger(&Sink).is_ok() {
         ::log::set_max_level(::log::LevelFilter::Warn);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Every kind the netplay libraries have maps to a sentence of the player's: none falls through to a
+    /// library's own words, and only what nobody can mend is "something went wrong".
+    #[test]
+    fn every_library_kind_has_the_players_sentence() {
+        use nettai_rtc::ErrorKind as K;
+        let link = |kind| UserError::of_link("testing", &nettai_rtc::Error { kind, detail: String::new() });
+        assert_eq!(link(K::NoSuchRoom), UserError::NoSuchMatch);
+        assert_eq!(link(K::ServerVersion), UserError::AppTooOld);
+        assert_eq!(link(K::PortUnavailable), UserError::PortInUse);
+        for kind in [K::ServerUnreachable, K::RoomFull, K::BadAddress, K::CantConnect, K::ConnectionLost] {
+            assert_ne!(link(kind), UserError::Other, "{kind:?}");
+        }
+        assert_eq!(link(K::Internal), UserError::Other);
+        let lobby = |reason| UserError::of_lobby(&Failure { reason, detail: String::new() });
+        assert_eq!(lobby(Reason::Left), None, "leaving is no failure");
+        assert_eq!(lobby(Reason::DifferentGame { theirs: "exe5".into() }), Some(UserError::OtherGame { game: "EXE5".into() }));
+        assert_eq!(lobby(Reason::YourBuild), Some(UserError::BuildUnusable { reason: None }));
+        assert_eq!(lobby(Reason::TheirBuild), Some(UserError::TheirBuildUnusable));
+        assert_eq!(lobby(Reason::Protocol), Some(UserError::Other));
+        assert_eq!(UserError::of_stop(StopReason::Finished), None);
+        assert_eq!(UserError::of_stop(StopReason::OpponentLeft), Some(UserError::OpponentLeft));
     }
 }
