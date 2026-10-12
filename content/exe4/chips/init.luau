@@ -50,6 +50,7 @@ return merge {
     require("@self/curse"),
     require("@self/custswrd"),
     require("@self/darkbomb"),
+    require("@self/darkneo"),
     require("@self/dbldream"),
     require("@self/deltaray"),
     require("@self/discord"),

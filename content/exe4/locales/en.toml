@@ -337,6 +337,7 @@ language = "en"
 "bodygrd" = { name = "BodyGrd", description = "Assassin\nwho sneak\ninto enmy" }
 "pdriver" = { name = "P.Driver", description = "A sun\ngenerator\nfries all" }
 "poltrgst" = { name = "Poltrgst", description = "" }
+"darkneo" = { name = "DarkNeo", description = "Fuses the\npowr into\ndarkness!" }
 "redsun" = { name = "RedSun", description = "A RedSun\nbombards\n3 ahead" }
 "bluemoon" = { name = "BlueMoon", description = "Blue moon\ndrains\n3 ahead" }
 "holydrem" = { name = "HolyDrem", description = "Holy shot\nsucks in\nHolyPanl!" }
