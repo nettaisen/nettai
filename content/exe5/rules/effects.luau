@@ -83,6 +83,9 @@ return {
     fade_clear = "at_target",
     -- A banner's steps are EXE6's.
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
+    -- A telop is a banner, as EXE6's (0x0801B02E with banners 0x4C and 0x50; its controller waits on 0x0801AFF2, the
+    -- banner block's, whichever player's it is: 0x0800A17A).
+    telops = "banners",
     -- Each console's RNG1 advances once a frame after the battle's, as EXE6's.
     rng1_per_frame = true,
     -- The chip icons over a navi are EXE6's (its attach point 3).

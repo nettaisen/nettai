@@ -232,6 +232,17 @@ impl Banner {
         true
     }
 
+    /// Lay `telop` on the block, in the banners' `steps`, whatever the block
+    /// showed (EXE4's 0x0801650C: a telop that is no banner).
+    pub fn lay_telop(&mut self, telop: Telop, steps: crate::content::BannerSteps) {
+        *self = Banner { active: true, step: 0, timer: 0, holds: false, steps: Some(steps), id: None, telop: Some(telop) };
+    }
+
+    /// A telop shows on the block.
+    pub fn shows_telop(&self) -> bool {
+        self.active && self.telop.is_some()
+    }
+
     pub fn status(&self) -> BannerStatus {
         if !self.active {
             BannerStatus::Done

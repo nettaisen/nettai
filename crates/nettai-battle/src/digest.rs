@@ -17,8 +17,10 @@
 //! - how sprites are drawn ([`Look`](crate::object::sprite::Look));
 //! - which banner is showing ([`Banner::id`](crate::hud::Banner::id)) and
 //!   what a telop says ([`Banner::telop`](crate::hud::Banner::telop), from
-//!   the controller's `Object::telop_chip`), and the chip a player just
-//!   used, which the other player's console names (`Battle::used_chips`);
+//!   the controller's `Object::telop_chip`: that a block shows a telop is
+//!   hashed), and the chip a player just used, which the other player's
+//!   console names (`Battle::used_chips`: how long the name still shows is
+//!   hashed);
 //! - what each console shows of its navi's chips (`Battle::chip_hud`), the
 //!   HUD parts a chip hid (`Battle::hud_hidden`), and
 //!   the HUD's message (`Battle::message`), warning markers
@@ -169,7 +171,8 @@ impl Hash for Battle {
             fight,
             gauge,
             banner,
-            used_chips: _,
+            remote_telop,
+            used_chips,
             chip_hud: _,
             hud_hidden: _,
             message: _,
@@ -213,6 +216,10 @@ impl Hash for Battle {
         fight.hash(h);
         gauge.hash(h);
         banner.hash(h);
+        remote_telop.hash(h);
+        // (How long each name still shows, not what it says: where telops
+        // run apart a controller waits on the other player's.)
+        used_chips.each_ref().map(|u| u.map(|u| u.ticks)).hash(h);
         paused.hash(h);
         inputs.hash(h);
         hands.hash(h);
@@ -320,12 +327,14 @@ impl Hash for Sprite {
     }
 }
 
-/// A banner's lifetime (flow code waits on it), without which banner it is
-/// or its steps (its game's, the content's).
+/// A banner's lifetime (flow code waits on it) and whether it is a telop
+/// (which the flow and the controllers tell apart, where telops run apart
+/// from the banners), without which banner it is, what the telop says, or
+/// its steps (its game's, the content's).
 impl Hash for Banner {
     fn hash<H: Hasher>(&self, h: &mut H) {
-        let Banner { active, step, timer, holds, steps: _, id: _, telop: _ } = self;
-        (active, step, timer, holds).hash(h);
+        let Banner { active, step, timer, holds, steps: _, id: _, telop } = self;
+        (active, step, timer, holds, telop.is_some()).hash(h);
     }
 }
 

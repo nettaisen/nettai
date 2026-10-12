@@ -1544,8 +1544,8 @@ declare dimming: {
     -- A telop for `side` naming `chip` (nil: the zeroed chip's) without
     -- damage, and its sound; a used chip's name makes way.
     chip_telop: (side: number, chip: Chip?) -> (),
-    -- The telop's banner is done.
-    telop_done: () -> boolean,
+    -- `side`'s telop is done.
+    telop_done: (side: number) -> boolean,
     -- The dimming changes sides (`sub_800BE2C`'s): `controller`'s side's
     -- dimming is over (its user stays recorded), and `controller` takes the
     -- other side, which now owns, runs and started the dimming (its own

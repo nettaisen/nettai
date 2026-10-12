@@ -2548,7 +2548,10 @@ fn dimming_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let chip = bound(|b| chip_arg(b, &chip, "dimming.chip_telop's chip"))?;
         with(|api, _| Ok(api.dimming_chip_telop(side, chip)))
     });
-    lib_fn!(lua, t, "telop_done", |_, ()| with(|api, _| Ok(api.dimming_telop_done())));
+    lib_fn!(lua, t, "telop_done", |_, side: LuaValue| {
+        let side = u8_arg(side, "side")?;
+        with(|api, _| Ok(api.dimming_telop_done(side)))
+    });
     lib_fn!(lua, t, "turn", |_, me: mlua::UserDataRef<Object>| with(|api, _| Ok(api.dimming_turn(me.0))));
     lib_fn!(
         lua,
