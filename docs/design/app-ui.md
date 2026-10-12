@@ -104,6 +104,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | Text entry on a pad | The invite code has a six-box picker a pad can use; names, addresses and searches need a keyboard |
 | Closed builds and replays | A replay of a closed-builds match hides the builds in the viewer too |
 | Smaller NaviCust boards | Not offered: every build has the full board |
+| Light or dark MegaMan (EXE4, EXE5) | Kept from the old creator, which the mockups left out: a Light or Dark choice on the Navi tab, the two save presets (the light/dark value and the base HP together) |
 
 ## 4. The look
 
@@ -280,7 +281,8 @@ Each is in the mockups under the same name.
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
   them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents.
 - **Navi:** the game's navis as a grid of cards; the chosen one's HP, element and charge shot beside it; "NaviCust
-  and patch cards are MegaMan only."
+  and patch cards are MegaMan only." In EXE4 and EXE5, MegaMan's panel also has Light or Dark, a stepper, with the face the
+  round starts him with.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header holding Chips 30/30, Mega, Giga, Reg and Tag memory, then the overview's own 2 by
