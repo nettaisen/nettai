@@ -1,0 +1,337 @@
+# The nettai app's UI
+
+**Status (2026-10-12): approved design, implementation started.** The user asked for the app's UI to be rethought and
+redesigned entirely ("throw away everything you have right now because it's so janky and not great. do keep using
+slint though"), reviewed mockups over a day, and then said "throw out the old nettai and start implementing". This
+document is that design. It replaces docs/app.md's §2 to §4 and §8 to §9; docs/app.md's §1 (the battle in a Slint
+window: the clock, the texture, the keys' timing) and §5 to §7 (latency, the web, mobile) still describe how the
+battle is hosted, and are to be folded into this as the new app lands.
+
+The mockups are the picture of every screen: https://claude.ai/artifact/5Kg4TfQhZeMXB5C45rXM2Z, a copy of which is
+`bn6battle-verify/docs/nettai-ui/mockups.html` (not in this repository: it embeds chip icons and art taken from a
+pack). Its CSS is the reference for sizes, colors and spacing, in units where the window is 1280 by 800; this
+document gives the same numbers. Where the two differ, this document is right.
+
+## 1. What the user asked for
+
+In their words (2026-10-12), in order:
+
+- "make sure all the sizing doesn't randomly shift as well as text changes. make sure all the keyboard navigation
+  works smoothly, especially when going through input boxes and stuff. make sure all the ui elements don't clip off
+  textboxes etc and the ui element spacing is comfortable"
+- top level: PLAY (the netplay UI), TRAINING, BUILDS, REPLAYS; less emphasized: settings, exit
+- a game selector in the top right (4/5/6); the screen shows a demo reel on the right
+- "play title screen music depending on game, use the game's title screen music"
+- "saves should be preset to": Red Sun or Blue Moon, Team ProtoMan or Team Colonel, Gregar or Falzar
+- editable for a build: the navi, the chip folder, and for MegaMan the NaviCust, the patch cards and the auto battle
+  data
+- i18n support
+- "in battle pause should be replaced with nettai's pause menu"
+- "use https://github.com/tangobattle/gamepad-facade"
+- "disable L to run in battle"
+- "replays should allow seeking and export"
+- "signaling server should assign invite code instead of the client generating one"
+- "don't show any internal error strings to the user. if there are internal errors that must be surfaced as user
+  errors, they should be replaced with enums and then go through i18n. they should not be overly technical errors"
+- "when waiting for an opponent in netplay mode, start a sparring session in training mode"
+- "don't have random build support, you must have a build. when creating a build, fill folders with the default
+  chips for an empty save for the game"
+- "chip restrictions for folders should be based on the rules in tango (e.g. version specific gigas)"
+
+## 2. What the user decided in review
+
+Each is settled unless the user changes it.
+
+1. **The game selector** is the game's name between two arrows that steps through the three games and wraps, not a
+   segmented control. A game with no pack is skipped.
+2. **Versions are listed in this order everywhere:** Red Sun, Blue Moon; Team ProtoMan, Team Colonel; Gregar, Falzar.
+3. **Rounds in netplay are chosen in the lobby.**
+4. **Training is like Street Fighter's:** a dummy configured from a menu while in training. The word on screen is
+   TRAINING, never "sparring".
+5. **Direct connect stays** (host and port, no server).
+6. **Input delay is configurable, 4 by default.**
+7. **The look is modern and techy**, not retro. A first, pixel-and-bevel "Battle Network" skin was rejected as "too
+   retro".
+8. **Little explanatory text.** Subtitles such as "Battle someone online" under a menu item are "claudeslop" and
+   are gone. Stripping every line was too far ("a little more explanatory text than that"). So: a line only where
+   it says something its label can't (what a setting changes, what happens next, how to fix an error). No subtitles
+   on menu items or buttons.
+9. **The build overview shows the compiled result:** every stat as the NaviCust and patch cards leave it.
+10. **The NaviCust:** EXE4 and EXE5 draw only their 5x5 board (they have no out-of-bounds cells); EXE6 draws its 7x7
+    with the out-of-bounds ring and the command line clearly marked. Out of bounds "is fine, it's not an error", and
+    "bugs can sometimes be good in a build", so neither is styled as a warning. A bug is shown by its name and its
+    level. **Every bug, everywhere, is purple.** A plus part is a cell with a cross that reaches its edges, with no
+    border around the cell.
+11. **Chips show their element** with the game's own element icon, at the right of the row, just left of the code.
+    Chip icons and chip art are the pack's own.
+12. **The chip library has no filters** by element or class: "it should all be done by sorting". Sort keys: library
+    order, alphabetical, code, MB, element, attack power. There is no class column; class is "coloring something
+    subtle" (the chip's name: Mega blue, Giga pink).
+13. **The folder editor** is two panes at the build overview's spacing: the folder in a blue-bordered panel, the
+    library an open list. Denser layouts with empty areas ("there is so much spacing") and a three-pane one with
+    large art ("too much going on") were both rejected. **That framed-loadout, open-library look is the pattern** for
+    patch cards and the other editors.
+14. **REG is reddish pink** as in the game; tag chips are supported and marked **TAG1** and **TAG2**.
+15. **A loading screen** loads assets before a battle starts, "to avoid stuttering".
+16. **Builds are private.** "the lobby shouldn't show build name or which game, since that's private information to
+    the player"; "the build name should not really be visible across the wire or in replays or anything". (The
+    lobby's protocol version 5 sent each build's name, version and navi label: that goes.)
+17. **During a match both builds can be viewed**, as in Tango; and **the lobby has a "closed builds" setting**.
+18. **Connection quality is shown during play.**
+19. **Patch cards are shown comprehensively**, have no image area ("patch cards don't have images"), have no on/off
+    switch ("nettai doesn't support turning them off"), and a card that doesn't fit says so in the error red
+    ("Needs 24 MB"), "like how errors in the folder editor get surfaced".
+20. **EXE4's patch card slots are named 0A to 0F**, and not every card fits every slot. (On 2026-10-12 another
+    agent was adding each card's slots to the content's metadata.)
+21. **Phone (upright) layouts are in scope.**
+
+## 3. Chosen where the user gave no answer
+
+These were put to the user as questions with a stated default and got no reply before "start implementing". They
+are the defaults; each is easy to reverse and is listed for review.
+
+| Question | Chosen |
+|---|---|
+| Typefaces | Headings, buttons and labels in Chakra Petch; all other text in Murecho (which also carries Japanese headings); codes and numbers in M PLUS 1 Code |
+| A build's version | Fixed when the build is made, as a save's is ("It can't be changed later") |
+| Netplay rounds | A single battle or best of 3, a shared setting either player can change |
+| The opponent's navi in the lobby | Hidden, with the build's name and version |
+| What "export" makes | A `nettai-video` crate writes a NUT stream (raw frames and PCM); the app pipes it to ffmpeg for an MP4, and can save the `.nut` itself |
+| The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
+| The dummy while waiting online | A copy of the player's own build, standing still, with the training menu there to change it |
+| Training's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last |
+| Training and replays | Training is not recorded |
+| Text entry on a pad | The invite code has a six-box picker a pad can use; names, addresses and searches need a keyboard |
+| Closed builds and replays | A replay of a closed-builds match hides the builds in the viewer too |
+| Smaller NaviCust boards | Not offered: every build has the full board |
+
+## 4. The look
+
+A modern network terminal: dark navy over a faint hexagon field, thin lines, one cut corner on panels and buttons,
+a cyan bracket cursor, amber for the main action, red and blue for the two sides.
+
+**Units.** Everything below is in units of a 1280 by 800 window (16:10). The window scales the whole layout from
+that reference; the battle picture alone is always a whole multiple of 240 by 160.
+
+**Colors.**
+
+| Role | Value |
+|---|---|
+| ground, top to bottom | `#0a1330` to `#050916`, under a faint blue glow from the top right and the hexagon field |
+| panel fill | `#0c1836` |
+| raised (a button, a pressed row) | `#13254d` |
+| line (every border) | `#27508f` |
+| inset (a field, a value box) | `#040813` |
+| the header's and the footer's bar | `rgba(3,6,15,0.72)` |
+| text | `#eaf3ff`; muted `#8ea8d4`; dim `#55698f` |
+| the cursor, the active pane's title, the chosen row's bar | `#66e0ff` |
+| the main action | `#ffb62e`, its text `#1b1100` |
+| player one, player two | `#ff5d50`, `#4a93ff` |
+| good; an error or a reason something can't be done | `#45e0a0`; `#ff9272` |
+| a bug, anywhere | `#b497ff` |
+| a Mega chip's name; a Giga chip's name | `#6cc4ff`; `#ff7eb6` |
+| REG; TAG1 and TAG2 | `#ff5c82`; `#7fe36c` |
+| a chip's code | `#ffb62e` |
+| the command line's empty cells | `#0e3550` |
+| the out-of-bounds hatching | `rgba(142,168,212,0.20)`, dashed edge `rgba(142,168,212,0.6)` |
+
+**Type.** Chakra Petch 500/600/700 for titles, buttons, tabs, labels (labels are 11, uppercase, tracked 0.18em);
+Murecho 400 to 900 for text; M PLUS 1 Code 500/700 for codes, numbers and times. All three are under the SIL Open
+Font License and are bundled. Sizes: 11, 12, 13, 14 (the base), 16, 20, 28; the main menu's items 36.
+
+**Shapes.** Panels, dialogs and buttons are rectangles with a 1 unit line and the bottom right corner cut at 45
+degrees (12 on a panel, 18 on a dialog or a menu, 9 on a button), the line following the cut. A panel has a short
+cyan accent, 72 by 2, at its top left. Nothing is slanted and nothing is rounded.
+
+**The cursor** is four corner brackets (each arm 10 long, 2 thick, cyan with a soft glow) drawn over the layout, 5
+outside the focused control. It is one object that slides from control to control; it takes no space, and nothing
+under it changes size. It shows only when a keyboard or a pad is the last thing used.
+
+**Metrics.** Page margins 32. The header is 64 tall and the footer 44, the same on every menu screen. A control is
+40 tall. A list row is 44, or 26 with a 2 gap where chips or cards are listed (the build overview's spacing, which
+the editors share). Gaps are 8, 12, 16, 24.
+
+**The header** holds, from the left: a Back button naming where it goes (`‹ MENU`, `‹ BUILDS`), the screen's title
+with a cyan bar before it, then at the right the game selector (§2.1). Where the game can't change (inside a
+build, the lobby, a replay), the game's name stays in the same place without its arrows.
+
+**The footer** holds key hints at the left (key caps or pad buttons, by what was last used) and one short status at
+the right. On a phone there is no footer.
+
+## 5. Rules every screen follows
+
+These answer the user's first paragraph (§1), and a screenshot pass checks them.
+
+1. **One grid.** The metrics above, everywhere.
+2. **Nothing resizes with its content.** Every value has a box of fixed width; text too long is cut with an
+   ellipsis; digits are fixed-width; lines for messages, hints and errors are there when empty.
+3. **Little text, and none that repeats a label** (§2.8).
+4. **Sized for translation.** Buttons and labels are sized for the longest language. A pseudo-locale 40% longer than
+   English runs through every screen in the screenshot pass, which fails on clipped or overlapping text.
+5. **The cursor takes no space** (§4).
+6. **One focus, always.** Arrows move to the neighbor in that direction; Tab and Shift+Tab move in reading order;
+   Enter activates; Esc goes back. A screen opens with focus on its main control and remembers where it was.
+7. **Text fields don't trap.** The arrows walk past a field without changing it. Enter or a typed letter starts
+   editing. While editing, Left and Right move the caret, Enter confirms, Esc restores the old text, and Up or Down
+   confirm and move on. The field's border and caret light while it is edited.
+8. **Text never touches a border.** A field clips its text at its inner padding (12) and scrolls to keep the caret
+   in view.
+9. **Lists.** Rows have one height; the focused row is scrolled into view; the scrollbar's space is reserved.
+10. **Pads work the same way**, through gamepad-facade, with the hints switching to the pad's buttons.
+11. **One frame for what the build holds.** The folder, the patch cards, the NaviCust board and the build overview
+    sit in a blue-bordered panel; the list to pick from beside it has no frame; the side the cursor is in has its
+    title lit.
+12. **Errors are a fixed list** (§8.4). A reason something can't be done is shown in the error red at the end of its
+    row or in the field's reserved line; a failure that ends what the player was doing is a dialog.
+
+## 6. The screens
+
+Each is in the mockups under the same name.
+
+### Loading
+- **Starting up:** the logo, one bar 480 wide, "Loading EXE6" and a percentage. The game last used loads before the
+  menu appears; the others load behind it, and switching to one not ready shows the bar again.
+- **Before a battle** (online, training, a replay): the two players' cards facing each other, each with its own bar.
+  Everything the match can use is loaded before its first frame: both navis and their forms, every chip in both
+  folders, the arena, the music and the sounds. Online the match starts when both bars are full. The opponent's card
+  carries their name alone (§2.16).
+
+### Main menu
+- Left: PLAY, TRAINING, BUILDS, REPLAYS, each the word alone, 36, in a column 416 wide, rows 72 tall. Below a line:
+  Settings and Exit, 16, muted.
+- Right: the demo reel, the battle picture at three times (720 by 480), with who is fighting under it.
+- The selected game's title music plays across the menu screens and fades out as a battle starts.
+
+### Play
+- Left: the player's builds of the game, an open list (rows 52: the name, then "MegaMan · ready" or what is wrong,
+  and the version's tag). With none: one button, Create a build.
+- Right: the build overview (below), framed.
+- Below, one row: CREATE INVITE (the main action) | the code field and JOIN, with a reserved space beside for a
+  message | DIRECT CONNECT at the far right.
+- **Direct connection** is a dialog: Host (this machine's address with Copy, and HOST; "Send this address to your
+  opponent.") and Join (an address field and CONNECT).
+- **Waiting for an opponent:** a training battle starts at once (the picture at three times, tagged TRAINING), with
+  a panel beside it: the invite code, large, in fixed-width type, grouped in threes; COPY CODE; "Waiting for
+  opponent"; "The lobby opens when they join."; CANCEL. Keys go to the battle; Esc or Start opens the training menu
+  with Copy invite code and Cancel invite added.
+- **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
+  ready, nothing else), then one row of settings: Rounds (a stepper: Single battle, Best of 3), Closed builds
+  (off, on), Input delay (a stepper, yours alone, default 4, remembered), the connection's bars and ping; then
+  READY, CHANGE BUILD, LEAVE; then a reserved status line. Rounds and Closed builds are shared: either player
+  changes them, both see it, and both ready marks clear.
+
+### Training
+- **Entry:** two rows, Your build and Dummy's build, both remembered, and START TRAINING; beside them the two
+  builds facing each other and the arena. One line: "Set up the dummy from the menu once you're in."
+- **The training menu** (Start or Esc in training): a panel on the left, the battle paused behind it with the dummy
+  in view. Rows are a label and a value between arrows, changed at once by Left and Right:
+  - Dummy: Action (stands still, moves around, attacks at random, plays your recording, a second pad), Custom
+    screen (picks no chips, picks the first it can), Recording (Record: the player drives the dummy until Start;
+    it loops)
+  - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
+    folder order)
+  - Display: Input display
+  - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
+
+### Builds
+- **The list:** NEW BUILD and IMPORT SAVE… over the builds; the selected build's overview beside it, with EDIT,
+  DUPLICATE, RENAME and, apart, DELETE (asks once, Cancel focused).
+- **The build overview** (also Play's, and each player's panel in a match): the build's name, navi and version;
+  Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
+  patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips
+  in two columns of 26-tall rows: number, icon, name, REG or TAG1 or TAG2, element, code.
+- **New build:** a name and the version (two choices, in §2.2's order); "Sets the Crosses and Giga chips. It can't
+  be changed later." The folder starts as a new save's of that game. There are no random builds anywhere.
+- **The editor's** header has the build's name, its version, and "✓ Ready to play" or how many problems; its tabs
+  are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
+  them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents.
+- **Navi:** the game's navis as a grid of cards; the chosen one's HP, element and charge shot beside it; "NaviCust
+  and patch cards are MegaMan only."
+- **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
+  art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
+  the framed folder, its header holding Chips 30/30, Mega, Giga, Reg and Tag memory, then the overview's own 2 by
+  15 block. Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
+  a note, MB, attack, element, code), 15 showing. Enter on a slot goes to the library; Enter on a row puts it in
+  the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
+  with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's.
+- **NaviCust** (§2.10): the board framed at the left with a key under it; PROGRAMS, an open list, in the middle
+  (each with its color, a cross if a plus part, and Placed, In hand or Out of bounds); Effects and Bugs at the
+  right. The command line is marked three ways: a line above and below its whole row that runs over placed pieces,
+  an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white outline at its
+  edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and S turn it, C
+  compresses it, Enter places it, Esc puts it back.
+- **Patch cards** (§2.19, §2.20): the folder's shape. EXE5 and EXE6: the installed cards in order in the framed
+  panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
+  Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
+  same lines, and the strip across the top lays the card under the cursor out in its two groups. EXE4: six slots
+  named 0A to 0F, each with its card or Empty; a library row names the slots the card fits; a two-part card says
+  where its other half must be; a card shows its effect and the bugs it adds to or clears.
+- **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel.
+
+### Replays
+- **The list:** All, Online (and Training only if training is ever recorded) and a search by opponent; rows of the
+  date, the opponent, the score, the length; beside it the selected replay with WATCH, EXPORT VIDEO, SHOW FILE and,
+  apart, DELETE. No build names (§2.16).
+- **The viewer:** the picture at three times over a transport: the time, a bar to click or drag with a mark where
+  each round begins, the length; then to the round's start, a frame back, play or pause, a frame on, the next
+  round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, Left and Right seek 5 seconds, comma and
+  period step a frame, the brackets go a round.
+- **Export:** a dialog of one size from start to finish: Size (whole multiples of 240 by 160), View, Part, Save as,
+  the progress bar and its line, CANCEL and EXPORT.
+
+### In an online match
+- The picture fills the window, with no header or footer.
+- **Connection quality:** four bars and the round-trip time in a corner for the whole match, amber then red as the
+  link worsens; "Reconnecting 12 s" while it is down.
+- **Both builds:** holding Tab (Select on a pad) shows the player's build on their side and the opponent's on
+  theirs, each the build overview without a name; letting go hides them. With Closed builds on, only the player's
+  own.
+- **The match menu** (Start or Esc; the game's own pause never appears): BACK TO MATCH, YOUR BUILD, THEIR BUILD
+  (not with Closed builds), CONTROLS, SETTINGS, LEAVE MATCH. "The match keeps running", and it does.
+
+### Settings
+One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
+Video (Picture size, Full screen, Battle text: sharp or original), Audio (Music, Sound effects), Online (Input
+delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
+button, each rebindable), About.
+
+### On a phone
+One column; pickers and the chip library open as sheets from the bottom; everything tapped is at least 44 tall; no
+key hints, and the cursor only with a pad or keyboard connected; in battle the pad is drawn under the picture and
+START and MENU open the same menus. Held sideways, a phone uses the desktop layout.
+
+## 7. Errors the player can see
+
+A fixed enum, each with a catalog string; the raw error goes to the log only. The first set:
+
+| When | What the player reads |
+|---|---|
+| the signaling server can't be reached | Can't reach the server. Check your connection. |
+| no match has that invite code | No match with that code. |
+| the match already has two players | That match is full. |
+| the two apps differ | Your opponent has a different version of nettai. You both need the latest. |
+| a build breaks a rule | This build can't be used: 2 Giga chips, limit 1. |
+| the link dropped for good | Connection lost. The match has ended. |
+| a replay is from another version | This replay is from a different version and can't be played. |
+| a save is another game's | Not an EXE6 save. |
+| anything else | Something went wrong. Details are in the log file. |
+
+## 8. Behind the screens
+
+1. **Gamepads** through `https://github.com/tangobattle/gamepad-facade` (a git dependency); gilrs goes.
+2. **Invite codes** are issued by the signaling server (`signaling/`), which the client asks for one; the client
+   never makes one up. Six characters of an alphabet without look-alikes, shown grouped in threes.
+3. **In battle**, Start opens nettai's menu and the game's own pause never runs; L never runs away.
+4. **Errors** as §7.
+5. **Languages:** every string, errors included, through the catalogs (English and Japanese now, and the
+   pseudo-locale).
+6. **Title music** from each game's own data.
+7. **New builds** start with the game's new-save folder; folder rules follow Tango's, including the Giga chips of
+   one version.
+8. **Replays:** seeking, by keeping snapshots; export through `nettai-video` and ffmpeg; no build names in the file.
+9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds and Closed builds as
+   shared settings; and holds the start until both sides have loaded.
+10. **Random builds** are removed from Play, Training and the lobby.
+11. **Training's** new options (§3) need new support in the battle engine.
+12. **The screenshot pass** (the old `NETTAI_TOUR`) walks every screen in each language and size and is compared
+    with the mockups.
