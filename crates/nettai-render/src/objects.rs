@@ -514,9 +514,12 @@ pub fn queue_objects<'a>(
             if !problems.marking.is_empty()
                 && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Sprite, id.0)
             {
-                let what = format!("sprite:{name}");
-                if problems.wants(&what) {
-                    problems.mark(object_box(&p, &group), what);
+                // (The sprite whatever it plays, or one animation of it:
+                // `sprite:NAME:ANIM`.)
+                for what in [format!("sprite:{name}"), format!("sprite:{name}:{}", s.anim)] {
+                    if problems.wants(&what) {
+                        problems.mark(object_box(&p, &group), what);
+                    }
                 }
             }
             list.insert_group(group);
