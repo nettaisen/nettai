@@ -104,10 +104,9 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    picture there), chip-icon:KEY (its icon: over its navi, in
                    the custom screen's slots and picked column),
                    chip-description:KEY (its description in the chatbox),
-                   chip-window-at-close (where the HUD's chip name would
-                   be before the navi's first decision, in a game whose
-                   custom screen's close doesn't show it); for a frame
-                   comparison that knows what a console shows otherwise there
+                   chip-window-at-close (the HUD's chip name before the
+                   navi's first decision); for a frame comparison that knows
+                   what a console shows otherwise there
   --keys K         with --headless --match: the buttons you hold, by tick (e.g.
                    232-233:up,300:a+b; a b l r up down left right start
                    select)
