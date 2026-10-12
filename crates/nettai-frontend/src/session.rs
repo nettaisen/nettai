@@ -199,6 +199,16 @@ thread_local! {
     static IN_ENGINE: std::cell::Cell<bool> = const { std::cell::Cell::new(false) };
 }
 
+/// Run `f`, which may stop as the engine does (a panic), as the session
+/// runs a tick: the stop is the result, and the host's quiet hook
+/// ([`quiet_engine_panics`]) keeps it off stderr.
+pub(crate) fn in_engine<R>(f: impl FnOnce() -> R) -> std::thread::Result<R> {
+    IN_ENGINE.with(|flag| flag.set(true));
+    let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
+    IN_ENGINE.with(|flag| flag.set(false));
+    result
+}
+
 /// Keep engine panics off stderr (the session reports them); other panics
 /// print as usual.
 pub fn quiet_engine_panics() {

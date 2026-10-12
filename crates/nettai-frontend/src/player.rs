@@ -35,6 +35,7 @@
 
 use crate::driver::{Driver, NetStatus, Opponent};
 use crate::game::{Graphics, Loaded};
+use crate::preload::Late;
 use crate::session::Session;
 use nettai_audio::BattleAudio;
 use nettai_battle::{Battle, BattleResult};
@@ -81,6 +82,22 @@ pub struct Player {
     owed: f64,
     /// The time between the host's frames, averaged (seconds).
     frame_time: f64,
+    /// What had been made before the player was: this thread's runtimes
+    /// loaded and parts read, and its text renderers' strings and glyphs
+    /// ([`Player::late`] counts from them).
+    before: Late,
+}
+
+/// What this thread and these text renderers have made so far, as
+/// [`Late`] counts it.
+fn made_so_far(renderer: &Renderer, text: Option<&TextRenderer>) -> Late {
+    let made = text.map(TextRenderer::made).unwrap_or_default();
+    Late {
+        runtimes: nettai_battle::behavior::Behaviors::loads(),
+        reads: nettai_content::pack::reads(),
+        layouts: made.layouts + renderer.layouts_made(),
+        glyphs: made.glyphs,
+    }
 }
 
 // (A player borrows nothing: a host's state of any lifetime holds one.)
@@ -101,6 +118,9 @@ impl Player {
     /// font mode's text renderer (none: the frames carry their own text)
     /// and the audio (none: silent).
     pub fn with(renderer: Renderer, text: Option<TextRenderer>, audio: Option<BattleAudio>, driver: Box<dyn Driver>) -> Player {
+        // (Counted from before the driver makes its first battle: a thread
+        // without the content's runtime loads it there.)
+        let before = made_so_far(&renderer, text.as_ref());
         let mut player = Player {
             session: Session::new(driver),
             renderer,
@@ -111,9 +131,29 @@ impl Player {
             speed: NORMAL,
             owed: 0.0,
             frame_time: 1.0 / FRAME_RATE,
+            before,
         };
         player.start_over();
         player
+    }
+
+    /// What the player made on the way since it was made, because nothing
+    /// had made it ready (`crate::preload`): content runtimes loaded on
+    /// this thread, parts of a pack read from disk on it, and its text's
+    /// strings laid out and glyphs drawn for the first time. A player a
+    /// [`crate::preload::Preload`] made, on the thread that stepped it,
+    /// has loaded no runtime and read nothing however long it plays; the
+    /// text's counts go up as new strings show (a chip's name, a number),
+    /// each a part of a millisecond. For a host's debug line or its log,
+    /// and for the tests that hold the preload to it.
+    pub fn late(&self) -> Late {
+        let now = made_so_far(&self.renderer, self.text.as_ref());
+        Late {
+            runtimes: now.runtimes - self.before.runtimes,
+            reads: now.reads - self.before.reads,
+            layouts: now.layouts.saturating_sub(self.before.layouts),
+            glyphs: now.glyphs.saturating_sub(self.before.glyphs),
+        }
     }
 
     /// Record the set as a replay from here (`crate::replay`): refused
