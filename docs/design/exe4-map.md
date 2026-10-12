@@ -908,7 +908,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   user flashes, then a screen flash and the blinding hit over the other side's area (row 0x34, blindness for 480
   ticks). The lab's chips/ (4) and status/ blindness replay every frame; the hit is pixel-exact.
 - **Mine** (the dimming chips' variant 0x12, `chips/mine`): EXE6's Mine (@exelib/mine: controller #0x29, 0x080E4F5C;
-  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID, sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
+  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID (an identity that says only that the poltergeist and ColdMan
+  leave it, item 151), sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
   0x47 (14-13), collision rows 0x33 and 0x2A. Its init frees it without leaving its side's field-object slots when no
   collision record is left (0x080D6F5C); the shared code leaves them (a collision pool run dry, which no recording
   reaches). The lab's chips/ (5) replay every frame; the hit is pixel-exact.
@@ -2500,6 +2501,7 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
 151. **What the poltergeist leaves** (JunkMan's, @exelib/poltergeist). EXE4's 0x080EA16C and 0x0800B3E8 take every
     field object but attack objects #0x4C and #0x8C and effect object #0x6E, tested by kind (EXE5's by NameID); the
     engine asks the identity (`throwable`). **Done for #0x8C**, PropBom's bomb (chips/propbom/bomb: a field object's
-    identity with `throwable = false`; its recordings, JunkMan's and ColdMan's still match). Attack #0x4C is Mine's
-    land mine (chips/mine, @exelib/mine/land_mine's `identity`), ported with no identity, so both still take it: its
-    identity is to state `throwable = false`; effect #0x6E isn't ported.
+    identity with `throwable = false`; its recordings, JunkMan's and ColdMan's still match). **Done for #0x4C**, Mine's
+    land mine (chips/mine: the same identity through @exelib/mine/land_mine's `identity`): the lab's new
+    chips/0x10a-coldman/mine (the opponent's Mine hidden on (3,2), ColdMan's own cube formed over it) replays every
+    frame, where ColdMan took the mine before (its side at frame 734). Effect #0x6E isn't ported.
