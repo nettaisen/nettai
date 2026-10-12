@@ -324,10 +324,10 @@ fn save_match(content: &nettai_battle::Content, m: &nettai_match::Match, seed: u
 /// A recording of match `m` (its seed stated) played from side 0 to the
 /// file `path`, or stop with why not.
 fn recorder(content: &Arc<nettai_battle::Content>, m: &nettai_match::Match, path: &Path) -> nettai_frontend::replay::Recorder {
-    use nettai_frontend::replay::{Info, Recorder};
+    use nettai_frontend::replay::{Info, MatchKind, Recorder};
     let file = std::fs::File::create(path).unwrap_or_else(|e| fail(format!("can't write {}: {e}", path.display())));
     let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
-    let info = Info { when, side: 0, names: Default::default() };
+    let info = Info { when, ..Info::of(MatchKind::Offline, 0) };
     let r = Recorder::new(Box::new(std::io::BufWriter::new(file)), content, m, &info).unwrap_or_else(|e| fail(format!("can't record to {}: {e}", path.display())));
     eprintln!("recording the set to {}", path.display());
     r

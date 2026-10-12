@@ -1,0 +1,356 @@
+use super::*;
+use crate::Player;
+use crate::game::TextMode;
+use crate::player::FRAME_RATE;
+use crate::testing::{audio, graphics, recorded};
+
+/// What playing a replay straight through shows and makes, tick by tick,
+/// from one side: after `t` ticks (0: before any), the battle's digest,
+/// the picture, the HUD's state and the sound the tick made. It is played
+/// by a [`Player`], which has no seeking in it.
+struct Straight {
+    digests: Vec<u64>,
+    pictures: Vec<Vec<u16>>,
+    huds: Vec<String>,
+    sounds: Vec<Vec<[f32; 2]>>,
+    result: Option<BattleResult>,
+}
+
+fn straight(content: &Arc<Content>, replay: &Replay, view: u8) -> Straight {
+    let driver = ReplayPlayer::new(content, replay, Some(view)).unwrap();
+    let renderer = graphics(content, 0x001F).renderer(TextMode::Original, None);
+    let mut p = Player::with(renderer, None, Some(audio(content)), Box::new(driver));
+    let mut s = Straight { digests: Vec::new(), pictures: Vec::new(), huds: Vec::new(), sounds: Vec::new(), result: None };
+    loop {
+        let mut sound = Vec::new();
+        p.take_samples(&mut sound);
+        s.digests.push(p.battle().digest());
+        s.pictures.push(p.frame().pixels);
+        s.huds.push(format!("{:?}", p.renderer().hud_state));
+        s.sounds.push(sound);
+        if !p.tick(0) {
+            break;
+        }
+    }
+    assert_eq!(p.diverged(), None);
+    s.result = p.result();
+    s
+}
+
+fn viewer(content: &Arc<Content>, replay: &Replay, view: u8) -> Viewer {
+    let renderer = graphics(content, 0x001F).renderer(TextMode::Original, None);
+    Viewer::with(content, replay, Some(view), renderer, None, Some(audio(content))).unwrap()
+}
+
+/// That `v` is as playing straight to where it is leaves a player: the
+/// battle, the picture and the HUD's state.
+#[track_caller]
+fn same(v: &mut Viewer, s: &Straight, at: u32, what: &str) {
+    assert_eq!(v.position(), at, "{what}");
+    let t = at as usize;
+    assert_eq!(v.battle().digest(), s.digests[t], "{what}: the battle at tick {t}");
+    assert!(v.frame().pixels == s.pictures[t], "{what}: the picture at tick {t}");
+    assert_eq!(format!("{:?}", v.renderer().hud_state), s.huds[t], "{what}: the HUD at tick {t}");
+}
+
+/// Play `v` on `ticks` ticks (to the end at most), each as straight
+/// playback has it, its sound sample for sample.
+#[track_caller]
+fn follow(v: &mut Viewer, s: &Straight, ticks: u32, what: &str) {
+    let mut sound = Vec::new();
+    v.take_samples(&mut sound);
+    assert!(sound.is_empty(), "{what}: sound left over from before");
+    for _ in 0..ticks {
+        let before = v.position();
+        if !v.step_forward() {
+            assert!(v.at_end(), "{what}: stopped at tick {before}");
+            break;
+        }
+        same(v, s, before + 1, what);
+        sound.clear();
+        v.take_samples(&mut sound);
+        assert!(sound == s.sounds[before as usize + 1], "{what}: the sound of tick {before}");
+    }
+}
+
+/// A seek lands in exactly the state playing straight there reaches, and
+/// goes on from it as straight playback does: forward past what was
+/// reached, backward, across a round's end both ways, onto a round's first
+/// tick, to the end and back from it, and onto and beside a kept state.
+/// The battle's digest, the picture, the HUD's state and every sample of
+/// the sound that follows are straight playback's, from either console.
+/// Both games.
+#[test]
+fn a_seek_lands_where_playing_straight_gets() {
+    for (content, game, views) in
+        [(nettai_match::testing::exe6_content(), "exe6", &[0u8, 1][..]), (nettai_match::testing::exe5_content(), "exe5", &[1u8][..])]
+    {
+        let (replay, ticks) = recorded(&content, game, 7);
+        let length = ticks as u32;
+        let second = replay.round_starts()[1];
+        assert!(second > KEYFRAME_EVERY + 60 && length > second + KEYFRAME_EVERY, "{game}: rounds of {second} and {} ticks", length - second);
+        for &view in views {
+            let s = straight(&content, &replay, view);
+            assert_eq!(s.digests.len() as u32, length + 1, "{game}");
+            assert!(s.sounds.iter().flatten().any(|x| x[0] != 0.0), "{game}: the set makes no sound to tell by");
+            let mut v = viewer(&content, &replay, view);
+            same(&mut v, &s, 0, "at the start");
+            let seeks = [
+                (length / 3, "forward, past what was reached"),
+                (7, "backward"),
+                (second + 55, "forward, across a round's end"),
+                (second - 3, "backward, across a round's end"),
+                (second, "onto a round's first tick"),
+                (second + 1, "a tick into a round"),
+                (length, "to the end"),
+                (length - 1, "back from the end"),
+                (0, "to the start"),
+                (KEYFRAME_EVERY + 1, "past a kept state"),
+                (KEYFRAME_EVERY, "onto a kept state"),
+                (KEYFRAME_EVERY - 1, "before a kept state"),
+                (length + 500, "past the end"),
+            ];
+            for (to, what) in seeks {
+                let what = format!("{game} side {view}, a seek {what}");
+                v.seek(to);
+                same(&mut v, &s, to.min(length), &what);
+                follow(&mut v, &s, 40, &what);
+            }
+            assert_eq!(v.diverged(), None, "{game}");
+            // A frame back, again and again, across a kept state and a
+            // round's start; then a frame on.
+            v.seek(second + 2);
+            for back in 1..=5 {
+                v.step_back();
+                same(&mut v, &s, second + 2 - back, "a frame back");
+            }
+            follow(&mut v, &s, 8, "frames on after frames back");
+            // The states kept: tick 0's, every KEYFRAME_EVERYth, each
+            // round's first.
+            let mut kept: Vec<u32> = (0..=length).filter(|t| t % KEYFRAME_EVERY == 0 || *t == second).collect();
+            kept.dedup();
+            assert_eq!(v.keyframes.iter().map(|k| k.tick).collect::<Vec<_>>(), kept, "{game}");
+            assert_eq!((v.indexed(), v.index(1)), (length, true), "{game}");
+        }
+    }
+}
+
+/// Either console is shown, and the view changes while the replay plays:
+/// from the change on, the picture, the HUD's state and the sound are
+/// those of a viewer shown from that side all along, and the battle is
+/// the same one. At the end each console is told its own result.
+#[test]
+fn the_view_changes_to_the_other_consoles_exactly() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let length = ticks as u32;
+    let sides = [straight(&content, &replay, 0), straight(&content, &replay, 1)];
+    assert!(sides[0].sounds != sides[1].sounds, "the two consoles hear alike: nothing to tell a change by");
+    assert!(sides[0].huds != sides[1].huds, "the two consoles' HUDs go alike");
+    let mut v = viewer(&content, &replay, 0);
+    assert_eq!(v.view(), 0);
+    follow(&mut v, &sides[0], 300, "side 0 from the start");
+    let mut view = 0;
+    for at in [300, 340, length / 2, length - 100] {
+        v.seek(at);
+        view ^= 1;
+        assert!(v.set_view(view) && v.view() == view);
+        let what = format!("changed to side {view} at tick {at}");
+        same(&mut v, &sides[view as usize], at, &what);
+        follow(&mut v, &sides[view as usize], 40, &what);
+        // A seek after the change is that side's too.
+        v.seek(at - 20);
+        follow(&mut v, &sides[view as usize], 30, &format!("{what}, then back"));
+    }
+    assert!(!v.set_view(2) && v.view() == view);
+    // The end, and each console's result there.
+    v.seek(length);
+    assert!(v.at_end() && !v.step_forward() && v.stopped().is_none());
+    for side in [0, 1, 0] {
+        v.set_view(side);
+        assert_eq!(v.result(), sides[side as usize].result);
+        same(&mut v, &sides[side as usize], length, "at the end");
+    }
+    assert_eq!((sides[0].result, sides[1].result), (Some(BattleResult::Won), Some(BattleResult::Lost)));
+    // Back from the end there is no result, and the replay plays again.
+    v.seek(length - 10);
+    assert_eq!(v.result(), None);
+    follow(&mut v, &sides[0], 10, "the last ticks again");
+    assert_eq!(v.result(), Some(BattleResult::Won));
+}
+
+/// The transport: the length and the rounds are known as the replay opens;
+/// the clock runs the ticks due at each speed and none while paused or at
+/// the end; five seconds on and back, a round on and back, a frame on and
+/// back, and a time sought, each land on the tick they say.
+#[test]
+fn the_transport_goes_where_it_says() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let length = ticks as u32;
+    let mut v = viewer(&content, &replay, 0);
+    let second = replay.round_starts()[1];
+    assert_eq!((v.length(), v.rounds(), v.end()), (length, &[0, second][..], End::Set));
+    assert_eq!(v.duration(), time_of(ticks));
+    assert!((v.duration().as_secs_f64() - ticks as f64 / FRAME_RATE).abs() < 1e-3);
+    assert_eq!((v.position(), v.time(), v.round(), v.at_end(), v.paused(), v.speed()), (0, Duration::ZERO, 1, false, false, Speed::Normal));
+    assert_eq!((v.round_at(second - 1), v.round_at(second), v.round_at(length)), (1, 2, 2));
+    // The clock, at each speed.
+    let time = |ticks: f64| Duration::from_secs_f64(ticks / FRAME_RATE);
+    assert_eq!(v.advance(time(10.4)), 10);
+    assert_eq!(v.advance(time(0.7)), 1, "the part of a tick left over counts");
+    for (speed, ran) in [(Speed::Half, 5), (Speed::Double, 20), (Speed::Quadruple, 40), (Speed::Normal, 10)] {
+        v.set_speed(speed);
+        assert_eq!((v.speed(), v.advance(time(10.05))), (speed, ran), "{speed:?}");
+    }
+    assert_eq!(v.position(), 86);
+    v.set_paused(true);
+    assert_eq!((v.paused(), v.advance(time(30.0)), v.position()), (true, 0, 86));
+    assert!(v.step_forward(), "a frame on while paused");
+    v.step_back();
+    v.step_back();
+    assert_eq!(v.position(), 85);
+    // Five seconds are 299 ticks (298.6); the start and the end stop it.
+    v.skip(5);
+    assert_eq!(v.position(), 384);
+    v.skip(-5);
+    v.skip(-5);
+    assert_eq!(v.position(), 0);
+    v.skip(100_000);
+    assert_eq!((v.position(), v.at_end()), (length, true));
+    v.set_paused(false);
+    assert_eq!(v.advance(time(10.0)), 0, "nothing plays at the end");
+    // A time sought: the tick nearest to it.
+    let middle = length / 2 + 1;
+    v.seek_time(time_of(middle as u64));
+    assert_eq!((v.position(), v.time()), (middle, time_of(middle as u64)));
+    v.seek_time(Duration::from_secs_f64(100.4 / FRAME_RATE));
+    assert_eq!(v.position(), 100);
+    v.seek_time(Duration::from_secs(100_000));
+    assert_eq!(v.position(), length);
+    // Rounds: paused, the round's start, and from it the round before's.
+    v.set_paused(true);
+    v.seek(second + 30);
+    v.previous_round();
+    assert_eq!((v.position(), v.round()), (second, 2));
+    v.previous_round();
+    assert_eq!((v.position(), v.round()), (0, 1));
+    v.previous_round();
+    assert_eq!(v.position(), 0);
+    assert!(v.next_round());
+    assert_eq!(v.position(), second);
+    assert!(!v.next_round(), "the last round has none after it");
+    assert_eq!(v.position(), second);
+    // Playing, a round's first second counts as its start.
+    v.set_paused(false);
+    v.seek(second + ROUND_START_GRACE);
+    v.previous_round();
+    assert_eq!(v.position(), 0);
+    v.seek(second + ROUND_START_GRACE + 1);
+    v.previous_round();
+    assert_eq!(v.position(), second);
+    // A replay cut short plays to its cut and has no result; one of
+    // another game isn't opened.
+    let mut cut = replay.clone();
+    cut.ticks.truncate(second as usize + 50);
+    cut.end = End::Cut;
+    let mut v = viewer(&content, &cut, 0);
+    assert_eq!((v.length(), v.rounds(), v.end()), (second + 50, &[0, second][..], End::Cut));
+    v.seek(u32::MAX);
+    assert!(!v.step_forward());
+    assert_eq!((v.position(), v.at_end(), v.result(), v.stopped()), (second + 50, true, None, None));
+    let five = nettai_match::testing::exe5_content();
+    let renderer = graphics(&five, 0x001F).renderer(TextMode::Original, None);
+    let refused = Viewer::with(&five, &replay, None, renderer, None, None).err().unwrap();
+    assert_eq!(refused, Refused::OtherGame { replay: "exe6".into(), here: "exe5".into() });
+}
+
+/// Indexing ahead plays the replay on in slices without moving the viewer:
+/// after each slice it is where and as it was, and what it goes on to play
+/// is straight playback's, sound and all. Once the whole replay is indexed
+/// a seek anywhere plays fewer ticks than lie between two kept states.
+#[test]
+fn indexing_ahead_leaves_the_viewer_as_it_was() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let length = ticks as u32;
+    let s = straight(&content, &replay, 0);
+    let mut v = viewer(&content, &replay, 0);
+    follow(&mut v, &s, 100, "before indexing");
+    let mut slices = 0;
+    // (A slice shorter than the kept states are apart still gets on.)
+    while !v.index(97) {
+        slices += 1;
+        assert!(slices < 1000, "indexing doesn't end (at {})", v.indexed());
+        assert_eq!(v.indexed(), (97 * slices).max(100).min(length));
+        same(&mut v, &s, 100 + slices - 1, "after a slice");
+        follow(&mut v, &s, 1, "between slices");
+    }
+    assert!(slices > 5 && v.indexed() == length && v.frontier.is_none());
+    let at = v.position();
+    follow(&mut v, &s, 50, "after indexing");
+    assert_eq!(v.position(), at + 50);
+    // Every kept state is there, and a seek goes on from the nearest.
+    let mut kept: Vec<u32> = (0..=length).filter(|t| t % KEYFRAME_EVERY == 0 || replay.round_starts().contains(t)).collect();
+    kept.dedup();
+    assert_eq!(v.keyframes.iter().map(|k| k.tick).collect::<Vec<_>>(), kept);
+    assert_eq!(v.kept(), kept.len());
+    for to in [length - 5, 3, length / 2] {
+        v.seek(to);
+        same(&mut v, &s, to, "a seek in an indexed replay");
+        follow(&mut v, &s, 20, "a seek in an indexed replay");
+    }
+    assert_eq!(v.diverged(), None);
+    // Without sound a viewer seeks the same, and gives none.
+    let renderer = graphics(&content, 0x001F).renderer(TextMode::Original, None);
+    let mut silent = Viewer::with(&content, &replay, Some(0), renderer, None, None).unwrap();
+    silent.seek(length / 2);
+    same(&mut silent, &s, length / 2, "a silent viewer");
+    assert!(silent.step_forward());
+    let mut sound = Vec::new();
+    silent.take_samples(&mut sound);
+    assert!(sound.is_empty());
+}
+
+/// The sound follows the speed as a tape's does: at half speed every
+/// sample comes twice, at double and four times every two and four come as
+/// their mean, so the host gets as much sound a second at any speed; and a
+/// seek leaves none of what was made before it.
+#[test]
+fn the_sound_follows_the_speed() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, _) = recorded(&content, "exe6", 7);
+    let s = straight(&content, &replay, 0);
+    // (Somewhere the set sounds, for 20 ticks: at half speed they are under
+    // the second of sound a viewer keeps for its host.)
+    let from = (1..s.sounds.len() - 20).find(|&t| s.sounds[t..t + 20].iter().flatten().filter(|x| x[0] != 0.0).count() > 2000).expect("20 ticks of sound") as u32;
+    let made: Vec<[f32; 2]> = s.sounds[from as usize + 1..from as usize + 21].concat();
+    for speed in Speed::ALL {
+        let mut v = viewer(&content, &replay, 0);
+        v.seek(from);
+        v.set_speed(speed);
+        let mut heard = Vec::new();
+        for _ in 0..20 {
+            assert!(v.step_forward());
+        }
+        v.take_samples(&mut heard);
+        let want: Vec<[f32; 2]> = match speed {
+            Speed::Normal => made.clone(),
+            Speed::Half => made.iter().flat_map(|&x| [x, x]).collect(),
+            Speed::Double | Speed::Quadruple => {
+                let n = if speed == Speed::Double { 2 } else { 4 };
+                made.chunks_exact(n).map(|g| [g.iter().map(|x| x[0]).sum::<f32>() / n as f32, g.iter().map(|x| x[1]).sum::<f32>() / n as f32]).collect()
+            }
+        };
+        assert!(heard == want, "{speed:?}: {} samples for {}", heard.len(), want.len());
+        // (As much sound a second: 20 ticks' at the speed.)
+        let a_second = heard.len() as f64 * speed.factor() / made.len() as f64;
+        assert!((a_second - 1.0).abs() < 0.01, "{speed:?}: {a_second}");
+        // A seek drops what the host hasn't taken.
+        assert!(v.step_forward());
+        v.seek(from);
+        heard.clear();
+        v.take_samples(&mut heard);
+        assert!(heard.is_empty(), "{speed:?}");
+    }
+}
