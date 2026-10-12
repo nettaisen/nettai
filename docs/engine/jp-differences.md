@@ -427,9 +427,11 @@ comparison counts what is drawn with them as a known difference.
   (docs/design/text-rendering.md §10).
 - The custom screen's close (`sub_8026DC4`) also starts HUD task 0x40 in JP (`sub_801E012`): the next chip's name
   shows from the close, through the turn's banner, until the fight's first decision sets the window; the US games
-  show it from that decision. The engine's `Battle::chip_hud` is the decisions'; the frontend draws the Japanese
-  games' window on every console (nettai-render `HudState`, in every game), and a US
-  console's recording differs there, a known difference to the frame comparison.
+  show it from that decision. The engine's `Battle::chip_hud` is the Japanese games' in every game: the close turns
+  the window on with the icons, and it stays until something hides it (a navi that takes its time to decide, in
+  the middle of a step as its screen opened or changing form as the fight starts, keeps it meanwhile). A US
+  console's recording differs until that first decision or hide (`ChipHud::from_close`, which the renderer marks
+  for the frame comparison: `chip-window-at-close`), a known difference.
 - The HUD's graphics list (between `sub_801EC90` and `sub_801FE00`) has one transfer fewer in JP.
 
 **Text.**

@@ -27,6 +27,7 @@ local gutsman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "gutsman/controller", palette = 0, cracks = "six" }.hook,
     megaman = "light",
+    auto_battle = { class = "to_front_before_solid" },
 }
 
 local gutsmn_sp: Chip = {
@@ -43,6 +44,7 @@ local gutsmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "gutsmn-sp/controller", palette = 2, cracks = "all" }.hook,
     megaman = "light",
+    auto_battle = { class = "to_front_before_solid" },
 }
 
 local gutsmn_ds: Chip = {
@@ -58,6 +60,7 @@ local gutsmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "gutsmn-ds/controller", palette = 3, cracks = "all" }.hook,
     megaman = "dark",
+    auto_battle = { class = "to_front_before_solid" },
 }
 
 return { gutsman = gutsman, ["gutsmn-sp"] = gutsmn_sp, ["gutsmn-ds"] = gutsmn_ds }

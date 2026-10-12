@@ -422,9 +422,16 @@ fn decode_b(b: &mut Battle, r: ObjectRef, f0: u32) {
 /// 510 by turns). The level: full at the source's threshold, else 1 from 10
 /// ticks.
 fn accumulate_per_button(b: &mut Battle, r: ObjectRef) {
-    // (0x0800BBB2: nor in a form that ignores B, the dark soul, whose
-    // charge stays what it is.)
-    if b.is_dimmed() || form_of(b, r).traits.has(crate::content::FormTraits::IGNORES_B) {
+    if b.is_dimmed() {
+        return;
+    }
+    // (0x0800BBB2: in a form that ignores B, the dark soul, nothing counts;
+    // the level follows what the count holds all the same, 0x0800BB50: what
+    // its AI writes there as it dodges.)
+    if form_of(b, r).traits.has(crate::content::FormTraits::IGNORES_B) {
+        let source = ai(b, r).charge_source;
+        let level = if source == 0 { 0 } else { charge_level(ai(b, r).charge_counter, charge_threshold(b, r, source)) };
+        ai_mut(b, r).charge_level = level;
         return;
     }
     let (f, status, held, pressed, source) = {
@@ -456,13 +463,19 @@ fn accumulate_per_button(b: &mut Battle, r: ObjectRef) {
     };
     let threshold = charge_threshold(b, r, next);
     let a = ai_mut(b, r);
-    a.charge_level = if a.charge_counter >= threshold {
+    a.charge_level = charge_level(a.charge_counter, threshold);
+}
+
+/// 0x0800BB50: a charge's level by its count: full at the source's
+/// threshold, else charging from 10 ticks.
+fn charge_level(counter: u16, threshold: u16) -> u8 {
+    if counter >= threshold {
         2
-    } else if a.charge_counter >= 10 {
+    } else if counter >= 10 {
         1
     } else {
         0
-    };
+    }
 }
 
 /// EXE4's 0x0800BC78: the chip in hand charges on A (by the navi's A charge

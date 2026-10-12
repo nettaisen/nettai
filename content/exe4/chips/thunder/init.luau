@@ -19,6 +19,7 @@ local thunder1: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "to_front" },
 }
 
 local thunder2: Chip = {
@@ -33,6 +34,7 @@ local thunder2: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "to_front" },
 }
 
 local thunder3: Chip = {
@@ -47,6 +49,7 @@ local thunder3: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "to_front" },
 }
 
 return { thunder1 = thunder1, thunder2 = thunder2, thunder3 = thunder3 }

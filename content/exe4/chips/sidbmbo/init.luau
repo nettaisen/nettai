@@ -22,6 +22,7 @@ local sidbmbo1: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_three_ahead" },
 }
 
 local sidbmbo2: Chip = {
@@ -36,6 +37,7 @@ local sidbmbo2: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_three_ahead" },
 }
 
 local sidbmbo3: Chip = {
@@ -50,6 +52,7 @@ local sidbmbo3: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_three_ahead" },
 }
 
 return { sidbmbo1 = sidbmbo1, sidbmbo2 = sidbmbo2, sidbmbo3 = sidbmbo3 }

@@ -26,6 +26,7 @@ local metalman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "metalman/controller", palette = 0 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 local metlmn_sp: Chip = {
@@ -42,6 +43,7 @@ local metlmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "metlmn-sp/controller", palette = 4 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 local metlmn_ds: Chip = {
@@ -57,6 +59,7 @@ local metlmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "metlmn-ds/controller", palette = 6 }.hook,
     megaman = "dark",
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 return { metalman = metalman, ["metlmn-sp"] = metlmn_sp, ["metlmn-ds"] = metlmn_ds }

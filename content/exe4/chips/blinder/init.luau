@@ -26,6 +26,7 @@ local chip: Chip = {
         hits = collision.hits_navis,
         status = statuses.blind_480,
     },
+    auto_battle = { class = "at_once" },
 }
 
 return { blinder = chip }

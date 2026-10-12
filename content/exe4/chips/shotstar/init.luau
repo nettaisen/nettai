@@ -34,6 +34,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = DIMMING,
+    auto_battle = { class = "when_enemy_at_home" },
 }
 
 return { shotstar = chip }

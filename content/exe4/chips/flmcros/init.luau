@@ -21,6 +21,7 @@ local flmcros1: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 20, code_run = { chip = flmlines.flmline1, count = 3 } } },
+    auto_battle = { class = "into_reach", range = "cross_two_ahead" },
 }
 
 local flmcros2: Chip = {
@@ -36,6 +37,7 @@ local flmcros2: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 21, code_run = { chip = flmlines.flmline2, count = 3 } } },
+    auto_battle = { class = "into_reach", range = "cross_two_ahead" },
 }
 
 local flmcros3: Chip = {
@@ -51,6 +53,7 @@ local flmcros3: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 22, code_run = { chip = flmlines.flmline3, count = 3 } } },
+    auto_battle = { class = "into_reach", range = "cross_two_ahead" },
 }
 
 return { flmcros1 = flmcros1, flmcros2 = flmcros2, flmcros3 = flmcros3 }
