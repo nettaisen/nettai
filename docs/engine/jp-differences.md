@@ -273,7 +273,7 @@ original's behavior (bn6-lmao "fixes" it, §9).
 
 The art (icon, image, palette) is `chips.py`'s list:
 
-- **Icons**: the same in all four ROMs, chip by chip; the pack has the JP Falzar ROM's. (The Gregar ROMs' Falzar
+- **Icons**: the same in all four ROMs, chip by chip; the pack has the US Falzar ROM's. (The Gregar ROMs' Falzar
   chip icon, JP's and US's alike, is a placeholder that reads "13A": a Gregar console draws it, which the frame
   comparison's table knows; `gregar-console/description-falzar-chip`, `jp/gregar-description-falzar-chip`.)
 - **Pictures**: the US ROMs have one placeholder picture (a purple block) for all eleven chips, the JP ROMs their
@@ -298,17 +298,18 @@ they came from: a US console's placeholder, and Falzar's beast in a JP Falzar co
 verification's to know (§5).
 
 The chips the US release kept differ in art in three more places (all 411 records' icons, pictures and palettes
-compared across the four ROMs, 2026-10-12), and the pack has the JP ROMs' there too (the extractor reads a chip's
-record from its version's JP ROM before the US one):
+compared across the four ROMs, 2026-10-12). The pack has the US ROMs' art where both releases have their own (the
+extractor reads a chip's record from its version's US ROM before the JP one), and the JP ROMs' where the US ROMs
+have a placeholder:
 
 - **BatCan1 to BatCan4** (0x13B to 0x13E): the US ROMs have the purple placeholder for their pictures, the JP ROMs
-  (both the same) a picture each. The names and descriptions are in both releases.
+  (both the same) a picture each, which the pack has. The names and descriptions are in both releases.
 - **The Falzar ROMs' icon for Bass and BassAnly** (one icon for both in a ROM): its pixel (0, 8) is color 3 in JP
-  Falzar and color 9 in US Falzar. The pack's BassAnly icon is JP Falzar's (Bass's is the Gregar ROMs', the same in
-  both releases).
+  Falzar and color 9 in US Falzar. The pack's BassAnly icon is US Falzar's (Bass's is the Gregar ROMs', the same in
+  both releases); a JP Falzar console's pixel is the frame comparison's to know.
 - **The Gregar ROMs' Beast Out picture** (the BeastOut chip's record's, 0x13F, which the custom screen's button
   shows in the chip window): its pixels (53, 31) and (52, 32) are clear in JP Gregar and color 14 in US Gregar. The
-  Falzar ROMs' is the same in both releases.
+  pack has US Gregar's; the Falzar ROMs' is the same in both releases.
 
 The Gregar and Falzar chips' descriptions follow their pictures: both chips' scripts print one buffer of the
 console's memory (the gift's text, slot 1), so a console prints its own beast's description for both chips, in
@@ -339,11 +340,11 @@ differ, in 0C-0E (`flame`) and 0C-67 (`falzar-feather`), because what follows mo
 10-19, the flames HeatMan wears (`heatman-overlay`), differs: its animation 6, which plays with his throw, has
 four frames of 3 ticks and then 5, 4 and 1 in the JP ROMs (both), three frames of 5, 4 and 3 and then 5, 4 and 1
 in the US ROMs (both), with one more tileset and layout in the JP sheet. As long, drawn otherwise for the first
-12 ticks. The extractor reads the sheets from the JP ROM before the US one, so the pack has the JP flames;
-`jp/heatman-minibomb` (a JP console, pixel-exact with them, frames 372-374 and 443-445 differing with the US
-sheet) and `navis/heatman-minibomb` (a US console, which the frame comparison's table knows in that animation
-alone) show it. The sheets the extractor writes from each ROM alone were compared, all 310, 2026-10-12
-(bn6battle-verify's tools/cross-rom/packs.py).
+12 ticks. The extractor reads the sheets from a US ROM before a JP one, so the pack has the US flames;
+`navis/heatman-minibomb` (a US console, pixel-exact with them) and `jp/heatman-minibomb` (a JP console, whose
+frames 372-374 and 443-445 differ, which the frame comparison's table knows in that animation alone) show it. The
+sheets the extractor writes from each ROM alone were compared, all 310, 2026-10-12 (bn6battle-verify's
+tools/cross-rom/packs.py).
 
 ### 4.6 Where the JP-only code is
 
@@ -378,10 +379,13 @@ None of these touches the simulation. A trace that compares memory would still s
 *(trace)* below.
 
 **nettai has one presentation**: where the releases differ, the Japanese games' (the user, 2026-10-06: "nettai
-should not have any region specific code", and of the chip window, "go with jp everywhere"). No part of nettai
+should not have any region specific code", and of the chip window, "go with jp everywhere"). For the packs' art
+and sound the user turned that around on 2026-10-12 ("you should use the US assets where regions differ"): a pack
+has the US ROMs' asset where both releases have their own, and the Japanese ROMs' only where the US ROMs have none
+(§4.4, §4.5) or none is given. No part of nettai
 knows a console's region: its packs carry no region, and the renderer draws every console's screen the same. What
 a console of the other region shows otherwise (a US console's placeholders and its chip window's later start below;
-an EXE5 Japanese console's background 0x05) is the verification's to know: its frame comparison knows each
+a Japanese console's own art: EXE5's background 0x05, HeatMan's flames) is the verification's to know: its frame comparison knows each
 recording's console, asks the frontend where it draws those things (nettai-tool's `--mark`, `marks.tsv`) and
 counts them as known differences (bn6battle-verify's tools/frontend-compare/consoles.tsv, by game, region and
 version). The compat crates, which read recordings, keep what they need of a console's ROM.
@@ -427,11 +431,14 @@ comparison counts what is drawn with them as a known difference.
   (docs/design/text-rendering.md §10).
 - The custom screen's close (`sub_8026DC4`) also starts HUD task 0x40 in JP (`sub_801E012`): the next chip's name
   shows from the close, through the turn's banner, until the fight's first decision sets the window; the US games
-  show it from that decision. The engine's `Battle::chip_hud` is the Japanese games' in every game: the close turns
-  the window on with the icons, and it stays until something hides it (a navi that takes its time to decide, in
-  the middle of a step as its screen opened or changing form as the fight starts, keeps it meanwhile). A US
-  console's recording differs until that first decision or hide (`ChipHud::from_close`, which the renderer marks
-  for the frame comparison: `chip-window-at-close`), a known difference.
+  show it from that decision. **nettai follows the Japanese games here**, a named exception to the US games'
+  behavior where the releases' differ (the user, 2026-10-12: "make all three games do the same thing"): EXE4's and
+  EXE5's closes start the window in both regions, so EXE6's does too, on every console. The engine's
+  `Battle::chip_hud` turns the window on with the icons at the close, and it stays until something hides it (a navi
+  that takes its time to decide, in the middle of a step as its screen opened or changing form as the fight
+  starts, keeps it meanwhile). A US EXE6 console's recording differs until that first decision or hide
+  (`ChipHud::from_close`, which the renderer marks for the frame comparison: `chip-window-at-close`), a known
+  difference.
 - The HUD's graphics list (between `sub_801EC90` and `sub_801FE00`) has one transfer fewer in JP.
 
 **Text.**
