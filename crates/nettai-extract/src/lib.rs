@@ -123,6 +123,61 @@ pub struct Extraction {
     names: AssetNames,
 }
 
+/// A range of a ROM an extraction read (`extract_recording_reads`).
+pub struct RomRead {
+    /// The ROM's game code.
+    pub rom: String,
+    pub address: u32,
+    pub len: u32,
+    /// The ROM address the word read holds (a table's or a record's
+    /// pointer: what the extraction reads at it is its target's).
+    pub pointer: Option<u32>,
+    /// A span read whole for a parser that takes what it needs of it (an
+    /// uncompressed sprite archive): how far the parser went isn't known.
+    pub open: bool,
+}
+
+/// `extract`, and with it every range of the ROMs the extraction read, in
+/// the order read (reads of bytes that follow one another are one read).
+/// For comparing what two releases' ROMs hold where the extractor looks
+/// (the verification's cross-ROM sweep); the sound bank's reads aren't in
+/// it.
+pub fn extract_recording_reads(game: Game, roms: &RomSet) -> Result<(Extraction, Vec<RomRead>), Error> {
+    let (extraction, reads) = rom::record_reads(|| extract(game, roms));
+    let code = |at: usize| {
+        roms.roms
+            .iter()
+            .find(|(_, r)| r.0.as_ptr() as usize == at)
+            .map(|(code, _)| code.clone())
+    };
+    let reads = reads
+        .into_iter()
+        .filter_map(|r| {
+            Some(RomRead {
+                rom: code(r.rom)?,
+                address: r.address,
+                len: r.len,
+                pointer: match r.kind {
+                    rom::ReadKind::Pointer(p) => Some(p),
+                    _ => None,
+                },
+                open: r.kind == rom::ReadKind::Open,
+            })
+        })
+        .collect();
+    Ok((extraction?, reads))
+}
+
+/// The numbers of the songs two ROM images' sound banks play otherwise (the
+/// player, the priority, the reverb, the commands, or a voice a note of
+/// theirs plays), or that only one has: for comparing two releases' ROMs
+/// (the verification's cross-ROM sweep). The samples' and the voicegroups'
+/// numbers, which are each bank's own order, don't count.
+pub fn songs_played_otherwise(a: &[u8], b: &[u8]) -> Result<Vec<u16>, Error> {
+    let bank = |rom: &[u8]| m4a::rom::extract(rom).map(|(bank, _)| bank).map_err(|e| Error(format!("reading sound: {e}")));
+    Ok(sound::played_otherwise(&bank(a)?, &bank(b)?))
+}
+
 /// Extract all available sources of `game`. Even an empty set produces a usable
 /// placeholder pack. Malformed supplied data fails extraction instead of being
 /// treated as a missing source. Existing game decoders' assertions are translated
