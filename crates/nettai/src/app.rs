@@ -17,7 +17,7 @@ use nettai_battle::BattleResult;
 use nettai_frontend::driver::{Driver, InFight, LivePlayer, OnCustomScreen, Opponent};
 use nettai_frontend::game::TextMode;
 use nettai_frontend::player::Player;
-use nettai_frontend::replay::{Info, Recorder, Replay, ReplayPlayer};
+use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay, ReplayPlayer};
 use nettai_render::vfont::TextRenderer;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::path::PathBuf;
@@ -659,7 +659,7 @@ impl App {
         let driver = LivePlayer::against(nettai_match::Set::of(content, &m, seed), opponent, seed as u64);
         let mut player = self.player(ready, Box::new(driver), true);
         // Recorded, to watch again.
-        let recorded = self.recorder(content, &m, seed, game, 0, None).and_then(|(r, path)| player.record(r).ok().map(|_| path));
+        let recorded = self.recorder(content, &m, seed, game).and_then(|(r, path)| player.record(r).ok().map(|_| path));
         let graphics = ready.graphics(self.lang);
         let names = Names::of(content, &graphics);
         let ui = self.ui();
@@ -740,32 +740,40 @@ impl App {
         self.keys.release();
     }
 
-    /// A recorder of the set to a new file in the replays folder, this
-    /// player on `side`, both players' names by side (`names`; none: this
-    /// player's alone).
-    pub fn recorder(
-        &self,
-        content: &std::sync::Arc<nettai_battle::Content>,
-        m: &nettai_match::Match,
-        seed: u32,
-        game: &str,
-        side: u8,
-        names: Option<[String; 2]>,
-    ) -> Option<(Recorder, PathBuf)> {
+    /// A new file in the replays folder for a set of `game` starting now:
+    /// the file, its path, and now (seconds since 1970).
+    fn replay_file(game: &str) -> Option<(std::io::BufWriter<std::fs::File>, PathBuf, u64)> {
         let dir = replays_dir();
         std::fs::create_dir_all(&dir).ok()?;
         let when = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_secs());
         let stamp = chrono::DateTime::from_timestamp(when as i64, 0).map(|t| t.with_timezone(&chrono::Local).format("%Y%m%d-%H%M%S").to_string()).unwrap_or_default();
         let path = dir.join(format!("{stamp}-{game}.ntrp"));
         let file = std::fs::File::create(&path).ok()?;
-        let names = names.unwrap_or_else(|| {
-            let mut names = [String::new(), String::new()];
-            names[side as usize] = self.name.clone();
-            names
-        });
-        let info = Info { when, side, names };
+        Some((std::io::BufWriter::new(file), path, when))
+    }
+
+    /// A recorder of a set played on this machine (an offline match, this
+    /// player on side 0, by this player's name alone) to a new file in the
+    /// replays folder.
+    pub fn recorder(&self, content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, game: &str) -> Option<(Recorder, PathBuf)> {
+        let (file, path, when) = Self::replay_file(game)?;
+        let info = Info { when, names: [self.name.clone(), String::new()], ..Info::of(MatchKind::Offline, 0) };
         let m = nettai_match::Match { seed: Some(seed), ..m.clone() };
-        let r = Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &info).ok()?;
+        let r = Recorder::new(Box::new(file), content, &m, &info).ok()?;
+        Some((r, path))
+    }
+
+    /// A recorder of the netplay match the lobby agreed to a new file in
+    /// the replays folder: its info is the agreement's (the names, this
+    /// player's side, whether the builds are closed).
+    pub fn netplay_recorder(
+        &self,
+        content: &std::sync::Arc<nettai_battle::Content>,
+        agreement: &nettai_frontend::lobby::Agreement,
+        game: &str,
+    ) -> Option<(Recorder, PathBuf)> {
+        let (file, path, when) = Self::replay_file(game)?;
+        let r = Recorder::of_agreement(Box::new(file), content, agreement, when).ok()?;
         Some((r, path))
     }
 
@@ -1098,7 +1106,7 @@ impl App {
             let content = ready.content().clone();
             std::thread::spawn(move || {
                 for (path, replay) in todo {
-                    let outcome = nettai_frontend::replay::play_out(&content, &replay);
+                    let outcome = nettai_frontend::replay::play_out(&content, &replay).map_err(|e| e.to_string());
                     let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.played_out(&path, outcome)));
                 }
             });

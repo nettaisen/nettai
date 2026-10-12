@@ -33,8 +33,13 @@ pub struct Session {
     /// The last step's sound as cue actions, from a driver that runs the
     /// battle itself (netplay), and of a step that ended a round (the
     /// ended round's last cues: `battle` is the next round's by then);
-    /// none: the battle's own cues (`Battle::sound_cues`).
+    /// none: the battle's own cues, as the console shown hears them
+    /// ([`heard`]).
     pub sound: Option<Vec<CueAction>>,
+    /// The round the last step ended, as its last tick left it (`battle`
+    /// is the next round's by then): for whoever wants more of that tick
+    /// than `sound` (the other console's cues).
+    pub ended: Option<Box<Battle>>,
     /// The players who asked for the pause since the host last took the
     /// requests, by side (`Battle::pause_requests`, of a round whose host
     /// answers the pause; `Player::take_pause_requests`).
@@ -59,6 +64,7 @@ impl Session {
             fresh: false,
             new_round: false,
             sound: None,
+            ended: None,
             pause_requests: [false; 2],
             recorder: None,
         }
@@ -89,6 +95,23 @@ impl Session {
         self.pause_requests = [false; 2];
     }
 
+    /// Go on from another place in what the driver plays: `battle` as it
+    /// stood after `ticks` ticks, and how the session stood there (why it
+    /// had stopped, if it had, and with what result). The driver is told
+    /// where it is by its own `go_to`; a difference from the recording seen
+    /// before stays seen. For a viewer that keeps such states to come back
+    /// to (`crate::viewer`).
+    pub(crate) fn resume(&mut self, battle: &Battle, ticks: u64, stopped: Option<String>, finished: bool, result: Option<BattleResult>) {
+        self.battle.clone_from(battle);
+        self.ticks = ticks;
+        self.frame = (ticks > 0).then_some(ticks as u32);
+        (self.stopped, self.finished, self.result) = (stopped, finished, result);
+        (self.fresh, self.new_round) = (false, false);
+        self.sound = None;
+        self.ended = None;
+        self.pause_requests = [false; 2];
+    }
+
     /// Run one tick (one wall-clock frame of a driver that runs the battle
     /// itself). Returns false (and records why) when the battle can't go
     /// on. (The tick that ends a set runs and is shown as any other; it is
@@ -97,6 +120,7 @@ impl Session {
         if self.stopped.is_some() {
             return false;
         }
+        self.ended = None;
         IN_ENGINE.with(|f| f.set(true));
         let ran = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.driver.run_frame(keys, &mut self.battle)));
         IN_ENGINE.with(|f| f.set(false));
@@ -171,8 +195,8 @@ impl Session {
                 // (The ended round's last tick is still heard; what is
                 // shown is the next round, at its start, as a netplay
                 // peer shows it.)
-                self.sound = Some(self.battle.sound_cues().iter().map(|&cue| CueAction::Play(cue)).collect());
-                self.battle = *next;
+                self.sound = Some(heard(&self.battle).iter().map(|&cue| CueAction::Play(cue)).collect());
+                self.ended = Some(Box::new(std::mem::replace(&mut self.battle, *next)));
                 self.new_round = true;
             }
             Some(After::Over(result)) => {
@@ -201,6 +225,13 @@ impl Session {
             *kept |= asked;
         }
     }
+}
+
+/// The last tick's sound cues as the console `b` is shown from hears
+/// them: the viewer's (`setup.local_side`, which a replay shown from the
+/// other side sets), not the simulation's own side's.
+pub fn heard(b: &Battle) -> &[nettai_battle::sound::SoundCue] {
+    b.sound_cues_for(b.setup.local_side)
 }
 
 fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
