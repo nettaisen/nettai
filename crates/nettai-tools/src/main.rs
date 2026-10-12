@@ -95,13 +95,16 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   --out DIR        where --headless writes
   --png-scale N    with --headless: each frame N times its size
   --objects        with --headless: list every rendered frame's objects (kind,
-                   place, sprite, animation, look)
+                   place, sprite, animation, look) and what its sprite draw
+                   took of the frame's budget and left out
   --mark M,...     with --headless: write where each of these is drawn, by
                    frame, to marks.tsv in --out: sprite:NAME (an object drawn
                    with it), background:NAME, chip:KEY (its picture in the
-                   chip window), chip-window-at-close (the HUD's chip name
-                   before the navi's first decision); for a frame comparison
-                   that knows what a console shows otherwise there
+                   chip window), chip-icon:KEY (its icon: over its navi, in
+                   the custom screen's slots and picked column),
+                   chip-window-at-close (the HUD's chip name before the
+                   navi's first decision); for a frame comparison that knows
+                   what a console shows otherwise there
   --keys K         with --headless --match: the buttons you hold, by tick (e.g.
                    232-233:up,300:a+b; a b l r up down left right start
                    select)

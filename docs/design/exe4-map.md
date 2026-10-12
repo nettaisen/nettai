@@ -935,6 +935,46 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (0x080E7E38), which no netbattle sets. The points' palette is the record's parameter times 4 (0x080E7D46: DblPoint's
   1, palette 4). The lab's chips/ (10) replay every frame. ColorPt's boost
   (chips/0x07f-colorpt/boost: its points, the Cannon's bonus) and DblPoint's hit, from either side, are pixel-exact.
+- **HolyDrem** (Red Sun's chip 0x133, the dimming chips' variant 0x2C, `chips/holydrem`): EXE5's HolyDrem's controller
+  and shot are this code, now shared as @exelib/holydrem (the controller, effect #0x59, 0x080E8418; the shot, attack
+  #0x83, 0x080DD9EC: EXE4's spawns copy the side byte alone, the makers' `side_only`), with EXE4's own stand-in
+  (attack #0x82, 0x080DD798, the elder of EXE5's actor #0x1C): drawn as the user with what its soul puts on
+  (0x0800B812), the user gone but for its status visuals; animation 0x12 and no buster arm; a shot 40 pixels ahead and
+  20 up (0x080DD940 by the navi) with the cannon's sound (0x8C) each time; the scan for holy panels (0x080DD9AC), each
+  flashed (effect row 0x45), turned Normal and answered with a shot, as EXE5's. The lab's chips/ (5: holy-panel, after
+  HolyPanl, among them) replay every frame and sound call; holy-panel is pixel-exact but for the replay's known shift.
+- **RedSun** (Red Sun's chip 0x130, the dimming chips' variant 0x2D, `chips/redsun`: EXE4's own): its controller
+  (effect #0x5A, 0x080E8534: lib/sun_and_moon, a navi chip's long course in a plain dimming controller: the user warps
+  out, 31 ticks, the sun, 31 ticks, the user warps back in, 31 ticks) sends out the sun (attack #0x84, 0x080DDB34),
+  70 pixels over the user's panel (sounds 0xA0 and, 28 ticks in, 0x19E). After 45 and 31 ticks it throws five
+  meteors 16 ticks apart (attack #0x85, 0x080DDDEE: EXE6's SunMoon's meteor is this code, now shared as
+  @exelib/sun_meteor; each 40 damage with the counter byte 0x85, its element the register the object loop leaves, 0 in
+  every recording), waits 61 ticks and dives (0x19F) in 10 ticks onto the panel three columns toward the enemy: a hit
+  there that resolves while dimmed (the region word 0x1505FF01: a thrown break at navis, hit modifier 3) with the
+  chip's damage, the 3x3 panels around cracked (0x080DDD84), a shake (3, 60), a burst (effect row 6) and silent
+  sparkles of explosions (0x10000); 61 ticks later the controller goes on. Its damage is formula 47 (0x080195CE,
+  rules/sun_and_moon): 100 and 40 for each ten of the side's wins less its losses against the other version's
+  players, up to 100, none under ten (300 under event flag 0x1187). The count is the save's signed halfword at 0x21D6
+  (the game state's struct at the toolkit's +0x44, its +0x22: the status screen's "VS BM Battles: +100 W", "VS BM
+  しょうり数" in Japanese, 0x0803A978; after a link battle whose menu state, the toolkit's +0x40, has 0x4A at +0x0B,
+  the one whose result messages speak of the "RS Tournament" or the "BM Tournament", a win adds 1 up to 100 and a
+  loss takes 1 down to -100, 0x0803AB90), which each side's link record carries (+0xB6, 0x08008784) and the battle
+  keeps at 0x0203BE72 + 8 a side (0x080087A8): the setup's `rival_wins` (named for what it counts: the content states
+  no version; Tango's netplay saves hold 100, the setup's default), which exe4-compat's import reads from a save and
+  its trace from a recording's setup line. The lab's chips/ (6: among them wins-35, 220 damage with the save's count
+  poked to 35, and wins-under, 100 with it poked to -5) replay every frame and sound call; the hit, from either side,
+  is pixel-exact but for the known shift.
+- **BlueMoon** (Blue Moon's chip 0x135, the dimming chips' variant 0x2E, `chips/bluemoon`: EXE4's own): its
+  controller (effect #0x5B, 0x080E865C: lib/sun_and_moon's, the same code) sends out the moon (attack #0x86,
+  0x080DDFEC) on the user's panel (0xA0, 0x19E); after 45 and 21 ticks it shines its ray (attack #0x87, 0x080DE160:
+  sheet 0c-4e, 0x1A0) for 91 ticks, then goes after 11 more. The ray, 3 ticks in, hits the panel three columns toward
+  the enemy with the chip's damage (0x1705FF01: a thrown piercing break at navis, hit modifier 3) and, a tick each
+  from that tick on, with nine hits of no damage (element 5, hit modifier 1) that strip the navi they reach: each
+  carries a NaviCust bug code and argument (0x080DE284: codes 1 to 7 with 0, 0x0A with 1, 0x0C with 0xFF), which the
+  rules' `navi_bug` writes (SuperArmor, FloatShoes, AirShoes and UnderShirt off; Attack, Rapid and Charge 0; the
+  charged shot the navi's own; no B+Left). Its damage is formula 48 (0x08019606): RedSun's from 200. The lab's chips/
+  (6: strips, where a Cannon flinches a navi whose SprArmr the ray took, and wins-5, 200 damage, among them) replay
+  every frame and sound call; the hit and strips are pixel-exact but for the known shift.
 - **Anubis** (the dimming chips' variant 0x18, `chips/anubis`): EXE6's code (@exelib/anubis: controller #0x33,
   0x080E5BF4; statue #0x55, 0x080D82F8) in EXE4's look: sheet 0c-30, 0xA2 landing, 0x70 breaking over effect row 0;
   no NameID; the lifetime 3000 for either variant (0x080D836A); its end reads no removal (0x080D83F8: it breaks however
@@ -1013,7 +1053,10 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   taking the spawner's side alone (`side_only`). Each chip states its row (0x080DC32C: palette 0, 2, 4, 6; Fanfare's
   50 HP, the others' 100, 0x080DC3EC), its tune (0x12A to 0x12D) and its effect: Fanfare's makes its side's navi alone
   invulnerable for 4 ticks (0x080DC5C4; EXE5's and EXE6's every combatant), Discord, Timpani and Silence EXE6's
-  (confusion, immobilization, blindness, each 4 ticks). An immobilized navi doesn't blink black in EXE4 (its tail has
+  (confusion, immobilization, blindness, each 4 ticks), but Discord's hit covers the other side's whole area
+  (0x080DC5FC: regions 0x82 and 0x81, as EXE5's, 0x080D547C; EXE6's the other navi's panel, 0x85 and 0x84), so
+  another obstacle standing there takes it too (the lab's sprites/palette-slots: Fanfare's instrument's status word
+  0x80005000 every third tick of Discord's playing). An immobilized navi doesn't blink black in EXE4 (its tail has
   no `sub_801690A`): `effects.immobilized_blinks` (EXE6, EXE5 true; EXE4 false). The lab's chips/ (16),
   status/confusion, fanfare, paralysis-timpani and silence replay every frame; the hit recordings' fight frames are
   pixel-exact.
@@ -1553,7 +1596,9 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
   `navicusts` (each side's save's NaviCust: `parts`, the 25 parts of 8 bytes at save 0x4564; `grid`, the 5x5 grid at
   0x4540; `color_bar`, 6 bytes at 0x190) and `patch_cards` (each side's save's six slots: `on` at 0x464C, `off` at
   0x4653, a card's number or 0xFF); `game_regions`; `background` (the game state's +0x0F, the background the loader
-  picks first, 0xFF none). **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
+  picks first, 0xFF none); `rival_wins` (both sides' wins less their losses against the other version's players as the
+  battle keeps them, 0x0203BE72 and 0x0203BE7A: the recordings from 2026-10-11 on; one without them took its saves',
+  Tango's 100). **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
   chip flags) come only when the traced console is side 1: side 0's console runs its frame before side 1's in a tick,
   so the other console's last capture is a frame behind when side 0's setup line is written (EXE5's side-0 recordings
   lack them for the same reason). A decode reads them when present and doesn't expect them on a side-0 recording.
@@ -1729,10 +1774,10 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      again (0x08042AE0, the battle's stats; HubBatc's writes the game state's maximum HP, which no battle reads); then
      the abilities come back (0x0800D906, EXE6's `sub_801393A`: the answer "edited"). The rules' `navi_bug`
      (content/exe4/rules/navicust/bugs), an if-chain on the codes EXE4's objects set: ShadeMan's crush 0x0D (the move
-     bug); RedSun's stripping hits (attack 0x87) 1 to 7 and 0x0A; attack 0x41's (effect 0x1B) those, 0x0C and 0x12;
-     weapon routine 0x5C's hit 0x0E (the HP bug's period); BugBomb (attack 0x77: kinds 1, 2, 3, 4, 6, 8) and BugCurse
-     (attack 0x80: kinds 2, 3, 4, 6) 0xFF. The original allows any other code (the byte it numbers); no object sets
-     one. Kind 8 (the weapon bug: the charged shot becomes weapon routine 0x1F, 0x20 or 0x21) waits on routines 0x1F
+     bug); BlueMoon's ray's stripping hits (attack 0x87) 1 to 7, 0x0A and 0x0C; attack 0x41's (effect 0x1B) those and
+     0x12; weapon routine 0x5C's hit 0x0E (the HP bug's period); BugBomb (attack 0x77: kinds 1, 2, 3, 4, 6, 8) and
+     BugCurse (attack 0x80: kinds 2, 3, 4, 6) 0xFF. The original allows any other code (the byte it numbers); no
+     object sets one. Kind 8 (the weapon bug: the charged shot becomes weapon routine 0x1F, 0x20 or 0x21) waits on routines 0x1F
      and 0x20, which BugBomb's port brings. Open: 0x0800D906 copies the weapon bytes in any form where the engine's
      refresh keeps a form's own, which no recording tells apart yet.
    - With others: the emotions (item 8, group A); a soul's break by a weakness hit (`form_break`,
@@ -2205,7 +2250,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `WEAPONS`; the 32 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
-    Guard's too: item 60). **Done**, all but the souls' cards (item 58):
+    Guard's too: item 60). **Done** (the souls' cards: item 58):
     the routines of chips (all in: 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind
     and 0x55 PnlRetrn, cards 41, 51, 57, 70, 71, 79, 82, 115 and 118 matching),
     the routines that load no chip (all in: 0x04, the zap ring, card 81, navis/megaman/weapons/zap_ring, the ring
@@ -2217,7 +2262,27 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     and 102, the buster's shot with projectile rows 7, 8, 0x0B, 0x0D and 0x0E: cracking, poison, blinding (row 0x0B's
     status 0x32, 0x080CD3BC; row 0x0A's 0x22 no routine fires), grass and ice) and Triple Supporter's pair (item
     54: in, `cards.all_supports`).
-58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
+58. **The 12 soul patch cards** (121 to 132: NaviStats +0x24 = the soul's number, and two counts of the HP bug).
+    **Done** (group F): `cards.soul(form)` (rules/patch_cards/cards: the stats' form and starting form), which
+    gen_patch_cards.py writes for each soul (its `SOULS`). A battle then starts in the soul: the navi's init
+    (0x0801079C) loads the soul's sprite (0x0800B90A) and palette, puts on what it wears (0x0800B7E8), runs the
+    status reset in it (0x0800E05C: the soul's own routine, its weapons, its turns' start) and, the soul set, marks
+    its turns as never counted (0x08010828: AIData +0x18 = 0xFF; rules/souls/turns' `round_start`, from the rules'
+    `round_start`). So the soul lasts the battle (no revert, 0x0800B6B8), the emotion window shows the count's
+    highest, 5 (0x08016A52: the engine's `form_turns`), and Double Soul isn't offered (0x0801FF8C:
+    `turns.counted`). What it wears starts in the intro: the overlay's spawner sets its header flag 0x04
+    (0x080CC60C), which the engine's EXE4 rule lacked (`effects.form_overlay.run_while_paused`, split from the
+    afterimages' `afterimages_run_while_paused`: EXE4's afterimage spawner, 0x080E5020, sets none). The custom
+    screen takes the soul as it opens (0x0801DC82: its +0x0F), whatever put the navi in it. The compile check
+    (exe4-compat's `compiled`) reads the soul's byte too. The lab's modcards/121, 123 to 129, 131 and 132 and
+    overlay/aqua/fs-* and overlay/proto/fs-* (cards 131 and 127 with Full Synchro, 45) replay every frame; their
+    fights are pixel-exact but for the custom screens' known shift. What the custom screen does in a soul, every screen
+    opened in it, is the soul's (item 74, "the custom screen's soul"): the hand it builds (0x0801F29A, 0x0801F226)
+    *done* (modcards/122-guts-soul, the Cannon of its first hand 70; 123-wind-soul-chip, 128-number-soul, the
+    label's "+10"; 132-wood-soul-fold; souls/guts/turn2: every frame, pixel-exact but for the known shift).
+    **Open, group A's (item 74):** JunkSoul's used chips offered again (0x0801DFBC), on which modcards/130-junk-soul
+    waits (every frame matches, the console's RNG1 apart from frame 984, its second screen); and SearchSoul's
+    SHUFFLE button, not on our screen (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
@@ -2268,10 +2333,32 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
       count 0x0200B8AC) and EXE6's (0x08000AC8, count 0x0200AC1C) hold 96 too. A dropped copy leaves the
       tiles VRAM held at the sprite's tile index, which may be another sprite's (the index moves when an earlier
       sprite's count changes) until its frame changes again.
-    Open (group C, 2026-10-07): no recording reaches any of them; the lab's busiest fights (two navis and a field of
-    bursts) reserve about 200 tiles and a few palettes. To port (group C, after its chips): the tile and palette caps
-    as per-frame budgets in the renderer's draw order, each game's numbers in its rules, frame-compared with a
-    scenario built to reach them. The queue stays open: it needs a model of sprite VRAM and of every transfer the
+    **Done: the tile cap and the palette slots** (group C). The renderer's sprite draw (nettai-render's
+    `objects::SpriteDraw`) reserves each drawn object's frame's tiles and gives its palette a slot in draw order,
+    before the parts are culled, and leaves out a sprite the frame has no room for; each game's numbers are its rules'
+    `effects.sprite_budget`. A battle's are the same in all three: 10 slots and 0x2FF (EXE6's `sub_80027D4`, EXE5's
+    0x08002740; EXE4's mode byte is 8 in every battle, 0x08006B14 in the mode table 0x0800032C, so its 10 and 0x2FF,
+    the 12 and 0x32F the other modes'), and 8 slots in EXE6's and EXE5's battle mode 1 (`sub_80027E4`, 0x08002750).
+    The allocator starts a frame at 1 and the test takes 0x30 off, so a frame holds 0x32D tiles. A whitened sprite
+    takes no slot (`sprite_forceWhitePalette`, 0x08002E1C, puts it in slot 15, which the slot routine leaves); a sprite
+    left out for its tiles takes none either, and one left out for its palette keeps its tiles reserved. The draw
+    runs for every object with its VISIBLE flag and a loaded sprite, in the pools' draws (0x08003BA0, 0x08003ED4,
+    0x08004180: actors, attacks, effects, each by slot in EXE4, by the update list in EXE5 and EXE6).
+    Checked, the palette slots: the lab's sprites/palette-slots (on grass-rows-a: its boulders, Discord's and Fanfare's
+    instruments, a RockCube, a TimeBomb, a Barrier and a Barr100, the shimmer Fanfare gives its navi, a charge's glow,
+    then side 0's buster shots at its own rock) takes all 10 slots before the shots' hit sparks, the effects' last
+    slot, and is pixel-exact with the cap; with 16 slots the renderer draws the sparks the original leaves out
+    (frames 1812 to 1816 and five more runs to 1906). It replays every frame. EXE6's and EXE5's own
+    sprites/palette-slots (the same set-up on their consoles; their draws go by the update list, so what comes last
+    differs): EXE6's leaves out the charge's glow (with 16 slots the renderer draws it in eight runs of frames from
+    1772 to 1899), EXE5's side 0's barrier (frames 1907 and 1908, 1924 and 1925, 1927 and 1928); both are pixel-exact
+    with the cap and replay every frame. The tile cap has no recording: that
+    scene, the busiest built, reserves 309 of the 813 tiles, single chips' 80 to 180, and two navis' objects don't
+    reach it; a unit test covers its arithmetic and the sharing (nettai-render's
+    `the_sprite_draw_leaves_out_what_the_frame_has_no_room_for`). The headless frontend's `--objects` lists what each
+    frame's draw took and left out. Not modeled, and out of a battle's reach: the frame cache's 89 entries (it writes
+    past them), and a slot count of 15, which would give every later sprite slot 15.
+    The queue stays open: it needs a model of sprite VRAM and of every transfer the
     game queues. (What the towers' frame
     compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
     display, tearing, which is left.)
@@ -2327,6 +2414,20 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      0x080EB93A, the objects 0x080CB4B0, 0x080CC648, 0x080CC750, 0x080CC960, 0x080CCAF0, 0x080CCF7C, 0x080D7590,
      0x080DD7BC, 0x080EA744): the swords' and cannons' afterimages *done* (the form's sprite: lib/swords'
      `navi_afterimage`, lib/cannon; souls/proto/chip), the rest *open*: each with the chip that spawns it.
+   - **The custom screen's soul** (F's find, from the soul cards' recordings: reads the getters' count misses). The
+     screen keeps the navi's soul as it opens (0x0801DC82: 0x0800F49C's r1, the dark soul's as none, into its +0x0F)
+     and reads it there: the hand of ten (0x0801DC92, NumberSoul's below); as OK builds a hand in the soul, soul 12's
+     fold on the screen's list (0x0801F1B0: 0x0801F226, which adds the Null chip's damage and Atk+ bonus to the Wood
+     chip's and moves the later chips up with their damage alone, the list's +12, +36 and +48: each slot's Atk+ bonus
+     and marks, +24 and +60, stay, so a chip that moved up has the bonus of the slot before; `battle.fold_hand_chip`
+     with `whole` false) and each slot's bonus stored into the hand's +0x26 (0x0801F1E2: 0x0801F29A, soul 8's 10 on a
+     damaging Null chip, soul 2's 30 on a damaging Null or Break chip, soul 3's 10 on a damaging Wind chip) *done*:
+     each form's `hand`, applied as the hand is installed (rules/souls/custom's `installed`; souls/guts/turn2, F's;
+     souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left behind). JunkSoul's
+     recycling as its screen opens (0x0801DD0C: 0x0801DFBC, up to two of the chips used this battle dealt again)
+     *open*; SearchSoul's SHUFFLE button over slots 8 and 9 (0x0801DD18: three shuffles a screen, the selection's
+     state 0x14, 0x08020998) *open*: it isn't on our screen (souls/search/turns frames 1108 to 1120). Neither while
+     the screen deals dark chips (0x0801DD02: 0x0801DE90's 1).
    - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
      that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
      (souls/roll/heal).
@@ -2530,8 +2631,10 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     shift: the flags on each of their six panels, navis in front of, behind and beside them, chip icons over a flag
     and its number, Spreader's bursts, Boomer1, MiniBombs and Meteors over the flags, a flag broken, the custom
     screen through five turns, the telops on both sides, Blinder's dimming, flash and blinding (a blind console
-    draws no numbers), AreaGrab's dimming, RollSoul's change, a pause. What it found was the HUD's own, items 132 to
-    134.
+    draws no numbers), RockCube's and AreaGrab's dimmings, RollSoul's change, a pause. What it found was the HUD's
+    own, items 132 to 134. EXE5's and EXE6's stages place no flag (EXE6 has the code, `sub_80D8C5C`, and no stage
+    that places it) and no other object with an HP number: their boulders, rocks and Guardian statues are plain
+    sprites by their ground.
 132. **Done: the other player's used chip through a pause.** EXE4's pause (0x08007176: 0x080166BC) starts "PAUSE"
     alone; EXE6's display (`sub_801E15C`) and EXE5's (0x0801AA28) end the used chips' names. The name stays and runs
     out through the pause (the HUD's tasks run paused). The rule `effects.used_chips_end_early` (with item 76's
@@ -2558,9 +2661,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). A doubled chip's
     "×2" is one 16x16 sprite at 0x380 for either place (0x08015522 adds no 36: emotions/counter-side1 shows the other
     player's "Cannon 40×2"), so a banner's load turns it into the tops of the banner's glyphs 16 to 19, the '×' the
-    left column (ported with the name's; no recording reaches it: a navi's deletion banner starts after the name has
-    run out, the flag's break is the case, and breaking a flag with a Full Synchro chip takes a counter hit on the
-    last turn).
+    left column: stages/lava-middle-close/flag-break-synchro-bluemoon (a counter hit on the last turn, then the flag
+    broken by the doubled Cannon) compares it, frames 3793 to 3802. (A navi's deletion banner starts after the name
+    has run out; a flag's break is the case that shows it.)
 
 ### 18.8 The chips (group F)
 

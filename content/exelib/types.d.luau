@@ -835,6 +835,8 @@ export type PatchCardEffect = {
     weapon: Weapon?,
     variant: ProjectileVariant?,
     barrier: Barrier?,
+    -- The form a card starts the navi in (EXE4's soul cards, kind "soul").
+    form: FormDef?,
     gauge: string?,
     on: boolean?,
     trail: string?,
@@ -2183,4 +2185,14 @@ export type FlameHookFlames = {
     columns: (me: Object) -> (number, number),
     variant: FlameHookVariant,
     spark: Spark,
+}
+
+-- A sun's meteor's variant (@exelib/sun_meteor: EXE6's SunMoon's, EXE4's RedSun's): its look, what it is and hits,
+-- whether its landing shakes the camera, and what it does to a panel that holds something.
+export type SunMeteor = {
+    sprite: SpriteAsset,
+    anim: number,
+    collision: { is: CollisionType, hits: CollisionType },
+    shake: boolean,
+    panel: "none" | "crack" | "break",
 }
