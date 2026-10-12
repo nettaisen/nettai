@@ -587,7 +587,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         weakness_mark = "weak_element_damage",
         paused_navi = "pause_handler",
         timers_while_paused = false,
-        idle_stands = false,"#,
+        idle_stands = false,
+        idle_asks_controller = false,"#,
             ),
         ];
         assert_eq!(STATED.iter().map(|(name, _)| *name).collect::<Vec<_>>(), crate::content::sections::REQUIRED);
