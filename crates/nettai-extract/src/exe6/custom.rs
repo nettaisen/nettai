@@ -213,10 +213,9 @@ const CROSS_PALETTE_COUNT: u32 = 10;
 /// The BeastOut chip, whose record's picture is the Beast Out button's.
 const BEAST_OUT_CHIP: u32 = 0x13F;
 
-/// A version's own pictures: its US ROM's (`rom`, at `a`), and the Beast
-/// Out button's picture its Japanese ROM's (`jp`) where there is one (the
-/// BeastOut chip's record's there: the Gregar ROMs' differ in two pixels,
-/// `jp`).
+/// A version's own pictures: its US ROM's (`rom`, at `a`); without it the
+/// Beast Out button's picture is its Japanese ROM's (`jp`: the BeastOut
+/// chip's record's there; the Gregar ROMs' differ in two pixels, `jp`).
 fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPictures {
     let palettes = |at: u32, n: u32| {
         (0..n)
@@ -232,7 +231,7 @@ fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPicture
     // out.
     // (The picture's palettes are its own alone, whichever ROM it is of:
     // a pack of the Japanese ROMs alone has the picture too.)
-    let picture = if jp.is_present() {
+    let picture = if !rom.is_present() && jp.is_present() {
         let record = crate::exe6::jp::CHIP_DATA + 0x2C * BEAST_OUT_CHIP;
         picture(jp, (u32at(jp, record + 0x24), u32at(jp, record + 0x28)))
     } else {
@@ -338,9 +337,9 @@ fn rom_pointer(p: u32) -> bool {
 
 /// The custom screen's graphics; `names` gives the chips' pictures their
 /// chips' keys. A Gregar console's own pictures are the US Gregar ROM's,
-/// where they differ; a chip's picture is its Japanese ROM's where there
-/// is one (`gregar::chip_source`), as the pictures of the chips the US
-/// ROMs have a placeholder for are (`jp::CHIP_PICTURES`).
+/// where they differ; a chip's picture is its US ROM's where there is one
+/// (`gregar::chip_source`), and a Japanese ROM's for the chips the US ROMs
+/// have a placeholder for (`jp::CHIP_PICTURES`).
 pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
     let (rom, gregar) = (&roms.falzar, &roms.gregar);
     let mut versioned = Versioned::new("falzar", version_pictures(rom, roms.falzar_jp, &FALZAR));
@@ -428,8 +427,8 @@ pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
 }
 
 /// Chip `id`'s picture: the Falzar ROMs', the Gregar ROMs' for the five
-/// they have right (`gregar::RIGHT_IN_GREGAR`), the Japanese ROM's before
-/// the US one's (`gregar::chip_source`); a Japanese ROM's alone for the
+/// they have right (`gregar::RIGHT_IN_GREGAR`), the US ROM's before the
+/// Japanese one's (`gregar::chip_source`); a Japanese ROM's alone for the
 /// chips the US ROMs have a placeholder for (`jp::CHIP_PICTURES`). A version's own chip's
 /// is marked with its version (`gregar::chip_version`): a console of the
 /// other version shows its counterpart's there. A cut chip whose

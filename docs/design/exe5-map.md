@@ -568,10 +568,9 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
   (docs/frontend.md §5).
 - **The releases' songs:** one differs. The hit (song 0x6D) is louder in the Japanese ROMs: its volume command is
   127 there and 112 in the US ROMs (both versions; `nettai-extract songs ROM ROM` compares two ROMs' banks as
-  played, and finds no other in EXE5, and none in EXE4 or EXE6). The pack has the Japanese ROMs' (the extractor puts
-  the songs the Japanese ROM of a bank's version plays otherwise in the US ROM's place, `sound::japanese_songs`):
-  one presentation, the Japanese games' where the releases differ. No comparison knows what a US console plays
-  there: the sound comparisons are of which song plays when, not of how loud.
+  played, and finds no other in EXE5, and none in EXE4 or EXE6). The pack has the US ROMs' (the bank is a US ROM's
+  where one is given): the US games' assets where the releases differ. No comparison knows what a Japanese console
+  plays there: the sound comparisons are of which song plays when, not of how loud.
 - **Version songs:** none. The two US ROMs play every song alike: the same header and commands, and voices
   that play alike on the keys of each track's notes (exe5-extract's `plays_alike`). Eleven songs (0x13C–0x142,
   0x145, 0x146, 0x170, 0x171: among them Football's, ChaosLrd's and DethPhnx's sounds) had been taken for Team
@@ -605,11 +604,11 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
 - **Left out:**
   - The Japanese ROMs' one different sprite (14-17, the "BLOCK!" label, ブロック! there): the US release localized
     it rather than cut it, so the pack keeps the US's, as EXE6's does; no content draws it.
-  - The US ROMs' background 0x05 (Yai's HP), which is another picture than the Japanese ROMs' (goldfish, scrolling,
-    for bubbles in the dark, still): the pack's backgrounds are the Japanese Team of Blues ROM's (the other 28 are
-    the same in both releases, pictures, scrolls and animations), and what a US console draws there is the
-    verification's to know (its consoles.tsv; `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared,
-    2026-10-12).
+  - The Japanese ROMs' background 0x05 (Yai's HP), which is another picture than the US ROMs' (bubbles in the dark,
+    still, for goldfish, scrolling): the pack's backgrounds are the US Team ProtoMan ROM's (the Japanese Team of
+    Blues ROM's in a pack of no US ROM; the other 28 are the same in both releases, pictures, scrolls and
+    animations), and what a Japanese console draws there is the verification's to know (its consoles.tsv;
+    `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared, 2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
