@@ -1,10 +1,11 @@
 --!strict
--- The patch card Max HP Up (67, マックスHPを強化).
+-- The patch card Max HP Up (67, マックスHPを強化), slot 0A's.
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cards = require("../rules/patch_cards/cards")
 
-local card: PatchCard = {
+local card: SlottedPatchCard = {
+    slot = "0A",
     effects = {
         cards.hp(700),
         cards.bug("move", 1),
