@@ -327,6 +327,11 @@ language = "en"
 "magnum" = { name = "Magnum", description = "Cursor\ndestroys\npanel!" }
 "bugcharg" = { name = "BugCharg", description = "EvilChip!\nGets powr\nwith turn" }
 "shotstar" = { name = "ShotStar", description = "Drop many\nmeteor on\nenmy area" }
+"pitrng1" = { name = "PitRng1", description = "3 boome-\nrang atk\nenemies" }
+"pitrng2" = { name = "PitRng2", description = "3 boome-\nrang atk\nenemies" }
+"pitrng3" = { name = "PitRng3", description = "3 boome-\nrang atk\nenemies" }
+"timebom" = { name = "TimeBom+", description = "Sets a\nTimeBom" }
+"h-burst" = { name = "H-Burst", description = "Explosion\nspreads\ninto 1!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

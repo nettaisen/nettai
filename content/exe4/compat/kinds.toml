@@ -470,3 +470,8 @@
 "bugcharg/actor" = { pool = "actor", index = 0x59 }
 # ShotStar's controller (0x080E5C90; its position the dimming handler's registers); its meteors are Meteors'.
 "shotstar/controller" = { pool = "effect", index = 0x34, scratch_position = true }
+
+# PitRng's thrower (action 0x20's variant 0x0D, 0x080E9A36), spawned at the spawner's registers.
+"pitrng/thrower" = { pool = "effect", index = 0x6C, scratch_position = true }
+# H-Burst's shot (0x080E0B46), spawned at the spawner's registers until its init places it (0x080E0CB4).
+"h-burst/burst" = { pool = "attack", index = 0x9E, scratch_position = true }
