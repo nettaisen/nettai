@@ -1802,7 +1802,7 @@ data/traces/lab-exe4; nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
 
 **Known deviations** (the workspace's trace-tests `deviations.rs`, `Set::Exe4Lab`, as EXE6's lab has its own): a
 recording the engine departs from on purpose matches every frame up to its deviation, and the frames after it aren't
-compared. Six recordings, one cause: nettai has no link cable, and the replay feeds the custom screen's OK as the
+compared. Six of them have one cause, the late OK: nettai has no link cable, and the replay feeds the custom screen's OK as the
 fight saw it, the cable's delay (4 ticks) after the original's screen took it, so the side's selection status
 (BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4 ticks longer, and the custom HP-drain bug, which counts
 only while it is set (0x0800C194), drains a point the original doesn't. (The original's fight read the bit over the
