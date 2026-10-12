@@ -178,11 +178,16 @@ pub struct ChipUseRules {
     /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
     /// only if it isn't dark; EXE6's `sub_80106C0` and EXE5's take any.
     pub beat_spares_dark: bool,
-    /// A dimming's start hides the chip window on every console: EXE4's
-    /// (0x08008BD8 calls `sub_801DACC(0x10)` whoever started it); EXE6's
-    /// and EXE5's `object_timefreezeBegin` only on its starter's
+    /// What hides a navi's chip window hides it on every console: EXE4's
+    /// navi idle (0x080EEB38: its chips not enabled, 0x080EEB72; an attack
+    /// started, 0x080EEBC4 on; a chip used, 0x080EED3E) and dimming start
+    /// (0x08008BD8) call `sub_801DACC(0x10)` whichever navi it is, so the
+    /// other player's attack takes the local window down until the local
+    /// navi's idle shows it again (0x080EEB6C, its own console's alone);
+    /// EXE6's (`sub_80F0354`, `object_timefreezeBegin`) and EXE5's
+    /// (0x080F02E6 on) only on the navi's own console
     /// (`battle_networkInvert`). Presentation: the HUD's (`ChipHud`).
-    pub dimming_hides_every_window: bool,
+    pub window_hides_every_console: bool,
     /// A charged use of a Null-family chip runs the form's alternative
     /// A-charge routine, the attack's chip cleared (EXE6's `sub_800FB54`:
     /// the Beast forms'); EXE5's (0x0800D9CC) and EXE4's (0x0800B72C) use
@@ -214,11 +219,11 @@ pub struct EffectsRules {
     /// are among. Presentation: the renderer's (`Stage::new`'s `flashed`);
     /// the simulation reads none of it.
     pub palette_flash_order: PaletteFlashOrder,
-    /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
-    /// spawner) run while the battle is paused: EXE6's spawners set their
-    /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
-    /// its lab records without it) don't.
-    pub overlays_run_while_paused: bool,
+    /// An afterimage (`sub_80E33FA`) runs while the battle is paused: EXE6's
+    /// spawner sets its header flag 0x04; EXE5's (0x080E35F4) and EXE4's
+    /// (0x080E5020) don't. (A form overlay's is its own rule,
+    /// `form_overlay.run_while_paused`.)
+    pub afterimages_run_while_paused: bool,
     /// How a form overlay (actor object #0x57, `kinds::form_overlay`)
     /// starts and follows its owner.
     pub form_overlay: FormOverlayRules,
@@ -276,13 +281,15 @@ pub struct EffectsRules {
     /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
     /// of the second block that shows without sliding, 33).
     pub used_chip_ticks: u8,
-    /// A dimming chip's telop, as it starts, ends the used chips' names on
-    /// every console (EXE6's `sub_800BA8A` and `sub_800BBA8`:
-    /// `sub_801BED6(0x10000)`, `sub_801DACC(0x10000)`; EXE5's 0x0800A0FC
-    /// and 0x0800A218). EXE4's (0x08008CF6, 0x08008DE0) lays the telop on
-    /// the banner block and leaves the second block's name be, beside it.
-    /// Presentation: the HUD's (`Battle::used_chip_for`).
-    pub telop_ends_used_chips: bool,
+    /// The used chips' names end before their ticks run out: a dimming
+    /// chip's telop as it starts and the pause's display end them on every
+    /// console (EXE6's `sub_800BA8A`, `sub_800BBA8` and `sub_801E15C`:
+    /// `sub_801BED6(0x10000)`, `sub_801DACC(0x10000)`; EXE5's 0x0800A0FC,
+    /// 0x0800A218 and 0x0801AA28). EXE4's telop (0x08008CF6, 0x08008DE0)
+    /// lays itself on the banner block and its pause (0x080166BC) starts
+    /// "PAUSE" alone: the second block's name stays and runs out, through
+    /// a pause too. Presentation: the HUD's (`Battle::used_chip_for`).
+    pub used_chips_end_early: bool,
     /// Each console's emotion window checks its navi's NaviCust bugs and
     /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
     /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
@@ -637,6 +644,12 @@ pub struct FormOverlayRules {
     /// While it waits for the navis it steps its sprite as it would
     /// following (EXE4's 0x080CC4D4); else its sprite holds.
     pub waiting_steps: bool,
+    /// Its spawner sets its header flag 0x04, so it runs while the battle
+    /// is paused from its first update: EXE6's (`sub_80C4530`'s spawner)
+    /// and EXE4's (0x080CC60C; its init then keeps the flag only outside
+    /// the fight, `start`); EXE5's, whose flags its lab records without it,
+    /// doesn't.
+    pub run_while_paused: bool,
 }
 
 /// How a form overlay starts following its owner.

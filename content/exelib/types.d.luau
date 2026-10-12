@@ -835,6 +835,8 @@ export type PatchCardEffect = {
     weapon: Weapon?,
     variant: ProjectileVariant?,
     barrier: Barrier?,
+    -- The form a card starts the navi in (EXE4's soul cards, kind "soul").
+    form: FormDef?,
     gauge: string?,
     on: boolean?,
     trail: string?,

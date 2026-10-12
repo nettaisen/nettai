@@ -13,6 +13,7 @@ local navicust = require("@self/navicust")
 local navicust_bugs = require("@self/navicust/bugs")
 local save = require("@self/save")
 local souls = require("@self/souls")
+local soul_turns = require("@self/souls/turns")
 
 -- What a side keeps through a round: the dark chips' (./dark_chips), Double Soul's (./souls) and its NaviCust bugs'
 -- counts (./navicust).
@@ -131,6 +132,7 @@ local rules: Rules = {
             },
             chip = "chip",
             image = "record:soul-image",
+            hand = "record:soul-hand",
         },
     },
     -- Its own actions, which reach its state: the souls' changes and the revert (./souls).
@@ -158,8 +160,16 @@ local rules: Rules = {
             save.round_setup(side)
             navicust.run(side)
         end,
+        -- A navi that starts the round in a soul (a soul patch card's, ./patch_cards): its turns are never counted
+        -- (./souls/turns: the navi's init, 0x08010828).
+        round_start = function(side: number)
+            soul_turns.round_start(battle.navi(side).form)
+        end,
         -- As each hand is installed, its dark chips' costs (./dark_chips).
-        custom_result = dark_chips.custom_result,
+        custom_result = function(side: number)
+            dark_chips.custom_result(side)
+            souls.custom.installed(side)
+        end,
         -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, WoodSoul's heal on
         -- grass (./souls, 0x08012FB6), the holy panel a dark one clears and the hole a navi that isn't dark closes;
         -- then Double Soul's change or revert asked for (./souls, 0x0800B658).

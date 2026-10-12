@@ -1,8 +1,11 @@
 //! Putting a frame together: full-screen tile layers and sprite parts,
 //! each with a priority, combined with the original's rules (a sprite
 //! wins over a layer of the same priority; among sprites the lowest
-//! priority, then the earliest, wins; semi-transparent sprites blend with
-//! what is behind them). Colors are the original's 15-bit BGR555.
+//! priority, then the earliest, wins, and a later sprite's transparent
+//! pixel hands its priority to an earlier one's pixel of a lower priority
+//! under it: the hardware's quirk, as mGBA draws it; semi-transparent
+//! sprites blend with what is behind them). Colors are the original's
+//! 15-bit BGR555.
 
 use nettai_assets::{Palette, Tiles};
 
@@ -216,7 +219,7 @@ pub fn compose_with_depth(backdrop: u16, layers: &[&Layer], parts: &[SpritePart]
     // The sprite layer: per pixel the frontmost sprite's color.
     let mut obj = SpriteBuffers {
         color: vec![CLEAR; PIXELS],
-        priority: vec![4u8; PIXELS],
+        priority: vec![UNWRITTEN; PIXELS],
         alpha: vec![0xFFu8; PIXELS],
         index: vec![0u16; PIXELS],
     };
@@ -275,7 +278,22 @@ struct SpriteBuffers {
     index: Vec<u16>,
 }
 
+/// No sprite's pixel yet (`SpriteBuffers::priority`).
+const UNWRITTEN: u8 = 4;
+
 impl SpriteBuffers {
+    /// A transparent pixel of a part of priority `priority` over the pixel
+    /// `i`, which holds a sprite's pixel of a lower priority (the caller's
+    /// test): that pixel takes the part's priority and keeps its color
+    /// (mGBA's software renderer, the hardware's sprite priority quirk: a
+    /// part drawn later, of the taken priority, no longer covers it; EXE4's
+    /// soul image's parts over a rock and over an HP number).
+    fn raise(&mut self, i: usize, priority: u8) {
+        if self.priority[i] != UNWRITTEN {
+            self.priority[i] = priority;
+        }
+    }
+
     fn set(&mut self, i: usize, p: &SpritePart, k: u16, color: u16) {
         self.color[i] = color;
         self.priority[i] = p.priority;
@@ -339,6 +357,7 @@ fn draw_part(p: &SpritePart, k: u16, obj: &mut SpriteBuffers) {
             let Some(tile) = p.tiles.get(t) else { continue };
             let index = tile[(ty % 8) * 8 + tx % 8];
             if index == 0 {
+                obj.raise(i, p.priority);
                 continue;
             }
             obj.set(i, p, k, p.palette[index as usize] & 0x7FFF);
@@ -378,6 +397,7 @@ fn draw_affine(p: &SpritePart, m: Affine, k: u16, obj: &mut SpriteBuffers) {
             let Some(tile) = p.tiles.get(t) else { continue };
             let index = tile[(ty as usize % 8) * 8 + tx as usize % 8];
             if index == 0 {
+                obj.raise(i, p.priority);
                 continue;
             }
             obj.set(i, p, k, p.palette[index as usize] & 0x7FFF);
@@ -505,6 +525,25 @@ mod tests {
         assert_eq!(out[11], 0x7C00, "priority 1 beats priority 2");
         assert_eq!(out[8], 0x03E0);
         assert_eq!(out[20], 0, "the backdrop shows where nothing is drawn");
+    }
+
+    #[test]
+    fn a_later_transparent_pixel_hands_its_priority_down() {
+        // A priority-2 part, then a priority-0 part that is transparent
+        // over it, then a priority-0 part that is opaque there: the first
+        // one's pixel took priority 0 from the second and stays in front
+        // (the earlier wins ties). Without the transparent part between
+        // them the last one covers it.
+        let solid = solid_tiles(1, 1);
+        let clear = solid_tiles(1, 0);
+        let parts = [part(&solid, 0, 0, 2, 0x001F), part(&clear, 0, 0, 0, 0x03E0), part(&solid, 0, 0, 0, 0x7C00)];
+        let out = compose(0, &[], &parts, Fades::default());
+        assert_eq!(out[0], 0x001F, "the covered pixel took the transparent part's priority");
+        let out = compose(0, &[], &[parts[0].clone(), parts[2].clone()], Fades::default());
+        assert_eq!(out[0], 0x7C00, "priority 0 covers priority 2");
+        // A transparent pixel over nothing leaves nothing.
+        let out = compose(0, &[], &[parts[1].clone(), part(&solid, 0, 0, 3, 0x7FFF)], Fades::default());
+        assert_eq!(out[0], 0x7FFF);
     }
 
     #[test]
