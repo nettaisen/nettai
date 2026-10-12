@@ -11,12 +11,12 @@ use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud};
 use crate::textlayer::{Align, Plane, Rect, TextItem, TextSink};
 use crate::vfont::Role;
-use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, Tiles};
+use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
 use nettai_battle::Battle;
 use nettai_battle::actor::status;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use nettai_battle::battle::{fight, mode, top};
-use nettai_battle::content::{ChipFlags, ChipIcons};
+use nettai_battle::content::{BannerId, ChipFlags, ChipIcons};
 use nettai_battle::kinds::player::{Emotion, EmotionRole, emotion, emotion_role};
 use nettai_content_api::FormHandle;
 use nettai_content_api::ChipHandle;
@@ -63,6 +63,229 @@ pub struct HudState {
     /// +0x4C, which takes the window down as the screen closes; EXE5's soul
     /// choice shows none).
     form_face_shown: bool,
+    /// What last loaded the sprite tiles and the palette the banners share
+    /// with the telops (`TelopTiles`: EXE4's).
+    shared: SharedLoads,
+}
+
+/// What loaded a part of the sprite tiles or the palette the banners
+/// share with the telops (`TelopTiles`) last.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+enum Load {
+    #[default]
+    Nothing,
+    /// A banner as it started (0x0801617E): its glyphs, the banners'
+    /// palette.
+    Banner(BannerId),
+    /// A telop as it started (0x0801650C): its name, the '×' and '2'
+    /// pieces, the telops' palette.
+    Telop(TelopName),
+    /// "PAUSE" as it started (0x080166BC): its tiles, the banners' palette
+    /// where the pack says (`pause_loads_banner_palette`).
+    Pause,
+}
+
+/// The loads into the tiles and the palette the banners share with the
+/// telops, as the HUD starts its pieces, and what showed the tick before
+/// (to see each start).
+#[derive(Clone, Copy, Debug, Default)]
+struct SharedLoads {
+    /// The right-hand telop's name tiles.
+    right: Load,
+    /// The '×' and '2' pieces' tiles.
+    signs: Load,
+    palette: Load,
+    was_banner: Option<(BannerId, u8)>,
+    was_telop: Option<(ShownTelop, u8)>,
+    was_used: Option<(ChipHandle, u8)>,
+    was_paused: bool,
+}
+
+impl SharedLoads {
+    /// Follow a tick: "PAUSE" (the fight's state), a banner (the flow's),
+    /// a telop on the banner block and the other player's used chip (the
+    /// navis' chips), in the order a tick starts them; each start loads
+    /// what it shares (the original reloads nothing while a piece shows).
+    fn tick(&mut self, b: &Battle) {
+        let local = b.setup.local_side;
+        let paused = b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE;
+        if paused && !self.was_paused {
+            self.palette = Load::Pause;
+        }
+        self.was_paused = paused;
+        let step = b.banner.step;
+        let restarted = |was: Option<u8>| was.is_some_and(|w| step == 0 && w != 0);
+        let telop = b.telop_for(local);
+        let banner = b.banner_for(local).filter(|_| telop.is_none());
+        if let Some(id) = banner
+            && (self.was_banner.map(|(w, _)| w) != Some(id) || restarted(self.was_banner.map(|(_, s)| s)))
+        {
+            (self.right, self.signs, self.palette) = (Load::Banner(id), Load::Banner(id), Load::Banner(id));
+        }
+        self.was_banner = banner.map(|id| (id, step));
+        if let Some(t) = telop
+            && (self.was_telop.map(|(w, _)| w) != Some(t) || restarted(self.was_telop.map(|(_, s)| s)))
+        {
+            self.telop_started(t.name, t.remote);
+        }
+        self.was_telop = telop.map(|t| (t, step));
+        let used = b.used_chip_for(local);
+        if let Some(u) = used
+            && self.was_used.is_none_or(|(chip, ticks)| chip != u.chip || u.ticks > ticks)
+        {
+            self.telop_started(TelopName::Chip(u.chip), true);
+        }
+        self.was_used = used.map(|u| (u.chip, u.ticks));
+    }
+
+    /// A telop's start (0x0801650C): its name into its place's tiles, the
+    /// '×' and '2' pieces, the telops' palette.
+    fn telop_started(&mut self, name: TelopName, right: bool) {
+        if right {
+            self.right = Load::Telop(name);
+        }
+        (self.signs, self.palette) = (Load::Telop(name), Load::Telop(name));
+    }
+}
+
+/// The glyphs of the banner and of the right-hand telop that the other's
+/// loads have made (`TelopTiles`: EXE4's banners and telops share sprite
+/// tiles 0x380 to 0x387), and the palette each shows where the other
+/// loaded the one they share. Made before the frame's sprites, whose parts
+/// borrow its tiles.
+#[derive(Default)]
+pub struct SharedGlyphs {
+    tiles: Tiles,
+    /// The banner's glyphs (by number) drawn from `tiles` (from their first
+    /// tile there).
+    banner: Vec<(usize, usize)>,
+    /// The right-hand telop's name glyphs drawn from `tiles`.
+    right: Vec<(usize, usize)>,
+    /// The palette the banner shows, and the telops', where not their own.
+    banner_palette: Option<Palette>,
+    telop_palette: Option<Palette>,
+}
+
+impl SharedGlyphs {
+    /// Make up a glyph of two tiles; its first tile in `tiles`.
+    fn push(&mut self, halves: [(&Tiles, usize); 2]) -> usize {
+        let first = self.tiles.len();
+        for (tiles, t) in halves {
+            let px = tiles.pixels.get(t * Tiles::TILE..(t + 1) * Tiles::TILE).unwrap_or(&[0; Tiles::TILE]);
+            self.tiles.pixels.extend_from_slice(px);
+        }
+        first
+    }
+
+    /// A telop's style in the palette the telops show (the banners', where
+    /// a banner or "PAUSE" loaded it last).
+    fn telop_style<'a>(&self, style: TelopStyle<'a>) -> TelopStyle<'a> {
+        TelopStyle { palette: self.telop_palette.unwrap_or(style.palette), ..style }
+    }
+
+    /// Draw a group's glyphs from the made-up tiles: glyph `k` of `made` is
+    /// the group's part `at + k`, of its first `count`.
+    fn patch<'a>(&'a self, group: &mut [SpritePart<'a>], made: &[(usize, usize)], at: usize, count: usize) {
+        for &(k, first) in made.iter().filter(|(k, _)| *k < count) {
+            if let Some(part) = group.get_mut(at + k) {
+                (part.tiles, part.first_tile) = (&self.tiles, first);
+            }
+        }
+    }
+}
+
+/// What the banners and the telops show of each other's loads this frame
+/// (`TelopTiles`): the tiles a load put where the other's glyphs are (a
+/// banner's 40 tiles from `banner` as five 32x16 sprites: tile `o` glyph
+/// 4 (o / 8) + o % 4, its top half for o % 8 < 4; a telop's name two
+/// tiles a glyph from its place's tile, padded to eight with glyph 0; the
+/// '×' and '2' pieces a 16x16 sprite), and the palette.
+pub fn shared_glyphs<'a>(
+    b: &Battle,
+    assets: &'a Bundle,
+    packs: &crate::packs::Packs<'a>,
+    state: &HudState,
+    text: &TextSink,
+    problems: &mut Problems,
+) -> SharedGlyphs {
+    let mut out = SharedGlyphs::default();
+    let hud = &assets.hud;
+    let Some((look, t)) = hud.layout.telop.as_ref().and_then(|l| l.tiles.map(|t| (l, t))) else { return out };
+    let s = &state.shared;
+    let local = b.setup.local_side;
+    let banner_palette = matches!(s.palette, Load::Banner(_)) || s.palette == Load::Pause && t.pause_loads_banner_palette;
+    out.telop_palette = banner_palette.then_some(hud.banner_palette);
+    out.banner_palette = matches!(s.palette, Load::Telop(_)).then_some(look.palette);
+    // A telop's name glyphs, as its start renders them (none in the font
+    // mode, whose name is the text layer's).
+    let name_tiles = |name: TelopName, problems: &mut Problems| -> Option<Vec<(&'a Tiles, usize)>> {
+        let codes = match name {
+            TelopName::Chip(chip) => {
+                let words = text.strings.chip_name(&b.content, chip);
+                if text.takes(words) {
+                    return None;
+                }
+                name_glyphs(b, hud, words, chip, problems)
+            }
+            TelopName::Hidden => fonts::cell_glyphs(hud, "????").0,
+            TelopName::Unknown => Vec::new(),
+        };
+        Some((0..8).map(|k| fonts::cell_glyph(hud, codes.get(k).copied().unwrap_or(0))).collect())
+    };
+    let in_banner = |tile: u16| tile.checked_sub(t.banner).filter(|&o| o < TelopTiles::BANNER_TILES).map(|o| o as usize);
+    // The right-hand telop's name where a banner loaded over it.
+    let right_shown = b.used_chip_for(local).is_some() || b.telop_for(local).is_some_and(|x| x.remote);
+    if right_shown
+        && let Load::Banner(id) = s.right
+        && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
+    {
+        let banner_tile = |o: usize| 2 * (4 * (o / 8) + o % 4) + (o % 8) / 4;
+        // (A glyph whose two tiles the banner's load covers: EXE4's first
+        // two, tiles 0x384 to 0x387, whose glyphs fall in or out whole.)
+        for k in 0..(TelopTiles::NAME_TILES / 2) as usize {
+            let tiles = [t.names[1] + 2 * k as u16, t.names[1] + 2 * k as u16 + 1];
+            let (Some(top), Some(bottom)) = (in_banner(tiles[0]), in_banner(tiles[1])) else { continue };
+            let first = out.push([(&layout.glyphs, banner_tile(top)), (&layout.glyphs, banner_tile(bottom))]);
+            out.right.push((k, first));
+        }
+    }
+    // The banner's glyphs where a telop loaded over them.
+    let banner_shown = b.banner_for(local).is_some() && b.telop_for(local).is_none();
+    let signs = matches!(s.signs, Load::Telop(_));
+    let right = match s.right {
+        Load::Telop(name) => name_tiles(name, problems),
+        _ => None,
+    };
+    if banner_shown
+        && (signs || right.is_some())
+        && let Some(id) = b.banner_for(local)
+        && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
+    {
+        let sign = |o: u16| -> Option<(&'a Tiles, usize)> {
+            // (The 16x16 sprite's tiles: the '×' and the '2' side by side,
+            // top row first.)
+            let g = TelopLook::TIMES + (o % 2) as usize;
+            signs.then_some((&look.glyphs, 2 * g + (o / 2) as usize))
+        };
+        for g in 0..20usize {
+            let offsets = [8 * (g / 4) + g % 4, 8 * (g / 4) + g % 4 + 4].map(|o| t.banner + o as u16);
+            let halves = offsets.map(|v| {
+                let from_signs = v.checked_sub(t.signs).filter(|&o| o < TelopTiles::SIGN_TILES).and_then(sign);
+                let from_name = v
+                    .checked_sub(t.names[1])
+                    .filter(|&o| o < TelopTiles::NAME_TILES)
+                    .and_then(|o| right.as_ref().map(|r| (r[o as usize / 2].0, r[o as usize / 2].1 + o as usize % 2)));
+                from_signs.or(from_name)
+            });
+            if halves.iter().all(Option::is_none) {
+                continue;
+            }
+            let own = |h: usize| (&layout.glyphs, 2 * g + h);
+            let first = out.push([halves[0].unwrap_or(own(0)), halves[1].unwrap_or(own(1))]);
+            out.banner.push((g, first));
+        }
+    }
+    out
 }
 
 /// The local navi's face in the emotion window (`sub_801E6A8`): what its
@@ -219,6 +442,7 @@ impl HudState {
             self.changing_was = changing;
         }
         (self.mode_was, self.icons_were) = (b.round.mode, icons);
+        self.shared.tick(b);
         if crate::custom::screens_open(b) {
             self.form_face_shown = crate::custom::face(b, b.setup.local_side as usize).is_some();
         }
@@ -385,11 +609,13 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
 /// Draw the HUD layer and queue the HUD sprites. What the HUD needs and
 /// the pack or the content doesn't have (a chip's icon, a character of its
 /// name, a banner's glyphs) goes to `problems`.
+#[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
     assets: &'a Bundle,
     packs: &crate::packs::Packs<'a>,
     state: &HudState,
+    shared: &'a SharedGlyphs,
     layer: &mut Layer,
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
@@ -659,11 +885,24 @@ pub fn draw<'a>(
                         None
                     }
                 };
-                (NAME_BUCKET, style.and_then(|style| telop_parts(b, style, telop, &mut group, text, problems)))
+                let style = style.map(|s| shared.telop_style(s));
+                let named = style.map(|style| telop_parts(b, style, telop, &mut group, text, problems));
+                let (name, cells) = named.unwrap_or_default();
+                if telop.remote {
+                    shared.patch(&mut group, &shared.right, 0, cells);
+                }
+                (NAME_BUCKET, name)
             }
             (None, Some(id)) => {
                 if let Some((h, layout, number)) = crate::lookups::banner(packs, &b.content, id, problems) {
                     banner_parts(b, h, layout, number, &mut group);
+                    // (The glyphs and the palette a telop loaded over the
+                    // banner's: `TelopTiles`.)
+                    let at = if layout.number_at.is_some() { 2 } else { 0 };
+                    shared.patch(&mut group, &shared.banner, at, 20);
+                    if let Some(p) = shared.banner_palette {
+                        group.iter_mut().for_each(|part| part.palette = p);
+                    }
                 }
                 (0, None)
             }
@@ -687,8 +926,9 @@ pub fn draw<'a>(
                 }
             },
         };
-        if let Some(style) = style {
-            let name = used_chip_parts(b, style, used, &mut group, text, problems);
+        if let Some(style) = style.map(|s| shared.telop_style(s)) {
+            let (name, cells) = used_chip_parts(b, style, used, &mut group, text, problems);
+            shared.patch(&mut group, &shared.right, 0, cells);
             insert_named(list, text, NAME_BUCKET, group, name);
         }
     }
@@ -1226,7 +1466,7 @@ fn telop_parts<'a>(
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
     problems: &mut Problems,
-) -> Option<TextItem> {
+) -> (Option<TextItem>, usize) {
     let hud = style.hud;
     let name = match telop.name {
         TelopName::Chip(chip) => {
@@ -1254,7 +1494,7 @@ fn used_chip_parts<'a>(
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
     problems: &mut Problems,
-) -> Option<TextItem> {
+) -> (Option<TextItem>, usize) {
     let words = text.strings.chip_name(&b.content, used.chip);
     let name = (words, name_glyphs(b, style.hud, words, used.chip, problems));
     name_parts(style, name, (used.damage, used.bonus, used.doubled), true, None, out, text)
@@ -1269,7 +1509,8 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 /// telop's place (`style`): centered as fifteen glyphs are; the other
 /// player's (`remote`) moves over for the "x2". In the font mode the name
 /// is a text item in the cells its glyphs take, returned, and blank parts
-/// stand in for the glyphs.
+/// stand in for the glyphs. Also returned: how many of the parts, from the
+/// first, are the name's glyphs (none in the font mode).
 #[allow(clippy::too_many_arguments)]
 fn name_parts<'a>(
     style: TelopStyle<'a>,
@@ -1279,7 +1520,7 @@ fn name_parts<'a>(
     vscale: Option<i32>,
     out: &mut Vec<SpritePart<'a>>,
     text: &TextSink,
-) -> Option<TextItem> {
+) -> (Option<TextItem>, usize) {
     let hud = style.hud;
     // Glyph d of the damage digits, '+' before a bonus.
     let digits = |v: u16| -> Vec<usize> { v.to_string().bytes().map(|c| style.digit + (c - b'0') as usize).collect() };
@@ -1301,6 +1542,7 @@ fn name_parts<'a>(
         TextItem { align: Align::Center, vscale, ..item }
     });
     let after = x + 8 * cells as i32;
+    let glyphs = if font { 0 } else { name.len() };
     for c in name {
         let (tiles, first) = if font { (&*BLANK_GLYPH, 0) } else { fonts::cell_glyph(hud, c) };
         out.push(SpritePart { first_tile: first, ..glyph(tiles, 0, pal, x, y, 0, vscale) });
@@ -1315,7 +1557,7 @@ fn name_parts<'a>(
         out.push(glyph(style.numbers, style.times, pal, x, y, 0, vscale));
         out.push(glyph(style.numbers, style.times + 1, pal, x + 8, y, 0, vscale));
     }
-    item
+    (item, glyphs)
 }
 
 /// Glyphs of the HUD layer's tiles (tile `first_tile + 2k`; EXE6's from
@@ -1429,7 +1671,7 @@ mod tests {
         let text = TextSink::new(crate::textlayer::TextMode::Font, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
-        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems).unwrap();
+        let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &text, &mut problems).0.unwrap();
         // The same parts where the original's go (so the sprite limit
         // counts the same), the name's blank; the item in the name's cells.
         let xs: Vec<u16> = parts.iter().map(|p| p.x).collect();
@@ -1441,7 +1683,7 @@ mod tests {
         assert_eq!((item.face, item.shadow), (hud.hp_palettes[0][1], Some(hud.hp_palettes[0][2])));
         // In the original mode there is none.
         let mut parts = Vec::new();
-        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems).is_none());
+        assert!(telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &mut parts, &TextSink::original(), &mut problems).0.is_none());
     }
 
     #[test]

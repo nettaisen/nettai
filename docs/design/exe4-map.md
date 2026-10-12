@@ -2244,7 +2244,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     mGBA shows "Thunder 140" until frame 615 beside the AntiElec telop). EXE4's dimming telop starts (0x08008CF6,
     0x08008DE0) take the banner block (0x08016454) and leave the second block alone; EXE6's (`sub_800BA8A`,
     `sub_800BBA8`) and EXE5's (0x0800A0FC, 0x0800A218) end the names as the telop starts (`sub_801BED6(0x10000)`,
-    `sub_801DACC(0x10000)`). The rule `effects.telop_ends_used_chips`: EXE4's false. AntiElec's sprung recording
+    `sub_801DACC(0x10000)`). The rule `effects.used_chips_end_early` (with the pause's display, §18.7 item 132): EXE4's false. AntiElec's sprung recording
     matches every frame but the late OK's known shift.
 77. **Done: the chips' own looks out of the shared libraries** (group A; the brief's no-lookup-tables rule):
     lib/cannon's `arms`, lib/swords' `effects`, chips/vulcan's `guns.dark` and objects/projectile's `variants` are
@@ -2292,6 +2292,47 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
       effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
       The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
       EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
+131. **Done: what draws over and under a flag and its HP number** (the flag stages' layering, verify's
+    stages/*/flag-* and stand-bluemoon; tools/frontend-compare/exe4.txt). No layering differs. An HP number is one
+    32x16 sprite (0x08014EB8: 0x08025C84 with layer 1, bucket 0, priority 1), in front of every priority-2 sprite and
+    of the chip icons (priority 1, sprite layer 2, a bucket by the count: 0x08015000), behind the front layer's
+    priority-0 banners (0x080151FC, bucket 0), telops (0x08015488, bucket 6) and "PAUSE", and under the HUD's BG3 at
+    priority 0 (the custom screen, the chip window: §14's item 2). The renderer's number (layer 2, bucket 0xDF, the
+    HP numbers in their places' order) draws in the same order. The emotion window is priority 2 in the front
+    layer's bucket 0 (0x0801585C) and never meets a flag (its bottom row is y 34; a flag on row 1 reaches y 40). A
+    flag and a navi or a chip's object go by their ground (the sprite layer 2's buckets), the flag's sprite drawn
+    with its shadow (`sprite_noShadow`, 0x080E06DC). Compared every frame on both consoles, at the replay's known
+    shift: the flags on each of their six panels, navis in front of, behind and beside them, chip icons over a flag
+    and its number, Spreader's bursts, Boomer1, MiniBombs and Meteors over the flags, a flag broken, the custom
+    screen through five turns, the telops on both sides, Blinder's dimming, flash and blinding (a blind console
+    draws no numbers), AreaGrab's dimming, RollSoul's change, a pause. What it found was the HUD's own, items 132 to
+    134.
+132. **Done: the other player's used chip through a pause.** EXE4's pause (0x08007176: 0x080166BC) starts "PAUSE"
+    alone; EXE6's display (`sub_801E15C`) and EXE5's (0x0801AA28) end the used chips' names. The name stays and runs
+    out through the pause (the HUD's tasks run paused). The rule `effects.used_chips_end_early` (with item 76's
+    telops): EXE4's false. "PAUSE" loads its tiles to 0x360 and the banners' palette into sprite palette 11
+    (0x080166D0's list), which the telops show from then (item 134). Not modeled: "PAUSE"'s tiles over a telop's
+    first five glyphs on the left, which no netbattle shows (the user's telop is a dimming chip's, and no pause runs
+    in a dimming).
+133. **Done: the chip window's hides reach every console.** EXE4's navi idle (0x080EEB38) hides the chip window
+    (`sub_801DACC(0x10)`) with no check of the side: while its chips aren't enabled (0x080EEB72), as it starts an
+    attack (0x080EEBC4 on) or uses a chip (0x080EED3E); only its own console's navi shows it again (0x080EEB6C). So
+    the other player's attack takes the local window down until the local navi's next idle tick (one frame; through
+    a step the local navi is taking, until it lands). EXE6's (`sub_80F0354`) and EXE5's (0x080F02E6 on) check
+    `battle_networkInvert`. The rule `chip_use.window_hides_every_console` (the dimming's start, 0x08008BD8, with
+    it). stages/lava-middle-close/flag-bombs and flag-blinder compare it.
+134. **Done: the banners' and the telops' shared sprite tiles and palette** (item 71's "what differs", for the other
+    player's telop). A banner's twenty glyphs load to tiles 0x360 to 0x387 (0x0801617E: five 32x16 sprites, 0x080151FC),
+    the right-hand telop's eight name glyphs to 0x384 on (0x0801662A; 0x08015488 draws a telop from x 104 on from
+    0x360 + 36), every telop's '×' and '2' to 0x380 to 0x383 (0x08016680's list), and the banner, the telops and
+    "PAUSE" load sprite palette 11 (0x08750E40, 0x08750E80, 0x08750E40). A banner that starts while the other
+    player's used chip shows (a deletion, a flag's break) turns its first two glyphs into the banner's glyphs 16 to
+    19's bottom halves and its colors into the banner's (stages/lava-middle-close/flag-break-bluemoon, frames 3241 to
+    3250); a pause turns its colors (flag-pause). The pack's `layout.telop.tiles`; the renderer follows the loads
+    (`hud::SharedLoads`) and makes the glyphs up (`hud::shared_glyphs`), the other way round too (a telop that
+    starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). Not modeled: the
+    right-hand telop's "×2" reads tiles 0x3A4 to 0x3A7, which nothing loads, so a doubled used chip's "×2" shows what
+    they hold; no recording has one yet.
 
 ### 18.8 The chips (group F)
 
