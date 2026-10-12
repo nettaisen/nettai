@@ -20,7 +20,7 @@ use crate::vfont::Role;
 use nettai_assets::{Bundle, ButtonPictures, ButtonSets, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
-use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, PlayerFact, WindowView};
+use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, PlayerFact, VariableDamageShows, WindowView};
 use nettai_battle::rules::Flight;
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, Phase, Screen, Side, SlotKind, SlotState};
@@ -1014,8 +1014,10 @@ impl Window {
     /// `sub_80284E2`: a chip's name (8 cells of the 8x16 font in the
     /// window's colors), its picture and palette, the window's colors by
     /// the chip's class, its code, its element's icon (and colors), and
-    /// its damage if it shows ("???" for a chip that hides it as an A:
-    /// `ChipTraits::HIDES_DAMAGE_AS_A`), right-aligned in three cells.
+    /// its damage if it shows, right-aligned in three cells: "???" for a
+    /// chip that hides it as an A (`ChipTraits::HIDES_DAMAGE_AS_A`), and
+    /// for a chip of `damage_shown_variable` where the game's rule says so
+    /// (`custom_screen.variable_damage_shows`: EXE4's 0x0801FCE2).
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let data = v.b.content.chip(c.id);
@@ -1032,9 +1034,12 @@ impl Window {
         let shows = data.flags.0 & (ChipFlags::HAS_DAMAGE | ChipFlags::DAMAGE_SHOWN_VARIABLE) != 0;
         let digits: Vec<usize> = if !shows {
             Vec::new()
-        } else if data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0 {
-            // (The original compares the whole chip word, number and code,
-            // with Muramasa's number: only an A matches.)
+        } else if (data.traits.has(ChipTraits::HIDES_DAMAGE_AS_A) && c.code.0 == 0)
+            || (data.flags.0 & ChipFlags::DAMAGE_SHOWN_VARIABLE != 0
+                && v.b.content.rules().custom_screen.variable_damage_shows == VariableDamageShows::QuestionMarks)
+        {
+            // (The trait: the original compares the whole chip word,
+            // number and code, with Muramasa's number: only an A matches.)
             vec![DIGIT_UNKNOWN; 3]
         } else {
             let damage = nettai_battle::hand::chip_damage(v.b, Some(c.id), v.side);
@@ -1268,6 +1273,35 @@ impl Window {
             if v.screen.look.column[i].is_some_and(other) {
                 let first = self.layout.column_icons + 4 * i as u16;
                 self.known_tiles(place, first..first + 4, crate::lookups::OTHER_VERSIONS_ART, problems);
+            }
+        }
+    }
+
+    /// The chips' icons in the slots and the picked chips' column, where
+    /// they show, marked for the caller that asks for a chip's
+    /// (`lookups::chip_icon_mark`).
+    fn mark_icons(&self, v: &View, place: Placement, problems: &mut Problems) {
+        if problems.marking.is_empty() {
+            return;
+        }
+        let mut cells: Vec<(u16, String)> = Vec::new();
+        for (s, slot) in v.screen.slots.iter().enumerate().take(10) {
+            let shown = matches!(slot.kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) && !v.screen.look.slot_picked[s];
+            if let (true, Some(c)) = (shown, v.screen.look.slot_chips[s]) {
+                // (The slot's 2x2 icon cells: `slots`.)
+                cells.push((self.map[(13 + 3 * (s / 5)) * COLUMNS + 1 + 2 * (s % 5)].tile, crate::lookups::chip_icon_mark(&v.b.content, c.id)));
+            }
+        }
+        for i in 0..5usize {
+            if let Some(c) = v.screen.look.column[i] {
+                cells.push((self.layout.column_icons + 4 * i as u16, crate::lookups::chip_icon_mark(&v.b.content, c.id)));
+            }
+        }
+        for (first, what) in cells {
+            if problems.wants(&what)
+                && let Some(rect) = self.tiles_rect(place, first..first + 4)
+            {
+                problems.mark(rect, what);
             }
         }
     }
@@ -1682,6 +1716,7 @@ pub fn draw<'a>(
         }
     }
     w.known_icons(&v, place, problems);
+    w.mark_icons(&v, place, problems);
     w.name_item(text, place);
     // The Program Advance's names, a column right of the layer's scroll
     // (`sub_802BA18`), each 9x2 cells column by column.

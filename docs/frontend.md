@@ -539,13 +539,21 @@ chips flying) take the same priority, 1 and 0.
   the shadow is, one layer back and in the first bucket, at the sprite's
   height: a mark on the floor, under every object (EXE5's immobilized mark,
   its ripple over a dived navi, DethPhnx's fire);
+- the frame's sprite budget (`objects::SpriteDraw`, the rules'
+  `effects.sprite_budget`): before its parts are culled, each visible
+  object's sprite reserves its frame's tiles (a frame another sprite
+  reserved this frame is shared) and its palette takes a slot (an equal
+  palette's is shared; a whitened sprite takes none), in draw order; a
+  sprite past the tile cap or the slots isn't drawn (a battle's: 0x2FF and
+  10; docs/design/exe4-map.md §18 item 62). `--objects` lists what each
+  frame took and left out;
 - order: parts go into depth buckets (ground y + 0x40) and come out
   deepest first, most recent first, so later and lower objects are in
   front; at most 128 parts;
 - white flash, alpha and mosaic (sampled as mGBA does);
 - an effect the game spawns without a position (the second explosion of a
   deletion: its X and Y are memory addresses, far off the screen) isn't
-  drawn.
+  drawn (it takes its tiles and its palette's slot all the same).
 
 **Field and background** (`stage.rs`): each panel's block by displayed type
 and owner (from the viewer's side), highlights, missing panels, front
@@ -600,7 +608,10 @@ panel is said in the audits, not counted.
   counter;
 - banners with their squash and stretch; a telop (the chip's name, its
   damage and bonus, "x2"; "????" for a trap's, to the opponent) on its
-  user's half of the screen (`Battle::telop_for`); the chip the other
+  user's half of the screen (`Battle::telops_for`: the banner block's,
+  and where a game's telops run apart from its banners the other
+  player's on its own block, each with its block's squash; a banner may
+  show beside that one); the chip the other
   player just used, named for a second (`Battle::used_chip_for`). Where
   the game loads the banners' and the telops' glyphs into sprite tiles
   they share, and one palette (the pack's `layout.telop.tiles`: EXE4's),
@@ -863,8 +874,9 @@ the ones the state digest leaves out).
   frozen, the counter-able blink) every tick.
 - `hud::Banner::id`, the banner showing, and `Banner::telop`, what a telop
   says; `Object::telop_chip`, what a dimming's controller will name
-  (`Battle::telop_for` is the viewer's side of it: a trap's name is hidden
-  from the opponent).
+  (`Battle::telops_for` is the viewer's side of it: a trap's name is hidden
+  from the opponent). That a block shows a telop is simulation state where
+  telops run apart from the banners (the rules' `effects.telops`).
 - `Battle::used_chips`, `Battle::chip_hud` (whether a console shows its
   navi's icons and chip window), `Battle::message`, `Battle::warnings`,
   `Battle::hp_numbers` (each console's HP numbers by place: what asked for
@@ -1033,14 +1045,18 @@ them).
   console. A US console's original shows its placeholder (a purple picture,
   a dot) or its other sprite, and its chip window waits for the navi's
   first decision; an EXE5 Japanese console's background 0x05 is the bubbles
-  without the goldfish. No part of the frontend knows a console's region:
-  the verification's frame comparison does (its table, consoles.tsv, by
-  game, region and version), and asks the headless frontend to mark where
-  it draws those things (`--mark sprite:NAME,background:NAME,chip:KEY,
+  without the goldfish; an EXE4 Blue Moon console draws rows 12 and 13 of
+  four chips' icons (Blizzard, HeatBrth, ElecShok, WoodPwdr) as a dark bar,
+  where the pack has one icon a chip, Red Sun's. No part of the frontend
+  knows a console's region or which of these it shows: the verification's
+  frame comparison does (its table, consoles.tsv, by game, region and
+  version), and asks the headless frontend to mark where it draws those
+  things (`--mark sprite:NAME,background:NAME,chip:KEY,chip-icon:KEY,
   chip-window-at-close`; `marks.tsv` beside the frames: frame, rectangle,
   what), which it counts as known on that console's recordings, with the
   table's margin around each (a sprite's 48 pixels: the US's sprite there
-  may reach past the Japanese one).
+  may reach past the Japanese one), or only the part of the mark the
+  table names (an icon's two rows).
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
   other version's counterparts: EXE6's five Giga chips a version (Bass and

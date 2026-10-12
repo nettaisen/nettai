@@ -29,11 +29,15 @@ local function hit(me: Object, region: Region, is: CollisionType, hits: Collisio
     })
 end
 
--- `sub_80D4392` (Discord's): a hit on the other navi's panel that gives
--- `status` (confusion), and learns nothing (`hits`: nothing).
-function effects.confuse(status: Status, is: CollisionType, hits: CollisionType): (me: Object) -> ()
+-- `sub_80D4392` (Discord's): a hit that gives `status` (confusion) and
+-- learns nothing (`hits`: nothing), over the game's region for the
+-- instrument's side (`over`, by side: EXE6's table, `dword_80D43B8`, the
+-- other navi's panel, regions 0x85 and 0x84; EXE5's and EXE4's, 0x080D547C
+-- and 0x080DC5FC, the other side's whole area, regions 0x82 and 0x81, so
+-- what else stands there takes the hit too).
+function effects.confuse(status: Status, is: CollisionType, hits: CollisionType, over: { [number]: Region }): (me: Object) -> ()
     return function(me: Object)
-        hit(me, regions.other_navi[me.alliance], is, hits, status)
+        hit(me, over[me.alliance], is, hits, status)
     end
 end
 

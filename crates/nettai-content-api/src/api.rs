@@ -2162,8 +2162,8 @@ pub trait CoreApi {
     fn dimming_run(&mut self, side: u8);
     /// A telop for `side` naming `chip` without damage, and its sound.
     fn dimming_chip_telop(&mut self, side: u8, chip: Option<crate::ChipHandle>);
-    /// The telop's banner is done.
-    fn dimming_telop_done(&self) -> bool;
+    /// `side`'s telop is done.
+    fn dimming_telop_done(&self, side: u8) -> bool;
     /// The dimming changes sides (`sub_800BE2C`'s): controller `o`'s side's
     /// dimming is over, and `o` takes the other side, which owns, runs and
     /// started it (its own controller is told to end).

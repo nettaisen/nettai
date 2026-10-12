@@ -83,6 +83,9 @@ return {
     fade_clear = "at_target",
     -- A banner's steps are EXE6's.
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
+    -- A telop is a banner, as EXE6's (0x0801B02E with banners 0x4C and 0x50; its controller waits on 0x0801AFF2, the
+    -- banner block's, whichever player's it is: 0x0800A17A).
+    telops = "banners",
     -- Each console's RNG1 advances once a frame after the battle's, as EXE6's.
     rng1_per_frame = true,
     -- The chip icons over a navi are EXE6's (its attach point 3).
@@ -101,4 +104,9 @@ return {
     status_visual = { place = "attach_point" },
     -- A pool's objects are drawn in update order, as EXE6's.
     draw_order = "update_list",
+    -- What a frame's sprite draw has room for (0x03006190, each drawn object's sprite in draw order): tiles under the
+    -- cap (0x0300656C: the allocator, 1 as a frame starts, less 0x30 plus the frame's tiles) and a palette slot
+    -- (0x03006590), a sprite past either left out. A battle sets 10 slots and 0x2FF (0x08002740), battle mode 1 8
+    -- slots (0x08002750; 0x0800665C picks by the battle's mode).
+    sprite_budget = { tiles = 0x2FF, palettes = 10, palettes_in_battle_mode_1 = 8 },
 }
