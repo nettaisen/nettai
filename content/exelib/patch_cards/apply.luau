@@ -107,19 +107,33 @@ local function clears(e: PatchCardEffect): boolean
     return (e.amount or 0) == 0
 end
 
+-- The most an HP drain's level is (each game's copy: `min(stat + n, 7)`).
+local DRAIN_MOST = 7
+
 -- A game's `overview`'s part: of the cards `installed`, into `out`, what its card screen lists under their abilities
--- (an effect's `group`), each as its card's effect: the bugs (an effect the card shows as one), and the abilities,
--- the rest. Of two cards' effects of one kind the later is listed, as its write is the one that holds. And the list
+-- (an effect's `group`): the abilities, each as its card's effect; and the bugs. A bug effect (`bug_kinds`, the
+-- game's bug slots) that the card marks as a bug is listed as the bug it is, by the same name the NaviCust's would
+-- have, with its level or its amount (`card_bug`, the game's: its rules/navicust knows the bugs' levels); any other
+-- effect a card marks as a bug (an ordinary one that is a drawback: Super Armor off, a lost shield) as its card's
+-- effect, the card's own line; and a bug slot's value that is neither a bug nor its fix (a holy trail) is an ability. Of two cards' effects of one kind the later is listed, as its write is the one that holds. And the list
 -- itself: its cards' MB together against the most a list holds (`mb`), a card once.
 --
 -- The cards' effects are listed only where the cards apply (`applies`: the navi that changes form, as each game's
--- `apply` has it), and their bug effects (`bug_kinds`, the game's bug slots) only where no card's BugStop holds them
--- back (the copy's `bug_stop`). Where they are, a card's effect of a kind takes the place of the NaviCust's bug that
--- writes the same stat (a bug of `out.bugs` with that `card` kind, which the NaviCust's part listed before): the copy
--- sets the stat to the card's value, so the bug the NaviCust brought is gone from the stats, whether the card's
--- effect is the bug again (listed as the card's) or its fix (nothing listed: a fix is no ability). An HP drain adds
--- instead (`ADDS`): one of 0 clears the NaviCust's, and any other leaves it and is listed beside it.
-function apply.overview(installed: { PatchCard }, mb: number, bug_kinds: { [string]: boolean }, applies: boolean, out: SetupOverview)
+-- `apply` has it), and their bug effects only where no card's BugStop holds them back (the copy's `bug_stop`). Where
+-- they are, the list follows what the copy leaves in the stats. A card's effect of a kind takes the place of the
+-- NaviCust's bug that writes the same stat (a bug of `out.bugs` with that `card` kind, which the NaviCust's part
+-- listed before): the copy sets the stat to the card's value, so the bug the NaviCust brought is gone, whether the
+-- card's effect is the bug again (listed as the card's brings it) or its fix (nothing listed: a fix is no ability).
+-- An HP drain adds instead (`ADDS`): one of 0 clears the NaviCust's, and any other raises it, the two one bug at
+-- their levels together.
+function apply.overview(
+    installed: { PatchCard },
+    mb: number,
+    bug_kinds: { [string]: boolean },
+    applies: boolean,
+    card_bug: (e: PatchCardEffect) -> SetupBug,
+    out: SetupOverview
+)
     local last: { [string]: number } = {}
     local held: { [string]: PatchCardEffect } = {}
     local total = 0
@@ -140,12 +154,16 @@ function apply.overview(installed: { PatchCard }, mb: number, bug_kinds: { [stri
     end
     local stopper = held.bug_stopper
     local stopped = stopper ~= nil and stopper.amount == 1
-    -- The NaviCust's bugs a card's effect took the place of.
+    -- The NaviCust's bugs as the cards leave them, and the drains of theirs a card raised.
     local standing: { SetupBug } = {}
+    local raised: { [string]: boolean } = {}
     for _, bug in out.bugs do
         local e: PatchCardEffect? = if bug.card ~= nil and not stopped then held[bug.card] else nil
-        local replaced = e ~= nil and (not ADDS[e.kind] or clears(e))
-        if not replaced then
+        if e == nil then
+            table.insert(standing, bug)
+        elseif ADDS[e.kind] and not clears(e) then
+            bug.level = math.min((bug.level or 0) + (e.amount or 0), DRAIN_MOST)
+            raised[e.kind] = true
             table.insert(standing, bug)
         end
     end
@@ -157,12 +175,25 @@ function apply.overview(installed: { PatchCard }, mb: number, bug_kinds: { [stri
         local effects: { PatchCardEffect } = c.effects
         for at, e in effects do
             if e.group == "ability" and last[e.kind] == i and not (stopped and bug_kinds[e.kind]) then
-                if e.bug then
-                    local bug: SetupBug = { entry = c, effect = at }
+                local line: SetupSource = { entry = c, effect = at }
+                if not bug_kinds[e.kind] then
+                    if e.bug then
+                        local drawback: SetupBug = { entry = c, effect = at }
+                        table.insert(out.bugs, drawback)
+                    else
+                        table.insert(out.abilities, line)
+                    end
+                elseif clears(e) or raised[e.kind] then
+                    -- (A fix, or a drain the NaviCust's bug took above.)
+                elseif e.bug then
+                    local bug = card_bug(e)
+                    if ADDS[e.kind] then
+                        bug.level = math.min(bug.level or 0, DRAIN_MOST)
+                    end
                     table.insert(out.bugs, bug)
-                elseif not (bug_kinds[e.kind] and clears(e)) then
-                    local source: SetupSource = { entry = c, effect = at }
-                    table.insert(out.abilities, source)
+                else
+                    -- (A bug slot's value that is no bug: a holy trail, charged shots alone.)
+                    table.insert(out.abilities, line)
                 end
             end
         end

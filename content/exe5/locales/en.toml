@@ -705,36 +705,53 @@ language = "en"
 "tango" = "Tango"
 "undershirt" = "UnderSht"
 
-# The NaviCust's bugs' names, by the bug's name in the game's rules (rules/navicust/programs' `BUGS`), for a tool that
-# lists a build's bugs with their levels (nettai-match's `build`): full names, written out. Where the game's patch
-# cards name the same bug (the card effect that writes the stat the bug writes: rules/navicust's `BUG_CARDS` says
-# which and why), the name is that effect's line spelled out, so it follows the game's word for the bug; each says
-# which line it is from. The rest the games name nowhere, and are the content's own, in the same style. A patch
-# card's own lines stay as the card screen has them ([patch_card_effects]).
+# The bugs' names, for a tool that lists a build's bugs with their levels (nettai-match's `build`): every bug the
+# NaviCust or a patch card can bring, each a full name, written out. A bug a patch card can bring is keyed as its
+# effect's line is in [patch_card_effects], and its name is that line spelled out, so it follows the game's word for
+# the bug; each says which line it is from. The NaviCust's bug that writes the same stat is the same bug and has the
+# same name (rules/navicust's `BUG_NAMES` says which and why). The rest only the NaviCust brings, by its rules' name
+# for them: the games name them nowhere, and their names are the content's own, in the same style. A patch card's own
+# lines stay as the card screen has them ([patch_card_effects]).
 [bugs]
-# From "BstBlank" (`buster_blanks`: the blank and charged shots).
-"buster" = "Buster Blank"
-# From "CustDmg" (`custom_damage`: the custom screen's damage, which the bug raises by its level).
-"custom" = "Custom Damage"
-# From "EmoBug" (`emotion_bug`).
-"emotion" = "Emotion Bug"
-# Ours: no card effect writes what this bug does.
+# From "BstBlank": the buster's blank shots.
+"buster_blanks" = "Buster Blank"
+# From "CustDmg": the custom screen's damage. The NaviCust's custom bug raises it by its level (EXE6's custom bug is
+# another).
+"custom_damage" = "Custom Damage"
+# From "CusHPbug": the HP drain while the custom screen is open. Only cards bring it.
+"custom_hp_drain" = "Custom HP Bug"
+# From "EmoBug".
+"emotion_bug" = "Emotion Bug"
+# Ours: only the NaviCust brings it, and no card effect writes what it does.
 "encounter" = "Encounter Bug"
-# From "DmgHPbug", EXE6's line for the card effect that writes what this bug does (`hit_status.hp_bug`: a hit gives
-# the HP bug; no EXE5 card has the effect, so EXE5's strings have no line of it). Not "BatHPbug": EXE5's bug raises
-# no HP drain.
-"hp" = "Damage HP Bug"
+# From "DmgBlind": a hit blinds. Only cards bring it.
+"hit_status.blind" = "Damage Blindness"
+# From "DmgConfs": a hit confuses. Only cards bring it.
+"hit_status.confuse" = "Damage Confusion"
+# From "DmgHPbug": a hit gives the HP bug. EXE6's line: no EXE5 card has the effect, so EXE5's strings have none;
+# the NaviCust's HP bug brings it (and raises no HP drain, so it is no "BatHPbug").
+"hit_status.hp_bug" = "Damage HP Bug"
+# From "BatHPbug": the HP drain in the fight. Only cards bring it in EXE5.
+"hp_drain" = "Battle HP Bug"
 # Ours: HubBatc's own bug, which halves what the HP programs add.
 "hub" = "HubBatch Bug"
-# From "PanelBug" (`panel_trail.none`, the line of the card effect that clears the bug's panel trail).
-"panel" = "Panel Bug"
-# Ours: no card effect writes what this bug does.
+# From "PanelBug", the cards' name for this bug where they clear it (`panel_trail.none`): the cracked trail, which
+# is the NaviCust's panel bug. No EXE5 card brings it (EXE6's that do write "MoveCrak"). The other trails are named
+# for their own lines.
+"panel_trail.crack" = "Panel Bug"
+# From "MoveGras": a step leaves grass. Only cards bring it.
+"panel_trail.grass" = "Movement Grass"
+# From "MoveHole": a step leaves a hole. Only cards bring it.
+"panel_trail.hole" = "Movement Hole"
+# From "MoveIce": a step leaves ice. Only cards bring it.
+"panel_trail.ice" = "Movement Ice"
+# From "MoveWatr": a step leaves water. Only cards bring it.
+"panel_trail.water" = "Movement Water"
+# Ours: only the NaviCust brings it, and no card effect writes what it does.
 "result" = "Result Bug"
-# From "StatBug" (`status_bug`: the battle start's bug).
-"status" = "Status Bug"
-# From "StatBug" too (`status_bug` past 1: the stronger one).
-"status-strong" = "Status Bug"
-# From "MoveBug" (`step_bug`).
-"step" = "Movement Bug"
-# Ours: no card effect writes what this bug does.
+# From "StatBug": the battle start's bug, at level 1 and 2.
+"status_bug" = "Status Bug"
+# From "MoveBug".
+"step_bug" = "Movement Bug"
+# Ours: only the NaviCust brings it, and no card effect writes what it does.
 "support" = "Support Bug"
