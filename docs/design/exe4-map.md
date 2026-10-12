@@ -1621,7 +1621,12 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   knows the shift itself (§17's known deviations: `shifted.tsv`, "exact at the replay's known shift").
   The custom screen while it opens and while picking (custom/cannon, describe, three-picks, second-screen) differs
   only in the UNITE button (Double Soul's). Its description, while up, matches (EXE4's text from (0x3F, 0x6D), its
-  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). Its end matches too: the
+  arrow where the message box's is: the pack's `layout.chatbox_text`, `chatbox_arrows`). The Japanese games' text
+  starts at (0x33, 0x6C), EXE6's place (Red Sun Japan's 0x0804E2A4, the same routine: the US games moved it twelve
+  pixels right and one down for their font; the glyphs' advances are the ROM's table, 11 a glyph in Japanese): the
+  place goes with the language's lettering (`HudLettering::chatbox_text`, the pack's `languages.ja.chatbox_text`),
+  so Japanese words are drawn where the Japanese games draw them and English ones where the US games do
+  (chips/0x137-duo/jp, the first comparison on a Japanese console, had every description twelve pixels right). Its end matches too: the
   text is gone a frame before the box's first closing step (`chatbox_end_clears_tiles`: the end, 0x0805393C,
   zero-fills the text's tiles in video memory itself, where EXE6's clears only its buffers) and the cursor is back
   on the tick the screen sees the box closed (`states_in_choosing`).
@@ -1650,6 +1655,11 @@ restating theirs the same.
   - `intro_from_black` false: the intro's fade (0x080E1EBC) reads the BattleState (EXE5's reads a register the open
     bus fills);
   - `low_hp_music` false: EXE6's switch, `sub_8009158`, is absent, and EXE4 queues no tempo request (§3.4);
+  - the battle start's song is by the battle's type (0x080074A4): types 0x46 and on take the table 0x08007510's
+    (0x46 and 0x47 song 0x14, 0x48 and 0x49 song 0x15, 0x4A to 0x4C song 0x17), the others the settings record's
+    byte 3. A single battle (0x47) and a triple battle (0x48) so play different songs: the roles'
+    `music.link_battle_single` and `music.link_battle` (EXE6 and EXE5 play one song in every link battle and leave
+    the first unfilled). The lab's timer/ and telops/time-up* (the exe4-single bases) record the single battle's;
   - `navi_win_banner`: the win (0x08007252) shows the winner navi's banner (0x08008534) when event flag 0x1187 is
     set (0x080406A4), which the main subsystem 0x080406B0 sets as it starts and a game's load clears; else banner 8,
     0x18 on the judge's ruling; mode 0x44 its own song and banner. Read as every link battle (EXE6's `link_battle`):
