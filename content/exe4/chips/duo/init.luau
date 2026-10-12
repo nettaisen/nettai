@@ -48,6 +48,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "navi" },
     art_palette = { 0x0000, 0x1839, 0x1940, 0x3206, 0x299F, 0x0880, 0x1C63, 0x24C5, 0x3127, 0x3989, 0x41CB, 0x460D, 0x5271, 0x62F5, 0x6F79, 0x7BDD },
     dimming = CONTROLLER.hook,
+    auto_battle = { class = "at_once" },
 }
 
 return { duo = chip }
