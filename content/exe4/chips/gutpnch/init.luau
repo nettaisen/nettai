@@ -33,6 +33,7 @@ local gutpnch1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("gutpnch1/controller"),
+    megaman = "light",
 }
 
 -- GutPnch2 (EXE4 chip 0x09B).
@@ -48,6 +49,7 @@ local gutpnch2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("gutpnch2/controller"),
+    megaman = "light",
 }
 
 -- GutPnch3 (EXE4 chip 0x09C).
@@ -63,6 +65,7 @@ local gutpnch3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("gutpnch3/controller"),
+    megaman = "light",
 }
 
 return { gutpnch1 = gutpnch1, gutpnch2 = gutpnch2, gutpnch3 = gutpnch3 }

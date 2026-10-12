@@ -136,6 +136,8 @@ local rules: Rules = {
     extends = {
         chip = {
             sp = "u16[11]",
+            -- The MegaMan who may use it (./light_dark; its record's +0x15): none, anyone.
+            megaman = { "light", "dark" },
         },
         form = {
             soul = {
@@ -208,6 +210,10 @@ local rules: Rules = {
             light_dark.navi_intake(side, navi)
             souls.navi_intake(side, navi)
         end,
+        -- Light and dark MegaMan (./light_dark): a chip of the other kind of MegaMan fizzles at its use, and doesn't
+        -- cut in.
+        chip_check = light_dark.chip_check,
+        cut_in_barred = light_dark.cut_in_barred,
         -- A soul's turns, counted as a custom screen is asked for (./souls).
         custom_requested = souls.custom_requested,
         -- Light and dark MegaMan (./light_dark): his palette.

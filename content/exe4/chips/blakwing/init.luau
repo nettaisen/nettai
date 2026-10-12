@@ -37,6 +37,7 @@ local chip: Chip = {
         perches_by_column = true,
         ends_with_hole = true,
     },
+    megaman = "dark",
 }
 
 return { blakwing = chip }

@@ -25,6 +25,7 @@ local kendoman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "kendoman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local kendmn_sp: Chip = {
@@ -40,6 +41,7 @@ local kendmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "kendmn-sp/controller", palette = 3 }.hook,
+    megaman = "light",
 }
 
 local kendmn_ds: Chip = {
@@ -54,6 +56,7 @@ local kendmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "kendmn-ds/controller", palette = 4 }.hook,
+    megaman = "dark",
 }
 
 return { kendoman = kendoman, ["kendmn-sp"] = kendmn_sp, ["kendmn-ds"] = kendmn_ds }

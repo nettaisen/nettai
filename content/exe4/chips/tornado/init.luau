@@ -68,6 +68,7 @@ local static: Chip = {
     hit_param = 4,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    megaman = "dark",
 }
 
 return { tornado = tornado_chip, static = static }

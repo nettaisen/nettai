@@ -2060,6 +2060,12 @@ export type RulesSpec = {
         -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
         -- be used, a chip is what the navi uses instead.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
+        -- While dimmed, the navi asks to cut in on the other side's dimming
+        -- with its next chip, a dimming chip (`sub_8017AB4`), before
+        -- anything of the use is prepared: true bars it, the chip left in
+        -- the hand (EXE4's 0x08010C64, EXE5's 0x0801452E: the chips of the
+        -- other kind of MegaMan).
+        cut_in_barred: ((side: number, navi: Object, chip: Chip?) -> boolean)?,
         -- Earlier in the preparation, before the hand bonus's panel is
         -- spent (EXE5's 0x08010030: a dark chip's use and the chip's cost):
         -- as `chip_check`; a chip in the use's place skips the rest,

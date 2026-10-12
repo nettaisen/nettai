@@ -25,6 +25,7 @@ local aquaman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "aquaman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local aquamn_sp: Chip = {
@@ -40,6 +41,7 @@ local aquamn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "aquamn-sp/controller", palette = 2 }.hook,
+    megaman = "light",
 }
 
 local aquamn_ds: Chip = {
@@ -54,6 +56,7 @@ local aquamn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "aquamn-ds/controller", palette = 3 }.hook,
+    megaman = "dark",
 }
 
 return { aquaman = aquaman, ["aquamn-sp"] = aquamn_sp, ["aquamn-ds"] = aquamn_ds }
