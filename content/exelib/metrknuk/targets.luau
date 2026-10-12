@@ -9,15 +9,9 @@ local panels = require("../panels")
 
 local targets = {}
 
--- A panel test by the thrower's side: the flags a panel must have and must not.
-export type Test = { [number]: { require: number, forbid: number } }
-
-export type Spec = {
-    -- The panels an enemy stands on.
-    body: Test,
-    -- EXE6's: with no enemy standing, the first fist goes at the enemy's area, and so do the others.
-    area_fallback: boolean,
-}
+-- (What differs: `FistTargets`, types.d.luau's.)
+type Test = FistTargetTest
+type Spec = FistTargets
 
 -- What a thrower keeps between fists.
 export type State = {

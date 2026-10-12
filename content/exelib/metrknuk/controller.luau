@@ -48,7 +48,7 @@ local HEIGHT = 0x78_0000
 function controller.make(spec: Spec): { kind: Kind, hook: (user: Object, dspec: DimmingChipSpec) -> Object? }
     -- Where its fists go (./targets): an enemy's panels are those of the
     -- enemy's area it stands on (`byte_80E8D6C`).
-    local aim = { body = targets.BODY_IN_AREA, area_fallback = spec.area_fallback }
+    local aim: FistTargets = { body = targets.BODY_IN_AREA, area_fallback = spec.area_fallback }
 
     -- `sub_80E8B70`: a fist at the target; after the 16th the effect is
     -- over, else 7 ticks to the next.
