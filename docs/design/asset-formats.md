@@ -438,7 +438,11 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
   left: `counts.png`, by count). Its `layout` (EXE4's) says "PAUSE"'s place,
   the HP numbers' priority and the HUD layer's (`hud_priority`: EXE4's BG3
   is 0, EXE6's 1), a message's place, the damage judge's timing, the
-  chatbox's text and arrows, and the telops' own look.
+  chatbox's text and arrows, and the telops' own look, with `telop.tiles`
+  where the game loads the telops' sprite tiles among the banners' (VRAM
+  tile numbers: a banner's first, each place's first name tile, the '×'
+  and '2' pieces'; whether "PAUSE" loads the banners' palette into the one
+  they share): EXE4's banners and telops show each other's loads.
 - `custom.json`: `layout` (every pack says its game's) puts the
   window's parts at the game's tile numbers (the chip's name, picture,
   code, element and digits, the slots, the column's icons and cells, the

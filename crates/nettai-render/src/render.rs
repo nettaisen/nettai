@@ -216,6 +216,9 @@ impl Renderer {
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
         let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);
+        // (The glyphs the banners' and the telops' loads made of each
+        // other's tiles, which the sprites below borrow.)
+        let shared = crate::hud::shared_glyphs(b, own_game, &packs, &self.hud_state, &text, &mut self.problems);
         let mut list = SpriteList::default();
         objects::queue_objects(b, &packs, &view, &mut list, &mut self.problems, !draw);
         crate::custom::draw(
@@ -233,7 +236,7 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();
