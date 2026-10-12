@@ -19,7 +19,7 @@
 --   pulses blue (0x0800BB18, the rules' `navi_shader`); the B button does nothing and no charge counts (the form's
 --   `ignores_b`), but A uses the hand's chips still, each use zeroing the AI's block (0x080EED38); where his idle
 --   would read the pad for a step the AI decides (0x080EEC78, the rules' `controller`), its counts taken each tick
---   (0x080EAED2) and the charge it shows leveled as the input levels any (0x0800BB50; the rules' `navi_tick`).
+--   (0x080EAED2, the rules' `navi_tick`).
 
 local ai = require("../auto_battle/ai")
 local change = require("./change")
@@ -47,10 +47,8 @@ dark.state = {
 -- battle's ticks (0x0800BB40).
 local TICKS, PULSING = 960, 90
 local PULSE: { number } = { 0x04, 0x08, 0x0C, 0x10, 0x14, 0x18, 0x1C, 0x1F, 0x1F, 0x1C, 0x18, 0x14, 0x10, 0x0C, 0x08, 0x04 }
--- How long each tick's flash lasts (0x0800C44A), and a charge's levels by its count (0x0800BB66: charging from 10,
--- full at the AI's 40).
+-- How long each tick's flash lasts (0x0800C44A).
 local FLASH_TICKS = 3
-local CHARGING_AT = 10
 
 local function state(): State
     return rules.state() :: State
@@ -143,17 +141,13 @@ function dark.navi_shader(side: number, navi: Object): number?
     return bit32.lshift(PULSE[bit32.band(battle.battle_time(), 15) + 1], 10)
 end
 
--- Each tick after the navi's input (the rules' `navi_tick`, which the change asks for as he emerges): the charge the
--- AI shows takes its level from its count (0x0800BB50, which levels every navi's each tick; a navi out of the dark
--- soul has its level from the engine's count), then the AI's counts (0x0800E9E0). Out of the dark soul it asks no
--- more.
+-- Each tick after the navi's input (the rules' `navi_tick`, which the change asks for as he emerges): the AI's counts
+-- (0x0800E9E0). Out of the dark soul it asks no more.
 function dark.navi_tick(side: number, navi: Object)
     if not dark.united(side) then
         navi.ticked = false
         return
     end
-    local count = navi.charge_counter
-    navi.charge_level = if count >= ai.CHARGE_FULL then 2 elseif count >= CHARGING_AT then 1 else 0
     ai.tick(navi, state().auto_battle)
 end
 
