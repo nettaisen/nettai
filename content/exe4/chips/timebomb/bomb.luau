@@ -1,16 +1,16 @@
 --!strict
--- TimeBomb (EXE4 chip 0x061): the dimming chips' variant 0x11. Its controller (effect object #0x27, 0x080E4C3C:
+-- EXE4's TimeBomb: the dimming chips' variant 0x11. Its controller (effect object #0x27, 0x080E4C3C:
 -- @exelib/timebom/controller, EXE6's code) sets the countdown bomb (attack object #0x4B, 0x080D6BF8: @exelib/timebom/
 -- countdown, EXE6's code's elder, in EXE4's look) where EXE4 places it (0x080E4DE4), with the chip's damage and the
 -- telop's bonus, and waits 31 ticks. The bomb counts 3, 2, 1 and blows up the other side's area unless it is broken
--- first.
--- Its record is written by tools/exe4/gen_content.py (bn6battle-verify) from the EXE4 ROMs.
+-- first. Which bomb is the chip's first parameter (0x080D6C2C: its animations twice that and one more, its HP 50 or
+-- 300, its blast's second shake): each chip states its own (`countdown.variant`) for the controller's hook.
 
-local collision = require("../rules/collision")
+local collision = require("../../rules/collision")
 local controller = require("@exelib/timebom/controller")
 local countdown = require("@exelib/timebom/countdown")
 local dimming_chips = require("@exelib/dimming")
-local panel_bursts = require("../objects/panel_bursts")
+local panel_bursts = require("../../objects/panel_bursts")
 
 -- 0x0801013A: back to its idle, no longer running while paused.
 local function return_to_idle(me: Object)
@@ -46,15 +46,9 @@ local KIND = countdown.make_kind("timebomb/countdown", {
     },
 })
 
--- TimeBomb's bomb (its first parameter 0: 0x080D6C3E's animations 0 and 1, 50 HP): one of its side's field objects
--- (class 1, 0x080D6ECC), a neutral body hit by everything (rows 0x0E and 0x0F).
-local BOMB = countdown.variant {
-    appear_anim = 0,
-    idle_anim = 1,
-    hp = 50,
-    class = 1,
-    collision = { is = collision.neutral_body, hits = collision.everything },
-}
+-- What a bomb is and what it reacts to: one of its side's field objects (class 1, 0x080D6ECC), a neutral body hit by
+-- everything (rows 0x0E and 0x0F).
+local BODY = { is = collision.neutral_body, hits = collision.everything }
 
 -- No bomb where it would go: a puff over the panel, 16 up (effect row 2).
 local NO_BOMB = new.effect { sprite = asset.sprite("small-puff"), anim = 1, palette = 0 }
@@ -145,21 +139,4 @@ local function place(me: Object)
     end
 end
 
-local CONTROLLER = controller.make("timebomb/controller", place)
-
--- TimeBomb (EXE4 chip 0x061).
-local timebomb: Chip = {
-    codes = { "J", "K", "L" },
-    element = "null",
-    family = "summon",
-    class = "standard",
-    rarity = 2,
-    mb = 55,
-    damage = 150,
-    hit_param = 158,
-    lockout = 0,
-    flags = { "dimming", "has_damage", "standard_library", "library" },
-    dimming = CONTROLLER.hook(BOMB),
-}
-
-return { timebomb = timebomb }
+return { controller = controller.make("timebomb/controller", place), body = BODY }
