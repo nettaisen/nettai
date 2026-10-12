@@ -14,10 +14,6 @@ use std::ops::RangeInclusive;
 const RED_SUN: [RangeInclusive<u16>; 6] = [1..=186, 201..=280, 301..=301, 304..=304, 307..=308, 310..=312];
 const BLUE_MOON: [RangeInclusive<u16>; 6] = [1..=186, 201..=280, 302..=303, 305..=306, 309..=309, 311..=312];
 
-/// The chips Tango holds legal that the content doesn't define yet: PrixPowr
-/// (0x138), an e-Reader card's Giga chip of either version.
-const NOT_PORTED: [u16; 1] = [0x138];
-
 #[test]
 fn a_folder_holds_tangos_legal_chips() {
     let content = nettai_match::testing::exe4_content();
@@ -28,15 +24,15 @@ fn a_folder_holds_tangos_legal_chips() {
         let view = Checked::of(&content, "exe4", &side).folder_view(&content, &Folder::EMPTY).unwrap();
         for number in 1..=0x184u16 {
             let Some(chip) = compat.chip_key(number).and_then(|k| ids::chip(&content, "exe4", k)) else {
-                let legal = legal.iter().any(|r| r.contains(&number));
-                assert_eq!(legal, NOT_PORTED.contains(&number), "{version}: Tango's legal chip {number} is none of the content's");
+                assert!(!legal.iter().any(|r| r.contains(&number)), "{version}: Tango's legal chip {number} is none of the content's");
                 continue;
             };
             let held = view.lists(chip) && !matches!(view.refusal(chip), Some(Wrong::ChipOfAnotherVersion { .. }));
             assert_eq!(held, legal.iter().any(|r| r.contains(&number)), "{version}: chip {number} ({})", compat.chip_key(number).unwrap());
         }
     }
-    // Each version's five Giga chips are its own; Duo (311) is both's.
+    // Each version's five Giga chips are its own; the e-Reader's Duo (311)
+    // and PrixPowr (312, a Mega chip) are both's.
     let owners = builds.version_chips(&content).unwrap();
     let key = |n: u16| ids::chip(&content, "exe4", compat.chip_key(n).unwrap()).unwrap();
     for n in [301, 304, 307, 308, 310] {

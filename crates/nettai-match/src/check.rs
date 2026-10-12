@@ -127,6 +127,23 @@ pub fn start(content: &Arc<Content>, m: &Match) -> Result<Battle, String> {
     })
 }
 
+/// What side `side`'s rules say is wrong with its setup in `b` as a
+/// player's build (their `build_check`), beside what their `validate` says
+/// of any setup: what a round would play and no save made by play holds
+/// (EXE4's patch card out of its own slot). A match's checks don't ask it
+/// (a match file and a recording may hold what the game itself would run);
+/// a build's do (`crate::build::Checked`).
+pub(crate) fn built(b: &mut Battle, side: usize) -> Vec<Problem> {
+    let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.build_problems(side as u8)));
+    match checked {
+        Ok(problems) => {
+            let content = b.content.clone();
+            problems.into_iter().map(|p| Problem::of_rules(&content, Some(side), p)).collect()
+        }
+        Err(_) => vec![Problem::of(Some(side), Wrong::Internal, "the rules stopped checking the build".into())],
+    }
+}
+
 /// The stats each side's round starts with: the setup's, after the rules
 /// have set the round up (each side's NaviCust and patch cards), or why the
 /// round doesn't start.

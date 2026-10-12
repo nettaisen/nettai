@@ -724,19 +724,35 @@ language = "en"
 "tango" = "Tango"
 "undershirt" = "Undersht"
 
-# The NaviCust's bugs' names, by the bug's name in the game's rules (rules/navicust/programs' `BUGS`), for a tool
-# that lists a build's bugs with their levels (nettai-match's `build`). The games name no bug on a screen but
-# where a patch card's line does, so these are the content's own.
+# The NaviCust's bugs' names, by the bug's name in the game's rules (rules/navicust/programs' `BUGS`), for a tool that
+# lists a build's bugs with their levels (nettai-match's `build`): full names, written out. Where the game's patch
+# cards name the same bug (the card effect that writes the stat the bug writes: rules/navicust's `BUG_CARDS` says
+# which and why), the name is that effect's line spelled out, so it follows the game's word for the bug; each says
+# which line it is from. The rest the games name nowhere, and are the content's own, in the same style. A patch
+# card's own lines stay as the card screen has them ([patch_card_effects]).
 [bugs]
-"buster" = "Buster bug"
-"custom" = "Custom bug"
-"emotion" = "Emotion bug"
-"encounter" = "Encounter bug"
-"hp" = "HP bug"
-"panel" = "Panel bug"
-"result" = "Result bug"
-"status" = "Status bug"
-"status-strong" = "Status bug"
-"step" = "Move bug"
-"support" = "Support bug"
+# From "BstBlank" (`buster_blanks`: the blank and charged shots).
+"buster" = "Buster Blank"
+# Ours: no card effect writes what this bug does (the hand shrinks). Not "CustDmg" or "CusHPbug": those are the
+# custom screen's damage and HP drain.
+"custom" = "Custom Bug"
+# From "EmoBug" (`emotion_bug`).
+"emotion" = "Emotion Bug"
+# Ours: no card effect writes what this bug does.
+"encounter" = "Encounter Bug"
+# From "BatHPbug" (`hp_drain`: the HP drain, which the bug raises by its level).
+"hp" = "Battle HP Bug"
+# From "PanelBug" (`panel_trail.none`, the line of the card effect that clears the bug's panel trail).
+"panel" = "Panel Bug"
+# Ours: no card effect writes what this bug does.
+"result" = "Result Bug"
+# From "StatBug" (`status_bug`: the battle start's bug).
+"status" = "Status Bug"
+# From "StatBug" too (`status_bug` past 1: the stronger one).
+"status-strong" = "Status Bug"
+# From "MoveBug" (`step_bug`).
+"step" = "Movement Bug"
+# Ours: no card effect writes what this bug does.
+"support" = "Support Bug"
+# Ours: a bug no program brings, which writes a byte nothing reads.
 "unread" = "Bug"

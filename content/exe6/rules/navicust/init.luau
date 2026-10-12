@@ -88,11 +88,39 @@ local BUG_WORK: { [string]: (stats: Navi, level: number, hp: number) -> () } = {
 }
 
 -- EXE6's compile: its board, its bugs, and the emotion window's glitch any bug sets (flag 0x1720).
+-- The bugs a patch card can bring or fix too, each with the kind of the card effect that writes the stat the bug
+-- writes (../patch_cards' copy; docs/engine/patch-cards.md §2.1's effect numbers):
+--
+-- - `step`: +0x31, the step bug, which effect 0x83 writes (its line "MoveBug");
+-- - `emotion`: +0x24, which effect 0x95 writes ("EmoBug");
+-- - `panel`: the panel trail, +0x12 and +0x13, which effects 0x84 to 0x8D write, one a trail: the bug's is the cracked
+--   one, 0x84's ("MoveCrak"), and 0x8D's none is what a card clears the bug with ("PanelBug", the cards' name for it);
+-- - `buster`: the blank and charged shots, +0x14 and +0x15, which effect 0x8E writes ("BstBlank");
+-- - `hp`: the HP drain, +0x18, which the bug raises by its level and effect 0x96 adds to or clears ("BatHPbug"). (The
+--   bug sets the hit status too, +0x16 = 3, which effect 0x92 writes, "DmgHPbug", and 0x93 clears, "DmgBug": a card
+--   that clears the drain leaves that part of the NaviCust's bug standing.)
+-- - `status`, `status-strong`: the battle start's bug, +0x1A = 9 and 10, which effect 0x98 writes for 1 and for more
+--   ("StatBug").
+--
+-- The others no card effect writes: `custom` shrinks the hand (+0x63; the cards' "CustDmg" and "CusHPbug" are the
+-- custom screen's damage and HP drain, +0x54 and +0x19, other stats), `encounter` and `result` are +0x28 and +0x26,
+-- and `support` empties the supports (+0x0D = 0xFF, where a card's Rush, Beat and Tango set its bits).
+local BUG_CARDS: { [string]: string } = {
+    step = "step_bug",
+    emotion = "emotion_bug",
+    panel = "panel_trail",
+    buster = "buster_blanks",
+    hp = "hp_drain",
+    status = "status_bug",
+    ["status-strong"] = "status_bug",
+}
+
 local EXE6: NaviCustGame = {
     name = "EXE6",
     board = board,
     bugs = programs.BUGS,
     bug_work = BUG_WORK,
+    bug_cards = BUG_CARDS,
     glitch = true,
 }
 

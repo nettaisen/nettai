@@ -593,6 +593,12 @@ pub enum RulesHook {
     /// and the bugs they bring). Its answer is plain data, which the tool
     /// reads.
     Overview,
+    /// `build_check(side)`: a tool asks what is wrong with side `side`'s
+    /// setup as a player's build (`Battle::build_problems`, not the
+    /// simulation), beside what `validate` says of any setup: what a round
+    /// would play and no save made by play holds (EXE4's patch card in a
+    /// slot that isn't its own). Problems as `validate`'s. Nothing: none.
+    BuildCheck,
     /// `validate(side)`: a tool asks what is wrong with side `side`'s
     /// setup (`Battle::validate`, not the simulation), once the round is
     /// set up (the stats its rules built): a list of problems, each a
@@ -607,7 +613,7 @@ impl RulesHook {
     /// Whether the hook is one a tool asks (never the simulation), whose
     /// answer the battle keeps as plain data (`CoreApi::tool_answer`).
     pub fn for_tools(self) -> bool {
-        matches!(self, RulesHook::FolderCheck | RulesHook::FolderView | RulesHook::Overview | RulesHook::Validate)
+        matches!(self, RulesHook::FolderCheck | RulesHook::FolderView | RulesHook::Overview | RulesHook::Validate | RulesHook::BuildCheck)
     }
 
     /// The hook's name in the rules' `hooks` table.
@@ -625,6 +631,7 @@ impl RulesHook {
             RulesHook::FolderView => "folder_view",
             RulesHook::Overview => "overview",
             RulesHook::Validate => "validate",
+            RulesHook::BuildCheck => "build_check",
             RulesHook::NaviIntake => "navi_intake",
             RulesHook::ChipCheck => "chip_check",
             RulesHook::CutInBarred => "cut_in_barred",
@@ -667,7 +674,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 51] = [
+    pub const ALL: [RulesHook; 52] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -719,6 +726,7 @@ impl RulesHook {
         RulesHook::Validate,
         RulesHook::FolderView,
         RulesHook::Overview,
+        RulesHook::BuildCheck,
     ];
 }
 
