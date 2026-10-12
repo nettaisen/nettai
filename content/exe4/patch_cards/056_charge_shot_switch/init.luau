@@ -1,11 +1,12 @@
 --!strict
--- The patch card Charge Shot Switch (56, チャージ武器を変更).
+-- The patch card Charge Shot Switch (56, チャージ武器を変更), slot 0E's.
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cards = require("../rules/patch_cards/cards")
 local chips = require("../navis/megaman/weapons/chips")
 
-local card: PatchCard = {
+local card: SlottedPatchCard = {
+    slot = cards.SLOT_0E,
     effects = {
         cards.charged_shot(chips.woodpwdr),
         cards.clear_bug("weapon"),

@@ -159,6 +159,50 @@ mod tests {
         img
     }
 
+    /// Every patch card states its catalog slot: the slot's number as the
+    /// save and the setup count it, 0 to 5 (its definition's `slot`, which
+    /// the card writes by its name, rules/patch_cards/cards' `SLOT_0A` to
+    /// `SLOT_0F`: a card's fact for what lists and files cards; nothing in a
+    /// battle reads it). The six slots hold 27, 16, 16, 20, 50 and 4 of the
+    /// 133 cards (Tango's table, which the verification workspace's
+    /// gen_patch_cards.py holds each card to), and a pair's half reads for
+    /// its other half the slot that half states (the handlers' own numbers,
+    /// 0x080424F4 on: Triple Supporter's halves in slots 1 and 2, All
+    /// Guard's in 2 and 3, Charge FullCustom's in 3 and 4).
+    #[test]
+    fn every_patch_card_states_its_catalog_slot() {
+        let content = exe4_content();
+        let spec = |h| {
+            let key = &content.defs.entry(h).key;
+            content.defs.definitions.get(Registry::Entry, key).expect("its definition").spec.clone()
+        };
+        let slot = |h| spec(h).field("slot").int();
+        let cards = content.defs.entries_of("patch_cards");
+        assert_eq!(cards.len(), 133);
+        let mut held = [0usize; 6];
+        for &h in &cards {
+            match slot(h) {
+                Some(n @ 0..=5) => held[n as usize] += 1,
+                other => panic!("{}: its slot is {other:?}", content.defs.entry(h).key),
+            }
+        }
+        assert_eq!(held, [27, 16, 16, 20, 50, 4], "the cards of slots 0A to 0F");
+        let of = |id: &str| content.defs.entry_in("patch_cards", id).unwrap_or_else(|| panic!("no card {id}"));
+        assert_eq!(slot(of("017-custom2")), Some(0));
+        assert_eq!(slot(of("028-pet-menu-color-change")), Some(5));
+        for (half, other, at) in [
+            ("074-triple-supporter-1-2", "075-triple-supporter-2-2", 2),
+            ("075-triple-supporter-2-2", "074-triple-supporter-1-2", 1),
+            ("076-all-guard-1-2", "077-all-guard-2-2", 3),
+            ("077-all-guard-2-2", "076-all-guard-1-2", 2),
+            ("103-fullcustom-charge-1-2", "104-fullcustom-charge-2-2", 4),
+            ("104-fullcustom-charge-2-2", "103-fullcustom-charge-1-2", 3),
+        ] {
+            let reads = spec(of(half)).field("effects").item(1).field("pair").field("slot").int();
+            assert_eq!((reads, slot(of(other))), (Some(at), Some(at)), "{half} reads slot {at} for {other}");
+        }
+    }
+
     #[test]
     fn an_exe4_save_gives_its_side() {
         let content = exe4_content();
