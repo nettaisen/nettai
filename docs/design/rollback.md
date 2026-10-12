@@ -132,6 +132,12 @@ of its buffers more often than it makes them, and a battle is 8.6 KB inline.
 The per-tick sound cues are part of the copy (they are the cues of the tick that produced the state); a consumer
 reads them right after each tick.
 
+Netplay is not the snapshots' only user: a replay's viewer keeps one every four seconds of the set as it plays,
+with each console's HUD state and sound beside it, and seeks by going on from the nearest (docs/frontend.md §8,
+"Seeking"). A seek restores a state the replay passed through and plays the recorded buttons on from it, so it asks
+the simulation nothing a tick doesn't; its tests hold the digest after a seek to straight playback's. (A snapshot of
+an EXE6 link battle measured there is 32 KB.)
+
 ### 1.4 The digest
 
 `Battle::digest()` (module `digest`) feeds the simulation state through `digest::StableHasher`:

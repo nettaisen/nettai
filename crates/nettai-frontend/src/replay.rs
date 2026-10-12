@@ -167,27 +167,35 @@ pub struct ReplayPlayer {
     end: End,
 }
 
+/// The set a replay plays on `content`: its match, read and checked, from
+/// its seed. Refused: a replay of another engine, game or content, a match
+/// that doesn't read or that the checks refuse, and a first battle other
+/// than the recording's. (What a host makes ready before it opens the
+/// replay: `crate::preload::Preload::new` takes the set.)
+pub fn set_of(content: &Arc<Content>, replay: &Replay) -> Result<Set, Refused> {
+    replay.head.require(ENGINE, content.game(), content.hash().0)?;
+    let m = nettai_match::binary::read_match(content, &replay.match_bytes).map_err(|e| Refused::BadMatch(format!("the replay's match doesn't read: {e}")))?;
+    let problems = nettai_match::check_match(content, &m);
+    if !problems.is_empty() {
+        return Err(Refused::BadMatch(format!("the replay's match breaks the rules: {}", problems.join("; "))));
+    }
+    let set = Set::of(content, &m, m.seed.expect("a replay's match states its seed"));
+    let start = set.start().digest();
+    if start != replay.head.start {
+        return Err(Refused::OtherVersion(format!(
+            "the replay's match makes another battle on this engine (its first battle's digest {start:016x}, the recording's {:016x})",
+            replay.head.start
+        )));
+    }
+    Ok(set)
+}
+
 impl ReplayPlayer {
     /// A replay's playback on `content`, shown from `viewer`'s side (none:
-    /// the side that recorded it). Refused: a replay of another engine,
-    /// game or content, a match that doesn't read or that the checks
-    /// refuse, and a first battle other than the recording's.
+    /// the side that recorded it). Refused as [`set_of`] refuses a replay,
+    /// and for a side a match doesn't have.
     pub fn new(content: &Arc<Content>, replay: &Replay, viewer: Option<u8>) -> Result<ReplayPlayer, Refused> {
-        replay.head.require(ENGINE, content.game(), content.hash().0)?;
-        let m = nettai_match::binary::read_match(content, &replay.match_bytes)
-            .map_err(|e| Refused::BadMatch(format!("the replay's match doesn't read: {e}")))?;
-        let problems = nettai_match::check_match(content, &m);
-        if !problems.is_empty() {
-            return Err(Refused::BadMatch(format!("the replay's match breaks the rules: {}", problems.join("; "))));
-        }
-        let set = Set::of(content, &m, m.seed.expect("a replay's match states its seed"));
-        let start = set.start().digest();
-        if start != replay.head.start {
-            return Err(Refused::OtherVersion(format!(
-                "the replay's match makes another battle on this engine (its first battle's digest {start:016x}, the recording's {:016x})",
-                replay.head.start
-            )));
-        }
+        let set = set_of(content, replay)?;
         let viewer = viewer.unwrap_or(replay.info.side);
         if viewer > 1 {
             return Err(Refused::NoSide(viewer));
