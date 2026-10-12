@@ -621,7 +621,8 @@ pub(crate) fn take_status(b: &mut Battle, r: ObjectRef, s: nettai_content_api::S
 }
 
 /// `sub_801A2CC`: chip destruction, a hit (self bit 0x10) that destroys the
-/// current chip.
+/// chip the navi names and, of a player's hand, what its game's intake
+/// rules say (`chip_destruction`): the next chip, or the hand.
 fn lose_chip(b: &mut Battle, r: ObjectRef) {
     if coll(b, r).acc.hit_flags & 0x10 == 0 {
         return;
@@ -631,9 +632,21 @@ fn lose_chip(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).chips_held = 0;
         return;
     }
+    let rule = b.game_rules().intake.chip_destruction;
     let hand = &mut b.hands[b.objects.get(r).alliance as usize];
-    if hand.ids.get(hand.cursor as usize).is_some_and(|id| id.is_some()) {
-        hand.cursor += 1;
+    match rule.takes {
+        crate::content::ChipsTaken::Next => {
+            if hand.ids.get(hand.cursor as usize).is_some_and(|id| id.is_some()) {
+                hand.cursor += 1;
+            }
+        }
+        crate::content::ChipsTaken::Hand => {
+            hand.cursor = 0;
+            hand.ids[..5].fill(None);
+        }
+    }
+    if rule.ends_chip_requests {
+        ai_mut(b, r).requests &= !(crate::actor::request::CHIP | crate::actor::request::CHARGED_CHIP);
     }
 }
 
@@ -925,5 +938,43 @@ mod tests {
         assert_eq!(stand("grass", 50).0, 58, "at 50: the 20-tick count, which stays 0 here");
         let (_, drained, count) = stand("poison", 50);
         assert_eq!((drained, count), (vec![1, 1, 1, 1, 1, 1, 1, 2], 6));
+    }
+
+    /// A chip-destroying hit (hit flag 0x10) takes what the rule says of a
+    /// player's hand: EXE6's the next chip (the test content's), EXE5's the
+    /// hand, EXE4's the hand and the chip requests. The hand's cursor and
+    /// chips after it, and the requests left.
+    #[test]
+    fn a_chip_destroying_hit_takes_the_next_chip_or_the_hand() {
+        use crate::actor::request;
+        use crate::content::{ChipDestruction, ChipsTaken};
+        let hit = |rule: Option<ChipDestruction>, cursor: u8| {
+            let (mut b, r) = on_ice(0);
+            if let Some(rule) = rule {
+                let mut c = (*b.content).clone();
+                c.rules_mut().intake.chip_destruction = rule;
+                b.content = Arc::new(c);
+            }
+            let chip = testing::chip_handle(testing::SUN_GUN_3);
+            let side = b.objects.get(r).alliance as usize;
+            b.hands[side].ids = [Some(chip), Some(chip), Some(chip), None, None, None];
+            b.hands[side].cursor = cursor;
+            b.objects.get_mut(r).chip = Some(chip);
+            ai_mut(&mut b, r).requests |= request::CHIP | request::BUSTER;
+            lose_chip(&mut b, r);
+            assert_eq!(b.hands[side].cursor, cursor, "no hit flag 0x10: nothing lost");
+            coll_mut(&mut b, r).acc.hit_flags |= 0x10;
+            lose_chip(&mut b, r);
+            assert_eq!(b.objects.get(r).chip, None);
+            let left = b.hands[side].ids.iter().filter(|id| id.is_some()).count();
+            (b.hands[side].cursor, left, ai(&b, r).requests & (request::CHIP | request::BUSTER))
+        };
+        let both = request::CHIP | request::BUSTER;
+        assert_eq!(hit(None, 0), (1, 3, both), "the next chip: the cursor past it");
+        assert_eq!(hit(None, 3), (3, 3, both), "no chip at the cursor: it stays");
+        let exe5 = ChipDestruction { takes: ChipsTaken::Hand, ends_chip_requests: false };
+        assert_eq!(hit(Some(exe5), 1), (0, 0, both), "the hand, the cursor back at its first chip");
+        let exe4 = ChipDestruction { takes: ChipsTaken::Hand, ends_chip_requests: true };
+        assert_eq!(hit(Some(exe4), 1), (0, 0, request::BUSTER), "and the chip requests");
     }
 }
