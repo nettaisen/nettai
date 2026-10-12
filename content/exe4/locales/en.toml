@@ -325,6 +325,9 @@ language = "en"
 "pitrng3" = { name = "PitRng3", description = "3 boome-\nrang atk\nenemies" }
 "timebom" = { name = "TimeBom+", description = "Sets a\nTimeBom" }
 "h-burst" = { name = "H-Burst", description = "Explosion\nspreads\ninto 1!" }
+"poisphar" = { name = "PoisPhar", description = "Places a\npoisoned\nPharaoh" }
+"bodygrd" = { name = "BodyGrd", description = "Assassin\nwho sneak\ninto enmy" }
+"pdriver" = { name = "P.Driver", description = "A sun\ngenerator\nfries all" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
