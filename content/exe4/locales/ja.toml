@@ -341,6 +341,7 @@ language = "ja"
 "redsun" = { name = "メテオレッドサン", description = "3マス前方めがけて\nレッドサンのメテオ\n攻撃がふりそそぐ!" }
 "bluemoon" = { name = "ブルームーンレイ", description = "3マス前方めがけて\nブルームーンが力を\nうばう光をはなつ!" }
 "holydrem" = { name = "ホーリードリーム", description = "ホーリーパネルを\nすいこんで前方へ\nホーリーショット!" }
+"duo" = { name = "デューオ", description = "むすうにふりそそぐ\nせいぎのコブシ\nメテオナックル!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

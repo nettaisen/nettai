@@ -372,6 +372,47 @@ from the ROM and its code, read routine by routine):
   palettes taken (item 62's `effects.sprite_budget`, which those frames check a second time); and, left as it
   is, the custom screen shows Muramasa's damage as 0 where the original shows ??? (BodyGrd's recipe:
   pa/0x15c-bodygrd/sequence7, frames 4237 to 4246).
+- **The e-Reader cards' chips** (0x137 Duo, Giga, code D; 0x138 PrixPowr, Mega, code G). Their records and their
+  behavior are in all four ROMs; what the cards bring is the save's card data, where the records point (R): the
+  names' one-entry text archives at 0x02001770 and 0x02001780 (the name getter 0x0802F180 reads them for chips 0x137
+  on; the name archive's entries are the text command FF 00 n), the descriptions' text at 0x02000522 and 0x0200057E
+  (the text command FF 01 n, 0x080514FC), the pictures at 0x020008A0 and 0x02000E80 (0x540 bytes), their palettes at
+  0x02000DE0 and 0x020013C0, the icons at 0x02000E00 and 0x020013E0. A new save holds placeholders (0x08019708:
+  "????", a picture of color 1 alone, a black palette, the ROM's icon at 0x087400F8). The save is the RAM from
+  0x02000000, so the card data is at those offsets of it; all twelve of Tango's netplay save templates hold both
+  cards, with the same art, the US ones in English (Duo, "Fist of / Justice: / MetKnukl!"; PrixPowr, "The three /
+  GrandPrix / winners!"), the Japanese ones in Japanese (デューオ, グランプリパワー). In the pack: the names and
+  descriptions are the locales' (verify's gen_content.py reads the templates); the icons are every ROM's (the icon
+  sheet's two slots after chip 0x136's, byte for byte the card data's); the pictures' tiles are in no ROM (searched
+  raw and LZ77-compressed in the four ROMs and EXE4.5), so the extractor holds them (exe4/cards.rs: the extractor
+  takes no save); the pictures' palettes are each chip's `art_palette`, as EXE5's e-Reader chips' and EXE6's gift
+  chips' are. Their records have no library flag (+0x09's 0x40): the library screen lists neither, and library.toml
+  has neither (a menu lists them after the rest). +0x15 is 0 (any MegaMan's), +0x09 is 0x07 (dimming, damage, a navi
+  chip: AntiNavi turns them, Navi+20 adds to them).
+  Duo (variant 0x47, 0x080EA876: chips/duo) runs the navi chips' short course from its controller (effect #0x79,
+  0x080EA7D8). As its navi's turn comes every field object's HP goes to 0 (0x080EA898: the registry's eight slots),
+  and Duo comes (actor #0x52, 0x080CB70C) unless an enemy's body is on his side's back two columns (0x080EA8B4: a
+  search of region 0x11 from the middle row of the last column, which draws from RNG2 when it finds one). Duo
+  blinks those six panels away for 41 ticks (0x080CB992 with 0x08009E74 and 0x08009E5C: the panels' drawn bit, 0x40
+  of 0x02037B36's bytes; the engine's `field.set_visible`), glides in from behind the field's edge 8 pixels a tick
+  for 11 ticks, waits 61, throws 17 fists 8 ticks apart (his count runs from 16 through 0: attack #0x66,
+  0x080DA220, in his sheet's animation 19 less the count's low bit), waits 31 and backs out over 21; his panels are
+  drawn again as he goes. His targets are MetrKnuk's searches (0x080CBA0C, 0x080CB9C2: EXE6's `sub_80E8C44` and
+  `sub_80E8BF8` come from them; @exelib/metrknuk/targets), with an enemy's body on any panel (0x080CBABC) where
+  EXE6's and EXE5's ask for one on the enemy's area, and no fist when no enemy stands. His fist is MetrKnuk's
+  (@exelib/metrknuk/fist) but for its animation and its burst, which shows where the fist is (0x080DA330), not on
+  the panel's center.
+  The lab's chips/0x137-duo (23: the templates, his description and pick, a Blue Moon and a dark user, both sides'
+  rock cubes and the stages' rocks and gears as field objects, an enemy on his columns from either side, an enemy
+  under the ground, deleted by the first fist, in a corner and at the front, AntiNavi, Navi+20 and Atk+10, a cut-in
+  on him and him as the cut-in, the holes and cracked stages) replay every frame with the same sounds, and all 23
+  are frame-compared, every fight frame exact and the custom screen's name, picture, icon and description with
+  them. The gear stage's compare found the drawing's order (item 14): EXE4's drawing reads a panel's highlight
+  before whether it is visible and draws a highlighted panel only while it is (0x0800932C), so a gear's panel on
+  Duo's columns keeps its highlight's tiles while the others are blank; EXE6's and EXE5's draw any panel that isn't
+  visible as none (`sub_800C5E0`, 0x0800ABFC). It follows from where the game keeps what its panels are drawn as
+  (`panels.drawn = "own_tables"`: `Panel::kept`). Not reached: a soul changes nothing of the chip, and nothing
+  hurts its user while it runs (he is warped out, the field dimmed).
 - **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
   (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
 - **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
@@ -1380,8 +1421,10 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   palette by Tango's pointer (0x08015A78, the Japanese 0x080159D4). chips.toml has the chips a folder can hold
   (Tango's legal chips: 1 to 186, 201 to 280, 301 to 310; 276), keyed by the US names as EXE5's are (`aquamn-sp`),
   the ten version giga chips with their version, whose art comes from that version's ROM. The table's other records
-  are placeholders (ten "Bass" before Bass, seven "DarkNeo" before DarkNeo, a second "LifeAura"), the Program
-  Advances (from 321) and the e-Reader cards' two (311, 312: their names are the save's), not in chips.toml yet.
+  are placeholders (ten "Bass" before Bass, seven "DarkNeo" before DarkNeo, a second "LifeAura") and the Program
+  Advances (from 321). The e-Reader cards' two (311, 312: Duo and PrixPowr) are in chips.toml as any chip; their
+  icons come from the icon sheet's slots after chip 0x136's and their pictures from the extractor's own source
+  (exe4/cards.rs), since their records point at RAM (§13's e-Reader paragraph).
 - **The fonts and the HUD's text lines** (R), English from a US ROM, Japanese (the pack's `ja` lettering) from a
   Japanese ROM: the 8x16 font (0x0868DF5C: 0x1A0 glyphs of 0x40 bytes, other data past them), the dialogue font
   (0x08694F5C: 0x1C0 glyphs of 16x12, 0x60 bytes) and its advances (a word a glyph from 0x080515E0, past the word
@@ -2440,8 +2483,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `tools/exe4/completeness.py`): every entry of the chip table, the weapon routines, the player's actions, the
     dimming variants, the three object tables, the link stages' entry types, the NaviCust handlers and bugs, the
     patch cards and the HUD's draw tasks, against content. What a netbattle reaches and content lacks (main at
-    c4bef02ee): DarkNeo; the dark soul (item 74); "????" after a message (item 130: not as the audit read it). To decide: the two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
-    ROM; their names and images are the card's). Everything else missing is the story's enemies, the other navis,
+    c4bef02ee): DarkNeo; the dark soul (item 74); "????" after a message (item 130: not as the audit read it). The two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
+    ROM; their names and images are the card's) are being ported (§13's e-Reader paragraph: Duo done). Everything else missing is the story's enemies, the other navis,
     subsystem 0x0E's battle (item 49), or named by nothing. Run the tool again as content grows.
 64. **Done: the chip window's "???"** (group B; found by the Program Advances' pa/0x15c-bodygrd/sequence7, whose
     Muramasa showed 0 at frames 4237 to 4246 and 4274 to 4279). EXE4's chip window (0x0801FC40) reads the record's

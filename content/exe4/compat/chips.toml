@@ -289,6 +289,8 @@
 "blakbarr" = { id = 0x134, version = "redsun" }
 "bluemoon" = { id = 0x135, version = "bluemoon" }
 "bugcharg" = { id = 0x136, version = "redsun" }
+"duo" = { id = 0x137 }
+"prixpowr" = { id = 0x138 }
 "darkneo" = { id = 0x140 }
 "heatsprd" = { id = 0x141 }
 "bubsprd" = { id = 0x142 }
