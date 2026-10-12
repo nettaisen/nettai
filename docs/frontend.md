@@ -14,7 +14,8 @@ own fonts, exactly as the original does.
 
 It plays a set live from a player's buttons, or against another player over
 the network, replays a golden trace (the recorded inputs of a real match) or
-a replay, and draws chosen frames to PNG. Its hosts are nettai, the app
+a replay (which it seeks about in, and writes as video), and draws chosen
+frames to PNG. Its hosts are nettai, the app
 (docs/app.md), and nettai-tools, the command line with no window
 (docs/tools.md); the commands in this document are nettai-tool's.
 
@@ -42,8 +43,13 @@ a match waits for before its first tick: §9.)
   the sound as it is driven; what drives a session is a driver (`driver`:
   live play of a set from the GBA button mask; `netplay`: another player,
   over a channel the host provides: it has no socket; `replay`: a replay).
+  A replay has a player of its own besides (`viewer`), which seeks (§8).
   It draws the battle's picture and nothing over it: it has no text of its
   own.
+
+A third crate is over them: **nettai-video** writes a replay as video, a NUT
+stream of raw frames and PCM sound, and runs ffmpeg for an MP4 of one (§8,
+"Video").
 
 ## 1. The content pack
 

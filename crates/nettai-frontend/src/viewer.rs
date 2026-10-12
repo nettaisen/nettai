@@ -27,13 +27,17 @@
 //! its target, or from where the viewer is if that is nearer, and plays
 //! the ticks between in silence. Both consoles' HUD states and sounds run
 //! every tick, so the one not shown is ready when the view changes; the
-//! battle itself is one simulation whoever watches.
+//! battle itself is one simulation whoever watches. The ticks a seek plays
+//! through leave states of their own every [`NEAR_EVERY`]th tick, of that
+//! one stretch between two kept states, so a frame back and the next one
+//! each go on from a tick or so before, not from four seconds before.
 //!
 //! **What it costs.** A kept state is a battle and two consoles' sound and
 //! HUD state; with [`KEYFRAME_EVERY`] at four seconds, a five-minute set
 //! keeps about 80. Reaching a tick for the first time plays every tick up
 //! to it, sound included (the sound is most of a tick's cost); after
-//! that a seek plays at most [`KEYFRAME_EVERY`] - 1 ticks. [`Viewer::index`]
+//! that a seek plays at most [`KEYFRAME_EVERY`] - 1 ticks, and one into the
+//! stretch last sought through fewer than [`NEAR_EVERY`]. [`Viewer::index`]
 //! plays ahead a slice at a time without moving, for a host that wants
 //! every seek short before its user drags the bar. The figures measured on
 //! a game's own packs are docs/frontend.md's (§8, "Seeking").
@@ -68,6 +72,13 @@ use std::time::Duration;
 /// keeps each round's first tick's besides): about four seconds. A seek
 /// plays fewer ticks than this once its target has been reached before.
 pub const KEYFRAME_EVERY: u32 = 240;
+
+/// The ticks between two of the states kept of the stretch a seek last
+/// played through (between two kept states: at most
+/// `KEYFRAME_EVERY / NEAR_EVERY - 1` of them, dropped when a seek plays
+/// through another stretch). A frame back plays fewer ticks than this once
+/// the one before it has played its stretch.
+pub const NEAR_EVERY: u32 = 16;
 
 /// While it plays, a viewer within this many ticks of a round's start (a
 /// second) goes to the round before's when asked for the round's start
@@ -123,6 +134,7 @@ struct State {
 enum Kept {
     Keyframe(usize),
     Frontier,
+    Near(usize),
 }
 
 /// A replay being watched. It owns everything it needs (the graphics and
@@ -150,6 +162,11 @@ pub struct Viewer {
     /// Where indexing ahead left off, between two keyframes
     /// ([`Viewer::index`]).
     frontier: Option<State>,
+    /// States of the stretch a seek last played through, every
+    /// [`NEAR_EVERY`]th tick between two keyframes, by tick, ascending.
+    near: Vec<State>,
+    /// The ticks seeks have played in silence (what seeking cost so far).
+    sought: u64,
     /// The furthest tick reached, by playing, seeking or indexing.
     reached: u32,
     /// Nothing is left to index: the end was reached, or the engine
@@ -212,6 +229,8 @@ impl Viewer {
             rounds: replay.round_starts(),
             keyframes: Vec::new(),
             frontier: None,
+            near: Vec::new(),
+            sought: 0,
             reached: 0,
             whole: replay.ticks.is_empty(),
             paused: false,
@@ -371,8 +390,28 @@ impl Viewer {
         if here > target || at > here || self.session.stopped.is_some() {
             self.restore(kept);
         }
-        while self.position() < target && self.run(false) {}
+        while self.position() < target && self.run(false) {
+            self.sought += 1;
+            self.keep_near();
+        }
         self.settle();
+    }
+
+    /// Keep the state a seek is passing through, if it is one of the
+    /// stretch's every [`NEAR_EVERY`]th: the states of another stretch go.
+    fn keep_near(&mut self) {
+        let here = self.position();
+        if here % NEAR_EVERY != 0 || self.session.stopped.is_some() || self.keyframes.binary_search_by_key(&here, |k| k.tick).is_ok() {
+            return;
+        }
+        let stretch = |tick: u32| tick / KEYFRAME_EVERY;
+        if self.near.first().is_some_and(|n| stretch(n.tick) != stretch(here)) {
+            self.near.clear();
+        }
+        if let Err(at) = self.near.binary_search_by_key(&here, |n| n.tick) {
+            let state = self.state();
+            self.near.insert(at, state);
+        }
     }
 
     /// Go to the tick nearest to `time` from the replay's start.
@@ -465,7 +504,13 @@ impl Viewer {
 
     /// How many states the viewer keeps to seek from.
     pub fn kept(&self) -> usize {
-        self.keyframes.len() + self.frontier.is_some() as usize
+        self.keyframes.len() + self.frontier.is_some() as usize + self.near.len()
+    }
+
+    /// The ticks seeks have played in silence so far: what seeking has
+    /// cost, in ticks (for a host's debug line, and the tests).
+    pub fn sought(&self) -> u64 {
+        self.sought
     }
 
     // ---- The picture and the sound ---------------------------------------
@@ -590,19 +635,23 @@ impl Viewer {
     /// The kept state nearest to `target` at or before it, and its tick.
     fn nearest(&self, target: u32) -> (Kept, u32) {
         let i = self.keyframes.partition_point(|k| k.tick <= target) - 1;
-        let at = self.keyframes[i].tick;
-        match &self.frontier {
-            Some(f) if f.tick <= target && f.tick > at => (Kept::Frontier, f.tick),
-            _ => (Kept::Keyframe(i), at),
+        let mut nearest = (Kept::Keyframe(i), self.keyframes[i].tick);
+        if let Some(f) = self.frontier.as_ref().filter(|f| f.tick <= target && f.tick > nearest.1) {
+            nearest = (Kept::Frontier, f.tick);
         }
+        if let Some(n) = self.near.partition_point(|n| n.tick <= target).checked_sub(1).filter(|&n| self.near[n].tick > nearest.1) {
+            nearest = (Kept::Near(n), self.near[n].tick);
+        }
+        nearest
     }
 
     /// Be as a kept state was.
     fn restore(&mut self, kept: Kept) {
-        let Viewer { session, renderer, other_hud, audio, view, rounds, keyframes, frontier, .. } = self;
+        let Viewer { session, renderer, other_hud, audio, view, rounds, keyframes, frontier, near, .. } = self;
         let state = match kept {
             Kept::Keyframe(i) => &keyframes[i],
             Kept::Frontier => frontier.as_ref().expect("a frontier to go on from"),
+            Kept::Near(i) => &near[i],
         };
         put(state, session, renderer, other_hud, audio, *view, rounds);
     }
