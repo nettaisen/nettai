@@ -45,12 +45,14 @@ return {
     obstacle_slide_bounds = false,
     -- What the ends of a navi's actions clear of its requests besides the attacks' six: an attack's (0x0800CA28,
     -- 0x0800C9FC: 0x3F) nothing more; a paralysis's, a flinch's and a drag's (0x08010A74, 0x080109E6, 0x08010C28:
-    -- 0x43F) the anti-sword trigger too (0x400, which AntiSwrd's trap sets: 0x0802309C).
+    -- 0x43F) the anti-sword trigger too (0x400, which AntiSwrd's trap sets: 0x0802309C). A cut-in's ask clears itself
+    -- alone (0x08010CB8: 0x800), so a chip asked for before the field dimmed is used after it.
     request_clears = {
         attack = {},
         paralysis = { "anti_sword_triggered" },
         flinch = { "anti_sword_triggered" },
         drag = { "anti_sword_triggered" },
+        cut_in = {},
     },
     -- What a navi's statuses' end clears (0x08013218): EXE4 has no freeze and no bubble, the other four statuses'
     -- flags (0xE800), the requests 0x8068 and the four timers (its flag 0x10000 holds a navi changing into a soul:
