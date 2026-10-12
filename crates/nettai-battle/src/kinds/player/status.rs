@@ -178,6 +178,12 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     status_shader(b, r);
     update_visibility(b, r);
     counter_shader(b, r);
+    // The rules' own shader over those (EXE4's 0x0800BB18: the dark soul's
+    // last ticks).
+    let side = b.objects.get(r).alliance;
+    if let Some(shader) = b.rules_navi_shader(side, r) {
+        b.objects.sprite_mut(r).look.color_shader = shader;
+    }
     charge_brings_glow(b, r);
     dive_ripple(b, r);
     if flag1(b, r) & f1::DEAD != 0 {
