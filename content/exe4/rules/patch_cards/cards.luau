@@ -2,9 +2,20 @@
 -- EXE4's patch cards (改造カード: docs/design/exe4-map.md §8): what each card does, the constructors the cards' modules
 -- call (content/exe4/patch_cards, written by tools/exe4/gen_patch_cards.py from the cards' handlers, the table at
 -- 0x08041E8C) and what each effect does to the stats (`apply`); ./init.luau runs a side's cards in the reload. A card
--- is a `SlottedPatchCard` (EXE4's own type: no MB, and the catalog slot it belongs in, 0A to 0F) of these effects.
+-- is a `SlottedPatchCard` (EXE4's own type: no MB, and the catalog slot it belongs in, `SLOT_0A` to `SLOT_0F`) of
+-- these effects.
 
 local cards = {}
+
+-- The six catalog slots, each by its number as the save and the setup count it (the save's 0x464C + n, a setup's
+-- `slot`) and named for the label the game shows it under. A card states the one it belongs in (`slot`), and a
+-- pair's half the one its other half sits in (`pair`).
+cards.SLOT_0A = 0 -- shown as 0A
+cards.SLOT_0B = 1 -- shown as 0B
+cards.SLOT_0C = 2 -- shown as 0C
+cards.SLOT_0D = 3 -- shown as 0D
+cards.SLOT_0E = 4 -- shown as 0E
+cards.SLOT_0F = 5 -- shown as 0F
 
 local function effect(e: PatchCardEffect): PatchCardEffect
     return e

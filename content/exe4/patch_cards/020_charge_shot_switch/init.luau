@@ -6,7 +6,7 @@ local cards = require("../rules/patch_cards/cards")
 local machine_gun = require("../navis/megaman/weapons/machine_gun")
 
 local card: SlottedPatchCard = {
-    slot = "0E",
+    slot = cards.SLOT_0E,
     effects = {
         cards.charged_shot(machine_gun.weapon),
         cards.clear_bug("weapon"),

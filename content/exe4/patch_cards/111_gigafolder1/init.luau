@@ -5,7 +5,7 @@
 local cards = require("../rules/patch_cards/cards")
 
 local card: SlottedPatchCard = {
-    slot = "0A",
+    slot = cards.SLOT_0A,
     effects = {
         cards.giga_folder(1),
     },

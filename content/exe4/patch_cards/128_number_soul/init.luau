@@ -6,7 +6,7 @@ local cards = require("../rules/patch_cards/cards")
 local numbersoul = require("../navis/megaman/forms/numbersoul").numbersoul
 
 local card: SlottedPatchCard = {
-    slot = "0E",
+    slot = cards.SLOT_0E,
     effects = {
         cards.soul(numbersoul),
         cards.bug("hp", 2),
