@@ -378,6 +378,8 @@ pub struct PlayerView<'a> {
     pub random_battle: bool,
     /// A netbattle's last turns (presentation: the window's block).
     pub late_turns: bool,
+    /// L is the screen's run key (not in a round whose host took it).
+    pub run_key: bool,
 }
 
 /// What a player's screens remember through a round (`dword_20349A0`,
@@ -1123,8 +1125,12 @@ impl Screen {
             ScreenKey::L => {
                 // (The navi's message: every navi of the originals has one. A
                 // navi whose content states none has no box to open; the
-                // frontend's audit lists it.)
-                if view.library.run_message(view.stats.navi)[0] != 0 {
+                // frontend's audit lists it. Nor does a round whose host took
+                // the run key, `HostKeys::run`, where the original's
+                // `sub_8028B74` goes on to state 0x1C, `sub_8026E98`: the key
+                // is read, as it was the tick's first down, and does
+                // nothing.)
+                if view.run_key && view.library.run_message(view.stats.navi)[0] != 0 {
                     self.phase = Phase::RunMessage { chatbox: None };
                     if layout.run_message_at_key {
                         // (EXE4's 0x080205C6 runs its script with the key, and
