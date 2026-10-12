@@ -305,11 +305,34 @@ language = "en"
 "gigacan3" = { name = "GigaCan3", description = "A cannon\ndriven by\nGigaPower" }
 "heatsprd" = { name = "HeatSprd", description = "Explosion\nby Wide\nattack" }
 "bubsprd" = { name = "BubSprd", description = "Bubbles\nby Wide\nattack" }
+"blakwing" = { name = "BlakWing", description = "EvilChip!\nWings\ndescend" }
+"suprspr1" = { name = "SuprSpr1", description = "A 3-hit\nwide shot" }
+"suprspr2" = { name = "SuprSpr2", description = "A 3-hit\nwide shot" }
+"suprspr3" = { name = "SuprSpr3", description = "A 3-hit\nwide shot" }
+"flmcros1" = { name = "FlmCros1", description = "The burn-\ning flame\nin cross!" }
+"flmcros2" = { name = "FlmCros2", description = "The burn-\ning flame\nin cross!" }
+"flmcros3" = { name = "FlmCros3", description = "The burn-\ning flame\nin cross!" }
+"bstfang1" = { name = "BstFang1", description = "Numerous\nFangs are\ncontinued" }
+"bstfang2" = { name = "BstFang2", description = "Numerous\nFangs are\ncontinued" }
+"bstfang3" = { name = "BstFang3", description = "Numerous\nFangs are\ncontinued" }
+"pithoky1" = { name = "PitHoky1", description = "The rico-\ncheting\nHockey" }
+"pithoky2" = { name = "PitHoky2", description = "The rico-\ncheting\nHockey" }
+"pithoky3" = { name = "PitHoky3", description = "The rico-\ncheting\nHockey" }
+"magshok1" = { name = "MagShok1", description = "Powerful\nmagnet\nattack!" }
+"magshok2" = { name = "MagShok2", description = "Powerful\nmagnet\nattack!" }
+"magshok3" = { name = "MagShok3", description = "Powerful\nmagnet\nattack!" }
+"lifesync" = { name = "LifeSync", description = "Makes\nenmy's HP\nsame" }
+"signlred" = { name = "SignlRed", description = "Enmy chip\nis no use\nwhile red" }
 "metagel" = { name = "MetaGel", description = "Gel attck\nsteals a\npanel!" }
 "magnum" = { name = "Magnum", description = "Cursor\ndestroys\npanel!" }
 "bugcharg" = { name = "BugCharg", description = "EvilChip!\nGets powr\nwith turn" }
 "shotstar" = { name = "ShotStar", description = "Drop many\nmeteor on\nenmy area" }
 "bugchain" = { name = "BugChain", description = "Fires\nbugs into\nenmy area" }
+"pitrng1" = { name = "PitRng1", description = "3 boome-\nrang atk\nenemies" }
+"pitrng2" = { name = "PitRng2", description = "3 boome-\nrang atk\nenemies" }
+"pitrng3" = { name = "PitRng3", description = "3 boome-\nrang atk\nenemies" }
+"timebom" = { name = "TimeBom+", description = "Sets a\nTimeBom" }
+"h-burst" = { name = "H-Burst", description = "Explosion\nspreads\ninto 1!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }
