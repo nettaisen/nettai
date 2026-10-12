@@ -102,7 +102,7 @@ of the one that reads the base US ROM alone for most.
 | chip pictures | - | 6 of 411 | 6 of 411 | 15 of 411 | 20 of 411 | 20 of 411 |
 | chip icons | - | 5 of 411 | 6 of 411 | - | 5 of 411 | 6 of 411 |
 | sprites | - | 1 of 298 | 1 of 298 | 6 of 298 | 7 of 298 | 7 of 298 |
-| portraits | - | 5 of 12 | 5 of 12 | - | 5 of 12 | 5 of 12 |
+| portraits | - | 5 of 12 | 4 of 12 | - | 5 of 12 | 4 of 12 |
 | backgrounds | - | - | - | - | - | - |
 | field | - | - | - | - | - | - |
 | mugshots | - | 23 of 52 | 23 of 52 | - | 23 of 52 | 23 of 52 |
@@ -124,10 +124,9 @@ What a player sees, and whether the ROMs they have hold what is missing.
   faces, its Crosses' names, its Beast Out button and picture, and its Cybeast's sprite. A Japanese ROM also
   lacks the other version's chip of the two the US release cut, Gregar or Falzar. A Gregar ROM has no icon
   for the Falzar chip (its record's is a placeholder that reads "13A"), and gives the BeastOut chip's picture
-  as it has it, its own Beast's.
+  as it has it, its own Beast's. And a Gregar ROM does have one of Falzar's navis' portraits, DustMan's: the
+  archive is in it with no entry of the portraits' table pointing at it, so the extractor states where.
 - **Only US ROMs.** The fifteen chip pictures and six sprites the US release cut, and the Japanese words.
-- One picture a ROM holds and the pack doesn't take: the Gregar ROMs have DustMan's portrait archive, with no
-  entry of the portraits' table pointing at it.
 
 **EXE5 and EXE4**, until their extraction reads every ROM as EXE6's does:
 

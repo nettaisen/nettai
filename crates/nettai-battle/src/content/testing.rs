@@ -694,7 +694,7 @@ fn numbered_assets() -> nettai_content_api::PackIndex {
         ("jet-flame", sprite(0x10, 0x28)),
         ("propeller", sprite(0x10, 0x3D)),
         ("sensor", sprite(0x04, 0x05)),
-        ("wide-navi", sprite(0x08, 0x14)),
+        ("gregar-cybeast", sprite(0x08, 0x14)),
         ("summon-black", sprite(0x04, 0x1D)),
         ("flame-hook-fire", sprite(0x0C, 0x45)),
         ("impact", sprite(0x14, 0x01)),
