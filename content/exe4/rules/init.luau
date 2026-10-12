@@ -13,6 +13,7 @@ local navicust = require("@self/navicust")
 local navicust_bugs = require("@self/navicust/bugs")
 local save = require("@self/save")
 local souls = require("@self/souls")
+local soul_turns = require("@self/souls/turns")
 
 -- What a side keeps through a round: the dark chips' (./dark_chips), Double Soul's (./souls) and its NaviCust bugs'
 -- counts (./navicust).
@@ -158,6 +159,11 @@ local rules: Rules = {
         round_setup = function(side: number)
             save.round_setup(side)
             navicust.run(side)
+        end,
+        -- A navi that starts the round in a soul (a soul patch card's, ./patch_cards): its turns are never counted
+        -- (./souls/turns: the navi's init, 0x08010828).
+        round_start = function(side: number)
+            soul_turns.round_start(battle.navi(side).form)
         end,
         -- As each hand is installed, its dark chips' costs (./dark_chips).
         custom_result = function(side: number)

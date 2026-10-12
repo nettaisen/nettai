@@ -21,10 +21,11 @@ return {
     -- Presentation: its flash is a palette transform in slot 9, before the fades' (EXE4's fade slots to confirm:
     -- exe4-map.md §16).
     palette_flash_order = "before_fades",
-    -- Its afterimages and form overlays don't run while paused (EXE5's code).
-    overlays_run_while_paused = false,
-    -- A form overlay (actor 0x57, 0x080CC3D8) follows from its first update with the fight on (0x080CC440: its action 8;
-    -- else it waits, its sprite stepping, 0x080CC4D4). It takes its owner's palette and its own side's facing once, at
+    -- Its afterimages don't run while paused (0x080E5020 sets no header flag 0x04: EXE5's code).
+    afterimages_run_while_paused = false,
+    -- A form overlay (actor 0x57, 0x080CC3D8), spawned running while paused (0x080CC60C: its header flag 0x04, which a
+    -- soul worn from the round's start needs to start in the intro), follows from its first update with the fight on
+    -- (0x080CC440: its action 8, the flag off; else it waits, its sprite stepping, 0x080CC4D4). It takes its owner's palette and its own side's facing once, at
     -- its init (0x080CC40C, 0x080CC42C), and each tick only records its owner's animation (0x080CC46E), which its
     -- sprite's update loads.
     form_overlay = {
@@ -33,6 +34,7 @@ return {
         palette_each_tick = false,
         facing_each_tick = false,
         waiting_steps = true,
+        run_while_paused = true,
     },
     afterimages_wear_overlays = false,
     -- Its sprites' frame load (IWRAM 0x0300632C) is EXE5's code.

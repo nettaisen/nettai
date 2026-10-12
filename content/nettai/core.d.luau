@@ -1845,6 +1845,10 @@ export type KindSpec = {
     -- An object of it brought a navi chip's navi itself (passing itself as
     -- the navi's controller): the navi is done (`navi_chip.navi_left`).
     navi_left: ((me: Object) -> ())?,
+    -- An obstacle of it starts being encased (in ice or a bubble: the
+    -- obstacle framework's encasing calls it in its first step; the
+    -- encasing ends the obstacle without its own destroyed action).
+    encased: ((me: Object) -> ())?,
 }
 export type Kind = KindSpec
 

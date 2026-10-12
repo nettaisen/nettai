@@ -2791,6 +2791,7 @@ pub fn hook_args(lua: &Lua, call: HookCall, bound: &Bound) -> mlua::Result<mlua:
             vec![LuaValue::Integer(mlua::Integer::from(side)), chip]
         }
         HookCall::NaviLeft { controller } => vec![obj(controller)?],
+        HookCall::Encased { obstacle } => vec![obj(obstacle)?],
         HookCall::RoleEncased { obstacle, ice, class } => {
             let class = class.map_or(LuaValue::Nil, |c| LuaValue::Integer(mlua::Integer::from(c)));
             vec![obj(obstacle)?, LuaValue::Boolean(ice), class]
@@ -2862,6 +2863,7 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
         HookCall::InstantChip { .. }
         | HookCall::RoleEncased { .. }
         | HookCall::NaviLeft { .. }
+        | HookCall::Encased { .. }
         | HookCall::FormNavi { .. }
         | HookCall::Panel(_) => Ok(Value::Nil),
         // What a side is given: a whole number, a flag or nil.

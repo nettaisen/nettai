@@ -908,7 +908,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   user flashes, then a screen flash and the blinding hit over the other side's area (row 0x34, blindness for 480
   ticks). The lab's chips/ (4) and status/ blindness replay every frame; the hit is pixel-exact.
 - **Mine** (the dimming chips' variant 0x12, `chips/mine`): EXE6's Mine (@exelib/mine: controller #0x29, 0x080E4F5C;
-  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID, sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
+  mine #0x4C, 0x080D6ED4) in EXE4's look: no NameID (an identity that says only that the poltergeist and ColdMan
+  leave it, item 151), sheet 0c-22, its hops' 0x123, its blast 0x70 over effect row
   0x47 (14-13), collision rows 0x33 and 0x2A. Its init frees it without leaving its side's field-object slots when no
   collision record is left (0x080D6F5C); the shared code leaves them (a collision pool run dry, which no recording
   reaches). The lab's chips/ (5) replay every frame; the hit is pixel-exact.
@@ -987,7 +988,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   the engine's `battle.set_chips_enabled`), which the navis' chip input reads (0x08007C3E, with the lockout at AIData
   +0x3A) and the computer navis' AI (0x08007C20); exe4-compat compares them every frame. Its obstacle code is EXE4's
   older: its own seven rows (0x080DD5F8), a crushing touch destroying it with its HP kept (0x08013F3E), no NameID, no
-  tracking. Under event flag 0x1187 (never in a netbattle) each green light and its end would also hide the other
+  tracking. An encasing (ColdMan's ice or bubble) ends it without its own leaving, so the encasing's first step
+  calls its ending (0x08011704: 0x080DD73C for attack #0x81): a kind's `encased`, the signal's turning the other
+  side's chips on again; the lab's chips/0x10a-coldman/signal (side 0's SignlRed, then its ColdMan while the signal
+  is red) has them on again at frame 4554, 60 ticks before the ice cube, and replays every frame. Under event flag
+  0x1187 (never in a netbattle) each green light and its end would also hide the other
   side's console's HUD draw task 17 (the levels gauge's sprite, which no netbattle shows): documented, not ported. The
   lab's chips/ (4) and status/signlred replay every frame (hit: side 1's chips off from frame 3173; side1: side 0's
   from 1181).
@@ -2200,7 +2205,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `WEAPONS`; the 32 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
-    Guard's too: item 60). **Done**, all but the souls' cards (item 58):
+    Guard's too: item 60). **Done** (the souls' cards: item 58):
     the routines of chips (all in: 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind
     and 0x55 PnlRetrn, cards 41, 51, 57, 70, 71, 79, 82, 115 and 118 matching),
     the routines that load no chip (all in: 0x04, the zap ring, card 81, navis/megaman/weapons/zap_ring, the ring
@@ -2212,7 +2217,28 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     and 102, the buster's shot with projectile rows 7, 8, 0x0B, 0x0D and 0x0E: cracking, poison, blinding (row 0x0B's
     status 0x32, 0x080CD3BC; row 0x0A's 0x22 no routine fires), grass and ice) and Triple Supporter's pair (item
     54: in, `cards.all_supports`).
-58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
+58. **The 12 soul patch cards** (121 to 132: NaviStats +0x24 = the soul's number, and two counts of the HP bug).
+    **Done** (group F): `cards.soul(form)` (rules/patch_cards/cards: the stats' form and starting form), which
+    gen_patch_cards.py writes for each soul (its `SOULS`). A battle then starts in the soul: the navi's init
+    (0x0801079C) loads the soul's sprite (0x0800B90A) and palette, puts on what it wears (0x0800B7E8), runs the
+    status reset in it (0x0800E05C: the soul's own routine, its weapons, its turns' start) and, the soul set, marks
+    its turns as never counted (0x08010828: AIData +0x18 = 0xFF; rules/souls/turns' `round_start`, from the rules'
+    `round_start`). So the soul lasts the battle (no revert, 0x0800B6B8), the emotion window shows the count's
+    highest, 5 (0x08016A52: the engine's `form_turns`), and Double Soul isn't offered (0x0801FF8C:
+    `turns.counted`). What it wears starts in the intro: the overlay's spawner sets its header flag 0x04
+    (0x080CC60C), which the engine's EXE4 rule lacked (`effects.form_overlay.run_while_paused`, split from the
+    afterimages' `afterimages_run_while_paused`: EXE4's afterimage spawner, 0x080E5020, sets none). The custom
+    screen takes the soul as it opens (0x0801DC82: its +0x0F), whatever put the navi in it. The compile check
+    (exe4-compat's `compiled`) reads the soul's byte too. The lab's modcards/121, 123 to 129, 131 and 132 and
+    overlay/aqua/fs-* and overlay/proto/fs-* (cards 131 and 127 with Full Synchro, 45) replay every frame; their
+    fights are pixel-exact but for the custom screens' known shift. **Open, group A's (item 74):** what the custom
+    screen does in a soul, every screen opened in it, not the change's status reset alone: the hand it builds
+    (0x0801F29A: GutsSoul's 30, WindSoul's and NumberSoul's 10 on each slot; 0x0801F226: WoodSoul's fold), on which
+    modcards/122-guts-soul (the Cannon of its first hand, 70 for our 40), modcards/123-wind-soul-chip,
+    modcards/132-wood-soul-fold and souls/guts/turn2 wait; JunkSoul's used chips offered again (0x0801DFBC: two
+    draws of the console's RNG1), on which modcards/130-junk-soul waits (every frame matches, the console's RNG1
+    apart from frame 984, its second screen); and SearchSoul's SHUFFLE button, drawn 16 frames late as a screen
+    opens (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
@@ -2480,6 +2506,30 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `stops_at_control`) counts them, so the move bug's start confusion (NaviStats +0x0D = 0xFF) spawns its visual on
     the intro's first tick (`navicust/bug-humor`, `bug-undersht`). The rule `status.timers_while_paused` (EXE4 true;
     EXE6, EXE5 false); the visual's own EXE4 differences (its sound, offset and role) are group A's.
+111. **Done: what a panel is drawn as** (group C, from B's frame comparisons: a cracked panel's hole a frame early).
+    EXE4 keeps the type and the owner each panel is drawn as in tables of their own (0x02037AE6, 0x02037B0E; EXE6 and
+    EXE5 in the panel, +6 and +7, which the panel's refresh writes), and the panel update alone writes them
+    (0x08009240): nothing while paused; a tick's column return (0x0800986C) draws every owner, with the return's
+    blink, and its per-panel tick (0x08009740) ends by drawing the panel as the type it began the tick with
+    (0x08009842), which a mend, an expiry and a pitfall's crumble set to what they leave and a cracked panel's
+    step-off break (0x080097C8) doesn't: the hole shows a tick late. A dimmed tick's update copies every panel's
+    type and owner (0x08009A38, from 0x080092A0): a mending hole's blink and a returning column's show through no
+    dimming. The rule `panels.drawn` (EXE4 `own_tables`; EXE6, EXE5 `in_panel`). Frame comparisons:
+    panels/cracked-step-off (frame 384) and chips/0x0ce-bugfix/bugs (868) pixel-exact; the lab's new
+    panels/mend-blink-dimming-540 and -542 (CrakOut's hole in its last second, SloGauge's dimming in either blink
+    phase) and panels/areagrab-return-dimming-1954 and -1958 (a returned column's blink) pixel-exact, where the
+    in-panel rule differs through the whole dimming (540: frames 967 to 1124; 1954: 2360 to 2517). EXE5's
+    stages/cracked-row/mend and EXE6's forms/falzar/bare-stage-cracked, which draw the hole at once, are exact as
+    they were.
+112. **Done: a crushed obstacle keeps its HP** (group C). EXE4's obstacle reaction (0x08013F3E, EXE6's `sub_801B394`'s
+    place) destroys an obstacle a crushing touch reaches (a body's, another obstacle's or a breaking hit's:
+    0x0C800002) with its HP as it is, and reads no removal; EXE6's and EXE5's drop the HP to 0. Its ten callers:
+    RockCube, the gears, Guardian's statue and VDoll's doll stated the engine's `destroys` already; TimeBomb's bomb,
+    BoyBomb's, Anubis's statue, the instruments, Wind's and Fan's fan and BigHamr's hammer ran the default (`breaks`):
+    their looks state `crush = "destroys"` now (@exelib's makers take it). The lab's new hits/silence-crushed
+    (Silence's instrument, 100 HP, and AirHoc1's puck, a breaking hit of 50, from the next panel) leaves the
+    instrument destroyed at 50 HP (frame 616), which `breaks` replays as 0; it and the six chips' recordings replay
+    every frame.
 
 ### 18.7 The HUD
 
@@ -2558,6 +2608,7 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
 151. **What the poltergeist leaves** (JunkMan's, @exelib/poltergeist). EXE4's 0x080EA16C and 0x0800B3E8 take every
     field object but attack objects #0x4C and #0x8C and effect object #0x6E, tested by kind (EXE5's by NameID); the
     engine asks the identity (`throwable`). **Done for #0x8C**, PropBom's bomb (chips/propbom/bomb: a field object's
-    identity with `throwable = false`; its recordings, JunkMan's and ColdMan's still match). Attack #0x4C is Mine's
-    land mine (chips/mine, @exelib/mine/land_mine's `identity`), ported with no identity, so both still take it: its
-    identity is to state `throwable = false`; effect #0x6E isn't ported.
+    identity with `throwable = false`; its recordings, JunkMan's and ColdMan's still match). **Done for #0x4C**, Mine's
+    land mine (chips/mine: the same identity through @exelib/mine/land_mine's `identity`): the lab's new
+    chips/0x10a-coldman/mine (the opponent's Mine hidden on (3,2), ColdMan's own cube formed over it) replays every
+    frame, where ColdMan took the mine before (its side at frame 734). Effect #0x6E isn't ported.
