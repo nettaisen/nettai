@@ -32,7 +32,15 @@ export type SunMeteors = {
     kind: Kind,
     -- `sub_80DC0C0`, EXE4's 0x080DDFCC: a meteor on (x, y) with `element`, the damage word and its variant, on
     -- `owner`'s side (its flip left 0). `z` is the spawner's register that becomes its starting height.
-    spawn: (owner: Object, x: number, y: number, element: number, variant: SunMeteor, damage: number, z: number) -> Object?,
+    spawn: (
+        owner: Object,
+        x: number,
+        y: number,
+        element: number,
+        variant: SunMeteor,
+        damage: number,
+        z: number
+    ) -> Object?,
 }
 
 -- A meteor's variant (a record of the original's table).
