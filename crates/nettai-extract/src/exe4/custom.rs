@@ -62,6 +62,7 @@ const LAYOUT: CustomLayout = CustomLayout {
     detail_blank: 7,
     empty_palette: Some(9),
     ok_cursor: CursorPlace { x: 0x58, y: 0x70, corners: [[(0, 0, false, false); 4]; 2] },
+    regular: (1, 100),
 };
 /// The cursor's corners (two frames of four words: y in the low half, x
 /// and the flips, 0x1000 h and 0x2000 v, in the high): over OK
