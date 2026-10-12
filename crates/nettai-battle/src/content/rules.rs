@@ -314,6 +314,9 @@ pub struct EffectsRules {
     /// The order the objects of a pool are drawn in. Presentation: the
     /// renderer's.
     pub draw_order: DrawOrder,
+    /// What a sprite part's depth bucket is counted from. Presentation:
+    /// the renderer's.
+    pub sprite_depth: SpriteDepth,
     /// What a frame's sprite draw has room for. Presentation: the
     /// renderer's.
     pub sprite_budget: SpriteBudgetRules,
@@ -358,6 +361,27 @@ pub enum DrawOrder {
     /// By slot (EXE4's 0x08003BA0, 0x08003ED4 and 0x08004180 walk each
     /// pool's slots from the first).
     Slots,
+}
+
+/// What a field sprite's part is ordered by among the field's sprites: its
+/// depth bucket in the field's layer, 0xE0 of them (the sprite draw's part
+/// list, `sub_3006440`; a part whose bucket is past the last isn't drawn,
+/// nor are its sprite's parts after it, `sub_3006920`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum SpriteDepth {
+    /// Its sprite's ground row on the screen, from 0x40 (EXE6's
+    /// `sub_3006440`, EXE5's): a sprite is drawn until its ground is past
+    /// the screen's bottom row.
+    Ground,
+    /// The same, further by its sprite's hardware priority (EXE4's
+    /// 0x0300602C, at 0x0300613C: the first part by the sprite's priority,
+    /// each part after it by 2: a sprite's own, or what the routine sets at
+    /// 0x0300616C for one whose priority was set; a ground shadow's bucket
+    /// in its layer the same way). The order among sprites of one priority is the same, but the
+    /// buckets run out two rows above the screen's bottom: a part whose
+    /// ground is on row 158 or lower isn't drawn.
+    GroundAndPriority,
 }
 
 /// The chip icons the HUD stacks over a navi that holds chips (the
@@ -842,7 +866,7 @@ pub enum OverlayRestart {
 
 /// Requests an end clears, in a content file a list of their names: the
 /// anti-sword trigger, the mode-9 A press, the rules' own B charge's release
-/// (EXE5's Chaos Unison releases).
+/// (EXE5's Chaos Unison releases), a chip's and a charged chip's.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RequestSet(pub u32);
 
@@ -851,6 +875,8 @@ impl RequestSet {
         (crate::actor::request::ANTI_SWORD_TRIGGERED, "anti_sword_triggered"),
         (crate::actor::request::MODE9_A, "mode9_a"),
         (crate::actor::request::RULES_RELEASE, "rules_release"),
+        (crate::actor::request::CHIP, "chip"),
+        (crate::actor::request::CHARGED_CHIP, "charged_chip"),
     ];
 }
 
@@ -872,6 +898,12 @@ pub struct RequestClears {
     pub paralysis: RequestSet,
     pub flinch: RequestSet,
     pub drag: RequestSet,
+    /// What a cut-in's ask clears besides itself, whether or not the chip
+    /// cuts in (the dimmed player's routine): EXE6's (`sub_8017AB4`,
+    /// 0x08017B5E: 0x80C) and EXE5's (0x080145AC) the chip's and the charged
+    /// chip's requests, EXE4's (0x08010CB8: 0x800) nothing, so a chip asked
+    /// for before the field dimmed is still asked for after it.
+    pub cut_in: RequestSet,
 }
 
 /// Collision flags a status end clears, in a content file a list of their
@@ -1790,6 +1822,13 @@ pub struct Rules {
     /// EXE5's `sub_801056A` runs its first step at once; EXE4's 0x0800C780,
     /// a stance's catch and a trap's alike, sets its action alone.
     pub trap_counter: StanceCounter,
+    /// The idle's entry starts a trap's counter before the navi's own idle
+    /// runs (the reactions section's): EXE6's (`sub_80EA734`) and EXE5's
+    /// (0x080EAFEA). EXE4's entry (0x080EB0D6) starts one for a navi in
+    /// auto battle alone (NaviStats +0x26 = 1, a story's navi: no
+    /// netbattle's); its idle starts it in its turn (0x080EEBD0), after the
+    /// phase's timer, the chip window and a revert asked for.
+    pub idle_entry_counter: bool,
     /// What a deleted player's object does (the reactions section's).
     pub dead_player: DeadPlayer,
     /// What an attack's end hands its lockout on to (the reactions
@@ -1916,7 +1955,11 @@ pub enum PanelDrawn {
     /// breaks in that tick (0x080097C8), shows its hole a tick late (a mend,
     /// an expiry and a crumble set what they draw). A dimmed tick's update
     /// draws every panel as the type and the owner it is (0x08009A38): a
-    /// blink shows through no dimming.
+    /// blink shows through no dimming. Its drawing (0x080092AC) reads a
+    /// panel's highlight, a table too (0x02037ABE), before whether it is
+    /// visible, and draws a highlighted panel only while it is (0x0800932C):
+    /// one that isn't keeps what it last showed, where the in-panel drawing
+    /// draws any panel that isn't visible as none (`sub_800C5E0`).
     OwnTables,
 }
 

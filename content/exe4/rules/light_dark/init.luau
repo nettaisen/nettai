@@ -30,10 +30,11 @@
 -- - **The chips a MegaMan may cut in with** (0x0800D608, which the cut-in asks before it prepares anything,
 --   0x08010C64): the same test at 480. So a value of 470 to 479 is a light one's for a use and a dark one's for a
 --   cut-in: a light one's dimming chip can't cut in there, though its use works.
---   **Not ported**: at those ten values a dark one's dimming chip passes the cut-in's test and then fails the
---   use's, and the cut-in (0x08010C88) runs the dimming table's entry of the attack's variant whatever the action
---   is: the fizzle's variant 4, FireMan's controller (0x080E31C4), with the refused chip's attack. Here that cut-in
---   starts nothing and the chip stays in the hand (docs/design/exe4-map.md §18 item 65).
+--   **Left out by the user's decision** (2026-10-13; docs/design/exe4-map.md §18 item 65): at those ten values a
+--   dark one's dimming chip passes the cut-in's test and then fails the use's, and the original's cut-in
+--   (0x08010C88) runs the dimming table's entry of the attack's variant whatever the action is: the fizzle's variant
+--   4, FireMan's controller (0x080E31C4), with the refused chip's attack. That glitch is not ported: here the
+--   cut-in starts nothing and the chip stays in the hand.
 
 local invalid = require("../chips/invalid").invalid
 local megaman = require("../navis/megaman").megaman
