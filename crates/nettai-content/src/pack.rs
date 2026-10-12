@@ -108,6 +108,31 @@ pub fn read_manifest(root: &Path, report: &mut Report) -> Option<Manifest> {
     Some(m)
 }
 
+// ---- What was read ------------------------------------------------------------
+
+thread_local! {
+    /// How many times this thread read a part of a pack or of the content
+    /// from disk ([`reads`]).
+    static READS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
+}
+
+/// How many times this thread has read a part of a pack or of the content
+/// from its files so far: a pack's graphics ([`import_graphics`]), its
+/// sound ([`import_sound_versions`]), a game's battle content
+/// ([`battle_content`], [`load_game`]) or a language's strings
+/// (`crate::locale::load_for`). Each is read whole, by a loader a host
+/// calls: nothing reads a file as a battle runs, so a host that loaded its
+/// game before a match sees the count stay where it was through the match
+/// (docs/frontend.md §9).
+pub fn reads() -> u64 {
+    READS.with(|n| n.get())
+}
+
+/// Count a part read on this thread.
+pub(crate) fn read_a_part() {
+    READS.with(|n| n.set(n.get() + 1));
+}
+
 // ---- Graphics -------------------------------------------------------------------
 
 /// Run `f` over `items` on all cores, keeping order.
@@ -153,6 +178,7 @@ fn subdirs(dir: &Path) -> Vec<(String, PathBuf)> {
 }
 
 pub fn import_graphics(root: &Path, report: &mut Report) -> Option<Bundle> {
+    read_a_part();
     let m = read_manifest(root, report)?;
     let Some(g) = m.graphics else {
         report.error(MANIFEST, "the pack has no graphics");
@@ -219,6 +245,7 @@ pub fn export_sound_versions(
 
 /// [`import_sound`], with the songs game versions have their own of.
 pub fn import_sound_versions(root: &Path, report: &mut Report) -> Option<(SoundBank, sound::SongVersions)> {
+    read_a_part();
     read_manifest(root, report)?;
     let got = sound::import_with_versions(&root.join("sound"), "sound", report)?;
     (!report.has_errors()).then_some(got)
@@ -261,6 +288,7 @@ fn battle_content_of(
     pack: &Path,
     mut report: Report,
 ) -> Result<(nettai_battle::Content, Report), Report> {
+    read_a_part();
     if report.has_errors() {
         return Err(report);
     }

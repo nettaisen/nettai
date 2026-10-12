@@ -122,13 +122,15 @@ struct Player {
     stats: NaviStats,
     /// EXE6's ChpShufl (its rules' stat): the re-deal button shows.
     chip_shuffle: bool,
+    /// L is the screen's run key (a console's battle).
+    run_key: bool,
     tick: u32,
 }
 
 impl Player {
     fn new(chips: &[(ChipId, u8)]) -> Player {
         let setup = PlayerSetup { folder: folder(chips), ..PlayerSetup::default() };
-        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), chip_shuffle: false, tick: 0 }
+        Player { side: Side::new(&setup), console: Console::new(&setup.console), lib: library(), stats: stats(), chip_shuffle: false, run_key: true, tick: 0 }
     }
 
     fn context(&self) -> Context<'_> {
@@ -140,6 +142,7 @@ impl Player {
             own_gauges: false,
             random_battle: false,
             late_turns: false,
+            run_key: self.run_key,
             now: self.tick,
         }
     }
@@ -647,6 +650,48 @@ fn l_opens_no_message_for_a_navi_without_one() {
     p.step(0);
     p.step(keys::A);
     assert_eq!(p.screen().selection(), [0]);
+}
+
+/// In a round whose host took the run key (`HostKeys::run`), L on the
+/// choosing grid opens no message and makes no sound, for a navi with one:
+/// the key is read and does nothing, and the grid takes the next key. L is
+/// still any key to a description's box and to the hidden window.
+#[test]
+fn l_does_nothing_when_the_host_took_the_run_key() {
+    let mut p = describing(3);
+    p.run_key = false;
+    for held in [keys::L, 0, keys::L, keys::L, 0] {
+        p.step(held);
+        assert_eq!(p.phase(), Phase::Choosing);
+        assert_eq!(p.screen().look.drawn.sounds().count(), 0, "L makes no sound");
+    }
+    p.step(keys::A);
+    assert_eq!(p.screen().selection(), [0]);
+    p.step(0);
+    // A description closes on any key, L among them.
+    p.step(keys::R);
+    assert!(matches!(p.phase(), Phase::Description { .. }));
+    for _ in 1..8 {
+        p.step(0);
+    }
+    p.step(keys::L);
+    for _ in 0..6 {
+        p.step(0);
+    }
+    assert_eq!(p.phase(), Phase::Choosing);
+    // The hidden window comes back on any key, L among them.
+    p.press(keys::SELECT);
+    p.step(0);
+    assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Waiting }));
+    p.step(keys::L);
+    assert!(matches!(p.phase(), Phase::Hidden { stage: HiddenStage::Restoring }));
+    p.step(0);
+    assert_eq!(p.phase(), Phase::Choosing);
+    // And on a console it is the run key still.
+    p.run_key = true;
+    p.step(0);
+    p.step(keys::L);
+    assert_eq!(p.phase(), Phase::RunMessage { chatbox: None });
 }
 
 #[test]
