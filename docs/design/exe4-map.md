@@ -3313,6 +3313,22 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     debris on row 158, frame 843), stages/rocks-07-drilarm-side1 (on row 159, frame 397) and
     pa/0x146-flmhook1/recipe1 (the hook on row 158) and the EXE5 lab's navis/knightman/charge-corner (rows 158 and
     159, frames 605 to 608) are pixel-exact around them (81, 71, 61 and 71 frames).
+136. **Done: a chip-destroying hit empties the hand** (found reading the releases' code, not by a replay: no replay
+    compares the hands). A hit with hit flag 0x10 (the hitter's type's bit: RollAro's arrow, RollSoul's charged shot,
+    Jealousy's hits, SearchMan's powered last shot; a guard strips it) clears the chip the navi's object names and,
+    in the player's intake (0x0801325A, called at 0x08013910), the side's whole hand: the chip block's first two
+    bytes zeroed (the cursor back at its first place) and ten bytes of 0xFFFF from +0x02 (its five chips), then the
+    navi's chip requests ended (0x08013280 clears requests 0x0C; the Japanese releases lack that call, §11). EXE5's
+    (0x0801709A) empties the hand the same way and leaves the requests; EXE6's `sub_801A2CC` takes the next chip
+    alone, the cursor stepping past it. The engine had EXE6's for all three. The status section's
+    `chip_destruction` (`takes`: "hand", EXE6's "next"; `ends_chip_requests`: EXE4's alone), read by the shared
+    intake. Recorded in the three labs (EXE4 destruction/, 12; EXE5 destruction/, 9; EXE6 jp/destruction/, 7): a hand
+    of three, one and none, one used before, the hit during a chip's use and on the frame it is asked for (the
+    request ended: `asked`, which stops at the empty hand's use without the rule's second part), on the hitter's
+    console and the hit side's; the hit side presses A afterwards, which is what shows a wrong hand. All replay,
+    states and sounds, and the frames around the hit and the A are pixel-exact on both consoles (EXE4 hand,
+    hand-bluemoon, used-first, rollaro, rollaro-bluemoon, jealousy; EXE5 hand, traced; EXE6 hand, traced): the chip
+    icons over the navi and the chip window going. Not recorded: SearchMan's powered last shot (the same hit flag).
 
 ### 18.8 The chips (group F)
 
