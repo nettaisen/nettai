@@ -68,12 +68,14 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// crates' and doesn't change with the engine: this number is what tells
 /// two engines apart. Where it wasn't raised and should have been, the
 /// loading's digest of the match's start tells two setups apart before the
-/// first tick.)
+/// first tick.) Version 7 has a match's frames say which match they are of
+/// (its seed, after the frame's kind), since the two players of a match
+/// play another on the same link, and lets a lobby go on after a match.
 ///
 /// A peer of another version is told from its first field, which every
 /// version's lobby messages and refusals start with, and nothing after it
 /// is read of such a peer.
-pub const VERSION: u16 = 6;
+pub const VERSION: u16 = 7;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer
