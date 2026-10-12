@@ -530,8 +530,9 @@ every sound call; with exe4-compat's harness comparing the gauge as the recordin
 
 Checked: the lab's dark/offer, hover-long, hover-hide, hover-describe, hover-then-ok-fast, with-folder-chip, side1,
 bluemoon, drksword, darkbomb, drkvulcn, drkspred, drkstage, drkcanon and drkcanon-taunt match every frame; drklance
-and drkrecov match through the chip's use and the next turn and stop at the screen after on the custom drain (item
-72). Their sound calls match but for the hover's music fades after OK, which the harness's late OK shifts (item 72).
+and drkrecov match through the chip's use and the next turn up to their known deviation at the screen after (the late
+OK's custom drain, §17 and item 72: frames 917 and 1566), and to their ends with the drain counted on the original's
+ticks. Their sound calls are the original's up to there (the hover's music fades after OK are the late OK's shift).
 
 ## 6. Transformations
 
@@ -621,6 +622,48 @@ for the other half: Triple Supporter's 74 reads slot 2 for 75 and 75 reads slot 
 Guard's 76 reads slot 3 and 77 slot 2 (0x0804249C, 0x080424C8); Charge FullCustom's 103 reads slot 4 and 104 slot 3
 (0x08042758, 0x08042780). So the halves work in those two slots, the first half before the second, and do nothing
 elsewhere.
+
+**A card's catalog slot** (the user's word: each card's definition states it). A card belongs in one of
+six slots, which the game shows as 0A to 0F (the save's slots 0 to 5), and a slot holds one card. The slot is the
+printed card's: the routine that files a scanned card (0x08035020; Blue Moon's the same with its own test of the
+number) reads one word of the card's data, the number in its low byte and the slot in its high byte
+(0x08035044: `lsrs r6, r0, #8`), and stores the number at that slot of the save's list with no table to ask and no
+test of the slot (it also clears the slot's switched-off entry, and keeps a mark by the card's number, 0x08006510,
+which the reload asks for, 0x0800653A: a card without it is taken out of its slot). The four ROMs hold no table of
+the slots (searched: the slots of cards 1 to 24 in order as a column of bytes at any stride to 64, their number and
+slot pairs either way round, and each slot's cards as a list); what they state is the six pair halves' slots above,
+which agree with Tango's table. So each card's `slot` is Tango's (`PATCH_CARDS`), written by
+tools/exe4/gen_patch_cards.py, which holds the table to the filing's instructions and the six halves in every ROM:
+0A 27 cards, 0B 16, 0C 16, 0D 20, 0E 50, 0F 4. Nothing in a battle reads it.
+
+The field is a number: the slot's own, as the save and the setup count it, 0 to 5 (`slot: number` in EXE4's own
+`SlottedPatchCard`, content/exe4/types.d.luau). A card writes it by its name, one of six constants of
+rules/patch_cards/cards, `slot = cards.SLOT_0A` to `cards.SLOT_0F` (0 to 5: each named for the label the game shows
+the slot under), and a pair's half names the slot it reads for its other half the same way
+(`cards.pair(cards.SLOT_0C, "075-triple-supporter-2-2", ...)`): the same number, the other card's `slot`. No table
+maps labels to numbers: the constants are the names, and the generator reads them from that module to write them.
+A number type holds no range, so the generator's check holds each card to Tango's number and exe4-compat's test
+every card to 0 to 5 (27, 16, 16, 20, 50 and 4 cards a slot, and each half's read to the other's `slot`). A tool
+reads `slot` from a card's definition as a number. For the label to show there is one source, the constants' names,
+and they are Luau's: what the build screen should do is ask the game for its slots rather than know them, the
+game's patch card view (rules side, as the build screen's other views are the game's) giving the six slots in
+order, each with its number and the label cut from its constant's name (`SLOT_0A` is "0A"), and placing a card in
+the row its `slot` names. Rust then shows what it is given and names no slot. (Not built: nothing reads `slot`
+yet.) The card's menu (0x0803410C) lists six
+slots and switches a slot's card on and off between the two lists; the lists are seven bytes long (their clears,
+0x08034FAC, and the reload's loop run to seven), and the seventh is one no menu row reaches and no card of the table
+belongs in.
+What follows from the fact, left as it is until the user says (the setup, the rules and the app are unchanged):
+- **The setup's `slot` repeats it.** A setup's `patch_cards` entries are `{ card, slot }` (the save's slot, 0 to
+  6), and for a card in its own slot the number is the card's `slot` again. They can disagree: the original applies
+  a card in whatever slot holds it (0x08041E6A dispatches by the card's number alone and takes no slot), in that
+  slot's turn, the last slot first; only a pair's half asks where the other one is.
+- **`patch_cards.SLOTS = 7`** (rules/patch_cards) is the reload's count, not the catalog's six.
+- **The lab files cards by their place in a scenario's list**, not by their slot: of its 118 recordings with a card,
+  99 hold one outside its catalog slot (108 of 137 bindings: card 45 in 0A or 0B for Full Synchro, each modcards/
+  scenario's card in 0A), which a console never has from scanned cards. They replay because the original doesn't
+  care. The three saves on hand that hold cards (18 bindings) have every card in its own slot; Tango's twelve
+  templates hold none.
 
 **The reload** (0x08035130; as ported: content/exe4/rules/navicust): the analysis (0x08047344) counts each program's
 bug by where it is (the command line, the third row, right to left: a plus part on it; off it, a program), by its
@@ -1272,8 +1315,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   BugBomb's raised weapon bug, the rock cube, then BugFix and a plain charged shot) replay every frame with the same
   sounds; the fight frames, the glow among them, are pixel-exact but for the custom screens' known shift and, in
   bugs, frame 868: a cracked panel broken by a step off it shows its break a frame early, as in panels/cracked-step-off
-  (frame 384), which the panels' drawing has. (The custom drain's fix has no replay: that bug meets the replay's known
-  deviation at the first custom screen.)
+  (frame 384), which the panels' drawing has. The custom drain's fix is custom-drain's (patch card 17's bug, a point
+  every 6 ticks of a selection: a screen with no pick, a screen that picks BugFix and takes the bug's two points,
+  BugFix, then two screens that drain nothing). That bug meets the replay's known deviation on the first screen
+  (§17: frame 274, before the chip); the workspace's `exe4_late_ok` replays the recording on the original's ticks,
+  where all its 2580 frames match, and with the fix's line taken out it differs at frame 1120 (the stat still 6).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -1775,11 +1821,33 @@ data/traces/lab-exe4; nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
 
 **Known deviations** (the workspace's trace-tests `deviations.rs`, `Set::Exe4Lab`, as EXE6's lab has its own): a
 recording the engine departs from on purpose matches every frame up to its deviation, and the frames after it aren't
-compared. `modcards/017-custom2`, `modcards/105-panel-change` and `modcards/110-custom3`, frame 274: nettai has no link
-cable, and the replay feeds the custom screen's OK as the fight saw it, the cable's delay (4 ticks) after the
-original's screen took it, so the side's selection status (BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4
-ticks longer, and the custom HP-drain bug, which counts only while it is set (0x0800C194), drains a point the original
-doesn't. No link latency goes into the engine (the user's word); a recording with another cause is no deviation.
+compared. Six of them have one cause, the late OK: nettai has no link cable, and the replay feeds the custom screen's OK as the
+fight saw it, the cable's delay (4 ticks) after the original's screen took it, so the side's selection status
+(BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4 ticks longer, and the custom HP-drain bug, which counts
+only while it is set (0x0800C194), drains a point the original doesn't. (The original's fight read the bit over the
+cable: set and cleared the cable's delay after the screen's selection started and took its OK. The engine's bit is
+its screen's own, set as the selection starts, and clears on the original's frame, the OK being fed late: it counts
+the delay's ticks more each screen, and a period that falls in them takes a point within those ticks after the
+original's OK.) No link latency goes into the engine (the user's word); a recording with another cause is no
+deviation.
+
+| recording | frame | the original's OK | the bug |
+|---|---|---|---|
+| `modcards/017-custom2`, `modcards/105-panel-change`, `modcards/110-custom3` | 274 | 273 | a patch card's custom HP drain, on the first screen |
+| `dark/drklance` | 917 | 916 | DrkLance's cost (a point every 6 ticks), on the screen after its use |
+| `dark/drkrecov` | 1566 | 1565 | DrkRecov's cost, the same |
+| `chips/0x0ce-bugfix/custom-drain` | 274 | 273 | patch card 17's, on the first screen, before BugFix |
+
+The workspace's trace-tests `exe4_late_ok` holds each entry to that cause and no other: the replay first differs on
+the listed frame, by the recording console's navi's HP alone, a point under the recording's; the frame is within the
+delay's ticks after the original's OK (one tick after it in all six); and replayed with the drain counted on the
+original's ticks (a side's count held on each custom screen tick the recording doesn't show its bit set), the round
+matches every frame to its end (2976, 2339, 2976, 1071, 1720 and 2580 frames). The sound comparison (`exe4_sounds`)
+compares such a round up to the original's OK, whose own sound the engine's screen makes the delay later, past the
+deviation (the entry's `sounds`), and counts it among the same; the frame comparison has no list: nettai-tool plays
+on past the difference it reports, and the frames after show the HP box under the original's. (A selection
+long enough for the original's own point would show the engine's the delay sooner: the same cause in another shape,
+which no recording of the lab has; `exe4_late_ok` would say so.)
 
 **The frames' known shift** (every game's recordings since engine a90d3e0a4 took the link cable out of the engine,
 which EXE5's and EXE6's frame comparisons showed as a regression from engine c6a07e0b7: EXE5's backgrounds/0x00 at
@@ -2546,7 +2614,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Every chip whose power is a formula was compared on the custom screen (verify's lab-compare): chips/0x0ca-muramasa
     (hit, hurt), 0x036-custswrd (hit, full-gauge), the three NumbrBls (hit; numbrbl1/hp), dark/drkcanon and drksword,
     and the 20 SP and 20 DS navi chips' hit. Every custom screen frame is exact but the late OK's known shift;
-    dark/drklance is exact up to its known stop at frame 917 (item 72). So are RedSun's and BlueMoon's (formulas 47
+    dark/drklance is exact up to its known deviation at frame 917 (item 72). So are RedSun's and BlueMoon's (formulas 47
     and 48, without bit 0x10: the number; chips/0x130-redsun/hit and wins-35, 0x135-bluemoon/hit and wins-5).
     Muramasa's and CustSwrd's frame reports had shown the run
     since the chips were ported (custom screen 271 to 285, in (49, 83) to (71, 94)); only the fight's frames were
@@ -2631,7 +2699,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     stays: the engine before item 65's bar spent it and stops at frame 732), a refused RollDS alone, Roll's cut-in
     in Full Synchro (doubled, spent) and the pending chip. (A refused navi chip's count, the side's count 6 at
     0x0801002C, is a count no routine reads back, 0x0800931C's fourteen calls ask for others, and no recording
-    carries the counts: that recording replays the same with the bar and without.)
+    carries the counts: that recording replays the same with the bar and without. EXE4's own count 6, added to at
+    0x0800D596, has one reader, an enemy's AI at 0x080B5226 (a story battle's), and EXE6's none: exe5-map.md §6.1.
+    Nothing a netbattle shows depends on it, so the engine doesn't keep it: the original adds one to it at every
+    navi chip's use, and the engine's use adds to no count.)
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
@@ -2695,12 +2766,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     uses a Cannon and the other side a navi chip within a few ticks): the Cannon stays named over AntiNavi's telop
     for the rest of its second (7 frames in EXE6, where the frontend showed the telop alone; 8 in EXE5); both are
     pixel-exact now (1217 fight frames each).
-72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
-    status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
-    engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
-    1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way (the
-    sound comparison counts those as the shift's: item 75). A harness question (raised with the coordinator), not
-    the engine's.
+72. **Closed: the selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the
+    side's status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so
+    the engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at
+    frame 1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same
+    way (the sound comparison counts those as the shift's: item 75). Not the engine's: no link latency goes into it
+    (the user's word), and the late OK is the replay's. Both recordings are known deviations now (§17's list, with
+    BugFix's custom-drain recording), each proven to stop for this cause and no other: with the drain counted on the
+    original's ticks they match to their ends (the workspace's `exe4_late_ok`). The EXE4 lab has no other stop.
 73. **Done: Double Soul** (group A; §5's Double Soul part, §6): the UNITE button, its offer and the soul's choice,
     OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's souls and
     Double Soul (no version in the content: exe4-compat maps a recording's version and a save's event flags to the

@@ -1221,7 +1221,8 @@ Special cases:
 **Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). On this path r4
 is always AIIndex*4 (set in `sub_80EA484`, preserved through `sub_801AF44`), so the cut-in always reads the hand.
 `sub_80127C0`'s side effects all still happen (the Full Synchro / anger doubling with sound 0x87, the use counter,
-heal-on-use, side stat 6 for navi chips, dark-chip costs); it writes every field the spawners read (+2 element, +3
+heal-on-use, side stat 6 for navi chips, dark-chip costs; the engine keeps no side stat 6, which no game reads in a
+netbattle: docs/design/exe5-map.md §6.1); it writes every field the spawners read (+2 element, +3
 subtype, +6 bonus, +8 damage, +0xA hit param, +0xC params, +0x14 chip). An action other than 0x15 or 0x1B registers
 nothing and doesn't advance the hand. `loc_800BF30` doesn't check for a registered controller, and a failed spawn
 registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2, 4), z 0x78 px, sound 0xA5.
