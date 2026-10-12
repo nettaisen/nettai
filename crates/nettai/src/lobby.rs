@@ -1,8 +1,8 @@
 //! Play: online, as Tango's Play tab. The selector strip's game and build
 //! (`App::select`) are what this player brings, its sheet shows the build,
 //! and the band at the foot makes the link: in a room of the signaling
-//! server (the code typed, or none: a new room, its code given to the other
-//! player) or directly (the host's address typed, or none: this player hosts
+//! server (the code typed, or none: a new room, whose code the server picks
+//! and this player gives the other) or directly (the host's address typed, or none: this player hosts
 //! on a port of their own), when FIGHT is pressed. Once linked, the band is
 //! the room's: its code to share, READY and LEAVE; both players' cards, the
 //! link's standing; and the battle it leads to, a `NetPlayer` over the link
@@ -14,7 +14,7 @@
 
 use crate::app::{App, Battle, Kind, clock_seed, game_names};
 use crate::games::{Names, Ready};
-use crate::netplay::{Agreeing, Progress, Standing, room_code, signal_server};
+use crate::netplay::{Agreeing, Progress, Standing, signal_server};
 use crate::stage::Stage;
 use crate::{BattleKind, Connection, LinkState, Peer, Screen, Side, Strings};
 use nettai_frontend::lobby::Settings;
@@ -50,7 +50,8 @@ impl Mode {
 /// The link's way, as FIGHT makes it.
 #[derive(Clone, Debug, PartialEq, Eq)]
 enum Way {
-    MakeRoom(String),
+    /// A new room: the signaling server picks its code.
+    MakeRoom,
     JoinRoom(String),
     Host,
     Join(String),
@@ -135,10 +136,13 @@ impl App {
         let label = self.play_label(&game, &ready, &side);
         let config = nettai_rtc::Config::default();
         let link = match &way {
-            Way::MakeRoom(code) | Way::JoinRoom(code) => {
+            Way::MakeRoom => {
                 let Some(server) = signal_server() else { return };
-                // (The room's name on the server: its code, in lowercase.)
-                nettai_rtc::Link::room(&server, &code.to_ascii_lowercase(), config)
+                Ok(nettai_rtc::Link::create_room(&server, config))
+            }
+            Way::JoinRoom(code) => {
+                let Some(server) = signal_server() else { return };
+                nettai_rtc::Link::join_room(&server, code, config)
             }
             #[cfg(not(target_arch = "wasm32"))]
             Way::Host => nettai_rtc::Link::host(DIRECT_PORT, config),
@@ -154,7 +158,7 @@ impl App {
                 a.set_build(&label.0, &label.1);
                 self.lobby.room = Some((a, way));
             }
-            Err(e) => self.lobby.problem = Some(e.0),
+            Err(e) => self.lobby.problem = Some(e.detail),
         }
     }
 
@@ -245,10 +249,12 @@ impl App {
         ui.set_play_ping(ping);
         ui.set_play_linked(self.lobby.linked());
         ui.set_room_open(self.lobby.linked());
-        let room = match self.lobby.room.as_ref().map(|(_, w)| w) {
-            Some(Way::MakeRoom(code) | Way::JoinRoom(code)) => code.clone(),
-            Some(Way::Host) => host_address(),
-            Some(Way::Join(address)) => address.clone(),
+        let room = match self.lobby.room.as_ref() {
+            // (A new room's code is the server's to say.)
+            Some((a, Way::MakeRoom)) => a.code().unwrap_or_default().to_string(),
+            Some((_, Way::JoinRoom(code))) => code.clone(),
+            Some((_, Way::Host)) => host_address(),
+            Some((_, Way::Join(address))) => address.clone(),
             None => String::new(),
         };
         ui.set_play_room(room.into());
@@ -284,7 +290,7 @@ impl App {
     /// address's, or this player hosting).
     pub fn play_fight(&mut self) {
         let way = match self.lobby.mode {
-            Mode::Room if self.lobby.code.is_empty() => Way::MakeRoom(room_code(clock_seed() as u64)),
+            Mode::Room if self.lobby.code.is_empty() => Way::MakeRoom,
             Mode::Room if self.lobby.code.len() == 6 => Way::JoinRoom(self.lobby.code.clone()),
             Mode::Room => {
                 self.lobby.problem = Some("A room's code has six letters".into());
@@ -343,10 +349,11 @@ impl App {
         }
     }
 
-    /// `NETTAI_NETPLAY=<game>:<make|join>:<CODE>` (or `<game>:host:` and
-    /// `<game>:direct:<HOST:PORT>`): once `game` is loaded, straight into
-    /// Play, linked that way, ready (two windows on one machine, and the
-    /// tour).
+    /// `NETTAI_NETPLAY=<game>:make:` or `<game>:join:<CODE>` (or
+    /// `<game>:host:` and `<game>:direct:<HOST:PORT>`): once `game` is
+    /// loaded, straight into Play, linked that way, ready (two windows on
+    /// one machine, and the tour). A made room's code is the signaling
+    /// server's: the band shows it, for the other window's `join`.
     pub fn auto_netplay(&mut self, game: &str) {
         let Ok(spec) = std::env::var("NETTAI_NETPLAY") else { return };
         let mut parts = spec.splitn(3, ':');
@@ -371,7 +378,7 @@ impl App {
             }
             _ => {
                 self.lobby.mode = Mode::Room;
-                Way::MakeRoom(code.to_ascii_uppercase())
+                Way::MakeRoom
             }
         };
         self.enter_room(way);

@@ -38,6 +38,11 @@ pub trait Link {
     /// What keeps it from connecting, if something does (the signaling
     /// server can't be reached).
     fn problem(&self) -> Option<String>;
+    /// The room's code, once the signaling server has said it (none on a
+    /// direct link).
+    fn code(&self) -> Option<&str> {
+        None
+    }
 }
 
 impl Link for nettai_rtc::Link {
@@ -49,11 +54,11 @@ impl Link for nettai_rtc::Link {
     }
 
     fn send(&mut self, datagram: &[u8]) -> Result<(), String> {
-        nettai_rtc::Link::send(self, datagram).map_err(|e| e.0)
+        nettai_rtc::Link::send(self, datagram).map_err(|e| e.detail)
     }
 
     fn recv(&mut self) -> Result<Option<&[u8]>, String> {
-        nettai_rtc::Link::recv(self).map_err(|e| e.0)
+        nettai_rtc::Link::recv(self).map_err(|e| e.detail)
     }
 
     fn is_open(&self) -> bool {
@@ -65,7 +70,11 @@ impl Link for nettai_rtc::Link {
     }
 
     fn problem(&self) -> Option<String> {
-        nettai_rtc::Link::problem(self)
+        nettai_rtc::Link::problem(self).map(|e| e.detail)
+    }
+
+    fn code(&self) -> Option<&str> {
+        nettai_rtc::Link::code(self)
     }
 }
 
@@ -225,6 +234,11 @@ impl<L: Link> Agreeing<L> {
         self.link.as_ref().and_then(Link::problem)
     }
 
+    /// The room's code, once the signaling server has said it.
+    pub fn code(&self) -> Option<&str> {
+        self.link.as_ref().and_then(Link::code)
+    }
+
     /// Step at `now`, without waiting: the datagrams that came to the
     /// lobby, its own out over the link.
     pub fn poll(&mut self, now: Instant) -> Progress<L> {
@@ -318,21 +332,6 @@ impl<L: Link> Channel for Framed<L> {
     }
 }
 
-/// A room's code: six letters and digits, none that read as another (no
-/// 0/O, 1/I/L).
-pub fn room_code(seed: u64) -> String {
-    const ALPHABET: &[u8] = b"ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-    let mut x = seed | 1;
-    (0..6)
-        .map(|_| {
-            x ^= x << 13;
-            x ^= x >> 7;
-            x ^= x << 17;
-            ALPHABET[(x % ALPHABET.len() as u64) as usize] as char
-        })
-        .collect()
-}
-
 /// The signaling server: `$NETTAI_SIGNAL` (`ws://127.0.0.1:8787` for
 /// signaling/ run by `npx wrangler dev`), if it is set.
 pub fn signal_server() -> Option<String> {
@@ -367,15 +366,17 @@ mod tests {
         let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, ..nettai_rtc::Config::default() };
         let m = nettai_match::pick::live(&content, "exe6", 9, None).unwrap();
         let settings = Settings::of_match(&m);
-        // (The first in the room hosts: the host is let in first.)
-        let mut host = nettai_rtc::Link::room(&server.url(), "lobby-test", config.clone()).unwrap();
+        // (The host asks the server for a room; the joiner comes by the
+        // code the server gave it.)
+        let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
         let start = Instant::now();
         while nettai_rtc::Link::role(&host).is_none() {
             assert!(start.elapsed() < Duration::from_secs(10), "not let in");
             host.poll().unwrap();
             std::thread::sleep(Duration::from_millis(1));
         }
-        let join = nettai_rtc::Link::room(&server.url(), "lobby-test", config).unwrap();
+        let code = nettai_rtc::Link::code(&host).expect("the room's code").to_string();
+        let join = nettai_rtc::Link::join_room(&server.url(), &code, config).unwrap();
         let timeout = Duration::from_secs(20);
         let mut both = [
             Agreeing::new(host, &content, settings.clone(), m.sides[0].clone(), timeout),
@@ -411,14 +412,5 @@ mod tests {
             }
             std::thread::sleep(Duration::from_millis(2));
         }
-    }
-
-    #[test]
-    fn room_codes_read_alike_aloud() {
-        let code = room_code(12345);
-        assert_eq!(code.len(), 6);
-        assert!(code.chars().all(|c| c.is_ascii_uppercase() || c.is_ascii_digit()));
-        assert!(!code.contains(['0', 'O', '1', 'I', 'L']));
-        assert_ne!(room_code(1), room_code(2));
     }
 }

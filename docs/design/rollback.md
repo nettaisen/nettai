@@ -25,9 +25,10 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   and the round and match markers; and the frame's meta, the sender's tick advantage. A frame costs 6 bytes at no
   latency, 9 at 2 frames, 17 at 5 and 28 at 10 (the unacknowledged window grows with the round trip) (§4.6).
 - **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc: native on the `rtc` crate,
-  the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker; nettai's
-  lobby, by the room's code) or directly (a host's UDP port, joined by its address); a dropped connection
-  is made again and the match goes on where it was. A handshake checks the protocol, the engine and the content,
+  the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker: a player asks
+  it for a room, it picks the room's code, and the other player joins by that code) or directly (a host's UDP port,
+  joined by its address); a dropped connection is made again and the match goes on where it was. What goes wrong is
+  a kind a host can say to its player in its own words, with the detail apart, for a log (§4.9). A handshake checks the protocol, the engine and the content,
   swaps what each player brings and agrees the seed (§4.7, §4.8).
 - **Snapshots**: `Battle` is plain data, `Clone`, `Send` and `Sync` (checked at compile time); a snapshot
   (`save_state` / `load_state`) is a boxed copy, `Send` as getgud requires, and a whole session on a battle world
@@ -554,9 +555,10 @@ on no engine crate. Two layers:
   and hands over its own as events (`PeerEvent`: the description, each candidate as it is found, open, down), so
   the browser's asynchronous offer and answer fit the same API; `send` and `recv` never wait.
 - `Link`: the channel a match is played on, which keeps a connection up: it meets the other player (in a room of
-  the signaling server, or directly at a host's port, natively), and when the connection drops makes another
-  (below). Its `send` and `recv` are a datagram channel's; while it is down, what is sent is dropped and nothing
-  comes.
+  the signaling server, one it asks the server to make, `Link::create_room`, or one it has the code of,
+  `Link::join_room`; or directly at a host's port, natively, `Link::host` and `Link::join`), and when the connection
+  drops makes another (below). Its `send` and `recv` are a datagram channel's; while it is down, what is sent is
+  dropped and nothing comes.
 
 **The channel** is opened unordered and without retransmits, and negotiated out of band (stream 0 on both sides, no
 in-band announcement), so both sides make it alike and a lost datagram is the next one's to make up, never SCTP's to
@@ -580,16 +582,36 @@ soon as the network is back.)
 **The signaling server** is `signaling/`, a Cloudflare Worker in TypeScript with a Durable Object a room, on the
 WebSocket hibernation API (an idle room costs nothing; `ping` is answered `pong` without waking it). TypeScript
 because the Durable Object WebSocket API is the Workers runtime's own, with no build step under `wrangler dev`;
-workers-rs would add a wasm build for a relay of about 150 lines. A client opens `/rooms/CODE?peer=ID` (CODE 1 to 64
-letters, digits, `_` and `-`; ID the client's own, random, the same on every reconnection). The room has two places:
-the first ID to come hosts (side 0, the left navi), the second joins; an ID that comes again gets its place back,
-which is how a reconnecting player keeps its side, and a third is refused. The server says `welcome` (the place, and
-whether the other is there), `peer` (the other came or went), `signal` (what the other sent) and `error`; a client
-says `signal` (relayed to the other, dropped if it isn't there) and `leave` (gives its place up). It reads none of
-the signals: the joiner's offer, the host's answer, the candidates, each of a connection's generation, and the
-host's call to dial again. A room is forgotten ten minutes after its last socket goes. The protocol is
-nettai-rtc's `signal` module; its `testing` feature has a server of its own speaking it, in process, for tests.
-The Worker is run locally (`npx wrangler dev`); deploying it is its owner's step (`npx wrangler deploy`).
+workers-rs would add a wasm build for a relay of about 200 lines. This is version 2 of its protocol (nettai-rtc's
+`signal` module; a client says its version as it connects, `v=2`, and a server of another refuses it):
+
+- **A room's code is the server's to pick**, never a client's (the user's instruction: "signaling server should
+  assign invite code instead of the client generating one"). It is six characters of
+  `ABCDEFGHJKMNPQRSTUVWXYZ23456789`: capitals and digits without `0` and `O` and without `1`, `I` and `L`, so that
+  none reads as another; some 887 million codes. The server draws it evenly from its own randomness
+  (`crypto.getRandomValues`), and draws again if a room has it. A code as a player types it has its letters made
+  capitals and its spaces and hyphens dropped (`signal::normalize_code`): a host may show it in two groups of three.
+- **To make a room** a client opens a WebSocket to `/rooms?peer=ID&v=2` (ID the client's own, random, the same on
+  every reconnection). The server makes the room, the client is its host (side 0, the left navi), and the server's
+  welcome says the code (`Link::code`).
+- **To join a room**, or to come back to one after the socket dropped, a client opens
+  `/rooms/CODE?peer=ID&v=2`. A code no room has is refused as that, and no room is made of it.
+- The room has two places: its maker hosts and the next ID to come joins; an ID that comes again gets its place
+  back, which is how a reconnecting player keeps its side, and a third is refused.
+- The server says `welcome` (the place, whether the other is there, and the room's code), `peer` (the other came or
+  went), `signal` (what the other sent) and `error` (a refusal, after which the socket closes: its `reason` is
+  `not-found`, `full`, `version`, `bad-request` or `busy`, and its `message` is for a log); a client says `signal`
+  (relayed to the other, dropped if it isn't there) and `leave` (gives its place up).
+- It reads none of the signals: the joiner's offer, the host's answer, the candidates, each of a connection's
+  generation, and the host's call to dial again.
+- A room is kept while a socket of it is open and ten minutes after the last one goes; then it is forgotten, and its
+  code with it. A room both players left is forgotten at once. A code whose room is forgotten is refused like one
+  that never was a room's.
+
+nettai-rtc's `testing` feature has a server of its own speaking the protocol, in process, for tests (it picks codes
+and refuses as the Worker does; `Server::forget` ends a room as the Worker's ten minutes do). The Worker is run
+locally (`npx wrangler dev`), and nettai-rtc's link tests run against it too, with
+`NETTAI_TEST_SIGNAL=ws://127.0.0.1:8787`; deploying it is its owner's step (`npx wrangler deploy`).
 
 **Direct connect** (native only) exchanges nothing before ICE: each side makes up the other's description, every
 field of which is fixed but two. The ICE credentials are fixed (the joiner's username fragment is its nonce, drawn
@@ -610,9 +632,19 @@ seconds), and in a room also when the host says it lost the connection, or when 
 host waits for the next generation: its offer in the room (asking for it every 2 seconds while it has no new
 connection under way), or directly the joiner's checks, whose username fragment names a newer generation (the host
 reads its socket itself, and takes only the joiner whose nonce came first). After 30 seconds down the link gives
-up, and every call after errs: "the connection to the other player dropped (WHY) and didn't come back within 30
-seconds". The signaling WebSocket reconnects on its own, with the same ID; the connection doesn't need it while it
-is up.
+up, and every call after errs (`ErrorKind::ConnectionLost`; its detail: "the connection to the other player dropped
+(WHY) and didn't come back within 30 seconds"); while it is down, `Link::down_for` says for how long and
+`Link::gives_up_in` how long is left. The signaling WebSocket reconnects on its own, with the same ID; the
+connection doesn't need it while it is up.
+
+**Before the first connection** nothing is down, and two waits end the link instead. The signaling server not
+letting the player in within 10 seconds (`Config::server_timeout`), or its socket not opening at all, is
+`ErrorKind::ServerUnreachable`, at once: a player who asked for a room is told now, and nothing is tried again
+(once the server has let the player in, a socket that drops is made again for as long as the room is kept). And
+once the other player is there to connect to (in the room; dialed directly; dialing a direct host) with no
+connection open after 30 seconds (`Config::connect_timeout`), the link gives up with `ErrorKind::CantConnect`: no
+path between the two networks was found, or nothing answers at the address. How long a host waits for the other
+player to come at all is its player's to say: an invite waits as long as its room is kept.
 
 The match needs nothing of its own to carry on: while the channel is down both peers wait at the stall guard (30
 ticks of unconfirmed input, about half a second after the drop), still sending their windows, which are lost; the
@@ -621,8 +653,33 @@ side hasn't acknowledged, rollback corrects what was predicted, and clock sync l
 frontend does is not give up: `NetPlayer` ends a match after 10 seconds with nothing from the other player, but not
 while the channel says it is down (`Channel::down_for`), counting again from when it is back; giving up is the
 transport's. The players see the battle stop within half a second; nettai's battle says "reconnecting (N s)"
-(`NetStatus::reconnecting`); the battle goes on where it was, or the match ends after 30 seconds with the message
+(`NetStatus::reconnecting`); the battle goes on where it was, or the match ends after 30 seconds with the error
 above.
+
+### 4.9 What a player is told when it goes wrong
+
+The user's instruction: "don't show any internal error strings to the user. if there are internal errors that must
+be surfaced as user errors, they should be replaced with enums and then go through i18n. they should not be overly
+technical errors". So nothing in the netplay path hands a host a sentence to show. Each layer's error is a kind (an
+enum) and a detail: the host says the kind in its own words, from its catalog, in the player's language, and writes
+the detail (English, as specific as the code can make it) to its log.
+
+**nettai-rtc**: `Error { kind: ErrorKind, detail: String }`, from `Link`'s constructors and from every call on a
+link that has ended (the first error a link meets is the one every later call returns).
+
+| `ErrorKind` | When |
+|---|---|
+| `ServerUnreachable` | The signaling server's socket didn't open, or the server didn't let the player in within `Config::server_timeout` |
+| `ServerVersion` | The signaling server speaks another version of its protocol than the program: one of the two is out of date |
+| `NoSuchRoom` | No room has that code: mistyped (refused before the server is asked, if it can't be a code), or its room is over |
+| `RoomFull` | The room has two players already |
+| `BadAddress` | A direct host's address names no machine |
+| `PortUnavailable` | A direct host can't listen on its port |
+| `CantConnect` | The other player is there and no connection could be made within `Config::connect_timeout` |
+| `ConnectionLost` | The connection dropped and didn't come back within `Config::reconnect_timeout` |
+| `Internal` | Anything else (no socket, no cryptography, a server that broke its protocol): nothing the player did or can mend |
+
+The lobby's and the match's own are §4.7's (`lobby::Failure`) and docs/frontend.md §2's (`driver::StopReason`).
 
 ## 5. Results
 
