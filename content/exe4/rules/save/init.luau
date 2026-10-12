@@ -25,13 +25,27 @@ local function round_setup(side: number)
 end
 
 -- `validate`'s part: what the save can hold.
-local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+local function validate(side: number, problem: (p: SetupProblem) -> ())
     local setup = rules.setup_of(side)
     if setup.hp < 1 or setup.hp > MAX_HP then
-        problem(string.format("hp %d: MegaMan's HP is 1 to %d", setup.hp, MAX_HP), "hp")
+        problem({
+            kind = "range",
+            field = "hp",
+            value = setup.hp,
+            least = 1,
+            most = MAX_HP,
+            text = string.format("hp %d: MegaMan's HP is 1 to %d", setup.hp, MAX_HP),
+        })
     end
     if setup.reg_up > MAX_REG_UP then
-        problem(string.format("reg_up %d: the Regular memory is %d at most", setup.reg_up, MAX_REG_UP), "reg_up")
+        problem({
+            kind = "range",
+            field = "reg_up",
+            value = setup.reg_up,
+            least = 0,
+            most = MAX_REG_UP,
+            text = string.format("reg_up %d: the Regular memory is %d at most", setup.reg_up, MAX_REG_UP),
+        })
     end
 end
 

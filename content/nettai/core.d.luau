@@ -1271,13 +1271,12 @@ declare battle: {
     -- language), else its key: for what the rules say to a tool
     -- (`validate`).
     name: (def: any) -> string,
-    -- The folder a tool asks the rules to check (the rules' `folder_check`):
-    -- whose side, its chips in order, its Regular and tag chips (places in
-    -- `chips`), and whether it is all of a folder (else the chips so far:
-    -- the rules about a whole folder wait); nil when none is.
+    -- The folder a tool asks the rules of (the rules' `folder_check` and
+    -- `folder_view`): whose side, its chips in order, its Regular and tag
+    -- chips (places in `chips`), whether it is all of a folder (else the
+    -- chips so far: the rules about a whole folder wait), and for
+    -- `folder_view` the chips the tool offers; nil when none is.
     checked_folder: () -> CheckedFolder?,
-    -- A rule the checked folder breaks: the rule's name and what to say.
-    folder_problem: (rule: string, text: string) -> (),
     -- `sub_802E4B8`: the side's SELECT or Cross special in progress.
     side_special: (side: number) -> SideSpecial,
     -- The rules' takeover of the side's navi starts for `ticks` (counted
@@ -2050,12 +2049,22 @@ export type RulesSpec = {
         custom_closed: ((side: number) -> ())?,
         -- A tool asks whether a folder keeps the side's game's folder rules
         -- (not the simulation): the folder is `battle.checked_folder()`, and
-        -- each rule it breaks is `battle.folder_problem(rule, text)`.
-        folder_check: ((side: number) -> ())?,
+        -- the answer each rule it breaks, a problem as `validate`'s (its
+        -- `entry` a place among the folder's chips, from 1). Nothing: none.
+        folder_check: ((side: number) -> { SetupProblem }?)?,
+        -- A tool asks what the side's folder rules allow of the folder
+        -- `battle.checked_folder()` (not the simulation): its limits, what it
+        -- holds against them, and each chip offered that can't go into it
+        -- now, with why.
+        folder_view: ((side: number) -> FolderView?)?,
+        -- A tool asks what the side's setup comes to once the round is set
+        -- up, of what the rules alone know (not the simulation): what gives
+        -- the navi its abilities, and its bugs.
+        overview: ((side: number) -> SetupOverview?)?,
         -- A tool asks what is wrong with side `side`'s setup (not the
-        -- simulation), once the round is set up: each problem a sentence, or
-        -- with the setup field it is of and the entry of a list field (from
-        -- 1). Nothing: none.
+        -- simulation), once the round is set up: each problem with its kind,
+        -- its sentence, the setup field it is of and the entry of a list
+        -- field (from 1). Nothing: none.
         validate: ((side: number) -> { SetupProblem }?)?,
         -- Each tick of the fight, in the navi's intake after the standing
         -- effects (`sub_801AC6C`; EXE5's light and dark MegaMan clears a holy
@@ -2686,17 +2695,81 @@ export type StatusDef = {
     survives_counter: boolean?,
 }
 export type Status = StatusDef
--- A problem of a side's setup (the rules' `validate`): a sentence, or with the setup field it is of and the entry
--- of a list field (from 1), which a tool shows it at.
-export type SetupProblem = string | { text: string, field: string?, entry: number? }
+-- A problem of a side's setup (the rules' `validate`, and of a folder their `folder_check`). A tool never shows the
+-- rules' words to a player: it knows the kinds of problem and words each in the player's language, with the kind's
+-- numbers. So a problem is its `kind`, the kind's own fields, the setup field it is of and the entry of a list field
+-- (from 1), which a tool shows it at, and `text`, a sentence for a log and the terminal's tools. The kinds (the
+-- tool's side of them is nettai-match's `Wrong`):
+--
+-- - of a folder: `folder_size` (it holds `used` chips, a folder is `limit`); `chip_not_allowed` (`chip` is none a
+--   folder holds); `chip_of_another_version` (`chip` is one the saves of another version of the game hold, not this
+--   side's); `chip_code` (`chip` doesn't come in `code`); `copies` (`used` copies of `chip`, `limit` at most);
+--   `mega`, `giga`, `dark` (`used` chips of the class, the navi's `limit`); `regular_memory` (the Regular chip
+--   `chip` is `used` MB, the Regular memory `limit`); `tag_memory` (the tag chips are `used` MB together, the tag
+--   memory `limit`); `regular_entry` and `tag_entries` (the Regular chip, the tag chips, aren't entries with a chip,
+--   or the tag chips are one entry twice); `tag_regular` (the Regular chip is a tag chip); `no_tags` (the game's
+--   folders have no tag chips);
+-- - of any field: `range` (it is `value`, and may be `least` to `most`); `not_taken` (the side's navi takes none);
+--   `missing` (the side's navi must state one); `twice` (an entry there twice, or a place taken twice); `budget` (a
+--   list's entries cost `used` together, `limit` at most: the patch cards' MB); `off_board` (a piece not on its
+--   board); `overlap` (a piece over the piece at entry `other`, from 1); `invalid` (anything else no save holds).
+export type SetupProblem = {
+    kind: string,
+    text: string,
+    field: string?,
+    entry: number?,
+    chip: Chip?,
+    code: string?,
+    used: number?,
+    limit: number?,
+    value: number?,
+    least: number?,
+    most: number?,
+    other: number?,
+}
 
--- A folder being checked (`battle.checked_folder`).
+-- A folder a tool asks the rules of (`battle.checked_folder`); `offered`: the chips a `folder_view` is asked whether
+-- the folder can take one more of.
 export type CheckedFolder = {
     side: number,
     chips: { { chip: Chip, code: string } },
     regular: number?,
     tags: { number }?,
     complete: boolean,
+    offered: { Chip }?,
+}
+
+-- What a side's folder rules allow of a folder (the rules' `folder_view`): a folder's size and the chips the folder
+-- holds; the Mega, Giga and dark chips it holds against the navi's limits (`dark` nil where the game's folders hold
+-- none); the Regular memory, and the tag memory (nil where the game's folders have no tag chips); and each chip
+-- offered that can't go into it now, with why: a problem (`chip_not_allowed`, `chip_of_another_version`, `copies`,
+-- `mega`, `giga`, `dark`, `folder_size`), its `used` what the folder holds now.
+export type FolderCount = { used: number, limit: number }
+export type FolderView = {
+    size: number,
+    chips: number,
+    mega: FolderCount,
+    giga: FolderCount,
+    dark: FolderCount?,
+    regular_memory: number,
+    tag_memory: number?,
+    refused: { SetupProblem },
+}
+
+-- What a side's setup comes to, of what the rules alone know (the rules' `overview`): what gives the navi its
+-- abilities, each the entry of one of the game's collections that does (a NaviCust program at work, a patch card) and,
+-- where the entry lists its effects, which of them (`effect`, a place in its `effects`, from 1); and the navi's bugs,
+-- each by its name in the game's locales' `bugs` table and its level, or as an entry's effect (a patch card's line);
+-- and each list of the setup whose entries cost against a budget (the patch cards' MB): its setup field, the field of
+-- its entries' data that is an entry's cost, what the list's entries cost together and the most they may, and
+-- whether an entry goes into it once.
+export type SetupSource = { entry: any, effect: number? }
+export type SetupBug = { name: string?, level: number?, entry: any?, effect: number? }
+export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean }
+export type SetupOverview = {
+    abilities: { SetupSource },
+    bugs: { SetupBug },
+    lists: { SetupList },
 }
 
 -- What an object is taken for (§3.2): the original's NameID record. A

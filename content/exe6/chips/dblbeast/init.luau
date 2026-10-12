@@ -9,6 +9,8 @@ local controller = require("@self/controller")
 local chip: Chip = {
     codes = { "W" },
     element = "null", family = "null", class = "mega",
+    -- A save can collect it (rules/folder), though no library lists it: a chip the Japanese game gave out.
+    collectible = true,
     rarity = 4, mb = 99, damage = 0, hit_param = 138, lockout = 0,
     flags = { "dimming" },
     slot_in_limit = 1,

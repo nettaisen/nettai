@@ -56,16 +56,17 @@ end
 -- its positioning class past the table at 0x0800F3C8), and no place holding 0: where EXE5's AI takes a first place
 -- of 0 for nothing to play, EXE4's has no test of it (0x0800E5AA) and plays its chip table's record 0, which is no
 -- chip (the game's own writer puts none there).
-function block.validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+function block.validate(side: number, problem: (p: SetupProblem) -> ())
     local stated: { Place } = rules.setup_of(side).auto_battle_places
     places.validate(stated, problem)
     for i, p in stated do
         if p.zero then
-            problem(
-                string.format("place %d of the auto battle data holds 0: the original plays its chip table's first record there, which is no chip", i),
-                "auto_battle_places",
-                i
-            )
+            problem({
+                kind = "invalid",
+                field = "auto_battle_places",
+                entry = i,
+                text = string.format("place %d of the auto battle data holds 0: the original plays its chip table's first record there, which is no chip", i),
+            })
         end
     end
 end

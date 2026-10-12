@@ -1997,10 +1997,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
             out.raw_set("tags", lua.create_sequence_from([a as i64 + 1, b as i64 + 1])?)?;
         }
         out.raw_set("complete", f.complete)?;
+        if !f.offered.is_empty() {
+            let offered = lua.create_table()?;
+            for (i, chip) in f.offered.iter().enumerate() {
+                offered.raw_set(i + 1, bound(|b| b.def_value(Registry::Chip, *chip))?)?;
+            }
+            out.raw_set("offered", offered)?;
+        }
         Ok(LuaValue::Table(out))
-    });
-    lib_fn!(lua, t, "folder_problem", |_, (rule, text): (String, String)| {
-        with(|api, _| Ok(api.folder_problem(&rule, &text)))
     });
     // A definition's name in the content's own strings, else its key: for
     // what the rules say to a tool (`validate`).
@@ -3082,31 +3086,3 @@ pub fn plain_data(v: &LuaValue, bound: &Bound, depth: u32) -> mlua::Result<netta
     })
 }
 
-/// What the rules' `validate` answered: each problem a sentence or
-/// `{ text, field?, entry? }` (an entry from 1, a list's place in Luau),
-/// said to the battle as a setup problem.
-pub fn setup_problems(v: LuaValue, api: &mut dyn CoreApi) -> mlua::Result<()> {
-    let list = match v {
-        LuaValue::Nil => return Ok(()),
-        LuaValue::Table(t) => t,
-        other => return Err(mlua::Error::runtime(format!("validate returns a list of problems, not {}", other.type_name()))),
-    };
-    for item in list.sequence_values::<LuaValue>() {
-        match item? {
-            LuaValue::String(text) => api.setup_problem(&text.to_str()?, None, None),
-            LuaValue::Table(p) => {
-                let text: String = p.get("text").map_err(|_| mlua::Error::runtime("a problem's `text` is its sentence"))?;
-                let field: Option<String> = p.get("field")?;
-                let entry: Option<i64> = p.get("entry")?;
-                let entry = match entry {
-                    Some(e) if e >= 1 => Some((e - 1) as u32),
-                    Some(e) => return Err(mlua::Error::runtime(format!("a problem's entry is a list's place, from 1, not {e}"))),
-                    None => None,
-                };
-                api.setup_problem(&text, field.as_deref(), entry);
-            }
-            other => return Err(mlua::Error::runtime(format!("a problem is a sentence or a table, not {}", other.type_name()))),
-        }
-    }
-    Ok(())
-}

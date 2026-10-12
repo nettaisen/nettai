@@ -150,13 +150,13 @@ fn exe5s_rules_refuse() {
     let says = |e: &[String], what: &str| assert!(e.iter().any(|p| p.contains(what)), "{what:?} not in {e:?}");
     // A fifth copy of a Standard chip (EXE6 would take five 8 MB Cannons).
     let five = with(&TANGO_EXE5, 4, &["cannon C"]);
-    says(&refused(&five, ""), "5 copies of cannon (a standard chip), past 4");
+    says(&refused(&five, ""), "5 copies of cannon, past 4");
     // Two copies of a Mega chip, of a Giga chip, of a dark chip.
     let two = with(&TANGO_EXE5, 0, &["colonel C", "colonel C", "bass F", "bass F", "drksword Z", "drksword Z"]);
     let e = refused(&two, "");
-    says(&e, "2 copies of colonel (a mega chip), past 1");
-    says(&e, "2 copies of bass (a giga chip), past 1");
-    says(&e, "2 copies of drksword (a dark chip), past 1");
+    says(&e, "2 copies of colonel, past 1");
+    says(&e, "2 copies of bass, past 1");
+    says(&e, "2 copies of drksword, past 1");
     says(&e, "2 Giga chips, past the navi's 1");
     // Six Mega chips; four dark chips.
     let six = with(&TANGO_EXE5, 0, &["colonel C", "meddy M", "gyroman G", "knightmn K", "larkman S", "gridman F"]);
@@ -234,7 +234,11 @@ fn a_matchs_lookups_only_see_its_game() {
         assert_eq!(check_match(&content, &m), Vec::<String>::new(), "{game}");
         // (The forms its sides' facts hold: a picked Cross list, the souls
         // a side that says nothing has.)
-        let held: Vec<u16> = crate::facts::fields(&content).iter().flat_map(|f| m.sides[0].facts.get(&content, f.name).unwrap().defs()).collect();
+        let forms = |v: crate::facts::Stated| match v {
+            crate::facts::Stated::List(items) => items.into_iter().filter_map(|i| if let crate::facts::Stated::Def(nettai_content_api::Registry::Form, Some(h)) = i { Some(h) } else { None }).collect(),
+            _ => Vec::new(),
+        };
+        let held: Vec<u16> = crate::facts::fields(&content).iter().flat_map(|f| forms(m.sides[0].facts.get(&content, f.name).unwrap())).collect();
         assert!(!held.is_empty() && held.iter().all(|&f| of(&content.defs.form(FormHandle(f)).key)), "{game}");
         let mut b = crate::check::start(&content, &m).unwrap();
         let pool = crate::folders::pool(&content, game, &mut b, 0);
