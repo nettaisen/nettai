@@ -54,6 +54,8 @@ local made = common.make {
     end,
     absorbs = false,
     removal_explodes = true,
+    -- 0x08013F3E: a crushing touch destroys it, its HP as it is.
+    crush = "destroys",
     column = column,
 }
 
