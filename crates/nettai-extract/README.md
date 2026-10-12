@@ -30,7 +30,10 @@ field, backgrounds and general screen layout/art; without it those sections use 
 placeholders even when another version contains similar graphics. EXE6's Japanese HUD
 lettering uses Japanese Falzar, and Cross labels use their respective Japanese versions.
 Placeholders preserve asset names and references but cannot reproduce missing animation
-timing or the original appearance.
+timing or the original appearance. They keep the game's shape where a frontend looks for
+it: the telops' banners are telops' (EXE5, EXE6), and EXE4's screen has its own emblem,
+cursor colors and element sprite. An EXE4 US ROM that isn't Red Sun's gives its fonts,
+text lines and banners; the HUD's other art is read at Red Sun US's addresses alone.
 
 Every pack includes `extraction.txt`. The library result exposes `missing_roms`, `warnings`
 and `placeholders` (named assets supplied by the completion pass; source-specific UI
@@ -76,13 +79,16 @@ caught and returned as errors (the host's panic hook still applies). The caller 
 to show diagnostics and where to store assets. `files()` leaves overwrite policy to the host;
 `write()` provides the checked filesystem path.
 
-Run `cargo test -p nettai-extract` for synthetic tests. The ignored `every_source_subset`
-test checks all 32 game/source combinations, their graphics and sound round trips and
-battle-definition loading. To run it locally, set `NETTAI_EXTRACT_ROM_DIR` to a directory
-of original ROMs named by the codes above, for example `BR6E.gba`:
+Run `cargo test -p nettai-extract` for synthetic tests: among them, a pack of no ROMs of
+each game passes the content audit (every lookup a frontend makes of everything the
+content defines, `nettai-tool --audit-content`'s). The ignored `every_source_subset`
+test checks all 48 game/source combinations, their graphics and sound round trips,
+battle-definition loading and the content audit (about eight minutes with `--release`).
+To run it locally, set `NETTAI_EXTRACT_ROM_DIR` to a directory of original ROMs named by
+the codes above, for example `BR6E.gba`:
 
 ```sh
-NETTAI_EXTRACT_ROM_DIR=/path/to/roms cargo test -p nettai-extract --test extract every_source_subset -- --ignored
+NETTAI_EXTRACT_ROM_DIR=/path/to/roms cargo test --release -p nettai-extract --test extract every_source_subset -- --ignored
 ```
 
 The ignored `full_sets_preserve_reference_graphics` test also compares decoded graphics
