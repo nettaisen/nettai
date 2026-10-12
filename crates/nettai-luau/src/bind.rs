@@ -2985,7 +2985,8 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
                 | RulesHook::CustomKeys
                 | RulesHook::CustomTakeBack
                 | RulesHook::BugMark
-                | RulesHook::HpEmptied,
+                | RulesHook::HpEmptied
+                | RulesHook::CutInBarred,
             ..
         } => Ok(Value::Bool(v == LuaValue::Boolean(true))),
         // What the rules did with a hit's NaviCust bug: nothing of the

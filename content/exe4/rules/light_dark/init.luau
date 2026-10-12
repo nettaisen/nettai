@@ -21,7 +21,21 @@
 --   60, 89 and 90's 1 to 4). Presentation: the sprite's palette. (Another navi's palette is 0x0800B95E's table: EXE4's content has MegaMan
 --   alone. No player the engine spawns has a param, and no soul is ported yet.) Tango's light saves hold 1000, its
 --   dark ones 460.
+-- - **The chips a MegaMan may use** (a chip's `megaman`, its record's +0x15: 1 a light MegaMan's, 2 a dark one's; 94
+--   chips state one). The use's preparation ends with the check (0x0800D5D0, in 0x0800D4B4): a light one's chip
+--   wants a value of 470 or more, a dark one's less. A chip of the other kind keeps everything it prepared (its
+--   chip, its lockout, the Full Synchro it spent, its name on the other console) and only its action becomes the
+--   fizzle's (action 0x20, variant 4: the invalid chip's sparkle; rules/chip_use's `refused_keeps_chip`). The check
+--   reads no navi number: any navi's use is checked.
+-- - **The chips a MegaMan may cut in with** (0x0800D608, which the cut-in asks before it prepares anything,
+--   0x08010C64): the same test at 480. So a value of 470 to 479 is a light one's for a use and a dark one's for a
+--   cut-in: a light one's dimming chip can't cut in there, though its use works.
+--   **Not ported**: at those ten values a dark one's dimming chip passes the cut-in's test and then fails the
+--   use's, and the cut-in (0x08010C88) runs the dimming table's entry of the attack's variant whatever the action
+--   is: the fizzle's variant 4, FireMan's controller (0x080E31C4), with the refused chip's attack. Here that cut-in
+--   starts nothing and the chip stays in the hand (docs/design/exe4-map.md §18 item 65).
 
+local invalid = require("../chips/invalid").invalid
 local megaman = require("../navis/megaman").megaman
 
 export type Setup = {
@@ -71,6 +85,33 @@ function light_dark.navi_intake(_side: number, navi: Object)
     if p and p.kind == "hole" then
         field.set_type(navi.collision.panel_x, navi.collision.panel_y, "normal")
     end
+end
+
+-- A value at or above these is a light MegaMan's: for a chip's use (0x0800D5DE: 0xEB * 2) and for a cut-in
+-- (0x0800D618: 0xF0 * 2).
+local LIGHT_USES, LIGHT_CUTS_IN = 470, 480
+
+-- Whether the side's MegaMan, light from `light_from`, is the one `chip` asks for (its `megaman`; none: anyone).
+local function may_use(chip: Chip?, light_from: number): boolean
+    local wants = chip and (chip :: any).megaman
+    if wants == nil then
+        return true
+    end
+    local light = (rules.setup() :: Setup).karma >= light_from
+    return (wants == "light") == light
+end
+
+-- 0x0800D5D0: a chip of the other kind of MegaMan fizzles, its action the invalid chip's.
+function light_dark.chip_check(_side: number, _navi: Object, chip: Chip?): Chip?
+    if may_use(chip, LIGHT_USES) then
+        return nil
+    end
+    return invalid
+end
+
+-- 0x0800D608 (from the cut-in, 0x08010C64): a chip of the other kind of MegaMan doesn't cut in.
+function light_dark.cut_in_barred(_side: number, _navi: Object, chip: Chip?): boolean
+    return not may_use(chip, LIGHT_CUTS_IN)
 end
 
 -- 0x0800C052: the palette by the value's tier.

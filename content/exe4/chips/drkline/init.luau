@@ -26,6 +26,7 @@ local chip: Chip = {
         sides = panel_changer.ANY,
         start_sound = panel_changer.START_SOUND,
     }),
+    megaman = "dark",
 }
 
 return { drkline = chip }

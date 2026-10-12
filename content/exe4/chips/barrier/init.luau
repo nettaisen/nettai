@@ -19,6 +19,7 @@ local barrier: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = barriers.controller.hook(barriers.barrier_10),
+    megaman = "light",
 }
 
 -- Barr100 (EXE4 chip 0x088): a barrier of 100 HP (type 2).
@@ -34,6 +35,7 @@ local barr100: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = barriers.controller.hook(barriers.barrier_100),
+    megaman = "light",
 }
 
 -- Barr200 (EXE4 chip 0x089): a barrier of 200 HP (type 3).
@@ -49,6 +51,7 @@ local barr200: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = barriers.controller.hook(barriers.barrier_200),
+    megaman = "light",
 }
 
 -- LifeAura (EXE4 chip 0x0C9): an aura that stops every hit of less than 200 for 3000 ticks (type 6).
@@ -79,6 +82,7 @@ local blakbarr: Chip = {
     lockout = 0,
     flags = { "dimming", "library" },
     dimming = barriers.controller.hook(barriers.black_barrier),
+    megaman = "dark",
 }
 
 return { barrier = barrier, barr100 = barr100, barr200 = barr200, lifeaura = lifeaura, blakbarr = blakbarr }
