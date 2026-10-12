@@ -2348,7 +2348,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     instruments, a RockCube, a TimeBomb, a Barrier and a Barr100, the shimmer Fanfare gives its navi, a charge's glow,
     then side 0's buster shots at its own rock) takes all 10 slots before the shots' hit sparks, the effects' last
     slot, and is pixel-exact with the cap; with 16 slots the renderer draws the sparks the original leaves out
-    (frames 1812 to 1816 and five more runs to 1906). It replays every frame. The tile cap has no recording: that
+    (frames 1812 to 1816 and five more runs to 1906). It replays every frame. EXE6's and EXE5's own
+    sprites/palette-slots (the same set-up on their consoles; their draws go by the update list, so what comes last
+    differs): EXE6's leaves out the charge's glow (with 16 slots the renderer draws it in eight runs of frames from
+    1772 to 1899), EXE5's side 0's barrier (frames 1907 and 1908, 1924 and 1925, 1927 and 1928); both are pixel-exact
+    with the cap and replay every frame. The tile cap has no recording: that
     scene, the busiest built, reserves 309 of the 813 tiles, single chips' 80 to 180, and two navis' objects don't
     reach it; a unit test covers its arithmetic and the sharing (nettai-render's
     `the_sprite_draw_leaves_out_what_the_frame_has_no_room_for`). The headless frontend's `--objects` lists what each
