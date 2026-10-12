@@ -148,6 +148,7 @@ pub fn lettering(base: &Hud, names: &AssetNames, language: &str) -> HudLettering
         waiting: tiles(16),
         waiting_palette: PALETTE,
         gauge_tiles: tiles(base.gauge_tiles.len()),
+        chatbox_text: None,
     }
 }
 pub fn slot_pictures() -> SlotPictures {

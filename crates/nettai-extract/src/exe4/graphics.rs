@@ -75,6 +75,9 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
             HudLettering { font, font_chars, ..crate::placeholders::lettering(&hud, names, LANGUAGE) }
         }
     };
+    // (The Japanese games place the chatbox's text themselves: code, the
+    // same with or without their ROMs.)
+    let lettering = HudLettering { chatbox_text: Some(super::hud::CHATBOX_TEXT_JA), ..lettering };
     hud.languages.push((LANGUAGE.to_string(), lettering));
     hud.language = BASE_LANGUAGE.into();
     // The custom screen (exe4/custom.rs), Red Sun US's; its Japanese
