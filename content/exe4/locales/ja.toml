@@ -292,6 +292,21 @@ language = "ja"
 "gigacan3" = { name = "ギガキャノン3", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
 "heatsprd" = { name = "ヒートスプレッド", description = "まわり1マスに\nばくえんがひろがる\nこうはんい攻撃!" }
 "bubsprd" = { name = "バブルスプレッド", description = "まわり1マスに\nあわがひろがる\nこうはんい攻撃!" }
+"suprspr1" = { name = "スーパーワイド1", description = "3れんしゃの\nワイドショット!\nてきをかんつうする" }
+"suprspr2" = { name = "スーパーワイド2", description = "3れんしゃの\nワイドショット!\nてきをかんつうする" }
+"suprspr3" = { name = "スーパーワイド3", description = "3れんしゃの\nワイドショット!\nてきをかんつうする" }
+"flmcros1" = { name = "フレイムクロス1", description = "十字にひろがる\nじごくのごうか!" }
+"flmcros2" = { name = "フレイムクロス2", description = "十字にひろがる\nじごくのごうか!" }
+"flmcros3" = { name = "フレイムクロス3", description = "十字にひろがる\nじごくのごうか!" }
+"bstfang1" = { name = "マッドファング1", description = "自分の上下のれつに\nむすうのキバが\nつらなりすすむ!" }
+"bstfang2" = { name = "マッドファング2", description = "自分の上下のれつに\nむすうのキバが\nつらなりすすむ!" }
+"bstfang3" = { name = "マッドファング3", description = "自分の上下のれつに\nむすうのキバが\nつらなりすすむ!" }
+"pithoky1" = { name = "ジゴクホッケー1", description = "はんしゃしつづける\nきょうふのホッケー" }
+"pithoky2" = { name = "ジゴクホッケー2", description = "はんしゃしつづける\nきょうふのホッケー" }
+"pithoky3" = { name = "ジゴクホッケー3", description = "はんしゃしつづける\nきょうふのホッケー" }
+"magshok1" = { name = "マグショック1", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
+"magshok2" = { name = "マグショック2", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
+"magshok3" = { name = "マグショック3", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
