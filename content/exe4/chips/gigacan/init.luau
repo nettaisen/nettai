@@ -41,6 +41,7 @@ local gigacan1: Chip = {
     flags = { "has_damage" },
     program_advances = { { order = 14, code_run = { chip = cannons.cannon, count = 3 } } },
     action = cannon_lib.action { id = "gigacan1/action", arm = GIGACAN1_ARM, shot = SHOT, afterimages = true },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local gigacan2: Chip = {
@@ -56,6 +57,7 @@ local gigacan2: Chip = {
     flags = { "has_damage" },
     program_advances = { { order = 15, code_run = { chip = cannons.hicannon, count = 3 } } },
     action = cannon_lib.action { id = "gigacan2/action", arm = GIGACAN2_ARM, shot = SHOT, afterimages = true },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local gigacan3: Chip = {
@@ -71,6 +73,7 @@ local gigacan3: Chip = {
     flags = { "has_damage" },
     program_advances = { { order = 16, code_run = { chip = cannons["m-cannon"], count = 3 } } },
     action = cannon_lib.action { id = "gigacan3/action", arm = GIGACAN3_ARM, shot = SHOT, afterimages = true },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { gigacan1 = gigacan1, gigacan2 = gigacan2, gigacan3 = gigacan3 }

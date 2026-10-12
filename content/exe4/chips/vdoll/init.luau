@@ -20,6 +20,7 @@ local vdoll: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "standard_library", "library" },
+    auto_battle = { class = "three_ahead_open" },
 }
 
 return { vdoll = vdoll }

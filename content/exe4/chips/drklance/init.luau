@@ -25,6 +25,7 @@ local drklance: Chip = {
             lance.thrust(user, element, 1, damage)
         end,
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { drklance = drklance }

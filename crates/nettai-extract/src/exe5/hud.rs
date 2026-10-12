@@ -108,6 +108,13 @@ const TEXT_END: u8 = 0xE6;
 /// banners' palette (EXE6 `byte_86F2900`).
 const BANNERS: u32 = 0x0801_B810;
 pub(crate) const BANNER_COUNT: u32 = 49;
+/// The telops' banners (0x4C, the console's own, and 0x50, the other
+/// player's) and their places: their records' kind is 3
+/// (`BannerLayout::kind`), a banner with no glyphs of its own, where a
+/// frontend draws the chip's name. A HUD of placeholders states the two as
+/// what they are, not as plain banners with placeholder words: the content
+/// shows its telops with them.
+const TELOP_BANNERS: [(usize, (u8, u8)); 2] = [(0x4C / 4, (0, 32)), (0x50 / 4, (120, 32))];
 const BANNER_FILLER: u32 = 0x0801_C6F4;
 const BANNER_DIGITS: u32 = 0x0873_C6B8;
 const BANNER_PALETTE: u32 = 0x0873_D1F8;
@@ -286,6 +293,9 @@ pub fn hud(roms: &Roms, names: &AssetNames, chip_icons: Vec<ChipIcon>) -> Hud {
     let rom = roms.protoman;
     if !rom.is_present() {
         let mut h = crate::placeholders::hud(names, BANNER_COUNT as usize);
+        for (id, (x, y)) in TELOP_BANNERS {
+            h.banners[id] = nettai_assets::BannerLayout { x, y, kind: 3, ..Default::default() };
+        }
         (h.mugshots, h.mugshot_boxes) = mugshots(roms);
         h.chip_icons = chip_icons;
         return h;

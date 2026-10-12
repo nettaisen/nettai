@@ -27,6 +27,7 @@ local chip: Chip = {
         start_sound = panel_changer.START_SOUND,
     }),
     megaman = "dark",
+    auto_battle = { class = "no_hole_ahead" },
 }
 
 return { hole = chip }

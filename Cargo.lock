@@ -3533,6 +3533,8 @@ dependencies = [
  "nettai-assets",
  "nettai-content",
  "nettai-content-api",
+ "nettai-frontend",
+ "nettai-tools",
  "tempfile",
 ]
 

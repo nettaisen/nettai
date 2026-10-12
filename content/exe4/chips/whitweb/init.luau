@@ -19,6 +19,7 @@ local whitweb1: Chip = {
     hit_param = 10,
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local whitweb2: Chip = {
@@ -33,6 +34,7 @@ local whitweb2: Chip = {
     hit_param = 10,
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local whitweb3: Chip = {
@@ -47,6 +49,7 @@ local whitweb3: Chip = {
     hit_param = 10,
     lockout = 30,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { whitweb1 = whitweb1, whitweb2 = whitweb2, whitweb3 = whitweb3 }
