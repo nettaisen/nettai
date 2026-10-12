@@ -41,6 +41,7 @@ local lasrmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "lasrmn-sp/controller", palette = 10, aims = true }.hook,
+    megaman = "light",
 }
 
 local lasrmn_ds: Chip = {
@@ -55,6 +56,7 @@ local lasrmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "lasrmn-ds/controller", palette = 11, aims = true }.hook,
+    megaman = "dark",
 }
 
 return { laserman = laserman, ["lasrmn-sp"] = lasrmn_sp, ["lasrmn-ds"] = lasrmn_ds }

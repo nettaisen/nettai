@@ -30,6 +30,7 @@ local chip: Chip = {
         hits = collision.hits_navis,
     },
     damage = 0,
+    megaman = "dark",
 }
 
 return { bugcurse = chip }

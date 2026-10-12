@@ -25,6 +25,7 @@ local sparkman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "sparkman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local sprkmn_sp: Chip = {
@@ -40,6 +41,7 @@ local sprkmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "sprkmn-sp/controller", palette = 3 }.hook,
+    megaman = "light",
 }
 
 local sprkmn_ds: Chip = {
@@ -54,6 +56,7 @@ local sprkmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "sprkmn-ds/controller", palette = 6 }.hook,
+    megaman = "dark",
 }
 
 return { sparkman = sparkman, ["sprkmn-sp"] = sprkmn_sp, ["sprkmn-ds"] = sprkmn_ds }

@@ -25,6 +25,7 @@ local numbrman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "numbrman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local numbmn_sp: Chip = {
@@ -40,6 +41,7 @@ local numbmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "numbmn-sp/controller", palette = 2 }.hook,
+    megaman = "light",
 }
 
 local numbmn_ds: Chip = {
@@ -54,6 +56,7 @@ local numbmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "numbmn-ds/controller", palette = 3 }.hook,
+    megaman = "dark",
 }
 
 return { numbrman = numbrman, ["numbmn-sp"] = numbmn_sp, ["numbmn-ds"] = numbmn_ds }
