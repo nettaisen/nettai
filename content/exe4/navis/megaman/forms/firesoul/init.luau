@@ -14,7 +14,8 @@ local chip = require("@self/chip").firesoul
 local grass = require("@self/grass")
 local soul = require("./soul")
 
-local overlay = soul.overlay(asset.sprite("firesoul-flame"))
+local FLAMES = asset.sprite("firesoul-flame")
+local overlay = soul.overlay(FLAMES)
 
 local form: FormDef = {
     soul = { family = "fire", turns = 3 },
@@ -28,6 +29,7 @@ local form: FormDef = {
     weapons = { buster = soul.buster, charge_shot = charge.weapon, a_charge = charged_chip.weapon },
     -- 0x0800BC78: any fire chip.
     charged_chips = { { family = "fire", damaging = false } },
+    wears = FLAMES,
     put_on = overlay.put_on,
     take_off = overlay.take_off,
     -- 0x0800E11C.
