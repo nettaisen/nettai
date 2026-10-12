@@ -67,6 +67,23 @@ function souls.navi_intake(side: number, navi: Object)
     end
 end
 
+-- 0x08012FB6, each tick of a player's intake (0x08013858; the navis' own, 0x0801393E, has none) after the panel's
+-- standing effects (0x08012FF2), not while dimmed: in WoodSoul (NaviStats +0x24 12) on grass (the panel of its
+-- collision), a point of HP back (`object_addHP`) when the battle's second count of fight ticks comes round
+-- (BattleState +0x16: every other tick).
+local HEALS_ON_GRASS = "woodsoul"
+function souls.grass_heal(side: number, navi: Object)
+    if battle.dimmed() or battle.player(side) ~= navi then
+        return
+    end
+    local c = navi.collision
+    local p = field.panel(c.panel_x, c.panel_y)
+    if p == nil or p.kind ~= "grass" or battle.navi(side).form.id ~= HEALS_ON_GRASS or battle.cycle(2) ~= 0 then
+        return
+    end
+    navi.hp = math.min(navi.hp + 1, navi.max_hp)
+end
+
 -- 0x0800BA20, as either player asks for a custom screen: the soul's turns count one.
 souls.custom_requested = turns.custom_requested
 

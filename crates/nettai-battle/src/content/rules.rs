@@ -57,6 +57,10 @@ pub struct FlowRules {
     pub sequencer_at_turn_start: bool,
     /// How a player asks for the custom screen with a full gauge.
     pub custom_request: CustomRequest,
+    /// The battle's two counts of fight ticks (BattleState +0x0E and +0x16,
+    /// counted while neither paused nor dimmed), by their periods: EXE6's
+    /// and EXE5's 20 and 180 (0x08006EF6), EXE4's 10 and 2 (0x08006D08).
+    pub fight_cycles: [u8; 2],
 }
 
 /// A link battle's navi body damage (the rules' `status.link_body_damage`):
@@ -174,11 +178,16 @@ pub struct ChipUseRules {
     /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
     /// only if it isn't dark; EXE6's `sub_80106C0` and EXE5's take any.
     pub beat_spares_dark: bool,
-    /// A dimming's start hides the chip window on every console: EXE4's
-    /// (0x08008BD8 calls `sub_801DACC(0x10)` whoever started it); EXE6's
-    /// and EXE5's `object_timefreezeBegin` only on its starter's
+    /// What hides a navi's chip window hides it on every console: EXE4's
+    /// navi idle (0x080EEB38: its chips not enabled, 0x080EEB72; an attack
+    /// started, 0x080EEBC4 on; a chip used, 0x080EED3E) and dimming start
+    /// (0x08008BD8) call `sub_801DACC(0x10)` whichever navi it is, so the
+    /// other player's attack takes the local window down until the local
+    /// navi's idle shows it again (0x080EEB6C, its own console's alone);
+    /// EXE6's (`sub_80F0354`, `object_timefreezeBegin`) and EXE5's
+    /// (0x080F02E6 on) only on the navi's own console
     /// (`battle_networkInvert`). Presentation: the HUD's (`ChipHud`).
-    pub dimming_hides_every_window: bool,
+    pub window_hides_every_console: bool,
     /// A charged use of a Null-family chip runs the form's alternative
     /// A-charge routine, the attack's chip cleared (EXE6's `sub_800FB54`:
     /// the Beast forms'); EXE5's (0x0800D9CC) and EXE4's (0x0800B72C) use
@@ -272,13 +281,15 @@ pub struct EffectsRules {
     /// `sub_801EB18`, a second, 0x3C; EXE5's; EXE4's 0x080164B4, a banner
     /// of the second block that shows without sliding, 33).
     pub used_chip_ticks: u8,
-    /// A dimming chip's telop, as it starts, ends the used chips' names on
-    /// every console (EXE6's `sub_800BA8A` and `sub_800BBA8`:
-    /// `sub_801BED6(0x10000)`, `sub_801DACC(0x10000)`; EXE5's 0x0800A0FC
-    /// and 0x0800A218). EXE4's (0x08008CF6, 0x08008DE0) lays the telop on
-    /// the banner block and leaves the second block's name be, beside it.
-    /// Presentation: the HUD's (`Battle::used_chip_for`).
-    pub telop_ends_used_chips: bool,
+    /// The used chips' names end before their ticks run out: a dimming
+    /// chip's telop as it starts and the pause's display end them on every
+    /// console (EXE6's `sub_800BA8A`, `sub_800BBA8` and `sub_801E15C`:
+    /// `sub_801BED6(0x10000)`, `sub_801DACC(0x10000)`; EXE5's 0x0800A0FC,
+    /// 0x0800A218 and 0x0801AA28). EXE4's telop (0x08008CF6, 0x08008DE0)
+    /// lays itself on the banner block and its pause (0x080166BC) starts
+    /// "PAUSE" alone: the second block's name stays and runs out, through
+    /// a pause too. Presentation: the HUD's (`Battle::used_chip_for`).
+    pub used_chips_end_early: bool,
     /// Each console's emotion window checks its navi's NaviCust bugs and
     /// flickers a bugged navi's face, an RNG1 draw a flicker (EXE6's
     /// `sub_801CC94`, EXE5's 0x08019780). EXE4's has no such check: its
@@ -1806,6 +1817,29 @@ pub struct PanelRules {
     /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
     /// 0x20000 too). A crack keeps the solidity and the crack bit.
     pub type_mask: u32,
+    /// Where the game keeps what its panels are drawn as (`PanelDrawn`).
+    pub drawn: PanelDrawn,
+}
+
+/// Where a game keeps the type and the owner each panel is drawn as (the
+/// panels section's `drawn`), which says when a change shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PanelDrawn {
+    /// In the panel (EXE6's +6 and +7; EXE5's): its refresh writes them
+    /// (`sub_30078E0`) and its tick's blinks, and a dimmed tick, which runs
+    /// no panel update, leaves them as they are.
+    #[default]
+    InPanel,
+    /// In tables of their own (EXE4's 0x02037AE6 and 0x02037B0E), which the
+    /// panel update alone writes (0x08009240). Its per-panel tick
+    /// (0x08009740) ends by drawing the panel as the type it began the tick
+    /// with (0x08009842), so a cracked panel a body stepped off, which
+    /// breaks in that tick (0x080097C8), shows its hole a tick late (a mend,
+    /// an expiry and a crumble set what they draw). A dimmed tick's update
+    /// draws every panel as the type and the owner it is (0x08009A38): a
+    /// blink shows through no dimming.
+    OwnTables,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the

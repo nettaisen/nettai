@@ -139,6 +139,10 @@ pub enum HookCall {
     /// (a navi chip's navi, EXE5's DethPhnx's the last navi chip's) is done.
     /// Its result is unused.
     NaviLeft { controller: ObjectRef },
+    /// A kind's `encased(me)`: an obstacle of the kind starts being encased
+    /// (the obstacle framework's encasing, its first step). Its result is
+    /// unused.
+    Encased { obstacle: ObjectRef },
     /// A role hook the rules call with a navi (the roles' `hooks`):
     /// its result is unused.
     RoleNavi { navi: ObjectRef },

@@ -1225,9 +1225,9 @@ pub trait CoreApi {
     /// `battle_isBattleOver` as the routines that read its Z flag see it:
     /// over only once time is up (a KO reads as not over).
     fn is_time_up(&self) -> bool;
-    /// The battle's count of fight ticks modulo `period` (20 or 180: the
-    /// round's two counts), which grass heals by.
-    fn cycle(&self, period: u8) -> u8;
+    /// The battle's count `which` (1 or 2) of fight ticks, modulo its
+    /// period (the rules' `flow.fight_cycles`), which grass heals by.
+    fn cycle(&self, which: u8) -> u8;
     /// The shift a hit of element `hitter` takes against a body of element
     /// `receiver` (the rules' `elements.weakness`).
     fn weakness(&self, receiver: u8, hitter: u8) -> u8;
@@ -1285,6 +1285,11 @@ pub trait CoreApi {
     /// shake even while the battle is paused (EXE5's TomahawkSoul's change,
     /// 0x08012138; the change's end clears it, 0x080121B6).
     fn set_shake_through_pause(&mut self, on: bool);
+    /// `sub_8001382` / `sub_800138E` with a side's chips-enabled bit (the
+    /// intro bits' 0x04 for side 0, 0x08 for side 1, which a round starts
+    /// with set; `sub_800A772` reads them): the side's navi may use chips,
+    /// or not.
+    fn set_chips_enabled(&mut self, side: u8, on: bool);
     /// `sub_80EA438`: a burst around `navi`'s panel (effect object #0x90,
     /// which runs while paused).
     fn spawn_burst(&mut self, navi: ObjectRef) -> Option<ObjectRef>;
@@ -1494,6 +1499,11 @@ pub trait CoreApi {
     /// A side's hand has a chip at `i` and it does damage (its record's
     /// flag 0x02, "has_damage").
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool;
+    /// The chip after `i` of a side's hand folds into the chip at `i` (its
+    /// damage, Atk+ bonus and charge bonus added) and leaves the hand, the
+    /// chips after it moving up one (EXE4's WoodSoul's status reset,
+    /// 0x0800E294).
+    fn fold_hand_chip(&mut self, side: u8, i: u8);
     /// The chip at `i` of a side's hand, if any (the hand from its first
     /// chip, used ones too).
     fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle>;
