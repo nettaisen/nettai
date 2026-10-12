@@ -25,6 +25,7 @@ local videoman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "videoman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local videmn_sp: Chip = {
@@ -40,6 +41,7 @@ local videmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "videmn-sp/controller", palette = 5 }.hook,
+    megaman = "light",
 }
 
 local videmn_ds: Chip = {
@@ -54,6 +56,7 @@ local videmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "videmn-ds/controller", palette = 6 }.hook,
+    megaman = "dark",
 }
 
 return { videoman = videoman, ["videmn-sp"] = videmn_sp, ["videmn-ds"] = videmn_ds }
