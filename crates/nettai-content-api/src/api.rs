@@ -2168,7 +2168,8 @@ pub trait CoreApi {
     fn dimming_user(&self, side: u8) -> Option<ObjectRef>;
     /// `side`'s dimming runs its effect from now (the record's state 4).
     fn dimming_run(&mut self, side: u8);
-    /// A telop for `side` naming `chip` without damage, and its sound.
+    /// A telop for `side` naming `chip` without damage, and its sound; it
+    /// ends no used chip's name.
     fn dimming_chip_telop(&mut self, side: u8, chip: Option<crate::ChipHandle>);
     /// `side`'s telop is done.
     fn dimming_telop_done(&self, side: u8) -> bool;
