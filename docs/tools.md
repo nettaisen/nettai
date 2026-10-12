@@ -77,14 +77,16 @@ one stream, on exact time bases; docs/frontend.md §8, "Video") to the file `OUT
     nettai-tool --replay set.ntrp --nut - --scale 4 | ffmpeg -f nut -i - -c:v libx264 -crf 16 -pix_fmt yuv420p -c:a aac -ar 48000 out.mp4
 
 It holds one frame a tick, the picture a viewer playing the replay straight is shown (the text included) and the
-sound the tick made, so `ffplay`, `mpv` and `ffmpeg` take it as it is. Everything the tool says goes to standard
-error (a line every tenth of the way, then what it wrote), so the pipe carries the stream alone. The stream is raw:
-115 KB a frame at the frame's own size, 7 MB a second, and sixteen times that at `--scale 4`; a long replay at a
-large size is for the pipe, not for a file.
+sound the tick made, and `ffmpeg` and `ffprobe` (9.0.2) read it as it is, from the pipe or from a file, with
+nothing said (what else reads NUT through FFmpeg's libraries wasn't tried). Left to itself, as in the first line
+above, ffmpeg makes the MP4 in 4:4:4 with the sound at 32 kHz; the second line's options are the usual ones.
+Everything the tool says goes to standard error (a line every tenth of the way, then what it wrote), so the pipe
+carries the stream alone. The stream is raw: 115 KB a frame at the frame's own size, 7 MB a second, and sixteen
+times that at `--scale 4`; a long replay at a large size is for the pipe, not for a file.
 
-`--replay FILE --mp4 OUT` writes an MP4 instead, by running `ffmpeg` (which must be installed) on that stream as
-nettai's Replays screen does (nettai-video's `mp4`: H.264 at CRF 16 in 4:2:0, AAC at 48 kHz, the pixels not
-scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whether ffmpeg wasn't found, ffmpeg failed
+`--replay FILE --mp4 OUT` writes an MP4 instead, by running `ffmpeg` (which must be installed) on that stream, with
+the settings the app's export is to use (nettai-video's `mp4`: H.264 at CRF 16 in 4:2:0, AAC at 48 kHz, the pixels
+not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whether ffmpeg wasn't found, ffmpeg failed
 (with what it said) or the file couldn't be written.
 
 - `--scale N` makes the picture N times the frame's 240x160 (1 to 16; default 1). The scaling is the nearest
