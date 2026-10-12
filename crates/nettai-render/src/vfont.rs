@@ -277,15 +277,39 @@ pub struct TextRenderer {
     shaper: ShapeContext,
     layouts: HashMap<(String, Role, i32), Layout>,
     glyphs: HashMap<GlyphKey, Option<Image>>,
+    made: Made,
+}
+
+/// What a text renderer has made so far that it didn't have: each is the
+/// work of the first time a string is drawn in a box of some width, or a
+/// glyph at some size. A string drawn again costs neither.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Made {
+    /// Strings laid out (shaped and fitted to their box).
+    pub layouts: u64,
+    /// Glyph images drawn from the font's outlines.
+    pub glyphs: u64,
 }
 
 impl TextRenderer {
     pub fn new(font: std::sync::Arc<VectorFont>) -> TextRenderer {
-        TextRenderer { font, scaler: ScaleContext::new(), shaper: ShapeContext::new(), layouts: HashMap::new(), glyphs: HashMap::new() }
+        TextRenderer {
+            font,
+            scaler: ScaleContext::new(),
+            shaper: ShapeContext::new(),
+            layouts: HashMap::new(),
+            glyphs: HashMap::new(),
+            made: Made::default(),
+        }
     }
 
     pub fn font(&self) -> &VectorFont {
         &self.font
+    }
+
+    /// What it has made so far.
+    pub fn made(&self) -> Made {
+        self.made
     }
 
     /// The width a string takes, in frame pixels, once fitted into a box
@@ -301,6 +325,7 @@ impl TextRenderer {
                 self.layouts.clear();
             }
             let l = self.fit(text, role, (room as f32 - role.style().margin).max(1.0));
+            self.made.layouts += 1;
             self.layouts.insert(key.clone(), l);
         }
         &self.layouts[&key]
@@ -453,6 +478,7 @@ impl TextRenderer {
                 .offset(Vector::new(key.sub as f32 / 4.0, 0.0))
                 .transform(transform)
                 .render(&mut scaler, key.id);
+            self.made.glyphs += 1;
             self.glyphs.insert(key, image);
         }
         self.glyphs[&key].as_ref()
