@@ -6,11 +6,12 @@ local collision = require("../rules/collision")
 local effects = require("@exelib/instruments/effects")
 local instrument = require("../lib/instruments/instrument")
 local instruments = require("../lib/instruments/controller")
+local regions = require("@exelib/regions")
 local statuses = require("../rules/status")
 
 -- Confusion (status 0x23: 4 ticks) on the other navi's panel, learning
--- nothing (`sub_80D4392`).
-local confuse = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing)
+-- nothing (`sub_80D4392`: regions 0x85 and 0x84).
+local confuse = effects.confuse(statuses.confuse_4, collision.guard_breaking, collision.nothing, regions.other_navi)
 
 local chip: Chip = {
     codes = { "A", "G", "S", "*" },

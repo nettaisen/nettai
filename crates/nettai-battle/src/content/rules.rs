@@ -304,6 +304,36 @@ pub struct EffectsRules {
     /// The order the objects of a pool are drawn in. Presentation: the
     /// renderer's.
     pub draw_order: DrawOrder,
+    /// What a frame's sprite draw has room for. Presentation: the
+    /// renderer's.
+    pub sprite_budget: SpriteBudgetRules,
+}
+
+/// A frame's sprite budget (the effects section's `sprite_budget`). The
+/// sprite draw hands each drawn object's sprite, in draw order, the VRAM
+/// tiles of its frame and a palette slot (EXE6's `sub_3006028`, EXE5's
+/// 0x03006190; EXE4's 0x03005C00), and a sprite the frame has no room
+/// left for isn't drawn (its flag 0x10, which the part list's builder
+/// skips, `sub_3006440`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct SpriteBudgetRules {
+    /// The tile cap. A frame's allocator starts at 1 (`sub_80027B4`), and
+    /// a sprite whose frame no sprite before it reserved this frame is left
+    /// out when the allocator less 0x30 plus its frame's tiles reaches the
+    /// cap (`sub_3006404`): a battle's 0x2FF (EXE6's `sub_80027D4`, EXE5's
+    /// 0x08002740; EXE4's 0x03005FD4 in mode 8, the battle's).
+    pub tiles: u16,
+    /// The palette slots. A sprite's palette shares the slot of an equal
+    /// one or takes a new one, and the sprite is left out when they are all
+    /// taken (`sub_3006428`): a battle's 10 (the same presets; EXE4's
+    /// 0x03006010 in mode 8).
+    pub palettes: u8,
+    /// The slots in battle mode 1: EXE6's and EXE5's 8 (`sub_80027E4`,
+    /// 0x08002750, picked by `GetBattleMode` at `sub_8007224`'s place);
+    /// none: the same as any battle's (EXE4's).
+    #[serde(default)]
+    pub palettes_in_battle_mode_1: Option<u8>,
 }
 
 /// The order a pool's objects are drawn in, each pool in turn (actors,

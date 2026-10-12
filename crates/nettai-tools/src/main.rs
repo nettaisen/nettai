@@ -95,7 +95,8 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   --out DIR        where --headless writes
   --png-scale N    with --headless: each frame N times its size
   --objects        with --headless: list every rendered frame's objects (kind,
-                   place, sprite, animation, look)
+                   place, sprite, animation, look) and what its sprite draw
+                   took of the frame's budget and left out
   --mark M,...     with --headless: write where each of these is drawn, by
                    frame, to marks.tsv in --out: sprite:NAME (an object drawn
                    with it), background:NAME, chip:KEY (its picture in the

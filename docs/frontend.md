@@ -539,13 +539,21 @@ chips flying) take the same priority, 1 and 0.
   the shadow is, one layer back and in the first bucket, at the sprite's
   height: a mark on the floor, under every object (EXE5's immobilized mark,
   its ripple over a dived navi, DethPhnx's fire);
+- the frame's sprite budget (`objects::SpriteDraw`, the rules'
+  `effects.sprite_budget`): before its parts are culled, each visible
+  object's sprite reserves its frame's tiles (a frame another sprite
+  reserved this frame is shared) and its palette takes a slot (an equal
+  palette's is shared; a whitened sprite takes none), in draw order; a
+  sprite past the tile cap or the slots isn't drawn (a battle's: 0x2FF and
+  10; docs/design/exe4-map.md §18 item 62). `--objects` lists what each
+  frame took and left out;
 - order: parts go into depth buckets (ground y + 0x40) and come out
   deepest first, most recent first, so later and lower objects are in
   front; at most 128 parts;
 - white flash, alpha and mosaic (sampled as mGBA does);
 - an effect the game spawns without a position (the second explosion of a
   deletion: its X and Y are memory addresses, far off the screen) isn't
-  drawn.
+  drawn (it takes its tiles and its palette's slot all the same).
 
 **Field and background** (`stage.rs`): each panel's block by displayed type
 and owner (from the viewer's side), highlights, missing panels, front
