@@ -2231,14 +2231,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     screen takes the soul as it opens (0x0801DC82: its +0x0F), whatever put the navi in it. The compile check
     (exe4-compat's `compiled`) reads the soul's byte too. The lab's modcards/121, 123 to 129, 131 and 132 and
     overlay/aqua/fs-* and overlay/proto/fs-* (cards 131 and 127 with Full Synchro, 45) replay every frame; their
-    fights are pixel-exact but for the custom screens' known shift. **Open, group A's (item 74):** what the custom
-    screen does in a soul, every screen opened in it, not the change's status reset alone: the hand it builds
-    (0x0801F29A: GutsSoul's 30, WindSoul's and NumberSoul's 10 on each slot; 0x0801F226: WoodSoul's fold), on which
-    modcards/122-guts-soul (the Cannon of its first hand, 70 for our 40), modcards/123-wind-soul-chip,
-    modcards/132-wood-soul-fold and souls/guts/turn2 wait; JunkSoul's used chips offered again (0x0801DFBC: two
-    draws of the console's RNG1), on which modcards/130-junk-soul waits (every frame matches, the console's RNG1
-    apart from frame 984, its second screen); and SearchSoul's SHUFFLE button, drawn 16 frames late as a screen
-    opens (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
+    fights are pixel-exact but for the custom screens' known shift. What the custom screen does in a soul, every screen
+    opened in it, is the soul's (item 74, "the custom screen's soul"): the hand it builds (0x0801F29A, 0x0801F226)
+    *done* (modcards/122-guts-soul, the Cannon of its first hand 70; 123-wind-soul-chip, 128-number-soul, the
+    label's "+10"; 132-wood-soul-fold; souls/guts/turn2: every frame, pixel-exact but for the known shift).
+    **Open, group A's (item 74):** JunkSoul's used chips offered again (0x0801DFBC), on which modcards/130-junk-soul
+    waits (every frame matches, the console's RNG1 apart from frame 984, its second screen); and SearchSoul's
+    SHUFFLE button, not on our screen (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
@@ -2359,8 +2358,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      each form's `hand`, applied as the hand is installed (rules/souls/custom's `installed`; souls/guts/turn2, F's;
      souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left behind). JunkSoul's
      recycling as its screen opens (0x0801DD0C: 0x0801DFBC, up to two of the chips used this battle dealt again)
-     *open*; SearchSoul's SHUFFLE button, drawn 16 frames late as a screen opens (the original has it from the
-     screen's first frame: souls/search/turns frames 1108 to 1120) *open*.
+     *open*; SearchSoul's SHUFFLE button over slots 8 and 9 (0x0801DD18: three shuffles a screen, the selection's
+     state 0x14, 0x08020998) *open*: it isn't on our screen (souls/search/turns frames 1108 to 1120). Neither while
+     the screen deals dark chips (0x0801DD02: 0x0801DE90's 1).
    - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
      that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
      (souls/roll/heal).
