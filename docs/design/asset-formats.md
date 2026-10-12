@@ -536,8 +536,11 @@ font (`dialogue-font-ja.png`, its advances and characters), the HUD's text
 lines in its glyphs, the banners whose words differ (`banners/NAME-ja.png`,
 each with its place: a longer name starts further left; null for the
 others), "Cstmzing..." as wide as its words (`waiting-ja.png`: カスタム中…,
-seven tiles where the US's are eight) and the gauge (`gauge-ja.png`, its "L
-or R"); `custom.json`'s `languages.ja` the chip window's pictures for OK,
+seven tiles where the US's are eight), the gauge (`gauge-ja.png`, its "L
+or R") and, where the language's games place the chatbox's text otherwise
+than the pack's own (`layout.chatbox_text`), its place (`chatbox_text`:
+EXE4's Japanese games', twelve pixels left of the US games' and one up);
+`custom.json`'s `languages.ja` the chip window's pictures for OK,
 the re-deal and scrap (`pictures/ok-ja.png`...: "chip data transmission"
 in Japanese), the form list window's names by version
 (`form-names-falzar-ja.png`, `form-names-gregar-ja.png`) and, under
