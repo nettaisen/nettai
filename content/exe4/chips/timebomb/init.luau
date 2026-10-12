@@ -22,6 +22,7 @@ local timebomb: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = bomb.controller.hook(BOMB),
+    auto_battle = { class = "when_far_front_free" },
 }
 
 return { timebomb = timebomb }

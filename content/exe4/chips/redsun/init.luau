@@ -23,6 +23,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     damage = damage(100),
     dimming = CONTROLLER.hook,
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { redsun = chip }

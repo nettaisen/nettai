@@ -34,6 +34,7 @@ local gunsol1: Chip = {
     lockout = 0,
     flags = { "standard_library", "library" },
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 local gunsol2: Chip = {
@@ -57,6 +58,7 @@ local gunsol2: Chip = {
     lockout = 0,
     flags = { "standard_library", "library" },
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 local gunsol3: Chip = {
@@ -80,6 +82,7 @@ local gunsol3: Chip = {
     lockout = 0,
     flags = { "standard_library", "library" },
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "column_two_ahead" },
 }
 
 local gunsolex: Chip = {
@@ -103,6 +106,7 @@ local gunsolex: Chip = {
     lockout = 0,
     flags = { "library" },
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "columns_two_and_three" },
 }
 
 return { gunsol1 = gunsol1, gunsol2 = gunsol2, gunsol3 = gunsol3, gunsolex = gunsolex }

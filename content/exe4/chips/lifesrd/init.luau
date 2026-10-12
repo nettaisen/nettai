@@ -35,6 +35,7 @@ local lifesrd: Chip = {
         { order = 0, sequence = { blades.sword, blades.wideswrd, blades.longswrd } },
         { order = 1, sequence = { blades.sword, blades.wideblde, blades.longblde } },
     },
+    auto_battle = { class = "into_reach", range = "two_columns_ahead" },
 }
 
 return { lifesrd = lifesrd }

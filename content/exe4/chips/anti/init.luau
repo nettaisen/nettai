@@ -22,6 +22,7 @@ local antifire: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = anti_trap.hook(1),
+    auto_battle = { class = "when_trap_free", element_trap = true },
 }
 
 local antiwatr: Chip = {
@@ -36,6 +37,7 @@ local antiwatr: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = anti_trap.hook(2),
+    auto_battle = { class = "when_trap_free", element_trap = true },
 }
 
 local antielec: Chip = {
@@ -50,6 +52,7 @@ local antielec: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = anti_trap.hook(3),
+    auto_battle = { class = "when_trap_free", element_trap = true },
 }
 
 local antiwood: Chip = {
@@ -64,6 +67,7 @@ local antiwood: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = anti_trap.hook(4),
+    auto_battle = { class = "when_trap_free", element_trap = true },
 }
 
 local antinavi: Chip = {
@@ -79,6 +83,7 @@ local antinavi: Chip = {
     flags = { "dimming", "standard_library", "library" },
     trap = "anti_navi",
     dimming = traps.hook(),
+    auto_battle = { class = "when_trap_free" },
 }
 
 local antidmg: Chip = {
@@ -94,6 +99,7 @@ local antidmg: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     trap = "anti_damage",
     dimming = traps.hook(),
+    auto_battle = { class = "when_trap_free" },
 }
 
 local antiswrd: Chip = {
@@ -109,6 +115,7 @@ local antiswrd: Chip = {
     flags = { "dimming", "has_damage", "standard_library", "library" },
     trap = "anti_sword",
     dimming = traps.hook(),
+    auto_battle = { class = "when_trap_free" },
 }
 
 local antirecv: Chip = {
@@ -124,6 +131,7 @@ local antirecv: Chip = {
     flags = { "dimming", "standard_library", "library" },
     trap = "anti_recovery",
     dimming = traps.hook(),
+    auto_battle = { class = "when_trap_free" },
 }
 
 return {
