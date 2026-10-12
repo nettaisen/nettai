@@ -12,7 +12,7 @@
 
 use crate::audit::Problems;
 use crate::compose::SpritePart;
-use nettai_assets::Palette;
+use nettai_assets::{Palette, Tiles};
 use nettai_battle::Battle;
 use nettai_battle::object::sprite::Shadow;
 use nettai_battle::kinds::EngineKind;
@@ -112,6 +112,103 @@ impl<'a> SpriteList<'a> {
 }
 
 const WHITE: Palette = [0x7FFF; 16];
+
+/// A frame's sprite draw: what the frame's sprites took of its budget so
+/// far, in draw order (the rules' `effects.sprite_budget`).
+///
+/// Before a drawn object's sprite goes to the part list, the game reserves
+/// its frame's tiles in sprite VRAM and gives its palette a slot (EXE6's
+/// `sub_3006028`, EXE5's 0x03006190, EXE4's 0x03005C00, called for every
+/// object with its VISIBLE flag from the pools' draws, before the parts are
+/// culled). The tiles: a frame another sprite reserved this frame is shared
+/// (the cache `sub_30061A8` searches by the frame's tile block); else the
+/// allocator, which starts each frame at 1 (`sub_80027B4`), less 0x30 plus
+/// the frame's tiles must stay under the cap (`sub_3006404`), or the sprite
+/// is flagged 0x10 and left out, with no palette slot taken. The palette
+/// (`sub_3006108`): its 16 colors as the sprite shows them, color shader
+/// and all; an equal one's slot is shared, else it takes the next, and with
+/// all of them taken the sprite is flagged 0x10 and left out (its tiles
+/// stay reserved). A whitened sprite is in slot 15 already
+/// (`sprite_forceWhitePalette`) and takes none.
+///
+/// Not the game's: its cache holds 89 frames and writes past them, and a
+/// count of 15 slots would give slot 15 to every later sprite; no battle's
+/// caps (10 slots) reach either.
+pub struct SpriteDraw<'a> {
+    cap: i32,
+    slots: usize,
+    /// The tile allocator.
+    next: i32,
+    /// The frames reserved so far.
+    frames: Vec<&'a Tiles>,
+    /// The palette slots taken so far.
+    palettes: Vec<Palette>,
+    /// The objects' sprites left out (what `--objects` lists).
+    left_out: Vec<String>,
+}
+
+/// What a frame's sprite draw took and left out ([`SpriteDraw`]), for
+/// `--objects`.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct SpriteDrawn {
+    /// The tiles reserved, and the most a frame can reserve.
+    pub tiles: u16,
+    pub tile_room: u16,
+    /// The palette slots taken, and the slots there are.
+    pub palettes: u8,
+    pub palette_slots: u8,
+    /// The sprites left out, in draw order.
+    pub left_out: Vec<String>,
+}
+
+/// The allocator's start and what the cap test takes off it.
+const FIRST_TILE: i32 = 1;
+const TILE_BASE: i32 = 0x30;
+
+impl<'a> SpriteDraw<'a> {
+    /// A frame's draw under the game's budget, in battle mode `mode`.
+    pub fn new(rules: nettai_battle::content::SpriteBudgetRules, mode: u8) -> SpriteDraw<'a> {
+        let slots = match rules.palettes_in_battle_mode_1 {
+            Some(n) if mode == 1 => n,
+            _ => rules.palettes,
+        };
+        SpriteDraw { cap: rules.tiles as i32, slots: slots as usize, next: FIRST_TILE, frames: Vec::new(), palettes: Vec::new(), left_out: Vec::new() }
+    }
+
+    /// Whether a sprite showing the frame `tiles` in `palette` (none: a
+    /// whitened sprite's, which takes no slot) is drawn: its frame's tiles
+    /// reserved, then its palette's slot.
+    pub fn take(&mut self, tiles: &'a Tiles, palette: Option<&Palette>) -> bool {
+        if !self.frames.iter().any(|f| std::ptr::eq(*f, tiles)) {
+            let n = (tiles.pixels.len() / Tiles::TILE) as i32;
+            if self.next - TILE_BASE + n >= self.cap {
+                return false;
+            }
+            self.frames.push(tiles);
+            self.next += n;
+        }
+        let Some(palette) = palette else { return true };
+        if self.palettes.contains(palette) {
+            return true;
+        }
+        if self.palettes.len() >= self.slots {
+            return false;
+        }
+        self.palettes.push(*palette);
+        true
+    }
+
+    /// What the frame took and left out.
+    pub fn drawn(self) -> SpriteDrawn {
+        SpriteDrawn {
+            tiles: (self.next - FIRST_TILE) as u16,
+            tile_room: (self.cap + TILE_BASE - FIRST_TILE - 1).max(0) as u16,
+            palettes: self.palettes.len() as u8,
+            palette_slots: self.slots as u8,
+            left_out: self.left_out,
+        }
+    }
+}
 
 /// A position projected to the screen (`sub_300638C`, the battle
 /// projection): x and y are the field plane, z is height.
@@ -268,9 +365,10 @@ pub fn describe(b: &Battle, view: &View) -> Vec<String> {
     lines
 }
 
-/// Queue every visible object's sprite. What an object names that the
-/// pack's graphics don't have goes to `problems` (`crate::lookups`); with
-/// `lookups_only` nothing is queued.
+/// Queue every visible object's sprite the frame's sprite draw has room
+/// for ([`SpriteDraw`]); returns what the draw took. What an object names
+/// that the pack's graphics don't have goes to `problems`
+/// (`crate::lookups`); with `lookups_only` nothing is queued.
 ///
 /// An object drawn with a sprite the caller names (`sprite:NAME`,
 /// `Problems::marking`) is marked where it is drawn.
@@ -281,7 +379,8 @@ pub fn queue_objects<'a>(
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
     lookups_only: bool,
-) {
+) -> SpriteDrawn {
+    let mut draw = SpriteDraw::new(b.game_rules().effects.sprite_budget, b.round.mode_copy);
     for pool in Pool::ALL {
         for r in draw_order(b, pool) {
             let o = b.objects.get(r);
@@ -292,18 +391,50 @@ pub fn queue_objects<'a>(
             }
             // An effect the game spawns without a position (the second
             // explosion of a deletion) has memory addresses for X and Y:
-            // far off the screen.
-            if nettai_battle::kinds::effect::xy_unknown(b, r) {
-                continue;
-            }
+            // far off the screen. (Its sprite still takes its tiles and
+            // its palette's slot.)
+            let nowhere = nettai_battle::kinds::effect::xy_unknown(b, r);
             let s = b.objects.sprite(r);
             let Some(id) = s.id else { continue };
             let kind = || format!("of kind {:?}", b.content.defs.kind(o.kind).key);
-            let Some(sheet) = crate::lookups::sprite(packs, &b.content, id, &kind, problems) else { continue };
-            let Some(frames) = crate::lookups::animation(sheet, &b.content, id, s.anim, &kind, problems) else { continue };
+            let (sheet, frames) = if nowhere {
+                // (Not drawn: what the pack lacks of it is no problem.)
+                let Some(sheet) = packs.sprite(&b.content, id) else { continue };
+                let Some(frames) = sheet.animations.get(s.anim as usize) else { continue };
+                (sheet, &frames[..])
+            } else {
+                let Some(sheet) = crate::lookups::sprite(packs, &b.content, id, &kind, problems) else { continue };
+                let Some(frames) = crate::lookups::animation(sheet, &b.content, id, s.anim, &kind, problems) else { continue };
+                (sheet, frames)
+            };
             let Some(frame) = frames.get(s.frame as usize).or(frames.last()) else { continue };
             let Some((parts, tiles, set)) = crate::lookups::frame_parts(sheet, frame) else { continue };
             let look = s.look;
+            // The palette offset the sprite holds: the first part's of the
+            // frame it last took one from (`Look::part_palette`; EXE5's
+            // frame load leaves the last step's).
+            let first_palette = look.part_palette.map_or(0, |(anim, frame)| {
+                sheet
+                    .animations
+                    .get(anim as usize)
+                    .and_then(|frames| frames.get(frame as usize).or(frames.last()))
+                    .and_then(|f| sheet.part_lists.get(f.parts as usize))
+                    .and_then(|parts| parts.first())
+                    .map_or(0, |p| p.palette)
+            });
+            let palette_index = look.palette.wrapping_add(first_palette) as usize;
+            // The frame's sprite draw, before any culling: a sprite it has
+            // no room for isn't drawn.
+            if !lookups_only {
+                let shown = (!look.white).then(|| shade(set.get(palette_index).copied().unwrap_or([0; 16]), look.color_shader));
+                if !draw.take(tiles, shown.as_ref()) {
+                    draw.left_out.push(format!("{:?} {} {}", r.pool, r.slot, b.content.defs.kind(o.kind).key));
+                    continue;
+                }
+            }
+            if nowhere {
+                continue;
+            }
             let p = project((o.pos.x, o.pos.y, o.pos.z), view);
             let hflip = look.hflip ^ view.mirror;
             let vflip = look.vflip;
@@ -327,24 +458,11 @@ pub fn queue_objects<'a>(
             }
             mask &= !look.hidden_parts;
 
-            // The palette offset the sprite holds: the first part's of the
-            // frame it last took one from (`Look::part_palette`; EXE5's
-            // frame load leaves the last step's).
-            let first_palette = look.part_palette.map_or(0, |(anim, frame)| {
-                sheet
-                    .animations
-                    .get(anim as usize)
-                    .and_then(|frames| frames.get(frame as usize).or(frames.last()))
-                    .and_then(|f| sheet.part_lists.get(f.parts as usize))
-                    .and_then(|parts| parts.first())
-                    .map_or(0, |p| p.palette)
-            });
             let palette = if look.white {
                 WHITE
             } else {
-                let index = look.palette.wrapping_add(first_palette) as usize;
                 let what = || format!("{} asks for {} on animation {}", kind(), look.palette, s.anim);
-                let p = crate::lookups::palette(set, &b.content, id, frame, index, &what, problems).unwrap_or([0; 16]);
+                let p = crate::lookups::palette(set, &b.content, id, frame, palette_index, &what, problems).unwrap_or([0; 16]);
                 shade(p, look.color_shader)
             };
             if lookups_only {
@@ -404,6 +522,7 @@ pub fn queue_objects<'a>(
             list.insert_group(group);
         }
     }
+    draw.drawn()
 }
 
 /// Where an object is drawn: the box around its anchor, its ground and its
@@ -479,5 +598,55 @@ mod tests {
         list.insert_at(2, 120, vec![part(10)]);
         let order: Vec<u16> = list.into_parts().iter().map(|p| p.x).collect();
         assert_eq!(order, vec![8, 9, 3, 10, 5, 2, 1, 4]);
+    }
+
+    /// A frame's sprite draw (`SpriteDraw`): a battle's caps, 0x2FF tiles
+    /// and 10 palette slots (8 in battle mode 1 where the game says so).
+    #[test]
+    fn the_sprite_draw_leaves_out_what_the_frame_has_no_room_for() {
+        use nettai_battle::content::SpriteBudgetRules;
+        let rules = SpriteBudgetRules { tiles: 0x2FF, palettes: 10, palettes_in_battle_mode_1: Some(8) };
+        let frame = |n: usize| Tiles { pixels: vec![0; n * Tiles::TILE] };
+        let palette = |n: u16| -> Palette { [n; 16] };
+
+        // Tiles: the allocator starts at 1, and a frame is left out when
+        // the allocator less 0x30 plus its tiles reaches the cap: a frame
+        // holds 0x32D tiles in all (1 - 0x30 + 0x32D = 0x2FE).
+        let (big, one, two, small) = (frame(0x32C), frame(1), frame(2), frame(1));
+        let mut d = SpriteDraw::new(rules, 0);
+        assert!(d.take(&big, Some(&palette(1))));
+        assert!(!d.take(&two, Some(&palette(2))), "0x32C reserved, two more reach the cap");
+        assert!(d.take(&one, Some(&palette(1))), "one more fits");
+        assert!(!d.take(&small, Some(&palette(1))), "the frame is full");
+        // A frame a sprite reserved this frame is shared, whatever is left.
+        assert!(d.take(&big, Some(&palette(1))) && d.take(&one, None));
+        let drawn = d.drawn();
+        assert_eq!((drawn.tiles, drawn.tile_room, drawn.palettes, drawn.palette_slots), (0x32D, 0x32D, 1, 10));
+        // (The one left out for its tiles took no palette slot.)
+
+        // Palettes: an equal palette's slot is shared; with every slot
+        // taken a new palette's sprite is left out, its tiles reserved all
+        // the same; a whitened sprite takes no slot.
+        let frames: Vec<Tiles> = (0..12).map(|_| frame(4)).collect();
+        let mut d = SpriteDraw::new(rules, 0);
+        for (i, f) in frames.iter().take(10).enumerate() {
+            assert!(d.take(f, Some(&palette(i as u16))));
+        }
+        assert!(!d.take(&frames[10], Some(&palette(10))), "an eleventh palette");
+        assert!(d.take(&frames[10], Some(&palette(3))), "its frame is reserved, and palette 3 has its slot");
+        assert!(d.take(&frames[11], None), "whitened: slot 15, none of the ten");
+        let drawn = d.drawn();
+        assert_eq!((drawn.tiles, drawn.palettes), (48, 10));
+
+        // Battle mode 1: 8 slots where the game states them.
+        let mut d = SpriteDraw::new(rules, 1);
+        for (i, f) in frames.iter().take(8).enumerate() {
+            assert!(d.take(f, Some(&palette(i as u16))));
+        }
+        assert!(!d.take(&frames[8], Some(&palette(8))));
+        let mut d = SpriteDraw::new(SpriteBudgetRules { palettes_in_battle_mode_1: None, ..rules }, 1);
+        for (i, f) in frames.iter().take(10).enumerate() {
+            assert!(d.take(f, Some(&palette(i as u16))));
+        }
     }
 }
