@@ -532,4 +532,16 @@ language = "en"
 "118-charge-shot-switch" = { name = "Charge Shot Switch" }
 "119-charge-shot-switch" = { name = "Charge Shot Switch" }
 "120-charge-shot-switch" = { name = "Charge Shot Switch" }
+"121-roll-soul" = { name = "Roll Soul" }
+"122-guts-soul" = { name = "Guts Soul" }
+"123-wind-soul" = { name = "Wind Soul" }
+"124-search-soul" = { name = "Search Soul" }
+"125-fire-soul" = { name = "Fire Soul" }
+"126-thunder-soul" = { name = "Thunder Soul" }
+"127-proto-soul" = { name = "Proto Soul" }
+"128-number-soul" = { name = "Number Soul" }
+"129-metal-soul" = { name = "Metal Soul" }
+"130-junk-soul" = { name = "Junk Soul" }
+"131-aqua-soul" = { name = "Aqua Soul" }
+"132-wood-soul" = { name = "Wood Soul" }
 "133-weapon-change" = { name = "Weapon Change" }
