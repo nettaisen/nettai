@@ -14,7 +14,7 @@ import { SettingsScreen } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
 import { PlayScreen, PlayOverlay, MatchMenu } from "screens/play.slint";
-import { TrainingScreen, TrainingOverlay, TrainingMenu } from "screens/training.slint";
+import { TrainingScreen, TrainingOverlay, TrainingMenu, TrainingInputs, TrainingView } from "screens/training.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
 
@@ -60,6 +60,8 @@ export component AppWindow inherits Window {
     if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
     if Shell.versus: VersusScreen { }
     if root.in-battle: BattleScreen { }
+    // (Training's input display: over its battle's picture, wherever that is shown.)
+    if Shell.battle == BattleKind.training && TrainingView.inputs: TrainingInputs { }
     if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu { }
     if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu { }
     if Shell.picker: PickerLayer { }

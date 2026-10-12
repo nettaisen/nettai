@@ -66,6 +66,8 @@ enum Ask {
     Go(ScreenId),
     /// The screen shown sets its view again (the game, the language or the layout changed under it).
     Refresh,
+    /// A screen is told what another has for it (`Shell::tell`).
+    Tell(ScreenId, String, usize),
     Quit,
 }
 
@@ -126,6 +128,8 @@ pub struct Shell {
     picking: Option<Picking>,
     pub battle: Option<Battle>,
     pub(crate) loading: Option<Loading>,
+    /// The training session on, if one is: any screen may start one (`crate::screens::training::start`).
+    pub training: screens::training::Shared,
     /// The screenshot pass holds things still: the two cards stay up whatever is ready, the loading bar is
     /// shown at a place of its choosing, and the menu's reel stops on one picture (`still`). Its motion probe
     /// lets things move all the same (`probe_motion`).
@@ -169,6 +173,13 @@ impl Shell {
         if !self.asks.iter().any(|a| matches!(a, Ask::Refresh)) {
             self.asks.push(Ask::Refresh);
         }
+    }
+
+    /// Tell screen `to` that something it asked of another screen was answered: it hears it as a dialog's
+    /// answer, `Screen::answered(tag, choice)`, once the screen calling has returned (a row it added to the
+    /// training menu was chosen: `crate::screens::training`).
+    pub fn tell(&mut self, to: ScreenId, tag: &str, choice: usize) {
+        self.asks.push(Ask::Tell(to, tag.to_string(), choice));
     }
 
     /// Leave the app.
@@ -591,6 +602,7 @@ impl App {
             picking: None,
             battle: None,
             loading: None,
+            training: Default::default(),
             hold_cards: false,
             hold_loading: None,
             still,
@@ -655,6 +667,17 @@ impl App {
         self.shell.battle.as_ref().map_or(self.shell.screen, |b| b.owner)
     }
 
+    /// The screen that hears of the control `id`: the battle's owner for the battle's own (its menu's, whose
+    /// names begin `menu.`, and everything while it fills the window), else the screen shown. A screen that
+    /// shows a battle another owns in a `Picture` of its own (Play, the training battle beside a waiting
+    /// invite) keeps its own controls.
+    fn hearer_of(&self, id: &str) -> ScreenId {
+        match &self.shell.battle {
+            Some(b) if b.full || id.starts_with("menu.") => b.owner,
+            _ => self.shell.screen,
+        }
+    }
+
     /// Do what the screens asked of the app while they were called.
     fn settle(&mut self) {
         while !self.shell.asks.is_empty() {
@@ -664,6 +687,9 @@ impl App {
                     Ask::Refresh => {
                         let shown = self.shell.screen;
                         self.call(shown, |s, shell| s.show(shell));
+                    }
+                    Ask::Tell(to, tag, choice) => {
+                        self.call(to, |s, shell| s.answered(shell, &tag, choice));
                     }
                     Ask::Quit => {
                         let _ = slint::quit_event_loop();
@@ -730,7 +756,7 @@ impl App {
                     "pad.menu" => self.shell.open_menu(),
                     "game" | "" => {}
                     id => {
-                        let hearer = self.hearer();
+                        let hearer = self.hearer_of(id);
                         self.call(hearer, |s, shell| s.activate(shell, id, key.index));
                     }
                 }
@@ -742,12 +768,12 @@ impl App {
                 if key.id == "game" {
                     self.shell.step_game(by);
                 } else {
-                    let hearer = self.hearer();
+                    let hearer = self.hearer_of(&key.id);
                     self.call(hearer, |s, shell| s.step(shell, &key.id, key.index, by));
                 }
             }
             Did::Edit { key, text, done } => {
-                let hearer = self.hearer();
+                let hearer = self.hearer_of(&key.id);
                 self.call(hearer, |s, shell| s.edit(shell, &key.id, key.index, &text, done));
             }
         }
@@ -881,7 +907,7 @@ impl App {
             }
             NavInput::Step(id, index, by) => self.did(Did::Step(Key::new(&id, index), by)),
             NavInput::Choose(id, index, choice) => {
-                let hearer = self.hearer();
+                let hearer = self.hearer_of(&id);
                 self.call(hearer, |s, shell| s.choose(shell, &id, index, choice));
             }
             NavInput::Point(id, index) => {
@@ -1105,7 +1131,7 @@ impl App {
             && !key.id.starts_with("dialog.")
             && !key.id.starts_with("pick.")
         {
-            let hearer = self.hearer();
+            let hearer = self.hearer_of(&key.id);
             self.call(hearer, |s, shell| s.focused(shell, &key.id, key.index));
             self.settle();
         }

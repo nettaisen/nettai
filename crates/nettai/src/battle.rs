@@ -109,6 +109,19 @@ impl Battle {
     pub fn menu_open(&self) -> bool {
         self.menu
     }
+
+    /// Start what it plays over from its beginning (a set from its first round), if it can stop (not an online
+    /// match): it runs again, and its owner will hear of its end again (a training set that ended starts over).
+    /// False, and nothing changes, in real time.
+    pub fn restart(&mut self) -> bool {
+        if !self.stage.player.restart() {
+            return false;
+        }
+        self.over = false;
+        self.stage.hold();
+        self.stage.surface.stale = true;
+        true
+    }
 }
 
 /// A battle being made ready.
@@ -248,6 +261,11 @@ impl Shell {
     /// Whether a battle is being made ready (the cards show).
     pub fn loading_battle(&self) -> bool {
         self.loading.is_some()
+    }
+
+    /// Whether the battle being made ready is `owner`'s.
+    pub fn loading_of(&self, owner: ScreenId) -> bool {
+        self.loading.as_ref().is_some_and(|l| l.start.owner == owner)
     }
 
     /// Give up the battle being made ready (its owner asks: an invite canceled).
