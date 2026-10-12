@@ -1,52 +1,707 @@
-// Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Not built yet:
-// the screen is here with its header and Back, and the training menu with what leaves a battle. Its Rust half
+// Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Its Rust half
 // is src/screens/training.rs.
+//
+// Three things are here. The entry (`TrainingScreen`): two rows, Your build and Dummy's build, and START
+// TRAINING, with the two builds facing each other and the arena beside them. The training menu (`TrainingMenu`):
+// Start or Esc in training, the battle paused behind it; its rows are a model the Rust half makes, so a row is
+// added there and worded here (`TrainingView.label` and `value`). And the input display (`TrainingInputs`): both
+// sides' buttons, lit as they are held, in a corner of the picture.
 
-import { Theme } from "../theme.slint";
-import { Shell, Page, PadButton } from "../shell.slint";
-import { Button, ButtonKind } from "../widgets.slint";
+import { Theme, Audit } from "../theme.slint";
+import { NavKind, Focusable } from "../nav.slint";
+import { Shell, Page, PadButton, Picture } from "../shell.slint";
+import { Button, ButtonKind, Select, Stepper, Label, Note, Message, Value, Pill, PanelBack, MenuItem, GroupTitle } from "../widgets.slint";
+import { Arrive } from "../motion.slint";
 import { MenuOverlay } from "battle.slint";
+
+// A build as its card says it: its name, its version's tag and its navi.
+export struct TrainingBuild {
+    name: string,
+    version: string,
+    navi: string,
+}
+
+// What a row of the training menu is.
+export enum TrainingOption {
+    // A row another screen added (Copy invite code): its text is the row's own.
+    added,
+    // The groups' titles.
+    dummy,
+    display,
+    // A label and a value between arrows.
+    action,
+    custom-screen,
+    input-display,
+}
+
+// A row of the training menu: what it is, the value it has (its place among the row's values), and for a row
+// another screen added, its text.
+export struct TrainingRow {
+    option: TrainingOption,
+    value: int,
+    text: string,
+}
 
 // What Training shows: src/screens/training.rs sets these. (A struct or an enum a property here uses reaches
 // Rust by that use: nothing is added to app.slint for it.)
 export global TrainingView {
-    // The two builds, as the menu's line under its title says them.
-    in property <string> matchup;
+    // ---- The entry.
+    // The game has no build: the one button, Create a build.
+    in property <bool> none;
+    // The two builds chosen.
+    in property <TrainingBuild> yours;
+    in property <TrainingBuild> dummys;
+    // Why a build can't be used (the reserved line), and whether training can start.
+    in property <string> message;
+    in property <bool> ready;
+    // The arena's picture is there.
+    in property <bool> arena;
+
+    // ---- A session.
+    // The two builds' names, as the menu's line under its title says them.
+    in property <string> session-yours;
+    in property <string> session-dummys;
+    // The menu's rows, and whether it has CHANGE BUILDS and QUIT TO MENU (a session Training started itself).
+    in property <[TrainingRow]> rows;
+    in property <bool> leave;
+    // The input display: shown, and the buttons each side holds (the GBA's bits).
+    in property <bool> inputs;
+    in property <int> held-yours;
+    in property <int> held-dummys;
+
+    // ---- What the Rust half says in words.
     // Who the two cards before a battle are.
     out property <string> you: @tr("YOU");
     out property <string> dummy: @tr("DUMMY");
+    // The line beside MENU on a phone.
+    pure public function round-note(round: int) -> string {
+        return @tr("Training · Round {}", round);
+    }
+    // The reserved line: which build can't be used, and the rule it breaks where that is said.
+    pure public function unusable(dummys: bool, reason: string) -> string {
+        if reason == "" {
+            return dummys ? @tr("The dummy's build can't be used.") : @tr("Your build can't be used.");
+        }
+        return dummys ? @tr("The dummy's build can't be used: {}.", reason) : @tr("Your build can't be used: {}.", reason);
+    }
+
+    // ---- The menu's words: a row's label (a group's title, in capitals), and what its value says.
+    pure public function label(option: TrainingOption) -> string {
+        if option == TrainingOption.dummy {
+            return @tr("DUMMY");
+        }
+        if option == TrainingOption.display {
+            return @tr("DISPLAY");
+        }
+        if option == TrainingOption.action {
+            return @tr("Action");
+        }
+        if option == TrainingOption.custom-screen {
+            return @tr("Custom screen");
+        }
+        if option == TrainingOption.input-display {
+            return @tr("Input display");
+        }
+        return "";
+    }
+    pure public function value(option: TrainingOption, value: int) -> string {
+        if option == TrainingOption.action {
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : @tr("Attacks at random"));
+        }
+        if option == TrainingOption.custom-screen {
+            return value == 0 ? @tr("Picks no chips") : @tr("Picks the first it can");
+        }
+        if option == TrainingOption.input-display {
+            return value == 0 ? @tr("Off") : @tr("On");
+        }
+        return "";
+    }
+}
+
+// ---- The entry ----------------------------------------------------------------------------------------------
+
+// One of the entry's two rows: a label, and the build chosen in a box that steps through the builds and opens
+// them as a list. The row is what is focused.
+component BuildOption inherits Rectangle {
+    in property <string> nav;
+    in property <string> label;
+    in property <string> value;
+    in property <bool> enabled: true;
+    property <length> box: Theme.phone ? 190px : 240px;
+    property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
+    height: 56px;
+    Rectangle {
+        background: hit.has-hover ? Theme.raised : Theme.panel;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        kind: NavKind.stepper;
+        enabled: root.enabled;
+    }
+
+    name := Text {
+        x: 16px;
+        width: parent.width - root.box - 36px;
+        text: root.label;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 14px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Select {
+        x: parent.width - root.box - 8px;
+        y: 8px;
+        width: root.box;
+        nav: root.nav;
+        value: root.value;
+        focusable: false;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.label);
+        }
+    }
+}
+
+// A build's card: who brings it, its name and its version's tag, its navi. On a phone the tag is on the navi's
+// line, the card being half as wide.
+component BuildCard inherits Rectangle {
+    in property <string> role;
+    in property <TrainingBuild> build;
+    // 1 or 2: the side's color.
+    in property <int> side;
+    property <length> pad: Theme.phone ? 12px : 16px;
+    height: 92px;
+    PanelBack {
+        side: root.side;
+        accent: false;
+    }
+
+    Label {
+        x: root.pad;
+        y: 12px;
+        width: parent.width - 2 * root.pad;
+        height: 14px;
+        text: root.role;
+    }
+
+    HorizontalLayout {
+        x: root.pad;
+        y: 30px;
+        width: parent.width - 2 * root.pad;
+        height: 22px;
+        spacing: 8px;
+        alignment: start;
+        Value {
+            max-width: parent.width - (Theme.phone ? 0px : tag.width + 8px);
+            text: root.build.name;
+            font-size: 16px;
+        }
+
+        tag := Pill {
+            text: Theme.phone ? "" : root.build.version;
+            tone: root.side == 1 ? Theme.p1 : Theme.p2;
+        }
+    }
+
+    HorizontalLayout {
+        x: root.pad;
+        y: 58px;
+        width: parent.width - 2 * root.pad;
+        height: 22px;
+        spacing: 8px;
+        alignment: start;
+        low := Pill {
+            text: Theme.phone ? root.build.version : "";
+            tone: root.side == 1 ? Theme.p1 : Theme.p2;
+        }
+
+        Value {
+            max-width: parent.width - (Theme.phone ? low.width + 8px : 0px);
+            text: root.build.navi;
+            color: Theme.muted;
+            font-size: 12px;
+            font-weight: 400;
+        }
+    }
 }
 
 export component TrainingScreen inherits Page {
+    // The rows' column, and beside it (on a phone, under it) the cards over the arena's picture, which is the
+    // battle's at three times.
+    property <length> column: Theme.phone ? self.body-width : 460px;
+    property <length> picture-width: Theme.phone ? self.body-width : 720px;
+    property <length> picture-height: self.picture-width * 2 / 3;
+    property <length> picture-x: Theme.phone ? 0px : self.column + 24px + (self.body-width - self.column - 24px - self.picture-width) / 2;
+    property <length> cards-y: Theme.phone ? 204px : 0px;
+    property <length> card-width: Theme.phone ? (self.body-width - 12px) / 2 : (self.picture-width - 56px) / 2;
     title: @tr("TRAINING");
     back: @tr("MENU");
-    hints: [
+    hints: TrainingView.none ? [
+        { key: "Enter", pad: PadButton.south, text: @tr("Open") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
+    ] : [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
+        { key: "←→", text: @tr("Change") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Open list") },
         { key: "Esc", pad: PadButton.east, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
+    // (Each part is there whether or not the game has a build, shown and reachable by which it is: an `if`
+    // apiece would be a component apiece.)
+    // With no build of the game: the one button.
+    Arrive {
+        visible: TrainingView.none;
+        Button {
+            x: 0;
+            y: 0;
+            width: Theme.phone ? root.body-width : max(240px, self.preferred-width);
+            nav: "create";
+            text: @tr("CREATE A BUILD");
+            kind: ButtonKind.main;
+            enabled: TrainingView.none;
+        }
+    }
+
+    // The two rows, the one line, the reserved line, and START TRAINING at the column's foot.
+    Arrive {
+        visible: !TrainingView.none;
+        BuildOption {
+            x: 0;
+            y: 0;
+            width: root.column;
+            nav: "yours";
+            label: @tr("Your build");
+            value: TrainingView.yours.name;
+            enabled: !TrainingView.none;
+        }
+
+        BuildOption {
+            x: 0;
+            y: 68px;
+            width: root.column;
+            nav: "dummys";
+            label: @tr("Dummy's build");
+            value: TrainingView.dummys.name;
+            enabled: !TrainingView.none;
+        }
+
+        // (Room for two lines: a longer language's, and a phone's.)
+        Note {
+            x: 0;
+            y: 140px;
+            width: root.column;
+            height: 36px;
+            text: @tr("Set up the dummy from the menu once you're in.");
+            vertical-alignment: top;
+        }
+
+        Message {
+            x: 0;
+            y: 182px;
+            width: root.column;
+            text: TrainingView.message;
+        }
+
+        Button {
+            x: 0;
+            y: root.body-height - 52px;
+            width: root.column;
+            nav: "start";
+            text: @tr("START TRAINING");
+            kind: ButtonKind.main;
+            big: true;
+            enabled: TrainingView.ready && !TrainingView.none;
+        }
+    }
+
+    // The two builds facing each other.
+    Arrive {
+        order: 1;
+        visible: !TrainingView.none;
+        BuildCard {
+            x: root.picture-x;
+            y: root.cards-y;
+            width: root.card-width;
+            role: TrainingView.you;
+            build: TrainingView.yours;
+            side: 1;
+        }
+
+        Text {
+            x: root.picture-x + root.card-width;
+            y: root.cards-y;
+            width: 56px;
+            height: 92px;
+            visible: !Theme.phone;
+            text: @tr("VS");
+            color: Theme.dim;
+            font-family: Theme.display;
+            font-size: 28px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        BuildCard {
+            x: root.picture-x + root.picture-width - root.card-width;
+            y: root.cards-y;
+            width: root.card-width;
+            role: TrainingView.dummy;
+            build: TrainingView.dummys;
+            side: 2;
+        }
+    }
+
+    // The arena: the round as it opens, the two navis on it.
+    Arrive {
+        order: 2;
+        from-x: Theme.phone ? 0px : 24px;
+        visible: !TrainingView.none;
+        // (Its box is there whether or not the picture is: the picture shows once it is the arena's own, and
+        // never past its box.)
+        Rectangle {
+            x: root.picture-x;
+            y: root.cards-y + 104px;
+            width: root.picture-width;
+            height: root.picture-height;
+            background: Theme.inset;
+            clip: true;
+            Picture {
+                visible: TrainingView.arena && !Shell.leaving;
+                ground: Theme.inset;
+            }
+        }
+
+        Rectangle {
+            x: root.picture-x + 12px;
+            y: root.cards-y + 104px + root.picture-height - 12px - self.height;
+            width: tag.preferred-width + 16px;
+            height: 22px;
+            visible: TrainingView.arena && !Shell.leaving;
+            background: Theme.shade;
+            tag := Text {
+                text: @tr("ARENA PREVIEW");
+                color: Theme.text;
+                font-family: Theme.display;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: Theme.label-tracking;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+}
+
+// ---- The training menu ------------------------------------------------------------------------------------
+
+// A row of the training menu, whatever it is: a group's title; a label and a value between arrows, the row
+// focused as a whole (on a phone the label is over the arrows); or a row another screen added. (One component
+// under the menu's one `for`: its parts are all there, and those the row isn't don't show.)
+component MenuRow inherits Rectangle {
+    in property <TrainingRow> entry;
+    in property <int> index;
+    property <bool> added: root.entry.option == TrainingOption.added;
+    property <bool> title: root.entry.option == TrainingOption.dummy || root.entry.option == TrainingOption.display;
+    property <bool> option: !root.added && !root.title;
+    property <string> label: TrainingView.label(root.entry.option);
+    property <string> value: TrainingView.value(root.entry.option, root.entry.value);
+    // The value's box: sized for the longest value in the longest language (the screenshot pass says when one
+    // is cut: `fits`).
+    property <length> value-width: Theme.phone ? root.width - 72px : 196px;
+    property <bool> over: Theme.audit && root.option && (name.preferred-width > name.width + 0.5px || fits.preferred-width > root.value-width + 0.5px);
+    height: root.title ? head.height : (root.added ? 48px : (Theme.phone ? 64px : Theme.row));
+    head := GroupTitle {
+        x: 0;
+        y: 0;
+        visible: root.title;
+        text: root.title ? root.label : "";
+        first: root.index == 0;
+    }
+
+    MenuItem {
+        x: 0;
+        y: 0;
+        visible: root.added;
+        nav: root.added ? "menu.added" : "";
+        nav-index: root.index;
+        text: root.entry.text;
+    }
+
+    Rectangle {
+        visible: root.option;
+        background: hit.has-hover ? Theme.tint : transparent;
+        hit := Focusable {
+            nav: root.option ? "menu.option" : "";
+            nav-index: root.index;
+            kind: NavKind.stepper;
+            enabled: root.option;
+        }
+
+        name := Text {
+            x: 12px;
+            y: 0;
+            width: Theme.phone ? parent.width - 24px : parent.width - root.value-width - 104px;
+            height: Theme.phone ? 24px : parent.height;
+            text: root.option ? root.label : "";
+            color: Theme.text;
+            font-family: Theme.body;
+            font-size: 14px;
+            font-weight: 600;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Stepper {
+            x: Theme.phone ? 0px : parent.width - self.width - 8px;
+            y: Theme.phone ? 24px : (parent.height - self.height) / 2;
+            nav: "menu.option";
+            nav-index: root.index;
+            value: root.value;
+            value-width: root.value-width;
+            focusable: false;
+        }
+
+        // (The value as the stepper draws it, measured: whether its box holds it.)
+        fits := Text {
+            visible: false;
+            text: root.value;
+            font-family: Theme.body;
+            font-size: 14px;
+            font-weight: 700;
+        }
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.label + ": " + root.value);
+        }
+    }
 }
 
 // The training menu: Start or Esc in training. The battle is paused behind it, the dummy in view at the right.
 export component TrainingMenu inherits MenuOverlay {
+    // RESUME and RESTART, and under them the ways out of a session Training started itself; on a phone one
+    // over the other.
+    property <length> button-width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
+    property <length> buttons-height: Theme.phone ? (TrainingView.leave ? 184px : 88px) : (TrainingView.leave ? 88px : 40px);
+    property <length> buttons-y: root.inner-height - root.buttons-height;
     title: @tr("TRAINING");
-    note: TrainingView.matchup;
+    note: @tr("{} vs {}", TrainingView.session-yours, TrainingView.session-dummys);
     side: true;
+    VerticalLayout {
+        x: 0;
+        y: 0;
+        width: root.inner-width;
+        height: root.buttons-y;
+        alignment: start;
+        spacing: 4px;
+        for row[i] in TrainingView.rows: MenuRow {
+            entry: row;
+            index: i;
+        }
+    }
+
     Button {
         x: 0;
-        y: root.inner-height - (Theme.phone ? 88px : 40px);
-        width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
+        y: root.buttons-y;
+        width: root.button-width;
         nav: "menu.resume";
         text: @tr("RESUME");
         kind: ButtonKind.main;
     }
 
     Button {
-        x: Theme.phone ? 0px : (root.inner-width + 8px) / 2;
-        y: root.inner-height - 40px;
-        width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
+        x: Theme.phone ? 0px : root.button-width + 8px;
+        y: root.buttons-y + (Theme.phone ? 48px : 0px);
+        width: root.button-width;
+        nav: "menu.restart";
+        text: @tr("RESTART");
+    }
+
+    Button {
+        x: 0;
+        y: root.buttons-y + (Theme.phone ? 96px : 48px);
+        width: root.button-width;
+        visible: TrainingView.leave;
+        enabled: TrainingView.leave;
+        nav: "menu.change";
+        text: @tr("CHANGE BUILDS");
+    }
+
+    Button {
+        x: Theme.phone ? 0px : root.button-width + 8px;
+        y: root.buttons-y + (Theme.phone ? 144px : 48px);
+        width: root.button-width;
+        visible: TrainingView.leave;
+        enabled: TrainingView.leave;
         nav: "menu.quit";
         text: @tr("QUIT TO MENU");
         kind: ButtonKind.ghost;
+    }
+}
+
+// ---- The input display ------------------------------------------------------------------------------------
+
+// A button of the input display: lit while it is held. An arrow is a path in a box of 8, in place of a text.
+component InputKey inherits Rectangle {
+    in property <bool> lit;
+    in property <string> text;
+    in property <string> shape;
+    in property <color> tone;
+    width: 16px;
+    height: 16px;
+    Rectangle {
+        background: root.lit ? root.tone : Theme.inset;
+        border-width: 1px;
+        border-color: root.lit ? root.tone : Theme.line;
+    }
+
+    Text {
+        text: root.text;
+        color: root.lit ? Theme.inset : Theme.dim;
+        font-family: "Chakra Petch";
+        font-size: root.width > 16px ? 9px : 11px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    Path {
+        width: 8px;
+        height: 8px;
+        commands: root.shape;
+        fill: root.lit ? Theme.inset : Theme.dim;
+        viewbox-width: 8;
+        viewbox-height: 8;
+    }
+}
+
+// A side's buttons in a row, its color before them: the directions, A and B, L and R, SELECT and START (the
+// GBA's own names for them).
+component InputRow inherits Rectangle {
+    // The buttons held, as the GBA's bits (A 0, B 1, SELECT 2, START 3, right 4, left 5, up 6, down 7, R 8,
+    // L 9).
+    in property <int> held;
+    in property <color> tone;
+    pure function on(bit: int) -> bool {
+        return Math.mod(Math.floor(root.held / Math.pow(2, bit)), 2) > 0.5;
+    }
+    width: 243px;
+    height: 16px;
+    Rectangle {
+        x: 0;
+        width: 3px;
+        background: root.tone;
+    }
+
+    InputKey {
+        x: 9px;
+        shape: "M 1 4 L 7 0.5 L 7 7.5 Z";
+        lit: root.on(5);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 27px;
+        shape: "M 4 1 L 7.5 7 L 0.5 7 Z";
+        lit: root.on(6);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 45px;
+        shape: "M 4 7 L 7.5 1 L 0.5 1 Z";
+        lit: root.on(7);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 63px;
+        shape: "M 7 4 L 1 0.5 L 1 7.5 Z";
+        lit: root.on(4);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 87px;
+        text: "A";
+        lit: root.on(0);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 105px;
+        text: "B";
+        lit: root.on(1);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 129px;
+        text: "L";
+        lit: root.on(9);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 147px;
+        text: "R";
+        lit: root.on(8);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 171px;
+        width: 38px;
+        text: "SELECT";
+        lit: root.on(2);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 211px;
+        width: 32px;
+        text: "START";
+        lit: root.on(3);
+        tone: root.tone;
+    }
+}
+
+// The input display: the player's buttons over the dummy's, in the picture's top right corner, under the line
+// the battle's own text takes there (its top eighth); on a phone, where the picture is small, under MENU. It is
+// over the battle and under the menu, and takes no clicks.
+export component TrainingInputs inherits Rectangle {
+    Rectangle {
+        x: Theme.phone ? Theme.margin : Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
+        y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
+        width: 259px;
+        height: 52px;
+        background: Theme.shade;
+        border-width: 1px;
+        border-color: Theme.line;
+        InputRow {
+            x: 8px;
+            y: 8px;
+            held: TrainingView.held-yours;
+            tone: Theme.p1;
+        }
+
+        InputRow {
+            x: 8px;
+            y: 28px;
+            held: TrainingView.held-dummys;
+            tone: Theme.p2;
+        }
     }
 }
 

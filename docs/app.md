@@ -256,6 +256,39 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
   `choose_file`, `choose_save`; `recorder` for an offline set's replay; `fly` (§10); `stay_awake`, set while
   the screen has a link open (§1).
 
+**A training session, from any screen** (`crate::screens::training`, §15). A training session is a battle
+against a dummy with the training menu behind Start and Esc; Training starts one from its entry, and another
+screen may start one beside something of its own (Play, while an invite waits for its opponent). Three calls:
+
+    use crate::screens::training::{self, Build, Start};
+
+    // Start one. `Start::new(game, you, dummy)` is Training's own (the two cards, the picture filling the
+    // window); `Start::beside(game, build, from, tag, rows)` is one a screen shows in a `Picture` of its own:
+    // the dummy a copy of the player's build, standing still, no cards, and `rows` at the top of the training
+    // menu. The fields are public: `opponent`, `seed`, `full`, `cards`.
+    let rows = vec![copy_invite_code, cancel_invite];           // their texts, in the language shown
+    training::start(shell, Start::beside(&game, Build { name, side }, ScreenId::Play, "invite", rows))?;
+
+    // A row it added was chosen: the screen hears it as a dialog's answer, by its tag and the row's place.
+    fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) { /* "invite": 0 copy, 1 cancel */ }
+
+    // End it from outside (the opponent joined). `training::running(shell)` says whether one is on.
+    training::end(shell);
+
+- `start` gives `Err(UserError)` if the game isn't ready or a build can't be played (the detail is in the log);
+  both builds must be ready (`nettai_match::build::Checked::ready`). A session already on ends first.
+- The session's battle is always Training's (`ScreenId::Training` owns it), so Training's module restarts a set
+  that ended, hears the menu (`menu.*`) and the restart key whatever screen is shown, and the starter writes
+  none of that. The starter's own controls stay its own: a control is heard by the battle's owner only if it is
+  the battle's (its name begins `menu.`) or the battle fills the window (`App::hearer_of`).
+- A session started from outside has no CHANGE BUILDS and no QUIT TO MENU: its starter's rows are the ways out.
+  Choosing an added row tells the starter and leaves the menu as it is (the starter closes it with
+  `shell.close_menu()` if it wants, or ends the session). It keeps nothing of the dummy's setup.
+- One shown in the starter's own `Picture` (`full` off) lasts while that screen is shown: it ends by itself if
+  another screen is gone to, and when another battle starts in its place.
+- A dialog asked while it runs (`Shell::ask`) is answered to the battle's owner, as ever: Training passes the
+  answer on to the starter (`answered`, by the dialog's tag).
+
 **Filling in a screen** touches three files: `ui/screens/<name>.slint`, `src/screens/<name>.rs` and
 `lang/ja/<name>.po`. **Adding a screen** is those three and a few lines in three shared files: the `Screen` enum
 (shell.slint); its import, its view's export and its two `if`s (app.slint); its module, `ScreenId` and `all()`
