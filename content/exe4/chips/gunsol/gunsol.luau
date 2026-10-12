@@ -5,7 +5,7 @@
 -- times the navi's number) with its sound; 6 ticks later, A held or not, the gun's animation goes one on and the sun
 -- beam lights up 80 pixels ahead (@exelib/gundels/beam, effect 0x48, watching the gun's slot; the attack keeps it,
 -- AIAttackVars +0x1C), and then each tick, while the navi's player holds A (a navi in auto battle, NaviStats +0x26,
--- needn't; nor would the story's dark soul, +0x24 15) and the chip's firing time lasts, a drain hit (element 5, no
+-- needn't; nor one in the dark soul, +0x24 15, whose AI holds nothing) and the chip's firing time lasts, a drain hit (element 5, no
 -- spark, hit modifier 0, a thrown piercing break hitting navis) of 2 damage (4 in the sun, NaviStats +0x29) on the
 -- column two panels ahead, whose holes the light fills (the Hole chip's, type 11, turned normal), and GunSolEX's the
 -- column past it too. Then the beam goes, and 11 ticks later (the gun's animation one more on as they start) the navi
@@ -56,9 +56,12 @@ local HOLE: PanelType, NORMAL: PanelType = "hole", "normal"
 
 local WIND_UP, FIRING, RECOVER = 0x0, 0x4, 0x8
 
+-- The form whose navi needn't hold A (0x080EDF12: soul 15, the dark soul, which the auto battle AI drives).
+local DRIVEN = "darksoul"
+
 -- 0x080EDF00's test: a player who must hold A to keep firing has let go of it.
 local function let_go(me: Object): boolean
-    if me.actor_type ~= "player" then
+    if me.actor_type ~= "player" or battle.navi(me.alliance).form.id == DRIVEN then
         return false
     end
     return not me:held("a")

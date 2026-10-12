@@ -13,6 +13,7 @@
 local buster = require("@self/weapons/buster")
 local charged_shot = require("@self/weapons/charged_shot")
 local aquasoul = require("@self/forms/aquasoul").aquasoul
+local darksoul = require("@self/forms/darksoul").darksoul
 local firesoul = require("@self/forms/firesoul").firesoul
 local gutssoul = require("@self/forms/gutssoul").gutssoul
 local junksoul = require("@self/forms/junksoul").junksoul
@@ -43,9 +44,11 @@ local navi: NaviDef = {
     fresh = { hp = 100, mega_level = 5, giga_level = 1 },
     -- His forms (he is MegaMan: the rules ask whether a navi has them where the original asks whether it is
     -- MegaMan), and so his faces are his forms' (forms/base's `mugshot`): the souls Double Soul gives, in their
-    -- numbers' order (rules/souls; a side's `souls` are those it has).
+    -- numbers' order (rules/souls; a side's `souls` are those it has), and the dark soul a dark MegaMan falls into
+    -- (rules/souls/dark: soul 15).
     forms = {
         souls = {
+            dark_soul = darksoul,
             form_list = {
                 rollsoul,
                 gutssoul,

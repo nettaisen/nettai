@@ -43,6 +43,7 @@ local sword: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 local wideswrd: Chip = {
@@ -57,6 +58,7 @@ local wideswrd: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_ahead" },
 }
 
 local longswrd: Chip = {
@@ -71,6 +73,7 @@ local longswrd: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 local wideblde: Chip = {
@@ -85,6 +88,7 @@ local wideblde: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "column_ahead" },
 }
 
 local longblde: Chip = {
@@ -99,6 +103,7 @@ local longblde: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 return { sword = sword, wideswrd = wideswrd, longswrd = longswrd, wideblde = wideblde, longblde = longblde }

@@ -27,6 +27,7 @@ local serchman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "serchman/controller", palette = 0, sweep = 6 }.hook,
     megaman = "light",
+    auto_battle = { class = "at_once" },
 }
 
 local srchmn_sp: Chip = {
@@ -43,6 +44,7 @@ local srchmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "srchmn-sp/controller", palette = 4, sweep = 4 }.hook,
     megaman = "light",
+    auto_battle = { class = "at_once" },
 }
 
 local srchmn_ds: Chip = {
@@ -58,6 +60,7 @@ local srchmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "srchmn-ds/controller", palette = 6, sweep = 4 }.hook,
     megaman = "dark",
+    auto_battle = { class = "at_once" },
 }
 
 return { serchman = serchman, ["srchmn-sp"] = srchmn_sp, ["srchmn-ds"] = srchmn_ds }

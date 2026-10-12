@@ -31,6 +31,7 @@ local chip: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "behind_target" },
 }
 
 return { spreader = chip }

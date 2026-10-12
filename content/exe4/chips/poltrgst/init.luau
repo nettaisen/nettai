@@ -32,6 +32,7 @@ local chip: Chip = {
     flags = {},
     traits = { "no_cut_in" },
     dimming = made.hook(false),
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { poltrgst = chip }
