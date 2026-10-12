@@ -76,6 +76,12 @@ export global PlayView {
     in property <string> message;
     in property <bool> message-quiet;
 
+    // The code a box a character, where it can't be typed (a pad): open, and its six characters. `code-set` is
+    // how many characters a code is written in.
+    in property <bool> boxes;
+    in property <[string]> box-characters;
+    in property <int> code-set;
+
     // ---- A direct connection -----------------------------------------------------------------------------
     in property <bool> direct;
     // This machine's address, for the other player; the address typed.
@@ -238,6 +244,68 @@ component BuildBox inherits Rectangle {
         nav: root.nav;
         kind: NavKind.stepper;
         enabled: root.enabled;
+    }
+}
+
+// One of the code's six boxes, for a pad: Up and Down go through its characters, Left and Right to the boxes
+// beside it. (To the app's focus it is a list whose rows are all in one place, `count` of them: `Nav.index` is
+// the character it is on.)
+component CodeBox inherits Rectangle {
+    in property <string> nav;
+    in property <string> value;
+    in property <int> count;
+    property <[int]> token;
+    property <length> ax: self.absolute-position.x;
+    property <length> ay: self.absolute-position.y;
+    function place() {
+        Nav.page(root.nav, root.ax, root.ay, self.width, self.height, self.height, 0px);
+        Nav.list(root.nav, root.count, 0px, self.height, 0px, self.width);
+    }
+    height: 64px;
+    Rectangle {
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: Nav.id == root.nav ? Theme.cursor : Theme.line;
+    }
+
+    Path {
+        y: 6px;
+        width: 8px;
+        height: 5px;
+        fill: Theme.dim;
+        commands: "M 0 5 L 8 5 L 4 0 Z";
+    }
+
+    Text {
+        text: root.value;
+        color: Theme.text;
+        font-family: Theme.mono;
+        font-size: 28px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    Path {
+        y: parent.height - 11px;
+        width: 8px;
+        height: 5px;
+        fill: Theme.dim;
+        commands: "M 0 0 L 8 0 L 4 5 Z";
+    }
+
+    init => {
+        root.token = Nav.register(root.nav, 0, NavKind.list);
+        place();
+    }
+    changed ax => {
+        place();
+    }
+    changed ay => {
+        place();
+    }
+    changed count => {
+        place();
     }
 }
 
@@ -414,44 +482,58 @@ component LobbyCard inherits Rectangle {
     }
 }
 
-// The match's settings and the connection, in one row. Rounds and Closed builds are the match's (either
-// player changes them, and both see it); the input delay is the player's own.
+// The match's settings and the connection: one row, or on a phone a row each. Rounds and Closed builds are the
+// match's (either player changes them, and both see it); the input delay is the player's own.
 component LobbyFacts inherits Rectangle {
-    height: 56px;
-    width: ping.x + ping.width + 24px;
+    // Where each thing starts in the one row (its words make it), and the row's width.
+    property <length> x1: 24px + rounds-label.width + 12px;
+    property <length> x2: self.x1 + rounds.width + 65px;
+    property <length> x3: self.x2 + closed-label.width + 12px;
+    property <length> x4: self.x3 + closed.width + 65px;
+    property <length> x5: self.x4 + delay-label.width + 12px;
+    property <length> x6: self.x5 + delay.width + 65px;
+    out property <length> natural-width: self.x6 + bars.width + 12px + ping-label.width + 8px + ping.width + 24px;
+    property <length> line: Theme.phone ? 44px : self.height;
+    height: Theme.phone ? 176px : 56px;
     PanelBack {
+        visible: !Theme.phone;
         accent: false;
     }
 
     rounds-label := Value {
-        x: 24px;
+        x: Theme.phone ? 0px : 24px;
+        y: 0;
+        height: root.line;
         text: @tr("Rounds");
     }
 
     rounds := Stepper {
-        x: rounds-label.x + rounds-label.width + 12px;
-        y: (parent.height - self.height) / 2;
+        x: Theme.phone ? parent.width - self.width : root.x1;
+        y: (root.line - self.height) / 2;
         nav: "lobby.rounds";
         value: PlayView.rounds == 1 ? @tr("Single battle") : @tr("Best of {}", PlayView.rounds);
-        value-width: 148px;
+        value-width: Theme.phone ? 136px : 148px;
     }
 
     Rectangle {
-        x: rounds.x + rounds.width + 32px;
+        x: root.x2 - 33px;
         y: 16px;
         width: 1px;
         height: 24px;
+        visible: !Theme.phone;
         background: Theme.line;
     }
 
     closed-label := Value {
-        x: rounds.x + rounds.width + 65px;
+        x: Theme.phone ? 0px : root.x2;
+        y: Theme.phone ? root.line : 0px;
+        height: root.line;
         text: @tr("Closed builds");
     }
 
     closed := Seg {
-        x: closed-label.x + closed-label.width + 12px;
-        y: (parent.height - self.height) / 2;
+        x: Theme.phone ? parent.width - self.width : root.x3;
+        y: closed-label.y + (root.line - self.height) / 2;
         nav: "lobby.closed";
         first: @tr("OFF");
         second: @tr("ON");
@@ -459,21 +541,24 @@ component LobbyFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: closed.x + closed.width + 32px;
+        x: root.x4 - 33px;
         y: 16px;
         width: 1px;
         height: 24px;
+        visible: !Theme.phone;
         background: Theme.line;
     }
 
     delay-label := Value {
-        x: closed.x + closed.width + 65px;
+        x: Theme.phone ? 0px : root.x4;
+        y: Theme.phone ? 2 * root.line : 0px;
+        height: root.line;
         text: @tr("Input delay");
     }
 
     delay := Stepper {
-        x: delay-label.x + delay-label.width + 12px;
-        y: (parent.height - self.height) / 2;
+        x: Theme.phone ? parent.width - self.width : root.x5;
+        y: delay-label.y + (root.line - self.height) / 2;
         nav: "lobby.delay";
         value: PlayView.input-delay;
         value-width: 48px;
@@ -481,21 +566,24 @@ component LobbyFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: delay.x + delay.width + 32px;
+        x: root.x6 - 33px;
         y: 16px;
         width: 1px;
         height: 24px;
+        visible: !Theme.phone;
         background: Theme.line;
     }
 
     bars := Bars {
-        x: delay.x + delay.width + 65px;
-        y: (parent.height - self.height) / 2;
+        x: Theme.phone ? 0px : root.x6;
+        y: (Theme.phone ? 3 * root.line : 0px) + (root.line - self.height) / 2;
         level: PlayView.bars;
     }
 
     ping-label := Value {
         x: bars.x + bars.width + 12px;
+        y: Theme.phone ? 3 * root.line : 0px;
+        height: root.line;
         text: @tr("Ping");
         color: Theme.muted;
         font-weight: 400;
@@ -503,84 +591,9 @@ component LobbyFacts inherits Rectangle {
 
     ping := Mono {
         x: ping-label.x + ping-label.width + 8px;
+        y: ping-label.y;
         width: 60px;
-        text: PlayView.ping < 0 ? "" : @tr("{} ms", PlayView.ping);
-    }
-}
-
-// The same, on a phone: a row each.
-component LobbyFactsColumn inherits Rectangle {
-    height: 176px;
-    Value {
-        x: 0;
-        y: 0;
-        width: parent.width - 220px;
-        height: 44px;
-        text: @tr("Rounds");
-    }
-
-    Stepper {
-        x: parent.width - self.width;
-        y: 4px;
-        nav: "lobby.rounds";
-        value: PlayView.rounds == 1 ? @tr("Single battle") : @tr("Best of {}", PlayView.rounds);
-        value-width: 136px;
-    }
-
-    Value {
-        x: 0;
-        y: 44px;
-        width: parent.width - 132px;
-        height: 44px;
-        text: @tr("Closed builds");
-    }
-
-    Seg {
-        x: parent.width - self.width;
-        y: 48px;
-        nav: "lobby.closed";
-        first: @tr("OFF");
-        second: @tr("ON");
-        chosen: PlayView.closed ? 1 : 0;
-    }
-
-    Value {
-        x: 0;
-        y: 88px;
-        width: parent.width - 132px;
-        height: 44px;
-        text: @tr("Input delay");
-    }
-
-    Stepper {
-        x: parent.width - self.width;
-        y: 92px;
-        nav: "lobby.delay";
-        value: PlayView.input-delay;
-        value-width: 48px;
-        numeric: true;
-    }
-
-    Bars {
-        x: 0;
-        y: 147px;
-        level: PlayView.bars;
-    }
-
-    ping-label := Value {
-        x: 34px;
-        y: 132px;
-        height: 44px;
-        text: @tr("Ping");
-        color: Theme.muted;
-        font-weight: 400;
-    }
-
-    Mono {
-        x: ping-label.x + ping-label.width + 8px;
-        y: 132px;
-        width: 60px;
-        height: 44px;
+        height: root.line;
         text: PlayView.ping < 0 ? "" : @tr("{} ms", PlayView.ping);
     }
 }
@@ -628,323 +641,319 @@ export component PlayScreen inherits Page {
     status: PlayView.part == PlayPart.lobby && PlayView.room != "" ? PlayView.room : Shell.player;
 
     // ---- The builds, and the row that makes a link ----
-    if PlayView.part == PlayPart.builds && !Theme.phone: Arrive {
-        order: 0;
-        Label {
-            x: 0;
-            y: 0;
-            width: root.list-width;
-            height: 14px;
-            text: @tr("YOUR BUILD");
-        }
-
-        list := ListView {
-            x: 0;
-            y: 26px;
-            width: root.list-width;
-            height: root.body-height - 90px;
-            visible: !root.none;
-            nav: "builds";
-            count: PlayView.builds.length;
-            row-height: 52px;
-            chosen: PlayView.chosen;
-            for slot in list.shown: BuildItem {
-                property <int> at: list.first + slot;
+    // (One conditional a part, and what differs on a phone by its place and by `visible`: each conditional is a
+    // component of its own in what Slint generates. A control that isn't shown is unavailable, so the focus
+    // passes it by.)
+    if PlayView.part == PlayPart.builds: Rectangle {
+        x: 0;
+        y: 0;
+        width: root.body-width;
+        height: root.body-height;
+        Arrive {
+            order: 0;
+            Label {
                 x: 0;
-                y: self.at * list.pitch;
-                width: list.row-width;
-                height: list.row-height;
-                build: PlayView.builds[self.at];
-                nav: list.nav;
-                nav-index: self.at;
+                y: 0;
+                width: Theme.phone ? root.body-width : root.list-width;
+                height: 14px;
+                text: @tr("YOUR BUILD");
             }
-        }
 
-        // With no build of the game, one button in the list's place.
-        Button {
-            x: 0;
-            y: 26px;
-            visible: root.none;
-            enabled: root.none;
-            nav: "create";
-            text: @tr("CREATE A BUILD");
-            kind: ButtonKind.main;
-        }
-    }
+            // The builds as a list; on a phone the chosen one in a box, which opens them as a sheet.
+            list := ListView {
+                x: 0;
+                y: 26px;
+                width: root.list-width;
+                height: root.body-height - 90px;
+                visible: !Theme.phone && !root.none;
+                nav: "builds";
+                count: Theme.phone ? 0 : PlayView.builds.length;
+                row-height: 52px;
+                chosen: PlayView.chosen;
+                for slot in list.shown: BuildItem {
+                    property <int> at: list.first + slot;
+                    x: 0;
+                    y: self.at * list.pitch;
+                    width: list.row-width;
+                    height: list.row-height;
+                    build: PlayView.builds[self.at];
+                    nav: list.nav;
+                    nav-index: self.at;
+                }
+            }
 
-    if PlayView.part == PlayPart.builds && !Theme.phone && !root.none: Arrive {
-        order: 1;
-        Rectangle {
-            x: root.list-width + 24px;
-            y: 0;
-            width: root.body-width - root.list-width - 24px;
-            height: root.body-height - 64px;
-            PanelBack { }
-
-            BuildFacts {
-                x: 16px;
-                y: 16px;
-                width: parent.width - 32px;
-                height: 48px;
+            BuildBox {
+                x: 0;
+                y: 22px;
+                width: root.body-width;
+                visible: Theme.phone && !root.none;
+                enabled: Theme.phone && !root.none;
+                nav: "build";
                 build: PlayView.build;
-                named: true;
+            }
+
+            // With no build of the game, one button in their place.
+            Button {
+                x: 0;
+                y: Theme.phone ? 22px : 26px;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                visible: root.none;
+                enabled: root.none;
+                nav: "create";
+                text: @tr("CREATE A BUILD");
+                kind: ButtonKind.main;
+                big: Theme.phone;
             }
         }
-    }
 
-    if PlayView.part == PlayPart.builds && Theme.phone: Arrive {
-        order: 0;
-        Label {
-            x: 0;
-            y: 0;
-            width: root.body-width;
-            height: 14px;
-            text: @tr("YOUR BUILD");
+        Arrive {
+            order: 1;
+            Rectangle {
+                x: root.list-width + 24px;
+                y: 0;
+                width: root.body-width - root.list-width - 24px;
+                height: root.body-height - 64px;
+                visible: !Theme.phone && !root.none;
+                PanelBack { }
+
+                BuildFacts {
+                    x: 16px;
+                    y: 16px;
+                    width: parent.width - 32px;
+                    height: 48px;
+                    build: PlayView.build;
+                    named: true;
+                }
+            }
         }
 
-        BuildBox {
-            x: 0;
-            y: 22px;
-            width: root.body-width;
-            visible: !root.none;
-            enabled: !root.none;
-            nav: "builds";
-            build: PlayView.build;
-        }
+        // One row (on a phone, one under the other): an invite, a code typed, a direct connection. The space
+        // beside JOIN is there whether or not it says anything.
+        Arrive {
+            order: 2;
+            invite := Button {
+                x: 0;
+                y: Theme.phone ? 106px : root.body-height - 40px;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                nav: "invite";
+                text: @tr("CREATE INVITE");
+                kind: ButtonKind.main;
+                big: Theme.phone;
+                enabled: !root.none;
+            }
 
-        Button {
-            x: 0;
-            y: 22px;
-            width: root.body-width;
-            visible: root.none;
-            enabled: root.none;
-            nav: "create";
-            text: @tr("CREATE A BUILD");
-            kind: ButtonKind.main;
-            big: true;
-        }
-    }
+            Rectangle {
+                x: invite.x + invite.width + 12px;
+                y: root.body-height - 32px;
+                width: 1px;
+                height: 24px;
+                visible: !Theme.phone;
+                background: Theme.line;
+            }
 
-    // One row (on a phone, one under the other): an invite, a code typed, a direct connection. The space
-    // beside JOIN is there whether or not it says anything.
-    if PlayView.part == PlayPart.builds: Arrive {
-        order: 2;
-        invite := Button {
-            x: 0;
-            y: Theme.phone ? 106px : root.body-height - 40px;
-            width: Theme.phone ? root.body-width : self.natural-width;
-            nav: "invite";
-            text: @tr("CREATE INVITE");
-            kind: ButtonKind.main;
-            big: Theme.phone;
-            enabled: !root.none;
-        }
+            code := Field {
+                x: Theme.phone ? 0px : invite.x + invite.width + 25px;
+                y: Theme.phone ? 170px : root.body-height - 40px;
+                width: Theme.phone ? root.body-width - join.width - 8px : 208px;
+                nav: "code";
+                text: PlayView.code;
+                placeholder: @tr("INVITE CODE");
+                code: true;
+                error: PlayView.message != "" && !PlayView.message-quiet;
+                enabled: !root.none;
+            }
 
-        Rectangle {
-            x: invite.x + invite.width + 12px;
-            y: root.body-height - 32px;
-            width: 1px;
-            height: 24px;
-            visible: !Theme.phone;
-            background: Theme.line;
-        }
+            join := Button {
+                x: code.x + code.width + (Theme.phone ? 8px : 12px);
+                y: code.y;
+                nav: "join";
+                text: @tr("JOIN");
+                enabled: !root.none;
+            }
 
-        code := Field {
-            x: Theme.phone ? 0px : invite.x + invite.width + 25px;
-            y: Theme.phone ? 170px : root.body-height - 40px;
-            width: Theme.phone ? root.body-width - join.width - 8px : 176px;
-            nav: "code";
-            text: PlayView.code;
-            placeholder: @tr("INVITE CODE");
-            code: true;
-            error: PlayView.message != "" && !PlayView.message-quiet;
-            enabled: !root.none;
-        }
+            direct := Button {
+                x: Theme.phone ? 0px : root.body-width - self.width;
+                y: Theme.phone ? 262px : root.body-height - 40px;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                nav: "direct";
+                text: @tr("DIRECT CONNECT");
+                kind: ButtonKind.ghost;
+                enabled: !root.none;
+            }
 
-        join := Button {
-            x: code.x + code.width + (Theme.phone ? 8px : 12px);
-            y: code.y;
-            nav: "join";
-            text: @tr("JOIN");
-            enabled: !root.none;
-        }
-
-        direct := Button {
-            x: Theme.phone ? 0px : root.body-width - self.width;
-            y: Theme.phone ? 262px : root.body-height - 40px;
-            width: Theme.phone ? root.body-width : self.natural-width;
-            nav: "direct";
-            text: @tr("DIRECT CONNECT");
-            kind: ButtonKind.ghost;
-            enabled: !root.none;
-        }
-
-        Note {
-            x: Theme.phone ? 0px : join.x + join.width + 12px;
-            y: Theme.phone ? 214px : root.body-height - 40px;
-            width: Theme.phone ? root.body-width : direct.x - self.x - 12px;
-            height: 40px;
-            text: PlayView.message;
-            color: PlayView.message-quiet ? Theme.muted : Theme.bad;
-            font-size: 12px;
+            Note {
+                x: Theme.phone ? 0px : join.x + join.width + 12px;
+                y: Theme.phone ? 214px : root.body-height - 40px;
+                width: Theme.phone ? root.body-width : direct.x - self.x - 12px;
+                height: 40px;
+                text: PlayView.message;
+                color: PlayView.message-quiet ? Theme.muted : Theme.bad;
+                font-size: 12px;
+            }
         }
     }
 
     // ---- Waiting for the other player: the invite's code, and a training battle beside it ----
-    if PlayView.part == PlayPart.waiting: Arrive {
-        order: 0;
-        Picture {
-            x: 0;
-            y: Theme.phone ? root.wait-height + 12px : root.wait-top;
-            width: root.picture-width;
-            height: root.picture-height;
-            ground: Theme.inset;
-        }
-
-        Rectangle {
-            x: 12px;
-            y: (Theme.phone ? root.wait-height + 12px : root.wait-top) + root.picture-height - 34px;
-            width: training.preferred-width + 16px;
-            height: 22px;
-            background: Theme.shade;
-            training := Text {
-                text: @tr("TRAINING");
-                color: Theme.text;
-                font-family: Theme.display;
-                font-size: 11px;
-                font-weight: 700;
-                letter-spacing: Theme.label-tracking;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-        }
-    }
-
-    if PlayView.part == PlayPart.waiting: Arrive {
-        order: 1;
-        Rectangle {
-            x: root.wait-x;
-            y: root.wait-top;
-            width: root.wait-width;
-            height: root.wait-height;
-            PanelBack { }
-
-            Label {
-                x: 16px;
-                y: Theme.phone ? 12px : 16px;
-                width: parent.width - 32px;
-                height: 14px;
-                text: PlayView.invite-direct ? @tr("YOUR ADDRESS") : @tr("INVITE CODE");
-            }
-
-            Mono {
-                x: 16px;
-                y: Theme.phone ? 30px : 38px;
-                width: parent.width - 32px;
-                height: Theme.phone ? 48px : 64px;
-                text: PlayView.invite;
-                font-size: PlayView.invite-direct ? (Theme.phone ? 22px : 28px) : (Theme.phone ? 40px : 56px);
-                letter-spacing: PlayView.invite-direct ? 0px : 2.2px;
-            }
-
-            copy := Button {
-                x: 16px;
-                y: Theme.phone ? 88px : 114px;
-                nav: "wait.copy";
-                text: PlayView.invite-direct ? @tr("COPY ADDRESS") : @tr("COPY CODE");
-            }
-
-            Flash {
-                x: copy.x;
-                y: copy.y;
-                width: copy.width;
-                height: copy.height;
-                seq: PlayView.copied-seq;
-            }
-
-            Rule {
-                x: 16px;
-                y: 170px;
-                width: parent.width - 32px;
-                visible: !Theme.phone;
+    if PlayView.part == PlayPart.waiting: Rectangle {
+        x: 0;
+        y: 0;
+        width: root.body-width;
+        height: root.body-height;
+        Arrive {
+            order: 0;
+            Picture {
+                x: 0;
+                y: Theme.phone ? root.wait-height + 12px : root.wait-top;
+                width: root.picture-width;
+                height: root.picture-height;
+                ground: Theme.inset;
             }
 
             Rectangle {
-                x: 16px;
-                y: Theme.phone ? 145px : 191px;
-                width: 10px;
-                height: 10px;
-                border-radius: 5px;
-                background: Theme.cursor;
-                opacity: Theme.motion ? 0.35 + 0.65 * abs(sin(mod(animation-tick(), 2.2s) / 2.2s * 360deg)) : 1;
+                x: 12px;
+                y: (Theme.phone ? root.wait-height + 12px : root.wait-top) + root.picture-height - 34px;
+                width: training.preferred-width + 16px;
+                height: 22px;
+                background: Theme.shade;
+                training := Text {
+                    text: @tr("TRAINING");
+                    color: Theme.text;
+                    font-family: Theme.display;
+                    font-size: 11px;
+                    font-weight: 700;
+                    letter-spacing: Theme.label-tracking;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                }
             }
+        }
 
-            Value {
-                x: 34px;
-                y: Theme.phone ? 140px : 186px;
-                width: parent.width - 50px;
-                height: 20px;
-                text: @tr("Waiting for opponent");
-            }
+        Arrive {
+            order: 1;
+            Rectangle {
+                x: root.wait-x;
+                y: root.wait-top;
+                width: root.wait-width;
+                height: root.wait-height;
+                PanelBack { }
 
-            Note {
-                x: 16px;
-                y: Theme.phone ? 164px : 212px;
-                width: parent.width - 32px;
-                height: 20px;
-                text: @tr("The lobby opens when they join.");
-            }
+                Label {
+                    x: 16px;
+                    y: Theme.phone ? 12px : 16px;
+                    width: parent.width - 32px;
+                    height: 14px;
+                    text: PlayView.invite-direct ? @tr("YOUR ADDRESS") : @tr("INVITE CODE");
+                }
 
-            Button {
-                x: Theme.phone ? copy.x + copy.width + 8px : 16px;
-                y: Theme.phone ? 88px : parent.height - 56px;
-                nav: "wait.cancel";
-                text: @tr("CANCEL");
-                kind: ButtonKind.ghost;
+                Mono {
+                    x: 16px;
+                    y: Theme.phone ? 30px : 38px;
+                    width: parent.width - 32px;
+                    height: Theme.phone ? 48px : 64px;
+                    text: PlayView.invite;
+                    font-size: PlayView.invite-direct ? (Theme.phone ? 22px : 28px) : (Theme.phone ? 40px : 56px);
+                    letter-spacing: PlayView.invite-direct ? 0px : 2.2px;
+                }
+
+                copy := Button {
+                    x: 16px;
+                    y: Theme.phone ? 88px : 114px;
+                    nav: "wait.copy";
+                    text: PlayView.invite-direct ? @tr("COPY ADDRESS") : @tr("COPY CODE");
+                }
+
+                Flash {
+                    x: copy.x;
+                    y: copy.y;
+                    width: copy.width;
+                    height: copy.height;
+                    seq: PlayView.copied-seq;
+                }
+
+                Rule {
+                    x: 16px;
+                    y: 170px;
+                    width: parent.width - 32px;
+                    visible: !Theme.phone;
+                }
+
+                Rectangle {
+                    x: 16px;
+                    y: Theme.phone ? 145px : 191px;
+                    width: 10px;
+                    height: 10px;
+                    border-radius: 5px;
+                    background: Theme.cursor;
+                    opacity: Theme.motion ? 0.35 + 0.65 * abs(sin(mod(animation-tick(), 2.2s) / 2.2s * 360deg)) : 1;
+                }
+
+                Value {
+                    x: 34px;
+                    y: Theme.phone ? 140px : 186px;
+                    width: parent.width - 50px;
+                    height: 20px;
+                    text: @tr("Waiting for opponent");
+                }
+
+                Note {
+                    x: 16px;
+                    y: Theme.phone ? 164px : 212px;
+                    width: parent.width - 32px;
+                    height: 20px;
+                    text: @tr("The lobby opens when they join.");
+                }
+
+                Button {
+                    x: Theme.phone ? copy.x + copy.width + 8px : 16px;
+                    y: Theme.phone ? 88px : parent.height - 56px;
+                    nav: "wait.cancel";
+                    text: @tr("CANCEL");
+                    kind: ButtonKind.ghost;
+                }
             }
         }
     }
 
     // ---- The lobby ----
-    if PlayView.part == PlayPart.lobby: Arrive {
-        order: 0;
-        LobbyCard {
-            x: Theme.phone ? 0px : root.lobby-left;
-            y: root.lobby-top;
-            width: root.card-width;
-            height: root.card-height;
-            role: PlayView.you;
-            name: Shell.player;
-            build: PlayView.build;
-            side: 1;
-            ready: PlayView.ready;
-            ready-seq: PlayView.ready-seq;
-        }
-
-        Text {
-            x: root.lobby-left + 440px;
-            y: root.lobby-top;
-            width: 80px;
-            height: root.card-height;
-            visible: !Theme.phone;
-            text: @tr("VS");
-            color: Theme.dim;
-            font-family: Theme.display;
-            font-size: 28px;
-            font-weight: 700;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-    }
-
-    // The other player's card slides in as they join.
     if PlayView.part == PlayPart.lobby: Rectangle {
         x: 0;
         y: 0;
         width: root.body-width;
         height: root.body-height;
+        // The other player's card slides in as they join.
         joined := Tween {
             held: !PlayView.their-present;
+        }
+
+        Arrive {
+            order: 0;
+            LobbyCard {
+                x: Theme.phone ? 0px : root.lobby-left;
+                y: root.lobby-top;
+                width: root.card-width;
+                height: root.card-height;
+                role: PlayView.you;
+                name: Shell.player;
+                build: PlayView.build;
+                side: 1;
+                ready: PlayView.ready;
+                ready-seq: PlayView.ready-seq;
+            }
+
+            Text {
+                x: root.lobby-left + 440px;
+                y: root.lobby-top;
+                width: 80px;
+                height: root.card-height;
+                visible: !Theme.phone;
+                text: @tr("VS");
+                color: Theme.dim;
+                font-family: Theme.display;
+                font-size: 28px;
+                font-weight: 700;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
         }
 
         Rectangle {
@@ -963,63 +972,55 @@ export component PlayScreen inherits Page {
                 ready-seq: PlayView.their-ready-seq;
             }
         }
-    }
 
-    if PlayView.part == PlayPart.lobby && !Theme.phone: Arrive {
-        order: 1;
-        LobbyFacts {
-            x: (root.body-width - self.width) / 2;
-            y: root.facts-top;
-        }
-    }
-
-    if PlayView.part == PlayPart.lobby && Theme.phone: Arrive {
-        order: 1;
-        LobbyFactsColumn {
-            x: 0;
-            y: root.facts-top;
-            width: root.body-width;
-        }
-    }
-
-    if PlayView.part == PlayPart.lobby: Arrive {
-        order: 2;
-        ready := Button {
-            x: Theme.phone ? 0px : (root.body-width - self.width - change.width - leave.width - 24px) / 2;
-            y: root.buttons-top;
-            width: Theme.phone ? root.body-width : 184px;
-            nav: "lobby.ready";
-            text: PlayView.ready ? @tr("NOT READY") : @tr("READY");
-            kind: ButtonKind.main;
-            big: Theme.phone;
+        Arrive {
+            order: 1;
+            LobbyFacts {
+                x: Theme.phone ? 0px : (root.body-width - self.natural-width) / 2;
+                y: root.facts-top;
+                width: Theme.phone ? root.body-width : self.natural-width;
+            }
         }
 
-        change := Button {
-            x: Theme.phone ? 0px : ready.x + ready.width + 12px;
-            y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
-            width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
-            nav: "lobby.change";
-            text: @tr("CHANGE BUILD");
-        }
+        Arrive {
+            order: 2;
+            ready := Button {
+                x: Theme.phone ? 0px : (root.body-width - self.width - change.width - leave.width - 24px) / 2;
+                y: root.buttons-top;
+                width: Theme.phone ? root.body-width : 184px;
+                nav: "lobby.ready";
+                text: PlayView.ready ? @tr("NOT READY") : @tr("READY");
+                kind: ButtonKind.main;
+                big: Theme.phone;
+            }
 
-        leave := Button {
-            x: change.x + change.width + (Theme.phone ? 8px : 12px);
-            y: change.y;
-            width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
-            nav: "lobby.leave";
-            text: @tr("LEAVE");
-            kind: ButtonKind.ghost;
-        }
+            change := Button {
+                x: Theme.phone ? 0px : ready.x + ready.width + 12px;
+                y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                nav: "lobby.change";
+                text: @tr("CHANGE BUILD");
+            }
 
-        // The reserved line: who is waited for, that the link is being made again, or why the match before
-        // ended.
-        Message {
-            x: 0;
-            y: change.y + 64px;
-            width: root.body-width;
-            text: PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : "";
-            tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting ? Theme.bad : Theme.muted;
-            horizontal-alignment: center;
+            leave := Button {
+                x: Theme.phone ? 0px : change.x + change.width + 12px;
+                y: Theme.phone ? change.y + 48px : change.y;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                nav: "lobby.leave";
+                text: @tr("LEAVE");
+                kind: ButtonKind.ghost;
+            }
+
+            // The reserved line: who is waited for, that the link is being made again, or why the match before
+            // ended.
+            Message {
+                x: 0;
+                y: leave.y + (Theme.phone ? 52px : 64px);
+                width: root.body-width;
+                text: PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : "";
+                tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting ? Theme.bad : Theme.muted;
+                horizontal-alignment: center;
+            }
         }
     }
 }
@@ -1242,24 +1243,27 @@ export component MatchMenu inherits MenuOverlay {
 // player's on theirs; with closed builds, the player's own alone. It takes no clicks and no keys: the match
 // goes on under it.
 export component MatchPeek inherits Rectangle {
-    if PlayView.peek: BuildPanel {
-        x: Theme.margin;
-        y: 24px;
-        width: min(430px, parent.width - 2 * Theme.margin);
-        role: PlayView.you;
-        who: Shell.player;
-        build: PlayView.mine;
-        side: 1;
-    }
+    if PlayView.peek: Rectangle {
+        BuildPanel {
+            x: Theme.margin;
+            y: 24px;
+            width: min(430px, parent.width - 2 * Theme.margin);
+            role: PlayView.you;
+            who: Shell.player;
+            build: PlayView.mine;
+            side: 1;
+        }
 
-    if PlayView.peek && !PlayView.closed-match: BuildPanel {
-        x: Theme.phone ? Theme.margin : parent.width - Theme.margin - self.width;
-        y: Theme.phone ? 156px : 24px;
-        width: min(430px, parent.width - 2 * Theme.margin);
-        role: PlayView.opponent;
-        who: PlayView.their-name;
-        build: PlayView.theirs;
-        side: 2;
+        BuildPanel {
+            x: Theme.phone ? Theme.margin : parent.width - Theme.margin - self.width;
+            y: Theme.phone ? 156px : 24px;
+            width: min(430px, parent.width - 2 * Theme.margin);
+            visible: !PlayView.closed-match;
+            role: PlayView.opponent;
+            who: PlayView.their-name;
+            build: PlayView.theirs;
+            side: 2;
+        }
     }
 }
 
@@ -1270,8 +1274,10 @@ export component MatchPeek inherits Rectangle {
 export component PlayOverlay inherits Rectangle {
     // A direct connection: host, with this machine's address to send; or join, by the host's address.
     if PlayView.direct: direct := DialogFrame {
+        // (On a phone each button is under its box: an address needs the dialog's width.)
+        property <length> under: Theme.phone ? 48px : 0px;
         title: @tr("Direct connection");
-        content-height: 252px;
+        content-height: 252px + 2 * self.under;
         Label {
             x: 0;
             y: 0;
@@ -1284,7 +1290,7 @@ export component PlayOverlay inherits Rectangle {
         Rectangle {
             x: 0;
             y: 22px;
-            width: direct.inner-width - host.width - 8px;
+            width: Theme.phone ? direct.inner-width : direct.inner-width - host.width - 8px;
             height: 40px;
             Rectangle {
                 background: Theme.inset;
@@ -1315,7 +1321,8 @@ export component PlayOverlay inherits Rectangle {
 
         host := Button {
             x: direct.inner-width - self.width;
-            y: 22px;
+            y: 22px + direct.under;
+            width: Theme.phone ? direct.inner-width : self.natural-width;
             nav: "direct.host";
             text: @tr("HOST");
             kind: ButtonKind.main;
@@ -1324,7 +1331,7 @@ export component PlayOverlay inherits Rectangle {
         // One line: what to do with the address, or why this machine can't host.
         Note {
             x: 0;
-            y: 67px;
+            y: 67px + direct.under;
             width: direct.inner-width;
             height: 20px;
             text: PlayView.host-message != "" ? PlayView.host-message : @tr("Send this address to your opponent.");
@@ -1335,13 +1342,13 @@ export component PlayOverlay inherits Rectangle {
 
         Rule {
             x: 0;
-            y: 100px;
+            y: 100px + direct.under;
             width: direct.inner-width;
         }
 
         Label {
             x: 0;
-            y: 114px;
+            y: 114px + direct.under;
             width: direct.inner-width;
             height: 14px;
             text: @tr("JOIN");
@@ -1349,8 +1356,8 @@ export component PlayOverlay inherits Rectangle {
 
         Field {
             x: 0;
-            y: 136px;
-            width: direct.inner-width - connect.width - 8px;
+            y: 136px + direct.under;
+            width: Theme.phone ? direct.inner-width : direct.inner-width - connect.width - 8px;
             nav: "direct.address";
             text: PlayView.address;
             placeholder: @tr("address:port");
@@ -1359,14 +1366,15 @@ export component PlayOverlay inherits Rectangle {
 
         connect := Button {
             x: direct.inner-width - self.width;
-            y: 136px;
+            y: 136px + 2 * direct.under + (Theme.phone ? 18px : 0px);
+            width: Theme.phone ? direct.inner-width : self.natural-width;
             nav: "direct.connect";
             text: @tr("CONNECT");
         }
 
         Message {
             x: 0;
-            y: 180px;
+            y: 180px + direct.under;
             width: direct.inner-width;
             text: PlayView.join-message;
             tone: PlayView.join-quiet ? Theme.muted : Theme.bad;
@@ -1374,8 +1382,43 @@ export component PlayOverlay inherits Rectangle {
 
         Button {
             x: direct.inner-width - self.width;
-            y: 212px;
+            y: 212px + 2 * direct.under;
             nav: "direct.cancel";
+            text: @tr("CANCEL");
+            kind: ButtonKind.ghost;
+        }
+    }
+
+    // The code a box a character, for a pad: Up and Down change a box's character, Enter goes to the next.
+    if PlayView.boxes: boxes := DialogFrame {
+        property <length> box: Theme.phone ? 40px : 52px;
+        property <length> gap: Theme.phone ? 4px : 8px;
+        property <length> left: (self.inner-width - 6 * self.box - 5 * self.gap - 2 * self.gap) / 2;
+        title: @tr("Invite code");
+        panel-width: 460px;
+        content-height: 128px;
+        for i in 6: CodeBox {
+            // (In threes, as the code is said.)
+            x: boxes.left + i * (boxes.box + boxes.gap) + (i >= 3 ? 2 * boxes.gap : 0px);
+            y: 0;
+            width: boxes.box;
+            nav: "boxes.\{i}";
+            value: PlayView.box-characters[i];
+            count: PlayView.code-set;
+        }
+
+        Button {
+            x: cancel.x - self.width - 12px;
+            y: 88px;
+            nav: "boxes.join";
+            text: @tr("JOIN");
+            kind: ButtonKind.main;
+        }
+
+        cancel := Button {
+            x: boxes.inner-width - self.width;
+            y: 88px;
+            nav: "boxes.cancel";
             text: @tr("CANCEL");
             kind: ButtonKind.ghost;
         }

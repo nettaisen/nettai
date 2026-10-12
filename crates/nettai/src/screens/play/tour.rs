@@ -286,8 +286,33 @@ impl Peer {
     }
 }
 
-/// The second player comes: by the app's invite's code, or (no code) as a direct host's joiner.
-fn join(app: &App, weak: bool) {
+/// How the second player comes.
+#[derive(Clone, Copy)]
+enum Comes {
+    /// By what the app's player gives it: the invite's code, or a direct host's address.
+    Joining(Brings),
+    /// With an invite of its own, for the app's player to join by its code.
+    Inviting,
+}
+
+/// The build the second player brings: a new build of the game's first version.
+#[derive(Clone, Copy, PartialEq)]
+enum Brings {
+    /// As it is.
+    New,
+    /// With 1 HP: the app's player's first shot decides a round.
+    Weak,
+    /// With two of its folder's entries empty: no build the rules let into a match.
+    Broken,
+}
+
+/// The code of the second player's own invite, once the server has given it.
+fn peer_code() -> Option<String> {
+    with_rig(|rig| rig.peer.as_ref().and_then(|p| p.link.code().map(str::to_string))).flatten()
+}
+
+/// The second player comes.
+fn come(app: &App, comes: Comes) {
     let Some((game, ready)) = app.shell.ready() else { return };
     let content = ready.content();
     // What the app's player would give the other: the invite's code, or its own address.
@@ -295,12 +320,19 @@ fn join(app: &App, weak: bool) {
     let made = (|| -> Result<Peer, String> {
         let builds = nettai_match::build::Builds::of(content, &game)?;
         let mut side = builds.new_build(content, &builds.versions[0].id)?;
-        if weak {
-            // (One HP: the app's player's first shot decides a round.)
-            side.set_fact(content, PlayerFact::BaseHp.name(), &[Fact::Value(Value::Int(1))])?;
+        match comes {
+            Comes::Joining(Brings::Weak) => side.set_fact(content, PlayerFact::BaseHp.name(), &[Fact::Value(Value::Int(1))])?,
+            Comes::Joining(Brings::Broken) => {
+                let mut folder = side.folder(content);
+                (folder.chips[0], folder.chips[1]) = (None, None);
+                side.set_folder(content, &folder)?;
+            }
+            _ => {}
         }
         let server = with_rig(|rig| rig.server.url()).ok_or("the pass has no server")?;
-        let link = if app.shell.ui().global::<PlayView>().get_invite_direct() {
+        let link = if matches!(comes, Comes::Inviting) {
+            Link::create_room(&server, config())
+        } else if app.shell.ui().global::<PlayView>().get_invite_direct() {
             // (On this machine: the port the app's player listens on.)
             let port = invite.rsplit_once(':').map_or("", |(_, port)| port);
             Link::join(&format!("127.0.0.1:{port}"), config()).map_err(|e| e.detail)?
@@ -340,6 +372,10 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     }
     fn focus(id: &'static str, index: i32) -> Step {
         step(move |app| app.shell.nav.focus(id, index))
+    }
+    // The field being edited takes `text`, as typing gives it.
+    fn typed(text: &'static str) -> Step {
+        step(move |app| app.input(crate::shell::NavInput::Edited(text.into())))
     }
     // A control of Play pressed, as a click presses it.
     fn press(id: &'static str) -> Step {
@@ -389,27 +425,52 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "play-focus", Pair::Second);
+    add(SETTLE, focus("code", 0));
     // A code typed, in small letters with a space, as the field keeps it; a code no match has.
     add(SETTLE, act(Action::Confirm));
-    add(SETTLE, step(|app| app.with_screen(ScreenId::Play, |s, shell| s.edit(shell, "code", 0, "zz9 zz", false))));
+    add(SETTLE, typed("zz9 zz"));
     shot(add, "play-code", Pair::None);
-    add(SETTLE, step(|app| app.with_screen(ScreenId::Play, |s, shell| s.edit(shell, "code", 0, "zz9 zz9", false))));
+    add(SETTLE, typed("zz9 zz9"));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, press("join"));
     add(SETTLE, until(|_, ui| !ui.global::<PlayView>().get_message_quiet()));
     shot(add, "play-no-match", Pair::None);
+    // The code's six boxes, as a pad's confirm on the field opens them: the focus a box along.
+    add(SETTLE, focus("code", 0));
+    add(SETTLE, step(|app| app.with_screen(ScreenId::Play, |s, shell| {
+        s.button(shell, gamepad_facade::Button::South);
+    })));
+    shot(add, "play-code-boxes", Pair::First);
+    add(SETTLE, act(Action::Right));
+    shot(add, "play-code-boxes-focus", Pair::Second);
+    add(SETTLE, act(Action::Down));
+    shot(add, "play-code-boxes-changed", Pair::None);
+    add(SETTLE, act(Action::Back));
     // A build that can't be used says so.
-    add(SETTLE, focus("builds", BUILDS.len() as i32 - 1));
+    // (The list's row under the cursor; on a phone, the box's sheet's.)
+    fn choose_build(index: usize) -> Step {
+        step(move |app| {
+            if app.shell.scale.phone {
+                app.with_screen(ScreenId::Play, |s, shell| s.choose(shell, "build", 0, index as i32));
+            } else {
+                app.shell.nav.focus("builds", index as i32);
+            }
+        })
+    }
+    add(SETTLE, choose_build(BUILDS.len() - 1));
     add(SETTLE, press("invite"));
     shot(add, "play-build-unusable", Pair::None);
-    add(SETTLE, focus("builds", 0));
+    add(SETTLE, choose_build(0));
 
     // A direct connection: the focus a step down; an address that isn't one.
     add(SETTLE, press("direct"));
     shot(add, "play-direct", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "play-direct-focus", Pair::Second);
-    add(SETTLE, step(|app| app.with_screen(ScreenId::Play, |s, shell| s.edit(shell, "direct.address", 0, "192.168.1.20", true))));
+    add(SETTLE, focus("direct.address", 0));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, typed("192.168.1.20"));
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, press("direct.connect"));
     shot(add, "play-direct-bad-address", Pair::None);
     add(SETTLE, press("direct.cancel"));
@@ -425,7 +486,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
 
     // The second player joins by the code: the lobby. The focus a step along; a setting changed under it
     // (the match's, then the player's own).
-    add(SETTLE, step(|app| join(app, true)));
+    add(SETTLE, step(|app| come(app, Comes::Joining(Brings::Weak))));
     add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
     add(SETTLE, focus("lobby.ready", 0));
     shot(add, "play-lobby", Pair::First);
@@ -557,8 +618,45 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press("direct.host"));
     add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
     shot(add, "play-waiting-direct", Pair::None);
-    add(SETTLE, step(|app| join(app, false)));
+    add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
     add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    add(SETTLE, press("lobby.leave"));
+    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Builds));
+
+    // The other player comes with a build that breaks a rule: both ready, and the app's lobby refuses it and
+    // ends, saying so.
+    add(SETTLE, press("invite"));
+    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    add(SETTLE, step(|app| come(app, Comes::Joining(Brings::Broken))));
+    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    add(SETTLE, peer(|p| p.wishes.ready = true));
+    add(SETTLE, press("lobby.ready"));
+    add(SETTLE, until(|app, _| app.shell.dialog.is_some()));
+    shot(add, "play-their-build-refused", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+
+    // The other player invites, and the app's player joins by the code, typed: the lobby as the joiner (the
+    // host's settings taken), a match from the right navi's console, and LEAVE MATCH, which puts both back
+    // in the lobby.
+    add(SETTLE, step(|app| come(app, Comes::Inviting)));
+    add(SETTLE, until(|_, _| peer_code().is_some()));
+    add(SETTLE, focus("code", 0));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, step(|app| app.input(crate::shell::NavInput::Edited(peer_code().unwrap_or_default().to_lowercase()))));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, press("join"));
+    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    add(SETTLE, focus("lobby.ready", 0));
+    shot(add, "play-lobby-joined", Pair::None);
+    add(SETTLE, peer(|p| p.wishes.ready = true));
+    add(SETTLE, press("lobby.ready"));
+    add(SETTLE, until(|app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online)));
+    add(4000, step(|_| {}));
+    shot(add, "play-match-joined", Pair::None);
+    add(SETTLE, step(|app| app.shell.open_menu()));
+    add(SETTLE, press("menu.leave"));
+    add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby));
+    shot(add, "play-lobby-left-match", Pair::None);
     add(SETTLE, press("lobby.leave"));
     add(SETTLE, until(|_, ui| part(ui) == PlayPart::Builds));
 
@@ -599,7 +697,7 @@ pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64,
         }),
     );
     add(SETTLE, until(|ui| ui.global::<PlayView>().get_part() == PlayPart::Waiting));
-    add(SETTLE, step(|app| join(app, false)));
+    add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
     add(SETTLE, until(|ui| ui.global::<PlayView>().get_part() == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
     // (The other player has come by now: their card is taken away, and comes as it came.)
     add(SETTLE, Box::new(|ui, _, _| ui.global::<PlayView>().set_their_present(false)));
