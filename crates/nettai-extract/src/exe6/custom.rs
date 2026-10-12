@@ -230,7 +230,17 @@ fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPicture
     // +6 numbers, which EXE5's soul button sets for a Chaos Unison,
     // 0x08024540, and nothing in EXE6 sets): the pack leaves the second
     // out.
-    let own = palette(rom, a.beast_out_palettes);
+    // (The picture's palettes are its own alone, whichever ROM it is of:
+    // a pack of the Japanese ROMs alone has the picture too.)
+    let picture = if jp.is_present() {
+        let record = crate::exe6::jp::CHIP_DATA + 0x2C * BEAST_OUT_CHIP;
+        picture(jp, (u32at(jp, record + 0x24), u32at(jp, record + 0x28)))
+    } else {
+        Picture {
+            tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)),
+            palette: palette(rom, a.beast_out_palettes),
+        }
+    };
     let beast_out = ButtonPictures {
         width: 4,
         height: 2,
@@ -238,16 +248,8 @@ fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPicture
         sets: ButtonSets::Other,
         hidden: Some(3),
         cursor: SPECIAL_CURSOR,
-        picture: if jp.is_present() {
-            let record = crate::exe6::jp::CHIP_DATA + 0x2C * BEAST_OUT_CHIP;
-            picture(jp, (u32at(jp, record + 0x24), u32at(jp, record + 0x28)))
-        } else {
-            Picture {
-                tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)),
-                palette: own,
-            }
-        },
-        palettes: vec![own],
+        palettes: vec![picture.palette],
+        picture,
         ..ButtonPictures::default()
     };
     VersionPictures {
