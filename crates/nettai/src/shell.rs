@@ -12,18 +12,18 @@ use crate::errors::UserError;
 use crate::games::{Games, Ready, State};
 use crate::gl::GlPicture;
 use crate::input::{Action, Bindings, KeyPress, Keys, Pad, menu_action};
-use crate::nav::{Did, Direction, Key, Nav};
+use crate::nav::{Did, Direction, Key, Nav, Rect};
 use crate::screens::{self, Screen, ScreenId};
 use crate::settings::Settings;
 use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
 use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
 use slint::winit_030::WinitWindowAccessor;
-use slint::winit_030::winit::event::{ElementState, KeyEvent};
+use slint::winit_030::winit::event::{ElementState, KeyEvent, TouchPhase};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::rc::Rc;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 
 /// A dialog a screen asks: its title, its message, its buttons. The screen hears the answer by `tag`
 /// (`Screen::answered`).
@@ -95,7 +95,9 @@ pub struct Shell {
     /// The battle's buttons as bound (the settings', read once).
     pub bindings: Bindings,
     /// The GBA buttons the on-screen pad holds.
-    pub touch: u16,
+    pub touch: crate::input::TouchPad,
+    /// The on-screen pad's buttons as the UI was last told they are held.
+    pad_shown: u16,
     /// The language shown, by its code.
     pub lang: &'static str,
     /// The window's texture the picture is written into (femtovg's OpenGL); none: a new image each picture.
@@ -138,6 +140,10 @@ pub struct Shell {
     /// battle runs (`awake.rs`).
     pub stay_awake: bool,
     awake: Option<crate::awake::Awake>,
+    /// This frame is being drawn (the window's rendering runs it). When the window isn't drawn (minimized,
+    /// hidden, covered), a timer runs the frames instead, and no picture is presented in them: there is no
+    /// frame to show it in, and the window's OpenGL isn't the thread's.
+    pub(crate) drawing: bool,
     /// Ctrl, Alt or the system's key is held (the key is the system's, or a text field's).
     chord: bool,
     shift: bool,
@@ -281,6 +287,26 @@ impl Shell {
             b.stage.surface.stale = true;
         }
         self.refresh();
+    }
+
+    /// The Music and Sound effects levels, each 0 to 100: the menus' and the title music's, and the battle's
+    /// own music and effects (a screen with a replay's viewer gives it `sound.battle_levels()` itself).
+    pub fn set_sound_levels(&mut self, music: u32, effects: u32) {
+        self.sound.set_levels(music, effects);
+        let (music, effects) = self.sound.battle_levels();
+        if let Some(b) = &mut self.battle {
+            b.stage.player.set_sound_levels(music, effects);
+        }
+    }
+
+    /// Tell the UI which of the on-screen pad's buttons are held, if that changed: it draws them pressed.
+    pub(crate) fn show_pad(&mut self) {
+        let held = self.touch.held();
+        if held != self.pad_shown {
+            self.pad_shown = held;
+            let buttons: Vec<bool> = (0..10).map(|bit| held & 1 << bit != 0).collect();
+            self.ui().global::<nettai_ui::Shell>().set_pad_held(ModelRc::new(VecModel::from(buttons)));
+        }
     }
 
     /// The battle's buttons bound anew: kept, and told to the hints.
@@ -542,6 +568,8 @@ pub enum NavInput {
     EditDone(String),
     /// The on-screen pad: a GBA button's bit number, held or let go.
     Touch(i32, bool),
+    /// The UI laid one of the on-screen pad's buttons out: its bit number and its place.
+    PadKey(i32, Rect),
 }
 
 pub struct App {
@@ -551,6 +579,10 @@ pub struct App {
     /// Presses that came before the controls they are for existed (a screen just shown): done at the next
     /// frames, in order, each with the frames it has waited.
     pending: Vec<(Action, u8)>,
+    /// When the window last drew a frame.
+    drawn_at: Option<Instant>,
+    /// `NETTAI_PLAY_STATS`: since when, the frames the window drew and the frames the timer ran since.
+    clock_stats: Option<(Instant, u32, u32)>,
 }
 
 impl App {
@@ -571,7 +603,8 @@ impl App {
             keys: Keys::default(),
             pad: Pad::start(),
             bindings,
-            touch: 0,
+            touch: Default::default(),
+            pad_shown: 0,
             lang,
             gl: None,
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },
@@ -597,12 +630,19 @@ impl App {
             probe_motion: false,
             stay_awake: false,
             awake: None,
+            drawing: true,
             chord: false,
             shift: false,
             composing: false,
             keep_nothing: still,
         };
-        App { shell, screens: screens::all().into_iter().map(Some).collect(), pending: Vec::new() }
+        App {
+            shell,
+            screens: screens::all().into_iter().map(Some).collect(),
+            pending: Vec::new(),
+            drawn_at: None,
+            clock_stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0, 0)),
+        }
     }
 
     /// The app starts: on the main menu, the game last used loading first.
@@ -902,14 +942,12 @@ impl App {
                 let did = self.shell.nav.end_edit(true);
                 self.did(did);
             }
+            // (The mouse on the on-screen pad: one pointer, through the UI. Fingers come by `touched`.)
             NavInput::Touch(bit, down) => {
-                let bit = 1u16 << bit.clamp(0, 9);
-                if down {
-                    self.shell.touch |= bit;
-                } else {
-                    self.shell.touch &= !bit;
-                }
+                self.shell.touch.press(down.then_some(bit.clamp(0, 9) as u8));
+                self.shell.show_pad();
             }
+            NavInput::PadKey(bit, rect) => self.shell.touch.place(bit.clamp(0, 9) as u8, rect),
         }
         self.settle();
     }
@@ -946,6 +984,34 @@ impl App {
     /// The window lost the keyboard: nothing is held.
     pub fn unfocused(&mut self) {
         self.shell.keys.release();
+        self.shell.touch.clear();
+        self.shell.show_pad();
+    }
+
+    /// A finger on the window (`main`'s winit hook, before Slint; `x` and `y` in the display's pixels): the
+    /// on-screen pad's, if it came down on one of its buttons while the battle has them. True if it was the
+    /// pad's (Slint doesn't get it); false and it goes on to Slint, as a pointer.
+    pub fn touched(&mut self, finger: u64, phase: TouchPhase, x: f64, y: f64) -> bool {
+        if !(self.shell.scale.phone && self.shell.battle_has_keys()) {
+            self.shell.touch.clear();
+            self.shell.show_pad();
+            return false;
+        }
+        let unit = (self.shell.scale.os * self.shell.scale.unit).max(0.01);
+        let (x, y) = (x as f32 / unit, y as f32 / unit);
+        let before = self.shell.touch.held();
+        let taken = match phase {
+            TouchPhase::Started => self.shell.touch.down(finger, x, y),
+            TouchPhase::Moved => self.shell.touch.moved(finger, x, y),
+            TouchPhase::Ended | TouchPhase::Cancelled => self.shell.touch.up(finger),
+        };
+        // (A button newly held is a press, timed as a key's is.)
+        if self.shell.touch.held() & !before != 0 {
+            self.shell.keys.pressed.push(Instant::now());
+            self.shell.nav.used_pointer();
+        }
+        self.shell.show_pad();
+        taken
     }
 
     /// A key of the window, before Slint sees it. True if it was the app's (Slint doesn't get it); false and
@@ -1039,7 +1105,51 @@ impl App {
 
     /// Before a frame is drawn at `now`: the window's scale, the pad, the games loading, the screens, the
     /// battle's ticks and its picture, the sound, the focus.
+    /// A frame the window is about to draw: the app's clock (docs/app.md §1).
     pub fn frame(&mut self, now: Instant) {
+        self.drawn_at = Some(now);
+        self.shell.drawing = true;
+        self.count(now, true);
+        self.run(now);
+    }
+
+    /// How long the window may go without drawing a frame before the timer runs the app's: three of a 60 Hz
+    /// display's frames.
+    const UNDRAWN: Duration = Duration::from_millis(50);
+
+    /// The timer's turn (every 16 ms: `main.rs`): if the window hasn't drawn a frame for a while (it is
+    /// minimized, hidden, covered or on another desktop: the system draws no frames for it) and something must
+    /// go on all the same (a battle, the cards before one, a screen's link), the frame is run here, without
+    /// its picture. So an online match keeps ticking and its link keeps being polled, and the other player
+    /// doesn't see a stalled peer. True if it ran one. While the window draws, this does nothing: the frames
+    /// are the window's, at its rate.
+    pub fn idle(&mut self, now: Instant) -> bool {
+        let wanted = self.shell.battle.is_some() || self.shell.loading_battle() || self.shell.stay_awake;
+        if !wanted || self.drawn_at.is_some_and(|at| now.saturating_duration_since(at) < App::UNDRAWN) {
+            return false;
+        }
+        self.shell.drawing = false;
+        self.count(now, false);
+        self.run(now);
+        self.shell.drawing = true;
+        true
+    }
+
+    /// `NETTAI_PLAY_STATS`: every two seconds, how many frames the window drew and how many the timer ran.
+    fn count(&mut self, now: Instant, drawn: bool) {
+        let Some((since, by_window, by_timer)) = &mut self.clock_stats else { return };
+        if drawn {
+            *by_window += 1;
+        } else {
+            *by_timer += 1;
+        }
+        if now.saturating_duration_since(*since) >= Duration::from_secs(2) {
+            eprintln!("clock stats: {by_window} frames drawn by the window, {by_timer} run by the timer");
+            (*since, *by_window, *by_timer) = (now, 0, 0);
+        }
+    }
+
+    fn run(&mut self, now: Instant) {
         // (The last frame was drawn, if the renderer didn't say so.)
         self.drawn();
         if self.shell.fit_window() {
