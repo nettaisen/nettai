@@ -6,6 +6,9 @@
 -- of his element at navis, hit modifier 3, 100 ticks): once it has ended on a body he makes another when he is a
 -- panel on from where he saw it gone. He goes in a puff where the ground stops him (a panel inside the field that
 -- isn't solid, or holds a blocker) or as he reaches the column past the far edge. He runs while dimmed.
+--
+-- This is the US ROMs' routine, which reworked the Japanese ROMs' (0x080CBD80: its hit never kept, its first tick
+-- running on into the rush, no second hit: docs/design/exe4-map.md, "The e-Reader cards' chips").
 
 local attachment = require("../../objects/attachment")
 local collision = require("../../rules/collision")

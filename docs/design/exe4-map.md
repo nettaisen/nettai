@@ -435,6 +435,28 @@ from the ROM and its code, read routine by routine):
   as the cut-in, a hole where LaserMan would come and one in KendoMan's way, side 1's with the opponent at the
   front) replay every frame with the same sounds, and all 22 are frame-compared, every fight frame exact and the
   custom screen's name, picture, icon and description with them.
+  **The Japanese ROMs.** Both chips' code is the same in the Japanese ROMs (the controllers, Duo and his fists,
+  VideoMan, LaserMan, the laser, the lingering hit: diffed routine by routine, B4WE against B4WJ) but for PrixPowr's
+  KendoMan (US 0x080CBE40, Japan 0x080CBD80), which the US release reworked:
+  - the Japanese routine passes the number 96 where the US passes the address of his slot (Japan 0x080CBE62,
+    `movs r2, #96`; US 0x080CC032, `movs r2, #96; adds r2, r2, r5`), so his rush's hit is never kept: he can't cut it
+    short as he stops (0x080DCD84 gets 0), and it lives its 100 ticks or until it lands, following an owner that is
+    gone;
+  - its first tick runs on into the rush (Japan 0x080CBE80 to 0x080CBE82; the US returns after the set-up,
+    0x080CBF30), so he moves and leaves his first afterimage a tick earlier, and everything after him is a tick
+    earlier;
+  - it makes no second hit (the US added 0x080CBFF0 and the two words at +0x64 and +0x68 its init clears).
+  The engine has the US routine on every console (the coordinator's call, put to the user 2026-10-12: the standing
+  rule is the Japanese games' behavior where the releases differ, and here the Japanese routine is the defective
+  one). What the Japanese side needs is kept ready in verify: the lab's `exe4-jp` base (Red Sun Japan traced against
+  Blue Moon Japan, Tango's Japanese templates) and each chip's `jp` scenario (its `custom` on that base).
+  chips/0x137-duo/jp replays every frame; chips/0x138-prixpowr/jp matches to KendoMan's first tick and stops there,
+  frame 800, a known deviation (trace-tests' deviations.rs). Going Japanese would be: kendoman.luau without the kept
+  hit, the pause and the second hit (about 15 lines), the 22 scenarios recorded again on `exe4-jp`, and the US
+  recordings listed as the other region's. On the Japanese console the names (デューオ, グランプリパワー), pictures
+  and icons compare exact; the description's text is the same but drawn about 12 pixels further left with wider
+  advances than the engine draws it, as every chip's is there (Recov10's too): the first Japanese EXE4 frame compare,
+  not the e-Reader chips' own, left for the custom screen's owner.
 - **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
   (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
 - **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
