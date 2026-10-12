@@ -20,7 +20,7 @@
 //!   knows none of those: it reports what the rules say, with the setup
 //!   field and entry they tie each problem to ([`problems`]).
 
-use crate::{Folder, Match, RoundSettings, Side, ids};
+use crate::{Folder, Match, RoundSettings, Side, Wrong, ids};
 use nettai_battle::Battle;
 use nettai_battle::content::Content;
 use nettai_battle::setup::NaviStats;
@@ -72,26 +72,33 @@ pub fn check_rounds(content: &Content, game: &str, rounds: &[RoundSettings]) -> 
 /// see: its navi, its auto battle data, its facts as its game's rules
 /// declare them.
 pub fn check_side_alone(content: &Content, game: &str, s: &Side) -> Vec<String> {
-    let mut out = Vec::new();
+    side_alone(content, game, s).into_iter().map(|p| p.text).collect()
+}
+
+/// [`check_side_alone`]'s problems, typed (of no side: the caller says
+/// whose).
+pub fn side_alone(content: &Content, game: &str, s: &Side) -> Vec<Problem> {
     let defs = &content.defs;
+    let of_facts = |s: &Side| -> Vec<Problem> {
+        let problems = crate::facts::problems(content, game, s);
+        problems.into_iter().map(|p| Problem { side: None, field: p.field, entry: None, what: p.what, text: p.text }).collect()
+    };
     // (A side's facts of another game's rules say nothing of this game's.)
     if !s.facts.fit(content) {
-        return crate::facts::check(content, game, s);
+        return of_facts(s);
     }
+    let navi = content.defs.fact_name(nettai_battle::content::PlayerFact::Navi).map(str::to_string);
     match s.stated_navi(content) {
         None => {
-            out.push("no navi: a side states its own".into());
-            return out;
+            return vec![Problem { side: None, field: navi, entry: None, what: Wrong::Missing, text: "no navi: a side states its own".into() }];
         }
         Some(n) if n.index() >= defs.navis.len() || !ids::in_game(content, game, &defs.navi(n).key) => {
-            out.push(format!("a navi {game} hasn't"));
-            return out;
+            return vec![Problem { side: None, field: navi, entry: None, what: Wrong::Foreign, text: format!("a navi {game} hasn't") }];
         }
         Some(_) => {}
     }
     // The facts its game's rules take.
-    out.extend(crate::facts::check(content, game, s));
-    out
+    of_facts(s)
 }
 
 /// The round `m` starts, set up (each side's rules have set its stats:
@@ -129,19 +136,29 @@ pub fn round_stats(content: &Arc<Content>, m: &Match) -> Result<[NaviStats; 2], 
 
 /// A problem with a match, with where it is: its side (none: the match's
 /// game or rounds), and the setup field and its entry (from 0, a list's)
-/// the rules' `validate` ties it to (none: the side's as a whole).
+/// the rules' `validate` ties it to (none: the side's as a whole). What is
+/// wrong is typed (`what`: the kind and its numbers), which a screen words
+/// in its player's language; `text` is the sentence for a log and the
+/// terminal's tools, never a screen's.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Problem {
     pub side: Option<usize>,
     pub field: Option<String>,
     pub entry: Option<usize>,
+    pub what: Wrong,
     pub text: String,
 }
 
 impl Problem {
     /// A problem of no field (`side`'s, or none's).
-    fn of(side: Option<usize>, text: String) -> Problem {
-        Problem { side, field: None, entry: None, text }
+    fn of(side: Option<usize>, what: Wrong, text: String) -> Problem {
+        Problem { side, field: None, entry: None, what, text }
+    }
+
+    /// A problem a side's rules said (their `validate`, their
+    /// `folder_check`), typed.
+    pub(crate) fn of_rules(content: &Content, side: Option<usize>, p: nettai_battle::rules::Problem) -> Problem {
+        Problem { side, what: Wrong::of_rules(content, &p.kind, &p.data), field: p.field, entry: p.entry, text: p.text }
     }
 
     /// The problem as [`check_match`] says it: its side first.
@@ -156,12 +173,15 @@ impl Problem {
 /// What side `side`'s rules say is wrong with its setup in `b`, the
 /// round's battle (their `validate`): of the side's own setup, its folder as
 /// it stands (the round was set up with a whole one: `start`).
-fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<Problem> {
+pub(crate) fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<Problem> {
     b.setup.players[side].rules = s.facts.block().cloned();
     let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.validate(side as u8)));
     match checked {
-        Ok(problems) => problems.into_iter().map(|p| Problem { side: Some(side), field: p.field, entry: p.entry, text: p.text }).collect(),
-        Err(_) => vec![Problem::of(Some(side), "the rules stopped checking the side".into())],
+        Ok(problems) => {
+            let content = b.content.clone();
+            problems.into_iter().map(|p| Problem::of_rules(&content, Some(side), p)).collect()
+        }
+        Err(_) => vec![Problem::of(Some(side), Wrong::Internal, "the rules stopped checking the side".into())],
     }
 }
 
@@ -194,12 +214,12 @@ pub fn check_match(content: &Arc<Content>, m: &Match) -> Vec<String> {
 /// [`check_match`]'s problems, each with its side, and the setup field and
 /// entry the rules tie it to (a tool shows it there: the build creator's rows).
 pub fn problems(content: &Arc<Content>, m: &Match) -> Vec<Problem> {
-    let mut out: Vec<Problem> = check_rounds(content, &m.game, &m.rounds).into_iter().map(|p| Problem::of(None, p)).collect();
+    let mut out: Vec<Problem> = check_rounds(content, &m.game, &m.rounds).into_iter().map(|p| Problem::of(None, Wrong::Match, p)).collect();
     if !out.is_empty() {
         return out;
     }
     for (side, s) in m.sides.iter().enumerate() {
-        out.extend(check_side_alone(content, &m.game, s).into_iter().map(|p| Problem::of(Some(side), p)));
+        out.extend(side_alone(content, &m.game, s).into_iter().map(|p| Problem { side: Some(side), ..p }));
     }
     if !out.is_empty() {
         return out;
@@ -210,7 +230,7 @@ pub fn problems(content: &Arc<Content>, m: &Match) -> Vec<Problem> {
                 out.extend(validated(&mut b, side, s));
             }
         }
-        Err(e) => out.push(Problem::of(None, e)),
+        Err(e) => out.push(Problem::of(None, Wrong::Internal, e)),
     }
     out
 }

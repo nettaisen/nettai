@@ -553,3 +553,18 @@ language = "en"
 "131-aqua-soul" = { name = "Aqua Soul" }
 "132-wood-soul" = { name = "Wood Soul" }
 "133-weapon-change" = { name = "Weapon Change" }
+
+# The NaviCust's bugs' names, by the bug's name in the game's rules (rules/navicust/programs' `BUGS`), for a tool
+# that lists a build's bugs with their levels (nettai-match's `build`). The games name no bug on a screen but
+# where a patch card's line does, so these are the content's own.
+[bugs]
+"buster" = "Buster bug"
+"custom" = "Custom bug"
+"encounter" = "Encounter bug"
+"hp" = "HP bug"
+"hub" = "HubBatch bug"
+"move" = "Move bug"
+"panel" = "Panel bug"
+"result" = "Result bug"
+"support" = "Support bug"
+"weapon" = "Weapon bug"

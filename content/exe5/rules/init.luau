@@ -22,6 +22,10 @@ local save = require("@self/save")
 local soldier = require("./objects/soldier")
 local souls = require("@self/souls")
 
+-- What the tools read of the game's builds, as data (./builds: the versions, a new save's folder): loaded with the
+-- rules, which read none of it.
+require("@self/builds")
+
 -- The auto battle AI's state (./auto_battle/ai.luau's `State`): a navi's it drives (Dark MegaMan's, AIData +0x80 on),
 -- and a side's own drive's under DarkInvs (AIData +0xF0 on), in the side's state.
 local AI: StateSchema = {
@@ -146,6 +150,10 @@ local rules: Rules = {
         -- (event flag 0x236: a dark chip's soul).
         souls = "form[16]",
         chaos_unison = "bool",
+        -- The Giga chips the save can have (./folder: a folder holds no other): a save's are its version's, as its
+        -- souls are (each version's library lists its own six, and a Giga chip isn't traded; a tool's version presets
+        -- name each version's). A side that states none has every one.
+        giga_chips = "chip[16]",
         -- How long the save took to delete each SP navi (./sp_chips: the save's 0x02002670, a battle's copy
         -- 0x0203E560), by its SP chip, in frames.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
@@ -179,6 +187,21 @@ local rules: Rules = {
             "tomahawksoul",
         },
         chaos_unison = true,
+        giga_chips = {
+            "bass",
+            "bassanly",
+            "bighook",
+            "bugcharg",
+            "bugcurse",
+            "chaoslrd",
+            "crossdiv",
+            "deltaray",
+            "dethphnx",
+            "holydrem",
+            "metrknuk",
+            "omegarkt",
+            "phoenix",
+        },
         -- Every SP navi deleted in no time (its chip's best damage), in the save's order.
         sp_times = {
             { chip = "protomn-sp", frames = 0 },
@@ -225,6 +248,9 @@ local rules: Rules = {
             dark_cost = "record:exe5-dark-cost",
             capsule_mix = "u8",
             past_the_pack = "bool",
+            -- A chip a save can collect though its record has no library flag (./folder: the Giga chips Team Colonel's
+            -- library lists, and the Japanese game's gifts, LeadRaid and ChaosLrd).
+            collectible = "bool",
             auto_battle = {
                 class = {
                     "into_reach", "to_front", "spot_test", "landing_ahead", "behind_target", "three_ahead_near_enemy",
@@ -343,14 +369,24 @@ local rules: Rules = {
         custom_requested = souls.custom_requested,
         -- The navis in auto battle Chaos Unison brings, and a side's own drive under DarkInvs (./auto_battle).
         controller = auto_battle.controller,
-        -- The folder's rules, which tools ask (the simulation never does).
+        -- The folder's rules, which tools ask (the simulation never does): the rules a folder breaks, and what they
+        -- allow of one.
         folder_check = folder.check,
+        folder_view = folder.view,
+        -- What a tool shows of the side's setup that the rules alone know: what gives the navi its abilities, its
+        -- bugs, the patch cards' MB.
+        overview = function(side: number): SetupOverview?
+            local out: SetupOverview = { abilities = {}, bugs = {}, lists = {} }
+            navicust.overview(side, out)
+            patch_cards.overview(side, out)
+            return out
+        end,
         -- What is wrong with a side's setup, which tools ask (the simulation never does): what the save brings, the
         -- patch cards, the NaviCust, the folder, the auto battle data.
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
-            local function problem(text: string, field: string?, entry: number?)
-                table.insert(out, { text = text, field = field, entry = entry })
+            local function problem(p: SetupProblem)
+                table.insert(out, p)
             end
             save.validate(side, problem)
             patch_cards.validate(side, problem)

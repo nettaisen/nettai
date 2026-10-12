@@ -25,7 +25,7 @@
 //! its navi's highest ([`crate::play_level`], which [`Side::set_navi`]
 //! states).
 
-use crate::{Folder, Side, ids};
+use crate::{Folder, Side, Wrong, ids};
 use nettai_battle::content::{ChipCode, Content, PlayerFact};
 use nettai_battle::custom::FolderChip;
 use nettai_battle::rules::{self, Fact, SetupFact};
@@ -367,10 +367,25 @@ pub fn may_be(field: &Field) -> String {
 /// filled from the front: a gap states what no save has); a form in the
 /// side's form list that is none of its navi's lists'.
 pub fn check(content: &Content, game: &str, side: &Side) -> Vec<String> {
-    let mut out = Vec::new();
+    problems(content, game, side).into_iter().map(|p| p.text).collect()
+}
+
+/// A problem of a side's facts: what is wrong, typed, the fact it is of, and
+/// the sentence for a log.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FactProblem {
+    pub what: Wrong,
+    pub field: Option<String>,
+    pub text: String,
+}
+
+/// [`check`]'s problems, typed.
+pub fn problems(content: &Content, game: &str, side: &Side) -> Vec<FactProblem> {
+    let mut out: Vec<FactProblem> = Vec::new();
+    let mut say = |what: Wrong, field: &str, text: String| out.push(FactProblem { what, field: Some(field.to_string()), text });
     if !side.facts.fit(content) {
-        out.push(format!("the side's facts aren't {game}'s rules' (a side of {game} takes {})", names_phrase(content)));
-        return out;
+        let text = format!("the side's facts aren't {game}'s rules' (a side of {game} takes {})", names_phrase(content));
+        return vec![FactProblem { what: Wrong::OtherGame, field: None, text }];
     }
     for f in fields(content) {
         let Some(value) = side.facts.get(content, f.name) else { continue };
@@ -380,24 +395,24 @@ pub fn check(content: &Content, game: &str, side: &Side) -> Vec<String> {
             && items.iter().any(|v| matches!(v, Stated::Record(_)))
         {
             if let Some((r, _)) = named(&value).into_iter().find(|&(r, h)| !of_game(r, h)) {
-                out.push(format!("{}: a {r} {game} hasn't", f.name));
+                say(Wrong::Foreign, f.name, format!("{}: a {r} {game} hasn't", f.name));
             }
             continue;
         }
         match &value {
             Stated::Variant(None) => {
-                out.push(format!("no {}: a side of {game} states its own ({}); none is assumed", f.name, may_be(&f)));
+                say(Wrong::Unstated, f.name, format!("no {}: a side of {game} states its own ({}); none is assumed", f.name, may_be(&f)));
             }
-            Stated::Def(registry, Some(h)) if !of_game(*registry, *h) => out.push(format!("{}: a {registry} {game} hasn't", f.name)),
+            Stated::Def(registry, Some(h)) if !of_game(*registry, *h) => say(Wrong::Foreign, f.name, format!("{}: a {registry} {game} hasn't", f.name)),
             Stated::List(items) => {
                 let defs: Vec<(Registry, u16)> = items.iter().filter_map(|v| if let Stated::Def(r, Some(h)) = v { Some((*r, *h)) } else { None }).collect();
                 if defs.iter().any(|&(r, h)| !of_game(r, h)) {
-                    out.push(format!("{}: a {} {game} hasn't", f.name, defs[0].0));
+                    say(Wrong::Foreign, f.name, format!("{}: a {} {game} hasn't", f.name, defs[0].0));
                     continue;
                 }
                 for (i, &(r, h)) in defs.iter().enumerate() {
                     if defs[..i].contains(&(r, h)) {
-                        out.push(format!("{}: {} is there twice", f.name, ids::shown(content, r, h)));
+                        say(Wrong::Twice, f.name, format!("{}: {} is there twice", f.name, ids::shown(content, r, h)));
                     }
                 }
                 let after_a_gap = items.iter().skip_while(|v| !matches!(v, Stated::Def(_, None))).find_map(|v| match v {
@@ -405,7 +420,7 @@ pub fn check(content: &Content, game: &str, side: &Side) -> Vec<String> {
                     _ => None,
                 });
                 if let Some((r, h)) = after_a_gap {
-                    out.push(format!("{}: an empty entry before {} (a list is filled from the front)", f.name, ids::shown(content, r, h)));
+                    say(Wrong::Invalid, f.name, format!("{}: an empty entry before {} (a list is filled from the front)", f.name, ids::shown(content, r, h)));
                 }
             }
             _ => {}
@@ -414,13 +429,15 @@ pub fn check(content: &Content, game: &str, side: &Side) -> Vec<String> {
     // The form list: forms of the side's navi's own lists.
     let listed = side.facts.form_list(content);
     let name = content.defs.fact_name(PlayerFact::FormList).unwrap_or_default();
-    if !listed.is_empty() && !out.iter().any(|p| p.starts_with(name)) {
+    if !listed.is_empty() && !out.iter().any(|p| p.text.starts_with(name)) {
+        let mut say = |what: Wrong, text: String| out.push(FactProblem { what, field: Some(name.to_string()), text });
         match crate::navi_forms(content, side.navi(content)) {
-            None => out.push(format!("{name}: {} doesn't change form", crate::names::navi(content, side.navi(content)))),
+            None => say(Wrong::NotTaken, format!("{name}: {} doesn't change form", crate::names::navi(content, side.navi(content)))),
             Some(own) => {
                 for &f in &listed {
                     if !own.contains(&f) {
-                        out.push(format!("{name}: {} is no form of {}'s lists", crate::names::form(content, f), crate::names::navi(content, side.navi(content))));
+                        let text = format!("{name}: {} is no form of {}'s lists", crate::names::form(content, f), crate::names::navi(content, side.navi(content)));
+                        say(Wrong::Foreign, text);
                     }
                 }
             }
