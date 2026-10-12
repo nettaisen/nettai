@@ -25,6 +25,7 @@ local protoman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "protoman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local protom_sp: Chip = {
@@ -40,6 +41,7 @@ local protom_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "protom-sp/controller", palette = 4 }.hook,
+    megaman = "light",
 }
 
 local protom_ds: Chip = {
@@ -54,6 +56,7 @@ local protom_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "protom-ds/controller", palette = 6 }.hook,
+    megaman = "dark",
 }
 
 return { protoman = protoman, ["protom-sp"] = protom_sp, ["protom-ds"] = protom_ds }
