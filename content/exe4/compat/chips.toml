@@ -289,7 +289,36 @@
 "blakbarr" = { id = 0x134, version = "redsun" }
 "bluemoon" = { id = 0x135, version = "bluemoon" }
 "bugcharg" = { id = 0x136, version = "redsun" }
+"darkneo" = { id = 0x140 }
+"heatsprd" = { id = 0x141 }
+"bubsprd" = { id = 0x142 }
+"gigacan1" = { id = 0x143 }
+"gigacan2" = { id = 0x144 }
+"gigacan3" = { id = 0x145 }
+"suprspr1" = { id = 0x146 }
+"suprspr2" = { id = 0x147 }
+"suprspr3" = { id = 0x148 }
+"flmcros1" = { id = 0x149 }
+"flmcros2" = { id = 0x14a }
+"flmcros3" = { id = 0x14b }
+"pitrng1" = { id = 0x14c }
+"pitrng2" = { id = 0x14d }
+"pitrng3" = { id = 0x14e }
+"bstfang1" = { id = 0x14f }
+"bstfang2" = { id = 0x150 }
+"bstfang3" = { id = 0x151 }
+"pithoky1" = { id = 0x152 }
+"pithoky2" = { id = 0x153 }
+"pithoky3" = { id = 0x154 }
+"magshok1" = { id = 0x155 }
+"magshok2" = { id = 0x156 }
+"magshok3" = { id = 0x157 }
 "lifesrd" = { id = 0x158 }
+"pdriver" = { id = 0x159 }
+"timebom" = { id = 0x15a }
+"poisphar" = { id = 0x15b }
+"bodygrd" = { id = 0x15c }
+"h-burst" = { id = 0x15d }
 "rollsoul" = { id = 0x161 }
 "gutssoul" = { id = 0x162 }
 "windsoul" = { id = 0x163 }

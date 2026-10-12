@@ -1,10 +1,10 @@
 --!strict
 -- ColorPt's and DblPoint's dimming controller, as EXE5 and EXE6 share it (EXE6's effect object #0x50, `sub_80E6480`;
--- EXE5's #0x50, 0x080E650C, the same code; EXE6's docs/engine/dimming-chips.md §10.1). The usual dimming phases (EXE6's
--- lib/dimming), with an effect (`sub_80E64C4`) that sends a point (@exelib/colorpt/point) from each panel of the
--- user's front column that is solid, free and may go to the other side (`sub_80E650A`), then waits until they are
--- all gone. Each game makes its own (`controller.make`) with its point; a chip's `dimming` hook is the made
--- controller's `hook(point)`.
+-- EXE5's #0x50, 0x080E650C, the same code; EXE4's #0x50, 0x080E7BF0; EXE6's docs/engine/dimming-chips.md §10.1). The
+-- usual dimming phases (EXE6's lib/dimming), with an effect (`sub_80E64C4`) that sends a point (@exelib/colorpt/point)
+-- from each panel of the user's front column that is solid, free and may go to the other side (`sub_80E650A`), then
+-- waits until they are all gone. Each game makes its own (`controller.make`) with its point, the front it finds a
+-- row's panel by and what of the user its spawn takes; a chip's `dimming` hook is the made controller's `hook(point)`.
 
 local dimming_chips = require("@exelib/dimming")
 local panels = require("@exelib/panels")
@@ -22,12 +22,32 @@ export type Spec = {
     id: string,
     -- The game's point's spawn (@exelib/colorpt/point's).
     point: (holder: Object, x: number, y: number, spec: ColorPoint, slot: number) -> Object?,
+    -- The panel of row `y` a point may leave from, before the panel itself is tested (solid, nothing on it): its
+    -- column, 0 for none (none: `controller.area_front`, EXE6's and EXE5's).
+    front: ((me: Object, y: number) -> number)?,
+    -- Its spawn copies the user's side alone, not its facing (`dimming_chips.spawn`'s `side_only`: EXE4's
+    -- 0x080E7C58); none: the side and the facing (EXE6's and EXE5's).
+    side_only: boolean?,
 }
 
 -- The panel a point leaves from: solid, with nothing on it.
 local SOLID, OCCUPIED = 0x10, 0x0F88_0080
 
+-- EXE6's and EXE5's front of row `y` (`sub_80E650A`): the front column of the user's area as it faces (`sub_800D4D0`,
+-- found from the other side's), on the field, if the user may lose that panel (`sub_800D668`, which the original tests
+-- after the panel itself, which fails off the field: no test changes anything, so the order is the original's in
+-- effect); 0 for none.
+function controller.area_front(me: Object, y: number): number
+    local x = panels.area_front(bit32.bxor(me.alliance, 1), me.flip, y)
+    if x == 0 or not field.valid(x, y) or not panels.can_take(x, y, me.alliance) then
+        return 0
+    end
+    return x
+end
+
 function controller.make(spec: Spec): { kind: Kind, hook: (p: ColorPoint) -> (user: Object, chip: DimmingChipSpec) -> Object? }
+    local front = spec.front or controller.area_front
+
     -- `sub_80E650A`: a point from each row's front panel that qualifies.
     local function send_points(me: Object)
         local s = me.state :: State
@@ -36,8 +56,8 @@ function controller.make(spec: Spec): { kind: Kind, hook: (p: ColorPoint) -> (us
         end
         local slot = 1
         for y = 1, 3 do
-            local x = panels.area_front(bit32.bxor(me.alliance, 1), me.flip, y)
-            if x ~= 0 and field.check(x, y, SOLID, OCCUPIED) and panels.can_take(x, y, me.alliance) then
+            local x = front(me, y)
+            if x ~= 0 and field.check(x, y, SOLID, OCCUPIED) then
                 spec.point(me, x, y, s.point, slot)
                 slot += 1
             end
@@ -71,7 +91,7 @@ function controller.make(spec: Spec): { kind: Kind, hook: (p: ColorPoint) -> (us
     local function hook(p: ColorPoint): (user: Object, chip: DimmingChipSpec) -> Object?
         local rec = new.record("colorpt-point", p)
         return function(user: Object, chip: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, chip)
+            local o = dimming_chips.spawn(kind, user, chip, spec.side_only)
             if o then
                 (o.state :: State).point = rec
             end

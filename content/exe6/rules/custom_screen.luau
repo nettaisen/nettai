@@ -46,8 +46,9 @@ return {
     -- The codes 0x1B and 0x1C stand apart in a selection (`sub_8028E4C`).
     special_codes = "apart",
     -- Each Program Advance forms once a round (`sub_8029652`), it is the Regular chip if a part was (`sub_80292CC`),
-    -- and what lies past the selection's end keeps what it held.
-    program_advances = { once_a_round = true, keeps_regular = true, clears_past_end = false },
+    -- and what lies past the selection's end keeps what it held; its animation runs in a state of its own
+    -- (`sub_802B734`: its first tick only starts it, `sub_802B75C`, and its end takes a tick, `sub_802B766`).
+    program_advances = { once_a_round = true, keeps_regular = true, clears_past_end = false, in_screen_state = false },
     -- A modifier's Regular chip mark goes with it as it folds into the chip before (`sub_8029224`).
     modifier_passes_regular = false,
     -- The console says its custom screen is open until the window starts sliding out (`sub_8026BF4`).
