@@ -37,8 +37,8 @@ local function other_side(me: Object): number
     return bit32.bxor(me.alliance, 1)
 end
 
--- 0x080DD71A: the other side's chips on again (0x080DD73C); out of the field-object registry, off the panels, its
--- panel's reservation dropped; hidden, and gone.
+-- 0x080DD71A: the other side's chips on again (0x080DD73C, which an encasing's start calls too: the kind's
+-- `encased`); out of the field-object registry, off the panels, its panel's reservation dropped; hidden, and gone.
 local function leave(me: Object)
     battle.set_chips_enabled(other_side(me), true)
     obstacle.unregister(me)
@@ -173,6 +173,11 @@ end
 signal.kind = new.kind {
     id = "signlred/signal",
     pool = "attack",
+    -- 0x08011704, the encasing's first step (ColdMan's ice or bubble), calls 0x080DD73C for it: the other side's
+    -- chips on again, since the encasing ends it without its own leaving.
+    encased = function(me: Object)
+        battle.set_chips_enabled(other_side(me), true)
+    end,
     -- 0x080DD538.
     update = function(me: Object)
         local l = me.lifecycle
