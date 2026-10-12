@@ -335,3 +335,7 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 11. **Training's** new options (§3) need new support in the battle engine.
 12. **The screenshot pass** (the old `NETTAI_TOUR`) walks every screen in each language and size and is compared
     with the mockups.
+13. **The build stays cheap.** "try not make the slint build really expensive, because the current nettai binary
+    takes forever to build". The app's clean and incremental build times, and the time after touching one `.slint`
+    file, are measured and reported with each step, and a choice that costs build time needs a reason from this
+    document.
