@@ -190,20 +190,25 @@ pub(crate) fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<Problem> {
 /// folder against the stats its round starts with (the side on both sides
 /// of the match's first round).
 pub fn check_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], s: &Side) -> Vec<String> {
-    let mut out = check_rounds(content, game, rounds);
-    if !out.is_empty() {
-        return out;
+    side_problems(content, game, rounds, s).into_iter().map(|p| p.text).collect()
+}
+
+/// [`check_side`]'s problems, typed (the side's are side 0's; the rounds',
+/// no side's): what a screen says of an offer it refuses.
+pub fn side_problems(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], s: &Side) -> Vec<Problem> {
+    let of_rounds: Vec<Problem> = check_rounds(content, game, rounds).into_iter().map(|p| Problem::of(None, Wrong::Match, p)).collect();
+    if !of_rounds.is_empty() {
+        return of_rounds;
     }
-    out = check_side_alone(content, game, s);
-    if !out.is_empty() {
-        return out;
+    let alone: Vec<Problem> = side_alone(content, game, s).into_iter().map(|p| Problem { side: Some(0), ..p }).collect();
+    if !alone.is_empty() {
+        return alone;
     }
     let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [s.clone(), s.clone()] };
     match start(content, &m) {
-        Ok(mut b) => out.extend(validated(&mut b, 0, s).into_iter().map(|p| p.text)),
-        Err(e) => out.push(e),
+        Ok(mut b) => validated(&mut b, 0, s),
+        Err(e) => vec![Problem::of(Some(0), Wrong::Internal, e)],
     }
-    out
 }
 
 /// What is wrong with a match, each problem with where it is.
