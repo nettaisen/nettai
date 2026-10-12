@@ -126,6 +126,7 @@ pub fn netbattle(content: &Content, stage: &str, hp: u16, seed: u32, folders: [B
         score: SetScore::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
+        host_keys: nettai_battle::setup::HostKeys::NONE,
         players: [player(a, 0), player(b, 1)],
     }
 }

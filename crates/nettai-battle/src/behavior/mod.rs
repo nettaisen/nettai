@@ -53,6 +53,8 @@ thread_local! {
     static CACHE: RefCell<Vec<(ContentHash, Behaviors)>> = const { RefCell::new(Vec::new()) };
     /// Runtimes callers chose ([`with_runtime`]), innermost last.
     static CHOSEN: RefCell<Vec<Behaviors>> = const { RefCell::new(Vec::new()) };
+    /// Runtimes this thread loaded for its cache ([`Behaviors::loads`]).
+    static LOADS: std::cell::Cell<u64> = const { std::cell::Cell::new(0) };
 }
 
 /// Runtimes a thread keeps.
@@ -100,6 +102,25 @@ impl Behaviors {
         Behaviors::cached(content.hash(), content)
     }
 
+    /// How many runtimes this thread has loaded for its cache so far: one
+    /// the first time a battle of some content is made or stepped on it
+    /// (the content's whole script load, the slowest thing a battle's
+    /// start can wait for), none after while the thread keeps it. A host
+    /// that loads the runtime before a match ([`Behaviors::for_content`] on
+    /// the thread that will step the battle) sees the count stay where it
+    /// was through the match.
+    pub fn loads() -> u64 {
+        LOADS.with(|n| n.get())
+    }
+
+    /// Whether this thread keeps a runtime of the content of this hash
+    /// already (a round's setup carries it, `RoundSetup::content`;
+    /// `Content::hash` walks the whole content for it): a battle of it made
+    /// or stepped here loads none.
+    pub fn is_loaded(content: ContentHash) -> bool {
+        CACHE.with(|c| c.borrow().iter().any(|(h, _)| *h == content))
+    }
+
     /// The same, for content whose hash the caller has (a battle's setup
     /// carries it).
     fn cached(hash: ContentHash, content: &Content) -> Result<Behaviors, ContentError> {
@@ -120,6 +141,7 @@ impl Behaviors {
             return Ok(b);
         }
         let b = Behaviors::load(content, Options::default())?;
+        LOADS.with(|n| n.set(n.get() + 1));
         CACHE.with(|c| {
             let mut c = c.borrow_mut();
             if c.len() == CACHED {
