@@ -337,6 +337,41 @@ fn volume_control_scales_the_note() {
     assert!(half.0 < full.0 && half.0 >= full.0 / 2 - 1, "{full:?} {half:?}");
 }
 
+/// The host's level for a player turns its notes down and no other player's, through a note's release too;
+/// at 256 the output is the driver's own, to the sample.
+#[test]
+fn a_players_level_scales_its_notes_alone() {
+    let songs = || vec![(2, 20, vec![note_track(SAMPLE, 60, 30, 60)]), (0, 20, vec![note_track(SQUARE, 72, 30, 60)])];
+    let peak = |samples: &[[f32; 2]]| samples.iter().fold(0.0f32, |p, s| p.max(s[0].abs()).max(s[1].abs()));
+    let play = |song: u16, player: u8, level: Option<u16>| {
+        let mut d = Driver::new(bank(songs(), 4));
+        if let Some(level) = level {
+            d.set_level(PlayerId(player), level);
+        }
+        d.start(SongId(song));
+        frames(&mut d, 40)
+    };
+    // The music's sample note, and an effect's square note, each alone.
+    for (song, player) in [(0, 2), (1, 0)] {
+        let (own, full, half, none) = (play(song, player, None), play(song, player, Some(256)), play(song, player, Some(128)), play(song, player, Some(0)));
+        assert_eq!(own, full, "song {song}: 256 is the driver's own output");
+        assert!(loud(&own));
+        let ratio = peak(&half) / peak(&own);
+        assert!((0.4..0.6).contains(&ratio), "song {song}: half the level is about half as loud ({ratio})");
+        assert!(peak(&none) < peak(&own) / 50.0, "song {song}: nothing at no level ({})", peak(&none));
+        // (Another player's level changes nothing of this one's.)
+        assert_eq!(play(song, 1, Some(0)), own);
+    }
+    // The music turned down under an effect: the effect is as loud as alone.
+    let mut d = Driver::new(bank(songs(), 4));
+    d.set_level(PlayerId(2), 0);
+    d.start(SongId(0));
+    d.start(SongId(1));
+    assert_eq!(frames(&mut d, 40), play(1, 0, None));
+    assert_eq!(d.level(PlayerId(2)), 0);
+    assert_eq!(d.level(PlayerId(0)), 256);
+}
+
 #[test]
 fn stopping_ends_notes_at_once() {
     let mut d = Driver::new(bank(
