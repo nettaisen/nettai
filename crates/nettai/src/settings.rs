@@ -30,7 +30,8 @@ pub struct Settings {
     /// 0 to 100.
     pub music: u32,
     pub effects: u32,
-    /// Netplay's input delay, in frames: the value the lobby starts with.
+    /// Netplay's input delay, in frames: the value the lobby starts with (the library's
+    /// `NetOptions::input_delay`).
     pub input_delay: u32,
     /// The keys and the pad buttons bound, by the GBA button's name; one left out is the default.
     pub keys: BTreeMap<String, String>,
@@ -50,7 +51,7 @@ impl Default for Settings {
             sharp_text: true,
             music: 80,
             effects: 100,
-            input_delay: 4,
+            input_delay: nettai_frontend::netplay::DEFAULT_INPUT_DELAY,
             keys: BTreeMap::new(),
             pad: BTreeMap::new(),
             remembered: BTreeMap::new(),
@@ -58,8 +59,8 @@ impl Default for Settings {
     }
 }
 
-/// The most the input delay can be set to.
-pub const MAX_INPUT_DELAY: u32 = 10;
+/// The most the input delay can be set to: the library's.
+pub const MAX_INPUT_DELAY: u32 = *nettai_frontend::netplay::INPUT_DELAY.end();
 
 /// The name a player has before they choose one: their account's on this machine.
 fn system_name() -> String {

@@ -117,6 +117,66 @@ msgstr "このビルドは使えません"
 msgid "{}."
 msgstr "{}。"
 
+msgid "This version of nettai is too old for the server. Get the latest."
+msgstr "この nettai はサーバーに対して古すぎます。最新版にしてください。"
+
+msgid "This version of nettai is too old for the server"
+msgstr "この nettai はサーバーに対して古すぎます"
+
+msgid "Get the latest."
+msgstr "最新版にしてください。"
+
+msgid "Your opponent is on {}. Pick the same game."
+msgstr "相手は {} を選んでいます。同じゲームを選んでください。"
+
+msgid "Your opponent is on {}"
+msgstr "相手は {} を選んでいます"
+
+msgid "Pick the same game."
+msgstr "同じゲームを選んでください。"
+
+msgid "This build can't be used."
+msgstr "このビルドは使えません。"
+
+msgid "Your opponent's build can't be used."
+msgstr "相手のビルドは使えません。"
+
+msgid "Your opponent's build can't be used"
+msgstr "相手のビルドは使えません"
+
+msgid "Your opponent left."
+msgstr "相手が退出しました。"
+
+msgid "Your opponent left"
+msgstr "相手が退出しました"
+
+msgid "No answer from your opponent."
+msgstr "相手から応答がありません。"
+
+msgid "No answer from your opponent"
+msgstr "相手から応答がありません"
+
+msgid "Couldn't connect to your opponent."
+msgstr "相手に接続できませんでした。"
+
+msgid "Couldn't connect to your opponent"
+msgstr "相手に接続できませんでした"
+
+msgid "That isn't an address. Use host:port."
+msgstr "アドレスではありません。host:port の形で入力してください。"
+
+msgid "That isn't an address"
+msgstr "アドレスではありません"
+
+msgid "Use host:port."
+msgstr "host:port の形で入力してください。"
+
+msgid "That port is already in use."
+msgstr "そのポートはすでに使われています。"
+
+msgid "That port is already in use"
+msgstr "そのポートはすでに使われています"
+
 msgid "Connection lost. The match has ended."
 msgstr "接続が切れました。対戦は終了しました。"
 

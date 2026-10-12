@@ -80,9 +80,14 @@ pub struct LinkStats {
     pub lost: u64,
     /// Their datagrams with new input that did arrive.
     pub fresh: u64,
-    /// The latest round trip of an ack, and its smoothed value.
+    /// The latest round trip of an ack, its smoothed value, and how
+    /// unsteady it is: the smoothed distance of each round trip from the
+    /// smoothed value (RFC 6298's SRTT and RTTVAR: a new round trip moves
+    /// the one an eighth of the way to it, the other a quarter of the way
+    /// to its distance; the first is itself, and half itself).
     pub rtt: Option<u64>,
     pub srtt: Option<f64>,
+    pub rttvar: Option<f64>,
 }
 
 impl LinkStats {
@@ -186,8 +191,14 @@ impl<I: WireInput> InputLink<I> {
         }
         if let Some(at) = covered {
             let rtt = now.saturating_sub(at);
+            let sample = rtt as f64;
             self.stats.rtt = Some(rtt);
-            self.stats.srtt = Some(self.stats.srtt.map_or(rtt as f64, |s| s + (rtt as f64 - s) / 8.0));
+            // (The distance is from the smoothed value before this one.)
+            self.stats.rttvar = Some(match (self.stats.srtt, self.stats.rttvar) {
+                (Some(s), Some(v)) => v + ((sample - s).abs() - v) / 4.0,
+                _ => sample / 2.0,
+            });
+            self.stats.srtt = Some(self.stats.srtt.map_or(sample, |s| s + (sample - s) / 8.0));
         }
         self.note_newest(&frame);
         let before = self.inn.ack();

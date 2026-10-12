@@ -1,6 +1,6 @@
 //! The link to another player, as Play makes it: in a room of the signaling server (a code typed, or a new
-//! room whose code is given to the other player) or directly (the host's address typed, or this player hosting
-//! on a port of their own), and the agreeing that runs over it (`crate::netplay`).
+//! room, whose code the server picks and this player gives the other) or directly (the host's address typed,
+//! or this player hosting on a port of their own), and the agreeing that runs over it (`crate::netplay`).
 //!
 //! This is the session alone: it shows nothing and reads no screen. Play's screen (`crate::screens::play`,
 //! not built yet) holds a [`LobbyState`], enters a room with what its player brings, polls it each frame, and
@@ -25,8 +25,8 @@ pub const DIRECT_PORT: u16 = 47_474;
 /// The link's way.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Way {
-    /// A new room of the signaling server, by its code.
-    MakeRoom(String),
+    /// A new room of the signaling server, which picks its code ([`LobbyState::code`]).
+    MakeRoom,
     /// The room of a code typed.
     JoinRoom(String),
     /// Directly, this player hosting.
@@ -78,28 +78,32 @@ impl LobbyState {
     }
 
     /// Make the link `way` says, leaving any other: this player, named `name`, proposes `settings` and brings
-    /// `side`, of the game `ready` is. What the link's library said if it can't be made is the error (for the
-    /// log; the player reads a `UserError`).
-    pub fn enter(&mut self, way: Way, ready: &Ready, settings: Settings, side: nettai_match::Side, name: &str) -> Result<(), String> {
+    /// `side`, of the game `ready` is. An error is the link library's: its kind is what the player is told
+    /// (`UserError::from`), its detail goes to the log.
+    pub fn enter(&mut self, way: Way, ready: &Ready, settings: Settings, side: nettai_match::Side, name: &str) -> Result<(), nettai_rtc::Error> {
         self.room = None;
         let config = nettai_rtc::Config::default();
+        // (With no signaling server named, there is none to reach.)
+        let server = || signal_server().ok_or_else(|| nettai_rtc::Error { kind: nettai_rtc::ErrorKind::ServerUnreachable, detail: "no signaling server is named ($NETTAI_SIGNAL)".into() });
         let link = match &way {
-            Way::MakeRoom(code) | Way::JoinRoom(code) => {
-                let server = signal_server().ok_or("no signaling server is named ($NETTAI_SIGNAL)")?;
-                // (The room's name on the server: its code, in lowercase.)
-                nettai_rtc::Link::room(&server, &code.to_ascii_lowercase(), config)
-            }
+            Way::MakeRoom => nettai_rtc::Link::create_room(&server()?, config),
+            Way::JoinRoom(code) => nettai_rtc::Link::join_room(&server()?, code, config)?,
             #[cfg(not(target_arch = "wasm32"))]
-            Way::Host => nettai_rtc::Link::host(DIRECT_PORT, config),
+            Way::Host => nettai_rtc::Link::host(DIRECT_PORT, config)?,
             #[cfg(not(target_arch = "wasm32"))]
-            Way::Join(address) => nettai_rtc::Link::join(address, config),
+            Way::Join(address) => nettai_rtc::Link::join(address, config)?,
             #[cfg(target_arch = "wasm32")]
-            Way::Host | Way::Join(_) => return Err("a direct link needs a socket".into()),
+            Way::Host | Way::Join(_) => return Err(nettai_rtc::Error { kind: nettai_rtc::ErrorKind::Internal, detail: "a direct link needs a socket".into() }),
         };
-        let mut agreeing = Agreeing::new(link.map_err(|e| e.0)?, ready.content(), settings, side, WAIT);
+        let mut agreeing = Agreeing::new(link, ready.content(), settings, side, WAIT);
         agreeing.set_name(name);
         self.room = Some((agreeing, way));
         Ok(())
+    }
+
+    /// The room's code: the one joined by, or the one the server gave a new room, once it has.
+    pub fn code(&self) -> Option<&str> {
+        self.room.as_ref().and_then(|(a, _)| a.code())
     }
 
     /// The link given up.

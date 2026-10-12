@@ -778,11 +778,12 @@ named_flags! {
     }
 }
 
-/// A folder a tool asks a side's rules to check (`folder_check`): whose
-/// side it is, its chips in order (handles and codes), its Regular and tag
-/// chips (entries of `chips`), and whether it is all of a folder (else the
+/// A folder a tool asks a side's rules of (`folder_check`, `folder_view`):
+/// whose side it is, its chips in order (handles and codes), its Regular and
+/// tag chips (entries of `chips`), whether it is all of a folder (else the
 /// chips so far, as a random folder is drawn: the rules about a whole
-/// folder wait).
+/// folder wait), and for `folder_view` the chips the tool asks whether it
+/// can take one more of (`offered`: handles).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct CheckedFolder {
     pub side: u8,
@@ -790,6 +791,7 @@ pub struct CheckedFolder {
     pub regular: Option<u8>,
     pub tags: Option<(u8, u8)>,
     pub complete: bool,
+    pub offered: Vec<u16>,
 }
 
 named_flags! {
@@ -1336,13 +1338,10 @@ pub trait CoreApi {
     /// The folder a tool asks the side's rules to check (`folder_check`),
     /// while it is checked.
     fn checked_folder(&self) -> Option<CheckedFolder>;
-    /// A rule the checked folder breaks: the rule's name (`copies`, `mega`,
-    /// ... the game's own) and what to say.
-    fn folder_problem(&mut self, rule: &str, text: &str);
-    /// A problem of the setup a tool asked the rules to validate
-    /// (`validate`): what to say, and the setup field it is of and the
-    /// entry of a list field (from 0), if the rules say.
-    fn setup_problem(&mut self, text: &str, field: Option<&str>, entry: Option<u32>);
+    /// What a hook a tool asked answered (`validate`, `folder_check`,
+    /// `folder_view`, `overview`): its value as plain data, which the
+    /// battle keeps for the tool that asked.
+    fn tool_answer(&mut self, answer: crate::Data);
     /// A definition's name in the content's own strings (its locales'
     /// language), else its key: for what the rules say to a tool.
     fn def_name(&self, registry: crate::Registry, handle: u16) -> String;

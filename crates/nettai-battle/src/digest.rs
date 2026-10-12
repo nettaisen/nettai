@@ -207,7 +207,7 @@ impl Hash for Battle {
             pause_asked: _,
             outcome,
             folder_check: _,
-            validation: _,
+            tool_answer: _,
         } = self;
         setup.hash(h);
         stats.hash(h);

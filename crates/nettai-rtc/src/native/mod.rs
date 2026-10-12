@@ -57,7 +57,7 @@ pub(crate) fn channel_init() -> RTCDataChannelInit {
 }
 
 fn err(what: &str) -> impl Fn(rtc::shared::error::Error) -> Error + '_ {
-    move |e| Error(format!("{what}: {e}"))
+    move |e| Error::internal(format!("{what}: {e}"))
 }
 
 /// The STUN and TURN servers of a [`Config`], their names resolved (which
@@ -284,7 +284,7 @@ impl PeerConnection {
             self.socks.push(Sock { socket, local, read: true });
         }
         if self.socks.is_empty() {
-            return Err(Error("can't bind a UDP socket on any of this machine's addresses".into()));
+            return Err(Error::internal("can't bind a UDP socket on any of this machine's addresses"));
         }
         for i in 0..self.socks.len() {
             let local = self.socks[i].local;
@@ -307,7 +307,7 @@ impl PeerConnection {
             turn_config.username = t.username.clone();
             turn_config.password = t.credential.clone();
         }
-        let provider = rtc::crypto::default_provider().map_err(|e| Error(format!("no crypto: {e}")))?;
+        let provider = rtc::crypto::default_provider().map_err(|e| Error::internal(format!("no crypto: {e}")))?;
         let mut client = TurnClient::new(turn_config, provider).map_err(err("can't make the STUN client"))?;
         let now = Instant::now();
         if stun.is_some() {
