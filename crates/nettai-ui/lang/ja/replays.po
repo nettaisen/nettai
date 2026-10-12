@@ -63,8 +63,8 @@ msgstr "ファイルを表示"
 msgid "DELETE"
 msgstr "削除"
 
-msgid "Delete this replay?"
-msgstr "このリプレイを削除しますか?"
+msgid "Delete replay?"
+msgstr "リプレイを削除しますか?"
 
 msgid "CANCEL"
 msgstr "キャンセル"

@@ -1,4 +1,4 @@
-//! A replay's export as video (docs/design/app-ui.md §6, "Export"; docs/app.md §8): the dialog's choices, and
+//! A replay's export as video (docs/design/app-ui.md §6, "Export"; docs/app.md §15): the dialog's choices, and
 //! the export itself, which is nettai-video's `export_mp4` on a thread of its own: it plays the replay through
 //! a viewer of its own there and pipes the pictures and the sound to `ffmpeg`, which writes the MP4.
 //!
@@ -107,8 +107,11 @@ fn file_safe(text: &str) -> String {
 }
 
 /// A path as the dialog shows it: from the player's home where it is in it, its middle left out where it is
-/// long.
-fn shown(path: &Path) -> String {
+/// long; on a phone, whose box is short, the file's name alone.
+fn shown(path: &Path, phone: bool) -> String {
+    if phone {
+        return path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
+    }
     let home = std::env::var_os(if cfg!(target_os = "windows") { "USERPROFILE" } else { "HOME" }).map(PathBuf::from);
     let text = home.and_then(|h| path.strip_prefix(h).ok().map(|p| p.display().to_string())).unwrap_or_else(|| path.display().to_string());
     let chars: Vec<char> = text.chars().collect();
@@ -145,6 +148,11 @@ impl Export {
     pub fn close(self, shell: &mut Shell) {
         shell.nav.close("export.");
         shell.ui().global::<ReplaysView>().set_exporting(false);
+    }
+
+    /// Whether an export is under way.
+    pub fn running(&self) -> bool {
+        self.running.is_some()
     }
 
     /// The parts there are: the whole match, and each round where there is more than one.
@@ -201,7 +209,7 @@ impl Export {
         view.set_export_size(Export::size_label(SIZES[self.size]).into());
         view.set_export_view(self.side as i32);
         view.set_export_part(self.part_label(&view, self.part).into());
-        view.set_export_path(shown(&self.to).into());
+        view.set_export_path(shown(&self.to, shell.scale.phone).into());
         view.set_export_state(self.state);
         view.set_export_error(self.error.as_ref().map(|e| e.line(&ui)).unwrap_or_default().into());
         if self.state != ExportState::Running {
@@ -421,5 +429,37 @@ fn choose(kind: &str, to: &Path) -> Option<PathBuf> {
     {
         let _ = (kind, to);
         None
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A file's name holds nothing a file system refuses, and no run of spaces.
+    #[test]
+    fn a_name_is_safe_for_a_file() {
+        assert_eq!(file_safe("2026-10-11 a/b\\c: d?"), "2026-10-11 a b c d");
+        assert_eq!(file_safe("  ネット\tバトラー "), "ネット バトラー");
+        assert_eq!(file_safe(""), "");
+    }
+
+    /// A long path is shown with its start and its end, its middle left out; a short one whole.
+    #[test]
+    fn a_long_path_keeps_its_ends() {
+        let path = Path::new("/a/folder/with/a/long/name/and/another/inside/it/2026-10-11 someone round 2.mp4");
+        let long = shown(path, false);
+        assert_eq!(long.chars().count(), PATH_SHOWN);
+        assert!(long.starts_with("/a/folder/with") && long.ends_with("someone round 2.mp4") && long.contains('…'), "{long}");
+        assert_eq!(shown(Path::new("/videos/a.mp4"), false), "/videos/a.mp4");
+        assert_eq!(shown(path, true), "2026-10-11 someone round 2.mp4");
+    }
+
+    /// The sizes offered are even multiples of the frame, the first one four times.
+    #[test]
+    fn the_sizes_are_even() {
+        assert!(SIZES.iter().all(|s| s % 2 == 0));
+        assert_eq!(SIZES[FIRST_SIZE], 4);
+        assert_eq!(Export::size_label(4), "960 × 640 (4×)");
     }
 }
