@@ -417,9 +417,12 @@ mega = [
     "videmn-ds",
 ]
 giga = [
+    "redsun",
+    "holydrem",
     "bass",
     "bugcharg",
     "blakbarr",
+    "bluemoon",
     "signlred",
     "bassanly",
     "bugcurse",
@@ -492,4 +495,8 @@ program_advance = [
     "pitrng3",
     "lifesrd",
     "timebom",
+    "bodygrd",
+    "poisphar",
+    "pdriver",
+    "darkneo",
 ]

@@ -80,6 +80,14 @@ return {
     -- holds until let go (its table's state 2) doesn't count its hold, and let go (0x0801616C) slides out at once. Its
     -- hold sets no squash (0x080149CE): it doesn't bounce.
     banner = { slide_in = 9, hold = 30, slide_out = 9, release = "slides_out", bounces = false },
+    -- A telop is no banner (0x0801650C lays the chip's name on a block, in the banners' steps). The console's own
+    -- player's lays on the banner block under a task of its own (0x08016454, task 0x100): not while a banner or the
+    -- judge's tallies show (0x0801627C), in the place of a telop that does; its controller waits for it alone
+    -- (0x08016440), and the flow's wait for a banner doesn't see it (0x08016148). The other player's lays on the second
+    -- block (0x080164B4, task 0x8000), beside whatever the banner block shows and in the place of what the second
+    -- block shows, a telop or that player's used chip's name (which takes a telop's place the same way); its controller
+    -- waits for the second block (0x080164A4).
+    telops = "apart",
     -- Its main loop (0x080002B0) draws no RNG1 a frame: RNG1 moves only where the battle draws it.
     rng1_per_frame = false,
     -- The chip icons over the local navi (0x08014860, 0x08015000): at its identity's `chip_icons_at` from its place on
@@ -107,4 +115,9 @@ return {
     -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
     -- not in update order: of two parts in one depth bucket the higher slot's is in front.
     draw_order = "slots",
+    -- What a frame's sprite draw has room for (0x03005C00, each drawn object's sprite in draw order): tiles under the
+    -- cap (0x03005FD4: the allocator, 1 as a frame starts, less 0x30 plus the frame's tiles) and a palette slot
+    -- (0x03006010), a sprite past either left out. Both read the game's mode: a battle's (8, 0x08006B14) 10 slots
+    -- and 0x2FF, whatever the battle (any other mode's 12 and 0x32F).
+    sprite_budget = { tiles = 0x2FF, palettes = 10 },
 }

@@ -144,7 +144,7 @@ local function leave(me: Object)
     me:free()
 end
 
-actor.kind = new.kind {
+local kind = new.kind {
     id = "holydrem/actor",
     pool = "actor",
     state = { controller = "object", held = "object", x = "i32", y = "i32", dx = "i32", shots = "u16" },
@@ -164,5 +164,22 @@ actor.kind = new.kind {
         end
     end,
 }
+
+-- 0x080BD93E: the stand-in for `user`, sent out by `controller` with the damage word, of the user's side and facing
+-- (it acts while dimmed). (The spawner is passed the controller's row but not its column: the stand-in starts on
+-- column 0 until its init places it on the user.)
+function actor.spawn(controller: Object, user: Object, damage: number): Object?
+    local o = battle.spawn(kind)
+    if o then
+        o.panel_x, o.panel_y = 0, controller.panel_y
+        o.element = controller.element
+        o:set_damage_word(damage)
+        o.related1 = user
+        ;(o.state :: State).controller = controller
+        o.alliance, o.flip = user.alliance, user.flip
+        o.run_while_dimmed = true
+    end
+    return o
+end
 
 return actor

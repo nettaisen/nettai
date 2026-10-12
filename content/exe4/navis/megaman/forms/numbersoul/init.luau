@@ -12,7 +12,8 @@ local charge = require("@self/charge")
 local chip = require("@self/chip").numsoul
 local soul = require("./soul")
 
-local overlay = soul.overlay(asset.sprite("numbersoul-overlay"))
+local OVERLAY = asset.sprite("numbersoul-overlay")
+local overlay = soul.overlay(OVERLAY)
 
 -- The status reset's bonus, and the custom screen's.
 local BONUS = 10
@@ -43,6 +44,7 @@ local form: FormDef = {
     element = "null",
     buster_bonus = 0,
     weapons = { buster = soul.buster, charge_shot = charge.weapon },
+    wears = OVERLAY,
     put_on = overlay.put_on,
     take_off = overlay.take_off,
     reset = function(navi: Object)
