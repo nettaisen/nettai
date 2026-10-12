@@ -586,8 +586,11 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
 - **Left out:**
   - The Japanese ROMs' one different sprite (14-17, the "BLOCK!" label, ブロック! there): the US release localized
     it rather than cut it, so the pack keeps the US's, as EXE6's does; no content draws it.
-  - The Japanese ROMs' background 0x05, which is another picture than the US ROMs' (bubbles in the dark for the
-    goldfish): no netbattle's stage shows it, and the pack keeps the US's. The extractor says both.
+  - The US ROMs' background 0x05 (Yai's HP), which is another picture than the Japanese ROMs' (goldfish, scrolling,
+    for bubbles in the dark, still): the pack's backgrounds are the Japanese Team of Blues ROM's (the other 28 are
+    the same in both releases, pictures, scrolls and animations), and what a US console draws there is the
+    verification's to know (its consoles.tsv; `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared,
+    2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
