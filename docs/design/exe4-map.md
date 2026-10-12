@@ -933,6 +933,43 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   (0x080E7E38), which no netbattle sets. The points' palette is the record's parameter times 4 (0x080E7D46: DblPoint's
   1, palette 4). The lab's chips/ (10) replay every frame. ColorPt's boost
   (chips/0x07f-colorpt/boost: its points, the Cannon's bonus) and DblPoint's hit, from either side, are pixel-exact.
+- **HolyDrem** (Red Sun's chip 0x133, the dimming chips' variant 0x2C, `chips/holydrem`): EXE5's HolyDrem's controller
+  and shot are this code, now shared as @exelib/holydrem (the controller, effect #0x59, 0x080E8418; the shot, attack
+  #0x83, 0x080DD9EC: EXE4's spawns copy the side byte alone, the makers' `side_only`), with EXE4's own stand-in
+  (attack #0x82, 0x080DD798, the elder of EXE5's actor #0x1C): drawn as the user with what its soul puts on
+  (0x0800B812), the user gone but for its status visuals; animation 0x12 and no buster arm; a shot 40 pixels ahead and
+  20 up (0x080DD940 by the navi) with the cannon's sound (0x8C) each time; the scan for holy panels (0x080DD9AC), each
+  flashed (effect row 0x45), turned Normal and answered with a shot, as EXE5's. The lab's chips/ (5: holy-panel, after
+  HolyPanl, among them) replay every frame and sound call; holy-panel is pixel-exact but for the replay's known shift.
+- **RedSun** (Red Sun's chip 0x130, the dimming chips' variant 0x2D, `chips/redsun`: EXE4's own): its controller
+  (effect #0x5A, 0x080E8534: lib/sun_and_moon, a navi chip's long course in a plain dimming controller: the user warps
+  out, 31 ticks, the sun, 31 ticks, the user warps back in, 31 ticks) sends out the sun (attack #0x84, 0x080DDB34),
+  70 pixels over the user's panel (sounds 0xA0 and, 28 ticks in, 0x19E). After 45 and 31 ticks it throws five
+  meteors 16 ticks apart (attack #0x85, 0x080DDDEE: EXE6's SunMoon's meteor is this code, now shared as
+  @exelib/sun_meteor; each 40 damage with the counter byte 0x85, its element the register the object loop leaves, 0 in
+  every recording), waits 61 ticks and dives (0x19F) in 10 ticks onto the panel three columns toward the enemy: a hit
+  there that resolves while dimmed (the region word 0x1505FF01: a thrown break at navis, hit modifier 3) with the
+  chip's damage, the 3x3 panels around cracked (0x080DDD84), a shake (3, 60), a burst (effect row 6) and silent
+  sparkles of explosions (0x10000); 61 ticks later the controller goes on. Its damage is formula 47 (0x080195CE,
+  rules/sun_and_moon): 100 and 40 for each ten of the side's wins over losses against the other version, up to 100,
+  none under ten (300 under event flag 0x1187). The count is the save's signed halfword at 0x21D6 (the game state's
+  struct at the toolkit's +0x44, its +0x22: the status screen's "VS BM Battles: +100 W", 0x0803A978), which each
+  side's link record carries (+0xB6, 0x08008784) and the battle keeps at 0x0203BE72 + 8 a side (0x080087A8): the
+  setup's `version_wins` (Tango's netplay saves hold 100, the setup's default), which exe4-compat's import reads from
+  a save and its trace from a recording's setup line. The lab's chips/ (5: wins-35, 220 damage with the save's count
+  poked to 35, among them) replay every frame and sound call; the hit, from either side, is pixel-exact but for the
+  known shift.
+- **BlueMoon** (Blue Moon's chip 0x135, the dimming chips' variant 0x2E, `chips/bluemoon`: EXE4's own): its
+  controller (effect #0x5B, 0x080E865C: lib/sun_and_moon's, the same code) sends out the moon (attack #0x86,
+  0x080DDFEC) on the user's panel (0xA0, 0x19E); after 45 and 21 ticks it shines its ray (attack #0x87, 0x080DE160:
+  sheet 0c-4e, 0x1A0) for 91 ticks, then goes after 11 more. The ray, 3 ticks in, hits the panel three columns toward
+  the enemy with the chip's damage (0x1705FF01: a thrown piercing break at navis, hit modifier 3) and, a tick each
+  from that tick on, with nine hits of no damage (element 5, hit modifier 1) that strip the navi they reach: each
+  carries a NaviCust bug code and argument (0x080DE284: codes 1 to 7 with 0, 0x0A with 1, 0x0C with 0xFF), which the
+  rules' `navi_bug` writes (SuperArmor, FloatShoes, AirShoes and UnderShirt off; Attack, Rapid and Charge 0; the
+  charged shot the navi's own; no B+Left). Its damage is formula 48 (0x08019606): RedSun's from 200. The lab's chips/
+  (6: strips, where a Cannon flinches a navi whose SprArmr the ray took, and wins-5, 200 damage, among them) replay
+  every frame and sound call; the hit and strips are pixel-exact but for the known shift.
 - **Anubis** (the dimming chips' variant 0x18, `chips/anubis`): EXE6's code (@exelib/anubis: controller #0x33,
   0x080E5BF4; statue #0x55, 0x080D82F8) in EXE4's look: sheet 0c-30, 0xA2 landing, 0x70 breaking over effect row 0;
   no NameID; the lifetime 3000 for either variant (0x080D836A); its end reads no removal (0x080D83F8: it breaks however
@@ -1467,7 +1504,8 @@ frame line after each battle frame. EXE4's differ from EXE5's in what EXE4 has (
   `navicusts` (each side's save's NaviCust: `parts`, the 25 parts of 8 bytes at save 0x4564; `grid`, the 5x5 grid at
   0x4540; `color_bar`, 6 bytes at 0x190) and `patch_cards` (each side's save's six slots: `on` at 0x464C, `off` at
   0x4653, a card's number or 0xFF); `game_regions`; `background` (the game state's +0x0F, the background the loader
-  picks first, 0xFF none). **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
+  picks first, 0xFF none); `version_wins` (both sides' wins over losses against the other version as the battle keeps
+  them, 0x0203BE72 and 0x0203BE7A: the recordings from 2026-10-11 on; one without them took its saves', Tango's 100). **`rng1s` and `regular_flags`** (both consoles' RNG1 and Regular
   chip flags) come only when the traced console is side 1: side 0's console runs its frame before side 1's in a tick,
   so the other console's last capture is a frame behind when side 0's setup line is written (EXE5's side-0 recordings
   lack them for the same reason). A decode reads them when present and doesn't expect them on a side-0 recording.
@@ -1643,7 +1681,7 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
      again (0x08042AE0, the battle's stats; HubBatc's writes the game state's maximum HP, which no battle reads); then
      the abilities come back (0x0800D906, EXE6's `sub_801393A`: the answer "edited"). The rules' `navi_bug`
      (content/exe4/rules/navicust/bugs), an if-chain on the codes EXE4's objects set: ShadeMan's crush 0x0D (the move
-     bug); RedSun's stripping hits (attack 0x87) 1 to 7 and 0x0A; attack 0x41's (effect 0x1B) those, 0x0C and 0x12;
+     bug); BlueMoon's ray's stripping hits (attack 0x87) 1 to 7, 0x0A and 0x0C; attack 0x41's (effect 0x1B) those and 0x12;
      weapon routine 0x5C's hit 0x0E (the HP bug's period); BugBomb (attack 0x77: kinds 1, 2, 3, 4, 6, 8) and BugCurse
      (attack 0x80: kinds 2, 3, 4, 6) 0xFF. The original allows any other code (the byte it numbers); no object sets
      one. Kind 8 (the weapon bug: the charged shot becomes weapon routine 0x1F, 0x20 or 0x21) waits on routines 0x1F
