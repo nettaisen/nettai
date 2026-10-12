@@ -313,6 +313,13 @@ impl<'a> Stage<'a> {
                 if !p.visible {
                     blank(layer, col, row, 5, 3);
                     blank(layer, col, edge_row, 5, 1);
+                    // A highlighted panel the game's drawing left alone
+                    // shows what it last did (`Panel::kept`).
+                    if let Some(kept) = kept_look(&b.content, p)
+                        && let Some((from, entries, tinted)) = shown(&b.content, &self.art, &field_of, &kept, local_side, y, problems)
+                    {
+                        block(layer, from, entries, col, row, 5, tinted);
+                    }
                     continue;
                 }
                 if let Some((from, entries, tinted)) = shown(&b.content, &self.art, &field_of, p, local_side, y, problems) {
@@ -367,6 +374,22 @@ fn shown<'f>(
         Art::Field(from) => lookups::panel_block(c, field_of(from), from, kind, owner, y, problems).map(|e| (from, e, false)),
         Art::Tint => tinted(kind.0, problems),
     }
+}
+
+/// The panel a highlighted panel that isn't visible still shows, where the
+/// game's drawing leaves such a panel as it was (`PanelDrawn::OwnTables`):
+/// what it last showed, if it was visible then (`Panel::kept`).
+fn kept_look(c: &Content, p: &field::Panel) -> Option<field::Panel> {
+    let own_tables = c.rules().panels.drawn == nettai_battle::content::PanelDrawn::OwnTables;
+    let k = p.kept;
+    (own_tables && p.highlight != 0 && k.visible).then(|| field::Panel {
+        visible: true,
+        highlight: k.highlight,
+        blink: None,
+        display_kind: k.kind,
+        display_alliance: k.alliance,
+        ..*p
+    })
 }
 
 /// The lookups `Stage::draw_field` makes, without drawing (`--audit`): what
