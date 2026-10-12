@@ -458,3 +458,15 @@
 # its first row's).
 "bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
 "bugfix/glow" = { pool = "actor", index = 0x5D }
+# MetaGel's controller (0x080E4618; its position the dimming handler's registers) and its gel (0x080D5DF4; its position
+# the spawner's registers until its first update).
+"metagel/controller" = { pool = "effect", index = 0x21, scratch_position = true }
+"metagel/gel" = { pool = "attack", index = 0x45, scratch_position = true }
+# Magnum's controller (0x080E57F8; its position the dimming handler's registers) and its gunner (0x080D756C).
+"magnum/controller" = { pool = "effect", index = 0x30, scratch_position = true }
+"magnum/gunner" = { pool = "attack", index = 0x50 }
+# BugCharg's controller (0x080EAB58; its position the dimming handler's registers) and its stand-in (0x080CC72C).
+"bugcharg/controller" = { pool = "effect", index = 0x7C, scratch_position = true }
+"bugcharg/actor" = { pool = "actor", index = 0x59 }
+# ShotStar's controller (0x080E5C90; its position the dimming handler's registers); its meteors are Meteors'.
+"shotstar/controller" = { pool = "effect", index = 0x34, scratch_position = true }

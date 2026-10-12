@@ -763,7 +763,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 - **PropBom1 to PropBom3** (action 0x62, `chips/propbom`: EXE4's own): a propeller bomb (attack 0x8C, 0x080DEB70: a
   field object of its user's side, class 1, with 10 HP) flying 20 pixels up from the panel ahead at 1.5 pixels a tick;
   a body, attack or navi it meets (or its HP gone) explodes it where it is; off the screen it bursts over the other
-  side's back two columns (region 0x11) with its damage.
+  side's back two columns (region 0x11) with its damage. Its identity states `throwable = false`: JunkMan's
+  poltergeist and ColdMan leave it (0x0800B3E8).
 - **MagBolt1 to MagBolt3** (action 0x59, `chips/magbolt`: EXE4's own action, which EXE5's MagnetSoul's charged shot
   grew from): the magnet held (attachment rows 0x23 to 0x25), its field (attack 0x75: EXE5's MagnetSoul's, now
   @exelib/magbolt/magnet, whose EXE4 spawn only watches the magnet's slot: `watches`) on the panel ahead for 30 ticks,
@@ -1045,6 +1046,40 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   stepping on) through the form's `put_on`, so FireSoul's and NumberSoul's (item 74) come with their overlays. The
   lab's chips/0x085-invis and chips/0x086-popup (hit, miss, adjacent, side1) replay every frame; the hit recordings'
   fight frames, the glow and the hole among them, are pixel-exact.
+- **BugCharg** (the dimming chips' variant 0x4A, Red Sun's, a dark MegaMan's, `chips/bugcharg`, group B): EXE5's
+  controller and stand-in, now @exelib/bugcharg, in EXE4's look: the controller (effect #0x7C, 0x080EAB58, the same
+  code) sends out EXE4's stand-in (actor #0x59, 0x080CC72C): drawn as the user in what its form wears (0x0800B812),
+  standing in animation 10, never hidden from a blind viewer, its charger (attachment row 0x2E, 0c-43) raised in
+  animation 13 with sound 0xA0, its shots the flying shot's row 14 (0x080CE690) with sound 0xBF. It takes in no bugs:
+  its shots are as many as BattleState +8, the custom screens so far, at most 10 (0x080CC826: "Gets powr with turn";
+  under event flag 0x1187, never a netbattle's, 5), where EXE5's fires one and one more for each NaviCust bug it takes
+  in. The lab's chips/0x136-bugcharg (hit, miss, adjacent, side1: five shots, the chip dug out by the fifth screen;
+  late: nine screens passed first, ten shots) replay every frame with the same sounds; the hit recording's fight
+  frames are pixel-exact but for the custom screens' known shift. EXE5's BugCharg recordings still match.
+- **ShotStar** (the dimming chips' variant 0x19, `chips/shotstar`, group B): the meteor shower EXE6's and EXE5's
+  Meteors chips kept (effect #0x34, 0x080E5C90: @exelib/meteors/controller, each game stating its meteor and its
+  targets): thirty of EXE4's meteors (chips/meteors' kind, row 1: hit modifier 3) on the enemy's area, one every 10
+  ticks. EXE4's finds each meteor's panel as the last one falls (0x080E5D9A, `controller.scanned`: the next panel of
+  the other side's down the column, then column by column toward the user's side, then again from the far column),
+  where EXE6's and EXE5's list the panels as the effect starts (`controller.listed`). The lab's chips/0x0d2-shotstar
+  (4) replay every frame with the same sounds, pixel-exact; EXE5's and EXE6's Meteors recordings still match.
+- **Magnum** (the dimming chips' variant 0x16, `chips/magnum`, group B): EXE5's controller and gunner, now
+  @exelib/magnum, in EXE4's look: the controller (effect #0x30, 0x080E57F8, the same code) sends out EXE4's gunner,
+  an attack object (#0x50, 0x080D756C; EXE5's actor #2) drawn as the user and wearing nothing, its sounds 0x128 (a
+  step of the sight), 0xC0, 0xBC and 0x95, firing in animation 0x10, its sight effect row 0x49 (10-22), and its sight
+  stepping to the next column if that has an enemy panel, else from the field's start to the first that has one, and
+  off the field with none (0x080D776E: `gunner.next_or_wrap`; EXE5's sweeps on round from where it is). A press of A
+  is read from the side's joypad record (0x0800BFF4), its navi's (EXE5's from the user's). The lab's chips/0x05e-magnum
+  (hit, miss, adjacent, side1; fire-early: A a second into the aim) replay every frame with the same sounds,
+  pixel-exact; EXE5's Magnum recordings still match.
+- **MetaGel** (the dimming chips' variant 0x0C, `chips/metagel`, group B): EXE5's controller and gel, now
+  @exelib/metagel (makers each game states its look for), in EXE4's: the controller (effect #0x21, 0x080E4618) drops
+  each row's gel on the other side's panel nearest the user's (0x0800A1AE with 0x080E4708's flags, `nearest_other`;
+  EXE5's past the user's area, 0x0800BA34); the gel (attack #0x45, 0x080D5DF4) with EXE4's sounds (0x115 dropped,
+  0xCA landing) and the puff of effect row 0x15 takes its panel unless that is the other side's back column
+  (0x080D5F0C; EXE5's where the other side may lose it, 0x0800BBCC). The lab's chips/0x05f-metagel (hit, miss,
+  adjacent, side1; back-column: after two AreaGrabs, the gels on the back column taking nothing) replay every frame
+  with the same sounds, pixel-exact; EXE5's MetaGel recordings still match.
 - **BugFix** (the dimming chips' variant 0x1D, `chips/bugfix`, group B): EXE5's and EXE6's controller (effect #0x3B,
   0x080E6388: @exelib/bugfix/controller, each game stating its glow and its fix) with EXE4's glow (objects/glow, its
   first row: BugFix's flashes, 0x080CD058, the three games' alike but for the sound, 0x15C; then 30 ticks,
@@ -1074,7 +1109,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   formula's `panels`). Roll (actor #0x2C) is @exelib/roll's, with EXE4's differences as its spec's; JunkMan (actor
   #0x48) raises EXE5's Poltrgst's poltergeist (effect #0x73, @exelib/poltergeist), whose EXE4 code leaves out obstacles
   by kind (attack objects #0x4C and #0x8C, effect object #0x6E, 0x0800B3E8): their identities state `throwable = false`
-  when they are ported. Its throws of RockCube's cube (the lab's junkman*/obstacle) replay every frame. NumberMan
+  (PropBom's bomb's, #0x8C, does; item 151). Its throws of RockCube's cube (the lab's junkman*/obstacle) replay every frame. NumberMan
   (actor #0x0F), his face (actor #0x5C) and his die (attack #5) are EXE5's (@exelib/numbrman), EXE4's differences
   their specs': the face, with
   the fight on, follows him from its first update (its action 8; its action 4, a random battle's intro, is never
@@ -1191,8 +1226,8 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   ColdMan (actor #0x56, 0x080CC04C) is EXE4's own (no counterpart in EXE5 or EXE6); his controller (effect #0x7B,
   0x080EAA88) runs the short course. 11 ticks after he appears (gone off solid ground) he looks over the field-object
   registry's six side slots (0x080CC2E4), leaving out the kinds 0x0800B3E8 leaves (the poltergeist's
-  `obstacle.throwable`: attack objects #0x4C and #0x8C, effect object #0x6E; PropBom's bomb, #0x8C, is ported with no
-  identity, so both take it: its identity should state `throwable = false`). An obstacle with his own panel or free
+  `obstacle.throwable`: attack objects #0x4C and #0x8C, effect object #0x6E; PropBom's bomb, #0x8C, states it; item
+  151). An obstacle with his own panel or free
   solid ground behind it (as he faces) takes his side and damage word and is encased in a bubble; any other is encased
   in ice (0x0800B44C: flag2 0x4000 or 0x2000, the engine's `obstacle.encase_in_bubble` and `encase_in_ice`). Some
   found, the place sound and his stops sorted (0x080CC388: the farthest toward his enemy visited first, top row first
@@ -2440,5 +2475,7 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     viewer or a Reflector through a navi chip to confirm.
 151. **What the poltergeist leaves** (JunkMan's, @exelib/poltergeist). EXE4's 0x080EA16C and 0x0800B3E8 take every
     field object but attack objects #0x4C and #0x8C and effect object #0x6E, tested by kind (EXE5's by NameID); the
-    engine asks the identity (`throwable`). None of the three is ported: whoever ports one gives its identity
-    `throwable = false`. JunkMan's throws themselves wait on RockCube (the lab's junkman*/obstacle).
+    engine asks the identity (`throwable`). **Done for #0x8C**, PropBom's bomb (chips/propbom/bomb: a field object's
+    identity with `throwable = false`; its recordings, JunkMan's and ColdMan's still match). Attack #0x4C is Mine's
+    land mine (chips/mine, @exelib/mine/land_mine's `identity`), ported with no identity, so both still take it: its
+    identity is to state `throwable = false`; effect #0x6E isn't ported.
