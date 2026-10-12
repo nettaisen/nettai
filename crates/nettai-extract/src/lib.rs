@@ -123,6 +123,61 @@ pub struct Extraction {
     names: AssetNames,
 }
 
+/// A range of a ROM an extraction read (`extract_recording_reads`).
+pub struct RomRead {
+    /// The ROM's game code.
+    pub rom: String,
+    pub address: u32,
+    pub len: u32,
+    /// The ROM address the word read holds (a table's or a record's
+    /// pointer: what the extraction reads at it is its target's).
+    pub pointer: Option<u32>,
+    /// A span read whole for a parser that takes what it needs of it (an
+    /// uncompressed sprite archive): how far the parser went isn't known.
+    pub open: bool,
+}
+
+/// `extract`, and with it every range of the ROMs the extraction read, in
+/// the order read (reads of bytes that follow one another are one read).
+/// For comparing what two releases' ROMs hold where the extractor looks
+/// (the verification's cross-ROM sweep); the sound bank's reads aren't in
+/// it.
+pub fn extract_recording_reads(game: Game, roms: &RomSet) -> Result<(Extraction, Vec<RomRead>), Error> {
+    let (extraction, reads) = rom::record_reads(|| extract(game, roms));
+    let code = |at: usize| {
+        roms.roms
+            .iter()
+            .find(|(_, r)| r.0.as_ptr() as usize == at)
+            .map(|(code, _)| code.clone())
+    };
+    let reads = reads
+        .into_iter()
+        .filter_map(|r| {
+            Some(RomRead {
+                rom: code(r.rom)?,
+                address: r.address,
+                len: r.len,
+                pointer: match r.kind {
+                    rom::ReadKind::Pointer(p) => Some(p),
+                    _ => None,
+                },
+                open: r.kind == rom::ReadKind::Open,
+            })
+        })
+        .collect();
+    Ok((extraction?, reads))
+}
+
+/// The numbers of the songs two ROM images' sound banks play otherwise (the
+/// player, the priority, the reverb, the commands, or a voice a note of
+/// theirs plays), or that only one has: for comparing two releases' ROMs
+/// (the verification's cross-ROM sweep). The samples' and the voicegroups'
+/// numbers, which are each bank's own order, don't count.
+pub fn songs_played_otherwise(a: &[u8], b: &[u8]) -> Result<Vec<u16>, Error> {
+    let bank = |rom: &[u8]| m4a::rom::extract(rom).map(|(bank, _)| bank).map_err(|e| Error(format!("reading sound: {e}")));
+    Ok(sound::played_otherwise(&bank(a)?, &bank(b)?))
+}
+
 /// Extract all available sources of `game`. Even an empty set produces a usable
 /// placeholder pack. Malformed supplied data fails extraction instead of being
 /// treated as a missing source. Existing game decoders' assertions are translated
@@ -190,14 +245,24 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
         Game::Exe6 => exe6::graphics::panel_names(),
     };
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
-    let (mut sound, missing_songs) = if let Some(rom) = sources.iter().find(|r| r.is_present()) {
-        let (bank, failures) =
-            m4a::rom::extract(&rom.0).map_err(|e| Error(format!("reading sound: {e}")))?;
+    // A US ROM's bank with its version's Japanese ROM's songs where those
+    // play otherwise (`sources`: the two US ROMs, then their Japanese ones).
+    let japanese = |bank: &mut m4a::SoundBank, i: usize| -> Result<(), Error> {
+        if i < 2 && sources[i + 2].is_present() {
+            let (jp, _) = m4a::rom::extract(&sources[i + 2].0).map_err(|e| Error(format!("reading the Japanese sound: {e}")))?;
+            sound::japanese_songs(bank, &jp);
+        }
+        Ok(())
+    };
+    let (mut sound, missing_songs) = if let Some(i) = sources.iter().position(|r| r.is_present()) {
+        let (mut bank, failures) =
+            m4a::rom::extract(&sources[i].0).map_err(|e| Error(format!("reading sound: {e}")))?;
         warnings.extend(
             failures
                 .iter()
                 .map(|(id, e)| format!("song {:#05x}: {e}; using silence", id.0)),
         );
+        japanese(&mut bank, i)?;
         (
             bank,
             failures.iter().map(|(id, _)| id.0).collect::<Vec<_>>(),
@@ -210,8 +275,9 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
     };
     let sound_versions = if game == Game::Exe5 && sources[0].is_present() && sources[1].is_present()
     {
-        let (colonel, failures) = m4a::rom::extract(&sources[1].0)
+        let (mut colonel, failures) = m4a::rom::extract(&sources[1].0)
             .map_err(|e| Error(format!("reading Colonel sound: {e}")))?;
+        japanese(&mut colonel, 1)?;
         warnings.extend(
             failures
                 .iter()
