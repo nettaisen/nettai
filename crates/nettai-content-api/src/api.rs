@@ -2003,6 +2003,10 @@ pub trait CoreApi {
     /// The form the navi's side asked to change into at this turn's start
     /// (none: none, or the base form).
     fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
+    /// The rules ask for the navi's change into `form` as the fight runs
+    /// (EXE4's dark soul, 0x0800B8B0: AIData +0x10 15): its side's target
+    /// this turn, and the form change's request.
+    fn ask_form_change(&mut self, o: ObjectRef, form: crate::FormHandle) -> ApiResult<()>;
     /// The terms of the form change the side asked for: its turns, and
     /// whether it is the alternate (the turn's transform record's +3, +1:
     /// EXE5's soul's turns, and Chaos Unison).
