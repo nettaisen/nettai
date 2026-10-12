@@ -3638,9 +3638,21 @@ dependencies = [
  "nettai-frontend",
  "nettai-match",
  "nettai-render",
+ "nettai-video",
  "png 0.17.16",
  "serde",
  "serde_json",
+]
+
+[[package]]
+name = "nettai-video"
+version = "0.1.0"
+dependencies = [
+ "nettai-audio",
+ "nettai-battle",
+ "nettai-frontend",
+ "nettai-match",
+ "nettai-render",
 ]
 
 [[package]]
