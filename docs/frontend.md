@@ -517,7 +517,10 @@ host calls, in order:
     far it is (`Lobby::set_loading(fraction)`) and when it is done
     (`set_loaded()`), sees the other's (`their_loading()`, 0 to 1), and
     the lobby says `Status::Start` once both have loaded: no tick runs
-    before. The host must keep polling the link and the lobby while it
+    before. (A lobby that was loading may say `Pending` again: the other
+    player took their ready back in the moment the match was agreed, and
+    both are back in the lobby, this player not ready.) The host must keep
+    polling the link and the lobby while it
     loads (load on another thread, or a little a frame): a link nobody
     polls for 3 seconds reads as a dropped connection.
   - **Leaving** the lobby is said (`Lobby::leave`, then send what
