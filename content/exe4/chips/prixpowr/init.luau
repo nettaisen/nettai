@@ -113,6 +113,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "navi" },
     art_palette = { 0x0000, 0x4645, 0x7B2B, 0x1C53, 0x3D3B, 0x51BD, 0x625E, 0x0842, 0x1CE7, 0x2928, 0x2D8C, 0x3DEF, 0x4E73, 0x6AF9, 0x777C, 0x7BDE },
     dimming = CONTROLLER.hook,
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { prixpowr = chip }
