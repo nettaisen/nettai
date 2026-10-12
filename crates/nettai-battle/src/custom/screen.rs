@@ -739,7 +739,7 @@ impl Screen {
                 if counts_first {
                     self.count_choosing_frame();
                 }
-                let request = self.choose(joy, view, folder, extras);
+                let request = self.choose(joy, view, folder, console, extras);
                 // (OK takes the Regular chip out of the folder before the
                 // frame is drawn: `sub_80293F8`.)
                 let regular_taken = request == Some(Request::Confirm)
@@ -1064,7 +1064,14 @@ impl Screen {
     /// the directions by their auto-repeat, then A, B, START, SELECT, R and
     /// L pressed; EXE4's: each place's own, 0x08020350, 0x08020620,
     /// 0x08020728).
-    fn choose(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
+    fn choose(
+        &mut self,
+        joy: &Joypad,
+        view: &PlayerView,
+        folder: &mut BattleFolder,
+        console: &mut Console,
+        extras: &mut dyn super::Extras,
+    ) -> Option<Request> {
         // The side's rules first (EXE6's UP opening the Cross window, which
         // the original asks before the cursor's UP).
         if (joy.repeat | joy.pressed) != 0 && extras.keys(self, folder, joy) {
@@ -1088,7 +1095,7 @@ impl Screen {
                     self.show_chip_window(folder, view);
                 }
             }
-            ScreenKey::A => return self.press_a(view, folder, extras),
+            ScreenKey::A => return self.press_a(view, folder, console, extras),
             ScreenKey::B => self.deselect(view, folder, extras),
             ScreenKey::Start => {
                 if self.cursor != OK_SLOT {
@@ -1131,7 +1138,7 @@ impl Screen {
     }
 
     /// A on the slot under the cursor (`off_8028C9C`).
-    fn press_a(&mut self, view: &PlayerView, folder: &mut BattleFolder, extras: &mut dyn super::Extras) -> Option<Request> {
+    fn press_a(&mut self, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
         let cursor = self.cursor;
         let here = self.slots[cursor as usize];
         match here.kind {
@@ -1169,8 +1176,10 @@ impl Screen {
             }
             // A button of the rules (EXE6's: the scrap, `sub_8028E04`; the
             // re-deal, `sub_8028DD6`): its `pressed`, which may start the
-            // shared machinery (`custom.sacrifice`, `custom.redeal`).
-            SlotKind::Button { button, .. } => extras.button_pressed(self, folder, button),
+            // shared machinery (`custom.sacrifice`, `custom.redeal`), on
+            // the side's console (EXE4's SHUFFLE makes its deal with the
+            // press, 0x0802037E: its RNG1's draws).
+            SlotKind::Button { button, .. } => extras.button_pressed(self, folder, console, button),
             SlotKind::Empty | SlotKind::Hidden => {}
         }
         None
