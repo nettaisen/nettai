@@ -327,6 +327,7 @@ language = "ja"
 "magnum" = { name = "マグナム", description = "カーソルをとめて\nパネルをはかいする\nマグナムをハッシャ" }
 "bugcharg" = { name = "バグチャージ", description = "あんこくチップ!\nターンがすすむほど\nつよくなる!" }
 "shotstar" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
+"bugchain" = { name = "バグチェーン", description = "自分に発生している\nバグをあいてにも\nうつしてしまう!" }
 "pitrng1" = { name = "ヘルブーメラン1", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "pitrng2" = { name = "ヘルブーメラン2", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "pitrng3" = { name = "ヘルブーメラン3", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
