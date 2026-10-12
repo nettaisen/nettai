@@ -64,7 +64,7 @@ pub fn definitions(c: &Content, r: &mut Report) {
             unfilled("sounds", role.name(), role.optional() || roles.sounds.contains_key(&role));
         }
         for &role in MusicRole::ALL {
-            unfilled("music", role.name(), roles.music.contains_key(&role));
+            unfilled("music", role.name(), role.optional() || roles.music.contains_key(&role));
         }
         for &role in BannerRole::ALL {
             unfilled("banners", role.name(), roles.banners.contains_key(&role));

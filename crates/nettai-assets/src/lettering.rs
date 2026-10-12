@@ -37,6 +37,11 @@ pub struct HudLettering {
     pub waiting_palette: Palette,
     /// The custom gauge's tiles (its "L or R").
     pub gauge_tiles: Tiles,
+    /// Where the chatbox's text starts in this language, when its games
+    /// place it otherwise than the pack's own (`HudLayout::chatbox_text`:
+    /// EXE4's Japanese games', (0x33, 0x6C), 0x0804E2A4, where the US
+    /// games moved it to (0x3F, 0x6D)); none: the pack's own.
+    pub chatbox_text: Option<(u8, u8)>,
 }
 
 /// The custom screen's lettering in a language other than the pack's own.
@@ -92,6 +97,10 @@ impl Hud {
         std::mem::swap(&mut self.waiting, &mut l.waiting);
         std::mem::swap(&mut self.waiting_palette, &mut l.waiting_palette);
         std::mem::swap(&mut self.gauge_tiles, &mut l.gauge_tiles);
+        // (The language in use keeps the place it took over, to give back.)
+        if let Some(place) = &mut l.chatbox_text {
+            std::mem::swap(&mut self.layout.chatbox_text, place);
+        }
         self.languages.push((own, l));
         self.language = lang.to_string();
         true
@@ -185,9 +194,11 @@ mod tests {
                     waiting: tiles(2, 14),
                     waiting_palette: [7; 16],
                     gauge_tiles: tiles(2, 1),
+                    chatbox_text: Some((0x33, 0x6C)),
                     ..Default::default()
                 },
             )],
+            layout: crate::HudLayout { chatbox_text: (0x3F, 0x6D), ..Default::default() },
             ..Hud::default()
         };
         let mut custom = CustomScreen {
@@ -229,6 +240,7 @@ mod tests {
         assert_eq!(ja.hud.banners[0].glyphs, tiles(1, 2), "a banner the language doesn't change stays");
         assert_eq!((ja.hud.banners[1].x, &ja.hud.banners[1].glyphs), (4, &tiles(2, 2)));
         assert_eq!((ja.hud.waiting.len(), ja.hud.banner_palette), (14, [7; 16]));
+        assert_eq!(ja.hud.layout.chatbox_text, (0x33, 0x6C), "the language's own place for the chatbox's text");
         assert_eq!(ja.custom.pictures.ok.tiles, tiles(2, 42));
         assert_eq!(ja.custom.versioned.base.form_names, tiles(2, 18));
         assert_eq!(ja.custom.versioned.get("gregar").form_names, tiles(3, 18));
@@ -241,6 +253,7 @@ mod tests {
         assert_eq!((&back.hud.font, &back.hud.texts, &back.custom.pictures), (&en.hud.font, &en.hud.texts, &en.custom.pictures));
         assert_eq!(back.custom.versioned, en.custom.versioned);
         assert_eq!(back.custom.buttons, en.custom.buttons);
+        assert_eq!(back.hud.layout.chatbox_text, (0x3F, 0x6D));
         assert!(en.clone().in_language("en").is_ok());
         assert!(en.in_language("fr").unwrap_err().contains("en, ja"));
     }

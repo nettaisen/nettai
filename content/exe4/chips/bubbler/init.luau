@@ -34,6 +34,7 @@ local bubbler: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "behind_target" },
 }
 
 local bub_v: Chip = {
@@ -48,6 +49,7 @@ local bub_v: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_target_row" },
 }
 
 local bublside: Chip = {
@@ -62,6 +64,7 @@ local bublside: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_target_row" },
 }
 
 return { bubbler = bubbler, ["bub-v"] = bub_v, bublside = bublside }

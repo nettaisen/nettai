@@ -39,6 +39,7 @@ local chip: Chip = {
         { order = 11, code_run = { chip = bubblers["bub-v"], count = 3 } },
         { order = 13, code_run = { chip = bubblers.bublside, count = 3 } },
     },
+    auto_battle = { class = "behind_target" },
 }
 
 return { bubsprd = chip }

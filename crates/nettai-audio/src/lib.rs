@@ -211,6 +211,13 @@ impl SoundCalls {
 /// driver for each loaded pack's sound (docs/design/rules-in-luau.md §7.4:
 /// a song plays with its own pack's instruments; two packs' banks never
 /// mix inside one player), their outputs added.
+///
+/// A copy of it is the sound as it stands, to come back to: fed the same
+/// cues from there, it gives the same samples (the banks are shared, the
+/// rest is the drivers' state). A replay viewer keeps one with each
+/// snapshot of the battle, so a seek lands in the sound that playing
+/// straight there makes.
+#[derive(Clone)]
 pub struct BattleAudio {
     packs: Vec<PackSound>,
     songs: Songs,
@@ -221,6 +228,7 @@ pub struct BattleAudio {
 }
 
 /// One pack's driver and the calls queued for it.
+#[derive(Clone)]
 struct PackSound {
     driver: Driver,
     calls: SoundCalls,

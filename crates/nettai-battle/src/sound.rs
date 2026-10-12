@@ -86,6 +86,32 @@ mod tests {
     }
 
     #[test]
+    fn a_single_link_battle_plays_its_own_song_where_the_game_has_one() {
+        use crate::content::MusicRole;
+        let of = |set: bool, single: Option<SoundId>| {
+            let mut content = testing::restaged(testing::LINK_BATTLE_SIDE0_FIRST, |_| {});
+            if let Some(single) = single {
+                content.defs.roles.music.insert(MusicRole::LinkBattleSingle, single);
+            }
+            let mut setup = testing::round_setup(testing::LINK_BATTLE_SIDE0_FIRST, testing::stats(500));
+            crate::content::testing::on(&mut setup, &content);
+            setup.settings.effects = effects::LINK | if set { effects::SET } else { 0 };
+            let mut b = Battle::new(setup, std::sync::Arc::new(content));
+            let link_battle = b.roles().music(MusicRole::LinkBattle);
+            (tick(&mut b)[0], SoundCue::Music(link_battle))
+        };
+        let single = SoundId(0x14);
+        // (EXE4's: a single battle's 0x14, a triple battle's 0x15.)
+        let (played, _) = of(false, Some(single));
+        assert_eq!(played, SoundCue::Music(single));
+        let (played, link_battle) = of(true, Some(single));
+        assert_eq!(played, link_battle, "a set's is the link battle's");
+        // (EXE6's and EXE5's: one song.)
+        let (played, link_battle) = of(false, None);
+        assert_eq!(played, link_battle);
+    }
+
+    #[test]
     fn other_battles_play_their_settings_music_unless_none() {
         let mut b = battle(Some(SoundId(0x16)), false);
         assert_eq!(tick(&mut b), [SoundCue::Music(SoundId(0x16))]);

@@ -161,6 +161,46 @@ local rules: Rules = {
             megaman = { "light", "dark" },
             -- A chip a save can collect though no library lists it (./folder: an e-Reader card's, Duo).
             collectible = "bool",
+            -- What the auto battle AI reads of it (./auto_battle/place; the record's bytes 13, 14 and 23): how the navi
+            -- gets in place for it, its positioning class, for the classes that read one its reach list
+            -- (./auto_battle/data's, by name) or its spot test, and the loss it answers ahead of its turn
+            -- (./auto_battle/ai). A chip without it the AI can't play (its class past the table).
+            auto_battle = {
+                class = {
+                    "into_reach", "into_target_row", "behind_target", "past_obstacle", "to_front", "at_once",
+                    "when_counterable", "when_hp_low", "when_run_clear", "landing_ahead", "spot_test",
+                    "three_ahead_near_enemy", "lava_ahead", "gauge_into_reach", "sword_swing", "when_enemy_in_area",
+                    "no_hole_ahead", "when_front_free", "when_hole_in_area", "when_far_front_free", "three_ahead_open",
+                    "when_object_hurt", "when_area_lost", "when_panel_changed", "when_area_whole", "when_visible",
+                    "when_unbarriered", "when_enemy_barrier", "own_panel_ahead", "when_trap_free", "into_empty_row",
+                    "when_any_obstacle", "into_open_row", "own_panel_before_enemy", "when_enemy_on_cracked",
+                    "when_enemy_on_grass", "hurt_into_reach", "when_bugged", "when_enemy_at_home", "two_solid_ahead",
+                    "into_whole_row", "to_front_before_solid", "when_enemy_approachable",
+                    "three_before_around_target", "three_before_target", "into_target_row_on_ground",
+                },
+                range = {
+                    "ahead_then_column", "two_ahead", "column_two_ahead", "three_in_row", "three_ahead",
+                    "cross_two_ahead", "one_ahead", "column_ahead", "two_in_row", "column_three_ahead",
+                    "two_columns_ahead", "columns_two_to_four", "columns_two_and_three", "ring_two_ahead",
+                    "x_one_ahead", "ahead_in_row", "two_and_three_ahead",
+                    "ahead_within_a_row", "a_row_off", "on_far_ring",
+                },
+                -- A `sword_swing` chip's swings, by the side's sword pick (0x08023A68: VarSwrd's six from its byte 0,
+                -- NeoVari's four from byte 6), each a reach list or a spot test; an element trap, which a
+                -- `when_trap_free` chip may set over (0x08024108: chips 0x8C to 0x8F); and the loss a chip answers
+                -- (the record's byte 14: bit 0 a loss of the side's area, bit 1 its spoiled panels).
+                swings = {
+                    {
+                        "ahead_then_column", "two_ahead", "column_two_ahead", "three_in_row", "three_ahead",
+                        "cross_two_ahead", "one_ahead", "column_ahead", "two_in_row", "column_three_ahead",
+                        "two_columns_ahead", "columns_two_to_four", "columns_two_and_three", "ring_two_ahead",
+                        "x_one_ahead", "ahead_in_row", "two_and_three_ahead",
+                        "ahead_within_a_row", "a_row_off", "on_far_ring",
+                    },
+                },
+                element_trap = "bool",
+                answers = { "area_lost", "panels_spoiled" },
+            },
         },
         form = {
             soul = {
@@ -241,6 +281,16 @@ local rules: Rules = {
         custom_requested = souls.custom_requested,
         -- Light and dark MegaMan (./light_dark): his palette.
         navi_palette = light_dark.navi_palette,
+        -- The dark soul (./souls/dark): a dark MegaMan whose HP a hit empties holds and changes into it; in it, the
+        -- AI's counts each tick and its decisions where his idle would step, a hand chip's use starting them over,
+        -- and his last ticks' pulse.
+        hp_emptied = souls.dark.hp_emptied,
+        navi_tick = souls.dark.navi_tick,
+        controller = souls.dark.controller,
+        chip_used = function(side: number, _navi: Object, _chip: Chip, _weapon: Weapon?)
+            souls.dark.chip_used(side)
+        end,
+        navi_shader = souls.dark.navi_shader,
         -- What is wrong with a side's setup, which tools ask (the simulation never does).
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}

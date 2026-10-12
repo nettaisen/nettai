@@ -90,6 +90,19 @@ const TEXTS: u32 = 0x0874_91CC;
 /// 0x030027A0, sprite palette 11). 41 banners: EXE6's first fifteen in
 /// EXE6's places, then EXE4's navis' wins and deletions.
 pub(crate) const BANNER_COUNT: u32 = 41;
+/// The banners that aren't plain, as the US ROMs' records have them (the
+/// kind, the place, a kind-1 banner's number's place), for a HUD of
+/// placeholders (`placeholders::banners`): the turn's and the round's
+/// numbered banners, the Program Advance's two that hold, and the judge's
+/// (`JUDGE_KIND`). EXE4's telops aren't banners' (`TELOP_PLACES`).
+pub(crate) const BANNER_RECORDS: [crate::placeholders::BannerRecord; 6] = [
+    (0x0C / 4, 1, (48, 64), Some((104, 64))),
+    (0x20 / 4, 1, (68, 64), Some((140, 64))),
+    (0x24 / 4, 2, (16, 24), None),
+    (0x28 / 4, 4, (40, 16), None),
+    (0x30 / 4, 1, (40, 64), Some((112, 64))),
+    (0x34 / 4, 2, (136, 24), None),
+];
 /// "BUSY..." (7x2 tiles, `Addresses::waiting`: 0x080166F0's list,
 /// 0x08016710, to tile 0xAC, with the banners' palette as background
 /// palette 10), drawn by 0x08015624 at column 22, row 4 while the other
@@ -147,6 +160,10 @@ const CHATBOX_ARROW: u32 = 0x0868_D8DC;
 /// Where the chatbox's text starts (0x0804E3B4's +0x18, +0x19: 0x3F, 0x6D;
 /// EXE6's 0x33, 0x6C). The portrait's place is EXE6's.
 const CHATBOX_TEXT: (u8, u8) = (0x3F, 0x6D);
+/// The Japanese games' (Red Sun Japan's 0x0804E2A4, the same routine: 0x33,
+/// 0x6C, EXE6's place; the US games moved it twelve pixels right and one
+/// down). Its arrow's place is the same.
+pub(crate) const CHATBOX_TEXT_JA: (u8, u8) = (0x33, 0x6C);
 /// The key-wait arrow's place (0x0804E3B4's +0x1A, +0x1B), EXE6's message
 /// box's.
 const CHATBOX_ARROW_AT: (u8, u8) = (0xE2, 0x8D);

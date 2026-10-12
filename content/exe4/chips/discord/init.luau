@@ -33,6 +33,7 @@ local chip: Chip = {
         tune = asset.sound("discord"),
         effect = EFFECT,
     }),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { discord = chip }

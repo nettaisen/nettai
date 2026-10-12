@@ -31,9 +31,103 @@ placeholders even when another version contains similar graphics. EXE6's Japanes
 lettering uses Japanese Falzar, and Cross labels use their respective Japanese versions.
 Placeholders preserve asset names and references but cannot reproduce missing animation
 timing or the original appearance. They keep the game's shape where a frontend looks for
-it: the telops' banners are telops' (EXE5, EXE6), and EXE4's screen has its own emblem,
-cursor colors and element sprite. An EXE4 US ROM that isn't Red Sun's gives its fonts,
+it: a banner is the kind its ROM record says (one with a number, one that holds until
+removed, a telop's, the judge's) whatever its picture, and EXE4's screen has its own
+emblem, cursor colors and element sprite. An EXE4 US ROM that isn't Red Sun's gives its fonts,
 text lines and banners; the HUD's other art is read at Red Sun US's addresses alone.
+
+### What is a placeholder, by the ROMs given
+
+Counted 2026-10-12 from packs of each set of ROMs against the pack of all four and the pack of none
+(bn6battle-verify's `tools/cross-rom/census.py`, which tells a placeholder by its picture). A cell is the
+placeholders of a kind's assets; `-` is none. "Recolored" is a picture read from a ROM and drawn with a palette
+that is a placeholder: the right shapes in magenta and black. The Japanese banners that a full pack has as the
+base's own words, and a sheet whose palette rows past its archive's own differ with the ROM, count as real.
+
+**EXE4**
+
+| | both JP | Red Sun JP | Blue Moon JP | both US | Red Sun US | Blue Moon US |
+|---|---|---|---|---|---|---|
+| HUD pieces | 12 of 12 | 12 of 12 | 12 of 12 | - | - | 10 of 12 |
+| custom screen pieces | 19 of 21 | 19 of 21 | 19 of 21 | - | - | 19 of 21 |
+| banners (the US words) | 41 of 41 | 41 of 41 | 41 of 41 | - | - | - |
+| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | 1 recolored |
+| Japanese lettering | 1 of 50, 1 recolored | 1 of 50, 1 recolored | 1 of 50, 1 recolored | 50 of 50 | 50 of 50 | 50 of 50 |
+| chip pictures | - | - | - | - | - | - |
+| chip icons | one gray off | one gray off | one gray off | - | - | one gray off |
+| sprites, portraits | - | - | - | - | - | - |
+| backgrounds | - | - | - | - | - | - |
+| field | 1 of 1 | 1 of 1 | 1 of 1 | - | - | 1 of 1 |
+| mugshots | 17 of 17 | 17 of 17 | 17 of 17 | - | 6 of 22 | 17 of 17 |
+| songs | - | - | - | - | - | - |
+
+**EXE5**
+
+| | both JP | Team of Blues JP | Team of Colonel JP | both US | Team ProtoMan US | Team Colonel US |
+|---|---|---|---|---|---|---|
+| HUD pieces | 12 of 12 | 12 of 12 | 12 of 12 | - | - | 12 of 12 |
+| custom screen pieces | 20 of 22 | 20 of 22 | 20 of 22 | - | - | 20 of 22 |
+| banners (the US words) | 47 of 47 | 47 of 47 | 47 of 47 | - | - | 47 of 47 |
+| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | 2 of 2 |
+| Japanese lettering | 3 recolored | 3 recolored | 3 recolored | 58 of 58 | 58 of 58 | 58 of 58 |
+| chip pictures | - | 12 of 396 | 12 of 396 | - | 12 of 396 | 12 of 396 |
+| chip icons | 396 recolored | 6 of 396, 390 recolored | 6 of 396, 390 recolored | - | 6 of 396 | 6 of 396, 390 recolored |
+| sprites | - | - | - | - | - | - |
+| portraits | - | 4 of 13 | 5 of 13 | - | 4 of 13 | 5 of 13 |
+| backgrounds | - | - | 22 of 22 | - | - | 22 of 22 |
+| field | 1 of 1 | 1 of 1 | 1 of 1 | - | - | 1 of 1 |
+| mugshots | 56 of 56 | 56 of 56 | 56 of 56 | - | 18 of 56 | 44 of 56 |
+| emblems | 13 of 13 | 13 of 13 | 13 of 13 | - | 6 of 13 | 7 of 13 |
+| songs | - | - | - | - | - | - |
+
+**EXE6**
+
+| | both JP | Falzar JP | Gregar JP | both US | Falzar US | Gregar US |
+|---|---|---|---|---|---|---|
+| HUD pieces | 12 of 12 | 12 of 12 | 12 of 12 | - | - | 12 of 12 |
+| custom screen pieces | 23 of 25 | 24 of 25 | 24 of 25 | - | 3 of 25 | 22 of 25 |
+| banners (the US words) | 45 of 45 | 45 of 45 | 45 of 45 | - | - | 45 of 45 |
+| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | 2 of 2 |
+| Japanese lettering | 4 recolored | 1 of 56, 3 recolored | 55 of 56 | 54 of 56 | 55 of 56 | 55 of 56 |
+| chip pictures | - | 6 of 411 | 6 of 411 | 15 of 411 | 20 of 411 | 20 of 411 |
+| chip icons | 411 recolored | 5 of 411, 406 recolored | 5 of 411, 405 recolored | - | 5 of 411 | 5 of 411, 405 recolored |
+| sprites | - | - | - | 6 of 298 | 6 of 298 | 6 of 298 |
+| portraits | - | 5 of 12 | 5 of 12 | - | 5 of 12 | 5 of 12 |
+| backgrounds | 21 of 21 | 21 of 21 | 21 of 21 | - | - | 21 of 21 |
+| field | 1 of 1 | 1 of 1 | 1 of 1 | - | - | 1 of 1 |
+| mugshots | 52 of 52 | 52 of 52 | 52 of 52 | - | 23 of 52 | 29 of 52 |
+| emblems | 12 of 12 | 12 of 12 | 12 of 12 | - | 5 of 12 | 7 of 12 |
+| songs | - | - | - | - | - | - |
+
+What a player sees, and whether the ROMs they have hold what is missing:
+
+- **Only Japanese ROMs.** A battle is drawn with real navis, attacks and chip pictures, and sounds right, over
+  checkerboards: the field's panels, the whole HUD (the HP boxes, the gauge, the digits, the emotion window and
+  its faces, the chatbox), the custom screen (its window, slots, codes, cursor, buttons, emblems), and in EXE6 the
+  backgrounds. The chips' icons and the Japanese words are their true shapes in magenta and black, as their
+  palettes are the HUD's (EXE4's icons keep their colors but for one gray). **The Japanese ROMs hold all of
+  it**: the same blocks, at other addresses (the verification's cross-ROM sweep found each one's bytes there).
+  The extractor reads them at the base US ROM's addresses alone. Only the US words (the banners, the two US
+  fonts) aren't in a Japanese ROM, and a Japanese player's language has its own.
+- **Only the other version's US ROM** (Blue Moon, Team Colonel, Gregar). The same checkerboards, with EXE5's and
+  EXE6's backgrounds and US words too. **The ROM holds all of it**; the extractor has the base version's
+  addresses alone. EXE4 already reads Blue Moon US's fonts, text lines and banners (the font in the HUD's
+  placeholder colors).
+- **Only the base US ROM** (Red Sun, Team ProtoMan, Falzar). Complete but for what the ROM doesn't have: the other
+  version's own art and the Japanese ROMs'.
+  - EXE4: Blue Moon's six souls' faces.
+  - EXE5: Team Colonel's six chips (pictures and icons) and its six navis' chips' pictures, four of its navis'
+    portraits, eighteen faces and six emblems.
+  - EXE6: Gregar's five Giga chips (pictures and icons), five link navis' portraits, 23 faces and five emblems, its
+    Cross names and Beast Out button; and the fifteen chip pictures and six sprites only the Japanese ROMs have.
+  - In all three, the Japanese lettering.
+- **Both US ROMs.** Complete but for the Japanese lettering, and in EXE6 the Japanese ROMs' fifteen chip pictures
+  and six sprites. (Where the releases' art differs, a US pack has the US art: EXE5's goldfish and quieter hit,
+  EXE6's HeatMan flames.)
+- **Three gaps of the same kind in the Japanese sets**, each an address the extractor lacks: EXE6's Japanese
+  lettering is read from Falzar JP alone, so Gregar JP by itself has checkerboard words; EXE5's backgrounds are
+  read from Team of Blues JP (or Team ProtoMan US) alone, so Team of Colonel JP by itself has none; EXE4 without
+  Red Sun US takes the chips' icon palette by another path, one gray a step off.
 
 Every pack includes `extraction.txt`. The library result exposes `missing_roms`, `warnings`
 and `placeholders` (named assets supplied by the completion pass; source-specific UI
@@ -81,9 +175,10 @@ to show diagnostics and where to store assets. `files()` leaves overwrite policy
 
 Run `cargo test -p nettai-extract` for synthetic tests: among them, a pack of no ROMs of
 each game passes the content audit (every lookup a frontend makes of everything the
-content defines, `nettai-tool --audit-content`'s). The ignored `every_source_subset`
-test checks all 48 game/source combinations, their graphics and sound round trips,
-battle-definition loading and the content audit (about eight minutes with `--release`).
+content defines, `nettai-tool --audit-content`'s) and has the banner kinds the ROMs
+state. The ignored `every_source_subset` test checks all 48 game/source combinations,
+their graphics and sound round trips, battle-definition loading, the content audit and
+the banners' kinds (about nine minutes with `--release`).
 To run it locally, set `NETTAI_EXTRACT_ROM_DIR` to a directory of original ROMs named by
 the codes above, for example `BR6E.gba`:
 

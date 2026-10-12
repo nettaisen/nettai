@@ -84,6 +84,7 @@
 "junksoul" = 10
 "aquasoul" = 11
 "woodsoul" = 12
+"darksoul" = 15
 
 # The auras a battle starts with by number (NaviStats +0x21: FstBarr's 1; patch card 0x21's 2 Barrier100, 3 Barrier200,
 # 6 LifeAura; 0 none), those the content has (content/exe4/lib/barriers).

@@ -391,6 +391,11 @@ fn note_state(status: Status, n: &Note) -> NoteState {
 }
 
 /// The sound driver: every music player and the hardware they share.
+///
+/// It is plain state over the bank it plays (shared), so a copy of it goes
+/// on exactly as the original would: the same samples for the same calls
+/// (a replay viewer keeps copies to come back to).
+#[derive(Clone)]
 pub struct Driver {
     bank: Arc<SoundBank>,
     players: Vec<MusicPlayer>,

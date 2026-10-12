@@ -183,6 +183,33 @@ mod tests {
     use super::*;
     use crate::testing::{exe5_content, exe6_content};
 
+    /// A side's facts are numbers, choices and definitions, never text: a
+    /// fact's type is one of these, and none of them holds a string. So a
+    /// match in binary (in a replay, in a netplay offer) has nowhere a
+    /// build's name could be. (A new type that holds text doesn't compile
+    /// here until this is looked at.)
+    #[test]
+    fn no_fact_holds_text() {
+        fn holds_text(ty: &FieldType) -> bool {
+            match ty {
+                FieldType::Bool | FieldType::U8 | FieldType::U16 | FieldType::U32 | FieldType::I8 | FieldType::I16 | FieldType::I32 => false,
+                FieldType::Object | FieldType::Vec3 | FieldType::OptionalU8 | FieldType::Code => false,
+                // (Stored as its variant's index; a definition and an asset
+                // as their handles.)
+                FieldType::Enum(_) | FieldType::Ref(..) | FieldType::Asset(_) => false,
+                FieldType::Array(element, _) | FieldType::List(element, _) => holds_text(element),
+                FieldType::Record(fields) => fields.fields().iter().any(|f| holds_text(&f.ty)),
+            }
+        }
+        for (content, game) in [(exe6_content(), "exe6"), (exe5_content(), "exe5"), (crate::testing::exe4_content(), "exe4")] {
+            let facts = crate::facts::fields(&content);
+            assert!(!facts.is_empty(), "{game}");
+            for fact in facts {
+                assert!(!holds_text(fact.ty), "{game}: the fact {} holds text", fact.name);
+            }
+        }
+    }
+
     /// Live play's random matches of both games written and read back: the
     /// same match, the same bytes again, a match the checks pass; and on
     /// another load of the content, the same bytes (a handle is the pack's

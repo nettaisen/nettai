@@ -51,6 +51,7 @@ local bighamr1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = controller.make("bighamr1/controller", big_hammer("bighamr1/hammer", 0, 1)),
+    auto_battle = { class = "landing_ahead" },
 }
 
 -- BigHamr2 (EXE4 chip 0x069): its hammer in palette 4, shaking the camera by 2.
@@ -66,6 +67,7 @@ local bighamr2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = controller.make("bighamr2/controller", big_hammer("bighamr2/hammer", 4, 2)),
+    auto_battle = { class = "landing_ahead" },
 }
 
 -- BigHamr3 (EXE4 chip 0x06A): its hammer in palette 8, shaking the camera by 3.
@@ -81,6 +83,7 @@ local bighamr3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = controller.make("bighamr3/controller", big_hammer("bighamr3/hammer", 8, 3)),
+    auto_battle = { class = "landing_ahead" },
 }
 
 -- GodHammr (EXE4 chip 0x0D7): its hammer in palette 10, standing still as it winds up, shaking the camera by 3, its
@@ -100,6 +103,7 @@ local godhammr: Chip = {
         "godhammr/controller",
         hammer.make({ id = "godhammr/hammer", palette = 10, stand_anim = 0, blinks = false, land = quake }).spawn
     ),
+    auto_battle = { class = "two_solid_ahead" },
 }
 
 return { bighamr1 = bighamr1, bighamr2 = bighamr2, bighamr3 = bighamr3, godhammr = godhammr }
