@@ -720,6 +720,10 @@ export type NumberBall = {
     spawn: (thrower: Object, x: number, y: number, z: number, wait: number) -> Object?,
 }
 
+-- A game's LifeSync marker (@exelib/lifesync/marker): its kind's id, its sheet and palette, and EXE4's height over
+-- the panel it is given (its init places it there).
+export type LifeSyncMarkerLook = { id: string, sprite: SpriteAsset, palette: number, height: number? }
+
 -- A game's BugCurse (@exelib/bugcurse): its controller's and curse's kind ids, the curse's sheet and sound, what keeps
 -- it off the enemy navi, its bugs (code | argument << 8, one a tick), and EXE5's operation battle (the mode's test and
 -- its bugs).
