@@ -315,9 +315,11 @@ named_fields! {
         /// The Full Synchro aura.
         FullSynchroAura = "full_synchro_aura", Object, rw;
         /// The charge: 0 none, 1 charging, 2 full; its source (0 none, 1
-        /// A, 2 B); its counter.
-        ChargeLevel = "charge_level", U8, ro;
-        ChargeSource = "charge_source", U8, ro;
+        /// A, 2 B); its counter. The level and the source are writable:
+        /// EXE4's dark soul's AI shows a B charge as it dodges (0x0800E69C:
+        /// AIData +9, and +0x32 against a +0x36 of 40).
+        ChargeLevel = "charge_level", U8, rw;
+        ChargeSource = "charge_source", U8, rw;
         ChargeCounter = "charge_counter", U8, ro;
         /// EXE4's rapid presses (AIData +0x12, +0x11): the B presses
         /// counted toward a form's `rapid_presses`, and the ticks left for
@@ -1700,6 +1702,10 @@ pub trait CoreApi {
     fn chips_enabled(&self, o: ObjectRef) -> ApiResult<bool>;
     /// `sub_8010332`: the ticks a step of its ends with.
     fn move_lag(&self, o: ObjectRef) -> ApiResult<u16>;
+    /// `sub_801DACC(0x40)` (EXE4's 0x08015B9E(0x10)) for the navi: the chip
+    /// window goes, as an attack's start from idle hides it (its console's,
+    /// or every console's by the rules' `chip_use`).
+    fn hide_chip_window(&mut self, o: ObjectRef) -> ApiResult<()>;
     /// A navi's links let go as it leaves (EXE5's 0x081042E6): its status
     /// visuals (`sub_801A5E2`) and its chips on the HUD (`sub_801DC36`).
     fn drop_links(&mut self, o: ObjectRef) -> ApiResult<()>;
@@ -2001,6 +2007,10 @@ pub trait CoreApi {
     /// The form the navi's side asked to change into at this turn's start
     /// (none: none, or the base form).
     fn form_change_target(&self, o: ObjectRef) -> Option<crate::FormHandle>;
+    /// The rules ask for the navi's change into `form` as the fight runs
+    /// (EXE4's dark soul, 0x0800B8B0: AIData +0x10 15): its side's target
+    /// this turn, and the form change's request.
+    fn ask_form_change(&mut self, o: ObjectRef, form: crate::FormHandle) -> ApiResult<()>;
     /// The terms of the form change the side asked for: its turns, and
     /// whether it is the alternate (the turn's transform record's +3, +1:
     /// EXE5's soul's turns, and Chaos Unison).
@@ -2168,7 +2178,8 @@ pub trait CoreApi {
     fn dimming_user(&self, side: u8) -> Option<ObjectRef>;
     /// `side`'s dimming runs its effect from now (the record's state 4).
     fn dimming_run(&mut self, side: u8);
-    /// A telop for `side` naming `chip` without damage, and its sound.
+    /// A telop for `side` naming `chip` without damage, and its sound; it
+    /// ends no used chip's name.
     fn dimming_chip_telop(&mut self, side: u8, chip: Option<crate::ChipHandle>);
     /// `side`'s telop is done.
     fn dimming_telop_done(&self, side: u8) -> bool;

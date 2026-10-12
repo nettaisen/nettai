@@ -11,26 +11,25 @@
 -- entry, which the AI never plays). A record is where to stand from the target (`dx` columns toward the navi's
 -- enemies, `dy` rows), its five chip places (the chips it uses there, in order, to the first empty one; a `zero` one
 -- played as chip 0) and its score as the game's learning keeps it. A list past its last place or record: empty
--- places, records nothing has written (0xFF throughout).
+-- places, records nothing has written (0xFF throughout). The places' part is EXE4's too (@exelib/auto_battle/places:
+-- the send, an entry, the swap and the turn); the records are EXE5's own.
 
-
-local order = require("@exelib/order")
+local places = require("@exelib/auto_battle/places")
 
 local block = {}
 
 -- The block's places, how many of them (the first) the send shuffles apart from the rest, its records, and a record's
 -- chip places.
-block.PLACES = 42
-block.FIRST = 3
-block.RECORDS = 8
+block.PLACES = places.PLACES
+block.FIRST = places.FIRST
+block.RECORDS = places.RECORDS
 block.RECORD_CHIPS = 5
 
 -- The setup's and the state's types.
-local PLACE: StateSchema = { chip = "chip", pattern = "u8", zero = "bool" }
 local CHIP_PLACE: StateSchema = { chip = "chip", zero = "bool" }
 local RECORD: StateSchema = { dx = "i8", dy = "i8", chips = schema.list(CHIP_PLACE, block.RECORD_CHIPS), score = "u32" }
 
-block.PLACE = PLACE
+block.PLACE = places.PLACE
 block.CHIP_PLACE = CHIP_PLACE
 block.RECORD = RECORD
 
@@ -39,17 +38,8 @@ export type Place = { chip: Chip?, pattern: number, zero: boolean }
 export type ChipPlace = { chip: Chip?, zero: boolean }
 export type Record = { dx: number, dy: number, chips: { ChipPlace }, score: number }
 
--- The lists the game writes the places in (0x0802C692 to 0x0802C6E6): their names, first places (from 1) and sizes.
-local LISTS: { { name: string, start: number, len: number } } = {
-    { name = "first", start = 1, len = 3 },
-    { name = "standard", start = 4, len = 24 },
-    { name = "mega", start = 28, len = 5 },
-    { name = "giga", start = 33, len = 1 },
-    { name = "patterns", start = 34, len = 8 },
-    { name = "program_advance", start = 42, len = 1 },
-}
-
-block.LISTS = LISTS
+-- The lists the game writes the places in (0x0802C692 to 0x0802C6E6).
+block.LISTS = places.LISTS
 
 -- What the game's battle end writes of a player it has learned nothing of (0x0802C540), the records of a setup
 -- that says nothing: every record zeros (its places are none: empty).
@@ -65,50 +55,14 @@ function block.nothing_learned(): { any }
     return records
 end
 
-local function empty(p: Place): boolean
-    return p.chip == nil and p.pattern == 0 and not p.zero
-end
-
--- A place copied out of a setup or a state.
-local function copy(p: Place): Place
-    return { chip = p.chip, pattern = p.pattern, zero = p.zero }
-end
-
-local EMPTY: Place = { chip = nil, pattern = 0, zero = false }
-
--- `round_setup`, once for the round: both sides' data as their consoles send it as the battle starts (0x0802C7BE), into
--- each side's state. Each console shuffles its own player's 42 places with the same draws, from the RNG2 the link
--- shares (the battle's RNG here), so both sides' places get the same order: the first three places shuffled over
--- three rounds and the other 39 over 39, two draws a round, 84 draws in all, after which the battle's RNG goes
--- on from where the send left it (the EXE5 lab's recordings: each sent block is its save's places sent from the
--- fight's RNG2 84 draws back). The entries are then packed to the front (`sub_8000EB6`) and counted to the first
--- empty place. (exe5-compat's recordings state the places as the saves hold them and the RNG2 the send starts from.)
+-- `round_setup`, once for the round: both sides' data as their consoles send it as the battle starts (0x0802C7BE:
+-- @exelib/auto_battle/places' send, 84 draws of the battle's RNG), into each side's state. (The EXE5 lab's recordings:
+-- each sent block is its save's places sent from the fight's RNG2 84 draws back; exe5-compat's recordings state the
+-- places as the saves hold them and the RNG2 the send starts from.)
 function block.send()
-    local places: { { Place } } = {}
+    local sent = places.send({ rules.setup_of(0).auto_battle_places, rules.setup_of(1).auto_battle_places })
     for side = 0, 1 do
-        local given = rules.setup_of(side).auto_battle_places
-        local p: { Place } = {}
-        for i = 1, block.PLACES do
-            p[i] = if i <= #given then copy(given[i]) else EMPTY
-        end
-        places[side + 1] = p
-    end
-    local function shuffle(from: number, n: number, swaps: number)
-        local new = battle.shuffle_order(n, swaps)
-        for _, p in places do
-            order.apply(p, from - 1, new)
-        end
-    end
-    shuffle(1, block.FIRST, block.FIRST)
-    shuffle(block.FIRST + 1, block.PLACES - block.FIRST, block.PLACES - block.FIRST)
-    for side = 0, 1 do
-        local sent: { Place } = {}
-        for _, p in places[side + 1] do
-            if not empty(p) then
-                table.insert(sent, p)
-            end
-        end
-        rules.state_of(side).auto_battle_places = sent
+        rules.state_of(side).auto_battle_places = sent[side + 1]
     end
 end
 
@@ -120,53 +74,19 @@ end
 -- The entry in place `i` (from 1) of side `side`'s sent data: its chip, its pattern's number (from 1), false for a 0,
 -- nil for an empty place or one past the count.
 function block.entry(side: number, i: number): (Chip | number | false)?
-    local places = rules.state_of(side).auto_battle_places
-    if i < 1 or i > #places then
-        return nil
-    end
-    local p = places[i]
-    if p.chip ~= nil then
-        return p.chip
-    elseif p.pattern > 0 then
-        return p.pattern
-    elseif p.zero then
-        return false
-    end
-    return nil
+    return places.entry(rules.state_of(side).auto_battle_places, i)
 end
 
 -- 0x0802C0DC / 0x0802C0D6's swap: the first entry and the one in place `i` (from 1) change places.
 function block.swap(side: number, i: number)
-    local places = rules.state_of(side).auto_battle_places
-    if i > #places then
-        return
-    end
-    local first, other = copy(places[1]), copy(places[i])
-    places[1] = other
-    places[i] = first
+    places.swap(rules.state_of(side).auto_battle_places, i)
 end
 
 -- 0x0802BF1C's list part: the first entry goes last, the rest move up (`sub_8000EB6` packs the entries but the
 -- emptied first; the count stays). With no entries the original loops 2^32 times.
 function block.turn(side: number)
-    local places = rules.state_of(side).auto_battle_places
-    local n = #places
-    if n == 0 then
-        error("a navi in auto battle turns auto battle data with no entries (0x0802BF1C: sub_8000EB6 counts 2^32 entries)")
-    end
-    local first = copy(places[1])
-    local packed: { Place } = {}
-    for i = 2, n do
-        local p = copy(places[i])
-        if not empty(p) then
-            table.insert(packed, p)
-        end
-    end
-    while #packed < n - 1 do
-        table.insert(packed, EMPTY)
-    end
-    table.insert(packed, first)
-    rules.state_of(side).auto_battle_places = packed
+    local state = rules.state_of(side)
+    state.auto_battle_places = places.turn(state.auto_battle_places)
 end
 
 -- Record `r` (from 1) of side `side`'s data: past the setup's, one nothing has written (0xFF throughout).
@@ -237,42 +157,7 @@ end
 -- play one, and the game's own writer never puts one there; a record's chip place may hold one, as the game writes
 -- them there and a record never plays).
 function block.validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
-    local places: { Place } = rules.setup_of(side).auto_battle_places
-    for i, p in places do
-        local list = block.LISTS[#block.LISTS]
-        for _, l in block.LISTS do
-            if i >= l.start and i < l.start + l.len then
-                list = l
-            end
-        end
-        local where = string.format("place %d of the auto battle data (`%s`, entry %d)", i, list.name, i - list.start + 1)
-        local things = (if p.chip ~= nil then 1 else 0) + (if p.pattern > 0 then 1 else 0) + (if p.zero then 1 else 0)
-        if things > 1 then
-            problem(string.format("%s is a chip, a pattern or a 0, not more", where), "auto_battle_places", i)
-        end
-        if p.pattern > block.RECORDS then
-            problem(
-                string.format("place %d of the auto battle data names pattern %d; it has %d pattern records", i, p.pattern, block.RECORDS),
-                "auto_battle_places",
-                i
-            )
-        end
-        local chip: Chip? = p.chip
-        if chip ~= nil then
-            -- (A chip with no `auto_battle`, ./place: its positioning class is past the table.)
-            if (chip :: any).auto_battle == nil then
-                problem(
-                    string.format(
-                        "%s holds %s: the original can't play it in auto battle (its positioning class is past the game's table of them: the game crashes)",
-                        where,
-                        battle.name(chip)
-                    ),
-                    "auto_battle_places",
-                    i
-                )
-            end
-        end
-    end
+    places.validate(rules.setup_of(side).auto_battle_places, problem)
 end
 
 return block
