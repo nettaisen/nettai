@@ -335,7 +335,7 @@ mod tests {
         let mut b = rules(&content);
         let pool = pool(&content, "exe6", &mut b, 0);
         // No Program Advance, no dark chip, none past the pack's (the
-        // BeastOut chip), none of the Link Gate's arm chips. The Japanese
+        // BeastOut chip), none of the arm chips. The Japanese
         // game's chips are folder chips (GunDelEX and Django's aren't in
         // the US games').
         let keys: Vec<&str> = pool.iter().map(|&c| nettai_content_api::keys::local(&content.defs.chip(c).key)).collect();
