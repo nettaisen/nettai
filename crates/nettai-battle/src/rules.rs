@@ -600,6 +600,14 @@ impl Battle {
         self.rules_ask(side, RulesHook::NaviPalette, Some(navi))
     }
 
+    /// The rules' `navi_shader(side, navi)`, if they answer.
+    pub(crate) fn rules_navi_shader(&mut self, side: u8, navi: ObjectRef) -> Option<u16> {
+        match self.call_rules(side, RulesHook::NaviShader, Some(navi), None, None)? {
+            Value::Int(n) => Some(n as u16),
+            _ => None,
+        }
+    }
+
     /// The rules' `navi_bug(side, navi)`: what they did with the navi's
     /// hit's NaviCust bug ([`NaviBug`]; no answer: untouched).
     pub(crate) fn rules_navi_bug(&mut self, side: u8, navi: ObjectRef) -> NaviBug {
