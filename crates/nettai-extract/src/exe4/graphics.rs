@@ -48,15 +48,18 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     let mut sprites = roms.any().map(|(rom, a)| sprites(rom, a.sprite_list)).unwrap_or_default();
     sprites.extend(roms.any().map(|(rom, a)| portraits(rom, a.sprite_list, names)).unwrap_or_default());
     sprites.sort_by_key(|s| (s.category, s.index));
-    // The HUD's art is Red Sun US's (exe4/hud.rs); without it the fonts and
-    // text lines of a US ROM present, the rest placeholders.
+    // The HUD's art is Red Sun US's (exe4/hud.rs); without it the fonts,
+    // text lines and banners of a US ROM present, the rest placeholders.
     let mut hud = if roms.redsun.is_present() {
         let encoding = (names.glyphs.as_slice(), names.dialogue_glyphs.as_slice());
         super::hud::hud(roms.redsun, &RED_SUN, roms.bluemoon, names, chip_icons(roms, names), dialogue_font(roms.redsun, &RED_SUN, encoding))
     } else {
         let mut hud = match roms.us() {
             Some((rom, a)) => hud(rom, a, names),
-            None => crate::placeholders::hud(names, super::hud::BANNER_COUNT as usize),
+            None => {
+                let (font, font_chars) = placeholder_font((names.glyphs.as_slice(), names.dialogue_glyphs.as_slice()));
+                Hud { font, font_chars, ..crate::placeholders::hud(names, super::hud::BANNER_COUNT as usize) }
+            }
         };
         hud.chip_icons = chip_icons(roms, names);
         if let Some((rom, a)) = roms.any() {
@@ -66,7 +69,11 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     };
     let lettering = match roms.jp() {
         Some((rom, a)) => lettering(rom, a, &hud, names),
-        None => crate::placeholders::lettering(&hud, names, LANGUAGE),
+        None => {
+            let (cell, dialogue) = names.language_glyphs.get(LANGUAGE).cloned().unwrap_or_default();
+            let (font, font_chars) = placeholder_font((cell.as_slice(), dialogue.as_slice()));
+            HudLettering { font, font_chars, ..crate::placeholders::lettering(&hud, names, LANGUAGE) }
+        }
     };
     hud.languages.push((LANGUAGE.to_string(), lettering));
     hud.language = BASE_LANGUAGE.into();
@@ -281,8 +288,19 @@ pub(super) fn font_glyphs(encoding: (&[String], &[String])) -> usize {
     (encoding.0.len() + encoding.1.len()).min(FONT_GLYPHS)
 }
 
-/// The HUD from a US ROM: its fonts and text lines (the rest, EXE4's own,
-/// placeholders).
+/// An encoding's 8x16 font with no ROM to read it from: a placeholder glyph
+/// for every character the ROM's font would have (`glyph_names`, the cell
+/// font's and what it shares of the dialogue font's), so a pack of fewer
+/// ROMs has a glyph for the same names a full one has.
+fn placeholder_font(encoding: (&[String], &[String])) -> (Tiles, Vec<String>) {
+    let n = font_glyphs(encoding);
+    (crate::placeholders::tiles(2 * n), glyph_names(encoding, n))
+}
+
+/// The HUD from a US ROM that isn't Red Sun's: what its own addresses give
+/// (its fonts, text lines and banners, with their digits, palette and
+/// "BUSY..."); the rest, which exe4/hud.rs reads at Red Sun US's addresses,
+/// placeholders.
 fn hud(rom: &Rom, a: &Addresses, names: &AssetNames) -> Hud {
     let encoding = (names.glyphs.as_slice(), names.dialogue_glyphs.as_slice());
     let n = font_glyphs(encoding);
@@ -292,6 +310,11 @@ fn hud(rom: &Rom, a: &Addresses, names: &AssetNames) -> Hud {
         font_chars: glyph_names(encoding, n),
         dialogue_font: dialogue_font(rom, a, encoding),
         texts: texts(rom, a.texts, first_control),
+        banners: (0..super::hud::BANNER_COUNT).map(|id| super::hud::banner(rom, a.banners, id)).collect(),
+        banner_digits: super::hud::banner_digits(rom, a.banner_digits),
+        banner_palette: palette(rom, a.banner_palette),
+        waiting: tiles(rom, a.waiting, super::hud::WAITING_BYTES),
+        waiting_palette: palette(rom, a.banner_palette),
         ..crate::placeholders::hud(names, 0)
     }
 }
