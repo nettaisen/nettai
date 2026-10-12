@@ -131,10 +131,6 @@ return {
     -- L runs the no-running message's script with the key (0x080205C6: in a netbattle, its battle flags' 0x20, the
     -- script's entry 3), and its state waits for it from the next tick (0x08020A28).
     run_message_at_key = true,
-    -- The screen's close starts the HUD's chip window with the chip icons (0x0801E9D4 starts the icons, 0x0801E9D8
-    -- calls 0x08015B54, which starts the chip name's task where the icons' runs): the next chip's name shows from
-    -- the screens' exchange.
-    close_shows_chip_window = true,
     -- A chip that counts as the invalid chip (0x08020306: past the navi's Mega or Giga limit, or a code it hasn't) is
     -- refused (0x0801F73C), and the selection counts each chip as it is (0x0801F9E0).
     invalid_picks = "refused",

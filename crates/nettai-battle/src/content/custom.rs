@@ -144,14 +144,6 @@ pub struct CustomScreenLayout {
     /// 0x080205C6, its state waiting from the next tick, 0x08020A28); else
     /// on the next tick, with its sound (EXE6's `sub_8026EC8`).
     pub run_message_at_key: bool,
-    /// The screen's close starts the HUD's chip window with the chip icons
-    /// (EXE5's 0x080230CC calls its window's starter, 0x08023128; EXE4's
-    /// 0x0801E9D8 calls 0x08015B54, which starts it where the icons' task
-    /// runs): the next chip's name shows from the screens' exchange,
-    /// through the turn's banner. Else the close starts the icons alone
-    /// (EXE6's `sub_8026DC4`), and the window waits for the navi's first
-    /// decision in the fight.
-    pub close_shows_chip_window: bool,
     /// What becomes of a pick of a chip that counts as the invalid chip (a
     /// Mega or Giga chip past the navi's limit, a code the chip hasn't).
     pub invalid_picks: InvalidPicks,
@@ -394,7 +386,6 @@ impl Default for CustomScreenLayout {
             talking_characters: TalkingCharacters::default(),
             first_choosing_tick_reads_keys: true,
             run_message_at_key: false,
-            close_shows_chip_window: false,
             invalid_picks: InvalidPicks::Picked,
             special_codes: SpecialCodes::Apart,
             program_advances: ProgramAdvanceRules {

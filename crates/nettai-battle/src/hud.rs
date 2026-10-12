@@ -90,24 +90,26 @@ pub struct Telop {
 /// (`sub_801DA48`, `sub_801DACC`). Presentation only: the engine keeps one
 /// for each side, since each player's console shows its own.
 ///
-/// Where a game's custom screen starts the window's task with the icons'
-/// as it closes (the rules' `custom_screen.close_shows_chip_window`: EXE5's
-/// and EXE4's), the next chip's name shows from the screens' exchange,
-/// through the turn's banner, and on until something hides it: a navi that
+/// The custom screen's close starts the window's task with the icons' in
+/// every game: the next chip's name shows from the screens' exchange,
+/// through the turn's banner, and on until something hides it; a navi that
 /// doesn't decide at once keeps it meanwhile (one in the middle of a step
 /// as its screen opened, a driven navi's; EXE4's soul change as the fight
-/// starts, 0x080EBA44). Where the close starts the icons alone (EXE6's),
-/// the window waits for the navi's first decision.
+/// starts, 0x080EBA44). EXE4's and EXE5's closes do it in both regions
+/// (0x0801E9D8 calling 0x08015B54; 0x08023128), and EXE6's Japanese games'
+/// (`sub_8026DC4` calling `sub_801E012`, task 0x40). The US EXE6 games'
+/// close starts the icons alone, and their name waits for the navi's first
+/// decision: nettai's EXE6 follows its Japanese games here, so that the
+/// three games have one behavior (the user, 2026-10-12: a named exception
+/// to the US games' behavior where the releases' differ).
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct ChipHud {
     pub icons: bool,
     pub window: bool,
-    /// Since the custom screen's close its navi hasn't decided, and nothing
-    /// has hidden the window: the span a close that starts the window shows
-    /// it by the close alone. (For a comparison with a console whose
-    /// release differs there: EXE6's Japanese games' close starts the
-    /// window, `sub_801E012`, where the US games', which nettai follows,
-    /// doesn't.)
+    /// The window is on by the custom screen's close alone: its navi
+    /// hasn't decided since, and nothing has hidden it. (What a US EXE6
+    /// console doesn't show: the renderer marks it for a frame comparison
+    /// with one, `chip-window-at-close`. Nothing else reads it.)
     pub from_close: bool,
     /// The console's chip-icon table has the opponent's navi too (EXE5's
     /// SearchSoul's status reset adds it in a link battle, 0x08011C0C; any
