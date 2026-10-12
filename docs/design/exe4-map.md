@@ -1351,8 +1351,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   `element_sprite`, `cursor_palette`, `window_emblem`, a button's `place`): the emblem over the picked column is the
   window's own orb (0x08020028: four frames of 2x3 on the map at column 12, row 0, turned by the steps of 0x08020078
   as a chip is picked), no navi's; the UNITE button (`soul`) is drawn at its own place (0x0801FF14: 3x2 at column
-  11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) over
-  slots 8 and 9 (0x08709E00, three states). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
+  11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) is
+  drawn at its own place too, over slots 8 and 9 (0x0801DD34: 4x3 at column 7, row 16, from slot 8's first tile,
+  0x10E; 0x08709E00's three looks, in the pack's order of a button's sets: as it is, with no shuffle left,
+  shuffling), with its uses in the chip window (0x0801FEA2: `uses_digit`). The Regular chip's frame is at (1, 100)
+  (0x0801EF28: the layout's `regular`; EXE6's and EXE5's (2, 100)) and under the cursor (the choosing queues it
+  before the state's own sprites, 0x0801E3FC: the renderer by `states_in_choosing`); a chip the screen refuses as
+  the invalid chip (a code it hasn't) is drawn in its slot as it is (0x0801F6D6), the chip window showing the
+  invalid chip for it (custom/regular's AirShot B). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
   button's tiles are the pack's Japanese lettering. Also the layout's `detail_blank` (a blank code or damage cell is
   solid 7, 0x08020E5C: 0x0801FD08, 0x0801FE2A) and `empty_palette` (the empty icon in palette 9: the slots' patches'
   own, which 0x0801FB00 leaves on an empty slot and sets on a picked one; 0x0801FB6E sets it on the picked column's
@@ -2235,9 +2241,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     opened in it, is the soul's (item 74, "the custom screen's soul"): the hand it builds (0x0801F29A, 0x0801F226)
     *done* (modcards/122-guts-soul, the Cannon of its first hand 70; 123-wind-soul-chip, 128-number-soul, the
     label's "+10"; 132-wood-soul-fold; souls/guts/turn2: every frame, pixel-exact but for the known shift).
-    **Open, group A's (item 74):** JunkSoul's used chips offered again (0x0801DFBC), on which modcards/130-junk-soul
-    waits (every frame matches, the console's RNG1 apart from frame 984, its second screen); and SearchSoul's
-    SHUFFLE button, not on our screen (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
+    JunkSoul's chips offered again (0x0801DFBC: modcards/130-junk-soul's RNG1 from its second screen) and SearchSoul's
+    SHUFFLE button (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too) *done* too (item 74).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
@@ -2355,12 +2360,44 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      and marks, +24 and +60, stay, so a chip that moved up has the bonus of the slot before; `battle.fold_hand_chip`
      with `whole` false) and each slot's bonus stored into the hand's +0x26 (0x0801F1E2: 0x0801F29A, soul 8's 10 on a
      damaging Null chip, soul 2's 30 on a damaging Null or Break chip, soul 3's 10 on a damaging Wind chip) *done*:
-     each form's `hand`, applied as the hand is installed (rules/souls/custom's `installed`; souls/guts/turn2, F's;
-     souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left behind). JunkSoul's
-     recycling as its screen opens (0x0801DD0C: 0x0801DFBC, up to two of the chips used this battle dealt again)
-     *open*; SearchSoul's SHUFFLE button over slots 8 and 9 (0x0801DD18: three shuffles a screen, the selection's
-     state 0x14, 0x08020998) *open*: it isn't on our screen (souls/search/turns frames 1108 to 1120). Neither while
-     the screen deals dark chips (0x0801DD02: 0x0801DE90's 1).
+     each form's `custom.built`, applied as the hand is installed (rules/souls/custom's `installed`;
+     souls/guts/turn2, F's; souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left
+     behind). As the screen deals (0x0801DD0C), JunkSoul's chips offered again and SearchSoul's SHUFFLE, below
+     *done*. A soul's part of the screen is its form's `custom` (a `SoulCustom`, types.d.luau: its deal, its
+     buttons and windows, the state fields it keeps, what OK and the hand's build do), which rules/souls gathers.
+     The screen skips the deal's part while it deals dark chips (0x0801DD08: 0x0801DE90's 1), which no netbattle's
+     screen does in a soul: the emotion it reads there is the soul's (0x0800F4BA: 4, not the dark MegaMan's 5), so a
+     dark MegaMan in a soul (a soul card's) is dealt none (souls/junk/recycle-dark, souls/search/shuffle-dark).
+     - **JunkSoul's** (0x0801DFBC): two of the chips sent this battle offered again in slots 8 and 9, in their codes
+       (the screen's +0x30 and +0x32, flagged 0x11: 0x0801EF68 reads the list). The list (0x0203DB70, its count
+       0x020364A8; 0x0801910C empties it at the battle's start) is each console's own, of the folder's chips of every
+       hand installed, side 0's then side 1's (0x08008916 through 0x08007E92: the hand block's +0x32, which OK
+       writes, 0x0801F10A: the picks but the chips from outside the folder and a soul's chip, before the Atk+ and
+       Program Advance folds); rules/sent_chips. The screen shuffles it (0x08000B4A: 64 swaps by RNG1), counts its
+       chips by class and draws a class for each offer (0x0801E040: RNG1's low three bits into 0x0801E0A4, or at half
+       the HP or less 0x0801E0AC; a class with none gives way to the one below, the standard to the Giga), the first
+       chip of the class in the list (0x0801E064; one chip listed is offered alone, none nothing: no shuffle, no
+       draw). A chip picked there, or given up for a soul, leaves the list at OK (0x0801EFBA, 0x0801EFE8) and isn't
+       listed again. (The count wraps at 64, 0x08007EC2: two folders of 30 never reach it.) *done*
+       (forms/junksoul/recycle; souls/junk/recycle, -one, -theirs, -mega, -keep, -soul, -hurt, -side1, -dark and
+       modcards/130-junk-soul: every frame and the console's RNG1; the frames pixel-exact but for the known shift and
+       Blue Moon's breath chip icons. A side's console's RNG1 is only followed from that console's recording:
+       recycle-side1 is side 1's.)
+     - **SearchSoul's** SHUFFLE (0x0801DD18): a button over slots 8 and 9 (their flags 9; 4x3 cells at column 7, row
+       16, from slot 8's first tile, three looks by the screen's +0x13), three shuffles a screen (+0x1A, the digit
+       the chip window shows, 0x0801FEA2, drawn with the window). A (0x08020370) takes a shuffle, makes the deal
+       (0x0802019E: the hand's chips not picked and the folder's after the hand; with any after the hand, the hand's
+       shuffled among themselves, then all but the first few, the table 0x08020294 by the hand's count, and then, or
+       with the hand alone, the hand's again) and starts the selection's state 0x14 (0x08020998): 17 ticks, each
+       fourth sounding 0x123 and drawing the slots, the first four with the chips not picked shuffled where they are
+       (0x080200F4: 30 swaps), the fifth landing the deal (0x08020232). The picked chips and the waiting Regular
+       chip (0x080202A4) stay where they are; with none left A is refused (0x08020384); R reads nothing on it; LEFT
+       leaves it as slot 8 and RIGHT goes to OK (the engine's two-cell button under the list model). EXE5's Shuffle,
+       the framework's re-deal, is this routine's later form; EXE4's is its own, in Luau (forms/searchsoul/shuffle)
+       on the screen's reads (`custom.slot`, `custom.picks`, `custom.folder`, `custom.set_folder`,
+       `custom.button_uses`). *done* (souls/search/shuffle, -thrice, -picked, -regular, -keys, -dark, -out: the
+       folder run out, the hand alone and nothing left; every frame, the console's RNG1, the frames pixel-exact but
+       for the known shift).
    - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
      that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
      (souls/roll/heal).
