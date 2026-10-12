@@ -655,7 +655,7 @@ struct Window {
     /// it isn't: a known difference (`known_picture`).
     picture_known: Option<&'static str>,
     /// The chip window's picture's mark, where the caller names its chip
-    /// (`chip:KEY`, `Problems::marking`).
+    /// (`chip:KEY`, or a button's `button:NAME`: `Problems::marking`).
     picture_mark: Option<String>,
     /// In the font text mode, the strings whose tiles were left blank for
     /// the text layer: the chip window's name, and the Program Advance
@@ -991,6 +991,12 @@ impl Window {
                         0
                     };
                     blank_details(self, &look.details(palette));
+                    // (The button's picture is marked where the caller
+                    // names the button: `button:NAME`.)
+                    let what = format!("button:{}", nettai_content_api::keys::local(&v.b.content.defs.button(button).name));
+                    if problems.wants(&what) {
+                        self.picture_mark = Some(what);
+                    }
                     if look.pack.uses_digit {
                         // 0x080245C8: the uses left (the button's first
                         // cell's, +4), over the damage's last cell.
@@ -1707,8 +1713,11 @@ pub fn draw<'a>(
     }
     if let Some(what) = w.picture_mark.take() {
         let tiles = w.layout.art..w.layout.art + PICTURE_TILES;
-        if let Some(rect) = w.tiles_rect(place, tiles) {
-            problems.mark(rect, what);
+        if let Some([x0, y0, x1, y1]) = w.tiles_rect(place, tiles) {
+            // (Where the layer's shake leaves it: a button's window shakes
+            // the layer, `hud_jitter`.)
+            let (jx, jy) = hud_jitter(b);
+            problems.mark([x0 - jx, y0 - jy, x1 - jx, y1 - jy], what);
         }
     }
     w.known_icons(&v, place, problems);
