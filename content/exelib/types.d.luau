@@ -500,20 +500,28 @@ export type SeedLook = {
 }
 
 -- A game's H-Burst shot (@exelib/h_burst/burst): its probe's self type, what its bursts are and reach, their status
--- and the explosion on each of their panels.
+-- (none: EXE4's carry none) and the explosion on each of their panels.
 export type HyperBurstShotLook = {
     probe: CollisionType,
     is: CollisionType,
     hits: CollisionType,
-    status: Status,
+    status: Status?,
     explosion: Effect,
 }
 
--- A game's H-Burst (@exelib/h_burst/action): the spreader the navi holds, its attachment kind, the shot's sound and
--- the shot's kind.
-export type HyperBurstLook = { spreader: AttachmentLook, attachment: Kind, sound: Sound, burst: Kind }
+-- A game's H-Burst (@exelib/h_burst/action): the spreader the navi holds, how it holds it and where (EXE6's and
+-- EXE5's @exelib/attachment kind in the overlay; EXE4's own in the related slot, its animation twice the navi's
+-- number), the shot's sound, the shot's kind, and the navi's animation as it aims (EXE6's and EXE5's 0xB; EXE4's 14).
+export type HyperBurstLook = {
+    spreader: AttachmentLook,
+    hold: (me: Object, look: AttachmentLook, slot: Slot) -> (),
+    slot: Slot,
+    sound: Sound,
+    burst: Kind,
+    anim: number,
+}
 
--- An H-Burst (EXE6's action 0x34, EXE5's 0x35): the bursts its shot makes where it hits.
+-- An H-Burst (EXE6's action 0x34, EXE5's 0x35, EXE4's 0x71): the bursts its shot makes where it hits.
 export type HyperBurstSpec = { id: string?, bursts: number }
 
 -- A game's BodyGrd striker (@exelib/bodygrd/striker): its kind's key, its identity, the shurikens' kind and the

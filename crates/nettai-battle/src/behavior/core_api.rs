@@ -370,11 +370,10 @@ impl CoreApi for Battle {
         self.is_battle_over_flag_quirk()
     }
 
-    fn cycle(&self, period: u8) -> u8 {
-        match period {
-            20 => self.round.cycle20,
-            180 => self.round.cycle180,
-            _ => panic!("battle.cycle({period}): the battle counts 20 and 180"),
+    fn cycle(&self, which: u8) -> u8 {
+        match which {
+            1 | 2 => self.round.cycles[which as usize - 1],
+            _ => panic!("battle.cycle({which}): the battle has counts 1 and 2"),
         }
     }
 
@@ -1236,6 +1235,10 @@ impl CoreApi for Battle {
     fn hand_chip_damages(&self, side: u8, i: u8) -> bool {
         let chip = self.hands[side as usize & 1].ids.get(i as usize).copied().flatten();
         chip.is_some_and(|h| self.content.chip(h).flags.0 & crate::content::ChipFlags::HAS_DAMAGE != 0)
+    }
+
+    fn fold_hand_chip(&mut self, side: u8, i: u8) {
+        self.hands[side as usize & 1].fold_next(i as usize);
     }
 
     fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle> {
