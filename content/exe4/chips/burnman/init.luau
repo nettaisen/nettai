@@ -25,6 +25,7 @@ local burnman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "burnman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local burnmn_sp: Chip = {
@@ -40,6 +41,7 @@ local burnmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "burnmn-sp/controller", palette = 2 }.hook,
+    megaman = "light",
 }
 
 local burnmn_ds: Chip = {
@@ -54,6 +56,7 @@ local burnmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "burnmn-ds/controller", palette = 4 }.hook,
+    megaman = "dark",
 }
 
 return { burnman = burnman, ["burnmn-sp"] = burnmn_sp, ["burnmn-ds"] = burnmn_ds }

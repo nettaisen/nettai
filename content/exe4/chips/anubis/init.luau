@@ -20,6 +20,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "library" },
     dimming = anubis.controller.hook(VARIANT),
+    megaman = "dark",
 }
 
 return { anubis = chip }

@@ -110,6 +110,7 @@ local elemdark: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    megaman = "dark",
 }
 
 return { elemflar = elemflar, elemice = elemice, elemleaf = elemleaf, elemsand = elemsand, elemdark = elemdark }

@@ -120,6 +120,6 @@ pub(crate) fn trap_mark(b: &mut Battle, r: ObjectRef) -> i32 {
     let at = b.game_rules().chip_use.anti_navi_sparkle;
     let z = (at.z as i32) << 16;
     effect::spawn(b, Vec3 { x, y: y.wrapping_add((at.dy as i32) << 16), z }, look, local, 0, 0);
-    b.sound(SoundRole::CutIn);
+    b.sound(SoundRole::TrapMark);
     z
 }

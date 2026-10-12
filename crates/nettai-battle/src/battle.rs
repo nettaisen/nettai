@@ -1305,6 +1305,11 @@ impl Battle {
     }
 
     fn enter_mode(&mut self, m: u8) {
+        if m == mode::CUSTOM {
+            // (The screen's close shows the defensive chips' marks again:
+            // `sub_801DA48(0x400)`, EXE4's 0x0801E1D6.)
+            self.hud_hidden.defensive_marks = false;
+        }
         self.round.mode = m;
         self.round.sub = 0;
         self.round.init = 0;
@@ -2271,11 +2276,15 @@ impl Battle {
         }
         // (The other player's telop, on the block their names show on.)
         self.remote_telop.tick();
-        // sub_801CA0C: so does the message.
+        // sub_801CA0C: so does the message. Its end shows the defensive
+        // chips' marks again, unless the battle is over (`sub_801E1A4`).
         if let Some(m) = &mut self.message {
             m.ticks -= 1;
             if m.ticks == 0 {
                 self.message = None;
+                if self.is_battle_over() {
+                    self.hud_hidden.defensive_marks = true;
+                }
             }
         }
         // While the custom screen is up the banner is the local player's
@@ -2409,6 +2418,31 @@ mod tests {
             n += 1;
         }
         n
+    }
+
+    /// A message's end shows the defensive chips' marks again, unless the
+    /// battle is over by then (`sub_801E1A4`): then they stay hidden until
+    /// a custom screen opens.
+    #[test]
+    fn a_message_ending_once_the_battle_is_over_leaves_the_defensive_marks_hidden() {
+        let hidden_after = |time_up: u8| {
+            let mut b = Battle::new(testing::round_setup(testing::LINK_BATTLE, testing::stats(1000)), testing::content());
+            b.round.alive = [1, 1];
+            b.show_message(crate::hud::Message::CounterHit);
+            for tick in 0..crate::hud::MessageLine::SHOWN_TICKS {
+                assert!(b.message.is_some() && !b.hud_hidden.defensive_marks, "tick {tick}");
+                if tick == 30 {
+                    b.round.time_up = time_up;
+                }
+                b.run_hud_tasks();
+            }
+            assert!(b.message.is_none());
+            let hidden = b.hud_hidden.defensive_marks;
+            b.enter_mode(mode::CUSTOM);
+            assert!(!b.hud_hidden.defensive_marks, "a custom screen shows them again");
+            hidden
+        };
+        assert_eq!((hidden_after(0), hidden_after(1)), (false, true));
     }
 
     #[test]

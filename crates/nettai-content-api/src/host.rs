@@ -381,6 +381,13 @@ pub enum RulesHook {
     /// part refuses a chip its MegaMan may not use: 0x08010118). The
     /// first part that answers decides.
     ChipCheck,
+    /// `cut_in_barred(side, navi, chip)`: while dimmed, the navi asks to
+    /// cut in on the other side's dimming with its next chip, a dimming
+    /// chip (`sub_8017AB4`), before anything of the chip's use is
+    /// prepared: true bars it, the request dropped and the chip left in
+    /// the hand (EXE4's 0x08010C64 and EXE5's 0x0801452E ask whether its
+    /// MegaMan may use the chip). Any part that answers true bars it.
+    CutInBarred,
     /// `chip_cost(side, navi, chip)`: earlier in a chip use's preparation,
     /// before the hand bonus's panel is spent (EXE5's 0x08010030: a dark
     /// chip's use, which may fizzle, and the chip's cost, 0x0802C934). It
@@ -443,6 +450,11 @@ pub enum RulesHook {
     /// `sub_801002C`, EXE5's 0x0800DD94: rules/light_dark's). The
     /// first part that answers decides; none, the framework's (EXE6's).
     NaviPalette,
+    /// `navi_shader(side, navi)`: each tick of the navi's status routine's
+    /// tail, after its status shaders and the counter's, the color shader
+    /// the rules put over them (presentation; EXE4's 0x0800BB18: the dark
+    /// soul's last 90 ticks pulse blue). None: the shader stays.
+    NaviShader,
     /// `charge_released(side, navi)`: a full B charge is released while the
     /// rules' own B charge is armed (`b_charge_time`; EXE5's Chaos Unison,
     /// 0x0801086E): the rules note what it does (EXE5's: by its cycle's
@@ -593,6 +605,7 @@ impl RulesHook {
             RulesHook::Validate => "validate",
             RulesHook::NaviIntake => "navi_intake",
             RulesHook::ChipCheck => "chip_check",
+            RulesHook::CutInBarred => "cut_in_barred",
             RulesHook::ChipCost => "chip_cost",
             RulesHook::ChipSubstitute => "chip_substitute",
             RulesHook::ChipPrepared => "chip_prepared",
@@ -604,6 +617,7 @@ impl RulesHook {
             RulesHook::NaviTick => "navi_tick",
             RulesHook::StartingMood => "starting_mood",
             RulesHook::NaviPalette => "navi_palette",
+            RulesHook::NaviShader => "navi_shader",
             RulesHook::NaviBug => "navi_bug",
             RulesHook::HitBug => "hit_bug",
             RulesHook::ChargeReleased => "charge_released",
@@ -631,7 +645,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 47] = [
+    pub const ALL: [RulesHook; 49] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -643,6 +657,7 @@ impl RulesHook {
         RulesHook::FolderCheck,
         RulesHook::NaviIntake,
         RulesHook::ChipCheck,
+        RulesHook::CutInBarred,
         RulesHook::ChipCost,
         RulesHook::ChipSubstitute,
         RulesHook::ChipPrepared,
@@ -655,6 +670,7 @@ impl RulesHook {
         RulesHook::NaviTick,
         RulesHook::StartingMood,
         RulesHook::NaviPalette,
+        RulesHook::NaviShader,
         RulesHook::NaviBug,
         RulesHook::HitBug,
         RulesHook::ChargeReleased,

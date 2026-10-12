@@ -26,6 +26,7 @@ local coldman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "coldman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local coldmn_sp: Chip = {
@@ -41,6 +42,7 @@ local coldmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "coldmn-sp/controller", palette = 2 }.hook,
+    megaman = "light",
 }
 
 local coldmn_ds: Chip = {
@@ -55,6 +57,7 @@ local coldmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "coldmn-ds/controller", palette = 3 }.hook,
+    megaman = "dark",
 }
 
 return { coldman = coldman, ["coldmn-sp"] = coldmn_sp, ["coldmn-ds"] = coldmn_ds }

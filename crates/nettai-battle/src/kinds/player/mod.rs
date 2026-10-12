@@ -363,7 +363,8 @@ pub use crate::content::{Emotion, EmotionRole};
 /// `sub_8015B54` (EXE5's 0x0801270C): a side's emotion, the first of its
 /// game's order (the status section's `emotion`) that holds of its navi:
 /// its mood, its anger, its held tired and exhausted states, whether it is
-/// out of its base form, and the battle's mode.
+/// out of its base form (but in a form whose emotions are its base's), and
+/// the battle's mode.
 pub fn emotion(b: &Battle, side: u8) -> Emotion {
     let p = b.player(side).expect("side has a player");
     let a = ai(b, p);
@@ -372,7 +373,7 @@ pub fn emotion(b: &Battle, side: u8) -> Emotion {
         angry: a.anger != 0,
         tired: a.tired,
         exhausted: a.exhausted,
-        in_form: !form_of(b, p).base,
+        in_form: !form_of(b, p).base && !form_of(b, p).traits.has(FormTraits::EMOTIONS_AS_BASE),
         battle_mode: battle_mode(b),
     };
     b.game_rules().emotion.of(&facts)

@@ -47,6 +47,7 @@ local chip: Chip = {
     flags = { "dimming" },
     program_advances = { { order = 5, sequence = { gunsols.gunsol1, gunsols.gunsol2, gunsols.gunsol3 } } },
     dimming = CONTROLLER.hook,
+    megaman = "light",
 }
 
 return { pdriver = chip }

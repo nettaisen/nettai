@@ -25,6 +25,7 @@ local thunman: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "thunman/controller", palette = 0 }.hook,
+    megaman = "light",
 }
 
 local thunmn_sp: Chip = {
@@ -40,6 +41,7 @@ local thunmn_sp: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "thunmn-sp/controller", palette = 4 }.hook,
+    megaman = "light",
 }
 
 local thunmn_ds: Chip = {
@@ -54,6 +56,7 @@ local thunmn_ds: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "thunmn-ds/controller", palette = 6 }.hook,
+    megaman = "dark",
 }
 
 return { thunman = thunman, ["thunmn-sp"] = thunmn_sp, ["thunmn-ds"] = thunmn_ds }
