@@ -732,14 +732,16 @@ mod tests {
     /// takes the host's settings, each sees the other's name and the round
     /// trip. The host makes it a single battle with closed builds, which
     /// both show, nobody ready any more. Both ready: the match is agreed,
-    /// and both load, each seeing how far the other is; nothing starts
-    /// while one is still loading. Both loaded: both start the same match,
-    /// closed builds with it, and play it over the links, each at its own
-    /// input delay, with the connection's quality to show.
+    /// and each host preloads it (`crate::preload`), saying how far it is as
+    /// it goes, which the other sees; nothing starts while one is still
+    /// loading. Both loaded: both start the same match, closed builds with
+    /// it, and play it over the links with the players their preloads made
+    /// (nothing is loaded late), each at its own input delay, with the
+    /// connection's quality to show. One leaves, and the other is told.
     #[test]
     fn an_invite_becomes_a_match() {
         use crate::lobby::{Lobby, Role, Status, entropy};
-        use crate::session::Session;
+        use crate::preload::Preload;
 
         struct Seat {
             link: nettai_rtc::Link,
@@ -825,54 +827,83 @@ mod tests {
         seats[0].lobby.set_ready(true);
         seats[1].lobby.set_ready(true);
         until(&mut seats, "the match is agreed", |_, stands| stands == [1, 1]);
-        // Each sees how far the other is; the host done and the joiner not,
-        // nothing starts.
-        seats[0].lobby.set_loading(0.5);
-        until(&mut seats, "the joiner sees the host loading", |s, _| (s[1].lobby.their_loading() - 0.5).abs() < 0.01);
+        // Each host preloads the match it agreed, on the thread that will
+        // play it, and says how far its preload is; the other sees it.
+        let mut preloads: Vec<Preload> = seats
+            .iter_mut()
+            .map(|seat| {
+                let Status::Loading(a) = seat.lobby.poll(Instant::now()) else { panic!("loading") };
+                // (A pack with nothing in it: the steps are the match's.)
+                let renderer = crate::Renderer::new(Arc::new(nettai_assets::Bundle::default()));
+                Preload::with(renderer, None, None, &a.set, a.side as u8, (240, 160))
+            })
+            .collect();
+        while preloads[0].fraction() < 0.5 && preloads[0].step() {}
+        let half = preloads[0].fraction();
+        assert!((0.5..1.0).contains(&half), "{half}");
+        seats[0].lobby.set_loading(half);
+        until(&mut seats, "the joiner sees the host loading", |s, _| (s[1].lobby.their_loading() - half).abs() < 0.01 && !s[1].lobby.their_loaded());
+        // The host done and the joiner not begun: nothing starts.
+        while preloads[0].step() {}
+        assert!(preloads[0].done() && preloads[0].stopped().is_none());
         seats[0].lobby.set_loaded();
-        seats[1].lobby.set_loading(0.25);
-        until(&mut seats, "the host sees the joiner loading", |s, _| (s[0].lobby.their_loading() - 0.25).abs() < 0.01 && s[1].lobby.their_loaded());
+        until(&mut seats, "the joiner sees the host loaded", |s, _| s[1].lobby.their_loaded());
         for _ in 0..50 {
             assert_eq!([frame(&mut seats[0]), frame(&mut seats[1])], [1, 1], "a match starts once both have loaded");
             std::thread::sleep(Duration::from_millis(2));
         }
+        // The joiner's, a step a frame, said as it goes (a loading screen's
+        // frames); done, the match starts on both.
+        loop {
+            let more = preloads[1].step();
+            seats[1].lobby.set_loading(preloads[1].fraction());
+            if !more {
+                break;
+            }
+            assert_eq!([frame(&mut seats[0]), frame(&mut seats[1])], [1, 1], "a match starts once both have loaded");
+            std::thread::sleep(Duration::from_millis(1));
+        }
+        assert!(preloads[1].done());
+        until(&mut seats, "the host sees the joiner's bar full", |s, stands| s[0].lobby.their_loading() > 0.99 && !s[0].lobby.their_loaded() && stands == [1, 1]);
         seats[1].lobby.set_loaded();
         until(&mut seats, "the match starts", |_, stands| stands == [2, 2]);
         // The same match on both, closed builds with it; played over the
-        // links, each player at their own input delay.
-        let mut playing: Vec<Session> = Vec::new();
+        // links by the players the preloads made, each player at their own
+        // input delay.
+        let mut playing: Vec<crate::Player> = Vec::new();
         let mut seeds = Vec::new();
-        for (i, Seat { link, mut lobby }) in seats.into_iter().enumerate() {
+        for (i, (Seat { link, mut lobby }, preload)) in seats.into_iter().zip(preloads).enumerate() {
             let Status::Start(a) = lobby.poll(Instant::now()) else { panic!("started") };
             assert!(a.closed_builds() && a.m.rounds.len() == 1 && a.side == i);
             assert_eq!(a.names, ["Lan".to_string(), "Chaud".to_string()]);
             seeds.push(a.seed);
             let channel = Framed { link, answer: a.answer.clone(), frame: Vec::new() };
             let options = NetOptions { input_delay: [DEFAULT_INPUT_DELAY, 2][i], ..NetOptions::default() };
-            playing.push(Session::new(Box::new(NetPlayer::new(channel, a.side, a.set.clone(), options))));
+            playing.push(preload.player(Box::new(NetPlayer::new(channel, a.side, a.set.clone(), options))));
         }
         assert_eq!(seeds[0], seeds[1]);
         for _ in 0..300 {
-            for (i, s) in playing.iter_mut().enumerate() {
-                assert!(s.step(0), "side {i}: {:?} {:?}", s.stop_reason, s.stopped);
+            for (i, player) in playing.iter_mut().enumerate() {
+                assert!(player.tick(0), "side {i}: {:?} {:?}", player.stop_reason(), player.stopped());
             }
             std::thread::sleep(Duration::from_millis(2));
         }
-        for (i, s) in playing.iter().enumerate() {
-            let status = s.driver.net_status().expect("a netplay match");
-            assert!(s.ticks > 100, "side {i} played {} ticks", s.ticks);
+        for (i, player) in playing.iter().enumerate() {
+            let status = player.net_status().expect("a netplay match");
+            assert!(player.ticks() > 100, "side {i} played {} ticks", player.ticks());
             assert_eq!(status.input_delay, [4, 2][i]);
             assert!(status.quality.is_some() && status.ping_ms.is_some() && status.jitter_ms.is_some() && status.reconnecting.is_none(), "side {i}: {status:?}");
+            let late = player.late();
+            assert_eq!((late.runtimes, late.reads), (0, 0), "side {i} loaded nothing late");
         }
         // One leaves; the other is told so.
-        let left = playing.pop().unwrap();
-        drop(left);
+        drop(playing.pop());
         let start = Instant::now();
-        while playing[0].step(0) {
+        while playing[0].tick(0) {
             assert!(start.elapsed() < Duration::from_secs(10), "the host isn't told the joiner left");
             std::thread::sleep(Duration::from_millis(2));
         }
-        assert_eq!(playing[0].stop_reason, Some(StopReason::OpponentLeft), "{:?}", playing[0].stopped);
+        assert_eq!(playing[0].stop_reason(), Some(StopReason::OpponentLeft), "{:?}", playing[0].stopped());
     }
 
     /// Two players on WebRTC links through a room of a signaling server (in
