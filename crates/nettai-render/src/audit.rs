@@ -174,9 +174,11 @@ pub struct Problems {
     /// What the caller asks to have marked wherever a frame draws it
     /// (`Mark`): `sprite:NAME` (an object drawn with that sprite),
     /// `background:NAME` (the frame's background), `chip:KEY` (the chip's
-    /// picture in the custom screen's chip window) and `chip-window-at-close`
-    /// (the HUD's chip name while it shows from the custom screen's close,
-    /// before the navi's first decision). The frontend knows no console
+    /// picture in the custom screen's chip window), `chip-icon:KEY` (the
+    /// chip's icon: over its navi, in the custom screen's slots and its
+    /// picked chips' column, and carried over the screen) and
+    /// `chip-window-at-close` (the HUD's chip name while it shows from the
+    /// custom screen's close, before the navi's first decision). The frontend knows no console
     /// that shows them otherwise: the verification's frame comparison asks
     /// for what its table says a recording's console does.
     pub marking: std::collections::BTreeSet<String>,
