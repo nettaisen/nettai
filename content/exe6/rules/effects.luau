@@ -80,6 +80,9 @@ return {
     -- A banner (`sub_801CE28`) slides in for 5 ticks, holds 0x30, slides out for 5; one that holds until let go has
     -- its timer stop at 5, and let go (`sub_801E780`) holds three ticks more. It bounces as its hold starts and ends.
     banner = { slide_in = 5, hold = 0x30, slide_out = 5, release = "holds_three_more", bounces = true },
+    -- A telop is a banner (`sub_801E792` with banners 0x4C and 0x50): none starts while a banner or a telop shows, and
+    -- its controller waits for whatever the banner block shows (`sub_801E754`).
+    telops = "banners",
     -- Each console's RNG1 advances once a frame after the battle's (`main_`'s `GetRNG1`).
     rng1_per_frame = true,
     -- The chip icons over a navi (`sub_801C082`): over its sprite's attach point 3, the next chip's icon once for every

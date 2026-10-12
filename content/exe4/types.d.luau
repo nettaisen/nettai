@@ -59,3 +59,36 @@ export type PatchCardCounts = {
     add: (bug: string, n: number) -> (),
     clear: (bug: string) -> (),
 }
+
+-- A button a soul adds to the custom screen (a `ButtonSpec` rules/souls makes of it): where it sits, and A on it, which
+-- gets the rules' state of the side (`s`: the fields the soul's `custom.state` declares among them). It is on the
+-- screen while the side's navi is in the soul.
+export type SoulButton = {
+    slot: number,
+    cells: number?,
+    -- Its uses on a screen, for a button that counts them (`custom.button_uses`).
+    uses: number?,
+    pressed: (side: number, s: any) -> (),
+}
+-- A window a soul adds (a `WindowSpec` of rules/souls's): its update, each tick it is up: whether it stays up.
+export type SoulWindow = {
+    view: WindowView?,
+    update: (side: number, s: any) -> boolean,
+}
+
+-- What a soul does at the custom screen (a soul's form's `custom`; EXE4's screen keeps the navi's soul as it opens,
+-- 0x0801DC82: its +0x0F, and reads it in each of these places): the fields it keeps in the rules' state, its buttons
+-- and windows by name (a button's is the key of its look in a pack), and its part of the screen's routines, each
+-- called while the side's navi is in the soul.
+export type SoulCustom = {
+    state: StateSchema?,
+    buttons: { [string]: SoulButton }?,
+    windows: { [string]: SoulWindow }?,
+    -- As the screen deals (0x0801DD0C), on the side's console (`battle.console_rng_positive`).
+    deal: ((side: number, s: any) -> ())?,
+    -- As OK builds the hand (0x0801F034).
+    confirmed: ((side: number, s: any) -> ())?,
+    -- On the hand OK built, as it is installed: its cursor at its first chip and no charge bonus on it yet
+    -- (0x0801F1B0, 0x0801F1E2: what the build does to it by the soul).
+    built: ((side: number) -> ())?,
+}

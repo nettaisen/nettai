@@ -254,6 +254,7 @@ fn custom() -> CustomScreen {
             detail_blank: 8,
             empty_palette: None,
             ok_cursor: cursor(0),
+            regular: (2, 100),
         },
         // A special slot's button with icons, and two over the slots' row
         // (two cells of 2x3 a set): one that shows its uses left, one that

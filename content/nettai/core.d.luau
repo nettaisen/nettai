@@ -1544,8 +1544,8 @@ declare dimming: {
     -- A telop for `side` naming `chip` (nil: the zeroed chip's) without
     -- damage, and its sound; a used chip's name makes way.
     chip_telop: (side: number, chip: Chip?) -> (),
-    -- The telop's banner is done.
-    telop_done: () -> boolean,
+    -- `side`'s telop is done.
+    telop_done: (side: number) -> boolean,
     -- The dimming changes sides (`sub_800BE2C`'s): `controller`'s side's
     -- dimming is over (its user stays recorded), and `controller` takes the
     -- other side, which now owns, runs and started the dimming (its own
@@ -2275,7 +2275,9 @@ export type ChipSpec = {
     -- screen, and leaves the selection's rules alone: EXE6's BeastOut chip),
     -- "hides_damage_as_a" (the custom screen shows its damage as "???" on a
     -- copy of code A), "no_icon_when_next" (next in the hand it shows no icon
-    -- over its user: EXE4's souls' chips).
+    -- over its user: EXE4's souls' chips), "not_named_on_use" (its use isn't
+    -- named to the other player: its own action names it, EXE4's Slasher as
+    -- it slashes).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
@@ -3060,12 +3062,24 @@ declare new: {
 -- refusal sound; the shared machinery for the button under the cursor (the
 -- picked chips scrapped, the chips not picked dealt again); whether the
 -- last pick is a chip; the state of the button under the cursor.
+export type FolderChip = { chip: Chip, code: string? }
 declare custom: {
     -- The side's battle folder as its screen has it: its 30 places in order,
-    -- false where a used chip left one empty until the screen deals; two of
-    -- its places swapped (1 to 30); how many chips the screen deals.
-    folder: (side: number) -> { Chip | false },
+    -- each chip with its code (a letter or "*"; nil: the code outside the
+    -- alphabet), false where a used chip left one empty until the screen
+    -- deals; two of its places swapped (1 to 30); a place written; how many
+    -- chips the screen deals.
+    folder: (side: number) -> { FolderChip | false },
     swap_folder: (side: number, a: number, b: number) -> (),
+    set_folder: (side: number, place: number, chip: Chip, code: string?) -> (),
+    -- The chip in a slot of the screen (0 to 11), dealt or offered: the chip
+    -- and its code, the folder place it was dealt from (nil: a chip from
+    -- outside the folder), whether it is the folder's Regular chip, and
+    -- whether it is picked; nil where the slot holds no chip (it is empty,
+    -- OK or a button). The picked slots, in order (a button's slot where
+    -- one is picked).
+    slot: (side: number, slot: number) -> { chip: Chip, code: string?, place: number?, regular: boolean, picked: boolean }?,
+    picks: (side: number) -> { number },
     -- As the screen deals (the rules' `deal`): a chip from outside the folder
     -- the screen shows in a slot (0 to 11) once laid out, in a code (a letter,
     -- or nil: the code outside the alphabet, EXE4's dark chips').
@@ -3125,6 +3139,11 @@ declare custom: {
     set_face: (side: number, form: FormDef?) -> (),
     pick_first: (side: number, icon: Chip?) -> (),
     set_button_state: (side: number, button: string, state: "selectable" | "unavailable" | "selected") -> (),
+    -- The uses one of the rules' buttons has left on this screen (its `uses`
+    -- as the screen opened), read and written: for a button whose rules
+    -- count them.
+    button_uses: (side: number, button: string) -> number,
+    set_button_uses: (side: number, button: string, uses: number) -> (),
     update_availability: (side: number) -> (),
     draw_emblem: (side: number, x: number) -> (),
     -- `by`: the rules' button or window whose pick holds the form.
@@ -3148,11 +3167,13 @@ declare custom: {
     repeated: (side: number, key: Key) -> boolean,
     -- The screen's drawing, for a window: the window's sprites (the
     -- emblem, the Regular chip's frame, the last turns' block), the Regular
-    -- chip's frame alone, the icon of the chip a button holds over that
+    -- chip's frame alone, the screen's cursor where it is, the icon of the
+    -- chip a button holds over that
     -- button (`hold_last_pick`), the Cross window's cursor, the chip window
     -- showing the slot under the cursor, and the window's Cross tab.
     draw_window: (side: number) -> (),
     draw_regular: (side: number) -> (),
+    draw_cursor: (side: number) -> (),
     draw_held: (side: number) -> (),
     draw_form_list_cursor: (side: number) -> (),
     show_chip_window: (side: number) -> (),

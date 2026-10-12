@@ -337,6 +337,10 @@ language = "ja"
 "bodygrd" = { name = "ボディガード", description = "ウラのあんさつしゃ\nをやとい てきを\nはいじょしてもらう" }
 "pdriver" = { name = "パイルドライバー", description = "目の前に たいよう\nジェネレーター!\n日の光でやきつくす" }
 "poltrgst" = { name = "ポルターガイスト", description = "" }
+"darkneo" = { name = "ダークメシアネオ", description = "やみにおちた\nきょうしゃたちの\nがったいわざ!" }
+"redsun" = { name = "メテオレッドサン", description = "3マス前方めがけて\nレッドサンのメテオ\n攻撃がふりそそぐ!" }
+"bluemoon" = { name = "ブルームーンレイ", description = "3マス前方めがけて\nブルームーンが力を\nうばう光をはなつ!" }
+"holydrem" = { name = "ホーリードリーム", description = "ホーリーパネルを\nすいこんで前方へ\nホーリーショット!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }

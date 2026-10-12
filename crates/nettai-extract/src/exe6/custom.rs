@@ -122,6 +122,7 @@ const LAYOUT: CustomLayout = CustomLayout {
             ],
         ],
     },
+    regular: (2, 100),
 };
 /// The cursor over the special slot's button (Beast Out: `sub_8028904`,
 /// `byte_8028918`), and over a button two slots wide in the slots' row (the
