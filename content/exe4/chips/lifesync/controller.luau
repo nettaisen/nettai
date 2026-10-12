@@ -32,8 +32,8 @@ local AIM, WARNING, AFTER, NOTHING = 0x14, 0x3C, 0x1E, 0x50
 -- The slots the warning and the sync read.
 local SLOTS = 2
 local SOUND_AIM = asset.sound("mark")
--- The sync's sound: the combatant's HP went up, or not.
-local SOUND_UP = asset.sound("lifesync-up")
+-- The sync's sound: the combatant's HP went up (ColorPt's point's), or not.
+local SOUND_UP = asset.sound("point-arrive")
 local SOUND_DOWN = asset.sound("lifesync")
 -- The warning's (0x08008424).
 local SOUND_WARNING = asset.sound("program-advance-part")

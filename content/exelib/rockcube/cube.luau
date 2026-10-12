@@ -1,9 +1,9 @@
 --!strict
 -- RockCube's and IceCube's dimming controller (EXE6's effect object #0x37, `sub_80E4634`; EXE5's the same code,
--- 0x080E4664): the usual dimming phases, with an effect that places a rock on the panel in front of the user and
--- waits 60 ticks. What differs between the chips is the rock (the original's chip parameters: its variant, its
--- field-object class and its entrance); between the games, their rock, its place sound and where the controller
--- spawns (a maker taking a game's look).
+-- 0x080E4664; EXE4's #0x37, 0x080E60AC): the usual dimming phases, with an effect that places a rock on the panel in
+-- front of the user and waits 60 ticks. What differs between the chips is the rock (the original's chip parameters:
+-- its variant, its field-object class and its entrance); between the games, their rock, its place sound, where the
+-- controller spawns and what of its user's side and facing it takes (a maker taking a game's look).
 
 local dimming_chips = require("@exelib/dimming")
 
@@ -24,6 +24,11 @@ export type CubeLook = {
     place_sound: Sound,
     -- Where the controller spawns, by its user and the dimming (none: where `dimming_chips.spawn` puts it).
     position: ((user: Object, spec: DimmingChipSpec) -> Vec3)?,
+    -- Its spawn copies the user's side alone, not its facing (`dimming_chips.spawn`'s `side_only`: EXE4's
+    -- 0x080E612C, whose effect then places the rock by its side's way, 0x080E60F8's object_getEnemyDirection, which
+    -- the unflipped controller faces); none: the side and the facing (EXE6's and EXE5's, whose effect places it by
+    -- the facing, object_getFrontDirection).
+    side_only: boolean?,
 }
 
 export type Cube = {
@@ -66,7 +71,7 @@ function cube.make(look: CubeLook): Cube
 
     local function places(placed: RockSpec): (user: Object, spec: DimmingChipSpec) -> Object?
         return function(user: Object, spec: DimmingChipSpec): Object?
-            local o = dimming_chips.spawn(kind, user, spec)
+            local o = dimming_chips.spawn(kind, user, spec, look.side_only)
             if o then
                 if look.position then
                     o.pos = look.position(user, spec)
