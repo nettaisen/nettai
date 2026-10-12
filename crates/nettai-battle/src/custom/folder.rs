@@ -154,9 +154,9 @@ impl BattleFolder {
 /// from len − 1 down to 1, swap entry i with entry `draw() % (i + 1)`; the
 /// draws after the first len − 1 are taken and dropped (`draws` is at least
 /// len − 1). The game's shuffles take two draws a round: `sub_8000D12` on a
-/// console's RNG1 (the folder, the re-deal) and `sub_8000C72` on RNG2
-/// (panel lists), whose callers pass 2 × rounds (docs/engine/battle-flow.md
-/// §3.1).
+/// console's RNG1 (the folder, the re-deal, EXE4's JunkSoul) and
+/// `sub_8000C72` on RNG2 (panel lists), whose callers pass 2 × rounds
+/// (docs/engine/battle-flow.md §3.1).
 pub fn shuffle<T>(items: &mut [T], draws: usize, mut draw: impl FnMut() -> u64) {
     let used = items.len().saturating_sub(1);
     assert!(used <= draws, "a shuffle of {} entries needs {used} draws, not {draws}", items.len());
