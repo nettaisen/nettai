@@ -12,7 +12,8 @@
 
 use crate::exe4::rom::{Addresses, Rom};
 use nettai_assets::{
-    BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLayout, MapEntry, Palette, TelopLook, Tiles, palettes_from_bytes,
+    BannerLayout, Chatbox, ChipIcon, DialogueFont, Hud, HudLayout, MapEntry, Palette, TelopLook, TelopTiles, Tiles,
+    palettes_from_bytes,
 };
 use nettai_content::names::AssetNames;
 
@@ -122,6 +123,15 @@ const MESSAGE_AT: (u8, u8, u8) = (8, 2, 14);
 const TELOP_PLACES: [(u8, u8); 2] = [(0, 32), (120, 32)];
 const TELOP_DIGITS: u32 = 0x0801_7A54;
 const TELOP_PALETTE: u32 = 0x0875_0E80;
+/// Where the telops' sprite tiles go among the banners': a banner's glyphs
+/// from tile 0x360 (0x0801617E's transfers to 0x06016C00, five 32x16
+/// sprites drawn by 0x080151FC); a telop's name from 0x360 on the left and
+/// 0x384 on the right (0x0801662A's 0x06016C00 and 0x06017080; 0x08015488
+/// draws a telop from x 104 on from 0x360 + 36); the '×' and '2' pieces
+/// into 0x380 to 0x383 (0x08016680's list, whichever telop); "PAUSE"
+/// loads the banners' palette, 0x08750E40, into sprite palette 11 with its
+/// tiles (0x080166D0's list).
+const TELOP_TILES: TelopTiles = TelopTiles { banner: 0x360, names: [0x360, 0x384], signs: 0x380, pause_loads_banner_palette: true };
 /// The chatbox (0x0804E3B4, `chatbox_runScript`'s counterpart): the box's
 /// twenty tiles (to BG0's tile 0x2AC, which its maps count from) and
 /// palette, the text's palette; the box's maps (0x0804E384: a kind's four
@@ -264,7 +274,7 @@ fn telop(rom: &Rom) -> TelopLook {
     }
     push(TIMES_GLYPH);
     push(TWO_GLYPH);
-    TelopLook { places: TELOP_PLACES, glyphs, palette: palette(rom, TELOP_PALETTE) }
+    TelopLook { places: TELOP_PLACES, glyphs, palette: palette(rom, TELOP_PALETTE), tiles: Some(TELOP_TILES) }
 }
 
 /// The HUD's graphics from Red Sun US (`rom`, its addresses `a`; Blue Moon

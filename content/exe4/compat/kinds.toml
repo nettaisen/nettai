@@ -311,7 +311,12 @@
 "thunman/thunder" = { pool = "attack", index = 0x71 }
 "metalman/navi" = { pool = "actor", index = 0x40 }
 "junkman/navi" = { pool = "actor", index = 0x48 }
-"junkman/poltergeist" = { pool = "effect", index = 0x73 }
+# The poltergeist (objects/poltergeist: effect #0x73, 0x080EA13C), JunkMan's and Poltrgst's stand-in's; Poltrgst's
+# controller (the dimming handler's variant 0x41, 0x080EA118: effect #0x72, 0x080EA05C) and stand-in (actor #0x58,
+# 0x080CC624): JunkSoul's charged shot's.
+"poltergeist" = { pool = "effect", index = 0x73 }
+"poltrgst/controller" = { pool = "effect", index = 0x72, scratch_position = true }
+"poltrgst/stand-in" = { pool = "actor", index = 0x58 }
 # The follow effect (effect #0x31, 0x080E58B4): one object in the original, its look and routine by its first
 # parameter; here each user's own kind: DeltaRay's bursts (look 4) and MetalMan's fist (look 5).
 "deltaray/burst" = { pool = "effect", index = 0x31 }
@@ -483,6 +488,10 @@
 "bugcharg/actor" = { pool = "actor", index = 0x59 }
 # ShotStar's controller (0x080E5C90; its position the dimming handler's registers); its meteors are Meteors'.
 "shotstar/controller" = { pool = "effect", index = 0x34, scratch_position = true }
+# BugChain's controller (0x080E65E0; its position the dimming handler's registers) and the mark over each navi
+# (0x080E6718).
+"bugchain/controller" = { pool = "effect", index = 0x3F, scratch_position = true }
+"bugchain/mark" = { pool = "effect", index = 0x40 }
 
 # PitRng's thrower (action 0x20's variant 0x0D, 0x080E9A36), spawned at the spawner's registers.
 "pitrng/thrower" = { pool = "effect", index = 0x6C, scratch_position = true }
