@@ -146,6 +146,10 @@ pub struct Viewer {
     text: Option<TextRenderer>,
     /// Each console's sound, by side (none: silent). Both run every tick.
     audio: Option<[BattleAudio; 2]>,
+    /// The host's levels for the sound, the music's and the effects'
+    /// ([`Viewer::set_sound_levels`]): the viewer's, whatever state it is
+    /// put back to.
+    levels: (f32, f32),
     /// What the drawing of the console not shown follows over time (the
     /// renderer has the shown one's).
     other_hud: HudState,
@@ -224,6 +228,7 @@ impl Viewer {
             renderer,
             text,
             audio: audio.map(|a| [a.clone(), a]),
+            levels: (1.0, 1.0),
             other_hud: HudState::default(),
             view,
             length: replay.ticks.len() as u32,
@@ -512,6 +517,7 @@ impl Viewer {
         self.frontier = (!self.whole).then(|| self.state());
         let Viewer { session, renderer, other_hud, audio, view, rounds, .. } = self;
         put(&here, session, renderer, other_hud, audio, *view, rounds);
+        self.level();
         self.whole
     }
 
@@ -667,6 +673,23 @@ impl Viewer {
             Kept::Near(i) => &near[i],
         };
         put(state, session, renderer, other_hud, audio, *view, rounds);
+        self.level();
+    }
+
+    /// The host's levels on the sound as it stands (a kept state's sound has the levels it was kept with).
+    fn level(&mut self) {
+        let (music, effects) = self.levels;
+        for sound in self.audio.iter_mut().flatten() {
+            sound.set_levels(music, effects);
+        }
+    }
+
+    /// The host's levels for the replay's sound, each 0 to 1 (1: as the
+    /// game plays it): its music's and its effects', as
+    /// [`crate::Player::set_sound_levels`]. They hold across seeks.
+    pub fn set_sound_levels(&mut self, music: f32, effects: f32) {
+        self.levels = (music, effects);
+        self.level();
     }
 
     /// After a jump: the sound kept for the host is of somewhere else, and

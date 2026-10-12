@@ -2035,6 +2035,13 @@ renderer, the font mode's text renderer and the battle's audio:
   somebody's.
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
+- `set_sound_levels(music, effects)` is the host's level for the battle's
+  music and for its effects, each 0 to 1. The game's driver mixes the two
+  into the one stream, so a host can't turn one down in the samples: the
+  driver mixes each note at its player's level (`m4a::Driver::set_level`,
+  through `BattleAudio::set_levels`; the music is one player's), and what
+  sounds is unchanged. At 1 and 1 the samples are the driver's own. A
+  replay's `Viewer` has the same call, and keeps the levels across seeks.
 - `late()` counts what the player made on the way that a preload makes
   ahead (§9): runtimes loaded on its thread, parts read from disk, and the
   text's strings and glyphs made for the first time.
