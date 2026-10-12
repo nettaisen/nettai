@@ -43,6 +43,10 @@ const STEP_BUDGET: Duration = Duration::from_millis(6);
 pub enum Play {
     /// A battle the shell runs: what plays its set (a live set against a dummy, a match over a link).
     Drive(Box<dyn Driver>),
+    /// The same, its driver made as the battle begins: an online match's, on the channel its lobby gives once
+    /// both sides have loaded (the `gate` holds the start until then). None: there is none after all, and no
+    /// battle begins.
+    Make(Box<dyn FnOnce() -> Option<Box<dyn Driver>>>),
     /// A replay to watch, from a side (none: its recorder's). Its set is `replay::set_of`'s.
     Watch(Box<Replay>, Option<u8>),
 }
@@ -205,6 +209,14 @@ impl Shell {
         }
         let driver = match start.play {
             Play::Drive(driver) => driver,
+            Play::Make(make) => match make() {
+                Some(driver) => driver,
+                None => {
+                    crate::errors::log("starting a battle", &"its driver wasn't made");
+                    self.loading_failed();
+                    return None;
+                }
+            },
             // A replay's viewer is its screen's: the cards go, and the screen shows it.
             Play::Watch(replay, side) => {
                 shell.set_versus(false);

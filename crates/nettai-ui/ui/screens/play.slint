@@ -1,48 +1,1418 @@
-// Play (docs/design/app-ui.md §6): online play. Not built yet: the screen is here with its header and Back, and
-// the match menu with what leaves a match. Its Rust half is src/screens/play.rs.
+// Play (docs/design/app-ui.md §6: "Play", "In an online match", "After a match"): online play. Its Rust half
+// is src/screens/play.rs, which sets `PlayView` and hears the controls by their names.
+//
+// The screen has three parts, one shown at a time (`PlayView.part`): the player's builds with the row that
+// makes a link (an invite, a code typed, a direct connection); the wait for the other player, a training
+// battle beside the invite's code; and the lobby, for as long as the two players stay together. The two cards
+// before a match and the match itself are the shell's (versus.slint, battle.slint); over the match are this
+// file's menu (`MatchMenu`) and the two builds shown while Tab is held (`MatchPeek`).
 
 import { Theme } from "../theme.slint";
-import { Shell, Page, PadButton } from "../shell.slint";
-import { MenuItem } from "../widgets.slint";
+import { Nav, NavKind, Focusable } from "../nav.slint";
+import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
+import { Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
+import { Arrive, Tween, Pulse, Flash } from "../motion.slint";
+
+// The part of Play shown.
+export enum PlayPart {
+    // The builds, and the row that makes a link.
+    builds,
+    // An invite is out: its code, and a training battle beside it.
+    waiting,
+    // The two players are together.
+    lobby,
+}
+
+// What the lobby's reserved line says.
+export enum LobbyNote {
+    none,
+    // The other player is ready and this one isn't; the other way about.
+    you,
+    them,
+    // The link is down and being made again (`PlayView.note-seconds` left).
+    reconnecting,
+}
+
+// A page of the match menu.
+export enum MatchPage {
+    menu,
+    yours,
+    theirs,
+    controls,
+    settings,
+}
+
+// A build as a list names it: its name, its navi, its version's tag, and how many things keep it from being
+// played (0: it is ready; -1: its file doesn't read).
+export struct PlayBuild {
+    name: string,
+    navi: string,
+    version: string,
+    problems: int,
+}
+
+// An action of the battle with what is bound to it: a key's cap; a pad's face button, drawn by its place, or a
+// button's cap.
+export struct PlayControl {
+    key: string,
+    face: PadButton,
+    pad: string,
+}
 
 // What Play shows: src/screens/play.rs sets these. (A struct or an enum a property here uses reaches Rust by
 // that use: nothing is added to app.slint for it.)
-export global PlayView { }
+export global PlayView {
+    in property <PlayPart> part;
+
+    // ---- The builds --------------------------------------------------------------------------------------
+    // The selected game's builds, and the one chosen (the one a link brings).
+    in property <[PlayBuild]> builds;
+    in property <int> chosen;
+    in property <PlayBuild> build;
+    // The code typed, as the app keeps it (capitals, in threes), and what the space beside JOIN says: a
+    // problem, in the error red, or that a link is being made (`message-quiet`).
+    in property <string> code;
+    in property <string> message;
+    in property <bool> message-quiet;
+
+    // ---- A direct connection -----------------------------------------------------------------------------
+    in property <bool> direct;
+    // This machine's address, for the other player; the address typed.
+    in property <string> host-address;
+    in property <string> address;
+    // What went wrong with hosting (in place of the line under the address), and with joining.
+    in property <string> host-message;
+    in property <string> join-message;
+    in property <bool> join-quiet;
+    // It counts the copies: what was copied flashes.
+    in property <int> copied-seq;
+
+    // ---- Waiting -----------------------------------------------------------------------------------------
+    // What the other player needs: the invite's code in threes, or a direct host's address.
+    in property <string> invite;
+    in property <bool> invite-direct;
+
+    // ---- The lobby ---------------------------------------------------------------------------------------
+    in property <string> their-name;
+    // The other player's lobby was heard: their card is there.
+    in property <bool> their-present;
+    in property <bool> ready;
+    in property <bool> their-ready;
+    // They count the times each turned ready: the mark stamps.
+    in property <int> ready-seq;
+    in property <int> their-ready-seq;
+    // The match's settings, both players': the rounds (1: a single battle; 3: best of 3) and closed builds.
+    in property <int> rounds: 3;
+    in property <bool> closed;
+    // The player's own.
+    in property <int> input-delay;
+    // The connection: its bars (0 to 4) and the round trip in ms (-1: not measured).
+    in property <int> bars;
+    in property <int> ping: -1;
+    in property <LobbyNote> note;
+    in property <int> note-seconds;
+    // Why the match before ended, where it didn't end by itself (in the error red, in the note's place).
+    in property <string> note-error;
+    // The room's code, for the footer.
+    in property <string> room;
+    // Another build is being chosen.
+    in property <bool> changing;
+
+    // ---- In a match --------------------------------------------------------------------------------------
+    in property <MatchPage> page;
+    // The builds are shown (Tab, or Select on a pad, is held).
+    in property <bool> peek;
+    // The match's builds are closed: the other player's isn't shown.
+    in property <bool> closed-match;
+    in property <PlayBuild> mine;
+    in property <PlayBuild> theirs;
+    in property <[PlayControl]> controls;
+    in property <int> music;
+    in property <int> effects;
+
+    // ---- Words the app needs -----------------------------------------------------------------------------
+    out property <string> you: @tr("YOU");
+    out property <string> opponent: @tr("OPPONENT");
+    out property <string> back-to-play: @tr("BACK TO PLAY");
+    out property <string> connecting: @tr("Connecting…");
+    // How a build stands, after its navi's name.
+    public pure function standing(problems: int) -> string {
+        if problems == 0 {
+            return @tr("ready");
+        }
+        if problems < 0 {
+            return @tr("can't be read");
+        }
+        return problems == 1 ? @tr("1 problem") : @tr("{} problems", problems);
+    }
+}
+
+// ---- The builds ------------------------------------------------------------------------------------------
+
+// A build of a list, 52 tall: its name, its navi and whether it can be played, its version's tag.
+component BuildItem inherits Rectangle {
+    in property <PlayBuild> build;
+    in property <string> nav;
+    in property <int> nav-index;
+    RowBack {
+        hover: touch.has-hover;
+    }
+
+    Value {
+        x: 12px;
+        y: 7px;
+        width: parent.width - 36px - tag.width;
+        height: 20px;
+        text: root.build.name;
+        font-weight: 700;
+    }
+
+    Text {
+        x: 12px;
+        y: 28px;
+        width: parent.width - 36px - tag.width;
+        height: 16px;
+        text: (root.build.navi == "" ? "" : root.build.navi + " · ") + PlayView.standing(root.build.problems);
+        color: root.build.problems != 0 ? Theme.bad : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    tag := Pill {
+        x: parent.width - 12px - self.width;
+        y: (parent.height - self.height) / 2;
+        text: root.build.version;
+    }
+
+    touch := RowTouch {
+        nav: root.nav;
+        nav-index: root.nav-index;
+    }
+}
+
+// The chosen build in one box, on a phone: Left and Right step through the builds, Enter opens them as a sheet.
+component BuildBox inherits Rectangle {
+    in property <PlayBuild> build;
+    in property <string> nav;
+    in property <bool> enabled: true;
+    height: 72px;
+    PanelBack { }
+
+    Value {
+        x: 16px;
+        y: 14px;
+        width: parent.width - 68px - tag.width;
+        height: 24px;
+        text: root.build.name;
+        font-size: 18px;
+        font-weight: 900;
+    }
+
+    Text {
+        x: 16px;
+        y: 42px;
+        width: parent.width - 68px - tag.width;
+        height: 16px;
+        text: (root.build.navi == "" ? "" : root.build.navi + " · ") + PlayView.standing(root.build.problems);
+        color: root.build.problems != 0 ? Theme.bad : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    tag := Pill {
+        x: parent.width - 40px - self.width;
+        y: (parent.height - self.height) / 2;
+        text: root.build.version;
+    }
+
+    ArrowDown {
+        x: parent.width - 24px;
+    }
+
+    Focusable {
+        nav: root.nav;
+        kind: NavKind.stepper;
+        enabled: root.enabled;
+    }
+}
+
+// A build as a panel shows it. (The build overview goes here, in each of its three places: beside Play's list,
+// and a player's panel in a match: docs/design/app-ui.md §6, "The build overview". Until it is there, a build
+// is its navi and its version.)
+component BuildFacts inherits Rectangle {
+    in property <PlayBuild> build;
+    // Its own name over the rest (not in a match: a panel there says whose it is).
+    in property <bool> named;
+    Value {
+        x: 0;
+        y: 0;
+        width: parent.width - tag.width - 12px;
+        height: root.named ? 28px : 0px;
+        visible: root.named;
+        text: root.build.name;
+        font-size: 20px;
+        font-weight: 900;
+    }
+
+    Value {
+        x: 0;
+        y: root.named ? 30px : 3px;
+        width: parent.width - tag.width - 12px;
+        height: 16px;
+        text: root.build.navi;
+        color: Theme.muted;
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    tag := Pill {
+        x: parent.width - self.width;
+        y: root.named ? 3px : 0px;
+        text: root.build.version;
+    }
+}
+
+// A player's panel in a match: who they are, over their build.
+component BuildPanel inherits Rectangle {
+    in property <string> role;
+    in property <string> who;
+    in property <PlayBuild> build;
+    in property <int> side;
+    width: 430px;
+    height: 124px;
+    PanelBack {
+        side: root.side;
+        accent: false;
+    }
+
+    Label {
+        x: 16px;
+        y: 16px;
+        width: parent.width - 32px;
+        height: 14px;
+        text: root.role;
+    }
+
+    Value {
+        x: 16px;
+        y: 32px;
+        width: parent.width - 32px;
+        height: 28px;
+        text: root.who;
+        font-size: 20px;
+        font-weight: 900;
+    }
+
+    BuildFacts {
+        x: 16px;
+        y: 72px;
+        width: parent.width - 32px;
+        height: 36px;
+        build: root.build;
+    }
+}
+
+// ---- The lobby -------------------------------------------------------------------------------------------
+
+// A player's card in the lobby: who they are, what they bring (this player's own card alone says it), and
+// whether they are ready, in a box that is there either way. The mark stamps as its player turns ready.
+component LobbyCard inherits Rectangle {
+    in property <string> role;
+    in property <string> name;
+    in property <PlayBuild> build;
+    in property <int> side;
+    in property <bool> ready;
+    in property <int> ready-seq;
+    property <length> pad: Theme.phone ? 16px : 24px;
+    stamp := Pulse {
+        seq: root.ready-seq;
+        duration: Theme.settle;
+    }
+
+    PanelBack {
+        side: root.side;
+        accent: false;
+    }
+
+    Label {
+        x: root.pad;
+        y: root.pad;
+        width: parent.width - 2 * root.pad;
+        height: 14px;
+        text: root.role;
+    }
+
+    Value {
+        x: root.pad;
+        y: root.pad + (Theme.phone ? 18px : 22px);
+        width: parent.width - 2 * root.pad;
+        height: Theme.phone ? 28px : 36px;
+        text: root.name;
+        font-size: Theme.phone ? 22px : 28px;
+        font-weight: 900;
+    }
+
+    HorizontalLayout {
+        x: root.pad;
+        y: root.pad + (Theme.phone ? 52px : 66px);
+        width: parent.width - 2 * root.pad - (Theme.phone ? mark.width + 12px : 0px);
+        height: 22px;
+        spacing: 8px;
+        alignment: start;
+        Value {
+            text: root.build.name;
+            font-size: Theme.phone ? 14px : 16px;
+        }
+
+        Pill {
+            text: root.build.version;
+            tone: root.side == 1 ? Theme.p1 : Theme.p2;
+        }
+    }
+
+    Value {
+        x: root.pad;
+        y: root.pad + (Theme.phone ? 78px : 95px);
+        width: parent.width - 2 * root.pad - (Theme.phone ? mark.width + 12px : 0px);
+        height: 16px;
+        text: root.build.navi;
+        color: Theme.muted;
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    mark := Rectangle {
+        x: parent.width - root.pad - self.width;
+        y: parent.height - root.pad - self.height;
+        width: 144px;
+        height: 32px;
+        transform-scale: 1 + stamp.v * 0.16;
+        Rectangle {
+            border-width: 1px;
+            border-color: root.ready ? Theme.good : Theme.line;
+        }
+
+        Flash {
+            seq: root.ready-seq;
+            tone: Theme.good;
+        }
+
+        Label {
+            x: 8px;
+            width: parent.width - 16px;
+            text: root.ready ? @tr("READY") : @tr("NOT READY");
+            color: root.ready ? Theme.good : Theme.muted;
+            font-size: 12px;
+            font-weight: 700;
+            horizontal-alignment: center;
+        }
+    }
+}
+
+// The match's settings and the connection, in one row. Rounds and Closed builds are the match's (either
+// player changes them, and both see it); the input delay is the player's own.
+component LobbyFacts inherits Rectangle {
+    height: 56px;
+    width: ping.x + ping.width + 24px;
+    PanelBack {
+        accent: false;
+    }
+
+    rounds-label := Value {
+        x: 24px;
+        text: @tr("Rounds");
+    }
+
+    rounds := Stepper {
+        x: rounds-label.x + rounds-label.width + 12px;
+        y: (parent.height - self.height) / 2;
+        nav: "lobby.rounds";
+        value: PlayView.rounds == 1 ? @tr("Single battle") : @tr("Best of {}", PlayView.rounds);
+        value-width: 148px;
+    }
+
+    Rectangle {
+        x: rounds.x + rounds.width + 32px;
+        y: 16px;
+        width: 1px;
+        height: 24px;
+        background: Theme.line;
+    }
+
+    closed-label := Value {
+        x: rounds.x + rounds.width + 65px;
+        text: @tr("Closed builds");
+    }
+
+    closed := Seg {
+        x: closed-label.x + closed-label.width + 12px;
+        y: (parent.height - self.height) / 2;
+        nav: "lobby.closed";
+        first: @tr("OFF");
+        second: @tr("ON");
+        chosen: PlayView.closed ? 1 : 0;
+    }
+
+    Rectangle {
+        x: closed.x + closed.width + 32px;
+        y: 16px;
+        width: 1px;
+        height: 24px;
+        background: Theme.line;
+    }
+
+    delay-label := Value {
+        x: closed.x + closed.width + 65px;
+        text: @tr("Input delay");
+    }
+
+    delay := Stepper {
+        x: delay-label.x + delay-label.width + 12px;
+        y: (parent.height - self.height) / 2;
+        nav: "lobby.delay";
+        value: PlayView.input-delay;
+        value-width: 48px;
+        numeric: true;
+    }
+
+    Rectangle {
+        x: delay.x + delay.width + 32px;
+        y: 16px;
+        width: 1px;
+        height: 24px;
+        background: Theme.line;
+    }
+
+    bars := Bars {
+        x: delay.x + delay.width + 65px;
+        y: (parent.height - self.height) / 2;
+        level: PlayView.bars;
+    }
+
+    ping-label := Value {
+        x: bars.x + bars.width + 12px;
+        text: @tr("Ping");
+        color: Theme.muted;
+        font-weight: 400;
+    }
+
+    ping := Mono {
+        x: ping-label.x + ping-label.width + 8px;
+        width: 60px;
+        text: PlayView.ping < 0 ? "" : @tr("{} ms", PlayView.ping);
+    }
+}
+
+// The same, on a phone: a row each.
+component LobbyFactsColumn inherits Rectangle {
+    height: 176px;
+    Value {
+        x: 0;
+        y: 0;
+        width: parent.width - 220px;
+        height: 44px;
+        text: @tr("Rounds");
+    }
+
+    Stepper {
+        x: parent.width - self.width;
+        y: 4px;
+        nav: "lobby.rounds";
+        value: PlayView.rounds == 1 ? @tr("Single battle") : @tr("Best of {}", PlayView.rounds);
+        value-width: 136px;
+    }
+
+    Value {
+        x: 0;
+        y: 44px;
+        width: parent.width - 132px;
+        height: 44px;
+        text: @tr("Closed builds");
+    }
+
+    Seg {
+        x: parent.width - self.width;
+        y: 48px;
+        nav: "lobby.closed";
+        first: @tr("OFF");
+        second: @tr("ON");
+        chosen: PlayView.closed ? 1 : 0;
+    }
+
+    Value {
+        x: 0;
+        y: 88px;
+        width: parent.width - 132px;
+        height: 44px;
+        text: @tr("Input delay");
+    }
+
+    Stepper {
+        x: parent.width - self.width;
+        y: 92px;
+        nav: "lobby.delay";
+        value: PlayView.input-delay;
+        value-width: 48px;
+        numeric: true;
+    }
+
+    Bars {
+        x: 0;
+        y: 147px;
+        level: PlayView.bars;
+    }
+
+    ping-label := Value {
+        x: 34px;
+        y: 132px;
+        height: 44px;
+        text: @tr("Ping");
+        color: Theme.muted;
+        font-weight: 400;
+    }
+
+    Mono {
+        x: ping-label.x + ping-label.width + 8px;
+        y: 132px;
+        width: 60px;
+        height: 44px;
+        text: PlayView.ping < 0 ? "" : @tr("{} ms", PlayView.ping);
+    }
+}
+
+// ---- The screen ------------------------------------------------------------------------------------------
 
 export component PlayScreen inherits Page {
-    title: @tr("PLAY");
-    back: @tr("MENU");
-    hints: [
+    property <[Hint]> hints-builds: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Choose") },
         { key: "Esc", pad: PadButton.east, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
+    property <[Hint]> hints-waiting: [
+        { key: "Esc", pad: PadButton.start, text: @tr("Training menu") },
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Fight") },
+    ];
+    property <[Hint]> hints-lobby: [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
+        { key: "←→", text: @tr("Move or change") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Choose") },
+        { key: "Tab", pad: PadButton.shoulders, text: @tr("Next") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Leave") },
+    ];
+    // The builds' part: the list's column, and the row under it.
+    property <length> list-width: 380px;
+    property <bool> none: PlayView.builds.length == 0;
+    // The waiting part: the picture, three times the battle's.
+    property <length> picture-width: Theme.phone ? self.body-width : 720px;
+    property <length> picture-height: self.picture-width * 2 / 3;
+    property <length> wait-height: Theme.phone ? 198px : 480px;
+    property <length> wait-top: Theme.phone ? 0px : (self.body-height - 480px) / 2;
+    property <length> wait-x: Theme.phone ? 0px : 744px;
+    property <length> wait-width: Theme.phone ? self.body-width : self.body-width - 744px;
+    // The lobby: the two cards, the row of settings, the buttons, the line.
+    property <length> card-width: Theme.phone ? self.body-width : 440px;
+    property <length> card-height: Theme.phone ? 126px : 220px;
+    property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 404px) / 2;
+    property <length> lobby-left: (self.body-width - 960px) / 2;
+    property <length> facts-top: Theme.phone ? 2 * self.card-height + 20px : self.lobby-top + 244px;
+    property <length> buttons-top: Theme.phone ? self.facts-top + 188px : self.lobby-top + 324px;
+    title: PlayView.part == PlayPart.lobby ? @tr("LOBBY") : PlayView.part == PlayPart.builds ? @tr("PLAY") : Theme.phone ? @tr("WAITING") : @tr("WAITING FOR OPPONENT");
+    back: PlayView.part == PlayPart.builds ? @tr("MENU") : @tr("PLAY");
+    hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;
+    status: PlayView.part == PlayPart.lobby && PlayView.room != "" ? PlayView.room : Shell.player;
+
+    // ---- The builds, and the row that makes a link ----
+    if PlayView.part == PlayPart.builds && !Theme.phone: Arrive {
+        order: 0;
+        Label {
+            x: 0;
+            y: 0;
+            width: root.list-width;
+            height: 14px;
+            text: @tr("YOUR BUILD");
+        }
+
+        list := ListView {
+            x: 0;
+            y: 26px;
+            width: root.list-width;
+            height: root.body-height - 90px;
+            visible: !root.none;
+            nav: "builds";
+            count: PlayView.builds.length;
+            row-height: 52px;
+            chosen: PlayView.chosen;
+            for slot in list.shown: BuildItem {
+                property <int> at: list.first + slot;
+                x: 0;
+                y: self.at * list.pitch;
+                width: list.row-width;
+                height: list.row-height;
+                build: PlayView.builds[self.at];
+                nav: list.nav;
+                nav-index: self.at;
+            }
+        }
+
+        // With no build of the game, one button in the list's place.
+        Button {
+            x: 0;
+            y: 26px;
+            visible: root.none;
+            enabled: root.none;
+            nav: "create";
+            text: @tr("CREATE A BUILD");
+            kind: ButtonKind.main;
+        }
+    }
+
+    if PlayView.part == PlayPart.builds && !Theme.phone && !root.none: Arrive {
+        order: 1;
+        Rectangle {
+            x: root.list-width + 24px;
+            y: 0;
+            width: root.body-width - root.list-width - 24px;
+            height: root.body-height - 64px;
+            PanelBack { }
+
+            BuildFacts {
+                x: 16px;
+                y: 16px;
+                width: parent.width - 32px;
+                height: 48px;
+                build: PlayView.build;
+                named: true;
+            }
+        }
+    }
+
+    if PlayView.part == PlayPart.builds && Theme.phone: Arrive {
+        order: 0;
+        Label {
+            x: 0;
+            y: 0;
+            width: root.body-width;
+            height: 14px;
+            text: @tr("YOUR BUILD");
+        }
+
+        BuildBox {
+            x: 0;
+            y: 22px;
+            width: root.body-width;
+            visible: !root.none;
+            enabled: !root.none;
+            nav: "builds";
+            build: PlayView.build;
+        }
+
+        Button {
+            x: 0;
+            y: 22px;
+            width: root.body-width;
+            visible: root.none;
+            enabled: root.none;
+            nav: "create";
+            text: @tr("CREATE A BUILD");
+            kind: ButtonKind.main;
+            big: true;
+        }
+    }
+
+    // One row (on a phone, one under the other): an invite, a code typed, a direct connection. The space
+    // beside JOIN is there whether or not it says anything.
+    if PlayView.part == PlayPart.builds: Arrive {
+        order: 2;
+        invite := Button {
+            x: 0;
+            y: Theme.phone ? 106px : root.body-height - 40px;
+            width: Theme.phone ? root.body-width : self.natural-width;
+            nav: "invite";
+            text: @tr("CREATE INVITE");
+            kind: ButtonKind.main;
+            big: Theme.phone;
+            enabled: !root.none;
+        }
+
+        Rectangle {
+            x: invite.x + invite.width + 12px;
+            y: root.body-height - 32px;
+            width: 1px;
+            height: 24px;
+            visible: !Theme.phone;
+            background: Theme.line;
+        }
+
+        code := Field {
+            x: Theme.phone ? 0px : invite.x + invite.width + 25px;
+            y: Theme.phone ? 170px : root.body-height - 40px;
+            width: Theme.phone ? root.body-width - join.width - 8px : 176px;
+            nav: "code";
+            text: PlayView.code;
+            placeholder: @tr("INVITE CODE");
+            code: true;
+            error: PlayView.message != "" && !PlayView.message-quiet;
+            enabled: !root.none;
+        }
+
+        join := Button {
+            x: code.x + code.width + (Theme.phone ? 8px : 12px);
+            y: code.y;
+            nav: "join";
+            text: @tr("JOIN");
+            enabled: !root.none;
+        }
+
+        direct := Button {
+            x: Theme.phone ? 0px : root.body-width - self.width;
+            y: Theme.phone ? 262px : root.body-height - 40px;
+            width: Theme.phone ? root.body-width : self.natural-width;
+            nav: "direct";
+            text: @tr("DIRECT CONNECT");
+            kind: ButtonKind.ghost;
+            enabled: !root.none;
+        }
+
+        Note {
+            x: Theme.phone ? 0px : join.x + join.width + 12px;
+            y: Theme.phone ? 214px : root.body-height - 40px;
+            width: Theme.phone ? root.body-width : direct.x - self.x - 12px;
+            height: 40px;
+            text: PlayView.message;
+            color: PlayView.message-quiet ? Theme.muted : Theme.bad;
+            font-size: 12px;
+        }
+    }
+
+    // ---- Waiting for the other player: the invite's code, and a training battle beside it ----
+    if PlayView.part == PlayPart.waiting: Arrive {
+        order: 0;
+        Picture {
+            x: 0;
+            y: Theme.phone ? root.wait-height + 12px : root.wait-top;
+            width: root.picture-width;
+            height: root.picture-height;
+            ground: Theme.inset;
+        }
+
+        Rectangle {
+            x: 12px;
+            y: (Theme.phone ? root.wait-height + 12px : root.wait-top) + root.picture-height - 34px;
+            width: training.preferred-width + 16px;
+            height: 22px;
+            background: Theme.shade;
+            training := Text {
+                text: @tr("TRAINING");
+                color: Theme.text;
+                font-family: Theme.display;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: Theme.label-tracking;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+    }
+
+    if PlayView.part == PlayPart.waiting: Arrive {
+        order: 1;
+        Rectangle {
+            x: root.wait-x;
+            y: root.wait-top;
+            width: root.wait-width;
+            height: root.wait-height;
+            PanelBack { }
+
+            Label {
+                x: 16px;
+                y: Theme.phone ? 12px : 16px;
+                width: parent.width - 32px;
+                height: 14px;
+                text: PlayView.invite-direct ? @tr("YOUR ADDRESS") : @tr("INVITE CODE");
+            }
+
+            Mono {
+                x: 16px;
+                y: Theme.phone ? 30px : 38px;
+                width: parent.width - 32px;
+                height: Theme.phone ? 48px : 64px;
+                text: PlayView.invite;
+                font-size: PlayView.invite-direct ? (Theme.phone ? 22px : 28px) : (Theme.phone ? 40px : 56px);
+                letter-spacing: PlayView.invite-direct ? 0px : 2.2px;
+            }
+
+            copy := Button {
+                x: 16px;
+                y: Theme.phone ? 88px : 114px;
+                nav: "wait.copy";
+                text: PlayView.invite-direct ? @tr("COPY ADDRESS") : @tr("COPY CODE");
+            }
+
+            Flash {
+                x: copy.x;
+                y: copy.y;
+                width: copy.width;
+                height: copy.height;
+                seq: PlayView.copied-seq;
+            }
+
+            Rule {
+                x: 16px;
+                y: 170px;
+                width: parent.width - 32px;
+                visible: !Theme.phone;
+            }
+
+            Rectangle {
+                x: 16px;
+                y: Theme.phone ? 145px : 191px;
+                width: 10px;
+                height: 10px;
+                border-radius: 5px;
+                background: Theme.cursor;
+                opacity: Theme.motion ? 0.35 + 0.65 * abs(sin(mod(animation-tick(), 2.2s) / 2.2s * 360deg)) : 1;
+            }
+
+            Value {
+                x: 34px;
+                y: Theme.phone ? 140px : 186px;
+                width: parent.width - 50px;
+                height: 20px;
+                text: @tr("Waiting for opponent");
+            }
+
+            Note {
+                x: 16px;
+                y: Theme.phone ? 164px : 212px;
+                width: parent.width - 32px;
+                height: 20px;
+                text: @tr("The lobby opens when they join.");
+            }
+
+            Button {
+                x: Theme.phone ? copy.x + copy.width + 8px : 16px;
+                y: Theme.phone ? 88px : parent.height - 56px;
+                nav: "wait.cancel";
+                text: @tr("CANCEL");
+                kind: ButtonKind.ghost;
+            }
+        }
+    }
+
+    // ---- The lobby ----
+    if PlayView.part == PlayPart.lobby: Arrive {
+        order: 0;
+        LobbyCard {
+            x: Theme.phone ? 0px : root.lobby-left;
+            y: root.lobby-top;
+            width: root.card-width;
+            height: root.card-height;
+            role: PlayView.you;
+            name: Shell.player;
+            build: PlayView.build;
+            side: 1;
+            ready: PlayView.ready;
+            ready-seq: PlayView.ready-seq;
+        }
+
+        Text {
+            x: root.lobby-left + 440px;
+            y: root.lobby-top;
+            width: 80px;
+            height: root.card-height;
+            visible: !Theme.phone;
+            text: @tr("VS");
+            color: Theme.dim;
+            font-family: Theme.display;
+            font-size: 28px;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+    }
+
+    // The other player's card slides in as they join.
+    if PlayView.part == PlayPart.lobby: Rectangle {
+        x: 0;
+        y: 0;
+        width: root.body-width;
+        height: root.body-height;
+        joined := Tween {
+            held: !PlayView.their-present;
+        }
+
+        Rectangle {
+            x: (1 - joined.t) * 56px;
+            opacity: joined.t;
+            visible: PlayView.their-present;
+            LobbyCard {
+                x: Theme.phone ? 0px : root.lobby-left + 520px;
+                y: Theme.phone ? root.card-height + 8px : root.lobby-top;
+                width: root.card-width;
+                height: root.card-height;
+                role: PlayView.opponent;
+                name: PlayView.their-name;
+                side: 2;
+                ready: PlayView.their-ready;
+                ready-seq: PlayView.their-ready-seq;
+            }
+        }
+    }
+
+    if PlayView.part == PlayPart.lobby && !Theme.phone: Arrive {
+        order: 1;
+        LobbyFacts {
+            x: (root.body-width - self.width) / 2;
+            y: root.facts-top;
+        }
+    }
+
+    if PlayView.part == PlayPart.lobby && Theme.phone: Arrive {
+        order: 1;
+        LobbyFactsColumn {
+            x: 0;
+            y: root.facts-top;
+            width: root.body-width;
+        }
+    }
+
+    if PlayView.part == PlayPart.lobby: Arrive {
+        order: 2;
+        ready := Button {
+            x: Theme.phone ? 0px : (root.body-width - self.width - change.width - leave.width - 24px) / 2;
+            y: root.buttons-top;
+            width: Theme.phone ? root.body-width : 184px;
+            nav: "lobby.ready";
+            text: PlayView.ready ? @tr("NOT READY") : @tr("READY");
+            kind: ButtonKind.main;
+            big: Theme.phone;
+        }
+
+        change := Button {
+            x: Theme.phone ? 0px : ready.x + ready.width + 12px;
+            y: Theme.phone ? root.buttons-top + 60px : root.buttons-top;
+            width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
+            nav: "lobby.change";
+            text: @tr("CHANGE BUILD");
+        }
+
+        leave := Button {
+            x: change.x + change.width + (Theme.phone ? 8px : 12px);
+            y: change.y;
+            width: Theme.phone ? (root.body-width - 8px) / 2 : self.natural-width;
+            nav: "lobby.leave";
+            text: @tr("LEAVE");
+            kind: ButtonKind.ghost;
+        }
+
+        // The reserved line: who is waited for, that the link is being made again, or why the match before
+        // ended.
+        Message {
+            x: 0;
+            y: change.y + 64px;
+            width: root.body-width;
+            text: PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : "";
+            tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting ? Theme.bad : Theme.muted;
+            horizontal-alignment: center;
+        }
+    }
 }
 
+// ---- Over the match --------------------------------------------------------------------------------------
+
 // The match menu: Start or Esc in an online match, in place of the game's own pause. The match keeps running
-// behind it.
+// behind it. Its pages are the menu itself, and what four of its items open: each player's build, the
+// controls, the settings a player may want in a match.
 export component MatchMenu inherits MenuOverlay {
-    title: @tr("MENU");
-    note: @tr("The match keeps running");
-    content-height: 96px;
-    MenuItem {
+    property <bool> their-item: !PlayView.closed-match;
+    property <length> shift: root.their-item ? 48px : 0px;
+    property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), "A", "B", "L", "R", "START", "SELECT"];
+    title: PlayView.page == MatchPage.yours ? @tr("YOUR BUILD") : PlayView.page == MatchPage.theirs ? @tr("THEIR BUILD") : PlayView.page == MatchPage.controls ? @tr("CONTROLS") : PlayView.page == MatchPage.settings ? @tr("SETTINGS") : @tr("MENU");
+    note: PlayView.page == MatchPage.menu ? @tr("The match keeps running") : "";
+    side: PlayView.page != MatchPage.menu;
+    content-height: 240px + root.shift;
+    if PlayView.page == MatchPage.menu: Rectangle {
         x: 0;
         y: 0;
         width: root.inner-width;
-        nav: "menu.resume";
-        text: @tr("BACK TO MATCH");
+        height: root.inner-height;
+        MenuItem {
+            x: 0;
+            y: 0;
+            width: root.inner-width;
+            nav: "menu.resume";
+            text: @tr("BACK TO MATCH");
+        }
+
+        MenuItem {
+            x: 0;
+            y: 48px;
+            width: root.inner-width;
+            nav: "menu.yours";
+            text: @tr("YOUR BUILD");
+        }
+
+        if root.their-item: MenuItem {
+            x: 0;
+            y: 96px;
+            width: root.inner-width;
+            nav: "menu.theirs";
+            text: @tr("THEIR BUILD");
+        }
+
+        MenuItem {
+            x: 0;
+            y: 96px + root.shift;
+            width: root.inner-width;
+            nav: "menu.controls";
+            text: @tr("CONTROLS");
+        }
+
+        MenuItem {
+            x: 0;
+            y: 144px + root.shift;
+            width: root.inner-width;
+            nav: "menu.settings";
+            text: @tr("SETTINGS");
+        }
+
+        MenuItem {
+            x: 0;
+            y: 192px + root.shift;
+            width: root.inner-width;
+            nav: "menu.leave";
+            text: @tr("LEAVE MATCH");
+            danger: true;
+        }
     }
 
-    MenuItem {
+    // A player's build, to stay until Back.
+    if PlayView.page == MatchPage.yours || PlayView.page == MatchPage.theirs: Rectangle {
         x: 0;
-        y: 48px;
+        y: 0;
         width: root.inner-width;
-        nav: "menu.leave";
-        text: @tr("LEAVE MATCH");
-        danger: true;
+        height: root.inner-height;
+        BuildFacts {
+            x: 0;
+            y: 0;
+            width: root.inner-width;
+            height: 36px;
+            build: PlayView.page == MatchPage.yours ? PlayView.mine : PlayView.theirs;
+        }
+
+        Button {
+            x: 0;
+            y: root.inner-height - 40px;
+            nav: "menu.back";
+            text: @tr("BACK");
+        }
+    }
+
+    // What is bound to each of the battle's buttons.
+    if PlayView.page == MatchPage.controls: Rectangle {
+        x: 0;
+        y: 0;
+        width: root.inner-width;
+        height: root.inner-height;
+        Label {
+            x: root.inner-width - 232px;
+            y: 0;
+            width: 110px;
+            height: 20px;
+            text: @tr("KEY");
+        }
+
+        Label {
+            x: root.inner-width - 110px;
+            y: 0;
+            width: 110px;
+            height: 20px;
+            text: @tr("PAD");
+        }
+
+        for control[i] in PlayView.controls: Rectangle {
+            x: 0;
+            y: 24px + i * 34px;
+            width: root.inner-width;
+            height: 30px;
+            Value {
+                x: 0;
+                width: parent.width - 244px;
+                text: root.actions[i];
+            }
+
+            Mono {
+                x: parent.width - 232px;
+                width: 110px;
+                text: control.key;
+            }
+
+            Mono {
+                x: parent.width - 110px;
+                width: 110px;
+                text: control.face == PadButton.none ? control.pad : "";
+            }
+
+            FaceButton {
+                x: parent.width - 110px;
+                visible: control.face != PadButton.none;
+                button: control.face;
+            }
+        }
+
+        Button {
+            x: 0;
+            y: root.inner-height - 40px;
+            nav: "menu.back";
+            text: @tr("BACK");
+        }
+    }
+
+    // The settings a player may want in a match: their input delay, and the sound's two levels.
+    if PlayView.page == MatchPage.settings: Rectangle {
+        x: 0;
+        y: 0;
+        width: root.inner-width;
+        height: root.inner-height;
+        Value {
+            x: 0;
+            y: 0;
+            width: root.inner-width - 244px;
+            height: 44px;
+            text: @tr("Input delay");
+        }
+
+        Stepper {
+            x: root.inner-width - self.width;
+            y: 4px;
+            nav: "menu.delay";
+            value: PlayView.input-delay;
+            value-width: 48px;
+            numeric: true;
+        }
+
+        Value {
+            x: 0;
+            y: 48px;
+            width: root.inner-width - 244px;
+            height: 44px;
+            text: @tr("Music");
+        }
+
+        Slider {
+            x: root.inner-width - 232px;
+            y: 50px;
+            width: 232px;
+            nav: "menu.music";
+            value: PlayView.music;
+        }
+
+        Value {
+            x: 0;
+            y: 96px;
+            width: root.inner-width - 244px;
+            height: 44px;
+            text: @tr("Sound effects");
+        }
+
+        Slider {
+            x: root.inner-width - 232px;
+            y: 98px;
+            width: 232px;
+            nav: "menu.effects";
+            value: PlayView.effects;
+        }
+
+        Button {
+            x: 0;
+            y: root.inner-height - 40px;
+            nav: "menu.back";
+            text: @tr("BACK");
+        }
     }
 }
 
-// What opens over Play: its dialogs, and on a phone its sheets. It covers the whole window, over the screen
-// and under the shell's own dialogs; empty, it takes no clicks.
-export component PlayOverlay inherits Rectangle { }
+// Both builds, over the match while Tab (Select on a pad) is held: the player's on their side, the other
+// player's on theirs; with closed builds, the player's own alone. It takes no clicks and no keys: the match
+// goes on under it.
+export component MatchPeek inherits Rectangle {
+    if PlayView.peek: BuildPanel {
+        x: Theme.margin;
+        y: 24px;
+        width: min(430px, parent.width - 2 * Theme.margin);
+        role: PlayView.you;
+        who: Shell.player;
+        build: PlayView.mine;
+        side: 1;
+    }
+
+    if PlayView.peek && !PlayView.closed-match: BuildPanel {
+        x: Theme.phone ? Theme.margin : parent.width - Theme.margin - self.width;
+        y: Theme.phone ? 156px : 24px;
+        width: min(430px, parent.width - 2 * Theme.margin);
+        role: PlayView.opponent;
+        who: PlayView.their-name;
+        build: PlayView.theirs;
+        side: 2;
+    }
+}
+
+// ---- Over the screen -------------------------------------------------------------------------------------
+
+// What opens over Play: a direct connection's dialog, and the lobby's list of builds to change to. It covers
+// the whole window, over the screen and under the shell's own dialogs; empty, it takes no clicks.
+export component PlayOverlay inherits Rectangle {
+    // A direct connection: host, with this machine's address to send; or join, by the host's address.
+    if PlayView.direct: direct := DialogFrame {
+        title: @tr("Direct connection");
+        content-height: 252px;
+        Label {
+            x: 0;
+            y: 0;
+            width: direct.inner-width;
+            height: 14px;
+            text: @tr("HOST");
+        }
+
+        // This machine's address: Enter copies it.
+        Rectangle {
+            x: 0;
+            y: 22px;
+            width: direct.inner-width - host.width - 8px;
+            height: 40px;
+            Rectangle {
+                background: Theme.inset;
+                border-width: 1px;
+                border-color: copy.has-hover ? Theme.muted : Theme.line;
+            }
+
+            Mono {
+                x: 12px;
+                width: parent.width - 36px - word.width;
+                text: PlayView.host-address;
+            }
+
+            word := Label {
+                x: parent.width - 12px - self.width;
+                width: self.preferred-width;
+                text: @tr("COPY");
+            }
+
+            Flash {
+                seq: PlayView.copied-seq;
+            }
+
+            copy := Focusable {
+                nav: "direct.copy";
+            }
+        }
+
+        host := Button {
+            x: direct.inner-width - self.width;
+            y: 22px;
+            nav: "direct.host";
+            text: @tr("HOST");
+            kind: ButtonKind.main;
+        }
+
+        // One line: what to do with the address, or why this machine can't host.
+        Note {
+            x: 0;
+            y: 67px;
+            width: direct.inner-width;
+            height: 20px;
+            text: PlayView.host-message != "" ? PlayView.host-message : @tr("Send this address to your opponent.");
+            color: PlayView.host-message != "" ? Theme.bad : Theme.muted;
+            wrap: no-wrap;
+            overflow: elide;
+        }
+
+        Rule {
+            x: 0;
+            y: 100px;
+            width: direct.inner-width;
+        }
+
+        Label {
+            x: 0;
+            y: 114px;
+            width: direct.inner-width;
+            height: 14px;
+            text: @tr("JOIN");
+        }
+
+        Field {
+            x: 0;
+            y: 136px;
+            width: direct.inner-width - connect.width - 8px;
+            nav: "direct.address";
+            text: PlayView.address;
+            placeholder: @tr("address:port");
+            error: PlayView.join-message != "" && !PlayView.join-quiet;
+        }
+
+        connect := Button {
+            x: direct.inner-width - self.width;
+            y: 136px;
+            nav: "direct.connect";
+            text: @tr("CONNECT");
+        }
+
+        Message {
+            x: 0;
+            y: 180px;
+            width: direct.inner-width;
+            text: PlayView.join-message;
+            tone: PlayView.join-quiet ? Theme.muted : Theme.bad;
+        }
+
+        Button {
+            x: direct.inner-width - self.width;
+            y: 212px;
+            nav: "direct.cancel";
+            text: @tr("CANCEL");
+            kind: ButtonKind.ghost;
+        }
+    }
+
+    // Another build for the lobby: the player's builds of the game.
+    if PlayView.changing: change := DialogFrame {
+        title: @tr("Change build");
+        panel-width: 460px;
+        content-height: 322px;
+        list := ListView {
+            x: 0;
+            y: 0;
+            width: change.inner-width;
+            height: 268px;
+            nav: "change.builds";
+            count: PlayView.builds.length;
+            row-height: 52px;
+            chosen: PlayView.chosen;
+            for slot in list.shown: BuildItem {
+                property <int> at: list.first + slot;
+                x: 0;
+                y: self.at * list.pitch;
+                width: list.row-width;
+                height: list.row-height;
+                build: PlayView.builds[self.at];
+                nav: list.nav;
+                nav-index: self.at;
+            }
+        }
+
+        Button {
+            x: change.inner-width - self.width;
+            y: 282px;
+            nav: "change.cancel";
+            text: @tr("CANCEL");
+            kind: ButtonKind.ghost;
+        }
+    }
+}

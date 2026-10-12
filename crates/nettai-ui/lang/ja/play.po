@@ -4,11 +4,168 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
 
+# ---- The builds, and the row that makes a link ----
+
+msgid "YOUR BUILD"
+msgstr "使うビルド"
+
+# How a build stands, after its navi's name: "MegaMan · ready".
+msgid "ready"
+msgstr "使用可"
+
+msgid "can't be read"
+msgstr "読み込めません"
+
+msgid "1 problem"
+msgstr "問題 1 件"
+
+msgid "{} problems"
+msgstr "問題 {} 件"
+
+msgid "CREATE A BUILD"
+msgstr "ビルドを作る"
+
+msgid "CREATE INVITE"
+msgstr "招待を作る"
+
+msgid "INVITE CODE"
+msgstr "招待コード"
+
+msgid "JOIN"
+msgstr "参加"
+
+msgid "DIRECT CONNECT"
+msgstr "直接接続"
+
+msgid "Connecting…"
+msgstr "接続中…"
+
+msgid "Choose"
+msgstr "決定"
+
+# ---- A direct connection ----
+
+msgid "Direct connection"
+msgstr "直接接続"
+
+msgid "HOST"
+msgstr "ホスト"
+
+msgid "COPY"
+msgstr "コピー"
+
+msgid "Send this address to your opponent."
+msgstr "このアドレスを対戦相手に伝えてください。"
+
+msgid "address:port"
+msgstr "アドレス:ポート"
+
+msgid "CONNECT"
+msgstr "接続"
+
+msgid "CANCEL"
+msgstr "キャンセル"
+
+# ---- Waiting for the other player ----
+
+msgid "WAITING FOR OPPONENT"
+msgstr "対戦相手を待っています"
+
+# The same title where there is little room (a phone).
+msgid "WAITING"
+msgstr "待機中"
+
+msgid "YOUR ADDRESS"
+msgstr "あなたのアドレス"
+
+msgid "COPY CODE"
+msgstr "コードをコピー"
+
+msgid "COPY ADDRESS"
+msgstr "アドレスをコピー"
+
+msgid "Waiting for opponent"
+msgstr "対戦相手を待っています"
+
+msgid "The lobby opens when they join."
+msgstr "相手が参加するとロビーが開きます。"
+
+msgid "Training menu"
+msgstr "トレーニングメニュー"
+
+msgid "Fight"
+msgstr "バトル"
+
+# ---- The lobby ----
+
+msgid "LOBBY"
+msgstr "ロビー"
+
+msgid "YOU"
+msgstr "あなた"
+
+msgid "OPPONENT"
+msgstr "対戦相手"
+
+msgid "READY"
+msgstr "準備完了"
+
+msgid "NOT READY"
+msgstr "準備中"
+
+msgid "Rounds"
+msgstr "ラウンド"
+
+msgid "Single battle"
+msgstr "1本勝負"
+
+msgid "Best of {}"
+msgstr "{}本勝負"
+
+msgid "Closed builds"
+msgstr "ビルド非公開"
+
+msgid "Ping"
+msgstr "Ping"
+
+msgid "CHANGE BUILD"
+msgstr "ビルド変更"
+
+msgid "Change build"
+msgstr "ビルド変更"
+
+msgid "LEAVE"
+msgstr "退出"
+
+msgid "Leave"
+msgstr "退出"
+
+msgid "Move or change"
+msgstr "移動・変更"
+
+msgid "Waiting for you to ready up."
+msgstr "あなたの準備を待っています。"
+
+msgid "Waiting for your opponent to ready up."
+msgstr "対戦相手の準備を待っています。"
+
+# A failure's button, back to Play's first part.
+msgid "BACK TO PLAY"
+msgstr "対戦メニューにもどる"
+
+# ---- In a match ----
+
 msgid "BACK TO MATCH"
 msgstr "対戦にもどる"
+
+msgid "THEIR BUILD"
+msgstr "相手のビルド"
 
 msgid "LEAVE MATCH"
 msgstr "対戦をやめる"
 
 msgid "The match keeps running"
 msgstr "対戦は止まりません"
+
+msgid "BACK"
+msgstr "もどる"

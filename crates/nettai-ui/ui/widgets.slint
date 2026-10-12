@@ -135,6 +135,8 @@ export component Message inherits Rectangle {
     in property <TextHorizontalAlignment> horizontal-alignment: left;
     height: 16px;
     Text {
+        // (As wide as the line: a text of its own width would sit in the line's middle whatever its alignment.)
+        width: parent.width;
         text: root.text;
         color: root.tone;
         font-family: Theme.body;
@@ -235,6 +237,8 @@ export component Button inherits Rectangle {
     // 52 tall (START TRAINING).
     in property <bool> big;
     out property <bool> focused: hit.focused;
+    // The width it has unless it is given one: for a user that gives it another only sometimes (on a phone).
+    out property <length> natural-width: max(120px, label.preferred-width + 32px);
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     property <brush> fill-main: hit.has-hover ? Theme.action.brighter(12%) : Theme.action;
     property <brush> fill-ghost: hit.has-hover && root.enabled ? Theme.tint : transparent;
@@ -247,7 +251,7 @@ export component Button inherits Rectangle {
     // The main action's sheen: a band of light across it every few seconds.
     property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
     height: root.big ? 52px : 40px;
-    width: max(120px, label.preferred-width + 32px);
+    width: root.natural-width;
     press := Pulse {
         seq: root.presses;
     }

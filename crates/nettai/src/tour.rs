@@ -47,8 +47,17 @@ const SETTLE: u64 = 260;
 /// The sizes walked, in points: the reference window, and a phone held upright.
 const SIZES: [(&str, u32, u32); 2] = [("desktop", 1280, 800), ("phone", 390, 800)];
 
+/// A shot's place in a pair: the first is kept, and the second compared with it (they may differ only inside
+/// the controls the step between them touched, and the cursor around them).
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Pair {
+    None,
+    First,
+    Second,
+}
+
 /// What the pass keeps as it goes.
-struct Tour {
+pub(crate) struct Tour {
     dir: PathBuf,
     /// The shot being arranged (`menu-en-desktop`): what a cut text is reported under.
     tag: RefCell<String>,
@@ -79,8 +88,16 @@ struct Burst {
     shots: Vec<BurstShot>,
 }
 
-type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
+pub(crate) type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
 type Until = Box<dyn Fn(&App) -> bool>;
+
+impl Tour {
+    /// The step after this one waits for `come`, beyond its time (or a minute): something that comes by
+    /// itself (a thread's work, another player's answer).
+    pub(crate) fn wait_until(&self, come: impl Fn(&App) -> bool + 'static) {
+        *self.until.borrow_mut() = Some(Box::new(come));
+    }
+}
 
 /// Whether the pass found something wrong (the process's status).
 pub fn failed() -> bool {
@@ -152,13 +169,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     let mut add = |wait: u64, step: Step| steps.push((wait, step));
     // A shot: the texts' check started again, the picture written (and kept, if `first` of a pair; compared
     // with the pair's first, if `second`, which may differ only inside `also` and the two cursors).
-    #[derive(Clone, Copy, PartialEq)]
-    enum Pair {
-        None,
-        First,
-        Second,
-    }
-    let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair| {
+    let shot =|add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair| {
         let tag = format!("{name}-{lang}-{size}");
         let t = tag.clone();
         add(
@@ -218,6 +229,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
+    // (`NETTAI_TOUR_ONLY=play`: Play's steps alone.)
+    if std::env::var("NETTAI_TOUR_ONLY").as_deref() == Ok("play") {
+        return crate::screens::play::tour::steps(&mut add, &shot);
+    }
 
     // Loading, as the app starts.
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = Some(0.62)));
@@ -241,11 +256,14 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.nav.show_cursor(false, false)));
     shot(&mut add, "menu-pointer", Pair::None);
 
-    // The four screens to be built.
-    for (name, to) in [("play", ScreenId::Play), ("training", ScreenId::Training), ("builds", ScreenId::Builds), ("replays", ScreenId::Replays)] {
+    // The screens to be built.
+    for (name, to) in [("training", ScreenId::Training), ("builds", ScreenId::Builds), ("replays", ScreenId::Replays)] {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
+
+    // Play, with a second player (its own steps: `screens/play/tour.rs`).
+    crate::screens::play::tour::steps(&mut add, &shot);
 
     // Settings: the focus a step down; a value changed under the focus; a field being edited; a select's list;
     // the groups down the page.
@@ -432,6 +450,8 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     burst(&mut add, "page-scrolls", &[0, 30, 60, 100, 200], focus("set.folder", 0));
     burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
     add(SETTLE, act(Action::Confirm));
+    // The lobby's set pieces, with a second player (`screens/play/tour.rs`).
+    crate::screens::play::tour::motion(&mut add, &burst);
     add(SETTLE, go(ScreenId::Training));
     burst(
         &mut add,
