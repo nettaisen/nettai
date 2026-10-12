@@ -1,0 +1,148 @@
+# Japanese: what every screen shares (the header, the footer, the dialogs, the errors), the loading screens,
+# the main menu and the battle's own. A screen's strings are in the file of its name.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ja\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# The language's own name, as Settings lists it.
+msgctxt "language"
+msgid "English"
+msgstr "日本語"
+
+# ---- The main menu ----
+
+msgid "PLAY"
+msgstr "対戦"
+
+msgid "TRAINING"
+msgstr "トレーニング"
+
+msgid "BUILDS"
+msgstr "ビルド"
+
+msgid "REPLAYS"
+msgstr "リプレイ"
+
+msgid "Settings"
+msgstr "設定"
+
+msgid "Exit"
+msgstr "終了"
+
+msgid "DEMO"
+msgstr "デモ"
+
+msgid "vs"
+msgstr "vs"
+
+# ---- The header and the key hints ----
+
+msgid "MENU"
+msgstr "メニュー"
+
+msgid "Select"
+msgstr "選択"
+
+msgid "Open"
+msgstr "決定"
+
+msgid "Back"
+msgstr "もどる"
+
+msgid "Change game"
+msgstr "ゲーム切り替え"
+
+# ---- Loading ----
+
+msgid "LOADING {}"
+msgstr "{} を読み込み中"
+
+msgid "LOADING"
+msgstr "読み込み中"
+
+msgid "No game data was found. Put a game's pack in {}."
+msgstr "ゲームデータが見つかりません。{} にゲームのパックを置いてください。"
+
+msgid "VS"
+msgstr "VS"
+
+# ---- The battle ----
+
+msgid "Reconnecting {} s"
+msgstr "再接続中 {} 秒"
+
+msgid "{} ms"
+msgstr "{} ms"
+
+# ---- What can go wrong ----
+
+msgid "OK"
+msgstr "OK"
+
+msgid "Can't reach the server. Check your connection."
+msgstr "サーバーに接続できません。接続を確認してください。"
+
+msgid "Can't reach the server"
+msgstr "サーバーに接続できません"
+
+msgid "Check your connection."
+msgstr "接続を確認してください。"
+
+msgid "No match with that code."
+msgstr "そのコードの対戦はありません。"
+
+msgid "No match with that code"
+msgstr "そのコードの対戦はありません"
+
+msgid "That match is full."
+msgstr "その対戦は満員です。"
+
+msgid "That match is full"
+msgstr "その対戦は満員です"
+
+msgid "Your opponent has a different version of nettai. You both need the latest."
+msgstr "相手の nettai のバージョンが違います。どちらも最新版にしてください。"
+
+msgid "Different versions"
+msgstr "バージョンが違います"
+
+msgid "This build can't be used: {}."
+msgstr "このビルドは使えません: {}。"
+
+msgid "This build can't be used"
+msgstr "このビルドは使えません"
+
+msgid "{}."
+msgstr "{}。"
+
+msgid "Connection lost. The match has ended."
+msgstr "接続が切れました。対戦は終了しました。"
+
+msgid "Connection lost"
+msgstr "接続が切れました"
+
+msgid "The match has ended."
+msgstr "対戦は終了しました。"
+
+msgid "This replay is from a different version and can't be played."
+msgstr "このリプレイは別のバージョンのもので、再生できません。"
+
+msgid "Different version"
+msgstr "別のバージョン"
+
+msgid "Not an {} save."
+msgstr "{} のセーブデータではありません。"
+
+msgid "Not an {} save"
+msgstr "{} のセーブデータではありません"
+
+msgid "Something went wrong. Details are in the log file."
+msgstr "問題が発生しました。詳しくはログファイルをご覧ください。"
+
+msgid "Something went wrong"
+msgstr "問題が発生しました"
+
+msgid "Details are in the log file."
+msgstr "詳しくはログファイルをご覧ください。"

@@ -12,6 +12,9 @@ import { MenuOverlay } from "battle.slint";
 export global TrainingView {
     // The two builds, as the menu's line under its title says them.
     in property <string> matchup;
+    // Who the two cards before a battle are.
+    out property <string> you: @tr("YOU");
+    out property <string> dummy: @tr("DUMMY");
 }
 
 export component TrainingScreen inherits Page {

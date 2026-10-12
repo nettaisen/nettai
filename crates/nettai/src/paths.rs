@@ -1,6 +1,6 @@
 //! Where the app keeps what the player makes: their builds, the replays it
-//! records, the match files it lists, their settings and its log, each in
-//! the app's data folder unless an environment variable names another.
+//! records, their settings and its log, each in the app's data folder
+//! unless an environment variable names another.
 //!
 //! The data folder is `$NETTAI_DATA`, else the system's place for an app's
 //! data: `~/Library/Application Support/nettai` on macOS,
@@ -44,11 +44,6 @@ pub fn builds() -> PathBuf {
 /// The replays recorded and listed: `$NETTAI_REPLAYS`, else `replays`.
 pub fn replays() -> PathBuf {
     folder("NETTAI_REPLAYS", "replays")
-}
-
-/// The match files Play lists: `$NETTAI_MATCHES`, else `matches`.
-pub fn matches() -> PathBuf {
-    folder("NETTAI_MATCHES", "matches")
 }
 
 /// The log, which takes what goes wrong as the code says it (the player reads a plain sentence instead:

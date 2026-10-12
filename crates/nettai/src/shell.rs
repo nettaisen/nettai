@@ -9,7 +9,7 @@
 
 use crate::battle::{Battle, BattleEvent, Loading};
 use crate::errors::UserError;
-use crate::games::{Games, Ready, State, Step};
+use crate::games::{Games, Ready, State};
 use crate::gl::GlPicture;
 use crate::input::{Action, Bindings, KeyPress, Keys, Pad, menu_action};
 use crate::nav::{Did, Direction, Key, Nav};
@@ -17,7 +17,7 @@ use crate::screens::{self, Screen, ScreenId};
 use crate::settings::Settings;
 use crate::sound::{Cue, Sound};
 use nettai_battle::input::keys;
-use nettai_ui::{AppWindow, BattleKind, ButtonKind, DialogButton, Theme};
+use nettai_ui::{AppWindow, ButtonKind, DialogButton, Theme};
 use slint::winit_030::WinitWindowAccessor;
 use slint::winit_030::winit::event::{ElementState, KeyEvent};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
@@ -103,14 +103,20 @@ pub struct Shell {
     game: Option<String>,
     /// The game the screens were last shown with, once it was ready.
     announced: Option<String>,
+    /// The frames the bar has shown the selected game's parts as read, before its runtime is loaded (which
+    /// holds the window still: the bar is drawn first).
+    runtime_due: u8,
     screen: ScreenId,
     asks: Vec<Ask>,
     pub(crate) dialog: Option<Asked>,
     picking: Option<Picking>,
     pub battle: Option<Battle>,
     pub(crate) loading: Option<Loading>,
-    /// The two cards stay up whatever is loaded (the screenshot pass's shot of them).
+    /// The screenshot pass holds things still: the two cards stay up whatever is ready, the loading bar is
+    /// shown at a place of its choosing, and the menu's reel stops on one picture (`still`).
     pub hold_cards: bool,
+    pub hold_loading: Option<f32>,
+    pub still: bool,
     /// Ctrl, Alt or the system's key is held (the key is the system's, or a text field's).
     chord: bool,
     shift: bool,
@@ -220,16 +226,30 @@ impl Shell {
         }
     }
 
-    /// Show the app and the battle in the language `code`: the app's strings from its catalog, the content's
-    /// names from its strings table.
+    /// Show the app and the battle in the language `code`: the app's strings from its catalog at once, the
+    /// content's names from its strings table once each game's are loaded (on a thread: the screens are shown
+    /// again then).
     pub fn set_language(&mut self, code: &'static str) {
         self.lang = code;
         crate::lang::select(code);
         self.ui().global::<Theme>().set_cjk(crate::lang::cjk(code));
+        self.games.load_language(code, |id, lang, graphics| {
+            crate::with_app(move |app| {
+                app.shell.games.language(&id, &lang, graphics);
+                if app.shell.lang == lang {
+                    app.shell.show_language();
+                }
+            })
+        });
+        self.show_language();
+    }
+
+    /// The battle and the screen shown, in the language as far as it is loaded.
+    fn show_language(&mut self) {
         if let Some(b) = &mut self.battle
             && let Some(ready) = self.games.ready(&b.game)
         {
-            b.stage.player.set_language(&ready.graphics(code));
+            b.stage.player.set_language(&ready.graphics(self.lang));
             b.stage.stale = true;
         }
         self.refresh();
@@ -323,6 +343,35 @@ impl Shell {
         self.ui().global::<nettai_ui::Shell>().set_picker(false);
         self.nav.close("pick.");
         Some(picking)
+    }
+
+    // ---- The system's ------------------------------------------------------------------------------------
+
+    /// Copy `text` to the system's clipboard (an invite's code, an address).
+    pub fn copy(&self, text: &str) {
+        #[cfg(not(target_arch = "wasm32"))]
+        match arboard::Clipboard::new().and_then(|mut c| c.set_text(text.to_string())) {
+            Ok(()) => {}
+            Err(why) => crate::errors::log("copying to the clipboard", &why),
+        }
+    }
+
+    /// Ask the player for a file to open, in the system's dialog: `kind` names what is asked for (in the
+    /// language shown), `extensions` are those it may have. None: they chose none. The app's frames wait
+    /// while the dialog is up.
+    pub fn choose_file(&self, kind: &str, extensions: &[&str]) -> Option<std::path::PathBuf> {
+        #[cfg(not(target_arch = "wasm32"))]
+        return rfd::FileDialog::new().add_filter(kind, extensions).pick_file();
+        #[cfg(target_arch = "wasm32")]
+        None
+    }
+
+    /// Ask the player where to save a file named `name`, as [`Shell::choose_file`].
+    pub fn choose_save(&self, kind: &str, extensions: &[&str], name: &str) -> Option<std::path::PathBuf> {
+        #[cfg(not(target_arch = "wasm32"))]
+        return rfd::FileDialog::new().add_filter(kind, extensions).set_file_name(name).save_file();
+        #[cfg(target_arch = "wasm32")]
+        None
     }
 
     // ---- The window's scale ------------------------------------------------------------------------------
@@ -447,6 +496,7 @@ impl App {
             shown_stage: 0,
             game: None,
             announced: None,
+            runtime_due: 0,
             screen: ScreenId::Menu,
             asks: Vec::new(),
             dialog: None,
@@ -454,6 +504,8 @@ impl App {
             battle: None,
             loading: None,
             hold_cards: false,
+            hold_loading: None,
+            still,
             chord: false,
             shift: false,
             composing: false,
@@ -944,20 +996,37 @@ impl App {
     fn follow_games(&mut self) {
         let ui = self.shell.ui();
         let shell = ui.global::<nettai_ui::Shell>();
+        if let Some(held) = self.shell.hold_loading {
+            shell.set_loading(true);
+            shell.set_loading_progress(held);
+            return;
+        }
         let Some(id) = self.shell.game.clone() else {
             shell.set_no_games(true);
             shell.set_loading(true);
             return;
         };
         match self.shell.games.get(&id).map(|e| &e.state) {
+            Some(State::Ready(_)) if self.shell.games.ready(&id).is_none() => {
+                // Its parts are read: the bar says so for two frames, then its runtime is loaded here, on the
+                // thread that runs the battles (about a second, the window still).
+                shell.set_loading(true);
+                shell.set_loading_progress(self.shell.games.progress(&id));
+                self.shell.runtime_due += 1;
+                if self.shell.runtime_due > 2 {
+                    self.shell.runtime_due = 0;
+                    self.shell.games.load_runtime(&id);
+                }
+            }
             Some(State::Ready(ready)) => {
                 shell.set_loading(false);
+                shell.set_loading_progress(1.0);
                 if self.shell.announced.as_deref() != Some(id.as_str()) {
                     let ready = ready.clone();
                     self.shell.announced = Some(id.clone());
                     self.shell.sound.use_game(&id, &ready.loaded);
                     self.shell.refresh();
-                    // The others, behind it.
+                    // The others' parts, behind it.
                     for other in self.shell.games.playable() {
                         self.shell.load(&other);
                     }
@@ -982,8 +1051,28 @@ impl App {
         }
     }
 
-    /// A step of a game's loading, from its thread (`Shell::load`).
-    pub fn game_step(&mut self, id: &str, step: Step) {
-        self.shell.games.step(id, step);
+    /// A key probe's press (`NETTAI_KEY_PROBE`): the right arrow, as a key event of the window would press it.
+    pub fn probe(&mut self, down: bool) {
+        if !self.shell.battle_has_keys() {
+            return;
+        }
+        if down {
+            if self.shell.keys.held & keys::RIGHT == 0 {
+                self.shell.keys.pressed.push(Instant::now());
+            }
+            self.shell.keys.held |= keys::RIGHT;
+        } else {
+            self.shell.keys.held &= !keys::RIGHT;
+        }
+    }
+
+    /// A file was dropped on the window: the screen shown may want it (a save, for a build of it).
+    pub fn dropped(&mut self, path: &std::path::Path) {
+        if self.shell.battle.is_some() || self.shell.dialog.is_some() {
+            return;
+        }
+        let shown = self.shell.screen;
+        self.call(shown, |s, shell| s.dropped(shell, path));
+        self.settle();
     }
 }

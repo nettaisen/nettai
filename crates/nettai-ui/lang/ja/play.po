@@ -1,0 +1,14 @@
+# Japanese: Play (ui/screens/play.slint).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ja\n"
+
+msgid "BACK TO MATCH"
+msgstr "対戦にもどる"
+
+msgid "LEAVE MATCH"
+msgstr "対戦をやめる"
+
+msgid "The match keeps running"
+msgstr "対戦は止まりません"

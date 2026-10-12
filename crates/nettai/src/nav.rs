@@ -407,6 +407,11 @@ impl Nav {
         self.registry.clone()
     }
 
+    /// Where the cursor is: the focused control's place, as the UI was last told it.
+    pub fn cursor(&self) -> Option<Rect> {
+        self.told.as_ref().map(|(_, rect)| *rect)
+    }
+
     /// The focused control.
     pub fn focused(&self) -> Option<&Key> {
         self.focus.as_ref()

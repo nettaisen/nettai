@@ -4,8 +4,14 @@
 
 import { Theme } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
-import { Shell, Page, PadButton } from "../shell.slint";
+import { Shell, Page, PadButton, FaceButton } from "../shell.slint";
 import { Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, GroupTitle, ScrollPage } from "../widgets.slint";
+
+// A pad's button bound to an action: one of its four face buttons, drawn by its place, or a button with a cap.
+export struct PadBinding {
+    face: PadButton,
+    text: string,
+}
 
 // What the settings show: src/screens/settings.rs sets these.
 export global SettingsView {
@@ -21,11 +27,13 @@ export global SettingsView {
     in property <int> input-delay;
     // Each action's key and pad button, by their names, in the actions' order.
     in property <[string]> keys;
-    in property <[string]> buttons;
+    in property <[PadBinding]> buttons;
     // The action whose key (or pad button) is being asked for, or -1.
     in property <int> asking-key: -1;
     in property <int> asking-button: -1;
     in property <string> data-folder;
+    // The picture size that isn't a number, as the list of sizes says it.
+    out property <string> largest: @tr("Largest that fits");
 }
 
 // A row's label and its note. The row's control is put beside it (at `SettingsScreen.control-x`, in a column
@@ -67,6 +75,8 @@ component BindBox {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> value;
+    // A pad's face button, drawn in place of the value.
+    in property <PadButton> face;
     in property <bool> asking;
     in property <string> ask;
     height: 40px;
@@ -79,11 +89,16 @@ component BindBox {
     Mono {
         x: 8px;
         width: parent.width - 16px;
-        text: root.asking ? root.ask : root.value;
+        text: root.asking ? root.ask : (root.face == PadButton.none ? root.value : "");
         color: root.asking ? Theme.cursor : Theme.text;
         font-family: root.asking ? Theme.body : Theme.mono;
         font-weight: root.asking ? 400 : 700;
         horizontal-alignment: center;
+    }
+
+    FaceButton {
+        visible: !root.asking && root.face != PadButton.none;
+        button: root.face;
     }
 
     hit := Focusable {
@@ -188,7 +203,7 @@ export component SettingsScreen inherits Page {
                     y: 4px;
                     width: root.control-width;
                     nav: "set.picture";
-                    value: SettingsView.picture-size == "" ? @tr("Largest that fits") : SettingsView.picture-size;
+                    value: SettingsView.picture-size == "" ? SettingsView.largest : SettingsView.picture-size;
                 }
             }
 
@@ -340,7 +355,8 @@ export component SettingsScreen inherits Page {
                     width: (root.control-width - 24px) / 2;
                     nav: "set.button";
                     nav-index: i;
-                    value: SettingsView.buttons[i];
+                    value: SettingsView.buttons[i].text;
+                    face: SettingsView.buttons[i].face;
                     asking: SettingsView.asking-button == i;
                     ask: @tr("Press a button");
                 }

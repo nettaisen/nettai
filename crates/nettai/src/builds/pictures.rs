@@ -1,10 +1,9 @@
-//! The pictures the creator shows of a game's definitions, from its pack
+//! The pictures the builds' screens show of a game's definitions, from its pack
 //! as a frame draws them (`nettai_render::pictures`): a chip's icon and its
 //! picture in the chip window, a form's face (a Cross's, a soul's), a
 //! navi's, and the face a round starts a navi with. Each is made the first
 //! time it is asked for, and kept.
 
-use crate::builds::screen::Face;
 use crate::games::Ready;
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 use nettai_render::packs::PackGraphics;
@@ -13,6 +12,15 @@ use slint::{Rgba8Pixel, SharedPixelBuffer};
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::rc::Rc;
+
+/// The face the emotion window shows of a navi: its form's for an emotion
+/// (by its name in the game's rules; of the form's second set where its
+/// rules ask), or a navi's own where it doesn't change form.
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+pub enum Face {
+    Form(FormHandle, String, bool),
+    Navi(NaviHandle),
+}
 
 /// A game's pictures, made as they are asked for.
 pub struct Pictures {

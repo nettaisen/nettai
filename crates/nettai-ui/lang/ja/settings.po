@@ -1,0 +1,142 @@
+# Japanese: Settings (ui/screens/settings.slint).
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ja\n"
+
+msgid "SETTINGS"
+msgstr "設定"
+
+msgid "Move"
+msgstr "移動"
+
+msgid "Edit or confirm"
+msgstr "編集・決定"
+
+msgid "Undo edit, then back"
+msgstr "編集を取り消す・もどる"
+
+msgid "Next"
+msgstr "次へ"
+
+# The groups: in the list at the left, and as each group's title on the page.
+
+msgid "General"
+msgstr "一般"
+
+msgid "GENERAL"
+msgstr "一般"
+
+msgid "Video"
+msgstr "映像"
+
+msgid "VIDEO"
+msgstr "映像"
+
+msgid "Audio"
+msgstr "サウンド"
+
+msgid "AUDIO"
+msgstr "サウンド"
+
+msgid "Online"
+msgstr "オンライン"
+
+msgid "ONLINE"
+msgstr "オンライン"
+
+msgid "Controls"
+msgstr "操作"
+
+msgid "CONTROLS"
+msgstr "操作"
+
+msgid "About"
+msgstr "このアプリについて"
+
+msgid "ABOUT"
+msgstr "このアプリについて"
+
+msgid "Name"
+msgstr "名前"
+
+msgid "Shown to your opponent."
+msgstr "対戦相手に表示されます。"
+
+msgid "Language"
+msgstr "言語"
+
+msgid "Picture size"
+msgstr "画面サイズ"
+
+msgid "Largest that fits"
+msgstr "ウィンドウに合わせる"
+
+msgid "Full screen"
+msgstr "フルスクリーン"
+
+msgid "OFF"
+msgstr "オフ"
+
+msgid "ON"
+msgstr "オン"
+
+msgid "Battle text"
+msgstr "バトルの文字"
+
+msgid "SHARP"
+msgstr "くっきり"
+
+msgid "ORIGINAL"
+msgstr "オリジナル"
+
+msgid "Sharp redraws the text at your window's resolution."
+msgstr "「くっきり」はウィンドウの解像度で文字を描き直します。"
+
+msgid "Music"
+msgstr "BGM"
+
+msgid "Sound effects"
+msgstr "効果音"
+
+msgid "Input delay"
+msgstr "入力遅延"
+
+msgid "In frames. Lower feels faster; higher rolls back less."
+msgstr "フレーム単位。小さいほど反応が速く、大きいほど巻き戻しが減ります。"
+
+msgid "KEY"
+msgstr "キー"
+
+msgid "PAD"
+msgstr "パッド"
+
+msgid "Up"
+msgstr "上"
+
+msgid "Down"
+msgstr "下"
+
+msgid "Left"
+msgstr "左"
+
+msgid "Right"
+msgstr "右"
+
+msgid "Press a key"
+msgstr "キーを押してください"
+
+msgid "Press a button"
+msgstr "ボタンを押してください"
+
+msgid "RESET CONTROLS"
+msgstr "初期設定にもどす"
+
+msgid "Version"
+msgstr "バージョン"
+
+msgid "Your files"
+msgstr "データの保存先"
+
+msgid "SHOW FOLDER"
+msgstr "フォルダを開く"

@@ -84,6 +84,11 @@ impl Sound {
         Sound { out, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 1.0, last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new() }
     }
 
+    /// No device: nothing is heard (the screenshot pass).
+    pub fn silent() -> Sound {
+        Sound { out: None, menu: None, game: None, music: 0.8, effects: 1.0, wanted: false, fade: 1.0, last: None, owed: 0.0, mix: Vec::new(), tune: Vec::new() }
+    }
+
     /// The sound queued for the device, in seconds.
     pub fn queued(&self) -> f64 {
         self.out.as_ref().map_or(0.0, Output::buffered)
