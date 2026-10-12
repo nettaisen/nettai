@@ -203,6 +203,11 @@ impl Registry {
         }
     }
 
+    /// Every control's name and size, as laid out now (the screenshot pass's check that motion changes none).
+    pub fn sizes(&self) -> Vec<(Key, (f32, f32))> {
+        self.items.iter().map(|(key, item)| (key.clone(), (item.rect.w, item.rect.h))).collect()
+    }
+
     fn kind(&self, key: &Key) -> Option<Kind> {
         match self.lists.get(&key.id) {
             Some(_) => Some(Kind::Row),
@@ -374,6 +379,8 @@ pub struct Nav {
     pad: bool,
     /// What the UI was last told: the focus and its place.
     told: Option<(Key, Rect)>,
+    /// Where the cursor is drawn: on its way to the focus's place, and when it was last moved.
+    drawn: Option<(Rect, std::time::Instant)>,
     /// The focus was put somewhere by the app: it is scrolled into view once it is there.
     reveal_due: bool,
     /// The screen shown is leaving: the focus waits for the next one's controls, on nothing meanwhile.
@@ -405,6 +412,7 @@ impl Nav {
             shown: false,
             pad: false,
             told: None,
+            drawn: None,
             reveal_due: false,
             held: false,
             presses: 0,
@@ -539,8 +547,10 @@ impl Nav {
 
     /// Keep the one focus: if it is on nothing that exists (a screen just shown, a control gone), it goes to
     /// the control wanted, else the view's main control, else the first in reading order. Then tell the UI the
-    /// focus and its place, if either changed. The focus, when it moved to another control.
-    pub fn settle(&mut self, ui: &AppWindow) -> Option<Key> {
+    /// focus, and where the cursor is at `now`: with `glide` it goes a share of the way to the focused control
+    /// each frame (most of it in a tenth of a second), so a control that is itself moving is followed; without,
+    /// it is there at once. The focus, when it moved to another control.
+    pub fn settle(&mut self, ui: &AppWindow, now: std::time::Instant, glide: bool) -> Option<Key> {
         let before = self.told.as_ref().map(|(k, _)| k.clone());
         // What the focus should be on: what is wanted, if it exists now; else where it is, if that still
         // exists; else somewhere that does.
@@ -588,25 +598,41 @@ impl Nav {
             Next::Fallback(None) => self.focus = None,
         }
         let rect = self.focus.as_ref().and_then(|k| self.registry.borrow().rect(k));
-        let now = self.focus.clone().zip(rect);
+        let focused = self.focus.clone().zip(rect);
         let nav = ui.global::<nettai_ui::Nav>();
-        if now != self.told {
-            match &now {
-                Some((key, rect)) => {
+        if focused != self.told {
+            match &focused {
+                Some((key, _)) => {
                     nav.set_id(key.id.as_str().into());
                     nav.set_index(key.index);
-                    nav.set_x(rect.x);
-                    nav.set_y(rect.y);
-                    nav.set_w(rect.w);
-                    nav.set_h(rect.h);
                 }
                 None => {
                     nav.set_id(Default::default());
                     nav.set_index(0);
                 }
             }
-            self.told = now;
+            self.told = focused;
         }
+        // The cursor: toward the focus's place, or there at once where it wasn't showing.
+        const GLIDE: f32 = 0.032;
+        let target = self.told.as_ref().map(|(_, rect)| *rect).filter(|_| self.shown);
+        let drawn = match (self.drawn, target) {
+            (Some((at, last)), Some(to)) if glide => {
+                let share = 1.0 - (-now.saturating_duration_since(last).as_secs_f32() / GLIDE).exp();
+                let toward = |a: f32, b: f32| if (b - a).abs() < 0.3 { b } else { a + (b - a) * share };
+                Some(Rect { x: toward(at.x, to.x), y: toward(at.y, to.y), w: toward(at.w, to.w), h: toward(at.h, to.h) })
+            }
+            (_, to) => to,
+        };
+        if let Some(rect) = drawn
+            && self.drawn.map(|(r, _)| r) != Some(rect)
+        {
+            nav.set_x(rect.x);
+            nav.set_y(rect.y);
+            nav.set_w(rect.w);
+            nav.set_h(rect.h);
+        }
+        self.drawn = drawn.map(|rect| (rect, now));
         nav.set_shown(self.shown);
         nav.set_pad(self.pad);
         nav.set_editing(self.edit.is_some());

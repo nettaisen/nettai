@@ -56,17 +56,14 @@ export component AppWindow inherits Window {
     if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu { }
     if Shell.picker: PickerLayer { }
     if Shell.dialog: DialogLayer { }
-    // The cursor: one object that glides from control to control.
+    // The cursor: one object that glides from control to control. (The app moves it, a share of the way each
+    // frame: an animation here would start over each time the control it is going to moved.)
     Cursor {
         x: Nav.x - 5px;
         y: Nav.y - 5px;
         width: Nav.w + 10px;
         height: Nav.h + 10px;
         visible: Nav.shown && Nav.id != "";
-        animate x, y, width, height {
-            duration: Theme.quick;
-            easing: ease-out;
-        }
     }
 
     // Something flying over the layout (`Fx`): from one place to another, as it shrinks into the second.
