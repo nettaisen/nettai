@@ -122,8 +122,8 @@ What a player sees, and whether the ROMs they have hold what is missing:
     Cross names and Beast Out button; and the fifteen chip pictures and six sprites only the Japanese ROMs have.
   - In all three, the Japanese lettering.
 - **Both US ROMs.** Complete but for the Japanese lettering, and in EXE6 the Japanese ROMs' fifteen chip pictures
-  and six sprites. (Where the releases' art differs, a US pack has the US art: EXE5's goldfish and quieter hit,
-  EXE6's HeatMan flames.)
+  and six sprites. (Where the releases' art differs, every pack with a US ROM has the US art: EXE5's goldfish
+  and quieter hit, EXE6's HeatMan flames. A pack of Japanese ROMs alone has theirs.)
 - **Three gaps of the same kind in the Japanese sets**, each an address the extractor lacks: EXE6's Japanese
   lettering is read from Falzar JP alone, so Gregar JP by itself has checkerboard words; EXE5's backgrounds are
   read from Team of Blues JP (or Team ProtoMan US) alone, so Team of Colonel JP by itself has none; EXE4 without
