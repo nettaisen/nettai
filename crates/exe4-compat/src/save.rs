@@ -51,6 +51,10 @@ const EQUIPPED_FOLDER: usize = 0x2132;
 const REGULAR_CHIP: usize = 0x214C;
 const REGULAR_MEMORY: usize = 0x2148;
 const BASE_MAX_HP: usize = 0x21CA;
+/// The wins over losses against the other version (the game state's struct
+/// the toolkit's +0x44 points at, its +0x22, signed: the status screen's "VS
+/// BM Battles", 0x0803A978; what a link record carries at +0xB6, 0x08008784).
+const VERSION_WINS: usize = 0x21D6;
 /// MegaMan's HP and maximum HP (the game state's; a battle copies them into
 /// his NaviStats block, 0x0800D726, whose own words the save leaves stale).
 const HP: usize = 0x2150;
@@ -202,6 +206,13 @@ impl Save {
     /// The base max HP (before the NaviCust's and the patch cards' HP).
     pub fn base_max_hp(&self) -> u16 {
         self.u16(BASE_MAX_HP)
+    }
+
+    /// The wins over losses against the other version, which RedSun's and
+    /// BlueMoon's damage reads (formulas 47 and 48: EXE4's
+    /// rules/sun_and_moon).
+    pub fn version_wins(&self) -> i16 {
+        self.u16(VERSION_WINS) as i16
     }
 
     /// MegaMan's HP and maximum HP (the maximum the PET's last reload made:

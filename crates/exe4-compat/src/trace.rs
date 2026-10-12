@@ -67,6 +67,13 @@ pub struct Setup {
     /// what the PET compiled into the recorded stats.
     pub navicusts: [NaviCustSetup; 2],
     pub patch_cards: [PatchCardsSetup; 2],
+    /// Both sides' wins over losses against the other version (the battle's
+    /// copies of the link records' +0xB6, 0x0203BE72 and 0x0203BE7A, signed:
+    /// EXE4's rules/sun_and_moon). A recording from before the tracer wrote
+    /// them has none: the saves' (Tango's netplay saves hold 100, the
+    /// setup's default).
+    #[serde(default)]
+    pub version_wins: Option<[i16; 2]>,
     /// Both sides' regions ("us" or "jp").
     pub game_regions: [String; 2],
     /// The background the battle shows by the loader's first choice
@@ -696,6 +703,11 @@ impl Round {
             // MegaMan's light/dark value (EXE4's rules/light_dark: the
             // starting mood).
             player.set_fact(content, "karma", &[Fact::Value(Value::Int(d.navi_stats[side].light_dark as i64))])?;
+            // Its wins against the other version (rules/sun_and_moon:
+            // RedSun's and BlueMoon's damage), where the recording has them.
+            if let Some(wins) = self.setup.version_wins {
+                player.set_fact(content, "version_wins", &[Fact::Value(Value::Int(wins[side] as i64))])?;
+            }
             // His save's NaviCust, which the rules compile (rules/navicust).
             let list = unhex(&self.setup.navicusts[side].parts)?;
             if list.len() != 8 * crate::save::NAVICUST_PARTS {
