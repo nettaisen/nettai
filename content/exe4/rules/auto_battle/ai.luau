@@ -74,9 +74,8 @@ ai.STATE = {
 
 -- The decision's steps (+2), its jump table's (0x0800E52C).
 local DECIDE, REST, BUSTER_RUN, DODGE, PATTERN_PLACE, REPOSITION = 0, 4, 8, 0xC, 0x10, 0x18
--- The ticks of a dodge, and those at which the charge it shows is full (AIData +0x36: 0x0800E6AC).
+-- The ticks of a dodge.
 local DODGE_TICKS = 50
-ai.CHARGE_FULL = 40
 -- How long a side's loss weighs before a chip answers it: its seconds times its panels (0x0800E558, 0x0800E578).
 local ANSWERED_AT = 50
 
@@ -249,10 +248,11 @@ local function buster_run(navi: Object, s: State)
     end
 end
 
--- 0x0800E67C: up and down for 50 ticks with a B charge showing (0x0800E69C: AIData +9 2, its count, +0x32, the ticks
--- since, against a full charge's 40, +0x36; the next tick's input makes the level of the count, 0x0800BB66:
--- rules/souls/dark's `navi_tick`), into an enemy's row, then the charged shot (0x0800E6FA: the charge dropped, the
--- weapon of the navi's charged shot fired, 0x0800CA60).
+-- 0x0800E67C: up and down for 50 ticks with a B charge showing (0x0800E69C: AIData +9 2, and its count, +0x32, the
+-- ticks since; the next tick's input makes the level of the count, 0x0800BB66, against the charged shot's own time:
+-- the 40 the AI writes for a full charge's, +0x36, the intake's reload of the charge times takes back before any
+-- count is read against it, 0x0800DA16), into an enemy's row, then the charged shot (0x0800E6FA: the charge dropped,
+-- the weapon of the navi's charged shot fired, 0x0800CA60).
 local function dodge(navi: Object, s: State)
     if s.sub == 0 then
         s.since = battle.battle_time()
