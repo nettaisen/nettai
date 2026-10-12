@@ -865,8 +865,15 @@ const ENCASE_TICKS: u8 = 0x3C;
 /// (an ice block of its registry class, or the bubble), and goes.
 fn encased(b: &mut Battle, r: ObjectRef) {
     match b.objects.get(r).prevent_anim {
-        // sub_8018154: ice or a bubble, remembered in f1.
+        // sub_8018154: ice or a bubble, remembered in f1. (First what its
+        // kind does as its encasing starts, `kind.encased`: EXE4's
+        // 0x08011704 calls attack object #0x81's own ending there,
+        // 0x080DD73C, since the encasing ends it without its own destroy.)
         0 => {
+            let kind = b.objects.get(r).kind;
+            if let Some(hook) = b.content.defs.kind(kind).encased {
+                crate::behavior::call_hook(b, hook, nettai_content_api::HookCall::Encased { obstacle: r });
+            }
             let ice = f2_of(b, r) & f2::ENCASED_IN_ICE != 0;
             set_f1(b, r, if ice { obstacle_f1::ENCASED_ICE } else { obstacle_f1::ENCASED_BUBBLE });
             clear_f2(b, r, f2::ENCASED);

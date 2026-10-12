@@ -150,6 +150,9 @@ return {
     reservations = "marked",
     -- The flags' bits a type owns, which a crack, a break or poison clears (`object_crackPanel` and its kin: 0x3F5F).
     type_mask = 0x00003F5F,
+    -- What each panel is drawn as is in the panel (+6 its type, +7 its owner), which its refresh writes
+    -- (`sub_30078E0`): a change shows at once, and a dimmed tick, which runs no panel update, leaves a blink as it is.
+    drawn = "in_panel",
     -- The field's cycle, which the volcanos erupt by (`sub_800BFC4`: 0x8C ticks).
     cycle = 0x8C,
 }
