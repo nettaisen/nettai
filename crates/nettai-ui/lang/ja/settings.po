@@ -75,6 +75,9 @@ msgstr "ウィンドウに合わせる"
 msgid "Full screen"
 msgstr "フルスクリーン"
 
+msgid "Reduce motion"
+msgstr "動きを減らす"
+
 msgid "OFF"
 msgstr "オフ"
 

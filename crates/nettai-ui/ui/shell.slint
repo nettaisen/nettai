@@ -5,6 +5,7 @@
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
 import { Cut, Label, Note, Value, Mono, Heading, Button, ButtonKind, Stepper, Chevron, RowBack } from "widgets.slint";
+import { Tween, Pulse, Shake } from "motion.slint";
 
 // The screens a player goes between. Loading, the two cards before a battle and the battle are states of the
 // shell over them (`Shell.loading`, `Shell.versus`, `Shell.battle`).
@@ -66,6 +67,9 @@ export struct VersusCard {
 
 export global Shell {
     in property <Screen> screen;
+    // The screen shown is leaving for another: its body slides and fades for the theme's `leave`, and then the
+    // other is shown. (A press meanwhile cuts it short.)
+    in property <bool> leaving;
 
     // The selected game: its name as shown (EXE6), and whether the header offers to change it. A screen locks
     // it where the game can't change (inside a build, the lobby, a replay): the name stays, without its arrows.
@@ -86,6 +90,11 @@ export global Shell {
     in property <bool> versus;
     in property <VersusCard> versus-left;
     in property <VersusCard> versus-right;
+
+    // A battle is being entered: the field's hexagons rush (it counts the times), and as the battle begins the
+    // screen wipes into it.
+    in property <int> rush-seq;
+    in property <int> wipe-seq;
 
     // The battle running, and whether its picture fills the window (else its screen shows it in a `Picture`
     // of its own). `battle-menu` is nettai's menu over it (Start or Esc).
@@ -119,6 +128,8 @@ export global Shell {
     in property <string> dialog-title;
     in property <string> dialog-message;
     in property <[DialogButton]> dialog-buttons;
+    // It is a failure's: it shakes once as it arrives.
+    in property <bool> dialog-shake;
 
     // A select's choices, open under it (on a phone, a sheet from the bottom).
     in property <bool> picker;
@@ -334,8 +345,30 @@ export global Errors {
 
 // ---- The ground and the cursor -------------------------------------------------------------------------
 
-// Dark navy, top to bottom, under a faint blue glow from the top right and the hexagon field.
+// A set piece over the layout: something that flies from one place to another (a chip from its library row to
+// its slot). The app sets where from and where to (`Shell::fly`, by two controls' names) and counts the flights;
+// the window draws it, over everything, for the theme's `settle`.
+export global Fx {
+    in property <int> fly-seq;
+    in property <length> fly-from-x;
+    in property <length> fly-from-y;
+    in property <length> fly-to-x;
+    in property <length> fly-to-y;
+    in property <image> fly-image;
+    in property <string> fly-text;
+}
+
+// Dark navy, top to bottom, under a faint blue glow from the top right and the hexagon field. The hexagons drift
+// slowly, a soft pulse crosses them now and then, and they rush as a battle is entered.
 export component Backdrop inherits Rectangle {
+    // (The field is one tile, 42 by 72.75, larger than the window each way, and moves by less than a tile.)
+    property <float> drift: Theme.motion ? animation-tick() / 1s : 0;
+    property <float> pulse: Theme.motion ? clamp(mod(animation-tick(), 9s) / 2.8s, 0, 1) : 1;
+    rush := Pulse {
+        seq: Shell.rush-seq;
+        duration: 520ms;
+    }
+
     Rectangle {
         background: @linear-gradient(180deg, Theme.ground-top 0%, Theme.ground-bottom 100%);
     }
@@ -349,12 +382,23 @@ export component Backdrop inherits Rectangle {
     }
 
     Path {
+        x: -1px * mod(root.drift * 5 + (1 - pow(rush.v, 3)) * 42 * 9, 42);
+        y: -1px * mod(root.drift * 2.2, 72.75);
+        width: parent.width + 42px;
+        height: parent.height + 72.75px;
         commands: Shell.hexagons;
         stroke: Theme.hexagons;
         stroke-width: 1px;
-        viewbox-width: parent.width / 1px;
-        viewbox-height: parent.height / 1px;
+        viewbox-width: self.width / 1px;
+        viewbox-height: self.height / 1px;
         clip: true;
+    }
+
+    Rectangle {
+        x: root.pulse * (parent.width + 420px) - 420px;
+        width: 420px;
+        visible: root.pulse < 1;
+        background: @linear-gradient(90deg, #62b4ff00 0%, #62b4ff12 50%, #62b4ff00 100%);
     }
 }
 
@@ -385,28 +429,35 @@ component Corner inherits Rectangle {
 
 // The cursor: four corner brackets, 5 outside the focused control. One object that slides from control to
 // control, drawn over the layout: it takes no space, and nothing under it changes size. It shows only while a
-// keyboard or a pad is the last thing used.
+// keyboard or a pad is the last thing used. While idle its brackets breathe 2 out and in, and they snap inward
+// as Enter is pressed.
 export component Cursor inherits Rectangle {
-    Corner {
-        x: 0;
-        y: 0;
+    property <length> breath: Theme.motion ? 1px - 1px * cos(mod(animation-tick(), 1.8s) / 1.8s * 360deg) : 0px;
+    property <length> inset: snap.v * 5px - root.breath;
+    snap := Pulse {
+        seq: Nav.press-seq;
     }
 
     Corner {
-        x: parent.width - 10px;
-        y: 0;
+        x: root.inset;
+        y: root.inset;
+    }
+
+    Corner {
+        x: parent.width - 10px - root.inset;
+        y: root.inset;
         right: true;
     }
 
     Corner {
-        x: 0;
-        y: parent.height - 10px;
+        x: root.inset;
+        y: parent.height - 10px - root.inset;
         bottom: true;
     }
 
     Corner {
-        x: parent.width - 10px;
-        y: parent.height - 10px;
+        x: parent.width - 10px - root.inset;
+        y: parent.height - 10px - root.inset;
         right: true;
         bottom: true;
     }
@@ -426,6 +477,9 @@ export component Header inherits Rectangle {
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
     property <bool> over: Theme.audit && (title-text.preferred-width > title-text.width + 0.5px);
     height: Theme.header;
+    // As the screen arrives its title wipes in behind the cyan bar.
+    arrive := Tween { }
+
     Rectangle {
         background: Theme.bar;
     }
@@ -447,6 +501,7 @@ export component Header inherits Rectangle {
         font-weight: 700;
         letter-spacing: 1px;
         vertical-alignment: center;
+        opacity: arrive.t;
     }
 
     // Back.
@@ -488,18 +543,23 @@ export component Header inherits Rectangle {
         background: Theme.cursor;
     }
 
-    title-text := Text {
+    Rectangle {
         x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
-        width: parent.width - self.x - root.pad - (root.game ? 172px : 0px);
+        width: (parent.width - self.x - root.pad - (root.game ? 172px : 0px)) * arrive.t;
         visible: !root.logo;
-        text: root.title;
-        color: Theme.text;
-        font-family: Theme.display;
-        font-size: 20px;
-        font-weight: 700;
-        letter-spacing: Theme.title-tracking;
-        vertical-alignment: center;
-        overflow: elide;
+        clip: true;
+        title-text := Text {
+            x: 0;
+            width: parent.width / max(0.01, arrive.t);
+            text: root.title;
+            color: Theme.text;
+            font-family: Theme.display;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: Theme.title-tracking;
+            vertical-alignment: center;
+            overflow: elide;
+        }
     }
 
     // The game.
@@ -710,7 +770,7 @@ export component Footer inherits Rectangle {
 // A menu screen: the header, the footer, and between them the body, inside the page margins. What a screen puts
 // inside a `Page` is laid out in the body: its `x` and `y` are from the body's corner, and it measures the body
 // by `root.body-width` and `root.body-height` (`parent` in a screen's own file is the screen's root, the whole
-// window).
+// window). A screen's parts arrive one after another: each is put in an `Arrive` with its place in the order.
 export component Page inherits Rectangle {
     in property <string> title;
     in property <string> back;
@@ -728,11 +788,18 @@ export component Page inherits Rectangle {
         game: root.game;
     }
 
+    // (As the screen leaves, its body slides 16 and fades: to the left, or after Back to the right. What
+    // arrives is the screen's own parts, each in an `Arrive`.)
     body := Rectangle {
-        x: Theme.margin;
+        x: Theme.margin + (!Shell.leaving ? 0px : (Theme.back ? 16px : -16px));
         y: Theme.header + (Theme.phone ? 16px : 24px);
         width: parent.width - 2 * Theme.margin;
         height: parent.height - Theme.header - Theme.footer - (Theme.phone ? 32px : 48px);
+        opacity: Shell.leaving ? 0 : 1;
+        animate x, opacity {
+            duration: Theme.leave;
+            easing: ease-in;
+        }
         @children
     }
 
@@ -791,18 +858,31 @@ export component Picture inherits Rectangle {
 // ---- Over the screen ------------------------------------------------------------------------------------
 
 // A dialog: a failure that ends what the player was doing, or a question asked once. The screen behind it is
-// shaded and out of the keys' reach.
+// shaded and out of the keys' reach. The shade fades in as the panel grows from 96%; a failure's shakes once.
 export component DialogLayer inherits Rectangle {
     property <length> box-width: min(root.width - 32px, 460px);
     property <length> box-height: 24px + 26px + 12px + message.height + 24px + 40px + 24px;
+    arrive := Tween {
+        duration: Theme.brisk;
+    }
+
+    shake := Shake {
+        reach: 6px;
+        at-start: Shell.dialog-shake;
+    }
+
     Rectangle {
         background: Theme.shade;
+        opacity: arrive.t;
         TouchArea { }
     }
 
     Rectangle {
+        x: (parent.width - self.width) / 2 + shake.dx;
         width: root.box-width;
         height: root.box-height;
+        opacity: arrive.t;
+        transform-scale: 0.96 + 0.04 * arrive.t;
         Cut {
             cut: 18px;
         }
@@ -810,7 +890,7 @@ export component DialogLayer inherits Rectangle {
         Rectangle {
             x: 0;
             y: 0;
-            width: 72px;
+            width: 72px * arrive.t;
             height: 2px;
             background: @linear-gradient(90deg, Theme.cursor 0%, Theme.clear 100%);
         }
@@ -877,9 +957,13 @@ component PickRow inherits Rectangle {
     }
 }
 
-// A select's choices: a list under it, or on a phone a sheet from the bottom.
+// A select's choices: a list under it, or on a phone a sheet from the bottom. It drops into place as it opens.
 export component PickerLayer inherits Rectangle {
     property <length> list-height: Shell.picker-options.length * Theme.row + 2px;
+    arrive := Tween {
+        duration: Theme.quick;
+    }
+
     TouchArea {
         clicked => {
             Nav.activate("pick.close", 0);
@@ -888,13 +972,15 @@ export component PickerLayer inherits Rectangle {
 
     Rectangle {
         background: Theme.phone ? Theme.shade : transparent;
+        opacity: arrive.t;
     }
 
     Rectangle {
         x: Theme.phone ? 0px : Shell.picker-x;
-        y: Theme.phone ? parent.height - self.height : Shell.picker-y;
+        y: (Theme.phone ? parent.height - self.height + (1 - arrive.t) * 24px : Shell.picker-y - (1 - arrive.t) * 6px);
         width: Theme.phone ? parent.width : Shell.picker-width;
         height: root.list-height;
+        opacity: arrive.t;
         background: Theme.panel;
         border-width: 1px;
         border-color: Theme.line;

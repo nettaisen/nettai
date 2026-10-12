@@ -33,8 +33,10 @@ export global Nav {
     in property <bool> shown;
     // A pad was the last of the two used: the key hints show its buttons.
     in property <bool> pad;
-    // A pad's face buttons as their maker letters them (0: by their place, 1: A B X Y, 2: Nintendo's).
-    in property <int> pad-letters;
+    // Enter was pressed on the focused control (it counts the presses: the control flashes, the cursor snaps
+    // in), and the way the last step went (-1 or 1: a value slides that way).
+    in property <int> press-seq;
+    in property <int> step-dir: 1;
     // The focused field is being edited. `edit-seq` counts the edits begun; `edit-seed` is the letter typed to
     // begin one (empty: the field's own text, all selected).
     in property <bool> editing;
