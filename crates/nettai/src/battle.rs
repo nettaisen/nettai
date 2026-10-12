@@ -224,6 +224,8 @@ impl Shell {
             crate::errors::log("recording the battle", &why);
         }
         let mut stage = Stage::new(player);
+        let (music, effects) = self.sound.battle_levels();
+        stage.player.set_sound_levels(music, effects);
         stage.hold();
         shell.set_versus(false);
         if start.full {
@@ -312,7 +314,7 @@ impl Shell {
     /// owner should hear.
     pub(crate) fn run_battle(&mut self, now: Instant, samples: &mut Vec<[f32; 2]>) -> (Option<u32>, Option<(ScreenId, BattleEvent)>) {
         let Some(mut b) = self.battle.take() else { return (None, None) };
-        let buttons = if b.playing() && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch } else { 0 };
+        let buttons = if b.playing() && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
         let ran = b.stage.advance(now, buttons, &mut self.keys.pressed);
         let ticks = (!b.menu || b.stage.player.real_time()).then_some(ran);
         // START in the fight: the game's pause is nettai's menu.
