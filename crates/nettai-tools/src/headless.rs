@@ -161,6 +161,17 @@ pub fn render_frames_with(
                     for line in nettai_render::objects::describe(player.battle(), &Renderer::view(player.battle())) {
                         log(&format!("frame {f}: {line}"));
                     }
+                    // What the frame's sprite draw took of its budget, and
+                    // the sprites it had no room for.
+                    let d = &player.renderer().sprite_drawn;
+                    log(&format!(
+                        "frame {f}: sprite draw: {} of {} tiles, {} of {} palette slots{}",
+                        d.tiles,
+                        d.tile_room,
+                        d.palettes,
+                        d.palette_slots,
+                        if d.left_out.is_empty() { String::new() } else { format!("; left out: {}", d.left_out.join(", ")) }
+                    ));
                     for line in nettai_render::textlayer::describe(&frame) {
                         log(&format!("frame {f}: {line}"));
                     }
