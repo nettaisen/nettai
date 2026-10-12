@@ -15,25 +15,78 @@ local turns = require("@self/turns")
 
 local souls = {}
 
+-- A soul's button as the rules': on the screen while the side's navi is in the soul (the screen's +0x0F), its
+-- functions called with the rules' state.
+local function button_of(soul: FormDef, button: SoulButton): ButtonSpec
+    return {
+        slot = button.slot,
+        cells = button.cells,
+        uses = button.uses,
+        shown = function(side: number): boolean
+            return battle.navi(side).form == soul
+        end,
+        pressed = function(side: number)
+            button.pressed(side, rules.state())
+        end,
+    }
+end
+
+-- A soul's window as the rules'.
+local function window_of(window: SoulWindow): WindowSpec
+    return {
+        view = window.view,
+        update = function(side: number): boolean
+            return window.update(side, rules.state())
+        end,
+    }
+end
+
 -- What the rules list of Double Soul's: its actions, which reach the rules' state (./turns): the revert, and each
 -- soul's change (its chip's use, ./change's maker), gathered from MegaMan's souls (his form list); and its part
--- of the custom screen.
+-- of the custom screen: the UNITE button and the soul's choice (./custom), and what each soul adds to the screen
+-- (its form's `custom`: its buttons and windows by name, a button's the key of its look in a pack, and the state
+-- fields it keeps). A name is one of Double Soul's: two souls can't both add a button, a window or a field of one.
 local actions: { Action } = { revert.action }
+local buttons: { [string]: ButtonSpec } = { soul = custom.button }
+local windows: { [string]: WindowSpec } = { double_soul = custom.window }
+local screen: StateSchema = {}
+local function once(names: { [string]: any }, name: string, what: string, soul: FormDef)
+    if names[name] ~= nil then
+        error(string.format("%s's %s `%s` is another's too: a name is one of rules/souls's", tostring(soul.id), what, name))
+    end
+end
 local forms: { [string]: any } = megaman.forms or {}
 for _, set in forms do
     local list: { FormDef } = set.form_list or {}
     for _, form in list do
         local change: Action = assert(form.change, "a soul names its change")
         table.insert(actions, change)
+        local part: SoulCustom? = form.custom
+        if part ~= nil then
+            for name, button in part.buttons or {} :: { [string]: SoulButton } do
+                once(buttons, name, "button", form)
+                buttons[name] = button_of(form, button)
+            end
+            for name, window in part.windows or {} :: { [string]: SoulWindow } do
+                once(windows, name, "window", form)
+                windows[name] = window_of(window)
+            end
+            for name, kind in part.state or {} :: StateSchema do
+                once(screen, name, "screen field", form)
+                screen[name] = kind
+            end
+        end
     end
 end
 souls.actions = actions
 souls.custom = custom
+souls.buttons = buttons
+souls.windows = windows
 
 -- What a side keeps of Double Soul through a round: the soul's turns (./turns: AIData +0x18 counted up toward +0x19,
 -- which the emotion window counts down from: the offer view's roles), the souls given this round (0x0203BF88: a soul
 -- given is one the save has, of its six), and the custom screen's (./custom): the UNITE button's offer (the screen's
--- +0x0D; once given, the soul given) and the soul's choice's step and count.
+-- +0x0D; once given, the soul given) and the soul's choice's step and count; and what each soul's screen keeps.
 souls.state = {
     soul_turns = schema.role("form_offer.turns", "u8"),
     soul_turn_limit = schema.role("form_offer.turn_limit", "u8"),
@@ -43,6 +96,10 @@ souls.state = {
     unite_count = schema.role("offer_flight.count", "u8"),
     soul_hand_sent = "bool",
 } :: StateSchema
+for name, kind in screen do
+    assert(souls.state[name] == nil, `a soul's screen field \`{name}\` is one of Double Soul's own`)
+    souls.state[name] = kind
+end
 
 -- 0x0800B658, each tick of MegaMan's intake but a dimmed one (`battle_isTimeStop`): held by his change (the frozen
 -- flag, 0x10000) he asks for nothing; with a soul's chip next in his hand (its family special, 15: 0x0800B924's chip

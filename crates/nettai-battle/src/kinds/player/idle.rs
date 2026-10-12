@@ -414,8 +414,9 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     a.status &= !status::CONTROLLABLE;
     a.status |= status::CHIP_IN_PROGRESS;
     // The other player's console shows the chip's name (sub_801EB18),
-    // unless it is a cut-in chip (its telop does) or the invalid chip
-    // (the original's 0x185).
+    // unless it is a cut-in chip (its telop does), the invalid chip
+    // (the original's 0x185), or a chip its own action names (its trait
+    // `not_named_on_use`: EXE4's 0x080EECF6).
     let (used, damage, bonus) = {
         let a = &ai(b, r).attack;
         (a.chip, a.damage, a.extra)
@@ -423,6 +424,7 @@ fn after_chip(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) {
     if let Some(used) = used
         && chip.is_some_and(|c| b.content.chip(c).flags.0 & crate::content::ChipFlags::DIMMING == 0)
         && !b.roles().is_chip(crate::content::ChipRole::Invalid, used)
+        && !b.content.chip(used).traits.has(crate::content::ChipTraits::NOT_NAMED_ON_USE)
     {
         let side = b.objects.get(r).alliance;
         b.show_used_chip(side, used, damage, bonus);

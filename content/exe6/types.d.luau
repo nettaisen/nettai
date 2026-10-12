@@ -433,17 +433,6 @@ export type PanelStrike = {
     solid_only: boolean?,
 }
 
--- SunMoon's meteor (chips/sunmoon/meteor): its look, what it is and hits,
--- whether its landing shakes the camera, and what it does to a panel that
--- holds something.
-export type SunMeteor = {
-    sprite: SpriteAsset,
-    anim: number,
-    collision: { is: CollisionType, hits: CollisionType },
-    shake: boolean,
-    panel: "none" | "crack" | "break",
-}
-
 -- What a heat flame is spawned with (chips/heatman/flame): HeatMan's
 -- flames and BurnSqr's.
 export type HeatFlame = {
