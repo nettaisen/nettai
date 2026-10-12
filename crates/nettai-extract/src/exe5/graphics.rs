@@ -51,10 +51,11 @@ struct BackgroundTables {
 /// The US Team ProtoMan ROM's.
 const BACKGROUNDS: BackgroundTables = BackgroundTables { load: 0x0808_C578, scroll: 0x0808_C32C, anims: 0x0808_C96C };
 /// The Japanese Team of Blues ROM's (the same loader's literals,
-/// 0x0808C2C8 in the US ROM). The scroll callbacks are at the US ROM's
-/// addresses. One background differs from the US ROMs': 0x05, Yai's HP,
-/// which the Japanese ROMs draw as bubbles in the dark, still, its palette
-/// its animations' (the US ROMs': goldfish, scrolling).
+/// 0x0808C2C8 in the US ROM), for a pack of no US ROM. The scroll callbacks
+/// are at the US ROM's addresses. One background differs from the US
+/// ROMs': 0x05, Yai's HP, which the Japanese ROMs draw as bubbles in the
+/// dark, still, its palette its animations' (the US ROMs': goldfish,
+/// scrolling).
 const JP_BACKGROUNDS: BackgroundTables = BackgroundTables { load: 0x0808_BEC4, scroll: 0x0808_BC78, anims: 0x0808_C2B8 };
 const BACKGROUND_COUNT: u32 = 29;
 /// The scroll callbacks and their counters' steps (1/16 pixel a frame): the
@@ -108,13 +109,13 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
     custom
         .languages
         .push((ja, crate::exe5::lettering::custom(roms)));
-    // The pack's backgrounds are the Japanese ROMs' where there is one
-    // (they have another picture of 0x05: the verification knows what a
-    // US console shows there).
-    let backgrounds = if roms.protoman_jp.is_present() {
-        backgrounds(roms.protoman_jp, &JP_BACKGROUNDS)
-    } else if rom.is_present() {
+    // The pack's backgrounds are the US ROM's; the Japanese ROM's where no
+    // US ROM is given (it has another picture of 0x05: the verification
+    // knows what a Japanese console shows there).
+    let backgrounds = if rom.is_present() {
         backgrounds(rom, &BACKGROUNDS)
+    } else if roms.protoman_jp.is_present() {
+        backgrounds(roms.protoman_jp, &JP_BACKGROUNDS)
     } else {
         Vec::new()
     };
