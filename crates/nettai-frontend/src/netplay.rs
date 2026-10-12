@@ -635,10 +635,15 @@ mod tests {
         let (mut shuttle, hands) = Shuttle::new();
         let sinks = [Shared::default(), Shared::default()];
         let mut playing: Vec<Session> = Vec::new();
-        for (side, (hand, crate::lobby::Agreement { set, m, .. })) in hands.into_iter().zip(agreed(&content, &triple("exe6"), mine)).enumerate() {
-            let mut s = Session::new(Box::new(NetPlayer::new(hand, side, set, no_delay())));
-            let info = nettai_replay::Info { when: 0, side: side as u8, names: Default::default() };
-            s.record(Recorder::new(Box::new(sinks[side].clone()), &content, &m, &info).unwrap()).unwrap();
+        // (The players closed their builds: each one's recording, made of
+        // its agreement, says so.)
+        let closed = Settings { closed_builds: true, ..triple("exe6") };
+        let mut names = Vec::new();
+        for (side, (hand, agreement)) in hands.into_iter().zip(agreed(&content, &closed, mine)).enumerate() {
+            let recorder = Recorder::of_agreement(Box::new(sinks[side].clone()), &content, &agreement, 1_790_000_000).unwrap();
+            names.push(agreement.names.clone());
+            let mut s = Session::new(Box::new(NetPlayer::new(hand, side, agreement.set, no_delay())));
+            s.record(recorder).unwrap();
             playing.push(s);
         }
         let start = Instant::now();
@@ -658,6 +663,13 @@ mod tests {
         let [a, b] = sinks.map(|s| nettai_replay::Replay::read(&s.bytes()).unwrap());
         assert_eq!((a.end, a.rounds().len()), (End::Set, 2));
         assert_eq!((&a.head, &a.match_bytes, &a.ticks), (&b.head, &b.match_bytes, &b.ticks));
+        // Each one's info is its agreement's: an online match with closed
+        // builds, recorded from its own side, by the names the lobby had.
+        for (side, replay) in [&a, &b].into_iter().enumerate() {
+            let info = nettai_replay::Info { when: 1_790_000_000, side: side as u8, kind: nettai_replay::MatchKind::Online, closed_builds: true, names: names[side].clone() };
+            assert_eq!(replay.info, info, "side {side}");
+        }
+        assert_eq!(names[0], names[1]);
         assert_eq!((a.info.side, b.info.side), (0, 1));
         let out = play_out(&content, &a).unwrap();
         assert_eq!((out.diverged, out.stopped, out.result, out.rounds), (None, None, Some(BattleResult::Won), vec![Some(0), Some(0)]));
@@ -943,7 +955,7 @@ mod tests {
         for (side, crate::lobby::Agreement { set, m, .. }) in agreed(&content, &Settings::of_match(&m), m.sides.clone()).into_iter().enumerate() {
             let channel = Rtc(links[side].clone(), Vec::new());
             let mut s = Session::new(Box::new(NetPlayer::new(channel, side, set, no_delay())));
-            let info = nettai_replay::Info { when: 0, side: side as u8, names: Default::default() };
+            let info = nettai_replay::Info::of(nettai_replay::MatchKind::Online, side as u8);
             s.record(Recorder::new(Box::new(sinks[side].clone()), &content, &m, &info).unwrap()).unwrap();
             playing.push(s);
         }
