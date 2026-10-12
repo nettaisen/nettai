@@ -151,11 +151,14 @@ export type Spec = {
     -- The controller kind's id and the navi's name (for the errors past its tables).
     id: string,
     name: string,
-    -- The navi for the controller's user, with the damage word (bonus included); nil if it couldn't come.
-    spawn: (controller: Object, user: Object, damage: number) -> Object?,
-    -- Its course: steps by phase (`navi_chips.LONG`, `SHARED`, `RETURNED`) or the short one (`SHORT`).
+    -- The navi for the controller's user, with the damage word (bonus included); nil if it couldn't come. (None for
+    -- a chip with its own course.)
+    spawn: ((controller: Object, user: Object, damage: number) -> Object?)?,
+    -- Its course: steps by phase (`navi_chips.LONG`, `SHARED`, `RETURNED`), the short one (`SHORT`), or the chip's
+    -- own (PrixPowr's: @exelib/navi_chips/controller's `course`).
     steps: { Step }?,
     short: NaviChipShortCourse?,
+    course: ((controller: Object) -> ())?,
 }
 
 -- A chip's controller kind and its `dimming` hook.
@@ -166,6 +169,7 @@ function navi_chips.controller(spec: Spec): NaviChipController
         spawn = spec.spawn,
         steps = spec.steps,
         short = spec.short,
+        course = spec.course,
         -- The user's side's navi warps (0x080E2D26).
         warp = function(c: Object, out: boolean)
             navi_chips.warp(c.alliance, out)

@@ -2555,6 +2555,10 @@ fn field_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let kind = panel_type_arg(&kind)?;
         with(|api, _| Ok(api.blink_panel(p, kind, side)))
     });
+    lib_fn!(lua, t, "set_visible", |_, (x, y, visible): (LuaValue, LuaValue, bool)| {
+        let p = panel(x, y)?;
+        with(|api, _| Ok(api.set_panel_visible(p, visible)))
+    });
     Ok(t)
 }
 

@@ -1730,6 +1730,9 @@ pub trait CoreApi {
     /// `object_setPanelTypeBlink`: this frame the panel is drawn as type
     /// `kind` (the game's number of the type) of side `side` (drawn only).
     fn blink_panel(&mut self, p: PanelPos, kind: u8, side: u8);
+    /// The panel is drawn, or not, from now on (drawn only; its front edge
+    /// with it): the original's panel display byte's bit 0x40.
+    fn set_panel_visible(&mut self, p: PanelPos, visible: bool);
     /// `object_breakPanel_dup1`: break a solid panel, or crack it when
     /// something stands on it; true only when it broke.
     fn shatter_panel(&mut self, p: PanelPos) -> bool;

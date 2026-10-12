@@ -516,3 +516,10 @@
 "darkneo/ghost" = { pool = "effect", index = 0x47, scratch_position = true }
 "darkneo/image" = { pool = "attack", index = 0xA1 }
 "darkneo/wave" = { pool = "attack", index = 0xA2 }
+# Duo (chip 0x137, an e-Reader card's): his controller (0x080EA7D8; its position the dimming handler's registers), Duo
+# himself (0x080CB70C: at his spawner's registers until he appears) and his fists (0x080DA220: one object, the
+# content's two kinds by its animation).
+"duo/controller" = { pool = "effect", index = 0x79, scratch_position = true }
+"duo/navi" = { pool = "actor", index = 0x52 }
+"duo/fist" = { pool = "attack", index = 0x66 }
+"duo/other-fist" = { pool = "attack", index = 0x66 }

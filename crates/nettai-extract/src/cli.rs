@@ -1,16 +1,23 @@
 //! Command-line adapter; the extraction API itself has no process or I/O policy.
-use crate::{Error, Game, RomSet, extract};
+use crate::{Error, Game, RomSet, extract, extract_recording_reads, songs_played_otherwise};
 use std::{ffi::OsString, path::PathBuf, process::ExitCode};
 
-const USAGE: &str = "usage: nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...] [--content <dir>]\n\
+const USAGE: &str = "usage: nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...] [--content <dir>] [--reads <file>]\n\
 ROMs may be supplied in any order. Missing ROMs generate placeholders.\n\
-The output must be a new or empty directory. --content also checks battle definitions.";
+The output must be a new or empty directory. --content also checks battle definitions.\n\
+--reads writes every range of the ROMs the extraction read, in order (tab-separated: the\n\
+ROM's code, the address, the length, and `data`, `open` (a span a parser took what it\n\
+needed of) or the ROM address the word read holds): for comparing ROMs where it looks.\n\
+\n\
+       nettai-extract songs <ROM> <ROM>\n\
+The numbers of the songs the two ROMs' sound banks play otherwise, or only one has.";
 
 struct Args {
     game: Game,
     output: PathBuf,
     roms: Vec<PathBuf>,
     content: Option<PathBuf>,
+    reads: Option<PathBuf>,
 }
 fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, Error> {
     let mut args = args.into_iter();
@@ -30,6 +37,7 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, Error> {
         output,
         roms: Vec::new(),
         content: None,
+        reads: None,
     };
     while let Some(arg) = args.next() {
         if arg == "--content" {
@@ -40,6 +48,16 @@ fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Args, Error> {
                 args.next()
                     .filter(|v| !v.to_string_lossy().starts_with("--"))
                     .ok_or_else(|| Error("--content needs a directory".into()))?
+                    .into(),
+            );
+        } else if arg == "--reads" {
+            if result.reads.is_some() {
+                return Err(Error("--reads specified twice".into()));
+            }
+            result.reads = Some(
+                args.next()
+                    .filter(|v| !v.to_string_lossy().starts_with("--"))
+                    .ok_or_else(|| Error("--reads needs a file".into()))?
                     .into(),
             );
         } else if arg.to_string_lossy().starts_with("--") {
@@ -72,7 +90,23 @@ fn execute(args: Args) -> Result<(), Error> {
         roms.insert(bytes)
             .map_err(|e| Error(format!("{}: {e}", path.display())))?;
     }
-    let assets = extract(args.game, &roms)?;
+    let assets = match &args.reads {
+        Some(path) => {
+            let (assets, reads) = extract_recording_reads(args.game, &roms)?;
+            let mut out = String::new();
+            for r in &reads {
+                let kind = match (r.pointer, r.open) {
+                    (Some(p), _) => format!("{p:08X}"),
+                    (None, true) => "open".into(),
+                    (None, false) => "data".into(),
+                };
+                out += &format!("{}\t{:08X}\t{:X}\t{kind}\n", r.rom, r.address, r.len);
+            }
+            std::fs::write(path, out).map_err(|e| Error(format!("{}: {e}", path.display())))?;
+            assets
+        }
+        None => extract(args.game, &roms)?,
+    };
     for warning in &assets.warnings {
         eprintln!("{warning}");
     }
@@ -97,6 +131,19 @@ pub fn run() -> ExitCode {
     if args.len() == 1 && (args[0] == "--help" || args[0] == "-h") {
         println!("{USAGE}");
         return ExitCode::SUCCESS;
+    }
+    if args.len() == 3 && args[0] == "songs" {
+        let read = |p: &OsString| std::fs::read(p).map_err(|e| Error(format!("{}: {e}", PathBuf::from(p).display())));
+        return match read(&args[1]).and_then(|a| Ok((a, read(&args[2])?))).and_then(|(a, b)| songs_played_otherwise(&a, &b)) {
+            Ok(songs) => {
+                println!("{}", songs.iter().map(|s| format!("{s:#05x}")).collect::<Vec<_>>().join(" "));
+                ExitCode::SUCCESS
+            }
+            Err(e) => {
+                eprintln!("{e}");
+                ExitCode::FAILURE
+            }
+        };
     }
     match parse(args).and_then(execute) {
         Ok(()) => ExitCode::SUCCESS,
