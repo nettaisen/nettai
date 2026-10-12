@@ -95,6 +95,17 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
     if !crate::lookups::chatbox_graphics(&assets.hud, problems) {
         return None;
     }
+    // (A chip's description is marked where the caller names its chip:
+    // `chip-description:KEY`, the text's lines.)
+    if let Some(Lookup::ChipDescription(chip)) = lookup
+        && chatbox.shows_contents()
+    {
+        let what = crate::lookups::chip_description_mark(&b.content, chip);
+        if problems.wants(&what) {
+            let (x, y) = text_at(&assets.hud);
+            problems.mark([x, y, x + TEXT_WIDTH as i32, y + (TEXT_ROWS + DESCENDER_ROWS) as i32], what);
+        }
+    }
     let kind = match chatbox.script() {
         Script::Description { .. } => DESCRIPTION_BOX,
         Script::RunMessage { .. } => MESSAGE_BOX,

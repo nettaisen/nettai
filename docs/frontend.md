@@ -1034,7 +1034,8 @@ them).
 - **Deliberate: one presentation, the Japanese games' where the releases
   differ** (the user's: "nettai should not have any region specific code").
   The pack has the Japanese ROMs' art where the US ROMs have a placeholder
-  (six sprites, eleven chips' pictures: asset-formats.md §4), the content
+  (six sprites, fifteen chips' pictures: asset-formats.md §4) or differ in
+  a pixel or two (BassAnly's icon, Gregar's Beast Out picture), the content
   draws Otenko's statue and CrosOver's gun with the Japanese games' sprites
   (0C-49, 0C-0F) where the US games draw others, and EXE6's custom screen
   starts the chip window as it closes (`HudState`), on every
@@ -1047,12 +1048,17 @@ them).
   knows a console's region or which of these it shows: the verification's
   frame comparison does (its table, consoles.tsv, by game, region and
   version), and asks the headless frontend to mark where it draws those
-  things (`--mark sprite:NAME,background:NAME,chip:KEY,chip-icon:KEY,
-  chip-window-at-close`; `marks.tsv` beside the frames: frame, rectangle,
+  things (`--mark sprite:NAME,background:NAME,chip:KEY,button:NAME,
+  chip-icon:KEY,chip-description:KEY,chip-window-at-close`; `marks.tsv`
+  beside the frames: frame, rectangle,
   what), which it counts as known on that console's recordings, with the
   table's margin around each (a sprite's 48 pixels: the US's sprite there
   may reach past the Japanese one), or only the part of the mark the
-  table names (an icon's two rows).
+  table names (an icon's two rows, a picture's two pixels). The same
+  table has what a console shows of its own whatever its region: EXE6's
+  Gregar and Falzar chips' descriptions, which a console prints from its
+  memory (its own beast's for both chips), where nettai prints each
+  chip's own.
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
   other version's counterparts: EXE6's five Giga chips a version (Bass and
