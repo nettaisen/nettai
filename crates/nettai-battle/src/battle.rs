@@ -1035,9 +1035,7 @@ impl Battle {
         self.run_mode_handler();
         self.run_objects();
         self.update_cameras();
-        if !self.paused && !self.is_dimmed() {
-            self.tick_panels();
-        }
+        self.update_panels();
         self.update_player_hands();
         self.run_hud_tasks();
         self.update_emotion_windows();
@@ -1094,7 +1092,18 @@ impl Battle {
             }
         }
         self.run_objects();
-        if !self.paused && !self.is_dimmed() {
+        self.update_panels();
+    }
+
+    /// The tick's panel update: none while paused; the panels' tick, or a
+    /// dimmed tick's.
+    fn update_panels(&mut self) {
+        if self.paused {
+            return;
+        }
+        if self.is_dimmed() {
+            self.tick_panels_dimmed();
+        } else {
             self.tick_panels();
         }
     }

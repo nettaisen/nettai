@@ -1806,6 +1806,29 @@ pub struct PanelRules {
     /// and its kin), EXE5's and EXE4's 0x23F5F (their sea's and metal's
     /// 0x20000 too). A crack keeps the solidity and the crack bit.
     pub type_mask: u32,
+    /// Where the game keeps what its panels are drawn as (`PanelDrawn`).
+    pub drawn: PanelDrawn,
+}
+
+/// Where a game keeps the type and the owner each panel is drawn as (the
+/// panels section's `drawn`), which says when a change shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum PanelDrawn {
+    /// In the panel (EXE6's +6 and +7; EXE5's): its refresh writes them
+    /// (`sub_30078E0`) and its tick's blinks, and a dimmed tick, which runs
+    /// no panel update, leaves them as they are.
+    #[default]
+    InPanel,
+    /// In tables of their own (EXE4's 0x02037AE6 and 0x02037B0E), which the
+    /// panel update alone writes (0x08009240). Its per-panel tick
+    /// (0x08009740) ends by drawing the panel as the type it began the tick
+    /// with (0x08009842), so a cracked panel a body stepped off, which
+    /// breaks in that tick (0x080097C8), shows its hole a tick late (a mend,
+    /// an expiry and a crumble set what they draw). A dimmed tick's update
+    /// draws every panel as the type and the owner it is (0x08009A38): a
+    /// blink shows through no dimming.
+    OwnTables,
 }
 
 /// How a navi's status block (`sub_801AF44`'s top block, from the
