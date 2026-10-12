@@ -49,9 +49,10 @@ return {
     invalid_picks = "picked",
     -- The codes 0x1B and 0x1C stand apart in a selection (0x08024A44).
     special_codes = "apart",
-    -- Each Program Advance forms once a round (0x080252FA), it is the Regular chip if a part was (0x08024F7E), and what
-    -- lies past the selection's end keeps what it held.
-    program_advances = { once_a_round = true, keeps_regular = true, clears_past_end = false },
+    -- Each Program Advance forms once a round (0x080252FA), it is the Regular chip if a part was (0x08024F7E), what
+    -- lies past the selection's end keeps what it held, and its animation runs in a state of its own (0x08027AB4: its
+    -- first tick only starts it, 0x08027ADC, and its end takes a tick, 0x08027AE6).
+    program_advances = { once_a_round = true, keeps_regular = true, clears_past_end = false, in_screen_state = false },
     -- A modifier's Regular chip mark goes with it as it folds into the chip before (0x08024F0E).
     modifier_passes_regular = false,
     -- The console says its custom screen is open until the window starts sliding out (0x08022F0C).
