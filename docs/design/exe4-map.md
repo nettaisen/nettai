@@ -733,12 +733,38 @@ shows the other is a listed deviation (verify's deviations.rs) or a known differ
   23: seven tiles at column 22 against ten at column 19), the chatbox's choice cursor (0x0804E73C), and the result
   record's reward (§18 item 23).
 - The custom screen's code differs in nothing but its pictures and tables. Its close starts the HUD's chip window in
-  both regions (0x0801E9D8 and 0x0801E918: the rules' `custom_screen.close_shows_chip_window`), as EXE5's does in
-  both (0x08023128, 0x080230E4); EXE6's does in Japan alone (`sub_8026DC4`'s call of `sub_801E012`, 0x08027230 in
-  the Japanese Falzar ROM), and nettai's EXE6 follows the US games'.
+  both regions (0x0801E9D8 and 0x0801E918), as EXE5's does in both (0x08023128, 0x080230E4); EXE6's does in Japan
+  alone (`sub_8026DC4`'s call of `sub_801E012`, 0x08027230 in the Japanese Falzar ROM; the US games' starts the
+  chip icons alone). nettai's three games all show the window from the close: EXE6 follows its Japanese games
+  there, by the user's decision of 2026-10-12, so that the three have one behavior.
 The rest of the first megabyte is not read (the tool shows about 5,000 places in all that decode as instructions on
 both sides, most of them the story's, the menus' and data that happens to decode): a difference in an object's routine shows only
 when a recording reaches it.
+
+**The Japanese consoles' frames** (verify's tools/frontend-compare/exe4-jp.txt: 55 scenarios on the lab's `exe4-jp`
+bases, Red Sun Japan against Blue Moon Japan, each US base's counterpart; 53 are tools/chiplab/gen_exe4_jp.py's
+copies of the US library's scenarios, under jp/, and two the e-Reader chips' own). They cover what a Japanese
+console draws otherwise: the 8x16 font in the chip window, the used chips' names and the telops on both blocks; the
+dialogue font and the chatbox; the custom screen's OK, SHUFFLE and UNITE pictures, a refused and a Regular chip, two
+rows, the second screen and the full gauge; カスタム中… on each console; four souls' choices and changes; a cut-in's
+telops; a Program Advance's banner and name; "COUNTER HIT!", "×2" and "????"; the deletion and win banners and the
+result on both consoles; the turn timer, TIME UP, the judge and FINAL TURN; a dark chip, the dark soul and its
+custom screen; the two B+Left patch cards; both e-Reader chips.
+- All 55 replay, states and sounds: 53 every frame, two up to a listed deviation (PrixPowr's KendoMan at frame 800,
+  NumberMan's first tick at 485).
+- Frames: 51 are exact at the replay's known shift (the timers' from frame 9000, but their last frame, the console's
+  menu). PrixPowr's differs from its deviation on. The nine-cell damage text differs on the Japanese console
+  (above). The no-running message's two are left out of the list: their frames differ while the message prints.
+- Found and fixed by it: the chatbox's text place (every Japanese description was drawn 12 pixels right and one
+  down).
+- **Not covered**: the no-running message's printing (its pace and the speaker's mouth are the US strings'); the
+  other 320-odd chips' Japanese names, pictures and descriptions (the sample shows about twenty chips; their strings
+  are the content's `locales/ja.toml`, which the content audit checks for glyphs, not pixels); the eight souls not
+  in the sample; the banners no MegaMan netbattle shows (the other navis' wins and deletions, which the pack has in
+  Japanese); 作戦変更中… (never shown in a netbattle); Blue Moon Japan's console beyond the five copies traced on
+  it; the vector font's Japanese text (the app's default text mode, which has no original to compare with); and
+  any Japanese behavior outside the HUD's, the custom screen's and the chatbox's code that no recording of the
+  sample reaches.
 
 ## 12. Saves
 
@@ -3085,10 +3111,11 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
        step as its own screen opened (only a driven navi's can be) lost the name until it landed. The engine's
        `ChipHud` holds it now (`window` on from the close, `from_close` until a decision or a hide), and the
        renderer's count is gone; EXE5's and EXE6's frames stay exact (ten scenarios each, both regions' consoles).
-       Whether a close starts the window is each game's rule since (`custom_screen.close_shows_chip_window`): EXE4's
-       does in both regions (0x0801E9D8 and Red Sun Japan's 0x0801E918 call the starter, 0x08015B54 and 0x08015AB0,
-       which starts the chip name's task where the icons' runs), EXE5's too (0x08023128, Team of Blues' 0x080230E4);
-       EXE6's US games' starts the icons alone, which nettai follows (the Japanese games' also start the window).
+       What each release's close does: EXE4's starts the window in both regions (0x0801E9D8 and Red Sun Japan's
+       0x0801E918 call the starter, 0x08015B54 and 0x08015AB0, which starts the chip name's task where the icons'
+       runs), EXE5's too (0x08023128, Team of Blues' 0x080230E4); EXE6's Japanese games' does, and its US games'
+       starts the icons alone. nettai's three games all start it (the user, 2026-10-12: one behavior for the
+       three; EXE6's is its Japanese games').
      - **An obstacle's push went the wrong way**: 0x0800B1C0 turns its copy of the navi's rows (0x0800B218) by
        the obstacle's front as if it faced its pusher (-1 unless a side 1 hit pushed it; no push when both sides'
        did), where the engine turns an obstacle's rows toward the pusher, as EXE5's and EXE6's tables hold
