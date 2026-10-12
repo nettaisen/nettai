@@ -421,6 +421,19 @@
 # (0x080E7CE0; their height's fraction the spawner's registers).
 "colorpt/controller" = { pool = "effect", index = 0x50, scratch_position = true }
 "colorpt/point" = { pool = "effect", index = 0x51, scratch_z_fraction = true }
+# HolyDrem's controller (0x080E8418; its position the dimming handler's registers), its stand-in (0x080DD798) and its
+# shot (0x080DD9EC).
+"holydrem/controller" = { pool = "effect", index = 0x59, scratch_position = true }
+"holydrem/stand-in" = { pool = "attack", index = 0x82 }
+"holydrem/shot" = { pool = "attack", index = 0x83 }
+# RedSun's controller (0x080E8534; its position the dimming handler's registers), its sun (0x080DDB34) and its meteors
+# (0x080DDDEE); BlueMoon's controller (0x080E865C), its moon (0x080DDFEC) and its ray (0x080DE160).
+"redsun/controller" = { pool = "effect", index = 0x5A, scratch_position = true }
+"redsun/sun" = { pool = "attack", index = 0x84 }
+"redsun/meteor" = { pool = "attack", index = 0x85 }
+"bluemoon/controller" = { pool = "effect", index = 0x5B, scratch_position = true }
+"bluemoon/moon" = { pool = "attack", index = 0x86 }
+"bluemoon/ray" = { pool = "attack", index = 0x87 }
 # TimeBomb's controller (0x080E4C3C; its position the dimming handler's registers) and its bomb (0x080D6BF8).
 "timebomb/controller" = { pool = "effect", index = 0x27, scratch_position = true }
 "timebomb/countdown" = { pool = "attack", index = 0x4B }
@@ -484,3 +497,13 @@
 "pitrng/thrower" = { pool = "effect", index = 0x6C, scratch_position = true }
 # H-Burst's shot (0x080E0B46), spawned at the spawner's registers until its init places it (0x080E0CB4).
 "h-burst/burst" = { pool = "attack", index = 0x9E, scratch_position = true }
+# BodyGrd's controller (0x080E9A50; its position the dimming handler's registers), its striker (0x080E9AE0, spawned
+# at the spawner's registers) and its shuriken (0x080D8EFC).
+"bodygrd/controller" = { pool = "effect", index = 0x6D, scratch_position = true }
+"bodygrd/striker" = { pool = "effect", index = 0x6E, scratch_position = true }
+"bodygrd/shuriken" = { pool = "attack", index = 0x5C }
+# P.Driver's controller (0x080E9C30; its position the dimming handler's registers), its piles (0x080E0318) and
+# their beams (0x080E04A4).
+"pdriver/controller" = { pool = "effect", index = 0x6F, scratch_position = true }
+"pdriver/pile" = { pool = "attack", index = 0x99 }
+"pdriver/beam" = { pool = "attack", index = 0x9A }

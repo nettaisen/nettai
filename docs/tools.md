@@ -54,9 +54,10 @@ tick compared with what the original recorded; the first difference is printed.
   and what its console shows of its chips; and its text items (the words, the role, the box, the depth key, how
   many of the box's pixels something in front covers, the squash, the fades).
 - `--mark M,...` writes where each of these is drawn, by frame, to `marks.tsv` beside the frames: `sprite:NAME`
-  (an object drawn with it), `background:NAME`, `chip:KEY` (its picture in the chip window),
-  `chip-window-at-close` (the HUD's chip name before the navi's first decision); for a frame comparison that
-  knows what a console shows otherwise there.
+  (an object drawn with it), `background:NAME`, `chip:KEY` (its picture in the chip window), `chip-icon:KEY` (its
+  icon: over its navi, in the custom screen's slots and its picked chips' column), `chip-window-at-close` (the
+  HUD's chip name before the navi's first decision); for a frame comparison that knows what a console shows
+  otherwise there.
 - `--keys` gives your buttons by tick in a match file's set (`headless::KeyScript`): for instance
   `--keys 160-161:up,215:a,260:start,266:a` opens the first screen's Cross window (a direction acts on a hold's
   second tick), chooses its first Cross and presses OK. The buttons are `a b l r up down left right start
