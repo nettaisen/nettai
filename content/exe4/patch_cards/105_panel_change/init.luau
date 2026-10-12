@@ -5,7 +5,7 @@
 local cards = require("../rules/patch_cards/cards")
 
 local card: SlottedPatchCard = {
-    slot = "0D",
+    slot = cards.SLOT_0D,
     effects = {
         cards.panel_trail(9),
         cards.clear_bug("panel"),

@@ -6,7 +6,7 @@ local cards = require("../rules/patch_cards/cards")
 local buster_patches = require("../navis/megaman/weapons/buster_patches")
 
 local card: SlottedPatchCard = {
-    slot = "0A",
+    slot = cards.SLOT_0A,
     effects = {
         cards.b_button(buster_patches.crack),
     },

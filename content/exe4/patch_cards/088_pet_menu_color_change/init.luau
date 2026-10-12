@@ -5,6 +5,6 @@
 local cards = require("../rules/patch_cards/cards")
 
 -- (No effect in battle: a card of the PET's menu.)
-local card: SlottedPatchCard = { slot = "0F", effects = {} }
+local card: SlottedPatchCard = { slot = cards.SLOT_0F, effects = {} }
 
 return { ["088-pet-menu-color-change"] = card }
