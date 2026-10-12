@@ -1786,8 +1786,11 @@ impl Battle {
             self.paused = true;
             self.set_fight_state(fight::PAUSE);
             // The HUD's pause display (`sub_801E15C`): "PAUSE" shows, with
-            // its sound, and the opponent's used chip name goes.
-            self.used_chips = [None; 2];
+            // its sound, and the opponent's used chip name goes, where the
+            // game's does (`used_chips_end_early`).
+            if self.game_rules().effects.used_chips_end_early {
+                self.used_chips = [None; 2];
+            }
             self.sound(SoundRole::Pause);
             return;
         }
