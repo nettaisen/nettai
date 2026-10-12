@@ -27,6 +27,7 @@ local junkman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "junkman/controller", palette = 0 }.hook,
     megaman = "light",
+    auto_battle = { class = "when_any_obstacle" },
 }
 
 local junkmn_sp: Chip = {
@@ -43,6 +44,7 @@ local junkmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "junkmn-sp/controller", palette = 4 }.hook,
     megaman = "light",
+    auto_battle = { class = "when_any_obstacle" },
 }
 
 local junkmn_ds: Chip = {
@@ -58,6 +60,7 @@ local junkmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "junkmn-ds/controller", palette = 6 }.hook,
     megaman = "dark",
+    auto_battle = { class = "when_any_obstacle" },
 }
 
 return { junkman = junkman, ["junkmn-sp"] = junkmn_sp, ["junkmn-ds"] = junkmn_ds }

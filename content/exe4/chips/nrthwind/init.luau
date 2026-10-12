@@ -24,6 +24,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = DIMMING,
+    auto_battle = { class = "when_enemy_barrier" },
 }
 
 return { nrthwind = chip }

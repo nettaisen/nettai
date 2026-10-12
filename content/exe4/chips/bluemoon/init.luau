@@ -23,6 +23,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     damage = damage(200),
     dimming = CONTROLLER.hook,
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { bluemoon = chip }

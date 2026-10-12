@@ -32,6 +32,7 @@ local pithoky1: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 29, code_run = { chip = airhocs.airhoc1, count = 3 } } },
+    auto_battle = { class = "to_front" },
 }
 
 local pithoky2: Chip = {
@@ -47,6 +48,7 @@ local pithoky2: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 30, code_run = { chip = airhocs.airhoc2, count = 3 } } },
+    auto_battle = { class = "to_front" },
 }
 
 local pithoky3: Chip = {
@@ -62,6 +64,7 @@ local pithoky3: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 31, code_run = { chip = airhocs.airhoc3, count = 3 } } },
+    auto_battle = { class = "to_front" },
 }
 
 return { pithoky1 = pithoky1, pithoky2 = pithoky2, pithoky3 = pithoky3 }
