@@ -745,10 +745,8 @@ impl CoreApi for Battle {
         self.consoles[side as usize & 1].emotion_window_glitch = on;
     }
 
-    fn setup_problem(&mut self, text: &str, field: Option<&str>, entry: Option<u32>) {
-        if let Some(problems) = &mut self.validation {
-            problems.push(crate::rules::Problem { text: text.to_string(), field: field.map(str::to_string), entry: entry.map(|e| e as usize) });
-        }
+    fn tool_answer(&mut self, answer: nettai_content_api::Data) {
+        self.tool_answer = Some(answer);
     }
 
     fn def_name(&self, registry: nettai_content_api::Registry, handle: u16) -> String {
@@ -778,13 +776,7 @@ impl CoreApi for Battle {
     }
 
     fn checked_folder(&self) -> Option<nettai_content_api::api::CheckedFolder> {
-        self.folder_check.as_ref().map(|c| c.folder.clone())
-    }
-
-    fn folder_problem(&mut self, rule: &str, text: &str) {
-        if let Some(c) = &mut self.folder_check {
-            c.problems.push(crate::rules::FolderProblem { rule: rule.to_string(), text: text.to_string() });
-        }
+        self.folder_check.clone()
     }
 
     fn custom_folder(&self, side: u8) -> ApiResult<Vec<Option<(ChipHandle, Option<u8>)>>> {

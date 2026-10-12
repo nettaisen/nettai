@@ -723,3 +723,20 @@ language = "en"
 "super_armor" = "SprArmr"
 "tango" = "Tango"
 "undershirt" = "Undersht"
+
+# The NaviCust's bugs' names, by the bug's name in the game's rules (rules/navicust/programs' `BUGS`), for a tool
+# that lists a build's bugs with their levels (nettai-match's `build`). The games name no bug on a screen but
+# where a patch card's line does, so these are the content's own.
+[bugs]
+"buster" = "Buster bug"
+"custom" = "Custom bug"
+"emotion" = "Emotion bug"
+"encounter" = "Encounter bug"
+"hp" = "HP bug"
+"panel" = "Panel bug"
+"result" = "Result bug"
+"status" = "Status bug"
+"status-strong" = "Status bug"
+"step" = "Move bug"
+"support" = "Support bug"
+"unread" = "Bug"

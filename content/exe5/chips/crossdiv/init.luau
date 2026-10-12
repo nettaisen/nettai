@@ -20,6 +20,9 @@ local chip: Chip = {
     element = "null",
     family = "null",
     class = "giga",
+    -- A save can collect it (rules/folder): Team Colonel's library lists it, where this record's flags are Team
+    -- ProtoMan's ROM's, which doesn't.
+    collectible = true,
     rarity = 4,
     mb = 90,
     damage = 220,
