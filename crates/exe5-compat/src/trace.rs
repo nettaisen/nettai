@@ -915,6 +915,8 @@ impl Round {
             // (A triple battle's: two rounds after the first.)
             later_stages: vec![nettai_battle::Stage { stage, background }; 2],
             low_hp_music_latched: bs[0x20] | bs[0x21] != 0,
+            // (A console's battle: it pauses itself, and L is its run key.)
+            host_keys: nettai_battle::setup::HostKeys::NONE,
             players: [p0?, p1?],
         })
     }
