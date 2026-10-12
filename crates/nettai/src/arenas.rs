@@ -1,8 +1,11 @@
 //! The arenas of a match, drawn: each round's field and background as the
-//! round opens, for the Play screen's preview. Each is the round played
-//! alone for a moment (nobody pressing anything) and its picture taken.
+//! round opens, for a screen's preview of them (Training's). Each is the
+//! round played alone for a moment (nobody pressing anything) and its
+//! picture taken.
 
-use crate::RoundCard;
+// (Training's screen isn't built yet: what it will call isn't called.)
+#![allow(dead_code)]
+
 use crate::games::Ready;
 use nettai_frontend::driver::LivePlayer;
 use nettai_frontend::game::{Graphics, TextMode};
@@ -14,10 +17,17 @@ use slint::{Image, Rgb8Pixel, SharedPixelBuffer};
 /// faded in, the custom screen not yet over it.
 const OPENING: u32 = 24;
 
+/// A round's arena.
+pub struct Arena {
+    pub picture: Image,
+    pub stage: String,
+    pub background: String,
+}
+
 /// Each round's arena: its picture, its stage (by its name in the content;
 /// a stage has no display name) and its background (its name in
 /// `graphics`' language: its area's, as the game's menus name it).
-pub fn pictures(ready: &Ready, graphics: &Graphics, m: &nettai_match::Match, seed: u32) -> Vec<RoundCard> {
+pub fn pictures(ready: &Ready, graphics: &Graphics, m: &nettai_match::Match, seed: u32) -> Vec<Arena> {
     let content = ready.content();
     let names = crate::games::Names::of(content, graphics);
     let Ok(places) = m.places(content, seed) else { return Vec::new() };
@@ -37,7 +47,7 @@ pub fn pictures(ready: &Ready, graphics: &Graphics, m: &nettai_match::Match, see
                 *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
             }
             let stage = nettai_match::ids::local(&content.defs.stage(place.stage).key).to_string();
-            RoundCard { picture: Image::from_rgb8(pixels), stage: stage.into(), background: names.background(place.background).into() }
+            Arena { picture: Image::from_rgb8(pixels), stage, background: names.background(place.background) }
         })
         .collect()
 }

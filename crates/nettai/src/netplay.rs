@@ -13,6 +13,9 @@
 //! the same settings the match is agreed, and the battle is a `NetPlayer`
 //! over the link.
 
+// (Play's screen isn't built yet: what it will call isn't called.)
+#![allow(dead_code)]
+
 use nettai_battle::Content;
 use nettai_frontend::connection::Reconnecting;
 use nettai_frontend::lobby::{Agreement, Kind, Lobby, Role, Settings, Status};

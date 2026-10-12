@@ -1,0 +1,206 @@
+// The main menu (docs/design/app-ui.md §6): PLAY, TRAINING, BUILDS and REPLAYS, each the word alone; below a
+// line, Settings and Exit, smaller; beside them the demo reel, a battle of the selected game playing itself in a
+// box that keeps its size, with who is fighting under it. On a phone the reel is above the items.
+
+import { Theme } from "../theme.slint";
+import { Nav, Focusable } from "../nav.slint";
+import { Shell, Page, PadButton, Picture } from "../shell.slint";
+import { MenuItem, Value, Pill, Rule } from "../widgets.slint";
+import { Arrive, Tween } from "../motion.slint";
+
+// What the main menu shows: src/screens/menu.rs sets these.
+export global MenuView {
+    // Who the reel shows, left and right: each side's navi and its version's tag.
+    in property <bool> playing;
+    in property <string> left-navi;
+    in property <string> left-version;
+    in property <string> right-navi;
+    in property <string> right-version;
+    // It counts the reel's battles: each fades in.
+    in property <int> reel-seq;
+}
+
+// Settings and Exit: less than the four above them.
+component MinorItem inherits Rectangle {
+    in property <string> text;
+    in property <string> nav;
+    height: 32px;
+    width: label.preferred-width + 16px;
+    label := Text {
+        text: root.text;
+        color: (Nav.shown ? hit.focused : hit.has-hover) ? Theme.text : Theme.muted;
+        font-family: Theme.body;
+        font-size: 16px;
+        font-weight: 600;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+    }
+}
+
+export component MenuScreen inherits Page {
+    // (The items' column and the reel are each centered in the body's height.)
+    property <length> column: Theme.phone ? self.body-width : 416px;
+    property <length> reel-width: Theme.phone ? self.body-width : 720px;
+    property <length> reel-height: self.reel-width * 2 / 3;
+    property <length> item: Theme.phone ? 68px : 72px;
+    property <length> items-top: Theme.phone ? self.reel-height + 12px : (self.body-height - 4 * self.item - 85px) / 2;
+    property <length> reel-top: Theme.phone ? 0px : (self.body-height - self.reel-height - 36px) / 2;
+    logo: true;
+    hints: [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Select") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Open") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
+    ];
+    // (The parts assemble in turn as the menu arrives: the four words, what is under them, the reel.)
+    Arrive {
+        order: 0;
+        MenuItem {
+            x: 0;
+            y: root.items-top;
+            width: root.column;
+            nav: "play";
+            text: @tr("PLAY");
+            big: true;
+        }
+    }
+
+    Arrive {
+        order: 1;
+        MenuItem {
+            x: 0;
+            y: root.items-top + root.item + 8px;
+            width: root.column;
+            nav: "training";
+            text: @tr("TRAINING");
+            big: true;
+        }
+    }
+
+    Arrive {
+        order: 2;
+        MenuItem {
+            x: 0;
+            y: root.items-top + 2 * (root.item + 8px);
+            width: root.column;
+            nav: "builds";
+            text: @tr("BUILDS");
+            big: true;
+        }
+    }
+
+    Arrive {
+        order: 3;
+        MenuItem {
+            x: 0;
+            y: root.items-top + 3 * (root.item + 8px);
+            width: root.column;
+            nav: "replays";
+            text: @tr("REPLAYS");
+            big: true;
+        }
+    }
+
+    Arrive {
+        order: 4;
+        Rule {
+            x: 0;
+            y: root.items-top + 4 * root.item + 40px;
+            width: root.column;
+        }
+
+        settings := MinorItem {
+            x: Theme.phone ? 8px : 16px;
+            y: root.items-top + 4 * root.item + 59px;
+            nav: "settings";
+            text: @tr("Settings");
+        }
+
+        MinorItem {
+            x: settings.x + settings.width + 16px;
+            y: settings.y;
+            nav: "exit";
+            text: @tr("Exit");
+        }
+    }
+
+    // The reel. (`parent` here is the screen's root, where this is written; the page's body is where it is put.)
+    // Each battle of the reel fades in.
+    fade := Tween {
+        seq: MenuView.reel-seq;
+        duration: Theme.settle;
+    }
+
+    Arrive {
+        order: 2;
+        from-x: 24px;
+        Rectangle {
+            opacity: fade.t;
+            Picture {
+                x: root.body-width - root.reel-width;
+                y: root.reel-top;
+                width: root.reel-width;
+                height: root.reel-height;
+                ground: Theme.inset;
+            }
+        }
+
+        Rectangle {
+            x: root.body-width - root.reel-width + 12px;
+            y: root.reel-top + root.reel-height - 12px - self.height;
+            width: demo.preferred-width + 16px;
+            height: 22px;
+            visible: MenuView.playing;
+            background: Theme.shade;
+            demo := Text {
+                text: @tr("DEMO");
+                color: Theme.text;
+                font-family: Theme.display;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: Theme.label-tracking;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+            }
+        }
+
+        // Who is fighting.
+        HorizontalLayout {
+            x: root.body-width - root.reel-width;
+            y: root.reel-top + root.reel-height + 12px;
+            width: root.reel-width;
+            height: 24px;
+            visible: MenuView.playing && !Theme.phone;
+            spacing: 8px;
+            alignment: start;
+            Value {
+                text: MenuView.left-navi;
+                font-size: 13px;
+            }
+
+            Pill {
+                text: MenuView.left-version;
+                tone: Theme.p1;
+            }
+
+            Value {
+                text: @tr("vs");
+                color: Theme.muted;
+                font-size: 13px;
+            }
+
+            Value {
+                text: MenuView.right-navi;
+                font-size: 13px;
+            }
+
+            Pill {
+                text: MenuView.right-version;
+                tone: Theme.p2;
+            }
+        }
+    }
+}

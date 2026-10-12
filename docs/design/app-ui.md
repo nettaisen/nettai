@@ -3,9 +3,8 @@
 **Status (2026-10-12): approved design, implementation started.** The user asked for the app's UI to be rethought and
 redesigned entirely ("throw away everything you have right now because it's so janky and not great. do keep using
 slint though"), reviewed mockups over a day, and then said "throw out the old nettai and start implementing". This
-document is that design. It replaces docs/app.md's §2 to §4 and §8 to §9; docs/app.md's §1 (the battle in a Slint
-window: the clock, the texture, the keys' timing) and §5 to §7 (latency, the web, mobile) still describe how the
-battle is hosted, and are to be folded into this as the new app lands.
+document is that design. docs/app.md is the app as it is built: its foundation is (the design system, navigation,
+input, Settings, the battle's host), and Play, Training, Builds and Replays are to be filled in on it.
 
 The mockups are the picture of every screen: https://claude.ai/artifact/5Kg4TfQhZeMXB5C45rXM2Z, a copy of which is
 `bn6battle-verify/docs/nettai-ui/mockups.html` (not in this repository: it embeds chip icons and art taken from a

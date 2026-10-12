@@ -1,0 +1,482 @@
+// Settings (docs/design/app-ui.md §6): one scrolling page, and a list at its left that jumps to a group. Each
+// row is a label, a control of one width, and a note only where the label can't say it. On a phone the list is
+// left out and the note goes under its control.
+
+import { Theme, Audit } from "../theme.slint";
+import { Nav, NavKind, Focusable } from "../nav.slint";
+import { Shell, Page, PadButton, FaceButton } from "../shell.slint";
+import { Label, Note, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage } from "../widgets.slint";
+import { Arrive } from "../motion.slint";
+
+// A pad's button bound to an action: one of its four face buttons, drawn by its place, or a button with a cap.
+export struct PadBinding {
+    face: PadButton,
+    text: string,
+}
+
+// What the settings show: src/screens/settings.rs sets these.
+export global SettingsView {
+    // The group the list marks: the one the focus is in.
+    in property <int> group;
+    in property <string> name;
+    in property <string> language;
+    in property <string> picture-size;
+    in property <bool> full-screen;
+    in property <bool> reduce-motion;
+    in property <bool> sharp-text;
+    in property <int> music;
+    in property <int> effects;
+    in property <int> input-delay;
+    // Each action's key and pad button, by their names, in the actions' order.
+    in property <[string]> keys;
+    in property <[PadBinding]> buttons;
+    // The action whose key (or pad button) is being asked for, or -1.
+    in property <int> asking-key: -1;
+    in property <int> asking-button: -1;
+    in property <string> data-folder;
+    // The picture size that isn't a number, as the list of sizes says it.
+    out property <string> largest: @tr("Largest that fits");
+}
+
+// A row's label and its note. The row's control is put beside it (at `SettingsScreen.control-x`, in a column
+// `control-width` wide), not inside it: a component with something inside it is copied into each user.
+component SettingLabel inherits Rectangle {
+    in property <string> label;
+    in property <string> note;
+    // The note is a path or a name the app gives, not a sentence: one line, cut where it ends.
+    in property <bool> cut;
+    in property <length> row-height: 48px;
+    in property <length> control-x;
+    in property <length> control-width;
+    property <bool> over: Theme.audit && (Theme.phone ? name.preferred-height > name.height + 0.5px : name.preferred-width > name.width + 0.5px);
+    height: root.row-height + (Theme.phone && root.note != "" ? below.preferred-height + 4px : 0px);
+    name := Text {
+        x: 0;
+        y: 0;
+        width: root.control-x - 12px;
+        height: root.row-height;
+        text: root.label;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 14px;
+        font-weight: 600;
+        vertical-alignment: center;
+        wrap: Theme.phone ? word-wrap : no-wrap;
+        overflow: Theme.phone ? clip : elide;
+    }
+
+    Note {
+        x: 568px;
+        y: 0;
+        width: max(0px, parent.width - 568px);
+        height: root.row-height;
+        text: Theme.phone ? "" : root.note;
+        wrap: root.cut ? no-wrap : word-wrap;
+        overflow: root.cut ? elide : clip;
+    }
+
+    below := Note {
+        x: root.control-x;
+        y: root.row-height;
+        width: root.control-width;
+        height: self.preferred-height;
+        text: Theme.phone ? root.note : "";
+        wrap: root.cut ? no-wrap : word-wrap;
+        overflow: root.cut ? elide : clip;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.label);
+        }
+    }
+}
+
+// A key's or a pad button's box in the controls: Enter, then the key to bind.
+component BindBox inherits Rectangle {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <string> value;
+    // A pad's face button, drawn in place of the value.
+    in property <PadButton> face;
+    in property <bool> asking;
+    in property <string> ask;
+    height: 40px;
+    Rectangle {
+        background: Theme.inset;
+        border-width: 1px;
+        border-color: root.asking ? Theme.cursor : (hit.has-hover ? Theme.muted : Theme.line);
+    }
+
+    Mono {
+        x: 8px;
+        width: parent.width - 16px;
+        text: root.asking ? root.ask : (root.face == PadButton.none ? root.value : "");
+        color: root.asking ? Theme.cursor : Theme.text;
+        font-family: root.asking ? Theme.body : Theme.mono;
+        font-weight: root.asking ? 400 : 700;
+        horizontal-alignment: center;
+    }
+
+    FaceButton {
+        visible: !root.asking && root.face != PadButton.none;
+        button: root.face;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        nav-index: root.nav-index;
+    }
+}
+
+export component SettingsScreen inherits Page {
+    property <[string]> groups: [@tr("General"), @tr("Video"), @tr("Audio"), @tr("Online"), @tr("Controls"), @tr("About")];
+    property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), "A", "B", "L", "R", "START", "SELECT"];
+    // (A phone has the page alone.)
+    property <[string]> shown-groups: Theme.phone ? [] : root.groups;
+    property <length> list-width: Theme.phone ? 0px : 260px;
+    // Where a row's control is, and how wide its column.
+    property <length> control-x: Theme.phone ? 124px : 224px;
+    property <length> control-width: Theme.phone ? page.view-width - 124px : 320px;
+    title: @tr("SETTINGS");
+    back: @tr("MENU");
+    game: false;
+    status: Shell.version;
+    hints: [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Edit or confirm") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Undo edit, then back") },
+        { key: "Tab", text: @tr("Next") },
+    ];
+
+    // The groups: the mark of the one the focus is in slides between them.
+    Arrive {
+        order: 0;
+        Marker {
+            x: 0;
+            y: SettingsView.group * (Theme.row + 2px);
+            width: 220px;
+            height: Theme.row;
+            visible: !Theme.phone;
+            animate y {
+                duration: Theme.quick;
+                easing: ease-out;
+            }
+        }
+
+        for group[i] in root.shown-groups: Row {
+            x: 0;
+            y: i * (Theme.row + 2px);
+            width: 220px;
+            nav: "group";
+            nav-index: i;
+            text: group;
+        }
+    }
+
+    Arrive {
+        order: 1;
+        page := ScrollPage {
+            x: root.list-width;
+            width: root.body-width - root.list-width;
+            nav: "set.";
+            content-height: column.preferred-height;
+            column := VerticalLayout {
+                width: page.view-width;
+                spacing: 4px;
+                alignment: start;
+                GroupTitle {
+                    text: @tr("GENERAL");
+                    first: true;
+                }
+
+                Rectangle {
+                    height: row1.height;
+                    row1 := SettingLabel {
+                        label: @tr("Name");
+                        note: @tr("Shown to your opponent.");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Field {
+                        x: root.control-x;
+                        y: 4px;
+                        width: root.control-width;
+                        nav: "set.name";
+                        text: SettingsView.name;
+                    }
+                }
+
+                Rectangle {
+                    height: row2.height;
+                    row2 := SettingLabel {
+                        label: @tr("Language");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Select {
+                        x: root.control-x;
+                        y: 4px;
+                        width: root.control-width;
+                        nav: "set.language";
+                        value: SettingsView.language;
+                    }
+                }
+
+                GroupTitle {
+                    text: @tr("VIDEO");
+                }
+
+                Rectangle {
+                    height: row3.height;
+                    row3 := SettingLabel {
+                        label: @tr("Picture size");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Select {
+                        x: root.control-x;
+                        y: 4px;
+                        width: root.control-width;
+                        nav: "set.picture";
+                        value: SettingsView.picture-size == "" ? SettingsView.largest : SettingsView.picture-size;
+                    }
+                }
+
+                Rectangle {
+                    height: row4.height;
+                    row4 := SettingLabel {
+                        label: @tr("Full screen");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Seg {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.fullscreen";
+                        first: @tr("OFF");
+                        second: @tr("ON");
+                        chosen: SettingsView.full-screen ? 1 : 0;
+                    }
+                }
+
+                Rectangle {
+                    height: row14.height;
+                    row14 := SettingLabel {
+                        label: @tr("Reduce motion");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Seg {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.motion";
+                        first: @tr("OFF");
+                        second: @tr("ON");
+                        chosen: SettingsView.reduce-motion ? 1 : 0;
+                    }
+                }
+
+                Rectangle {
+                    height: row5.height;
+                    row5 := SettingLabel {
+                        label: @tr("Battle text");
+                        note: @tr("Sharp redraws the text at your window's resolution.");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Seg {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.text";
+                        first: @tr("SHARP");
+                        second: @tr("ORIGINAL");
+                        chosen: SettingsView.sharp-text ? 0 : 1;
+                    }
+                }
+
+                GroupTitle {
+                    text: @tr("AUDIO");
+                }
+
+                Rectangle {
+                    height: row6.height;
+                    row6 := SettingLabel {
+                        label: @tr("Music");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Slider {
+                        x: root.control-x;
+                        y: 4px;
+                        width: root.control-width;
+                        nav: "set.music";
+                        value: SettingsView.music;
+                    }
+                }
+
+                Rectangle {
+                    height: row7.height;
+                    row7 := SettingLabel {
+                        label: @tr("Sound effects");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Slider {
+                        x: root.control-x;
+                        y: 4px;
+                        width: root.control-width;
+                        nav: "set.effects";
+                        value: SettingsView.effects;
+                    }
+                }
+
+                GroupTitle {
+                    text: @tr("ONLINE");
+                }
+
+                Rectangle {
+                    height: row8.height;
+                    row8 := SettingLabel {
+                        label: @tr("Input delay");
+                        note: @tr("In frames. Lower feels faster; higher rolls back less.");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Stepper {
+                        x: root.control-x;
+                        y: 6px;
+                        nav: "set.delay";
+                        value: SettingsView.input-delay;
+                        value-width: 48px;
+                        numeric: true;
+                    }
+                }
+
+                GroupTitle {
+                    text: @tr("CONTROLS");
+                }
+
+                Rectangle {
+                    height: row9.height;
+                    row9 := SettingLabel {
+                        row-height: 24px;
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Label {
+                        x: root.control-x;
+                        width: (root.control-width - 24px) / 2;
+                        text: @tr("KEY");
+                    }
+
+                    Label {
+                        x: root.control-x + (root.control-width + 24px) / 2;
+                        width: (root.control-width - 24px) / 2;
+                        text: @tr("PAD");
+                    }
+                }
+
+                for action[i] in root.actions: Rectangle {
+                    height: row10.height;
+                    row10 := SettingLabel {
+                        label: action;
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    BindBox {
+                        x: root.control-x;
+                        y: 4px;
+                        width: (root.control-width - 24px) / 2;
+                        nav: "set.key";
+                        nav-index: i;
+                        value: SettingsView.keys[i];
+                        asking: SettingsView.asking-key == i;
+                        ask: @tr("Press a key");
+                    }
+
+                    BindBox {
+                        x: root.control-x + (root.control-width + 24px) / 2;
+                        y: 4px;
+                        width: (root.control-width - 24px) / 2;
+                        nav: "set.button";
+                        nav-index: i;
+                        value: SettingsView.buttons[i].text;
+                        face: SettingsView.buttons[i].face;
+                        asking: SettingsView.asking-button == i;
+                        ask: @tr("Press a button");
+                    }
+                }
+
+                Rectangle {
+                    height: row11.height;
+                    row11 := SettingLabel {
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Button {
+                        x: root.control-x;
+                        y: 4px;
+                        nav: "set.reset";
+                        text: @tr("RESET CONTROLS");
+                    }
+                }
+
+                GroupTitle {
+                    text: @tr("ABOUT");
+                }
+
+                Rectangle {
+                    height: row12.height;
+                    row12 := SettingLabel {
+                        label: @tr("Version");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Mono {
+                        x: root.control-x;
+                        y: 0;
+                        width: root.control-width;
+                        height: 48px;
+                        text: Shell.version;
+                    }
+                }
+
+                Rectangle {
+                    height: row13.height;
+                    row13 := SettingLabel {
+                        label: @tr("Your files");
+                        note: SettingsView.data-folder;
+                        cut: true;
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Button {
+                        x: root.control-x;
+                        y: 4px;
+                        nav: "set.folder";
+                        text: @tr("SHOW FOLDER");
+                    }
+                }
+
+                Rectangle {
+                    height: 24px;
+                }
+            }
+        }
+    }
+}
