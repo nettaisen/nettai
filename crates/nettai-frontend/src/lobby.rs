@@ -48,7 +48,9 @@
 //!    place a round leaves is picked from it, alike on both peers
 //!    (`Match::stated`).
 //! 4. **Loading** — the match is agreed ([`Status::Loading`]), and each
-//!    host loads what it will draw and play of it before its first tick:
+//!    host loads what it will draw and play of it before its first tick
+//!    (`crate::preload`: a `Preload` of the agreement's set, whose
+//!    `fraction()` is what a host says here):
 //!    each peer says how far its player's has got ([`Lobby::set_loading`],
 //!    [`Lobby::set_loaded`]), which the other can show
 //!    ([`Lobby::their_loading`]). The match starts ([`Status::Start`]) once

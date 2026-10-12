@@ -449,8 +449,14 @@ host calls, in order:
     while let Some(d) = link.recv()? { lobby.receive(now, d); }   // every datagram, frames too
     match lobby.poll(now) {
         Status::Pending => { /* show it: settings(), ready(), their_ready(), their_name(), ping() */ }
-        Status::Loading(agreement) => { /* load the match; set_loading(fraction), then set_loaded() */ }
-        Status::Start(agreement) => { /* NetPlayer::new(channel, agreement.side, agreement.set.clone(), options) */ }
+        Status::Loading(agreement) => {
+            // The match's preload (§9), made once of agreement.set, a step or a few a frame:
+            // preload.step(); lobby.set_loading(preload.fraction()); and once preload.done(), lobby.set_loaded().
+            // The other player's bar is lobby.their_loading().
+        }
+        Status::Start(agreement) => {
+            // preload.player(Box::new(NetPlayer::new(channel, agreement.side, agreement.set.clone(), options)))
+        }
         Status::Failed(failure) => { /* say failure.reason; log failure.detail */ }
     }
     for d in lobby.outgoing() { link.send(&d)?; }
@@ -540,12 +546,17 @@ host calls, in order:
     shared simulation needs them. A recording that is to hide the builds
     again must keep the setting: the replay file doesn't yet.
   - **Loaded before the first tick.** Agreed, the lobby says
-    `Status::Loading` with the agreement, and the host loads what the
-    match will draw and play (both sides, the rounds' places). It says how
-    far it is (`Lobby::set_loading(fraction)`) and when it is done
-    (`set_loaded()`), sees the other's (`their_loading()`, 0 to 1), and
-    the lobby says `Status::Start` once both have loaded: no tick runs
-    before. (A lobby that was loading may say `Pending` again: the other
+    `Status::Loading` with the agreement, and the host makes the match
+    ready: a `preload::Preload` of the agreement's set for this player's
+    side (§9), stepped on the thread that will play it. It says how far it
+    is (`Lobby::set_loading(preload.fraction())`) and when it is done
+    (`set_loaded()`, once `preload.done()`), sees the other's
+    (`their_loading()`, 0 to 1: the other player's bar on a loading
+    screen), and the lobby says `Status::Start` once both have loaded: no
+    tick runs before, and the player is the preload's
+    (`preload.player(driver)`). With its loading each peer says the digest
+    of the match's first round at its start, and two programs that set the
+    agreed match up differently stop here (`Reason::DifferentVersion`). (A lobby that was loading may say `Pending` again: the other
     player took their ready back in the moment the match was agreed, and
     both are back in the lobby, this player not ready.) The host must keep
     polling the link and the lobby while it
@@ -2173,8 +2184,17 @@ waits, the window stalled (the wait is the runtime's above; it wasn't timed in t
   does (a renderer of another language's graphics). The set is the one the driver plays: a match's
   (`Set::of`), a netplay agreement's, a replay's match's (`nettai_match::binary::read_match`).
 
-Online, each peer preloads its own match and the lobby holds the start until both are done (the lobby's part:
-docs/design/app-ui.md §8 item 9); a peer's bar is its own `fraction()`.
+Online, each peer preloads its own match and the lobby holds the start until both are done (§2, "Loaded before
+the first tick"). The lobby says `Status::Loading` with the agreement: the host makes the `Preload` of
+`agreement.set` for `agreement.side`, steps it, and tells the lobby how far it is, `Lobby::set_loading(fraction())`
+after a step and `Lobby::set_loaded()` once `done()`. A peer's own bar is its `fraction()` (or a bar a side from
+`fraction_of`), and the other player's bar is `Lobby::their_loading()`, the other peer's `fraction()` as it said
+it. When the lobby says `Status::Start`, the player is `preload.player(driver)` over the `NetPlayer`. The link and
+the lobby are polled every frame meanwhile, so the runtime's step, which is about a second and can't be stepped,
+is best taken before the lobby (`preload::runtime`, behind the game's start-up bar): a link nobody polls for 3
+seconds reads as a dropped connection on the other side (docs/design/rollback.md §4.8). nettai-frontend's test
+`an_invite_becomes_a_match` (`netplay::tests`) goes this whole way over WebRTC links, and its players load nothing
+late.
 
 **Held to it.** `Player::late()` says what a player made on the way since it was made (`preload::Late`):
 runtimes loaded on its thread (`Behaviors::loads`), parts read from disk on it (`pack::reads`), and its text's
