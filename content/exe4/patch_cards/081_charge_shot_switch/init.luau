@@ -6,7 +6,7 @@ local cards = require("../rules/patch_cards/cards")
 local zap_ring = require("../navis/megaman/weapons/zap_ring")
 
 local card: SlottedPatchCard = {
-    slot = "0E",
+    slot = cards.SLOT_0E,
     effects = {
         cards.charged_shot(zap_ring.weapon),
     },
