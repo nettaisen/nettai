@@ -185,8 +185,10 @@ impl Renderer {
         // palette transform's slot, and a dimming is one of the fade
         // system's transforms: where the game's flash comes before the
         // fades, EXE5's and EXE4's, its white is the stage's palettes, which
-        // a background's palette shift shifts and a dimming darkens a
-        // quarter down; where it comes after, EXE6's, the white stands.)
+        // a background's palette shift shifts, a dimming darkens a quarter
+        // down and a transformation's fade takes to black (EXE4's
+        // JunkSoul's change's flash, 0x080EBB50: black until the fade
+        // lifts); where it comes after, EXE6's, the white stands.)
         let flash = objects::palette_flash(b);
         let flash_order = b.content.rules().effects.palette_flash_order;
         let flashed = flash.is_some() && flash_order == PaletteFlashOrder::BeforeFades;
@@ -251,7 +253,9 @@ impl Renderer {
         let custom = crate::custom::fade(b).unwrap_or_default();
         let custom_hud = crate::custom::hud_fade(b).unwrap_or_default();
         let stage = if flashed {
-            dim_fade(b)
+            // (The fade system's first record, a transformation's or a
+            // dimming's: its slots come after the flash's.)
+            if transform != Fade::None { transform } else { dim_fade(b) }
         } else if flash.is_some() {
             Fade::White(16)
         } else if transform != Fade::None {
