@@ -2281,7 +2281,9 @@ export type ChipSpec = {
     -- screen, and leaves the selection's rules alone: EXE6's BeastOut chip),
     -- "hides_damage_as_a" (the custom screen shows its damage as "???" on a
     -- copy of code A), "no_icon_when_next" (next in the hand it shows no icon
-    -- over its user: EXE4's souls' chips).
+    -- over its user: EXE4's souls' chips), "no_name_at_use" (its use shows
+    -- no name on the other console; its own action names it:
+    -- `battle.show_used_chip`, Slasher's).
     traits: { string }?,
     -- The trap it is while a side's defensive-chip record holds it:
     -- "anti_damage", "anti_sword", "body_guard", "anti_navi",
