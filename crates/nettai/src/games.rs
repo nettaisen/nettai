@@ -1,31 +1,53 @@
 //! The games the app plays: those the content has (`pack::games`), each
-//! loaded on a thread of its own the first time it's wanted and kept, and
-//! its graphics in each language shown, loaded as each is first asked for.
+//! loaded and kept (docs/frontend.md §9).
+//!
+//! A game is ready in two stretches, and the loading screen's bar covers both. Everything read from disk (the
+//! content, the pack's graphics and sound, the text's font, and the strings and lettering of the language
+//! shown) is read on a thread of the game's own, a part at a time (the library's `game::Loading`), so the
+//! window stays live. Then the content's runtime is loaded on the window's thread, the one that runs the
+//! battles and checks the builds: that takes about a second with the window still, and can't be done
+//! elsewhere (`preload::runtime`). It is done the moment the selected game's parts are in; a game loaded behind
+//! the menu takes it when the player steps to it, behind the bar again.
+//!
+//! Another language's graphics are loaded on a thread too ([`Games::load_language`]), never where they are
+//! first asked for. Why a game can't be listed or loaded goes to the log.
 
 use nettai_battle::Content;
-use nettai_frontend::game::{self, Graphics, Loaded, Options};
 use nettai_battle::content::strings::Strings;
 use nettai_content::locale;
+use nettai_frontend::game::{self, Graphics, Loaded};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::sync::Arc;
 
 /// Where a game is.
 pub enum State {
-    /// No asset pack of it is found: the command that writes one.
-    NoPack(String),
+    /// No asset pack of it is found.
+    NoPack,
     NotLoaded,
-    Loading,
+    /// Its parts are being read: how far the whole of its loading is, 0 to 1.
+    Loading(f32),
     Ready(Rc<Ready>),
-    /// It couldn't be loaded: why (the library's words).
-    Failed(String),
+    /// It couldn't be loaded (why is in the log).
+    Failed,
 }
 
-/// A game, loaded: its content, sound and font, and its graphics by
-/// language.
+/// How much of the bar the parts read on the game's thread are; the rest is the runtime's.
+const READ: f32 = 0.8;
+
+/// What a loading game tells the window's thread: how far it is, then the game with its graphics in the
+/// language asked for where that isn't the content's own (or why there is no game).
+pub enum Step {
+    Progress(f32),
+    Done(Result<Box<(Loaded, Option<(String, Graphics)>)>, String>),
+}
+
+/// A game, loaded: its content, sound and font, and its graphics by language.
 pub struct Ready {
     pub loaded: Loaded,
     graphics: std::cell::RefCell<HashMap<String, Graphics>>,
+    /// The window's thread has the content's runtime: battles are made and builds checked without a wait.
+    runtime: std::cell::Cell<bool>,
 }
 
 impl Ready {
@@ -33,21 +55,15 @@ impl Ready {
         &self.loaded.game.content
     }
 
-    /// The game's graphics in `lang`: its pack's lettering and the
-    /// content's strings in it, else the content's own (a language the
-    /// content or the pack hasn't).
+    /// The game's graphics in `lang` (its pack's lettering and the content's strings in it), if they are
+    /// loaded; else the content's own. Nothing is read here: [`Games::load_language`] loads a language.
     pub fn graphics(&self, lang: &str) -> Graphics {
-        let lang = if locale::languages(&self.loaded.game.dir).iter().any(|l| l == lang) { lang } else { locale::OWN };
-        if let Some(g) = self.graphics.borrow().get(lang) {
-            return g.clone();
-        }
-        let g = match self.loaded.game.graphics(lang) {
-            Ok(g) => g,
-            // (A pack without the language's lettering: its own.)
-            Err(_) => self.loaded.graphics.clone(),
-        };
-        self.graphics.borrow_mut().insert(lang.to_string(), g.clone());
-        g
+        self.graphics.borrow().get(lang).cloned().unwrap_or_else(|| self.loaded.graphics.clone())
+    }
+
+    /// Whether `lang`'s graphics need no loading: they are loaded, or the content has none in it.
+    pub fn has_language(&self, lang: &str) -> bool {
+        lang == locale::OWN || self.graphics.borrow().contains_key(lang) || !locale::languages(&self.loaded.game.dir).iter().any(|l| l == lang)
     }
 }
 
@@ -60,8 +76,6 @@ pub struct Entry {
 /// The games there are, and how far each is loaded.
 pub struct Games {
     pub list: Vec<Entry>,
-    /// Why none can be listed (no content, no packs directory).
-    pub problem: Option<String>,
 }
 
 impl Games {
@@ -69,17 +83,27 @@ impl Games {
     pub fn find() -> Games {
         let found = match game::Found::find(&nettai_content::pack::packs_dir(), &[]) {
             Ok(f) => f,
-            Err(e) => return Games { list: Vec::new(), problem: Some(format!("{e}: {}", e.report)) },
+            Err(e) => {
+                crate::errors::log("finding the packs", &format_args!("{e}: {}", e.report));
+                return Games { list: Vec::new() };
+            }
         };
         match nettai_content::pack::games(None, &found.packs) {
             Ok(choices) => Games {
                 list: choices
                     .into_iter()
-                    .map(|c| Entry { state: if c.pack.is_some() { State::NotLoaded } else { State::NoPack(c.why_not.unwrap_or_default()) }, id: c.game })
+                    .map(|c| {
+                        if let Some(why) = &c.why_not {
+                            crate::errors::log(&format!("{}'s pack", c.game), why);
+                        }
+                        Entry { state: if c.pack.is_some() { State::NotLoaded } else { State::NoPack }, id: c.game }
+                    })
                     .collect(),
-                problem: None,
             },
-            Err(report) => Games { list: Vec::new(), problem: Some(report.to_string()) },
+            Err(report) => {
+                crate::errors::log("listing the games", &report);
+                Games { list: Vec::new() }
+            }
         }
     }
 
@@ -87,36 +111,130 @@ impl Games {
         self.list.iter().find(|e| e.id == id)
     }
 
+    /// Game `id`, if it is ready to play: its parts read, and its runtime on the window's thread.
     pub fn ready(&self, id: &str) -> Option<Rc<Ready>> {
+        self.read(id).filter(|r| r.runtime.get())
+    }
+
+    /// Game `id`, if its parts are read (its runtime may yet be to load: [`Games::load_runtime`]).
+    pub fn read(&self, id: &str) -> Option<Rc<Ready>> {
         match self.get(id).map(|e| &e.state) {
             Some(State::Ready(r)) => Some(r.clone()),
             _ => None,
         }
     }
 
-    /// Start loading `id` on a thread, if it isn't loaded or loading;
-    /// `done` gets it on the UI's thread.
-    pub fn load(&mut self, id: &str, lang: &str, done: impl FnOnce(String, Result<Loaded, String>) + Send + 'static) {
+    /// The games that can be played or may yet be: those with a pack that hasn't failed to load.
+    pub fn playable(&self) -> Vec<String> {
+        self.list.iter().filter(|e| !matches!(e.state, State::NoPack | State::Failed)).map(|e| e.id.clone()).collect()
+    }
+
+    /// How far `id`'s loading is, 0 to 1 (1: it is ready).
+    pub fn progress(&self, id: &str) -> f32 {
+        match self.get(id).map(|e| &e.state) {
+            Some(State::Loading(p)) => *p,
+            Some(State::Ready(r)) if r.runtime.get() => 1.0,
+            Some(State::Ready(_)) => READ,
+            _ => 0.0,
+        }
+    }
+
+    /// Start reading `id`'s parts on a thread, if it isn't loaded or loading, to be shown in `lang`. `told`
+    /// gets each part's end and then the game, in order, on the window's thread.
+    pub fn load(&mut self, id: &str, lang: &str, told: impl Fn(String, Step) + Send + Sync + 'static) {
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
-        if !matches!(entry.state, State::NotLoaded | State::Failed(_)) {
+        if !matches!(entry.state, State::NotLoaded) {
             return;
         }
-        entry.state = State::Loading;
-        let id = id.to_string();
-        let options = Options { lang: lang.to_string(), ..Options::default() };
+        entry.state = State::Loading(0.0);
+        let (id, lang) = (id.to_string(), lang.to_string());
+        let told = Arc::new(told);
         std::thread::spawn(move || {
-            let loaded = game::load(&id, &options).map_err(|e| format!("{e}\n{}", e.report));
-            let _ = slint::invoke_from_event_loop(move || done(id, loaded));
+            let tell = |step: Step| {
+                let (id, told) = (id.clone(), told.clone());
+                let _ = slint::invoke_from_event_loop(move || told(id, step));
+            };
+            let loaded = (|| {
+                let mut loading = game::Loading::new(&id, game::Options::default());
+                while loading.step()? {
+                    tell(Step::Progress(loading.fraction() * READ * 0.9));
+                }
+                let loaded = loading.finish().expect("every part is loaded");
+                // The language shown, where the content has it and it isn't its own.
+                let other = (lang != locale::OWN && locale::languages(&loaded.game.dir).iter().any(|l| *l == lang)).then(|| loaded.game.graphics(&lang));
+                let other = match other {
+                    Some(Ok(graphics)) => Some((lang.clone(), graphics)),
+                    Some(Err(e)) => {
+                        crate::errors::log(&format!("loading {id} in {lang}"), &format_args!("{e}\n{}", e.report));
+                        None
+                    }
+                    None => None,
+                };
+                Ok((loaded, other))
+            })();
+            tell(Step::Done(loaded.map(Box::new).map_err(|e: game::LoadError| format!("{e}\n{}", e.report))));
         });
     }
 
-    /// A game loaded (or not) on its thread.
-    pub fn loaded(&mut self, id: &str, loaded: Result<Loaded, String>) {
+    /// A part of `id`'s loading ended: how far it is now, or the game (or why there is none: to the log).
+    pub fn step(&mut self, id: &str, step: Step) {
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
-        entry.state = match loaded {
-            Ok(loaded) => State::Ready(Rc::new(Ready { loaded, graphics: Default::default() })),
-            Err(why) => State::Failed(why),
+        entry.state = match step {
+            Step::Progress(p) => State::Loading(p),
+            Step::Done(Ok(done)) => {
+                let (loaded, other) = *done;
+                State::Ready(Rc::new(Ready { loaded, graphics: std::cell::RefCell::new(other.into_iter().collect()), runtime: false.into() }))
+            }
+            Step::Done(Err(why)) => {
+                crate::errors::log(&format!("loading {id}"), &why);
+                State::Failed
+            }
         };
+    }
+
+    /// Load `id`'s runtime on this thread, the window's, if its parts are read and it hasn't it: about a
+    /// second, the window still. True if the game is ready after it.
+    pub fn load_runtime(&mut self, id: &str) -> bool {
+        let Some(ready) = self.read(id) else { return false };
+        if ready.runtime.get() {
+            return true;
+        }
+        match nettai_frontend::preload::runtime(ready.content()) {
+            Ok(_) => ready.runtime.set(true),
+            Err(why) => {
+                crate::errors::log(&format!("loading {id}'s runtime"), &why);
+                if let Some(entry) = self.list.iter_mut().find(|e| e.id == id) {
+                    entry.state = State::Failed;
+                }
+            }
+        }
+        ready.runtime.get()
+    }
+
+    /// Load every read game's graphics in `lang`, each on a thread, where they aren't loaded: `told` gets
+    /// each game's on the window's thread ([`Games::language`] keeps them).
+    pub fn load_language(&self, lang: &str, told: impl Fn(String, String, Graphics) + Send + Sync + 'static) {
+        let told = Arc::new(told);
+        for entry in &self.list {
+            let State::Ready(ready) = &entry.state else { continue };
+            if ready.has_language(lang) {
+                continue;
+            }
+            let (id, lang, game, told) = (entry.id.clone(), lang.to_string(), ready.loaded.game.clone(), told.clone());
+            std::thread::spawn(move || match game.graphics(&lang) {
+                Ok(graphics) => {
+                    let _ = slint::invoke_from_event_loop(move || told(id, lang, graphics));
+                }
+                Err(e) => crate::errors::log(&format!("loading {id} in {lang}"), &format_args!("{e}\n{}", e.report)),
+            });
+        }
+    }
+
+    /// `id`'s graphics in `lang`, loaded.
+    pub fn language(&mut self, id: &str, lang: &str, graphics: Graphics) {
+        if let Some(ready) = self.read(id) {
+            ready.graphics.borrow_mut().insert(lang.to_string(), graphics);
+        }
     }
 }
 
@@ -128,6 +246,8 @@ pub struct Names<'a> {
     pub strings: Option<&'a nettai_battle::content::strings::Strings>,
 }
 
+// (The screens that show chips, forms and cards aren't built yet: what they will call isn't called.)
+#[allow(dead_code)]
 impl<'a> Names<'a> {
     /// The names of `content` in `graphics`'s language.
     pub fn of(content: &'a Content, graphics: &'a Graphics) -> Names<'a> {
@@ -208,6 +328,7 @@ impl<'a> Names<'a> {
     }
 }
 
+#[allow(dead_code)]
 /// A description's lines as one: a space where a break falls between two
 /// Latin letters (`MegaBstr\nAttck +1`), none between others (Japanese
 /// lines run on: `ロックバスターの\n攻撃力が1アップ!`).

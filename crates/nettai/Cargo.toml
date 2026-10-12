@@ -3,9 +3,11 @@ name = "nettai"
 version = "0.1.0"
 edition.workspace = true
 license.workspace = true
-description = "The nettai app (Slint): a title screen, offline play, the netplay lobby and the replay browser around a battle played through nettai-frontend"
+description = "The nettai app: the menus, the builds, netplay and the replays around a battle played through nettai-frontend, in a Slint window (the UI itself is nettai-ui)"
 
 [dependencies]
+# The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).
+nettai-ui = { path = "../nettai-ui" }
 nettai-frontend = { path = "../nettai-frontend" }
 nettai-battle = { path = "../nettai-battle" }
 nettai-render = { path = "../nettai-render" }
@@ -14,18 +16,20 @@ nettai-match = { path = "../nettai-match" }
 nettai-content-api = { path = "../nettai-content-api" }
 # The audio device (`Output`: the `playback` feature, cpal).
 nettai-audio = { path = "../nettai-audio" }
-# The window: Slint on winit, drawn with femtovg (OpenGL), the software
-# renderer as the fallback. `unstable-winit-030` lets the battle hear
-# winit's key events by physical key, before Slint's focus handling.
-slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "renderer-software", "accessibility", "compat-1-2", "unstable-winit-030"] }
-# Gamepads.
-gilrs = "0.11"
+# The window's types (the features are nettai-ui's).
+slint = { version = "1.18", default-features = false, features = ["std", "backend-winit", "renderer-femtovg", "compat-1-2", "unstable-winit-030"] }
+# Gamepads: SDL3's, behind one small API (the user's choice; Cargo.lock pins the revision).
+gamepad-facade = { git = "https://github.com/tangobattle/gamepad-facade" }
+# gamepad-facade says what goes wrong through `log`: it goes to the app's log file.
+log = "0.4"
 # The system's language, for the first one shown.
 sys-locale = "0.3"
-# A replay's date in the local time.
+# The log's and a replay's times in the local time.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-# The tour's screenshots.
+# The screenshot pass's pictures.
 png = "0.17"
+# A replay's video: its errors are worded here (`errors.rs`); the Replays screen runs the export.
+nettai-video = { path = "../nettai-video" }
 # Netplay's link: WebRTC through a room of the signaling server.
 nettai-rtc = { path = "../nettai-rtc" }
 # A build from a save: each game's own reader of its saves.
@@ -36,7 +40,7 @@ exe4-compat = { path = "../exe4-compat" }
 serde = { version = "1", features = ["derive"] }
 toml = "0.8"
 
-# The room's code, copied for the other player (the desktop's clipboard).
+# An invite's code, copied for the other player (the desktop's clipboard).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 arboard = { version = "3", default-features = false }
 # A save to make a build of, chosen in the system's file dialog.
@@ -44,8 +48,11 @@ rfd = "0.15"
 # The picture's texture, kept and written in place in the window's OpenGL.
 glow = "0.16"
 
-[build-dependencies]
-slint-build = "1.18"
+# Keeping the app's time while a battle runs in a covered window (`awake.rs`): Foundation's process activity.
+# (Both are in the tree already, for the window.)
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
 [dev-dependencies]
 # The tests: a signaling server in process, the content of the repository.

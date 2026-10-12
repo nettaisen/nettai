@@ -1,52 +1,55 @@
-//! nettai: the app, in Tango's shape. A top bar's tabs (Play, online;
-//! Training, against the computer; the replays; the builds; the settings) and
-//! a first run's welcome, around a battle played through nettai-frontend, in
-//! a Slint window (docs/app.md).
+//! nettai: the app (docs/app.md). A main menu, Play, Training, Builds, Replays and Settings around a battle
+//! played through nettai-frontend, in a Slint window whose UI is the nettai-ui crate.
 //!
-//! The window's rendering is the clock: before each frame is drawn the app
-//! runs (`App::frame`: the battle's ticks due, its picture presented for
-//! that frame, the sound), and after it asks for the next frame, so it runs
-//! at the display's rate. The battle's keys come from the window's events
-//! before Slint's focus sees them; the menus are Slint's, navigated by the
-//! keys, a gamepad, the mouse or touch alike.
+//! The window's rendering is the clock: before each frame is drawn the app runs (`App::frame`: the battle's
+//! ticks due, its picture presented for that frame, the sound), and after it asks for the next frame, so it
+//! runs at the display's rate. The keys come from the window's events before Slint sees them: the battle's by
+//! where they are on the keyboard, timestamped; the menus' as the same few actions a gamepad's buttons are.
 //!
-//! `NETTAI_PLAY_STATS` prints what the battle's picture costs and how late
-//! it is, every two seconds; `NETTAI_KEY_PROBE` presses the right arrow now
-//! and then to measure it; `NETTAI_TOUR=<folder>` walks every screen and
-//! writes each to a PNG (`tour`).
+//! `NETTAI_PLAY_STATS` prints what the battle's picture costs and how late it is, every two seconds;
+//! `NETTAI_KEY_PROBE` presses the right arrow now and then to measure it; `NETTAI_TOUR=<folder>` walks every
+//! screen and writes each to a PNG (`tour`).
 
-mod app;
 mod arenas;
+mod awake;
+mod battle;
 mod builds;
+mod errors;
 mod games;
 mod gl;
 mod input;
 mod lang;
 mod lobby;
+mod nav;
 mod netplay;
 mod paths;
 mod replays;
+mod screens;
 mod settings;
+mod shell;
 mod sound;
 mod stage;
 mod tour;
 
-use app::App;
+use nav::{Rect, Registry};
+use nettai_ui::AppWindow;
+use shell::{App, NavInput};
 use slint::winit_030::{EventResult, WinitWindowAccessor, winit};
 use slint::{ComponentHandle, RenderingState};
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-slint::include_modules!();
-
 thread_local! {
-    /// The app's state, on the UI's thread (work done on other threads
-    /// comes back to it through the event loop: [`with_app`]).
+    /// The app's state, on the window's thread (work done on other threads comes back to it through the event
+    /// loop: [`with_app`]).
     static APP: std::cell::OnceCell<Rc<RefCell<App>>> = const { std::cell::OnceCell::new() };
+    /// What the UI said while the app was busy (a callback that came in the middle of one of the app's own
+    /// calls): taken up at the next frame.
+    static WAITING: RefCell<Vec<NavInput>> = const { RefCell::new(Vec::new()) };
 }
 
-/// Run `f` on the app's state, on the UI's thread (from a closure given to
+/// Run `f` on the app's state, on the window's thread (from a closure given to
 /// `slint::invoke_from_event_loop`).
 pub fn with_app(f: impl FnOnce(&mut App)) {
     if let Some(app) = APP.with(|a| a.get().cloned()) {
@@ -55,32 +58,24 @@ pub fn with_app(f: impl FnOnce(&mut App)) {
 }
 
 fn main() -> Result<(), slint::PlatformError> {
-    // (An engine stop is the session's to report, as a value: kept off
-    // stderr.)
+    // (An engine stop is the session's to report, as a value: kept off stderr.)
     nettai_frontend::session::quiet_engine_panics();
+    errors::catch_library_logs();
     let tour = std::env::var_os("NETTAI_TOUR").map(std::path::PathBuf::from);
-    let mut backend = slint::BackendSelector::new().backend_name("winit".into());
-    // (`NETTAI_RENDERER`: skia, femtovg or software; else Slint's choice.)
-    if let Ok(renderer) = std::env::var("NETTAI_RENDERER") {
-        backend = backend.renderer_name(renderer);
-    }
+    // (The clock needs the renderer that tells when it draws: femtovg.)
+    let mut backend = slint::BackendSelector::new().backend_name("winit".into()).renderer_name("femtovg".into());
     if tour.is_some() {
-        // (The tour's window doesn't take the keyboard.)
+        // (The screenshot pass's window doesn't take the keyboard.)
         backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
     }
     backend.select()?;
     let ui = AppWindow::new()?;
-    ui.set_version(format!("nettai {}", env!("CARGO_PKG_VERSION")).into());
-    let app = Rc::new(RefCell::new(App::new(&ui)));
+    let app = Rc::new(RefCell::new(App::new(&ui, tour.is_some())));
     APP.with(|a| a.set(app.clone())).unwrap_or_else(|_| unreachable!("the app starts once"));
-    app.borrow_mut().load_games();
-    app.borrow_mut().start();
     wire(&ui, &app);
+    app.borrow_mut().start();
 
-    // The clock: before each frame is drawn, the app's frame; after it, the
-    // next frame asked for. (The renderer tells: femtovg's does, on OpenGL
-    // and on wgpu. Slint's own frames, on Apple's systems, come from the
-    // display link and draw directly, with no window event before them.)
+    // The clock: before each frame is drawn, the app's frame; after it, the next frame asked for.
     let (weak, state) = (ui.as_weak(), app.clone());
     ui.window()
         .set_rendering_notifier(move |s, api| match s {
@@ -90,20 +85,24 @@ fn main() -> Result<(), slint::PlatformError> {
                 if let slint::GraphicsAPI::NativeOpenGL { get_proc_address } = api
                     && std::env::var_os("NETTAI_NO_TEXTURE").is_none()
                 {
-                    state.borrow_mut().gl = Some(gl::GlPicture::new(get_proc_address));
+                    state.borrow_mut().shell.gl = Some(gl::GlPicture::new(get_proc_address));
                 }
             }
-            RenderingState::RenderingTeardown => state.borrow_mut().gl = None,
+            RenderingState::RenderingTeardown => state.borrow_mut().shell.gl = None,
+            // (The app is busy only while one of the system's dialogs is up, which a screen opened and which
+            // runs the window's loop itself: those frames are drawn as the last was.)
             RenderingState::BeforeRendering => {
-                let nav = state.borrow_mut().frame(Instant::now());
-                if let Some(ui) = weak.upgrade() {
-                    for a in nav {
-                        ui.invoke_nav(a);
+                if let Ok(mut app) = state.try_borrow_mut() {
+                    for input in WAITING.with(|w| std::mem::take(&mut *w.borrow_mut())) {
+                        app.input(input);
                     }
+                    app.frame(Instant::now());
                 }
             }
             RenderingState::AfterRendering => {
-                state.borrow_mut().drawn();
+                if let Ok(mut app) = state.try_borrow_mut() {
+                    app.drawn();
+                }
                 if let Some(ui) = weak.upgrade() {
                     ui.window().request_redraw();
                 }
@@ -112,25 +111,63 @@ fn main() -> Result<(), slint::PlatformError> {
         })
         .map_err(|e| slint::PlatformError::Other(format!("the window can't tell the app when it draws: {e:?}")))?;
 
-    // The battle's keys, by where they are, before Slint's focus.
+    // The keys, before Slint's focus; what says the pointer was used.
     let state = app.clone();
-    ui.window().on_winit_window_event(move |_, event| match event {
-        winit::event::WindowEvent::KeyboardInput { event, .. } => {
-            if state.borrow_mut().key(event) { EventResult::PreventDefault } else { EventResult::Propagate }
+    ui.window().on_winit_window_event(move |_, event| {
+        use winit::event::WindowEvent;
+        match event {
+            WindowEvent::KeyboardInput { event, .. } => {
+                // (The app is busy only inside a call of its own that reached the window: the key is Slint's.)
+                let Ok(mut app) = state.try_borrow_mut() else { return EventResult::Propagate };
+                if app.key(event) { EventResult::PreventDefault } else { EventResult::Propagate }
+            }
+            WindowEvent::ModifiersChanged(modifiers) => {
+                let held = modifiers.state();
+                if let Ok(mut app) = state.try_borrow_mut() {
+                    app.modifiers(held.shift_key(), held.control_key() || held.alt_key() || held.super_key());
+                }
+                EventResult::Propagate
+            }
+            WindowEvent::Ime(ime) => {
+                let composing = match ime {
+                    winit::event::Ime::Preedit(text, _) => Some(!text.is_empty()),
+                    winit::event::Ime::Commit(_) | winit::event::Ime::Disabled => Some(false),
+                    winit::event::Ime::Enabled => None,
+                };
+                if let (Some(composing), Ok(mut app)) = (composing, state.try_borrow_mut()) {
+                    app.composing(composing);
+                }
+                EventResult::Propagate
+            }
+            WindowEvent::CursorMoved { .. } | WindowEvent::MouseInput { .. } | WindowEvent::MouseWheel { .. } | WindowEvent::Touch(_) => {
+                let taken = state.try_borrow_mut().map_or(true, |mut app| app.pointer());
+                if taken { EventResult::Propagate } else { EventResult::PreventDefault }
+            }
+            // (After Slint has taken the new size: the layout's scale is set from it.)
+            WindowEvent::Resized(_) | WindowEvent::ScaleFactorChanged { .. } => {
+                let state = state.clone();
+                slint::Timer::single_shot(Duration::ZERO, move || {
+                    if let Ok(mut app) = state.try_borrow_mut() {
+                        app.resized();
+                    }
+                });
+                EventResult::Propagate
+            }
+            WindowEvent::Focused(false) => {
+                if let Ok(mut app) = state.try_borrow_mut() {
+                    app.unfocused();
+                }
+                EventResult::Propagate
+            }
+            // (A file dropped on the window is the screen's: a save, for a build of it.)
+            WindowEvent::DroppedFile(path) => {
+                let (path, state) = (path.clone(), state.clone());
+                // (After this event: the screen may open one of the system's windows.)
+                slint::Timer::single_shot(Duration::ZERO, move || state.borrow_mut().dropped(&path));
+                EventResult::Propagate
+            }
+            _ => EventResult::Propagate,
         }
-        winit::event::WindowEvent::Focused(false) => {
-            state.borrow_mut().keys.release();
-            EventResult::Propagate
-        }
-        // (A save dropped on the window: a build of it.)
-        winit::event::WindowEvent::DroppedFile(path) => {
-            let path = path.clone();
-            let state = state.clone();
-            // (After this event: the app may open the system's windows.)
-            slint::Timer::single_shot(Duration::ZERO, move || state.borrow_mut().dropped(&path));
-            EventResult::Propagate
-        }
-        _ => EventResult::Propagate,
     });
 
     if std::env::var_os("NETTAI_KEY_PROBE").is_some() {
@@ -139,13 +176,16 @@ fn main() -> Result<(), slint::PlatformError> {
     if let Some(dir) = tour {
         tour::start(&ui, &app, dir);
     }
-    ui.invoke_focus_keys();
-    ui.run()
+    ui.run()?;
+    // (The screenshot pass found something cut or moved.)
+    if tour::failed() {
+        std::process::exit(1);
+    }
+    Ok(())
 }
 
-/// `NETTAI_KEY_PROBE`: the right arrow pressed every 300 to 400 ms (at no
-/// particular point between two frames, through the event loop as a key's
-/// event comes) and let go 100 ms later.
+/// `NETTAI_KEY_PROBE`: the right arrow pressed every 300 to 400 ms (at no particular point between two frames,
+/// through the event loop as a key's event comes) and let go 100 ms later.
 fn key_probe() {
     std::thread::spawn(|| {
         for i in 0u64.. {
@@ -161,115 +201,42 @@ fn key_probe() {
     });
 }
 
-/// `f` run on the app after the window's event (a file dialog it opens
-/// runs its own loop).
-fn later_(app: &Rc<RefCell<App>>, f: Box<dyn FnOnce(&mut App)>) {
-    let app = app.clone();
-    slint::Timer::single_shot(Duration::ZERO, move || f(&mut app.borrow_mut()));
-}
-
-/// The screens' requests, to the app.
+/// What the UI tells the app: where its controls are (the focus's registry), and what was clicked, stepped and
+/// typed.
 fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
-    let on = |f: fn(&mut App)| {
-        let app = app.clone();
-        move || f(&mut app.borrow_mut())
-    };
-    let a = app.clone();
-    ui.on_go(move |screen| a.borrow_mut().go(screen));
-    let a = app.clone();
-    ui.on_tab(move |screen| a.borrow_mut().enter(screen));
-    let a = app.clone();
-    ui.on_welcome_language(move |d| a.borrow_mut().welcome_language(d));
-    ui.on_welcome_done(on(App::welcome_done));
-    let a = app.clone();
-    ui.on_select_step(move |row, d| a.borrow_mut().select_step(row, d));
-    let a = app.clone();
-    ui.on_select_act(move || later_(&a, Box::new(|app| app.select_act())));
-    ui.on_quit(|| {
-        let _ = slint::quit_event_loop();
-    });
-    let a = app.clone();
-    ui.on_sound(move |s| a.borrow_mut().sound.play(s));
-    let a = app.clone();
-    ui.on_training_source(move |i| a.borrow_mut().training_source(i as usize));
-    ui.on_training_reroll(on(App::training_reroll));
-    ui.on_training_fight(on(App::training_fight));
-    ui.on_battle_resume(on(App::battle_resume));
-    ui.on_battle_restart(on(App::battle_restart));
-    ui.on_battle_quit(on(App::battle_quit));
-    ui.on_battle_rematch(on(App::battle_rematch));
-    let a = app.clone();
-    ui.on_battle_touch(move |bit, down| {
-        let mut app = a.borrow_mut();
-        if down {
-            app.touch |= bit as u16;
-        } else {
-            app.touch &= !(bit as u16);
-        }
-    });
-    let a = app.clone();
-    ui.on_play_mode(move |m| a.borrow_mut().play_mode(m));
-    let a = app.clone();
-    ui.on_play_code(move |c| a.borrow_mut().play_code(&c));
-    ui.on_play_fight(on(App::play_fight));
-    ui.on_play_ready(on(App::play_ready));
-    ui.on_play_leave(on(App::play_leave));
-    ui.on_play_copy(on(App::play_copy));
-    let a = app.clone();
-    ui.on_training_opponent(move |b| a.borrow_mut().training_opponent(b.max(0) as usize));
-    let a = app.clone();
-    ui.on_training_behavior(move |i| a.borrow_mut().training_behavior(i.max(0) as usize));
-    let a = app.clone();
-    ui.on_training_endless(move |on| a.borrow_mut().training_endless(on));
-    let a = app.clone();
-    ui.on_replays_watch(move |i, side| a.borrow_mut().replays_watch(i.max(0) as usize, side.clamp(0, 1) as u8));
-    let a = app.clone();
-    ui.on_replays_filter(move |i| a.borrow_mut().replays_filter(i.max(0) as usize));
-    let a = app.clone();
-    ui.on_settings_step(move |row, by| a.borrow_mut().settings_step(row, by));
-    let a = app.clone();
-    ui.on_set_name(move |n| a.borrow_mut().set_name(&n));
+    let nav = ui.global::<nettai_ui::Nav>();
+    let registry = app.borrow().shell.nav.registry();
+    let r = registry.clone();
+    nav.on_register(move |id, index, kind| Registry::register(&r, &id, index, kind));
+    let r = registry.clone();
+    nav.on_place(move |id, index, x, y, w, h, enabled| r.borrow_mut().place(&id, index, Rect { x, y, w, h }, enabled));
+    let r = registry.clone();
+    nav.on_page(move |id, x, y, w, h, _, _| r.borrow_mut().page(&id, Rect { x, y, w, h }));
+    let r = registry.clone();
+    nav.on_list(move |id, rows, pitch, row_height, scroll, row_width| r.borrow_mut().list(&id, rows, pitch, row_height, scroll, row_width));
+    nav.on_scrolled(|| {});
 
-    // The builds and the creator. (Each runs after the window's event: a
-    // file dialog it opens runs its own loop.)
-    let later = |app: &Rc<RefCell<App>>, f: Box<dyn FnOnce(&mut App)>| {
-        let app = app.clone();
-        slint::Timer::single_shot(Duration::ZERO, move || f(&mut app.borrow_mut()));
-    };
+    // What happened, to the app now, or at the next frame if it is in the middle of something.
+    fn tell(app: &Rc<RefCell<App>>, input: NavInput) {
+        match app.try_borrow_mut() {
+            Ok(mut app) => app.input(input),
+            Err(_) => WAITING.with(|w| w.borrow_mut().push(input)),
+        }
+    }
     let a = app.clone();
-    ui.on_builds_nav(move |n| later(&a, Box::new(move |app| app.builds_nav(n))));
+    nav.on_activate(move |id, index| tell(&a, NavInput::Activate(id.into(), index)));
     let a = app.clone();
-    ui.on_builds_game(move |i| a.borrow_mut().builds_game(i.max(0) as usize));
+    nav.on_step(move |id, index, by| tell(&a, NavInput::Step(id.into(), index, by)));
     let a = app.clone();
-    ui.on_builds_point(move |i| a.borrow_mut().builds_point(i.max(0) as usize));
+    nav.on_choose(move |id, index, choice| tell(&a, NavInput::Choose(id.into(), index, choice)));
     let a = app.clone();
-    ui.on_builds_activate(move |i| later(&a, Box::new(move |app| app.builds_activate(i.max(0) as usize))));
+    nav.on_point(move |id, index| tell(&a, NavInput::Point(id.into(), index)));
     let a = app.clone();
-    ui.on_build_nav(move |n| later(&a, Box::new(move |app| app.build_nav(n))));
+    nav.on_edit_began(move |_, _, text| tell(&a, NavInput::EditBegan(text.into())));
     let a = app.clone();
-    ui.on_build_tab(move |i| a.borrow_mut().build_tab(i.max(0) as usize));
+    nav.on_edited(move |_, _, text| tell(&a, NavInput::Edited(text.into())));
     let a = app.clone();
-    ui.on_build_point(move |_, _, _| {
-        let _ = &a;
-    });
+    nav.on_edit_done(move |_, _, text| tell(&a, NavInput::EditDone(text.into())));
     let a = app.clone();
-    ui.on_build_act(move |pane, i, o| later(&a, Box::new(move |app| app.build_act(pane, i, o))));
-    let a = app.clone();
-    ui.on_build_step(move |i, by| a.borrow_mut().build_step(i, by));
-    let a = app.clone();
-    ui.on_build_action(move |k| later(&a, Box::new(move |app| app.build_action(k.max(0) as usize))));
-    let a = app.clone();
-    ui.on_build_strip(move |k| a.borrow_mut().build_strip(k.max(0) as usize));
-    let a = app.clone();
-    ui.on_build_filter(move |k| a.borrow_mut().build_filter(k.max(0) as usize));
-    let a = app.clone();
-    ui.on_build_grid_hover(move |x, y| a.borrow_mut().build_grid_hover(x, y));
-    let a = app.clone();
-    ui.on_build_grid_press(move |x, y, right| a.borrow_mut().build_grid_press(x, y, right));
-    let a = app.clone();
-    ui.on_build_grid_wheel(move |up| a.borrow_mut().build_grid_wheel(up));
-    let a = app.clone();
-    ui.on_build_edited(move |t| a.borrow_mut().build_edited(&t));
-    let a = app.clone();
-    ui.on_build_edit_done(move |t| a.borrow_mut().build_edit_done(&t));
+    ui.global::<nettai_ui::Shell>().on_touch(move |bit, down| tell(&a, NavInput::Touch(bit, down)));
 }

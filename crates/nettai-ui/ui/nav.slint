@@ -1,0 +1,118 @@
+// Focus and navigation (docs/design/app-ui.md §5, rules 5 to 10; docs/app.md §11).
+//
+// There is one focus, and the app holds it (`nav.rs`): `Nav.id` and `Nav.index` name the focused control. A
+// control is focusable by holding a `Focusable`, which tells the app where it is; the app finds the neighbor in
+// a direction from those rectangles, so no screen writes its own key handling. Keys and pad buttons reach the
+// app before Slint sees them; a click or a tap arrives here and is passed on with the control's name. What a
+// control does is the app's too: `Nav.activate("ready", 0)` goes to the Rust module of the screen shown.
+
+// What a control does with the keys.
+export enum NavKind {
+    // Enter activates; the arrows move on.
+    button,
+    // Left and Right change its value; Enter activates (a select opens its list).
+    stepper,
+    // Enter or a typed letter starts editing its text.
+    field,
+    // Not a control: a scrolling page (`ScrollPage`) and a list of rows (`ListView`), which say where their view
+    // is. A list is focused as a whole, `Nav.index` its row.
+    page,
+    list,
+}
+
+export global Nav {
+    // The focused control: its name and its index (a row's place in its list, else 0).
+    in property <string> id;
+    in property <int> index;
+    // Where the cursor is in the window: the focused control's place, or on its way there.
+    in property <length> x;
+    in property <length> y;
+    in property <length> w;
+    in property <length> h;
+    // A keyboard or a pad was the last thing used: the cursor shows.
+    in property <bool> shown;
+    // A pad was the last of the two used: the key hints show its buttons.
+    in property <bool> pad;
+    // Enter was pressed on the focused control (it counts the presses: the control flashes, the cursor snaps
+    // in), and the way the last step went (-1 or 1: a value slides that way).
+    in property <int> press-seq;
+    in property <int> step-dir: 1;
+    // The focused field is being edited. `edit-seq` counts the edits begun; `edit-seed` is the letter typed to
+    // begin one (empty: the field's own text, all selected).
+    in property <bool> editing;
+    in property <int> edit-seq;
+    in property <string> edit-seed;
+    // A scrolling page or list is asked to move by `reveal-dy` to bring the focused control into view.
+    in property <string> reveal-id;
+    in property <length> reveal-dy;
+    in property <int> reveal-seq;
+
+    // A control with a `Focusable` exists (the model it gets back tells the app when it is gone).
+    callback register(string, int, NavKind) -> [int];
+    // Where it is, and whether it can be focused.
+    callback place(string, int, length, length, length, length, bool);
+    // A list's rows (`ListView`): how many, how far apart, how tall, how far scrolled, and how much of its width
+    // the rows take.
+    callback list(string, int, length, length, length, length);
+    // A scrolling page: where its view is, how tall what it holds is and how far it is scrolled.
+    callback page(string, length, length, length, length, length, length);
+    // A click or a tap on a control, on the arrow of a stepper (-1 or 1), on a choice.
+    callback activate(string, int);
+    callback step(string, int, int);
+    callback choose(string, int, int);
+    // The pointer went down on a control: the focus goes there.
+    callback point(string, int);
+    // A field's edit: begun (with the text it had), a change, the end (Enter).
+    callback edit-began(string, int, string);
+    callback edited(string, int, string);
+    callback edit-done(string, int, string);
+    // The wheel or a drag scrolled something: the cursor's place is out of date until the controls say theirs.
+    callback scrolled();
+}
+
+// What makes a control focusable, and takes its clicks. Fill the control with one (it is a `TouchArea`) and give
+// it the control's name: unique on its screen, and with a prefix where it belongs to a scrolling page or a
+// dialog (`set.name` on the page `set.`). A control with no name takes clicks alone.
+export component Focusable inherits TouchArea {
+    in property <string> nav;
+    in property <int> nav-index;
+    in property <NavKind> kind: NavKind.button;
+    out property <bool> focused: nav != "" && Nav.id == nav && Nav.index == nav-index;
+    property <[int]> token;
+    property <length> ax: self.absolute-position.x;
+    property <length> ay: self.absolute-position.y;
+    function place() {
+        if nav != "" {
+            Nav.place(nav, nav-index, ax, ay, self.width, self.height, self.enabled);
+        }
+    }
+    init => {
+        if nav != "" {
+            token = Nav.register(nav, nav-index, kind);
+            place();
+        }
+    }
+    changed ax => {
+        place();
+    }
+    changed ay => {
+        place();
+    }
+    changed width => {
+        place();
+    }
+    changed height => {
+        place();
+    }
+    changed enabled => {
+        place();
+    }
+    clicked => {
+        Nav.activate(nav, nav-index);
+    }
+    pointer-event(e) => {
+        if e.kind == PointerEventKind.down && nav != "" {
+            Nav.point(nav, nav-index);
+        }
+    }
+}

@@ -1,0 +1,129 @@
+// The app's window (docs/app.md §2): the ground, the one screen shown, what opens over it, and the cursor.
+//
+// A screen is one file in screens/ (its component, its overlay for what it opens over itself, and its view: the
+// global its Rust module sets) and one Rust module in src/screens/. This file names each of those once, below;
+// what a screen adds to its view, and the structs and enums it uses there, reach Rust with no edit here.
+
+import { Theme, Audit } from "theme.slint";
+import { Nav, NavKind } from "nav.slint";
+import { Shell, Screen, BattleKind, Backdrop, Cursor, DialogLayer, PickerLayer, Fx } from "shell.slint";
+import { Pulse } from "motion.slint";
+import { LoadingScreen } from "screens/loading.slint";
+import { MenuScreen } from "screens/menu.slint";
+import { SettingsScreen } from "screens/settings.slint";
+import { VersusScreen } from "screens/versus.slint";
+import { BattleScreen } from "screens/battle.slint";
+import { PlayScreen, PlayOverlay, MatchMenu } from "screens/play.slint";
+import { TrainingScreen, TrainingOverlay, TrainingMenu } from "screens/training.slint";
+import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
+import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
+
+export { Theme, Audit, Nav, NavKind }
+export { Shell, Screen, BattleKind, DialogButton, VersusCard, PadButton, ErrorKind, Errors, Fx } from "shell.slint";
+export { ButtonKind } from "widgets.slint";
+// What each screen's Rust module sets: its view.
+export { MenuView } from "screens/menu.slint";
+export { SettingsView } from "screens/settings.slint";
+export { PlayView } from "screens/play.slint";
+export { TrainingView } from "screens/training.slint";
+export { BuildsView } from "screens/builds.slint";
+export { ReplaysView } from "screens/replays.slint";
+
+export component AppWindow inherits Window {
+    // What is shown in place of a menu screen: the bar while the game loads, the two cards before a battle,
+    // the battle.
+    property <bool> in-battle: Shell.battle != BattleKind.none && Shell.battle-full;
+    property <bool> covered: Shell.loading || Shell.versus || root.in-battle;
+    title: "nettai";
+    preferred-width: 1280px;
+    preferred-height: 800px;
+    background: Theme.ground-bottom;
+    default-font-family: Theme.body;
+    default-font-size: 14px;
+    default-font-weight: 400;
+    // (Not drawn under a battle that fills the window: its hexagons cost a millisecond a frame.)
+    Backdrop {
+        visible: !root.in-battle || Theme.phone;
+    }
+
+    if !root.covered && Shell.screen == Screen.menu: MenuScreen { }
+    if !root.covered && Shell.screen == Screen.play: PlayScreen { }
+    if !root.covered && Shell.screen == Screen.training: TrainingScreen { }
+    if !root.covered && Shell.screen == Screen.builds: BuildsScreen { }
+    if !root.covered && Shell.screen == Screen.replays: ReplaysScreen { }
+    if !root.covered && Shell.screen == Screen.settings: SettingsScreen { }
+    // What a screen opens over itself.
+    if !root.covered && Shell.screen == Screen.play: PlayOverlay { }
+    if !root.covered && Shell.screen == Screen.training: TrainingOverlay { }
+    if !root.covered && Shell.screen == Screen.builds: BuildsOverlay { }
+    if !root.covered && Shell.screen == Screen.replays: ReplaysOverlay { }
+    if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
+    if Shell.versus: VersusScreen { }
+    if root.in-battle: BattleScreen { }
+    if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu { }
+    if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu { }
+    if Shell.picker: PickerLayer { }
+    if Shell.dialog: DialogLayer { }
+    // The cursor: one object that glides from control to control. (The app moves it, a share of the way each
+    // frame: an animation here would start over each time the control it is going to moved.)
+    Cursor {
+        x: Nav.x - 5px;
+        y: Nav.y - 5px;
+        width: Nav.w + 10px;
+        height: Nav.h + 10px;
+        visible: Nav.shown && Nav.id != "";
+    }
+
+    // Something flying over the layout (`Fx`): from one place to another, as it shrinks into the second.
+    fly := Pulse {
+        seq: Fx.fly-seq;
+        duration: Theme.settle;
+    }
+
+    Rectangle {
+        property <float> at: 1 - pow(fly.v, 3);
+        x: Fx.fly-from-x + (Fx.fly-to-x - Fx.fly-from-x) * self.at;
+        y: Fx.fly-from-y + (Fx.fly-to-y - Fx.fly-from-y) * self.at - sin(self.at * 180deg) * 18px;
+        width: 20px + tag.preferred-width + (Fx.fly-text == "" ? 0px : 8px);
+        height: 20px;
+        visible: fly.v > 0;
+        opacity: min(1, fly.v * 3);
+        Image {
+            x: 0;
+            width: 16px;
+            height: 16px;
+            source: Fx.fly-image;
+            image-rendering: pixelated;
+        }
+
+        tag := Text {
+            x: 22px;
+            text: Fx.fly-text;
+            color: Theme.text;
+            font-family: Theme.body;
+            font-size: 13px;
+            font-weight: 600;
+            vertical-alignment: center;
+        }
+    }
+
+    // The wipe into a battle: the ground draws back across the window, a lit edge leading it.
+    wipe := Pulse {
+        seq: Shell.wipe-seq;
+        duration: Theme.set-piece;
+    }
+
+    Rectangle {
+        property <float> gone: 1 - wipe.v * wipe.v * (3 - 2 * wipe.v);
+        x: self.gone * parent.width;
+        visible: wipe.v > 0;
+        background: Theme.ground-bottom;
+        Rectangle {
+            x: 0;
+            width: 3px;
+            background: Theme.cursor;
+            drop-shadow-blur: 14px;
+            drop-shadow-color: Theme.glow;
+        }
+    }
+}
