@@ -282,6 +282,38 @@ pub struct Stage {
     pub background: crate::content::BackgroundId,
 }
 
+/// The keys a round's host answers in the battle's place. The original's
+/// battle runs on a console and answers every key itself (a recording's
+/// round: [`HostKeys::NONE`]); a host that has menus of its own takes the
+/// two that stop a battle or leave it. They are part of the setup, so the
+/// peers of a netbattle and a replay of it take the same keys, and no
+/// button of either player can pause or leave a round whose host took them.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct HostKeys {
+    /// START in the fight. The original pauses the battle for the player
+    /// who pressed it (`sub_800A046`, fighting state 0x1C `sub_80083E4`:
+    /// docs/engine/battle-flow.md §3.5). Taken, the fight goes on as on a
+    /// tick without START, and the tick says who asked
+    /// (`Battle::pause_requests`) for the host to open its own menu, and to
+    /// stop running ticks itself where it may. START is every other key it
+    /// was: the custom screen's (the cursor to OK), a window's, a chatbox's,
+    /// a navi's own.
+    pub pause: bool,
+    /// L on the custom screen while it takes keys. The original's is the
+    /// key to run from the battle: the run-away check in a battle that can
+    /// be run from, and in any other the navi's message that it can't
+    /// (state 0x1C `sub_8026E98`: docs/engine/custom-screen.md §3.5). Taken,
+    /// it does nothing: no message, no sound, and no escape. L is every
+    /// other key it was: in the fight (the custom screen's request, a
+    /// turn), and any key a chatbox or a hidden window waits for.
+    pub run: bool,
+}
+
+impl HostKeys {
+    /// A console's battle: it answers every key itself.
+    pub const NONE: HostKeys = HostKeys { pause: false, run: false };
+}
+
 /// Everything a round starts from.
 #[derive(Clone, Debug, Hash)]
 pub struct RoundSetup {
@@ -314,6 +346,9 @@ pub struct RoundSetup {
     /// (BattleState+0x20), so a round whose init had to wait starts with
     /// it set, and its first tick plays no pinch cue.
     pub low_hp_music_latched: bool,
+    /// The keys the round's host answers in the battle's place (none, in a
+    /// recording of the original).
+    pub host_keys: HostKeys,
     /// Per side: the battle folder and what the save unlocks on the
     /// custom screen.
     pub players: [crate::custom::PlayerSetup; 2],

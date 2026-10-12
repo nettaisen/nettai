@@ -13,7 +13,8 @@
 //! Left out, because they are presentation (the simulation never reads
 //! them, and a frontend may present them per viewer):
 //!
-//! - the tick's sound cues (`Battle::sound_cues`);
+//! - the tick's sound cues (`Battle::sound_cues`) and the pause its
+//!   players asked a host for (`Battle::pause_requests`);
 //! - how sprites are drawn ([`Look`](crate::object::sprite::Look));
 //! - which banner is showing ([`Banner::id`](crate::hud::Banner::id)) and
 //!   what a telop says ([`Banner::telop`](crate::hud::Banner::telop), from
@@ -203,6 +204,7 @@ impl Hash for Battle {
             dimming,
             rules,
             sound: _,
+            pause_asked: _,
             outcome,
             folder_check: _,
             validation: _,

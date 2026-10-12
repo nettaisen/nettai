@@ -502,6 +502,21 @@ a netbattle has no running, so no recording reaches it).
 
 State 0x1C, `sub_80083E4`: only the pausing player [5] can resume, with a new START edge (`sub_800A07C([5])`). On that edge: sound 0x9F, [0]=8, `sub_801DACC(0x200)`. The pause byte stays 1 for the rest of that tick; `sub_80080D2` unpauses at the top of the next tick. While in 0x1C, `sub_8012DFC` is not called, so actor inputs are frozen. What runs while paused is listed in §8.3.
 
+**A host's pause** (nettai's own: the originals have none). A round's setup says which keys its host answers in the
+battle's place (`RoundSetup::host_keys`, `HostKeys`); a recording of the original says none, and its battle pauses
+itself as above. With `HostKeys::pause`, step 8 of `sub_80080D2` pauses nothing: the tick notes each player
+`sub_800A046`'s test holds for (START pressed, the battle not over, not dimmed; both players on one tick are both
+noted, where the original names player 0) and the fight goes on to step 9 as on a tick without START. State 0x1C
+is never entered, the pause's sound isn't played and "PAUSE" isn't shown. The note is the tick's output, as its
+sound cues are (`Battle::pause_requests`: not in the state or the digest; a snapshot stepped again says it
+again): the host opens its own menu and, where it may, stops running ticks (nettai-frontend's
+`Player::take_pause_requests` and `set_paused`: docs/frontend.md §7). START stays every other key it is: the
+custom screen's (the cursor to OK, custom-screen.md §3.2), the Cross window's, a chatbox's and the hidden
+window's any key, and a button in the navi's own input record (a chip's command reads it there). Every match
+nettai plays has it (`nettai_match::HOST_KEYS`): the setting is the same for both players of a netbattle and for
+its replay because it is in the setup, which the digest covers, so no button of either player can pause a match.
+Engine tests: `a_consoles_battle_pauses_itself`, `a_hosts_pause_leaves_the_fight_running_and_says_who_asked`.
+
 ### 3.6 Round end: KO, result states, turn timer, damage judge
 
 #### Alive bookkeeping
