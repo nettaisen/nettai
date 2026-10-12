@@ -19,6 +19,7 @@ local mokorus1: Chip = {
     hit_param = 20,
     lockout = 100,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_run_clear" },
 }
 
 local mokorus2: Chip = {
@@ -33,6 +34,7 @@ local mokorus2: Chip = {
     hit_param = 20,
     lockout = 100,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_run_clear" },
 }
 
 local mokorus3: Chip = {
@@ -47,6 +49,7 @@ local mokorus3: Chip = {
     hit_param = 20,
     lockout = 100,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_run_clear" },
 }
 
 return { mokorus1 = mokorus1, mokorus2 = mokorus2, mokorus3 = mokorus3 }

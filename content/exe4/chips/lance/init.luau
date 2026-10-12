@@ -23,6 +23,7 @@ local chip: Chip = {
             lance.thrust(user, element, 0, damage)
         end,
     },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { lance = chip }

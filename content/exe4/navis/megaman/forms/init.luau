@@ -9,6 +9,7 @@ return merge {
     -- Forms.
     require("@self/aquasoul"),
     require("@self/base"),
+    require("@self/darksoul"),
     require("@self/firesoul"),
     require("@self/gutssoul"),
     require("@self/junksoul"),

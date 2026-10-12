@@ -97,6 +97,7 @@ local blkbomb: Chip = {
     hit_param = 148,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "lava_ahead" },
 }
 
 return { blkbomb = blkbomb }

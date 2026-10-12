@@ -5,11 +5,13 @@
 -- around a point behind its column and 48 down, starting at an angle and
 -- lasting as long as its table says (by kind, facing and swing). It hits
 -- the two panels ahead of where it is, only on the tick it enters a panel;
--- a hit flashes the screen (EXE5's shakes it too). EXE6's leave afterimages,
--- take their facing and a big one's palette, and center their arcs from
--- their columns; EXE5's (the big kind alone) do none of that, their centers
--- set by swing. Each game makes its kind (`fire.make`: its kind and its
--- swing); each chip states its flames (`fire.variant`).
+-- a hit flashes the screen (EXE5's shakes it too). It faces its object's
+-- way (the attack setup's last step, EXE6's `sub_8011504` and EXE5's
+-- 0x0800F1A0: a side 1 user's is drawn turned around). EXE6's leave
+-- afterimages, take a big one's palette, and center their arcs from their
+-- columns; EXE5's (the big kind alone) do none of that, their centers set
+-- by swing. Each game makes its kind (`fire.make`: its kind and its swing);
+-- each chip states its flames (`fire.variant`).
 
 local regions = require("../regions")
 
@@ -36,8 +38,6 @@ export type Look = {
     target: CollisionType,
     -- Its arc's center's x (16.16), from its facing, swing and column.
     center_x: (me: Object, swing: number, turn: number) -> number,
-    -- EXE6's: it takes its facing and its variant's palette.
-    sets_look: boolean,
     -- EXE5's: a hit shakes the camera too.
     hit_shakes: boolean,
 }
@@ -165,7 +165,8 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
         s.center_x = look.center_x(me, s.swing, turn)
         s.center_y = CENTER_DOWN
         me.visible = true
-        -- sub_8011504
+        -- sub_8011504 (EXE5's 0x0800F1A0): its sprite, its collision, and
+        -- its flip its object's.
         local sprite = me.sprite
         sprite:load(look.sprite)
         sprite.shadow = "with_sprite"
@@ -175,10 +176,10 @@ function fire.make(look: Look, sine: (angle: number) -> number): {
             error("The hook's flame without a collision slot (sub_80DE818 doesn't check)")
         end
         me:setup_collision(look.self_type, look.target, HIT_MOD)
-        if look.sets_look then
-            sprite:set_flip(turn)
-            sprite.palette = s.variant.palette
-        end
+        sprite:set_flip(turn)
+        -- EXE6's `sprite_setPalette` (EXE5 sets none: its variant's is 0,
+        -- a loaded sprite's).
+        sprite.palette = s.variant.palette
         local c = me.collision
         c:set_hit_effect(s.spark :: Spark)
         c:set_region(nil)

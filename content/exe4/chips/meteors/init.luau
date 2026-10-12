@@ -18,6 +18,7 @@ local meteors1: Chip = {
     hit_param = 10,
     lockout = 120,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local meteors2: Chip = {
@@ -32,6 +33,7 @@ local meteors2: Chip = {
     hit_param = 10,
     lockout = 120,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local meteors3: Chip = {
@@ -46,6 +48,7 @@ local meteors3: Chip = {
     hit_param = 10,
     lockout = 120,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { meteors1 = meteors1, meteors2 = meteors2, meteors3 = meteors3 }

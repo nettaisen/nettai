@@ -34,6 +34,7 @@ local gutpnch1: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("gutpnch1/controller"),
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- GutPnch2 (EXE4 chip 0x09B).
@@ -50,6 +51,7 @@ local gutpnch2: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("gutpnch2/controller"),
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 -- GutPnch3 (EXE4 chip 0x09C).
@@ -66,6 +68,7 @@ local gutpnch3: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("gutpnch3/controller"),
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "one_ahead" },
 }
 
 return { gutpnch1 = gutpnch1, gutpnch2 = gutpnch2, gutpnch3 = gutpnch3 }
