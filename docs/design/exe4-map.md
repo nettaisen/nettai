@@ -579,6 +579,34 @@ Guard's 76 reads slot 3 and 77 slot 2 (0x0804249C, 0x080424C8); Charge FullCusto
 (0x08042758, 0x08042780). So the halves work in those two slots, the first half before the second, and do nothing
 elsewhere.
 
+**A card's catalog slot** (the user's word: each card's definition states it). A card belongs in one of
+six slots, which the game shows as 0A to 0F (the save's slots 0 to 5), and a slot holds one card. The slot is the
+printed card's: the routine that files a scanned card (0x08035020; Blue Moon's the same with its own test of the
+number) reads one word of the card's data, the number in its low byte and the slot in its high byte
+(0x08035044: `lsrs r6, r0, #8`), and stores the number at that slot of the save's list with no table to ask and no
+test of the slot (it also clears the slot's switched-off entry, and keeps a mark by the card's number, 0x08006510,
+which the reload asks for, 0x0800653A: a card without it is taken out of its slot). The four ROMs hold no table of
+the slots (searched: the slots of cards 1 to 24 in order as a column of bytes at any stride to 64, their number and
+slot pairs either way round, and each slot's cards as a list); what they state is the six pair halves' slots above,
+which agree with Tango's table. So each card's `slot` ("0A" to
+"0F", EXE4's own `SlottedPatchCard`, content/exe4/types.d.luau) is Tango's (`PATCH_CARDS`), written by
+tools/exe4/gen_patch_cards.py, which holds the table to the filing's instructions and the six halves in every ROM:
+0A 27 cards, 0B 16, 0C 16, 0D 20, 0E 50, 0F 4. Nothing in a battle reads it. The card's menu (0x0803410C) lists six
+slots and switches a slot's card on and off between the two lists; the lists are seven bytes long (their clears,
+0x08034FAC, and the reload's loop run to seven), and the seventh is one no menu row reaches and no card of the table
+belongs in.
+What follows from the fact, left as it is until the user says (the setup, the rules and the app are unchanged):
+- **The setup's `slot` repeats it.** A setup's `patch_cards` entries are `{ card, slot }` (the save's slot, 0 to
+  6), and for a card in its own slot the number is the card's `slot` again. They can disagree: the original applies
+  a card in whatever slot holds it (0x08041E6A dispatches by the card's number alone and takes no slot), in that
+  slot's turn, the last slot first; only a pair's half asks where the other one is.
+- **`patch_cards.SLOTS = 7`** (rules/patch_cards) is the reload's count, not the catalog's six.
+- **The lab files cards by their place in a scenario's list**, not by their slot: of its 118 recordings with a card,
+  99 hold one outside its catalog slot (108 of 137 bindings: card 45 in 0A or 0B for Full Synchro, each modcards/
+  scenario's card in 0A), which a console never has from scanned cards. They replay because the original doesn't
+  care. The three saves on hand that hold cards (18 bindings) have every card in its own slot; Tango's twelve
+  templates hold none.
+
 **The reload** (0x08035130; as ported: content/exe4/rules/navicust): the analysis (0x08047344) counts each program's
 bug by where it is (the command line, the third row, right to left: a plus part on it; off it, a program), by its
 neighbors (its shape uncompressed, moved a cell each way: one of its color counts that one's bug), by HubBatc (once
