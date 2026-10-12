@@ -548,6 +548,12 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
   pack has each chip's picture and icon once, from its own version's ROM, under the chip's key, the picture with
   its `version`: either console shows it, and a console of the other version's is a known difference there
   (docs/frontend.md §5).
+- **The releases' songs:** one differs. The hit (song 0x6D) is louder in the Japanese ROMs: its volume command is
+  127 there and 112 in the US ROMs (both versions; `nettai-extract songs ROM ROM` compares two ROMs' banks as
+  played, and finds no other in EXE5, and none in EXE4 or EXE6). The pack has the Japanese ROMs' (the extractor puts
+  the songs the Japanese ROM of a bank's version plays otherwise in the US ROM's place, `sound::japanese_songs`):
+  one presentation, the Japanese games' where the releases differ. No comparison knows what a US console plays
+  there: the sound comparisons are of which song plays when, not of how loud.
 - **Version songs:** none. The two US ROMs play every song alike: the same header and commands, and voices
   that play alike on the keys of each track's notes (exe5-extract's `plays_alike`). Eleven songs (0x13C–0x142,
   0x145, 0x146, 0x170, 0x171: among them Football's, ChaosLrd's and DethPhnx's sounds) had been taken for Team
