@@ -2160,3 +2160,13 @@ export type FlameHookFlames = {
     variant: FlameHookVariant,
     spark: Spark,
 }
+
+-- A sun's meteor's variant (@exelib/sun_meteor: EXE6's SunMoon's, EXE4's RedSun's): its look, what it is and hits,
+-- whether its landing shakes the camera, and what it does to a panel that holds something.
+export type SunMeteor = {
+    sprite: SpriteAsset,
+    anim: number,
+    collision: { is: CollisionType, hits: CollisionType },
+    shake: boolean,
+    panel: "none" | "crack" | "break",
+}
