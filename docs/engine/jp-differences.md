@@ -273,8 +273,9 @@ original's behavior (bn6-lmao "fixes" it, §9).
 
 The art (icon, image, palette) is `chips.py`'s list:
 
-- **Icons**: the same in all four ROMs, chip by chip; the pack has the US Falzar ROM's. (The Gregar ROMs' Falzar
-  chip icon, JP's and US's alike, is a placeholder that reads "13A".)
+- **Icons**: the same in all four ROMs, chip by chip; the pack has the JP Falzar ROM's. (The Gregar ROMs' Falzar
+  chip icon, JP's and US's alike, is a placeholder that reads "13A": a Gregar console draws it, which the frame
+  comparison's table knows; `gregar-console/description-falzar-chip`, `jp/gregar-description-falzar-chip`.)
 - **Pictures**: the US ROMs have one placeholder picture (a purple block) for all eleven chips, the JP ROMs their
   art. The Gregar and Falzar chips share one picture in each JP ROM, its own beast (JP Falzar 0x08745658, JP Gregar
   0x0874358C), so a console shows its own beast in both.
@@ -295,6 +296,26 @@ The art (icon, image, palette) is `chips.py`'s list:
 Falzar from JP Falzar, Gregar from JP Gregar), each chip's own on every console. The pack keeps no mark of where
 they came from: a US console's placeholder, and Falzar's beast in a JP Falzar console's Gregar chip, are the
 verification's to know (§5).
+
+The chips the US release kept differ in art in three more places (all 411 records' icons, pictures and palettes
+compared across the four ROMs, 2026-10-12), and the pack has the JP ROMs' there too (the extractor reads a chip's
+record from its version's JP ROM before the US one):
+
+- **BatCan1 to BatCan4** (0x13B to 0x13E): the US ROMs have the purple placeholder for their pictures, the JP ROMs
+  (both the same) a picture each. The names and descriptions are in both releases.
+- **The Falzar ROMs' icon for Bass and BassAnly** (one icon for both in a ROM): its pixel (0, 8) is color 3 in JP
+  Falzar and color 9 in US Falzar. The pack's BassAnly icon is JP Falzar's (Bass's is the Gregar ROMs', the same in
+  both releases).
+- **The Gregar ROMs' Beast Out picture** (the BeastOut chip's record's, 0x13F, which the custom screen's button
+  shows in the chip window): its pixels (53, 31) and (52, 32) are clear in JP Gregar and color 14 in US Gregar. The
+  Falzar ROMs' is the same in both releases.
+
+The Gregar and Falzar chips' descriptions follow their pictures: both chips' scripts print one buffer of the
+console's memory (the gift's text, slot 1), so a console prints its own beast's description for both chips, in
+either release (a US Falzar console's Gregar chip: "Falzar's ruinous tornado!"); nettai prints each chip's own.
+`jp/custom/description-arm-138-7` and `custom/description-arm-138-7` show it on Falzar consoles,
+`jp/gregar-description-falzar-chip` and `gregar-console/description-falzar-chip` on Gregar ones; the frame
+comparison's table has it (`chip-description:KEY`).
 
 ### 4.5 Sprites
 

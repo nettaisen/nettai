@@ -294,7 +294,9 @@ game shows from that buffer, as the user gave it (2026-10-01): DblBeast "Ferocio
 "Gregar's / breath / attack!", Falzar "Falzar's / ruinous / tornado!". Each is three lines, which is what the battle
 reads of a description, so the timing is unchanged: `description-arm-137-5..9` and
 `description-arm-139-7`, `-8` (the Falzar chip, dug out over two turns) and `description-arm-138-7`, `-8` (the
-Gregar chip, which copies the same buffer) take A from R+8. Not reached: what `sub_802A220` closes a description for (it answers 0xFF in a netbattle with
+Gregar chip, which copies the same buffer) take A from R+8. A console so prints its own beast's description for
+both chips (a Falzar console's Gregar chip: Falzar's); nettai prints each chip's own, which the frame comparison
+knows (consoles.tsv, `chip-description:KEY`). Not reached: what `sub_802A220` closes a description for (it answers 0xFF in a netbattle with
 MegaMan).
 
 ### 3.6 DustCross's scrap (`sub_8027406`)

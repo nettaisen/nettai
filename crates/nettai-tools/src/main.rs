@@ -100,8 +100,10 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   --mark M,...     with --headless: write where each of these is drawn, by
                    frame, to marks.tsv in --out: sprite:NAME (an object drawn
                    with it), background:NAME, chip:KEY (its picture in the
-                   chip window), chip-icon:KEY (its icon: over its navi, in
+                   chip window), button:NAME (a custom screen button's
+                   picture there), chip-icon:KEY (its icon: over its navi, in
                    the custom screen's slots and picked column),
+                   chip-description:KEY (its description in the chatbox),
                    chip-window-at-close (the HUD's chip name before the
                    navi's first decision); for a frame comparison that knows
                    what a console shows otherwise there
