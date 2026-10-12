@@ -5,7 +5,8 @@
 -- screen asked for counts one (0x0800BA20, both sides, from the fight: 0x08007192), and once a soul's reach its limit
 -- the intake asks for the revert (./init: 0x0800B6B8). The emotion window counts down the turns left (0x08016A20: the
 -- offer view's `form_offer.turns` and `form_offer.turn_limit`). A navi that starts the round in a soul (NaviStats
--- +0x24 set at its init, 0x08010830: none in a netbattle, whose navis start in their base form) never counts them.
+-- +0x24 set at its init, 0x08010830: a soul patch card's, rules/patch_cards) never counts them: the soul lasts the
+-- battle, the emotion window shows the count's highest, and Double Soul isn't offered.
 
 local turns = {}
 
@@ -24,6 +25,15 @@ function turns.start(form: FormDef)
     local soul: { turns: number }? = form.soul
     s.soul_turns = 0
     s.soul_turn_limit = if soul ~= nil then soul.turns else 0
+end
+
+-- 0x08010828, the navi's init in `form` (after its status reset, 0x0800BA3C; the rules' `round_start`, before the
+-- navi's first tick): in a soul, none are counted.
+function turns.round_start(form: FormDef)
+    turns.start(form)
+    if form.soul ~= nil then
+        (rules.state() :: State).soul_turns = turns.NONE
+    end
 end
 
 -- 0x0800BA20: a custom screen asked for counts one, unless none are counted.

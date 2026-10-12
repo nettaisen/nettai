@@ -2205,7 +2205,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     `WEAPONS`; the 32 whose chips exist are in (with the taunt's card, 107, and the pairs' Charge FullCustom), their
     modcards/ recordings matching. A pair's half (`cards.pair`: 0x08042758) holds the rest of its handler, which runs
     only while the other half sits in its slot and the stat its first effect sets doesn't hold the value yet (All
-    Guard's too: item 60). **Done**, all but the souls' cards (item 58):
+    Guard's too: item 60). **Done** (the souls' cards: item 58):
     the routines of chips (all in: 0x37 CopyDmg, 0x42 Hole, 0x44 SandRing, 0x4E WindRack, 0x51 BugBomb, 0x54 NrthWind
     and 0x55 PnlRetrn, cards 41, 51, 57, 70, 71, 79, 82, 115 and 118 matching),
     the routines that load no chip (all in: 0x04, the zap ring, card 81, navis/megaman/weapons/zap_ring, the ring
@@ -2217,7 +2217,28 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     and 102, the buster's shot with projectile rows 7, 8, 0x0B, 0x0D and 0x0E: cracking, poison, blinding (row 0x0B's
     status 0x32, 0x080CD3BC; row 0x0A's 0x22 no routine fires), grass and ice) and Triple Supporter's pair (item
     54: in, `cards.all_supports`).
-58. **The 12 soul patch cards** (+0x24: a battle starts in the soul) wait on the souls (item 25).
+58. **The 12 soul patch cards** (121 to 132: NaviStats +0x24 = the soul's number, and two counts of the HP bug).
+    **Done** (group F): `cards.soul(form)` (rules/patch_cards/cards: the stats' form and starting form), which
+    gen_patch_cards.py writes for each soul (its `SOULS`). A battle then starts in the soul: the navi's init
+    (0x0801079C) loads the soul's sprite (0x0800B90A) and palette, puts on what it wears (0x0800B7E8), runs the
+    status reset in it (0x0800E05C: the soul's own routine, its weapons, its turns' start) and, the soul set, marks
+    its turns as never counted (0x08010828: AIData +0x18 = 0xFF; rules/souls/turns' `round_start`, from the rules'
+    `round_start`). So the soul lasts the battle (no revert, 0x0800B6B8), the emotion window shows the count's
+    highest, 5 (0x08016A52: the engine's `form_turns`), and Double Soul isn't offered (0x0801FF8C:
+    `turns.counted`). What it wears starts in the intro: the overlay's spawner sets its header flag 0x04
+    (0x080CC60C), which the engine's EXE4 rule lacked (`effects.form_overlay.run_while_paused`, split from the
+    afterimages' `afterimages_run_while_paused`: EXE4's afterimage spawner, 0x080E5020, sets none). The custom
+    screen takes the soul as it opens (0x0801DC82: its +0x0F), whatever put the navi in it. The compile check
+    (exe4-compat's `compiled`) reads the soul's byte too. The lab's modcards/121, 123 to 129, 131 and 132 and
+    overlay/aqua/fs-* and overlay/proto/fs-* (cards 131 and 127 with Full Synchro, 45) replay every frame; their
+    fights are pixel-exact but for the custom screens' known shift. **Open, group A's (item 74):** what the custom
+    screen does in a soul, every screen opened in it, not the change's status reset alone: the hand it builds
+    (0x0801F29A: GutsSoul's 30, WindSoul's and NumberSoul's 10 on each slot; 0x0801F226: WoodSoul's fold), on which
+    modcards/122-guts-soul (the Cannon of its first hand, 70 for our 40), modcards/123-wind-soul-chip,
+    modcards/132-wood-soul-fold and souls/guts/turn2 wait; JunkSoul's used chips offered again (0x0801DFBC: two
+    draws of the console's RNG1), on which modcards/130-junk-soul waits (every frame matches, the console's RNG1
+    apart from frame 984, its second screen); and SearchSoul's SHUFFLE button, drawn 16 frames late as a screen
+    opens (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused

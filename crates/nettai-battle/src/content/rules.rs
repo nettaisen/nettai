@@ -219,11 +219,11 @@ pub struct EffectsRules {
     /// are among. Presentation: the renderer's (`Stage::new`'s `flashed`);
     /// the simulation reads none of it.
     pub palette_flash_order: PaletteFlashOrder,
-    /// An afterimage (`sub_80E33FA`) and a form overlay (`sub_80C4530`'s
-    /// spawner) run while the battle is paused: EXE6's spawners set their
-    /// header flag 0x04; EXE5's (0x080E35F4, and its overlays', whose flags
-    /// its lab records without it) don't.
-    pub overlays_run_while_paused: bool,
+    /// An afterimage (`sub_80E33FA`) runs while the battle is paused: EXE6's
+    /// spawner sets its header flag 0x04; EXE5's (0x080E35F4) and EXE4's
+    /// (0x080E5020) don't. (A form overlay's is its own rule,
+    /// `form_overlay.run_while_paused`.)
+    pub afterimages_run_while_paused: bool,
     /// How a form overlay (actor object #0x57, `kinds::form_overlay`)
     /// starts and follows its owner.
     pub form_overlay: FormOverlayRules,
@@ -614,6 +614,12 @@ pub struct FormOverlayRules {
     /// While it waits for the navis it steps its sprite as it would
     /// following (EXE4's 0x080CC4D4); else its sprite holds.
     pub waiting_steps: bool,
+    /// Its spawner sets its header flag 0x04, so it runs while the battle
+    /// is paused from its first update: EXE6's (`sub_80C4530`'s spawner)
+    /// and EXE4's (0x080CC60C; its init then keeps the flag only outside
+    /// the fight, `start`); EXE5's, whose flags its lab records without it,
+    /// doesn't.
+    pub run_while_paused: bool,
 }
 
 /// How a form overlay starts following its owner.
