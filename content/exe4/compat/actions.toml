@@ -56,6 +56,9 @@
 "flmline1/action" = 0x22
 "flmline2/action" = 0x22
 "flmline3/action" = 0x22
+"flmcros1/action" = 0x22
+"flmcros2/action" = 0x22
+"flmcros3/action" = 0x22
 # The fans' (the chips' action 0x28, 0x080ECF44).
 "tornado/action" = 0x28
 "static/action" = 0x28
@@ -67,6 +70,9 @@
 "magbolt1/action" = 0x59
 "magbolt2/action" = 0x59
 "magbolt3/action" = 0x59
+"magshok1/action" = 0x59
+"magshok2/action" = 0x59
+"magshok3/action" = 0x59
 # CopyDmg's (the chips' action 0x2B, 0x080ED1D2).
 "copydmg/action" = 0x2B
 # Z Saver's (the chips' action 0x70, 0x080EE774).
@@ -89,14 +95,23 @@
 "twnfng1/action" = 0x34
 "twnfng2/action" = 0x34
 "twnfng3/action" = 0x34
+"bstfang1/action" = 0x34
+"bstfang2/action" = 0x34
+"bstfang3/action" = 0x34
 # The WideShts' (the chips' action 0x31, 0x080ED25C).
 "widesht1/action" = 0x31
 "widesht2/action" = 0x31
 "widesht3/action" = 0x31
+"suprspr1/action" = 0x31
+"suprspr2/action" = 0x31
+"suprspr3/action" = 0x31
 # The AirHocs' (the chips' action 0x27, 0x080ECEAE).
 "airhoc1/action" = 0x27
 "airhoc2/action" = 0x27
 "airhoc3/action" = 0x27
+"pithoky1/action" = 0x27
+"pithoky2/action" = 0x27
+"pithoky3/action" = 0x27
 # The GunSols' (the chips' action 0x58, 0x080EDE0E).
 "gunsol1/action" = 0x58
 "gunsol2/action" = 0x58
@@ -152,6 +167,9 @@
 "boomer1/action" = 0x20
 "boomer2/action" = 0x20
 "boomer3/action" = 0x20
+"pitrng1/action" = 0x20
+"pitrng2/action" = 0x20
+"pitrng3/action" = 0x20
 "repair/action" = 0x20
 "fullcust/action" = 0x20
 "ligtnin1/action" = 0x20
@@ -247,3 +265,5 @@
 "aquasoul/change" = 0x0D
 "woodsoul/change" = 0x0D
 "souls/revert" = 0x11
+# H-Burst (the chips' action 0x71, 0x080EE93A).
+"h-burst/action" = 0x71
