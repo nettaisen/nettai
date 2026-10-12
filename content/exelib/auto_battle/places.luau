@@ -135,7 +135,7 @@ end
 -- A game's `validate`'s part for a setup's places: each place one thing (a chip, a pattern, a 0, or empty), a
 -- pattern one of the eight records, and no chip among the 42 places that the game's AI can't play (the original
 -- crashes when its navi in auto battle goes to play one, and the game's own writer never puts one there).
-function places.validate(stated: { Place }, problem: (text: string, field: string?, entry: number?) -> ())
+function places.validate(stated: { Place }, problem: (p: SetupProblem) -> ())
     for i, p in stated do
         local list = LISTS[#LISTS]
         for _, l in LISTS do
@@ -146,29 +146,40 @@ function places.validate(stated: { Place }, problem: (text: string, field: strin
         local where = string.format("place %d of the auto battle data (`%s`, entry %d)", i, list.name, i - list.start + 1)
         local things = (if p.chip ~= nil then 1 else 0) + (if p.pattern > 0 then 1 else 0) + (if p.zero then 1 else 0)
         if things > 1 then
-            problem(string.format("%s is a chip, a pattern or a 0, not more", where), "auto_battle_places", i)
+            problem({
+                kind = "invalid",
+                field = "auto_battle_places",
+                entry = i,
+                text = string.format("%s is a chip, a pattern or a 0, not more", where),
+            })
         end
         if p.pattern > places.RECORDS then
-            problem(
-                string.format("place %d of the auto battle data names pattern %d; it has %d pattern records", i, p.pattern, places.RECORDS),
-                "auto_battle_places",
-                i
-            )
+            problem({
+                kind = "range",
+                field = "auto_battle_places",
+                entry = i,
+                value = p.pattern,
+                least = 0,
+                most = places.RECORDS,
+                text = string.format("place %d of the auto battle data names pattern %d; it has %d pattern records", i, p.pattern, places.RECORDS),
+            })
         end
         local chip: Chip? = p.chip
         if chip ~= nil then
             -- (A chip with no `auto_battle`, the game's rules/auto_battle/place: its positioning class is past the
             -- table.)
             if (chip :: any).auto_battle == nil then
-                problem(
-                    string.format(
+                problem({
+                    kind = "chip_not_allowed",
+                    field = "auto_battle_places",
+                    entry = i,
+                    chip = chip,
+                    text = string.format(
                         "%s holds %s: the original can't play it in auto battle (its positioning class is past the game's table of them: the game crashes)",
                         where,
                         battle.name(chip)
                     ),
-                    "auto_battle_places",
-                    i
-                )
+                })
             end
         end
     end

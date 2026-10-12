@@ -156,7 +156,7 @@ end
 -- and no chip among the 42 places that the AI can't play (the original crashes when its navi in auto battle goes to
 -- play one, and the game's own writer never puts one there; a record's chip place may hold one, as the game writes
 -- them there and a record never plays).
-function block.validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+function block.validate(side: number, problem: (p: SetupProblem) -> ())
     places.validate(rules.setup_of(side).auto_battle_places, problem)
 end
 

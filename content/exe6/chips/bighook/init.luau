@@ -30,6 +30,8 @@ local chip: Chip = {
     element = "null",
     family = "break",
     class = "giga",
+    -- The version whose saves hold it (rules/folder).
+    version = "gregar",
     rarity = 4,
     mb = 92,
     damage = 240,

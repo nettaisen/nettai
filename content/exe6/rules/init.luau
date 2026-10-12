@@ -19,6 +19,10 @@ local navicust_bugs = require("@self/navicust/bugs")
 local patch_cards = require("@self/patch_cards")
 local save = require("@self/save")
 
+-- What the tools read of the game's builds, as data (./builds: the versions, a new save's folder): loaded with the
+-- rules, which read none of it.
+require("@self/builds")
+
 local rules: Rules = {
     -- What a side keeps through a round.
     state = {
@@ -176,6 +180,10 @@ local rules: Rules = {
             hp_bug = "u8",
             -- An SP navi chip's damage by its deletion-time step (./sp_chips).
             sp = { by_time = "u16[11]" },
+            -- The version whose saves hold the chip (./folder: a version's own Giga chips), and a chip a save can
+            -- collect though no library lists it (the Japanese game's gift, DblBeast).
+            version = { "gregar", "falzar" },
+            collectible = "bool",
         },
         form = {
             -- Its kind (./forms/kind.luau: every form but the base form names one), the navi a Cross (and one in
@@ -277,14 +285,24 @@ local rules: Rules = {
         -- A dark chip's bug frag, its substitute, and the HP bug its use worsens (./dark_chips).
         chip_substitute = dark_chips.chip_substitute,
         chip_prepared = dark_chips.chip_prepared,
-        -- The folder's rules, which tools ask (the simulation never does).
+        -- The folder's rules, which tools ask (the simulation never does): the rules a folder breaks, and what they
+        -- allow of one.
         folder_check = folder.check,
+        folder_view = folder.view,
+        -- What a tool shows of the side's setup that the rules alone know: what gives the navi its abilities, its
+        -- bugs, the patch cards' MB.
+        overview = function(side: number): SetupOverview?
+            local out: SetupOverview = { abilities = {}, bugs = {}, lists = {} }
+            navicust.overview(side, out)
+            patch_cards.overview(side, out)
+            return out
+        end,
         -- What is wrong with a side's setup, which tools ask (the simulation never does): what the save brings, the
         -- patch cards, the NaviCust, the folder.
         validate = function(side: number): { SetupProblem }
             local out: { SetupProblem } = {}
-            local function problem(text: string, field: string?, entry: number?)
-                table.insert(out, { text = text, field = field, entry = entry })
+            local function problem(p: SetupProblem)
+                table.insert(out, p)
             end
             save.validate(side, problem)
             patch_cards.validate(side, problem)
