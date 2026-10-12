@@ -492,6 +492,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         panel_trail = "by_chance",
         status_visual = { place = "attach_point" },
         draw_order = "update_list",
+        sprite_depth = "ground",
         sprite_budget = { tiles = 0x2FF, palettes = 10 },"#,
             ),
             (
@@ -559,9 +560,10 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         overlay_restart = "reload",
         stance_counter = "next_tick",
         trap_counter = "at_once",
+        idle_entry_counter = true,
         dead_player = "kept",
         attack_end_lockout = "by_kind",
-        request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 } },
+        request_clears = { attack = { "mode9_a" }, paralysis = { "mode9_a" }, flinch = { "anti_sword_triggered" }, drag = { 0x400 }, cut_in = { "chip", "charged_chip" } },
         status_end = { flags = { "paralyzed", "blind", "immobilized", "confused" }, requests = 0x8068, timers = { "paralyze", 0x2, "blind", "immobilize" } },"#,
             ),
             (
@@ -682,7 +684,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 126, "every field of every section");
+        assert_eq!(fields, 128, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

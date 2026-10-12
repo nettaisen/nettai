@@ -332,9 +332,18 @@ archive in both JP ROMs). `exe6-extract` takes these from JP Falzar, under the n
 | 18-34, 18-35, 18-36 | not identified here (category 0x18 holds no battle sprites) |
 
 `sprites.py` also lists 0C-0E, 0C-47, 0C-67, 10-16, 10-17 and 10-19, uncompressed slots whose fixed 0x2000-byte
-window differs. Decoded as the extractor reads them, they are the same sprites: only the palette rows read past
-the archive's own (the extractor keeps 16 rows where the data goes on, as the game reads whatever follows)
-differ, because what follows moved. The pack keeps the US ROM's.
+window differs. Decoded as the extractor reads them, all but one are the same sprites: only the palette rows read
+past the archive's own (the extractor keeps 16 rows where the data goes on, as the game reads whatever follows)
+differ, in 0C-0E (`flame`) and 0C-67 (`falzar-feather`), because what follows moved; no frame draws those rows.
+
+10-19, the flames HeatMan wears (`heatman-overlay`), differs: its animation 6, which plays with his throw, has
+four frames of 3 ticks and then 5, 4 and 1 in the JP ROMs (both), three frames of 5, 4 and 3 and then 5, 4 and 1
+in the US ROMs (both), with one more tileset and layout in the JP sheet. As long, drawn otherwise for the first
+12 ticks. The extractor reads the sheets from the JP ROM before the US one, so the pack has the JP flames;
+`jp/heatman-minibomb` (a JP console, pixel-exact with them, frames 372-374 and 443-445 differing with the US
+sheet) and `navis/heatman-minibomb` (a US console, which the frame comparison's table knows in that animation
+alone) show it. The sheets the extractor writes from each ROM alone were compared, all 310, 2026-10-12
+(bn6battle-verify's tools/cross-rom/packs.py).
 
 ### 4.6 Where the JP-only code is
 
