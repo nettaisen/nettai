@@ -32,9 +32,7 @@ local ENEMY_BODY = { [0] = 0x0400_0000, [1] = 0x0800_0000 }
 -- only one that starts the action): the target and the two panels diagonally behind it.
 local REGION = regions.vee
 local SLASH = new.effect { sprite = asset.sprite("screen-divide"), anim = 0, palette = 0 }
--- The sword: attachment row 3 (the swords' blade), row 0x32 (the same in palette 6) while Chaos Unison's charge is
--- armed (0x080EC082).
-local CHAOS_BLADE = attachment.look { sprite = asset.sprite("sword"), palette = 6 }
+-- The sword: the swords' blade, or ColonelSoul's Chaos Unison's while its charge is armed (lib/swords, 0x080EC082).
 
 -- 0x080BA54C
 local function target(me: Object): (number, number)
@@ -58,9 +56,7 @@ local function draw(me: Object, s: State)
     if me.step_init == 0 then
         me:set_status("using_action", true)
         me:set_animation(ANIM)
-        -- (The Chaos Unison charge armed: the rules' own B charge, rules/souls/chaos_charge.)
-        local blade = if me.b_charge_time ~= nil then CHAOS_BLADE else swords.blade
-        attachment.attach(me, blade, "related", { anim = swords.blade_anim(me) })
+        attachment.attach(me, swords.held_blade(me), "related", { anim = swords.blade_anim(me) })
         me:open_counter_window()
         battle.play_sound(SOUND)
         s.timer = DRAW_TICKS

@@ -242,6 +242,19 @@
 "bass/controller" = { pool = "effect", index = 0x76, scratch_position = true }
 "bass/navi" = { pool = "actor", index = 0x4F }
 "bass/shot" = { pool = "attack", index = 0x72 }
+# BassAnly's chip (action 0x0C's variant 0x45, 0x080EA646): its controller (effect #0x77, 0x080EA598), BassAnly
+# (@exelib/bassanly) and his dark balls.
+"bassanly/controller" = { pool = "effect", index = 0x77, scratch_position = true }
+"bassanly/navi" = { pool = "actor", index = 0x50 }
+"bassanly/shot" = { pool = "attack", index = 0x73 }
+# ColdMan's chips (action 0x0C's variant 0x49, 0x080EAB36): each chip's controller (the content's own; the original's
+# one object, effect #0x7B, 0x080EAA88) and ColdMan; the ice cube he forms and punches, what an obstacle encased in a
+# bubble becomes (the role `hooks.encased`).
+"coldman/controller" = { pool = "effect", index = 0x7B, scratch_position = true }
+"coldmn-sp/controller" = { pool = "effect", index = 0x7B, scratch_position = true }
+"coldmn-ds/controller" = { pool = "effect", index = 0x7B, scratch_position = true }
+"coldman/navi" = { pool = "actor", index = 0x56 }
+"ice-cube" = { pool = "attack", index = 0xA3 }
 # NrthWind's controller (action 0x0C's variant 0x1C, 0x080E629C: @exelib/nrthwind/controller); its wind is
 # objects/north_wind's.
 "nrthwind/controller" = { pool = "effect", index = 0x39, scratch_position = true }
@@ -360,6 +373,38 @@
 "circgun/controller" = { pool = "effect", index = 0x5E, scratch_position = true }
 "circgun/gun" = { pool = "attack", index = 0x89 }
 "circgun/shot" = { pool = "attack", index = 0x8A }
+# BugCurse's controller (0x080E81C4; its position the dimming handler's registers) and its curse (0x080DD39C).
+"bugcurse/controller" = { pool = "effect", index = 0x56, scratch_position = true }
+"bugcurse/curse" = { pool = "attack", index = 0x80 }
+# Snake's controller (0x080E5B50; its position the dimming handler's registers), its nest (0x080D7DB8) and its snakes
+# (0x080D80E4).
+"snake/controller" = { pool = "effect", index = 0x32, scratch_position = true }
+"snake/nest" = { pool = "attack", index = 0x53 }
+"snake/snake" = { pool = "attack", index = 0x54 }
+# Jealousy's controller (0x080E5EF4; its position the dimming handler's registers).
+"jealousy/controller" = { pool = "effect", index = 0x36, scratch_position = true }
+# Guardian's controller (0x080E7ED0; its position the dimming handler's registers), its statue (0x080DCDA8) and its
+# strike's dimming (0x080E7F84; its position the spawner's registers).
+"guardian/controller" = { pool = "effect", index = 0x52, scratch_position = true }
+"guardian/statue" = { pool = "attack", index = 0x7D }
+"guardian/strike" = { pool = "effect", index = 0x53, scratch_position = true }
+# Anubis's controller (0x080E5BF4; its position the dimming handler's registers) and its statue (0x080D82F8).
+"anubis/controller" = { pool = "effect", index = 0x33, scratch_position = true }
+"anubis/statue" = { pool = "attack", index = 0x55 }
+# Mine's controller (0x080E4F5C; its position the dimming handler's registers) and its mine (0x080D6ED4).
+"mine/controller" = { pool = "effect", index = 0x29, scratch_position = true }
+"mine/land-mine" = { pool = "attack", index = 0x4C }
+# Blinder's controller (0x080E48EC; its position the dimming handler's registers).
+"blinder/controller" = { pool = "effect", index = 0x23, scratch_position = true }
+# RockCube's controller (0x080E60AC; its position the dimming handler's registers).
+"rockcube/cube" = { pool = "effect", index = 0x37, scratch_position = true }
+# ColorPt's and DblPoint's controller (0x080E7BF0; its position the dimming handler's registers) and their points
+# (0x080E7CE0; their height's fraction the spawner's registers).
+"colorpt/controller" = { pool = "effect", index = 0x50, scratch_position = true }
+"colorpt/point" = { pool = "effect", index = 0x51, scratch_z_fraction = true }
+# TimeBomb's controller (0x080E4C3C; its position the dimming handler's registers) and its bomb (0x080D6BF8).
+"timebomb/controller" = { pool = "effect", index = 0x27, scratch_position = true }
+"timebomb/countdown" = { pool = "attack", index = 0x4B }
 # SloGauge's and FstGauge's controller (0x080E3F0C; its position the dimming handler's registers).
 "gauge-speed" = { pool = "effect", index = 0x1C, scratch_position = true }
 # PanlSht's controller (0x080E79B8; its position the dimming handler's registers), each chip's own kind, and its
@@ -395,3 +440,7 @@
 "numbrbl/controller" = { pool = "effect", index = 0x69, scratch_position = true }
 "numbrbl/numberman" = { pool = "actor", index = 0x45 }
 "numbrbl/ball" = { pool = "attack", index = 0x91 }
+# BugFix's controller (0x080E6388; its position the dimming handler's registers) and its glow (actor 0x5D, 0x080CCF5C,
+# its first row's).
+"bugfix/controller" = { pool = "effect", index = 0x3B, scratch_position = true }
+"bugfix/glow" = { pool = "actor", index = 0x5D }
