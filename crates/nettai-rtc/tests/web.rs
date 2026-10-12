@@ -69,8 +69,9 @@ async fn two_connections_in_a_page_trade_datagrams() {
 #[wasm_bindgen_test]
 async fn two_links_meet_in_a_room() {
     let Some(server) = option_env!("NETTAI_TEST_SIGNAL") else { return };
-    let code = format!("web-{}", (js_sys::Math::random() * 1e9) as u64);
-    let mut host = Link::room(server, &code, config()).unwrap();
+    // The host asks the server for a room, and the joiner comes by the code
+    // the server gave it.
+    let mut host = Link::create_room(server, config());
     for _ in 0..500 {
         host.poll().unwrap();
         if host.role().is_some() {
@@ -79,7 +80,8 @@ async fn two_links_meet_in_a_room() {
         sleep(10).await;
     }
     assert_eq!(host.role(), Some(Role::Host));
-    let mut links = [host, Link::room(server, &code, config()).unwrap()];
+    let code = host.code().expect("the server said the room's code").to_string();
+    let mut links = [host, Link::join_room(server, &code, config()).unwrap()];
     let mut got = [0, 0];
     for _ in 0..1000 {
         for (link, got) in links.iter_mut().zip(&mut got) {
@@ -99,12 +101,13 @@ async fn two_links_meet_in_a_room() {
 }
 
 /// A browser's link and a native one: with `NETTAI_TEST_ROOM` too when
-/// built, this joins the room that the native test
-/// `a_native_link_meets_a_browser` (tests/links.rs, ignored) hosts.
+/// built (the code the native test printed), this joins the room that the
+/// native test `a_native_link_meets_a_browser` (tests/links.rs, ignored)
+/// asked the server for.
 #[wasm_bindgen_test]
 async fn a_link_meets_a_native_one() {
     let (Some(server), Some(code)) = (option_env!("NETTAI_TEST_SIGNAL"), option_env!("NETTAI_TEST_ROOM")) else { return };
-    let mut link = Link::room(server, code, config()).unwrap();
+    let mut link = Link::join_room(server, code, config()).unwrap();
     let mut got = 0;
     for _ in 0..2000 {
         link.send(b"from a browser").unwrap();
