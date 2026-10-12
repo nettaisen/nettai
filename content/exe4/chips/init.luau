@@ -22,6 +22,7 @@ return merge {
     require("@self/bassanly"),
     require("@self/bighamr"),
     require("@self/binder"),
+    require("@self/blakwing"),
     require("@self/blinder"),
     require("@self/blkbomb"),
     require("@self/boomer"),
