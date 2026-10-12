@@ -45,6 +45,9 @@ pub struct Renderer {
     pub hud_state: HudState,
     /// What the frames drawn so far named that the pack doesn't have.
     pub problems: Problems,
+    /// What the last frame's sprite draw took of its budget and left out
+    /// (`objects::SpriteDraw`).
+    pub sprite_drawn: objects::SpriteDrawn,
     /// The version of the console whose screen is drawn, as its game's
     /// pack names its versions (EXE5's "protoman", "colonel"), for a game
     /// whose versions the engine doesn't tell apart: which chips are the
@@ -86,6 +89,7 @@ impl Renderer {
             dialogue: Layer { palettes: Palettes::Dialogue, ..Layer::new(0, 0) },
             hud_state: HudState::default(),
             problems: Problems::default(),
+            sprite_drawn: objects::SpriteDrawn::default(),
             console_version: None,
             text_mode: TextMode::Original,
             font: None,
@@ -215,7 +219,7 @@ impl Renderer {
         let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);
         let mut list = SpriteList::default();
-        objects::queue_objects(b, &packs, &view, &mut list, &mut self.problems, !draw);
+        self.sprite_drawn = objects::queue_objects(b, &packs, &view, &mut list, &mut self.problems, !draw);
         crate::custom::draw(
             b,
             own_game,
