@@ -30,6 +30,8 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 png = "0.17"
 # A replay's video: its errors are worded here (`errors.rs`); the Replays screen runs the export.
 nettai-video = { path = "../nettai-video" }
+# A replay's file: what its head names (the Replays screen's list) and its writer (the screenshot pass's replays).
+nettai-replay = { path = "../nettai-replay" }
 # Netplay's link: WebRTC through a room of the signaling server.
 nettai-rtc = { path = "../nettai-rtc" }
 # A build from a save: each game's own reader of its saves.
