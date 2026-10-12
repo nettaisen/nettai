@@ -14,7 +14,7 @@ use crate::{
     TrainingText, UiSound, lang,
 };
 use nettai_battle::BattleResult;
-use nettai_frontend::driver::{Driver, LivePlayer, Opponent};
+use nettai_frontend::driver::{Driver, InFight, LivePlayer, OnCustomScreen, Opponent};
 use nettai_frontend::game::TextMode;
 use nettai_frontend::player::Player;
 use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay, ReplayPlayer};
@@ -95,6 +95,16 @@ pub struct Selection {
     pub builds: Vec<(PathBuf, String, nettai_match::Side)>,
 }
 
+/// The Training screen's four opponents, in its list's order
+/// (`TrainingText::opponent`): the stand-in, the dummy, the mover and the
+/// masher.
+const OPPONENTS: [Opponent; 4] = [
+    Opponent { in_fight: InFight::StandsStill, on_custom_screen: OnCustomScreen::PicksFirst },
+    Opponent { in_fight: InFight::StandsStill, on_custom_screen: OnCustomScreen::PicksNothing },
+    Opponent { in_fight: InFight::MovesAround, on_custom_screen: OnCustomScreen::PicksFirst },
+    Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst },
+];
+
 /// What the Training screen has chosen besides the selection.
 #[derive(Default)]
 struct TrainingChoice {
@@ -105,7 +115,7 @@ struct TrainingChoice {
     /// The opponent's side: 0 the match's (a random one, or the file's);
     /// else the build `builds[opponent_build - 1]` of the selection's.
     opponent_build: usize,
-    /// What the opponent does: `Opponent::ALL[opponent]`.
+    /// What the opponent does: `OPPONENTS[opponent]`.
     opponent: usize,
     /// The set goes on round after round (`nettai_match::MAX_ROUNDS` of
     /// them), not as the match lists them.
@@ -509,9 +519,9 @@ impl App {
         self.show_preview();
     }
 
-    /// What the opponent does: `Opponent::ALL[i]`.
+    /// What the opponent does: `OPPONENTS[i]`.
     pub fn training_behavior(&mut self, i: usize) {
-        self.training.opponent = i.min(Opponent::ALL.len() - 1);
+        self.training.opponent = i.min(OPPONENTS.len() - 1);
         self.show_preview();
     }
 
@@ -567,7 +577,7 @@ impl App {
 
     /// What the opponent the Training screen has chosen does.
     fn training_opponent_does(&self) -> Opponent {
-        Opponent::ALL.get(self.training.opponent).copied().unwrap_or_default()
+        OPPONENTS.get(self.training.opponent).copied().unwrap_or_default()
     }
 
     fn show_preview(&mut self) {
@@ -654,7 +664,7 @@ impl App {
         let names = Names::of(content, &graphics);
         let ui = self.ui();
         let left = Side { name: self.name.as_str().into(), navi: names.navi(m.sides[0].navi(content)).into(), detail: SharedString::default() };
-        let does = Opponent::ALL.iter().position(|&o| o == opponent).unwrap_or(0) as i32;
+        let does = OPPONENTS.iter().position(|&o| o == opponent).unwrap_or(0) as i32;
         let right = Side { name: ui.global::<TrainingText>().invoke_opponent(does), navi: names.navi(m.sides[1].navi(content)).into(), detail: SharedString::default() };
         let rounds = m.rounds.len();
         self.show_battle(Battle {
@@ -965,7 +975,7 @@ impl App {
         if m.sides[1].set_fact(content, base_hp, &one).is_err() {
             return;
         }
-        self.start_live(&game, &ready, m, self.training.seed, Opponent::StandIn);
+        self.start_live(&game, &ready, m, self.training.seed, Opponent::default());
         if let Some(b) = &mut self.battle {
             b.autoplay = true;
         }

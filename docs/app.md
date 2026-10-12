@@ -199,7 +199,9 @@ The screens:
   (from a seed; confirm for another) or a match file of the matches folder. YOUR BUILD (the strip's) puts one of
   your builds of the game in place of your side, and OPPONENT one in place of the other side (a build that can't
   play says why). IT DOES is what the opponent does, its buttons alone, as a
-  player's are (`nettai_frontend::driver::Opponent`, recorded with the set):
+  player's are (four mixes of `nettai_frontend::driver::Opponent`'s two choices, what it does in the fight and
+  what it does on its custom screen, which the redesigned training menu sets apart and while the set runs:
+  docs/frontend.md §2; recorded with the set):
   - **Stand-in**: stands still; its custom screen picks the first chip it can and presses OK.
   - **Dummy**: stands still and picks no chip.
   - **Mover**: moves about the field at random (seeded), never attacks; its custom screen is the stand-in's.

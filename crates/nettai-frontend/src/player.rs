@@ -33,8 +33,9 @@
 //! }
 //! ```
 
-use crate::driver::{Driver, NetStatus};
+use crate::driver::{Driver, NetStatus, Opponent};
 use crate::game::{Graphics, Loaded};
+use crate::preload::Late;
 use crate::session::Session;
 use nettai_audio::BattleAudio;
 use nettai_battle::{Battle, BattleResult};
@@ -139,6 +140,22 @@ pub struct Player {
     paused: bool,
     speed: usize,
     clock: Clock,
+    /// What had been made before the player was: this thread's runtimes
+    /// loaded and parts read, and its text renderers' strings and glyphs
+    /// ([`Player::late`] counts from them).
+    before: Late,
+}
+
+/// What this thread and these text renderers have made so far, as
+/// [`Late`] counts it.
+fn made_so_far(renderer: &Renderer, text: Option<&TextRenderer>) -> Late {
+    let made = text.map(TextRenderer::made).unwrap_or_default();
+    Late {
+        runtimes: nettai_battle::behavior::Behaviors::loads(),
+        reads: nettai_content::pack::reads(),
+        layouts: made.layouts + renderer.layouts_made(),
+        glyphs: made.glyphs,
+    }
 }
 
 // (A player borrows nothing: a host's state of any lifetime holds one.)
@@ -159,6 +176,9 @@ impl Player {
     /// font mode's text renderer (none: the frames carry their own text)
     /// and the audio (none: silent).
     pub fn with(renderer: Renderer, text: Option<TextRenderer>, audio: Option<BattleAudio>, driver: Box<dyn Driver>) -> Player {
+        // (Counted from before the driver makes its first battle: a thread
+        // without the content's runtime loads it there.)
+        let before = made_so_far(&renderer, text.as_ref());
         let mut player = Player {
             session: Session::new(driver),
             renderer,
@@ -168,9 +188,29 @@ impl Player {
             paused: false,
             speed: NORMAL,
             clock: Clock::new(),
+            before,
         };
         player.start_over();
         player
+    }
+
+    /// What the player made on the way since it was made, because nothing
+    /// had made it ready (`crate::preload`): content runtimes loaded on
+    /// this thread, parts of a pack read from disk on it, and its text's
+    /// strings laid out and glyphs drawn for the first time. A player a
+    /// [`crate::preload::Preload`] made, on the thread that stepped it,
+    /// has loaded no runtime and read nothing however long it plays; the
+    /// text's counts go up as new strings show (a chip's name, a number),
+    /// each a part of a millisecond. For a host's debug line or its log,
+    /// and for the tests that hold the preload to it.
+    pub fn late(&self) -> Late {
+        let now = made_so_far(&self.renderer, self.text.as_ref());
+        Late {
+            runtimes: now.runtimes - self.before.runtimes,
+            reads: now.reads - self.before.reads,
+            layouts: now.layouts.saturating_sub(self.before.layouts),
+            glyphs: now.glyphs.saturating_sub(self.before.glyphs),
+        }
     }
 
     /// Record the set as a replay from here (`crate::replay`): refused
@@ -296,6 +336,32 @@ impl Player {
     /// The speed, as a multiple of the original's.
     pub fn speed(&self) -> f64 {
         SPEEDS[self.speed]
+    }
+
+    /// The players who pressed START in the fight since the last call, by
+    /// side, each where the game's own pause was: a match's pause is its
+    /// host's (`nettai_match::HOST_KEYS`), so the battle went on and this is
+    /// the host's cue to open its own menu, holding the ticks meanwhile
+    /// where it may ([`Player::set_paused`]: live play and replays, never in
+    /// real time). START anywhere else (the custom screen, a window, a
+    /// chatbox) is the game's and isn't said. In a netplay match only the
+    /// local player's is said, on the tick as it was first simulated. None
+    /// from a recording of the original, whose battle pauses itself.
+    pub fn take_pause_requests(&mut self) -> [bool; 2] {
+        std::mem::take(&mut self.session.pause_requests)
+    }
+
+    /// What the navi the local player fights does, in live play; none for a
+    /// battle whose other navi is somebody's (netplay, a replay, a trace).
+    pub fn opponent(&self) -> Option<Opponent> {
+        self.session.driver.opponent()
+    }
+
+    /// Have it do `opponent` from the next tick on: either choice changed
+    /// alone, while the set runs. False (and nothing changes) for a battle
+    /// that plays no opponent.
+    pub fn set_opponent(&mut self, opponent: Opponent) -> bool {
+        self.session.driver.set_opponent(opponent)
     }
 
     /// Start over: what the driver plays from its beginning (a recording's
@@ -475,6 +541,71 @@ mod tests {
         p.advance(time(4.1), 0);
         p.play(live());
         assert_eq!((p.ticks(), p.stopped(), p.finished(), p.result()), (0, None, false, None));
+    }
+
+    /// START is the host's where the game's pause was: on the custom screen
+    /// it takes the cursor to OK as it did and nothing is said; in the fight
+    /// the battle runs on unpaused and the player says who pressed it, once
+    /// a press, until the host takes it. The host holds the ticks itself;
+    /// starting over forgets a request nobody took.
+    #[test]
+    fn start_in_the_fight_is_the_hosts_to_answer() {
+        use nettai_battle::battle::{fight, mode};
+        use nettai_battle::input::keys;
+        let graphics = Arc::new(nettai_assets::Bundle::default());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
+        let fighting = |p: &Player| p.battle().round.mode == mode::FIGHTING && p.battle().fight.state == fight::FIGHTING;
+        // Through the custom screen as the opponent's is pressed: a chip,
+        // START to OK, A.
+        let mut starts = 0;
+        for tick in 0..3000u32 {
+            if fighting(&p) {
+                break;
+            }
+            let buttons = crate::driver::bot_buttons(p.battle(), 0, tick);
+            starts += (buttons & keys::START != 0) as u32;
+            assert!(p.tick(buttons));
+        }
+        assert!(fighting(&p) && starts > 0, "the fight runs, after {starts} START presses on the custom screen");
+        assert_eq!(p.take_pause_requests(), [false; 2]);
+        // In the fight: held three ticks, one press.
+        for _ in 0..3 {
+            assert!(p.tick(keys::START));
+            assert!(fighting(&p) && !p.battle().paused);
+        }
+        assert!(p.tick(0));
+        assert_eq!(p.take_pause_requests(), [true, false]);
+        assert_eq!(p.take_pause_requests(), [false; 2], "taken once");
+        // The host's own pause: no tick runs while it holds them.
+        assert!(p.set_paused(true));
+        let ticks = p.ticks();
+        assert_eq!((p.advance(time(30.0), keys::START), p.ticks()), (0, ticks));
+        assert_eq!(p.take_pause_requests(), [false; 2]);
+        assert!(p.set_paused(false));
+        assert_eq!(p.advance(time(1.1), keys::START), 1);
+        assert_eq!(p.session().pause_requests, [true, false]);
+        assert!(p.restart());
+        assert_eq!(p.take_pause_requests(), [false; 2]);
+    }
+
+    /// The opponent's two choices are the player's to read and change
+    /// while a live set runs; a battle that plays no opponent has none.
+    #[test]
+    fn the_opponent_is_changed_through_the_player() {
+        use crate::driver::{InFight, OnCustomScreen, Opponent};
+        let graphics = Arc::new(nettai_assets::Bundle::default());
+        let mut p = Player::with(Renderer::new(graphics.clone()), None, None, live());
+        assert_eq!(p.opponent(), Some(Opponent::default()));
+        p.advance(time(20.2), 0);
+        let wanted = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksNothing };
+        assert!(p.set_opponent(wanted));
+        assert_eq!(p.opponent(), Some(wanted));
+        // (It stays through starting over.)
+        assert!(p.restart());
+        assert_eq!(p.opponent(), Some(wanted));
+        let mut other = Player::with(Renderer::new(graphics.clone()), None, None, Box::new(RealTime(live())));
+        assert_eq!(other.opponent(), None);
+        assert!(!other.set_opponent(wanted));
     }
 
     /// On a display with frames to spare (120 a second), a late frame's two

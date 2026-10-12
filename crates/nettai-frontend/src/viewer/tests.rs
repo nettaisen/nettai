@@ -354,3 +354,60 @@ fn the_sound_follows_the_speed() {
         assert!(heard.is_empty(), "{speed:?}");
     }
 }
+
+/// A replay of a match whose host answered the pause holds the START a
+/// player pressed in a fight, and playing it back reports the press again
+/// (a player says so: `Player::take_pause_requests`). A viewer asks nobody:
+/// it plays on through the press and keeps no request, playing, seeking
+/// over it or indexing through it; its pause is its host's alone.
+#[test]
+fn a_recorded_start_asks_a_viewer_for_nothing() {
+    use nettai_battle::battle::{fight, mode};
+    use nettai_battle::input::keys;
+    let content = nettai_match::testing::exe6_content();
+    // START held through the first three ticks of each round's fight.
+    let (mut fought, mut pressed) = (0, Vec::new());
+    let (replay, ticks) = crate::testing::recorded_with(&content, "exe6", 7, |b, tick| {
+        let fighting = b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING;
+        fought = if fighting { fought + 1 } else { 0 };
+        if !(1..=3).contains(&fought) {
+            return 0;
+        }
+        pressed.push(tick);
+        keys::START
+    });
+    let length = ticks as u32;
+    assert!(pressed.len() >= 6 && pressed.iter().all(|&t| replay.ticks[t as usize].buttons[0] & keys::START != 0), "{pressed:?}");
+    // A player playing it straight is asked again, once a press.
+    let driver = ReplayPlayer::new(&content, &replay, Some(0)).unwrap();
+    let mut p = Player::with(graphics(&content, 0x001F).renderer(TextMode::Original, None), None, None, Box::new(driver));
+    let mut asked = Vec::new();
+    while p.tick(0) {
+        match p.take_pause_requests() {
+            [true, false] => asked.push(p.ticks() as u32 - 1),
+            other => assert_eq!(other, [false; 2]),
+        }
+    }
+    assert!(asked.len() >= 2 && asked.iter().all(|t| pressed.contains(t)), "asked on {asked:?} of the presses on {pressed:?}");
+    // A viewer isn't: played through, sought over, indexed through.
+    let s = straight(&content, &replay, 0);
+    let mut v = viewer(&content, &replay, 0);
+    while v.step_forward() {
+        assert_eq!((v.session.pause_requests, v.paused()), ([false; 2], false), "tick {}", v.position());
+    }
+    same(&mut v, &s, length, "played through a recorded START");
+    v.seek(asked[0] - 5);
+    follow(&mut v, &s, 20, "through a recorded START");
+    v.seek(0);
+    v.seek(asked[1] + 10);
+    assert_eq!(v.session.pause_requests, [false; 2]);
+    same(&mut v, &s, asked[1] + 10, "sought over a recorded START");
+    let mut v = viewer(&content, &replay, 0);
+    while !v.index(100) {
+        assert_eq!(v.session.pause_requests, [false; 2]);
+    }
+    // The clock plays through one too.
+    v.seek(asked[0] - 2);
+    let ran = v.advance(Duration::from_secs_f64(10.2 / FRAME_RATE));
+    assert_eq!((ran, v.position(), v.paused(), v.session.pause_requests), (10, asked[0] + 8, false, [false; 2]));
+}

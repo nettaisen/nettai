@@ -227,6 +227,24 @@ pub fn custom(roms: &Roms, chip_art: Vec<ChipArt>) -> CustomScreen {
         c.buttons = vec![(SOUL_BUTTON.into(), soul), (REDEAL_BUTTON.into(), redeal)];
         c.versioned = Versioned::new(Version::RedSun.name(), VersionPictures::default());
         c.chip_art = chip_art;
+        // What EXE4's screen has of its own where the other games' take a
+        // navi's: the element icon as a sprite, the cursor's colors and the
+        // emblem over the picked column (one frame of it, at rest).
+        let (w, h) = EMBLEM_SIZE;
+        c.element_sprite = Some(ElementSprite { x: ELEMENT_SPRITE.0, y: ELEMENT_SPRITE.1, palette: crate::placeholders::PALETTE });
+        c.elements = crate::placeholders::tiles(4 * FAMILIES as usize);
+        c.element_colors = Vec::new();
+        c.cursor_palette = Some(crate::placeholders::PALETTE);
+        c.window_emblem = Some(WindowEmblem {
+            x: EMBLEM_AT.0,
+            y: EMBLEM_AT.1,
+            width: w,
+            height: h,
+            first_tile: EMBLEM_FIRST_TILE,
+            tiles: crate::placeholders::tiles(EMBLEM_TILES.1 / 0x20),
+            frames: vec![(0..(w as u16 * h as u16)).map(|i| MapEntry { tile: EMBLEM_FIRST_TILE + i, palette: 9, ..Default::default() }).collect()],
+            steps: Vec::new(),
+        });
         return c;
     }
     let glyphs = |(a, n): (u32, usize)| tiles(rom, a, 0x40 * n);
