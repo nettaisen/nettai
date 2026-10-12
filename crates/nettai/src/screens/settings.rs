@@ -78,7 +78,7 @@ impl Settings {
         shell.save_settings();
         // (The picture on screen is fitted again at the next frame.)
         if let Some(b) = &mut shell.battle {
-            b.stage.stale = true;
+            b.stage.surface.stale = true;
         }
         self.show(shell);
     }

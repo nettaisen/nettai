@@ -94,7 +94,7 @@ impl Screen for Menu {
             while reel.ticks < STILL_AT && reel.stage.player.tick(demo_buttons(reel.stage.player.battle(), reel.ticks)) {
                 reel.ticks += 1;
             }
-            reel.stage.stale |= reel.ticks <= STILL_AT;
+            reel.stage.surface.stale |= reel.ticks <= STILL_AT;
             reel.ticks = STILL_AT + 1;
         } else {
             let buttons = if reel.pressed { demo_buttons(reel.stage.player.battle(), reel.ticks) } else { 0 };

@@ -9,17 +9,23 @@
 //!
 //! The game's own pause never runs: START in a fight is reported by the library, not acted on, and what it
 //! opens is nettai's menu.
+//!
+//! A replay is watched through the library's `Viewer`, which is no battle of the shell's: the cards make it
+//! ready the same way ([`Play::Watch`]) and hand it to the screen that asked ([`BattleEvent::Watching`]),
+//! which keeps it, shows it in a `Picture` of its own ([`Shell::show_surface`]) and plays its sound
+//! ([`Shell::play_samples`]).
 
 use crate::errors::UserError;
 use crate::nav::Key;
 use crate::screens::ScreenId;
 use crate::shell::Shell;
-use crate::stage::{self, Stage};
+use crate::stage::{self, Stage, Surface};
 use nettai_battle::BattleResult;
 use nettai_frontend::driver::{Driver, StopReason};
 use nettai_frontend::game::TextMode;
 use nettai_frontend::preload::{Part, Preload};
-use nettai_frontend::replay::Recorder;
+use nettai_frontend::replay::{Recorder, Replay};
+use nettai_frontend::viewer::Viewer;
 use nettai_match::Set;
 use nettai_render::vfont::TextRenderer;
 use nettai_ui::{BattleKind, VersusCard};
@@ -33,6 +39,14 @@ const CARDS_SHOWN: Duration = Duration::from_millis(500);
 /// How long a frame of the cards spends making the match ready, at the most.
 const STEP_BUDGET: Duration = Duration::from_millis(6);
 
+/// What the cards make ready.
+pub enum Play {
+    /// A battle the shell runs: what plays its set (a live set against a dummy, a match over a link).
+    Drive(Box<dyn Driver>),
+    /// A replay to watch, from a side (none: its recorder's). Its set is `replay::set_of`'s.
+    Watch(Box<Replay>, Option<u8>),
+}
+
 /// A battle to start.
 pub struct BattleStart {
     /// The screen that starts it: its menu's controls and its events are that screen's.
@@ -41,9 +55,9 @@ pub struct BattleStart {
     pub kind: BattleKind,
     /// The game it is of (ready).
     pub game: String,
-    /// The set played, and what plays it: a live set against a dummy, a match over a link, a replay.
+    /// The set played, and what plays it.
     pub set: Set,
-    pub driver: Box<dyn Driver>,
+    pub play: Play,
     /// The side whose console is shown: the local player's.
     pub viewer: u8,
     /// What it is recorded with, if it is.
@@ -59,10 +73,11 @@ pub struct BattleStart {
 }
 
 /// What a battle's owner hears of it.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BattleEvent {
     /// It is ready and its first tick is about to run.
     Started,
+    /// The replay asked for is ready to watch: its viewer, which is the owner's from here.
+    Watching(Box<Viewer>),
     /// The set is over: how it went for this player (none: nobody's).
     Finished(Option<BattleResult>),
     /// It stopped without ending: why, as a player can be told it (`UserError::of_stop`). The detail is in
@@ -126,8 +141,8 @@ impl Shell {
     }
 
     /// A frame of the cards: the match made ready a few steps at a time, and the battle begun once it is, the
-    /// other side is, and the cards were up long enough to be seen. The owner, when the battle began.
-    pub(crate) fn load_battle(&mut self, now: Instant) -> Option<ScreenId> {
+    /// other side is, and the cards were up long enough to be seen. What its owner hears, once it is ready.
+    pub(crate) fn load_battle(&mut self, now: Instant) -> Option<(ScreenId, BattleEvent)> {
         let mut loading = self.loading.take()?;
         let Some(ready) = self.games.ready(&loading.start.game) else {
             crate::errors::log("starting a battle", &format_args!("{} isn't ready", loading.start.game));
@@ -188,7 +203,21 @@ impl Shell {
         for missing in preload.missing() {
             crate::errors::log("the pack lacks something this battle draws", &missing);
         }
-        let mut player = preload.player(start.driver);
+        let driver = match start.play {
+            Play::Drive(driver) => driver,
+            // A replay's viewer is its screen's: the cards go, and the screen shows it.
+            Play::Watch(replay, side) => {
+                shell.set_versus(false);
+                return match preload.viewer(&replay, side) {
+                    Ok(viewer) => Some((start.owner, BattleEvent::Watching(Box::new(viewer)))),
+                    Err(refused) => {
+                        self.fail(UserError::of_refusal("opening a replay", &refused));
+                        None
+                    }
+                };
+            }
+        };
+        let mut player = preload.player(driver);
         if let Some(recorder) = start.recorder
             && let Err(why) = player.record(recorder)
         {
@@ -207,7 +236,7 @@ impl Shell {
         shell.set_connection_shown(false);
         self.keys.pressed.clear();
         self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, viewer: start.viewer, menu: false, over: false });
-        Some(start.owner)
+        Some((start.owner, BattleEvent::Started))
     }
 
     fn loading_failed(&mut self) {
@@ -339,21 +368,53 @@ impl Shell {
     }
 
     /// Show `stage`'s picture in the room the screen's `Picture` has: presented if a tick ran or the room
-    /// changed, or if another stage's picture was shown last.
+    /// changed, or if another surface's picture was shown last.
     pub fn show(&mut self, stage: &mut Stage) {
+        let Some(fit) = self.room_fit(&mut stage.surface) else { return };
+        let shown = stage.picture(fit, self.gl.as_mut());
+        self.place_picture(fit, shown);
+    }
+
+    /// Show a picture of a screen's own in the room its `Picture` has (a replay's viewer): `present` draws it
+    /// into the buffer it is given, when `surface` is out of date (the screen sets `surface.stale` as its
+    /// picture changes) or the room changed.
+    pub fn show_surface(&mut self, surface: &mut Surface, present: impl FnOnce(&mut [u32], usize, usize)) {
+        let Some(fit) = self.room_fit(surface) else { return };
+        let shown = surface.picture(fit, self.gl.as_mut(), present);
+        self.place_picture(fit, shown);
+    }
+
+    /// Play samples of a screen's own this frame (a replay's viewer's: 32768 Hz, stereo), which ran `ticks` of
+    /// what made them. They are mixed with the menus' sounds, as a battle's are.
+    pub fn play_samples(&mut self, samples: &mut Vec<[f32; 2]>, ticks: u32) {
+        self.own_samples.append(samples);
+        self.own_ticks = Some(self.own_ticks.unwrap_or(0) + ticks);
+    }
+
+    /// How the picture fits the room the screen's `Picture` has, if there is one; `surface` is to be presented
+    /// anew if the window's texture holds another's picture.
+    fn room_fit(&mut self, surface: &mut Surface) -> Option<stage::Fit> {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let factor = ui.window().scale_factor();
         let (width, height) = (shell.get_picture_room_width() * factor, shell.get_picture_room_height() * factor);
         if width < 1.0 || height < 1.0 {
-            return;
+            return None;
         }
-        if self.shown_stage != stage.id {
-            self.shown_stage = stage.id;
-            stage.refresh();
+        if self.shown_stage != surface.id {
+            self.shown_stage = surface.id;
+            surface.refresh();
         }
-        let fit = self.fit(width, height);
-        if let stage::Shown::New(image) = stage.picture(fit, self.gl.as_mut()) {
+        Some(self.fit(width, height))
+    }
+
+    /// The picture's image (a new one), its size and its place in its room.
+    fn place_picture(&mut self, fit: stage::Fit, shown: stage::Shown) {
+        let ui = self.ui();
+        let shell = ui.global::<nettai_ui::Shell>();
+        let factor = ui.window().scale_factor();
+        let (width, height) = (shell.get_picture_room_width() * factor, shell.get_picture_room_height() * factor);
+        if let stage::Shown::New(image) = shown {
             shell.set_picture(image);
         }
         let size = (nettai_render::compose::WIDTH as f32 * fit.scale as f32, nettai_render::compose::HEIGHT as f32 * fit.scale as f32);
@@ -365,8 +426,9 @@ impl Shell {
         shell.set_picture_y(((room.1 + (height - size.1) / 2.0).round() - room.1) / factor);
     }
 
-    /// A recorder of a set to a new file in the replays folder, this player on `side`, both players' names by
-    /// side. None if the file can't be made (why is in the log).
+    /// A recorder of an offline set to a new file in the replays folder, this player on `side`, both players'
+    /// names by side. None if the file can't be made (why is in the log). (An online match is recorded from
+    /// its agreement: the library's `Recorder::of_agreement`.)
     pub fn recorder(&self, content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, game: &str, side: u8, names: [String; 2]) -> Option<Recorder> {
         use nettai_frontend::replay::Info;
         let dir = crate::paths::replays();
@@ -376,7 +438,7 @@ impl Shell {
             let stamp = chrono::DateTime::from_timestamp(when as i64, 0).map(|t| t.with_timezone(&chrono::Local).format("%Y%m%d-%H%M%S").to_string()).unwrap_or_default();
             let path = dir.join(format!("{stamp}-{game}.ntrp"));
             let file = std::fs::File::create(&path).map_err(|e| format!("{}: {e}", path.display()))?;
-            let info = Info { when, side, names };
+            let info = Info { when, names, ..Info::of(nettai_frontend::replay::MatchKind::Offline, side) };
             let m = nettai_match::Match { seed: Some(seed), ..m.clone() };
             Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &info)
         })();

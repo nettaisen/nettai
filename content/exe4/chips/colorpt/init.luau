@@ -19,6 +19,7 @@ local colorpt_chip: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = colorpt.hook { palette = 0, bonus = 10 },
+    auto_battle = { class = "when_area_whole" },
 }
 
 -- DblPoint (EXE4 chip 0x0cf): the dimming chips' variant 0x27: the user's front column goes to the other side, panel
@@ -36,6 +37,7 @@ local dblpoint: Chip = {
     lockout = 0,
     flags = { "dimming", "library" },
     dimming = colorpt.hook { palette = 4, bonus = 20 },
+    auto_battle = { class = "when_area_whole" },
 }
 
 return { colorpt = colorpt_chip, dblpoint = dblpoint }

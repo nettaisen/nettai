@@ -135,7 +135,7 @@ pub trait Screen {
     /// A file was dropped on the window while this screen showed.
     fn dropped(&mut self, _shell: &mut Shell, _path: &std::path::Path) {}
 
-    /// A battle this screen started: it began, it ended.
+    /// A battle this screen started: it began, it ended; or the replay it asked for is ready to watch.
     fn battle(&mut self, _shell: &mut Shell, _event: BattleEvent) {}
 
     /// Every frame, shown or not (a lobby's link is polled while another screen shows).

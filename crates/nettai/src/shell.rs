@@ -7,7 +7,7 @@
 //!
 //! The window's rendering is the app's clock: [`App::frame`] runs before each frame is drawn (docs/app.md §1).
 
-use crate::battle::{Battle, BattleEvent, Loading};
+use crate::battle::{Battle, Loading};
 use crate::errors::UserError;
 use crate::games::{Games, Ready, State};
 use crate::gl::GlPicture;
@@ -103,8 +103,11 @@ pub struct Shell {
     pub scale: Scale,
     /// Present the picture at the display's density (`NETTAI_PHYSICAL_PIXELS`).
     pub(crate) sharp: bool,
-    /// The stage whose picture the texture holds.
+    /// The surface whose picture the texture holds.
     pub(crate) shown_stage: u64,
+    /// Samples a screen played this frame (`Shell::play_samples`), and the ticks that made them.
+    pub(crate) own_samples: Vec<[f32; 2]>,
+    pub(crate) own_ticks: Option<u32>,
     /// The selected game.
     game: Option<String>,
     /// The game the screens were last shown with, once it was ready.
@@ -268,7 +271,7 @@ impl Shell {
             && let Some(ready) = self.games.ready(&b.game)
         {
             b.stage.player.set_language(&ready.graphics(self.lang));
-            b.stage.stale = true;
+            b.stage.surface.stale = true;
         }
         self.refresh();
     }
@@ -567,6 +570,8 @@ impl App {
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },
             sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some(),
             shown_stage: 0,
+            own_samples: Vec::new(),
+            own_ticks: None,
             game: None,
             announced: None,
             runtime_due: 0,
@@ -1038,18 +1043,23 @@ impl App {
         }
         self.settle();
         // The battle: loading behind the cards, or running.
-        if let Some(owner) = self.shell.load_battle(now) {
-            self.call(owner, |s, shell| s.battle(shell, BattleEvent::Started));
+        if let Some((owner, event)) = self.shell.load_battle(now) {
+            self.call(owner, |s, shell| s.battle(shell, event));
             self.settle();
         }
         let mut samples = Vec::new();
-        let (ticks, event) = self.shell.run_battle(now, &mut samples);
+        let (mut ticks, event) = self.shell.run_battle(now, &mut samples);
+        // (What a screen played of its own this frame: a replay's viewer.)
+        if let Some(own) = self.shell.own_ticks.take() {
+            samples.append(&mut self.shell.own_samples);
+            ticks = Some(ticks.unwrap_or(0) + own);
+        }
         if let Some((owner, event)) = event {
             self.call(owner, |s, shell| s.battle(shell, event));
             self.settle();
         }
-        // The title music plays on the menu screens.
-        let in_battle = self.shell.battle.is_some() || self.shell.loading.is_some();
+        // The title music plays on the menu screens (not under a battle, or under what a screen plays itself).
+        let in_battle = self.shell.battle.is_some() || self.shell.loading.is_some() || ticks.is_some();
         self.shell.sound.want_music(!in_battle && self.shell.ready().is_some());
         self.shell.sound.frame(now, ticks, &mut samples);
         // The screen that was leaving has left.

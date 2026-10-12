@@ -23,7 +23,7 @@ impl Screen for Play {
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match event {
-            BattleEvent::Started => {}
+            BattleEvent::Started | BattleEvent::Watching(_) => {}
             BattleEvent::Finished(_) => shell.end_battle(),
             BattleEvent::Stopped(reason) => {
                 shell.end_battle();
