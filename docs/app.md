@@ -203,6 +203,11 @@ Replays are their headers. `ui/screens/play.slint` holds:
 - `PlayOverlay`: what the screen opens over itself (its dialogs, on a phone its sheets), over the whole window.
 - For Training and Play, the menu over their battle (`TrainingMenu`, `MatchMenu`, each a `MenuOverlay`).
 
+One thing to know in all of them: a part placed in a `Page`, a `MenuOverlay` or a `DialogFrame` is laid out in
+the area the component gives it, but `parent` there is Slint's lexical parent, the whole component. Its parts
+measure from what the component says instead: a page's `body-width` and `body-height`, a menu's `inner-width`
+and `inner-height`, a dialog's `inner-width` (`width: root.body-width`, not `parent.width`).
+
 `src/screens/play.rs` holds a struct that implements `Screen` (screens/mod.rs). A screen never handles keys and
 wires no callbacks. Its controls have names (`nav: "ready"`, and `nav-index` where there are several), and
 whatever the player used, a key, a pad or a click, arrives as one of a few calls with the name:
@@ -604,6 +609,13 @@ Four rules hold for all of it:
 4. *It can be turned down.* With `Theme.motion` off every clock is at its end and nothing moves by itself:
    Settings' Reduce motion (as the system asks, until the player says: macOS's and GNOME's settings are read),
    and the screenshot pass.
+
+**What has run.** Everything the built screens use is in the screenshot pass and the motion probe (§13). The
+components no built screen uses yet (`TabBar`, `ListView`, `Panel`, `OptionRow`, `Count`, `Flash`, `Shake`, and
+a `DialogFrame` of a screen's own with a `Field` and its scope) were drawn and walked once, in both, at the
+desktop's size and a phone's, in a harness that isn't in the tree (2026-10-12); it found the tab bar running off
+a phone's edge, which is fixed and now said by the pass. Never run: `Shell::fly`, a replay's viewer through
+`Play::Watch`, an online match's `gate`, `Shell::recorder`, a dropped file, a real gamepad, an IME.
 
 Three things about how it is made. A clock reads the frame's time (`animation-tick()`) only while it runs, and
 stops when it is done, so a screen at rest evaluates nothing each frame but what moves by itself. What moves
