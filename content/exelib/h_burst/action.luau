@@ -1,14 +1,16 @@
 --!strict
--- H-Burst, as EXE5 and EXE6 share it (each game passes its `HyperBurstLook`:
--- its spreader, attachment kind, sound and shot kind): the navi raises a
--- spreader (an attachment in its overlay slot) and on the second tick
--- fires H-Burst's shot (./burst) along its row from the panel ahead: at
--- the first thing it hits it bursts again and again. Then 21 ticks of
--- recovery (EXE6's action 0x34, `sub_80ED810`; EXE5's 0x35, the same code
--- but for the spreader's attachment row).
+-- H-Burst, as the games share it (each game passes its `HyperBurstLook`:
+-- its spreader and how the navi holds it, its sound, its shot kind and the
+-- navi's animation): the navi raises a spreader (an attachment in the
+-- look's slot) and on the second tick fires H-Burst's shot (./burst) along
+-- its row from the panel ahead: at the first thing it hits it bursts again
+-- and again. Then 21 ticks of recovery (EXE6's action 0x34, `sub_80ED810`;
+-- EXE5's 0x35, the same code but for the spreader's attachment row; EXE4's
+-- 0x71, 0x080EE93A, the same but for the navi's animation and its own
+-- attachment in the related slot).
 
-local attachment = require("../attachment")
 local burst = require("./burst")
+local slot = require("../slot")
 
 local action = {}
 
@@ -23,7 +25,6 @@ action.STATE = { timer = "u16" }
 -- The phases, on the attack's step.
 local AIM, RECOVER = 0x0, 0x4
 
-local ANIM_AIM = 0x0B
 local RECOVER_TICKS = 0x14
 
 -- An H-Burst of a game's `look` whose shot bursts `spec.bursts` times.
@@ -31,9 +32,9 @@ function action.action(spec: HyperBurstSpec, look: HyperBurstLook): Action
     -- `sub_80ED82C`: the spreader out; on the second tick it fires.
     local function aim(me: Object, s: State)
         if me.step_init == 0 then
-            me:set_animation(ANIM_AIM)
+            me:set_animation(look.anim)
             me:open_counter_window()
-            attachment.attach(look.attachment, me, look.spreader, "overlay")
+            look.hold(me, look.spreader, look.slot)
             me:set_status("using_action", true)
             me.step_init = 4
             s.timer = 0
@@ -45,7 +46,7 @@ function action.action(spec: HyperBurstSpec, look: HyperBurstLook): Action
         end
         -- The spreader's firing animation (with no spreader, the game's
         -- store lands in low memory and does nothing).
-        local spreader = me.overlay
+        local spreader = slot.held(me, look.slot)
         if spreader then
             spreader.anim += 1
         end

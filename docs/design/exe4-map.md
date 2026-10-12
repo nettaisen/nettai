@@ -967,6 +967,30 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   adds the bubble), which waits 59 ticks and over 5 ticks hits once a tick with its four bugs (0x080DD494: kinds 2,
   3, 4, 6, each the hit word's byte 3 after 0xFF, as BugBomb's), then lets the controller go on. The lab's chips/ (4)
   and status/bugcurse replay every frame; the hit is pixel-exact but for the custom screen's known shift.
+- **LifeSync** (the dimming chips' variant 0x30, `chips/lifesync`): EXE4's own controller (#0x5C, 0x080E8784),
+  which EXE5's reworks, with the shared marker (@exelib/lifesync/marker, #0x60, 0x080E8C78: EXE4's in palette 7, 10
+  pixels over the panel two ahead, which it never leaves). In a link battle (0x08007EEC's battle flags' 8, or a battle
+  type of 70 and on: every netbattle's) it only waits 81 ticks: no marker, no sound. Else the marker and its sound
+  (0x12F), the enemy navi there (0x080E89BA: BattleState +0x44's list, content/exe4/lib/navi_list), and after 21
+  ticks a warning (0x08008424's 0x79) over each it syncs for 61: BattleState +0x44's entries past the first (the
+  other console's navi, whatever the user's side; two slots read, a third written), each taking the target's HP,
+  uncapped (0x10E up, 0x13A down). Under event flag 0x1187 (lib/main_started, also the plus chips') the link battle
+  doesn't stop it and the enemy navi there takes a hit of 50 instead (0x080E8A48): EXE5's operation battle's. The
+  lab's chips/ (4) and status/lifesync replay every frame; chips/0x01c-lifesync/hit is pixel-exact.
+- **SignlRed** (Blue Moon's chip 0x131, the dimming chips' variant 0x2B, `chips/signlred`: EXE4's own): a
+  controller (#0x58, 0x080E83F8) places a signal (attack #0x81, 0x080DD538, sheet 0c-33) on the panel ahead and
+  undims 30 ticks on. The signal, a field obstacle of its side (class 1) with 100 HP and a lifetime of 2400, takes its
+  panel three ticks on if it is free solid ground (0xA0; else a puff, effect row 21, and it goes), then cycles: red
+  (animation 0) for 421 ticks with the other side's chips off, green (animation 1, 0x15C) for 51 with them on. Its
+  end (broken: an explosion, row 0, and 0x70; run out; or never standing) turns them on again (0x080DD73C). The
+  chips-enabled bits are BattleState +0x64's 0x04 and 0x08 (EXE6's intro bits at +0x5C; `sub_8001382`, `sub_800138E`;
+  the engine's `battle.set_chips_enabled`), which the navis' chip input reads (0x08007C3E, with the lockout at AIData
+  +0x3A) and the computer navis' AI (0x08007C20); exe4-compat compares them every frame. Its obstacle code is EXE4's
+  older: its own seven rows (0x080DD5F8), a crushing touch destroying it with its HP kept (0x08013F3E), no NameID, no
+  tracking. Under event flag 0x1187 (never in a netbattle) each green light and its end would also hide the other
+  side's console's HUD draw task 17 (the levels gauge's sprite, which no netbattle shows): documented, not ported. The
+  lab's chips/ (4) and status/signlred replay every frame (hit: side 1's chips off from frame 3173; side1: side 0's
+  from 1181).
 - **BigHamr1 to BigHamr3, GodHammr** (the dimming chips' variant 0x10, `chips/bighamr`: EXE4's own): a controller
   (effect #0x26, 0x080E4B88) sets a hammer (attack #0x4A, 0x080D68CC: one of its side's field objects, an obstacle of
   100 HP, sheet 04-04 `big-hammer`) on the free solid panel in front, of the chip's damage and the telop's bonus. The
@@ -1229,6 +1253,16 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   holes-columns stage, the hole behind the opponent's hammer leaves it an ice block), 0x10b-coldmnsp and
   0x10c-coldmnds (14) replay every frame and sound the same; their fights are pixel-exact but for one frame of `ice`
   (440: the user's chip label goes a frame late as the opponent, just moved, uses BigHamr1: the HUD's, not ColdMan's).
+  BlakWing (the dimming chips' variant 0x29, 0x080E80CA) is EXE5's (now @exelib/blakwing for both; EXE5's chip is a
+  thin user of it): its controller (effect #0x54, 0x080E8014), flock (attack #0x7E, 0x080DD0AC), perches (effect
+  #0x55, 0x080E80EC) and wings (attack #0x7F, 0x080DD254), the same code but for two things the maker takes. EXE4's
+  flock looks over the enemy area's columns left to right (4 to 6, or 1 to 3: 0x080DD1BA) and keeps each perch in
+  its column's slot, the rightmost column's first (EXE5's from the area's front along its facing, listed as found):
+  `perches_by_column`; a wing's column is its slot's (0x080DD1B8's 6 or 3 less the slot: the perch's own). And as
+  EXE4's controller ends (0x080E80B6) the panel its user stands on becomes a hole (type 11, the Hole chip's):
+  `ends_with_hole`. Its start sounds the place sound (0xAA) and its flap 0x87 (ShadeMan's call). The lab's
+  chips/0x0d6-blakwing (4, a dark MegaMan's) replay every frame, sound the same and are pixel-exact but for the
+  custom screens' known shift; EXE5's BlakWing recordings (4) still match.
 
 **For the next steps:**
 
@@ -2273,13 +2307,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      MegaMan's sprite, his entry plus the soul (0x0800B90A, 0x0801079C) *done*; the emotion 4 (0x0800F49C), no anger
      (0x0800C560) and no Full Synchro aura (0x0800D98A) *done*; the palette 0 (0x0800BFFE) *done*; the status reset's
      routine by soul (0x0800E05C, table 0x0800E0A0), its element by soul (0x0800C93C, table 0x0800C964: Fire fire,
-     Thunder elec, Aqua aqua, Wood wood, the rest null) *done* for Fire, Thunder and Aqua, *open* for Wood; the
+     Thunder elec, Aqua aqua, Wood wood, the rest null) *done* (Fire, Thunder, Aqua, Wood); the
      overlay by soul (0x0800B7E8, table 0x08018068: Fire
      0x10, Number 0x110; `effects.form_overlay`; PopUp's glow, objects/glow, puts its copy on through the form's
-     `put_on` and must have it step on, its Param3 1: 0x0800B812) *done* for Fire, *open* for Number; the image's
+     `put_on` and must have it step on, its Param3 1: 0x0800B812) *done* (Fire, Number); the image's
      part (0x080E3674, table
      0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
-     *done* for WindMan, FireMan and AquaMan, *open* for NumberMan; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
+     *done* (WindMan, FireMan, NumberMan, AquaMan); a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
      `charged_chips`; the A routine forms/soul's `chip_charge`; any charged chip used with its charge, Null or not,
      0x0800B72C: the rule `chip_use.charged_null_alt_routine`) *done* (Fire, Proto, Metal, Aqua); a
      charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage itself, item 28; the
@@ -2336,8 +2370,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      modifiers from 0x080EB7FE (0x080EB6E8, item 70) *done* (souls/proto/chip, side1); VarSwrd's and NeoVari's
      command window waits out its ticks without A held (0x080ED776, 0x080EE240) *ported* (chips/varswrd's `waits`).
      Z Saver, a Sword chip it charges, reads no charge (0x080EE774).
-   - **NumberSoul (8).** Its overlay 0x110 and image part 0x14 *open*; the status reset's 10 more on each damaging
-     Null chip (0x0800E194) *open*; charged 0x11 (0x0800CE08) *open*; the hand of ten (0x0801DC92) *open*.
+   - **NumberSoul (8).** Its overlay 0x110 (10-01) and image part 0x14 (10-06, NumberMan's face) *done*
+     (souls/number/hit, unison); the status reset's 10 more on each damaging Null chip of the hand (0x0800E194) *done*
+     (souls/number/bonus: a Cannon's 50); the die charged (0x11, 0x0800CE08: 10, hit 0x94; action 0x15, 0x080EC164:
+     the die, attack #5, objects/dice, thrown three columns ahead, its face a draw of RNG2 over 0x080EC200's sixteen,
+     a body the other side can hit) *done* (souls/number/dice: the burst over the 3x3; unison, side1: its hit on the
+     way); the hand of ten (0x0801DC92: the custom screen deals ten in soul 8; rules/souls/custom's hand size) *done*
+     (souls/number/ten: the tenth chip picked).
    - **MetalSoul (9).** B's routine 0x0B (0x0800CDE2: the buster's shot, action 8, its projectile row 5: breaking,
      the breaking spark) *done* (souls/metal/buster: through side 1's Guard); a damaging Metal or Null chip that isn't
      a dimming chip charges on A (0x0D: 70 ticks a level, 90 the last) and doubles charged (0x0800C47A) *done*
@@ -2353,10 +2392,19 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      Bubbler's spreader charged (0x23, 0x0800CF42: 20 aqua, hit 0x94, action 0x1E's variant 2, bullet row 0x0D: the
      burst on the first thing found and the panel behind, hit modifier 3) *done* (souls/aqua/unison, side1). Its status
      reset runs nothing of its own (0x0800E0A0's row 11).
-   - **WoodSoul (12).** Wood (0x0800C964) *open*; the status reset's merge (0x0800E294: a Wood chip takes the damage
-     and bonuses of a damaging Null chip after it, which leaves the hand) *open*; grass heals 1 (0x08012FD6) *open*;
-     a hit's status doesn't take (0x08013904 skips 0x08013470: `status_immune`) *open*; charged 0x57 (0x0800D270)
-     *open*.
+   - **WoodSoul (12).** Wood (0x0800C964) *done* (souls/wood/weakness: HeatShot's fire on it); the status reset's
+     merge (0x0800E294: from the hand's cursor, a Wood chip takes in the damage and bonuses of a damaging Null chip
+     right after it, which leaves the hand, the chips after it moving up; one Null chip a Wood chip:
+     `battle.fold_hand_chip`) *done* (souls/wood/merge: a WoodPwdr, two M-Cannons); grass heals it a point when the
+     battle's second count of fight ticks comes round (0x08012FB6: BattleState +0x16, EXE4's every other tick, the
+     rule `flow.fight_cycles`; rules/souls' `grass_heal`), as well as a wood body's heal (0x08012FF2, its first count,
+     EXE4's every 10 ticks) *done* (souls/wood/grass); a hit's status doesn't take (0x08013904 skips 0x08013470: the
+     trait `status_immune`) *done* (souls/wood/status: Thunder1); its tornado charged (0x57, 0x0800D270: 20 wood, hit
+     0x84; the fan's action 0x28, chips/tornado/fan, as its variant 0: one tornado of palette 1) *done*
+     (souls/wood/tornado, unison, side1). Presentation, open: the four breath chips' icons (Blizzard, HeatBrth,
+     ElecShok and WoodPwdr, chips 0x05, 0x06, 0x2A, 0x2B) differ between the versions (Blue Moon's rows 12 and 13 a dark
+     bar, palette index 6), and the pack has one (Red Sun's, `chip_media`'s any ROM): a Blue Moon console's frames
+     differ there (souls/wood's WoodPwdr, in the hand and over MegaMan; every other pixel exact).
    - **The dark soul (15).** A worn-out MegaMan (emotion 5) at 0 HP, once a battle, holds at 1 HP and asks for it
      (0x0800EBC8, 0x08013AB8: request 0x1000, then 0x0800B8CA: soul 15); its status reset (0x0800E17E: the mood 0,
      flag1 0x08000000, 0x0800EAC6); 960 ticks (0x0800B93C, 0x08018088) counted down to the revert (0x0800B6A4) with
