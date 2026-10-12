@@ -2518,7 +2518,9 @@ export type FormEffect =
 --     (Gregar and Falzar Beast);
 --   ignores_b: the B button asks for nothing (no buster, rapid presses or
 --     B+Left special) and no charge counts, under the per-button controls
---     (EXE4's dark soul).
+--     (EXE4's dark soul);
+--   emotions_as_base: its side's emotion is found as out of a form (EXE4's
+--     dark soul).
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -2531,6 +2533,7 @@ export type FormTrait =
     | "doubles_null"
     | "mood_palette"
     | "ignores_b"
+    | "emotions_as_base"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
