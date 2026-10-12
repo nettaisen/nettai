@@ -413,6 +413,50 @@ from the ROM and its code, read routine by routine):
   visible as none (`sub_800C5E0`, 0x0800ABFC). It follows from where the game keeps what its panels are drawn as
   (`panels.drawn = "own_tables"`: `Panel::kept`). Not reached: a soul changes nothing of the chip, and nothing
   hurts its user while it runs (he is warped out, the field dimmed).
+  PrixPowr (variant 0x48, 0x080EAA64: chips/prixpowr) brings three navis one after the other. Its controller
+  (effect #0x7A, 0x080EA900) is the navi chips' (the dim, AntiNavi, the name, the undim) with a course of its own
+  (0x080EA948; @exelib/navi_chips/controller's `course`): the user warps out; 11 ticks; VideoMan on the user's
+  panel; 31 ticks after he left, LaserMan on the panel ahead if it is solid with nothing on it (0x080EA9BE: require
+  0x10, forbid 0x0F800000), else neither he nor KendoMan comes; 6 ticks after he left, KendoMan in the user's row
+  from behind its side's edge; 6 ticks after he left, the undim with the user warping back in. The three are its
+  own actors, not the navi chips': VideoMan (#0x53, 0x080CBB40) raises a projector (his sheet's animation 18, an
+  attachment; sound 0xE1) and shows LaserMan's silhouette on the panel ahead for 60 ticks (sprite 10-3E through the
+  afterimage, effect #0x28), hitting nothing; LaserMan (#0x54, 0x080CBCB0) charges until his animation ends, fires
+  the LaserMan chips' laser in its course 5 (attack #0xA0's first parameter: course 0's list taken two steps a
+  strike, 0x080E0EFC, so the hit alone and half the wait; the aimed courses' palette, the left course's shader),
+  stands 51 ticks and leaves his silhouette for 18; KendoMan (#0x55, 0x080CBE40) rushes 8 pixels a tick, sword out,
+  an afterimage each fourth tick, with the lingering hit on his panel (attack #0x7C: single, hit modifier 3, 100
+  ticks), which he makes again a panel after it ended on a body (0x080CBFF0), until a panel inside the field isn't
+  solid or holds a blocker (0x080CBFD0: forbid 0x03800000) or he reaches the column past the far edge. Each comes
+  with the chip's damage word and bonus. The lab's chips/0x138-prixpowr (22: the templates, whose `adjacent` is the
+  opponent standing where LaserMan would; its description and pick, a Blue Moon and a dark user, the opponent at
+  the front, the user forward and back, a rock cube on LaserMan's panel, one the laser breaks and one behind
+  LaserMan that stops KendoMan, an opponent the laser deletes, AntiNavi, Navi+20 and Atk+10, a cut-in on it and it
+  as the cut-in, a hole where LaserMan would come and one in KendoMan's way, side 1's with the opponent at the
+  front) replay every frame with the same sounds, and all 22 are frame-compared, every fight frame exact and the
+  custom screen's name, picture, icon and description with them.
+  **The Japanese ROMs.** Both chips' code is the same in the Japanese ROMs (the controllers, Duo and his fists,
+  VideoMan, LaserMan, the laser, the lingering hit: diffed routine by routine, B4WE against B4WJ) but for PrixPowr's
+  KendoMan (US 0x080CBE40, Japan 0x080CBD80), which the US release reworked:
+  - the Japanese routine passes the number 96 where the US passes the address of his slot (Japan 0x080CBE62,
+    `movs r2, #96`; US 0x080CC032, `movs r2, #96; adds r2, r2, r5`), so his rush's hit is never kept: he can't cut it
+    short as he stops (0x080DCD84 gets 0), and it lives its 100 ticks or until it lands, following an owner that is
+    gone;
+  - its first tick runs on into the rush (Japan 0x080CBE80 to 0x080CBE82; the US returns after the set-up,
+    0x080CBF30), so he moves and leaves his first afterimage a tick earlier, and everything after him is a tick
+    earlier;
+  - it makes no second hit (the US added 0x080CBFF0 and the two words at +0x64 and +0x68 its init clears).
+  **Decided (the user, 2026-10-12: "use the fixed routine please"):** the engine has the US routine on every
+  console, with no rule field and no region switch. The standing rule is the Japanese games' behavior where the
+  releases differ; here the Japanese routine is the defective one, and nettai uses the fixed one. A Japanese
+  console's PrixPowr is so the other region's: verify's lab has an `exe4-jp` base (Red Sun Japan traced against
+  Blue Moon Japan, Tango's Japanese templates) and each chip's `jp` scenario (its `custom` on that base).
+  chips/0x137-duo/jp replays every frame; chips/0x138-prixpowr/jp matches to KendoMan's first tick and stops there,
+  frame 800, a known deviation with this cause (trace-tests' deviations.rs), so it still checks every frame before
+  him. On the Japanese console the names (デューオ, グランプリパワー), pictures
+  and icons compare exact; the description's text is the same but drawn about 12 pixels further left with wider
+  advances than the engine draws it, as every chip's is there (Recov10's too): the first Japanese EXE4 frame compare,
+  not the e-Reader chips' own, left for the custom screen's owner.
 - **The status** (`status_until`, `custom::Side::selecting`): value 4 from the opening (0x08007618) to the send
   (0x0801E986), value 1 from the settle tick (0x08020348) to OK (0x08020652).
 - **The gauge**: L or R of either joypad with it full asks for the screen on that tick (flow `custom_request`,
@@ -1996,6 +2040,25 @@ a placeholder until then. tools/exe4/gen_rules.py (verify) writes the table sect
     Stated: `start_visible` all true (what the engine reads of it, the valid panels', is EXE5's grid), `front_edges`
     row 3, written by gen_rules.py from that code. The any-side step: EXE4 has no `sub_800E680` (EXE5 neither), so its
     rows are EXE6's, for EXE6's code (a chip's) in an EXE4 arena.
+    **The drawing's order** (found by the e-Reader chips' frame compares). For each valid panel the drawing reads the
+    highlight first, a table of its own (0x080092E8: 0x02037ABE, which the frame routine clears every frame,
+    0x08009A60, and 0x08009DA0 sets): a highlighted panel is drawn as the highlight (0x0800948A) if its visible bit
+    is set, and not drawn at all if it isn't (0x0800932C), so it keeps the tiles it had; any other panel is drawn as
+    none when it isn't visible, else as its blink (0x08009302: the flags byte's bit 0x80, which 0x08009E38 sets and
+    the drawing's end clears, 0x080093C2) or as its drawn type and owner. EXE6's and EXE5's (`sub_800C5E0`,
+    0x0800ABFC) read the visible byte first (not visible: drawn as none), then the blink's latch, then the highlight.
+    So in EXE4 a highlight shows through a blink, and a highlighted panel that isn't visible keeps what it last
+    showed; both follow from `panels.drawn = "own_tables"` (the stage's `shown` and `kept_look`, the field's
+    `Panel::kept`). A netbattle reaches both: 0x08009E38's callers are the panel changer (effect #0x1F: Snctuary,
+    HolyPanl, PnlRetrn, Hole, DrkLine, DrkStage, the Elem chips, AntiRecv), FireSoul's grass (effect #0x12) and
+    DarkNeo's Bass (actor #0x51), and a stage's gear highlights its panel every frame, dimmed or not (attack #0x76,
+    0x080DBEA4), as do the chips' objects that warn (0x08009DA0's 44 callers: WoodMan's towers, the flames, the
+    breaths, Lance, the shurikens, the tapes, the tornadoes, ThunMan's thunder, Bass's shots, Meteors' marker).
+    The lab's stages/type5/gears-snctuary (Snctuary's 64 ticks of flicker over a gear's panel: the highlight shows,
+    frames 521 to 584) and chips/0x137-duo/stage-type5 (a gear's panel on the columns Duo blinks away: it keeps its
+    highlight, frames 3139 on) are frame-compared, exact. (A stolen panel's return and a mending hole blink in the
+    drawn tables, 0x02037AE6 and 0x02037B0E, not through 0x08009E38: under a highlight they showed the highlight in
+    the engine already.)
 15. **Done** (battle mode 1's mend and the reservations).
     - **The mend:** 600 ticks in every battle: the field's init (0x08009132) and the panel tick (0x0800976C) store
       the one constant whatever the battle's mode (`mend = { normal = 600, battle_mode_1 = 600 }`, now asserted).
@@ -2460,7 +2523,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     dimming variants, the three object tables, the link stages' entry types, the NaviCust handlers and bugs, the
     patch cards and the HUD's draw tasks, against content. What a netbattle reaches and content lacks (main at
     aaff7fdd1): DarkNeo; "????" after a message (item 130: not as the audit read it). The two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
-    ROM; their names and images are the card's) are being ported (§13's e-Reader paragraph: Duo done). Everything else missing is the story's enemies, the other navis,
+    ROM; their names and images are the card's) are ported (§13's e-Reader paragraph). Everything else missing is the story's enemies, the other navis,
     subsystem 0x0E's battle (item 49), or named by nothing. Run the tool again as content grows.
 64. **Done: the chip window's "???"** (group B; found by the Program Advances' pa/0x15c-bodygrd/sequence7, whose
     Muramasa showed 0 at frames 4237 to 4246 and 4274 to 4279). EXE4's chip window (0x0801FC40) reads the record's
