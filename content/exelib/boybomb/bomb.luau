@@ -184,7 +184,7 @@ function bomb.make(look: BoyBombLook): BoyBomb
             me.hp = 0
         end
         obstacle.take_hits(me, look.push)
-        local a = obstacle.react(me)
+        local a = obstacle.react(me, look.crush)
         if a then
             local action = actions[a]
             if not action then
