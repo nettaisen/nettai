@@ -25,6 +25,8 @@ instruments.kind = instrument.make_kind("instrument", {
     sounds = { appear = asset.sound("appear"), broken = asset.sound("hit-bomb-1") },
     body = { is = collision.own_body, hits = collision.hit_by_other_side },
     removal_explodes = true,
+    -- 0x08013F3E: a crushing touch destroys it, its HP as it is.
+    crush = "destroys",
     -- 0x080DC5A2: effect row 0, 14-00.
     explosion = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 0 },
 })

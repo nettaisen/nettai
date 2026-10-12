@@ -2457,6 +2457,15 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     in-panel rule differs through the whole dimming (540: frames 967 to 1124; 1954: 2360 to 2517). EXE5's
     stages/cracked-row/mend and EXE6's forms/falzar/bare-stage-cracked, which draw the hole at once, are exact as
     they were.
+112. **Done: a crushed obstacle keeps its HP** (group C). EXE4's obstacle reaction (0x08013F3E, EXE6's `sub_801B394`'s
+    place) destroys an obstacle a crushing touch reaches (a body's, another obstacle's or a breaking hit's:
+    0x0C800002) with its HP as it is, and reads no removal; EXE6's and EXE5's drop the HP to 0. Its ten callers:
+    RockCube, the gears, Guardian's statue and VDoll's doll stated the engine's `destroys` already; TimeBomb's bomb,
+    BoyBomb's, Anubis's statue, the instruments, Wind's and Fan's fan and BigHamr's hammer ran the default (`breaks`):
+    their looks state `crush = "destroys"` now (@exelib's makers take it). The lab's new hits/silence-crushed
+    (Silence's instrument, 100 HP, and AirHoc1's puck, a breaking hit of 50, from the next panel) leaves the
+    instrument destroyed at 50 HP (frame 616), which `breaks` replays as 0; it and the six chips' recordings replay
+    every frame.
 
 ### 18.7 The HUD
 
