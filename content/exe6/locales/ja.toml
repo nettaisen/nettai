@@ -726,17 +726,30 @@ language = "ja"
 "tango" = "タンゴサポート"
 "undershirt" = "アンダーシャツ"
 
-# The NaviCust's bugs' names (en.toml's `[bugs]` says what they are).
+# The NaviCust's bugs' names (en.toml's `[bugs]` says what they are): where the game's patch cards name the same
+# bug, that effect's line, which the Japanese cards already write in full; the rest the content's own.
 [bugs]
-"buster" = "バスターバグ"
+# "バスターからうち" (`buster_blanks`).
+"buster" = "バスターからうち"
+# Ours.
 "custom" = "カスタムバグ"
+# "ココロバグ" (`emotion_bug`).
 "emotion" = "ココロバグ"
+# Ours.
 "encounter" = "エンカウントバグ"
-"hp" = "HPバグ"
+# "バトルHPバグ" (`hp_drain`).
+"hp" = "バトルHPバグ"
+# "パネルバグ" (`panel_trail.none`).
 "panel" = "パネルバグ"
+# Ours.
 "result" = "リザルトバグ"
+# "ステータスバグ" (`status_bug`).
 "status" = "ステータスバグ"
+# "ステータスバグ" (`status_bug`).
 "status-strong" = "ステータスバグ"
+# "いどうバグ" (`step_bug`).
 "step" = "いどうバグ"
+# Ours.
 "support" = "サポートバグ"
+# Ours.
 "unread" = "バグ"
