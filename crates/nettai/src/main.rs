@@ -11,6 +11,7 @@
 //! screen and writes each to a PNG (`tour`).
 
 mod arenas;
+mod awake;
 mod battle;
 mod builds;
 mod errors;

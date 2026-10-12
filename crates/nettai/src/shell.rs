@@ -133,6 +133,11 @@ pub struct Shell {
     pub hold_loading: Option<f32>,
     pub still: bool,
     pub probe_motion: bool,
+    /// A screen has something running that must keep its time whatever covers the window (a link to another
+    /// player, before and between their battles): the app isn't napped while this is set, as it isn't while a
+    /// battle runs (`awake.rs`).
+    pub stay_awake: bool,
+    awake: Option<crate::awake::Awake>,
     /// Ctrl, Alt or the system's key is held (the key is the system's, or a text field's).
     chord: bool,
     shift: bool,
@@ -590,6 +595,8 @@ impl App {
             hold_loading: None,
             still,
             probe_motion: false,
+            stay_awake: false,
+            awake: None,
             chord: false,
             shift: false,
             composing: false,
@@ -1045,6 +1052,11 @@ impl App {
             self.call(id, |s, shell| s.frame(shell, now, id == shown && shell.battle.as_ref().is_none_or(|b| !b.full)));
         }
         self.settle();
+        // What must keep its time whatever covers the window: a battle, a screen's link, the screenshot pass.
+        let awake = self.shell.battle.is_some() || self.shell.loading_battle() || self.shell.stay_awake || self.shell.still;
+        if awake != self.shell.awake.is_some() {
+            self.shell.awake = awake.then(crate::awake::Awake::new);
+        }
         // The battle: loading behind the cards, or running.
         if let Some((owner, event)) = self.shell.load_battle(now) {
             self.call(owner, |s, shell| s.battle(shell, event));

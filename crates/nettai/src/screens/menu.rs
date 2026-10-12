@@ -32,6 +32,8 @@ struct Reel {
     ticks: u32,
     /// Its left side is pressed by the reel (a set made for it); a replay's sides are its recording's.
     pressed: bool,
+    /// Who is fighting, left and right: what the caption under it names.
+    sides: [nettai_match::Side; 2],
 }
 
 #[derive(Default)]
@@ -55,8 +57,14 @@ impl Screen for Menu {
         if self.reel.as_ref().is_some_and(|r| Some(r.game.as_str()) != shell.game()) {
             self.reel = None;
         }
-        if self.reel.is_none() {
-            shell.ui().global::<MenuView>().set_playing(false);
+        match (&mut self.reel, shell.ready()) {
+            // The language may have changed under it: its caption's names, and its own drawing.
+            (Some(reel), Some((game, ready))) => {
+                reel.stage.player.set_language(&ready.graphics(shell.lang));
+                reel.stage.surface.stale = true;
+                caption(shell, &game, &ready, [&reel.sides[0], &reel.sides[1]]);
+            }
+            _ => shell.ui().global::<MenuView>().set_playing(false),
         }
     }
 
@@ -104,6 +112,8 @@ impl Screen for Menu {
         // (START in a reel's fight opens nothing.)
         reel.stage.player.take_pause_requests();
         shell.show(&mut reel.stage);
+        // (`NETTAI_PLAY_STATS`: the menu's frames a second, with everything on it moving.)
+        reel.stage.report(now);
     }
 }
 
@@ -126,7 +136,8 @@ impl Menu {
             // (The console shown has its side at the left.)
             let sides = if replay.info.side == 0 { [&m.sides[0], &m.sides[1]] } else { [&m.sides[1], &m.sides[0]] };
             caption(shell, game, ready, sides);
-            return Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: false });
+            let sides = [sides[0].clone(), sides[1].clone()];
+            return Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: false, sides });
         }
         // No replay: a new build of each of the game's first two versions, on a picked match's arenas.
         let seed = if shell.still { 7 } else { clock_seed() };
@@ -135,7 +146,8 @@ impl Menu {
         let set = nettai_match::Set::of(content, &m, seed);
         let opponent = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst };
         let driver = LivePlayer::against(set, opponent, seed as u64);
-        Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: true })
+        let [left, right] = m.sides;
+        Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: true, sides: [left, right] })
     }
 }
 

@@ -107,7 +107,7 @@ impl Settings {
             std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
         }
         let text = toml::to_string(self).map_err(|e| e.to_string())?;
-        std::fs::write(&path, format!("# nettai's settings (docs/app.md §6).\n\n{text}")).map_err(|e| format!("{}: {e}", path.display()))
+        std::fs::write(&path, format!("# nettai's settings (docs/app.md §9).\n\n{text}")).map_err(|e| format!("{}: {e}", path.display()))
     }
 
     /// The battle's buttons as bound: the defaults, with what the file binds otherwise.

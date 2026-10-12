@@ -2,10 +2,10 @@
 // row is a label, a control of one width, and a note only where the label can't say it. On a phone the list is
 // left out and the note goes under its control.
 
-import { Theme } from "../theme.slint";
+import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, FaceButton } from "../shell.slint";
-import { Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage } from "../widgets.slint";
+import { Label, Note, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage } from "../widgets.slint";
 import { Arrive } from "../motion.slint";
 
 // A pad's button bound to an action: one of its four face buttons, drawn by its place, or a button with a cap.
@@ -48,13 +48,21 @@ component SettingLabel inherits Rectangle {
     in property <length> row-height: 48px;
     in property <length> control-x;
     in property <length> control-width;
+    property <bool> over: Theme.audit && (Theme.phone ? name.preferred-height > name.height + 0.5px : name.preferred-width > name.width + 0.5px);
     height: root.row-height + (Theme.phone && root.note != "" ? below.preferred-height + 4px : 0px);
-    Value {
+    name := Text {
         x: 0;
         y: 0;
         width: root.control-x - 12px;
         height: root.row-height;
         text: root.label;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 14px;
+        font-weight: 600;
+        vertical-alignment: center;
+        wrap: Theme.phone ? word-wrap : no-wrap;
+        overflow: Theme.phone ? clip : elide;
     }
 
     Note {
@@ -75,6 +83,12 @@ component SettingLabel inherits Rectangle {
         text: Theme.phone ? root.note : "";
         wrap: root.cut ? no-wrap : word-wrap;
         overflow: root.cut ? elide : clip;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.label);
+        }
     }
 }
 
@@ -173,6 +187,7 @@ export component SettingsScreen inherits Page {
                 alignment: start;
                 GroupTitle {
                     text: @tr("GENERAL");
+                    first: true;
                 }
 
                 Rectangle {

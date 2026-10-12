@@ -1,8 +1,8 @@
 // The app's window (docs/app.md §2): the ground, the one screen shown, what opens over it, and the cursor.
 //
-// A screen is one file in screens/ (its component, and its view: the global its Rust module sets) and one Rust
-// module in src/screens/. This file names each screen's component and its view once, below; what a screen adds
-// to its view, and the structs it uses there, reach Rust with no edit here.
+// A screen is one file in screens/ (its component, its overlay for what it opens over itself, and its view: the
+// global its Rust module sets) and one Rust module in src/screens/. This file names each of those once, below;
+// what a screen adds to its view, and the structs and enums it uses there, reach Rust with no edit here.
 
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind } from "nav.slint";
@@ -13,17 +13,17 @@ import { MenuScreen } from "screens/menu.slint";
 import { SettingsScreen } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
-import { PlayScreen, MatchMenu } from "screens/play.slint";
-import { TrainingScreen, TrainingMenu } from "screens/training.slint";
-import { BuildsScreen } from "screens/builds.slint";
-import { ReplaysScreen } from "screens/replays.slint";
+import { PlayScreen, PlayOverlay, MatchMenu } from "screens/play.slint";
+import { TrainingScreen, TrainingOverlay, TrainingMenu } from "screens/training.slint";
+import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
+import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
 
 export { Theme, Audit, Nav, NavKind }
 export { Shell, Screen, BattleKind, DialogButton, VersusCard, PadButton, ErrorKind, Errors, Fx } from "shell.slint";
 export { ButtonKind } from "widgets.slint";
 // What each screen's Rust module sets: its view.
 export { MenuView } from "screens/menu.slint";
-export { SettingsView, PadBinding } from "screens/settings.slint";
+export { SettingsView } from "screens/settings.slint";
 export { PlayView } from "screens/play.slint";
 export { TrainingView } from "screens/training.slint";
 export { BuildsView } from "screens/builds.slint";
@@ -41,7 +41,10 @@ export component AppWindow inherits Window {
     default-font-family: Theme.body;
     default-font-size: 14px;
     default-font-weight: 400;
-    Backdrop { }
+    // (Not drawn under a battle that fills the window: its hexagons cost a millisecond a frame.)
+    Backdrop {
+        visible: !root.in-battle || Theme.phone;
+    }
 
     if !root.covered && Shell.screen == Screen.menu: MenuScreen { }
     if !root.covered && Shell.screen == Screen.play: PlayScreen { }
@@ -49,6 +52,11 @@ export component AppWindow inherits Window {
     if !root.covered && Shell.screen == Screen.builds: BuildsScreen { }
     if !root.covered && Shell.screen == Screen.replays: ReplaysScreen { }
     if !root.covered && Shell.screen == Screen.settings: SettingsScreen { }
+    // What a screen opens over itself.
+    if !root.covered && Shell.screen == Screen.play: PlayOverlay { }
+    if !root.covered && Shell.screen == Screen.training: TrainingOverlay { }
+    if !root.covered && Shell.screen == Screen.builds: BuildsOverlay { }
+    if !root.covered && Shell.screen == Screen.replays: ReplaysOverlay { }
     if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
     if Shell.versus: VersusScreen { }
     if root.in-battle: BattleScreen { }

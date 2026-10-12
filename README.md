@@ -42,10 +42,13 @@ netplay needs.
   seeks to any tick (§8).
 - `nettai-video`: a replay as video: a NUT stream of raw frames and PCM sound on any writer, and `ffmpeg` run as a
   child for an MP4 of one; no encoder is linked ([docs/frontend.md](docs/frontend.md) §8, "Video").
-- `nettai`: the app (Slint, a prototype), in Tango's shape: a top bar of tabs (online play, its link through
-  `nettai-rtc` in a room or directly; training against the computer; the replays; the builds and their creator;
-  the settings) around the battle, navigated by keys, a gamepad or touch, in each language its catalogs have
+- `nettai`: the app (Slint), being rebuilt to a new design ([docs/design/app-ui.md](docs/design/app-ui.md)): a main
+  menu (Play, Training, Builds, Replays, Settings) around the battle, navigated by keys, a gamepad, the mouse or
+  touch, in each language its catalogs have. Its foundation is built: the design system, focus and navigation,
+  Settings, and the battle's host; the other four screens are their headers, to be filled in
   ([docs/app.md](docs/app.md)).
+- `nettai-ui`: the app's Slint files, compiled: a crate of its own so the app's Rust builds without it
+  ([docs/app.md](docs/app.md) §14).
 - `nettai-tools`: `nettai-tool`, the command line with no window: headless frames (a trace's, a match file's, a
   replay's), a replay written as video, the content and trace audits, the replay of recorded matches, match setups
   and replays checked
@@ -89,14 +92,13 @@ game), and the battle is that game's content on its pack. Then run the app:
 
     cargo run --release -p nettai
 
-nettai ([docs/app.md](docs/app.md)) is the player's program, in Tango's shape (a top bar of tabs, a welcome on the
-first run), navigated by the keyboard, a gamepad, the mouse or touch: PLAY, online against another player, with
-the game and build you bring and the link at its foot (below); TRAINING, offline against the computer (your build
-and the opponent's or random sides, or a match file from its matches folder; an opponent that stands still, picks
-no chip, moves about or mashes; the match's rounds or an endless set); the replays of every set played; the builds
-and their creator (below); and the settings, kept between runs. In the battle the
-arrows move, Z is A, X is B, A is L, S is R, Enter is START and Backspace is SELECT, and Esc pauses; in training,
-R starts over. A match file sets the game, its rounds (one `[[round]]` each: the set is as
+nettai ([docs/app.md](docs/app.md)) is the player's program, navigated by the keyboard, a gamepad, the mouse or
+touch. It opens on a main menu, the selected game's battles playing beside it: PLAY, online against another
+player; TRAINING, offline against a dummy; BUILDS; REPLAYS; and Settings, kept between runs. The app is being
+rebuilt to a new design: the menu, Settings and the battle's host are built, and the other four screens aren't yet
+(`NETTAI_TRAINING=<game>` starts a training battle meanwhile). In the battle the arrows move, Z is A, X is B, A is
+L, S is R, Enter is START and Backspace is SELECT (Settings binds others, and a pad's buttons), and Esc opens the
+app's menu; in training, R starts over. A match file sets the game, its rounds (one `[[round]]` each: the set is as
 many rounds, three for the original's best of three), each side's navi, folder, version, forms, patch cards,
 NaviCust and what its save brings to the stats (the rules build the rest); its optional `seed` sets the battle's
 RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/frontend.md) §6).
@@ -107,8 +109,9 @@ and Japanese), bundled under the SIL Open Font License in `crates/nettai-render/
 them in the game's own fonts instead, exactly as the original does
 ([text-rendering.md](docs/design/text-rendering.md) §9).
 
-To play another player (PLAY), both choose the same game and meet, by FIGHT in the band at its foot, in a room of the
-signaling server by its code (none: a new room; the first in hosts, the left navi), through NATs with a public STUN server; or one hosts and the other joins
+To play another player (the app's Play screen, not built yet; the library and the link under it are), both choose
+the same game and meet in a room of the signaling server by its code (the first in hosts, the left navi), through
+NATs with a public STUN server; or one hosts and the other joins
 directly, over a LAN, or over the Internet with the host's UDP port 47474 forwarded to the host's machine (nothing
 is exchanged before the connection, so nothing is authenticated). The signaling server is `signaling/`, a
 Cloudflare Worker; `npx wrangler dev` there runs one locally, and `npx wrangler deploy` puts it on your own
@@ -188,20 +191,16 @@ EXE6's version, Crosses and Beast Out, EXE5's light or dark MegaMan and souls), 
 file writes a side ([docs/frontend.md](docs/frontend.md) §6). A side states no stats: the game's rules build them
 as the round is set up.
 
-The build creator (nettai's Builds) makes and edits them, checking them against the content as you go. It lays a
-build out from the game's rules' setup alone, a tab for each kind of fact, and names no game's feature: the navi
-and the facts of one value, with the stats the round starts it with; the folder, with the chips the rules allow,
-their pictures and codes, and the limits counted live; a checklist of faces (EXE6's Crosses, EXE5's souls); the
-NaviCust's board, placed with the keys, a pad or the mouse; the patch cards with their effects; EXE5's auto battle
-data. FROM A SAVE… reads a whole side from a save of the build's game (a .sav, or a raw save image as Tango's
-netplay templates hold), or the auto battle data alone; a save of another game is refused. Every build plays at the
-most its game allows: what a save brings to the stats, the navi code's level, the SP navi times, EXE5's auto battle
-records and its Chaos Unison stay at the rules' defaults. EXE5's light/dark value is one of Tango's two presets,
-LIGHT or DARK, each with MegaMan's base HP (1000 and 1000, 0 and 997); a save's is the one on its side of the game's
-line. An import says which of the save's facts it set so. Builds are chosen in the selector strip, Play's and Training's.
+The app's Builds screen, which makes and edits them, isn't built yet in the redesigned app. What it asks of a game
+is `nettai-match`'s `build` ([docs/frontend.md](docs/frontend.md) §6): the game's versions and a new build of
+each, from the game's own data; a build checked against the content, each thing wrong typed; its overview; the
+chips the rules allow. A side can also be read from a save of the build's game (a .sav, or a raw save image as
+Tango's netplay templates hold), through the game's compat crate; a save of another game is refused. Every build
+plays at the most its game allows: what a save brings to the stats, the navi code's level, the SP navi times,
+EXE5's auto battle records and its Chaos Unison stay at the rules' defaults.
 
 A whole match file (both sides and the rounds) is written by hand, or by `nettai-tool --match FILE --save-match OUT`
-(the match with its seed), and Training plays one from the app's matches folder.
+(the match with its seed).
 
 ## Docs
 
@@ -213,7 +212,8 @@ A whole match file (both sides and the rounds) is written by hand, or by `nettai
   ([rust-and-luau.md](docs/design/rust-and-luau.md)).
 - [`docs/engine`](docs/engine): the original game's battle routines, specified from the disassembly.
 - [`docs/frontend.md`](docs/frontend.md): the frontend, and match files (§6).
-- [`docs/app.md`](docs/app.md): the app, its screens, netplay and the build creator.
+- [`docs/app.md`](docs/app.md): the app: how the battle is hosted in its window, the shell and its screens, the
+  design system, and what it costs to build. [`docs/design/app-ui.md`](docs/design/app-ui.md) is its design.
 - [`docs/tools.md`](docs/tools.md): the command line, its frames and audits.
 
 ## Verification

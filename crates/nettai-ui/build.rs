@@ -40,9 +40,10 @@ fn main() {
         }
     }
 
-    // The catalogs, and the pseudo-locale, in one tree for Slint to bundle.
+    // The catalogs, and the pseudo-locale, in one tree for Slint to bundle. (Slint has cargo run this script
+    // again when the tree changes, so a file is written only when what it says changed, and the tree is never
+    // made anew: else every build would find it changed, and compile the UI again.)
     let bundle = out.join("lang");
-    let _ = std::fs::remove_dir_all(&bundle);
     std::fs::create_dir_all(&bundle).expect("the build's folder is writable");
     let mut languages = vec![("en".to_string(), "English".to_string())];
     let mut folders: Vec<PathBuf> = std::fs::read_dir(&lang).map(|d| d.flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect()).unwrap_or_default();
@@ -103,6 +104,12 @@ fn main() {
     let header = "Content-Type: text/plain; charset=UTF-8\nLanguage: pseudo\nPlural-Forms: nplurals=2; plural=(n != 1);\n";
     write(&bundle.join("pseudo/LC_MESSAGES").join(format!("{domain}.po")), &catalog(header, pseudo_entries.iter()));
     languages.push(("pseudo".to_string(), pseudo("Pseudo")));
+    // (A language whose folder is gone leaves the tree.)
+    for entry in std::fs::read_dir(&bundle).into_iter().flatten().flatten() {
+        if !languages.iter().any(|(code, _)| entry.file_name().to_str() == Some(code)) {
+            let _ = std::fs::remove_dir_all(entry.path());
+        }
+    }
 
     let mut code = String::from("/// The languages bundled: each one's code and its own name.\npub const LANGUAGES: &[(&str, &str)] = &[\n");
     for (c, name) in &languages {
@@ -123,7 +130,11 @@ fn list(strings: &[&str]) -> String {
     format!("{}{}", shown.join(", "), if strings.len() > shown.len() { ", ..." } else { "" })
 }
 
+/// Write `text` to `path`, unless it says that already (its time of change is what cargo goes by).
 fn write(path: &Path, text: &str) {
+    if std::fs::read_to_string(path).is_ok_and(|was| was == text) {
+        return;
+    }
     std::fs::create_dir_all(path.parent().expect("a file in a folder")).expect("the build's folder is writable");
     std::fs::write(path, text).expect("the build's folder is writable");
 }

@@ -439,17 +439,22 @@ export component Backdrop inherits Rectangle {
         background: @radial-gradient(circle, Theme.ground-glow 0%, transparent 62%);
     }
 
-    Path {
+    // (Drawn once into a layer, which is what moves: stroking the field anew each frame cost over a
+    // millisecond.)
+    Rectangle {
         x: -1px * mod(root.drift * 5 + (1 - pow(rush.v, 3)) * 42 * 9, 42);
         y: -1px * mod(root.drift * 2.2, 72.75);
         width: parent.width + 42px;
         height: parent.height + 72.75px;
-        commands: Shell.hexagons;
-        stroke: Theme.hexagons;
-        stroke-width: 1px;
-        viewbox-width: self.width / 1px;
-        viewbox-height: self.height / 1px;
-        clip: true;
+        cache-rendering-hint: true;
+        Path {
+            commands: Shell.hexagons;
+            stroke: Theme.hexagons;
+            stroke-width: 1px;
+            viewbox-width: self.width / 1px;
+            viewbox-height: self.height / 1px;
+            clip: true;
+        }
     }
 
     Rectangle {
@@ -603,7 +608,7 @@ export component Header inherits Rectangle {
 
     Rectangle {
         x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
-        width: (parent.width - self.x - root.pad - (root.game ? 172px : 0px)) * arrive.t;
+        width: (parent.width - self.x - root.pad - (root.game ? game.width + 16px : 0px)) * arrive.t;
         visible: !root.logo;
         clip: true;
         title-text := Text {
@@ -612,17 +617,18 @@ export component Header inherits Rectangle {
             text: root.title;
             color: Theme.text;
             font-family: Theme.display;
-            font-size: 20px;
+            font-size: Theme.phone ? 16px : 20px;
             font-weight: 700;
-            letter-spacing: Theme.title-tracking;
+            letter-spacing: Theme.phone ? min(1.2px, Theme.title-tracking) : Theme.title-tracking;
             vertical-alignment: center;
             overflow: elide;
         }
     }
 
     // The game.
-    Stepper {
+    game := Stepper {
         x: parent.width - root.pad - self.width;
+        value-width: Theme.phone ? 56px : 84px;
         visible: root.game;
         nav: root.game ? "game" : "";
         value: Shell.game;
@@ -915,18 +921,27 @@ export component Picture inherits Rectangle {
 
 // ---- Over the screen ------------------------------------------------------------------------------------
 
-// A dialog: a failure that ends what the player was doing, or a question asked once. The screen behind it is
-// shaded and out of the keys' reach. The shade fades in as the panel grows from 96%; a failure's shakes once.
-export component DialogLayer inherits Rectangle {
-    property <length> box-width: min(root.width - 32px, 460px);
-    property <length> box-height: 24px + 26px + 12px + message.height + 24px + 40px + 24px;
+// A dialog's frame: the shade over the screen, and a panel with its title and what is put inside it, in an area
+// `inner-width` wide and `content-height` tall (asked for, not measured: a dialog keeps one size from its start
+// to its end). The shade fades in as the panel grows from 96%; a failure's shakes once.
+//
+// A screen's own dialog (a direct connection's, a new build's, an export's) is one of these in the screen's
+// overlay (`PlayOverlay`), over everything of the screen. Its controls' names share a prefix, which the screen's
+// module opens as a scope while the dialog shows (`shell.nav.open("direct.", ...)`): the keys reach nothing
+// else.
+export component DialogFrame inherits Rectangle {
+    in property <string> title;
+    in property <length> panel-width: 540px;
+    in property <length> content-height;
+    in property <bool> shake;
+    out property <length> inner-width: panel.width - 48px;
     arrive := Tween {
         duration: Theme.brisk;
     }
 
-    shake := Shake {
+    swing := Shake {
         reach: 6px;
-        at-start: Shell.dialog-shake;
+        at-start: root.shake;
     }
 
     Rectangle {
@@ -935,10 +950,10 @@ export component DialogLayer inherits Rectangle {
         TouchArea { }
     }
 
-    Rectangle {
-        x: (parent.width - self.width) / 2 + shake.dx;
-        width: root.box-width;
-        height: root.box-height;
+    panel := Rectangle {
+        x: (parent.width - self.width) / 2 + swing.dx;
+        width: min(parent.width - 32px, root.panel-width);
+        height: 24px + 26px + 12px + root.content-height + 24px;
         opacity: arrive.t;
         transform-scale: 0.96 + 0.04 * arrive.t;
         Cut {
@@ -958,35 +973,51 @@ export component DialogLayer inherits Rectangle {
             y: 24px;
             width: parent.width - 48px;
             height: 26px;
-            text: Shell.dialog-title;
+            text: root.title;
         }
 
-        message := Text {
+        Rectangle {
             x: 24px;
             y: 62px;
             width: parent.width - 48px;
-            height: self.preferred-height;
-            text: Shell.dialog-message;
-            color: Theme.muted;
-            font-family: Theme.body;
-            font-size: 14px;
-            wrap: word-wrap;
+            height: root.content-height;
+            @children
         }
+    }
+}
 
-        HorizontalLayout {
-            x: 24px;
-            y: parent.height - 64px;
-            width: parent.width - 48px;
-            height: 40px;
-            spacing: 12px;
-            alignment: end;
-            for button[i] in Shell.dialog-buttons: Button {
-                nav: "dialog.button";
-                nav-index: i;
-                text: button.text;
-                kind: button.kind;
-                danger: button.danger;
-            }
+// The shell's dialog: a failure that ends what the player was doing, or a question asked once (`Shell::fail`,
+// `Shell::ask`): a message and its buttons.
+export component DialogLayer inherits DialogFrame {
+    title: Shell.dialog-title;
+    panel-width: 460px;
+    content-height: message.height + 24px + 40px;
+    shake: Shell.dialog-shake;
+    message := Text {
+        x: 0;
+        y: 0;
+        width: root.inner-width;
+        height: self.preferred-height;
+        text: Shell.dialog-message;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 14px;
+        wrap: word-wrap;
+    }
+
+    HorizontalLayout {
+        x: 0;
+        y: message.height + 24px;
+        width: root.inner-width;
+        height: 40px;
+        spacing: 12px;
+        alignment: end;
+        for button[i] in Shell.dialog-buttons: Button {
+            nav: "dialog.button";
+            nav-index: i;
+            text: button.text;
+            kind: button.kind;
+            danger: button.danger;
         }
     }
 }
@@ -1017,7 +1048,8 @@ component PickRow inherits Rectangle {
 
 // A select's choices: a list under it, or on a phone a sheet from the bottom. It drops into place as it opens.
 export component PickerLayer inherits Rectangle {
-    property <length> list-height: Shell.picker-options.length * Theme.row + 2px;
+    property <length> pad: Theme.phone ? 8px : 1px;
+    property <length> list-height: Shell.picker-options.length * Theme.row + 2 * self.pad;
     arrive := Tween {
         duration: Theme.quick;
     }
@@ -1045,9 +1077,9 @@ export component PickerLayer inherits Rectangle {
         drop-shadow-blur: 16px;
         drop-shadow-color: #000000a0;
         for option[i] in Shell.picker-options: PickRow {
-            x: 1px;
-            y: 1px + i * Theme.row;
-            width: parent.width - 2px;
+            x: root.pad;
+            y: root.pad + i * Theme.row;
+            width: parent.width - 2 * root.pad;
             text: option;
             nav-index: i;
             chosen: i == Shell.picker-chosen;
