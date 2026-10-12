@@ -177,6 +177,10 @@ pub struct HudLanguageDoc {
     /// palette.
     pub waiting: TileImage,
     pub gauge: TileImage,
+    /// Where the chatbox's text starts in this language, when not where
+    /// the pack's own does (`layout.chatbox_text`).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub chatbox_text: Option<[u8; 2]>,
 }
 
 /// The chatbox: the box's tiles with its palette, its maps (30x8 entries a
@@ -381,7 +385,16 @@ pub fn export(h: &Hud, names: &crate::names::AssetNames) -> Vec<(String, Vec<u8>
         };
         languages.insert(
             lang.clone(),
-            HudLanguageDoc { font, font_chars: l.font_chars.clone(), dialogue_font, texts: l.texts.clone(), banners, waiting, gauge },
+            HudLanguageDoc {
+                font,
+                font_chars: l.font_chars.clone(),
+                dialogue_font,
+                texts: l.texts.clone(),
+                banners,
+                waiting,
+                gauge,
+                chatbox_text: l.chatbox_text.map(|(x, y)| [x, y]),
+            },
         );
     }
     let layout = HudLayoutDoc {
@@ -669,6 +682,7 @@ fn import_languages(dir: &Path, prefix: &str, doc: &HudDoc, report: &mut Report)
                 waiting,
                 waiting_palette: waiting_palette[0],
                 gauge_tiles: img(&d.gauge, report)?.0,
+                chatbox_text: d.chatbox_text.map(|[x, y]| (x, y)),
             },
         ));
     }

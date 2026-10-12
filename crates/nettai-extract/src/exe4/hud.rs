@@ -147,6 +147,10 @@ const CHATBOX_ARROW: u32 = 0x0868_D8DC;
 /// Where the chatbox's text starts (0x0804E3B4's +0x18, +0x19: 0x3F, 0x6D;
 /// EXE6's 0x33, 0x6C). The portrait's place is EXE6's.
 const CHATBOX_TEXT: (u8, u8) = (0x3F, 0x6D);
+/// The Japanese games' (Red Sun Japan's 0x0804E2A4, the same routine: 0x33,
+/// 0x6C, EXE6's place; the US games moved it twelve pixels right and one
+/// down). Its arrow's place is the same.
+pub(crate) const CHATBOX_TEXT_JA: (u8, u8) = (0x33, 0x6C);
 /// The key-wait arrow's place (0x0804E3B4's +0x1A, +0x1B), EXE6's message
 /// box's.
 const CHATBOX_ARROW_AT: (u8, u8) = (0xE2, 0x8D);
