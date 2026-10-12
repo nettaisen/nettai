@@ -63,6 +63,12 @@ local rules: Rules = {
         sun = "bool",
         -- MegaMan's light/dark value (NaviStats +0x36): ./light_dark.
         karma = "u16",
+        -- Their wins less their losses in link battles against the rival game's players, -100 to 100 (the save's
+        -- signed halfword at 0x21D6, the game state's struct the toolkit's +0x44 points at, its +0x22: the status
+        -- screen's "VS BM Battles: +100 W", 0x0803A978; such a battle's win adds 1 and its loss takes 1, 0x0803AB90),
+        -- which each side's link record carries (+0xB6), the battle keeps at 0x0203BE72 + 8 a side and RedSun's and
+        -- BlueMoon's damage reads (./sun_and_moon).
+        rival_wins = "i16",
         -- Their NaviCust (./navicust): the programs placed on its 5x5 board (the engine's 7x7 grid's middle) in its
         -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
         -- `rotation` quarters clockwise, compressed or not.
@@ -95,6 +101,8 @@ local rules: Rules = {
         reg_up = save.MAX_REG_UP,
         sun = true,
         karma = 500,
+        -- (Tango's twelve netplay saves hold 100, the most the damage counts.)
+        rival_wins = 100,
         souls = {
             "rollsoul",
             "gutssoul",
