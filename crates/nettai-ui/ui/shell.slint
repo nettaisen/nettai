@@ -104,6 +104,13 @@ export global Shell {
     in property <image> picture;
     in property <length> picture-width;
     in property <length> picture-height;
+    // Where it is drawn in its room: the room's middle, moved onto the display's pixels (the app does it: a
+    // picture drawn across them would not show each of the game's pixels as one square).
+    in property <length> picture-x;
+    in property <length> picture-y;
+    // The room the screen's `Picture` gives it: where it is in the window, and its size.
+    in-out property <length> picture-room-x;
+    in-out property <length> picture-room-y;
     in-out property <length> picture-room-width;
     in-out property <length> picture-room-height;
 
@@ -238,7 +245,7 @@ export global Errors {
 // ---- The ground and the cursor -------------------------------------------------------------------------
 
 // Dark navy, top to bottom, under a faint blue glow from the top right and the hexagon field.
-export component Backdrop {
+export component Backdrop inherits Rectangle {
     Rectangle {
         background: @linear-gradient(180deg, Theme.ground-top 0%, Theme.ground-bottom 100%);
     }
@@ -262,7 +269,7 @@ export component Backdrop {
 }
 
 // One corner of the cursor: two arms, 10 long and 2 thick, lit.
-component Corner {
+component Corner inherits Rectangle {
     in property <bool> right;
     in property <bool> bottom;
     width: 10px;
@@ -289,7 +296,7 @@ component Corner {
 // The cursor: four corner brackets, 5 outside the focused control. One object that slides from control to
 // control, drawn over the layout: it takes no space, and nothing under it changes size. It shows only while a
 // keyboard or a pad is the last thing used.
-export component Cursor {
+export component Cursor inherits Rectangle {
     Corner {
         x: 0;
         y: 0;
@@ -320,7 +327,7 @@ export component Cursor {
 // The header, the same on every menu screen: Back, naming where it goes; the screen's title with a cyan bar
 // before it; at the right the game, between its arrows where it can change. The main menu has the logo in
 // Back's and the title's place (`logo`); a screen with no game to choose (the settings) leaves it out.
-export component Header {
+export component Header inherits Rectangle {
     in property <string> title;
     in property <string> back;
     in property <bool> logo;
@@ -424,7 +431,7 @@ export component Header {
 
 // A key's cap. (With no text it is nothing, and takes no room: `visible` on a component's own root would copy
 // the component into every user.)
-component KeyCap {
+component KeyCap inherits Rectangle {
     in property <string> text;
     height: 22px;
     width: root.text == "" ? 0px : max(22px, cap.preferred-width + 12px);
@@ -454,7 +461,7 @@ component KeyCap {
 }
 
 // A pad's face button, by its place: the four as a diamond, the one meant filled.
-export component FaceButton {
+export component FaceButton inherits Rectangle {
     in property <PadButton> button;
     width: 20px;
     height: 20px;
@@ -504,7 +511,7 @@ export component FaceButton {
 }
 
 // The D-pad.
-component Dpad {
+component Dpad inherits Rectangle {
     width: 18px;
     height: 18px;
     Rectangle {
@@ -524,7 +531,7 @@ component Dpad {
 
 // One hint: the key's caps or the pad's button, by what was last used, and what it does. (Its parts are all
 // there and sized to nothing where they don't show: an `if` each would be a component each.)
-component HintView {
+component HintView inherits Rectangle {
     in property <Hint> hint;
     property <bool> face: root.hint.pad == PadButton.south || root.hint.pad == PadButton.east || root.hint.pad == PadButton.west || root.hint.pad == PadButton.north;
     property <string> pad-cap: root.hint.pad == PadButton.start ? "START" : (root.hint.pad == PadButton.select ? "SELECT" : (root.hint.pad == PadButton.shoulders ? "L" : ""));
@@ -565,7 +572,7 @@ component HintView {
 
 // The footer, the same on every menu screen: the key hints at the left, one short status at the right. A phone
 // has none.
-export component Footer {
+export component Footer inherits Rectangle {
     in property <[Hint]> hints;
     in property <string> status;
     // (The hints must leave the status its room.)
@@ -611,8 +618,10 @@ export component Footer {
 }
 
 // A menu screen: the header, the footer, and between them the body, inside the page margins. What a screen puts
-// inside a `Page` is laid out in the body.
-export component Page {
+// inside a `Page` is laid out in the body: its `x` and `y` are from the body's corner, and it measures the body
+// by `root.body-width` and `root.body-height` (`parent` in a screen's own file is the screen's root, the whole
+// window).
+export component Page inherits Rectangle {
     in property <string> title;
     in property <string> back;
     in property <bool> logo;
@@ -649,28 +658,43 @@ export component Page {
 // The battle's picture, in the middle of the room it is given: the largest whole multiple of 240 by 160 display
 // pixels that fits (the app sizes it: `Shell.picture-width`). The box keeps its size whatever the multiple, so
 // nothing beside it moves. One is shown at a time.
-export component Picture {
+export component Picture inherits Rectangle {
     in property <brush> ground: #000000;
     Rectangle {
         background: root.ground;
     }
 
     Image {
+        x: Shell.picture-x;
+        y: Shell.picture-y;
         width: Shell.picture-width;
         height: Shell.picture-height;
         source: Shell.picture;
         image-rendering: pixelated;
     }
 
-    init => {
+    property <length> ax: self.absolute-position.x;
+    property <length> ay: self.absolute-position.y;
+    function place() {
+        Shell.picture-room-x = root.ax;
+        Shell.picture-room-y = root.ay;
         Shell.picture-room-width = self.width;
         Shell.picture-room-height = self.height;
+    }
+    init => {
+        place();
+    }
+    changed ax => {
+        place();
+    }
+    changed ay => {
+        place();
     }
     changed width => {
-        Shell.picture-room-width = self.width;
+        place();
     }
     changed height => {
-        Shell.picture-room-height = self.height;
+        place();
     }
 }
 
@@ -678,7 +702,7 @@ export component Picture {
 
 // A dialog: a failure that ends what the player was doing, or a question asked once. The screen behind it is
 // shaded and out of the keys' reach.
-export component DialogLayer {
+export component DialogLayer inherits Rectangle {
     property <length> box-width: min(root.width - 32px, 460px);
     property <length> box-height: 24px + 26px + 12px + message.height + 24px + 40px + 24px;
     Rectangle {
@@ -740,7 +764,7 @@ export component DialogLayer {
 }
 
 // A choice of a select's list.
-component PickRow {
+component PickRow inherits Rectangle {
     in property <string> text;
     in property <int> nav-index;
     in property <bool> chosen;
@@ -764,7 +788,7 @@ component PickRow {
 }
 
 // A select's choices: a list under it, or on a phone a sheet from the bottom.
-export component PickerLayer {
+export component PickerLayer inherits Rectangle {
     property <length> list-height: Shell.picker-options.length * Theme.row + 2px;
     TouchArea {
         clicked => {

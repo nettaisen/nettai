@@ -374,6 +374,8 @@ pub struct Nav {
     pad: bool,
     /// What the UI was last told: the focus and its place.
     told: Option<(Key, Rect)>,
+    /// The focus was put somewhere by the app: it is scrolled into view once it is there.
+    reveal_due: bool,
 }
 
 impl Default for Nav {
@@ -399,6 +401,7 @@ impl Nav {
             shown: false,
             pad: false,
             told: None,
+            reveal_due: false,
         }
     }
 
@@ -465,9 +468,10 @@ impl Nav {
         self.scopes.iter().any(|s| s.prefix == prefix)
     }
 
-    /// Put the focus on a control (once it exists, if it doesn't yet).
+    /// Put the focus on a control (once it exists, if it doesn't yet), scrolled into view.
     pub fn focus(&mut self, id: &str, index: i32) {
         self.leave_edit();
+        self.reveal_due = true;
         let key = Key::new(id, index);
         if self.registry.borrow().holds(&key) {
             self.take(key);
@@ -538,8 +542,17 @@ impl Nav {
                 Next::Fallback(shrunk.or(main).or_else(first))
             }
         };
+        if self.reveal_due && self.wanted.is_none() && self.focus.is_some() {
+            self.reveal_due = false;
+            self.reveal(ui);
+        }
         match next {
-            Next::Wanted(key) => self.take(key),
+            Next::Wanted(key) => {
+                self.take(key);
+                if std::mem::take(&mut self.reveal_due) {
+                    self.reveal(ui);
+                }
+            }
             Next::Stay => {}
             Next::Fallback(Some(key)) => {
                 // (What was wanted stays wanted: it may exist a frame later.)

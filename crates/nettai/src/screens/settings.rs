@@ -202,9 +202,7 @@ impl Screen for Settings {
         let ui = shell.ui();
         ui.global::<SettingsView>().set_name(name.as_str().into());
         if done {
-            ui.global::<nettai_ui::Shell>().set_player(name.as_str().into());
-            shell.settings.name = name;
-            shell.save_settings();
+            shell.set_name(&name);
         }
     }
 

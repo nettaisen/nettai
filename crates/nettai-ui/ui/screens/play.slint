@@ -28,6 +28,7 @@ export component MatchMenu inherits MenuOverlay {
     MenuItem {
         x: 0;
         y: 0;
+        width: root.inner-width;
         nav: "menu.resume";
         text: @tr("BACK TO MATCH");
     }
@@ -35,6 +36,7 @@ export component MatchMenu inherits MenuOverlay {
     MenuItem {
         x: 0;
         y: 48px;
+        width: root.inner-width;
         nav: "menu.leave";
         text: @tr("LEAVE MATCH");
         danger: true;

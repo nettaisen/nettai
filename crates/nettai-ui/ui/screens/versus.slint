@@ -6,7 +6,7 @@ import { Theme } from "../theme.slint";
 import { Shell, VersusCard } from "../shell.slint";
 import { Label, Value, Mono, Pill, Bar, PanelBack } from "../widgets.slint";
 
-component Card {
+component Card inherits Rectangle {
     in property <VersusCard> card;
     in property <int> side;
     property <length> pad: Theme.phone ? 16px : 24px;
@@ -79,7 +79,7 @@ component Card {
     }
 }
 
-export component VersusScreen {
+export component VersusScreen inherits Rectangle {
     // Side by side, VS between; on a phone one over the other.
     property <length> card-width: Theme.phone ? self.width - 2 * Theme.margin : min(440px, (self.width - 80px - 2 * Theme.margin) / 2);
     property <length> card-height: Theme.phone ? 176px : 220px;

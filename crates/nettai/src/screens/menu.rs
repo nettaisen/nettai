@@ -149,9 +149,9 @@ fn caption(shell: &Shell, game: &str, ready: &Ready, sides: [&nettai_match::Side
     let ui = shell.ui();
     let view = ui.global::<MenuView>();
     view.set_left_navi(names.navi(sides[0].navi(content)).into());
-    view.set_left_version(presets::version(content, game, sides[0]).into());
+    view.set_left_version(presets::version(content, game, sides[0]).to_uppercase().into());
     view.set_right_navi(names.navi(sides[1].navi(content)).into());
-    view.set_right_version(presets::version(content, game, sides[1]).into());
+    view.set_right_version(presets::version(content, game, sides[1]).to_uppercase().into());
     view.set_playing(true);
 }
 
