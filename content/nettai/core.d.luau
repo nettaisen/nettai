@@ -2103,6 +2103,10 @@ export type RulesSpec = {
         -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94); none, the
         -- framework's (EXE6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
+        -- Each tick of the navi's status routine's tail, after its status
+        -- shaders: the color shader the rules put over them (presentation;
+        -- EXE4's 0x0800BB18, the dark soul's last ticks); none, as it is.
+        navi_shader: ((side: number, navi: Object) -> number?)?,
         -- The navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E: `navi.collision.inflicted_bugs`,
         -- its code and argument): the game's table writes the stat a code names (@exelib/navicust/bugs), and
         -- answers "edited" (the abilities and form flags come back), nil (nothing of the stats changed) or "spared"

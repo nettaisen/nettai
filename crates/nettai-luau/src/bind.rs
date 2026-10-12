@@ -3013,6 +3013,13 @@ pub fn hook_result(v: LuaValue, call: HookCall, bound: &Bound) -> mlua::Result<V
             LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=255.0).contains(n) => Ok(Value::Int(*n as i64)),
             _ => Err(mlua::Error::runtime(format!("{} returns a byte or nil, not {v:?}", hook.name()))),
         },
+        // A color shader (15 bits).
+        HookCall::Rules { hook: RulesHook::NaviShader, .. } => match &v {
+            LuaValue::Nil => Ok(Value::Nil),
+            LuaValue::Integer(n) if (0..=0x7FFF).contains(n) => Ok(Value::Int(i64::from(*n))),
+            LuaValue::Number(n) if n.fract() == 0.0 && (0.0..=32767.0).contains(n) => Ok(Value::Int(*n as i64)),
+            _ => Err(mlua::Error::runtime(format!("navi_shader returns a 15-bit color or nil, not {v:?}"))),
+        },
         // A hand size.
         HookCall::Rules { hook: RulesHook::CustomHandSize, .. } => match &v {
             LuaValue::Nil => Ok(Value::Nil),
