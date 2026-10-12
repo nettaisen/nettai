@@ -1,0 +1,155 @@
+// What every animation is made of (docs/design/app-ui.md §4, "Motion"; docs/app.md §10).
+//
+// The components of the design system animate themselves with these, so a screen built from them moves without
+// its author writing an animation. A screen's own set piece (a chip flying to its slot, a refusal's shake, a
+// count ticking) is made of the same pieces: `Tween` and `Pulse` are clocks, and `Arrive`, `Flash`, `Shake` and
+// `Count` what is most often driven by one.
+//
+// Four rules hold for all of it. Motion never changes a size: it moves, fades or covers what the layout has
+// already placed. It never blocks input: nothing here delays what a press does. It is short: the durations are
+// the theme's. And it can be turned down: with `Theme.motion` off every clock here is at its end.
+
+import { Theme } from "theme.slint";
+
+// A clock that runs once from 0 to 1: from its creation, and again each time `seq` changes. `t` eases out (fast,
+// then settling: what arrives); `linear` is the time alone. It stops reading the frame clock once it is done.
+export component Tween {
+    in property <int> seq;
+    in property <duration> delay;
+    in property <duration> duration: Theme.settle;
+    // Hold at 0 until it is let go (a part that waits for something besides its delay).
+    in property <bool> held;
+    out property <float> linear: !Theme.motion ? 1 : (root.held ? 0 : (root.running ? clamp((animation-tick() - root.at - root.delay) / max(1ms, root.duration), 0, 1) : 1));
+    out property <float> t: 1 - pow(1 - root.linear, 3);
+    property <duration> at;
+    property <bool> running: true;
+    width: 0;
+    height: 0;
+    init => {
+        root.at = animation-tick();
+    }
+    changed seq => {
+        root.at = animation-tick();
+        root.running = true;
+    }
+    changed held => {
+        root.at = animation-tick();
+        root.running = true;
+    }
+    changed linear => {
+        if root.linear >= 1 {
+            root.running = false;
+        }
+    }
+}
+
+// A clock that falls from 1 to 0 each time `seq` changes: a flash, a press. Not as it is made, unless
+// `at-start` says so.
+export component Pulse {
+    in property <int> seq;
+    in property <duration> duration: Theme.brisk;
+    in property <bool> at-start;
+    out property <float> v: Theme.motion && root.running ? 1 - clamp((animation-tick() - root.at) / max(1ms, root.duration), 0, 1) : 0;
+    property <duration> at;
+    property <bool> running;
+    width: 0;
+    height: 0;
+    init => {
+        if root.at-start {
+            root.at = animation-tick();
+            root.running = true;
+        }
+    }
+    changed seq => {
+        root.at = animation-tick();
+        root.running = true;
+    }
+    changed v => {
+        if root.v <= 0 {
+            root.running = false;
+        }
+    }
+}
+
+// A part of a screen arriving: what is put inside it rises 12 as it fades in, `order` steps of the stagger
+// after it is made (the panels of a screen come one after another). After Back it comes down instead. It takes
+// the room it is given and gives it to what is inside.
+export component Arrive inherits Rectangle {
+    in property <int> order;
+    // From the side instead: this far (negative: from the left).
+    in property <length> from-x;
+    tw := Tween {
+        delay: root.order * Theme.stagger;
+    }
+
+    Rectangle {
+        x: (1 - tw.t) * root.from-x;
+        y: root.from-x != 0 ? 0px : (1 - tw.t) * (Theme.back ? -12px : 12px);
+        opacity: tw.t;
+        @children
+    }
+}
+
+// A flash over what it covers: `tone` at `strength`, fading out, each time `seq` changes (a slot a chip landed
+// in, READY stamping).
+export component Flash inherits Rectangle {
+    in property <int> seq;
+    in property <color> tone: Theme.cursor;
+    in property <float> strength: 0.45;
+    pulse := Pulse {
+        seq: root.seq;
+        duration: Theme.settle;
+    }
+
+    Rectangle {
+        background: root.tone;
+        opacity: pulse.v * root.strength;
+    }
+}
+
+// A shake: `dx` swings `reach` to each side twice and comes to rest, each time `seq` changes (a refusal). Add
+// `dx` to the `x` of what shakes.
+export component Shake {
+    in property <int> seq;
+    in property <length> reach: 4px;
+    // Shake once as it is made too (a failure's dialog).
+    in property <bool> at-start;
+    out property <length> dx: root.reach * pulse.v * sin((1 - pulse.v) * 720deg);
+    width: 0;
+    height: 0;
+    pulse := Pulse {
+        seq: root.seq;
+        duration: 260ms;
+        at-start: root.at-start;
+    }
+}
+
+// A number that ticks to its value when it changes (a count in a header): fixed-width digits, so it keeps its
+// box. `suffix` follows it ("/30").
+export component Count inherits Text {
+    in property <int> value;
+    in property <string> suffix;
+    property <int> from;
+    property <int> last;
+    property <int> seq;
+    text: round(root.from + (root.value - root.from) * tw.t) + root.suffix;
+    color: Theme.text;
+    font-family: Theme.mono;
+    font-size: 12px;
+    font-weight: 700;
+    vertical-alignment: center;
+    tw := Tween {
+        seq: root.seq;
+        duration: Theme.settle;
+    }
+
+    init => {
+        root.from = root.value;
+        root.last = root.value;
+    }
+    changed value => {
+        root.from = root.last;
+        root.last = root.value;
+        root.seq += 1;
+    }
+}

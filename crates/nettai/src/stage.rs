@@ -99,15 +99,80 @@ pub enum Shown {
     New(Image),
 }
 
-/// A battle being shown: the player, and its picture.
-pub struct Stage {
-    pub player: Player,
-    last: Option<Instant>,
-    /// The picture is out of date: a tick ran, or the space or the
-    /// language changed.
+/// A picture on the window: the buffer something presents itself into (a battle's player, a replay's viewer),
+/// how it fits its room, and whether it is out of date. The window has one texture: what is shown is the
+/// surface last presented (`Shell::show_surface`).
+pub struct Surface {
+    /// Which surface this is, of those made: another one shown after it presents its own picture whether or
+    /// not anything changed.
+    pub id: u64,
+    /// The picture is out of date: a tick ran, or the room or the language changed.
     pub stale: bool,
     fit: Option<Fit>,
     buffer: Vec<u32>,
+}
+
+impl Default for Surface {
+    fn default() -> Surface {
+        Surface::new()
+    }
+}
+
+impl Surface {
+    pub fn new() -> Surface {
+        static MADE: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        Surface { id: MADE.fetch_add(1, std::sync::atomic::Ordering::Relaxed), stale: true, fit: None, buffer: Vec::new() }
+    }
+
+    /// The fit last presented at.
+    pub fn fit(&self) -> Option<Fit> {
+        self.fit
+    }
+
+    /// Show the picture again from the start (the window's texture holds another surface's).
+    pub fn refresh(&mut self) {
+        self.stale = true;
+        self.fit = None;
+    }
+
+    /// The picture for `fit`, if it changed since the last: `present` draws it into a buffer of the width and
+    /// height it is given, which goes into the window's texture (`gl`: written in place), or else into a new
+    /// image. The image to show, when there is a new one (with a texture, only when it is made anew);
+    /// `Shown::Same` when the picture didn't change.
+    pub fn picture(&mut self, fit: Fit, gl: Option<&mut crate::gl::GlPicture>, present: impl FnOnce(&mut [u32], usize, usize)) -> Shown {
+        if self.fit != Some(fit) {
+            self.fit = Some(fit);
+            self.stale = true;
+        }
+        if !self.stale {
+            return Shown::Same;
+        }
+        self.stale = false;
+        let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
+        self.buffer.resize(w * h, 0);
+        present(&mut self.buffer, w, h);
+        let image = match gl {
+            Some(gl) => gl.write(&mut self.buffer, w as u32, h as u32),
+            None => {
+                let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
+                for (out, &px) in pixels.make_mut_slice().iter_mut().zip(&self.buffer) {
+                    *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
+                }
+                Some(Image::from_rgb8(pixels))
+            }
+        };
+        match image {
+            Some(image) => Shown::New(image),
+            None => Shown::Written,
+        }
+    }
+}
+
+/// A battle being shown: the player, and its picture.
+pub struct Stage {
+    pub player: Player,
+    pub surface: Surface,
+    last: Option<Instant>,
     pub samples: Vec<[f32; 2]>,
     pub stats: Option<Stats>,
     /// The first key a tick since the last picture saw, when it came; and
@@ -120,10 +185,8 @@ impl Stage {
     pub fn new(player: Player) -> Stage {
         Stage {
             player,
+            surface: Surface::new(),
             last: None,
-            stale: true,
-            fit: None,
-            buffer: Vec::new(),
             samples: Vec::new(),
             stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()),
             seen: None,
@@ -146,7 +209,7 @@ impl Stage {
             }
         }
         if ran > 0 {
-            self.stale = true;
+            self.surface.stale = true;
             if let Some(s) = &mut self.stats {
                 for &at in pressed.iter() {
                     s.key_to_tick.add(at.elapsed());
@@ -172,34 +235,15 @@ impl Stage {
         self.last = None;
     }
 
-    /// The picture for `fit`, if it changed since the last, presented at
-    /// its density into the window's texture (`gl`: written in place), or
-    /// else into a new image. The image to show, when there is a new one
-    /// (with a texture, only when it is made anew); `Shown::Same` when the
-    /// picture didn't change.
+    /// The picture for `fit`, if it changed since the last ([`Surface::picture`]), with what it cost noted for
+    /// the latency figures.
     pub fn picture(&mut self, fit: Fit, gl: Option<&mut crate::gl::GlPicture>) -> Shown {
-        if self.fit != Some(fit) {
-            self.fit = Some(fit);
-            self.stale = true;
-        }
-        if !self.stale {
-            return Shown::Same;
-        }
-        self.stale = false;
         let started = Instant::now();
-        let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
-        self.buffer.resize(w * h, 0);
-        self.player.present(&mut self.buffer, w, h);
-        let image = match gl {
-            Some(gl) => gl.write(&mut self.buffer, w as u32, h as u32),
-            None => {
-                let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
-                for (out, &px) in pixels.make_mut_slice().iter_mut().zip(&self.buffer) {
-                    *out = Rgb8Pixel { r: (px >> 16) as u8, g: (px >> 8) as u8, b: px as u8 };
-                }
-                Some(Image::from_rgb8(pixels))
-            }
-        };
+        let player = &mut self.player;
+        let shown = self.surface.picture(fit, gl, |buffer, w, h| player.present(buffer, w, h));
+        if matches!(shown, Shown::Same) {
+            return shown;
+        }
         self.drawing = Some((Instant::now(), self.seen.take()));
         if let Some(s) = &mut self.stats {
             let took = started.elapsed();
@@ -207,17 +251,7 @@ impl Stage {
             s.present += took;
             s.worst_present = s.worst_present.max(took);
         }
-        match image {
-            Some(image) => Shown::New(image),
-            None => Shown::Written,
-        }
-    }
-
-    /// Show the picture again from the start (the window's texture was
-    /// made anew for another picture).
-    pub fn refresh(&mut self) {
-        self.stale = true;
-        self.fit = None;
+        shown
     }
 
     /// The frame was drawn (handed to the GPU): the picture presented for
@@ -240,7 +274,7 @@ impl Stage {
         if now.duration_since(since) < Duration::from_secs(2) {
             return;
         }
-        let fit = self.fit.unwrap_or(Fit { scale: 0, density: 0 });
+        let fit = self.surface.fit().unwrap_or(Fit { scale: 0, density: 0 });
         let seconds = now.duration_since(since).as_secs_f64();
         s.gaps.sort();
         let at = |q: f64| s.gaps.get(((s.gaps.len() as f64 - 1.0) * q).round() as usize).copied().unwrap_or_default();

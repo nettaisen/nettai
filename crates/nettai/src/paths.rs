@@ -1,6 +1,6 @@
 //! Where the app keeps what the player makes: their builds, the replays it
-//! records, the match files it lists and their settings, each in a folder
-//! of the app's data folder unless an environment variable names another.
+//! records, their settings and its log, each in the app's data folder
+//! unless an environment variable names another.
 //!
 //! The data folder is `$NETTAI_DATA`, else the system's place for an app's
 //! data: `~/Library/Application Support/nettai` on macOS,
@@ -46,9 +46,10 @@ pub fn replays() -> PathBuf {
     folder("NETTAI_REPLAYS", "replays")
 }
 
-/// The match files Play lists: `$NETTAI_MATCHES`, else `matches`.
-pub fn matches() -> PathBuf {
-    folder("NETTAI_MATCHES", "matches")
+/// The log, which takes what goes wrong as the code says it (the player reads a plain sentence instead:
+/// `crate::errors`): `$NETTAI_LOG`, else `nettai.log`.
+pub fn log() -> PathBuf {
+    std::env::var_os("NETTAI_LOG").map(PathBuf::from).unwrap_or_else(|| data().join("nettai.log"))
 }
 
 /// The settings' file: `$NETTAI_SETTINGS`, else `settings.toml`.

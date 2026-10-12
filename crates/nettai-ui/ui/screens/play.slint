@@ -1,0 +1,48 @@
+// Play (docs/design/app-ui.md §6): online play. Not built yet: the screen is here with its header and Back, and
+// the match menu with what leaves a match. Its Rust half is src/screens/play.rs.
+
+import { Theme } from "../theme.slint";
+import { Shell, Page, PadButton } from "../shell.slint";
+import { MenuItem } from "../widgets.slint";
+import { MenuOverlay } from "battle.slint";
+
+// What Play shows: src/screens/play.rs sets these. (A struct or an enum a property here uses reaches Rust by
+// that use: nothing is added to app.slint for it.)
+export global PlayView { }
+
+export component PlayScreen inherits Page {
+    title: @tr("PLAY");
+    back: @tr("MENU");
+    hints: [
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
+    ];
+}
+
+// The match menu: Start or Esc in an online match, in place of the game's own pause. The match keeps running
+// behind it.
+export component MatchMenu inherits MenuOverlay {
+    title: @tr("MENU");
+    note: @tr("The match keeps running");
+    content-height: 96px;
+    MenuItem {
+        x: 0;
+        y: 0;
+        width: root.inner-width;
+        nav: "menu.resume";
+        text: @tr("BACK TO MATCH");
+    }
+
+    MenuItem {
+        x: 0;
+        y: 48px;
+        width: root.inner-width;
+        nav: "menu.leave";
+        text: @tr("LEAVE MATCH");
+        danger: true;
+    }
+}
+
+// What opens over Play: its dialogs, and on a phone its sheets. It covers the whole window, over the screen
+// and under the shell's own dialogs; empty, it takes no clicks.
+export component PlayOverlay inherits Rectangle { }
