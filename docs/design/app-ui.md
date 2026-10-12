@@ -96,7 +96,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | A build's version | Fixed when the build is made, as a save's is ("It can't be changed later") |
 | Netplay rounds | A single battle or best of 3, a shared setting either player can change |
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
-| What "export" makes | A `nettai-video` crate writes a NUT stream (raw frames and PCM); the app pipes it to ffmpeg for an MP4, and can save the `.nut` itself |
+| What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
 | The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
 | The dummy while waiting online | A copy of the player's own build, standing still, with the training menu there to change it |
 | Training's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last |
@@ -316,7 +316,8 @@ Each is in the mockups under the same name.
 - **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
   first), View, Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
   keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
-  against 40 and 44 at 2 and 4). A raw `.nut` is tens of megabytes a second, so it is offered for a part only.
+  against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".
+  (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.)
 
 ### In an online match
 - The picture fills the window, with no header or footer.
