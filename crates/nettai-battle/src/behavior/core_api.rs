@@ -1641,6 +1641,12 @@ impl CoreApi for Battle {
         Battle::blink_panel(self, p.x, p.y, PanelType(kind), side);
     }
 
+    fn set_panel_visible(&mut self, p: PanelPos, visible: bool) {
+        if let Some(panel) = self.field.panel_mut(p.x, p.y) {
+            panel.visible = visible;
+        }
+    }
+
     fn break_empty_panel(&mut self, p: PanelPos) -> bool {
         Battle::break_empty_panel(self, p.x, p.y)
     }
