@@ -13,4 +13,7 @@ return {
     -- A dimming's start hides the chip window (HUD task 0x10) on every console, whoever started it (0x08008BD8: no
     -- check of the starter's side); the idle shows it again after.
     dimming_hides_every_window = true,
+    -- A charged chip is used with its charge, whatever its family (0x0800B72C: FireSoul's, soul 5, through its flame,
+    -- 0x0800D638, any other's through 0x0800D4B4 with the charge).
+    charged_null_alt_routine = false,
 }

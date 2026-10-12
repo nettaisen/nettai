@@ -287,6 +287,19 @@ language = "ja"
 "blinder" = { name = "ブラインド", description = "きょうりょくな光で\nあいてをもうもく\nじょうたいにする!" }
 "mine" = { name = "ステルスマイン", description = "てきエリアのどこか\nに見えないじらいを\nセットする!" }
 "bassanly" = { name = "フォルテアナザー", description = "いちどだけまがる\nリングを4発\nなげつける!" }
+"rockcube" = { name = "ストーンキューブ", description = "目の前のマスに\nストーンキューブを\n発生させる" }
+"colorpt" = { name = "カラーポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+10ずつ" }
+"dblpoint" = { name = "ダブルポイント", description = "自エリアをぎせいに\nしてつぎのチップの\n攻撃力を+20ずつ" }
+"anubis" = { name = "ポイズンアヌビス", description = "あんこくチップ!\nどくを発生させる\nアヌビスぞうをおく" }
+"guardian" = { name = "オジゾウサン", description = "目の前のマスに\nこわしてはいけない\nオジゾウサンをおく" }
+"punisher" = { name = "バチアタリ", description = "" }
+"jealousy" = { name = "ジェラシー", description = "チップをもつてきに\n枚数におうじた\nダメージをあたえる" }
+"snake" = { name = "カモンスネーク", description = "自分のエリアの\nあなマスから\nこヘビがとんでいく" }
+"bugcurse" = { name = "カースオブバグ", description = "あんこくチップ!\nてきのナビをひどい\nバグじょうたいに!" }
+"bugfix" = { name = "バグシュウセイ", description = "ナビに発生している\nバグをしゅうせいし\nとりのぞく" }
+"coldman" = { name = "コールドマン", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
+"coldmn-sp" = { name = "コールドマンSP", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
+"coldmn-ds" = { name = "コールドマンDS", description = "フィールド上のもの\nをこおりつかせ\nおしてすべらせる!" }
 "gigacan1" = { name = "ギガキャノン1", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
 "gigacan2" = { name = "ギガキャノン2", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
 "gigacan3" = { name = "ギガキャノン3", description = "ギガパワーではなつ\nきょうりょくな\nキャノン!" }
@@ -458,6 +471,8 @@ language = "ja"
 "071-b-left-ability-activation" = { name = "B+左で技発動" }
 "072-b-left-ability-activation" = { name = "B+左で技発動" }
 "073-b-left-ability-activation" = { name = "B+左で技発動" }
+"074-triple-supporter-1-2" = { name = "トリプルサポーター1/2" }
+"075-triple-supporter-2-2" = { name = "トリプルサポーター2/2" }
 "076-all-guard-1-2" = { name = "オールガード1/2" }
 "077-all-guard-2-2" = { name = "オールガード1/2" }
 "078-first-life-aura" = { name = "ファーストドリームオーラ" }

@@ -659,6 +659,9 @@ pub struct ChargedBonus {
     /// It paralyzes.
     #[serde(default)]
     pub paralyzes: bool,
+    /// It doubles: the damage word's 0x8000 (EXE4's souls, 0x0800C47A).
+    #[serde(default)]
+    pub doubles: bool,
 }
 
 /// What a form's status reset gives the navi. In a content file, a list of
