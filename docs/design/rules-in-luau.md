@@ -401,7 +401,10 @@ by the binding.
 | `custom_closed(side)` | when both results are in and the fight resumes (`sub_8009338`) | the Beast Out check's delay is set to 1 |
 | `custom_result(side)` | when both results are in and each hand with chips is installed (`sub_800B3D8`), the tick before the fight resumes | EXE4's dark chips' costs (0x0801EA1E, rules/dark_chips) |
 | `round_end(side)` | once per side as the round finishes | Beast Out used and crossed, read after the battle |
-| `folder_check(side)` | only when a tool asks (`Battle::check_folder`: a match's checks, a netplay offer, the editor, live play's random folder), never in a simulation | the folder rules (rules/folder: the size, the chips the pack lists, codes, copies by MB, Mega, Giga and dark limits, the Regular memory, the tag chips' 60 MB) |
+| `folder_check(side)` | only when a tool asks (`Battle::check_folder`: a match's checks, a netplay offer, the editor, live play's random folder), never in a simulation | the folder rules (rules/folder: the size, the chips a save can collect, a version's own, codes, copies by MB, the Mega and Giga limits, the Regular memory, the tag chips' 60 MB), each rule broken a typed problem |
+| `folder_view(side)` | only when a tool asks (`Battle::folder_view`: a folder editor, once for a folder as it stands) | the limits, what the folder holds against them, and why each chip offered can't go into it now |
+| `overview(side)` | only when a tool asks (`Battle::overview`: a build's overview) | the NaviCust programs at work and the patch cards' lines that give the navi an ability, its bugs by name and level, the patch cards' MB |
+| `validate(side)` | only when a tool asks (`Battle::validate`: a match's checks, a netplay offer, the build screens) | what is wrong with the side's setup, each a typed problem |
 
 **The custom screen** (§4.4): `custom.open(side) -> Offer`, a button's `available(side)` and `press(side)`, a
 window's `update(side, pad)`, `custom.keys(side, pad) -> handled`, `custom.hand_size(side) -> n`,
@@ -1319,7 +1322,8 @@ content.
   `Battle::check_folder(side, chips, regular, tags, complete)` and never a simulation. The hook reads the folder
   with `battle.checked_folder()` and names each rule it breaks with `battle.folder_problem(rule, text)`. Rust
   only calls it and returns the problems (`FolderProblem {rule, text}`); the state it uses (`Battle::folder_check`)
-  lives only during the call, and the digest leaves it out. Each side's folder is checked by its own ruleset's
+  lives only during the call, and the digest leaves it out. (Since 2026-10-12 the hook answers its problems, typed,
+  and `battle.folder_problem` is gone: "Typed problems, the folder's view and a game's builds", below.) Each side's folder is checked by its own ruleset's
   systems, with its navi's stats as the round set them up (`NaviStat::RegularMemory` is new, read-only). The
   editor, `--match`, a netplay offer and live play's random pick go through it (`nettai_match::folders`). The draw
   makes a folder from the rules' pool (`rule = "chip"`: the chips the hook accepts one at a time) and keeps a
@@ -3349,3 +3353,60 @@ and slides, a hit, the timers), and the pure facts stay data (`flags`, `trail_so
   cracked, normal), the types' data (flags, `expires`, `carries`, `carries_by_move`, `doubles`, `cleared_by`,
   `damage_shift`, `unbreakable`, `traps`, `submerges`, `trail_sound`) and calls their hooks (`burn`, `stand`, `rest`,
   `move_end`, `slide`, `hit`, `tick`, `changed`, `start`).
+
+### Typed problems, the folder's view and a game's builds (2026-10-12, branch build-rules)
+
+For nettai's redesigned build screens (docs/design/app-ui.md), by the user's words: "don't show any internal error
+strings to the user ... they should be replaced with enums and then go through i18n", "chip restrictions for folders
+should be based on the rules in tango (e.g. version specific gigas)", and "when creating a build, fill folders with
+the default chips for an empty save for the game". No screen is in this step.
+
+- **A problem is typed by the rules that find it.** `validate` and `folder_check` answer a list of problems, each a
+  table: its `kind` (one of a closed set of names: content/nettai/core.d.luau's `SetupProblem` lists them), the
+  kind's numbers and definitions (`used`, `limit`, `chip`, `code`, `value`, `least`, `most`, `other`), the setup
+  `field` and `entry` it is of, and `text`, the sentence as before, which is for a log and the terminal's tools
+  alone. nettai-match types the kind (`Wrong`: `Copies { chip, count }`, `Class { class, count }`,
+  `ChipOfAnotherVersion { chip }`, `Budget(count)`, `Range { value, least, most }`, ...) and a screen words each
+  kind in its player's language; a kind nettai-match doesn't know is `Wrong::Invalid`. nettai-match's own checks
+  (a navi the game hasn't, a fact unstated, the round not starting) have kinds of their own. The kinds name no game:
+  the folder's are the series' folder rules in the engine's words (a chip's class, its codes, the Regular and tag
+  chips), the rest say what is wrong with a fact of any setup.
+- **A tool's hook answers plain data.** `CoreApi::tool_answer` takes what `validate`, `folder_check`, `folder_view`
+  and `overview` return, as the reader of a module's data reads a value (`plain_data`: a definition by its key);
+  `battle.folder_problem` and `setup_problem` are gone. The engine keeps a problem's kind as its name and its table
+  (`rules::Problem`), and knows no kind.
+- **The folder rules are shared** (@exelib/folder_rules: the size, a chip a folder holds, a save's own chips, codes,
+  copies, the class limits, the Regular and tag memory; `problems`, `view`, `validate`), and each game's
+  rules/folder states its own as a `FolderRules`: which chips a save can collect, which a save of the side's version
+  holds, how many copies, its dark chips, its tag memory.
+- **A folder holds what Tango's rules let it** (tango-gamesupport-bn{4,5,6}-dataview's legal chips and
+  `folder_limits`), by each chip's own data:
+  - a chip a save can collect is one its library lists (the record's library flag), a version's own, or one whose
+    definition says `collectible` (the chips the Japanese games gave out, an e-Reader card's, and in EXE5 the six
+    Giga chips of Team Colonel's library: each version's ROM gives the library flag to its own Giga chips, and the
+    content keeps one record of each chip). That leaves out EXE6's four arm chips and SyncTrgr and EXE5's ten soul mode
+    chips, which a folder held before this step;
+  - a version's own Giga chips: EXE6's chips say their `version`, and the rule reads the side's; EXE5's and EXE4's
+    rules have no version, so their setups take `giga_chips`, the Giga chips the save can have (as its souls: a
+    build's version sets both; a side that states none has every one);
+  - the limits are the round's stats, as before (the Mega and Giga levels after the NaviCust and the patch cards,
+    the Regular memory); EXE6's rule of three dark chips went, since no EXE6 chip has the dark flag.
+  exe{4,5,6}-compat's tests/folder_chips.rs hold each version's library to Tango's legal chips, number by number.
+- **`folder_view`**: one question of the rules for a folder as it stands (its chips so far, and the game's chips as
+  `offered`), answered with the limits, what the folder holds against them, and each chip offered that can't go in
+  now with why (a problem). nettai-match's `folders::View` keeps the answer, and a library's row reads it by chip
+  (`View::refusal`: a lookup, no call into the rules).
+- **`overview`**: what the rules alone know of what a setup comes to. The shared NaviCust compile is split into its
+  plan (the bugs' counts, the programs whose effects run, in order: nothing written) and the plan's application, so
+  the hook reads the plan (`compile.at_work`) where the round's setup applies it. EXE4's reads its side's bug counts
+  (its rules' state) and says which programs are at work by its step 3's rule.
+- **A game's builds are its data** (`content/<game>/rules/builds.luau`, which the rules load and none of them
+  reads; nettai-match's `build::Builds` reads it with `behavior::content_module_data`, which needs no battle): the
+  versions a build is one of, in the order every list shows them (Red Sun then Blue Moon, Team ProtoMan then Team
+  Colonel, Gregar then Falzar), each with the facts it sets; the facts no build states (always the rules'
+  defaults); and what a new build is, with the folder a new save starts with. The folder is the first folder of each
+  ROM's folder table, which its new game routine copies into the save (EXE6: US Falzar's `byte_80213AC`, copied by
+  `sub_8021AB4` from `reqBBS_init_8004DF0`; the other games' addresses are in their builds modules): the four ROMs
+  of a game hold the same table, so a game has one new folder for both versions.
+- **The bugs' names** are the game's strings (its locales' text table `bugs`, by the rules' name for the bug; the
+  games name no NaviCust bug on a screen, so these are the content's own).

@@ -111,9 +111,14 @@ local EXE5: NaviCustGame = {
 
 return {
     -- What is wrong with the NaviCust on EXE5's board (@exelib/navicust/compile's check).
-    validate = function(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+    validate = function(side: number, problem: (p: SetupProblem) -> ())
         local setup = rules.setup_of(side)
         compile.check(EXE5, setup.navicust_expansions, setup.navicust_programs, battle.navi(side).navi.forms ~= nil, problem)
+    end,
+    -- `overview`'s part: the programs at work that give the navi an ability, and the NaviCust's bugs.
+    overview = function(side: number, out: SetupOverview)
+        local setup = rules.setup_of(side)
+        compile.overview(side, EXE5, setup.navicust_expansions, setup.navicust_programs, out)
     end,
     -- As the round is set up: the programs compiled into the navi's stats.
     round_setup = function(side: number)

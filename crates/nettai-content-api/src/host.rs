@@ -578,18 +578,38 @@ pub enum RulesHook {
     FormReverted,
     /// `folder_check(side)`: a tool asks whether a folder keeps the side's
     /// game's folder rules (`Battle::check_folder`, not the simulation):
-    /// the folder is `battle.checked_folder()`, and each rule it breaks is
-    /// `battle.folder_problem(rule, text)`. Its result is unused.
+    /// the folder is `battle.checked_folder()`, and its answer the rules it
+    /// breaks, each a problem as `validate`'s. Nothing: none.
     FolderCheck,
+    /// `folder_view(side)`: a tool asks what the side's folder rules allow
+    /// of the folder `battle.checked_folder()` (`Battle::folder_view`, not
+    /// the simulation): its limits, what it holds against them, and each
+    /// chip of the game that can't go into it now, with why (a problem).
+    /// Its answer is plain data, which the tool reads.
+    FolderView,
+    /// `overview(side)`: a tool asks what the side's setup comes to once
+    /// the round is set up (`Battle::overview`, not the simulation): what
+    /// the rules alone know of it (EXE6's: the NaviCust programs at work
+    /// and the bugs they bring). Its answer is plain data, which the tool
+    /// reads.
+    Overview,
     /// `validate(side)`: a tool asks what is wrong with side `side`'s
     /// setup (`Battle::validate`, not the simulation), once the round is
     /// set up (the stats its rules built): a list of problems, each a
-    /// sentence or `{ text, field?, entry? }` (the setup field it is of, and
-    /// the entry of a list field, from 1). Nothing: none.
+    /// table of its `kind` (what is wrong, by a name the tool knows), its
+    /// `text` (a sentence, for a log), the setup field it is of and the
+    /// entry of a list field (`field`, `entry`, from 1), and the kind's
+    /// own numbers and definitions. Nothing: none.
     Validate,
 }
 
 impl RulesHook {
+    /// Whether the hook is one a tool asks (never the simulation), whose
+    /// answer the battle keeps as plain data (`CoreApi::tool_answer`).
+    pub fn for_tools(self) -> bool {
+        matches!(self, RulesHook::FolderCheck | RulesHook::FolderView | RulesHook::Overview | RulesHook::Validate)
+    }
+
     /// The hook's name in the rules' `hooks` table.
     pub fn name(self) -> &'static str {
         match self {
@@ -602,6 +622,8 @@ impl RulesHook {
             RulesHook::CustomResult => "custom_result",
             RulesHook::CustomClosed => "custom_closed",
             RulesHook::FolderCheck => "folder_check",
+            RulesHook::FolderView => "folder_view",
+            RulesHook::Overview => "overview",
             RulesHook::Validate => "validate",
             RulesHook::NaviIntake => "navi_intake",
             RulesHook::ChipCheck => "chip_check",
@@ -645,7 +667,7 @@ impl RulesHook {
         }
     }
 
-    pub const ALL: [RulesHook; 49] = [
+    pub const ALL: [RulesHook; 51] = [
         RulesHook::RoundSetup,
         RulesHook::RoundStart,
         RulesHook::TurnOpened,
@@ -695,6 +717,8 @@ impl RulesHook {
         RulesHook::CustomKeys,
         RulesHook::CustomTakeBack,
         RulesHook::Validate,
+        RulesHook::FolderView,
+        RulesHook::Overview,
     ];
 }
 

@@ -135,13 +135,20 @@ local redeal: ButtonSpec = {
 }
 
 -- `validate`'s part: the NaviCust on EXE6's board (@exelib/navicust/compile's check).
-local function validate(side: number, problem: (text: string, field: string?, entry: number?) -> ())
+local function validate(side: number, problem: (p: SetupProblem) -> ())
     local setup = rules.setup_of(side)
     compile.check(EXE6, setup.navicust_expansions, setup.navicust_programs, battle.navi(side).navi.forms ~= nil, problem)
+end
+
+-- `overview`'s part: the programs at work that give the navi an ability, and the NaviCust's bugs.
+local function overview(side: number, out: SetupOverview)
+    local setup = rules.setup_of(side)
+    compile.overview(side, EXE6, setup.navicust_expansions, setup.navicust_programs, out)
 end
 
 return {
     round_setup = run,
     validate = validate,
+    overview = overview,
     redeal = redeal,
 }
