@@ -323,6 +323,10 @@ language = "ja"
 "magshok3" = { name = "マグショック3", description = "つよいじりょくで\n前方のてきすべてを\nすいよせて攻撃!" }
 "lifesync" = { name = "ライフシンクロ", description = "2マス前のてきに\nカーソル!てきの\nHPをおなじにする" }
 "signlred" = { name = "シグナルレッド", description = "あかいあいだは\nあいてがチップを\nつかえなくなる!" }
+"metagel" = { name = "スチールゼリー", description = "てきエリア左はしに\nパネルをぬりかえる\nゼリー攻撃!" }
+"magnum" = { name = "マグナム", description = "カーソルをとめて\nパネルをはかいする\nマグナムをハッシャ" }
+"bugcharg" = { name = "バグチャージ", description = "あんこくチップ!\nターンがすすむほど\nつよくなる!" }
+"shotstar" = { name = "リュウセイグン", description = "あいてエリアに\nむすうのリュウセイ\nがふりそそぐ!" }
 
 [navis]
 "megaman" = { name = "ロックマン", run_message = "熱斗くん、にげてるばあいじゃ\nないよ!" }
