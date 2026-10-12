@@ -17,7 +17,7 @@ use nettai_battle::BattleResult;
 use nettai_frontend::driver::{Driver, LivePlayer, Opponent};
 use nettai_frontend::game::TextMode;
 use nettai_frontend::player::Player;
-use nettai_frontend::replay::{Info, Recorder, Replay, ReplayPlayer};
+use nettai_frontend::replay::{Info, MatchKind, Recorder, Replay, ReplayPlayer};
 use nettai_render::vfont::TextRenderer;
 use slint::{ComponentHandle, Model, ModelRc, SharedString, VecModel};
 use std::path::PathBuf;
@@ -649,7 +649,7 @@ impl App {
         let driver = LivePlayer::against(nettai_match::Set::of(content, &m, seed), opponent, seed as u64);
         let mut player = self.player(ready, Box::new(driver), true);
         // Recorded, to watch again.
-        let recorded = self.recorder(content, &m, seed, game, 0, None).and_then(|(r, path)| player.record(r).ok().map(|_| path));
+        let recorded = self.recorder(content, &m, seed, game, MatchKind::Offline, 0, None).and_then(|(r, path)| player.record(r).ok().map(|_| path));
         let graphics = ready.graphics(self.lang);
         let names = Names::of(content, &graphics);
         let ui = self.ui();
@@ -730,15 +730,17 @@ impl App {
         self.keys.release();
     }
 
-    /// A recorder of the set to a new file in the replays folder, this
-    /// player on `side`, both players' names by side (`names`; none: this
-    /// player's alone).
+    /// A recorder of the set, a match of `kind`, to a new file in the
+    /// replays folder, this player on `side`, both players' names by side
+    /// (`names`; none: this player's alone).
+    #[allow(clippy::too_many_arguments)]
     pub fn recorder(
         &self,
         content: &std::sync::Arc<nettai_battle::Content>,
         m: &nettai_match::Match,
         seed: u32,
         game: &str,
+        kind: MatchKind,
         side: u8,
         names: Option<[String; 2]>,
     ) -> Option<(Recorder, PathBuf)> {
@@ -753,7 +755,7 @@ impl App {
             names[side as usize] = self.name.clone();
             names
         });
-        let info = Info { when, side, names };
+        let info = Info { when, names, ..Info::of(kind, side) };
         let m = nettai_match::Match { seed: Some(seed), ..m.clone() };
         let r = Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &info).ok()?;
         Some((r, path))
@@ -1088,7 +1090,7 @@ impl App {
             let content = ready.content().clone();
             std::thread::spawn(move || {
                 for (path, replay) in todo {
-                    let outcome = nettai_frontend::replay::play_out(&content, &replay);
+                    let outcome = nettai_frontend::replay::play_out(&content, &replay).map_err(|e| e.to_string());
                     let _ = slint::invoke_from_event_loop(move || crate::with_app(|app| app.played_out(&path, outcome)));
                 }
             });

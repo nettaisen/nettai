@@ -45,6 +45,27 @@ use std::time::Duration;
 /// The original's frame rate: a tick is one frame of it.
 pub const FRAME_RATE: f64 = 59.7275;
 
+/// A tick's length in seconds, exactly, as a fraction (numerator,
+/// denominator): 280,896 cycles of the GBA's 16,777,216 Hz clock, which is
+/// 4389/262144 s. [`FRAME_RATE`] is its inverse to four places. The sound
+/// is 4389/8 samples a tick at `nettai_audio::SAMPLE_RATE` by the same
+/// clock, so a video's frames and its sound keep step by these numbers.
+pub const TICK_SECONDS: (u32, u32) = (4389, 262_144);
+
+/// The time `ticks` ticks take (down to the nanosecond).
+pub fn time_of(ticks: u64) -> Duration {
+    let (n, d) = (TICK_SECONDS.0 as u128, TICK_SECONDS.1 as u128);
+    let nanos = ticks as u128 * n * 1_000_000_000 / d;
+    Duration::new((nanos / 1_000_000_000) as u64, (nanos % 1_000_000_000) as u32)
+}
+
+/// The tick nearest to `time` after a start: how many ticks it is in.
+pub fn tick_at(time: Duration) -> u64 {
+    let (n, d) = (TICK_SECONDS.0 as u128, TICK_SECONDS.1 as u128);
+    let one = n * 1_000_000_000;
+    ((time.as_nanos() * d + one / 2) / one) as u64
+}
+
 /// The speeds a player runs at, as multiples of [`FRAME_RATE`]:
 /// [`Player::slower`] and [`Player::faster`] step through them.
 pub const SPEEDS: [f64; 8] = [0.125, 0.25, 0.5, 1.0, 2.0, 4.0, 8.0, 16.0];
@@ -62,7 +83,48 @@ const MOST_ELAPSED: Duration = Duration::from_millis(250);
 const SPARE_FRAMES: f64 = 0.95;
 
 /// The most sound kept for a host that hasn't taken it: about a second.
-const MOST_SAMPLES: usize = nettai_audio::SAMPLE_RATE as usize;
+pub(crate) const MOST_SAMPLES: usize = nettai_audio::SAMPLE_RATE as usize;
+
+/// The clock a host's frames run ticks by: the ticks it owes for the time
+/// that passed, at a rate, and the part of a tick left over
+/// ([`Player::advance`], the replay viewer's).
+#[derive(Clone, Copy, Debug)]
+pub(crate) struct Clock {
+    /// Ticks the clock owes: less than one, or less than two on a display
+    /// with frames to spare after a late frame.
+    owed: f64,
+    /// The time between the host's frames, averaged (seconds).
+    frame_time: f64,
+}
+
+impl Clock {
+    pub(crate) fn new() -> Clock {
+        Clock { owed: 0.0, frame_time: 1.0 / FRAME_RATE }
+    }
+
+    /// Nothing owed: the clock starts again from now (a pause, a stop, a
+    /// start over).
+    pub(crate) fn rest(&mut self) {
+        self.owed = 0.0;
+    }
+
+    /// The ticks due after `elapsed` more time at `speed` times the
+    /// original's rate: at most [`MOST_ELAPSED`]'s, the part of a tick left
+    /// over kept; on a display with frames to spare, a late frame that owes
+    /// two keeps one for the next frame.
+    pub(crate) fn due(&mut self, elapsed: Duration, speed: f64) -> u32 {
+        let elapsed = elapsed.min(MOST_ELAPSED).as_secs_f64();
+        self.frame_time += (elapsed - self.frame_time) / 16.0;
+        let rate = FRAME_RATE * speed;
+        self.owed += elapsed * rate;
+        let mut due = self.owed.floor() as u32;
+        if due >= 2 && self.frame_time * rate <= SPARE_FRAMES {
+            due -= 1;
+        }
+        self.owed -= due as f64;
+        due
+    }
+}
 
 /// A battle being played. It owns everything it needs (the graphics it
 /// draws from are shared with whoever loaded them), so a host keeps it
@@ -76,11 +138,7 @@ pub struct Player {
     samples: Vec<[f32; 2]>,
     paused: bool,
     speed: usize,
-    /// Ticks the clock owes: less than one, or less than two on a display
-    /// with frames to spare after a late frame.
-    owed: f64,
-    /// The time between the host's frames, averaged (seconds).
-    frame_time: f64,
+    clock: Clock,
 }
 
 // (A player borrows nothing: a host's state of any lifetime holds one.)
@@ -109,8 +167,7 @@ impl Player {
             samples: Vec::new(),
             paused: false,
             speed: NORMAL,
-            owed: 0.0,
-            frame_time: 1.0 / FRAME_RATE,
+            clock: Clock::new(),
         };
         player.start_over();
         player
@@ -143,7 +200,7 @@ impl Player {
     fn start_over(&mut self) {
         self.renderer.reset();
         self.renderer.console_version = self.session.driver.console_version();
-        self.owed = 0.0;
+        self.clock.rest();
     }
 
     // ---- Running ----------------------------------------------------------
@@ -160,18 +217,10 @@ impl Player {
     /// picture (one tick later, until the frames to spare make it up).
     pub fn advance(&mut self, elapsed: Duration, buttons: u16) -> u32 {
         if self.paused || self.session.stopped.is_some() {
-            self.owed = 0.0;
+            self.clock.rest();
             return 0;
         }
-        let elapsed = elapsed.min(MOST_ELAPSED).as_secs_f64();
-        self.frame_time += (elapsed - self.frame_time) / 16.0;
-        let rate = FRAME_RATE * SPEEDS[self.speed];
-        self.owed += elapsed * rate;
-        let mut due = self.owed.floor() as u32;
-        if due >= 2 && self.frame_time * rate <= SPARE_FRAMES {
-            due -= 1;
-        }
-        self.owed -= due as f64;
+        let due = self.clock.due(elapsed, SPEEDS[self.speed]);
         (0..due).take_while(|_| self.tick(buttons)).count() as u32
     }
 
@@ -196,7 +245,7 @@ impl Player {
                 // frame (netplay: plays, and cancels of cues played on a
                 // wrong prediction), or a round's last cues.
                 Some(actions) => audio.handle_actions(actions.iter().copied()),
-                None => audio.handle(self.session.battle.sound_cues()),
+                None => audio.handle(crate::session::heard(&self.session.battle)),
             }
             audio.tick(&mut self.samples);
             if self.samples.len() > MOST_SAMPLES {
@@ -257,7 +306,7 @@ impl Player {
         }
         self.session.restart();
         self.renderer.reset();
-        self.owed = 0.0;
+        self.clock.rest();
         true
     }
 
@@ -521,30 +570,10 @@ mod tests {
         assert_eq!((p.result(), p.stopped()), (Some(BattleResult::Won), None));
     }
 
-    /// Graphics whose panels are one solid tile of `color` (the field's
-    /// alone: no sprite, no lettering), as a language's graphics.
+    /// Graphics whose panels are one solid tile of `color`, as a language's
+    /// graphics.
     fn graphics_of(color: u16) -> Graphics {
-        use nettai_assets::{Bundle, Field, MapEntry, Tiles};
-        let block = [MapEntry { tile: 0xA3, hflip: false, vflip: false, palette: 1 }; 15];
-        let mut palettes = vec![[0u16; 16]; 8];
-        palettes[0][1] = color;
-        let field = Field {
-            tiles: Tiles { pixels: vec![1; Tiles::TILE] },
-            first_tile: 0xA3,
-            palettes,
-            first_palette: 1,
-            panel_types: nettai_battle::content::testing::content().rules().panels.names[..13].to_vec(),
-            panels: (0..13 * 6).map(|_| block).collect(),
-            front_edges: [[MapEntry::default(); 5]; 2],
-            highlights: vec![[MapEntry::default(); 15]; 2],
-            ..Field::default()
-        };
-        Graphics {
-            bundles: vec![Arc::new(Bundle { field, ..Bundle::default() })],
-            strings: None,
-            own: nettai_battle::content::PackId(0),
-            report: Default::default(),
-        }
+        crate::testing::graphics(&nettai_battle::content::testing::content(), color)
     }
 
     /// The language changes mid-battle without a reset: a player shown in
