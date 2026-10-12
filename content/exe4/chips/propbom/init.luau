@@ -85,6 +85,7 @@ local propbom1: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_empty_row" },
 }
 
 local propbom2: Chip = {
@@ -99,6 +100,7 @@ local propbom2: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_empty_row" },
 }
 
 local propbom3: Chip = {
@@ -113,6 +115,7 @@ local propbom3: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_empty_row" },
 }
 
 return { propbom1 = propbom1, propbom2 = propbom2, propbom3 = propbom3 }

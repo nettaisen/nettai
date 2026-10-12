@@ -20,6 +20,7 @@ actor_lists = 232
 "shadoman/navi" = [0x080BA25B, 0x080BA343]
 "chaoslrd/navi" = [0x080C327F, 0x080C3367]
 "chaoslrd/strike" = [0x080C327F, 0x080C3367]
+"bighook/hook" = [0x080EA991, 0x080EAA79]
 
 [colonel.panel_xs]
 "tomahawksoul/grass" = [0x99, 0x91]  # the low byte of 0x08011C99
@@ -41,6 +42,7 @@ actor_lists = -996
 "shadoman/navi" = [0x080BA25B, 0x080B9FEF]
 "chaoslrd/navi" = [0x080C327F, 0x080C3007]
 "chaoslrd/strike" = [0x080C327F, 0x080C3007]
+"bighook/hook" = [0x080EA991, 0x080EA6B5]
 
 [jp-protoman.panel_xs]
 "tomahawksoul/grass" = [0x99, 0x81]  # the low byte of 0x08011C99
@@ -62,6 +64,7 @@ actor_lists = -764
 "shadoman/navi" = [0x080BA25B, 0x080BA0D7]
 "chaoslrd/navi" = [0x080C327F, 0x080C30EF]
 "chaoslrd/strike" = [0x080C327F, 0x080C30EF]
+"bighook/hook" = [0x080EA991, 0x080EA79D]
 
 [jp-colonel.panel_xs]
 "tomahawksoul/grass" = [0x99, 0x79]  # the low byte of 0x08011C99

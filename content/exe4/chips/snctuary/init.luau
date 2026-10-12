@@ -28,6 +28,7 @@ local chip: Chip = {
         change_sound = panel_changer.CHANGE_SOUND,
     }),
     megaman = "light",
+    auto_battle = { class = "at_once", answers = "panels_spoiled" },
 }
 
 return { snctuary = chip }

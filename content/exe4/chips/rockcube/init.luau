@@ -40,6 +40,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = CONTROLLER.places { variant = CUBE, class = 0, entrance = "rise" },
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { rockcube = chip }

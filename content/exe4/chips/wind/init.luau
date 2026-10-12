@@ -25,6 +25,7 @@ local wind: Chip = {
         wait = 1,
         hp = 100,
     }),
+    auto_battle = { class = "landing_ahead" },
 }
 
 -- Fan (EXE4 chip 0x054): a fan in front of the user (./controller) that blows a gust along the enemy's rows every 12
@@ -47,6 +48,7 @@ local fan_chip: Chip = {
         wait = 1,
         hp = 100,
     }),
+    auto_battle = { class = "landing_ahead" },
 }
 
 return { wind = wind, fan = fan_chip }
