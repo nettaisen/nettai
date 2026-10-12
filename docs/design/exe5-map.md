@@ -304,7 +304,17 @@ netplay templates 1000. Three rules read it, with two thresholds:
   action 0x1A for a frame and a puff of smoke appears, nothing else.
   The cut-in (0x080144F6) asks the same check before it prepares the chip's use (0x0801452E): with such a chip it
   doesn't start, and nothing of a use happens (no Full Synchro spent, no navi chip counted). The rules' hook
-  `cut_in_barred`; until EXE4's item 65 the engine prepared the use first and refused it after.
+  `cut_in_barred`; until EXE4's item 65 the engine prepared the use first and refused it after. The lab's
+  megaman/cut-in-dark-navi-chip-synchro tells the two apart by the Full Synchro (the old order stops at frame 732).
+  The navi chip's count cannot: it is the side's count 6 (the counts' block, 0x0203E540, which five routines alone
+  touch: set 0x08009312, get 0x0800931C, add 0x08009326, take 0x0800933A, clear 0x0800934C), added
+  to at a navi chip's use (0x0801002C, and 0x0802D3B8) and read by nothing: the get's fourteen calls ask for counts
+  0 to 5, 7 and 9. EXE6's is the same (added to at 0x080128E4 and 0x0802DF86, its get 0x0800AB3A never asked for
+  6). EXE4's has one reader, an enemy's AI (0x080B5226, from the state handler 0x080B5100 of the table at
+  0x080B50DC, which the enemy's update, 0x080B50B4, runs on its own record's +0x78: one of its versions starts a
+  state once the other side has used a navi chip), which no netbattle's navi runs. So nothing a
+  netbattle draws, sounds or decides depends on it, in any of the three: megaman/cut-in-dark-navi-chip replays the
+  same either way and stands as the refused cut-in with a navi chip, no more.
 - **A dark MegaMan on a holy panel turns it Normal** (0x08017136, EXE5's own): when the panel under the object is
   holy (EXE5's type 9) and its side's meter is ≤ 499, the panel is set Normal (the panel setter). It runs **every
   tick**, from the object's per-tick intake update (the counterpart of EXE6's `sub_801AC6C`, 0x080178EC, and of its

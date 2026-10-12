@@ -445,8 +445,9 @@ every sound call; with exe4-compat's harness comparing the gauge as the recordin
 
 Checked: the lab's dark/offer, hover-long, hover-hide, hover-describe, hover-then-ok-fast, with-folder-chip, side1,
 bluemoon, drksword, darkbomb, drkvulcn, drkspred, drkstage, drkcanon and drkcanon-taunt match every frame; drklance
-and drkrecov match through the chip's use and the next turn and stop at the screen after on the custom drain (item
-72). Their sound calls match but for the hover's music fades after OK, which the harness's late OK shifts (item 72).
+and drkrecov match through the chip's use and the next turn up to their known deviation at the screen after (the late
+OK's custom drain, §17 and item 72: frames 917 and 1566), and to their ends with the drain counted on the original's
+ticks. Their sound calls are the original's up to there (the hover's music fades after OK are the late OK's shift).
 
 ## 6. Transformations
 
@@ -1187,8 +1188,11 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   BugBomb's raised weapon bug, the rock cube, then BugFix and a plain charged shot) replay every frame with the same
   sounds; the fight frames, the glow among them, are pixel-exact but for the custom screens' known shift and, in
   bugs, frame 868: a cracked panel broken by a step off it shows its break a frame early, as in panels/cracked-step-off
-  (frame 384), which the panels' drawing has. (The custom drain's fix has no replay: that bug meets the replay's known
-  deviation at the first custom screen.)
+  (frame 384), which the panels' drawing has. The custom drain's fix is custom-drain's (patch card 17's bug, a point
+  every 6 ticks of a selection: a screen with no pick, a screen that picks BugFix and takes the bug's two points,
+  BugFix, then two screens that drain nothing). That bug meets the replay's known deviation on the first screen
+  (§17: frame 274, before the chip); the workspace's `exe4_late_ok` replays the recording on the original's ticks,
+  where all its 2580 frames match, and with the fix's line taken out it differs at frame 1120 (the stat still 6).
 
 - **The navi chips** (the dimming chips' navi variants, group F): each variant's spawner (0x080220E0's) makes its navi's
   controller, an effect object of its own (Roll's #0x2D, TopMan's #0x0B, ...; SerchMan's, ThunMan's, ProtoMan's,
@@ -1678,11 +1682,33 @@ data/traces/lab-exe4; nettai-tool plays an EXE4 recording (`Exe4TracePlayer`).
 
 **Known deviations** (the workspace's trace-tests `deviations.rs`, `Set::Exe4Lab`, as EXE6's lab has its own): a
 recording the engine departs from on purpose matches every frame up to its deviation, and the frames after it aren't
-compared. `modcards/017-custom2`, `modcards/105-panel-change` and `modcards/110-custom3`, frame 274: nettai has no link
-cable, and the replay feeds the custom screen's OK as the fight saw it, the cable's delay (4 ticks) after the
-original's screen took it, so the side's selection status (BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4
-ticks longer, and the custom HP-drain bug, which counts only while it is set (0x0800C194), drains a point the original
-doesn't. No link latency goes into the engine (the user's word); a recording with another cause is no deviation.
+compared. Six recordings, one cause: nettai has no link cable, and the replay feeds the custom screen's OK as the
+fight saw it, the cable's delay (4 ticks) after the original's screen took it, so the side's selection status
+(BattleState +0x14 bit 0, which OK clears: 0x08020652) runs 4 ticks longer, and the custom HP-drain bug, which counts
+only while it is set (0x0800C194), drains a point the original doesn't. (The original's fight read the bit over the
+cable: set and cleared the cable's delay after the screen's selection started and took its OK. The engine's bit is
+its screen's own, set as the selection starts, and clears on the original's frame, the OK being fed late: it counts
+the delay's ticks more each screen, and a period that falls in them takes a point within those ticks after the
+original's OK.) No link latency goes into the engine (the user's word); a recording with another cause is no
+deviation.
+
+| recording | frame | the original's OK | the bug |
+|---|---|---|---|
+| `modcards/017-custom2`, `modcards/105-panel-change`, `modcards/110-custom3` | 274 | 273 | a patch card's custom HP drain, on the first screen |
+| `dark/drklance` | 917 | 916 | DrkLance's cost (a point every 6 ticks), on the screen after its use |
+| `dark/drkrecov` | 1566 | 1565 | DrkRecov's cost, the same |
+| `chips/0x0ce-bugfix/custom-drain` | 274 | 273 | patch card 17's, on the first screen, before BugFix |
+
+The workspace's trace-tests `exe4_late_ok` holds each entry to that cause and no other: the replay first differs on
+the listed frame, by the recording console's navi's HP alone, a point under the recording's; the frame is within the
+delay's ticks after the original's OK (one tick after it in all six); and replayed with the drain counted on the
+original's ticks (a side's count held on each custom screen tick the recording doesn't show its bit set), the round
+matches every frame to its end (2976, 2339, 2976, 1071, 1720 and 2580 frames). The sound comparison (`exe4_sounds`)
+compares such a round up to the original's OK, whose own sound the engine's screen makes the delay later, past the
+deviation (the entry's `sounds`), and counts it among the same; the frame comparison has no list: nettai-tool plays
+on past the difference it reports, and the frames after show the HP box under the original's. (A selection
+long enough for the original's own point would show the engine's the delay sooner: the same cause in another shape,
+which no recording of the lab has; `exe4_late_ok` would say so.)
 
 **The frames' known shift** (every game's recordings since engine 21cac76de took the link cable out of the engine,
 which EXE5's and EXE6's frame comparisons showed as a regression from engine 8a5cc6130: EXE5's backgrounds/0x00 at
@@ -2428,7 +2454,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Every chip whose power is a formula was compared on the custom screen (verify's lab-compare): chips/0x0ca-muramasa
     (hit, hurt), 0x036-custswrd (hit, full-gauge), the three NumbrBls (hit; numbrbl1/hp), dark/drkcanon and drksword,
     and the 20 SP and 20 DS navi chips' hit. Every custom screen frame is exact but the late OK's known shift;
-    dark/drklance is exact up to its known stop at frame 917 (item 72). So are RedSun's and BlueMoon's (formulas 47
+    dark/drklance is exact up to its known deviation at frame 917 (item 72). So are RedSun's and BlueMoon's (formulas 47
     and 48, without bit 0x10: the number; chips/0x130-redsun/hit and wins-35, 0x135-bluemoon/hit and wins-5).
     Muramasa's and CustSwrd's frame reports had shown the run
     since the chips were ported (custom screen 271 to 285, in (49, 83) to (71, 94)); only the fight's frames were
@@ -2513,7 +2539,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     stays: the engine before item 65's bar spent it and stops at frame 732), a refused RollDS alone, Roll's cut-in
     in Full Synchro (doubled, spent) and the pending chip. (A refused navi chip's count, the side's count 6 at
     0x0801002C, is a count no routine reads back, 0x0800931C's fourteen calls ask for others, and no recording
-    carries the counts: that recording replays the same with the bar and without.)
+    carries the counts: that recording replays the same with the bar and without. EXE4's own count 6, added to at
+    0x0800D596, has one reader, an enemy's AI at 0x080B5226 (a story battle's), and EXE6's none: exe5-map.md §6.1.
+    Nothing a netbattle shows depends on it.)
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
@@ -2577,12 +2605,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     uses a Cannon and the other side a navi chip within a few ticks): the Cannon stays named over AntiNavi's telop
     for the rest of its second (7 frames in EXE6, where the frontend showed the telop alone; 8 in EXE5); both are
     pixel-exact now (1217 fight frames each).
-72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
-    status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
-    engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
-    1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same way (the
-    sound comparison counts those as the shift's: item 75). A harness question (raised with the coordinator), not
-    the engine's.
+72. **Closed: the selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the
+    side's status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so
+    the engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at
+    frame 1566, dark/drklance at 917: the screen after the chip). The hover's music fades after OK shift the same
+    way (the sound comparison counts those as the shift's: item 75). Not the engine's: no link latency goes into it
+    (the user's word), and the late OK is the replay's. Both recordings are known deviations now (§17's list, with
+    BugFix's custom-drain recording), each proven to stop for this cause and no other: with the drain counted on the
+    original's ticks they match to their ends (the workspace's `exe4_late_ok`). The EXE4 lab has no other stop.
 73. **Done: Double Soul** (group A; §5's Double Soul part, §6): the UNITE button, its offer and the soul's choice,
     OK's soul chip, the change (action 0x0D) and the revert (0x11) as the fight runs, the turns, the setup's souls and
     Double Soul (no version in the content: exe4-compat maps a recording's version and a save's event flags to the
