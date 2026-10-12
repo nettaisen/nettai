@@ -55,6 +55,13 @@
 //!    this peer has loaded and has heard the other has: by its Loading, or
 //!    by a frame of the match, which it sends only once it has started.
 //!
+//!    With it each peer says the digest of the match's first round at its
+//!    start, as its own engine sets it up. Two programs that set the same
+//!    agreed match up differently (engines of two builds, which the
+//!    protocol's version should have told apart and didn't) would differ
+//!    from the first tick: they stop here instead, before any tick, as
+//!    programs of different versions ([`Reason::DifferentVersion`]).
+//!
 //!    One peer can take the match for agreed when the other doesn't: the
 //!    other player took their ready back (or changed something) while the
 //!    Reveals crossed, and its lobby went on to another revision before
@@ -134,8 +141,9 @@ pub const ENGINE: &str = env!("CARGO_PKG_VERSION");
 /// language). A [`Failure`]'s detail is never shown.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub enum Reason {
-    /// The two programs differ: another netplay protocol, or another
-    /// engine. Both players need the same version of the program.
+    /// The two programs differ: another netplay protocol, another engine,
+    /// or engines that set the agreed match up differently. Both players
+    /// need the same version of the program.
     DifferentVersion,
     /// The other player's match is of another game: `theirs`, by its id.
     DifferentGame { theirs: String },
@@ -500,12 +508,14 @@ pub struct Lobby {
     /// take it (by its revisions, or a Reveal before its Hello).
     their_hello: Option<((u32, u32), u16, [u8; 32])>,
     their_reveal: Option<Vec<u8>>,
-    /// Loading the agreed match: how far this peer is (of
+    /// Loading the agreed match: the digest of its first round at its
+    /// start, as this engine sets it up; how far this peer is (of
     /// [`LOADING_PARTS`]) and whether it is done; the other's, with the
-    /// seed of the match it is loading; and whether the other has started
-    /// (a frame of the match came).
+    /// seed of the match it is loading and its start's digest; and whether
+    /// the other has started (a frame of the match came).
+    start_digest: u64,
     loading: (u8, bool),
-    their_loading: Option<(u32, u8, bool)>,
+    their_loading: Option<(u32, u64, u8, bool)>,
     their_frame: bool,
     started: bool,
     /// The other peer's lobby revision the agreed match is of.
@@ -550,6 +560,7 @@ impl Lobby {
             phase: Phase::Lobby,
             their_hello: None,
             their_reveal: None,
+            start_digest: 0,
             loading: (0, false),
             their_loading: None,
             their_frame: false,
@@ -762,7 +773,7 @@ impl Lobby {
     /// of another match, by its seed, is none of this one's).
     fn their_load(&self) -> Option<(u8, bool)> {
         let Phase::Done(a) = &self.phase else { return None };
-        self.their_loading.filter(|(seed, ..)| *seed == a.seed).map(|(_, parts, loaded)| (parts, loaded))
+        self.their_loading.filter(|(seed, ..)| *seed == a.seed).map(|(_, _, parts, loaded)| (parts, loaded))
     }
 
     // ---- The datagrams -----------------------------------------------------------
@@ -903,12 +914,12 @@ impl Lobby {
 
     fn heard_loading(&mut self, body: &[u8]) {
         let mut r = Reader::new(body);
-        let (Ok(seed), Ok(parts), Ok(loaded)) = (r.get::<u32>(), r.get::<u8>(), r.get::<bool>()) else { return };
+        let (Ok(seed), Ok(digest), Ok(parts), Ok(loaded)) = (r.get::<u32>(), r.get::<u64>(), r.get::<u8>(), r.get::<bool>()) else { return };
         // (Loading only goes on: a datagram that comes late takes nothing
         // back.)
         let before = self.their_loading.filter(|(s, ..)| *s == seed);
-        let (parts, loaded) = before.map_or((parts, loaded), |(_, p, l)| (parts.max(p), loaded || l));
-        self.their_loading = Some((seed, parts, loaded));
+        let (parts, loaded) = before.map_or((parts, loaded), |(_, _, p, l)| (parts.max(p), loaded || l));
+        self.their_loading = Some((seed, digest, parts, loaded));
     }
 
     /// This peer's clock, in milliseconds since its lobby began, at `now`.
@@ -968,6 +979,7 @@ impl Lobby {
             let (c, commitment) = (c.clone(), *commitment);
             match self.agree(&c, &commitment, &reveal) {
                 Ok(a) => {
+                    self.start_digest = a.set.start().digest();
                     self.phase = Phase::Done(Box::new(a));
                     self.agreed_with = c.revisions.1;
                     // (The loading is said at once.)
@@ -999,12 +1011,24 @@ impl Lobby {
 
     /// The match is agreed: say how far this host's loading is, when it
     /// changed and every RESEND, until both have loaded; then it starts.
+    /// Not a match the other peer's engine sets up differently.
     fn load(&mut self, now: Instant) {
         let Phase::Done(a) = &self.phase else { return };
+        let seed = a.seed;
+        if let Some((_, theirs, ..)) = self.their_loading.filter(|(s, ..)| *s == seed)
+            && theirs != self.start_digest
+        {
+            let detail = format!(
+                "can't play: the two programs set the agreed match up differently (its start's digest {:016x} here, {theirs:016x} there): they aren't the same engine",
+                self.start_digest
+            );
+            return self.fail(Failure { reason: Reason::DifferentVersion, detail }, true);
+        }
         if self.changed || self.sent.is_none_or(|t| now.duration_since(t) >= RESEND) {
             let mut out = vec![Kind::Loading as u8];
             let mut w = Writer(&mut out);
-            w.put(&a.seed);
+            w.put(&seed);
+            w.put(&self.start_digest);
             w.put(&self.loading.0);
             w.put(&self.loading.1);
             self.outgoing.push(out);
@@ -1688,6 +1712,109 @@ mod tests {
         let mut early = Lobby::new(Role::Join, &content, s, side(&content, 3), 7, Duration::from_secs(10));
         early.receive(now, &[Kind::Frame as u8, 0, 0, 0]);
         assert!(matches!(early.poll(now), Status::Pending) && !early.their_loaded());
+    }
+
+    /// A program of the protocol before this one (which set a match up
+    /// without the host's keys, so every digest of it differs) is refused on
+    /// its first word, as another version: its lobby message, laid out as
+    /// that protocol laid it, and its Hello. Nothing is agreed with it.
+    #[test]
+    fn a_program_of_the_protocol_before_is_refused_at_once() {
+        let content = nettai_match::testing::exe6_content();
+        let now = Instant::now();
+        // Version 5's compatibility fields (no game among them), and its
+        // lobby message: the revision, ready, the settings (the game and
+        // the rounds), the name, the navi, the build's name and version.
+        let compat = |w: &mut Writer| {
+            w.put(&5u16);
+            w.put(&ENGINE.to_string());
+            w.put(&content.hash());
+            w.put(&true);
+        };
+        let mut lobby_5 = vec![Kind::Lobby as u8];
+        let mut w = Writer(&mut lobby_5);
+        compat(&mut w);
+        w.put(&1u32);
+        w.put(&true);
+        let mut settings_5 = Vec::new();
+        let mut s = Writer(&mut settings_5);
+        s.put(&"exe6".to_string());
+        s.put(&3u16);
+        for _ in 0..3 {
+            s.put(&String::new());
+            s.put(&String::new());
+        }
+        w.bytes(&settings_5);
+        for text in ["Chaud", "megaman", "My build", "gregar"] {
+            w.put(&text.to_string());
+        }
+        let mut hello_5 = vec![Kind::Hello as u8];
+        let mut w = Writer(&mut hello_5);
+        compat(&mut w);
+        w.put(&1u32);
+        w.put(&1u32);
+        w.put(&3u16);
+        w.bytes(&[0; 32]);
+        for said in [lobby_5, hello_5] {
+            let mut lobby = Lobby::new(Role::Host, &content, settings(3), side(&content, 3), 7, Duration::from_secs(10));
+            lobby.set_ready(true);
+            lobby.receive(now, &said);
+            let failure = failed(&mut lobby, now);
+            assert_eq!((failure.reason, failure.detail.as_str()), (Reason::DifferentVersion, "can't play: the other side speaks netplay protocol 5, this one 6"));
+            assert!(!lobby.their_present());
+            // (It is told so, three times.)
+            let refusals = lobby.outgoing();
+            assert!(refusals.len() == 3 && refusals.iter().all(|d| d[0] == Kind::Refuse as u8));
+        }
+        assert_eq!(protocol::VERSION, 6);
+    }
+
+    /// Two programs of one protocol whose engines set the agreed match up
+    /// differently would differ from the first tick (one from before the
+    /// host's keys, say, which are in the setup and so in every digest).
+    /// Each says its start's digest as it loads: they are told apart before
+    /// any tick, as programs of different versions.
+    #[test]
+    fn programs_that_set_a_match_up_differently_dont_start_it() {
+        let content = nettai_match::testing::exe6_content();
+        let now = Instant::now();
+        let s = settings(3);
+        let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
+        run(&mut lobbies, now, 20, &mut |_, _| {});
+        // What an engine without the host's keys makes of the agreed match:
+        // the same first round but for them, another digest.
+        let Status::Loading(a) = lobbies[0].poll(now) else { panic!("agreed") };
+        let mut without = a.set.first().clone();
+        assert_eq!(without.host_keys, nettai_match::HOST_KEYS);
+        without.host_keys = nettai_battle::HostKeys::NONE;
+        let (ours, theirs) = (a.set.start().digest(), nettai_battle::Battle::new(without, content.clone()).digest());
+        assert_ne!(ours, theirs);
+        // Each hears the other say that digest where it has its own (as two
+        // such programs would, each of the other): both have loaded, and
+        // neither starts.
+        for l in &mut lobbies {
+            l.set_loaded();
+        }
+        run(&mut lobbies, now, 4, &mut |_, d| {
+            if d[0] == Kind::Loading as u8 {
+                let mut r = Reader::new(&d[1..]);
+                let (seed, said, parts, loaded): (u32, u64, u8, bool) = (r.get().unwrap(), r.get().unwrap(), r.get().unwrap(), r.get().unwrap());
+                assert_eq!(said, ours, "both engines here set it up alike");
+                d.truncate(1);
+                let mut w = Writer(d);
+                w.put(&seed);
+                w.put(&theirs);
+                w.put(&parts);
+                w.put(&loaded);
+            }
+        });
+        // (The joiner, which hears the host's loading first, says so, and
+        // the host hears it.)
+        let why = format!("can't play: the two programs set the agreed match up differently (its start's digest {ours:016x} here, {theirs:016x} there): they aren't the same engine");
+        let [host, join] = [0, 1].map(|i| failed(&mut lobbies[i], now));
+        assert_eq!((join.reason, join.detail), (Reason::DifferentVersion, why.clone()));
+        assert_eq!((host.reason, host.detail), (Reason::DifferentVersion, format!("the other side refused: {why}")));
+        assert!(lobbies.iter_mut().all(|l| !matches!(l.poll(now), Status::Start(_))));
     }
 
     /// The lobby times the round trip by its own messages: over a link
