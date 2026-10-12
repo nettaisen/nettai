@@ -13,6 +13,7 @@
 //! emotion window's faces, "BUSY...", the chatbox; custom.rs), and the
 //! Japanese words of the banners, "BUSY..." and the custom screen.
 
+mod cards;
 mod custom;
 pub(super) mod graphics;
 mod hud;
