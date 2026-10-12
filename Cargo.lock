@@ -3255,6 +3255,7 @@ dependencies = [
  "nettai-frontend",
  "nettai-match",
  "nettai-render",
+ "nettai-replay",
  "nettai-rtc",
  "nettai-ui",
  "nettai-video",
