@@ -185,7 +185,8 @@ impl Battle {
 const CUT_IN_FLASH_Z: i32 = 0x78 << 16;
 
 /// `sub_800B8EE(side)`: `side` cut in: a flash at panel (2 + 3 · the other
-/// side, 4) and its sound.
+/// side, 4) and its sound, where the game has one (EXE4's 0x08008BB6 plays
+/// none).
 pub(crate) fn cut_in_flash(b: &mut Battle, side: u8) {
     let (x, y) = crate::kinds::player::panel_coordinates((side ^ 1) * 3 + 2, 4);
     let look = b.roles().effect(crate::content::EffectRole::CutInFlash);
@@ -360,14 +361,13 @@ pub fn run(b: &mut Battle, side: u8) {
 }
 
 /// A telop for `side` naming `chip`, without damage (`sub_801E792` with
-/// the side's banner; EXE4's 0x08008FD4), and its sound; the used chips'
-/// names make way, where the game's telops end them.
+/// the side's banner), and its sound: AntiNavi's (`sub_800BE2C`; EXE5's
+/// 0x0800A44C, EXE4's 0x08008FD4), which ends no used chip's name: unlike
+/// a dimming chip's own telop it has no `sub_801BED6(0x10000)`, so the
+/// other player's chip stays named beside it, or over it.
 pub fn chip_telop(b: &mut Battle, side: u8, chip: Option<ChipHandle>) {
     let side = side & 1;
     show(b, Telop { side, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No });
-    if b.game_rules().effects.used_chips_end_early {
-        b.used_chips = [None; 2];
-    }
     b.sound(SoundRole::Telop);
 }
 
@@ -796,6 +796,26 @@ mod tests {
         assert_eq!(seen(0), [Some((false, 10)), Some((true, 20))]);
         assert_eq!(seen(1), [Some((false, 20)), Some((true, 10))]);
         assert_eq!(b.telop_for(1).map(|t| t.damage), Some(20));
+    }
+
+    /// AntiNavi's telop (`chip_telop`) ends no used chip's name, in a game
+    /// whose dimming chips' own telops end them (the test content's rule,
+    /// EXE6's `sub_800BE2C`) as in one whose telops don't.
+    #[test]
+    fn anti_navis_telop_leaves_the_used_chips_names() {
+        let chip = testing::chip_handle(testing::VEIL);
+        let mut b = Battle::new(scenario::setup(), scenario::content());
+        assert!(b.game_rules().effects.used_chips_end_early);
+        b.show_used_chip(1, chip, 0, 0);
+        super::chip_telop(&mut b, 0, None);
+        assert!(b.banner.shows_telop() && b.used_chips[1].is_some());
+        let mut b = apart();
+        b.show_used_chip(1, chip, 0, 0);
+        super::chip_telop(&mut b, 0, None);
+        assert!(b.banner.shows_telop() && b.used_chips[1].is_some(), "the name beside the console's own telop");
+        // (Apart, the other player's telop lays where its used chip is named.)
+        super::chip_telop(&mut b, 1, None);
+        assert!(b.remote_telop.shows_telop() && b.used_chips[1].is_none());
     }
 
     /// Where a telop is a banner (the test content's rule, EXE6's), a telop

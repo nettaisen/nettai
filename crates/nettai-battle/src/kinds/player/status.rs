@@ -178,6 +178,12 @@ fn tail(b: &mut Battle, r: ObjectRef) {
     status_shader(b, r);
     update_visibility(b, r);
     counter_shader(b, r);
+    // The rules' own shader over those (EXE4's 0x0800BB18: the dark soul's
+    // last ticks).
+    let side = b.objects.get(r).alliance;
+    if let Some(shader) = b.rules_navi_shader(side, r) {
+        b.objects.sprite_mut(r).look.color_shader = shader;
+    }
     charge_brings_glow(b, r);
     dive_ripple(b, r);
     if flag1(b, r) & f1::DEAD != 0 {
@@ -1377,10 +1383,14 @@ fn cut_in(b: &mut Battle, r: ObjectRef) {
 fn while_dimmed(b: &mut Battle, r: ObjectRef) {
     let player = navi_record(b, r).actor_type == ActorType::Player;
     if player && is_link(b) && ai(b, r).requests & request::CUT_IN != 0 {
-        // The next chip must be a dimming chip too.
+        // The next chip must be a dimming chip too, and one the side's
+        // rules don't bar (`cut_in_barred`: EXE4's 0x08010C64 and EXE5's
+        // 0x0801452E, the chips of the other kind of MegaMan), asked
+        // before the use is prepared.
         let chip = super::next_chip(b, r);
         let freezes = chip.is_some_and(|c| b.content.chip(c).flags.has(crate::content::ChipFlags::DIMMING));
-        if can_cut_in(b, r) && freezes {
+        let side = b.objects.get(r).alliance;
+        if can_cut_in(b, r) && freezes && !b.rules_cut_in_barred(side, r, chip) {
             cut_in(b, r);
         }
         ai_mut(b, r).requests &= !(request::CUT_IN | request::CHARGED_CHIP | request::CHIP);

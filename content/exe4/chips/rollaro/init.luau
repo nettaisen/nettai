@@ -25,6 +25,7 @@ local rollaro1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("rollaro1/controller"),
+    megaman = "light",
 }
 
 -- RollAro2 (EXE4 chip 0x098).
@@ -40,6 +41,7 @@ local rollaro2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("rollaro2/controller"),
+    megaman = "light",
 }
 
 -- RollAro3 (EXE4 chip 0x099).
@@ -55,6 +57,7 @@ local rollaro3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("rollaro3/controller"),
+    megaman = "light",
 }
 
 return { rollaro1 = rollaro1, rollaro2 = rollaro2, rollaro3 = rollaro3 }

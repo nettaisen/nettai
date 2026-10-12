@@ -193,6 +193,14 @@ pub struct ChipUseRules {
     /// the Beast forms'); EXE5's (0x0800D9CC) and EXE4's (0x0800B72C) use
     /// any charged chip with its charge, Null or not.
     pub charged_null_alt_routine: bool,
+    /// A use the side's rules refuse (`chip_check`, `chip_cost`) keeps the
+    /// refused chip as the attack's chip and takes only the action of the
+    /// chip given instead (EXE4's 0x0800D5F6 sets action 0x20 and its
+    /// variant 4, nothing else: the other console still shows the refused
+    /// chip's name, 0x080EECF0, and what follows the use reads its record);
+    /// else the attack's chip is the chip given (EXE5's 0x080100F6 stores
+    /// its 0x185).
+    pub refused_keeps_chip: bool,
 }
 
 /// The rule section `effects` (docs/design/exe5-map.md §15.3 items 15 and
@@ -1122,10 +1130,9 @@ pub struct IntakeRules {
     /// EXE5's no-charge drive (DarkInvs, 0x080E2318): a navi with the
     /// no-charge state counts its drive's ticks down at the intake's end
     /// (0x0800DBE0) and asks for the stun strike when they run out (EXE5's
-    /// action 0x49 ends the drive); its idle hands the step it would take
-    /// to the side's rules' `controller` (0x080F03E4: the auto battle
-    /// AI, 0x0802B4AC, or the reset of its state); and its last 180 ticks
-    /// it flickers gray (0x080136E0). EXE6 has none of it.
+    /// action 0x49 ends the drive); and its last 180 ticks it flickers gray
+    /// (0x080136E0). EXE6 and EXE4 have none of it. (Its idle's part is
+    /// `Rules::idle_asks_controller`.)
     pub no_charge_drive: bool,
     /// How a navi loses HP (`object_subtractHP`, `applyDamageToPlayer`).
     pub hp_loss: HpLoss,
@@ -1727,6 +1734,13 @@ pub struct Rules {
     /// drag's, `DragEnding::KeepsPose`) holds those ticks and no more;
     /// EXE6's (`sub_80F0354`) and EXE5's (0x080F027A) leave the pose.
     pub idle_stands: bool,
+    /// The idle hands the step it would take, once nothing else is asked
+    /// and no chip's use started, to the side's rules' `controller`, whose
+    /// answer has decided (rule section `status`): EXE5's (0x080F03E4: with
+    /// the no-charge state the auto battle AI, 0x0802B4AC, else the reset of
+    /// its state) and EXE4's (0x080EEC78: in the dark soul the AI,
+    /// 0x0800E4F8). EXE6's reads the pad.
+    pub idle_asks_controller: bool,
     /// What a navi's body hits for in a link battle (rule section
     /// `status`): none for EXE4, which sets none (its body hits for its
     /// object's zeroed damage).

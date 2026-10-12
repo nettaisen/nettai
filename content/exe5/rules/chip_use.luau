@@ -17,4 +17,7 @@ return {
     window_hides_every_console = false,
     -- A charged chip is used with its charge, whatever its family (0x0800D9CC).
     charged_null_alt_routine = false,
+    -- A use the rules refuse (rules/light_dark) becomes the invalid chip, the attack's chip too (0x080100F6 stores
+    -- 0x185).
+    refused_keeps_chip = false,
 }

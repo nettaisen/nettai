@@ -24,7 +24,8 @@
 //! flag at +2 to +5) and its 5x5 grid at 0x4540 (a cell the list's entry
 //! from 1, 0 empty), the patch cards at 0x464C (seven slots, a card on) and
 //! 0x4653 (the same seven, a card off; 0xFF none), MegaMan's NaviStats block
-//! at 0x4E60 (the first of eight).
+//! at 0x4E60 (the first of eight), the player's auto battle data at 0x5064
+//! (0xE0 bytes: 42 halfword places, a count, eight pattern records).
 
 use crate::Version;
 
@@ -73,6 +74,21 @@ pub const NAVICUST_SIZE: usize = 5;
 const NAVI_STATS: usize = 0x4E60;
 const PATCH_CARDS_ON: usize = 0x464C;
 const PATCH_CARDS_OFF: usize = 0x4653;
+/// The player's auto battle data (the first of the toolkit's +0x7C's blocks,
+/// 0xE0 bytes: Tango's bn4 `AutoBattleDataView`), which a battle's end
+/// writes from what the save has learned of its player and a link battle's
+/// start sends (0x0800F208): its 42 places, a halfword each (a chip's
+/// number, 0x8000 with a pattern record's number from 0, 0xFFFF empty).
+/// After them, at +0x54, a count only the send writes, and from +0x58 the
+/// eight pattern records, which nothing of a battle shows (EXE4's
+/// rules/auto_battle: a pattern entry is a miss and a step).
+const AUTO_BATTLE: usize = 0x5064;
+pub const AUTO_BATTLE_PLACES: usize = 42;
+/// An empty place, and what marks a place as a pattern record's number.
+pub const AUTO_BATTLE_EMPTY: u16 = 0xFFFF;
+pub const AUTO_BATTLE_PATTERN: u16 = 0x8000;
+/// The block's pattern records.
+pub const AUTO_BATTLE_PATTERNS: usize = 8;
 /// The event flags, a bit each (flag n: byte n / 8, bit 0x80 >> n % 8).
 const EVENT_FLAGS: usize = 0x2248;
 /// The slots: the PET's six and a seventh, which the reload reads too
@@ -250,6 +266,13 @@ impl Save {
         self.image[NAVI_STATS..NAVI_STATS + crate::codec::NAVI_STATS].try_into().unwrap()
     }
 
+    /// The player's auto battle data's places, as they are: what the dark
+    /// soul of a dark MegaMan plays from this save (EXE4's
+    /// rules/auto_battle).
+    pub fn auto_battle(&self) -> [u16; AUTO_BATTLE_PLACES] {
+        std::array::from_fn(|i| self.u16(AUTO_BATTLE + 2 * i))
+    }
+
     /// Whether event flag `flag` is set (`TestEventFlag`).
     pub fn event_flag(&self, flag: u16) -> bool {
         self.image[EVENT_FLAGS + flag as usize / 8] & (0x80 >> (flag % 8)) != 0
@@ -290,6 +313,8 @@ mod tests {
         img[NAVICUST_GRID + 5 * 4 + 1] = 1;
         img[PATCH_CARDS_ON..PATCH_CARDS_ON + 7].copy_from_slice(&[7, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
         img[PATCH_CARDS_OFF..PATCH_CARDS_OFF + 7].copy_from_slice(&[0xFF, 9, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
+        img[AUTO_BATTLE..AUTO_BATTLE + 2 * AUTO_BATTLE_PLACES].fill(0xFF);
+        img[AUTO_BATTLE..AUTO_BATTLE + 4].copy_from_slice(&[0x01, 0x00, 0x02, 0x80]);
         img
     }
 
@@ -327,6 +352,7 @@ mod tests {
             assert!(s.navicust()[1..].iter().all(Option::is_none));
             assert_eq!(s.navicust_grid()[4][1], Some(0));
             assert_eq!(s.patch_cards()[..3], [Some(PatchCard { id: 7, on: true }), Some(PatchCard { id: 9, on: false }), None]);
+            assert_eq!(s.auto_battle()[..3], [1, AUTO_BATTLE_PATTERN | 2, AUTO_BATTLE_EMPTY]);
         }
     }
 

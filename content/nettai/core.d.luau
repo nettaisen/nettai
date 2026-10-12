@@ -508,6 +508,8 @@ declare extern type Object with
     charge_glow: Object?
     full_synchro_aura: Object?
     -- The charge: level 0 none, 1 charging, 2 full; source 0 none, 1 A, 2 B.
+    -- The level and the source are writable (EXE4's dark soul's AI shows a
+    -- B charge as it dodges).
     charge_level: number
     charge_source: number
     charge_counter: number
@@ -654,6 +656,9 @@ declare extern type Object with
     function chips_enabled(self): boolean
     -- `sub_8010332`: the ticks a step of its ends with.
     function move_lag(self): number
+    -- `sub_801DACC(0x40)` (EXE4's 0x08015B9E(0x10)): the chip window goes, as
+    -- an attack's start from idle hides it.
+    function hide_chip_window(self): ()
     -- As a navi leaves (EXE5's 0x081042E6): its status visuals forgotten and
     -- its chips off the HUD.
     function drop_links(self): ()
@@ -799,6 +804,10 @@ declare extern type Object with
     -- The form the navi's side asked to change into at this turn's start
     -- (nil: none, or the base form).
     function form_change_target(self): FormDef?
+    -- The rules ask for its change into `form` as the fight runs (EXE4's
+    -- dark soul, 0x0800B8B0): its side's target this turn, and the request
+    -- "form_change".
+    function ask_form_change(self, form: FormDef): ()
     -- The terms of the change its side asked for: its turns, and whether it is
     -- the alternate (EXE5's Soul Unison: the soul's turns, and Chaos Unison).
     function form_change_terms(self): (number, boolean)
@@ -1542,7 +1551,7 @@ declare dimming: {
     -- `side`'s dimming runs its effect from now (the record's state 4).
     run: (side: number) -> (),
     -- A telop for `side` naming `chip` (nil: the zeroed chip's) without
-    -- damage, and its sound; a used chip's name makes way.
+    -- damage, and its sound; a used chip's name stays (AntiNavi's telop).
     chip_telop: (side: number, chip: Chip?) -> (),
     -- `side`'s telop is done.
     telop_done: (side: number) -> boolean,
@@ -2058,6 +2067,12 @@ export type RulesSpec = {
         -- A chip's use is prepared (the end of `sub_80127C0`): nil lets it
         -- be used, a chip is what the navi uses instead.
         chip_check: ((side: number, navi: Object, chip: Chip?) -> Chip?)?,
+        -- While dimmed, the navi asks to cut in on the other side's dimming
+        -- with its next chip, a dimming chip (`sub_8017AB4`), before
+        -- anything of the use is prepared: true bars it, the chip left in
+        -- the hand (EXE4's 0x08010C64, EXE5's 0x0801452E: the chips of the
+        -- other kind of MegaMan).
+        cut_in_barred: ((side: number, navi: Object, chip: Chip?) -> boolean)?,
         -- Earlier in the preparation, before the hand bonus's panel is
         -- spent (EXE5's 0x08010030: a dark chip's use and the chip's cost):
         -- as `chip_check`; a chip in the use's place skips the rest,
@@ -2101,6 +2116,10 @@ export type RulesSpec = {
         -- kind (presentation; `sub_801002C`, EXE5's 0x0800DD94); none, the
         -- framework's (EXE6's).
         navi_palette: ((side: number, navi: Object) -> number?)?,
+        -- Each tick of the navi's status routine's tail, after its status
+        -- shaders: the color shader the rules put over them (presentation;
+        -- EXE4's 0x0800BB18, the dark soul's last ticks); none, as it is.
+        navi_shader: ((side: number, navi: Object) -> number?)?,
         -- The navi takes its hit's NaviCust bug (`sub_80139F6`, EXE5's 0x0801103E: `navi.collision.inflicted_bugs`,
         -- its code and argument): the game's table writes the stat a code names (@exelib/navicust/bugs), and
         -- answers "edited" (the abilities and form flags come back), nil (nothing of the stats changed) or "spared"
@@ -2502,7 +2521,12 @@ export type FormEffect =
 --   doubles_null: its damaging Null chips deal double, outside battle mode
 --     1 (Beast Over);
 --   mood_palette: its palette, and its buster arm's, follow the mood
---     (Gregar and Falzar Beast).
+--     (Gregar and Falzar Beast);
+--   ignores_b: the B button asks for nothing (no buster, rapid presses or
+--     B+Left special) and no charge counts, under the per-button controls
+--     (EXE4's dark soul);
+--   emotions_as_base: its side's emotion is found as out of a form (EXE4's
+--     dark soul).
 export type FormTrait =
     "status_immune"
     | "erases"
@@ -2514,6 +2538,8 @@ export type FormTrait =
     | "alt_charge_time"
     | "doubles_null"
     | "mood_palette"
+    | "ignores_b"
+    | "emotions_as_base"
 -- One of MegaMan's forms (§3.2).
 export type FormDef = {
     -- Its id, its key in the game's root (`chips.cannon`): the loader's to
