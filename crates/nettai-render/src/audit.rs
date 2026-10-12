@@ -180,8 +180,9 @@ pub struct Problems {
     /// chip's icon: over its navi, in the custom screen's slots and its
     /// picked chips' column, and carried over the screen),
     /// `chip-description:KEY` (the chip's description in the chatbox) and
-    /// `chip-window-at-close` (the HUD's chip name while it shows from the
-    /// custom screen's close, before the navi's first decision). The frontend knows no console
+    /// `chip-window-at-close` (where the HUD's chip name would show from
+    /// the custom screen's close to the navi's first decision, in a game
+    /// whose close doesn't start it). The frontend knows no console
     /// that shows them otherwise: the verification's frame comparison asks
     /// for what its table says a recording's console does.
     pub marking: std::collections::BTreeSet<String>,

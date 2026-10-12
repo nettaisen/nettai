@@ -427,11 +427,14 @@ comparison counts what is drawn with them as a known difference.
   (docs/design/text-rendering.md §10).
 - The custom screen's close (`sub_8026DC4`) also starts HUD task 0x40 in JP (`sub_801E012`): the next chip's name
   shows from the close, through the turn's banner, until the fight's first decision sets the window; the US games
-  show it from that decision. The engine's `Battle::chip_hud` is the Japanese games' in every game: the close turns
-  the window on with the icons, and it stays until something hides it (a navi that takes its time to decide, in
-  the middle of a step as its screen opened or changing form as the fight starts, keeps it meanwhile). A US
-  console's recording differs until that first decision or hide (`ChipHud::from_close`, which the renderer marks
-  for the frame comparison: `chip-window-at-close`), a known difference.
+  show it from that decision. **nettai follows the US games here** (the user, 2026-10-12: the US behavior where the
+  releases' differ; it had the Japanese one from 2026-10-06): EXE6's rules state
+  `custom_screen.close_shows_chip_window = false`, so the close starts the icons alone. (EXE5's and EXE4's closes
+  start the window in both regions, and their rules say true: a navi that takes its time to decide, in the middle of
+  a step as its screen opened or changing form as the fight starts, keeps it meanwhile.) A Japanese EXE6 console's
+  recording differs from the close until that first decision or a hide: the engine keeps the span
+  (`ChipHud::from_close`), and the renderer marks where the name would be for the frame comparison
+  (`chip-window-at-close`), a known difference.
 - The HUD's graphics list (between `sub_801EC90` and `sub_801FE00`) has one transfer fewer in JP.
 
 **Text.**
