@@ -547,9 +547,12 @@ chips flying) take the same priority, 1 and 0.
   sprite past the tile cap or the slots isn't drawn (a battle's: 0x2FF and
   10; docs/design/exe4-map.md §18 item 62). `--objects` lists what each
   frame took and left out;
-- order: parts go into depth buckets (ground y + 0x40) and come out
-  deepest first, most recent first, so later and lower objects are in
-  front; at most 128 parts;
+- order: parts go into depth buckets (ground y + 0x40; in a game whose
+  rules say so, `effects.sprite_depth`, further by the sprite's priority:
+  EXE4's, whose buckets so run out two rows above the screen's bottom)
+  and come out deepest first, most recent first, so later and lower
+  objects are in front; at most 128 parts; a part past the last bucket
+  isn't drawn;
 - white flash, alpha and mosaic (sampled as mGBA does);
 - an effect the game spawns without a position (the second explosion of a
   deletion: its X and Y are memory addresses, far off the screen) isn't
