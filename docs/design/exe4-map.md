@@ -2422,7 +2422,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     players 0x1F and 9 at 0xC0 and 0x60) is the replay's shift (item 72): the original's hover runs only in the
     choosing state (0x0801E40E), so its OK at 288 stops the ramp a step short, where the engine's screen chooses on
     until the replay feeds the OK and takes that step. Verify's sound comparison counts such a step as the shift's
-    (`Compared::shifted`, the held-back frames' `Shift`).
+    (`Compared::shifted`, the held-back frames' `Shift`). The hover's sound (0x100, the role `custom_shade`) is the
+    same matter where the OK comes on the ramp's last tick: the engine's screen, still choosing, sounds it the tick
+    after its shade settles (0x0801E49C; dark/drkcanon, dark/drkcanon-taunt and chips/0x0d3-bugchain/taunt, frame 932,
+    their OK at 931), and the comparison counts that sound as the shift's too.
 76. **Done: a telop leaves the other player's used-chip name** (group A; B's, item 90; chips/0x08e-antielec/sprung:
     mGBA shows "Thunder 140" until frame 615 beside the AntiElec telop). EXE4's dimming telop starts (0x08008CF6,
     0x08008DE0) take the banner block (0x08016454) and leave the second block alone; EXE6's (`sub_800BA8A`,
