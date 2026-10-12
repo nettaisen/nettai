@@ -115,6 +115,7 @@ return merge {
     require("@self/pithoky"),
     require("@self/pitrng"),
     require("@self/pnlretrn"),
+    require("@self/poltrgst"),
     require("@self/popup"),
     require("@self/propbom"),
     require("@self/protoman"),
