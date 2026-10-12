@@ -218,6 +218,28 @@ Three more things are out of scope without a rule in the audit, since no routine
 The 3,175 unreachable routines are mostly the other 138 object kinds' (viruses, bosses, story objects) and what
 only they call.
 
+**The attack objects with no kind that the attack setup's callers list.** The attack setup (`sub_8011504`) has 21
+calls; eight are in attack objects the content has no kind for (verify's `tools/content/setup-flips.py`). Each is
+spawned by one routine, called from the places below and nowhere else: all 206 calls of `object_spawnType3` pass
+the index as an immediate, and no word of the ROM holds a spawner's address. Each falls under a rule above.
+
+| Attack object | What it is | Its spawner, and who calls it | The rule |
+|---|---|---|---|
+| 0x3D `sub_80CB900` | a shot of sheet 10-25 (thin arcs and dots, a ground shadow), animation 2 | `sub_80CBAB8`, from the virus of AI index 0x0F (`sub_810F33C`, 0x0810F370) and from attack 0x70 (`sub_80D289E`, 0x080D28EC), itself spawned only by the game-played navi of AI index 0x0F (`sub_80D2986` from `sub_80FFF84`) | the virus actor and the navi the game plays |
+| 0x51 `sub_80CE70C` | the needle of the fish virus's own sheet (04-02), animation 7 | `sub_80CE7EE`, from the virus of AI index 2 (`sub_810A4D0`, 0x0810A4F0) | the same |
+| 0x6C `sub_80D1C20` | a bee (sheet 10-31, the pack's `honey-bee`, which RskyHny's bee, attack 0x74, shares) | `sub_80D1EB8`, from the virus of AI index 0x16 (`sub_8112968`, 0x08112992) | the same |
+| 0x79 `sub_80D4440` | a totem pole (sheet 04-1F) | `sub_80D464A`, from the virus of AI index 0x1F (`sub_811677A`, 0x081167B2) | the same |
+| 0x7B `sub_80D4A28` | an eagle tomahawk (sheet 10-2A, the pack's `eagle-tomahawk`) | `sub_80D4B44`, from attack 0x79 alone (`sub_80D4674`, 0x080D468E) | the same, through 0x79 |
+| 0xA9 `sub_80DA80C` | the battle's Mystery Data (sheet 10-0C: a green crystal and "GET!") | `sub_80DA9DC`, from the actor list's entry type 2 (`sub_8007424`, `off_80073A0[2]`: one draw of RNG2 decides whether it appears) | the actor lists' entry types: the 28 lists of the 192 link settings records have types 0, 3, 8 and 9 alone |
+| 0xBA `sub_80DC5F8` | a whirlwind (sheet 10-44, the pack's `whirlwind`) | `sub_80DC6BC`, from the game-played navi of AI index 0x13 (`sub_8102BFC`, 0x08102C14) | the virus actor and the navi the game plays |
+| 0xBB `sub_80DC70C` | a shot of sheet 10-0D (the pack's `bass-anly-shot`) | `sub_80DC986`, from the same navi (`sub_8102F38`, 0x08102F4E and 0x08102F56) and from `sub_80DC99C`, which nothing calls | the same |
+
+What decides the rule: T1 kind 0's dispatch on `AIData.ActorType` (`sub_80B81EC`: 0 the virus `sub_8108F50`, whose
+rows are `off_8109050[AIIndex]`; 1 the navi the game plays `sub_80F2330`, rows `off_80F23AC[AIIndex]`; 2 the
+player). A link battle's actors come from its actor list alone, whose type 0 entries are players
+(`sub_800753C` writes ActorType 2); the generic actor spawn (`sub_80076A0`) is called only from battle mode 1's
+code (`sub_802AEEA`, under `sub_800961C`).
+
 ## 6. The other direction: is a ported routine's port complete?
 
 ### 6.1 Ported routines no recording runs
