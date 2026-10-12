@@ -2231,11 +2231,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     screen takes the soul as it opens (0x0801DC82: its +0x0F), whatever put the navi in it. The compile check
     (exe4-compat's `compiled`) reads the soul's byte too. The lab's modcards/121, 123 to 129, 131 and 132 and
     overlay/aqua/fs-* and overlay/proto/fs-* (cards 131 and 127 with Full Synchro, 45) replay every frame; their
-    fights are pixel-exact but for the custom screens' known shift. **Open, group A's (item 74):** what the custom
+    fights are pixel-exact but for the custom screens' known shift (128's but for its chip label, below). **Open,
+    group A's (item 74):** what the custom
     screen does in a soul, every screen opened in it, not the change's status reset alone: the hand it builds
     (0x0801F29A: GutsSoul's 30, WindSoul's and NumberSoul's 10 on each slot; 0x0801F226: WoodSoul's fold), on which
     modcards/122-guts-soul (the Cannon of its first hand, 70 for our 40), modcards/123-wind-soul-chip,
-    modcards/132-wood-soul-fold and souls/guts/turn2 wait; JunkSoul's used chips offered again (0x0801DFBC: two
+    modcards/132-wood-soul-fold and souls/guts/turn2 wait, and modcards/128-number-soul's frames (its chip label
+    reads "Cannon 40+10", ours "Cannon 40": 360 fight frames; the Cannon takes no HP, so its replay matches);
+    JunkSoul's used chips offered again (0x0801DFBC: two
     draws of the console's RNG1), on which modcards/130-junk-soul waits (every frame matches, the console's RNG1
     apart from frame 984, its second screen); and SearchSoul's SHUFFLE button, drawn 16 frames late as a screen
     opens (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
