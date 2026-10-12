@@ -1798,6 +1798,13 @@ pub struct Rules {
     /// EXE5's `sub_801056A` runs its first step at once; EXE4's 0x0800C780,
     /// a stance's catch and a trap's alike, sets its action alone.
     pub trap_counter: StanceCounter,
+    /// The idle's entry starts a trap's counter before the navi's own idle
+    /// runs (the reactions section's): EXE6's (`sub_80EA734`) and EXE5's
+    /// (0x080EAFEA). EXE4's entry (0x080EB0D6) starts one for a navi in
+    /// auto battle alone (NaviStats +0x26 = 1, a story's navi: no
+    /// netbattle's); its idle starts it in its turn (0x080EEBD0), after the
+    /// phase's timer, the chip window and a revert asked for.
+    pub idle_entry_counter: bool,
     /// What a deleted player's object does (the reactions section's).
     pub dead_player: DeadPlayer,
     /// What an attack's end hands its lockout on to (the reactions
