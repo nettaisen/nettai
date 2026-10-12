@@ -1221,7 +1221,8 @@ Special cases:
 **Quirk.** The r4 value entering `sub_80127C0` from `sub_8017AB4` selects hand vs slot-in (§2.6.4). On this path r4
 is always AIIndex*4 (set in `sub_80EA484`, preserved through `sub_801AF44`), so the cut-in always reads the hand.
 `sub_80127C0`'s side effects all still happen (the Full Synchro / anger doubling with sound 0x87, the use counter,
-heal-on-use, side stat 6 for navi chips, dark-chip costs); it writes every field the spawners read (+2 element, +3
+heal-on-use, side stat 6 for navi chips, dark-chip costs; the engine keeps no side stat 6, which no game reads in a
+netbattle: docs/design/exe5-map.md §6.1); it writes every field the spawners read (+2 element, +3
 subtype, +6 bonus, +8 damage, +0xA hit param, +0xC params, +0x14 chip). An action other than 0x15 or 0x1B registers
 nothing and doesn't advance the hand. `loc_800BF30` doesn't check for a registered controller, and a failed spawn
 registers none. `sub_800B8EE(side)`: effect #0 look 0x1E at panel ((side^1)*3+2, 4), z 0x78 px, sound 0xA5.
@@ -2489,11 +2490,16 @@ pointer and the write does nothing. Its destroy (`sub_80EA10A`) stores 0 through
 (clearing the controller's flag; 0 or ROM otherwise). The controller neither warps the user out nor back in for
 navi 0x17 (§3.6.7). With Param1 1 the hook's flames (attack #0xCA, chips/flmhook/fire) swing from columns 4
 then 5 (side 1: 3 then 2), their kind (Param2) 1 (faster, the other palette and shader, running while dimmed) and
-hit spark (Param3) 0xA.
+hit spark (Param3) 0xA. A flame faces its object's way: its init (`sub_80DE818`) sets it up with the attack setup
+(`sub_8011504`), whose last step sets the sprite's flip to the object's (`object_getFlip`: its side, turned if it
+faces the other way), so a side 1 user's flames are drawn turned around. EXE5's flame (0x080DF9F8) goes through the
+same setup (0x0800F1A0) and sets no palette.
 
 Lab: the official chips/0x12e-bighook scenarios (beast-charged and counter-cut-in among them), the long scenarios
 chips/0x12e-bighook/long, long-miss, long-adjacent, and FlmHook's pa/0x146..0x148 reach the hook; every one matches.
-**Unverified**: a failed spawn.
+A side 1 user's, and each console's picture of both sides': chips/0x12e-bighook/side1 and side1-own-console (the
+falzar-gregar base's Gregar console), pa/0x146..0x148/side1, side1-own-console and recipe1-side1-console; EXE5's
+chips/0x134-bighook/side1, side1-own-console and hit-colonel-console. **Unverified**: a failed spawn.
 
 #### 3.6.36 Darkness (navi chip subtype 24, PA chip 0x159, T1 0x25)
 

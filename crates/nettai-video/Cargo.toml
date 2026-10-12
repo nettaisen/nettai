@@ -1,0 +1,20 @@
+[package]
+name = "nettai-video"
+version = "0.1.0"
+edition.workspace = true
+license.workspace = true
+description = "A replay as video: a NUT stream of raw frames and PCM sound on any writer, and ffmpeg run as a child to make an MP4 of one. No encoder and no ffmpeg library is linked"
+
+[dependencies]
+# The replay's viewer: the picture and the sound of each tick.
+nettai-frontend = { path = "../nettai-frontend" }
+# The frame's size.
+nettai-render = { path = "../nettai-render" }
+# The sound's sample rate (no audio device).
+nettai-audio = { path = "../nettai-audio", default-features = false }
+
+[dev-dependencies]
+# A short recorded set, graphics without a pack and a sound of every cue.
+nettai-frontend = { path = "../nettai-frontend", features = ["testing"] }
+nettai-match = { path = "../nettai-match", features = ["testing"] }
+nettai-battle = { path = "../nettai-battle" }

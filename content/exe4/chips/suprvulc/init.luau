@@ -31,6 +31,7 @@ local suprvulc: Chip = {
     hit_param = 3,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "behind_target" },
 }
 
 return { suprvulc = suprvulc }

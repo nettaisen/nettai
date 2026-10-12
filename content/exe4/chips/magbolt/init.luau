@@ -30,6 +30,7 @@ local magbolt1: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local magbolt2: Chip = {
@@ -44,6 +45,7 @@ local magbolt2: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local magbolt3: Chip = {
@@ -58,6 +60,7 @@ local magbolt3: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { magbolt1 = magbolt1, magbolt2 = magbolt2, magbolt3 = magbolt3 }

@@ -29,6 +29,7 @@ local ftrsword: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_reach", range = "three_in_row" },
 }
 
 return { ftrsword = ftrsword }

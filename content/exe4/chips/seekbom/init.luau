@@ -29,6 +29,7 @@ local seekbom1: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "at_once" },
 }
 
 local seekbom2: Chip = {
@@ -43,6 +44,7 @@ local seekbom2: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "at_once" },
 }
 
 local seekbom3: Chip = {
@@ -57,6 +59,7 @@ local seekbom3: Chip = {
     hit_param = 20,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "at_once" },
 }
 
 return { seekbom1 = seekbom1, seekbom2 = seekbom2, seekbom3 = seekbom3 }

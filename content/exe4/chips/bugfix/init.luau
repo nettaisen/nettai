@@ -66,6 +66,7 @@ local chip: Chip = {
     flags = { "dimming", "library" },
     dimming = CONTROLLER.spawn,
     megaman = "light",
+    auto_battle = { class = "when_bugged" },
 }
 
 return { bugfix = chip }

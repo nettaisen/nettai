@@ -33,6 +33,7 @@ local drkspred: Chip = {
     lockout = 0,
     flags = { "has_damage", "dark" },
     action = spreader.action { id = "drkspred/action", gun = GUN, delay = 1, z = 0x10, shot = BURST },
+    auto_battle = { class = "behind_target" },
 }
 
 return { drkspred = drkspred }

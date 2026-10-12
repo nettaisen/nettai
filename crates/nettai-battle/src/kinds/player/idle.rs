@@ -79,6 +79,7 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     // Its console's chip window follows `sub_800A772`: shown on its own
     // console, hidden as the game hides it (`hide_chip_window`).
     let side = b.objects.get(r).alliance as usize & 1;
+    b.chip_hud[side].from_close = false;
     if super::input::chips_enabled(b, r) {
         b.chip_hud[side].window = true;
     } else {
@@ -271,11 +272,17 @@ fn leave_idle(b: &mut Battle, r: ObjectRef) {
 /// (`window_hides_every_console`: EXE4's, which checks no side).
 pub(crate) fn hide_chip_window(b: &mut Battle, side: usize) {
     if b.game_rules().chip_use.window_hides_every_console {
-        for hud in &mut b.chip_hud {
-            hud.window = false;
-        }
+        hide_every_chip_window(b);
     } else {
-        b.chip_hud[side & 1].window = false;
+        (b.chip_hud[side & 1].window, b.chip_hud[side & 1].from_close) = (false, false);
+    }
+}
+
+/// `sub_801DACC(0x40)` with no check of the side: every console's chip
+/// window goes.
+pub(crate) fn hide_every_chip_window(b: &mut Battle) {
+    for hud in &mut b.chip_hud {
+        (hud.window, hud.from_close) = (false, false);
     }
 }
 
