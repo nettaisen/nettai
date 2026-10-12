@@ -220,6 +220,15 @@ actor list spawns first (for example entries 0 and 1), which decides object slot
 must use the same entry. The content is shared setup too: `RoundSetup::content` is the hash (`Content::hash`) of
 the content the round runs on, so peers whose setups agree run the same data.
 
+So are the keys the round's host answers in the battle's place (`RoundSetup::host_keys`: the pause, and L's run
+key on the custom screen; docs/engine/battle-flow.md §3.5). They change what a tick does with a button, so they
+are setup, not something a host switches as it plays: every match is made with both
+(`nettai_match::HOST_KEYS`, in `Match::round`), nothing in the lobby sets them, and two peers that differed would
+differ from the first digest (the setup is in it). What a host is told of a START (`Battle::pause_requests`) is
+the tick's output, as its sound is: a netplay driver says the local player's alone, from the first simulation of
+each tick (their own buttons are never predicted; whether the fight took the press there is the prediction's, as
+the picture is), and never again when a rollback simulates the tick anew.
+
 ### 2.3 Each per-console detail
 
 | Where | What depends on the side | Decision | Status |
