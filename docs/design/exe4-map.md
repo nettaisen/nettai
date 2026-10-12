@@ -2260,10 +2260,12 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      invisibility (0x2C05FF80: row 0x2C at navis), running while dimmed (0x080CD81E) *done* (souls/search/reveal);
      its scope charged (0x0A, 0x0800CDC4; action 0x3E, 0x080EDB5C: 0x0800FB3C's find, five shots, the first through
      invisibility, row 0x19, the rest row 0x0A, the last flinching) *done* (souls/search/scope, unison, side1).
-     Presentation, open: in souls/search/side1 (frames 491 to 498) mGBA draws the opponent's HP number in front of
-     the spiraling image, the engine behind it; the RAM's sprite list (0x03002000 at that tick) has the image's parts
-     (80 to 84) at priority 0 before the number's 32x16 (85, priority 1), which mGBA's rule (priority, then index)
-     would put behind the image: what the hardware takes is to find.
+     Presentation, closed: in souls/search/side1 (frames 491 to 498) mGBA draws the opponent's HP number in front
+     of parts of the spiraling image (priority 0 over the number's 1). It is the hardware's sprite priority quirk,
+     which mGBA draws: a sprite part's transparent pixel over an earlier sprite's pixel of a lower priority hands that
+     pixel its own priority, so the image's later parts, of the same priority, don't cover it (the compositor's now:
+     nettai-render's compose). The frames match (souls/search, thunder and junk side1; junk/poltergeist-rocks, the
+     image over a stage's rock).
    - **FireSoul (5).** Fire (0x0800C964) *done* (souls/fire/weakness: aqua on it, the weakness mark at its status
      mark, 0x080133E8); its overlay 0x10 (10-00: forms/soul's `overlay`) and image part 0x12 (10-08) *done*
      (souls/fire/hit, unison); the status reset's panels (0x0800E11C: effect 0x12 in mode 3, 0x080E3552: the middle
@@ -2278,8 +2280,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      *done* (souls/thunder/paralyze); the zap ring charged (0x58, 0x0800D298: 20, elec, hit 0x8A; the ring throw,
      action 0x47, lib/rings, and the ring, attack 0x6D, objects/ring, its row 0: held as 0c-36, the ring 0c-37,
      paralyzing 90 ticks; SandRing's and weapon routine 0x04's the same throw and ring) *done*
-     (souls/thunder/unison, side1). The image against the HP number (SearchSoul's below) shows in
-     souls/thunder/side1 too, frames 494 to 532, ThunderMan's blinking image.
+     (souls/thunder/unison, side1). (The image against the HP number, SearchSoul's above, showed in
+     souls/thunder/side1 too, frames 494 to 532: closed with it.)
    - **ProtoSoul (7).** The status reset's B+Left special 0x6A (0x0800E12C, 0x0800D3C0: the guard, action 0x25, as
      Reflect's, 50 damage, cooldown 40; a soul's weapon load leaves AIData +0x00, the rule
      `status.form_keeps_back_special`) *done* (souls/proto/special); a sword chip that isn't a dimming chip charges on
@@ -2303,8 +2305,19 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      0x14, 0x080EC0A4: a breaking hit on the panel ahead, hit modifier 0x23, and on a solid panel a burst, effect row 6,
      a shake and sound 0xA2) *done* (souls/metal/fist; fist-broken, the panel ahead broken: the hit alone). Its status
      reset runs nothing of its own (0x0800E0A0's row 9).
-   - **JunkSoul (10).** No shadow (0x0801079C and the look copies) *open*; the status reset's hitbox on his panel
-     (0x0800E146: params 0x1705FF85 or 0x1705FF84 by side, 0x2100) *open*; charged 0x61 (0x0800CE4C) *open*.
+   - **JunkSoul (10).** The status reset's hit on the other side's navi (0x0800E146: attack 3 through 0x080CD81E,
+     which runs while dimmed; its parameters by side 0x1705FF85 or 0x1705FF84: the other side's player navi's panels,
+     no spark, at navis, row 0x17; no damage; its r7 0x2100: status 0x21, 720 ticks of confusion) *done*
+     (souls/junk/confuse: side 1's presses turned round); its change's screen flash (0x080EBB50, with the image's
+     second flash: the palette flash, effect 0x0A, 40 ticks through the dimming, under the change's fade to black: the
+     renderer's flash before the fades now takes the transformation's fade too) *done* (souls/junk/hit, unison);
+     Poltrgst charged (0x61, 0x0800CE4C: chip 0x17D's attack, 100, hit 0x94, and its use, the dimming chips' action
+     0x0C, variant 0x41: EXE5's Poltrgst's controller, effect 0x72 at 0x080EA05C, and stand-in, actor 0x58 at
+     0x080CC624, before EXE5, @exelib/poltrgst: only MegaMan's stand-in, in his soul's sprite and animation 10; the
+     poltergeist, effect 0x73, objects/poltergeist, at random targets) *done* (souls/junk/poltergeist: a RockCube
+     thrown; poltergeist-rocks: the stage's two rocks, attack 0x6E, thrown; unison, side1: none to take, done at once).
+     (It has no shadow of its own to lose: 0x0801079C and the look copies test the navi's number, NaviStats +0x23,
+     against 10, a navi of the story's, not the soul.)
    - **AquaSoul (11).** Aqua (0x0800C964) *done* (souls/aqua/weakness: Thunder1's elec on it); its image part 0x13
      (10-0c) *done* (souls/aqua/hit, unison); an aqua chip that isn't a dimming chip (every one deals damage) charges
      on A (0x15: 20 ticks a level, 60 the last) and doubles charged (0x0800C47A) *done* (souls/aqua/chip, a Bubbler);
