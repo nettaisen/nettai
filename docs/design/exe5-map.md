@@ -371,7 +371,7 @@ reach_exe5.py); a few chips hit nobody standing anywhere, and their code says wh
   panel's alliance); only then it strikes. So it needs the opponent standing on a panel of the user's area (the lab's
   user takes the opponent's panel with a PanlGrab).
   The idle names no Slasher on the other console at its use (0x080F04A4 tests chip 0x38); its slash does
-  (0x080ED41E): the chip's trait `no_name_at_use`, and the action's `battle.show_used_chip` (EXE4's item 66).
+  (0x080ED41E): the chip's trait `not_named_on_use`, and the action's `battle.show_used_chip` (EXE4's item 66).
 - The others need what their kind does (recorded, not read): the time bombs' countdown, BoyBomb's bomb hit by its user's buster, the
   guards' reflection, Snake from holes in the user's area, Mine waiting for a step, the Anti traps (sprung by the
   opponent's chip of their element when it is used; a thrown BlkBomb doesn't spring AntiFire, a FireHit does),

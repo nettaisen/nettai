@@ -441,7 +441,7 @@ every sound call; with exe4-compat's harness comparing the gauge as the recordin
   chips/recov/recov 0x1D (@exelib/recov/heal), chips/lance/lance (@exelib/lance) on lib/spawners 0x20 (EXE4's own,
   emap: absent; lib/plus its variant 4), and the dimming action 0x0C with DrkStage's controller, effect #0x6A, and
   the panel changer, effect #0x1F (@exelib/panel_changer). The records are tools/exe4/gen_content.py's. DrkStage
-  is EXE4's first dimming chip: its telop runs on the banner with no banner of its own (item 71).
+  is EXE4's first dimming chip: its telop has no banner of its own (item 71).
 
 Checked: the lab's dark/offer, hover-long, hover-hide, hover-describe, hover-then-ok-fast, with-folder-chip, side1,
 bluemoon, drksword, darkbomb, drkvulcn, drkspred, drkstage, drkcanon and drkcanon-taunt match every frame; drklance
@@ -777,7 +777,7 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
   an enemy navi on its side's area, then slashes that column (the region word 0x0705FF04, 16 pixels up), naming
   Slasher to the other player again as it slashes (0x080164B4: `battle.show_used_chip`, new); no invulnerability, no
   stun strike. The idle names no Slasher to the other player at its use (0x080EECF6 tests chip 0x38 before
-  0x080164B4): the chip's trait `no_name_at_use` (§18 item 66). chips/0x038-slasher/side1 compares every frame.
+  0x080164B4): the chip's trait `not_named_on_use` (§18 item 71). chips/0x038-slasher/side1 compares every frame.
 - **CustSwrd and Muramasa** (the swords' variants 7 and 8, `chips/custswrd`, `chips/muramasa`): their slashes by the
   variants' rows (region 0x11 and region 2, effect rows 0x41 and 0x4A), their damage formulas 45 (the gauge's, a full
   gauge giving 0 where EXE6's and EXE5's give 10: the formula's `full`) and 46 (the HP lost, at most 999). The lab's
@@ -1431,8 +1431,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   `element_sprite`, `cursor_palette`, `window_emblem`, a button's `place`): the emblem over the picked column is the
   window's own orb (0x08020028: four frames of 2x3 on the map at column 12, row 0, turned by the steps of 0x08020078
   as a chip is picked), no navi's; the UNITE button (`soul`) is drawn at its own place (0x0801FF14: 3x2 at column
-  11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) over
-  slots 8 and 9 (0x08709E00, three states). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
+  11, row 17, from tile 0x52), gray when unavailable, the window's fill without a button; SHUFFLE (`redeal`) is
+  drawn at its own place too, over slots 8 and 9 (0x0801DD34: 4x3 at column 7, row 16, from slot 8's first tile,
+  0x10E; 0x08709E00's three looks, in the pack's order of a button's sets: as it is, with no shuffle left,
+  shuffling), with its uses in the chip window (0x0801FEA2: `uses_digit`). The Regular chip's frame is at (1, 100)
+  (0x0801EF28: the layout's `regular`; EXE6's and EXE5's (2, 100)) and under the cursor (the choosing queues it
+  before the state's own sprites, 0x0801E3FC: the renderer by `states_in_choosing`); a chip the screen refuses as
+  the invalid chip (a code it hasn't) is drawn in its slot as it is (0x0801F6D6), the chip window showing the
+  invalid chip for it (custom/regular's AirShot B). The Japanese ROMs' OK pictures, SHUFFLE's picture and the UNITE
   button's tiles are the pack's Japanese lettering. Also the layout's `detail_blank` (a blank code or damage cell is
   solid 7, 0x08020E5C: 0x0801FD08, 0x0801FE2A) and `empty_palette` (the empty icon in palette 9: the slots' patches'
   own, which 0x0801FB00 leaves on an empty slot and sets on a picked one; 0x0801FB6E sets it on the picked column's
@@ -2323,9 +2329,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     opened in it, is the soul's (item 74, "the custom screen's soul"): the hand it builds (0x0801F29A, 0x0801F226)
     *done* (modcards/122-guts-soul, the Cannon of its first hand 70; 123-wind-soul-chip, 128-number-soul, the
     label's "+10"; 132-wood-soul-fold; souls/guts/turn2: every frame, pixel-exact but for the known shift).
-    **Open, group A's (item 74):** JunkSoul's used chips offered again (0x0801DFBC), on which modcards/130-junk-soul
-    waits (every frame matches, the console's RNG1 apart from frame 984, its second screen); and SearchSoul's
-    SHUFFLE button, not on our screen (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
+    JunkSoul's chips offered again (0x0801DFBC: modcards/130-junk-soul's RNG1 from its second screen) and SearchSoul's
+    SHUFFLE button (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too) *done* too (item 74).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
@@ -2465,26 +2470,73 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     chips, one no chip has for DrkLine). The engine starts no cut-in there and the chip stays. Porting it needs each
     dark dimming chip to state that parameter, or FireMan's controller to read it some other way: a decision. The
     lab lists megaman/cut-in-475-dark and doesn't record it.
-66. **Done: Slasher isn't named at its use** (group B, from the same routine). The idle's part after a chip's use
-    (0x080EECA2 on) names the chip on the other console (0x080164B4) unless it is a dimming chip, chip 0, or chip
-    0x38, Slasher (0x080EECF6): Slasher's own action names it as it slashes. EXE5's idle has the same test
-    (0x080F04A4, with its invalid chip's) and its Slasher the same call (0x080ED41E), which EXE5's content lacked:
-    it named Slasher at the use and never at the slash. The chip trait `no_name_at_use` on both Slashers, and EXE5's
-    action names it at the slash. EXE4's chips/0x038-slasher/side1 (it differed at frames 384 to 415), grabbed and
-    hit, and EXE5's side1 (it differed at 431 to 489) and hit compare every frame.
-
+66. **Done: EXE5's Slasher isn't named at its use either** (group B, from item 65's routine; EXE4's own is item
+    71's, found the same day: the trait `not_named_on_use`). EXE5's idle has the same test of chip 0x38 before it
+    names a used chip (0x080F04A4, beside its invalid chip's) and its Slasher the same call as it slashes
+    (0x080ED41E). EXE5's content had neither: it named Slasher at the use and never at the slash. Its Slasher has
+    the trait now and its action names it at the slash. EXE5's chips/0x038-slasher/side1 (it differed at frames 431
+    to 489) and hit compare every frame; EXE4's side1, grabbed and hit too.
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
     the lab's souls/fire, number and guts/gigacan (three afterimages, three, two) replay every frame and are
     pixel-exact in the fight.
-71. **The telops' two blocks.** EXE4 lays the user's telop on the banner block (0x08016454, HUD task 0x100) and the
-    other player's on the second block (0x080164B4, task 0x8000), each in the banners' steps; the engine runs both on
-    its one banner, with no banner of their own (the roles leave `telop` and `telop_remote` unfilled; the HUD draws
-    the telop in its own look), which is the same while no other banner shows.
-    What differs: a banner on the banner block and the other player's telop at once, and a telop that starts while
-    one shows (0x08016454 restarts it; the engine's start fails). exe4-compat compares a telop by its own task bit.
-    The telop plays no sound (the role `sounds.telop` is optional).
+71. **Done: the telops' two blocks** (group F). EXE4's telop is no banner (the roles leave `telop` and `telop_remote`
+    unfilled; 0x0801650C lays the chip's name on a block, in the banners' steps, and the HUD draws it in its own
+    look). The rules' `effects.telops` says how a game's telops share the HUD with its banners: `"banners"` (EXE6's
+    `sub_801E792` with banners 0x4C and 0x50, EXE5's 0x0801B02E: a telop is a banner of the one block; none starts
+    while a banner or a telop shows, and its controller waits for whatever shows there, `sub_801E754`) or `"apart"`
+    (EXE4's):
+    - **the console's own player's telop** lays on the banner block under a task of its own (0x08016454, the HUD's
+      task 0x100): not while a banner or the judge's tallies show (0x0801627C: tasks 0x20 and 0x200), and in the place
+      of a telop that does. Its controller waits for it alone (0x08016440): it goes on at once where the telop
+      didn't start. No banner starts while it shows (0x0801617E reads 0x0801627C too), and the flow's wait for a
+      banner doesn't see it (0x08016148 reads task 0x20 alone: `Battle::banner_status`);
+    - **the other player's telop** lays on the second block (0x080164B4, task 0x8000; `Battle::remote_telop`), beside
+      whatever the banner block shows, in the place of what the second block shows: a telop, or the name of the chip
+      that player just used (0x080164B4's state 3, `Battle::used_chips`), which takes a telop's place the same way.
+      Its controller waits for the second block (0x080164A4), a telop or a name.
+    The engine's `dimming::show` and `shows`; `dimming.telop_done(side)` takes the side whose telop it waits for
+    (AntiNavi's: 0x08009006 waits on the trap's side's block). `Battle::telops_for` gives a console its two (each
+    console lays its own player's on the banner block; the simulation is its local side's console's). The digest
+    hashes that a block shows a telop and how long each used chip's name still shows (a controller waits on them).
+    AntiNavi's telop (0x08008FD4) ends no used chip's name (`dimming::chip_telop` by `used_chips_end_early`).
+    exe4-compat compares the three tasks on every frame: the banner's (0x20), the console's own telop's (0x100) and
+    the second block's (0x8000: over the whole lab the engine's used chips' names and the other player's telops match
+    it, once Slasher was fixed: below). The telop plays no sound (the role `sounds.telop` is optional).
+    **What reaches the differences** (the lab's telops/, 9 recordings, all matched):
+    - a telop in the place of the other player's used chip's name (`after-used-chip`: Repair, a one-frame action
+      with no lockout, then ColdMan two frames later), and the name beside the console's own telop
+      (`beside-used-chip`);
+    - a banner and a telop at once takes a dimming chip used on the last tick before TIME UP (a tick earlier the
+      dimming holds the timer; a tick later the navis take no keys): the judge's banner comes 63 ticks after TIME UP,
+      4 ticks before the telop is gone. `time-up`: under the console's own telop the judge's banner doesn't start (no
+      "HIT DAMAGE JUDGE" on that console; the judge's timers run all the same). `time-up-side1`: beside the other
+      player's telop it does (frame 9892 was the engine's first difference before: banner ours 0 theirs 1).
+      `time-up-doubled-side1`: the same with the telop's "×2" (Full Synchro). `time-up-both`: both sides' chips on
+      that tick: side 1's runs first, side 0's navi standing in its chip's first tick until that dimming ends; then
+      side 0's telop doesn't start under the judge's banner and its controller spends one tick on its name.
+      `time-up-both-bluemoon`, the same battle on side 1's console: no banner
+      started there, side 0's telop shows on the second block and its controller waits 48 ticks: the original's two
+      consoles run the chip's effect 48 ticks apart (after the battle is decided). `time-up-anti-navi`: AntiNavi's
+      telop on the second block, the judge's banner starting beside it (36 ticks together), then the turned chip's
+      telop starting on the second block while the banner holds; `time-up-anti-navi-side1`: both the console's own, no
+      banner.
+    Frame comparisons: `after-used-chip` 457 of 457 fight frames and `beside-used-chip` 459 of 459 pixel-exact; of
+    the seven long ones the frames around the telops and the judge (trace frames 9800 to 10120, or 9960 to 10270
+    with AntiNavi; 2217 frames) all pixel-exact but one frame of `time-up-doubled-side1` (9973: a piece of the
+    broken ice cube, effect #0x38, flying off the bottom of the screen with its ground at row 159 is drawn by the
+    frontend and not by the original; the next frame, at 162, by neither: **open**, the renderer's, none of the
+    telops').
+    **Found by the second block's check:** the idle's naming of a used chip leaves chip 0x38, Slasher, out
+    (0x080EECF6): its slash names it (0x080ED642). The chip's trait `not_named_on_use`
+    (chips/0x038-slasher/side1: the engine named it at its use too).
+    **Unreached, ported from the code** (the engine crate's tests): a telop in the place of the console's own telop
+    (the dimming's protocol shows one side's telop at a time: a cut-in's telop waits for the first one's end), a
+    used chip's name in the place of its player's telop (a navi uses no chip while its side's telop shows), and the
+    flow waiting on a banner while the console's own telop shows.
+    **Not EXE4's, noted:** EXE6's AntiNavi telop (`sub_800BE2C`) has no call that ends the used chips' names
+    (`sub_801BED6(0x10000)`), where the engine's `chip_telop` ends them (kept for EXE6 and EXE5 as it was).
 72. **The selection's end under the harness.** The custom HP drain (0x0800C194) counts while value 1 of the side's
     status is set, which OK clears (0x08020652); exe4-compat feeds the OK `link_delay` frames late (§17), so the
     engine's selection runs 4 ticks longer than the original's and a drain can land in them (dark/drkrecov at frame
@@ -2534,12 +2586,44 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      and marks, +24 and +60, stay, so a chip that moved up has the bonus of the slot before; `battle.fold_hand_chip`
      with `whole` false) and each slot's bonus stored into the hand's +0x26 (0x0801F1E2: 0x0801F29A, soul 8's 10 on a
      damaging Null chip, soul 2's 30 on a damaging Null or Break chip, soul 3's 10 on a damaging Wind chip) *done*:
-     each form's `hand`, applied as the hand is installed (rules/souls/custom's `installed`; souls/guts/turn2, F's;
-     souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left behind). JunkSoul's
-     recycling as its screen opens (0x0801DD0C: 0x0801DFBC, up to two of the chips used this battle dealt again)
-     *open*; SearchSoul's SHUFFLE button over slots 8 and 9 (0x0801DD18: three shuffles a screen, the selection's
-     state 0x14, 0x08020998) *open*: it isn't on our screen (souls/search/turns frames 1108 to 1120). Neither while
-     the screen deals dark chips (0x0801DD02: 0x0801DE90's 1).
+     each form's `custom.built`, applied as the hand is installed (rules/souls/custom's `installed`;
+     souls/guts/turn2, F's; souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left
+     behind). As the screen deals (0x0801DD0C), JunkSoul's chips offered again and SearchSoul's SHUFFLE, below
+     *done*. A soul's part of the screen is its form's `custom` (a `SoulCustom`, types.d.luau: its deal, its
+     buttons and windows, the state fields it keeps, what OK and the hand's build do), which rules/souls gathers.
+     The screen skips the deal's part while it deals dark chips (0x0801DD08: 0x0801DE90's 1), which no netbattle's
+     screen does in a soul: the emotion it reads there is the soul's (0x0800F4BA: 4, not the dark MegaMan's 5), so a
+     dark MegaMan in a soul (a soul card's) is dealt none (souls/junk/recycle-dark, souls/search/shuffle-dark).
+     - **JunkSoul's** (0x0801DFBC): two of the chips sent this battle offered again in slots 8 and 9, in their codes
+       (the screen's +0x30 and +0x32, flagged 0x11: 0x0801EF68 reads the list). The list (0x0203DB70, its count
+       0x020364A8; 0x0801910C empties it at the battle's start) is each console's own, of the folder's chips of every
+       hand installed, side 0's then side 1's (0x08008916 through 0x08007E92: the hand block's +0x32, which OK
+       writes, 0x0801F10A: the picks but the chips from outside the folder and a soul's chip, before the Atk+ and
+       Program Advance folds); rules/sent_chips. The screen shuffles it (0x08000B4A: 64 swaps by RNG1), counts its
+       chips by class and draws a class for each offer (0x0801E040: RNG1's low three bits into 0x0801E0A4, or at half
+       the HP or less 0x0801E0AC; a class with none gives way to the one below, the standard to the Giga), the first
+       chip of the class in the list (0x0801E064; one chip listed is offered alone, none nothing: no shuffle, no
+       draw). A chip picked there, or given up for a soul, leaves the list at OK (0x0801EFBA, 0x0801EFE8) and isn't
+       listed again. (The count wraps at 64, 0x08007EC2: two folders of 30 never reach it.) *done*
+       (forms/junksoul/recycle; souls/junk/recycle, -one, -theirs, -mega, -keep, -soul, -hurt, -side1, -dark and
+       modcards/130-junk-soul: every frame and the console's RNG1; the frames pixel-exact but for the known shift and
+       Blue Moon's breath chip icons. A side's console's RNG1 is only followed from that console's recording:
+       recycle-side1 is side 1's.)
+     - **SearchSoul's** SHUFFLE (0x0801DD18): a button over slots 8 and 9 (their flags 9; 4x3 cells at column 7, row
+       16, from slot 8's first tile, three looks by the screen's +0x13), three shuffles a screen (+0x1A, the digit
+       the chip window shows, 0x0801FEA2, drawn with the window). A (0x08020370) takes a shuffle, makes the deal
+       (0x0802019E: the hand's chips not picked and the folder's after the hand; with any after the hand, the hand's
+       shuffled among themselves, then all but the first few, the table 0x08020294 by the hand's count, and then, or
+       with the hand alone, the hand's again) and starts the selection's state 0x14 (0x08020998): 17 ticks, each
+       fourth sounding 0x123 and drawing the slots, the first four with the chips not picked shuffled where they are
+       (0x080200F4: 30 swaps), the fifth landing the deal (0x08020232). The picked chips and the waiting Regular
+       chip (0x080202A4) stay where they are; with none left A is refused (0x08020384); R reads nothing on it; LEFT
+       leaves it as slot 8 and RIGHT goes to OK (the engine's two-cell button under the list model). EXE5's Shuffle,
+       the framework's re-deal, is this routine's later form; EXE4's is its own, in Luau (forms/searchsoul/shuffle)
+       on the screen's reads (`custom.slot`, `custom.picks`, `custom.folder`, `custom.set_folder`,
+       `custom.button_uses`). *done* (souls/search/shuffle, -thrice, -picked, -regular, -keys, -dark, -out: the
+       folder run out, the hand alone and nothing left; every frame, the console's RNG1, the frames pixel-exact but
+       for the known shift).
    - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
      that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
      (souls/roll/heal).
@@ -2776,13 +2860,16 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     player's used chip shows (a deletion, a flag's break) turns its first two glyphs into the banner's glyphs 16 to
     19's bottom halves and its colors into the banner's (stages/lava-middle-close/flag-break-bluemoon, frames 3241 to
     3250); a pause turns its colors (flag-pause). The pack's `layout.telop.tiles`; the renderer follows the loads
-    (`hud::SharedLoads`) and makes the glyphs up (`hud::shared_glyphs`), the other way round too (a telop that
-    starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). A doubled chip's
-    "×2" is one 16x16 sprite at 0x380 for either place (0x08015522 adds no 36: emotions/counter-side1 shows the other
-    player's "Cannon 40×2"), so a banner's load turns it into the tops of the banner's glyphs 16 to 19, the '×' the
-    left column: stages/lava-middle-close/flag-break-synchro-bluemoon (a counter hit on the last turn, then the flag
-    broken by the doubled Cannon) compares it, frames 3793 to 3802. (A navi's deletion banner starts after the name
-    has run out; a flag's break is the case that shows it.)
+    (`hud::SharedLoads`) and makes the glyphs up (`hud::shared_glyphs`), the other way round too: a telop that
+    starts while a banner shows, the turned chip's telop under the judge's banner (telops/time-up-anti-navi, frames
+    10074 to 10121: pixel-exact; item 71). A doubled chip's "×2" is one 16x16 sprite at 0x380 for either place
+    (0x08015522 adds no 36: emotions/counter-side1 shows the other player's "Cannon 40×2"), so a banner's load turns
+    it into the tops of the banner's glyphs 16 to 19, the '×' the left column:
+    stages/lava-middle-close/flag-break-synchro-bluemoon (a counter hit on the last turn, then the flag broken by the
+    doubled Cannon) compares it, frames 3793 to 3802, and so does the judge's banner starting beside the other
+    player's "ColdMan 100×2" (telops/time-up-doubled-side1, frames 9894 to 9897: pixel-exact); a telop's name under a
+    banner's load the same way (telops/time-up-side1, 9888 to 9891; telops/time-up-anti-navi, 10036 to 10071). (A
+    navi's deletion banner starts after a used chip's name has run out.)
 
 ### 18.8 The chips (group F)
 

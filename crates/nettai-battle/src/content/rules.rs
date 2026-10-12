@@ -276,6 +276,8 @@ pub struct EffectsRules {
     pub fade_clear: FadeClear,
     /// A banner's steps (`hud::Banner`).
     pub banner: BannerSteps,
+    /// How a dimming chip's telop shares the HUD with the banners.
+    pub telops: Telops,
     /// Each console's RNG1 advances once a frame, after the battle's (EXE6's
     /// main loop, `main_`'s `GetRNG1` after the subsystem; EXE5's). EXE4's
     /// main loop (0x080002B0) draws none: RNG1 moves only where the battle
@@ -404,6 +406,32 @@ pub enum BannerRelease {
     /// Its hold doesn't count while it holds; let go, it slides out at once
     /// (EXE4's 0x080149CE, 0x0801616C).
     SlidesOut,
+}
+
+/// How a telop (a dimming chip's name across the screen) shares the HUD with
+/// the banners, and what its controller waits on (`dimming`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Telops {
+    /// A telop is a banner (EXE6's `sub_801E792` with banners 0x4C and
+    /// 0x50; EXE5's): it doesn't start while a banner or a telop shows, its
+    /// controller waits for whatever the banner block shows to end
+    /// (`sub_801E754`), and the flow waits on it as on any banner.
+    Banners,
+    /// Each player's telop is a piece of its own (EXE4's), in the banners'
+    /// steps.
+    /// - The local player's lays on the banner block (0x08016454, the
+    ///   HUD's task 0x100): not while a banner shows (0x0801627C), and in
+    ///   the place of a telop that does. Its controller waits for it alone
+    ///   (0x08016440), not for a banner; no banner starts while it shows,
+    ///   and the flow's wait for a banner doesn't see it (0x08016148).
+    /// - The other player's lays on a second block (0x080164B4, task
+    ///   0x8000) beside whatever the banner block shows, in the place of
+    ///   what the second block shows: a telop, or the name of the chip that
+    ///   player just used, which lays there too (`Battle::used_chips`) and
+    ///   takes a telop's place the same way. Its controller waits for the
+    ///   second block (0x080164A4).
+    Apart,
 }
 
 /// When a screen fade toward clear (the intro's, a dimming's end) ends.

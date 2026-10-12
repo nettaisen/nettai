@@ -8,7 +8,7 @@
 //! on each other. See docs/engine/chips.md §3.6.
 
 use crate::battle::{Battle, FadeMode, battle_flags};
-use crate::content::{BannerId, BannerRole, ChipTraits, SoundRole, Trap};
+use crate::content::{BannerId, BannerRole, ChipTraits, SoundRole, Telops, Trap};
 use nettai_content_api::ChipHandle;
 use crate::hud::{BannerStatus, Telop, TelopChip, TelopHidden};
 use crate::kinds::common::{self, Progress};
@@ -59,6 +59,49 @@ const FADE_SPEED: u8 = 4;
 /// or the other player's on the second block, in the banners' steps).
 pub(crate) fn telop_banner(b: &Battle, remote: bool) -> Option<BannerId> {
     b.roles().try_banner(if remote { BannerRole::TelopRemote } else { BannerRole::Telop })
+}
+
+/// Show `telop` (EXE6's `sub_801E792` with banner 0x4C or 0x50; EXE4's
+/// 0x08016454 and 0x080164B4), as the rules' `telops` say.
+fn show(b: &mut Battle, telop: Telop) {
+    let side = telop.side & 1;
+    let remote = b.is_remote(side);
+    match b.game_rules().effects.telops {
+        Telops::Banners => {
+            let banner = telop_banner(b, remote);
+            if b.start_telop_banner(banner) {
+                b.banner.telop = Some(telop);
+            }
+        }
+        Telops::Apart => {
+            let steps = b.game_rules().effects.banner;
+            // (The other player's console lays it where it names the side's
+            // used chip, in the name's place.)
+            b.used_chips[side as usize] = None;
+            if remote {
+                // 0x080164B4: whatever the second block shows goes.
+                b.remote_telop.lay_telop(telop, steps);
+            } else if !b.banner.active || b.banner.telop.is_some() {
+                // 0x08016454: not under a banner (0x0801627C); a telop that
+                // shows goes.
+                b.banner.lay_telop(telop, steps);
+            }
+        }
+    }
+}
+
+/// `side`'s telop still shows, for the controller that waits on it: the
+/// banner block, whatever shows there (`sub_801E754`), or where telops run
+/// apart the side's own piece (EXE4's 0x08016440: the local player's telop;
+/// 0x080164A4: the second block, the other player's telop or the name of
+/// its used chip).
+fn shows(b: &Battle, side: u8) -> bool {
+    let side = side & 1;
+    match b.game_rules().effects.telops {
+        Telops::Banners => b.banner.status() != BannerStatus::Done,
+        Telops::Apart if b.is_remote(side) => b.remote_telop.active || b.used_chips[side as usize].is_some(),
+        Telops::Apart => b.banner.shows_telop(),
+    }
 }
 
 /// What every controller knows about its chip (object +0x30 / +0x32): for
@@ -234,7 +277,7 @@ fn telop(b: &mut Battle, r: ObjectRef, no_cut_in_runs: bool) {
         b.objects.get_mut(r).phase_init = 4;
         return;
     }
-    if b.banner.status() != BannerStatus::Done {
+    if shows(b, side) {
         return;
     }
     // sub_800B8C2: a cut-in took the dimming over.
@@ -262,12 +305,7 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
         Some(c) if shows_damage => (c.damage.unwrap_or(o.damage), c.bonus),
         _ => (0, 0),
     };
-    let telop =
-        Telop { side, chip, damage: damage & 0x7FF, doubled: damage & 0x8000 != 0, bonus: bonus & !0x7800, hidden };
-    let banner = telop_banner(b, b.is_remote(side));
-    if b.start_telop_banner(banner) {
-        b.banner.telop = Some(telop);
-    }
+    show(b, Telop { side, chip, damage: damage & 0x7FF, doubled: damage & 0x8000 != 0, bonus: bonus & !0x7800, hidden });
     // sub_801BED6(0x10000): a used chip's name makes way, where the game's
     // does.
     if b.game_rules().effects.used_chips_end_early {
@@ -300,7 +338,7 @@ pub fn telop_running(b: &mut Battle, r: ObjectRef, chip: Option<ChipHandle>) -> 
         b.objects.get_mut(r).phase_init = 4;
         return false;
     }
-    if b.banner.status() != BannerStatus::Done {
+    if shows(b, side) {
         return false;
     }
     if b.dimming[side as usize].owner != side && !out_of_the_way(b.dimming[other as usize].state) {
@@ -323,21 +361,20 @@ pub fn run(b: &mut Battle, side: u8) {
 }
 
 /// A telop for `side` naming `chip`, without damage (`sub_801E792` with
-/// the side's banner), and its sound; a used chip's name makes way.
+/// the side's banner; EXE4's 0x08008FD4), and its sound; the used chips'
+/// names make way, where the game's telops end them.
 pub fn chip_telop(b: &mut Battle, side: u8, chip: Option<ChipHandle>) {
     let side = side & 1;
-    let banner = telop_banner(b, b.is_remote(side));
-    let telop = Telop { side, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No };
-    if b.start_telop_banner(banner) {
-        b.banner.telop = Some(telop);
+    show(b, Telop { side, chip, damage: 0, doubled: false, bonus: 0, hidden: TelopHidden::No });
+    if b.game_rules().effects.used_chips_end_early {
+        b.used_chips = [None; 2];
     }
-    b.used_chips = [None; 2];
     b.sound(SoundRole::Telop);
 }
 
-/// The telop's banner is done.
-pub fn telop_done(b: &Battle) -> bool {
-    b.banner.status() == BannerStatus::Done
+/// `side`'s telop is done (`shows`).
+pub fn telop_done(b: &Battle, side: u8) -> bool {
+    !shows(b, side)
 }
 
 /// The dimming changes sides (`sub_800BE2C`'s): controller `r`'s side's
@@ -663,5 +700,117 @@ mod tests {
             assert_ne!(a.remote, b.remote);
             assert!(a.damage >= damage && damage > 0, "{a:?}");
         }
+    }
+
+    /// A battle of the test content with its telops apart from the banners
+    /// (the rules' `telops`: EXE4's), simulated from side 0's console.
+    fn apart() -> Battle {
+        let mut c: crate::content::Content = testing::build();
+        c.define().unwrap_or_else(|e| panic!("{e}"));
+        c.rules_mut().effects.telops = super::Telops::Apart;
+        c.rules_mut().effects.used_chips_end_early = false;
+        let c = std::sync::Arc::new(c);
+        let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+        testing::on(&mut setup, &c);
+        Battle::new(setup, c)
+    }
+
+    /// A telop of `side`'s, told apart by its `damage`.
+    fn telop(side: u8, damage: u16) -> super::Telop {
+        super::Telop { side, chip: None, damage, doubled: false, bonus: 0, hidden: super::TelopHidden::No }
+    }
+
+    #[test]
+    fn apart_the_local_telop_gives_way_to_a_banner_and_takes_a_telops_place() {
+        use crate::hud::BannerStatus;
+        let mut b = apart();
+        let draw = b.roles().banner(super::BannerRole::Draw);
+        // Under a banner it doesn't start, and its controller doesn't wait
+        // for the banner.
+        assert!(b.start_banner(draw));
+        super::show(&mut b, telop(0, 1));
+        assert!(!b.banner.shows_telop() && super::telop_done(&b, 0));
+        assert_eq!(b.banner.id, Some(draw));
+        // On a free block it lays; no banner starts while it shows, and the
+        // flow's wait for a banner doesn't see it.
+        b.banner = Default::default();
+        super::show(&mut b, telop(0, 1));
+        assert!(b.banner.shows_telop() && !super::telop_done(&b, 0));
+        assert!(!b.start_banner(draw));
+        assert_eq!(b.banner_status(), BannerStatus::Done);
+        // A telop that starts while it shows takes its place, from its
+        // first step.
+        for _ in 0..12 {
+            b.banner.tick();
+        }
+        assert_ne!(b.banner.step, 0);
+        super::show(&mut b, telop(0, 2));
+        assert_eq!((b.banner.step, b.banner.timer, b.banner.telop.map(|t| t.damage)), (0, 0, Some(2)));
+        // The other player's block is none of it.
+        assert!(!b.remote_telop.active && super::telop_done(&b, 1));
+    }
+
+    #[test]
+    fn apart_the_other_players_telop_shares_its_block_with_the_used_chips_name() {
+        use crate::hud::BannerStatus;
+        let mut b = apart();
+        let draw = b.roles().banner(super::BannerRole::Draw);
+        let chip = testing::chip_handle(testing::VEIL);
+        // It lays beside a banner, in the place of the name of the chip its
+        // player used, which its controller would wait for too.
+        assert!(b.start_banner(draw));
+        b.show_used_chip(1, chip, 0, 0);
+        assert!(!super::telop_done(&b, 1), "the controller waits for the block, whatever it shows");
+        super::show(&mut b, telop(1, 1));
+        assert!(b.remote_telop.shows_telop() && b.used_chips[1].is_none());
+        assert_eq!((b.banner.id, b.banner_status()), (Some(draw), BannerStatus::Showing), "the banner block keeps its banner");
+        // A banner starts beside it, and a telop of its player's takes its
+        // place.
+        b.banner = Default::default();
+        assert!(b.start_banner(draw));
+        for _ in 0..12 {
+            b.remote_telop.tick();
+        }
+        super::show(&mut b, telop(1, 2));
+        assert_eq!((b.remote_telop.step, b.remote_telop.telop.map(|t| t.damage)), (0, Some(2)));
+        // The name of a chip its player uses takes the telop's place the
+        // same way, and the controller waits the name out.
+        b.show_used_chip(1, chip, 0, 0);
+        assert!(!b.remote_telop.active && !super::telop_done(&b, 1));
+        b.used_chips[1] = None;
+        assert!(super::telop_done(&b, 1));
+        // The local player's used chip is named on the other console: none
+        // of this console's blocks'.
+        super::show(&mut b, telop(1, 3));
+        b.banner = Default::default();
+        super::show(&mut b, telop(0, 4));
+        b.show_used_chip(0, chip, 0, 0);
+        assert!(b.remote_telop.shows_telop() && b.banner.shows_telop());
+    }
+
+    #[test]
+    fn apart_each_console_lays_its_own_players_telop_on_the_banner_block() {
+        let mut b = apart();
+        super::show(&mut b, telop(0, 10));
+        super::show(&mut b, telop(1, 20));
+        let seen = |viewer: u8| b.telops_for(viewer).map(|t| t.map(|(t, _)| (t.remote, t.damage)));
+        assert_eq!(seen(0), [Some((false, 10)), Some((true, 20))]);
+        assert_eq!(seen(1), [Some((false, 20)), Some((true, 10))]);
+        assert_eq!(b.telop_for(1).map(|t| t.damage), Some(20));
+    }
+
+    /// Where a telop is a banner (the test content's rule, EXE6's), a telop
+    /// doesn't start while one shows, either player's lays on the banner
+    /// block, and its controller waits for whatever shows there.
+    #[test]
+    fn a_telop_that_is_a_banner_waits_for_the_banner_block() {
+        let mut b = Battle::new(scenario::setup(), scenario::content());
+        super::show(&mut b, telop(1, 1));
+        super::show(&mut b, telop(0, 2));
+        assert_eq!(b.banner.telop.map(|t| t.damage), Some(1), "the second doesn't start");
+        assert!(!b.remote_telop.active);
+        assert!(!super::telop_done(&b, 0) && !super::telop_done(&b, 1));
+        assert_eq!(b.telops_for(0).map(|t| t.map(|(t, _)| t.remote)), [Some(true), None]);
+        assert_eq!(b.telops_for(1).map(|t| t.map(|(t, _)| t.remote)), [Some(false), None]);
     }
 }

@@ -608,7 +608,10 @@ panel is said in the audits, not counted.
   counter;
 - banners with their squash and stretch; a telop (the chip's name, its
   damage and bonus, "x2"; "????" for a trap's, to the opponent) on its
-  user's half of the screen (`Battle::telop_for`); the chip the other
+  user's half of the screen (`Battle::telops_for`: the banner block's,
+  and where a game's telops run apart from its banners the other
+  player's on its own block, each with its block's squash; a banner may
+  show beside that one); the chip the other
   player just used, named for a second (`Battle::used_chip_for`). Where
   the game loads the banners' and the telops' glyphs into sprite tiles
   they share, and one palette (the pack's `layout.telop.tiles`: EXE4's),
@@ -871,8 +874,9 @@ the ones the state digest leaves out).
   frozen, the counter-able blink) every tick.
 - `hud::Banner::id`, the banner showing, and `Banner::telop`, what a telop
   says; `Object::telop_chip`, what a dimming's controller will name
-  (`Battle::telop_for` is the viewer's side of it: a trap's name is hidden
-  from the opponent).
+  (`Battle::telops_for` is the viewer's side of it: a trap's name is hidden
+  from the opponent). That a block shows a telop is simulation state where
+  telops run apart from the banners (the rules' `effects.telops`).
 - `Battle::used_chips`, `Battle::chip_hud` (whether a console shows its
   navi's icons and chip window), `Battle::message`, `Battle::warnings`,
   `Battle::hp_numbers` (each console's HP numbers by place: what asked for
@@ -1034,7 +1038,8 @@ them).
 - **Deliberate: one presentation, the Japanese games' where the releases
   differ** (the user's: "nettai should not have any region specific code").
   The pack has the Japanese ROMs' art where the US ROMs have a placeholder
-  (six sprites, eleven chips' pictures: asset-formats.md §4), the content
+  (six sprites, fifteen chips' pictures: asset-formats.md §4) or differ in
+  a pixel or two (BassAnly's icon, Gregar's Beast Out picture), the content
   draws Otenko's statue and CrosOver's gun with the Japanese games' sprites
   (0C-49, 0C-0F) where the US games draw others, and EXE6's custom screen
   starts the chip window as it closes (`HudState`), on every
@@ -1047,12 +1052,17 @@ them).
   knows a console's region or which of these it shows: the verification's
   frame comparison does (its table, consoles.tsv, by game, region and
   version), and asks the headless frontend to mark where it draws those
-  things (`--mark sprite:NAME,background:NAME,chip:KEY,chip-icon:KEY,
-  chip-window-at-close`; `marks.tsv` beside the frames: frame, rectangle,
+  things (`--mark sprite:NAME,background:NAME,chip:KEY,button:NAME,
+  chip-icon:KEY,chip-description:KEY,chip-window-at-close`; `marks.tsv`
+  beside the frames: frame, rectangle,
   what), which it counts as known on that console's recordings, with the
   table's margin around each (a sprite's 48 pixels: the US's sprite there
   may reach past the Japanese one), or only the part of the mark the
-  table names (an icon's two rows).
+  table names (an icon's two rows, a picture's two pixels). The same
+  table has what a console shows of its own whatever its region: EXE6's
+  Gregar and Falzar chips' descriptions, which a console prints from its
+  memory (its own beast's for both chips), where nettai prints each
+  chip's own.
 - **Deliberate: a version's own chips on the other version's console.**
   Each ROM draws its own version's chips and has their art again at the
   other version's counterparts: EXE6's five Giga chips a version (Bass and
