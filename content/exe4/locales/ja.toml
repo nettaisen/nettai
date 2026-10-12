@@ -333,6 +333,9 @@ language = "ja"
 "pitrng3" = { name = "ヘルブーメラン3", description = "3本のブーメランが\nれんぞくであいてに\nおそいかかる!" }
 "timebom" = { name = "ギガカウントボム", description = "あいてエリアに\nギガカウントボムを\nおく!" }
 "h-burst" = { name = "ハイパーバースト", description = "まわり1マスに\nばくふうがひろがる\nさくれつだん!" }
+"poisphar" = { name = "ポイズンファラオ", description = "てきエリアにどくを\n発生させる\nファラオぞうをおく" }
+"bodygrd" = { name = "ボディガード", description = "ウラのあんさつしゃ\nをやとい てきを\nはいじょしてもらう" }
+"pdriver" = { name = "パイルドライバー", description = "目の前に たいよう\nジェネレーター!\n日の光でやきつくす" }
 "poltrgst" = { name = "ポルターガイスト", description = "" }
 "redsun" = { name = "メテオレッドサン", description = "3マス前方めがけて\nレッドサンのメテオ\n攻撃がふりそそぐ!" }
 "bluemoon" = { name = "ブルームーンレイ", description = "3マス前方めがけて\nブルームーンが力を\nうばう光をはなつ!" }
