@@ -877,7 +877,7 @@ fn exe4s_lava_and_grass_are_its_own() {
     let o = b.objects.get_mut(navi);
     o.element = 4;
     (o.hp, o.max_hp) = (5, 100);
-    (b.round.cycle20, b.round.cycle180) = (0, 1);
+    b.round.cycles = [0, 1];
     // (The fight on: the standing effects wait out a pause.)
     b.round.flags |= battle_flags::FIGHTING;
     b.paused = false;

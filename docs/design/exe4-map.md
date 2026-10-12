@@ -2226,7 +2226,7 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      MegaMan's sprite, his entry plus the soul (0x0800B90A, 0x0801079C) *done*; the emotion 4 (0x0800F49C), no anger
      (0x0800C560) and no Full Synchro aura (0x0800D98A) *done*; the palette 0 (0x0800BFFE) *done*; the status reset's
      routine by soul (0x0800E05C, table 0x0800E0A0), its element by soul (0x0800C93C, table 0x0800C964: Fire fire,
-     Thunder elec, Aqua aqua, Wood wood, the rest null) *done* for Fire, Thunder and Aqua, *open* for Wood; the
+     Thunder elec, Aqua aqua, Wood wood, the rest null) *done* (Fire, Thunder, Aqua, Wood); the
      overlay by soul (0x0800B7E8, table 0x08018068: Fire
      0x10, Number 0x110; `effects.form_overlay`; PopUp's glow, objects/glow, puts its copy on through the form's
      `put_on` and must have it step on, its Param3 1: 0x0800B812) *done* for Fire, *open* for Number; the image's
@@ -2306,10 +2306,19 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      Bubbler's spreader charged (0x23, 0x0800CF42: 20 aqua, hit 0x94, action 0x1E's variant 2, bullet row 0x0D: the
      burst on the first thing found and the panel behind, hit modifier 3) *done* (souls/aqua/unison, side1). Its status
      reset runs nothing of its own (0x0800E0A0's row 11).
-   - **WoodSoul (12).** Wood (0x0800C964) *open*; the status reset's merge (0x0800E294: a Wood chip takes the damage
-     and bonuses of a damaging Null chip after it, which leaves the hand) *open*; grass heals 1 (0x08012FD6) *open*;
-     a hit's status doesn't take (0x08013904 skips 0x08013470: `status_immune`) *open*; charged 0x57 (0x0800D270)
-     *open*.
+   - **WoodSoul (12).** Wood (0x0800C964) *done* (souls/wood/weakness: HeatShot's fire on it); the status reset's
+     merge (0x0800E294: from the hand's cursor, a Wood chip takes in the damage and bonuses of a damaging Null chip
+     right after it, which leaves the hand, the chips after it moving up; one Null chip a Wood chip:
+     `battle.fold_hand_chip`) *done* (souls/wood/merge: a WoodPwdr, two M-Cannons); grass heals it a point when the
+     battle's second count of fight ticks comes round (0x08012FB6: BattleState +0x16, EXE4's every other tick, the
+     rule `flow.fight_cycles`; rules/souls' `grass_heal`), as well as a wood body's heal (0x08012FF2, its first count,
+     EXE4's every 10 ticks) *done* (souls/wood/grass); a hit's status doesn't take (0x08013904 skips 0x08013470: the
+     trait `status_immune`) *done* (souls/wood/status: Thunder1); its tornado charged (0x57, 0x0800D270: 20 wood, hit
+     0x84; the fan's action 0x28, chips/tornado/fan, as its variant 0: one tornado of palette 1) *done*
+     (souls/wood/tornado, unison, side1). Presentation, open: the four breath chips' icons (Blizzard, HeatBrth,
+     ElecShok and WoodPwdr, chips 0x05, 0x06, 0x2A, 0x2B) differ between the versions (Blue Moon's rows 12 and 13 a dark
+     bar, palette index 6), and the pack has one (Red Sun's, `chip_media`'s any ROM): a Blue Moon console's frames
+     differ there (souls/wood's WoodPwdr, in the hand and over MegaMan; every other pixel exact).
    - **The dark soul (15).** A worn-out MegaMan (emotion 5) at 0 HP, once a battle, holds at 1 HP and asks for it
      (0x0800EBC8, 0x08013AB8: request 0x1000, then 0x0800B8CA: soul 15); its status reset (0x0800E17E: the mood 0,
      flag1 0x08000000, 0x0800EAC6); 960 ticks (0x0800B93C, 0x08018088) counted down to the revert (0x0800B6A4) with
