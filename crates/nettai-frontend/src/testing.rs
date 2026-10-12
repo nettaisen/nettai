@@ -40,12 +40,24 @@ impl Write for Shared {
 /// shoots and wins both rounds): the replay as its file reads back, and
 /// the set's ticks.
 pub fn recorded(content: &Arc<Content>, game: &str, seed: u32) -> (Replay, u64) {
+    recorded_with(content, game, seed, |_, _| 0)
+}
+
+/// [`recorded`], the left player holding `also(battle, tick)` besides the
+/// shooter's buttons (a START in the fight, which shoots no less).
+pub fn recorded_with(content: &Arc<Content>, game: &str, seed: u32, mut also: impl FnMut(&nettai_battle::Battle, u32) -> u16) -> (Replay, u64) {
     let m = short_set::of(content, game, seed);
     let sink = Shared::default();
     let mut s = Session::new(Box::new(LivePlayer::new(nettai_match::Set::of(content, &m, seed))));
     let info = Info { when: 1_790_000_000, names: ["Lan".into(), String::new()], ..Info::of(MatchKind::Offline, 0) };
     s.record(Recorder::new(Box::new(sink.clone()), content, &m, &info).unwrap()).unwrap();
-    while s.step(short_set::shooter(&s.battle, 0, s.ticks as u32)) {}
+    loop {
+        let tick = s.ticks as u32;
+        let keys = short_set::shooter(&s.battle, 0, tick) | also(&s.battle, tick);
+        if !s.step(keys) {
+            break;
+        }
+    }
     assert_eq!(s.result, Some(nettai_battle::BattleResult::Won), "{game}");
     (Replay::read(&sink.bytes()).unwrap(), s.ticks)
 }

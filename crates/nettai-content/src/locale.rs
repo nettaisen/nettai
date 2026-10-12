@@ -103,6 +103,7 @@ pub fn load(pack: &Path, lang: &str) -> Result<Option<Strings>, String> {
 /// frontend's other language for what it loaded); `None` when none has
 /// one.
 pub fn load_for(dir: &Path, packs: &[String], lang: &str) -> Result<Option<Strings>, String> {
+    crate::pack::read_a_part();
     let mut out: Option<Strings> = None;
     for p in packs {
         if let Some(s) = load(&dir.join(p), lang)? {

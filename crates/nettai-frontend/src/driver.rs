@@ -83,6 +83,16 @@ pub trait Driver {
     fn real_time(&self) -> bool {
         false
     }
+    /// What the navi the local player fights does, of a driver that plays
+    /// it (live play's); none from one that doesn't.
+    fn opponent(&self) -> Option<Opponent> {
+        None
+    }
+    /// Have it do `opponent` from the next tick on; false from a driver
+    /// that plays no opponent.
+    fn set_opponent(&mut self, _opponent: Opponent) -> bool {
+        false
+    }
     /// Show the frame `ticks` behind the player's newest input, of a
     /// driver that presents behind it (netplay's present delay); false
     /// from one that doesn't.
@@ -185,6 +195,11 @@ pub struct Ran {
     /// The sound for this frame: cue actions (a cue played on a prediction
     /// that turned out wrong is canceled).
     pub sound: Vec<CueAction>,
+    /// The players who asked for the pause on a tick this frame simulated
+    /// for the first time, by side (`Battle::pause_requests`). Netplay says
+    /// its own player's alone: the other's buttons are a prediction until
+    /// they come, and this player's menu is none of theirs.
+    pub pause_requests: [bool; 2],
 }
 
 // ---- Live play -------------------------------------------------------------------
@@ -238,6 +253,7 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         score: SetScore::default(),
         later_stages: Default::default(),
         low_hp_music_latched: false,
+        host_keys: nettai_match::HOST_KEYS,
         players: [player(0), player(1)],
     }
 }
@@ -258,34 +274,54 @@ pub fn folder_of(content: &Content, chips: &[(&str, u8)]) -> SavedFolder {
 
 /// What the navi the local player fights in live play does: its buttons,
 /// a tick at a time, which are the whole of its input as a player's are
-/// (a recording keeps them). Each is a player's buttons alone: none asks
-/// the engine for anything a player can't do.
+/// (a recording keeps them); it asks the engine for nothing a player can't
+/// do. Two choices, each made alone and changed at any tick
+/// ([`LivePlayer::set_opponent`], [`crate::Player::set_opponent`]): what it
+/// does in the fight, and what it does on its custom screen.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
-pub enum Opponent {
-    /// The stand-in: it stands still, and its custom screen picks the
-    /// first chip it can and presses OK ([`bot_buttons`]).
-    #[default]
-    StandIn,
-    /// A dummy: it stands still, and its custom screen picks nothing.
-    Dummy,
-    /// It moves about the field at random (seeded) and never attacks; its
-    /// custom screen is the stand-in's.
-    Mover,
-    /// It presses at random (seeded) what a player fights with: it moves,
-    /// shoots and charges, uses its chips, and presses L and R; its custom
-    /// screen is the stand-in's (`nettai_netplay::standin::Masher`).
-    Masher,
+pub struct Opponent {
+    pub in_fight: InFight,
+    pub on_custom_screen: OnCustomScreen,
 }
 
-impl Opponent {
-    /// Every opponent, in the order a host offers them.
-    pub const ALL: [Opponent; 4] = [Opponent::StandIn, Opponent::Dummy, Opponent::Mover, Opponent::Masher];
+/// What an opponent does in the fight.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum InFight {
+    /// It presses nothing.
+    #[default]
+    StandsStill,
+    /// It moves about the field at random (seeded) and never attacks.
+    MovesAround,
+    /// It presses at random (seeded) what a player fights with: it moves,
+    /// shoots and charges, uses its chips, and presses L and R
+    /// (`nettai_netplay::standin::Masher`). Never START.
+    AttacksAtRandom,
+}
+
+impl InFight {
+    /// Every choice, in the order a host offers them.
+    pub const ALL: [InFight; 3] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom];
+}
+
+/// What an opponent does on its custom screen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum OnCustomScreen {
+    /// It presses OK with no chip.
+    PicksNothing,
+    /// It picks the first chip it can and presses OK ([`bot_buttons`]).
+    #[default]
+    PicksFirst,
+}
+
+impl OnCustomScreen {
+    /// Every choice, in the order a host offers them.
+    pub const ALL: [OnCustomScreen; 2] = [OnCustomScreen::PicksNothing, OnCustomScreen::PicksFirst];
 }
 
 /// Plays a set from the keyboard, round after round to its end: the local
 /// player is the left navi, with their own custom screen; the right navi
-/// is an [`Opponent`]'s (by default the stand-in, which stands still, and
-/// whose custom screen picks the first chip it can and presses OK).
+/// is an [`Opponent`]'s (by default one that stands still, and whose custom
+/// screen picks the first chip it can and presses OK).
 pub struct LivePlayer {
     set: Set,
     /// Ticks played since the start, through every round (a frame's number).
@@ -300,34 +336,49 @@ pub struct LivePlayer {
 
 impl LivePlayer {
     pub fn new(set: Set) -> LivePlayer {
-        LivePlayer::against(set, Opponent::StandIn, 0)
+        LivePlayer::against(set, Opponent::default(), 0)
     }
 
-    /// A set against `opponent`, whose random presses (a mover's, a
-    /// masher's) start from `seed`, the same each time the set starts.
+    /// A set against `opponent`, whose random presses start from `seed`,
+    /// the same each time the set starts.
     pub fn against(set: Set, opponent: Opponent, seed: u64) -> LivePlayer {
-        LivePlayer { set, ticks: 0, round: 1, opponent, seed, masher: masher(opponent, seed) }
+        LivePlayer { set, ticks: 0, round: 1, opponent, seed, masher: masher(seed) }
+    }
+
+    /// What the opponent does.
+    pub fn opponent(&self) -> Opponent {
+        self.opponent
+    }
+
+    /// Have the opponent do `opponent` from the next tick on. The random
+    /// presses it takes go on from where the set's ticks have brought them
+    /// (they run every tick, taken or not): what it presses on a tick goes
+    /// by the seed, the tick, the battle and its choices on that tick,
+    /// whatever its choices were before.
+    pub fn set_opponent(&mut self, opponent: Opponent) {
+        self.opponent = opponent;
     }
 
     /// The opponent's buttons on side `side` this tick.
-    fn opponent(&mut self, b: &Battle, side: usize) -> u16 {
+    fn opponent_buttons(&mut self, b: &Battle, side: usize) -> u16 {
         const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
-        let fighting = b.round.mode != mode::CUSTOM;
-        match self.opponent {
-            Opponent::StandIn => bot_buttons(b, side, self.ticks),
-            Opponent::Dummy => custom_buttons(b, side, self.ticks, false),
-            Opponent::Mover if fighting => self.masher.buttons() & MOVES,
-            Opponent::Masher if fighting => self.masher.buttons(),
-            Opponent::Mover | Opponent::Masher => bot_buttons(b, side, self.ticks),
+        let mashed = self.masher.buttons();
+        if b.round.mode == mode::CUSTOM {
+            return custom_buttons(b, side, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
+        }
+        match self.opponent.in_fight {
+            InFight::StandsStill => 0,
+            InFight::MovesAround => mashed & MOVES,
+            InFight::AttacksAtRandom => mashed,
         }
     }
 }
 
-/// The random presses of `opponent` from `seed`: a masher's with the
-/// buster, a mover's without (its directions alone are taken).
-fn masher(opponent: Opponent, seed: u64) -> Masher {
+/// An opponent's random presses from `seed`, the buster's among them: one
+/// who only moves takes their directions.
+fn masher(seed: u64) -> Masher {
     let mut m = Masher::new(seed);
-    m.buster = opponent == Opponent::Masher;
+    m.buster = true;
     m
 }
 
@@ -371,14 +422,14 @@ impl Driver for LivePlayer {
     fn start(&mut self) -> Battle {
         self.ticks = 0;
         self.round = 1;
-        self.masher = masher(self.opponent, self.seed);
+        self.masher = masher(self.seed);
         self.set.start()
     }
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
         self.ticks += 1;
         let local = b.setup.local_side as usize;
-        let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent(b, side) });
+        let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent_buttons(b, side) });
         // (The buttons are the whole input, as a netplay peer's are.)
         let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
         Some(Step { input: players, events, frame: Some(self.ticks) })
@@ -398,6 +449,15 @@ impl Driver for LivePlayer {
 
     fn record(&mut self) -> bool {
         self.ticks == 0
+    }
+
+    fn opponent(&self) -> Option<Opponent> {
+        Some(self.opponent)
+    }
+
+    fn set_opponent(&mut self, opponent: Opponent) -> bool {
+        LivePlayer::set_opponent(self, opponent);
+        true
     }
 }
 
@@ -524,28 +584,45 @@ mod tests {
         }
     }
 
+    /// A match of EXE6 picked from seed 5, 1000 HP each so a round lasts
+    /// the test.
+    fn long_match(content: &Arc<Content>) -> nettai_match::Match {
+        let mut m = nettai_match::pick::live(content, "exe6", 5, None).unwrap();
+        for s in &mut m.sides {
+            s.set_fact(content, "hp", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1000))]).unwrap();
+        }
+        m
+    }
+
+    /// Every opponent: each choice in the fight with each on the custom
+    /// screen.
+    fn every_opponent() -> impl Iterator<Item = Opponent> {
+        InFight::ALL.into_iter().flat_map(|in_fight| OnCustomScreen::ALL.map(|on_custom_screen| Opponent { in_fight, on_custom_screen }))
+    }
+
     /// Each opponent through a few custom screens and fights, the local
-    /// player standing still: the stand-in starts the fight with a chip in
-    /// hand and the dummy with none; the mover and the masher leave the
-    /// panel they start on, the stand-in and the dummy never do; a set
-    /// against one started again gets the same presses.
+    /// player standing still: one that picks the first chip starts the
+    /// fight with it in hand and one that picks nothing with none, whatever
+    /// it does in the fight; one that moves around or attacks leaves the
+    /// panel it starts on, one that stands still never does; only one that
+    /// attacks presses anything but a direction in the fight; a set against
+    /// one started again gets the same presses.
     #[test]
     fn each_opponent_plays() {
         let content = nettai_match::testing::exe6_content();
-        let mut m = nettai_match::pick::live(&content, "exe6", 5, None).unwrap();
-        // (1000 HP each, so the round lasts the test.)
-        for s in &mut m.sides {
-            s.set_fact(&content, "hp", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1000))]).unwrap();
-        }
-        for opponent in Opponent::ALL {
+        let m = long_match(&content);
+        for opponent in every_opponent() {
             let mut live = LivePlayer::against(Set::of(&content, &m, 5), opponent, 9);
             let mut run = || {
                 let mut b = live.start();
-                let (mut hand, mut start, mut moved, mut presses) = (None, None, false, Vec::new());
+                let (mut hand, mut start, mut moved, mut attacked, mut presses) = (None, None, false, false, Vec::new());
                 for tick in 0..1500u32 {
                     let keys = if b.round.mode == mode::CUSTOM { bot_buttons(&b, 0, tick) } else { 0 };
+                    let custom = b.round.mode == mode::CUSTOM;
                     let step = live.next(&b, keys).unwrap();
                     presses.push(step.input[1]);
+                    attacked |= !custom && step.input[1].held & (keys::A | keys::B | keys::L | keys::R) != 0;
+                    assert!(custom || step.input[1].held & keys::START == 0, "{opponent:?}: START outside the custom screen at tick {tick}");
                     b.tick(&step.input, step.events);
                     assert!(!b.is_stopped(), "{opponent:?}: tick {tick}");
                     if b.round.mode == mode::FIGHTING && hand.is_none() {
@@ -557,13 +634,85 @@ mod tests {
                         start.get_or_insert(at);
                     }
                 }
-                (hand, moved, presses)
+                (hand, moved, attacked, presses)
             };
-            let (hand, moved, presses) = run();
-            assert_eq!(hand, Some(if opponent == Opponent::Dummy { 0 } else { 1 }), "{opponent:?}");
-            assert_eq!(moved, matches!(opponent, Opponent::Mover | Opponent::Masher), "{opponent:?}");
-            assert_eq!(run().2, presses, "{opponent:?}: the same presses again");
+            let (hand, moved, attacked, presses) = run();
+            assert_eq!(hand, Some(if opponent.on_custom_screen == OnCustomScreen::PicksNothing { 0 } else { 1 }), "{opponent:?}");
+            assert_eq!(moved, opponent.in_fight != InFight::StandsStill, "{opponent:?}");
+            assert_eq!(attacked, opponent.in_fight == InFight::AttacksAtRandom, "{opponent:?}");
+            assert_eq!(run().3, presses, "{opponent:?}: the same presses again");
         }
+    }
+
+    /// The opponent's choices change while the set runs, each alone: from
+    /// the tick after a change it presses what the new choice presses.
+    /// What it presses in the fight on a tick goes by the seed and the
+    /// tick, whatever it did before (its random presses run every tick,
+    /// taken or not): a set changed on the way presses, from the change on,
+    /// what the seed's presses are on those ticks. Its custom screen's
+    /// choice changed before a screen opens is that screen's.
+    #[test]
+    fn the_opponents_choices_change_while_the_set_runs() {
+        const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent { in_fight: InFight::StandsStill, on_custom_screen: OnCustomScreen::PicksNothing }, 9);
+        assert_eq!(Driver::opponent(&live), Some(live.opponent()));
+        let mut b = live.start();
+        // The seed's presses, a tick at a time, as the driver draws them.
+        let mut seeded = masher(9);
+        let mut hands = Vec::new();
+        let (mut stood, mut moved, mut attacked) = (0, 0, 0);
+        for tick in 0..4000u32 {
+            // The fight's choice changes at ticks 900 and 1500; the custom
+            // screen's once the first fight has started with no chip.
+            let now = live.opponent();
+            match tick {
+                900 => assert!(Driver::set_opponent(&mut live, Opponent { in_fight: InFight::MovesAround, ..now })),
+                1500 => live.set_opponent(Opponent { in_fight: InFight::AttacksAtRandom, ..now }),
+                _ => {}
+            }
+            if hands.len() == 1 && live.opponent().on_custom_screen == OnCustomScreen::PicksNothing {
+                live.set_opponent(Opponent { on_custom_screen: OnCustomScreen::PicksFirst, ..live.opponent() });
+            }
+            // The local player opens the custom screen again when it can.
+            let keys = if b.round.mode == mode::CUSTOM {
+                bot_buttons(&b, 0, tick)
+            } else if b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+                keys::L
+            } else {
+                0
+            };
+            let custom = b.round.mode == mode::CUSTOM;
+            let step = live.next(&b, keys).unwrap();
+            let (pressed, mashed) = (step.input[1].held, seeded.buttons());
+            if !custom {
+                match live.opponent().in_fight {
+                    InFight::StandsStill => {
+                        assert_eq!(pressed, 0, "tick {tick}");
+                        stood += 1;
+                    }
+                    InFight::MovesAround => {
+                        assert_eq!(pressed, mashed & MOVES, "tick {tick}");
+                        moved += (pressed != 0) as u32;
+                    }
+                    InFight::AttacksAtRandom => {
+                        assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
+                        attacked += (pressed & !MOVES != 0) as u32;
+                    }
+                }
+            }
+            let turn = b.round.turn;
+            b.tick(&step.input, step.events);
+            assert!(!b.is_stopped(), "tick {tick}");
+            // A fight starts: the hand the opponent brought from the screen.
+            if b.round.mode == mode::FIGHTING && hands.len() < turn as usize {
+                hands.push(b.hands[1].remaining());
+            }
+        }
+        assert!(stood > 300 && moved > 100 && attacked > 100, "{stood} ticks standing, {moved} moving, {attacked} attacking");
+        assert!(hands.len() >= 2, "{hands:?}");
+        assert_eq!((hands[0], hands[1]), (0, 1), "no chip from the first screen, the first chip from the second: {hands:?}");
     }
 
     /// `--save-match` then `--match`: live play's draw for a seed, written
