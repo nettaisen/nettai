@@ -506,7 +506,9 @@ own, read at the addresses the same code points at there (exe6-extract's
 - **What the US release cut** (docs/engine/jp-differences.md §4.4, §4.5):
   six sprites the US ROMs fill with a placeholder archive (`count`,
   `django`, `otenko`, `falzar-summon`, `gregar-summon`, `blocking-banner`),
-  from the Japanese Falzar ROM, and the pictures of fifteen chips the US ROMs
+  from the Japanese Falzar ROM (every sheet is the Japanese ROM's where
+  there is one: besides the six, the flames HeatMan wears differ in one
+  animation), and the pictures of fifteen chips the US ROMs
   give a placeholder picture (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3,
   DblBeast, Gregar, Falzar, and BatCan1 to BatCan4, which the US release
   kept), from the Japanese Falzar ROM but Gregar's,

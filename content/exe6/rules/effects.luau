@@ -102,6 +102,8 @@ return {
     status_visual = { place = "attach_point" },
     -- A pool's objects are drawn in update order (`sub_8003E18`, `sub_8004218`, `sub_8004510`).
     draw_order = "update_list",
+    -- A sprite part's depth bucket is its sprite's ground row from 0x40 (`sub_3006440`).
+    sprite_depth = "ground",
     -- What a frame's sprite draw has room for (`sub_3006028`, each drawn object's sprite in draw order): tiles under
     -- the cap (`sub_3006404`: the allocator, 1 as a frame starts, less 0x30 plus the frame's tiles) and a palette slot
     -- (`sub_3006428`), a sprite past either left out. A battle sets 10 slots and 0x2FF (`sub_80027D4`), battle mode 1

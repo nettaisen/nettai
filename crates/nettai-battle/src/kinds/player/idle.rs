@@ -27,7 +27,11 @@ pub(super) fn control(b: &mut Battle, r: ObjectRef) {
         return battle_over(b, r);
     }
     let f = ai(b, r).requests;
-    if f & (request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED) != 0 {
+    // (Where the rules say so, `idle_entry_counter`: EXE4's entry starts a
+    // counter for a navi in auto battle alone, 0x080EB0D6, and its idle
+    // starts it in its turn: `decide`.)
+    let traps = request::ANTI_DAMAGE_TRIGGERED | request::ANTI_SWORD_TRIGGERED | request::BODY_GUARD_TRIGGERED;
+    if b.game_rules().idle_entry_counter && f & traps != 0 {
         return reactive_chip(b, r);
     }
     if f & request::STUN_STRIKE != 0 {

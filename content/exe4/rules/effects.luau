@@ -115,6 +115,12 @@ return {
     -- A pool's objects are drawn by slot, from the first (0x08003BA0, 0x08003ED4, 0x08004180 walk the pools' records),
     -- not in update order: of two parts in one depth bucket the higher slot's is in front.
     draw_order = "slots",
+    -- A sprite part's depth bucket counts its sprite's priority too (the part list, 0x0300602C, adds it to the ground
+    -- row's bucket at 0x0300613C: the first part's by the sprite's priority bits, 0x03006086; each later part's by 2, a
+    -- sprite's own or 0x0300616C's for one whose priority was set). Sprites of one priority keep their order, but the
+    -- field layer's 0xE0 buckets run out two rows above the screen's bottom: a part with its ground on row 158 or
+    -- lower isn't drawn (a piece of debris falling off the screen is gone a frame early).
+    sprite_depth = "ground_and_priority",
     -- What a frame's sprite draw has room for (0x03005C00, each drawn object's sprite in draw order): tiles under the
     -- cap (0x03005FD4: the allocator, 1 as a frame starts, less 0x30 plus the frame's tiles) and a palette slot
     -- (0x03006010), a sprite past either left out. Both read the game's mode: a battle's (8, 0x08006B14) 10 slots
