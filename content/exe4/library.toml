@@ -456,6 +456,7 @@ program_advance = [
     "gigacan1",
     "gigacan2",
     "gigacan3",
+    "h-burst",
     "heatsprd",
     "bubsprd",
     "suprspr1",
@@ -473,5 +474,9 @@ program_advance = [
     "pithoky1",
     "pithoky2",
     "pithoky3",
+    "pitrng1",
+    "pitrng2",
+    "pitrng3",
     "lifesrd",
+    "timebom",
 ]
