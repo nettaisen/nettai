@@ -205,6 +205,18 @@ fn same_voice(
         }
 }
 
+/// The numbers of the songs bank `b` plays otherwise than bank `a`
+/// (`plays_alike`), or that only one of them has.
+pub fn played_otherwise(a: &SoundBank, b: &SoundBank) -> Vec<u16> {
+    (0..a.songs.len().max(b.songs.len()) as u16)
+        .filter(|&id| match (a.song(m4a::SongId(id)), b.song(m4a::SongId(id))) {
+            (Some(x), Some(y)) => !plays_alike(a, x, b, y),
+            (None, None) => false,
+            _ => true,
+        })
+        .collect()
+}
+
 /// Whether song `b` of bank `bb` plays as song `a` of bank `ab`: the same
 /// player, priority, reverb and commands, and voices that play alike on
 /// the keys of each track's notes, for every voice the track's commands
