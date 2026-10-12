@@ -1,41 +1,37 @@
-//! A battle on screen (docs/app.md §1): the two cards while it loads, then the battle itself, with nettai's
-//! menu over it when Start or Esc asks.
+//! A battle on screen (docs/app.md §1): the two cards while it is made ready, then the battle itself, with
+//! nettai's menu over it when Start or Esc asks.
 //!
 //! A screen starts one with [`Shell::start_battle`] and stays its owner: the menu's controls are the owner's
 //! (the training menu is Training's, the match menu Play's: their names begin `menu.`), and the owner hears
-//! when the battle begins and ends ([`BattleEvent`]). The shell does the rest: it loads everything before the
-//! first frame, runs the ticks due each frame with the buttons held, presents the picture, and takes the keys
-//! for the battle while nothing is over it.
+//! when the battle begins and ends ([`BattleEvent`]). The shell does the rest: it makes the match ready before
+//! its first tick (the library's `preload`: docs/frontend.md §9), runs the ticks due each frame with the buttons
+//! held, presents the picture, and takes the keys for the battle while nothing is over it.
 //!
-//! The game's own pause never runs: outside the custom screen, START never reaches the game, and opens
-//! nettai's menu instead.
+//! The game's own pause never runs: START in a fight is reported by the library, not acted on, and what it
+//! opens is nettai's menu.
 
 use crate::errors::UserError;
-use crate::games::Ready;
 use crate::nav::Key;
 use crate::screens::ScreenId;
 use crate::shell::Shell;
 use crate::stage::{self, Stage};
 use nettai_battle::BattleResult;
-use nettai_battle::input::keys;
 use nettai_frontend::driver::Driver;
 use nettai_frontend::game::TextMode;
-use nettai_frontend::player::Player;
+use nettai_frontend::preload::{Part, Preload};
 use nettai_frontend::replay::Recorder;
+use nettai_match::Set;
 use nettai_render::vfont::TextRenderer;
 use nettai_ui::{BattleKind, VersusCard};
 use slint::ComponentHandle;
 use std::time::{Duration, Instant};
 
-/// How long the two cards show at the least, so they can be read.
-const CARDS_SHOWN: Duration = Duration::from_millis(900);
+/// How long the two cards show at the least. A match is ready in a few milliseconds once the game is loaded,
+/// and a screen shown for two frames is a flash; the bars say how far the loading is, not this.
+const CARDS_SHOWN: Duration = Duration::from_millis(500);
 
-/// What a screen makes for its battle while the cards show: what drives it (a live set against a dummy, a match
-/// over a link, a replay), and the recorder it is recorded with, if it is.
-pub struct Made {
-    pub driver: Box<dyn Driver>,
-    pub recorder: Option<Recorder>,
-}
+/// How long a frame of the cards spends making the match ready, at the most.
+const STEP_BUDGET: Duration = Duration::from_millis(6);
 
 /// A battle to start.
 pub struct BattleStart {
@@ -43,25 +39,29 @@ pub struct BattleStart {
     pub owner: ScreenId,
     /// Which menu Start opens.
     pub kind: BattleKind,
-    /// The game it is of (loaded).
+    /// The game it is of (ready).
     pub game: String,
-    /// The two cards shown while it loads, left and right; none: it starts with no cards (the training battle
-    /// beside a waiting invite).
+    /// The set played, and what plays it: a live set against a dummy, a match over a link, a replay.
+    pub set: Set,
+    pub driver: Box<dyn Driver>,
+    /// The side whose console is shown: the local player's.
+    pub viewer: u8,
+    /// What it is recorded with, if it is.
+    pub recorder: Option<Recorder>,
+    /// The two cards shown while it is made ready, left and right; none: it starts with no cards (the training
+    /// battle beside a waiting invite).
     pub cards: Option<[VersusCard; 2]>,
     /// The picture fills the window. Else the owner's screen shows it in a `Picture` of its own.
     pub full: bool,
-    /// Makes the battle's driver. It runs while the cards show, so what it takes (reading the builds, setting
-    /// the battle up) is not a stutter in the battle.
-    pub make: Box<dyn FnOnce(&Shell, &Ready) -> Result<Made, UserError>>,
-    /// Online: called each frame with how far this side has loaded (0 to 1), it tells the other side and says
-    /// how far that one is. The battle starts when both are 1. None: nobody to wait for.
+    /// Online: called each frame with how far this side is (0 to 1), it tells the other side and says how far
+    /// that one is. The battle starts when both are 1. None: nobody to wait for.
     pub gate: Option<Box<dyn FnMut(f32) -> f32>>,
 }
 
 /// What a battle's owner hears of it.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum BattleEvent {
-    /// Everything is loaded and its first frame is about to run.
+    /// It is ready and its first tick is about to run.
     Started,
     /// The set is over: how it went for this player (none: nobody's).
     Finished(Option<BattleResult>),
@@ -76,12 +76,12 @@ pub struct Battle {
     pub kind: BattleKind,
     pub game: String,
     pub full: bool,
+    /// The side whose console is shown.
+    pub viewer: u8,
     /// nettai's menu is over it.
     menu: bool,
     /// The owner has heard how it ended.
     over: bool,
-    /// The buttons held at the last frame (START's press opens the menu once).
-    held: u16,
 }
 
 impl Battle {
@@ -95,29 +95,18 @@ impl Battle {
     }
 }
 
-/// A battle being loaded: the steps done, and what they made.
+/// A battle being made ready.
 pub struct Loading {
     start: BattleStart,
     began: Instant,
-    step: u8,
-    made: Option<Made>,
-    stage: Option<Stage>,
+    /// Made on the first frame after the cards are up.
+    preload: Option<Preload>,
     theirs: f32,
 }
 
 impl Shell {
-    /// A player of `driver` on `ready`'s game, shown in the language, its text as the settings say.
-    pub fn player(&self, ready: &Ready, driver: Box<dyn Driver>, sound: bool) -> Player {
-        let text = if self.settings.sharp_text { TextMode::Font } else { TextMode::Original };
-        let graphics = ready.graphics(self.lang);
-        let font = ready.loaded.font.clone().filter(|_| text == TextMode::Font);
-        let renderer = graphics.renderer(text, font.clone());
-        let audio = ready.loaded.sound.as_ref().filter(|_| sound).map(|s| nettai_audio::BattleAudio::with_banks(s.banks.clone(), s.songs.clone()));
-        Player::with(renderer, font.map(TextRenderer::new), audio, driver)
-    }
-
-    /// Start a battle: the two cards while it loads, then the battle. The battle before it, if there is one,
-    /// ends unheard.
+    /// Start a battle: the two cards while it is made ready, then the battle. The battle before it, if there
+    /// is one, ends unheard.
     pub fn start_battle(&mut self, start: BattleStart) {
         self.battle = None;
         self.nav.close("menu.");
@@ -130,101 +119,102 @@ impl Shell {
         }
         shell.set_battle(BattleKind::None);
         shell.set_battle_menu(false);
-        self.loading = Some(Loading { start, began: Instant::now(), step: 0, made: None, stage: None, theirs: 0.0 });
+        self.loading = Some(Loading { start, began: Instant::now(), preload: None, theirs: 0.0 });
     }
 
-    /// A frame of the cards: one step of the loading, and the battle begun once everything is loaded, both
-    /// sides are, and the cards were shown long enough. The owner, when the battle began.
+    /// A frame of the cards: the match made ready a few steps at a time, and the battle begun once it is, the
+    /// other side is, and the cards were up long enough to be seen. The owner, when the battle began.
     pub(crate) fn load_battle(&mut self, now: Instant) -> Option<ScreenId> {
         let mut loading = self.loading.take()?;
         let Some(ready) = self.games.ready(&loading.start.game) else {
-            crate::errors::log("starting a battle", &format_args!("{} isn't loaded", loading.start.game));
-            self.loading_failed(UserError::Other);
+            crate::errors::log("starting a battle", &format_args!("{} isn't ready", loading.start.game));
+            self.loading_failed();
             return None;
         };
-        // (One step a frame, so the bar is seen to move; the first frame only shows the cards.)
-        match loading.step {
-            0 => {}
-            1 => {
-                // (The closure is run once: a boxed one is taken out with a stand-in left in its place.)
-                let make = std::mem::replace(&mut loading.start.make, Box::new(|_, _| Err(UserError::Other)));
-                match make(self, &ready) {
-                    Ok(made) => loading.made = Some(made),
-                    Err(e) => {
-                        self.loading_failed(e);
-                        return None;
-                    }
-                }
-            }
-            2 => {
-                let Made { driver, recorder } = loading.made.take().expect("made at step 1");
-                let mut player = self.player(&ready, driver, true);
-                if let Some(recorder) = recorder
-                    && let Err(why) = player.record(recorder)
-                {
-                    crate::errors::log("recording the battle", &why);
-                }
-                loading.stage = Some(Stage::new(player));
-            }
-            3 => {
-                // The first picture, at the size it will be shown: the text's glyphs are drawn once here,
-                // not in the battle's first frames.
-                let ui = self.ui();
-                let size = ui.window().size();
-                let fit = self.fit(size.width as f32, size.height as f32);
-                if let Some(stage) = &mut loading.stage {
-                    stage.warm(fit);
-                }
-            }
-            _ => {}
-        }
-        loading.step = (loading.step + 1).min(5);
-        let mine = [0.0, 0.0, 0.45, 0.8, 1.0, 1.0][loading.step as usize];
-        if let Some(gate) = &mut loading.start.gate {
-            loading.theirs = gate(mine);
-        } else {
-            loading.theirs = mine;
-        }
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
+        match &mut loading.preload {
+            // (The first frame shows the cards; the work starts on the next.)
+            None => {
+                // The picture's size as the battle will show it: the text is laid out at it.
+                let size = ui.window().size();
+                let fit = self.fit(size.width as f32, size.height as f32);
+                let size = (nettai_render::compose::WIDTH * fit.density as usize, nettai_render::compose::HEIGHT * fit.density as usize);
+                let text = if self.settings.sharp_text { TextMode::Font } else { TextMode::Original };
+                let graphics = ready.graphics(self.lang);
+                let font = ready.loaded.font.clone().filter(|_| text == TextMode::Font);
+                let renderer = graphics.renderer(text, font.clone());
+                let sound = ready.loaded.sound.as_ref().map(|s| (s.banks.clone(), s.songs.clone()));
+                loading.preload = Some(Preload::with(renderer, font.map(TextRenderer::new), sound, &loading.start.set, loading.start.viewer, size));
+            }
+            Some(preload) => {
+                let began = Instant::now();
+                while preload.step() && began.elapsed() < STEP_BUDGET {}
+                if let Some(why) = preload.stopped() {
+                    crate::errors::log("making a battle ready", &why);
+                    self.loading_failed();
+                    return None;
+                }
+            }
+        }
+        let preload = loading.preload.as_ref().expect("made above");
+        let mine = preload.fraction();
+        loading.theirs = match &mut loading.start.gate {
+            Some(gate) => gate(mine),
+            None => mine,
+        };
         if loading.start.cards.is_some() {
+            // A bar a card: online each is its machine's; alone both are this one's, each side's own steps
+            // with the match's.
+            let side = |n: u8| (preload.fraction_of(Part::Match) + preload.fraction_of(Part::Side(n))) / 2.0;
+            let bars = if loading.start.gate.is_some() { [mine, loading.theirs] } else { [side(0), side(1)] };
+            let bars = if loading.start.viewer == 1 && loading.start.gate.is_none() { [bars[1], bars[0]] } else { bars };
             let (mut left, mut right) = (shell.get_versus_left(), shell.get_versus_right());
-            (left.progress, right.progress) = (mine, loading.theirs);
+            (left.progress, right.progress) = (bars[0], bars[1]);
             shell.set_versus_left(left);
             shell.set_versus_right(right);
         }
-        let shown_enough = loading.start.cards.is_none() || now.saturating_duration_since(loading.began) >= CARDS_SHOWN;
-        if loading.step < 5 || loading.theirs < 1.0 || !shown_enough || self.hold_cards {
+        let seen = loading.start.cards.is_none() || now.saturating_duration_since(loading.began) >= CARDS_SHOWN;
+        if !preload.done() || loading.theirs < 1.0 || !seen || self.hold_cards {
             self.loading = Some(loading);
             return None;
         }
         // The battle.
-        let Loading { start, stage, .. } = loading;
-        let mut stage = stage.expect("made at step 2");
+        let Loading { start, preload, .. } = loading;
+        let preload = preload.expect("made above");
+        for missing in preload.missing() {
+            crate::errors::log("the pack lacks something this battle draws", &missing);
+        }
+        let mut player = preload.player(start.driver);
+        if let Some(recorder) = start.recorder
+            && let Err(why) = player.record(recorder)
+        {
+            crate::errors::log("recording the battle", &why);
+        }
+        let mut stage = Stage::new(player);
         stage.hold();
-        let owner = start.owner;
         shell.set_versus(false);
         shell.set_battle(start.kind);
         shell.set_battle_full(start.full);
         shell.set_battle_menu(false);
         shell.set_connection_shown(false);
         self.keys.pressed.clear();
-        self.battle = Some(Battle { stage, owner, kind: start.kind, game: start.game, full: start.full, menu: false, over: false, held: 0 });
-        Some(owner)
+        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, viewer: start.viewer, menu: false, over: false });
+        Some(start.owner)
     }
 
-    fn loading_failed(&mut self, error: UserError) {
+    fn loading_failed(&mut self) {
         self.loading = None;
         self.ui().global::<nettai_ui::Shell>().set_versus(false);
-        self.fail(error);
+        self.fail(UserError::Other);
     }
 
-    /// Whether a battle is loading (the cards show).
+    /// Whether a battle is being made ready (the cards show).
     pub fn loading_battle(&self) -> bool {
         self.loading.is_some()
     }
 
-    /// Give up the battle being loaded (its owner asks: an invite canceled).
+    /// Give up the battle being made ready (its owner asks: an invite canceled).
     pub fn cancel_loading(&mut self) {
         if self.loading.take().is_some() {
             self.ui().global::<nettai_ui::Shell>().set_versus(false);
@@ -257,8 +247,6 @@ impl Shell {
             return;
         }
         b.menu = false;
-        // (What is held as the menu closes isn't a press: START held doesn't open it again.)
-        b.held = !0;
         b.stage.player.set_paused(false);
         b.stage.hold();
         self.keys.release();
@@ -268,8 +256,11 @@ impl Shell {
 
     /// End the battle: the owner's screen shows again.
     pub fn end_battle(&mut self) {
-        if self.battle.take().is_none() {
-            return;
+        let Some(b) = self.battle.take() else { return };
+        // The loading screens' check: a battle made ready loads no runtime and reads nothing while it plays.
+        let late = b.stage.player.late();
+        if late.runtimes > 0 || late.reads > 0 {
+            crate::errors::log("a battle loaded late", &format_args!("{} runtimes, {} parts read from disk, while it played", late.runtimes, late.reads));
         }
         self.nav.close("menu.");
         let ui = self.ui();
@@ -285,18 +276,11 @@ impl Shell {
     /// owner should hear.
     pub(crate) fn run_battle(&mut self, now: Instant, samples: &mut Vec<[f32; 2]>) -> (Option<u32>, Option<(ScreenId, BattleEvent)>) {
         let Some(mut b) = self.battle.take() else { return (None, None) };
-        let mut buttons = if b.playing() && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch } else { 0 };
-        // START is nettai's outside the custom screen: its press opens the menu, and the game never sees it.
-        let in_custom = b.stage.player.battle().round.mode == nettai_battle::battle::mode::CUSTOM;
-        let fresh = buttons & !b.held;
-        b.held = buttons;
-        let mut open_menu = false;
-        if !in_custom {
-            open_menu = fresh & keys::START != 0 && b.playing();
-            buttons &= !keys::START;
-        }
+        let buttons = if b.playing() && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch } else { 0 };
         let ran = b.stage.advance(now, buttons, &mut self.keys.pressed);
         let ticks = (!b.menu || b.stage.player.real_time()).then_some(ran);
+        // START in the fight: the game's pause is nettai's menu.
+        let asked = b.stage.player.take_pause_requests()[b.viewer.min(1) as usize] && b.playing();
         std::mem::swap(samples, &mut b.stage.samples);
         b.stage.samples.clear();
         self.show(&mut b.stage);
@@ -337,7 +321,7 @@ impl Shell {
         }
         let owner = b.owner;
         self.battle = Some(b);
-        if open_menu && event.is_none() {
+        if asked && event.is_none() {
             self.open_menu();
         }
         (ticks, event.map(|e| (owner, e)))
@@ -378,15 +362,7 @@ impl Shell {
 
     /// A recorder of a set to a new file in the replays folder, this player on `side`, both players' names by
     /// side. None if the file can't be made (why is in the log).
-    pub fn recorder(
-        &self,
-        content: &std::sync::Arc<nettai_battle::Content>,
-        m: &nettai_match::Match,
-        seed: u32,
-        game: &str,
-        side: u8,
-        names: [String; 2],
-    ) -> Option<Recorder> {
+    pub fn recorder(&self, content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, game: &str, side: u8, names: [String; 2]) -> Option<Recorder> {
         use nettai_frontend::replay::Info;
         let dir = crate::paths::replays();
         let made = (|| -> Result<Recorder, String> {

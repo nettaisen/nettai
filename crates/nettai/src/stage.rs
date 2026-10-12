@@ -218,14 +218,6 @@ impl Stage {
         }
     }
 
-    /// Present the picture for `fit` into the stage's own buffer and nowhere else: what a first picture takes
-    /// once (the text's glyphs drawn at that size) is taken before the battle's first frame.
-    pub fn warm(&mut self, fit: Fit) {
-        let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
-        self.buffer.resize(w * h, 0);
-        self.player.present(&mut self.buffer, w, h);
-    }
-
     /// Show the picture again from the start (the window's texture was
     /// made anew for another picture).
     pub fn refresh(&mut self) {

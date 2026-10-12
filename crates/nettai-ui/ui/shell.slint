@@ -454,7 +454,7 @@ component KeyCap {
 }
 
 // A pad's face button, by its place: the four as a diamond, the one meant filled.
-component FaceButton {
+export component FaceButton {
     in property <PadButton> button;
     width: 20px;
     height: 20px;
@@ -529,7 +529,6 @@ component HintView {
     property <bool> face: root.hint.pad == PadButton.south || root.hint.pad == PadButton.east || root.hint.pad == PadButton.west || root.hint.pad == PadButton.north;
     property <string> pad-cap: root.hint.pad == PadButton.start ? "START" : (root.hint.pad == PadButton.select ? "SELECT" : (root.hint.pad == PadButton.shoulders ? "L" : ""));
     property <length> glyph: Nav.pad && (root.face || root.hint.pad == PadButton.move) ? 25px : 0px;
-    property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     property <bool> shown: Nav.pad ? root.hint.pad != PadButton.none : root.hint.key != "";
     width: root.shown ? label.x + label.preferred-width : 0px;
     FaceButton {
@@ -562,12 +561,6 @@ component HintView {
         font-size: 12px;
         vertical-alignment: center;
     }
-
-    changed over => {
-        if over {
-            Audit.clipped(root.hint.text);
-        }
-    }
 }
 
 // The footer, the same on every menu screen: the key hints at the left, one short status at the right. A phone
@@ -575,6 +568,8 @@ component HintView {
 export component Footer {
     in property <[Hint]> hints;
     in property <string> status;
+    // (The hints must leave the status its room.)
+    property <bool> over: Theme.audit && !Theme.phone && row.preferred-width > self.width - 280px - 24px;
     height: Theme.footer;
     Rectangle {
         visible: !Theme.phone;
@@ -585,7 +580,7 @@ export component Footer {
             background: Theme.line;
         }
 
-        HorizontalLayout {
+        row := HorizontalLayout {
             padding-left: 32px;
             padding-right: 32px;
             spacing: 24px;
@@ -605,6 +600,12 @@ export component Footer {
             horizontal-alignment: right;
             vertical-alignment: center;
             overflow: elide;
+        }
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped("the footer's key hints");
         }
     }
 }
