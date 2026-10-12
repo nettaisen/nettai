@@ -1276,6 +1276,12 @@ below: each game states them).
   EXE5's (0x080145AC) the chip's and the charged chip's requests, EXE4's (0x08010CB8: 0x800) nothing, so a chip
   asked for before the field dimmed (A pressed in a step) is used after the dimming with no further press
   (exe4-map.md §18 item 67).
+- **Where the idle starts a trap's counter.** The `reactions` section's `idle_entry_counter`: EXE6's idle entry
+  (`sub_80EA734`) and EXE5's (0x080EAFEA) start a sprung trap's counter before the navi's own idle runs (`true`).
+  EXE4's entry (0x080EB0D6) does so for a navi in auto battle alone (NaviStats +0x26 = 1, a story's navi), so a
+  netbattle's navi's idle starts it in its turn (0x080EEBD0: after the phase's timer, the chip window and a revert
+  asked for; `false`). It shows when a navi comes back to its idle with the trap already sprung (exe4-map.md §18
+  item 67).
 - **The souls' engine items (exe5-map.md §15.8).** The `reactions` section's `stance_counter`, the navi's game's:
   the counter a stance's caught hit starts runs from the next tick in EXE6 (`sub_80105F2`, `"next_tick"`), its
   first step at once in EXE5 (0x0800E340, `"at_once"`). (EXE5's hit kernel is the `reactions` section's
