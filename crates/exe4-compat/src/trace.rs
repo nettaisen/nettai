@@ -479,7 +479,9 @@ impl Round {
     /// The buttons the engine is fed for side `side` on the `i`th of
     /// `frames`, so that it plays as the original did with no link of its
     /// own (as exe5-compat's): while the fight runs, what the original's
-    /// fight saw; from a custom screen's opening to the side's OK, what the
+    /// fight saw, the frame a custom screen opens on among them (its tick
+    /// is the fight's still, which takes the L or R that opens it,
+    /// 0x08007A2E); from the frame after to the side's OK, what the
     /// original's screen saw (the buttons `link_delay` frames on); for
     /// `link_delay` frames from the OK, the buttons of the frame before
     /// it; then again what the fight sees.
@@ -487,6 +489,11 @@ impl Round {
         let d = self.link_delay() as u32;
         let frame = frames[i].frame;
         let Some(opened) = self.screen_opened(frame) else { return self.joypad(frame, side) };
+        // (A round's first screen opens with no fight before it.)
+        let from_fight = opened > 0 && self.frames[opened - 1].state[0] == 4 && self.frames[opened - 1].state[1] == 12;
+        if from_fight && self.frames[opened].frame == frame {
+            return self.joypad(frame, side);
+        }
         match self.screen_ok(opened, side) {
             Some(ok) if frame >= ok + d => self.joypad(frame, side),
             Some(ok) if frame >= ok => self.joypad((ok + d).saturating_sub(1), side),

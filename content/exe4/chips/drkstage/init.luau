@@ -75,6 +75,7 @@ local drkstage: Chip = {
     dimming = function(user: Object, spec: DimmingChipSpec): Object?
         return dimming_chips.spawn(controller, user, spec, true)
     end,
+    auto_battle = { class = "at_once" },
 }
 
 return { drkstage = drkstage }

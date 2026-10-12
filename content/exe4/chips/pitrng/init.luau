@@ -85,6 +85,7 @@ local pitrng1: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 23, code_run = { chip = boomers.boomer1, count = 3 } } },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local pitrng2: Chip = {
@@ -100,6 +101,7 @@ local pitrng2: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 24, code_run = { chip = boomers.boomer2, count = 3 } } },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 local pitrng3: Chip = {
@@ -115,6 +117,7 @@ local pitrng3: Chip = {
     lockout = 0,
     flags = { "has_damage" },
     program_advances = { { order = 25, code_run = { chip = boomers.boomer3, count = 3 } } },
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { pitrng1 = pitrng1, pitrng2 = pitrng2, pitrng3 = pitrng3 }

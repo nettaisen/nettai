@@ -17,6 +17,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = gauge_speed.fast,
+    auto_battle = { class = "at_once" },
 }
 
 return { fstgauge = chip }
