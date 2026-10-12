@@ -219,7 +219,9 @@ local function buster_run(navi: Object, s: State, fam: Family)
             step_to(navi, s, x :: number, y :: number, fam)
         end
     elseif s.sub == 4 then
-        -- (Its console's chip window closes, `sub_801DACC(0x40)`, when its side is the local one: the HUD's.)
+        -- Its console's chip window closes (0x0802BB7C, 0x0802B612: `sub_801DACC(0x40)` when its side is the local
+        -- one), until its next idle shows it again.
+        navi:hide_chip_window()
         navi:start_weapon(buster, 1)
         s.shots += 1
         if s.shots < 2 then
