@@ -1,9 +1,12 @@
 //! The games the app plays: those the content has (`pack::games`), each
 //! loaded on a thread of its own the first time it's wanted and kept, and
 //! its graphics in each language shown, loaded as each is first asked for.
+//! A game loads in steps (its packs found, its content, its graphics, the
+//! text's font, its sound) and says how far it is after each: the loading
+//! screen's bar. Why a game can't be listed or loaded goes to the log.
 
 use nettai_battle::Content;
-use nettai_frontend::game::{self, Graphics, Loaded, Options};
+use nettai_frontend::game::{self, Graphics, Loaded, TextMode};
 use nettai_battle::content::strings::Strings;
 use nettai_content::locale;
 use std::collections::HashMap;
@@ -12,13 +15,24 @@ use std::sync::Arc;
 
 /// Where a game is.
 pub enum State {
-    /// No asset pack of it is found: the command that writes one.
-    NoPack(String),
+    /// No asset pack of it is found.
+    NoPack,
     NotLoaded,
-    Loading,
+    /// Loading: how far, 0 to 1.
+    Loading(f32),
     Ready(Rc<Ready>),
-    /// It couldn't be loaded: why (the library's words).
-    Failed(String),
+    /// It couldn't be loaded (why is in the log).
+    Failed,
+}
+
+/// How far a game's loading is after each of its steps: its packs found, its content, its graphics, the
+/// text's font, its sound.
+const STEPS: [f32; 5] = [0.05, 0.55, 0.8, 0.85, 1.0];
+
+/// What a loading game tells the UI's thread: how far it is, then the game (or why there is none).
+pub enum Step {
+    Progress(f32),
+    Done(Result<Box<Loaded>, String>),
 }
 
 /// A game, loaded: its content, sound and font, and its graphics by
@@ -60,8 +74,6 @@ pub struct Entry {
 /// The games there are, and how far each is loaded.
 pub struct Games {
     pub list: Vec<Entry>,
-    /// Why none can be listed (no content, no packs directory).
-    pub problem: Option<String>,
 }
 
 impl Games {
@@ -69,17 +81,27 @@ impl Games {
     pub fn find() -> Games {
         let found = match game::Found::find(&nettai_content::pack::packs_dir(), &[]) {
             Ok(f) => f,
-            Err(e) => return Games { list: Vec::new(), problem: Some(format!("{e}: {}", e.report)) },
+            Err(e) => {
+                crate::errors::log("finding the packs", &format_args!("{e}: {}", e.report));
+                return Games { list: Vec::new() };
+            }
         };
         match nettai_content::pack::games(None, &found.packs) {
             Ok(choices) => Games {
                 list: choices
                     .into_iter()
-                    .map(|c| Entry { state: if c.pack.is_some() { State::NotLoaded } else { State::NoPack(c.why_not.unwrap_or_default()) }, id: c.game })
+                    .map(|c| {
+                        if let Some(why) = &c.why_not {
+                            crate::errors::log(&format!("{}'s pack", c.game), why);
+                        }
+                        Entry { state: if c.pack.is_some() { State::NotLoaded } else { State::NoPack }, id: c.game }
+                    })
                     .collect(),
-                problem: None,
             },
-            Err(report) => Games { list: Vec::new(), problem: Some(report.to_string()) },
+            Err(report) => {
+                crate::errors::log("listing the games", &report);
+                Games { list: Vec::new() }
+            }
         }
     }
 
@@ -94,30 +116,77 @@ impl Games {
         }
     }
 
-    /// Start loading `id` on a thread, if it isn't loaded or loading;
-    /// `done` gets it on the UI's thread.
-    pub fn load(&mut self, id: &str, lang: &str, done: impl FnOnce(String, Result<Loaded, String>) + Send + 'static) {
+    /// The games that can be played or may yet be: those with a pack that hasn't failed to load.
+    pub fn playable(&self) -> Vec<String> {
+        self.list.iter().filter(|e| !matches!(e.state, State::NoPack | State::Failed)).map(|e| e.id.clone()).collect()
+    }
+
+    /// How far `id`'s loading is, 0 to 1 (1: it is ready).
+    pub fn progress(&self, id: &str) -> f32 {
+        match self.get(id).map(|e| &e.state) {
+            Some(State::Loading(p)) => *p,
+            Some(State::Ready(_)) => 1.0,
+            _ => 0.0,
+        }
+    }
+
+    /// Start loading `id` on a thread, if it isn't loaded or loading, to be shown in `lang`. `told` gets each
+    /// step's end and then the game, in order, on the UI's thread.
+    pub fn load(&mut self, id: &str, lang: &str, told: impl Fn(String, Step) + Send + Sync + 'static) {
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
-        if !matches!(entry.state, State::NotLoaded | State::Failed(_)) {
+        if !matches!(entry.state, State::NotLoaded) {
             return;
         }
-        entry.state = State::Loading;
-        let id = id.to_string();
-        let options = Options { lang: lang.to_string(), ..Options::default() };
+        entry.state = State::Loading(0.0);
+        let (id, lang) = (id.to_string(), lang.to_string());
+        let told = Arc::new(told);
         std::thread::spawn(move || {
-            let loaded = game::load(&id, &options).map_err(|e| format!("{e}\n{}", e.report));
-            let _ = slint::invoke_from_event_loop(move || done(id, loaded));
+            let tell = |step: Step| {
+                let (id, told) = (id.clone(), told.clone());
+                let _ = slint::invoke_from_event_loop(move || told(id, step));
+            };
+            let loaded = load_in_steps(&id, &lang, &|done| tell(Step::Progress(STEPS[done])));
+            tell(Step::Done(loaded.map(Box::new).map_err(|e| format!("{e}\n{}", e.report))));
         });
     }
 
-    /// A game loaded (or not) on its thread.
-    pub fn loaded(&mut self, id: &str, loaded: Result<Loaded, String>) {
+    /// A step of `id`'s loading ended: how far it is now, or the game (or why there is none: to the log).
+    pub fn step(&mut self, id: &str, step: Step) {
         let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
-        entry.state = match loaded {
-            Ok(loaded) => State::Ready(Rc::new(Ready { loaded, graphics: Default::default() })),
-            Err(why) => State::Failed(why),
+        entry.state = match step {
+            Step::Progress(p) => State::Loading(p),
+            Step::Done(Ok(loaded)) => State::Ready(Rc::new(Ready { loaded: *loaded, graphics: Default::default() })),
+            Step::Done(Err(why)) => {
+                crate::errors::log(&format!("loading {id}"), &why);
+                State::Failed
+            }
         };
     }
+}
+
+/// Load game `name` as `game::load` does, to be shown in `lang` (the content's own where it has no strings in
+/// it), saying after each step that it is done (by its place in [`STEPS`]).
+fn load_in_steps(name: &str, lang: &str, done: &dyn Fn(usize)) -> Result<Loaded, game::LoadError> {
+    // (A later step's failure, with the earlier steps' reports before its own.)
+    fn after(before: &[&game::Report], mut e: game::LoadError) -> game::LoadError {
+        let mut issues: Vec<_> = before.iter().flat_map(|r| r.issues.iter().cloned()).collect();
+        issues.append(&mut e.report.issues);
+        e.report.issues = issues;
+        e
+    }
+    let found = game::Found::find(&nettai_content::pack::packs_dir(), &[])?;
+    done(0);
+    let game = game::Game::load(&found, None, name).map_err(|e| after(&[&found.report], e))?;
+    done(1);
+    let lang = if locale::languages(&game.dir).iter().any(|l| l == lang) { lang } else { locale::OWN };
+    let graphics = game.graphics(lang).map_err(|e| after(&[&found.report, &game.report], e))?;
+    done(2);
+    let so_far = [&found.report, &game.report, &graphics.report];
+    let font = game::font(TextMode::Font, None).map_err(|e| after(&so_far, e))?;
+    done(3);
+    let sound = game.sound().map_err(|e| after(&so_far, e))?;
+    done(4);
+    Ok(Loaded { found, game, graphics, text: TextMode::Font, font, sound: Some(sound) })
 }
 
 /// Names in a language: its strings table's where it has them, else the

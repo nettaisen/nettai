@@ -1,0 +1,126 @@
+// Before a battle (docs/design/app-ui.md §6, "Loading"): the two players' cards facing each other, each with
+// its own bar. Everything the match can use is loaded before its first frame; online the match starts when both
+// bars are full. An opponent's card online carries their name alone.
+
+import { Theme } from "../theme.slint";
+import { Shell, VersusCard } from "../shell.slint";
+import { Label, Value, Mono, Pill, Bar, PanelBack } from "../widgets.slint";
+
+component Card {
+    in property <VersusCard> card;
+    in property <int> side;
+    property <length> pad: Theme.phone ? 16px : 24px;
+    PanelBack {
+        side: root.side;
+        accent: false;
+    }
+
+    Label {
+        x: root.pad;
+        y: root.pad;
+        width: parent.width - 2 * root.pad;
+        height: 14px;
+        text: root.card.role;
+    }
+
+    Value {
+        x: root.pad;
+        y: root.pad + 22px;
+        width: parent.width - 2 * root.pad;
+        height: 36px;
+        text: root.card.name;
+        font-size: 28px;
+        font-weight: 900;
+    }
+
+    HorizontalLayout {
+        x: root.pad;
+        y: root.pad + 66px;
+        width: parent.width - 2 * root.pad;
+        height: 22px;
+        spacing: 8px;
+        alignment: start;
+        Value {
+            text: root.card.build;
+            font-size: 16px;
+        }
+
+        Pill {
+            text: root.card.version;
+            tone: root.side == 1 ? Theme.p1 : Theme.p2;
+        }
+    }
+
+    Value {
+        x: root.pad;
+        y: root.pad + 95px;
+        width: parent.width - 2 * root.pad;
+        height: 16px;
+        text: root.card.navi;
+        color: Theme.muted;
+        font-size: 12px;
+        font-weight: 400;
+    }
+
+    Bar {
+        x: root.pad;
+        y: parent.height - root.pad - 10px;
+        width: parent.width - 2 * root.pad - 56px;
+        value: root.card.progress;
+    }
+
+    Mono {
+        x: parent.width - root.pad - 44px;
+        y: parent.height - root.pad - 16px;
+        width: 44px;
+        height: 16px;
+        text: "\{round(clamp(root.card.progress, 0, 1) * 100)}%";
+        horizontal-alignment: right;
+    }
+}
+
+export component VersusScreen {
+    // Side by side, VS between; on a phone one over the other.
+    property <length> card-width: Theme.phone ? self.width - 2 * Theme.margin : min(440px, (self.width - 80px - 2 * Theme.margin) / 2);
+    property <length> card-height: Theme.phone ? 176px : 220px;
+    property <length> middle: Theme.phone ? 48px : 80px;
+    property <length> top: Theme.phone ? (self.height - 2 * self.card-height - self.middle - 32px) / 2 : (self.height - self.card-height - 32px) / 2;
+    Card {
+        x: Theme.phone ? Theme.margin : (parent.width - root.middle) / 2 - root.card-width;
+        y: root.top;
+        width: root.card-width;
+        height: root.card-height;
+        card: Shell.versus-left;
+        side: 1;
+    }
+
+    Text {
+        x: (parent.width - root.middle) / 2;
+        y: Theme.phone ? root.top + root.card-height : root.top;
+        width: root.middle;
+        height: Theme.phone ? root.middle : root.card-height;
+        text: @tr("VS");
+        color: Theme.dim;
+        font-family: Theme.display;
+        font-size: 28px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    Card {
+        x: Theme.phone ? Theme.margin : (parent.width + root.middle) / 2;
+        y: Theme.phone ? root.top + root.card-height + root.middle : root.top;
+        width: root.card-width;
+        height: root.card-height;
+        card: Shell.versus-right;
+        side: 2;
+    }
+
+    Label {
+        y: (Theme.phone ? root.top + 2 * root.card-height + root.middle : root.top + root.card-height) + 16px;
+        height: 16px;
+        text: @tr("LOADING");
+        horizontal-alignment: center;
+    }
+}

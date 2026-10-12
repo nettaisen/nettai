@@ -1,0 +1,18 @@
+// Replays (docs/design/app-ui.md §6): the sets recorded, and the viewer. Not built yet: the screen is here with
+// its header and Back. Its Rust half is src/screens/replays.rs.
+
+import { Theme } from "../theme.slint";
+import { Shell, Page, PadButton } from "../shell.slint";
+
+// What Replays shows: src/screens/replays.rs sets these. (A struct or an enum a property here uses reaches
+// Rust by that use: nothing is added to app.slint for it.)
+export global ReplaysView { }
+
+export component ReplaysScreen inherits Page {
+    title: @tr("REPLAYS");
+    back: @tr("MENU");
+    hints: [
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
+    ];
+}

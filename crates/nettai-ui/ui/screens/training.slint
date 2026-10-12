@@ -1,0 +1,48 @@
+// Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Not built yet:
+// the screen is here with its header and Back, and the training menu with what leaves a battle. Its Rust half
+// is src/screens/training.rs.
+
+import { Theme } from "../theme.slint";
+import { Shell, Page, PadButton } from "../shell.slint";
+import { Button, ButtonKind } from "../widgets.slint";
+import { MenuOverlay } from "battle.slint";
+
+// What Training shows: src/screens/training.rs sets these. (A struct or an enum a property here uses reaches
+// Rust by that use: nothing is added to app.slint for it.)
+export global TrainingView {
+    // The two builds, as the menu's line under its title says them.
+    in property <string> matchup;
+}
+
+export component TrainingScreen inherits Page {
+    title: @tr("TRAINING");
+    back: @tr("MENU");
+    hints: [
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
+    ];
+}
+
+// The training menu: Start or Esc in training. The battle is paused behind it, the dummy in view at the right.
+export component TrainingMenu inherits MenuOverlay {
+    title: @tr("TRAINING");
+    note: TrainingView.matchup;
+    side: true;
+    Button {
+        x: 0;
+        y: parent.height - 40px;
+        width: (parent.width - 8px) / 2;
+        nav: "menu.resume";
+        text: @tr("RESUME");
+        kind: ButtonKind.main;
+    }
+
+    Button {
+        x: (parent.width + 8px) / 2;
+        y: parent.height - 40px;
+        width: (parent.width - 8px) / 2;
+        nav: "menu.quit";
+        text: @tr("QUIT TO MENU");
+        kind: ButtonKind.ghost;
+    }
+}
