@@ -2229,10 +2229,10 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      Thunder elec, Aqua aqua, Wood wood, the rest null) *done* (Fire, Thunder, Aqua, Wood); the
      overlay by soul (0x0800B7E8, table 0x08018068: Fire
      0x10, Number 0x110; `effects.form_overlay`; PopUp's glow, objects/glow, puts its copy on through the form's
-     `put_on` and must have it step on, its Param3 1: 0x0800B812) *done* for Fire, *open* for Number; the image's
+     `put_on` and must have it step on, its Param3 1: 0x0800B812) *done* (Fire, Number); the image's
      part (0x080E3674, table
      0x080E36AC: WindMan 0x34, FireMan 0x12, NumberMan 0x14, AquaMan 0x13; forms/soul's `image(sprite, part)`)
-     *done* for WindMan, FireMan and AquaMan, *open* for NumberMan; a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
+     *done* (WindMan, FireMan, NumberMan, AquaMan); a chip charging on A (0x0800BBA4, the test 0x0800BC78; forms'
      `charged_chips`; the A routine forms/soul's `chip_charge`; any charged chip used with its charge, Null or not,
      0x0800B72C: the rule `chip_use.charged_null_alt_routine`) *done* (Fire, Proto, Metal, Aqua); a
      charged chip's double (0x0800C47A: the damage's 0x8000 and sound 0x1BB, into the damage itself, item 28; the
@@ -2289,8 +2289,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      modifiers from 0x080EB7FE (0x080EB6E8, item 70) *done* (souls/proto/chip, side1); VarSwrd's and NeoVari's
      command window waits out its ticks without A held (0x080ED776, 0x080EE240) *ported* (chips/varswrd's `waits`).
      Z Saver, a Sword chip it charges, reads no charge (0x080EE774).
-   - **NumberSoul (8).** Its overlay 0x110 and image part 0x14 *open*; the status reset's 10 more on each damaging
-     Null chip (0x0800E194) *open*; charged 0x11 (0x0800CE08) *open*; the hand of ten (0x0801DC92) *open*.
+   - **NumberSoul (8).** Its overlay 0x110 (10-01) and image part 0x14 (10-06, NumberMan's face) *done*
+     (souls/number/hit, unison); the status reset's 10 more on each damaging Null chip of the hand (0x0800E194) *done*
+     (souls/number/bonus: a Cannon's 50); the die charged (0x11, 0x0800CE08: 10, hit 0x94; action 0x15, 0x080EC164:
+     the die, attack #5, objects/dice, thrown three columns ahead, its face a draw of RNG2 over 0x080EC200's sixteen,
+     a body the other side can hit) *done* (souls/number/dice: the burst over the 3x3; unison, side1: its hit on the
+     way); the hand of ten (0x0801DC92: the custom screen deals ten in soul 8; rules/souls/custom's hand size) *done*
+     (souls/number/ten: the tenth chip picked).
    - **MetalSoul (9).** B's routine 0x0B (0x0800CDE2: the buster's shot, action 8, its projectile row 5: breaking,
      the breaking spark) *done* (souls/metal/buster: through side 1's Guard); a damaging Metal or Null chip that isn't
      a dimming chip charges on A (0x0D: 70 ticks a level, 90 the last) and doubles charged (0x0800C47A) *done*
