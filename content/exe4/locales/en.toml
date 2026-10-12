@@ -323,6 +323,10 @@ language = "en"
 "magshok3" = { name = "MagShok3", description = "Powerful\nmagnet\nattack!" }
 "lifesync" = { name = "LifeSync", description = "Makes\nenmy's HP\nsame" }
 "signlred" = { name = "SignlRed", description = "Enmy chip\nis no use\nwhile red" }
+"metagel" = { name = "MetaGel", description = "Gel attck\nsteals a\npanel!" }
+"magnum" = { name = "Magnum", description = "Cursor\ndestroys\npanel!" }
+"bugcharg" = { name = "BugCharg", description = "EvilChip!\nGets powr\nwith turn" }
+"shotstar" = { name = "ShotStar", description = "Drop many\nmeteor on\nenmy area" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

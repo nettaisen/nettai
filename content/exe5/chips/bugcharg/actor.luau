@@ -1,34 +1,22 @@
 --!strict
--- BugCharg's stand-in (EXE5's actor object #0x59, 0x080C3A40; EXE5's own, on the dimming stand-ins' skeleton:
--- @exelib/dimming/stand_in): drawn as the user (its animation 16), it raises its charger (an attachment: EXE5's row
--- 0x1C, sprite 0C-43, on attach point 0x18) with a sound, takes in its user's NaviCust bugs (each it clears is a shot
--- more, past the first; in the operation battle only three of them, three shots each) and the save's emotion
--- window glitch, and 41 ticks on fires: a heavy shot (objects/flying_shot) every 16 ticks from the panel ahead,
--- 20 pixels up, each with a sound and the camera shaken. 31 ticks after the last it gives the user back, and its
--- controller (./controller) moves on.
+-- BugCharg's stand-in (EXE5's actor object #0x59, 0x080C3A40): @exelib/bugcharg/actor in EXE5's look: of its user's
+-- facing and NameID, wearing a player user's overlay, hidden from a blind viewer, standing in animation 16; its charger
+-- (an attachment: EXE5's row 0x1C, sprite 0C-43, on attach point 0x18) raised in animation 10 with sound 0x94; its
+-- shots (objects/flying_shot's row 1, 0x080C3BCC, sound 0xFF) one, and one more for each of its user's NaviCust bugs
+-- it takes in (in the operation battle only three of them, three shots each), the save's emotion window glitch
+-- cleared with them.
 
 local attachment = require("../../objects/attachment")
+local common = require("@exelib/bugcharg/actor")
 local flying_shot = require("../../objects/flying_shot")
 local stand_in = require("@exelib/dimming/stand_in")
 local operation_battle = require("../../lib/operation_battle")
 local sparks = require("../../lib/sparks")
 
-export type State = {
-    -- The controller waiting on it (@exelib/dimming/stand_in).
-    controller: Object?,
-    -- Its charger (+0x64).
-    held: Object?,
-}
-
-local actor = {}
-
 local CHARGER_SPRITE = asset.sprite("bug-charger")
 local CHARGER = attachment.look { sprite = CHARGER_SPRITE, palette = 0, attach_point = 0x18 }
-local SOUND_RAISE = asset.sound("appear")
-local SOUND_SHOT = asset.sound("junk-shot")
 -- The heavy shot (the flying shot's row 1, 0x080C3BCC): in the charger's sprite.
 local SHOT = flying_shot.variant { hit_mod = 3, element = 0, spark = sparks.heavy, sprite = CHARGER_SPRITE, speed = 0xA_0000 }
-local AIM, BETWEEN, AFTER = 0x28, 0xF, 0x1E
 
 -- 0x080C3C6C: the bugs it takes in (each cleared), and so its shots: one, and in the operation battle three more
 -- for each of the panel trail, the buster's blanks and the HP drain; else one more for each of the step bug, the
@@ -91,110 +79,32 @@ local function take_bugs(me: Object): number
     return shots
 end
 
--- Phase 0 (0x080C3B50): its charger raised (animation 10, a sound), the bugs taken in; 41 ticks; then the charger's
--- next animation.
-local function aim(me: Object)
-    if me.phase_init == 0 then
-        me.anim = 0xA
-        attachment.attach(me, CHARGER, "held", { anim = 1, while_dimmed = true })
-        battle.play_sound(SOUND_RAISE)
-        me.timer = AIM
-        me.timer2 = take_bugs(me)
-        battle.clear_emotion_window_glitch()
-        me.phase_init = 4
-    end
-    local left = me.timer - 1
-    me.timer = int.u16(left)
-    if left >= 0 then
-        return
-    end
-    local held = (me.state :: State).held
-    if held then
-        held.anim += 1
-    end
-    me.timer = 0
-    me.phase, me.phase_init = 4, 0
-end
-
--- Phase 4 (0x080C3BA6): a shot every 16 ticks (a sound, the camera shaken); after the last, the charger's animation
--- back.
-local function fire(me: Object)
-    local left = me.timer - 1
-    me.timer = int.u16(left)
-    if left >= 0 then
-        return
-    end
-    me.timer = BETWEEN
-    local x, y = field.center(me.panel_x + me.facing, me.panel_y)
-    local shot = flying_shot.launch(me, Vec3.new(x, y, 0x14_0000), SHOT, bit32.bor(me.damage, bit32.lshift(me.stamina, 16)))
-    if shot then
-        shot.run_while_dimmed = true
-    end
-    battle.play_sound(SOUND_SHOT)
-    battle.shake_camera(2, 0x14)
-    local n = me.timer2 - 1
-    me.timer2 = int.u16(n)
-    if n <= 0 then
-        local held = (me.state :: State).held
-        if held then
-            held.anim -= 1
-        end
-        me.phase, me.phase_init = 8, 0
-    end
-end
-
--- Phase 8 (0x080C3BF6): 31 ticks; then the charger let go, the user back, and the controller on.
-local function finish(me: Object)
-    if me.phase_init == 0 then
-        me.timer = AFTER
-        me.phase_init = 4
-    end
-    local left = me.timer - 1
-    me.timer = int.u16(left)
-    if left >= 0 then
-        return
-    end
-    (me.state :: State).held = nil
-    stand_in.leave(me)
-end
-
-local PHASES = { [0] = aim, [4] = fire, [8] = finish }
-
--- 0x080C3B16: shown (but to a viewer blind to its side); by phase.
-local function tick(me: Object)
-    stand_in.show(me)
-    local phase = PHASES[me.phase]
-    if not phase then
-        error(string.format("BugCharg's stand-in: phase %#x reads past its table (0x080C3B44)", me.phase))
-    end
-    phase(me)
-end
-
--- 0x080C3A64: drawn as the user (stand_in.init), at its animation 16; its first update.
-local function init(me: Object)
-    stand_in.init(me, stand_in.overlay)
-    me.anim = 0x10
-    me:set_lifecycle("update")
-    tick(me)
-end
-
-actor.kind = new.kind {
+return common.make {
     id = "bugcharg/actor",
-    pool = "actor",
-    state = { controller = "object", held = "object" },
-    -- 0x080C3A40.
-    update = function(me: Object)
-        local l = me.lifecycle
-        if l == "init" then
-            init(me)
-        elseif l == "update" then
-            tick(me)
-        else
-            me:free()
-            return
-        end
-        me:update_sprite()
+    adopt = function(me: Object, user: Object)
+        me.flip = user.flip
+        -- (The user's NameID, which its charger's attach point reads.)
+        me.identity = user.identity
+    end,
+    wear = stand_in.overlay,
+    unwear = function(me: Object, user: Object)
+        me:remove_parts_of(user)
+    end,
+    hides_from_blind = true,
+    stand_anim = 0x10,
+    raise_anim = 0xA,
+    raise = function(me: Object)
+        attachment.attach(me, CHARGER, "held", { anim = 1, while_dimmed = true })
+    end,
+    raise_sound = asset.sound("appear"),
+    shot_sound = asset.sound("junk-shot"),
+    -- (0x080C3B50: the bugs, then the save's emotion window glitch.)
+    shots = function(me: Object): number
+        local shots = take_bugs(me)
+        battle.clear_emotion_window_glitch()
+        return shots
+    end,
+    launch = function(me: Object, pos: Vec3, damage: number): Object?
+        return flying_shot.launch(me, pos, SHOT, damage)
     end,
 }
-
-return actor

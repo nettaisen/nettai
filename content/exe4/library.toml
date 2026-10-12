@@ -258,6 +258,7 @@ standard = [
     "circgun2",
     "circgun3",
     "snake",
+    "magnum",
     "bighamr1",
     "bighamr2",
     "bighamr3",
@@ -291,6 +292,7 @@ standard = [
     "repair",
     "panlgrab",
     "areagrab",
+    "metagel",
     "grabbnsh",
     "grabrvng",
     "pnlretrn",
@@ -325,6 +327,7 @@ standard = [
 mega = [
     "suprvulc",
     "neovari",
+    "shotstar",
     "godhammr",
     "guardian",
     "jealousy",
@@ -402,6 +405,7 @@ mega = [
 ]
 giga = [
     "bass",
+    "bugcharg",
     "blakbarr",
     "signlred",
     "bassanly",
