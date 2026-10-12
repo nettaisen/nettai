@@ -477,6 +477,7 @@ pub fn queue_objects<'a>(
             // bucket, and `sub_300638C` leaves the shadow's Y at the
             // sprite's height.
             let under = look.under_objects && look.shadow == Shadow::Ground;
+            let by_priority = b.game_rules().effects.sprite_depth == nettai_battle::content::SpriteDepth::GroundAndPriority;
             let mut group = Vec::new();
             for (i, part) in parts.iter().take(32).enumerate() {
                 let shadow = i == 0;
@@ -508,7 +509,16 @@ pub fn queue_objects<'a>(
                     affine: None,
                 };
                 // Ground shadows go one layer back, in the first bucket.
-                let (layer, bucket) = if as_shadow { (3, 0) } else { (2, p.ground + 0x40) };
+                // Where the rules count the sprite's priority into the
+                // depth (EXE4's 0x0300613C), a bucket is further by it: the
+                // first part's (and every part's of a mark under the
+                // objects) by the sprite's priority, a later part's by 2.
+                let bias = match (by_priority, i == 0 || under) {
+                    (false, _) => 0,
+                    (true, true) => look.priority as i32,
+                    (true, false) => 2,
+                };
+                let (layer, bucket) = if as_shadow { (3, bias) } else { (2, p.ground + 0x40 + bias) };
                 group.push((layer, bucket, sprite));
             }
             if !problems.marking.is_empty()
