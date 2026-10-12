@@ -2273,14 +2273,13 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     screen takes the soul as it opens (0x0801DC82: its +0x0F), whatever put the navi in it. The compile check
     (exe4-compat's `compiled`) reads the soul's byte too. The lab's modcards/121, 123 to 129, 131 and 132 and
     overlay/aqua/fs-* and overlay/proto/fs-* (cards 131 and 127 with Full Synchro, 45) replay every frame; their
-    fights are pixel-exact but for the custom screens' known shift. **Open, group A's (item 74):** what the custom
-    screen does in a soul, every screen opened in it, not the change's status reset alone: the hand it builds
-    (0x0801F29A: GutsSoul's 30, WindSoul's and NumberSoul's 10 on each slot; 0x0801F226: WoodSoul's fold), on which
-    modcards/122-guts-soul (the Cannon of its first hand, 70 for our 40), modcards/123-wind-soul-chip,
-    modcards/132-wood-soul-fold and souls/guts/turn2 wait; JunkSoul's used chips offered again (0x0801DFBC: two
-    draws of the console's RNG1), on which modcards/130-junk-soul waits (every frame matches, the console's RNG1
-    apart from frame 984, its second screen); and SearchSoul's SHUFFLE button, drawn 16 frames late as a screen
-    opens (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
+    fights are pixel-exact but for the custom screens' known shift. What the custom screen does in a soul, every screen
+    opened in it, is the soul's (item 74, "the custom screen's soul"): the hand it builds (0x0801F29A, 0x0801F226)
+    *done* (modcards/122-guts-soul, the Cannon of its first hand 70; 123-wind-soul-chip, 128-number-soul, the
+    label's "+10"; 132-wood-soul-fold; souls/guts/turn2: every frame, pixel-exact but for the known shift).
+    **Open, group A's (item 74):** JunkSoul's used chips offered again (0x0801DFBC), on which modcards/130-junk-soul
+    waits (every frame matches, the console's RNG1 apart from frame 984, its second screen); and SearchSoul's
+    SHUFFLE button, not on our screen (modcards/124-search-soul's frames 260 to 275, souls/search/turns' too).
 59. **Done (group A): the status timers while paused, and the status visual** (`effects.status_visual`: EXE4's at
     the identity's `status_mark`; item 110 the timers). EXE4's status timers (0x0800AE58: paralysis +0x10,
     confusion +0x12, blindness +0x14, immobilization +0x16; no freeze or bubble) don't stop while the battle is paused
@@ -2390,6 +2389,20 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      0x080EB93A, the objects 0x080CB4B0, 0x080CC648, 0x080CC750, 0x080CC960, 0x080CCAF0, 0x080CCF7C, 0x080D7590,
      0x080DD7BC, 0x080EA744): the swords' and cannons' afterimages *done* (the form's sprite: lib/swords'
      `navi_afterimage`, lib/cannon; souls/proto/chip), the rest *open*: each with the chip that spawns it.
+   - **The custom screen's soul** (F's find, from the soul cards' recordings: reads the getters' count misses). The
+     screen keeps the navi's soul as it opens (0x0801DC82: 0x0800F49C's r1, the dark soul's as none, into its +0x0F)
+     and reads it there: the hand of ten (0x0801DC92, NumberSoul's below); as OK builds a hand in the soul, soul 12's
+     fold on the screen's list (0x0801F1B0: 0x0801F226, which adds the Null chip's damage and Atk+ bonus to the Wood
+     chip's and moves the later chips up with their damage alone, the list's +12, +36 and +48: each slot's Atk+ bonus
+     and marks, +24 and +60, stay, so a chip that moved up has the bonus of the slot before; `battle.fold_hand_chip`
+     with `whole` false) and each slot's bonus stored into the hand's +0x26 (0x0801F1E2: 0x0801F29A, soul 8's 10 on a
+     damaging Null chip, soul 2's 30 on a damaging Null or Break chip, soul 3's 10 on a damaging Wind chip) *done*:
+     each form's `hand`, applied as the hand is installed (rules/souls/custom's `installed`; souls/guts/turn2, F's;
+     souls/wind/turn2, souls/number/turn2, souls/wood/fold2: 220 then 120, the Atk+10 left behind). JunkSoul's
+     recycling as its screen opens (0x0801DD0C: 0x0801DFBC, up to two of the chips used this battle dealt again)
+     *open*; SearchSoul's SHUFFLE button over slots 8 and 9 (0x0801DD18: three shuffles a screen, the selection's
+     state 0x14, 0x08020998) *open*: it isn't on our screen (souls/search/turns frames 1108 to 1120). Neither while
+     the screen deals dark chips (0x0801DD02: 0x0801DE90's 1).
    - **RollSoul (1).** Roll's arrow charged (routine 0x22, 0x0800CF20) *done* (souls/roll/hit); a chip used from idle
      that isn't a recovery chip heals a tenth of the maximum HP (0x080EED04, the form's `chip_used`) *done*
      (souls/roll/heal).
@@ -2593,8 +2606,10 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     shift: the flags on each of their six panels, navis in front of, behind and beside them, chip icons over a flag
     and its number, Spreader's bursts, Boomer1, MiniBombs and Meteors over the flags, a flag broken, the custom
     screen through five turns, the telops on both sides, Blinder's dimming, flash and blinding (a blind console
-    draws no numbers), AreaGrab's dimming, RollSoul's change, a pause. What it found was the HUD's own, items 132 to
-    134.
+    draws no numbers), RockCube's and AreaGrab's dimmings, RollSoul's change, a pause. What it found was the HUD's
+    own, items 132 to 134. EXE5's and EXE6's stages place no flag (EXE6 has the code, `sub_80D8C5C`, and no stage
+    that places it) and no other object with an HP number: their boulders, rocks and Guardian statues are plain
+    sprites by their ground.
 132. **Done: the other player's used chip through a pause.** EXE4's pause (0x08007176: 0x080166BC) starts "PAUSE"
     alone; EXE6's display (`sub_801E15C`) and EXE5's (0x0801AA28) end the used chips' names. The name stays and runs
     out through the pause (the HUD's tasks run paused). The rule `effects.used_chips_end_early` (with item 76's
@@ -2621,9 +2636,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     starts while a banner shows, which no netbattle reaches: no chip is used while a banner shows). A doubled chip's
     "×2" is one 16x16 sprite at 0x380 for either place (0x08015522 adds no 36: emotions/counter-side1 shows the other
     player's "Cannon 40×2"), so a banner's load turns it into the tops of the banner's glyphs 16 to 19, the '×' the
-    left column (ported with the name's; no recording reaches it: a navi's deletion banner starts after the name has
-    run out, the flag's break is the case, and breaking a flag with a Full Synchro chip takes a counter hit on the
-    last turn).
+    left column: stages/lava-middle-close/flag-break-synchro-bluemoon (a counter hit on the last turn, then the flag
+    broken by the doubled Cannon) compares it, frames 3793 to 3802. (A navi's deletion banner starts after the name
+    has run out; a flag's break is the case that shows it.)
 
 ### 18.8 The chips (group F)
 
