@@ -167,11 +167,12 @@ local rules: Rules = {
         end,
         -- As each hand is installed, its dark chips' costs (./dark_chips).
         custom_result = dark_chips.custom_result,
-        -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, the holy panel a
-        -- dark one clears and the hole a navi that isn't dark closes; then Double Soul's change or revert asked for
-        -- (./souls, 0x0800B658).
+        -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, WoodSoul's heal on
+        -- grass (./souls, 0x08012FB6), the holy panel a dark one clears and the hole a navi that isn't dark closes;
+        -- then Double Soul's change or revert asked for (./souls, 0x0800B658).
         starting_mood = light_dark.starting_mood,
         navi_intake = function(side: number, navi: Object)
+            souls.grass_heal(side, navi)
             light_dark.navi_intake(side, navi)
             souls.navi_intake(side, navi)
         end,
