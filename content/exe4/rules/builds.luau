@@ -25,14 +25,30 @@ return {
             },
         },
     },
+    -- A build's other choices, each of a few presets that set their facts together, the first a new build's. EXE4's
+    -- one is MegaMan light or dark, as Tango's EXE4 netplay saves have him (tango-gamesupport-bn4's src/saves/*.raw:
+    -- the light_hp_1000 and dark_hp_997 ones, every version and region alike; the base HP at the image's 0x21CA, the
+    -- light/dark value at MegaMan's NaviStats +0x36, 0x4E96): 1000 with 1000 HP, or 460 with 997. A build is on a preset
+    -- by the fact that tells them apart (`fact`), on the game's line (`from`, the least value that is the preset's): a
+    -- value of 500 or more is a light MegaMan's, 499 and under a dark one's (./light_dark's `DARK_AT_MOST`, the tests
+    -- at 0x08013306 and 0x08013348). The choice is MegaMan's (`navi`).
+    choices = {
+        {
+            id = "light_dark",
+            navi = "megaman",
+            fact = "karma",
+            presets = {
+                { id = "light", from = 500, set = { karma = 1000, hp = 1000 } },
+                { id = "dark", from = 0, set = { karma = 460, hp = 997 } },
+            },
+        },
+    },
     -- The facts a build never states: every build plays at the most the game allows, so these are always the rules'
     -- defaults (the most Regular memory, the sun, Double Soul, the rival wins at the 100 RedSun's and BlueMoon's damage
     -- counts).
     at_defaults = { "reg_up", "sun", "double_soul", "rival_wins" },
+    -- A new build is its version and each choice's first preset (a light MegaMan), with this.
     new = {
-        -- What a new build states besides its version: a light MegaMan at his most, as Tango's EXE4 netplay saves have
-        -- him (the light/dark value 1000 at MegaMan's NaviStats +0x36; the HP 1000 is the rules' default).
-        set = { karma = 1000 },
         -- The folder a new save starts with: the first folder of the ROM's folder table, which the new game routine
         -- copies into the save's first folder (Red Sun US's table 0x08017CC8, copied by 0x080190E0 from the new game
         -- routine 0x080049A8, which the title screen's NEW GAME runs; the Japanese ROMs' table is at 0x08017C08). The
