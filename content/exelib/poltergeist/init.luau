@@ -3,7 +3,7 @@
 -- raises; EXE4's 0x080EA13C, which JunkMan raises): it takes every obstacle on the field it can throw (the field-object
 -- registry's eight slots in order, but those whose identities aren't `throwable`: EXE5's NameIDs 0xDA, 0xD3, 0xD2,
 -- 0xE5, 0xE4 and 0xE7; EXE4's code tests kinds instead, 0x080EA16C and 0x0800B3E8: attack objects #0x4C and #0x8C and
--- effect object #0x6E, none ported yet, whose identities are to state it), front to back as its side faces (on one
+-- effect object #0x6E, whose identities state it: PropBom's bomb's does), front to back as its side faces (on one
 -- column, top row first), and throws each at a panel (`obstacle.throw`, `sub_800F6AC`: the obstacle rises, shakes 30
 -- ticks, 20 more for each before it, and flies onto the panel, breaking there with a hit of its damage); the panel a
 -- random one with the other side's navi on it, else one of the other side's but its own, else any (`sub_800F6C6`, a
