@@ -30,6 +30,56 @@ pub(crate) enum ReadKind {
     Open,
 }
 
+/// Where each of a game's four ROMs has a block: the address, in each, of
+/// the game's own pointer to it (a routine's literal, a load list's entry),
+/// in the order of the game's ROMs (`Game::codes`: its two US ROMs, then
+/// their Japanese ones). The block is where that word says, so every ROM
+/// is read the way its own code reaches the block, whatever moved in it.
+#[derive(Clone, Copy)]
+pub(crate) struct Place([u32; 4]);
+
+impl Place {
+    /// A pointer the two versions' code has at the same address: at `us`
+    /// in both US ROMs and at `jp` in both Japanese ones.
+    pub const fn pointer(us: u32, jp: u32) -> Place {
+        Place([us, us, jp, jp])
+    }
+
+    /// A pointer at an address of its own in each ROM (code past the first
+    /// of what the two versions have otherwise).
+    pub const fn pointer_in_each(at: [u32; 4]) -> Place {
+        Place(at)
+    }
+}
+
+/// One of a game's four ROMs to read from: the image, and which of the
+/// four it is (a `Place`'s pointer there). An image that isn't there is a
+/// source too (`is_present`): what is read of it is a placeholder.
+#[derive(Clone, Copy)]
+pub(crate) struct Source<'a> {
+    pub rom: &'a Rom,
+    which: usize,
+}
+
+impl<'a> Source<'a> {
+    /// The first of `roms` (a game's four, in `Game::codes`' order) that
+    /// is there among those `order` numbers; the first of `order` if none
+    /// is.
+    pub fn first(roms: [&'a Rom; 4], order: &[usize]) -> Source<'a> {
+        let which = order.iter().copied().find(|&k| roms[k].is_present()).unwrap_or(order[0]);
+        Source { rom: roms[which], which }
+    }
+
+    pub fn is_present(&self) -> bool {
+        self.rom.is_present()
+    }
+
+    /// Where this ROM has the block at `place`.
+    pub fn at(&self, place: Place) -> u32 {
+        self.rom.u32(place.0[self.which])
+    }
+}
+
 static RECORDING: AtomicBool = AtomicBool::new(false);
 static READS: Mutex<Vec<Read>> = Mutex::new(Vec::new());
 
