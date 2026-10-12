@@ -40,7 +40,7 @@ local MARK_POINT = 0x1B
 -- (The battle effects that make it only wait: 1, a boss rank; 8, a link battle.)
 
 
-lifesync.marker = marker.make_kind("lifesync/marker", asset.sprite("hit-sparks"))
+lifesync.marker = marker.make_kind { id = "lifesync/marker", sprite = asset.sprite("hit-sparks"), palette = 2 }
 
 -- 0x080E7356 (EXE6's `sub_80E7486`): if the panel shows the other side's player navi, the first combatant (both
 -- sides' slots) whose collision is on it.
