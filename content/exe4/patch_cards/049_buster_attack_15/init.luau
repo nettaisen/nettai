@@ -1,10 +1,11 @@
 --!strict
--- The patch card Buster Attack 15 (49, バスター攻撃力15).
+-- The patch card Buster Attack 15 (49, バスター攻撃力15), slot 0A's.
 -- Written by tools/exe4/gen_patch_cards.py (bn6battle-verify) from the EXE4 ROMs.
 
 local cards = require("../rules/patch_cards/cards")
 
-local card: PatchCard = {
+local card: SlottedPatchCard = {
+    slot = "0A",
     effects = {
         cards.buster_attack(14),
         cards.bug("hp", 1),
