@@ -2259,10 +2259,28 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
       count 0x0200B8AC) and EXE6's (0x08000AC8, count 0x0200AC1C) hold 96 too. A dropped copy leaves the
       tiles VRAM held at the sprite's tile index, which may be another sprite's (the index moves when an earlier
       sprite's count changes) until its frame changes again.
-    Open (group C, 2026-10-07): no recording reaches any of them; the lab's busiest fights (two navis and a field of
-    bursts) reserve about 200 tiles and a few palettes. To port (group C, after its chips): the tile and palette caps
-    as per-frame budgets in the renderer's draw order, each game's numbers in its rules, frame-compared with a
-    scenario built to reach them. The queue stays open: it needs a model of sprite VRAM and of every transfer the
+    **Done: the tile cap and the palette slots** (group C). The renderer's sprite draw (nettai-render's
+    `objects::SpriteDraw`) reserves each drawn object's frame's tiles and gives its palette a slot in draw order,
+    before the parts are culled, and leaves out a sprite the frame has no room for; each game's numbers are its rules'
+    `effects.sprite_budget`. A battle's are the same in all three: 10 slots and 0x2FF (EXE6's `sub_80027D4`, EXE5's
+    0x08002740; EXE4's mode byte is 8 in every battle, 0x08006B14 in the mode table 0x0800032C, so its 10 and 0x2FF,
+    the 12 and 0x32F the other modes'), and 8 slots in EXE6's and EXE5's battle mode 1 (`sub_80027E4`, 0x08002750).
+    The allocator starts a frame at 1 and the test takes 0x30 off, so a frame holds 0x32D tiles. A whitened sprite
+    takes no slot (`sprite_forceWhitePalette`, 0x08002E1C, puts it in slot 15, which the slot routine leaves); a sprite
+    left out for its tiles takes none either, and one left out for its palette keeps its tiles reserved. The draw
+    runs for every object with its VISIBLE flag and a loaded sprite, in the pools' draws (0x08003BA0, 0x08003ED4,
+    0x08004180: actors, attacks, effects, each by slot in EXE4, by the update list in EXE5 and EXE6).
+    Checked, the palette slots: the lab's sprites/palette-slots (on grass-rows-a: its boulders, Discord's and Fanfare's
+    instruments, a RockCube, a TimeBomb, a Barrier and a Barr100, the shimmer Fanfare gives its navi, a charge's glow,
+    then side 0's buster shots at its own rock) takes all 10 slots before the shots' hit sparks, the effects' last
+    slot, and is pixel-exact with the cap; with 16 slots the renderer draws the sparks the original leaves out
+    (frames 1812 to 1816 and five more runs to 1906). It replays every frame. The tile cap has no recording: that
+    scene, the busiest built, reserves 309 of the 813 tiles, single chips' 80 to 180, and two navis' objects don't
+    reach it; a unit test covers its arithmetic and the sharing (nettai-render's
+    `the_sprite_draw_leaves_out_what_the_frame_has_no_room_for`). The headless frontend's `--objects` lists what each
+    frame's draw took and left out. Not modeled, and out of a battle's reach: the frame cache's 89 entries (it writes
+    past them), and a slot count of 15, which would give every later sprite slot 15.
+    The queue stays open: it needs a model of sprite VRAM and of every transfer the
     game queues. (What the towers' frame
     compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
     display, tearing, which is left.)
