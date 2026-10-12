@@ -167,10 +167,7 @@ pub fn begin(b: &mut Battle, r: ObjectRef) {
     let side = b.objects.get(r).alliance;
     // Its side's console hides the chip window (sub_801DACC(0x40)), or
     // every console, where the game's rules say (EXE4's).
-    b.chip_hud[side as usize & 1].window = false;
-    if b.game_rules().chip_use.dimming_hides_every_window {
-        b.chip_hud[(side as usize & 1) ^ 1].window = false;
-    }
+    crate::kinds::player::idle::hide_chip_window(b, side as usize);
     if b.dimming[side as usize].initiator == side {
         b.set_flags(battle_flags::DIMMED);
     }
@@ -272,7 +269,7 @@ fn start_telop(b: &mut Battle, r: ObjectRef, side: u8, hidden: TelopHidden) {
     }
     // sub_801BED6(0x10000): a used chip's name makes way, where the game's
     // does.
-    if b.game_rules().effects.telop_ends_used_chips {
+    if b.game_rules().effects.used_chips_end_early {
         b.used_chips = [None; 2];
     }
 }
