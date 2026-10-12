@@ -175,8 +175,9 @@ pub trait Extras {
     fn buttons(&mut self, screen: &Screen) -> Vec<screen::ButtonPlace>;
     /// A button's `state` (at the open and after each pick), if it has one.
     fn button_state(&mut self, screen: &Screen, button: crate::content::ButtonHandle) -> Option<SlotState>;
-    /// A button's `pressed` (A on it), which may change the screen.
-    fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle);
+    /// A button's `pressed` (A on it), which may change the screen, on the
+    /// side's console (its RNG1).
+    fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, button: crate::content::ButtonHandle);
     /// A button's `taken_back` (B took its pick back), if it has one.
     fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle);
     /// `custom.deal(side)`: the screen deals, the folder not yet closed
@@ -227,7 +228,7 @@ impl Extras for NoExtras {
         None
     }
 
-    fn button_pressed(&mut self, _: &mut Screen, _: &mut BattleFolder, _: crate::content::ButtonHandle) {}
+    fn button_pressed(&mut self, _: &mut Screen, _: &mut BattleFolder, _: &mut Console, _: crate::content::ButtonHandle) {}
 
     fn button_taken_back(&mut self, _: &mut Screen, _: crate::content::ButtonHandle) {}
 
@@ -724,9 +725,11 @@ impl Extras for SideExtras<'_> {
         }
     }
 
-    fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, button: crate::content::ButtonHandle) {
+    fn button_pressed(&mut self, screen: &mut Screen, folder: &mut BattleFolder, console: &mut Console, button: crate::content::ButtonHandle) {
         let side = self.side;
-        self.with_screen(screen, Some(folder), |b| b.call_button(side, button, nettai_content_api::RulesHook::ButtonPressed));
+        self.with_screen_console(screen, Some(folder), Some(console), None, |b| {
+            b.call_button(side, button, nettai_content_api::RulesHook::ButtonPressed)
+        });
     }
 
     fn button_taken_back(&mut self, screen: &mut Screen, button: crate::content::ButtonHandle) {

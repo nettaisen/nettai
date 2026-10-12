@@ -176,10 +176,21 @@ pub struct LayoutDoc {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub empty_palette: Option<u8>,
     pub ok_cursor: CursorDoc,
+    /// (Left out: (2, 100), EXE6's and EXE5's.)
+    #[serde(default = "regular", skip_serializing_if = "is_regular")]
+    pub regular: [i16; 2],
 }
 
 fn detail_blank() -> u8 {
     8
+}
+
+fn regular() -> [i16; 2] {
+    [2, 100]
+}
+
+fn is_regular(p: &[i16; 2]) -> bool {
+    *p == regular()
 }
 
 fn turn_limit_palette() -> u8 {
@@ -229,6 +240,7 @@ impl From<CustomLayout> for LayoutDoc {
             detail_blank,
             empty_palette,
             ok_cursor,
+            regular,
         } = l;
         LayoutDoc {
             column_cells,
@@ -247,6 +259,7 @@ impl From<CustomLayout> for LayoutDoc {
             detail_blank,
             empty_palette,
             ok_cursor: ok_cursor.into(),
+            regular: [regular.0, regular.1],
         }
     }
 }
@@ -270,6 +283,7 @@ impl From<LayoutDoc> for CustomLayout {
             detail_blank,
             empty_palette,
             ok_cursor,
+            regular,
         } = l;
         CustomLayout {
             column_cells,
@@ -288,6 +302,7 @@ impl From<LayoutDoc> for CustomLayout {
             detail_blank,
             empty_palette,
             ok_cursor: ok_cursor.into(),
+            regular: (regular[0], regular[1]),
         }
     }
 }

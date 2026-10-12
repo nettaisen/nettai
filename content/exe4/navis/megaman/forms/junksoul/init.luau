@@ -3,17 +3,20 @@
 -- MegaMan's sprite in it is 00-0a, his face picture 14 (0x08014B78), JunkMan's image junkman (08-0a). Its weapons
 -- (0x080184F0's row 10): the buster on B, no A charge, Poltrgst charged (routine 0x61, ./charge). Its status reset
 -- (0x0800E146) confuses the other side's navi: a hit of no damage on its panels with status 0x21, 720 ticks of
--- confusion. (What the souls share: forms/soul.)
+-- confusion. Its custom screen offers two of the chips sent this battle again (./recycle, 0x0801DFBC). (What the
+-- souls share: forms/soul.)
 
 local charge = require("@self/charge")
 local chip = require("@self/chip").junksoul
 local collision = require("../../../rules/collision")
+local recycle = require("@self/recycle")
 local regions = require("@exelib/regions")
 local soul = require("./soul")
 local statuses = require("../../../rules/status")
 
 local form: FormDef = {
     soul = { family = "summon", turns = 3 },
+    custom = recycle.custom,
     chip = chip,
     change = chip.action,
     revert = soul.revert,

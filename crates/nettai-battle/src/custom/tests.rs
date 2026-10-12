@@ -101,7 +101,7 @@ impl Extras for TestButtons {
         false
     }
 
-    fn button_pressed(&mut self, screen: &mut Screen, _: &mut BattleFolder, b: ButtonHandle) {
+    fn button_pressed(&mut self, screen: &mut Screen, _: &mut BattleFolder, _: &mut Console, b: ButtonHandle) {
         let slot = screen.cursor_button_slot().expect("a button under the cursor");
         if screen.slots[slot as usize].state != SlotState::Selectable {
             screen.refuse();
