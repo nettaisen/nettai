@@ -932,14 +932,14 @@ component TabItem inherits Rectangle {
     in property <bool> chosen;
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     height: 40px;
-    width: label.preferred-width + 32px;
+    width: label.preferred-width + (Theme.phone ? 20px : 32px);
     label := Text {
         text: root.tab.text;
         color: !root.tab.enabled ? Theme.dim : (root.chosen ? Theme.text : Theme.muted);
         font-family: Theme.display;
-        font-size: 13px;
+        font-size: Theme.phone ? 11px : 13px;
         font-weight: 700;
-        letter-spacing: Theme.cjk ? 0.3px : 1px;
+        letter-spacing: Theme.cjk ? 0.3px : (Theme.phone ? 0.6px : 1px);
         horizontal-alignment: center;
         vertical-alignment: center;
         animate color {
@@ -961,7 +961,9 @@ component TabItem inherits Rectangle {
 }
 
 // A row of tabs over what they switch (a build's editor): the chosen one's underline slides to the next. Each
-// tab is a control (`nav`, its index its place); the screen switches on `activate`, and on the shoulders.
+// tab is a control (`nav`, its index its place); the screen switches on `activate`, and on the shoulders. The
+// tabs must fit the bar (on a phone they are smaller and closer): it doesn't scroll, and says so in the
+// screenshot pass when they don't.
 export component TabBar inherits Rectangle {
     in property <string> nav;
     in property <[Tab]> tabs;
@@ -969,6 +971,7 @@ export component TabBar inherits Rectangle {
     // Where the chosen tab is: the underline's place.
     property <length> under-x;
     property <length> under-width;
+    property <bool> over: Theme.audit && row.preferred-width > self.width + 0.5px;
     height: 40px;
     Rectangle {
         y: parent.height - 1px;
@@ -976,9 +979,9 @@ export component TabBar inherits Rectangle {
         background: Theme.line;
     }
 
-    HorizontalLayout {
+    row := HorizontalLayout {
         alignment: start;
-        spacing: 4px;
+        spacing: Theme.phone ? 0px : 4px;
         for tab[i] in root.tabs: TabItem {
             property <int> picked: root.chosen;
             function say() {
@@ -1015,6 +1018,12 @@ export component TabBar inherits Rectangle {
         animate x, width {
             duration: Theme.brisk;
             easing: ease-out;
+        }
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped("the tab bar's tabs");
         }
     }
 }
