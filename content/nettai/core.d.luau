@@ -1542,7 +1542,7 @@ declare dimming: {
     -- `side`'s dimming runs its effect from now (the record's state 4).
     run: (side: number) -> (),
     -- A telop for `side` naming `chip` (nil: the zeroed chip's) without
-    -- damage, and its sound; a used chip's name makes way.
+    -- damage, and its sound; a used chip's name stays (AntiNavi's telop).
     chip_telop: (side: number, chip: Chip?) -> (),
     -- `side`'s telop is done.
     telop_done: (side: number) -> boolean,
