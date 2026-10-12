@@ -41,6 +41,7 @@ souls.state = {
     offer = schema.role("form_offer.form", "form"),
     unite_step = schema.role("offer_flight.step", "u8"),
     unite_count = schema.role("offer_flight.count", "u8"),
+    soul_hand_sent = "bool",
 } :: StateSchema
 
 -- 0x0800B658, each tick of MegaMan's intake but a dimmed one (`battle_isTimeStop`): held by his change (the frozen
