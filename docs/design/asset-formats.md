@@ -475,11 +475,15 @@ otherwise; an EXE6 pack writes none of them and is byte-identical to before:
 **Four ROMs, and what differs by version and region.** An EXE6 pack is made
 from the two US ROMs and the two Japanese ones (`nettai-extract exe6 <pack>
 <falzar-us> <gregar-us> <falzar-jp> <gregar-jp>`, any subset and order,
-identified by game code: BR6E, BR5E, BR6J, BR5J): the
-US Falzar ROM's data, with what only the US Gregar ROM has right or of its
-own, read at the addresses the same code points at there (exe6-extract's
-`gregar`), and what the US release cut, from the Japanese ROMs
-(exe6-extract's `jp`):
+identified by game code: BR6E, BR5E, BR6J, BR5J). The pack has every
+asset one of the ROMs given holds: what the four have alike from whichever
+is there, what a version's ROMs alone have right or of their own from a
+ROM of that version (the extractor's `exe6::gregar`), each release's words
+from a ROM of that release, what the US release cut from a Japanese ROM
+(`exe6::jp`), and the US ROM's wherever both releases have their own. Each
+block is read through the game's own pointer to it (a routine's literal, a
+load list's entry: the extractor's `rom::Place`), which each ROM has where
+its code is:
 
 - **What differs by version** is two assets, each named with its version:
   `form-names-falzar` and `form-names-gregar` (nettai-assets
@@ -503,16 +507,19 @@ own, read at the addresses the same code points at there (exe6-extract's
 - **Five chips' pictures and icons** the Falzar ROM has wrong (Bass,
   BigHook, DeltaRay, ColForce, BugRSwrd: the other five Giga chips'
   copied in): the pack has the Gregar ROM's, on either console.
+- **The Cybeasts' sprites**: a ROM has its own version's (Gregar's in
+  slot 08-14, `wide-navi`; Falzar's in 08-15) and a placeholder archive in
+  the other's slot. The pack has each from a ROM of its version.
 - **What the US release cut** (docs/engine/jp-differences.md §4.4, §4.5):
   six sprites the US ROMs fill with a placeholder archive (`count`,
   `django`, `otenko`, `falzar-summon`, `gregar-summon`, `blocking-banner`),
-  from the Japanese Falzar ROM (every other sheet is a US ROM's where one
+  from a Japanese ROM (every other sheet is a US ROM's where one
   is given: the flames HeatMan wears differ in one animation between the
   releases), and the pictures of fifteen chips the US ROMs
   give a placeholder picture (GunDelEX, Otenko, Count (HackJack) ×3, Django ×3,
   DblBeast, Gregar, Falzar, and BatCan1 to BatCan4, which the US release
-  kept), from the Japanese Falzar ROM but Gregar's,
-  from the Japanese Gregar ROM (a Japanese console shows its own beast in
+  kept), from a Japanese ROM, Gregar's from the Japanese Gregar ROM and
+  Falzar's from the Japanese Falzar one (a Japanese console shows its own beast in
   both chips; the pack has each chip's own). Every other chip's icon and
   picture are its version's US ROM's where there is one: the Japanese
   ROMs' differ in one pixel of the Falzar ROMs' BassAnly icon and two of
