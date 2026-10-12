@@ -796,6 +796,9 @@ export type BoyBombLook = {
     releases_tracking: boolean?,
     breaks_while_dimmed: boolean?,
     side_only: boolean?,
+    -- How a crushing touch ends it (the obstacle framework's `react`): none, EXE6's and EXE5's (its HP drops to 0);
+    -- EXE4's reaction (0x08013F3E) destroys it with its HP as it is.
+    crush: ObstacleCrush?,
 }
 
 -- BoyBomb's bomb made for a game (@exelib/boybomb/bomb): its kind, and its spawn for a controller on (x, y).
@@ -990,6 +993,9 @@ export type FanLook = {
     far_column_only: boolean?,
     -- Whatever removes it, it leaves as when broken: its sound and its explosion (EXE4's 0x080D664C).
     removal_explodes: boolean?,
+    -- How a crushing touch ends it (the obstacle framework's `react`): none, EXE6's and EXE5's (its HP drops to 0);
+    -- EXE4's reaction (0x08013F3E) destroys it with its HP as it is.
+    crush: ObstacleCrush?,
     -- The column its gust starts on in `row` (0: none), the game's own where it differs from EXE6's and EXE5's
     -- (EXE4's 0x080D6688).
     column: ((me: Object, row: number, pulls: boolean) -> number)?,
@@ -1612,6 +1618,9 @@ export type CountdownLook = {
     blasts_after_battle: boolean?,
     reads_no_removal: boolean?,
     actions: { [number]: (Object) -> () }?,
+    -- How a crushing touch ends it (the obstacle framework's `react`): none, EXE6's and EXE5's (its HP drops to 0);
+    -- EXE4's reaction (0x08013F3E) destroys it with its HP as it is.
+    crush: ObstacleCrush?,
 }
 
 -- A lance's hit: what it is and hits, its spark, hit modifier and bug.
@@ -1691,6 +1700,9 @@ export type InstrumentLook = {
     removal_puffs: boolean?,
     -- Whatever removes it, it leaves as when broken: its sound and its explosion (EXE4's 0x080DC58C).
     removal_explodes: boolean?,
+    -- How a crushing touch ends it (the obstacle framework's `react`): none, EXE6's and EXE5's (its HP drops to 0);
+    -- EXE4's reaction (0x08013F3E) destroys it with its HP as it is.
+    crush: ObstacleCrush?,
     -- Broken, its explosion; removed, its puff (none where no removal puffs).
     explosion: Effect,
     puff: Effect?,

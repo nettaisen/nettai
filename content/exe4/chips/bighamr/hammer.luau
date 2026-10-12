@@ -225,7 +225,8 @@ function hammer.make(look: Look): Hammer
     -- 0x080D6974.
     local function tick(me: Object)
         obstacle.take_hits(me, "keeps_damage")
-        local a = obstacle.react(me)
+        -- (0x08013F3E: a crushing touch destroys it, its HP as it is.)
+        local a = obstacle.react(me, "destroys")
         if a then
             local action = ACTIONS[a]
             if not action then
