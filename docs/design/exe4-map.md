@@ -2369,9 +2369,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
 63. **The completeness audit** (group B; verify docs/exe4-completeness-audit.md, written from
     `tools/exe4/completeness.py`): every entry of the chip table, the weapon routines, the player's actions, the
     dimming variants, the three object tables, the link stages' entry types, the NaviCust handlers and bugs, the
-    patch cards and the HUD's draw tasks, against content. What a netbattle reaches and content lacks: RedSun,
-    HolyDrem and BlueMoon; DarkNeo, PDriver, BodyGrd and PoisPhar; the dark soul (item 74); "????" staying off after
-    a message (item 130). To decide: the two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
+    patch cards and the HUD's draw tasks, against content. What a netbattle reaches and content lacks (main at
+    aaff7fdd1): DarkNeo; the dark soul (item 74); "????" staying off after a message (item 130). To decide: the two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
     ROM; their names and images are the card's). Everything else missing is the story's enemies, the other navis,
     subsystem 0x0E's battle (item 49), or named by nothing. Run the tool again as content grows.
 64. **Done: the chip window's "???"** (group B; found by the Program Advances' pa/0x15c-bodygrd/sequence7, whose
@@ -2385,8 +2384,9 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     Every chip whose power is a formula was compared on the custom screen (verify's lab-compare): chips/0x0ca-muramasa
     (hit, hurt), 0x036-custswrd (hit, full-gauge), the three NumbrBls (hit; numbrbl1/hp), dark/drkcanon and drksword,
     and the 20 SP and 20 DS navi chips' hit. Every custom screen frame is exact but the late OK's known shift;
-    dark/drklance is exact up to its known stop at frame 917 (item 72). RedSun and BlueMoon (formulas 47 and 48,
-    without bit 0x10: the number) aren't in content yet. Muramasa's and CustSwrd's frame reports had shown the run
+    dark/drklance is exact up to its known stop at frame 917 (item 72). So are RedSun's and BlueMoon's (formulas 47
+    and 48, without bit 0x10: the number; chips/0x130-redsun/hit and wins-35, 0x135-bluemoon/hit and wins-5).
+    Muramasa's and CustSwrd's frame reports had shown the run
     since the chips were ported (custom screen 271 to 285, in (49, 83) to (71, 94)); only the fight's frames were
     read then.
 
