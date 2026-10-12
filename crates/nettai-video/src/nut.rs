@@ -49,9 +49,9 @@
 //!   it; a reader of a file finds it from the end (its length is its last
 //!   field) and has the stream's length and every frame's place from it
 //!   without looking for them. (Without one, ffmpeg looks for the last
-//!   syncpoint from the file's end, a kilobyte further back each try, and
-//!   says "read_timestamp failed" for each until it is past the last raw
-//!   frame.) It takes about ten bytes a frame.
+//!   syncpoint from the file's end, from a kilobyte back and twice as far
+//!   each try, and says "read_timestamp failed" for each until it is past
+//!   the last raw frame.) It takes about ten bytes a frame.
 //! - **Nothing varies**: no time of day, no name, no encoder string. The
 //!   same frames and samples give the same bytes.
 //!
