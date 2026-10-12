@@ -572,8 +572,9 @@ tab of its own, and the row's note names the forms it gives. A link navi has no 
 EXE5 team navi keeps its team's souls stated (they are MegaMan's, which it never uses), so its build keeps a team. A build read from a
 file takes its version's preset (EXE6's by its version, EXE5's the team its souls share the most with), and a
 mixed list is that version's whole set again; a save's version names its own (an EXE5 save's team, from its
-version, whatever souls it holds), and its import says so ("souls none is protoman's: the protoman preset (souls:
-6)"). An EXE6 build states no version until its player chooses one (EXE6's rules assume none: its round doesn't
+version, whatever souls it holds), and its import says so ("souls none is protoman's: the protoman preset
+(giga_chips: 7, souls: 6)": a team's preset sets its Giga chips with its souls, since the folder holds no other
+team's). An EXE6 build states no version until its player chooses one (EXE6's rules assume none: its round doesn't
 start without one). The sheet, the strip and the cards show the version by the preset's name. EXE4's setup states
 no version yet; its Red Sun and Blue Moon would be one more such entry (`[[presets.exe4.version]]`).
 

@@ -811,4 +811,61 @@ mod tests {
         assert_eq!(changed, ["hp", "sun"]);
         assert_eq!(side, before);
     }
+
+    /// EXE4's overview (its own NaviCust and patch cards): a program at work
+    /// is an ability's, a patch card's bug is counted with the NaviCust's
+    /// and said by name and level, and its numbers are added.
+    #[test]
+    fn exe4s_overview_counts_its_cards_bugs() {
+        let content = exe4_content();
+        let builds = Builds::of(&content, "exe4").unwrap();
+        let mut side = builds.new_build(&content, "bluemoon").unwrap();
+        let undersht = ids::entry(&content, "exe4", "navicust_programs", "undersht").unwrap();
+        let custom2 = ids::entry(&content, "exe4", "patch_cards", "017-custom2").unwrap();
+        let entry = |h: EntryHandle| Fact::Value(Value::Def(Registry::Entry, h.0));
+        let int = |n: i64| Fact::Value(Value::Int(n));
+        // UnderSht on the command line (its two cells at (2, 2) and (2, 3)).
+        let placed = Fact::Record(vec![
+            ("program", entry(undersht)),
+            ("color", Fact::Name("white")),
+            ("x", int(2)),
+            ("y", int(3)),
+            ("rotation", int(0)),
+            ("compressed", Fact::Value(Value::Bool(false))),
+        ]);
+        side.set_fact(&content, "navicust_programs", &[placed]).unwrap();
+        // Custom2 (the custom level +2, and its custom bug once) in slot 3.
+        side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", int(3))])]).unwrap();
+        let mut checked = Checked::of(&content, "exe4", &side);
+        assert_eq!(checked.problems, Vec::new());
+        let o = checked.overview(&content, &side).unwrap();
+        assert_eq!(o.custom.added(), 2);
+        assert_eq!(o.abilities, [Source::Entry(undersht)]);
+        assert_eq!(o.bugs, [Bug::Named { key: "custom".into(), level: 1 }]);
+        assert_eq!((o.tag_memory, o.lists.len()), (None, 0));
+        // Two cards in one slot: said of the second, typed.
+        side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", int(3))]), Fact::Record(vec![("card", entry(custom2)), ("slot", int(3))])]).unwrap();
+        let checked = Checked::of(&content, "exe4", &side);
+        let got: Vec<(Wrong, Option<&str>, Option<usize>)> = checked.problems.iter().map(|p| (p.what.clone(), p.field.as_deref(), p.entry)).collect();
+        assert_eq!(got, [(Wrong::Twice, Some("patch_cards"), Some(1))]);
+    }
+
+    /// EXE5's overview: a program at work, and its patch cards' MB.
+    #[test]
+    fn exe5s_overview() {
+        let content = exe5_content();
+        let builds = Builds::of(&content, "exe5").unwrap();
+        let mut side = builds.new_build(&content, "colonel").unwrap();
+        let undersht = ids::entry(&content, "exe5", "navicust_programs", "undersht").unwrap();
+        set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 1, y: 3, rotation: 0, compressed: false }], 2);
+        let mut checked = Checked::of(&content, "exe5", &side);
+        assert_eq!(checked.problems, Vec::new());
+        let o = checked.overview(&content, &side).unwrap();
+        assert_eq!((&o.abilities, &o.bugs), (&vec![Source::Entry(undersht)], &Vec::new()));
+        assert_eq!(o.budget("patch_cards").map(|b| b.count), Some(Count { used: 0, limit: 80 }));
+        // A program off the board: said of its entry, typed.
+        set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 6, y: 3, rotation: 0, compressed: false }], 2);
+        let checked = Checked::of(&content, "exe5", &side);
+        assert!(checked.problems.iter().any(|p| (&p.what, p.field.as_deref(), p.entry) == (&Wrong::OffBoard, Some("navicust_programs"), Some(0))), "{:?}", checked.problems);
+    }
 }
