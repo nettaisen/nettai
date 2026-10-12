@@ -172,7 +172,8 @@ pub struct Problems {
     /// than the original on purpose (`Known`).
     pub known: Vec<Known>,
     /// What the caller asks to have marked wherever a frame draws it
-    /// (`Mark`): `sprite:NAME` (an object drawn with that sprite),
+    /// (`Mark`): `sprite:NAME` (an object drawn with that sprite; with
+    /// `:ANIM`, while it plays that animation),
     /// `background:NAME` (the frame's background), `chip:KEY` (the chip's
     /// picture in the custom screen's chip window), `button:NAME` (a custom
     /// screen button's picture there), `chip-icon:KEY` (the
