@@ -27,6 +27,9 @@ local HIT_MOD, BURST_HIT_MOD = 1, 3
 local BURST_ROW = 2
 -- Off the screen: 140 pixels either side of the middle.
 local EDGE = 0x8C
+-- A field object that JunkMan's poltergeist and ColdMan leave alone (0x0800B3E8: attack object #0x8C among the kinds
+-- they skip).
+local IDENTITY = new.identity { class = "field_object", throwable = false }
 
 local HOVER, FLY, BURST = 0x0, 0x4, 0x8
 
@@ -183,7 +186,8 @@ function bomb.spawn(user: Object, x: number, y: number, z: number, element: numb
         o.alliance = user.alliance
         o:set_damage_word(damage)
         o.run_while_dimmed = true
-        o.related1 = user;
+        o.related1 = user
+        o.identity = IDENTITY;
         (o.state :: State).speed = speed
         obstacle.register(o, user.alliance, 1)
     end

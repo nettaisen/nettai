@@ -29,4 +29,7 @@ return {
     -- L or R with a full gauge: the fight reads both players' keys itself and asks for the custom screen on that tick
     -- (0x08007A2E, from the fighting state, 0x08007188: no reversions).
     custom_request = "joypads",
+    -- The battle's counts of fight ticks (BattleState +0x0E and +0x16, while neither paused nor dimmed: 0x08006D08):
+    -- 10 and 2.
+    fight_cycles = { 10, 2 },
 }

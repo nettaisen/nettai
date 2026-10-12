@@ -95,9 +95,9 @@ pub struct RoundState {
     pub running: u8,
     pub time_up: u8,
     pub local_side: u8,
-    /// Cycles mod 20 and mod 180 (grass healing).
-    pub cycle20: u8,
-    pub cycle180: u8,
+    /// The two counts of fight ticks, each modulo its period (the rules'
+    /// `flow.fight_cycles`; grass heals by them).
+    pub cycles: [u8; 2],
     pub mode_copy: u8,
     pub winner: u8,
     /// Alive navis per side.
@@ -1045,8 +1045,10 @@ impl Battle {
         self.refresh_variable_damage();
         if !self.paused {
             if !self.is_dimmed() {
-                self.round.cycle20 = (self.round.cycle20 + 1) % 20;
-                self.round.cycle180 = (self.round.cycle180 + 1) % 180;
+                let periods = self.game_rules().flow.fight_cycles;
+                for (count, period) in self.round.cycles.iter_mut().zip(periods) {
+                    *count = (*count + 1) % period;
+                }
             }
             self.shift_damage_carry();
         }
