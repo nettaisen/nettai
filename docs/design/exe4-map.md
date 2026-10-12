@@ -2875,10 +2875,29 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      The engine's part, each its own commit: the status rule `idle_asks_controller` (split from EXE5's
      `no_charge_drive`), the form traits `ignores_b` and `emotions_as_base`, `navi:ask_form_change`,
      `navi:hide_chip_window`, the rules' hook `navi_shader`, a navi's `charge_source` and `charge_counter`
-     writable. The lab's darksoul/ (78: the trigger and what bars it, a soul, a light MegaMan, a hit taken while
+     writable. The lab's darksoul/ (87: the trigger and what bars it, a soul, a light MegaMan, a hit taken while
      dimmed, once a battle; the buttons, the hand and the custom screen in it; each side and version; the third
-     object as the first target; a pattern entry; the answers; every class by a chip of it alone in the data, a
-     dozen of them under both answers of their test) replays every frame, states and sounds.
+     object as the first target, an invisible one, the chips barred; a pattern entry; the answers; every class by
+     a chip of it alone in the data, some twenty of them under both answers of their test) replays every frame,
+     states and sounds. Frame comparisons, 25 of them (the change with DarkMega's image, the black MegaMan
+     flashing, the blue pulse and the revert in each; the chip window hidden at the AI's buster and the charge's
+     glow in its dodge; the hand, the buttons and the custom screen in it; each side, Blue Moon; ten classes'
+     chips): every frame exact but the replay's known shift. What they found besides:
+     - **The replay's feed** (exe4-compat `Round::fed`): the frame a custom screen opens on is the fight's still
+       (its tick takes the L or R: 0x08007A2E), so it is fed the fight's buttons; the lab's own recordings press L
+       again four frames on, which hid it.
+     - **The chip window from the screen's close** (in every game): the close starts the window's task, and the
+       renderer counted the fight's first four ticks for the navi's first decision; a navi in the middle of a
+       step as its own screen opened (only a driven navi's can be) lost the name until it landed. The engine's
+       `ChipHud` holds it now (`window` on from the close, `from_close` until a decision or a hide), and the
+       renderer's count is gone; EXE5's and EXE6's frames stay exact (ten scenarios each, both regions' consoles).
+     - **An obstacle's push went the wrong way**: 0x0800B1C0 turns its copy of the navi's rows (0x0800B218) by
+       the obstacle's front as if it faced its pusher (-1 unless a side 1 hit pushed it; no push when both sides'
+       did), where the engine turns an obstacle's rows toward the pusher, as EXE5's and EXE6's tables hold
+       theirs: the rules' `obstacle_rows` are the copy's negated across. The lab had no pushed obstacle
+       (drag/cube-*, 12, now: AirShot at either side's RockCube from either side, and Wind's and Fan's gusts,
+       which push none: no flinch bit). A push no side's hit made would go as side 0's; no such hit pushes an
+       obstacle, so no rule states it.
 75. **Done: DS chips' code and damage on the custom screen** (group A; F's frame comparisons, chips/0x0df-rollds and
     the other DS chips, frames 269 to 283). The DS scenarios' MegaMan is dark, so the screen offers dark chips and the
     cursor starts on one: the hover (0x0801E478) darkens the screen, its window fade (0x0801E520's second slot)
