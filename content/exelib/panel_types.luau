@@ -53,8 +53,9 @@ function panel_types.drains(of: string): (Object) -> ()
     end
 end
 
--- Grass's `stand` (`sub_801A186`'s end): a wood body heals a point when the battle's 20-tick count comes round; at
--- `slows_at` HP or less (EXE6's and EXE5's 9; EXE4's none, 0x08012FF2), its 180-tick count.
+-- Grass's `stand` (`sub_801A186`'s end): a wood body heals a point when the battle's first count of fight ticks comes
+-- round (EXE6's and EXE5's 20 ticks, EXE4's 10); at `slows_at` HP or less (EXE6's and EXE5's 9; EXE4's none,
+-- 0x08012FF2), its second (180 ticks).
 function panel_types.grass(slows_at: number?): (Object) -> ()
     return function(me: Object)
         me.collision.standing_count = 0
@@ -62,7 +63,7 @@ function panel_types.grass(slows_at: number?): (Object) -> ()
             return
         end
         local slow = slows_at ~= nil and me.hp <= slows_at
-        if battle.cycle(if slow then 180 else 20) == 0 then
+        if battle.cycle(if slow then 2 else 1) == 0 then
             me.hp = math.min(me.hp + 1, me.max_hp)
         end
     end
