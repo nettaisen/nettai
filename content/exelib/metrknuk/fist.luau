@@ -1,13 +1,16 @@
 --!strict
 -- A MetrKnuk fist, as EXE6 and EXE5 share it (EXE6's attack object #0xB4,
 -- `sub_80DBCEC`; EXE5's #0x76, 0x080D4C58; docs/engine/dimming-chip-effects.md
--- §18): it falls from high up behind its panel onto it, hits it with a
--- burst, cracks it and shakes the camera, then bounces back up and goes.
--- EXE5's falls without a sound, and goes when the battle ends. Each game
--- makes its kind (`fist.make`: its kind and its spawn). It falls fast (its
--- Param2 4, what MetrKnuk's spawner sets; the original's slow fall, Param2
--- 0, which cracks a panel not yet cracked only on an even draw, no spawner
--- leaves).
+-- §18), and EXE4's Duo's (its attack object #0x66, 0x080DA220, the code
+-- theirs comes from): it falls from high up behind its panel onto it, hits
+-- it with a burst, cracks it and shakes the camera, then bounces back up
+-- and goes. EXE5's falls without a sound; EXE5's and EXE4's go when the
+-- battle ends; EXE4's two (Duo's fists by turns) are each in its own
+-- animation, their burst where the fist is. Each game makes its kind
+-- (`fist.make`: its kind and its spawn). It falls fast (its Param2 4, what
+-- MetrKnuk's spawner and Duo's set; the original's slow fall, Param2 0,
+-- which cracks a panel not yet cracked only on an even draw, no chip's
+-- spawner leaves).
 
 local regions = require("../regions")
 
@@ -16,15 +19,23 @@ local fist = {}
 -- A game's fists.
 export type Look = {
     id: string,
+    -- Its sheet and its animation (EXE6's and EXE5's 0; EXE4's 19 less its
+    -- first parameter, the punch's parity, 0x080DA28C).
     sprite: SpriteAsset,
+    anim: number,
     -- The sound it falls with (EXE6's; EXE5's falls without one).
     sound: Sound?,
     -- Its landing's burst, and its hit: what it is and hits, its spark.
     burst: Effect,
+    -- EXE4's: the burst shows where the fist is as it lands, three pixels
+    -- left of it at its height (0x080DA330); else on its panel's center,
+    -- on the ground.
+    burst_on_fist: boolean,
     self_type: CollisionType,
     target: CollisionType,
     spark: Spark,
-    -- EXE5's: it goes when the battle ends (0x080D4D08).
+    -- EXE5's and EXE4's: it goes when the battle ends (0x080D4D08,
+    -- 0x080DA2E4).
     ends_with_battle: boolean,
 }
 
@@ -39,6 +50,9 @@ local HIT_MOD = 3
 -- The bounce: 7 ticks, moving back for the last 4.
 local BOUNCE, BOUNCE_MOVES = 7, 4
 local SOLID = 0x10
+
+-- EXE4's burst: three pixels left of the fist.
+local BURST_LEFT = 0x3_0000
 
 -- A game's fist kind, and its spawn.
 function fist.make(look: Look): {
@@ -60,8 +74,12 @@ function fist.make(look: Look): {
         me.pos = Vec3.new(x, p.y, p.z)
         me.action, me.phase, me.phase_init = 4, 0, 0
         local px, py = me.panel_x, me.panel_y
-        local cx, cy = field.center(px, py)
-        battle.effect(battle.jitter(3, Vec3.new(cx, cy, 0)), look.burst)
+        if look.burst_on_fist then
+            battle.effect(battle.jitter(3, Vec3.new(x - BURST_LEFT, p.y, p.z)), look.burst)
+        else
+            local cx, cy = field.center(px, py)
+            battle.effect(battle.jitter(3, Vec3.new(cx, cy, 0)), look.burst)
+        end
         local h = battle.hitbox(me, {
             panel_x = px,
             panel_y = py,
@@ -105,8 +123,8 @@ function fist.make(look: Look): {
         end
     end
 
-    -- `sub_80DBD10`: behind its panel, its speeds, its look, (EXE6's) its
-    -- sound. (Its update first runs next tick.)
+    -- `sub_80DBD10`: behind its panel, its speeds, its look, its sound
+    -- (EXE5's has none). (Its update first runs next tick.)
     local function init(me: Object)
         me:set_coordinates_from_panel()
         local p = me.pos
@@ -116,8 +134,8 @@ function fist.make(look: Look): {
         sprite:load(look.sprite)
         sprite.shadow = "with_sprite"
         me.visible = true
-        me.anim, me.anim_loaded = 0, 0
-        sprite:set_animation(0)
+        me.anim, me.anim_loaded = look.anim, look.anim
+        sprite:set_animation(look.anim)
         sprite.palette = 0
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
         local sound = look.sound
