@@ -842,7 +842,7 @@ pub enum OverlayRestart {
 
 /// Requests an end clears, in a content file a list of their names: the
 /// anti-sword trigger, the mode-9 A press, the rules' own B charge's release
-/// (EXE5's Chaos Unison releases).
+/// (EXE5's Chaos Unison releases), a chip's and a charged chip's.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RequestSet(pub u32);
 
@@ -851,6 +851,8 @@ impl RequestSet {
         (crate::actor::request::ANTI_SWORD_TRIGGERED, "anti_sword_triggered"),
         (crate::actor::request::MODE9_A, "mode9_a"),
         (crate::actor::request::RULES_RELEASE, "rules_release"),
+        (crate::actor::request::CHIP, "chip"),
+        (crate::actor::request::CHARGED_CHIP, "charged_chip"),
     ];
 }
 
@@ -872,6 +874,12 @@ pub struct RequestClears {
     pub paralysis: RequestSet,
     pub flinch: RequestSet,
     pub drag: RequestSet,
+    /// What a cut-in's ask clears besides itself, whether or not the chip
+    /// cuts in (the dimmed player's routine): EXE6's (`sub_8017AB4`,
+    /// 0x08017B5E: 0x80C) and EXE5's (0x080145AC) the chip's and the charged
+    /// chip's requests, EXE4's (0x08010CB8: 0x800) nothing, so a chip asked
+    /// for before the field dimmed is still asked for after it.
+    pub cut_in: RequestSet,
 }
 
 /// Collision flags a status end clears, in a content file a list of their
