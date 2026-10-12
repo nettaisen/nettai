@@ -202,4 +202,23 @@ mod tests {
             ]
         );
     }
+
+    /// An e-Reader card's chip in a save's folder (Duo, chip number 0x137,
+    /// in its code D) comes into the side's as any chip does: its record is
+    /// every ROM's, and what the card brings (its name, its picture) the
+    /// pack has whether or not the save holds the card's data.
+    #[test]
+    fn an_e_reader_cards_chip_comes_into_the_folder() {
+        let content = exe4_content();
+        let mut img = image();
+        let folder = 0x262C + 2 * 30;
+        img[folder + 2..folder + 4].copy_from_slice(&(0x137u16 | 3 << 9).to_le_bytes());
+        let save = read(&img).unwrap();
+        let mut side = Side::fresh(&content, "exe4").unwrap();
+        let notes = import(&content, "exe4", &mut side, &save);
+        let chips = side.folder(&content).chips;
+        let named = |c: Option<FolderChip>| c.map(|c| (ids::local(&content.defs.chip(c.id).key).to_string(), c.code.letter()));
+        assert_eq!((named(chips[0]), named(chips[1])), (Some(("cannon".to_string(), 'A')), Some(("duo".to_string(), 'D'))));
+        assert!(!notes.iter().any(|n| n.contains("folder")), "{notes:?}");
+    }
 }
