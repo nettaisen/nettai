@@ -663,10 +663,15 @@ impl Checked {
                 _ => Source::Entry(e),
             })
         };
+        let extent = |d: &Data| match (d.field("level").int(), d.field("amount").int()) {
+            (Some(level), _) => Some(Extent::Level(level.clamp(0, 255) as u8)),
+            (None, Some(amount)) => Some(Extent::Amount { amount: u32::try_from(amount).ok()?, of: d.field("of").int().and_then(|of| u32::try_from(of).ok()) }),
+            (None, None) => None,
+        };
         let bugs = items(answer.field("bugs"))
             .iter()
-            .filter_map(|d| match (d.field("name"), d.field("level").int()) {
-                (Data::Str(key), Some(level)) => Some(Bug::Named { key: key.clone(), level: level.clamp(0, 255) as u8 }),
+            .filter_map(|d| match (d.field("name"), extent(d)) {
+                (Data::Str(key), Some(extent)) => Some(Bug::Named { key: key.clone(), extent }),
                 _ => source(d).map(Bug::From),
             })
             .collect();
@@ -753,12 +758,31 @@ pub enum Source {
 }
 
 /// A bug of a build's navi: by its name's key in the game's strings' `bugs`
-/// table at its level (the NaviCust's, 1 to 3), or as an installed entry's
-/// effect (a patch card's line, which the card shows as a bug).
+/// table and how much of it there is, whoever brings it, the NaviCust or a
+/// patch card; or as an installed entry's effect (a patch card's line: an
+/// ordinary effect that the card marks as a drawback, which is no bug of its
+/// own kind).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Bug {
-    Named { key: String, level: u8 },
+    Named { key: String, extent: Extent },
     From(Source),
+}
+
+/// How much of a named bug a build has: its level, or else its amount. The
+/// game's rules say which (a game's rules/navicust, `card_bug`).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Extent {
+    /// The bug's level: what the build's navi has is what the bug brings at
+    /// that level. The NaviCust's bugs are at level 1 to 3; a patch card's
+    /// is at the level whose work its own is (1, where the bug is only on or
+    /// off); an HP drain's level is its own, 1 to 7, the NaviCust's and a
+    /// card's together.
+    Level(u8),
+    /// The number a patch card's bug writes, where that is what no level of
+    /// the bug brings: a number by itself (the damage as the custom screen
+    /// opens), or one of `of` (the buster's blank shots of 16, the steps in
+    /// 8 that leave a trail).
+    Amount { amount: u32, of: Option<u32> },
 }
 
 /// The strings' text table a named bug's key is of.
@@ -835,7 +859,8 @@ pub struct Overview {
     pub tag_memory: Option<u32>,
     /// What gives the navi its abilities.
     pub abilities: Vec<Source>,
-    /// The navi's bugs.
+    /// The navi's bugs, as the NaviCust and the patch cards together leave
+    /// them: a bug that both bring is there once.
     pub bugs: Vec<Bug>,
     /// The budgets of the build's lists (the patch cards' MB).
     pub lists: Vec<Budget>,
@@ -970,6 +995,15 @@ mod tests {
     use super::*;
     use crate::testing::{PlacedProgram, exe4_content, exe5_content, exe6_content, patch_cards, program_colors, set_navicust};
 
+    /// A named bug at a level, and one with an amount.
+    fn level(key: &str, level: u8) -> Bug {
+        Bug::Named { key: key.into(), extent: Extent::Level(level) }
+    }
+
+    fn amount(key: &str, amount: u32, of: Option<u32>) -> Bug {
+        Bug::Named { key: key.into(), extent: Extent::Amount { amount, of } }
+    }
+
     /// The three games, each with its versions in the order every list shows
     /// them.
     fn games() -> [(Arc<Content>, &'static str, [&'static str; 2]); 3] {
@@ -1064,13 +1098,14 @@ mod tests {
         set_navicust(&content, &mut side, &[placed("undersht", "white", 1, 2)], 2);
         let o = overview(&side);
         assert_eq!(o.abilities, Vec::new());
-        let step = |level: u8| Bug::Named { key: "step".into(), level };
-        assert_eq!(o.bugs, [step(1)]);
-        assert_eq!(content.strings.text(BUGS_TABLE, "step"), Some("Movement Bug"));
+        assert_eq!(o.bugs, [level("step_bug", 1)]);
+        let text = |key: &str| content.strings.text(BUGS_TABLE, key);
+        assert_eq!(text("step_bug"), Some("Movement Bug"));
         // A patch card's effect of the kind that writes the bug's stat takes
         // its place: BomBoy's fixes the step bug (no bug of it left; the card's
-        // own bug line is its charged shot's), and BeastMan's is the step
-        // bug again, listed as the card's line. A fix is no ability.
+        // own bug line is its charged shot's, an ordinary effect marked as a
+        // drawback, which stays the card's line), and BeastMan's is the step
+        // bug again, the same bug by the same name. A fix is no ability.
         let card = |name: &str| ids::entry(&content, "exe6", "patch_cards", name).unwrap();
         let with = |cards: &str| {
             let mut side = side.clone();
@@ -1080,20 +1115,26 @@ mod tests {
         let fixed = with("bomboy");
         assert_eq!(fixed.bugs, [Bug::From(Source::Effect(card("bomboy"), 1))]);
         assert_eq!(fixed.abilities, [Source::Effect(card("bomboy"), 0)]);
-        let again = with("beastman");
-        assert_eq!(again.bugs, [Bug::From(Source::Effect(card("beastman"), 4))]);
-        // The HP drain adds: EraseMan's stands beside the NaviCust's HP bug
-        // (an HP program on the command line), and Kettle's 0 clears it.
+        assert_eq!(with("beastman").bugs, [level("step_bug", 1)]);
+        // The NaviCust's HP bug (an HP program on the command line) is two
+        // bugs: the HP drain in the fight, and a hit's HP bug. A card's
+        // drain adds: EraseMan's 1 more makes the one bug level 2. Kettle's
+        // 0 clears the drain and leaves the hit's, and its own bug is the
+        // custom screen's damage, 40.
         set_navicust(&content, &mut side, &[placed("hp-100", "white", 3, 4)], 2);
-        let hp = Bug::Named { key: "hp".into(), level: 1 };
-        assert_eq!((overview(&side).bugs, content.strings.text(BUGS_TABLE, "hp")), (vec![hp.clone()], Some("Battle HP Bug")));
+        assert_eq!(overview(&side).bugs, [level("hp_drain", 1), level("hit_status.hp_bug", 1)]);
+        assert_eq!((text("hp_drain"), text("hit_status.hp_bug"), text("custom_damage")), (Some("Battle HP Bug"), Some("Damage HP Bug"), Some("Custom Damage")));
         let with = |cards: &str| {
             let mut side = side.clone();
             side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", cards)).unwrap();
             overview(&side)
         };
-        assert_eq!(with("eraseman").bugs, [hp, Bug::From(Source::Effect(card("eraseman"), 3))]);
-        assert_eq!(with("kettle").bugs, [Bug::From(Source::Effect(card("kettle"), 3))]);
+        assert_eq!(with("eraseman").bugs, [level("hp_drain", 2), level("hit_status.hp_bug", 1)]);
+        assert_eq!(with("kettle").bugs, [level("hit_status.hp_bug", 1), amount("custom_damage", 40, None)]);
+        // Cragger's is the hit's HP bug again, and BombCorn's a hit's
+        // confusion in its place.
+        assert_eq!(with("cragger").bugs, [level("hp_drain", 1), level("hit_status.hp_bug", 1)]);
+        assert_eq!(with("bombcorn").bugs, [level("hp_drain", 1), level("hit_status.confuse", 1)]);
         // A link navi's cards do nothing: nothing of them is listed but their MB.
         let mut link = side.clone();
         link.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "beastman")).unwrap();
@@ -1118,23 +1159,141 @@ mod tests {
         assert_eq!(tight.refusal(&content, &side, other), Some(EntryRefusal::Needs { needs: 16, free: 10 }));
     }
 
-    /// Every bug a game's NaviCust can bring has its name in the game's
-    /// strings (the `bugs` table, by the rules' name for the bug), in each
-    /// language the content has, and no name there is of no bug. The names
-    /// are full names: one bug that the games' cards name alike reads alike
-    /// in the three games.
+    /// A patch card's bug is listed as the bug it is: by the name the
+    /// NaviCust's bug of the same stat has, or by its own where only cards
+    /// bring it, at its level or with its amount. An ordinary effect that a
+    /// card marks as a drawback stays the card's line, and a bug slot's
+    /// value that is no bug is an ability.
+    #[test]
+    fn a_cards_bug_is_listed_as_the_bug_it_is() {
+        let content = exe6_content();
+        let mut clean = Builds::of(&content, "exe6").unwrap().new_build(&content, "falzar").unwrap();
+        set_navicust(&content, &mut clean, &[], 2);
+        let card = |name: &str| ids::entry(&content, "exe6", "patch_cards", name).unwrap();
+        let with = |cards: &str| {
+            let mut side = clean.clone();
+            side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", cards)).unwrap();
+            Checked::of(&content, "exe6", &side).overview(&content, &side).unwrap().bugs
+        };
+        let text = |key: &str| content.strings.text(BUGS_TABLE, key);
+        // On or off: level 1. DarkMan's custom damage is no level's: 50.
+        assert_eq!(with("darkman"), [level("step_bug", 1), amount("custom_damage", 50, None)]);
+        assert_eq!(with("volcano"), [level("emotion_bug", 1)]);
+        assert_eq!((with("cragger"), text("hit_status.hp_bug")), (vec![level("hit_status.hp_bug", 1)], Some("Damage HP Bug")));
+        assert_eq!((with("bombcorn"), text("hit_status.confuse")), (vec![level("hit_status.confuse", 1)], Some("Damage Confusion")));
+        // The battle start's bug at 1 and at 2; ColorMan's other bug line is
+        // its lost shield, the card's own.
+        assert_eq!(with("count"), [level("status_bug", 2)]);
+        assert_eq!(with("colorman"), [Bug::From(Source::Effect(card("colorman"), 2)), level("status_bug", 1)]);
+        // The drains at their own levels: of two cards', the later is the
+        // one that holds (as its write is).
+        assert_eq!((with("japanman"), text("custom_hp_drain")), (vec![level("custom_hp_drain", 2)], Some("Custom HP Bug")));
+        assert_eq!(with("eraseman"), [level("hp_drain", 1)]);
+        // The cracked trail is the NaviCust's panel bug, but at 1 step in 8
+        // where its level 1 is 2; grass is a trail only cards bring; and 4
+        // blank shots of 16 are fewer than the buster bug's level 1.
+        assert_eq!((with("dustman"), text("panel_trail.crack")), (vec![amount("panel_trail.crack", 1, Some(8))], Some("Panel Bug")));
+        assert_eq!((with("spidy"), text("panel_trail.grass")), (vec![amount("panel_trail.grass", 2, Some(8))], Some("Movement Grass")));
+        assert_eq!((with("knigtman"), text("buster_blanks")), (vec![amount("buster_blanks", 4, Some(16))], Some("Buster Blank")));
+        // Two cards' bugs, and one card's fix of the other's: Kettle clears
+        // EraseMan's drain (the later write), and brings its own.
+        assert_eq!(with("eraseman, kettle"), [amount("custom_damage", 40, None)]);
+        assert_eq!(with("kettle, eraseman"), [amount("custom_damage", 40, None), level("hp_drain", 1)]);
+
+        // EXE5: the NaviCust's custom bug is the custom screen's damage, at
+        // its level; a card's is the same bug with its own damage, in its
+        // place (the card's write is the one that holds).
+        let content = exe5_content();
+        let mut clean = Builds::of(&content, "exe5").unwrap().new_build(&content, "colonel").unwrap();
+        set_navicust(&content, &mut clean, &[], 2);
+        let megfldr1 = ids::entry(&content, "exe5", "navicust_programs", "megfldr1").unwrap();
+        let bugs = |side: &Side| {
+            let mut checked = Checked::of(&content, "exe5", side);
+            if checked.problems.is_empty() { checked.overview(&content, side).map(|o| (o.bugs, o.abilities)) } else { None }
+        };
+        // (MegFldr1 turned and somewhere off the command line: its bug alone.)
+        let bugged = (0..4 * 49u8)
+            .map(|at| {
+                let mut side = clean.clone();
+                set_navicust(&content, &mut side, &[PlacedProgram { program: megfldr1, color: 0, x: at % 7, y: at / 7 % 7, rotation: at / 49, compressed: false }], 2);
+                side
+            })
+            .find(|side| bugs(side).is_some_and(|(bugs, _)| bugs == [level("custom_damage", 1)]))
+            .expect("MegFldr1 placed off the command line brings the custom bug");
+        let card = |name: &str| ids::entry(&content, "exe5", "patch_cards", name).unwrap();
+        let with = |side: &Side, cards: &str| {
+            let mut side = side.clone();
+            side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe5", cards)).unwrap();
+            bugs(&side).unwrap()
+        };
+        assert_eq!(with(&bugged, "bugtank").0, [amount("custom_damage", 50, None)]);
+        // Cloudy clears it; its own bug line is its lost Super Armor.
+        assert_eq!(with(&bugged, "cloudy").0, [Bug::From(Source::Effect(card("cloudy"), 1))]);
+        // The buster bug's own shots (4 blank, 2 charged) are its level 1;
+        // any others, the blank shots of 16.
+        assert_eq!(with(&clean, "zomon").0, [level("buster_blanks", 1)]);
+        assert_eq!(with(&clean, "junkman").0, [amount("buster_blanks", 4, Some(16))]);
+        assert_eq!(with(&clean, "appley").0, [amount("buster_blanks", 1, Some(16)), level("emotion_bug", 1)]);
+        let text = |key: &str| content.strings.text(BUGS_TABLE, key);
+        assert_eq!((with(&clean, "lark").0, text("hit_status.blind")), (vec![level("hit_status.blind", 1)], Some("Damage Blindness")));
+        assert_eq!((with(&clean, "whirly").0, text("panel_trail.water")), (vec![amount("panel_trail.water", 2, Some(8))], Some("Movement Water")));
+        // BrushMan's holy trail is no bug: an ability, the card's line.
+        let (bugs, abilities) = with(&clean, "brushman");
+        assert_eq!((bugs, abilities.contains(&Source::Effect(card("brushman"), 2))), (Vec::new(), true));
+    }
+
+    /// Every bug a game has, whoever brings it, has its name in the game's
+    /// strings (the `bugs` table), in each language the content has, and no
+    /// name there is of no bug. The bugs are the NaviCust's (the rules' list,
+    /// each under the names the rules give it) and those the game's patch
+    /// cards bring (each card alone on a build). A bug a card brings is named
+    /// by the key of the card effect's own line, where the game's cards have
+    /// lines. The names are full names: one bug that the games' cards name
+    /// alike reads alike in the three games.
     #[test]
     fn every_bug_has_its_name() {
+        use std::collections::BTreeSet;
         let mut names: HashMap<(&str, String), String> = HashMap::new();
-        for (content, game, _) in games() {
+        for (content, game, versions) in games() {
             let programs = nettai_battle::behavior::content_module_data(&content, &format!("{game}:rules/navicust/programs")).unwrap().unwrap();
-            let mut bugs: Vec<String> = items(programs.field("BUGS")).iter().map(|b| if let Data::Str(name) = b { name.clone() } else { panic!("{b:?}") }).collect();
+            let mut bugs: BTreeSet<String> = BTreeSet::new();
+            for bug in items(programs.field("BUGS")) {
+                let Data::Str(bug) = bug else { panic!("{bug:?}") };
+                match programs.field("BUG_NAMES").field(bug) {
+                    Data::List(named) => bugs.extend(named.iter().map(|n| n.field("name").str().unwrap().to_string())),
+                    _ => drop(bugs.insert(bug.clone())),
+                }
+            }
             assert!(bugs.len() >= 10, "{game}");
-            bugs.sort();
+            // The cards' bugs: each card alone on a build with no NaviCust.
+            let builds = Builds::of(&content, game).unwrap();
+            let mut clean = builds.new_build(&content, versions[0]).unwrap();
+            clean.set_fact(&content, "navicust_programs", &[]).unwrap();
+            let mut carded = 0;
+            for card in content.defs.entries_of("patch_cards") {
+                let mut side = clean.clone();
+                match &builds.slots {
+                    Some(slots) => drop(slots.put(&content, &mut side, card).unwrap()),
+                    None => side.set_fact(&content, "patch_cards", &[Fact::Value(Value::Def(Registry::Entry, card.0))]).unwrap(),
+                }
+                let o = Checked::of(&content, game, &side).overview(&content, &side).unwrap();
+                let named: Vec<&String> = o.bugs.iter().filter_map(|b| if let Bug::Named { key, .. } = b { Some(key) } else { None }).collect();
+                carded += usize::from(!named.is_empty());
+                for key in named {
+                    let line = content.strings.text("patch_card_effects", key);
+                    assert!(builds.slots.is_some() || line.is_some(), "{game}: the bug {key} is no card effect's line");
+                    bugs.insert(key.clone());
+                }
+            }
+            match game {
+                "exe6" => assert_eq!(carded, 42),
+                "exe5" => assert_eq!(carded, 31),
+                _ => assert!(carded > 0),
+            }
             for lang in ["en", "ja"] {
                 let path = format!("{}/../../content/{game}/locales/{lang}.toml", env!("CARGO_MANIFEST_DIR"));
                 let table: toml::Table = toml::from_str(&std::fs::read_to_string(&path).unwrap()).unwrap();
-                let named: Vec<String> = table[BUGS_TABLE].as_table().unwrap().keys().cloned().collect();
+                let named: BTreeSet<String> = table[BUGS_TABLE].as_table().unwrap().keys().cloned().collect();
                 assert_eq!(named, bugs, "{path}");
             }
             for bug in bugs {
@@ -1144,12 +1303,15 @@ mod tests {
             }
         }
         let name = |game: &'static str, bug: &str| names[&(game, bug.to_string())].as_str();
-        // The same bug by what it writes, the same name; and a bug of the
-        // same name in the rules that writes another stat, another.
-        assert_eq!((name("exe6", "step"), name("exe5", "step"), name("exe4", "move")), ("Movement Bug", "Movement Bug", "Movement Bug"));
-        assert_eq!((name("exe6", "hp"), name("exe4", "hp"), name("exe5", "hp")), ("Battle HP Bug", "Battle HP Bug", "Damage HP Bug"));
-        assert_eq!((name("exe6", "custom"), name("exe5", "custom"), name("exe4", "custom")), ("Custom Bug", "Custom Damage", "Custom HP Bug"));
-        assert_eq!((name("exe6", "buster"), name("exe5", "panel"), name("exe4", "panel")), ("Buster Blank", "Panel Bug", "Panel Bug"));
+        // The same bug by what it writes, the same name, whichever game has
+        // it and whoever brings it there; and the three custom bugs, which
+        // write three stats, three names.
+        assert_eq!((name("exe6", "step_bug"), name("exe5", "step_bug"), name("exe4", "move")), ("Movement Bug", "Movement Bug", "Movement Bug"));
+        assert_eq!((name("exe6", "hp_drain"), name("exe5", "hp_drain"), name("exe4", "hp")), ("Battle HP Bug", "Battle HP Bug", "Battle HP Bug"));
+        assert_eq!((name("exe6", "hit_status.hp_bug"), name("exe5", "hit_status.hp_bug")), ("Damage HP Bug", "Damage HP Bug"));
+        assert_eq!((name("exe6", "custom"), name("exe6", "custom_damage"), name("exe5", "custom_damage")), ("Custom Bug", "Custom Damage", "Custom Damage"));
+        assert_eq!((name("exe6", "custom_hp_drain"), name("exe5", "custom_hp_drain"), name("exe4", "custom")), ("Custom HP Bug", "Custom HP Bug", "Custom HP Bug"));
+        assert_eq!((name("exe6", "buster_blanks"), name("exe5", "panel_trail.crack"), name("exe4", "panel")), ("Buster Blank", "Panel Bug", "Panel Bug"));
     }
 
     /// A chip's row, and a library's rows sorted.
@@ -1235,7 +1397,7 @@ mod tests {
         let o = checked.overview(&content, &side).unwrap();
         assert_eq!(o.custom.added(), 2);
         assert_eq!(o.abilities, [Source::Entry(undersht)]);
-        assert_eq!(o.bugs, [Bug::Named { key: "custom".into(), level: 1 }]);
+        assert_eq!(o.bugs, [level("custom", 1)]);
         assert_eq!((o.tag_memory, o.lists.len()), (None, 0));
         // Two cards in one slot: said of the second, typed.
         side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", entry(custom2)), ("slot", int(0))]), Fact::Record(vec![("card", entry(custom2)), ("slot", int(0))])]).unwrap();
@@ -1319,11 +1481,14 @@ mod tests {
         assert_eq!(checked.problems.iter().map(|p| &p.what).collect::<Vec<_>>(), [&Wrong::Range { value: 7, least: 0, most: 6 }]);
     }
 
-    /// A NaviCust bug and the patch card effect its name is from are the
+    /// A NaviCust bug and the patch card effect whose name it has are the
     /// same bug by what each writes: in EXE6, a build whose NaviCust brings
     /// the bug and a build with a card whose one bug effect is of that kind
-    /// have the same bug stats changed (the NaviCust's HP bug, which sets
-    /// the hit status besides, the drain among its two).
+    /// have the same bug stats changed (the NaviCust's HP bug changes two,
+    /// one for each of its two names), and each is listed under the one
+    /// name. Where they are listed alike, at the same level, the stats hold
+    /// the same values; and a card that writes what no level of the bug does
+    /// (DustMan's trail, KnightMan's blank shots) has an amount.
     #[test]
     fn a_bug_and_its_cards_effect_write_the_same_stat() {
         let content = exe6_content();
@@ -1353,31 +1518,42 @@ mod tests {
         let base = bug_stats(&stats(&clean));
         let changed = |side: &Side| -> Vec<&'static str> { bug_stats(&stats(side)).iter().zip(&base).filter(|(now, was)| now.1 != was.1).map(|(now, _)| now.0).collect() };
         let program = |name: &str| ids::entry(&content, "exe6", "navicust_programs", name).unwrap();
-        // (The bug, a program placed so that it brings it, a card whose one
-        // bug effect is of the bug's kind, and the stats both write.)
-        for (bug, placed, card, same) in [
-            ("step", ("undersht", 1, 2), "beastman", vec!["processing"]),
-            ("emotion", ("humor", 2, 5), "volcano", vec!["emotion"]),
-            ("panel", ("flotshoe", 2, 5), "dustman", vec!["panel_trail_kind", "panel_trail_level"]),
-            ("buster", ("attack-1", 5, 4), "knigtman", vec!["buster_blanks", "buster_charged"]),
-            ("hp", ("hp-100", 3, 4), "eraseman", vec!["hp_drain"]),
+        // (The bug's name, a program placed so that the NaviCust brings it, a
+        // card whose one bug effect is of the bug's kind, and the stats both
+        // write.)
+        for (key, placed, card, same) in [
+            ("step_bug", ("undersht", 1, 2), "beastman", vec!["processing"]),
+            ("emotion_bug", ("humor", 2, 5), "volcano", vec!["emotion"]),
+            ("panel_trail.crack", ("flotshoe", 2, 5), "dustman", vec!["panel_trail_kind", "panel_trail_level"]),
+            ("buster_blanks", ("attack-1", 5, 4), "knigtman", vec!["buster_blanks", "buster_charged"]),
+            ("hp_drain", ("hp-100", 3, 4), "eraseman", vec!["hp_drain"]),
+            ("hit_status.hp_bug", ("hp-100", 3, 4), "cragger", vec!["hit_status"]),
         ] {
             let mut by_navicust = clean.clone();
             set_navicust(&content, &mut by_navicust, &[PlacedProgram { program: program(placed.0), color: 0, x: placed.1, y: placed.2, rotation: 0, compressed: false }], 2);
-            let mut checked = Checked::of(&content, "exe6", &by_navicust);
-            assert_eq!(checked.problems, Vec::new(), "{bug}");
-            let brought: Vec<String> = checked.overview(&content, &by_navicust).unwrap().bugs.iter().filter_map(|b| if let Bug::Named { key, .. } = b { Some(key.clone()) } else { None }).collect();
-            assert_eq!(brought, [bug], "{bug}: the program placed brings it alone");
             let mut by_card = clean.clone();
             by_card.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", card)).unwrap();
-            let (of_navicust, of_card) = (changed(&by_navicust), changed(&by_card));
-            assert_eq!(of_card, same, "{bug}: {card}'s bug effect");
-            assert!(same.iter().all(|s| of_navicust.contains(s)), "{bug}: the NaviCust's writes {of_navicust:?}");
-            if bug != "hp" {
-                assert_eq!(of_navicust, same, "{bug}");
+            let listed = |side: &Side| -> Vec<Bug> {
+                let mut checked = Checked::of(&content, "exe6", side);
+                assert_eq!(checked.problems, Vec::new(), "{key}");
+                checked.overview(&content, side).unwrap().bugs.into_iter().filter(|b| matches!(b, Bug::Named { key: k, .. } if k == key)).collect()
+            };
+            let (of_navicust, of_card) = (listed(&by_navicust), listed(&by_card));
+            assert_eq!((of_navicust.len(), of_card.len()), (1, 1), "{key}: the program placed and {card} each bring it, under the one name");
+            let (wrote, card_wrote) = (changed(&by_navicust), changed(&by_card));
+            assert_eq!(card_wrote, same, "{key}: {card}'s bug effect");
+            if key == "hp_drain" || key == "hit_status.hp_bug" {
+                assert_eq!(wrote, ["hit_status", "hp_drain"], "the HP bug is both");
             } else {
-                assert_eq!(of_navicust, ["hit_status", "hp_drain"], "the HP bug sets the hit status too");
+                assert_eq!(wrote, same, "{key}");
             }
+            // (A bug that is only on or off is listed at the NaviCust's
+            // count's level, whatever it is: the same stat at any.)
+            let values = |side: &Side| -> Vec<u32> { bug_stats(&stats(side)).iter().filter(|(stat, _)| same.contains(stat)).map(|(_, value)| *value).collect() };
+            let amount = matches!(of_card[0], Bug::Named { extent: Extent::Amount { .. }, .. });
+            assert!(of_navicust != of_card || values(&by_navicust) == values(&by_card), "{key}: {of_navicust:?} twice, of other values");
+            assert!(!amount || values(&by_navicust) != values(&by_card), "{key}: {of_card:?} writes what {of_navicust:?} does");
+            assert_eq!(amount, ["panel_trail.crack", "buster_blanks"].contains(&key), "{key}: {of_card:?}");
         }
     }
 
