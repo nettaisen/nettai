@@ -32,8 +32,12 @@ local DRAWN_AHEAD, HEIGHT = 0x3C, 0x1C_0000
 local HITS, BETWEEN = 0x0A, 0x0F
 local HIT_MOD = 3
 
--- Action 0: its opening animation to its last frame; then the next and the hits.
+-- Action 0: its opening animation to its last frame; then the next and the hits. (On its first tick the sprite still
+-- holds what its init loaded, the animation 0xFF the sheet doesn't have, where the original reads no last frame.)
 local function open(me: Object)
+    if me.anim_loaded ~= me.anim then
+        return
+    end
     if bit32.btest(me.sprite.frame_flags, 0x80) then
         me.anim = int.u8(me.anim + 1)
         me:set_action(4)
@@ -100,17 +104,18 @@ function beam.make_kind(look: Look): Kind
         end
     end
 
-    -- Its sprite (animation twice its distance, a frame in, its first part drawn with it), shown, facing its way, on
-    -- its panel and drawn 60 pixels ahead; its first update.
+    -- Its sprite (its first part drawn with it), shown, facing its way, on its panel and drawn 60 pixels ahead; its
+    -- first update. The animation twice its distance is asked for, to be loaded by the update that follows; what the
+    -- init itself loads and steps is the 0xFF left in the register (EXE5's 0x080D9DE2, EXE4's 0x080E04E6), as the
+    -- pile's does.
     local function init(me: Object)
         local s = me.state :: State
         local sprite = me.sprite
         sprite:load(look.sprite)
         -- sprite_noShadow: the first part is drawn with the sprite.
         sprite.shadow = "with_sprite"
-        local anim = int.u8(s.distance * 2)
-        me.anim, me.anim_loaded = anim, 0xFF
-        sprite:set_animation(anim)
+        me.anim, me.anim_loaded = int.u8(s.distance * 2), 0xFF
+        sprite:set_animation(0xFF)
         sprite:step()
         me.visible = true
         sprite:set_flip(bit32.bxor(me.alliance, me.flip))
