@@ -552,7 +552,11 @@ impl Screen {
 
     /// Where a direction key takes the cursor from the slot it is on: its
     /// neighbor (the neighbors model, fixed up as the screen opened; a
-    /// button's own), else the first slot of its list that is there.
+    /// button's own), else the first slot of its list that is there. (A
+    /// button two cells wide is left by its ends: LEFT from its right cell
+    /// reads its left cell's list, RIGHT from its left cell its right
+    /// cell's. EXE4's SHUFFLE: LEFT from either cell is slot 8's,
+    /// 0x0802044E, RIGHT goes on to OK, 0x0802041C.)
     fn target(&self, key: ScreenKey, layout: &CustomScreenLayout) -> Option<u8> {
         let here = &self.slots[self.cursor as usize];
         let own = match key {
@@ -561,18 +565,22 @@ impl Screen {
             ScreenKey::Right => here.right,
             _ => None,
         };
-        match &layout.slots[self.cursor as usize].moves {
-            SlotMoves::Neighbors { .. } => own,
-            SlotMoves::Candidates { up, down, left, right, .. } => own.or_else(|| {
-                let list = match key {
-                    ScreenKey::Up => up,
-                    ScreenKey::Down => down,
-                    ScreenKey::Left => left,
-                    _ => right,
-                };
-                list.iter().copied().find(|&s| !self.slots[s as usize].kind.is_absent())
-            }),
+        if own.is_some() || matches!(layout.slots[self.cursor as usize].moves, SlotMoves::Neighbors { .. }) {
+            return own;
         }
+        let end = match (here.kind, key) {
+            (SlotKind::Button { cell: ButtonCell::Right, .. }, ScreenKey::Left) => self.cursor - 1,
+            (SlotKind::Button { cell: ButtonCell::Left, .. }, ScreenKey::Right) => self.cursor + 1,
+            _ => self.cursor,
+        };
+        let SlotMoves::Candidates { up, down, left, right, .. } = &layout.slots[end as usize].moves else { return None };
+        let list = match key {
+            ScreenKey::Up => up,
+            ScreenKey::Down => down,
+            ScreenKey::Left => left,
+            _ => right,
+        };
+        list.iter().copied().find(|&s| !self.slots[s as usize].kind.is_absent())
     }
 
     /// `sub_8027F42`: point neighbors that are absent at the next slot
