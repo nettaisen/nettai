@@ -127,10 +127,12 @@ pub struct Shell {
     pub battle: Option<Battle>,
     pub(crate) loading: Option<Loading>,
     /// The screenshot pass holds things still: the two cards stay up whatever is ready, the loading bar is
-    /// shown at a place of its choosing, and the menu's reel stops on one picture (`still`).
+    /// shown at a place of its choosing, and the menu's reel stops on one picture (`still`). Its motion probe
+    /// lets things move all the same (`probe_motion`).
     pub hold_cards: bool,
     pub hold_loading: Option<f32>,
     pub still: bool,
+    pub probe_motion: bool,
     /// Ctrl, Alt or the system's key is held (the key is the system's, or a text field's).
     chord: bool,
     shift: bool,
@@ -309,7 +311,7 @@ impl Shell {
     /// Tell the UI whether things move: not with motion turned down, and not in the screenshot pass.
     pub(crate) fn apply_motion(&mut self) {
         self.reduce_motion = self.settings.reduce_motion.unwrap_or_else(crate::settings::system_reduces_motion);
-        self.ui().global::<Theme>().set_motion(!self.reduce_motion && !self.still);
+        self.ui().global::<Theme>().set_motion(if self.still { self.probe_motion } else { !self.reduce_motion });
     }
 
     /// Have something fly over the layout from one control to another (a chip from its library row to its
@@ -587,6 +589,7 @@ impl App {
             hold_cards: false,
             hold_loading: None,
             still,
+            probe_motion: false,
             chord: false,
             shift: false,
             composing: false,
@@ -1058,6 +1061,10 @@ impl App {
             self.call(owner, |s, shell| s.battle(shell, event));
             self.settle();
         }
+        for id in ScreenId::ALL {
+            self.call(id, |s, shell| s.frame_end(shell, now));
+        }
+        self.settle();
         // The title music plays on the menu screens (not under a battle, or under what a screen plays itself).
         let in_battle = self.shell.battle.is_some() || self.shell.loading.is_some() || ticks.is_some();
         self.shell.sound.want_music(!in_battle && self.shell.ready().is_some());
@@ -1068,7 +1075,7 @@ impl App {
         }
         // The one focus, and where it is.
         let ui = self.shell.ui();
-        let moved = self.shell.nav.settle(&ui);
+        let moved = self.shell.nav.settle(&ui, now, ui.global::<Theme>().get_motion());
         // What was pressed before its controls existed, now that they do (or after a few frames without).
         if !self.pending.is_empty() && self.shell.swap.is_none() {
             let waiting = self.shell.nav.waiting();

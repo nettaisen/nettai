@@ -138,6 +138,11 @@ pub trait Screen {
     /// A battle this screen started: it began, it ended; or the replay it asked for is ready to watch.
     fn battle(&mut self, _shell: &mut Shell, _event: BattleEvent) {}
 
-    /// Every frame, shown or not (a lobby's link is polled while another screen shows).
+    /// Every frame, shown or not, before the battle's ticks (a link's datagrams are fed to its lobby here,
+    /// whatever is on screen).
     fn frame(&mut self, _shell: &mut Shell, _now: Instant, _shown: bool) {}
+
+    /// Every frame, after the battle's ticks: what they made to send goes out (a lobby polled, its outgoing
+    /// datagrams sent). With `frame` this is the netplay library's one loop: feed, advance, poll, send.
+    fn frame_end(&mut self, _shell: &mut Shell, _now: Instant) {}
 }
