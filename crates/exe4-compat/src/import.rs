@@ -159,6 +159,32 @@ mod tests {
         img
     }
 
+    /// Every patch card states its catalog slot as the game shows it, 0A
+    /// to 0F (its definition's `slot`: a card's fact for what lists and
+    /// files cards; nothing in a battle reads it). A pair's halves sit in
+    /// the slots their handlers read for each other (0x080424F4 and
+    /// 0x0804251C: Triple Supporter's in the save's slots 1 and 2).
+    #[test]
+    fn every_patch_card_states_its_catalog_slot() {
+        let content = exe4_content();
+        let slot = |h| {
+            let key = &content.defs.entry(h).key;
+            let card = content.defs.definitions.get(Registry::Entry, key).expect("its definition");
+            card.spec.field("slot").str().map(str::to_string)
+        };
+        let cards = content.defs.entries_of("patch_cards");
+        assert_eq!(cards.len(), 133);
+        for &h in &cards {
+            let s = slot(h);
+            assert!(matches!(s.as_deref(), Some("0A" | "0B" | "0C" | "0D" | "0E" | "0F")), "{}: {s:?}", content.defs.entry(h).key);
+        }
+        let of = |id: &str| slot(content.defs.entry_in("patch_cards", id).expect("the card"));
+        assert_eq!(of("017-custom2").as_deref(), Some("0A"));
+        assert_eq!(of("074-triple-supporter-1-2").as_deref(), Some("0B"));
+        assert_eq!(of("075-triple-supporter-2-2").as_deref(), Some("0C"));
+        assert_eq!(of("028-pet-menu-color-change").as_deref(), Some("0F"));
+    }
+
     #[test]
     fn an_exe4_save_gives_its_side() {
         let content = exe4_content();
