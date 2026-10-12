@@ -492,6 +492,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         panel_trail = "by_chance",
         status_visual = { place = "attach_point" },
         draw_order = "update_list",
+        sprite_depth = "ground",
         sprite_budget = { tiles = 0x2FF, palettes = 10 },"#,
             ),
             (

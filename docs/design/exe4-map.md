@@ -2562,10 +2562,8 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
       banner.
     Frame comparisons: `after-used-chip` 457 of 457 fight frames and `beside-used-chip` 459 of 459 pixel-exact; of
     the seven long ones the frames around the telops and the judge (trace frames 9800 to 10120, or 9960 to 10270
-    with AntiNavi; 2217 frames) all pixel-exact but one frame of `time-up-doubled-side1` (9973: a piece of the
-    broken ice cube, effect #0x38, flying off the bottom of the screen with its ground at row 159 is drawn by the
-    frontend and not by the original; the next frame, at 162, by neither: **open**, the renderer's, none of the
-    telops').
+    with AntiNavi; 2217 frames) all pixel-exact, the one frame of `time-up-doubled-side1` that differed at first
+    (9973: a piece of the broken ice cube at the screen's bottom edge) with item 135's rule.
     **Found by the second block's check:** the idle's naming of a used chip leaves chip 0x38, Slasher, out
     (0x080EECF6): its slash names it (0x080ED642). The chip's trait `not_named_on_use`
     (chips/0x038-slasher/side1: the engine named it at its use too).
@@ -2940,6 +2938,24 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     player's "ColdMan 100×2" (telops/time-up-doubled-side1, frames 9894 to 9897: pixel-exact); a telop's name under a
     banner's load the same way (telops/time-up-side1, 9888 to 9891; telops/time-up-anti-navi, 10036 to 10071). (A
     navi's deletion banner starts after a used chip's name has run out.)
+135. **Done: a sprite part's depth counts its sprite's priority** (group F; the piece of debris of item 71's frame
+    9973). The sprite draw's part list (EXE6's `sub_3006440`; EXE4's 0x0300602C, the ROM's 0x08212F2C) puts a part
+    in the field layer's bucket of its sprite's ground row from 0x40, of 0xE0 buckets, and a part past the last isn't
+    drawn, nor its sprite's parts after it (`sub_3006920`; 0x03006504). EXE4's alone adds the sprite's priority
+    (0x03006086 reads the sprite's +0x16 bits 2 and 3; 0x0300613C adds it): the first part's by the sprite's
+    priority, each later part's by 2 (a sprite's own 2, `sprite_initialize`'s; or 0x0300616C's for a sprite whose
+    priority was set, its flag 0x40), a ground shadow's bucket in its layer the same way. EXE5's and EXE6's ROMs
+    have no such term (their part lists go from the shadow's shift straight to the store). Sprites of one priority
+    keep their order, so nothing shows but at the screen's bottom: a part with its ground on row 158 or lower isn't
+    drawn, where EXE6's is until row 160. The rules' `effects.sprite_depth` ("ground_and_priority"; EXE6's and
+    EXE5's "ground"). Checked: telops/time-up-doubled-side1's frame 9973 (the debris with its ground on row 159:
+    not drawn) and souls/junk/poltergeist-rocks' 943 (on row 157: drawn) are pixel-exact; the frontend's frames of
+    every 15th lab recording under 3000 frames (152 recordings, 85,078 frames) drawn with and without the rule are
+    the same, so nothing else moved. No EXE4 lab recording has a sprite with its ground on row 158. EXE6's and
+    EXE5's do draw a sprite on those rows, as their rule says: the EXE6 lab's stages/absorbed-list-full (a piece of
+    debris on row 158, frame 843), stages/rocks-07-drilarm-side1 (on row 159, frame 397) and
+    pa/0x146-flmhook1/recipe1 (the hook on row 158) and the EXE5 lab's navis/knightman/charge-corner (rows 158 and
+    159, frames 605 to 608) are pixel-exact around them (81, 71, 61 and 71 frames).
 
 ### 18.8 The chips (group F)
 
