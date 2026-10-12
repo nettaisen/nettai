@@ -40,6 +40,7 @@ local ball: Chip = {
     hit_param = 50,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { ball = ball }

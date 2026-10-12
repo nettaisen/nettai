@@ -26,6 +26,7 @@ local fireman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "fireman/controller", palette = 0 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local firemn_sp: Chip = {
@@ -42,6 +43,7 @@ local firemn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "firemn-sp/controller", palette = 2 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 local firemn_ds: Chip = {
@@ -57,6 +59,7 @@ local firemn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "firemn-ds/controller", palette = 3 }.hook,
     megaman = "dark",
+    auto_battle = { class = "into_reach", range = "ahead_in_row" },
 }
 
 return { fireman = fireman, ["firemn-sp"] = firemn_sp, ["firemn-ds"] = firemn_ds }

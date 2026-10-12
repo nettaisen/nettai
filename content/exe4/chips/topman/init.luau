@@ -26,6 +26,7 @@ local topman: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "topman/controller", palette = 0 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 local topmn_sp: Chip = {
@@ -42,6 +43,7 @@ local topmn_sp: Chip = {
     flags = { "dimming", "has_damage", "navi", "library" },
     dimming = navi.controller { id = "topmn-sp/controller", palette = 3 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 local topmn_ds: Chip = {
@@ -57,6 +59,7 @@ local topmn_ds: Chip = {
     flags = { "dimming", "has_damage", "navi", "library", "variable_damage" },
     dimming = navi.controller { id = "topmn-ds/controller", palette = 6 }.hook,
     megaman = "dark",
+    auto_battle = { class = "into_reach", range = "three_ahead" },
 }
 
 return { topman = topman, ["topmn-sp"] = topmn_sp, ["topmn-ds"] = topmn_ds }

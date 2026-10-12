@@ -36,6 +36,7 @@ local geddon1: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = controller.hook(CRACK),
+    auto_battle = { class = "at_once" },
 }
 
 -- Geddon2 (EXE4 chip 0x07C): a quake breaks every solid panel of the field (cracking those something stands on), one
@@ -52,6 +53,7 @@ local geddon2: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = controller.hook(BREAK),
+    auto_battle = { class = "at_once" },
 }
 
 -- Geddon3 (EXE4 chip 0x07D): a quake turns every solid panel of the field to poison, one every 8 ticks in a random
@@ -68,6 +70,7 @@ local geddon3: Chip = {
     lockout = 0,
     flags = { "dimming", "standard_library", "library" },
     dimming = controller.hook(POISON),
+    auto_battle = { class = "at_once" },
 }
 
 return { geddon1 = geddon1, geddon2 = geddon2, geddon3 = geddon3 }

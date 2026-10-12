@@ -30,6 +30,7 @@ local guard1: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_counterable" },
 }
 
 local guard2: Chip = {
@@ -44,6 +45,7 @@ local guard2: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_counterable" },
 }
 
 local guard3: Chip = {
@@ -58,6 +60,7 @@ local guard3: Chip = {
     hit_param = 30,
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
+    auto_battle = { class = "when_counterable" },
 }
 
 return { guard1 = guard1, guard2 = guard2, guard3 = guard3 }

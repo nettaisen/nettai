@@ -19,6 +19,7 @@ local chip: Chip = {
     flags = { "dimming", "has_damage", "library" },
     dimming = navi.controller { id = "deltaray/controller", palette = 0 }.hook,
     megaman = "light",
+    auto_battle = { class = "into_reach", range = "ahead_then_column" },
 }
 
 return { deltaray = chip }

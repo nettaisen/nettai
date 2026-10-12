@@ -142,6 +142,7 @@ local panlsht1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("panlsht1/controller", front),
+    auto_battle = { class = "own_panel_before_enemy" },
 }
 
 -- PanlSht2 (EXE4 chip 0x0B3): the user's row.
@@ -157,6 +158,7 @@ local panlsht2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("panlsht2/controller", row),
+    auto_battle = { class = "own_panel_before_enemy" },
 }
 
 -- PanlSht3 (EXE4 chip 0x0B4): the four panels around the user.
@@ -172,6 +174,7 @@ local panlsht3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = controller("panlsht3/controller", around),
+    auto_battle = { class = "own_panel_before_enemy" },
 }
 
 return { panlsht1 = panlsht1, panlsht2 = panlsht2, panlsht3 = panlsht3 }
