@@ -2106,10 +2106,15 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     nor the B+Left special and charges nothing (0x0800BBB2); whether a chip charges on A is 0x0800BC78's test by soul and
     the chip's +7 and +9 (souls 5, 7, 9, 11), which the engine asks of the form's `charged_chips`.
 49. **Controller 2** (NaviStats +0x26 = 2; 0x0800BF1C, 0x0800BCD4): Right and Left presses move a per-side column
-    (0x0802E070's +0x11) and the B count runs only under request 0x80. Unreachable: nothing in EXE4 sets +0x26 to 2
-    (its one setter, 0x080069BE, gives the story's navis 1; a netbattle's NaviStats are MegaMan's, the link record's,
-    whose +0x26 his console never sets), so no setup can say it and the engine keeps no field for it (the minimal
-    fields rule). Port it with a setup that can.
+    (0x0802E070's +0x11) and the B count runs only under request 0x80. Unreachable in a netbattle. Two places set
+    +0x26: the setup's entry type 4 gives the story's navis 1 (0x080069BE), and subsystem 0x0E's start gives the
+    save's block 2 with the navi it picked at +0x23 (0x08041100: 0x08041120, 0x0804112C), then starts its own
+    battle (settings record 99 over a link). A battle that starts with the save's +0x26 at 2 sets battle flag 0x10
+    (0x08022E36, its only setter), which sends the flow to its state 0x20 (0x08007596, 0x080075EE, 0x0800765E): the
+    command system (0x08020F64). A netbattle's NaviStats are block 0 as the reload leaves it (0x08036CC0, then the
+    compile), +0x23 and +0x26 both 0, and its event flag 0x1187 is clear. So no setup can say it and the engine
+    keeps no field for it (the minimal fields rule). It reads like EXE4's operation battle; port it only if asked
+    (verify docs/exe4-completeness-audit.md, section C, lists what belongs to it).
 50. **Closed: the levels at the ask, kept by nothing.** The decode copies the charge levels to AIData +0x14 and +0x15
     as it asks for an attack (0x0800BE48, 0x0800BE8E, 0x0800BF10), levels from the tick before (0x0800BB50 runs after
     the decode and the charge: 0, 1 charging, 3 full). Nothing reads A's (+0x14). B's (+0x15) is read by the dimming
@@ -2296,6 +2301,14 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     game queues. (What the towers' frame
     compares show, a tower a tick behind or split at a scanline on a few ticks, is the drain running into the
     display, tearing, which is left.)
+63. **The completeness audit** (group B; verify docs/exe4-completeness-audit.md, written from
+    `tools/exe4/completeness.py`): every entry of the chip table, the weapon routines, the player's actions, the
+    dimming variants, the three object tables, the link stages' entry types, the NaviCust handlers and bugs, the
+    patch cards and the HUD's draw tasks, against content. What a netbattle reaches and content lacks: RedSun,
+    HolyDrem and BlueMoon; DarkNeo, PDriver, BodyGrd and PoisPhar; the dark soul (item 74); "????" staying off after
+    a message (item 130). To decide: the two e-Reader chips (0x137, 0x138: dimming variants 0x47 and 0x48, in the
+    ROM; their names and images are the card's). Everything else missing is the story's enemies, the other navis,
+    subsystem 0x0E's battle (item 49), or named by nothing. Run the tool again as content grows.
 
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
@@ -2528,8 +2541,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
 130. **HUD pieces that wait on content** (group E). Port each with what reaches it:
     - a soul chip (0x160 to 0x16F) as the next chip shows no icon of its own, and the stack starts at the second
       (0x08015000), with Double Soul's chips;
-    - a message stops "????" until the next custom screen starts it (0x08015FE8 stops draw bit 10), with the
-      defensive chips;
+    - a message stops "????" until the next custom screen starts it (0x08015FE8 stops draw bit 10; the message's
+      end, 0x08014A4C, stops only the message; 0x0801E1D6 starts it again), with the defensive chips. **Open**: the
+      defensive chips are ported, and the renderer shows "????" again when the message goes (EXE6's rule);
     - a dimming chip's telop: the user's on the banner block (0x08016454), the other player's on the second block in
       state 0 (0x08008C40), both sliding and squashing as banners do. The renderer draws them from Hud.layout.telop;
       the engine's telop for EXE4 comes with the first dimming chip;
@@ -2541,6 +2555,9 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
       effect over the gauge at (120, 12) on the other console (0x080E3FAE), and 0x080E789E, 0x080E88F6, 0x080E8918.
       The renderer's (`warning_parts`) is EXE6's `sub_800AE90`, which leaves out a place near the screen's edge;
       EXE4's draws it wherever. Compare it with a recording once one of those chips is ported.
+      **Closed** (item 63's audit): 0x08008424's callers are the gauge chips' controller, LifeSync's, which shows
+      none in a link battle, and 0x080E784C, the effect of a dimming variant no chip names (0x25). A netbattle's
+      only marker is the gauge chips', at (120, 12), which the gauge chips' frames compare.
 131. **Done: what draws over and under a flag and its HP number** (the flag stages' layering, verify's
     stages/*/flag-* and stand-bluemoon; tools/frontend-compare/exe4.txt). No layering differs. An HP number is one
     32x16 sprite (0x08014EB8: 0x08025C84 with layer 1, bucket 0, priority 1), in front of every priority-2 sprite and
