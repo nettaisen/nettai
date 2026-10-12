@@ -342,6 +342,7 @@ language = "en"
 "bluemoon" = { name = "BlueMoon", description = "Blue moon\ndrains\n3 ahead" }
 "holydrem" = { name = "HolyDrem", description = "Holy shot\nsucks in\nHolyPanl!" }
 "duo" = { name = "Duo", description = "Fist of\nJustice:\nMetKnukl!" }
+"prixpowr" = { name = "PrixPowr", description = "The three\nGrandPrix\nwinners!" }
 
 [navis]
 "megaman" = { name = "MegaMan", run_message = "Lan! This is no time\nfor us to run away!" }

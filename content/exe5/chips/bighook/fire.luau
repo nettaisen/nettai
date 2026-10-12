@@ -1,8 +1,9 @@
 --!strict
 -- A flame of BigHook's hook (EXE5's attack object #0xCA, 0x080DF9D4): the shared flame (@exelib/flmhook/fire), EXE5's
--- kind: EXE6's big flame's arcs and turn (0x080DFA7C), its sprite 0C-56, breaking, hitting navis; no afterimages,
--- its facing and palette left as loaded, its arc's center 120 pixels behind (the second flame's 80: 0x080DFA74),
--- not from its column; a hit shakes the camera too (0x080DFA9A); it always runs while dimmed.
+-- kind: EXE6's big flame's arcs and turn (0x080DFA7C), its sprite 0C-56, breaking, hitting navis, facing its
+-- object's way (0x0800F1A0's last step); no afterimages, its palette left as loaded, its arc's center 120 pixels
+-- behind (the second flame's 80: 0x080DFA74), not from its column; a hit shakes the camera too (0x080DFA9A); it
+-- always runs while dimmed.
 
 local collision = require("../../rules/collision")
 local common = require("@exelib/flmhook/fire")
@@ -24,6 +25,5 @@ return common.make({
         end
         return -me.facing * back
     end,
-    sets_look = false,
     hit_shakes = true,
 }, trajectory.sine)

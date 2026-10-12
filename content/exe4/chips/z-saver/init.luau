@@ -54,6 +54,7 @@ local zsaver: Chip = {
     hit_param = 10,
     lockout = 0,
     flags = { "has_damage", "library" },
+    auto_battle = { class = "into_reach", range = "two_in_row" },
 }
 
 return { ["z-saver"] = zsaver }

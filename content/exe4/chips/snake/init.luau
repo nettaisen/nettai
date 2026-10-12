@@ -42,6 +42,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "standard_library", "library" },
     dimming = MADE.hook,
+    auto_battle = { class = "when_hole_in_area" },
 }
 
 return { snake = chip }

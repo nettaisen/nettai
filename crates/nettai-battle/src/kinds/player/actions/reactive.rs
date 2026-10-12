@@ -38,9 +38,7 @@ pub(crate) const TRIGGERS: u32 =
 fn drop_everything(b: &mut Battle, r: ObjectRef) {
     // sub_801DACC(0x40): the console's chip window goes, whichever navi
     // this is.
-    for hud in &mut b.chip_hud {
-        hud.window = false;
-    }
+    crate::kinds::player::idle::hide_every_chip_window(b);
     b.objects.get_mut(r).related[0] = None;
     let a = ai_mut(b, r);
     a.overlay = None;
