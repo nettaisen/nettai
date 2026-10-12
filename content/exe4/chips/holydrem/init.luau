@@ -23,6 +23,7 @@ local chip: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library" },
     dimming = CONTROLLER.hook,
+    megaman = "light",
 }
 
 return { holydrem = chip }

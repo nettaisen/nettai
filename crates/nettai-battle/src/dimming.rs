@@ -185,7 +185,8 @@ impl Battle {
 const CUT_IN_FLASH_Z: i32 = 0x78 << 16;
 
 /// `sub_800B8EE(side)`: `side` cut in: a flash at panel (2 + 3 · the other
-/// side, 4) and its sound.
+/// side, 4) and its sound, where the game has one (EXE4's 0x08008BB6 plays
+/// none).
 pub(crate) fn cut_in_flash(b: &mut Battle, side: u8) {
     let (x, y) = crate::kinds::player::panel_coordinates((side ^ 1) * 3 + 2, 4);
     let look = b.roles().effect(crate::content::EffectRole::CutInFlash);

@@ -33,6 +33,7 @@ local gunsol1: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "standard_library", "library" },
+    megaman = "light",
 }
 
 local gunsol2: Chip = {
@@ -55,6 +56,7 @@ local gunsol2: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "standard_library", "library" },
+    megaman = "light",
 }
 
 local gunsol3: Chip = {
@@ -77,6 +79,7 @@ local gunsol3: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "standard_library", "library" },
+    megaman = "light",
 }
 
 local gunsolex: Chip = {
@@ -99,6 +102,7 @@ local gunsolex: Chip = {
     hit_param = 0,
     lockout = 0,
     flags = { "library" },
+    megaman = "light",
 }
 
 return { gunsol1 = gunsol1, gunsol2 = gunsol2, gunsol3 = gunsol3, gunsolex = gunsolex }

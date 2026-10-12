@@ -319,6 +319,7 @@ local rules: Rules = {
         navi_intake = light_dark.navi_intake,
         chip_cost = light_dark.chip_cost,
         chip_check = light_dark.chip_check,
+        cut_in_barred = light_dark.cut_in_barred,
         -- A loss of HP to 0: a dark MegaMan's last stand (./emotion/dark_survival).
         hp_emptied = dark_survival.hp_emptied,
         -- An obstacle where ColonelSoul's army can use it turns into a soldier (objects/soldier).

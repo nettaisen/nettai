@@ -62,6 +62,7 @@ local numbrbl1: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library", "variable_damage" },
     dimming = common.hook(CONTROLLER, 3),
+    megaman = "light",
 }
 
 -- NumbrBl2 (EXE4 chip 0x0AD): four balls.
@@ -77,6 +78,7 @@ local numbrbl2: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library", "variable_damage" },
     dimming = common.hook(CONTROLLER, 4),
+    megaman = "light",
 }
 
 -- NumbrBl3 (EXE4 chip 0x0AE): five balls.
@@ -92,6 +94,7 @@ local numbrbl3: Chip = {
     lockout = 0,
     flags = { "dimming", "has_damage", "library", "variable_damage" },
     dimming = common.hook(CONTROLLER, 5),
+    megaman = "light",
 }
 
 return { numbrbl1 = numbrbl1, numbrbl2 = numbrbl2, numbrbl3 = numbrbl3 }

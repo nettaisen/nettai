@@ -17,6 +17,9 @@ local chip: Chip = {
     lockout = 0,
     flags = { "has_damage", "standard_library", "library" },
     slot_in_limit = 3,
+    -- The idle names no Slasher to the other player at its use (0x080F04A4 tests chip 0x38): its slash does
+    -- (0x080ED41E, chips/slasher/action).
+    traits = { "not_named_on_use" },
     action = slasher.action,
     auto_battle = { class = "when_enemy_in_area" },
 }
