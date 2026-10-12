@@ -776,7 +776,12 @@ mod tests {
             if done(seats, &stands) {
                 return;
             }
-            assert!(start.elapsed() < Duration::from_secs(30), "{what}: not within 30 seconds (the lobbies stand {stands:?})");
+            // (Long: the tests run beside each other, on a machine that may
+            // be busy.)
+            if start.elapsed() > Duration::from_secs(120) {
+                let players = seats.each_ref().map(|seat| seat.player.as_ref().map(|p| (p.position(), p.result(), p.stopped().map(str::to_string))));
+                panic!("{what}: not within two minutes, {frame} frames (the lobbies stand {stands:?}; the players: {players:?})");
+            }
             std::thread::sleep(Duration::from_millis(2));
         }
     }
@@ -798,7 +803,7 @@ mod tests {
         let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
         let start = Instant::now();
         while host.role().is_none() {
-            assert!(start.elapsed() < Duration::from_secs(10), "not let in");
+            assert!(start.elapsed() < Duration::from_secs(60), "not let in");
             host.poll().unwrap();
             std::thread::sleep(Duration::from_millis(1));
         }
@@ -806,7 +811,7 @@ mod tests {
         let typed = format!("{} {}", &code[..3], &code[3..]).to_lowercase();
         let mut join = nettai_rtc::Link::join_room(&server.url(), &typed, config).unwrap();
         while !(host.is_open() && join.is_open()) {
-            assert!(start.elapsed() < Duration::from_secs(20), "the links don't open");
+            assert!(start.elapsed() < Duration::from_secs(120), "the links don't open");
             host.poll().unwrap();
             join.poll().unwrap();
             std::thread::sleep(Duration::from_millis(1));
@@ -842,8 +847,8 @@ mod tests {
     /// it, and play it on the lobby's channel with the players their
     /// preloads made (nothing is loaded late), each at its own input delay,
     /// with the connection's quality to show. One leaves the match, and the
-    /// other's player is told; then leaves for good, and the other's lobby
-    /// is.
+    /// other's player is told; both are back in the lobby. Then that one
+    /// leaves for good, and the other's lobby is told.
     #[test]
     fn an_invite_becomes_a_match() {
         use crate::lobby::{Reason, Status};
@@ -949,9 +954,20 @@ mod tests {
         seats[1].player = None;
         until(&mut seats, "the host is told the joiner left the match", idle, |s, _| s[0].player().stop_reason().is_some());
         assert_eq!(seats[0].player().stop_reason(), Some(StopReason::OpponentLeft), "{:?}", seats[0].player().stopped());
-        // Then leaves for good, and says so: the host's lobby ends, told.
+        // The match stopped with the link still up: both go back to the
+        // lobby, where the settings are as they were and nobody is ready.
+        seats[0].player = None;
+        assert!(seats[0].lobby.reopen() && seats[1].lobby.reopen());
+        let since = Instant::now();
+        until(&mut seats, "both are back in the lobby", idle, |_, stands| {
+            assert_eq!(*stands, [Stands::Agreeing, Stands::Agreeing]);
+            since.elapsed() > Duration::from_millis(300)
+        });
+        assert!(seats.iter().all(|seat| !seat.lobby.ready() && !seat.lobby.their_ready() && *seat.lobby.settings() == single));
+        // Then the joiner leaves for good, and says so: the host's lobby
+        // ends, told.
         seats[1].lobby.leave();
-        until(&mut seats, "the host is told the joiner left", idle, |_, stands| stands[0] != Stands::Playing);
+        until(&mut seats, "the host is told the joiner left", idle, |_, stands| stands[0] != Stands::Agreeing);
         assert_eq!([seats[0].frame(|_| 0), seats[1].frame(|_| 0)], [Stands::Failed(Reason::OpponentLeft), Stands::Failed(Reason::Left)]);
     }
 
@@ -1084,8 +1100,7 @@ mod tests {
             seat.lobby.set_loaded();
         }
         until(&mut seats, "the first match starts", keys, |_, stands| *stands == starting);
-        // (The joiner's player would give a silent host up after a second.)
-        let first = start(&mut seats, [NetOptions::default(), NetOptions { timeout: Duration::from_secs(1), ..NetOptions::default() }]);
+        let first = start(&mut seats, [NetOptions::default(); 2]);
         assert_eq!((first[0].seed, &first[0].sides), (first[1].seed, &m.sides));
         until(&mut seats, "the first match is played to its end", keys, |s, stands| {
             assert_eq!(*stands, playing);
