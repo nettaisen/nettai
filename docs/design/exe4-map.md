@@ -446,14 +446,14 @@ from the ROM and its code, read routine by routine):
     0x080CBF30), so he moves and leaves his first afterimage a tick earlier, and everything after him is a tick
     earlier;
   - it makes no second hit (the US added 0x080CBFF0 and the two words at +0x64 and +0x68 its init clears).
-  The engine has the US routine on every console (the coordinator's call, put to the user 2026-10-12: the standing
-  rule is the Japanese games' behavior where the releases differ, and here the Japanese routine is the defective
-  one). What the Japanese side needs is kept ready in verify: the lab's `exe4-jp` base (Red Sun Japan traced against
+  **Decided (the user, 2026-10-12: "use the fixed routine please"):** the engine has the US routine on every
+  console, with no rule field and no region switch. The standing rule is the Japanese games' behavior where the
+  releases differ; here the Japanese routine is the defective one, and nettai uses the fixed one. A Japanese
+  console's PrixPowr is so the other region's: verify's lab has an `exe4-jp` base (Red Sun Japan traced against
   Blue Moon Japan, Tango's Japanese templates) and each chip's `jp` scenario (its `custom` on that base).
   chips/0x137-duo/jp replays every frame; chips/0x138-prixpowr/jp matches to KendoMan's first tick and stops there,
-  frame 800, a known deviation (trace-tests' deviations.rs). Going Japanese would be: kendoman.luau without the kept
-  hit, the pause and the second hit (about 15 lines), the 22 scenarios recorded again on `exe4-jp`, and the US
-  recordings listed as the other region's. On the Japanese console the names (デューオ, グランプリパワー), pictures
+  frame 800, a known deviation with this cause (trace-tests' deviations.rs), so it still checks every frame before
+  him. On the Japanese console the names (デューオ, グランプリパワー), pictures
   and icons compare exact; the description's text is the same but drawn about 12 pixels further left with wider
   advances than the engine draws it, as every chip's is there (Recov10's too): the first Japanese EXE4 frame compare,
   not the e-Reader chips' own, left for the custom screen's owner.
