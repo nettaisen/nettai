@@ -16,3 +16,7 @@ exe6-compat = { path = "../exe6-compat" }
 
 [dev-dependencies]
 tempfile = "3"
+# The content audit of a pack (tests/extract.rs): the lookups a frontend
+# makes of everything the content defines.
+nettai-frontend = { path = "../nettai-frontend" }
+nettai-tools = { path = "../nettai-tools" }

@@ -1,5 +1,30 @@
 use nettai_content::{pack, report::Report};
 use nettai_extract::{Game, RomSet, extract};
+use std::path::Path;
+use std::sync::Arc;
+
+/// What the content audit (nettai-tool's `--audit-content`) finds missing
+/// of `game`'s content drawn and heard with the pack at `dir`: every
+/// lookup a frontend makes of everything the content defines, in each
+/// language it has strings in. A pack of placeholders has to answer them
+/// all, as a pack of every ROM does.
+fn audit(game: Game, dir: &Path) -> Vec<String> {
+    use nettai_frontend::game::{Found, Game as Loaded};
+    let content = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../content");
+    // (A packs directory with no pack in it: the pack is the one given.)
+    let none = tempfile::tempdir().unwrap();
+    let found = Found::find(none.path(), &[dir.to_path_buf()]).unwrap_or_else(|e| panic!("{e}"));
+    let loaded = Loaded::load(&found, Some(&content), game.id()).unwrap_or_else(|e| panic!("{e}"));
+    let bundles = loaded.packs.iter().map(|p| pack::load_graphics(p).unwrap_or_else(|r| panic!("{r}")).0).collect();
+    let banks = loaded.sound().unwrap_or_else(|e| panic!("{e}")).banks;
+    let own = nettai_content::locale::OWN;
+    let mut languages = vec![(own.to_string(), None)];
+    for lang in nettai_content::locale::languages(&loaded.dir).into_iter().filter(|l| l != own) {
+        let strings = nettai_content::locale::load_for(&loaded.dir, std::slice::from_ref(&loaded.name), &lang).unwrap();
+        languages.push((lang, strings.map(Arc::new)));
+    }
+    nettai_tools::content_audit::audit(&loaded.content, bundles, loaded.own, Some(&banks), &languages).problems
+}
 
 #[test]
 fn empty_sets_make_loadable_packs_and_language_variants() {
@@ -35,17 +60,33 @@ fn empty_sets_make_loadable_packs_and_language_variants() {
     }
 }
 
-/// EXE4's pack from no ROMs: placeholders under compat's names, written and
-/// read back. (Its content has no rules yet, so no battle loads with it.)
+/// EXE4's pack from no ROMs: placeholders under compat's names, in the
+/// game's own shape (its screen's own emblem and cursor colors, where the
+/// other games' take a navi's), written and read back.
 #[test]
 fn an_empty_set_makes_an_exe4_pack() {
     let assets = extract(Game::Exe4, &RomSet::default()).unwrap();
     assert_eq!(assets.missing_roms.len(), 4);
     assert!(assets.placeholders.iter().any(|p| p == "sprite/megaman"));
     assert!(assets.graphics.custom.buttons.iter().any(|(n, b)| n == "soul" && b.place.is_some()));
+    assert!(assets.graphics.custom.window_emblem.is_some() && assets.graphics.custom.cursor_palette.is_some());
     assets.graphics.clone().in_language("ja").unwrap().in_language("en").unwrap();
     let dir = tempfile::tempdir().unwrap();
     assets.write(dir.path()).unwrap();
+}
+
+/// A pack of no ROMs answers every lookup the content audit makes, in each
+/// game: a placeholder stands wherever a frontend looks (the telops'
+/// banners as telops', EXE4's fonts with every character a ROM's have).
+#[test]
+fn empty_sets_pass_the_content_audit() {
+    for game in [Game::Exe4, Game::Exe5, Game::Exe6] {
+        let assets = extract(game, &RomSet::default()).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        assets.write(dir.path()).unwrap();
+        let problems = audit(game, dir.path());
+        assert!(problems.is_empty(), "{}: {problems:#?}", game.id());
+    }
 }
 
 #[test]
@@ -74,16 +115,20 @@ fn rejects_unknown_truncated_and_duplicate_roms() {
     assert!(extract(Game::Exe6, &roms).is_err());
 }
 
-/// Optional local regression: put the eight original images in this directory,
-/// named BRBE.gba, BRKE.gba, BRBJ.gba, BRKJ.gba, BR6E.gba, BR5E.gba, BR6J.gba,
-/// BR5J.gba. No copyrighted fixtures are needed for the normal tests.
+/// Optional local regression: put the twelve original images in this
+/// directory, named by their game codes (B4WE.gba, B4BE.gba, B4WJ.gba,
+/// B4BJ.gba, BRBE.gba, BRKE.gba, BRBJ.gba, BRKJ.gba, BR6E.gba, BR5E.gba,
+/// BR6J.gba, BR5J.gba). Every subset of a game's four ROMs, the empty one
+/// too, makes a pack that writes, reads back, loads a battle and passes the
+/// content audit: a missing ROM's assets are placeholders, never an error.
+/// No copyrighted fixtures are needed for the normal tests.
 #[test]
 #[ignore = "requires local ROMs via NETTAI_EXTRACT_ROM_DIR"]
 fn every_source_subset() {
     let dir = std::path::PathBuf::from(
         std::env::var_os("NETTAI_EXTRACT_ROM_DIR").expect("NETTAI_EXTRACT_ROM_DIR"),
     );
-    for game in [Game::Exe5, Game::Exe6] {
+    for game in [Game::Exe4, Game::Exe5, Game::Exe6] {
         let bytes = game
             .codes()
             .map(|c| std::fs::read(dir.join(format!("{c}.gba"))).unwrap());
@@ -106,6 +151,8 @@ fn every_source_subset() {
             let content = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../content");
             pack::load_battle(&content, out.path())
                 .unwrap_or_else(|e| panic!("{} {mask:04b}: {e}", game.id()));
+            let problems = audit(game, out.path());
+            assert!(problems.is_empty(), "{} {mask:04b}: {problems:#?}", game.id());
         }
     }
 }

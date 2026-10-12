@@ -18,7 +18,8 @@ a replay, and draws chosen frames to PNG. Its hosts are nettai, the app
 (docs/app.md), and nettai-tools, the command line with no window
 (docs/tools.md); the commands in this document are nettai-tool's.
 
-Two crates make it up: the drawing and the playing.
+Two crates make it up: the drawing and the playing. (Loading a game, and what
+a match waits for before its first tick: §9.)
 
 - **nettai-render** draws a battle into frames, and nothing else: it
   composes the layers (`compose`), draws the stage and the field
@@ -336,12 +337,24 @@ Frame numbers are the trace's.
 
 **Live play** (a match, docs/app.md's Training or `nettai-tool --match FILE`):
 you are the left navi; the right one is an opponent's (`driver::Opponent`,
-its buttons alone, as a player's are): by default the stand-in, which stands
-still and picks its first chip; a dummy, which picks none; a mover, which
-moves about at random; a masher, which moves, shoots and uses its chips at
-random (a mover's and a masher's presses seeded, from the set's seed in
-nettai). The match sets up the battle (§6), including its game, rounds, each
-side's navi, folder, forms, patch cards, NaviCust and stats.
+its buttons alone, as a player's are). What it does is two choices, each
+made alone and changed at any tick of the set (`Player::set_opponent`,
+`LivePlayer::set_opponent`; a training menu's two rows):
+
+- **in the fight** (`InFight`): it stands still (the default), moves around
+  at random and never attacks, or attacks at random: it moves, shoots and
+  charges, uses its chips and presses L and R (never START);
+- **on its custom screen** (`OnCustomScreen`): it picks nothing and presses
+  OK, or picks the first chip it can and presses OK (the default).
+
+Its random presses are seeded (from the set's seed in nettai) and run every
+tick of the set, taken or not: what it presses on a tick goes by the seed,
+the tick, the battle and its choices on that tick, whatever its choices
+were before, and a set started over presses the same again. It is a
+player's buttons and nothing else (a recording keeps them, so a set whose
+opponent was changed on the way replays as it was played). The match sets
+up the battle (§6), including its game, rounds, each side's navi, folder,
+forms, patch cards, NaviCust and stats.
 
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number
@@ -397,10 +410,25 @@ gives the same setup.
 
 The custom screen is the engine's (docs/engine/custom-screen.md), drawn. The
 keys are the game's (A picks, B takes back, START goes to OK, UP from the top
-row opens the Cross window, R describes, SELECT hides). The right navi's
-screen picks its first chip and presses OK. As in the original's netbattles,
-the fight gets your buttons 4 ticks late (the link). Restarting starts the
-same setup over.
+row opens the Cross window, R describes, SELECT hides), but for the two a
+match's host answers in the battle's place (`nettai_match::HOST_KEYS`, in
+every match's setup: `RoundSetup::host_keys`):
+
+- **START in the fight** pauses nothing: the game's own pause never runs.
+  The player says who pressed it (`Player::take_pause_requests`, by side),
+  for the host to open its own menu and to hold the ticks while it is up
+  where it may (`Player::set_paused`: live play and replays; a netplay match
+  runs on). It is said exactly where the original pauses (the fight running,
+  the battle not over, not dimmed: docs/engine/battle-flow.md §3.5), so
+  START on the custom screen is still the cursor's way to OK.
+- **L on the custom screen** does nothing: nobody runs from a match, and
+  the navi's message that says so isn't shown or heard
+  (docs/engine/custom-screen.md §3.5). L and R in the fight ask for the
+  custom screen as they did.
+
+A recording of the original has neither: its battle pauses itself, and its L
+opens the message. As in the original's netbattles, the fight gets your
+buttons 4 ticks late (the link). Restarting starts the same setup over.
 
 **Netplay** plays another player over the network, with rollback
 (docs/design/rollback.md §4; the frontend's side is `netplay`), on a WebRTC
@@ -531,7 +559,10 @@ host calls, in order:
   The other player's input is predicted until it arrives, and the frame is
   simulated again when a prediction was wrong. A cue played on a wrong
   prediction is stopped or taken back (rollback.md §3.2). There is no pause,
-  speed change or restart in netplay.
+  speed change or restart in netplay: START in the fight is said to the
+  host as in any match (`take_pause_requests`, the local player's alone, on
+  the tick as it was first simulated), whose menu opens over a match that
+  keeps running.
 - **The input delay** is each player's own, in ticks:
   `NetOptions::input_delay`, 4 unless the player says
   (`netplay::DEFAULT_INPUT_DELAY`), from 0 to 10 (`netplay::INPUT_DELAY`,
@@ -818,7 +849,8 @@ The screen's sounds are the engine's cues for its player
 battle's.
 
 **The chatbox** (`chatbox.rs`) the custom screen runs (R: a chip's or a
-Cross's description; L: the no-running message), as the original's
+Cross's description; L: the no-running message, in a recording of the
+original alone: a match's L opens none, §2), as the original's
 chatbox draws each tick: the box's map on BG0 at its opening step (row 12,
 the message box or the narrower description box); the text as the line
 buffer's three rows of six sprites at (51, 108), its lines 14 rows apart
@@ -1833,7 +1865,11 @@ that says which step failed (`Failed::Packs`, `Content`, `NoPack`, `Part`,
 `Loaded` carries their warnings too (`Loaded::report`). The steps are public
 one by one for a host that wants them apart (`Found::find`, `Game::load`,
 `Game::graphics`, `font`, `Game::sound`), as nettai-tool does, which loads no
-sound for frames it only writes.
+sound for frames it only writes. `game::Loading` is the same call a part at
+a time, with how far it is, for a host's loading bar; and `preload` makes a
+match ready before its first tick (the content's runtime on the thread that
+runs the battle, which a first battle otherwise waits about a second for),
+a step at a time and by side: §9.
 
 **What is played** is a driver's: `LivePlayer` plays a set of a match
 (`nettai_match::Set::of(&content, &m, seed)`: a match file's, or a random
@@ -1916,8 +1952,21 @@ renderer, the font mode's text renderer and the battle's audio:
   another player (`real_time()`: netplay). `set_input_delay(ticks)` is
   netplay's: the frame shown from the next frame on is that many ticks
   behind the player's newest input (false outside netplay).
+- `take_pause_requests()` is the host's cue for its own menu: the players
+  who pressed START in the fight since the last call, by side, each where
+  the game's own pause was (§2). The battle didn't pause; the host opens
+  its menu and, outside real time, calls `set_paused(true)` until it
+  closes. (A paused player runs no ticks and makes no sound; the picture
+  stays the last tick's.)
+- `opponent()` and `set_opponent(Opponent { in_fight, on_custom_screen })`
+  are live play's: what the other navi does, read and changed while the
+  set runs (§2); none and false for a battle whose other navi is
+  somebody's.
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
+- `late()` counts what the player made on the way that a preload makes
+  ahead (§9): runtimes loaded on its thread, parts read from disk, and the
+  text's strings and glyphs made for the first time.
 - `play(driver)` goes on with another driver in the same picture and sound (a
   recording's next round).
 - `set_language(&graphics)` shows the battle in another language from the
@@ -2037,3 +2086,128 @@ about 210 bytes, EXE5's about 540 (its auto battle data included); a whole
 match 410 and 1,060. A reader refuses bytes that end early or run on, a handle
 past the content's, a background the pack hasn't and a value no fact may hold,
 saying where; the match's checks then judge what it read, as for a match file.
+
+## 9. Loading, and what a match waits for
+
+The user asked for "a loading screen to load assets before starting the game to avoid stuttering" (2026-10-12;
+docs/design/app-ui.md, "Loading"). This is what there is to load, when, what it costs, and how a host shows it.
+
+**A game loads whole, and a match reads nothing.** `game::load` reads everything a battle of the game can use:
+its content (every Luau module, defined), its pack's graphics (every sprite, the field, the backgrounds, the HUD
+and the custom screen, decoded into memory), the language's strings, the text's font and the pack's sound (every
+song, instrument and sample). Nothing is loaded by asset, so there is nothing to load by match: after the game's
+load no tick, picture or sound reads or decodes a file. `nettai_content::pack::reads()` counts the parts a thread
+has read (a pack's graphics, its sound, a game's content, a language's strings), and it stays where it was through
+a match. EXE6's pack is 3,293 files, 21 MB (310 sprites, 6.5 MB; the sound 9.8 MB).
+
+**`game::Loading`** is `game::load` a part at a time, for a start-up bar: `Loading::new(name, options)`, then
+`step()` until it says there is no more, `fraction()` meanwhile, `next()` for what the coming step loads, and
+`finish()` for the `Loaded`. The parts and their shares of the whole (`game::Part::share`), with their times
+(2026-10-12: a release build, on a machine with a load average of 250 to 390 on ten cores, so each is more than
+an idle machine's and the spread is the machine's; EXE6's from three runs of the example below, EXE5's and EXE4's
+from one):
+
+| Part | What | EXE6 | EXE5 | EXE4 | Share |
+|---|---|---|---|---|---|
+| `Packs` | the packs directory read for manifests | 0.4 to 6 ms | 0.2 ms | 0.3 ms | 1 |
+| `Content` | the game's Luau read and its define phase run | 1.7 to 3.3 s | 1.8 s | 1.3 s | 62 |
+| `Graphics` | the pack's graphics (its sprites on every core), the language's strings | 0.27 to 0.69 s | 0.30 s | 0.26 s | 11 |
+| `Font` | the text's font (the bundled one is in the program) | 1.5 ms | under 0.1 ms | under 0.1 ms | 1 |
+| `Sound` | the pack's sound (left out, with its share, when a host wants none) | 0.64 to 1.5 s | 0.70 s | 0.71 s | 25 |
+| | all of it | 2.7 to 4.6 s | 2.8 s | 2.2 s | 100 |
+
+Each step runs one part to its end, so the bar moves in five jumps and the content's step is seconds long. A host
+with threads steps the loading on one of them and its window stays live (nettai's `games.rs` does, with
+`game::load`); a host without (the web: docs/app.md §6) steps it between frames and stalls for the content's
+part. Making that part finer means loading the content's modules one at a time, which nettai-luau's loader
+doesn't do: it runs the game's top module, which requires the rest.
+
+**What a match's first tick did wait for** was made on the way, the first time it was wanted. Measured on the
+same machine (the runtime: each game's, on a thread of its own; the rest: EXE6, three runs of 2,500 ticks with
+every picture presented at 720 by 480, the least of the three for each tick, which leaves the machine's load
+out):
+
+| What | When it was made | Cost |
+|---|---|---|
+| The content's runtime on the thread | the first battle made on a thread, or the first build checked there (`check_match`, `pick::live`) | **EXE6 1.2 to 1.4 s, EXE5 0.8 s, EXE4 0.4 s** (EXE6's 0.8 to 2.7 s on the thread that had just loaded the game) |
+| The player and the round's first battle | `Player::new` | 15 ms |
+| A string's layout and glyphs, in the font mode | the first frame each string shows on (a custom screen opening: the chips' names) | a picture 3.5 ms longer at most, against 0.9 ms a picture on average; 13 to 15 strings and 160 to 330 glyphs in a match's first 3,000 ticks |
+| A tick | | 80 µs on average, 0.56 ms at most: nothing is made in a tick |
+
+The runtime is the stutter: the worst wait there was, and the only one a player could see. Every thread that
+makes or steps a battle keeps a Luau runtime of the content
+(`nettai_battle::behavior`: a battle is plain data and the runtime is none of it), and loading one runs every
+script of the game again, from the bytecode the define phase kept. The thread that loaded the game doesn't have
+one either: the define phase's runtime isn't kept. nettai loads a game on a worker thread (`games.rs`), so its
+window's thread has no runtime until a screen first checks a build or makes a battle there, and that is where it
+waits, the window stalled (the wait is the runtime's above; it wasn't timed in the app).
+
+**`preload`** takes that wait ahead:
+
+- `preload::runtime(&content)` loads the calling thread's runtime if it hasn't one, and says whether it did. It
+  must be called on the thread that will run the battles. It is one call of about a second and can't be stepped;
+  a host calls it once a game, behind its start-up bar, the moment the game's `Loading` is done, and no screen
+  after that waits for it.
+- `Preload::new(&game, &set, viewer, (width, height))` is a match made ready a step at a time: `step()` runs the
+  next step and says whether one is left, `fraction()` is how far the whole is, `done()` that it is. Its steps
+  are in two kinds of part (`preload::Part`):
+  - **`Part::Match`**, the match's own: the thread's runtime (the long step, and a step of no length once the
+    thread has it), the round's first battle, its first picture as the viewer's console draws it (the arena, the
+    background, both navis, the HUD: every lookup the frame makes, and its text laid out at the host's size),
+    and the sound's drivers;
+  - **`Part::Side(0)` and `Part::Side(1)`**, each side's: its navi (face, emblem, name), every form its navi
+    lists (its face for each emotion, its name and description where the game lists forms in a window) and each
+    chip of its folder in each code it is there in (icon, picture, name, the chip window's colors, description).
+    These are looked up in the pack that is already in memory, by the lookups a frame draws through
+    (nettai-render's `lookups`), so a side's steps take microseconds and need no runtime: what they give is a
+    bar a side and `missing()`.
+
+  `step_of(part)` runs one part's next step alone and `fraction_of(part)` is that part's bar, so a loading screen
+  with a bar a player fills each from its side's steps; the match's own part is where the time is (EXE6's
+  match: 84 steps, 16 ms in all once the thread has its runtime). `missing()`
+  lists what the steps looked up that the pack doesn't have (one line each, as the content audit words them),
+  for a host to say before the match rather than have a picture missing in it; `stopped()` says why the round
+  can't start, if the runtime didn't load or the engine stopped making the first battle.
+- `preload.player(driver)` is the `Player`, made with the renderer and the text the steps used (so the first
+  picture's text is laid out already) and the sound. `Preload::with` takes a player's parts as `Player::with`
+  does (a renderer of another language's graphics). The set is the one the driver plays: a match's
+  (`Set::of`), a netplay agreement's, a replay's match's (`nettai_match::binary::read_match`).
+
+Online, each peer preloads its own match and the lobby holds the start until both are done (the lobby's part:
+docs/design/app-ui.md §8 item 9); a peer's bar is its own `fraction()`.
+
+**Held to it.** `Player::late()` says what a player made on the way since it was made (`preload::Late`):
+runtimes loaded on its thread (`Behaviors::loads`), parts read from disk on it (`pack::reads`), and its text's
+strings laid out and glyphs drawn for the first time. A player a preload made has loaded no runtime and read
+nothing however long it plays; one made without has loaded one. The text's counts go up as new strings show (a
+chip's name, a number): they are an open set (damage numbers), so they aren't made ahead, and each is a part of a
+millisecond.
+
+- nettai-frontend's tests (`preload::tests`, on EXE6's content): `a_preloaded_match_loads_nothing_late` steps a
+  preload on a thread without a runtime (one side alone first, then the rest), and plays 1,500 ticks of the set,
+  custom screens and fights, with a picture a tick: `late()` is no runtime and no read.
+  `a_match_that_was_not_preloaded_loads_its_runtime_late` is the same match without: one runtime, as its player
+  is made.
+- `cargo run --release -p nettai-frontend --example preload -- --game exe6` does it on a real pack: it copies
+  the pack and the content, loads the copies with `Loading` (printing each part's time), preloads a match
+  (printing its steps), **deletes the copies from disk**, and then plays 3,000 ticks with every picture
+  presented and every sample taken, beside a player of the same match made without the preload and given the
+  same buttons. A file read lazily would be missing; the match plays to its last tick, every picture (its pixels
+  and its text) and every tick's sound the same as the other player's, and the example fails unless `late()` is
+  no runtime and no read. It then makes the same match's player on a thread that preloaded nothing and prints
+  what that waits for (the runtime, from memory: the files are gone). All three games' packs pass it
+  (2026-10-12).
+
+**What isn't done, and what it would take.**
+
+- *Loading by asset* (a match loading only its navis', chips' and arena's sprites and sounds). The pack would
+  have to load a sprite or a song on demand (`Bundle` and `SoundBank` are plain data every lookup borrows from),
+  and the content would have to say what a chip can summon or play: the assets its modules name
+  (`asset.sprite`, at load only) and those of every module they require. With 21 MB loaded in a second behind
+  the start-up bar there is nothing to gain yet but memory.
+- *The runtime in steps, or off the window's thread.* It is one load of every module. A host can keep the
+  window live through it by running its `Player` on a thread of its own (a battle and its snapshots are `Send`;
+  the runtime is whichever thread's steps it), which nettai doesn't.
+- *One runtime for the loading thread.* A host that loads and plays on one thread (nettai-tool, the web) runs
+  the game's scripts twice, once to define the content and once for the runtime: keeping the define phase's
+  would save the second.

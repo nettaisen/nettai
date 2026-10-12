@@ -114,6 +114,12 @@ impl Renderer {
         self.problems.recheck();
     }
 
+    /// The language's strings table it shows the content's text from
+    /// (`None`: the content's own).
+    pub fn strings(&self) -> Option<&Arc<nettai_content::locale::Strings>> {
+        self.strings.as_ref()
+    }
+
     /// Draw text in `mode`; the font mode hands the strings `font` has to
     /// the text layer (without a font it draws as the original does).
     pub fn set_text(&mut self, mode: TextMode, font: Option<Arc<VectorFont>>) {
@@ -124,6 +130,13 @@ impl Renderer {
 
     pub fn text_mode(&self) -> TextMode {
         self.text_mode
+    }
+
+    /// The strings the frames drawn so far had to lay out to place what
+    /// follows them (the font mode's: a chip's damage after its name), each
+    /// the first time it was met.
+    pub fn layouts_made(&self) -> u64 {
+        self.measure.as_ref().map_or(0, |m| m.borrow().made().layouts)
     }
 
     /// The graphics it draws from (another renderer of the same: a clone).
