@@ -1377,10 +1377,14 @@ impl Screen {
         self.look.column[0] = first;
     }
 
-    /// `sub_8028250`: the slots' tiles show the chips dealt now.
+    /// `sub_8028250`: the slots' tiles show the chips dealt now: a chip
+    /// that counts as the invalid chip as that chip, or, where such a chip
+    /// is never picked, as it is (EXE4's 0x0801F6D6 reads the slot's own
+    /// entry, 0x0801EF4C: the chip's icon and code, selectable to look at).
     fn draw_slots(&mut self, folder: &BattleFolder, view: &PlayerView) {
+        let as_it_is = view.library.layout().invalid_picks == InvalidPicks::Refused;
         for s in 0..SLOTS as u8 {
-            self.look.slot_chips[s as usize] = self.chip_in(s, folder).map(|c| checked(c, view));
+            self.look.slot_chips[s as usize] = self.chip_in(s, folder).map(|c| if as_it_is { c } else { checked(c, view) });
             self.look.slot_picked[s as usize] = self.slots[s as usize].state == SlotState::Selected;
         }
     }
