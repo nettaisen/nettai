@@ -632,10 +632,24 @@ test of the slot (it also clears the slot's switched-off entry, and keeps a mark
 which the reload asks for, 0x0800653A: a card without it is taken out of its slot). The four ROMs hold no table of
 the slots (searched: the slots of cards 1 to 24 in order as a column of bytes at any stride to 64, their number and
 slot pairs either way round, and each slot's cards as a list); what they state is the six pair halves' slots above,
-which agree with Tango's table. So each card's `slot` ("0A" to
-"0F", EXE4's own `SlottedPatchCard`, content/exe4/types.d.luau) is Tango's (`PATCH_CARDS`), written by
+which agree with Tango's table. So each card's `slot` is Tango's (`PATCH_CARDS`), written by
 tools/exe4/gen_patch_cards.py, which holds the table to the filing's instructions and the six halves in every ROM:
-0A 27 cards, 0B 16, 0C 16, 0D 20, 0E 50, 0F 4. Nothing in a battle reads it. The card's menu (0x0803410C) lists six
+0A 27 cards, 0B 16, 0C 16, 0D 20, 0E 50, 0F 4. Nothing in a battle reads it.
+
+The field is a number: the slot's own, as the save and the setup count it, 0 to 5 (`slot: number` in EXE4's own
+`SlottedPatchCard`, content/exe4/types.d.luau). A card writes it by its name, one of six constants of
+rules/patch_cards/cards, `slot = cards.SLOT_0A` to `cards.SLOT_0F` (0 to 5: each named for the label the game shows
+the slot under), and a pair's half names the slot it reads for its other half the same way
+(`cards.pair(cards.SLOT_0C, "075-triple-supporter-2-2", ...)`): the same number, the other card's `slot`. No table
+maps labels to numbers: the constants are the names, and the generator reads them from that module to write them.
+A number type holds no range, so the generator's check holds each card to Tango's number and exe4-compat's test
+every card to 0 to 5 (27, 16, 16, 20, 50 and 4 cards a slot, and each half's read to the other's `slot`). A tool
+reads `slot` from a card's definition as a number. For the label to show there is one source, the constants' names,
+and they are Luau's: what the build screen should do is ask the game for its slots rather than know them, the
+game's patch card view (rules side, as the build screen's other views are the game's) giving the six slots in
+order, each with its number and the label cut from its constant's name (`SLOT_0A` is "0A"), and placing a card in
+the row its `slot` names. Rust then shows what it is given and names no slot. (Not built: nothing reads `slot`
+yet.) The card's menu (0x0803410C) lists six
 slots and switches a slot's card on and off between the two lists; the lists are seven bytes long (their clears,
 0x08034FAC, and the reload's loop run to seven), and the seventh is one no menu row reaches and no card of the table
 belongs in.

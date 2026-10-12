@@ -6,7 +6,7 @@ local cards = require("../rules/patch_cards/cards")
 local searchsoul = require("../navis/megaman/forms/searchsoul").searchsoul
 
 local card: SlottedPatchCard = {
-    slot = "0E",
+    slot = cards.SLOT_0E,
     effects = {
         cards.soul(searchsoul),
         cards.bug("hp", 2),
