@@ -9,9 +9,16 @@
 //!   placeholder archive and the Japanese ROMs' own (the same archive in
 //!   both): Count (HackJack's navi), Django, Otenko's statue, the Falzar
 //!   and Gregar chips' beasts, and battle mode 1's "Blocking" label.
-//! - **Chip pictures**: eleven chips the US release cut have a placeholder
-//!   picture (a purple block) in the US ROMs; the Japanese ROMs have their
-//!   art. Their icons are the same in all four ROMs, so the US ones stay.
+//! - **Chip pictures**: fifteen chips have a placeholder picture (a purple
+//!   block) in the US ROMs: the eleven the US release cut, and BatCan1 to
+//!   BatCan4, which it kept the names of. The Japanese ROMs have their
+//!   art.
+//! - **The chip records otherwise**: a chip's icon and picture are its
+//!   Japanese ROM's where there is one (`gregar::chip_source`). Two differ
+//!   from the US ROMs': the Falzar ROMs' icon for Bass and BassAnly (one
+//!   pixel, (0, 8): color 3 in the Japanese ROM, 9 in the US one) and the
+//!   Gregar ROMs' Beast Out picture (two pixels, (53, 31) and (52, 32):
+//!   clear in the Japanese ROM, color 14 in the US one).
 //!
 //! The pack has one picture of each: nettai draws it on every console. A US
 //! console shows the placeholder there, which the verification's frame
@@ -62,12 +69,13 @@ pub const VERSIONED: [u32; 2] = [0x138, 0x139];
 
 /// The chips whose picture is a placeholder in the US ROMs, and the
 /// Japanese ROM each picture comes from: GunDelEX, Otenko, HackJack (Count)
-/// ×3, Django ×3, DblBeast, and the Gregar and Falzar chips. A Japanese
+/// ×3, Django ×3, DblBeast, the Gregar and Falzar chips, and BatCan1 to
+/// BatCan4 (each the same in both Japanese ROMs). A Japanese
 /// console shows its own beast in both the Gregar and the Falzar chip
 /// (its ROM has one picture for both); the pack has each chip's own,
 /// Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
 /// Falzar ROM, on either console.
-pub const CHIP_PICTURES: [(u32, Source); 11] = [
+pub const CHIP_PICTURES: [(u32, Source); 15] = [
     (0x012, Source::Falzar),
     (0x099, Source::Falzar),
     (0x113, Source::Falzar),
@@ -79,6 +87,10 @@ pub const CHIP_PICTURES: [(u32, Source); 11] = [
     (0x137, Source::Falzar),
     (0x138, Source::Gregar),
     (0x139, Source::Falzar),
+    (0x13B, Source::Falzar),
+    (0x13C, Source::Falzar),
+    (0x13D, Source::Falzar),
+    (0x13E, Source::Falzar),
 ];
 
 /// DblBeast's palette. Its record points at EWRAM (0x02000AF0), which a

@@ -209,7 +209,14 @@ const BEAST_BUTTON_BYTES: usize = 0x400;
 pub(crate) const FORM_NAMES: (usize, usize) = (10, 0x240);
 const CROSS_PALETTE_COUNT: u32 = 10;
 
-fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
+/// The BeastOut chip, whose record's picture is the Beast Out button's.
+const BEAST_OUT_CHIP: u32 = 0x13F;
+
+/// A version's own pictures: its US ROM's (`rom`, at `a`), and the Beast
+/// Out button's picture its Japanese ROM's (`jp`) where there is one (the
+/// BeastOut chip's record's there: the Gregar ROMs' differ in two pixels,
+/// `jp`).
+fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPictures {
     let palettes = |at: u32, n: u32| {
         (0..n)
             .map(|i| palette(rom, at + 32 * i))
@@ -230,9 +237,14 @@ fn version_pictures(rom: &Rom, a: &VersionAddresses) -> VersionPictures {
         sets: ButtonSets::Other,
         hidden: Some(3),
         cursor: SPECIAL_CURSOR,
-        picture: Picture {
-            tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)),
-            palette: own,
+        picture: if jp.is_present() {
+            let record = crate::exe6::jp::CHIP_DATA + 0x2C * BEAST_OUT_CHIP;
+            picture(jp, (u32at(jp, record + 0x24), u32at(jp, record + 0x28)))
+        } else {
+            Picture {
+                tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)),
+                palette: own,
+            }
         },
         palettes: vec![own],
         ..ButtonPictures::default()
@@ -323,12 +335,13 @@ fn rom_pointer(p: u32) -> bool {
 
 /// The custom screen's graphics; `names` gives the chips' pictures their
 /// chips' keys. A Gregar console's own pictures are the US Gregar ROM's,
-/// where they differ; the pictures of the chips the US release cut are the
-/// Japanese ROMs' (`jp::CHIP_PICTURES`).
+/// where they differ; a chip's picture is its Japanese ROM's where there
+/// is one (`gregar::chip_source`), as the pictures of the chips the US
+/// ROMs have a placeholder for are (`jp::CHIP_PICTURES`).
 pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
     let (rom, gregar) = (&roms.falzar, &roms.gregar);
-    let mut versioned = Versioned::new("falzar", version_pictures(rom, &FALZAR));
-    let own = version_pictures(gregar, &GREGAR);
+    let mut versioned = Versioned::new("falzar", version_pictures(rom, roms.falzar_jp, &FALZAR));
+    let own = version_pictures(gregar, roms.gregar_jp, &GREGAR);
     if own != versioned.base || !rom.is_present() || !gregar.is_present() {
         versioned.versions.push(("gregar".into(), own));
     }
@@ -411,9 +424,10 @@ pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
     }
 }
 
-/// Chip `id`'s picture: the US Falzar ROM's, the US Gregar ROM's for the
-/// five it has right (`gregar::RIGHT_IN_GREGAR`), a Japanese ROM's for the
-/// chips the US release cut (`jp::CHIP_PICTURES`). A version's own chip's
+/// Chip `id`'s picture: the Falzar ROMs', the Gregar ROMs' for the five
+/// they have right (`gregar::RIGHT_IN_GREGAR`), the Japanese ROM's before
+/// the US one's (`gregar::chip_source`); a Japanese ROM's alone for the
+/// chips the US ROMs have a placeholder for (`jp::CHIP_PICTURES`). A version's own chip's
 /// is marked with its version (`gregar::chip_version`): a console of the
 /// other version shows its counterpart's there. A cut chip whose
 /// palette no ROM holds (the Gregar and Falzar chips': a Card e+ gift's,
