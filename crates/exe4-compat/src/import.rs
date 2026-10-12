@@ -5,7 +5,8 @@
 //! light/dark value, the patch cards switched on (a card whose effects
 //! aren't ported yet, docs/design/exe4-map.md §18, said and left out), and
 //! Double Soul and the souls it has (its version's, by their flags: the
-//! content has no version). The import is the compat
+//! content has no version), and the player's auto battle data (what the
+//! dark soul of a dark MegaMan plays). The import is the compat
 //! boundary's: a save is the original's bytes, and a side its game's facts
 //! (nettai's build creator picks the game's import: `builds::import`).
 
@@ -107,6 +108,11 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
         .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
         .collect();
     state(side, "souls", &souls);
+    // The player's auto battle data (EXE4's rules/auto_battle), by the
+    // chips' numbers' names.
+    let (places, unstated) = crate::setup::auto_battle(&save.auto_battle(), |n| compat.chip_key(n).and_then(|k| ids::chip(content, game, k)));
+    state(side, "auto_battle_places", &places);
+    notes.extend(unstated.into_iter().map(|s| format!("of the save: {s}")));
     notes.extend(left_out);
     notes
 }
@@ -145,6 +151,8 @@ mod tests {
         img[0x464C..0x464C + 7].copy_from_slice(&[16, 12, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF]);
         img[0x4653..0x4653 + 7].copy_from_slice(&[0xFF, 0xFF, 1, 0xFF, 0xFF, 0xFF, 0xFF]);
         img[0x4E60 + 0x36..0x4E60 + 0x38].copy_from_slice(&460u16.to_le_bytes());
+        img[0x5064..0x5064 + 84].fill(0xFF);
+        img[0x5064..0x5064 + 8].copy_from_slice(&[0x01, 0x00, 0xFF, 0xFF, 0x03, 0x80, 0xFF, 0x01]);
         for flag in [0x14usize, 0x17, 0x19, 0x1D] {
             img[0x2248 + flag / 8] |= 0x80 >> (flag % 8);
         }
@@ -181,10 +189,16 @@ mod tests {
                 Some(Stated::List([form("rollsoul"), form("windsoul")].into_iter().chain(std::iter::repeat_n(Stated::Def(Registry::Form, None), 10)).collect()))
             )
         );
+        // Its auto battle data: a Cannon, an empty place, pattern 4, and a
+        // chip number no chip has, left empty: to the last place that isn't.
+        let Some(Stated::List(places)) = get("auto_battle_places") else { panic!("{:?}", get("auto_battle_places")) };
+        let stated: Vec<&Stated> = places.iter().filter(|p| !matches!(p, Stated::Record(f) if f.iter().all(|(_, v)| matches!(v, Stated::Def(_, None) | Stated::Number(0) | Stated::Flag(false))))).collect();
+        assert_eq!(stated.len(), 2, "{places:?}");
         assert_eq!(
             notes,
             [
                 "the save's folder holds chip numbers exe4 has no chip for (0x1ff): their entries are left empty",
+                "of the save: the auto battle data holds chip numbers the content has no chip for (0x1ff): their places are left empty",
             ]
         );
     }

@@ -194,11 +194,13 @@ fn decide(b: &mut Battle, r: ObjectRef) {
     if let Some(chip) = super::chip_use::use_chip(b, r) {
         return after_chip(b, r, chip);
     }
-    // EXE5's no-charge drive (0x080F03E4): the side's rules take the step
-    // a navi with the no-charge state would take (DarkInvs: EXE5's
-    // auto battle AI, 0x0802B4AC), and reset their drive's state for one
-    // without it (0x0802C03A); an answer has decided.
-    if b.game_rules().intake.no_charge_drive && b.rules_controller_answer(side as u8, r).is_some() {
+    // Where the rules say so (`idle_asks_controller`), the side's rules
+    // take the step the navi would take: EXE5's no-charge drive
+    // (0x080F03E4: with the no-charge state DarkInvs's, the auto battle AI,
+    // 0x0802B4AC; without, the reset of their drive's state, 0x0802C03A) and
+    // EXE4's dark soul (0x080EEC78: its AI, 0x0800E4F8); an answer has
+    // decided.
+    if b.game_rules().idle_asks_controller && b.rules_controller_answer(side as u8, r).is_some() {
         return;
     }
     let dir = held_direction(b, r);
