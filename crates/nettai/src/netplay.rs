@@ -113,7 +113,7 @@ impl<L: Link> Agreed<L> {
     /// the link), and what was agreed.
     pub fn player(self, options: NetOptions) -> (NetPlayer<Framed<L>>, Agreement) {
         let Agreed { link, agreement } = self;
-        let framed = Framed { link, answer: agreement.answer.clone(), frame: Vec::new() };
+        let framed = Framed { link, seed: agreement.seed, answer: agreement.answer.clone(), frame: Vec::new() };
         (NetPlayer::new(framed, agreement.side, agreement.set.clone(), options), agreement)
     }
 }
@@ -260,6 +260,9 @@ impl<L: Link> Agreeing<L> {
             // (Nothing is loaded ahead of this app's battle: it has loaded.)
             Status::Loading(_) => (None, true),
             Status::Start(a) => (Some(Ok(a.clone())), false),
+            // (This app takes the link for the match's own channel, and
+            // never the lobby's.)
+            Status::Playing => (None, false),
             Status::Failed(failure) => (Some(Err(failure.detail.clone())), false),
         };
         if agreed {
@@ -273,34 +276,34 @@ impl<L: Link> Agreeing<L> {
 }
 
 /// A link as the library's `Channel` for the match: its frames (the
-/// lobby's datagrams are told apart by their first byte); a Hello or a
-/// Reveal that comes again is answered (the other side hasn't this one's
-/// yet), a refusal ends the match.
+/// lobby's datagrams are told apart by their first byte, and the match's
+/// frames by its seed after it); a Hello or a Reveal that comes again is
+/// answered (the other side hasn't this one's yet), a refusal ends the
+/// match.
 pub struct Framed<L: Link> {
     link: L,
+    /// The match's seed, which its frames say.
+    seed: u32,
     answer: Vec<u8>,
     frame: Vec<u8>,
 }
 
 impl<L: Link> Channel for Framed<L> {
     fn send(&mut self, frame: &[u8]) -> Result<(), String> {
-        let mut out = Vec::with_capacity(frame.len() + 1);
-        out.push(Kind::Frame as u8);
-        out.extend_from_slice(frame);
-        self.link.send(&out)
+        self.link.send(&nettai_frontend::lobby::frame_datagram(self.seed, frame))
     }
 
     fn recv(&mut self) -> Result<Option<&[u8]>, String> {
         loop {
             let Some(d) = self.link.recv()? else { return Ok(None) };
+            if let Some(body) = nettai_frontend::lobby::match_frame(self.seed, d) {
+                // (Kept here: the link's datagram is its own until the next
+                // call.)
+                self.frame.clear();
+                self.frame.extend_from_slice(body);
+                return Ok(Some(&self.frame));
+            }
             match d.split_first().map(|(&k, body)| (Kind::of(k), body)) {
-                Some((Some(Kind::Frame), body)) => {
-                    // (Kept here: the link's datagram is its own until the
-                    // next call.)
-                    self.frame.clear();
-                    self.frame.extend_from_slice(body);
-                    return Ok(Some(&self.frame));
-                }
                 Some((Some(Kind::Hello | Kind::Reveal), _)) => self.link.send(&self.answer)?,
                 Some((Some(Kind::Refuse), body)) => return Err(format!("the other player refused: {}", String::from_utf8_lossy(body))),
                 _ => {}

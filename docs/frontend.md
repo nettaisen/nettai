@@ -449,10 +449,15 @@ host calls, in order:
     let link = nettai_rtc::Link::join_room(server, typed, Config::default())?;
     // Or directly (native only): Link::host(port, config)?, Link::join("host:port", config)?.
 
-    // Once link.is_open() (the other player has come): the lobby, in the link's role, fed
-    // and polled every frame. Its timeout is longer than the link's 30 seconds of reconnecting.
+    // Once link.is_open() (the other player has come): the lobby, in the link's role. Its
+    // timeout is longer than the link's 30 seconds of reconnecting. It lasts as long as the
+    // two players stay together: through every match they play, and between them.
     let mut lobby = Lobby::new(role, &content, Settings::new(game, 3), side, lobby::entropy(), timeout);
-    while let Some(d) = link.recv()? { lobby.receive(now, d); }   // every datagram, frames too
+
+    // Every frame, whatever is on screen (the lobby, the loading, the match, its result):
+    while let Some(d) = link.recv()? { lobby.receive(now, d); }   // every datagram, a match's frames too
+    lobby.set_link_down(link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: link.gives_up_in() }));
+    if let Some(player) = &mut player { player.advance(elapsed, buttons); }   // the match's player, if one is up
     match lobby.poll(now) {
         Status::Pending => { /* show it: settings(), ready(), their_ready(), their_name(), ping() */ }
         Status::Loading(agreement) => {
@@ -461,11 +466,17 @@ host calls, in order:
             // The other player's bar is lobby.their_loading().
         }
         Status::Start(agreement) => {
-            // preload.player(Box::new(NetPlayer::new(channel, agreement.side, agreement.set.clone(), options)))
+            // let driver = NetPlayer::new(lobby.channel().unwrap(), agreement.side, agreement.set.clone(), options);
+            // player = Some(preload.player(Box::new(driver)));
         }
-        Status::Failed(failure) => { /* say failure.reason; log failure.detail */ }
+        Status::Playing => {
+            // The match, then its result (player.result()). When the player is done with it, or the
+            // match stopped with the link still up (player.stop_reason()): player = None; lobby.reopen();
+            // and the next poll says Pending: the lobby again, nobody ready.
+        }
+        Status::Failed(failure) => { /* say failure.reason; log failure.detail; drop the link */ }
     }
-    for d in lobby.outgoing() { link.send(&d)?; }
+    for d in lobby.outgoing() { link.send(&d)?; }   // the lobby's, and the frame the player just made
 
 - **In a room**, one player asks the signaling server for a room
   (`Link::create_room`): the server picks its code, six characters of
@@ -562,16 +573,51 @@ host calls, in order:
     (`their_loading()`, 0 to 1: the other player's bar on a loading
     screen), and the lobby says `Status::Start` once both have loaded: no
     tick runs before, and the player is the preload's
-    (`preload.player(driver)`). With its loading each peer says the digest
-    of the match's first round at its start, and two programs that set the
-    agreed match up differently stop here (`Reason::DifferentVersion`). (A lobby that was loading may say `Pending` again: the other
-    player took their ready back in the moment the match was agreed, and
-    both are back in the lobby, this player not ready.) The host must keep
-    polling the link and the lobby while it
-    loads (load on another thread, or a little a frame): a link nobody
-    polls for 3 seconds reads as a dropped connection.
-  - **Leaving** the lobby is said (`Lobby::leave`, then send what
-    `outgoing` has): the other's ends at once with `Reason::OpponentLeft`.
+    (`preload.player(driver)`), over a `NetPlayer` on the match's channel
+    (`Lobby::channel`). With its loading each peer says the digest of the
+    match's first round at its start, and two programs that set the agreed
+    match up differently stop here (`Reason::DifferentVersion`). (A lobby
+    that was loading may say `Pending` again: the other player took their
+    ready back in the moment the match was agreed, and both are back in
+    the lobby, this player not ready.) The host must keep polling the link
+    and the lobby while it loads (load on another thread, or a little a
+    frame): a link nobody polls for 3 seconds reads as a dropped
+    connection.
+  - **Leaving** is said (`Lobby::leave`, then send what `outgoing` has),
+    from the lobby, from a match or from its result: the other's lobby
+    ends at once with `Reason::OpponentLeft`, and each host drops its link.
+- **After a match** the two players are back in the lobby, on the same
+  link and in the same room: no new invite. The lobby is the same object,
+  and it carried the match (its channel, `Lobby::channel`: the frames a
+  host feeds `receive`, and the player's own among `outgoing`'s, each
+  marked with its match's seed). Between a match's end and the next lobby
+  a host does two things: it **drops the match's player**, and it calls
+  **`Lobby::reopen()`**. The next `poll` says `Pending`; the settings are
+  as they were, nobody is ready (`ready()`, `their_ready()`), the player
+  may bring another build (`set_side`), and READY then agrees a new match,
+  of another seed, which is loaded and started as the first was.
+  - *When.* Once `player.result()` is some (the set is over) and the
+    player has seen the result for as long as the screen shows it; or
+    when the match stopped with the link still up: the other player left
+    the match (`StopReason::OpponentLeft`), the other's player went
+    silent (`ConnectionLost` from the player, the link itself still up)
+    or something internal. A link that gave up is the end: its error
+    comes from `link.recv()`, not from the lobby.
+  - *The other player comes back when they do.* One may be in the lobby
+    while the other still looks at the result: the one in the lobby sees
+    them not ready, and may ready, change the settings or the build
+    meanwhile. The one at the result has `lobby.their_reopened()` to say
+    the other is waiting. If it is true while this player's set isn't
+    over, the other ended the match on its side, and the host ends it
+    here too (drop the player, `reopen()`).
+  - *Nothing of the match before reaches the next.* A frame of it that
+    comes late is no one's; the last frame a player sent is said again by
+    its lobby until the other is back too, since the other may still need
+    it to end the match (rollback.md §4.7, item 5).
+  - *The loop doesn't change* (above): the host goes on feeding and
+    polling the lobby and sending what it has, through the match and its
+    result as before and after. A host that shows a result needn't tick
+    the player: the lobby keeps the link heard.
 - **Playing**: the match is a set of the rounds it lists; its rounds follow one
   another (the folders shuffled again by each console's RNG). Every frame the
   host sends your buttons and shows the frame the rollback session presents.
@@ -604,13 +650,17 @@ host calls, in order:
   guard; while the connection is down, how long it has been and how long
   is left. The lobby has the ping and the jitter before the match
   (`Lobby::ping`, and its `quality()`).
-- **The end**: when the set is over the result is the host's to show. If the
-  other player leaves (`StopReason::OpponentLeft`), nothing arrives from
-  them for 10 seconds while the connection is up or the connection doesn't
-  come back in 30 seconds (`ConnectionLost`), or their input falls more than
-  the rollback horizon behind (`Internal`), the match stops:
-  `Player::stop_reason` is what to tell the player, `Player::stopped` what
-  to log.
+- **The end of a match**: when the set is over the result is the host's to
+  show (`Player::result`), and the player goes on running until the host
+  drops it. If the other player leaves the match
+  (`StopReason::OpponentLeft`), nothing arrives from them for 10 seconds
+  while the link is up and the set isn't over (`ConnectionLost`), or their
+  input falls more than the rollback horizon behind (`Internal`), the
+  match stops: `Player::stop_reason` is what to tell the player,
+  `Player::stopped` what to log. In each of these the link is still up,
+  and the two can go back to the lobby. A link that doesn't come back in
+  30 seconds ends everything: that error is the link's
+  (`ErrorKind::ConnectionLost`), which the host sees from the link.
 
 **Sound**: the player renders each tick's sound cues with the pack's sound
 (nettai-audio's `BattleAudio`), and the host plays the samples
@@ -2453,7 +2503,9 @@ the first tick"). The lobby says `Status::Loading` with the agreement: the host 
 `agreement.set` for `agreement.side`, steps it, and tells the lobby how far it is, `Lobby::set_loading(fraction())`
 after a step and `Lobby::set_loaded()` once `done()`. A peer's own bar is its `fraction()` (or a bar a side from
 `fraction_of`), and the other player's bar is `Lobby::their_loading()`, the other peer's `fraction()` as it said
-it. When the lobby says `Status::Start`, the player is `preload.player(driver)` over the `NetPlayer`. The link and
+it. When the lobby says `Status::Start`, the player is `preload.player(driver)` over the `NetPlayer` on the
+match's channel (`Lobby::channel`). A second match between the same two players (§2, "After a match") is
+preloaded the same way: its sets differ (another seed, perhaps another build), and the thread has its runtime. The link and
 the lobby are polled every frame meanwhile, so the runtime's step, which is about a second and can't be stepped,
 is best taken before the lobby (`preload::runtime`, behind the game's start-up bar): a link nobody polls for 3
 seconds reads as a dropped connection on the other side (docs/design/rollback.md §4.8). nettai-frontend's test
