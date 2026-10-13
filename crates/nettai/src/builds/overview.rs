@@ -50,10 +50,19 @@ fn effect_line(names: &Names, entry: EntryHandle, index: usize) -> Option<String
 }
 
 /// What gives an ability or a bug, by name: a program's name, or a card's line.
-fn source(names: &Names, source: Source) -> String {
+pub fn source(names: &Names, source: Source) -> String {
     match source {
         Source::Entry(entry) => names.entry(entry),
         Source::Effect(entry, index) => effect_line(names, entry, index).unwrap_or_else(|| names.entry(entry)),
+    }
+}
+
+/// A bug, by its full name in the game's strings and its level or amount (a card's drawback that is no bug of its
+/// own kind: its line, and no level).
+pub fn bug(words: &Words, bug: &Bug) -> (String, String) {
+    match bug {
+        Bug::Named { key, extent } => (words.names.text(build::BUGS_TABLE, key).unwrap_or_else(|| key.clone()), words.extent(*extent)),
+        Bug::From(from) => (source(words.names, *from), String::new()),
     }
 }
 
@@ -105,14 +114,7 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         None => vec![StatLine::default(); 8],
     };
     let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|&s| source(names, s)).collect();
-    let bugs: Vec<(String, String)> = overview
-        .iter()
-        .flat_map(|o| o.bugs.iter())
-        .map(|bug| match bug {
-            Bug::Named { key, extent } => (names.text(build::BUGS_TABLE, key).unwrap_or_else(|| key.clone()), words.extent(*extent)),
-            Bug::From(from) => (source(names, *from), String::new()),
-        })
-        .collect();
+    let bugs: Vec<(String, String)> = overview.iter().flat_map(|o| o.bugs.iter()).map(|b| bug(words, b)).collect();
     // The lines under the stats: the bugs keep four of them where both lists are long.
     let ability_lines: Vec<SheetLine> = abilities.iter().map(|a| SheetLine { kind: SheetLineKind::Ability, text: a.into(), ..Default::default() }).collect();
     let bug_lines: Vec<SheetLine> = bugs.iter().map(|(name, extent)| SheetLine { kind: SheetLineKind::Bug, text: name.into(), extent: extent.into() }).collect();

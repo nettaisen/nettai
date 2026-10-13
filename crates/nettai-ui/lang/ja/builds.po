@@ -248,6 +248,87 @@ msgstr "タッグ"
 msgid "REMOVE"
 msgstr "外す"
 
+# ---- The NaviCust tab.
+
+msgid "Pick up"
+msgstr "持つ"
+
+msgid "Take off"
+msgstr "外す"
+
+msgid "Move piece"
+msgstr "パーツを動かす"
+
+msgid "Turn"
+msgstr "回す"
+
+msgid "Compress"
+msgstr "圧縮"
+
+msgid "Place"
+msgstr "置く"
+
+msgid "Put back"
+msgstr "戻す"
+
+msgid "{n} program placed"
+msgid_plural "{n} programs placed"
+msgstr[0] "プログラム {n}個"
+
+msgid "PROGRAMS"
+msgstr "プログラム"
+
+# Where a program of the list is: on the board, in hand (being moved), on the board and over its ring.
+msgid "Placed"
+msgstr "配置済み"
+
+msgid "In hand"
+msgstr "移動中"
+
+msgid "Out of bounds"
+msgstr "はみ出し"
+
+msgid "EFFECTS"
+msgstr "効果"
+
+msgid "Effects"
+msgstr "効果"
+
+# The key under the board.
+msgid "Board"
+msgstr "ボード"
+
+msgid "Command line"
+msgstr "コマンドライン"
+
+msgid "Plus part"
+msgstr "プラスパーツ"
+
+# What the NaviCust changes of a number, the change put in ("HP +100").
+msgid "HP {}"
+msgstr "HP {}"
+
+msgid "Attack {}"
+msgstr "アタック {}"
+
+msgid "Rapid {}"
+msgstr "ラピッド {}"
+
+msgid "Charge {}"
+msgstr "チャージ {}"
+
+msgid "Custom {}"
+msgstr "カスタム {}"
+
+msgid "Mega chips {}"
+msgstr "メガチップ {}"
+
+msgid "Giga chips {}"
+msgstr "ギガチップ {}"
+
+msgid "Regular memory {}"
+msgstr "レギュラーメモリ {}"
+
 # The strip: a chip's class and its facts.
 
 msgid "Standard"

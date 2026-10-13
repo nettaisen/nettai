@@ -45,8 +45,15 @@ use std::time::{Duration, Instant};
 
 // A screen's own steps (`<screen>::steps`, and `<screen>::motion` for the motion probe), each in a file of its
 // own, called from `walk` and `motion_walk` with one line.
+mod build_tabs;
 mod builds;
 mod training;
+
+/// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`, the
+/// screens' own: `training`, `builds`, `build-tabs`), for looking at one screen without the whole walk.
+fn walks(part: &str) -> bool {
+    std::env::var("NETTAI_TOUR_ONLY").ok().is_none_or(|only| only.split(',').any(|p| p == part))
+}
 
 /// How long a step is given to be drawn before the next: a few frames.
 const SETTLE: u64 = 260;
@@ -173,7 +180,13 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
 
 /// The steps of one language at one size.
 fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
-    let mut add = |wait: u64, step: Step| steps.push((wait, step));
+    // (A part `NETTAI_TOUR_ONLY` leaves out adds no steps.)
+    let taking = Cell::new(true);
+    let mut add = |wait: u64, step: Step| {
+        if taking.get() {
+            steps.push((wait, step));
+        }
+    };
     // A shot: the texts' check started again, the picture written (and kept, if `first` of a pair; compared
     // with the pair's first, if `second`, which may differ only inside `also` and the two cursors).
     let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair| {
@@ -236,6 +249,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
+    taking.set(walks("shell"));
 
     // Loading, as the app starts.
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_loading = Some(0.62)));
@@ -264,10 +278,15 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
+    taking.set(walks("training"));
     training::steps(&mut add, lang, size);
 
     // Builds: the list, its dialogs, and the editor's tabs.
+    taking.set(walks("builds"));
     builds::steps(&mut add, &shot, lang, size);
+    taking.set(walks("build-tabs"));
+    build_tabs::steps(&mut add, &shot, lang, size);
+    taking.set(walks("shell"));
 
     // Settings: the focus a step down; a value changed under the focus; a field being edited; a select's list;
     // the groups down the page.
@@ -389,7 +408,13 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
 
 /// The motion probe's steps: at the desktop's size, in English.
 fn motion_walk(steps: &mut Vec<(u64, Step)>) {
-    let mut add = |wait: u64, step: Step| steps.push((wait, step));
+    // (A part `NETTAI_TOUR_ONLY` leaves out adds no steps.)
+    let taking = Cell::new(true);
+    let mut add = |wait: u64, step: Step| {
+        if taking.get() {
+            steps.push((wait, step));
+        }
+    };
     // A burst: `trigger` starts an animation, and a shot is taken at each of `at` (milliseconds after it); the
     // shots are written, and their controls' sizes compared, once the last is taken.
     let burst = |add: &mut dyn FnMut(u64, Step), name: &'static str, at: &[u64], trigger: Step| {
@@ -430,6 +455,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             app.shell.nav.show_cursor(true, false);
         }),
     );
+    taking.set(walks("shell"));
     burst(&mut add, "cursor-glide", &[0, 30, 60, 100, 180], act(Action::Down));
     burst(&mut add, "screen-to-settings", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Settings));
     burst(&mut add, "screen-back-to-menu", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Menu));
@@ -488,7 +514,11 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     burst(&mut add, "page-scrolls", &[0, 30, 60, 100, 200], focus("set.folder", 0));
     burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
     add(SETTLE, act(Action::Confirm));
+    taking.set(walks("builds"));
     builds::motion(&mut add, &burst);
+    taking.set(walks("build-tabs"));
+    build_tabs::motion(&mut add, &burst);
+    taking.set(walks("shell"));
     add(SETTLE, go(ScreenId::Training));
     burst(
         &mut add,
@@ -506,6 +536,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             app.go_now(ScreenId::Menu);
         }),
     );
+    taking.set(walks("training"));
     training::motion(&mut add);
 }
 
