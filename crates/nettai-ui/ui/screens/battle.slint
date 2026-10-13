@@ -321,6 +321,8 @@ export component BattleScreen inherits Rectangle {
         x: parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
         y: (Theme.phone ? root.picture-height : parent.height) - self.height - 16px;
         visible: Shell.connection-shown;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     if Theme.phone: TouchPad {
@@ -328,5 +330,7 @@ export component BattleScreen inherits Rectangle {
         y: root.picture-height + 16px;
         width: parent.width - 2 * Theme.margin;
         height: parent.height - self.y - Theme.margin;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
