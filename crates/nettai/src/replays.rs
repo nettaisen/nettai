@@ -1,4 +1,4 @@
-//! The replays folder, read off the window's thread (docs/app.md §15): what the Replays screen lists and the
+//! The replays folder, read off the window's thread (docs/app.md §16): what the Replays screen lists and the
 //! main menu's reel plays.
 //!
 //! Nothing here runs on the frame path. A [`Library`] has a thread of its own, started when it is first asked

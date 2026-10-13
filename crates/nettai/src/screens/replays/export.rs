@@ -1,4 +1,4 @@
-//! A replay's export as video (docs/design/app-ui.md §6, "Export"; docs/app.md §15): the dialog's choices, and
+//! A replay's export as video (docs/design/app-ui.md §6, "Export"; docs/app.md §16): the dialog's choices, and
 //! the export itself, which is nettai-video's `export_mp4` on a thread of its own: it plays the replay through
 //! a viewer of its own there and pipes the pictures and the sound to `ffmpeg`, which writes the MP4.
 //!

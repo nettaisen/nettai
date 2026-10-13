@@ -1,82 +1,43 @@
-//! The pack's Japanese lettering, from the Japanese ROMs: what a battle
-//! shows in words in the Japanese games, where the US games show English
-//! (nettai-assets `lettering`; docs/design/text-rendering.md §10).
-//!
-//! - **The fonts**: the 8x16 font and the dialogue font with its advances,
-//!   in the Japanese encoding (compat/text.toml's `[jp]`).
-//! - **The HUD's text lines**: the same words as the US ROMs' ("TIME
-//!   UP!", "COUNTER HIT!"), in the Japanese font's glyphs.
-//! - **Banners**: the ten whose words differ (ROCKMAN, KILLERMAN, AQUAMAN
-//!   and BLUES for MegaMan, EraseMan, SpoutMan and ProtoMan; the Program
-//!   Advance's katakana), each where it starts (KILLERMAN DELETED further
-//!   left), and the banners' palette.
-//! - **"Cstmzing..."**: カスタム中…, seven tiles wide where the US's is
-//!   eight (`sub_801CA34` copies one column fewer).
-//! - **The custom gauge** (its "L or R").
-//! - **The chip window's pictures** for OK ("no data selected", "chip data
-//!   transmission"), the re-deal and the scrap buttons.
-//! - **The Cross window's names**, by game: Falzar's from the Japanese
-//!   Falzar ROM, Gregar's from the Japanese Gregar ROM.
-//!
-//! Everything else a battle shows is the same pictures in all four ROMs
-//! (tools/jp/locale/pictures.py in the verification workspace compares
-//! them). The two Japanese ROMs' fonts, lines, banners and pictures are the
-//! same; only the Cross names are by game. The addresses are the Japanese
-//! ROMs' own (their data moved against the US ROMs').
+//! The Japanese ROMs' lettering (`ROCKEXE6_RXXBR6J`, `ROCKEXE6_GXXBR5J`):
+//! the pack's Japanese, beside the US ROMs' English. The same code reaches
+//! each block as in the US ROMs (the HUD's and the custom screen's places),
+//! and both Japanese ROMs have the same words but for the forms' names,
+//! which are each version's own.
 
-use crate::exe6::Rom;
+use crate::exe6::{Roms, Version};
 use nettai_assets::{ButtonLettering, CustomLettering, Hud, HudLettering, SlotPictures};
 use nettai_content::names::AssetNames;
 
-/// The language the Japanese ROMs' lettering is.
 pub const LANGUAGE: &str = "ja";
 
-/// The 8x16 font (`dword_86B7AE0` in the US ROMs).
-const FONT: u32 = 0x086D_6C00;
-/// The dialogue font (`byte_86ACD60`) and its advances (`byte_8043CA4`).
-const DIALOGUE_FONT: u32 = 0x086C_BE80;
-const DIALOGUE_ADVANCES: u32 = 0x0804_4EEC;
-/// The HUD's text lines (`TextScript86F0374`).
-const TEXTS: u32 = 0x0871_2DB8;
-/// The banners (`pt_801EF84`), their glyph filler and palette.
-const BANNERS: (u32, u32) = (0x0801_F3A8, 0x0802_01D4);
-const BANNER_PALETTE: u32 = 0x0871_5120;
-/// "Cstmzing..." (`sub_801EC90`'s transfer; 7x2 tiles).
-const WAITING: (u32, usize) = (0x0871_48E0, 0x1C0);
-/// The gauge's tiles (`sub_801DED0`).
-const GAUGE_TILES: (u32, usize) = (0x0870_72E4, 0x380);
-/// The chip window's pictures and their palettes (as the US ROMs'
-/// `OK`, `OK_PICKED`, `OTHER`, `REDEAL`, `SCRAP`).
-const OK: (u32, u32) = (0x0874_7098, 0x0874_9FB8);
-const OK_PICKED: (u32, u32) = (0x0874_6B58, 0x0874_9F38);
-const OTHER: (u32, u32) = (0x0874_6B58, 0x0874_9F18);
-const REDEAL: (u32, u32) = (0x0874_7098, 0x0874_9F98);
-const SCRAP: (u32, u32) = (0x0875_8698, 0x0875_8BF8);
-/// The Cross window's names (`dword_86E7DCC`): the Japanese Falzar ROM's
-/// and the Japanese Gregar ROM's.
-const CROSS_NAMES_FALZAR: u32 = 0x0870_A814;
-const CROSS_NAMES_GREGAR: u32 = 0x0870_8774;
+/// The Japanese ROMs' notice of the other player customizing, on the HUD
+/// layer: fourteen tiles, for the US ROMs' sixteen.
+const WAITING_BYTES: usize = 0x1C0;
 
-/// The HUD's Japanese lettering; `base` is the pack's own HUD (a banner
-/// whose glyphs are the same is left to it).
-pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames, base_present: bool) -> HudLettering {
+/// The HUD's Japanese words, from a Japanese ROM: placeholders without
+/// one. A banner is kept where it isn't the base's (`base`: the pack's own
+/// words, a US ROM's).
+pub fn hud(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
+    let jp = roms.jp();
     if !jp.is_present() {
         return crate::placeholders::lettering(base, names, LANGUAGE);
     }
-    use crate::exe6::hud::{FONT_GLYPHS, banner_at, dialogue_font, palette, texts, tiles};
+    use crate::exe6::hud::{
+        BANNER_PALETTE, FONT, FONT_GLYPHS, GAUGE_BYTES, GAUGE_TILES, TEXTS, WAITING, banner, dialogue_font, palette, texts, tiles,
+    };
+    let (rom, at) = (jp.rom, |place| jp.at(place));
     let (cell, dialogue) = names
         .language_glyphs
         .get(LANGUAGE)
         .cloned()
         .unwrap_or_default();
+    let base_present = roms.us().is_present();
     let banners = base
         .banners
         .iter()
         .enumerate()
         .map(|(id, own)| {
-            let b = banner_at(jp, BANNERS, id as u32);
-            // The words differ, and where a banner starts with them (a
-            // longer name further left); not what kind of banner it is.
+            let b = banner(jp, id as u32);
             if base_present {
                 assert_eq!(
                     (b.kind, b.number_at, b.glyphs.len()),
@@ -89,51 +50,42 @@ pub fn hud(jp: &Rom, base: &Hud, names: &AssetNames, base_present: bool) -> HudL
         })
         .collect();
     HudLettering {
-        font: tiles(jp, FONT, 0x40 * FONT_GLYPHS as usize),
+        font: tiles(rom, at(FONT), 0x40 * FONT_GLYPHS as usize),
         font_chars: cell.iter().take(FONT_GLYPHS as usize).cloned().collect(),
-        dialogue_font: dialogue_font(jp, (DIALOGUE_FONT, DIALOGUE_ADVANCES), (&cell, &dialogue)),
-        texts: texts(jp, TEXTS),
+        dialogue_font: dialogue_font(jp, (&cell, &dialogue)),
+        texts: texts(rom, at(TEXTS)),
         banners,
-        banner_palette: palette(jp, BANNER_PALETTE),
-        waiting: tiles(jp, WAITING.0, WAITING.1),
-        waiting_palette: palette(jp, BANNER_PALETTE),
-        gauge_tiles: tiles(jp, GAUGE_TILES.0, GAUGE_TILES.1),
-        // (Its text where the US games' is.)
+        banner_palette: palette(rom, at(BANNER_PALETTE)),
+        waiting: tiles(rom, at(WAITING), WAITING_BYTES),
+        waiting_palette: palette(rom, at(BANNER_PALETTE)),
+        gauge_tiles: tiles(rom, at(GAUGE_TILES), GAUGE_BYTES),
         chatbox_text: None,
     }
 }
 
-/// The custom screen's Japanese lettering.
-pub fn custom(falzar: &Rom, gregar: &Rom) -> CustomLettering {
-    use crate::exe6::custom::{FORM_NAMES, REDEAL_BUTTON, SCRAP_BUTTON, picture};
-    let names = |rom: &Rom, a: u32| crate::exe6::hud::tiles(rom, a, FORM_NAMES.0 * FORM_NAMES.1);
+/// The custom screen's Japanese words: the chip window's pictures from a
+/// Japanese ROM, each version's forms' names from its own.
+pub fn custom(roms: &Roms) -> CustomLettering {
+    use crate::exe6::custom::{FORM_NAMES, OK, OK_PICKED, OTHER, REDEAL, REDEAL_BUTTON, SCRAP, SCRAP_BUTTON, picture, tiles};
+    let jp = roms.jp();
+    let button = |name: &str, details| {
+        (
+            name.to_string(),
+            ButtonLettering {
+                tiles: None,
+                picture: Some(picture(jp, details)),
+            },
+        )
+    };
     CustomLettering {
         pictures: SlotPictures {
-            ok: picture(falzar, OK),
-            ok_picked: picture(falzar, OK_PICKED),
-            other: picture(falzar, OTHER),
+            ok: picture(jp, OK),
+            ok_picked: picture(jp, OK_PICKED),
+            other: picture(jp, OTHER),
         },
-        form_names: vec![
-            ("falzar".into(), names(falzar, CROSS_NAMES_FALZAR)),
-            ("gregar".into(), names(gregar, CROSS_NAMES_GREGAR)),
-        ],
-        // The re-deal and scrap buttons' pictures in the chip window (their
-        // tiles in the slots' row, and Beast Out's, have no words).
-        buttons: vec![
-            (
-                REDEAL_BUTTON.into(),
-                ButtonLettering {
-                    tiles: None,
-                    picture: Some(picture(falzar, REDEAL)),
-                },
-            ),
-            (
-                SCRAP_BUTTON.into(),
-                ButtonLettering {
-                    tiles: None,
-                    picture: Some(picture(falzar, SCRAP)),
-                },
-            ),
-        ],
+        form_names: [Version::Falzar, Version::Gregar]
+            .map(|v| (v.name().to_string(), tiles(roms.jp_of(v), FORM_NAMES)))
+            .into(),
+        buttons: vec![button(REDEAL_BUTTON, REDEAL), button(SCRAP_BUTTON, SCRAP)],
     }
 }

@@ -1,4 +1,4 @@
-//! Watching a replay: the library's `Viewer` on screen, with its transport (docs/app.md §15).
+//! Watching a replay: the library's `Viewer` on screen, with its transport (docs/app.md §16).
 //!
 //! Each frame runs the ticks due at the speed set, presents the picture if one ran, and hands the sound on. So
 //! that no seek stalls the window, the replay is indexed ahead a slice a frame, each held to a budget of time,

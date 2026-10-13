@@ -43,7 +43,10 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+// A screen's own steps (`<screen>::steps`, and `<screen>::motion` for the motion probe), each in a file of its
+// own, called from `walk` and `motion_walk` with one line.
 mod replays;
+mod training;
 
 /// How long a step is given to be drawn before the next: a few frames.
 const SETTLE: u64 = 260;
@@ -227,7 +230,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(SETTLE * 2, Box::new(|_, _, _| {}));
     // (`NETTAI_TOUR_ONLY=replays`: that screen's steps alone.)
     if std::env::var("NETTAI_TOUR_ONLY").as_deref() == Ok("replays") {
-        return replays::walk(&mut add, lang, size);
+        return replays::steps(&mut add, lang, size);
     }
 
     // Loading, as the app starts.
@@ -257,6 +260,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
+    training::steps(&mut add, lang, size);
 
     // Settings: the focus a step down; a value changed under the focus; a field being edited; a select's list;
     // the groups down the page.
@@ -374,7 +378,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             app.go_now(ScreenId::Menu);
         }),
     );
-    replays::walk(&mut add, lang, size);
+    replays::steps(&mut add, lang, size);
 }
 
 /// The motion probe's steps: at the desktop's size, in English.
@@ -495,6 +499,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             app.go_now(ScreenId::Menu);
         }),
     );
+    training::motion(&mut add);
 }
 
 /// Write a burst's shots (at half their size: they are many), and hold each to its last: every control the size
