@@ -683,3 +683,11 @@ language = "ja"
 "version.bluemoon" = "ブルームーン"
 "light_dark.light" = "ライト"
 "light_dark.dark" = "ダーク"
+
+# The auto battle data's lists (en.toml's `[auto_battle_lists]` says what they are). Ours, as EXE5's.
+[auto_battle_lists]
+"first" = "最初"
+"standard" = "スタンダード"
+"mega" = "メガクラス"
+"giga" = "ギガクラス"
+"program_advance" = "プログラムアドバンス"

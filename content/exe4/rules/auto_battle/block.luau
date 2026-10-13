@@ -15,6 +15,16 @@ local block = {}
 block.PLACES = places.PLACES
 block.PLACE = places.PLACE
 
+-- The lists the game writes the places in, EXE5's (@exelib/auto_battle/places' `LISTS`; docs/design/exe4-map.md, "The
+-- places' lists"): the routine that writes the block from the player's battles (0x0800EFA8, from 0x08006EAE; US Red
+-- Sun's addresses) builds the 42 places and copies them to the block (0x0800F158): places 1 to 3 the second count
+-- table's most counted standard chips (0x0800F0FA, its class 0 list 0x02034400), 4 to 27 the use counts' sixteen most
+-- used standard chips by the repeat table 0x0800F1F8 (4, 4, 2, 2, then once each: 0x0800F10A, 0x0800F1C2), 28 to 32
+-- the five most used mega chips (0x0800F118, class 1's list 0x02033400), 33 the most used giga chip (0x0800F128,
+-- class 2's 0x02033800), 34 to 41 the patterns (0x0800F138: 0x0800F2DC), 42 the most used program advance
+-- (0x0800F142, class 4's 0x02034000). A tool reads them as data (the build editor's auto battle).
+block.LISTS = places.LISTS
+
 export type Place = { chip: Chip?, pattern: number, zero: boolean }
 
 -- `round_setup`, once for the round: both sides' data as their consoles send it as the battle starts (0x0800F208: the
