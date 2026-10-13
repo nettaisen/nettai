@@ -653,6 +653,7 @@ return 0                        // another round
 
 **Engine model.** `Battle::round_end()` is `None` until the tick that runs `sub_8007CA0`, then:
 - `RoundEnd::NextRound { settings, score }` when the set goes on: the top state goes back to 0 (init), which the engine does not simulate. The host runs its init (link sync, the navi stats and RNG exchange, the folder) and starts the next round from a `RoundSetup` with these settings and score.
+- What the original's round end writes to the PET's navi for the next battle, which nettai keeps none of (nettai-match's `next_round` starts each round from the first's stats): the mood (NaviStats +0x0E, written at 0x08007D94), and the Beast Out counter (+0x21): the navi's as it stands, a turn back (to 3 at most) when it didn't go Beast Out this battle (`byte_203EAE0` +2, set by `sub_800AB2E` as a change goes Beast Out, read at 0x08007DB4: its one reader), or 3 under a battle effect (0x0802D246). A second Beast Out in one battle is refused by the counter and the screen's record (`sub_802A57E`, rules/beast), which nettai has (forms/falzar/beast-over replays every frame).
 - `RoundEnd::Over(BattleResult)` when it ends: BS+0x1F holds the result code, BS+0x34 the local navi's HP (read from the freed object, `sub_800FAE0`), the pause byte is cleared and BS+0x0A = 0. Machgun round 2 ends this way at 2554 (1331/1331 frames).
 
 **Error paths (not in the trace):**
