@@ -216,14 +216,14 @@ msgstr "これは {} のリプレイです"
 msgid "Pick {} to watch it."
 msgstr "{} を選ぶと見られます。"
 
-msgid "ffmpeg wasn't found. Install it to export video."
-msgstr "ffmpeg が見つかりません。動画を書き出すにはインストールしてください。"
+msgid "Video export needs ffmpeg. Install it, then try again."
+msgstr "動画の書き出しには ffmpeg が必要です。インストールしてから、もう一度お試しください。"
 
-msgid "ffmpeg wasn't found"
-msgstr "ffmpeg が見つかりません"
+msgid "Video export needs ffmpeg"
+msgstr "動画の書き出しには ffmpeg が必要です"
 
-msgid "Install it to export video."
-msgstr "動画を書き出すにはインストールしてください。"
+msgid "Install it, then try again."
+msgstr "インストールしてから、もう一度お試しください。"
 
 msgid "The video's file couldn't be written. Check the folder and the space left."
 msgstr "動画ファイルを書き込めませんでした。フォルダと空き容量を確認してください。"
