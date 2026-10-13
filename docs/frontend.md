@@ -385,6 +385,13 @@ refuses, and `set_training` is refused while a replay is written).
   at 0 HP is being deleted and is left to it, as is a round already decided:
   a hit (or hits closer together than the rest) of its whole HP still ends
   the round. Turned on with HP missing, it is full at once.
+- **The full gauge**: the custom gauge's value is at its full whenever the
+  gauge runs (from each custom screen's end, not after the round is
+  decided). The engine itself then flags it full and plays its sound, on the
+  first tick it fills (`fill_gauge`: none while the battle is paused or
+  dimmed, nor in the final turns, where a full gauge isn't flagged), so the
+  game's own pause is left as it is and L or R opens the custom screen from
+  the turn's start on (about a second, its banner, where without it is ten).
 
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number

@@ -10,7 +10,7 @@
 import { Theme, Audit } from "../theme.slint";
 import { NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture } from "../shell.slint";
-import { Button, ButtonKind, Select, Stepper, Label, Note, Message, Value, Pill, PanelBack, MenuItem, GroupTitle } from "../widgets.slint";
+import { Button, ButtonKind, Select, Stepper, Label, Note, Message, Value, Pill, PanelBack, MenuItem, GroupTitle, ScrollPage } from "../widgets.slint";
 import { Arrive } from "../motion.slint";
 import { MenuOverlay } from "battle.slint";
 import { VersionTag } from "../build.slint";
@@ -36,6 +36,7 @@ export enum TrainingOption {
     custom-screen,
     your-hp,
     dummys-hp,
+    custom-gauge,
     input-display,
 }
 
@@ -113,6 +114,9 @@ export global TrainingView {
         if option == TrainingOption.dummys-hp {
             return @tr("Dummy's HP");
         }
+        if option == TrainingOption.custom-gauge {
+            return @tr("Custom gauge");
+        }
         if option == TrainingOption.input-display {
             return @tr("Input display");
         }
@@ -127,6 +131,9 @@ export global TrainingView {
         }
         if option == TrainingOption.your-hp || option == TrainingOption.dummys-hp {
             return value == 0 ? @tr("Normal") : @tr("Refills");
+        }
+        if option == TrainingOption.custom-gauge {
+            return value == 0 ? @tr("Normal") : @tr("Always full");
         }
         if option == TrainingOption.input-display {
             return value == 0 ? @tr("Off") : @tr("On");
@@ -440,7 +447,7 @@ component MenuRow inherits Rectangle {
         x: 0;
         y: 0;
         visible: root.added;
-        nav: root.added ? "menu.added" : "";
+        nav: root.added ? "menu.rows.added" : "";
         nav-index: root.index;
         text: root.entry.text;
     }
@@ -449,7 +456,7 @@ component MenuRow inherits Rectangle {
         visible: root.option;
         background: hit.has-hover ? Theme.tint : transparent;
         hit := Focusable {
-            nav: root.option ? "menu.option" : "";
+            nav: root.option ? "menu.rows.option" : "";
             nav-index: root.index;
             kind: NavKind.stepper;
             enabled: root.option;
@@ -472,7 +479,7 @@ component MenuRow inherits Rectangle {
         Stepper {
             x: Theme.phone ? 0px : parent.width - self.width - 8px;
             y: Theme.phone ? 24px : (parent.height - self.height) / 2;
-            nav: "menu.option";
+            nav: "menu.rows.option";
             nav-index: root.index;
             value: root.value;
             value-width: root.value-width;
@@ -506,16 +513,23 @@ export component TrainingMenu inherits MenuOverlay {
     title: @tr("TRAINING");
     note: @tr("{} vs {}", TrainingView.session-yours, TrainingView.session-dummys);
     side: true;
-    VerticalLayout {
+    // (The rows scroll where they don't all fit, as on a phone: the page's bar is in the panel's margin, so the
+    // rows are the panel's width either way.)
+    rows := ScrollPage {
         x: 0;
         y: 0;
-        width: root.inner-width;
-        height: root.buttons-y;
-        alignment: start;
-        spacing: 4px;
-        for row[i] in TrainingView.rows: MenuRow {
-            entry: row;
-            index: i;
+        width: root.inner-width + 12px;
+        height: root.buttons-y - 8px;
+        nav: "menu.rows";
+        content-height: list.preferred-height;
+        list := VerticalLayout {
+            width: rows.view-width;
+            alignment: start;
+            spacing: 4px;
+            for row[i] in TrainingView.rows: MenuRow {
+                entry: row;
+                index: i;
+            }
         }
     }
 
