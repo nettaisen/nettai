@@ -137,6 +137,10 @@ pub struct Drawn {
     pub emblem: Option<(u32, u8)>,
     /// The Regular chip's frame (`sub_802899C`).
     pub regular: bool,
+    /// The chip window's element icon where it is a sprite (EXE4's
+    /// 0x0801EECC, which each state calls under its own test; a screen whose
+    /// window's map holds the icon draws none).
+    pub element: bool,
     /// The icon of the chip a button holds, over the button (EXE5's Arm
     /// Change, 0x080254F4).
     pub held: bool,
@@ -434,6 +438,11 @@ impl ScreenLook {
     /// `sub_8028820`: the cursor, in the frame the counter gives.
     pub(crate) fn draw_cursor(&mut self) {
         self.drawn.cursor = Some(((self.frame >> 3) & 1) as u8);
+    }
+
+    /// EXE4's 0x0801EECC: the chip window's element icon as a sprite.
+    pub(crate) fn draw_element(&mut self) {
+        self.drawn.element = true;
     }
 
     /// `sub_80289E4`: the form list window's cursor, by the same counter.
