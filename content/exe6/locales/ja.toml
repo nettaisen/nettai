@@ -6,6 +6,10 @@
 
 language = "ja"
 
+[game]
+# The game's name as a player sees it: the Japanese games' title, Rockman EXE 6.
+"name" = "EXE6"
+
 [chips]
 "airhocky" = { name = "エアホッケー", description = "かべにはんしゃする\nエアホッケーを\nななめ右になげる!" }
 "airraid1" = { name = "エアレイド1", description = "ゼロプレーンを\n目の前におき\nてきを攻撃する" }
