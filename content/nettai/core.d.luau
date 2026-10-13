@@ -65,6 +65,11 @@ export type Emotion = string
 -- A side's special in progress: the SELECT special, or the rules' takeover
 -- of the side's navi (EXE6's Cross special).
 export type SideSpecial = "none" | "select" | "takeover"
+-- What a chip the rules offer on the custom screen says of itself
+-- (`custom.offer`): the marks its pick carries into its hand entry (none),
+-- whether the hand's picks list it (they do), and whether the cursor on it
+-- shades the screen as on a dark chip (not).
+export type Offer = { marks: number?, listed: boolean?, shades: boolean? }
 -- A HUD part a chip's effect hides and shows: the custom gauge (draw task
 -- 4), the emotion window (14), a side's own gauge drawn by its levels (17,
 -- `battle.own_gauges`), the HP box (7: its drawing only, the low-HP alarm
@@ -1440,6 +1445,12 @@ declare battle: {
     -- The chip at i of a side's hand (from its first chip, used ones too),
     -- if any.
     hand_chip: (side: number, i: number) -> Chip?,
+    -- The marks of the entry at i of a side's hand (its modifier flags: what
+    -- its game's chip-use rules read at the use, `mark_damage` and
+    -- `mark_heals`, and what its rules keep there), and marks added to them
+    -- (EXE4's install marks each entry 0x04 as it takes a dark chip's cost).
+    hand_marks: (side: number, i: number) -> number,
+    add_hand_marks: (side: number, i: number, marks: number) -> (),
     -- EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
     -- its cursor to the first empty slot.
     hand_left: (side: number) -> number,
@@ -3201,16 +3212,21 @@ declare custom: {
     set_folder: (side: number, place: number, chip: Chip, code: string?) -> (),
     -- The chip in a slot of the screen (0 to 11), dealt or offered: the chip
     -- and its code, the folder place it was dealt from (nil: a chip from
-    -- outside the folder), whether it is the folder's Regular chip, and
-    -- whether it is picked; nil where the slot holds no chip (it is empty,
-    -- OK or a button). The picked slots, in order (a button's slot where
-    -- one is picked).
-    slot: (side: number, slot: number) -> { chip: Chip, code: string?, place: number?, regular: boolean, picked: boolean }?,
+    -- outside the folder), whether it is the folder's Regular chip, whether
+    -- it is picked, and whether the hand's picks list it once picked (a dealt
+    -- chip; an offered one by its offer); nil where the slot holds no chip (it
+    -- is empty, OK or a button). The picked slots, in order (a button's slot
+    -- where one is picked).
+    slot: (side: number, slot: number) -> { chip: Chip, code: string?, place: number?, regular: boolean, picked: boolean, listed: boolean }?,
     picks: (side: number) -> { number },
     -- As the screen deals (the rules' `deal`): a chip from outside the folder
     -- the screen shows in a slot (0 to 11) once laid out, in a code (a letter,
-    -- or nil: the code outside the alphabet, EXE4's dark chips').
-    offer: (side: number, slot: number, chip: Chip, code: string?) -> (),
+    -- or nil: the code outside the alphabet, EXE4's dark chips'); and what
+    -- the offer says of itself: the marks its pick carries into its hand entry
+    -- (none), whether the hand's picks list it (they do; EXE4's chip offered
+    -- again is marked and isn't), and whether the cursor on it shades the
+    -- screen as on a dark chip (not; EXE4's dark offer does).
+    offer: (side: number, slot: number, chip: Chip, code: string?, what: Offer?) -> (),
     hand_size: (side: number) -> number,
     refuse: (side: number) -> (),
     sacrifice: (side: number) -> (),
@@ -3242,10 +3258,10 @@ declare custom: {
     -- pick isn't a chip; whether the screen's fade is still running.
     -- A button attached to the last pick (EXE5's capsules): the last pick, a
     -- chip with no button attached yet (`last_pick`'s `attached`), carries
-    -- `modifiers` into the hand (its modifier bits: 0x02, 0x04, 0x08 and
-    -- 0x20 the damage word's 0x4000, 0x2000, 0x1000 and 0x0800, 0x10 a tenth
-    -- of its user's HP healed at the use; the last three where the game's
-    -- chip-use rules count them, `mixed_modifiers`), and the button is
+    -- `modifiers` into the hand (its entry's marks, which the game's
+    -- chip-use rules read at the use: `mark_damage` and `mark_heals`; EXE5's
+    -- 0x02, 0x04, 0x08 and 0x20 the damage word's 0x4000, 0x2000, 0x1000 and
+    -- 0x0800, its 0x10 a tenth of its user's HP healed), and the button is
     -- picked until B takes the chip back. A button holding the last pick
     -- (EXE5's Arm Change): the last pick, a chip dealt from the folder,
     -- leaves the picks for the button, which is picked; B, with the picks as

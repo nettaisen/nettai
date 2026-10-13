@@ -39,18 +39,17 @@ export type State = {
     -- This screen's picks so far, and which of them were offered (a bit each, by pick).
     picks: number,
     offered_picks: number,
-    -- OK sent a hand (a pick or more): it is installed as the screen closes, and its chips cost.
-    hand_sent: boolean,
 }
 dark_chips.state = {
     dark_chips_sent = "u8",
     picks = "u8",
     offered_picks = "u16",
-    hand_sent = "bool",
 }
 
 -- The slots the offer fills (0x0801DF84, 0x0801DF88: the block's +6 and +8, slots 8 and 9).
 local SLOTS: { number } = { 8, 9 }
+-- An offered dark chip's slot (its flag 0x20): the cursor on it shades the screen (the hover, 0x0801E4DE).
+local DARK_OFFER: Offer = { shades = true }
 -- The dark chips a side may be sent in a battle (0x0801DF7A), and the count past which the second slot stays empty.
 local MAX_SENT, ONE_LEFT = 10, 9
 
@@ -93,7 +92,7 @@ end
 -- 0x0801DE90: the offer, as the screen deals.
 function dark_chips.deal(side: number)
     local s = rules.state() :: State
-    s.picks, s.offered_picks, s.hand_sent = 0, 0, false
+    s.picks, s.offered_picks = 0, 0
     if not battle.link() or custom.player(side).emotion ~= "worn_out" then
         return
     end
@@ -111,9 +110,9 @@ function dark_chips.deal(side: number)
     if s.dark_chips_sent >= MAX_SENT then
         return
     end
-    custom.offer(side, SLOTS[1], first)
+    custom.offer(side, SLOTS[1], first, nil, DARK_OFFER)
     if s.dark_chips_sent ~= ONE_LEFT then
-        custom.offer(side, SLOTS[2], second)
+        custom.offer(side, SLOTS[2], second, nil, DARK_OFFER)
     end
 end
 
@@ -156,7 +155,6 @@ function dark_chips.confirmed(_side: number)
             s.dark_chips_sent += 1
         end
     end
-    s.hand_sent = s.picks > 0
 end
 
 -- NaviStats as the costs write them.
@@ -213,20 +211,23 @@ local COSTS: { [Chip]: (side: number, stats: Stats) -> () } = {
     end,
 }
 
--- 0x0801EA1E: as the side's hand is installed, each of its chips costs its user once.
+-- The mark of a hand entry the install has been over (its flags' 0x04).
+local INSTALLED = 0x04
+
+-- 0x0801EA1E, as both hands are installed (0x0801E9AC, 0x0801E9CC), each side's in turn: each entry of the hand not
+-- yet marked is marked, and costs its user if it is a dark chip. Once an entry: a hand that stays through a screen
+-- with no pick keeps its marks.
 function dark_chips.custom_result(side: number)
-    local s = rules.state() :: State
-    if not s.hand_sent then
-        return
-    end
-    s.hand_sent = false
     local stats = battle.navi(side)
     local i = 0
     local chip = battle.hand_chip(side, i)
     while chip do
-        local cost = COSTS[chip]
-        if cost then
-            cost(side, stats)
+        if not bit32.btest(battle.hand_marks(side, i), INSTALLED) then
+            battle.add_hand_marks(side, i, INSTALLED)
+            local cost = COSTS[chip]
+            if cost then
+                cost(side, stats)
+            end
         end
         i += 1
         chip = battle.hand_chip(side, i)

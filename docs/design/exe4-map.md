@@ -592,8 +592,8 @@ and faces are its own table, to read.
   unless 0xFF, 0x0800F546 lower to 1) leave a mood of 0 and do nothing while paused. The starting mood (0x0800D872,
   0x0800F56A) by the light/dark value (NaviStats +0x36) and the Full Synchro at the start (+0x1F, a patch card's):
   under 470 0, the start 0xFF, from 1000 190, else value / 20 + 128. A hit's counter byte (the hitter's collision +5)
-  raises the hitter's mood and wears the receiver's (0x08012C10, 0x080131E4: `hit_mood = "hitter_gains"`), a counter
-  hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks flinching or paralyzed (0x0800C540) ask for it, and no
+  raises the hitter's mood and wears the receiver's (0x08012C10, 0x080131E4: `hit_mood = "counter_counts"`,
+  `hitter_gain = "to_full"`), a counter hit's counting 0xFF and wearing 0x7F. Anger: 120 ticks flinching or paralyzed (0x0800C540) ask for it, and no
   damage does (EXE6's and EXE5's 300 do: `emotion.anger_damage`, none for EXE4's); it sets the mood 0x80 and lasts
   600 ticks (0x0800C560); its end sets 0x80 through the setter.
 - **Full Synchro**: a chip's boost doubles it, leaves the mood at 0x99 and sounds 0x1BB; anger's boost ends the anger
@@ -740,9 +740,9 @@ shows the other is a listed deviation (verify's deviations.rs) or a known differ
   alone (`sub_8026DC4`'s call of `sub_801E012`, 0x08027230 in the Japanese Falzar ROM; the US games' starts the
   chip icons alone). nettai's three games all show the window from the close: EXE6 follows its Japanese games
   there, by the user's decision of 2026-10-12, so that the three have one behavior.
-The rest of the first megabyte is not read (the tool shows about 5,000 places in all that decode as instructions on
-both sides, most of them the story's, the menus' and data that happens to decode): a difference in an object's routine shows only
-when a recording reaches it.
+The battle's other code (the core, the objects, the player's actions, the chip records) was read the same way
+afterwards, every place sorted and each a netbattle reaches recorded on Japanese consoles: docs/design/exe4-regions.md.
+The rest of the first megabyte (the story's, the menus', the overworld's) is not read.
 
 **The Japanese consoles' frames** (verify's tools/frontend-compare/exe4-jp.txt: 55 scenarios on the lab's `exe4-jp`
 bases, Red Sun Japan against Blue Moon Japan, each US base's counterpart; 53 are tools/chiplab/gen_exe4_jp.py's
@@ -1558,9 +1558,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 `nettai-extract exe4 <pack> <ROM ...>` writes an EXE4 pack (crates/nettai-extract/src/exe4), its names and text
 encodings from content/exe4/compat (assets.toml, chips.toml, text.toml), which the verification workspace's
-tools/exe4/gen_content.py writes from the ROMs and `check`s again; the exe4-compat crate reads them. Each address is
-Red Sun US's and its counterpart in the other three ROMs: the value of the same literal of the same routine (the
-ROM data maps, `bmap.py --to <CODE> romdata`).
+tools/exe4/gen_content.py writes from the ROMs and `check`s again; the exe4-compat crate reads them. Each address
+below is Red Sun US's; the extractor states each block by where the game's own pointer to it is in each of the four
+ROMs (the same literal of the same routine: the ROM data maps, `bmap.py --to <CODE> romdata`, and the verification's
+tools/cross-rom/words.py), and reads it from whichever ROM given holds it: what the four have alike from any, each
+release's words from a ROM of that release, a version's souls' faces from a ROM of that version (the extractor's
+README has what each set of ROMs lacks).
 
 - **Sprites** (R): the sprite list (0x0802793C; Blue Moon 0x08027940, the Japanese 0x08027890 and 0x08027894), its
   battle categories (byte offsets 0x00 to 0x14) as EXE5's: 225 sprites, the same archives in all four ROMs.
@@ -1597,14 +1600,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   of what isn't ported) are written under their numbers (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's
   extraction.txt (`unnamed:`), to name by what loads them as the port reads EXE4's own code (the verification
   workspace's tools/exe4/assetloads.py lists each one's loads).
-- **The field** (R, Red Sun US's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
+- **The field** (R, any ROM's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
   its transfer list 0x08006A68: background palettes 1 to 8), the panel blocks (0x080093FC: 6 * type + 3 * owner + row
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
   edges by owner (0x080094C4, 0x08706F60), and the panel palettes that cycle (0x08009556, as the field is drawn: six,
   each a frame every 14 ticks from a table of palette pointers, their timers starting at 14, 13, 12, 11, 10 and 9:
   0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them).
   What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12: `metal`, `pitfall`, `hole`).
-- **The HUD** (R, Red Sun US's; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
+- **The HUD** (R, any ROM's but for the words; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
   counterpart) and the load list (0x08015A0C): the HUD layer's tiles from 0x130 and the gauge's from 0x80, both in
   EXE6's order; the HP box (6x2, 0x08016B2C) and the gauge frame (18x2 with "CUSTOM", 0x08016B44); the HP box's palettes
   (0x08708260, three colors); the opponents' HP digits (0x08014EB8: one color); the hidden chip's icon; "PAUSE"
@@ -1614,7 +1617,7 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   0 to 5); the chatbox (0x0804E3B4: one box, which descriptions show in too). The Japanese ROMs' banners and
   "カスタム中…" are the pack's Japanese lettering. Not drawn yet: "PLAN-B..." (0x08016AE8's list, the other waiting
   words, 作戦変更中… in Japanese), shown while the other player is in what group A's screen calls the second screen.
-- **The custom screen** (R, Red Sun US's; exe4/custom.rs), as EXE5's in its parts, from EXE4's own routines: the
+- **The custom screen** (R, any ROM's but for the words; exe4/custom.rs), as EXE5's in its parts, from EXE4's own routines: the
   window (0x0801DC28: the map 0x0870CC80, its patch list 0x0801DD90 from tile 0x9C, one frame color for every chip,
   0x0870C340) and the HUD's load list (the frame's tiles, the picked column's cells, "FINAL TURN", the UNITE button's
   and the emblem's tiles); the chip window (0x0801FC40: the name, picture, code and damage; the element icon a sprite
@@ -2787,27 +2790,43 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     - **Done: a soul's chip is no pick.** The block's picks (+0x32, 0x0801F110) leave out a chip of family 15, the
       souls' chips (0x160 on, class 3), which a unison's hand holds first; the engine listed it (115 recordings
       stopped as that hand was installed: frame 409 of souls/fire/hit). The builder's `Pick::listed`.
-    - **Open (the custom screen's): a chip offered again is no pick either, and is marked.** 0x0801EF4C answers a
-      slot flagged 0x10 (JunkSoul's offer from the sent list) with Z clear, so the pick's flags gain 2 (0x0801F0B8):
-      0x0801F118 leaves it out of the picks, and its hand entry's modifier flags hold 0x02. The engine lists it and
-      marks nothing: souls/junk/recycle, -dark, -hurt, -keep, -mega, -one, -side1 and -theirs stop as the offered
-      chip's hand is installed (frames 1206, 980, 1227, 1221, 1227, 1191, 1196 and 1194), on the picks and the
-      modifier flags alone (with the picks, the turns and the modifier flags left out each replays to its end). The
-      mark's readers in the fight: the use's 0x0800D59A (a dark chip so marked isn't counted in the side's count 2,
-      and outside a netbattle doesn't set the mood), and the local console's check of its next chip, 0x0800865C (at
-      0x08008692 and 0x080086D4: to read). The engine's chip use reads a hand entry's 0x02 and 0x04 as EXE6's
-      WhiCapsl and Uninstll whatever the game (`modifier_bits`), so EXE4's marks can't go in the hand as they are:
-      what a mark means is each game's to state.
-    - **Open: the install's mark.** 0x0801EA1E marks each entry of an installed hand 0x04 as it charges a dark chip's
-      cost, once an entry; the engine's rules keep `hand_sent` instead, and the comparison leaves that bit out.
-      WoodSoul's fold on the hand (0x0800E302, 0x0800E308) moves the turn and the modifier bytes at twice the index,
-      so the mark turns up in a turn byte: souls/wood/merge stops at frame 594 (turns 0, 0, 0, 0, 4, 0; the engine
-      moves each entry's own, and holds no mark to move).
-    - **Open, not recorded: the dark chips sent.** The picks list a dark chip (dark/drklance, frame 331: 0x36BF, its
+    - **Done (group A): what a hand entry's marks mean is each game's to state.** The engine's chip use read a hand
+      entry's 0x02 and 0x04 as EXE6's WhiCapsl and Uninstll whatever the game, so EXE4's marks couldn't go in the
+      hand. The chip-use rules' `mark_damage` (what each mark, by its bit, adds to the damage word) and
+      `mark_heals`, in `mixed_modifiers`' place: EXE6's `sub_8012C34` (0x02 the word's 0x4000, 0x04 its 0x2000),
+      EXE5's 0x08010368 and 0x0800FFF6 (those, 0x08 its 0x1000, 0x20 its 0x0800; 0x10 heals), EXE4's none (its use,
+      0x0800D4C0, has no such step). EXE4's three marks: 0x01 the Regular chip, 0x02 a chip offered again, 0x04 an
+      installed entry.
+    - **Done (group A): a chip offered again is no pick either, and is marked.** 0x0801EF4C answers a slot flagged
+      0x10 (JunkSoul's offer from the sent list) with Z clear, so the pick's flags gain 2 (0x0801F0B8): 0x0801F118
+      leaves it out of the picks, and its hand entry's marks hold 0x02. An offer now says so (`custom.offer`'s
+      `marks` and `listed`; JunkSoul's recycle: 0x02, not listed), and the eight recordings that stopped on it
+      (souls/junk/recycle, -dark, -hurt, -keep, -mega, -one, -side1, -theirs) replay. The mark's readers, none the
+      engine's: the use's 0x0800D59A (a dark chip so marked doesn't set the side's statistic 2, which the story's
+      karma reads, 0x0800F5E2, nor outside a netbattle the mood) and the local console's check of its own next
+      chip, 0x0800865C (a chip not offered again must be the folder's, 0x0800642C, and a Mega or Giga chip within
+      the navi's limit, one more for a chip offered again; a chip that fails becomes 0x184; the engine checks a
+      build before the battle and has no such check).
+    - **Done (group A): the install's mark.** 0x0801EA1E marks each entry of an installed hand 0x04 as it charges a
+      dark chip's cost, once an entry. The rules' dark chips do the same on the hand (`battle.hand_marks`,
+      `add_hand_marks`) in place of their own `hand_sent`, after the soul's part of the build (WoodSoul's fold on
+      the screen's list comes before the install: souls/wood/fold2's two entries marked, not three), and the
+      comparison holds the marks whole.
+    - **Done (group A): WoodSoul's fold on the hand** (0x0800E302, 0x0800E308) moves the turn and the mark bytes
+      through the entry's pointer, two bytes an entry: the byte at twice the entry's index takes the one two on, in
+      the turns and again in the marks, the turns running on into the marks (souls/wood/merge: the install's mark in
+      a turn byte, turns 0, 0, 0, 0, 4, 0). Ported as it is (`ChipHand::move_flag_bytes`): the marks are read (the
+      install, the use), and the turn bytes come with them. (The turn bytes' one reader is the use, 0x0800D4F6: the
+      local console's save statistics, 0x0800EC68 to 0x02006F50, no battle state.)
+    - **Done (group A): the dark chips sent.** The picks list a dark chip (dark/drklance, frame 331: 0x36BF, its
       slot's flag 0x20 answered with Z set), 0x08007E92 puts every pick of an installed hand in the console's sent
       list unfiltered, and a dark chip's class is 0, a standard chip's: JunkSoul's screen can offer a dark chip
-      either side sent (which is what 0x0800D59A's test of the mark is for). The engine's `sent_chips.confirmed`
-      lists the folder's picks alone. No recording has a dark chip sent beside a JunkSoul.
+      either side sent. Recorded: souls/junk/recycle-theirs-dark and -dark-used (a dark MegaMan sends the two dark
+      chips his screen offers; the light JunkSoul's next screen offers both again, takes them marked 0x02 and uses
+      them). `sent_chips.confirmed` lists every listed pick. And the cursor on a dark chip offered again shades
+      nothing: the hover reads its slot's flag 0x20, the dark offer's (0x0801E4DE), not the chip, so an offer says
+      whether it shades (`custom.offer`'s `shades`; the engine had tested the chip, and made the hover's volume
+      calls there).
     - **Item 136's: a destroyed hand.** With the hands compared and before that item's rule,
       chips/0x0d4-jealousy/holding stopped at frame 467 (EXE5's at 524): the original empties the whole hand (every
       chip gone, the cursor left at 0), the engine moved the cursor on one chip. A recording of both labs had the

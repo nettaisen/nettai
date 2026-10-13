@@ -14,7 +14,40 @@
 //! this machine's alone: nothing here sends it.
 
 mod session;
+// (The screenshot pass's second player is the `tour` feature's; without it Play hears nothing of it.)
+#[cfg(any(test, feature = "tour"))]
+#[cfg_attr(not(feature = "tour"), allow(dead_code, unused_imports))]
 pub mod tour;
+#[cfg(not(any(test, feature = "tour")))]
+mod tour {
+    //! A build without the screenshot pass: nothing of it is there (`tour.rs` is the pass's).
+    use super::session::Net;
+    use crate::shell::Shell;
+    use nettai_battle::Content;
+    use nettai_match::Side;
+    use std::sync::Arc;
+    use std::time::Instant;
+
+    pub fn net() -> Option<Net> {
+        None
+    }
+
+    pub fn builds(_still: bool, _content: &Arc<Content>, _game: &str) -> Option<Vec<(String, Side)>> {
+        None
+    }
+
+    pub fn entropy() -> Option<u64> {
+        None
+    }
+
+    pub fn steady_ping(_still: bool) -> Option<(i32, i32)> {
+        None
+    }
+
+    pub fn frame(_shell: &mut Shell, _now: Instant) {}
+
+    pub fn heard(_now: Instant, _datagrams: usize, _down: bool) {}
+}
 
 use crate::battle::{BattleEvent, BattleStart, Play as Played};
 use crate::builds::{self, overview, shelf, words};
@@ -24,7 +57,7 @@ use crate::input::{Action, KeyPress, key_cap, pad_cap};
 use crate::nav::Key;
 use crate::screens::{Screen, ScreenId, training};
 use crate::settings::MAX_INPUT_DELAY;
-use crate::shell::Shell;
+use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use gamepad_facade::Button;
 use nettai_battle::input::keys;
@@ -51,6 +84,12 @@ const ROUNDS: [usize; 2] = [1, 3];
 
 /// The tag this screen hears of its rows in the training menu by (`Screen::answered`).
 const WAIT_ROWS: &str = "play.wait";
+
+/// The tag of the question Esc in the lobby asks (`Screen::answered`: 1 is LEAVE).
+const LEAVE_LOBBY: &str = "play.leave";
+
+/// How far Up and Down scroll a build's page in the match's menu: two of its chips' rows.
+const SHEET_STEP: f32 = 56.0;
 
 /// A row this screen adds at the top of the training menu while the other player is waited for. (Its number is
 /// what the UI words it by: `PlayView.wait-row`.)
@@ -708,7 +747,10 @@ impl Play {
 
     fn set_page(&mut self, shell: &mut Shell, page: MatchPage) {
         self.page = page;
-        shell.ui().global::<PlayView>().set_page(page);
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        view.set_page(page);
+        view.set_sheet_y(0.0);
         // (The page's main control: the menu's first item, a page's Back.)
         shell.nav.focus(if page == MatchPage::Menu { "menu.resume" } else { "menu.back" }, 0);
     }
@@ -1182,6 +1224,21 @@ impl Screen for Play {
             self.close_direct(shell);
         } else if self.changing {
             self.close_change(shell);
+        } else if matches!(self.stage, Stage::Lobby) {
+            // (Leaving ends the link for both players: one key pressed by mistake shouldn't. The lobby's own
+            // LEAVE leaves at once.)
+            let ui = shell.ui();
+            let view = ui.global::<PlayView>();
+            let mut leave = crate::shell::button(&view.get_leave_word(), nettai_ui::ButtonKind::Ghost);
+            leave.danger = true;
+            shell.ask(Dialog {
+                tag: LEAVE_LOBBY,
+                title: view.get_leave_question().into(),
+                message: String::new(),
+                buttons: vec![crate::shell::button(&view.get_cancel_word(), nettai_ui::ButtonKind::Ghost), leave],
+                focus: 0,
+                cancel: 0,
+            });
         } else if !matches!(self.stage, Stage::Idle) {
             self.leave(shell);
         } else {
@@ -1190,8 +1247,15 @@ impl Screen for Play {
         true
     }
 
-    /// A row this screen added to the training menu was chosen.
+    /// A row this screen added to the training menu was chosen; the lobby's question was answered.
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
+        // (Still in the lobby: a match may have been agreed meanwhile, or the lobby ended.)
+        if tag == LEAVE_LOBBY {
+            if choice == 1 && matches!(self.stage, Stage::Lobby | Stage::Loading { .. }) {
+                self.leave(shell);
+            }
+            return;
+        }
         if tag != WAIT_ROWS || !matches!(self.stage, Stage::Waiting) {
             return;
         }
@@ -1205,6 +1269,34 @@ impl Screen for Play {
             Some(WaitRow::Cancel) => self.leave(shell),
             None => {}
         }
+    }
+
+    /// A build's page in the match's menu: Up and Down scroll it a step, Page Up and Down a page less a
+    /// step, Home and End to its ends. It takes them all while the page shows, at an end too: its one control
+    /// is Back, which the focus is on.
+    fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
+        let open = shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Play && b.menu_open());
+        if !open || !matches!(self.page, MatchPage::Yours | MatchPage::Theirs) {
+            return false;
+        }
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        let (at, span, page) = (-view.get_sheet_y(), view.get_sheet_span(), (view.get_sheet_view() - SHEET_STEP).max(SHEET_STEP));
+        let to = match action {
+            Action::Up => at - SHEET_STEP,
+            Action::Down => at + SHEET_STEP,
+            Action::PageUp => at - page,
+            Action::PageDown => at + page,
+            Action::Home => 0.0,
+            Action::End => span,
+            _ => return false,
+        }
+        .clamp(0.0, span.max(0.0));
+        if to != at {
+            view.set_sheet_y(-to);
+            shell.sound.play(Cue::Cursor);
+        }
+        true
     }
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
