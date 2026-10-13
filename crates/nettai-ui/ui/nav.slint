@@ -77,6 +77,8 @@ export component Focusable inherits TouchArea {
     in property <string> nav;
     in property <int> nav-index;
     in property <NavKind> kind: NavKind.button;
+    // A right click on it removes what it holds, as Del does (`Nav.choose("remove", ...)` after the focus comes).
+    in property <bool> removable;
     out property <bool> focused: nav != "" && Nav.id == nav && Nav.index == nav-index;
     property <[int]> token;
     property <length> ax: self.absolute-position.x;
@@ -113,6 +115,9 @@ export component Focusable inherits TouchArea {
     pointer-event(e) => {
         if e.kind == PointerEventKind.down && nav != "" {
             Nav.point(nav, nav-index);
+            if root.removable && e.button == PointerEventButton.right {
+                Nav.choose("remove", nav-index, 0);
+            }
         }
     }
 }
