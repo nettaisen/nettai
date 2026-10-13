@@ -82,6 +82,8 @@ pub(crate) struct Tour {
     /// What the motion probe found wrong, and what it saw of the focus.
     resized: RefCell<Vec<String>>,
     late: RefCell<Vec<String>>,
+    /// What a walk waited for and never saw ([`Tour::never_came`]), by the shot before.
+    never: RefCell<Vec<String>>,
     /// The on-screen pad's check, where it failed.
     pad: RefCell<Vec<String>>,
     seen: RefCell<Vec<String>>,
@@ -104,6 +106,12 @@ impl Tour {
     /// itself (a thread's work, another player's answer).
     pub(crate) fn wait_until(&self, come: impl Fn(&App) -> bool + 'static) {
         *self.until.borrow_mut() = Some(Box::new(come));
+    }
+
+    /// Something a walk waited for never came (its minute passed): the pass says so, and fails. A walk whose
+    /// later shots depend on it says this, so that a picture of the wrong thing isn't taken for the right one.
+    pub(crate) fn never_came(&self) {
+        self.never.borrow_mut().push(format!("after {}", self.tag.borrow()));
     }
 }
 
@@ -131,6 +139,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         burst: Default::default(),
         resized: Default::default(),
         late: Default::default(),
+        never: Default::default(),
         pad: Default::default(),
         seen: Default::default(),
     });
@@ -674,6 +683,13 @@ fn finish(tour: &Tour) {
     for (tag, text) in cut.iter() {
         let _ = writeln!(report, "  {tag}: {text:?}");
     }
+    let never = tour.never.borrow();
+    if !never.is_empty() {
+        let _ = writeln!(report, "\nWhat a walk waited a minute for and never saw: {}", never.len());
+        for line in never.iter() {
+            let _ = writeln!(report, "  {line}");
+        }
+    }
     let pad = tour.pad.borrow();
     if !pad.is_empty() {
         let _ = writeln!(report, "\nThe on-screen pad, two fingers at once: {} wrong", pad.len());
@@ -686,6 +702,6 @@ fn finish(tour: &Tour) {
         eprintln!("tour: {}: {e}", path.display());
     }
     eprint!("tour: {report}");
-    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty()));
+    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty() || !never.is_empty()));
     let _ = slint::quit_event_loop();
 }
