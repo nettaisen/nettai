@@ -1880,17 +1880,25 @@ foot; beside them (on a phone, under them) the two builds as cards over the aren
   the game's arenas, the link battle stages a match may name (`nettai_match::link_battle_stages`, the rules'
   `link_pick.match_stages`: EXE6's 96, EXE5's 94, EXE4's 96), and its battle backgrounds
   (`nettai_match::ids::backgrounds`, the pack's), each in its keys' natural order (a run of digits by its
-  number: Netbattle 2 before Netbattle 10). Each is stepped and opened as a
-  list as a build row is, and remembered by game (`training.arena.<game>` by the stage's key,
-  `training.background.<game>` by the background's name in the pack; Random is nothing remembered).
+  number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the training
+  menu's rows have it (the user: "the arena names are meaningless so you should just have like a pager widget
+  that goes through them. background should also be a arrow button pager thing"): Left and Right or its arrows
+  step it, around from the last to Random, a held key repeating; Enter steps it on; it opens no list. It is
+  remembered by game (`training.arena.<game>` by the stage's key, `training.background.<game>` by the
+  background's name in the pack; Random is nothing remembered). Each step draws the arena again after the same
+  160 ms as a build's, so a run of steps draws once.
   - The two are apart in the games' own data: a link battle picks its stage and its background each on its
     own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
     own background is shown only where the rules list none to pick from. So either is chosen with any of the
     other, and nothing ties them.
-  - Their words: a background is called what the language's strings call it (`[backgrounds]`, by the area it
-    comes from: `Names::background_named`); an arena has no name in the content's words (a stage is its key),
-    and the list says each by its key as a title ("Netbattle 12", in every language). No names were added to
-    the locales: they would only restate the keys.
+  - Their words: an arena is said by its place in the list, "12 / 96" (a stage is its key in the content,
+    and the user found the keys' names meaningless); a background by what the language's strings call it
+    (`[backgrounds]`, by the area it comes from: `Names::background_named`), or by its place, "7 / 21", where
+    they don't name it. No names were added to the locales.
+  - A background stepped keeps the arena: with Arena Random the seed picks each round's arena whether the
+    round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
+    the same arena on the new background, and Random is the same arena each time the entry comes back to it,
+    until a session is over (each entry after a session has a seed of its own); the session opens on it.
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
   held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
@@ -1974,18 +1982,30 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 | Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
 | Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
-| Battle: Arena, Background | Random, then the game's, as the entry lists them | the set starts over on the new place, as RESTART starts it, the menu staying open: below |
+| Battle: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
+| Battle: Background | Random, then the game's by name, as on the entry | the battle goes on where it is, drawn on the new background: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Display: Input display | Off, On | the app's own drawing, below |
 
-Arena and Background change where the set is fought, which a round fixes as it starts, so a change starts the
-set over on the new place: the session's match is put on it, its set made again from the session's seed, and
-the live driver plays that set from its next start (the library's `LivePlayer::play_set`) as the battle starts
-over (`Battle::restart`, RESTART's). The menu stays open, and the battle behind it steps through the round's
-opening with no buttons and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
+Arena changes the field, which a round sets as it starts, so a change starts the set over on the new arena:
+the session's match is put on it, its set made again from the session's seed, and the live driver plays that
+set from its next start (the library's `LivePlayer::play_set`) as the battle starts over (`Battle::restart`,
+RESTART's). The menu stays open, and the battle behind it steps through the round's opening with no buttons
+and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
 `under_the_menu_a_set_starts_over_on_another_place`). The dummy's setup, its recording and the options stay.
+
+Background changes the background alone (the user: "changing the background shouldn't change the entire
+arena either in trianing mode"). A round's background is in its setup (`RoundSetup::settings.background`, and
+`later_stages` for the rounds after), and the battle's digest covers the setup, but no tick reads it: the
+renderer alone does. So the battle goes on where it is, the arena, the HP, the dummy and the round as they
+were: the set made again on the new background (its arenas the same, above) is put in the playing one's place,
+and the battle's setup says its backgrounds (the library's `Player::set_backgrounds`), drawn from the next
+frame, the rounds after and a RESTART on them too. Stepped on from there, the battle is the one without the
+change tick for tick, its digest the same but for the background its setup says (nettai's
+`on_another_background_the_battle_goes_on`); training is neither online nor recorded, so no digest of it is
+compared with another's.
 
 The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
@@ -2049,7 +2069,6 @@ battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, whi
 **What isn't there.**
 
 - The rule a build breaks, in the reserved line (above).
-- A name for an arena in the content's words (the list says its key).
 - A real key press: the screenshot pass drives the screens through the same calls a key becomes (`App::act`)
   and holds the battle's buttons directly; the window's own key events were not sent to it.
 
