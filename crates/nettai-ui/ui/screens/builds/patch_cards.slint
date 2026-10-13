@@ -70,18 +70,18 @@ export global PatchCardsView {
     out property <[Hint]> hints: self.counts.slotted ? self.slot-hints : self.list-hints;
     property <[Hint]> list-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: "Enter", pad: PadButton.south, text: @tr("Add") },
-        { key: "Del", pad: PadButton.west, text: @tr("Remove") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Add") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
         { key: "[", key2: "]", pad: PadButton.north, text: @tr("Move up or down") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     property <[Hint]> slot-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: "Enter", pad: PadButton.south, text: @tr("Put in") },
-        { key: "Del", pad: PadButton.west, text: @tr("verb" => "Empty") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Put in") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("verb" => "Empty") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     out property <string> status: self.counts.slotted ? @tr("{n} slot free" | "{n} slots free" % (self.counts.slots - self.counts.filled)) : (self.counts.budget ? @tr("{} MB free", max(0, self.counts.limit - self.counts.megabytes)) : "");
     // The strip.

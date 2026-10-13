@@ -268,8 +268,9 @@ msgstr "圧縮"
 msgid "Place"
 msgstr "置く"
 
-msgid "Put back"
-msgstr "戻す"
+# The piece in hand put away into the list.
+msgid "Put away"
+msgstr "しまう"
 
 msgid "{n} program placed"
 msgid_plural "{n} programs placed"

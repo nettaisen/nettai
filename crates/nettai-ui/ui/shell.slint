@@ -148,6 +148,13 @@ export global Shell {
     // The keys bound to L and R, for the hints (the menus' previous and next).
     in property <string> key-l: "A";
     in property <string> key-r: "S";
+    // The keys and the pad's buttons that confirm and go back in the menus (those bound to A and B: the app's
+    // `Bindings::confirm_key` and the rest), and the pad's button that deletes, for the hints.
+    in property <string> key-a: "Z";
+    in property <string> key-b: "X";
+    in property <PadButton> pad-a: PadButton.south;
+    in property <PadButton> pad-b: PadButton.west;
+    in property <PadButton> pad-delete: PadButton.east;
     // The ground's hexagons, as a path over the window in units.
     in property <string> hexagons;
     // The on-screen pad's buttons (a phone, in battle), each by its GBA button's bit number. The pad takes the
@@ -936,9 +943,15 @@ export component Page inherits Rectangle {
         @children
     }
 
+    // (While a text field is typed in, the footer's hints are the field's: there Enter finishes it and Esc
+    // leaves it as it was, as the keys bound to A and B type.)
+    property <[Hint]> field-hints: [
+        { key: "Enter", pad: Shell.pad-a, text: @tr("Done") },
+        { key: "Esc", pad: Shell.pad-b, text: @tr("Cancel") },
+    ];
     Footer {
         y: parent.height - self.height;
-        hints: root.hints;
+        hints: Nav.editing ? root.field-hints : root.hints;
         status: root.status;
     }
 }
