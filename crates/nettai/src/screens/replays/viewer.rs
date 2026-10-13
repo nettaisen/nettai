@@ -6,13 +6,19 @@
 //! where it is going meanwhile. A drag of the bar moves the picture in steps of the states the viewer keeps
 //! (which cost no playing) and lands where it is let go.
 //!
+//! Both builds may be shown over it, where the match's weren't closed: the narrow sheets a match shows its
+//! players' builds in, the console shown's player's at the left; a closed-builds match's sides aren't kept.
+//!
 //! Its sound is at the levels Settings has (the shell's `battle_levels`: Music is the replay's music too). And
 //! it stands still while the window isn't drawn (minimized, hidden, covered: the frames the shell's timer runs
 //! then): nothing of a replay has to go on unseen, and the player finds it where they left it.
 
 use super::{clock, name, played};
+use crate::nav::Key;
 use crate::shell::Shell;
+use crate::sound::Cue;
 use crate::stage::Surface;
+use nettai_match::Side;
 use nettai_frontend::player::{FRAME_RATE, TICK_SECONDS, tick_at, time_of};
 use nettai_frontend::viewer::{KEYFRAME_EVERY, ROUND_START_GRACE, Speed, Viewer};
 use nettai_ui::ReplaysView;
@@ -24,6 +30,9 @@ use std::time::{Duration, Instant};
 /// seek waits for the index).
 const INDEX_BUDGET: Duration = Duration::from_micros(1500);
 const IDLE_BUDGET: Duration = Duration::from_millis(5);
+
+/// Both builds' scope: each sheet is a control of it (`builds.sheet`).
+const BUILDS: &str = "builds.";
 
 /// The samples a tick's sound is, at the device's rate: 4389/8.
 const TICK_SAMPLES: f64 = 548.625;
@@ -82,16 +91,19 @@ pub struct Watching {
     whole: bool,
     told: Option<Told>,
     stats: Option<Stats>,
+    /// The match's two sides, where its builds may be shown; and whether they are.
+    sides: Option<Box<[Side; 2]>>,
+    builds: bool,
 }
 
 impl Watching {
     /// A viewer made ready, of the replay at `path`: playing from its start (the screenshot pass holds it
     /// still, a little way into its second round where it has one).
-    pub fn new(mut viewer: Box<Viewer>, path: PathBuf) -> Watching {
+    pub fn new(mut viewer: Box<Viewer>, path: PathBuf, sides: Option<Box<[Side; 2]>>) -> Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()) }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), sides, builds: false }
     }
 
     pub fn path(&self) -> &Path {
@@ -145,7 +157,11 @@ impl Watching {
         view.set_total(clock(self.viewer.duration(), true).into());
         let when = played(&view, self.viewer.info().when);
         view.set_when(format!("{} · {}", when.full, when.time).into());
-        view.set_builds_open(!self.viewer.info().closed_builds);
+        view.set_builds_open(self.sides.is_some());
+        if self.builds {
+            self.show_builds(shell);
+        }
+        view.set_builds_shown(self.builds);
         self.show_side(&view);
         view.set_speed(self.speed());
         self.told = None;
@@ -268,7 +284,51 @@ impl Watching {
         if self.viewer.set_view(side.clamp(0, 1) as u8) {
             self.landed();
             self.show_side(&shell.ui().global::<ReplaysView>());
+            if self.builds {
+                self.show_builds(shell);
+            }
         }
+    }
+
+    /// Show both builds, or put them away (a closed-builds match: refused).
+    pub fn toggle_builds(&mut self, shell: &mut Shell) {
+        if self.sides.is_none() {
+            return shell.sound.play(Cue::Refused);
+        }
+        self.builds = !self.builds;
+        if self.builds {
+            self.show_builds(shell);
+            shell.nav.open(BUILDS, Key::new("builds.sheet", 0));
+        } else {
+            shell.nav.close(BUILDS);
+        }
+        shell.ui().global::<ReplaysView>().set_builds_shown(self.builds);
+    }
+
+    /// Put both builds away. True if they were shown.
+    pub fn hide_builds(&mut self, shell: &mut Shell) -> bool {
+        let was = std::mem::take(&mut self.builds);
+        if was {
+            shell.nav.close(BUILDS);
+            shell.ui().global::<ReplaysView>().set_builds_shown(false);
+        }
+        was
+    }
+
+    /// Both builds' sheets, in the language shown: the console shown's player's at the left. Over each name,
+    /// YOU for the side that recorded it, else OPPONENT; the name is the player's (a replay has no build's).
+    fn show_builds(&self, shell: &Shell) {
+        let (Some(sides), Some(kit)) = (&self.sides, crate::builds::kit(shell)) else { return };
+        let ui = shell.ui();
+        let view = ui.global::<ReplaysView>();
+        let info = self.viewer.info();
+        let left = self.viewer.view();
+        let sheet = |of: u8| {
+            let label = if of == info.side { view.get_you() } else { view.get_opponent() };
+            crate::builds::overview::sheet(shell, &kit, &label, &name(&view, info, of), &sides[of as usize])
+        };
+        view.set_left_build(sheet(left));
+        view.set_right_build(sheet(left ^ 1));
     }
 
     /// The bar held at `part` of 10,000 of the replay, or (`done`) let go there. While it is held the picture

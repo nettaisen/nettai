@@ -222,3 +222,10 @@ msgstr "閉じる"
 # What the system's save dialog calls the file.
 msgid "MP4 video"
 msgstr "MP4 動画"
+
+# The viewer: both builds, over the picture (B, Select). Over each one's name: YOU (Training's), OPPONENT.
+msgid "Builds"
+msgstr "ビルド"
+
+msgid "OPPONENT"
+msgstr "対戦相手"
