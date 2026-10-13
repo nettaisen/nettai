@@ -459,7 +459,7 @@ export component ChipRow inherits Rectangle {
 
 // A build's row in a list, 52 tall: its name over its status, and its version's tag. The list is a `ListView`
 // (`row-height: 52px`), which marks the chosen row; a click on the row is the list's row `nav-index` of `nav`.
-// (Its touch is its own, so a list's `for` places a leaf: a row with a child would be copied into the list.)
+// (Its touch is its own. It is in three lists, and smaller shared than copied into each: docs/app.md §14.)
 export component BuildRow inherits Rectangle {
     in property <BuildEntry> build;
     in property <string> nav;
@@ -711,6 +711,8 @@ export component BuildOverview inherits Rectangle {
         width: 240px;
         visible: !root.narrow;
         line: line;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     StatRow {

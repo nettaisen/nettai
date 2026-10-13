@@ -46,33 +46,79 @@ export component AppWindow inherits Window {
     // (Not drawn under a battle that fills the window: its hexagons cost a millisecond a frame.)
     Backdrop {
         visible: !root.in-battle || Theme.phone;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    if !root.covered && Shell.screen == Screen.menu: MenuScreen { }
-    if !root.covered && Shell.screen == Screen.play: PlayScreen { }
-    if !root.covered && Shell.screen == Screen.training: TrainingScreen { }
-    if !root.covered && Shell.screen == Screen.builds: BuildsScreen { }
-    if !root.covered && Shell.screen == Screen.replays: ReplaysScreen { }
-    if !root.covered && Shell.screen == Screen.settings: SettingsScreen { }
-    // What a screen opens over itself (Training opens nothing).
-    if !root.covered && Shell.screen == Screen.play: PlayOverlay { }
-    if !root.covered && Shell.screen == Screen.builds: BuildsOverlay { }
-    if !root.covered && Shell.screen == Screen.replays: ReplaysOverlay { }
-    if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
-    if Shell.versus: VersusScreen { }
-    if root.in-battle: BattleScreen { }
+    // Each screen, and what it opens over itself (Training and Settings open nothing): one conditional each, as
+    // each conditional is a component of its own in what Slint generates. (A screen's overlay is over it; only
+    // one screen is shown at a time, so it is over every screen.)
+    if !root.covered && Shell.screen == Screen.menu: MenuScreen {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if !root.covered && Shell.screen == Screen.play: Rectangle {
+        PlayScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        PlayOverlay {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+    }
+    if !root.covered && Shell.screen == Screen.training: TrainingScreen {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if !root.covered && Shell.screen == Screen.builds: Rectangle {
+        BuildsScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        BuildsOverlay {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+    }
+    if !root.covered && Shell.screen == Screen.replays: Rectangle {
+        ReplaysScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        ReplaysOverlay {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+    }
+    if !root.covered && Shell.screen == Screen.settings: SettingsScreen {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if Shell.versus: VersusScreen {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if root.in-battle: BattleScreen {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
     // (Training's input display and its recording's mark: over its battle's picture, wherever that is shown.
     // They are there throughout and shown when they are on: an `if` would be a component for them.)
     TrainingInputs {
         visible: Shell.battle == BattleKind.training && (TrainingView.inputs || TrainingView.recording);
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu { }
-    if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu { }
+    if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
     // (Both builds, while Tab is held in a match.)
-    if root.in-battle && Shell.battle == BattleKind.online && !Shell.battle-menu: MatchPeek { }
-    if Shell.picker: PickerLayer { }
-    if Shell.dialog: DialogLayer { }
+    if root.in-battle && Shell.battle == BattleKind.online && !Shell.battle-menu: MatchPeek {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if Shell.picker: PickerLayer {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if Shell.dialog: DialogLayer {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
     // The cursor: one object that glides from control to control. (The app moves it, a share of the way each
     // frame: an animation here would start over each time the control it is going to moved.)
     Cursor {
@@ -81,6 +127,8 @@ export component AppWindow inherits Window {
         width: Nav.w + 10px;
         height: Nav.h + 10px;
         visible: Nav.shown && Nav.id != "";
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     // Something flying over the layout (`Fx`): from one place to another, as it shrinks into the second.

@@ -5,10 +5,12 @@
 // and a click, an arrow or an edit goes to the app with that name (nav.slint), where the screen's Rust module
 // decides.
 //
-// Build cost (docs/app.md §14): a component used with nothing inside it is compiled once, however often it is
-// used; one used with children inside it (`Panel { ... }`) is copied into each user, and every `if` or `for` is a
-// component of its own. So the pieces here are leaves, the containers hold a leaf and little else, and a part
-// shown or hidden is `visible`, not `if`.
+// Build cost (docs/app.md §14): a component used with nothing inside it is compiled once and shared by its uses;
+// one used with children inside it (`Panel { ... }`) is copied into each, and every `if` or `for` is a component
+// of its own. Sharing pays only for a component with much in it used in several places: one used in one place,
+// or a small one in a few, is copied in (its use given a bare child). So the pieces here with much in them are
+// leaves, a container holds what must be inside it and places a leaf for the rest (`Scroller`), and a part shown
+// or hidden is `visible`, not `if`.
 //
 // Motion (docs/app.md §10): each control moves by itself (a press flashes, a value slides in its box, a chosen
 // row's bar slides to the next), with the theme's durations. A screen writes no animation to get that.
@@ -832,6 +834,8 @@ export component Row inherits Rectangle {
     RowBack {
         chosen: root.chosen;
         hover: hit.has-hover;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Value {
@@ -1042,6 +1046,8 @@ export component TabBar inherits Rectangle {
                     changed width => {
                         say();
                     }
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
                 }
             }
 
@@ -1151,6 +1157,8 @@ export component GroupTitle inherits Rectangle {
 
     Rule {
         y: parent.height - 1px;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
 
@@ -1240,15 +1248,38 @@ component Thumb inherits Rectangle {
     }
 }
 
-// A page that scrolls (the settings). The controls it holds have its name as their prefix (`set.name` on the
-// page `set.`): the app scrolls the focused one into view, and passes by those out of view when the focus comes
-// from outside. Put what it holds inside it, `view-width` wide, and say how tall that is. A scroll the app asks
-// for is smooth: the page is put where it goes at once, and what it holds slides there.
-export component ScrollPage inherits Rectangle {
+// What a scrolling page or a list does besides holding what it scrolls, in one leaf of its own (each container
+// is copied into every use, as everything with something put inside it is; this is compiled once): it is
+// registered for the focus and tells the app where it is, it scrolls what the app asks for into view smoothly,
+// it works out which of a list's rows are in view, and it draws a list's chosen mark and the scrollbar's thumb.
+// The container places it over its whole box, behind the flickable, and links the flickable's `content-y` to
+// its own. (The mark is drawn behind the rows as it was inside the flickable: in a clip of the flickable's box,
+// where the flickable puts what it scrolls.)
+component Scroller inherits Rectangle {
     in property <string> nav;
-    in property <length> content-height;
-    out property <length> view-width: flick.width;
-    out property <length> scroll: -flick.content-y;
+    // A list (the app is told its rows), or else a page.
+    in property <bool> list;
+    // A list's rows: how many, their pitch and their height; and the row marked, or -1.
+    in property <int> count;
+    in property <length> pitch;
+    in property <length> row-height;
+    in property <int> chosen: -1;
+    // How tall what is scrolled is, as the container says it.
+    in property <length> content;
+    // The flickable's own, linked both ways: a drag moves it, a reveal sets it.
+    in-out property <length> content-y;
+    // The flickable's width (12 at the right are the scrollbar's, whether or not it shows) and its content's
+    // height (never less than the view).
+    out property <length> view-width: self.width - 12px;
+    out property <length> content-height: max(self.height, root.content);
+    out property <length> scroll: -root.content-y;
+    // Where what is scrolled is put from where the flickable has it, while a reveal slides it there.
+    out property <length> offset: root.slid * (1 - slide.t);
+    // The first row to make, and how many: those in view, and those a slide under way passes.
+    out property <int> first: max(0, floor(min(root.scroll, root.scroll - root.offset) / root.pitch));
+    out property <int> shown: max(0, min(root.count - root.first, ceil((self.height + abs(root.offset)) / root.pitch) + 1));
+    // The row the focus is on, or -1.
+    out property <int> focused-row: Nav.id == root.nav ? Nav.index : -1;
     property <int> seq: Nav.reveal-seq;
     property <[int]> token;
     property <length> ax: self.absolute-position.x;
@@ -1256,33 +1287,55 @@ export component ScrollPage inherits Rectangle {
     property <length> slid;
     property <int> slides;
     function place() {
-        Nav.page(root.nav, root.ax, root.ay, flick.width, self.height, root.content-height, root.scroll);
+        if root.list {
+            Nav.page(root.nav, root.ax, root.ay, root.view-width, self.height, root.content-height, root.scroll);
+            Nav.list(root.nav, root.count, root.pitch, root.row-height, root.scroll, root.view-width);
+        } else {
+            Nav.page(root.nav, root.ax, root.ay, root.view-width, self.height, root.content, root.scroll);
+        }
     }
     slide := Tween {
         seq: root.slides;
         duration: Theme.brisk;
     }
 
-    flick := Flickable {
+    Rectangle {
         x: 0;
-        width: parent.width - 12px;
-        content-width: self.width;
-        content-height: max(self.height, root.content-height);
+        y: 0;
+        width: root.view-width;
+        height: root.height;
+        clip: true;
         Rectangle {
-            y: root.slid * (1 - slide.t);
-            @children
+            x: 0;
+            y: root.content-y + root.offset;
+            width: root.view-width;
+            height: root.content-height;
+            Marker {
+                x: 0;
+                y: max(0, root.chosen) * root.pitch;
+                height: root.row-height;
+                visible: root.chosen >= 0 && root.chosen < root.count;
+                animate y {
+                    duration: Theme.quick;
+                    easing: ease-out;
+                }
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
         }
     }
 
     Thumb {
         x: parent.width - 4px;
         view: root.height;
-        content: flick.content-height;
-        scroll: root.scroll - root.slid * (1 - slide.t);
+        content: root.content-height;
+        scroll: root.scroll - root.offset;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     init => {
-        token = Nav.register(root.nav, 0, NavKind.page);
+        token = Nav.register(root.nav, 0, root.list ? NavKind.list : NavKind.page);
         place();
     }
     changed ax => {
@@ -1297,15 +1350,55 @@ export component ScrollPage inherits Rectangle {
     changed height => {
         place();
     }
+    changed count => {
+        if root.list {
+            place();
+        }
+    }
     changed scroll => {
+        if root.list {
+            place();
+        }
         Nav.scrolled();
     }
     changed seq => {
         if Nav.reveal-id == root.nav {
-            root.slid = flick.content-y;
-            flick.content-y = clamp(flick.content-y - Nav.reveal-dy, min(0px, self.height - flick.content-height), 0px);
-            root.slid = clamp(root.slid - flick.content-y, -self.height, self.height);
+            root.slid = root.content-y;
+            root.content-y = clamp(root.content-y - Nav.reveal-dy, min(0px, self.height - root.content-height), 0px);
+            root.slid = clamp(root.slid - root.content-y, -self.height, self.height);
             root.slides += 1;
+        }
+    }
+}
+
+// A page that scrolls (the settings). The controls it holds have its name as their prefix (`set.name` on the
+// page `set.`): the app scrolls the focused one into view, and passes by those out of view when the focus comes
+// from outside. Put what it holds inside it, `view-width` wide, and say how tall that is. A scroll the app asks
+// for is smooth: the page is put where it goes at once, and what it holds slides there.
+export component ScrollPage inherits Rectangle {
+    in property <string> nav;
+    in property <length> content-height;
+    out property <length> view-width: flick.width;
+    out property <length> scroll: scroller.scroll;
+    scroller := Scroller {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        nav: root.nav;
+        content: root.content-height;
+        content-y <=> flick.content-y;
+    }
+
+    flick := Flickable {
+        x: 0;
+        y: 0;
+        width: scroller.view-width;
+        content-width: self.width;
+        content-height: scroller.content-height;
+        Rectangle {
+            y: scroller.offset;
+            @children
         }
     }
 }
@@ -1324,8 +1417,9 @@ export component ScrollPage inherits Rectangle {
 //         nav: "builds";  nav-index: self.at;
 //     }
 //
-// A row holds its own `RowTouch` (as `BuildRow` and the folder's rows do), so the `for` places one leaf: a row
-// given a child here is copied into the list, 20 to 60 KB of generated Rust a list (docs/app.md §14).
+// A row holds its own `RowTouch` (as `BuildRow` and the folder's rows do). A row used in one list is copied into
+// it (its use is given a bare child); one in several lists (`BuildRow`) is shared (docs/app.md §14). What the
+// list does besides holding its rows is a `Scroller`, compiled once.
 export component ListView inherits Rectangle {
     in property <string> nav;
     in property <int> count;
@@ -1334,86 +1428,35 @@ export component ListView inherits Rectangle {
     // The row marked, or -1.
     in property <int> chosen: -1;
     out property <length> pitch: root.row-height + root.gap;
-    out property <length> scroll: -flick.content-y;
-    // The first row to make, and how many: those in view, and those a slide under way passes.
-    out property <int> first: max(0, floor(min(root.scroll, root.scroll - root.slid * (1 - slide.t)) / root.pitch));
-    out property <int> shown: max(0, min(root.count - root.first, ceil((self.height + abs(root.slid * (1 - slide.t))) / root.pitch) + 1));
+    out property <length> scroll: scroller.scroll;
+    out property <int> first: scroller.first;
+    out property <int> shown: scroller.shown;
     out property <length> row-width: flick.width;
-    // The row the focus is on, or -1.
-    out property <int> focused-row: Nav.id == root.nav ? Nav.index : -1;
-    property <int> seq: Nav.reveal-seq;
-    property <[int]> token;
-    property <length> ax: self.absolute-position.x;
-    property <length> ay: self.absolute-position.y;
-    property <length> slid;
-    property <int> slides;
-    function place() {
-        Nav.page(root.nav, root.ax, root.ay, flick.width, self.height, flick.content-height, root.scroll);
-        Nav.list(root.nav, root.count, root.pitch, root.row-height, root.scroll, flick.width);
-    }
-    slide := Tween {
-        seq: root.slides;
-        duration: Theme.brisk;
+    out property <int> focused-row: scroller.focused-row;
+    scroller := Scroller {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        nav: root.nav;
+        list: true;
+        count: root.count;
+        pitch: root.pitch;
+        row-height: root.row-height;
+        chosen: root.chosen;
+        content: root.count * root.pitch - root.gap;
+        content-y <=> flick.content-y;
     }
 
     flick := Flickable {
         x: 0;
-        width: parent.width - 12px;
+        y: 0;
+        width: scroller.view-width;
         content-width: self.width;
-        content-height: max(self.height, root.count * root.pitch - root.gap);
+        content-height: scroller.content-height;
         Rectangle {
-            y: root.slid * (1 - slide.t);
-            Marker {
-                x: 0;
-                y: max(0, root.chosen) * root.pitch;
-                height: root.row-height;
-                visible: root.chosen >= 0 && root.chosen < root.count;
-                animate y {
-                    duration: Theme.quick;
-                    easing: ease-out;
-                }
-            }
-
+            y: scroller.offset;
             @children
-        }
-    }
-
-    Thumb {
-        x: parent.width - 4px;
-        view: root.height;
-        content: flick.content-height;
-        scroll: root.scroll - root.slid * (1 - slide.t);
-    }
-
-    init => {
-        token = Nav.register(root.nav, 0, NavKind.list);
-        place();
-    }
-    changed ax => {
-        place();
-    }
-    changed ay => {
-        place();
-    }
-    changed width => {
-        place();
-    }
-    changed height => {
-        place();
-    }
-    changed count => {
-        place();
-    }
-    changed scroll => {
-        place();
-        Nav.scrolled();
-    }
-    changed seq => {
-        if Nav.reveal-id == root.nav {
-            root.slid = flick.content-y;
-            flick.content-y = clamp(flick.content-y - Nav.reveal-dy, min(0px, self.height - flick.content-height), 0px);
-            root.slid = clamp(root.slid - flick.content-y, -self.height, self.height);
-            root.slides += 1;
         }
     }
 }
