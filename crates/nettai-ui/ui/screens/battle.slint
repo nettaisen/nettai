@@ -107,15 +107,23 @@ component Connection inherits Rectangle {
     }
 }
 
-// A button of the on-screen pad: held while a finger is on it.
+// A button of the on-screen pad: held while a finger is on it. The fingers are the app's to follow (each its
+// own: a direction and a button held together), so the button says where it is and is drawn as the app says it
+// is held; the mouse, one pointer, comes through its `TouchArea`.
 component PadKey inherits Rectangle {
     in property <string> text;
     // An arrow, as a path in a box of 14, in place of a text.
     in property <string> shape;
     in property <int> button;
     in property <bool> round;
+    property <length> ax: self.absolute-position.x;
+    property <length> ay: self.absolute-position.y;
+    property <bool> held: Shell.pad-held.length > root.button && Shell.pad-held[root.button];
+    function place() {
+        Shell.pad-key(root.button, root.ax, root.ay, self.width, self.height);
+    }
     Rectangle {
-        background: touch.pressed ? Theme.line : Theme.raised;
+        background: root.held ? Theme.line : Theme.raised;
         border-width: 1px;
         border-color: Theme.line;
         border-radius: root.round ? self.width / 2 : 0px;
@@ -148,6 +156,22 @@ component PadKey inherits Rectangle {
                 Shell.touch(root.button, false);
             }
         }
+    }
+
+    init => {
+        place();
+    }
+    changed ax => {
+        place();
+    }
+    changed ay => {
+        place();
+    }
+    changed width => {
+        place();
+    }
+    changed height => {
+        place();
     }
 }
 
