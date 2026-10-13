@@ -288,7 +288,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 |---|---|
 | `show` | The screen is shown, or something it shows changed under it (the selected game, the language, the window turned upright): set the view from the state. The one method a screen must write. |
 | `hide` | Another screen is shown in its place. |
-| `activate(id, index)` | Enter, a click or a tap on a control. |
+| `activate(id, index)` | A (its key or pad button), a click or a tap on a control. |
 | `step(id, index, by)` | Left or Right on a stepper, a select or a switch, or a click on its arrow. |
 | `choose(id, index, choice)` | A choice made outright: one side of a switch clicked, a slider set, a row of a select's list. |
 | `edit(id, index, text, done)` | A field's text as it is typed, then as it is left. The screen keeps what it wants of it and sets its view's property, which the field then shows. |
@@ -1247,8 +1247,23 @@ tells the app where it is in the window and takes its clicks. From those rectang
   where the focused one does (Settings, not Exit, under REPLAYS). On a stepper, a select, a switch or a slider,
   Left and Right change the value instead.
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
-- **Enter** activates; **Esc** goes back: out of a list, a dialog or a menu, else within the screen
-  (`Screen::back`), else to the main menu.
+- **The GBA's A** activates and **its B** goes back (out of a list, a dialog or a menu, else within the screen,
+  `Screen::back`, else to the main menu), by the keys the player bound to them: Z and X until rebound. The user:
+  "i feel like the GBA A and B buttons should be the universal confirm/cancel buttons everywhere, instead of
+  enter+esc". `input::menu_action` reads the menus' action of a key: their own keys first (the arrows, Tab and
+  Shift+Tab, Page Up and Down, Home, End), then A's key (`Bindings::confirm_key`) confirms and B's
+  (`back_key`) goes back, L's and R's are previous and next, START's (Enter until rebound) and Esc are the menu
+  (`Action::Menu`: they close a battle's menu, which they opened, and do nothing in the app's own), Delete and
+  Backspace delete. Enter, Space and Esc confirm and go back no more.
+- **A binding that clashes** leaves the menus usable: where A is bound to one of the menus' own keys (an arrow,
+  say: the arrow still moves) or A and B share a key (a settings file written by hand: binding a key swaps it,
+  so the Controls can't make one), Enter confirms; likewise Esc goes back for B. The hints name what does
+  (`Bindings::confirm_key` and `back_key` are what they show). A screen's own letter keys come before A's and
+  B's (R and T in the folder, C in the NaviCust tab, B and E in Replays), so a player who binds A to one of
+  those letters gets the screen's action there. Settings, asking for a key to bind, takes every key but Esc,
+  which stops the question.
+- (Where a screen's own section below says Enter or Esc on a control, as they were written before the change,
+  it is A and B now: the keys and buttons bound to them.)
 - A key held repeats a move; a choice is pressed once.
 
 So no screen writes key handling, and a control added to a screen is reachable by being there. A screen opens
@@ -1258,9 +1273,12 @@ and the focus goes back where it was when it closes.
 **The cursor** is one object, four brackets drawn over the layout 5 outside the focused control, which glides
 from control to control. It shows only while a keyboard or a pad is the last thing used; the pointer hides it.
 
-**Text fields don't trap** (rule 7): the arrows walk past a field without changing it. Enter or a typed letter
-starts editing (the letter is the edit's first); while editing, the keys are the field's own, but Esc restores
-the text it had, Enter confirms, and Up, Down or Tab confirm and move on. The field's border and caret light
+**Text fields don't trap** (rule 7): the arrows walk past a field without changing it. A typed letter starts
+editing (the letter is the edit's first; A's and B's keys, Z and X, are letters, so on a field they type), and
+so do Enter and the pad's A; while editing, the keys are the field's own, but Esc restores the text it had,
+Enter finishes it, and Up, Down or Tab finish it and move on; the pad's A finishes and its B restores. These
+are the one place Enter and Esc confirm and go back, and while a field is edited the footer's hints are the
+field's own ("Enter Done", "Esc Cancel", the `Page`'s `field-hints`). The field's border and caret light
 while it is edited, and its text is clipped at its padding and scrolled to keep the caret in view (rule 8). The
 edit is Slint's `TextInput`, so the desktop's IME composes into it. The screen is told each change and sets the
 text the field shows, so a name is cut to its length and a code put in capitals as they are typed.
@@ -1273,10 +1291,15 @@ outside it. The scrollbar's room is reserved whether or not it shows. A select's
 `ListView` of a set height: it is as tall as its rows up to ten (and to the room the window has under the
 select, or over it), keeps that height, and scrolls for more, the chosen row in view as it opens.
 
-**Pads** (rule 10): the D-pad or the stick moves, the south button is Enter, the east one Esc, the shoulders the
-game before and after (or a screen's tabs), Start is Enter in a menu. The footer's hints show key caps or the
-pad's buttons, by which was last used: a face button by its place in the four, since its letter depends on the
-pad's maker.
+**Pads** (rule 10) follow the pad's bindings in the same way (`Bindings::pad_action`): the D-pad or the stick
+moves, the button bound to A confirms and B's goes back (the south and west buttons until rebound; south and
+east stand in where A or B is bound to a direction or shares a button), the buttons bound to L and R are
+previous and next, Start's is the menu (closing a battle's, nothing elsewhere), the face button that is neither
+A's nor B's on the east or west deletes (east until rebound), and north is a screen's second action. The
+footer's hints show key caps or the pad's buttons, by which was last used: a face button by its place in the
+four, since its letter depends on the pad's maker. They name the keys and buttons bound (`Shell.key-a`,
+`key-b`, `pad-a`, `pad-b`, `pad-delete`, which `Shell::show_bindings` sets), never Enter and Esc but in a
+field's own hints; the Controls in Settings say A · Confirm and B · Back.
 
 **The mouse and touch**: a click or a tap focuses and activates in one; everything tapped on a phone is at least
 44 tall.
@@ -1769,7 +1792,7 @@ screen runs the ticks due, presents the picture into the window's texture if one
   side whose console is shown, EXPORT VIDEO. The focus starts on the bar, where Left and Right go five seconds
   (it is a control whose arrows change it, as a slider is); the speeds and the sides are each a control, so the
   arrows walk through the row and past it. Space plays and pauses, comma and period step a frame (and pause),
-  the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
+  the brackets (and the shoulders) go a round, A on the bar plays and pauses, B goes back to the list.
   At its end a replay stops with the transport there; play starts it again.
 - *No seek stalls the window.* From the moment it shows, the replay is indexed ahead a slice a frame
   (`Viewer::index`), each slice as many ticks as the last one's time says fit a budget: 1.5 ms while the
