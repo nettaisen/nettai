@@ -248,6 +248,174 @@ msgstr "タッグ"
 msgid "REMOVE"
 msgstr "外す"
 
+# ---- The NaviCust tab.
+
+msgid "Pick up"
+msgstr "持つ"
+
+msgid "Take off"
+msgstr "外す"
+
+msgid "Move piece"
+msgstr "パーツを動かす"
+
+msgid "Turn"
+msgstr "回す"
+
+msgid "Compress"
+msgstr "圧縮"
+
+msgid "Place"
+msgstr "置く"
+
+msgid "Put back"
+msgstr "戻す"
+
+msgid "{n} program placed"
+msgid_plural "{n} programs placed"
+msgstr[0] "プログラム {n}個"
+
+msgid "PROGRAMS"
+msgstr "プログラム"
+
+# Where a program of the list is: on the board, in hand (being moved), on the board and over its ring.
+msgid "Placed"
+msgstr "配置済み"
+
+msgid "In hand"
+msgstr "移動中"
+
+msgid "Out of bounds"
+msgstr "はみ出し"
+
+msgid "EFFECTS"
+msgstr "効果"
+
+msgid "Effects"
+msgstr "効果"
+
+# The key under the board.
+msgid "Board"
+msgstr "ボード"
+
+msgid "Command line"
+msgstr "コマンドライン"
+
+msgid "Plus part"
+msgstr "プラスパーツ"
+
+# ---- The Patch cards tab.
+
+msgid "Add"
+msgstr "入れる"
+
+msgid "Move up or down"
+msgstr "上下に移動"
+
+msgid "Put in"
+msgstr "入れる"
+
+# A slot with no card (and a list's room for one more).
+msgid "Empty"
+msgstr "空き"
+
+msgid "EMPTY"
+msgstr "空にする"
+
+# The key hint: empty a slot.
+msgctxt "verb"
+msgid "Empty"
+msgstr "空にする"
+
+msgid "UP"
+msgstr "上へ"
+
+msgid "DOWN"
+msgstr "下へ"
+
+msgid "{} MB free"
+msgstr "残り {} MB"
+
+msgid "{n} slot free"
+msgid_plural "{n} slots free"
+msgstr[0] "空きスロット {n}"
+
+msgid "Cards"
+msgstr "カード"
+
+msgid "Slots"
+msgstr "スロット"
+
+# A card's number ("No. 074").
+msgid "No. {}"
+msgstr "No. {}"
+
+# The slot a card belongs in ("Slot 0C").
+msgid "Slot {}"
+msgstr "スロット{}"
+
+msgid "TOGETHER"
+msgstr "合計"
+
+# What cards add up to, where they add up to nothing.
+msgid "Nothing"
+msgstr "なし"
+
+msgid "Search cards"
+msgstr "カードを検索"
+
+msgid "Number"
+msgstr "番号順"
+
+msgid "Slot"
+msgstr "スロット"
+
+# Why a card can't go in now: it is in already; what it costs where the MB left is less.
+msgid "Installed"
+msgstr "入れています"
+
+msgid "Needs {} MB"
+msgstr "{} MB必要"
+
+# ---- The Auto battle tab.
+
+msgid "{} of {} places filled"
+msgstr "{}/{}か所"
+
+# How many of the auto battle data's places hold the chip (a library row's note).
+msgid "In {n} place"
+msgid_plural "In {n} places"
+msgstr[0] "{n}か所"
+
+# A chip the auto battle data can't hold: its navi can't play it.
+msgid "{} can't be played in auto battle"
+msgstr "{}はオートバトルで使えません"
+
+# What the NaviCust changes of a number, the change put in ("HP +100").
+msgid "HP {}"
+msgstr "HP {}"
+
+msgid "Attack {}"
+msgstr "アタック {}"
+
+msgid "Rapid {}"
+msgstr "ラピッド {}"
+
+msgid "Charge {}"
+msgstr "チャージ {}"
+
+msgid "Custom {}"
+msgstr "カスタム {}"
+
+msgid "Mega chips {}"
+msgstr "メガチップ {}"
+
+msgid "Giga chips {}"
+msgstr "ギガチップ {}"
+
+msgid "Regular memory {}"
+msgstr "レギュラーメモリ {}"
+
 # The strip: a chip's class and its facts.
 
 msgid "Standard"

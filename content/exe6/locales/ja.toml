@@ -775,3 +775,8 @@ language = "ja"
 "versions" = "クロスとギガクラスチップが決まります。"
 "version.gregar" = "グレイガ"
 "version.falzar" = "ファルザー"
+
+# The two groups of a patch card's effects (en.toml's `[patch_card_groups]` says what they are).
+[patch_card_groups]
+"parameter" = "パラメータ"
+"ability" = "アビリティ"
