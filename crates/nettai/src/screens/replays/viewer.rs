@@ -65,6 +65,51 @@ struct Stats {
 /// ticks, so that two runs of one replay say the same stretches.
 const SOUND_STRETCH: u32 = 120;
 
+/// `NETTAI_VIEWER_PROBE`: the viewer driven as a player would, for its figures (docs/app.md §5): steps
+/// `<seconds>:<what>`, comma-separated, each that long after the replay first shows. `click:<part>` presses the
+/// bar `part` of the way along and lets go there; `drag:<from>:<to>` presses it at `from`, moves to `to` over a
+/// second and lets go there; `speed:<half|1|2|4>` sets the speed. The pointer's are the window's own events,
+/// put to it as the system puts them (from a timer, outside the frame).
+struct Probe {
+    steps: Vec<(f64, ProbeStep)>,
+    began: Option<Instant>,
+}
+
+#[derive(Clone, Copy)]
+enum ProbeStep {
+    Click(f32),
+    Drag(f32, f32),
+    Speed(usize),
+}
+
+impl Probe {
+    fn of_env() -> Option<Probe> {
+        let text = std::env::var("NETTAI_VIEWER_PROBE").ok()?;
+        let mut steps = Vec::new();
+        for step in text.split(',').filter(|s| !s.trim().is_empty()) {
+            let parts: Vec<&str> = step.trim().split(':').collect();
+            let num = |at: usize| parts.get(at).and_then(|p| p.parse::<f32>().ok());
+            let what = match (parts.get(1).copied(), num(2), num(3)) {
+                (Some("click"), Some(part), _) => ProbeStep::Click(part),
+                (Some("drag"), Some(from), Some(to)) => ProbeStep::Drag(from, to),
+                (Some("speed"), ..) => match ["half", "1", "2", "4"].iter().position(|n| parts.get(2) == Some(n)) {
+                    Some(at) => ProbeStep::Speed(at),
+                    None => continue,
+                },
+                _ => {
+                    eprintln!("viewer probe: {step:?} is no step");
+                    continue;
+                }
+            };
+            if let Some(at) = num(0) {
+                steps.push((at as f64, what));
+            }
+        }
+        steps.sort_by(|a, b| a.0.total_cmp(&b.0));
+        Some(Probe { steps, began: None })
+    }
+}
+
 fn add(to: &mut (Duration, u32, Duration), took: Duration) {
     to.0 += took;
     to.1 += 1;
@@ -91,6 +136,9 @@ pub struct Watching {
     whole: bool,
     told: Option<Told>,
     stats: Option<Stats>,
+    probe: Option<Probe>,
+    /// When the seek that waits was asked for (`NETTAI_PLAY_STATS` says how long it waited).
+    asked: Option<Instant>,
     /// The match's two sides, where its builds may be shown; and whether they are.
     sides: Option<Box<[Side; 2]>>,
     builds: bool,
@@ -103,7 +151,7 @@ impl Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), sides, builds: false }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false }
     }
 
     pub fn path(&self) -> &Path {
@@ -205,8 +253,15 @@ impl Watching {
             self.pending = None;
             self.viewer.seek(tick);
             self.landed();
+            if self.stats.is_some() {
+                eprintln!("viewer seek: to tick {tick}, indexed that far: landed at once, at tick {}", self.viewer.position());
+            }
         } else {
+            if self.stats.is_some() {
+                eprintln!("viewer seek: to tick {tick}, past the index ({} of {} ticks): it waits", self.viewer.indexed(), self.viewer.length());
+            }
             self.pending = Some(tick);
+            self.asked = Some(Instant::now());
         }
     }
 
@@ -345,6 +400,48 @@ impl Watching {
         if step != self.viewer.position() {
             self.viewer.seek(step);
             self.landed();
+            if self.stats.is_some() {
+                eprintln!("viewer drag: held at tick {target}: the picture at tick {}", self.viewer.position());
+            }
+        }
+    }
+
+    /// `NETTAI_VIEWER_PROBE`'s steps that are due.
+    fn probe(&mut self, shell: &Shell, now: Instant) {
+        let Some(probe) = &mut self.probe else { return };
+        let since = now.duration_since(*probe.began.get_or_insert(now)).as_secs_f64();
+        let due = probe.steps.iter().take_while(|(at, _)| *at <= since).count();
+        let steps: Vec<ProbeStep> = probe.steps.drain(..due).map(|(_, step)| step).collect();
+        for step in steps {
+            let (from, to) = match step {
+                ProbeStep::Speed(at) => {
+                    self.set_speed(at as i32);
+                    eprintln!("viewer probe: at {since:.1} s, the speed set to {}", ["half", "1", "2", "4"][at]);
+                    continue;
+                }
+                ProbeStep::Click(part) => (part, part),
+                ProbeStep::Drag(from, to) => (from, to),
+            };
+            let Some(bar) = shell.nav.registry().borrow().rect(&crate::nav::Key::new("seek", 0)) else {
+                eprintln!("viewer probe: the bar isn't laid out");
+                continue;
+            };
+            eprintln!("viewer probe: at {since:.1} s, the bar pressed at {from} and let go at {to} (at tick {})", self.viewer.position());
+            let at = move |part: f32| slint::LogicalPosition::new(bar.x + bar.w * part, bar.y + bar.h / 2.0);
+            use slint::platform::{PointerEventButton, WindowEvent};
+            let button = PointerEventButton::Left;
+            let moves = if from == to { 0 } else { 20 };
+            let mut events = vec![(0, WindowEvent::PointerPressed { position: at(from), button })];
+            events.extend((1..=moves).map(|n| (n * 50, WindowEvent::PointerMoved { position: at(from + (to - from) * n as f32 / moves as f32) })));
+            events.push((moves * 50 + 50, WindowEvent::PointerReleased { position: at(to), button }));
+            for (ms, event) in events {
+                let ui = shell.ui().as_weak();
+                slint::Timer::single_shot(Duration::from_millis(ms as u64), move || {
+                    if let Some(ui) = ui.upgrade() {
+                        ui.window().dispatch_event(event);
+                    }
+                });
+            }
         }
     }
 
@@ -354,12 +451,16 @@ impl Watching {
     pub fn frame(&mut self, shell: &mut Shell, now: Instant) {
         let elapsed = self.last.map_or(Duration::ZERO, |last| now.saturating_duration_since(last));
         self.last = Some(now);
+        self.probe(shell, now);
         if let Some(target) = self.pending
             && (self.whole || self.viewer.indexed() >= target)
         {
             self.pending = None;
             self.viewer.seek(target);
             self.landed();
+            if let (Some(_), Some(asked)) = (&self.stats, self.asked.take()) {
+                eprintln!("viewer seek: landed at tick {} ({target} asked for), {:.2?} after it was asked", self.viewer.position(), asked.elapsed());
+            }
         }
         // Indexing ahead: a slice, of as many ticks as the last one's time says fit the budget.
         if !self.whole {

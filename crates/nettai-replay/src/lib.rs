@@ -80,6 +80,21 @@ pub struct Head {
 }
 
 impl Head {
+    /// The head of a replay's file, whether or not the rest of it reads:
+    /// what a list of replays goes by to tell which game a file it can't
+    /// play is of. Layouts 1 and 2 have the same head; none if the bytes
+    /// aren't a replay, are of another layout, or end inside the head.
+    pub fn read(bytes: &[u8]) -> Option<Head> {
+        if bytes.get(..4) != Some(MAGIC.as_slice()) || !matches!(bytes.get(4), Some(1 | 2)) {
+            return None;
+        }
+        let mut b = Bytes { rest: &bytes[5..], what: "start" };
+        let mut h = b.section(b"HEAD", "head").ok()?;
+        let head = Head { engine: h.string().ok()?, game: h.string().ok()?, content: h.u64().ok()?, start: h.u64().ok()? };
+        h.done().ok()?;
+        Some(head)
+    }
+
     /// That a replay of this head plays on `engine`'s build of `game`'s
     /// `content`: or what differs.
     pub fn require(&self, engine: &str, game: &str, content: u64) -> Result<(), Mismatch> {

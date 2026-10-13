@@ -237,8 +237,9 @@ impl Replays {
         if let Some((game, ready)) = &ready {
             let content = ready.content();
             let hash = self.hash(game, content);
-            // The game's replays. (A file that doesn't read names no game: it is listed with every one.)
-            let of_game: Vec<usize> = (0..entries.len()).filter(|&i| entries[i].read.as_ref().map_or(true, |s| s.head.game == *game)).collect();
+            // The game's replays: those whose head names it. (A file whose head doesn't read names no game: it is
+            // listed with every one.)
+            let of_game: Vec<usize> = (0..entries.len()).filter(|&i| entries[i].game.as_ref().is_none_or(|g| g == game)).collect();
             let kind = |i: usize| entries[i].read.as_ref().ok().map(|s| s.info.kind);
             let kinds = of_game.iter().any(|&i| kind(i) == Some(MatchKind::Online)) && of_game.iter().any(|&i| kind(i) == Some(MatchKind::Offline));
             self.online_only &= kinds;
@@ -256,7 +257,7 @@ impl Replays {
                     continue;
                 }
                 if entry.read.as_ref().is_ok_and(|s| s.head.require(ENGINE, content.game(), hash).is_ok()) {
-                    self.library.play(entry, content);
+                    self.library.play(entry, content, hash);
                 }
                 rows.push(self.row(shell, entry, content, hash));
                 self.rows.push(i);
@@ -538,7 +539,8 @@ impl Screen for Replays {
         if !shell.scale.phone {
             self.close_sheet(shell);
         }
-        // The folder, listed again: a match just recorded is there.
+        // The folder, listed again: a match just recorded is there. (What playing out gave is kept between runs.)
+        self.library.cache.get_or_insert_with(crate::replays::cache_file);
         self.library.list(&crate::replays::folder());
         self.fill(shell);
         if let Some(e) = &mut self.export {

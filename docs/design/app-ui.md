@@ -270,7 +270,8 @@ Each is in the mockups under the same name.
 ### Training
 - **Entry:** two rows, Your build and Dummy's build, both remembered, and START TRAINING; beside them the two
   builds facing each other and the arena. One line: "Set up the dummy from the menu once you're in."
-- **The training menu** (Start or Esc in training): a panel on the left, the battle paused behind it with the dummy
+- **The training menu** (Start or Esc in training): a panel on the left, the battle behind it in the game's own pause
+  ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right:
   - Dummy: Action (stands still, moves around, attacks at random, plays your recording, a second pad), Custom
     screen (picks no chips, picks the first it can), Recording (Record: the player drives the dummy until Start;
