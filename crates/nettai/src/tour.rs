@@ -51,9 +51,9 @@ mod confirm_keys;
 mod replays;
 mod training;
 
-/// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`, the
-/// screens' own: `training`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen without the
-/// whole walk. (`play`, `replays` and Play's two apps apart, named alone, walk those alone, in `walk`.)
+/// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`,
+/// `packs`, the screens' own: `training`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen
+/// without the whole walk. (`play`, `replays` and Play's two apps apart, named alone, walk those alone, in `walk`.)
 fn walks(part: &str) -> bool {
     std::env::var("NETTAI_TOUR_ONLY").ok().is_none_or(|only| only.split(',').any(|p| p == part))
 }
@@ -308,6 +308,43 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             app.borrow_mut().shell.hold_loading = None;
         }),
     );
+
+    // The app's own packs (docs/app.md §17; the pass extracts nothing, so they are set on the view): a game's
+    // being extracted from the Legacy Collection, and no game with the collection not found, the way to its
+    // folder under the error's line; then the error's dialog, where a game can be played.
+    // (`NETTAI_TOUR_ONLY=packs`: these alone.)
+    taking.set(walks("packs"));
+    add(
+        SETTLE,
+        Box::new(|ui, app, _| {
+            app.borrow_mut().shell.hold_loading = Some(0.62);
+            ui.global::<nettai_ui::Shell>().set_extracting(true);
+        }),
+    );
+    shot(&mut add, "extracting", Pair::None);
+    add(
+        SETTLE,
+        Box::new(|ui, _, _| {
+            let shell = ui.global::<nettai_ui::Shell>();
+            shell.set_extracting(false);
+            shell.set_extracts(true);
+            shell.set_no_games(true);
+        }),
+    );
+    shot(&mut add, "no-legacy-collection", Pair::None);
+    add(
+        SETTLE,
+        Box::new(|ui, app, _| {
+            let shell = ui.global::<nettai_ui::Shell>();
+            shell.set_no_games(false);
+            shell.set_extracts(false);
+            app.borrow_mut().shell.hold_loading = None;
+        }),
+    );
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.ask_for_source()));
+    shot(&mut add, "no-legacy-collection-dialog", Pair::None);
+    add(SETTLE, act(Action::Back));
+    taking.set(walks("shell"));
 
     // The main menu: the focus a step down, and the pad's hints.
     shot(&mut add, "menu", Pair::First);

@@ -65,6 +65,9 @@ msgstr "ゲーム切り替え"
 
 msgid "LOADING {}"
 msgstr "{} を読み込み中"
+# A game's pack being extracted from the Legacy Collection: {} is the game, as the header shows it.
+msgid "EXTRACTING {}"
+msgstr "{} を抽出中"
 
 msgid "LOADING"
 msgstr "読み込み中"
@@ -263,6 +266,21 @@ msgstr "{} のデータが古くなっています"
 
 msgid "Extract it again."
 msgstr "もう一度抽出してください。"
+# No game's pack, and the Legacy Collection not found: by its Japanese name. The button opens the system's
+# folder dialog, to choose the folder it is installed in.
+msgid "nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or choose its folder."
+msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です。Steam でインストールするか、そのフォルダを選んでください。"
+msgid "nettai needs Battle Network Legacy Collection Vol. 2"
+msgstr "nettai にはロックマンエグゼ アドバンスドコレクション Vol.2 が必要です"
+msgid "Install it from Steam, or choose its folder."
+msgstr "Steam でインストールするか、そのフォルダを選んでください。"
+msgid "CHOOSE FOLDER"
+msgstr "フォルダを選ぶ"
+# A game's pack couldn't be extracted from the Legacy Collection: {} is the game, as the header shows it.
+msgid "{}'s data couldn't be extracted. Details are in the log file."
+msgstr "{} のデータを抽出できませんでした。詳しくはログファイルをご覧ください。"
+msgid "{}'s data couldn't be extracted"
+msgstr "{} のデータを抽出できませんでした"
 
 msgid "Something went wrong. Details are in the log file."
 msgstr "問題が発生しました。詳しくはログファイルをご覧ください。"
