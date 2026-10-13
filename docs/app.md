@@ -26,7 +26,11 @@ The app extracts each game's pack itself, as it starts, from the player's Battle
 (Steam's), into its data folder's `packs/`, and again when another version of nettai made it (§17). With
 `$NETTAI_PACKS` set, the packs are that folder's, found as nettai-tool finds them (each pack by the game it says;
 written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`), and nothing is looked for or extracted: for
-development and the screenshot pass. What the player makes is kept in the app's
+development and the screenshot pass. The game's content (its rules and data in Luau, docs/design/content-model-v2.md
+§4.0) is the `content/` folder beside the program, where a packaged app ships it; a build run from the repository
+finds none there and reads the repository's `content/`; `$NETTAI_CONTENT` names another. A release build on Windows
+opens no console window (`windows_subsystem`); a development build keeps one, for what it prints. What the player
+makes is kept in the app's
 data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
 `$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are in
 `builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), the settings are

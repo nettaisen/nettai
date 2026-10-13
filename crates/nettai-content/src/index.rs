@@ -42,10 +42,15 @@ const CONTENT: &str = concat!(env!("CARGO_MANIFEST_DIR"), "/../../content");
 /// The engine's declarations' directory in a content directory.
 pub const DECLARATIONS: &str = packs::ENGINE;
 
-/// The content directory: `$NETTAI_CONTENT`, else this repository's
-/// content/.
+/// The content directory: `$NETTAI_CONTENT`, else a content/ beside the
+/// running program (where a packaged app ships it), else this repository's
+/// content/ (a build run from the repository).
 pub fn content() -> PathBuf {
-    std::env::var_os("NETTAI_CONTENT").map(PathBuf::from).unwrap_or_else(|| PathBuf::from(CONTENT))
+    if let Some(dir) = std::env::var_os("NETTAI_CONTENT") {
+        return PathBuf::from(dir);
+    }
+    let beside = std::env::current_exe().ok().and_then(|exe| Some(exe.parent()?.join("content")));
+    beside.filter(|dir| dir.is_dir()).unwrap_or_else(|| PathBuf::from(CONTENT))
 }
 
 /// The engine's API declarations for content (content/nettai).
