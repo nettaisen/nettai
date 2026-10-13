@@ -653,6 +653,11 @@ overview, the folder's view and the chips' rows and sorts. The game's builds dat
 made of (the text table `builds`: `version.<id>`, `<choice>.<preset>`, and `versions`, what a version sets).
 Rust and Slint name no version, and hold no color of one.
 
+**A navi's charge shot** isn't on the Navi tab: none of the three games' content names one (a navi's
+locale entry has its name and a run message; EXE6's `patch_card_effects` names the kinds of charge shot a patch
+card gives MegaMan, which aren't a navi's own). The panel shows the navi's HP and its element; a charge shot's
+line needs the content to name each navi's.
+
 **What any screen uses** (`crates/nettai/src/builds/`, with no screen's code; `ui/build.slint`):
 
 | What | The UI's | The app's |
@@ -736,7 +741,7 @@ on the language alone, and the pass is told if the counts don't fit even so).
 NAVI and FOLDER are built. NAVICUST, PATCH CARDS and AUTO BATTLE are empty tabs behind this interface
 (`navicust`, `patch_cards`, `auto_battle`: each names its facts and nothing else). **Filling one in** touches
 its two files and `lang/ja/builds.po`. **Adding a tab** is those and a few lines: its place in `EditorTab` and
-its `if` (builds.slint), its view's export (builds.slint and app.slint), its word in `BuildsView.tab-names`, and
+its `if` (builds.slint's `EditorBody`, whose one clock brings in whichever tab is chosen), its view's export (builds.slint and app.slint), its word in `BuildsView.tab-names`, and
 its module in `editor::all()`.
 
 `crates/nettai/src/builds/` also keeps, from the first app's creator, what the tabs to come take: the NaviCust's
@@ -1128,6 +1133,33 @@ game that can't be loaded told; measured the same way, load average 260 to 336) 
 before and 36.7 after, one line of Rust 6.1 and 6.5 to 6.8, one line of a .slint file 7.0 to 7.1 and 7.3 to 7.6.
 A training battle's figures (§5) are the same before and after them: 107.6 to 120.0 frames a second and 117.6 to
 120.0, a key to its picture 11.9 and 11.1 ms against 11.0 and 10.2 (two runs each, back to back).
+
+**What a screen costs: Builds** (§8; measured 2026-10-12 with one script, back to back: the tree before it,
+nettai-ui at 6648374c7, and with it, ui-builds at 0821e2b1c; sccache off; CPU is user and system time
+together, the one to compare: load average 207 to 345 throughout):
+
+| | Before Builds | With Builds |
+|---|---|---|
+| a clean build of nettai-ui and nettai | 138 s, 35.6 s of CPU | 169 s, 56.5 s of CPU |
+| nothing changed | 2.7 to 3.9 s, 0.6 to 0.8 s of CPU | 2.5 to 3.7 s, 0.6 to 0.7 s of CPU |
+| after one line of Rust changed (a constant of battle.rs, and put back) | 18.2 to 18.5 s, 6.4 to 6.9 s of CPU | 15.8 to 17.3 s, 9.6 s of CPU |
+| after one line of menu.slint changed (a value, and put back) | 38.3 to 40.5 s, 7.1 to 7.3 s of CPU | 39.2 to 41.6 s, 10.3 to 10.5 s of CPU |
+| after one line of builds.slint, or of build.slint (the overview) | | 20.4 to 40.6 s, 10.2 to 10.8 s of CPU |
+| the generated module | 3.88 MB, 31,930 lines | 6.14 MB, 51,052 lines (6.08 MB after the three fixes below) |
+| the Slint | 4,975 lines, 17 `if`s, 7 `for`s | 7,125 lines, 31 `if`s, 18 `for`s |
+
+Builds' 2,150 lines of Slint are 2.2 MB of generated Rust, four times Training's for three times its Slint
+(by component, after the fixes below): the Folder tab 0.72 MB (the tab 0.12 and its `if` 0.04, the library pane
+0.09 and its rows 0.1, a phone's list 0.1 and sheet 0.11, the slots 0.07), the list, the overview beside it and
+a phone's page of one build 0.44 (each `if` page 0.07 to 0.12: an `if` around a `ScrollPage` or a `ListView` has
+all of it copied in), the overview and its rows 0.3, the Navi tab 0.17, the new build's dialog 0.17, the tab bar
+and the editor's frame with its five tabs' `if`s 0.2, the views and the catalog's words 0.09. A Rust edit costs 3 s
+more CPU than before: the app's crate has the screen's 5,000 lines of Rust. Three things were made smaller after
+measuring: a build's row and a phone's folder row hold their own `RowTouch` (a row given one as a child was
+copied into its list: 64 and 88 KB, now 46 and 36), and the editor's five tabs are under one `EditorBody` with
+one clock, where an `Arrive` around each tab was copied into each tab's `if` (27 KB an empty tab, now 16).
+What stays large: a `ListView` and a `ScrollPage` are containers, copied into each use (40 to 50 KB each, five
+in Builds), and each `if` page holds the parts it lays out.
 
 ## 15. Training
 
