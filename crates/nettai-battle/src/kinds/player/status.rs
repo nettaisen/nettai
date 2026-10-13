@@ -508,29 +508,26 @@ fn apply_damage_asking_at_zero(b: &mut Battle, r: ObjectRef) {
     counter_and_mood(b, r);
 }
 
-/// `sub_801A200`: a counter landed on this navi gives the attacker Full
-/// Synchro; hits wear down this navi's mood.
+/// `sub_801A200` (EXE5's 0x08016FDC, EXE4's 0x080131F4): what the hits
+/// this navi took in the tick counted goes to the other side, as a
+/// counter's mark (its rules hear it: EXE6's and EXE5's Full Synchro) or as
+/// the rules' gain of its mood; and the hits wear down this navi's mood.
 fn counter_and_mood(b: &mut Battle, r: ObjectRef) {
     if b.is_battle_over() {
         return;
     }
     let side = b.objects.get(r).alliance;
     let opp = side ^ 1;
-    match b.game_rules().emotion.hit_mood {
-        // A counter: the counterer's side's rules (EXE6's rules/emotion:
-        // Full Synchro, unless this navi's mood is held).
-        crate::content::HitMood::CounterMark => {
-            if coll(b, r).acc.counter & 0x8000 != 0 {
-                b.rules_countered(opp, r);
-            }
-        }
-        // EXE4's 0x080131F4: what the hits counted raises the other side's
-        // mood (0x0800F4FA).
-        crate::content::HitMood::HitterGains => {
-            let gained = coll(b, r).acc.counter;
-            if gained != 0 {
-                super::raise_mood(b, opp, gained);
-            }
+    let rules = &b.game_rules().emotion;
+    let (marks, gain) = (rules.hit_mood == crate::content::HitMood::CounterMark, rules.hitter_gain);
+    let counted = coll(b, r).acc.counter;
+    if marks && counted & 0x8000 != 0 {
+        b.rules_countered(opp, r);
+    } else if counted != 0 {
+        match gain {
+            crate::content::HitterGain::None => {}
+            crate::content::HitterGain::ToFull => super::raise_mood(b, opp, counted),
+            crate::content::HitterGain::ShortOfFull => super::gain_mood(b, opp, counted),
         }
     }
     let loss = coll(b, r).acc.mood_damage;
