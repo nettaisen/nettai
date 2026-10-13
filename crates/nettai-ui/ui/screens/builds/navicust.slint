@@ -418,6 +418,10 @@ component ProgramRowView inherits Rectangle {
                 Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
             } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down && NavicustView.holding {
                 Nav.choose("drag", 8, 0);
+            } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down {
+                // (With nothing in hand, a right click takes the program's last copy off, as Del does.)
+                Nav.point("programs", root.nav-index);
+                Nav.choose("remove", root.nav-index, 0);
             } else if e.kind == PointerEventKind.cancel {
                 Nav.choose("drag", 5, 0);
             }
@@ -820,8 +824,9 @@ export component NavicustTab inherits Rectangle {
                     Nav.choose("drag", 1, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
                 } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
                     Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down && NavicustView.holding {
-                    Nav.choose("drag", 8, 0);
+                } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down {
+                    // (A right click puts the piece in hand away, else takes off the piece under it.)
+                    Nav.choose("drag", 8, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
                 } else if e.kind == PointerEventKind.cancel {
                     Nav.choose("drag", 5, 0);
                 }

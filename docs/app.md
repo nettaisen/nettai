@@ -1144,6 +1144,14 @@ place holds takes it out again (it flies back; its hint Remove, `on-placed`), De
 (their `validate`: one its navi can't play) isn't put: its row shakes and the strip says why, worded for the
 part (`Words::problem`: "{chip} can't be played in auto battle").
 
+**A right click removes**, as Del does, wherever the build holds something: a folder's entry (its Regular mark and
+tags with it), a placed NaviCust piece on the board or a placed program's row (its last copy), an auto battle
+place, a patch card in the build's list or on its row in the library (in a game with slots, its slot emptied).
+The cursor comes to what was clicked first, as a click's does: the row's touch (`Focusable` and `RowTouch`, where
+`removable`) points the nav at it and asks `Nav.choose("remove", ...)`, which the editor hands the tab as
+`Action::Delete`; the NaviCust's board finds the piece under the pointer itself (and with a piece in hand, a right
+click puts that away).
+
 **On a phone** each of the three is one column: the NaviCust's board over its key, the effects and the bugs a line
 each, then the programs; the patch cards' counts, their cards and Together, with the library as a sheet from the
 bottom (`PatchCardsOverlay`, with UP, DOWN and REMOVE, or EMPTY); the auto battle's places, one column, with
