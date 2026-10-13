@@ -427,9 +427,12 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   the names beside them, as the mockup has three, five cells don't fit the window in a language a third longer
   than English. On a phone each is a line, its name at the left. Left and Right change a setting, so the row
   can't be walked with them: Tab does, and in the lobby so do the shoulders and the keys bound to L and R
-  (`Screen::action`). *Patch cards isn't a setting of the lobby's yet* (the library's lobby has rounds and
-  closed builds): its control is in its place, on, as a match is played today, and unavailable (`Seg`'s
-  `enabled`), so nothing moves when it is.
+  (`Screen::action`). Patch cards is the lobby's own setting (`Lobby::set_patch_cards`, on at first; off,
+  neither player's cards apply and each build plays without them: docs/frontend.md §2). The lobby checks this
+  player's build as the settings would play it whenever either changes (`Lobby::problems`, typed); while it
+  has a problem READY is refused (`Lobby::set_ready` says so, and the mark is the lobby's answer) and the line
+  says the build can't be used with these settings, in the error red. So CHANGE BUILD takes any build whose
+  file reads, and the lobby is what says one can't be played.
 - **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, YOUR BUILD,
   THEIR BUILD (not with closed builds), CONTROLS (what is bound to each button, to read), SETTINGS (the input
   delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
@@ -488,23 +491,27 @@ drops the match's player, then `Lobby::reopen`), nobody ready, the settings as t
   can't be reached, no match has that code, the match is full, the build can't be used), or in the direct
   connection's dialog (that isn't an address, the port is taken, no connection could be made). While a link is
   being made the same space says so.
-- *Once they have*, a link that gives up (`Link::recv`'s error) or a lobby that ends (`Status::Failed`: another
-  version, another game, a build refused, the other player left, no answer) ends what the player was doing: the
-  shell's dialog, with BACK TO PLAY, over the builds again.
+- *In the lobby*, a build the settings can't play is the lobby's line (above): it doesn't end the lobby.
+- *Once they have met*, a link that gives up (`Link::recv`'s error) or a lobby that ends (`Status::Failed`:
+  another version, another game, the other player left, no answer; a build refused only where the other
+  program revealed one anyway) ends what the player was doing: the shell's dialog, with BACK TO PLAY, over
+  the builds again.
 
 **What it adds to the shell**, all small: `battle::Play::Make` (above); `Keys::tab`; `Nav::set_row` (the row
 the focus comes to a list at, where that is the screen's to say); `Button`'s `natural-width` (for a button
-given a width only on a phone); `Seg`'s `enabled` (the unavailable look the other controls have); and the screenshot pass's hooks (§13). And three things of the shell's that a
+given a width only on a phone); and the screenshot pass's hooks (§13). And three things of the shell's that a
 link between two players showed wrong, mended: the corner's box in a match is wide enough for "Reconnecting 30
 s" in the language shown (it was cut to "Reconnecting 2…"); a dialog's title takes the lines it needs (a
 failure's title is a sentence, and the pass found "Your opponent left" cut on a phone in the pseudo-locale;
 on the desktop "Your opponent's build can't be used" just fits its one line); `Message`'s text is as wide as
 its line (it sat in the line's middle whatever its alignment).
 
-**Not done.** Patch cards off: when the library's lobby has the setting, the control takes it as Closed
-builds does (`Play::set_closed`), and the player's card in the lobby and the panels in a match show the build
-as it will be played. A build that can't be used says how many problems it has, not which: the Builds screen words
-each kind, and Play says "This build can't be used." until it does. CONTROLS in the match menu shows the
+**Not done.** A build that can't be used says how many problems it has, not which: the Builds screen words
+each kind (a `nettai_match::Wrong`), and Play says "This build can't be used." before a link and "This build
+can't be used with these settings." in the lobby until it does. The build overview isn't there yet (§2): the
+player's card in the lobby says the build's name, navi and version, which its patch cards don't change; where
+the overview goes, beside the list and in the lobby, it is to show `Lobby::settings().checked` of the side, as
+the match would play it. The two panels in a match are the agreement's sides, already as played. CONTROLS in the match menu shows the
 bindings and doesn't change them. Making a link resolves the STUN server's name on the window's thread
 (`Link::create_room`, `join_room`), before any lobby exists.
 
@@ -516,17 +523,19 @@ bindings and doesn't change them. Making a link resolves the STUN server's name 
 - the wait's training session: started beside the invite (on a phone, by its button, filling the window), its
   menu's COPY INVITE CODE, STOP TRAINING (a phone) and CANCEL INVITE each chosen, and the session ended by the
   other player coming;
-- the lobby's rounds and closed builds changed by one player and taken by the other; the input delay changed;
-  the list of builds to change to opened;
+- the lobby's rounds, patch cards and closed builds changed by one player and taken by the other; the input
+  delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
+  saying why), and the first again;
 - the link dropped for six seconds in the lobby and in a match, and made again;
 - a match agreed, loaded with the other side held at 74%, and played to its end (the game's own "WIN" banner,
-  then the lobby again, nobody ready); a second match on the same link with closed builds, left by the other
-  player; a match as the joiner, on the right navi's console, left by LEAVE MATCH;
-- the other player bringing a build that breaks a rule (refused when both are ready: the lobby ends, saying
-  so); the other player leaving the lobby; this player leaving it.
+  then the lobby again, nobody ready); a second match on the same link with patch cards off and closed builds,
+  left by the other player; a match as the joiner, on the right navi's console, left by LEAVE MATCH;
+- the other player bringing a build that breaks a rule (its lobby won't make it ready, and this player waits,
+  ready); the other player leaving the lobby; this player leaving it.
 
-The three matches of a pass, recorded by their agreements (a set played to its end, a match the other player
-left, a match this one left as the joiner), were played back by nettai-tool (`--replay`): each reproduces. A
+The three matches of a pass, recorded by their agreements (a set played to its end, a match with patch cards
+off the other player left, a match this one left as the joiner), were played back by nettai-tool
+(`--replay`): each reproduces. A
 recording holds the two players' names as the lobby had them, and no build's. Only written, never run: a pad (its SELECT held, its shoulders in the lobby; the code's boxes were drawn and walked
 by the pass, opened as a pad's confirm opens them); the signaling server's other refusals (a full room,
 another version); a lobby's other failures (another version, game or content, this player's build refused, no

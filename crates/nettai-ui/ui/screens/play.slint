@@ -32,6 +32,9 @@ export enum LobbyNote {
     them,
     // The link is down and being made again (`PlayView.note-seconds` left).
     reconnecting,
+    // This player's build can't be played as the match's settings stand (with Patch cards off, its cards
+    // left out): READY is refused.
+    unusable,
 }
 
 // A page of the match menu.
@@ -108,8 +111,10 @@ export global PlayView {
     // They count the times each turned ready: the mark stamps.
     in property <int> ready-seq;
     in property <int> their-ready-seq;
-    // The match's settings, both players': the rounds (1: a single battle; 3: best of 3) and closed builds.
+    // The match's settings, both players': the rounds (1: a single battle; 3: best of 3), whether the patch
+    // cards apply, and closed builds.
     in property <int> rounds: 3;
+    in property <bool> patch-cards: true;
     in property <bool> closed;
     // The player's own.
     in property <int> input-delay;
@@ -544,8 +549,7 @@ component LobbyFacts inherits Rectangle {
         background: Theme.line;
     }
 
-    // Patch cards: the match's, as Rounds and Closed builds are. The lobby has no such setting yet (a match
-    // is played with each build's cards): the control is in its place, on, and unavailable until it has.
+    // Patch cards: the match's, as Rounds and Closed builds are. Off, neither player's cards apply.
     cards-label := Value {
         x: Theme.phone ? 0px : root.x2;
         y: Theme.phone ? root.line : root.name-y;
@@ -557,10 +561,10 @@ component LobbyFacts inherits Rectangle {
     cards := Seg {
         x: Theme.phone ? parent.width - self.width : root.x2;
         y: Theme.phone ? root.line + (root.line - self.height) / 2 : root.control-y;
-        enabled: false;
+        nav: "lobby.cards";
         first: @tr("ON");
         second: @tr("OFF");
-        chosen: 0;
+        chosen: PlayView.patch-cards ? 0 : 1;
     }
 
     Rectangle {
@@ -1082,8 +1086,8 @@ export component PlayScreen inherits Page {
                 x: 0;
                 y: leave.y + (Theme.phone ? 52px : 64px);
                 width: root.body-width;
-                text: PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : "";
-                tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting ? Theme.bad : Theme.muted;
+                text: PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : PlayView.note == LobbyNote.unusable ? @tr("This build can't be used with these settings.") : PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : "";
+                tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting || PlayView.note == LobbyNote.unusable ? Theme.bad : Theme.muted;
                 horizontal-alignment: center;
             }
         }

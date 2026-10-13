@@ -141,6 +141,9 @@ msgstr "{}本勝負"
 msgid "Patch cards"
 msgstr "改造カード"
 
+msgid "This build can't be used with these settings."
+msgstr "この設定ではこのビルドは使えません。"
+
 msgid "Closed builds"
 msgstr "ビルド非公開"
 

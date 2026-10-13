@@ -132,6 +132,7 @@ struct Live {
     ready: bool,
     their_ready: bool,
     rounds: i32,
+    patch_cards: bool,
     closed: bool,
     bars: i32,
     ping: i32,
@@ -539,6 +540,13 @@ impl Play {
         self.ended = None;
     }
 
+    fn set_patch_cards(&mut self, on: bool) {
+        if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
+            lobby.set_patch_cards(on);
+        }
+        self.ended = None;
+    }
+
     fn set_delay(&mut self, shell: &mut Shell, by: i32) {
         shell.settings.input_delay = (shell.settings.input_delay as i32 + by).clamp(0, MAX_INPUT_DELAY as i32) as u32;
         shell.save_settings();
@@ -575,11 +583,15 @@ impl Play {
             ready,
             their_ready,
             rounds: lobby.settings().rounds.len() as i32,
+            patch_cards: lobby.settings().patch_cards,
             closed: lobby.settings().closed_builds,
             bars: if reconnecting.is_some() { 0 } else { steady.map_or(ping.map_or(0, |p| p.quality().bars() as i32), |s| s.0) },
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
+            // (A build the settings can't play: the lobby's own check, typed. Until the Builds screen words each
+            // kind, the line says only that it can't be used so.)
             note: Some(match (reconnecting, ready, their_ready) {
                 (Some(_), ..) => LobbyNote::Reconnecting,
+                (None, ..) if !lobby.problems().is_empty() => LobbyNote::Unusable,
                 (None, false, true) => LobbyNote::You,
                 (None, true, false) => LobbyNote::Them,
                 (None, false, false) | (None, true, true) => LobbyNote::None,
@@ -605,6 +617,7 @@ impl Play {
         view.set_ready_seq(self.ready_seq);
         view.set_their_ready_seq(self.their_ready_seq);
         view.set_rounds(live.rounds);
+        view.set_patch_cards(live.patch_cards);
         view.set_closed(live.closed);
         view.set_bars(live.bars);
         view.set_ping(live.ping);
@@ -955,8 +968,12 @@ impl Screen for Play {
             "wait.train" => self.train(shell),
             // ---- The lobby.
             "lobby.ready" => {
-                if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-                    lobby.set_ready(!lobby.ready());
+                // (The lobby's answer is the mark: a build the settings can't play isn't made ready, and the line
+                // says why.)
+                if let Some(lobby) = self.session.as_mut().and_then(Session::lobby)
+                    && !lobby.set_ready(!lobby.ready())
+                {
+                    shell.sound.play(Cue::Refused);
                 }
                 self.ended = None;
                 shell.ui().global::<PlayView>().set_note_error(Default::default());
@@ -966,18 +983,23 @@ impl Screen for Play {
                 let closed = !self.live.closed;
                 self.set_closed(closed);
             }
+            "lobby.cards" => {
+                let on = !self.live.patch_cards;
+                self.set_patch_cards(on);
+            }
             "lobby.change" => {
                 self.changing = true;
                 shell.nav.open("change.", Key::new("change.builds", self.chosen as i32));
                 shell.ui().global::<PlayView>().set_changing(true);
             }
+            // Another build: any whose file reads. (One that can't be played as the match's settings stand is
+            // the lobby's to say: it can't be made ready, and the line says why.)
             "change.builds" => {
                 let index = index.max(0) as usize;
-                if self.builds.get(index).is_some_and(Build::usable) {
+                if let Some(side) = self.builds.get(index).and_then(|b| b.side.clone()) {
                     self.choose_build(shell, index);
                     // (Nothing of it is said to the other player; a ready mark was for the build before.)
-                    let side = self.side();
-                    if let (Some(lobby), Ok(side)) = (self.session.as_mut().and_then(Session::lobby), side) {
+                    if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
                         lobby.set_side(side);
                     }
                     self.close_change(shell);
@@ -1013,6 +1035,7 @@ impl Screen for Play {
                 self.set_rounds(ROUNDS[(at + by).rem_euclid(ROUNDS.len() as i32) as usize]);
             }
             "lobby.closed" => self.set_closed(by > 0),
+            "lobby.cards" => self.set_patch_cards(by < 0),
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
@@ -1024,6 +1047,7 @@ impl Screen for Play {
         match id {
             "build" => self.choose_build(shell, choice.max(0) as usize),
             "lobby.closed" => self.set_closed(choice == 1),
+            "lobby.cards" => self.set_patch_cards(choice == 0),
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
             _ => {}
