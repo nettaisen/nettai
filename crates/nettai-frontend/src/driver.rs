@@ -96,6 +96,21 @@ pub trait Driver {
     fn set_opponent(&mut self, _opponent: Opponent) -> bool {
         false
     }
+    /// Live play's driver, for what a training session sets on it beside
+    /// the opponent (its options, the opponent's recording and its second
+    /// pad: [`LivePlayer`]); none from any other.
+    fn live(&self) -> Option<&LivePlayer> {
+        None
+    }
+    fn live_mut(&mut self) -> Option<&mut LivePlayer> {
+        None
+    }
+    /// Change the battle before the next tick's inputs are asked, as the
+    /// driver's own options say (live play's training options,
+    /// [`Training`]). Nothing from a driver without any, nor from one whose
+    /// options are all at their normal values: the battle is then a
+    /// function of its setup and the buttons, as ever.
+    fn prepare(&mut self, _b: &mut Battle) {}
     /// The player's input delay from the next frame on, in ticks, of a
     /// driver that has one (netplay's: `crate::netplay::NetOptions`); false
     /// from one that doesn't.
@@ -366,10 +381,40 @@ impl OnCustomScreen {
     pub const ALL: [OnCustomScreen; 2] = [OnCustomScreen::PicksNothing, OnCustomScreen::PicksFirst];
 }
 
+/// What a training session changes of live play's battle between its
+/// ticks, as a training mode does (`LivePlayer::set_training`,
+/// `crate::Player::set_training`). Each is a host's option, applied to the
+/// battle's own typed state before each tick (`Driver::prepare`), never a
+/// rule of the simulation: a battle with all of them off (the default) is
+/// the set's as ever, and one with any on is no match's (it isn't
+/// recorded). Each acts at once, and in a battle paused or not.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Training {
+    /// By side: its navi's HP returns to its full value once a hit is over,
+    /// [`REFILL_REST`] ticks after it last lost any. (A hit, or hits that
+    /// close together, of its whole HP still delete it.)
+    pub refills: [bool; 2],
+}
+
+/// How long a navi with refills goes with no HP lost before its HP is full
+/// again: a second and a half. The HUD's HP number rolls down to what a hit
+/// left in at most about half a second, so a combo's damage is read before
+/// the refill rolls it back up, and the refill doesn't land in the combo.
+pub const REFILL_REST: u32 = 90;
+
+/// What live play follows of a navi's HP for its refills.
+#[derive(Clone, Copy, Debug, Default)]
+struct Refill {
+    /// Its HP before the tick just run, and the ticks since it last fell.
+    hp: Option<u16>,
+    rest: u32,
+}
+
 /// Plays a set from the keyboard, round after round to its end: the local
 /// player is the left navi, with their own custom screen; the right navi
 /// is an [`Opponent`]'s (by default one that stands still, and whose custom
-/// screen picks the first chip it can and presses OK).
+/// screen picks the first chip it can and presses OK). A training session's
+/// options ([`Training`]) change the battle between its ticks.
 pub struct LivePlayer {
     set: Set,
     /// Ticks played since the start, through every round (a frame's number).
@@ -380,6 +425,9 @@ pub struct LivePlayer {
     /// The seed the opponent's random presses start from, and them.
     seed: u64,
     masher: Masher,
+    training: Training,
+    /// Each side's navi's HP, followed for its refills.
+    refill: [Refill; 2],
 }
 
 impl LivePlayer {
@@ -390,7 +438,48 @@ impl LivePlayer {
     /// A set against `opponent`, whose random presses start from `seed`,
     /// the same each time the set starts.
     pub fn against(set: Set, opponent: Opponent, seed: u64) -> LivePlayer {
-        LivePlayer { set, ticks: 0, round: 1, opponent, seed, masher: masher(seed) }
+        LivePlayer { set, ticks: 0, round: 1, opponent, seed, masher: masher(seed), training: Training::default(), refill: Default::default() }
+    }
+
+    /// The same, with a training session's options from its first tick.
+    pub fn with_training(mut self, training: Training) -> LivePlayer {
+        self.training = training;
+        self
+    }
+
+    /// The training session's options.
+    pub fn training(&self) -> Training {
+        self.training
+    }
+
+    /// Have the training session's options change the battle `b` (the
+    /// set's, as it stands) from now: at once, and before every tick after
+    /// (`Driver::prepare`). A navi whose refills come on with HP missing has
+    /// it back at once.
+    pub fn set_training(&mut self, training: Training, b: &mut Battle) {
+        let was = std::mem::replace(&mut self.training, training);
+        for side in 0..2 {
+            if training.refills[side] && !was.refills[side] {
+                self.refill[side].rest = REFILL_REST;
+            }
+        }
+        self.apply_training(b);
+    }
+
+    /// The options on `b` as it stands: what [`Driver::prepare`] does, with
+    /// no tick counted.
+    fn apply_training(&mut self, b: &mut Battle) {
+        let over = b.is_battle_over();
+        for side in 0..2 {
+            let Some(r) = b.player(side as u8) else { continue };
+            let navi = b.objects.get_mut(r);
+            // (A navi at 0 is being deleted, and a round that is over is
+            // decided: those go on.)
+            if self.training.refills[side] && self.refill[side].rest >= REFILL_REST && navi.hp > 0 && navi.hp < navi.max_hp && !over {
+                navi.hp = navi.max_hp;
+            }
+            self.refill[side].hp = Some(navi.hp);
+        }
     }
 
     /// What the opponent does.
@@ -471,7 +560,23 @@ impl Driver for LivePlayer {
         self.ticks = 0;
         self.round = 1;
         self.masher = masher(self.seed);
+        self.refill = Default::default();
         self.set.start()
+    }
+
+    /// The training session's options on the battle the last tick left:
+    /// each navi with refills that lost no HP for [`REFILL_REST`] ticks has
+    /// all of it back.
+    fn prepare(&mut self, b: &mut Battle) {
+        if self.training == Training::default() {
+            return;
+        }
+        for side in 0..2 {
+            let hp = b.player(side as u8).map(|r| b.objects.get(r).hp);
+            let f = &mut self.refill[side];
+            f.rest = if matches!((f.hp, hp), (Some(was), Some(now)) if now < was) { 0 } else { f.rest.saturating_add(1) };
+        }
+        self.apply_training(b);
     }
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
@@ -495,8 +600,18 @@ impl Driver for LivePlayer {
         format!("live round {} tick {}", self.round, self.ticks)
     }
 
+    /// (A set changed by a training session's options is no match's: it
+    /// isn't recorded.)
     fn record(&mut self) -> bool {
-        self.ticks == 0
+        self.ticks == 0 && self.training == Training::default()
+    }
+
+    fn live(&self) -> Option<&LivePlayer> {
+        Some(self)
+    }
+
+    fn live_mut(&mut self) -> Option<&mut LivePlayer> {
+        Some(self)
     }
 
     fn opponent(&self) -> Option<Opponent> {
@@ -785,7 +900,6 @@ mod tests {
                 InFight::StandsStill => 0,
                 InFight::MovesAround => mashed & MOVES,
                 InFight::AttacksAtRandom => mashed,
-                _ => unreachable!("the frozen opponent does what live play did"),
             }
         }
     }
@@ -856,6 +970,58 @@ mod tests {
             folds.push(fold);
             eprintln!("{game}: {folds:x?}");
         }
+    }
+
+    /// A navi's HP and its full HP, by side, in `b` (none before it is on the field).
+    fn hp(b: &Battle, side: u8) -> (u16, u16) {
+        b.player(side).map_or((0, 0), |r| (b.objects.get(r).hp, b.objects.get(r).max_hp))
+    }
+
+    /// With refills, a navi's HP is full again [`REFILL_REST`] ticks after
+    /// it last lost any, and not before: shot again and again (the buster
+    /// every few ticks), the dummy's HP goes down and stays down while the
+    /// shots land, and comes back once they stop; the other side's, without
+    /// refills, is left as it goes. Turned on with HP missing, at once. And
+    /// a set with refills isn't recorded.
+    #[test]
+    fn hp_refills_once_a_hit_is_over() {
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let refills = Training { refills: [false, true], ..Training::default() };
+        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent { in_fight: InFight::StandsStill, on_custom_screen: OnCustomScreen::PicksFirst }, 9).with_training(refills);
+        assert!(!live.record(), "a set with the options isn't recorded");
+        let mut s = crate::session::Session::new(Box::new(live));
+        let (mut lost_at, mut losses, mut refilled) = (None, 0, 0);
+        for tick in 0..3000u32 {
+            let b = &s.battle;
+            // The buster for a stretch, then nothing; on the custom screen, a chip and OK.
+            let keys = if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else if tick < 1200 { short_set::shooter(b, 0, tick) } else { 0 };
+            let before = hp(&s.battle, 1).0;
+            assert!(s.step(keys), "tick {tick}");
+            let (now, max) = hp(&s.battle, 1);
+            if now < before && before > 0 {
+                lost_at = Some(tick);
+                losses += 1;
+            } else if now > before && before > 0 {
+                assert_eq!(now, max, "tick {tick}: all of it");
+                assert_eq!(lost_at.map(|at| tick - at), Some(REFILL_REST + 1), "tick {tick}: a rest after the last hit");
+                refilled += 1;
+            }
+        }
+        assert!(losses > 10 && refilled > 0, "{losses} hits, {refilled} refills");
+        assert_eq!(hp(&s.battle, 1).0, hp(&s.battle, 1).1, "full once the shots stopped");
+        assert!(!s.battle.is_battle_over());
+        // The player's, without refills (its HP taken down by hand: the dummy never shoots).
+        let r = s.battle.player(0).unwrap();
+        s.battle.objects.get_mut(r).hp -= 100;
+        for _ in 0..200 {
+            s.step(0);
+        }
+        assert_eq!(hp(&s.battle, 0).0 + 100, hp(&s.battle, 0).1, "no refills: as it goes");
+        // Refills turned on with HP missing: at once.
+        let both = Training { refills: [true, true], ..Training::default() };
+        s.driver.live_mut().unwrap().set_training(both, &mut s.battle);
+        assert_eq!(hp(&s.battle, 0).0, hp(&s.battle, 0).1);
     }
 
     /// `--save-match` then `--match`: live play's draw for a seed, written

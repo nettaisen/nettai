@@ -61,6 +61,9 @@ msgstr "トレーニング · ラウンド{}"
 msgid "{} vs {}"
 msgstr "{} vs {}"
 
+msgid "BATTLE"
+msgstr "バトル"
+
 msgid "DISPLAY"
 msgstr "表示"
 
@@ -84,6 +87,19 @@ msgstr "チップを選ばない"
 
 msgid "Picks the first it can"
 msgstr "最初のチップを選ぶ"
+
+# Battle: a side's HP stays as it goes, or comes back full once a hit is over.
+msgid "Your HP"
+msgstr "あなたのHP"
+
+msgid "Dummy's HP"
+msgstr "ダミーのHP"
+
+msgid "Normal"
+msgstr "通常"
+
+msgid "Refills"
+msgstr "回復する"
 
 msgid "Input display"
 msgstr "入力表示"
