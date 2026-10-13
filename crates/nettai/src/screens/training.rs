@@ -127,7 +127,7 @@ struct Session {
     /// The game's places, what each is called in the language shown (Random not among them), and the two
     /// chosen (each its list's place, 0 Random).
     places: Places,
-    place_names: [Vec<String>; 2],
+    place_labels: [Vec<String>; 2],
     place: [usize; 2],
     /// Its picture fills the window.
     full: bool,
@@ -211,7 +211,7 @@ fn row(option: TrainingOption, session: &Session) -> TrainingRow {
         TrainingOption::Background => Some(BACKGROUND),
         _ => None,
     };
-    let text = part.and_then(|part| session.place[part].checked_sub(1).and_then(|at| session.place_names[part].get(at))).map(|name| name.as_str().into()).unwrap_or_default();
+    let text = part.and_then(|part| session.place[part].checked_sub(1).and_then(|at| session.place_labels[part].get(at))).map(|name| name.as_str().into()).unwrap_or_default();
     TrainingRow { option, value, text }
 }
 
@@ -300,14 +300,14 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         cards
     });
     let inputs = inputs_on(&shell.settings);
-    let place_names = places.names(content, &Names::of(content, &ready.graphics(shell.lang)));
+    let place_labels = places.labels(&Names::of(content, &ready.graphics(shell.lang)));
     let session = Session {
         from: start.from,
         game: start.game.clone(),
         m,
         seed: start.seed,
         places,
-        place_names,
+        place_labels,
         place,
         full: start.full,
         added: start.rows.len(),
@@ -406,9 +406,10 @@ fn restart(shell: &mut Shell) -> bool {
     b.restart()
 }
 
-/// The session's set again from its start on the place it has now (an Arena or Background row changed), as
-/// RESTART starts it over, the menu staying open: the battle behind it steps through the round's opening on the
-/// new place and waits in the game's own pause, or on its custom screen, as ever under the menu.
+/// The session's set again from its start on the arena it has now (the Arena row changed: a round's field is
+/// set as it starts), as RESTART starts it over, the menu staying open: the battle behind it steps through the
+/// round's opening on the new arena and waits in the game's own pause, or on its custom screen, as ever under
+/// the menu.
 fn restart_on_place(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
     session.places.put(&mut session.m, session.place);
@@ -418,6 +419,20 @@ fn restart_on_place(shell: &mut Shell, session: &mut Session) {
     {
         live.play_set(set);
         b.restart();
+    }
+}
+
+/// The session's set on the background it has now (the Background row changed; the user: "changing the
+/// background shouldn't change the entire arena either in trianing mode"): the battle goes on where it is, the
+/// arena, the HP, the dummy and the round as they were, drawn on the new background from now
+/// (`Player::set_backgrounds`: no tick reads a round's background). Its set's arenas are the same: the seed
+/// picks a round's arena whether the round names its background or not.
+fn redraw_on_background(shell: &mut Shell, session: &mut Session) {
+    let Some(ready) = shell.games.ready(&session.game) else { return };
+    session.places.put(&mut session.m, session.place);
+    let set = set_of(ready.content(), &session.m, session.seed);
+    if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training) {
+        b.stage.player.set_backgrounds(set);
     }
 }
 
@@ -460,7 +475,7 @@ pub fn new_builds(content: &std::sync::Arc<nettai_battle::Content>, game: &str) 
         .collect()
 }
 
-/// A key as a title: its words apart, the first letter a capital (`netbattle-12`, "Netbattle 12").
+/// A key as a title: its words apart, the first letter a capital (`falzar`, "Falzar").
 fn as_title(key: &str) -> String {
     let mut name = key.replace(['-', '_'], " ");
     if let Some(first) = name.get_mut(0..1) {
@@ -475,17 +490,17 @@ fn as_title(key: &str) -> String {
 const ARENA: usize = 0;
 const BACKGROUND: usize = 1;
 
-/// The places a training set may be fought on, as the entry and the menu list them: the game's arenas (the
-/// link battle stages a match may name, `nettai_match::link_battle_stages`: the panel layouts and what stands
-/// on them that its netbattles are fought on) and its battle backgrounds, each in its keys' natural order (a run
-/// of digits by its number: Netbattle 2 before Netbattle 10; a background by its name in the pack). Each list is
-/// chosen in after Random: the place picked from the seed each round, as a match that names none has it (what
-/// training did before it had them). A choice is a list's place, 0 Random.
+/// The places a training set may be fought on, as the entry and the menu step through them: the game's arenas
+/// (the link battle stages a match may name, `nettai_match::link_battle_stages`: the panel layouts and what
+/// stands on them that its netbattles are fought on) and its battle backgrounds, each in its keys' natural order
+/// (a run of digits by its number: `netbattle-2` before `netbattle-10`; a background by its name in the pack).
+/// Each list is stepped through after Random: the place picked from the seed each round, as a match that names
+/// none has it (what training did before it had them). A choice is a list's place, 0 Random.
 ///
 /// The games keep the two apart: a link battle picks its stage and its background each on its own (the rules'
-/// `link_pick`), so either goes with any of the other. An arena has no name in the content's words (a stage is
-/// its key), and the list says each by its key as a title ("Netbattle 12"); a background is called what the
-/// language's strings call it (their `[backgrounds]`, by the area it comes from).
+/// `link_pick`), so either goes with any of the other. An arena is said by its place in the list ("12 / 96":
+/// the user, "the arena names are meaningless"); a background by what the language's strings call it (their
+/// `[backgrounds]`, by the area it comes from), or its place where they don't name it.
 #[derive(Clone, Default)]
 pub struct Places {
     arenas: Vec<StageHandle>,
@@ -539,11 +554,13 @@ impl Places {
         if part == ARENA { self.arenas.get(at).map(|&s| nettai_match::ids::local(&content.defs.stage(s).key)) } else { self.backgrounds.get(at).map(String::as_str) }
     }
 
-    /// What each choice of the two lists but Random is called, in `names`' language.
-    fn names(&self, content: &Content, names: &Names) -> [Vec<String>; 2] {
+    /// What each choice of the two lists but Random is shown as, in `names`' language: its place in the list
+    /// ("12 / 96"), a background its name where it has one.
+    fn labels(&self, names: &Names) -> [Vec<String>; 2] {
+        let place = |at: usize, of: usize| format!("{} / {of}", at + 1);
         [
-            self.arenas.iter().map(|&s| as_title(nettai_match::ids::local(&content.defs.stage(s).key))).collect(),
-            self.backgrounds.iter().map(|b| names.background_named(b)).collect(),
+            (0..self.arenas.len()).map(|at| place(at, self.arenas.len())).collect(),
+            self.backgrounds.iter().enumerate().map(|(at, b)| names.background_named(b).unwrap_or_else(|| place(at, self.backgrounds.len()))).collect(),
         ]
     }
 
@@ -621,7 +638,7 @@ pub struct Training {
     /// The game's places, what each is called in the language shown (Random not among them), and the place
     /// chosen (each its list's place, 0 Random).
     places: Places,
-    place_names: [Vec<String>; 2],
+    place_labels: [Vec<String>; 2],
     place: [usize; 2],
     /// Each build checked, by what its file says (a build's file is checked once while it says the same).
     checked: HashMap<(String, String), Option<Unusable>>,
@@ -647,7 +664,7 @@ impl Training {
     fn list(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
         let content = ready.content();
         self.places = Places::of(content, game);
-        self.place_names = self.places.names(content, &Names::of(content, &ready.graphics(shell.lang)));
+        self.place_labels = self.places.labels(&Names::of(content, &ready.graphics(shell.lang)));
         self.place = self.places.kept(content, &shell.settings.remembered, game);
         self.builds = if shell.still {
             // (The screenshot pass's pictures don't depend on what the player has made: a new build of each
@@ -725,9 +742,9 @@ impl Training {
         let ui = shell.ui();
         let view = ui.global::<TrainingView>();
         view.set_none(self.builds.is_empty());
-        let name = |part: usize| self.place[part].checked_sub(1).and_then(|at| self.place_names[part].get(at)).map(|n| n.as_str().into()).unwrap_or_default();
-        view.set_arena_name(name(ARENA));
-        view.set_background_name(name(BACKGROUND));
+        let name = |part: usize| self.place[part].checked_sub(1).and_then(|at| self.place_labels[part].get(at)).map(|n| n.as_str().into()).unwrap_or_default();
+        view.set_arena_shown(name(ARENA));
+        view.set_background_shown(name(BACKGROUND));
         let card = |build: Option<&Listed>| match build {
             Some(Listed { name, side: Some(side), .. }) => shown(shell, game, ready, &Build { name: name.clone(), side: side.clone() }),
             Some(Listed { name, .. }) => TrainingBuild { name: name.as_str().into(), ..Default::default() },
@@ -767,11 +784,13 @@ impl Training {
         self.tell(shell, &game, &ready);
     }
 
-    /// Choose a place of list `part` (the arenas or the backgrounds, 0 Random): remembered for the game, and
-    /// shown (the arena drawn again on it, as for a build).
-    fn choose_place(&mut self, shell: &mut Shell, part: usize, at: usize) {
+    /// Step the place of list `part` (the arenas or the backgrounds, 0 Random) by `by`, around from its last to
+    /// Random: remembered for the game, and shown (the arena drawn again on it a moment after, as for a build;
+    /// what the seed picks, a Random arena, the same whatever the background).
+    fn step_place(&mut self, shell: &mut Shell, part: usize, by: i32) {
         let Some((game, ready)) = shell.ready() else { return };
-        if at >= self.places.len(part) || self.place[part] == at {
+        let at = (self.place[part] as i32 + by).rem_euclid(self.places.len(part) as i32) as usize;
+        if self.builds.is_empty() || self.place[part] == at {
             return;
         }
         self.place[part] = at;
@@ -781,10 +800,6 @@ impl Training {
         self.tell(shell, &game, &ready);
     }
 
-    /// A list of `part`'s choices as the shell's list shows it: Random, then the game's.
-    fn place_options(&self, shell: &Shell, part: usize) -> Vec<String> {
-        std::iter::once(shell.ui().global::<TrainingView>().get_random().to_string()).chain(self.place_names[part].iter().cloned()).collect()
-    }
 
     /// The two builds chosen, if both can be played.
     fn pair(&mut self, ready: &Ready) -> Option<[Build; 2]> {
@@ -863,14 +878,19 @@ impl Training {
             // (A session another screen started keeps nothing of the dummy's setup, or of the place.)
             let keep = session.from.is_none();
             match option {
-                // The set again from its start on the new place, as RESTART starts it, the menu staying open.
+                // Arena: the set again from its start on the new arena, as RESTART starts it, the menu staying open.
+                // Background: the battle drawn on it from now, nothing else changing.
                 TrainingOption::Arena | TrainingOption::Background => {
                     let part = if option == TrainingOption::Arena { ARENA } else { BACKGROUND };
                     session.place[part] = next;
                     if keep && let Some(ready) = shell.games.ready(&session.game) {
                         session.places.keep(ready.content(), &mut shell.settings.remembered, &session.game, part, next);
                     }
-                    restart_on_place(shell, &mut session);
+                    if part == ARENA {
+                        restart_on_place(shell, &mut session);
+                    } else {
+                        redraw_on_background(shell, &mut session);
+                    }
                 }
                 TrainingOption::Action => {
                     session.opponent.in_fight = InFight::ALL[next];
@@ -959,11 +979,9 @@ impl Screen for Training {
                 let options = self.builds.iter().map(|b| b.name.clone()).collect();
                 shell.pick(id, 0, options, self.chosen[which]);
             }
-            "arena" | "background" => {
-                let part = if id == "arena" { ARENA } else { BACKGROUND };
-                let options = self.place_options(shell, part);
-                shell.pick(id, 0, options, self.place[part]);
-            }
+            // (A place row steps on, as the menu's rows do.)
+            "arena" => self.step_place(shell, ARENA, 1),
+            "background" => self.step_place(shell, BACKGROUND, 1),
             "start" => self.start_training(shell),
             "menu.resume" => shell.close_menu(),
             "menu.restart" => {
@@ -994,21 +1012,16 @@ impl Screen for Training {
                 let at = (self.chosen[which] as i32 + by).rem_euclid(self.builds.len() as i32) as usize;
                 self.choose_build(shell, which, at);
             }
-            "arena" | "background" => {
-                let part = if id == "arena" { ARENA } else { BACKGROUND };
-                let at = (self.place[part] as i32 + by).rem_euclid(self.places.len(part) as i32) as usize;
-                self.choose_place(shell, part, at);
-            }
+            "arena" => self.step_place(shell, ARENA, by),
+            "background" => self.step_place(shell, BACKGROUND, by),
             "menu.rows.option" => self.step_option(shell, index, by),
             _ => {}
         }
     }
 
     fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
-        match id {
-            "yours" | "dummys" => self.choose_build(shell, (id == "dummys") as usize, choice.max(0) as usize),
-            "arena" | "background" => self.choose_place(shell, if id == "arena" { ARENA } else { BACKGROUND }, choice.max(0) as usize),
-            _ => {}
+        if matches!(id, "yours" | "dummys") {
+            self.choose_build(shell, (id == "dummys") as usize, choice.max(0) as usize);
         }
     }
 
@@ -1257,11 +1270,37 @@ mod tests {
             places.keep(&content, &mut remembered, game, ARENA, 0);
             assert_eq!(places.kept(&content, &remembered, game), [0, last[BACKGROUND]], "{game}: Random is remembered as nothing");
             assert_eq!(remembered.len(), 1);
-            let [arenas, backgrounds] = places.names(&content, &Names { content: &content, strings: None });
-            assert_eq!(arenas[..3], ["Netbattle 1", "Netbattle 2", "Netbattle 3"], "{game}: in their numbers' order");
-            assert!(arenas.iter().any(|a| a == "Netbattle 10"), "{game}");
+            let [arenas, backgrounds] = places.labels(&Names { content: &content, strings: None });
+            let n = places.arenas.len();
+            assert_eq!((arenas[0].clone(), arenas[n - 1].clone()), (format!("1 / {n}"), format!("{n} / {n}")), "{game}: each by its place");
+            let key = |at: usize| nettai_match::ids::local(&content.defs.stage(places.arenas[at]).key);
+            assert_eq!([key(0), key(1), key(9)], ["netbattle-1", "netbattle-2", "netbattle-10"], "{game}: in their numbers' order");
             for (name, key) in backgrounds.iter().zip(&places.backgrounds) {
-                assert!(!name.is_empty() && name != key, "{game}: {key} has a name");
+                assert!(!name.is_empty() && name != key && !name.contains(" / "), "{game}: {key} has a name");
+            }
+        }
+    }
+
+    /// A background chosen leaves the arenas as they were: with Arena Random the seed picks each round's arena
+    /// whether the round names its background or not (the entry's preview and the menu's Background keep the
+    /// arena).
+    #[test]
+    fn a_background_chosen_keeps_the_arenas() {
+        use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
+        for (game, content) in [("exe6", exe6_content()), ("exe5", exe5_content()), ("exe4", exe4_content())] {
+            let places = Places::of(&content, game);
+            for seed in [1, 7, 0x1234_5678] {
+                let fought = |background: usize| {
+                    let mut m = nettai_match::pick::live(&content, game, seed, None).unwrap();
+                    places.put(&mut m, [0, background]);
+                    m.places(&content, seed).unwrap()
+                };
+                let random = fought(0);
+                for background in [1, places.len(BACKGROUND) - 1] {
+                    let chosen = fought(background);
+                    assert_eq!(chosen.iter().map(|p| p.stage).collect::<Vec<_>>(), random.iter().map(|p| p.stage).collect::<Vec<_>>(), "{game} seed {seed}");
+                    assert!(chosen.iter().all(|p| nettai_match::ids::background_name(&content, p.background) == Some(places.backgrounds[background - 1].as_str())));
+                }
             }
         }
     }

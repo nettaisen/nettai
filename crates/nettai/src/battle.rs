@@ -727,6 +727,50 @@ mod tests {
         }
     }
 
+    /// A training set put on another background (Training's Background row changed: `Player::set_backgrounds`)
+    /// goes on where it is: no start over, the arena the same, the battle drawn on the new background; and
+    /// since no tick reads a round's background, it steps as the battle without the change does, its digest
+    /// the same but for the background its setup says (and the rounds after on it too).
+    #[test]
+    fn on_another_background_the_battle_goes_on() {
+        let content = nettai_match::testing::exe6_content();
+        let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        let opponent = nettai_frontend::driver::Opponent { in_fight: nettai_frontend::driver::InFight::AttacksAtRandom, ..Default::default() };
+        let (mut a, mut b) = (training(&content, &m, 11, opponent), training(&content, &m, 11, opponent));
+        let keys = |tick: u64| if tick % 37 < 3 { nettai_battle::input::keys::A } else if tick % 11 == 0 { nettai_battle::input::keys::B } else { 0 };
+        let step = |x: &mut Battle| {
+            let t = x.stage.player.ticks();
+            x.stage.player.tick(keys(t));
+        };
+        for _ in 0..900 {
+            step(&mut a);
+            step(&mut b);
+        }
+        let (was, ticks) = (b.stage.player.battle().setup.clone(), b.stage.player.ticks());
+        // The set on another background: the last of the game's, named by every round.
+        let background = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
+        let mut other = m.clone();
+        other.rounds.iter_mut().for_each(|r| r.background = Some(background.clone()));
+        let mut first = other.round(&content, 11);
+        first.host_keys.pause = false;
+        let folders = [0, 1].map(|side| other.sides[side].folder(&content).saved().unwrap());
+        assert!(b.stage.player.set_backgrounds(Set::new(content.clone(), first, folders)));
+        let id = nettai_match::ids::background(&content, "exe6", &background).unwrap();
+        let now = &b.stage.player.battle().setup;
+        assert_ne!(was.settings.background, id, "(another background before)");
+        assert_eq!((now.settings.stage, now.settings.background, b.stage.player.ticks()), (was.settings.stage, id, ticks), "no start over, the arena the same");
+        assert!(now.later_stages.iter().zip(&was.later_stages).all(|(n, w)| n.stage == w.stage && n.background == id), "the rounds after on it");
+        for _ in 0..1200 {
+            step(&mut a);
+            step(&mut b);
+        }
+        let mut seen = b.stage.player.battle().clone();
+        assert_ne!(seen.digest(), a.stage.player.battle().digest(), "(the setup says the new background)");
+        seen.setup.settings.background = a.stage.player.battle().setup.settings.background;
+        seen.setup.later_stages.clone_from(&a.stage.player.battle().setup.later_stages);
+        assert_eq!(seen.digest(), a.stage.player.battle().digest(), "stepped as the battle without the change");
+    }
+
     /// A training battle of `m`'s (its rounds leaving the game its START), with sound, the dummy as given.
     fn training(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, opponent: nettai_frontend::driver::Opponent) -> Battle {
         let mut first = m.round(content, seed);
