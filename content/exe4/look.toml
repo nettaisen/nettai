@@ -1,0 +1,32 @@
+# BN4's look in nettai (docs/app.md §10; docs/design/app-ui.md §4): the colors the app's menus are drawn in while the
+# game is selected, and the pattern of their backdrop. Duo's comet: ice-blue and magenta over violet dark, a
+# starfield with a comet's streak across it. The app reads it from the content alone, as it reads the game's name,
+# so the menus are in the game's look before the game is loaded; the battle reads none of it. A color is 0xRRGGBB; a
+# strength is the opacity something is drawn at, from 0 to 1.
+
+# The backdrop's ground, top to bottom, and the glow at its top right.
+ground_top = 0x09071A
+ground_bottom = 0x020106
+glow = 0x9FF0FF
+glow_strength = 0.16
+# A panel, a control raised on it (a button, a pressed row), every line, and a well cut into them (a field, a
+# value's box).
+panel = 0x100D22
+raised = 0x1B1636
+line = 0x3D3574
+inset = 0x06040E
+# Text, text that says less, and text that says least.
+text = 0xF1EFFF
+muted = 0xAEA8D8
+dim = 0x655F94
+# The cursor (and the chosen row's bar, the active pane's title), the main action, and the text on the main action.
+cursor = 0x9FF0FF
+action = 0xFF4FD8
+action_ink = 0x1A0016
+
+# The backdrop's pattern: a starfield, three layers of dots (white, and the pattern's color), with a comet's streak
+# across it from the pattern's color into the main action's.
+[pattern]
+kind = "starfield"
+color = 0x9FF0FF
+strength = 0.22
