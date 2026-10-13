@@ -5,7 +5,9 @@
 -- shuffled first (0x08000B4A: 64 swaps of two of its entries, by RNG1's draws); then each is the first of the list
 -- (but the one offered already) of a class a draw of RNG1 picks (0x0801E040). One chip sent is offered alone, and
 -- none offers nothing (no shuffle, no draw). A chip picked there, or given up for a soul, leaves the list as OK
--- builds the hand (0x0801EFBA zeroes its entry, 0x0801EFE8 closes the list up) and isn't listed again.
+-- builds the hand (0x0801EFBA zeroes its entry, 0x0801EFE8 closes the list up) and isn't listed again: its hand
+-- entry is marked 0x02 (0x0801EF4C answers the slot's flag 0x10 with Z clear, 0x0801F0B8 adds 2 to its flags), and
+-- the hand's picks leave a marked entry out (0x0801F118), so it is never sent twice.
 --
 -- (The screen skips this while it deals dark chips, 0x0801DD08, which it deals no navi in a soul in a netbattle: in
 -- a soul the emotion it reads is the soul's, 0x0800F4BA.)
@@ -19,6 +21,9 @@ type Screen = { offered_again: { number } }
 
 -- The slots of the offer.
 local SLOTS: { number } = { 8, 9 }
+-- A chip offered again: its hand entry's mark (0x0801F0B8), and no pick of the hand's (0x0801F118). (The cursor on
+-- one shades nothing, a dark chip or not: the hover reads the slot's flag 0x20, the dark offer's, 0x0801E4DE.)
+local OFFERED_AGAIN: Offer = { marks = 0x02, listed = false }
 -- The shuffle's swaps (0x0801DFCE).
 local SWAPS = 64
 -- The class a draw's low three bits pick (0x0801E0A4; with the navi's HP at half its maximum or less, 0x0801E0AC).
@@ -71,13 +76,13 @@ local function deal(side: number, s: Screen)
     local class = draw_class(side, classes, left)
     left[class] -= 1
     local first = first_of(sent, class, nil)
-    custom.offer(side, SLOTS[1], sent[first].chip, sent[first].code)
+    custom.offer(side, SLOTS[1], sent[first].chip, sent[first].code, OFFERED_AGAIN)
     if n == 1 then
         s.offered_again = { first }
         return
     end
     local second = first_of(sent, draw_class(side, classes, left), first)
-    custom.offer(side, SLOTS[2], sent[second].chip, sent[second].code)
+    custom.offer(side, SLOTS[2], sent[second].chip, sent[second].code, OFFERED_AGAIN)
     s.offered_again = { first, second }
 end
 
