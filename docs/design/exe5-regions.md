@@ -41,7 +41,7 @@ Each row: the US address, the Japanese one, what differs, and its class:
 - **US omission?**: a place where the Japanese release may have it right (reported, the US behavior kept until the
   user decides).
 
-One place is of that last class (Roll against an armed AntiRecv, §7); no other US defect or omission was found.
+One place looked like that last class (Roll against an armed AntiRecv, §7), and the user decided for the US behavior; no other US defect or omission was found.
 
 ## 2. The core
 
@@ -125,9 +125,9 @@ and EXE4's (0x080230A2) don't. The engine dropped them in every game, so a move 
 didn't slide on (of 16 US recordings of AntiDmg catching a Cannon around a navi's steps on ice, 8 stopped there). The rules' `anti_traps` now say
 it (`drops_requests`: EXE6's 0x301BE, EXE5's and EXE4's 0); stages/ice/antidmg-move-end records it.
 
-## 7. US omission? Roll against an armed AntiRecv
+## 7. Decided: Roll against an armed AntiRecv keeps the US behavior
 
-Reported to the coordinator 2026-10-12, nothing ported. When a Roll chip meets the other side's armed AntiRecv, its
+The user's decision (2026-10-12): nettai keeps the US behavior, the cut-in allowed, as EXE6's US code has it. When a Roll chip meets the other side's armed AntiRecv, its
 controller's spawner springs the trap and spawns AntiRecv's counterattack in place of Roll (both regions). Japan then
 registers that counterattack as its side's dimming with no cut-in allowed (0x080E1A44: 0x0800BF16 with 1), as a
 recovery chip's spring is registered (`kinds::heal`); the US release removed the call, so the chip's action (0x41)
