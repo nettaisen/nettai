@@ -102,6 +102,8 @@ pub(crate) struct Tour {
     seen: RefCell<Vec<String>>,
     /// The shots and bursts are passed by: what they would be of isn't there (an editor's tab the game hasn't).
     passing: Cell<bool>,
+    /// More the next pair's second shot may differ in, beyond the two cursors ([`Tour::may_differ`]).
+    also: RefCell<Option<Rect>>,
 }
 
 /// A shot of a burst: the milliseconds since it began, the picture, and each control's size.
@@ -135,6 +137,12 @@ impl Tour {
     /// fails.
     pub(crate) fn key_wrong(&self, said: String) {
         self.keys.borrow_mut().push(said);
+    }
+
+    /// The next pair's second shot may differ in `rect` too (in the UI's units): what the step between the two
+    /// changes besides the controls it touched (the NaviCust's strip shows the program under the cursor).
+    pub(crate) fn may_differ(&self, rect: Rect) {
+        *self.also.borrow_mut() = Some(rect);
     }
 }
 
@@ -170,6 +178,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         pad: Default::default(),
         seen: Default::default(),
         passing: Cell::new(false),
+        also: Default::default(),
     });
     let t = tour.clone();
     ui.global::<Audit>().on_clipped(move |text| {
@@ -247,8 +256,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                     Pair::None => {}
                     Pair::First => *tour.first.borrow_mut() = Some((tag.clone(), picture, cursor)),
                     Pair::Second => {
+                        let also = tour.also.borrow_mut().take();
                         if let Some((first, before, was)) = tour.first.borrow_mut().take() {
-                            compare(ui, tour, &first, &before, &tag, &picture, &[was, cursor]);
+                            compare(ui, tour, &first, &before, &tag, &picture, &[was, cursor, also]);
                         }
                     }
                 }
