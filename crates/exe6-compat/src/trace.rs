@@ -636,6 +636,23 @@ impl Round {
         }
     }
 
+    /// The recording's frame the engine's custom screen of the recording
+    /// console's side stands at on the `i`th of `frames`, for what that
+    /// screen's OK changes on its console alone (the Regular chip still to
+    /// come, the tag pair): the frame's own; for `link_delay` frames from the side's OK,
+    /// the frame before the OK (the engine's screen takes its OK that much
+    /// later, [`Round::fed`]); then the frame `link_delay` earlier, until
+    /// the fight resumes ([`Round::screen_late`]).
+    pub fn local_screen_frame<'a>(&'a self, i: usize, frames: &[&'a Frame]) -> &'a Frame {
+        let d = self.link_delay() as u32;
+        let f = frames[i];
+        match self.local_ok(f.frame) {
+            Some(ok) if f.frame >= ok + d => self.frame(f.frame - d).unwrap_or(f),
+            Some(ok) if f.frame >= ok => ok.checked_sub(1).and_then(|before| self.frame(before)).unwrap_or(f),
+            _ => f,
+        }
+    }
+
     /// The recording console's side (its setup's BattleState +0x0D).
     fn local_side(&self) -> usize {
         unhex(&self.setup.battle_state)[0x0D] as usize & 1
@@ -743,7 +760,7 @@ impl Round {
 /// original's object slots for the engine's kinds. (A replay compares with
 /// [`compare_at`], which knows what the original's link made differ.)
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
-    compare_with(b, f, Known { banner: f, opening: [false; 2] }, compat)
+    compare_with(b, f, Known { banner: f, screen: f, opening: [false; 2] }, compat)
 }
 
 /// What differs between the engine and a recording only as the original's
@@ -753,6 +770,9 @@ struct Known<'a> {
     /// while the recording console's custom screen runs late
     /// ([`Round::screen_late`]) the one that many frames earlier.
     banner: &'a Frame,
+    /// The trace frame what the recording console's screen's OK changes on
+    /// that console alone is compared with ([`Round::local_screen_frame`]).
+    screen: &'a Frame,
     /// Per side: the custom screen opened within the link's delay, so its
     /// bit is the engine's at once and still on its way in the recording.
     opening: [bool; 2],
@@ -775,7 +795,7 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let opening = std::array::from_fn(|side| {
         opened.and_then(|o| round.screen_bit_arrives(o, side)).is_some_and(|arrives| (arrives.saturating_sub(delay)..arrives).contains(&f.frame))
     });
-    compare_with(b, f, Known { banner, opening }, compat)
+    compare_with(b, f, Known { banner, screen: round.local_screen_frame(i, frames), opening }, compat)
 }
 
 fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<String> {
@@ -797,6 +817,53 @@ fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<Str
         check("alive", format!("{:?}", r.alive), format!("{:?}", [bs[0x12], bs[0x13]]));
         check("turn", r.turn.to_string(), bs[7].to_string());
         check("battle time", r.battle_time.to_string(), u32::from_le_bytes(bs[0x40..0x44].try_into().unwrap()).to_string());
+        // (And the actors by side, +0x04; whether the battle runs, +0x0A;
+        // the time-up mark, +0x0B; the two counts of fight ticks, +0x0E
+        // and +0x16; the winner, +0x10; the set's score, +0x18; the
+        // result, +0x1F; the delay, +0x28.)
+        check("actors", format!("{:?}", r.actor_count), format!("{:?}", [bs[0x04], bs[0x05]]));
+        check("running", r.running.to_string(), bs[0x0A].to_string());
+        check("time up", r.time_up.to_string(), bs[0x0B].to_string());
+        check("fight cycles", format!("{:?}", r.cycles), format!("{:?}", [bs[0x0E], bs[0x16]]));
+        check("winner", r.winner.to_string(), bs[0x10].to_string());
+        check("score", format!("{:?}", [r.wins, r.losses]), format!("{:?}", [bs[0x18], bs[0x19]]));
+        check("result", r.result.to_string(), bs[0x1F].to_string());
+        check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
+    }
+    // The fighting machine (`fight`, 0xC bytes): its state, sub-state and
+    // entry mark (+0, +2, +3), its result (+4), the pausing player (+5), its
+    // timer (+8) and the turn timer (+0x0A).
+    let fight = unhex(&f.fight);
+    if fight.len() >= 0xC {
+        let m = &b.fight;
+        // (Not before a round's first fight: the fight's start zeroes
+        // the machine, on the tick after its entry, and until then the
+        // recording's is the last round's, left as that round ended.)
+        let untouched = m.state == 0 && m.sub == 0 && m.init == 0 && m.result == 0 && m.pausing_player == 0 && m.timer == 0 && m.turn_timer == 0;
+        let before_fight = untouched && (r.mode != nettai_battle::battle::mode::FIGHTING || r.init == 0);
+        let word = |at: usize| u16::from_le_bytes([fight[at], fight[at + 1]]);
+        let fields = [
+            ("state", m.state as u16, fight[0] as u16),
+            ("sub-state", m.sub as u16, fight[2] as u16),
+            ("entry mark", m.init as u16, fight[3] as u16),
+            ("result", m.result as u16, fight[4] as u16),
+            ("pausing player", m.pausing_player as u16, fight[5] as u16),
+            ("timer", m.timer as u16, word(8)),
+            ("turn timer", m.turn_timer, word(0x0A)),
+        ];
+        for (name, ours, theirs) in fields.into_iter().filter(|_| !before_fight) {
+            check(&format!("fight {name}"), format!("{ours:#x}"), format!("{theirs:#x}"));
+        }
+    }
+    // The recording console's own folder marks, which its screen's OK
+    // changes: the Regular chip still to come (+0x17) and the tag pair
+    // (+0x44: it is in the folder; +0x45: where), compared with the
+    // recording of the frame the engine's screen stands at.
+    let theirs = unhex(&known.screen.bs);
+    if theirs.len() >= 0xF0 {
+        let local = r.local_side as usize & 1;
+        check("Regular chip to come", (b.custom.sides[local].folder.regular_pending as u8).to_string(), theirs[0x17].to_string());
+        check("tag pair", format!("{:?}", b.consoles[local].tag_pair), format!("{:?}", (theirs[0x44] != 0).then_some(theirs[0x45])));
     }
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
     if bs.len() >= 0xF0 {
