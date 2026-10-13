@@ -13,7 +13,7 @@ import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow } from "../../build.slint";
-import { ChipDetail, LibraryRow } from "folder.slint";
+import { ChipDetail, LibraryRow, LibraryHead } from "folder.slint";
 
 // A line of the places: a list's title (over both columns), or one of its places (its chip, by its place in its list
 // from 1, where it is: a column and a row of the panel).
@@ -186,80 +186,21 @@ component AutoLibraryRowView inherits Rectangle {
     }
 }
 
-// The sort's direction: an arrow, down for descending. Enter turns it.
-component DirectionButton inherits Rectangle {
-    in property <bool> descending;
-    width: 40px;
-    height: 40px;
-    Cut {
-        cut: 7px;
-        background: hit.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
-    }
-
-    Path {
-        width: 10px;
-        height: 12px;
-        stroke: Theme.text;
-        stroke-width: 1.5px;
-        commands: root.descending ? "M 5 0 L 5 11 M 1 7 L 5 11 L 9 7" : "M 5 12 L 5 1 M 1 5 L 5 1 L 9 5";
-    }
-
-    hit := Focusable {
-        nav: "lib.direction";
-    }
-}
-
 // The library: its title, the search field, the sort and its direction, and its rows.
 component ChipsPane inherits Rectangle {
-    property <length> title-width: Theme.phone ? 0px : title.preferred-width + 12px;
-    property <length> sort-width: Theme.phone ? 132px : 176px;
-    property <length> sort-title-width: Theme.phone ? 0px : sort-title.preferred-width + 12px;
     shake := Shake {
         seq: AutoBattleView.refused-seq;
     }
 
-    title := Label {
+    LibraryHead {
         x: 0;
         y: 0;
-        width: self.preferred-width;
-        height: 40px;
-        visible: !Theme.phone;
-        text: @tr("LIBRARY");
-        color: AutoBattleView.in-library ? Theme.cursor : Theme.muted;
-    }
-
-    Field {
-        x: root.title-width;
-        y: 0;
-        width: parent.width - root.title-width - root.sort-title-width - root.sort-width - 12px - 40px - 12px;
-        nav: "lib.search";
-        text: AutoBattleView.search;
+        width: parent.width;
+        in-library: AutoBattleView.in-library;
+        search: AutoBattleView.search;
         placeholder: @tr("Search chips");
-    }
-
-    sort-title := Label {
-        x: parent.width - 40px - 12px - root.sort-width - 12px - self.width;
-        y: 0;
-        width: self.preferred-width;
-        height: 40px;
-        visible: !Theme.phone;
-        text: @tr("SORT");
-    }
-
-    Select {
-        x: parent.width - 40px - 12px - root.sort-width;
-        y: 0;
-        width: root.sort-width;
-        nav: "lib.sort";
-        value: AutoBattleView.sorts[AutoBattleView.sort];
-    }
-
-    DirectionButton {
-        x: parent.width - 40px;
-        y: 0;
+        sort: AutoBattleView.sorts[AutoBattleView.sort];
         descending: AutoBattleView.descending;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     list := ListView {
