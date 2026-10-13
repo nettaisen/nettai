@@ -667,6 +667,9 @@ export component TrainingInputs inherits Rectangle {
         background: Theme.shade;
         border-width: 1px;
         border-color: Theme.line;
+        // (Drawn into a layer, which is what each frame shows: its forty boxes and twenty letters are drawn
+        // anew only when a button changes.)
+        cache-rendering-hint: true;
         InputRow {
             x: 8px;
             y: 8px;
