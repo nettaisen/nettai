@@ -179,6 +179,18 @@ fn put(spot: Spot) -> Step {
     })
 }
 
+/// The cursor on the first cell of the board a placed piece covers.
+fn on_placed() -> Step {
+    Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let cells = ui.global::<NavicustView>().get_cells();
+        let Some(at) = cells.iter().position(|c| c.filled) else { return };
+        app.borrow_mut().shell.nav.focus("cell", at as i32);
+    })
+}
+
 fn plus(r: &nettai_ui::ProgramRow) -> bool {
     r.plus
 }
@@ -226,6 +238,16 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, take(1, plus));
     add(SETTLE, put(Spot::Ring));
     shot(add, "tabs-navicust-ring", Pair::None);
+    // A placed program under the cursor (the hints say Del takes it off), picked up (In hand), and put away into the
+    // list with Back (no longer placed).
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, on_placed());
+    shot(add, "tabs-navicust-on-piece", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-navicust-picked-up", Pair::None);
+    add(SETTLE, act(Action::Back));
+    shot(add, "tabs-navicust-put-away", Pair::None);
+    add(90, on_tab(EditorTab::Navicust, "NaviCust"));
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
 }
 
@@ -347,8 +369,13 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     burst(add, "navicust-lift", &[0, 30, 60, 100, 160, 260], take(0, program));
     burst(add, "navicust-move", &[0, 30, 60, 100, 160], act(Action::Right));
     burst(add, "navicust-turn", &[0, 30, 60, 100, 160, 260], key(KeyCode::KeyS, "s"));
+    // Compressed and back, turned as it is and in place.
+    burst(add, "navicust-compress", &[0, 30, 60, 100, 160], key(KeyCode::KeyC, "c"));
+    burst(add, "navicust-decompress", &[0, 30, 60, 100, 160], key(KeyCode::KeyC, "c"));
     add(SETTLE, key(KeyCode::KeyA, "a"));
     add(SETTLE, act(Action::Down));
+    // The command line's arrows, pulsing by themselves.
+    burst(add, "navicust-arrows", &[0, 150, 300, 450, 600, 750, 900], Box::new(|_, _, _| {}));
     burst(add, "navicust-drop", &[0, 30, 60, 90, 120, 160, 220, 320], act(Action::Confirm));
     add(SETTLE, take(1, program));
     burst(add, "navicust-bug", &[0, 40, 80, 120, 200, 320], put(Spot::OffTheLine));
