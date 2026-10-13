@@ -8,8 +8,12 @@
 //! under other names, days and kinds of match, with a few files that don't read beside them. So its pictures
 //! don't depend on what the player has recorded.
 //!
+//! A delete is carried out too, of a file made for it; `replays.txt` in the pass's folder says whether the file
+//! went and the list followed (it is said there, and isn't one of the pass's own checks).
+//!
 //! `NETTAI_TOUR_EXPORT=1` adds a real export, once: the first replay's last round at twice the frame, to an
-//! MP4 in the pass's folder, through `ffmpeg`; `export.txt` there says how it went.
+//! MP4 in the pass's folder, through `ffmpeg`; and a second one stopped part way. `export.txt` there says how
+//! each went and what was left in the folder.
 
 use super::{SETTLE, Step, Tour, compare, write};
 use crate::errors::UserError;
@@ -271,12 +275,16 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static s
     add(SETTLE, focus("search", 0));
     shot(add, "replays-search", Pair::None, Also::Nothing);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.edit(shell, "search", 0, "", true))));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "kind", 0, 1))));
+    shot(add, "replays-online", Pair::None, Also::Nothing);
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "kind", 0, 0))));
     add(SETTLE, focus("list", 5));
     shot(add, "replays-unreadable", Pair::None, Also::Nothing);
     add(SETTLE, focus("list", 1));
     add(SETTLE, act(Action::Delete));
     shot(add, "replays-delete", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
+    delete(add, until);
 
     // The export's dialog: as it opens; as an export under way and a failed one look (set on the view: no
     // export runs here); then closed.
@@ -312,6 +320,8 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static s
         export(add);
         shot(add, "replays-exported", Pair::None, Also::Nothing);
         add(SETTLE, act(Action::Back));
+        stop_export(add);
+        add(SETTLE, Box::new(|ui, app, _| if ui.global::<ReplaysView>().get_exporting() { app.borrow_mut().act(Action::Back) }));
     }
 
     // The two cards, then the viewer, held a little way into the second round: the focus a step down; a second
@@ -383,10 +393,112 @@ fn export(add: &mut dyn FnMut(u64, Step)) {
         SETTLE,
         Box::new(|ui, _, tour| {
             let view = ui.global::<ReplaysView>();
-            let made: Vec<String> = std::fs::read_dir(&tour.dir).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.extension().is_some_and(|x| x == "mp4" || x == "part")).map(|p| format!("{} ({} bytes)", p.display(), p.metadata().map_or(0, |m| m.len()))).collect();
+            let made = videos(tour);
             let said = format!("the export ended {:?}; its line: {:?}; saved as {:?}\nin the folder: {made:?}\n", view.get_export_state(), view.get_export_error(), view.get_export_path());
-            eprint!("tour: {said}");
-            let _ = std::fs::write(tour.dir.join("export.txt"), said);
+            say(tour, "export.txt", &said);
+        }),
+    );
+}
+
+/// Add `said` to the pass's file `name`, and to the terminal.
+fn say(tour: &Tour, name: &str, said: &str) {
+    eprint!("tour: {said}");
+    if let Ok(mut file) = std::fs::File::options().create(true).append(true).open(tour.dir.join(name)) {
+        let _ = file.write_all(said.as_bytes());
+    }
+}
+
+/// The videos and the parts of videos in the pass's folder, each with its size.
+fn videos(tour: &Tour) -> Vec<String> {
+    let files = std::fs::read_dir(&tour.dir).into_iter().flatten().flatten().map(|e| e.path());
+    files.filter(|p| p.extension().is_some_and(|x| x == "mp4" || x == "part")).map(|p| format!("{} ({} bytes)", p.display(), p.metadata().map_or(0, |m| m.len()))).collect()
+}
+
+/// `NETTAI_TOUR_EXPORT`, after the real export: a second one (the whole match, at six times the frame) stopped
+/// once some of it is written. `export.txt` says how it ended and what is in the folder then: no file of it,
+/// whole or in part.
+fn stop_export(add: &mut dyn FnMut(u64, Step)) {
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.shell.nav.focus("list", 0);
+            app.with_screen(ScreenId::Replays, |s, shell| {
+                s.key(shell, &KeyPress { code: KeyCode::KeyE, text: None, repeat: false, shift: false });
+                s.step(shell, "export.size", 0, 1);
+                s.activate(shell, "export.go", 0);
+            });
+        }),
+    );
+    add(
+        SETTLE,
+        Box::new(|_, _, tour| {
+            *tour.until.borrow_mut() = Some(Box::new(|app: &App| {
+                let ui = app.shell.ui();
+                let view = ui.global::<ReplaysView>();
+                view.get_export_state() != ExportState::Running || view.get_export_progress() > 0.02
+            }));
+        }),
+    );
+    add(
+        SETTLE,
+        Box::new(|ui, app, tour| {
+            let view = ui.global::<ReplaysView>();
+            say(tour, "export.txt", &format!("a second export, at {:.0}% ({:?}), with these in the folder: {:?}\n", view.get_export_progress() * 100.0, view.get_export_state(), videos(tour)));
+            // (CANCEL: only while it runs. With none running, Back would close the dialog.)
+            if view.get_export_state() == ExportState::Running {
+                app.borrow_mut().act(Action::Back);
+            }
+        }),
+    );
+    add(
+        SETTLE,
+        Box::new(|_, _, tour| {
+            *tour.until.borrow_mut() = Some(Box::new(|app: &App| app.shell.ui().global::<ReplaysView>().get_export_state() != ExportState::Running));
+        }),
+    );
+    add(
+        SETTLE,
+        Box::new(|ui, _, tour| {
+            let view = ui.global::<ReplaysView>();
+            say(tour, "export.txt", &format!("stopped, it ended {:?}; in the folder: {:?}\n", view.get_export_state(), videos(tour)));
+        }),
+    );
+}
+
+/// A delete carried out: of a file made for it (no replay, so the last row), so that the pass's replays stay as
+/// they are. `replays.txt` in the pass's folder says whether the file went and the list followed.
+fn delete(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) -> bool) -> Step) {
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            let scrap = tour.dir.join("replays/scrap.ntrp");
+            let made = std::fs::write(&scrap, b"to be deleted").and_then(|()| std::fs::File::options().write(true).open(&scrap)?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(1, 7, 0))));
+            if let Err(why) = made {
+                say(tour, "replays.txt", &format!("the file to delete couldn't be made: {why}\n"));
+            }
+            // (The folder is listed again as the screen shows.)
+            let mut app = app.borrow_mut();
+            app.go_now(ScreenId::Menu);
+            app.go_now(ScreenId::Replays);
+            app.shell.nav.show_cursor(true, false);
+        }),
+    );
+    add(SETTLE, until(|view| view.get_count() == 19));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.nav.focus("list", 0)));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().act(Action::End)));
+    // The question, DELETE (Cancel is focused), Enter.
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().act(Action::Delete)));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().act(Action::Right)));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().act(Action::Confirm)));
+    add(SETTLE, until(|view| view.get_count() == 18));
+    add(
+        SETTLE,
+        Box::new(|ui, app, tour| {
+            let view = ui.global::<ReplaysView>();
+            let there = tour.dir.join("replays/scrap.ntrp").exists();
+            let focus = app.borrow().shell.nav.focused().map(|k| format!("{}[{}]", k.id, k.index)).unwrap_or_default();
+            say(tour, "replays.txt", &format!("{}: a file deleted from the list: the file is {}, the list has {} (18 without it), the focus is on {focus}\n", tour.tag.borrow(), if there { "still there" } else { "gone" }, view.get_count()));
         }),
     );
 }
