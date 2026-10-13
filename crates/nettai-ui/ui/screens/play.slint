@@ -10,9 +10,10 @@
 import { Theme } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
-import { Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown } from "../widgets.slint";
+import { Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { Arrive, Tween, Pulse, Flash } from "../motion.slint";
+import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
 
 // The part of Play shown.
 export enum PlayPart {
@@ -46,13 +47,12 @@ export enum MatchPage {
     settings,
 }
 
-// A build as a list names it: its name, its navi, its version's tag, and how many things keep it from being
-// played (0: it is ready; -1: its file doesn't read).
+// This player's build as the lobby's card names it (as the match's settings would play it): its name, its navi
+// and its version's tag.
 export struct PlayBuild {
     name: string,
     navi: string,
-    version: string,
-    problems: int,
+    version: VersionTag,
 }
 
 // An action of the battle with what is bound to it: a key's cap; a pad's face button, drawn by its place, or a
@@ -69,10 +69,11 @@ export global PlayView {
     in property <PlayPart> part;
 
     // ---- The builds --------------------------------------------------------------------------------------
-    // The selected game's builds, and the one chosen (the one a link brings).
-    in property <[PlayBuild]> builds;
+    // The selected game's builds, and the one chosen (the one a link brings): its row, and its overview.
+    in property <[BuildEntry]> builds;
     in property <int> chosen;
-    in property <PlayBuild> build;
+    in property <BuildEntry> build;
+    in property <BuildSheet> sheet;
     // The code typed, as the app keeps it (capitals, in threes), and what the space beside JOIN says: a
     // problem, in the error red, or that a link is being made (`message-quiet`).
     in property <string> code;
@@ -108,6 +109,8 @@ export global PlayView {
     in property <bool> their-present;
     in property <bool> ready;
     in property <bool> their-ready;
+    // This player's card: the build as the match's settings would play it.
+    in property <PlayBuild> card;
     // They count the times each turned ready: the mark stamps.
     in property <int> ready-seq;
     in property <int> their-ready-seq;
@@ -123,6 +126,8 @@ export global PlayView {
     in property <int> ping: -1;
     in property <LobbyNote> note;
     in property <int> note-seconds;
+    // What is wrong with the build, where the settings can't play it (`LobbyNote.unusable`): its sentence.
+    in property <string> note-problem;
     // Why the match before ended, where it didn't end by itself (in the error red, in the note's place).
     in property <string> note-error;
     // The room's code, for the footer.
@@ -136,8 +141,9 @@ export global PlayView {
     in property <bool> peek;
     // The match's builds are closed: the other player's isn't shown.
     in property <bool> closed-match;
-    in property <PlayBuild> mine;
-    in property <PlayBuild> theirs;
+    // The two builds as the match plays them, each a player's panel.
+    in property <BuildSheet> mine;
+    in property <BuildSheet> theirs;
     in property <[PlayControl]> controls;
     in property <int> music;
     in property <int> effects;
@@ -147,16 +153,6 @@ export global PlayView {
     out property <string> opponent: @tr("OPPONENT");
     out property <string> back-to-play: @tr("BACK TO PLAY");
     out property <string> connecting: @tr("Connecting…");
-    // How a build stands, after its navi's name.
-    public pure function standing(problems: int) -> string {
-        if problems == 0 {
-            return @tr("ready");
-        }
-        if problems < 0 {
-            return @tr("can't be read");
-        }
-        return problems == 1 ? @tr("1 problem") : @tr("{} problems", problems);
-    }
     // A row Play adds to the training menu while the other player is waited for (src/screens/play.rs's
     // `WaitRow`, by its number), with an invite out or this machine hosting directly.
     public pure function wait-row(row: int, direct: bool) -> string {
@@ -172,41 +168,15 @@ export global PlayView {
 
 // ---- The builds ------------------------------------------------------------------------------------------
 
-// A build of a list, 52 tall: its name, its navi and whether it can be played, its version's tag.
+// A build of a list: the Builds screen's row (`BuildRow`, 52 tall), with its clicks.
 component BuildItem inherits Rectangle {
-    in property <PlayBuild> build;
+    in property <BuildEntry> build;
     in property <string> nav;
     in property <int> nav-index;
-    RowBack {
+    BuildRow {
+        width: parent.width;
+        build: root.build;
         hover: touch.has-hover;
-    }
-
-    Value {
-        x: 12px;
-        y: 7px;
-        width: parent.width - 36px - tag.width;
-        height: 20px;
-        text: root.build.name;
-        font-weight: 700;
-    }
-
-    Text {
-        x: 12px;
-        y: 28px;
-        width: parent.width - 36px - tag.width;
-        height: 16px;
-        text: (root.build.navi == "" ? "" : root.build.navi + " · ") + PlayView.standing(root.build.problems);
-        color: root.build.problems != 0 ? Theme.bad : Theme.muted;
-        font-family: Theme.body;
-        font-size: 12px;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    tag := Pill {
-        x: parent.width - 12px - self.width;
-        y: (parent.height - self.height) / 2;
-        text: root.build.version;
     }
 
     touch := RowTouch {
@@ -217,7 +187,7 @@ component BuildItem inherits Rectangle {
 
 // The chosen build in one box, on a phone: Left and Right step through the builds, Enter opens them as a sheet.
 component BuildBox inherits Rectangle {
-    in property <PlayBuild> build;
+    in property <BuildEntry> build;
     in property <string> nav;
     in property <bool> enabled: true;
     height: 72px;
@@ -238,8 +208,8 @@ component BuildBox inherits Rectangle {
         y: 42px;
         width: parent.width - 68px - tag.width;
         height: 16px;
-        text: (root.build.navi == "" ? "" : root.build.navi + " · ") + PlayView.standing(root.build.problems);
-        color: root.build.problems != 0 ? Theme.bad : Theme.muted;
+        text: root.build.status;
+        color: root.build.bad ? Theme.bad : Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
         vertical-alignment: center;
@@ -249,7 +219,8 @@ component BuildBox inherits Rectangle {
     tag := Pill {
         x: parent.width - 40px - self.width;
         y: (parent.height - self.height) / 2;
-        text: root.build.version;
+        text: root.build.version.text;
+        tone: root.build.version.tone;
     }
 
     ArrowDown {
@@ -325,82 +296,6 @@ component CodeBox inherits Rectangle {
     }
 }
 
-// A build as a panel shows it. (The build overview goes here, in each of its three places: beside Play's list,
-// and a player's panel in a match: docs/design/app-ui.md §6, "The build overview". Until it is there, a build
-// is its navi and its version.)
-component BuildFacts inherits Rectangle {
-    in property <PlayBuild> build;
-    // Its own name over the rest (not in a match: a panel there says whose it is).
-    in property <bool> named;
-    Value {
-        x: 0;
-        y: 0;
-        width: parent.width - tag.width - 12px;
-        height: root.named ? 28px : 0px;
-        visible: root.named;
-        text: root.build.name;
-        font-size: 20px;
-        font-weight: 900;
-    }
-
-    Value {
-        x: 0;
-        y: root.named ? 30px : 3px;
-        width: parent.width - tag.width - 12px;
-        height: 16px;
-        text: root.build.navi;
-        color: Theme.muted;
-        font-size: 12px;
-        font-weight: 400;
-    }
-
-    tag := Pill {
-        x: parent.width - self.width;
-        y: root.named ? 3px : 0px;
-        text: root.build.version;
-    }
-}
-
-// A player's panel in a match: who they are, over their build.
-component BuildPanel inherits Rectangle {
-    in property <string> role;
-    in property <string> who;
-    in property <PlayBuild> build;
-    in property <int> side;
-    width: 430px;
-    height: 124px;
-    PanelBack {
-        side: root.side;
-        accent: false;
-    }
-
-    Label {
-        x: 16px;
-        y: 16px;
-        width: parent.width - 32px;
-        height: 14px;
-        text: root.role;
-    }
-
-    Value {
-        x: 16px;
-        y: 32px;
-        width: parent.width - 32px;
-        height: 28px;
-        text: root.who;
-        font-size: 20px;
-        font-weight: 900;
-    }
-
-    BuildFacts {
-        x: 16px;
-        y: 72px;
-        width: parent.width - 32px;
-        height: 36px;
-        build: root.build;
-    }
-}
-
 // ---- The lobby -------------------------------------------------------------------------------------------
 
 // A player's card in the lobby: who they are, what they bring (this player's own card alone says it), and
@@ -454,8 +349,8 @@ component LobbyCard inherits Rectangle {
         }
 
         Pill {
-            text: root.build.version;
-            tone: root.side == 1 ? Theme.p1 : Theme.p2;
+            text: root.build.version.text;
+            tone: root.build.version.tone;
         }
     }
 
@@ -761,24 +656,17 @@ export component PlayScreen inherits Page {
             }
         }
 
+        // The chosen build's overview (the Builds screen's: `BuildOverview`), the wide sheet.
         Arrive {
             order: 1;
-            Rectangle {
+            BuildOverview {
                 x: root.list-width + 24px;
                 y: 0;
-                width: root.body-width - root.list-width - 24px;
-                height: root.body-height - 64px;
-                visible: !Theme.phone && !root.none;
-                PanelBack { }
-
-                BuildFacts {
-                    x: 16px;
-                    y: 16px;
-                    width: parent.width - 32px;
-                    height: 48px;
-                    build: PlayView.build;
-                    named: true;
-                }
+                // (On a phone it isn't shown, and is given the wide sheet's least width: its texts fit there.)
+                width: Theme.phone ? 620px : root.body-width - root.list-width - 24px;
+                height: self.sheet-height;
+                visible: !Theme.phone && !root.none && PlayView.sheet.name != "";
+                build: PlayView.sheet;
             }
         }
 
@@ -1003,7 +891,7 @@ export component PlayScreen inherits Page {
                 height: root.card-height;
                 role: PlayView.you;
                 name: Shell.player;
-                build: PlayView.build;
+                build: PlayView.card;
                 side: 1;
                 ready: PlayView.ready;
                 ready-seq: PlayView.ready-seq;
@@ -1086,7 +974,7 @@ export component PlayScreen inherits Page {
                 x: 0;
                 y: leave.y + (Theme.phone ? 52px : 64px);
                 width: root.body-width;
-                text: PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : PlayView.note == LobbyNote.unusable ? @tr("This build can't be used with these settings.") : PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : "";
+                text: PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : PlayView.note == LobbyNote.unusable ? PlayView.note-problem : PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : "";
                 tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting || PlayView.note == LobbyNote.unusable ? Theme.bad : Theme.muted;
                 horizontal-alignment: center;
             }
@@ -1168,12 +1056,21 @@ export component MatchMenu inherits MenuOverlay {
         y: 0;
         width: root.inner-width;
         height: root.inner-height;
-        BuildFacts {
+        page := ScrollPage {
             x: 0;
             y: 0;
-            width: root.inner-width;
-            height: 36px;
-            build: PlayView.page == MatchPage.yours ? PlayView.mine : PlayView.theirs;
+            width: root.inner-width + 12px;
+            height: root.inner-height - 52px;
+            nav: "menu.sheet.";
+            content-height: sheet.sheet-height;
+            sheet := BuildOverview {
+                x: 0;
+                y: 0;
+                width: page.view-width;
+                height: self.sheet-height;
+                build: PlayView.page == MatchPage.yours ? PlayView.mine : PlayView.theirs;
+                side: PlayView.page == MatchPage.yours ? 1 : 2;
+            }
         }
 
         Button {
@@ -1312,26 +1209,42 @@ export component MatchMenu inherits MenuOverlay {
 // player's on theirs; with closed builds, the player's own alone. It takes no clicks and no keys: the match
 // goes on under it.
 export component MatchPeek inherits Rectangle {
+    // (On a phone a sheet is a column taller than the window: each is half of it, from the top, which has
+    // the navi, its stats, abilities and bugs.)
+    property <length> sheet-width: min(430px, self.width - 2 * Theme.margin);
+    property <length> half: (self.height - 3 * Theme.margin) / 2;
     if PlayView.peek: Rectangle {
-        BuildPanel {
+        Rectangle {
             x: Theme.margin;
-            y: 24px;
-            width: min(430px, parent.width - 2 * Theme.margin);
-            role: PlayView.you;
-            who: Shell.player;
-            build: PlayView.mine;
-            side: 1;
+            y: Theme.margin;
+            width: root.sheet-width;
+            height: Theme.phone ? root.half : mine.sheet-height;
+            clip: Theme.phone;
+            mine := BuildOverview {
+                x: 0;
+                y: 0;
+                width: root.sheet-width;
+                height: self.sheet-height;
+                build: PlayView.mine;
+                side: 1;
+            }
         }
 
-        BuildPanel {
-            x: Theme.phone ? Theme.margin : parent.width - Theme.margin - self.width;
-            y: Theme.phone ? 156px : 24px;
-            width: min(430px, parent.width - 2 * Theme.margin);
+        Rectangle {
+            x: Theme.phone ? Theme.margin : root.width - Theme.margin - root.sheet-width;
+            y: Theme.phone ? 2 * Theme.margin + root.half : Theme.margin;
+            width: root.sheet-width;
+            height: Theme.phone ? root.half : theirs.sheet-height;
+            clip: Theme.phone;
             visible: !PlayView.closed-match;
-            role: PlayView.opponent;
-            who: PlayView.their-name;
-            build: PlayView.theirs;
-            side: 2;
+            theirs := BuildOverview {
+                x: 0;
+                y: 0;
+                width: root.sheet-width;
+                height: self.sheet-height;
+                build: PlayView.theirs;
+                side: 2;
+            }
         }
     }
 }

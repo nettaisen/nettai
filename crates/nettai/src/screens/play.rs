@@ -17,12 +17,11 @@ mod session;
 pub mod tour;
 
 use crate::battle::{BattleEvent, BattleStart, Play as Played};
-use crate::builds::store;
+use crate::builds::{self, overview, shelf, words};
 use crate::errors::UserError;
-use crate::games::{Names, Ready};
+use crate::games::Names;
 use crate::input::{Action, KeyPress, key_cap, pad_cap};
 use crate::nav::Key;
-use crate::screens::menu::version_tag;
 use crate::screens::{Screen, ScreenId, training};
 use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::Shell;
@@ -35,7 +34,7 @@ use nettai_frontend::netplay::{NetOptions, NetPlayer};
 use nettai_frontend::replay::Recorder;
 use nettai_match::Side;
 use nettai_rtc::signal::{ALPHABET, CODE_LENGTH};
-use nettai_ui::{BattleKind, LobbyNote, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
+use nettai_ui::{BattleKind, BuildEntry, BuildSheet, LobbyNote, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
 use session::{Net, Session, Stands, Way};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::cell::{Cell, RefCell};
@@ -72,19 +71,19 @@ fn remembered_build(game: &str) -> String {
     format!("play.build.{game}")
 }
 
-/// A build of the selected game, as the list has it.
+/// A build of the selected game, as the list has it (the Builds screen's row: `builds::shelf`).
 struct Build {
     name: String,
     /// Its side, where its file reads on the game's content.
     side: Option<Side>,
-    /// How many things keep it from being played (0: none; -1: its file doesn't read).
-    problems: i32,
-    row: PlayBuild,
+    /// Nothing keeps it from being played.
+    ready: bool,
+    row: BuildEntry,
 }
 
 impl Build {
     fn usable(&self) -> bool {
-        self.side.is_some() && self.problems == 0
+        self.side.is_some() && self.ready
     }
 }
 
@@ -133,6 +132,8 @@ struct Live {
     their_ready: bool,
     rounds: i32,
     patch_cards: bool,
+    /// What is wrong with this player's build as the settings would play it: the first thing.
+    problem: Option<nettai_match::Wrong>,
     closed: bool,
     bars: i32,
     ping: i32,
@@ -169,6 +170,8 @@ pub struct Play {
     copied_seq: i32,
     /// The rows this screen added to the training menu of the session on, in their order.
     wait_rows: Vec<WaitRow>,
+    /// The build the overview beside the list was made of (its name and side), and in which language.
+    sheet_of: Option<(String, Option<Side>, &'static str)>,
     /// The screen is shown anew (from another): the focus starts on the chosen build.
     fresh: bool,
 }
@@ -195,6 +198,7 @@ impl Default for Play {
             their_ready_seq: 0,
             copied_seq: 0,
             wait_rows: Vec::new(),
+            sheet_of: None,
             fresh: true,
         }
     }
@@ -249,40 +253,61 @@ impl Play {
 
     // ---- The builds --------------------------------------------------------------------------------------
 
-    /// Read the selected game's builds, each checked by the game's rules.
-    fn read_builds(&mut self, shell: &Shell, game: &str, ready: &Ready) {
-        let content = ready.content();
-        let graphics = ready.graphics(shell.lang);
-        let names = Names::of(content, &graphics);
+    /// Read the selected game's builds as the Builds screen lists them (`builds::shelf`), each checked by the
+    /// game's rules.
+    fn read_builds(&mut self, shell: &Shell, game: &str) {
         let before = self.build().map(|b| b.name.clone()).or_else(|| shell.settings.remembered.get(&remembered_build(game)).cloned());
-        // (The screenshot pass lists builds of its own: its pictures don't depend on what the player keeps.)
-        let read: Vec<(String, Result<Side, String>)> = match tour::builds(shell.still, content, game) {
-            Some(made) => made.into_iter().map(|(name, side)| (name, Ok(side))).collect(),
-            None => store::list(game)
-                .into_iter()
-                .map(|listed| match store::read(content, game, &listed.text) {
-                    Ok((name, side)) => (name, Ok(side)),
-                    Err(why) => (listed.name, Err(format!("{}: {why}", listed.path.display()))),
-                })
-                .collect(),
+        let Some(kit) = builds::kit(shell) else {
+            self.builds = Vec::new();
+            return;
         };
-        self.builds = read
+        // (The screenshot pass lists builds of its own: its pictures don't depend on what the player keeps.)
+        let shelved = match tour::builds(shell.still, kit.content(), game) {
+            Some(made) => {
+                let ui = shell.ui();
+                let graphics = kit.ready.graphics(shell.lang);
+                let names = Names::of(kit.content(), &graphics);
+                let words = words::Words { ui: &ui, kit: &kit, names: &names };
+                made.into_iter()
+                    .map(|(name, side)| {
+                        let listed = builds::store::Listed { path: Default::default(), name: name.clone(), text: String::new() };
+                        shelf::shelved(&words, listed, Some(builds::store::Build::new(kit.content(), &name, side)))
+                    })
+                    .collect()
+            }
+            None => shelf::load(shell, &kit),
+        };
+        self.builds = shelved
             .into_iter()
-            .map(|(name, side)| match side {
-                Ok(side) => {
-                    let problems = nettai_match::build::Checked::of(content, game, &side).problems.len() as i32;
-                    let row = PlayBuild { name: name.as_str().into(), navi: names.navi(side.navi(content)).into(), version: version_tag(content, game, &side).into(), problems };
-                    Build { name, side: Some(side), problems, row }
-                }
-                Err(why) => {
-                    crate::errors::log("reading a build", &why);
-                    let row = PlayBuild { name: name.as_str().into(), navi: Default::default(), version: Default::default(), problems: -1 };
-                    Build { name, side: None, problems: -1, row }
-                }
-            })
+            .map(|s| Build { name: s.build.as_ref().map_or_else(|| s.listed.name.clone(), |b| b.name.clone()), side: s.build.map(|b| b.side), ready: s.ready, row: s.row })
             .collect();
         self.builds_of = Some(game.to_string());
         self.chosen = before.and_then(|name| self.builds.iter().position(|b| b.name == name)).unwrap_or(0);
+    }
+
+    /// The chosen build's overview, beside the list (made again only when the build or the language shown
+    /// changed: the builds are read each time the screen is shown).
+    fn show_sheet(&mut self, shell: &Shell) {
+        let key = self.build().map(|b| (b.name.clone(), b.side.clone(), shell.lang));
+        if key == self.sheet_of {
+            return;
+        }
+        self.sheet_of = key;
+        let sheet = match (builds::kit(shell), self.build()) {
+            (Some(kit), Some(Build { name, side: Some(side), .. })) => overview::sheet(shell, &kit, "", name, side),
+            _ => BuildSheet::default(),
+        };
+        shell.ui().global::<PlayView>().set_sheet(sheet);
+    }
+
+    /// This player's card in the lobby: the build as the match's settings would play it.
+    fn show_card(&mut self, shell: &Shell) {
+        let side = self.session.as_mut().and_then(Session::lobby).map(|lobby| lobby.side_as_played());
+        let (Some(side), Some((game, ready)), Some(build)) = (side, shell.ready(), self.build()) else { return };
+        let graphics = ready.graphics(shell.lang);
+        let names = Names::of(ready.content(), &graphics);
+        let card = PlayBuild { name: build.name.as_str().into(), navi: names.navi(side.navi(ready.content())).into(), version: builds::version_tag(shell, &game, &ready, &side) };
+        shell.ui().global::<PlayView>().set_card(card);
     }
 
     /// Choose a build: the one a link brings.
@@ -308,9 +333,14 @@ impl Play {
 
     /// The chosen build's side, if it can be played; else the space beside the control says it can't, and
     /// nothing is made.
-    fn side(&self) -> Result<Side, UserError> {
+    fn side(&self, shell: &Shell) -> Result<Side, UserError> {
         match self.build() {
             Some(build) if build.usable() => Ok(build.side.clone().expect("a usable build has its side")),
+            // (What is wrong, in the player's words: the Builds screen's for each kind.)
+            Some(Build { side: Some(side), .. }) => {
+                let reason = builds::kit(shell).and_then(|kit| words::first_problem(shell, &kit, side));
+                Err(UserError::BuildUnusable { reason: reason.filter(|r| !r.is_empty()) })
+            }
             _ => Err(UserError::BuildUnusable { reason: None }),
         }
     }
@@ -320,7 +350,7 @@ impl Play {
     /// Make a link `way`, with the chosen build. What keeps it from being made is the control's problem.
     fn connect(&mut self, shell: &mut Shell, way: Way) -> Result<(), UserError> {
         self.drop_session(shell);
-        self.side()?;
+        self.side(shell)?;
         let doing = match &way {
             Way::Invite => "making an invite",
             Way::Code(_) => "joining by a code",
@@ -417,7 +447,7 @@ impl Play {
     /// invite, in the screen's `Picture`. On a phone a battle has its pad only where it fills the window, so
     /// there it does, and a row of the menu stops it for the invite again.
     fn train(&mut self, shell: &mut Shell) {
-        let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side()) else { return };
+        let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side(shell)) else { return };
         let name = self.builds.get(self.chosen).map(|b| b.name.clone()).unwrap_or_default();
         let full = shell.scale.phone;
         self.wait_rows = match full {
@@ -441,7 +471,7 @@ impl Play {
 
     /// The link is open: the lobby over it, the training battle ended.
     fn enter_lobby(&mut self, shell: &mut Shell) {
-        let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side()) else {
+        let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side(shell)) else {
             return self.ended(shell, Some(UserError::Other));
         };
         let rounds = shell.settings.remembered.get(REMEMBERED_ROUNDS).and_then(|r| r.parse().ok()).filter(|r| ROUNDS.contains(r)).unwrap_or(ROUNDS[1]);
@@ -463,6 +493,7 @@ impl Play {
         shell.nav.close("direct.");
         self.problem = None;
         self.live = Live::default();
+        self.show_card(shell);
         self.show(shell);
     }
 
@@ -473,7 +504,7 @@ impl Play {
         let (me, other) = (agreed.side, 1 - agreed.side);
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
-        let mine = self.build().map(|b| b.row.clone()).unwrap_or_default();
+        let mine = view.get_card();
         let cards = [
             VersusCard { role: view.get_you(), name: shell.settings.name.as_str().into(), build: mine.name.clone(), version: mine.version.clone(), navi: mine.navi.clone(), progress: 0.0 },
             // (The other player's card carries their name alone.)
@@ -589,6 +620,7 @@ impl Play {
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
             // (A build the settings can't play: the lobby's own check, typed. Until the Builds screen words each
             // kind, the line says only that it can't be used so.)
+            problem: lobby.problems().first().map(|p| p.what.clone()),
             note: Some(match (reconnecting, ready, their_ready) {
                 (Some(_), ..) => LobbyNote::Reconnecting,
                 (None, ..) if !lobby.problems().is_empty() => LobbyNote::Unusable,
@@ -618,6 +650,16 @@ impl Play {
         view.set_their_ready_seq(self.their_ready_seq);
         view.set_rounds(live.rounds);
         view.set_patch_cards(live.patch_cards);
+        // (The build's problem in the player's words: the Builds screen's for each kind.)
+        if live.problem != self.live.problem || live.patch_cards != self.live.patch_cards {
+            let said = match (&live.problem, shell.ready()) {
+                (Some(wrong), Some((game, ready))) => Some(words::wrong(shell, &game, &ready, wrong)),
+                _ => None,
+            };
+            let line = said.map(|said| UserError::BuildUnusable { reason: Some(said).filter(|s| !s.is_empty()) }.line(&ui));
+            view.set_note_problem(line.unwrap_or_default().into());
+            self.show_card(shell);
+        }
         view.set_closed(live.closed);
         view.set_bars(live.bars);
         view.set_ping(live.ping);
@@ -629,15 +671,17 @@ impl Play {
     /// What the match's menu and panels show: both builds (the other player's has no name here: none was
     /// ever sent), whether they are closed, the controls, the levels.
     fn show_match(&self, shell: &Shell) {
-        let (Some(agreed), Some((game, ready))) = (&self.agreed, shell.ready()) else { return };
-        let content = ready.content();
-        let graphics = ready.graphics(shell.lang);
-        let names = Names::of(content, &graphics);
+        let (Some(agreed), Some(kit)) = (&self.agreed, builds::kit(shell)) else { return };
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
-        let row = |side: &Side, name: &str| PlayBuild { name: name.into(), navi: names.navi(side.navi(content)).into(), version: version_tag(content, &game, side).into(), problems: 0 };
-        view.set_mine(row(&agreed.sides[agreed.side], self.build().map_or("", |b| b.name.as_str())));
-        view.set_theirs(row(&agreed.sides[1 - agreed.side], ""));
+        // (The agreement's sides are as the match plays them: without their patch cards where those are off.
+        // With closed builds the other player's isn't shown, and isn't made.)
+        let (me, other) = (agreed.side, 1 - agreed.side);
+        view.set_mine(overview::sheet(shell, &kit, &view.get_you(), &shell.settings.name, &agreed.sides[me]));
+        view.set_theirs(match agreed.closed_builds() {
+            true => BuildSheet::default(),
+            false => overview::sheet(shell, &kit, &view.get_opponent(), &agreed.names[other], &agreed.sides[other]),
+        });
         view.set_closed_match(agreed.closed_builds());
         let controls: Vec<PlayControl> = shell
             .bindings
@@ -798,7 +842,8 @@ impl Screen for Play {
         if self.session.is_none()
             && let Some((game, ready)) = shell.ready()
         {
-            self.read_builds(shell, &game, &ready);
+            let _ = ready;
+            self.read_builds(shell, &game);
         }
         if shell.ready().is_none() {
             self.builds.clear();
@@ -831,6 +876,7 @@ impl Screen for Play {
         view.set_builds(ModelRc::new(VecModel::from(self.builds.iter().map(|b| b.row.clone()).collect::<Vec<_>>())));
         view.set_chosen(self.chosen as i32);
         view.set_build(self.build().map(|b| b.row.clone()).unwrap_or_default());
+        self.show_sheet(shell);
         view.set_code(code_shown(&self.code).into());
         self.show_boxes(shell);
         // The space beside JOIN: a problem, or that a link is being made.
@@ -1001,6 +1047,9 @@ impl Screen for Play {
                     // (Nothing of it is said to the other player; a ready mark was for the build before.)
                     if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
                         lobby.set_side(side);
+                    }
+                    {
+                        self.show_card(shell);
                     }
                     self.close_change(shell);
                 } else {

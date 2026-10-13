@@ -16,6 +16,7 @@ use nettai_frontend::replay::{Replay, ReplayPlayer};
 use nettai_render::vfont::TextRenderer;
 use nettai_ui::MenuView;
 use slint::ComponentHandle;
+use std::rc::Rc;
 use std::time::Instant;
 
 /// The replays the reel goes through: the latest few.
@@ -120,7 +121,7 @@ impl Screen for Menu {
 impl Menu {
     /// The reel's next battle: the next of the game's latest replays that plays on this content, else a set
     /// made for it.
-    fn next_reel(&mut self, shell: &mut Shell, game: &str, ready: &Ready) -> Option<Reel> {
+    fn next_reel(&mut self, shell: &mut Shell, game: &str, ready: &Rc<Ready>) -> Option<Reel> {
         if self.replays_of.as_deref() != Some(game) {
             // (The screenshot pass plays no replay: its pictures don't depend on what the player has recorded.)
             let found = if shell.still { Vec::new() } else { crate::replays::scan(&crate::paths::replays()) };
@@ -162,24 +163,18 @@ pub fn starter_match(content: &std::sync::Arc<nettai_battle::Content>, game: &st
     Ok(m)
 }
 
-/// A side's version as a tag says it: its id in the game's builds data, in capitals. (How a version is worded
-/// for a player is the Builds screen's to say; until it does, a tag is the id.)
-pub fn version_tag(content: &nettai_battle::Content, game: &str, side: &nettai_match::Side) -> String {
-    let id = nettai_match::build::Builds::of(content, game).ok().and_then(|b| b.version_of(content, side).map(str::to_string));
-    id.unwrap_or_default().replace(['-', '_'], " ").to_uppercase()
-}
-
-/// Who is fighting, under the reel: each side's navi and its version's tag.
-fn caption(shell: &Shell, game: &str, ready: &Ready, sides: [&nettai_match::Side; 2]) {
+/// Who is fighting, under the reel: each side's navi and its version's tag (`crate::builds::version_tag`: the
+/// version's name and color, as the game's builds data states them).
+fn caption(shell: &Shell, game: &str, ready: &Rc<Ready>, sides: [&nettai_match::Side; 2]) {
     let content = ready.content();
     let graphics = ready.graphics(shell.lang);
     let names = Names::of(content, &graphics);
     let ui = shell.ui();
     let view = ui.global::<MenuView>();
     view.set_left_navi(names.navi(sides[0].navi(content)).into());
-    view.set_left_version(version_tag(content, game, sides[0]).into());
+    view.set_left_version(crate::builds::version_tag(shell, game, ready, sides[0]));
     view.set_right_navi(names.navi(sides[1].navi(content)).into());
-    view.set_right_version(version_tag(content, game, sides[1]).into());
+    view.set_right_version(crate::builds::version_tag(shell, game, ready, sides[1]));
     view.set_playing(true);
 }
 

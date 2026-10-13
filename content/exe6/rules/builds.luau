@@ -7,10 +7,11 @@ return {
     -- The versions a build is one of, in the order every list shows them: Gregar, then Falzar. A build's version is
     -- chosen as it is made and sets these facts; the navi's own Crosses of the version follow it (the engine's form
     -- list: MegaMan's `gregar` and `falzar` lists), and the version's own Giga chips are its chips' `version`
-    -- (./folder).
+    -- (./folder). A version's `color` (0xRRGGBB) is the color a tool draws its tag in: Gregar's green, Falzar's red.
+    -- Its name is the locales' ([builds], `version.<id>`).
     versions = {
-        { id = "gregar", set = { version = "gregar" } },
-        { id = "falzar", set = { version = "falzar" } },
+        { id = "gregar", color = 0x45E0A0, set = { version = "gregar" } },
+        { id = "falzar", color = 0xFF5D50, set = { version = "falzar" } },
     },
     -- The facts a build never states: every build plays at the most the game allows, so these are always the rules'
     -- defaults (the most HP and Regular memory, the sun, a link navi's last level, every SP navi deleted in no time).

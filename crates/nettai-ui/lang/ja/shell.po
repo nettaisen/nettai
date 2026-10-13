@@ -241,10 +241,21 @@ msgid "The video couldn't be made"
 msgstr "動画を作成できませんでした"
 
 msgid "Not an {} save."
-msgstr "{} のセーブデータではありません。"
+msgstr "{}のセーブではありません。"
 
+# (A dialog's title: it has a phone's dialog's width, 310, at 20.)
 msgid "Not an {} save"
-msgstr "{} のセーブデータではありません"
+msgstr "{}のセーブではありません"
+
+# A game whose pack is there and can't be loaded: {} is the game, as the header shows it.
+msgid "{}'s data is out of date. Extract it again."
+msgstr "{} のデータが古くなっています。もう一度抽出してください。"
+
+msgid "{}'s data is out of date"
+msgstr "{} のデータが古くなっています"
+
+msgid "Extract it again."
+msgstr "もう一度抽出してください。"
 
 msgid "Something went wrong. Details are in the log file."
 msgstr "問題が発生しました。詳しくはログファイルをご覧ください。"

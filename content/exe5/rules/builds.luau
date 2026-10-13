@@ -9,9 +9,12 @@ return {
     -- sets as it is made: its six souls (0x08024BF0, the soul button's table: Team ProtoMan's souls 1 to 6, Team
     -- Colonel's 7 to 12, by compat's numbers; exe5-compat's `Version::soul_flag`), and its Giga chips (./folder: the
     -- six its ROM's chip records give the library flag, and ChaosLrd, which both versions' Japanese games gave out).
+    -- A version's `color` (0xRRGGBB) is the color a tool draws its tag in: Team ProtoMan's red, Team Colonel's blue.
+    -- Its name is the locales' ([builds], `version.<id>`).
     versions = {
         {
             id = "protoman",
+            color = 0xFF5D50,
             set = {
                 souls = { "protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul" },
                 giga_chips = { "bass", "deltaray", "bugcurse", "holydrem", "bighook", "dethphnx", "chaoslrd" },
@@ -19,6 +22,7 @@ return {
         },
         {
             id = "colonel",
+            color = 0x4A93FF,
             set = {
                 souls = { "colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul" },
                 giga_chips = { "metrknuk", "omegarkt", "bassanly", "crossdiv", "bugcharg", "phoenix", "chaoslrd" },
