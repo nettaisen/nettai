@@ -9,6 +9,7 @@ use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::{self, BattleFolder, FolderChip, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
+use nettai_battle::hud::CustomGauge;
 use nettai_battle::input::keys;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
@@ -394,6 +395,11 @@ pub struct Training {
     /// [`REFILL_REST`] ticks after it last lost any. (A hit, or hits that
     /// close together, of its whole HP still delete it.)
     pub refills: [bool; 2],
+    /// The custom gauge is full whenever it runs: L or R opens the custom
+    /// screen at any time in the fight. The engine sets the gauge's full
+    /// flag and plays its sound as it fills to it, on the next tick that
+    /// fills it (none while the battle is paused or dimmed).
+    pub full_gauge: bool,
 }
 
 /// How long a navi with refills goes with no HP lost before its HP is full
@@ -479,6 +485,10 @@ impl LivePlayer {
                 navi.hp = navi.max_hp;
             }
             self.refill[side].hp = Some(navi.hp);
+        }
+        // (The gauge runs from each custom screen's end until the next opens, and not after the round is decided.)
+        if self.training.full_gauge && b.gauge.enabled && b.gauge.value < CustomGauge::FULL {
+            b.gauge.value = CustomGauge::FULL;
         }
     }
 
@@ -1022,6 +1032,61 @@ mod tests {
         let both = Training { refills: [true, true], ..Training::default() };
         s.driver.live_mut().unwrap().set_training(both, &mut s.battle);
         assert_eq!(hp(&s.battle, 0).0, hp(&s.battle, 0).1);
+    }
+
+    /// With the gauge always full, it is full whenever it runs, from the
+    /// tick after each custom screen ends, and the engine flags it full (L
+    /// or R opens the screen) on the first tick it fills, once the turn's
+    /// start lets it (about a second, the turn's banner); without, it fills
+    /// at its rate, ten seconds a turn. Turned on mid-fight, at once.
+    #[test]
+    fn the_gauge_is_always_full() {
+        use nettai_battle::battle::battle_flags;
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        for full_gauge in [false, true] {
+            let live = LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9).with_training(Training { full_gauge, ..Training::default() });
+            let mut s = crate::session::Session::new(Box::new(live));
+            let (mut opened, mut running, mut waits) = (0, 0u32, Vec::new());
+            for tick in 0..6000u32 {
+                let b = &s.battle;
+                // On the custom screen a chip and OK; in the fight L as soon as the gauge is full.
+                let keys = if b.round.mode == mode::CUSTOM {
+                    bot_buttons(b, 0, tick)
+                } else if b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+                    keys::L
+                } else {
+                    0
+                };
+                let (custom, was_full) = (b.round.mode == mode::CUSTOM, b.round.flags & battle_flags::GAUGE_FULL != 0);
+                assert!(s.step(keys), "tick {tick}");
+                let b = &s.battle;
+                opened += (!custom && b.round.mode == mode::CUSTOM) as u32;
+                if b.gauge.enabled && b.round.mode == mode::FIGHTING && !was_full {
+                    running += 1;
+                    if full_gauge && running > 1 {
+                        assert_eq!(b.gauge.value, CustomGauge::FULL, "tick {tick}");
+                    }
+                    if b.round.flags & battle_flags::GAUGE_FULL != 0 {
+                        waits.push(running);
+                        running = 0;
+                    }
+                }
+            }
+            if full_gauge {
+                assert!(opened >= 10 && waits.iter().all(|&w| w < 100), "{opened} screens, waits {waits:?}");
+            } else {
+                assert!(opened >= 2 && waits.iter().all(|&w| w > 500), "{opened} screens, waits {waits:?}");
+            }
+        }
+        // Turned on in the fight, with the gauge running: full at once.
+        let mut s = crate::session::Session::new(Box::new(LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9)));
+        while !(s.battle.gauge.enabled && s.battle.round.mode == mode::FIGHTING && s.battle.gauge.value > 0) {
+            let keys = if s.battle.round.mode == mode::CUSTOM { bot_buttons(&s.battle, 0, s.ticks as u32) } else { 0 };
+            assert!(s.step(keys) && s.ticks < 3000);
+        }
+        s.driver.live_mut().unwrap().set_training(Training { full_gauge: true, ..Training::default() }, &mut s.battle);
+        assert_eq!(s.battle.gauge.value, CustomGauge::FULL);
     }
 
     /// `--save-match` then `--match`: live play's draw for a seed, written

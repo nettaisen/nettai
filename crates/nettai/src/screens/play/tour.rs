@@ -641,11 +641,11 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, if phone { "play-waiting-training" } else { "play-waiting" }, Pair::None);
     add(SETTLE, step(|app| app.shell.open_menu()));
     shot(add, "play-waiting-menu", Pair::None);
-    add(SETTLE, press_at("menu.added", 0));
+    add(SETTLE, press_at("menu.rows.added", 0));
     reach(add, |app, _| training(app));
     if phone {
         add(SETTLE, step(|app| app.shell.open_menu()));
-        add(SETTLE, press_at("menu.added", 1));
+        add(SETTLE, press_at("menu.rows.added", 1));
         reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting);
     }
 
@@ -845,7 +845,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     }
     reach(add, |app, _| training(app));
     add(SETTLE, step(|app| app.shell.open_menu()));
-    add(SETTLE, press_at("menu.added", if phone { 2 } else { 1 }));
+    add(SETTLE, press_at("menu.rows.added", if phone { 2 } else { 1 }));
     reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Builds);
 
     // The other player comes with a build that breaks a rule: its own lobby won't make it ready, and this

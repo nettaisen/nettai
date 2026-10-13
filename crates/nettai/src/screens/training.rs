@@ -119,13 +119,14 @@ struct Session {
 /// The training menu's rows, in order, under whatever rows another screen added: each group's title, then its
 /// options. A row is added here, worded in training.slint (`TrainingView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Training::step_option`.
-const ROWS: [TrainingOption; 8] = [
+const ROWS: [TrainingOption; 9] = [
     TrainingOption::Dummy,
     TrainingOption::Action,
     TrainingOption::CustomScreen,
     TrainingOption::Battle,
     TrainingOption::YourHp,
     TrainingOption::DummysHp,
+    TrainingOption::CustomGauge,
     TrainingOption::Display,
     TrainingOption::InputDisplay,
 ];
@@ -135,7 +136,7 @@ fn values(option: TrainingOption) -> usize {
     match option {
         TrainingOption::Action => InFight::ALL.len(),
         TrainingOption::CustomScreen => OnCustomScreen::ALL.len(),
-        TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::InputDisplay => 2,
+        TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::InputDisplay => 2,
         TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
     }
 }
@@ -147,6 +148,7 @@ fn value(option: TrainingOption, opponent: Opponent, options: Options, inputs: b
         TrainingOption::CustomScreen => OnCustomScreen::ALL.iter().position(|c| *c == opponent.on_custom_screen).unwrap_or(0),
         TrainingOption::YourHp => options.refills[0] as usize,
         TrainingOption::DummysHp => options.refills[1] as usize,
+        TrainingOption::CustomGauge => options.full_gauge as usize,
         TrainingOption::InputDisplay => inputs as usize,
         TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
     }
@@ -157,6 +159,7 @@ fn value(option: TrainingOption, opponent: Opponent, options: Options, inputs: b
 const KEPT_ACTION: &str = "training.action";
 const KEPT_CUSTOM_SCREEN: &str = "training.custom-screen";
 const KEPT_HP: [&str; 2] = ["training.your-hp", "training.dummys-hp"];
+const KEPT_GAUGE: &str = "training.custom-gauge";
 const KEPT_INPUTS: &str = "training.inputs";
 
 /// The dummy's choices by their names in the settings, in `InFight::ALL`'s and `OnCustomScreen::ALL`'s order.
@@ -179,7 +182,7 @@ fn kept_opponent(shell: &Shell) -> Opponent {
 /// The battle's options as they were last left in one of Training's own sessions.
 fn kept_options(shell: &Shell) -> Options {
     let kept = |key: &str, on: &str| shell.settings.remembered.get(key).is_some_and(|v| v == on);
-    Options { refills: KEPT_HP.map(|key| kept(key, "refills")) }
+    Options { refills: KEPT_HP.map(|key| kept(key, "refills")), full_gauge: kept(KEPT_GAUGE, "full") }
 }
 
 /// Whether the input display is on.
@@ -229,7 +232,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         inputs,
         menu_open: false,
         // (The menu opens on its first row: a row its starter added, else the first option.)
-        menu_focus: if start.rows.is_empty() { Key::new("menu.option", ROWS.iter().position(|o| values(*o) > 0).unwrap_or(0) as i32) } else { Key::new("menu.added", 0) },
+        menu_focus: if start.rows.is_empty() { Key::new("menu.rows.option", ROWS.iter().position(|o| values(*o) > 0).unwrap_or(0) as i32) } else { Key::new("menu.rows.added", 0) },
         round: None,
         held: [0; 2],
     };
@@ -599,6 +602,12 @@ impl Training {
                         shell.settings.remembered.insert(KEPT_HP[side].into(), if next == 1 { "refills" } else { "normal" }.into());
                     }
                 }
+                TrainingOption::CustomGauge => {
+                    session.options.full_gauge = next == 1;
+                    if keep {
+                        shell.settings.remembered.insert(KEPT_GAUGE.into(), if next == 1 { "full" } else { "normal" }.into());
+                    }
+                }
                 TrainingOption::InputDisplay => {
                     shell.settings.remembered.insert(KEPT_INPUTS.into(), if next == 1 { "on" } else { "off" }.into());
                     // (What each side holds is told from the next frame.)
@@ -667,9 +676,9 @@ impl Screen for Training {
                 end(shell);
                 shell.go(ScreenId::Menu);
             }
-            "menu.option" => self.step_option(shell, index, 1),
+            "menu.rows.option" => self.step_option(shell, index, 1),
             // A row another screen added: it is told which.
-            "menu.added" => {
+            "menu.rows.added" => {
                 if let Some(Session { from: Some((to, tag)), .. }) = &shell.training.session {
                     let (to, tag) = (*to, *tag);
                     shell.tell(to, tag, index.max(0) as usize);
@@ -686,7 +695,7 @@ impl Screen for Training {
                 let at = (self.chosen[which] as i32 + by).rem_euclid(self.builds.len() as i32) as usize;
                 self.choose_build(shell, which, at);
             }
-            "menu.option" => self.step_option(shell, index, by),
+            "menu.rows.option" => self.step_option(shell, index, by),
             _ => {}
         }
     }
@@ -854,15 +863,15 @@ mod tests {
                 assert!(value(option, opponent, options, false) < values(option), "{option:?}");
             }
             // (A session another screen starts has the battle's options at their normal values: the first.)
-            if matches!(option, TrainingOption::YourHp | TrainingOption::DummysHp) {
+            if matches!(option, TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge) {
                 assert_eq!(value(option, opponent, options, false), 0, "{option:?}");
             }
         }
-        assert_eq!(seen, 5, "Action, Custom screen, Your HP, Dummy's HP, Input display");
+        assert_eq!(seen, 6, "Action, Custom screen, Your HP, Dummy's HP, Custom gauge, Input display");
         assert_eq!((ACTIONS.len(), CUSTOM_SCREENS.len()), (InFight::ALL.len(), OnCustomScreen::ALL.len()));
         assert_eq!(value(TrainingOption::Action, Opponent { in_fight: InFight::AttacksAtRandom, ..opponent }, options, false), 2);
         assert_eq!(value(TrainingOption::CustomScreen, Opponent { on_custom_screen: OnCustomScreen::PicksNothing, ..opponent }, options, false), 0);
-        assert_eq!(value(TrainingOption::DummysHp, opponent, Options { refills: [false, true] }, false), 1);
+        assert_eq!(value(TrainingOption::DummysHp, opponent, Options { refills: [false, true], ..options }, false), 1);
         assert_eq!(value(TrainingOption::InputDisplay, opponent, options, true), 1);
     }
 
