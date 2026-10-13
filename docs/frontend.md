@@ -371,6 +371,14 @@ saying what the pad holds each frame with `LivePlayer::set_second_pad`), in
 the fight and on its custom screen; while the host has none, it stands
 still.
 
+Or the host's AI plays it (`InFight::Ai` in the fight, `OnCustomScreen::Ai`
+on its custom screen): an `Ai` the host gives with `LivePlayer::set_ai`,
+asked for the opponent's buttons a tick at a time (`fight`, with what the
+local player holds; `custom_screen`) and told when the set starts over
+(`reset`). The library has no AI of its own: nettai-training's `Fighter`
+is one. With none given it stands still and picks the first chip it can.
+Neither choice is in `ALL` yet: no host offers them.
+
 Its random presses are seeded (from the set's seed in nettai) and run every
 tick of the set, taken or not: what it presses on a tick goes by the seed,
 the tick, the battle and its choices on that tick, whatever its choices
