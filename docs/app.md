@@ -1863,7 +1863,8 @@ foot; beside them (on a phone, under them) the two builds as cards over the aren
   place picked from the seed each round as a match that names none has it (what training did before), then
   the game's arenas, the link battle stages a match may name (`nettai_match::link_battle_stages`, the rules'
   `link_pick.match_stages`: EXE6's 96, EXE5's 94, EXE4's 96), and its battle backgrounds
-  (`nettai_match::ids::backgrounds`, the pack's), in the content's order. Each is stepped and opened as a
+  (`nettai_match::ids::backgrounds`, the pack's), each in its keys' natural order (a run of digits by its
+  number: Netbattle 2 before Netbattle 10). Each is stepped and opened as a
   list as a build row is, and remembered by game (`training.arena.<game>` by the stage's key,
   `training.background.<game>` by the background's name in the pack; Random is nothing remembered).
   - The two are apart in the games' own data: a link battle picks its stage and its background each on its
