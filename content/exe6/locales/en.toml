@@ -771,3 +771,11 @@ language = "en"
 "support" = "Support Bug"
 # Ours: a bug no program brings, which writes a byte nothing reads.
 "unread" = "Bug"
+
+# What a build is made of, by name, for a tool that makes and lists builds (rules/builds; nettai-match's `build`): each
+# version a build is one of, `version.<id>`.
+[builds]
+# What a version sets, for a tool that asks which a new build is of.
+"versions" = "Sets the Crosses and Giga chips."
+"version.gregar" = "Gregar"
+"version.falzar" = "Falzar"

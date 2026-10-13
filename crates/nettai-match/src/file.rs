@@ -199,14 +199,15 @@ pub fn resolve_rounds(content: &Content, game: &str, rounds: &[RoundFile], probl
     resolved.into_iter().collect()
 }
 
-/// A file's side of a match of `game`, each name the game's.
-pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, problems: &mut Vec<String>) -> Option<Side> {
+/// The facts a file states of a side of `game`, each name the game's, the
+/// rest the rules' defaults: a side's ([`resolve_side`]), or some facts of
+/// one kept beside it (what a build's file keeps aside of its side, which
+/// states no navi of its own). Each key is a field of the rules' setup, its
+/// value read by the field's type; a fact the file leaves out is the rules'
+/// default (an enum without one, unstated).
+pub fn resolve_facts(content: &Content, game: &str, s: &SideFile, at: &str, problems: &mut Vec<String>) -> Option<Facts> {
     let start = problems.len();
     let mut say = |p: String| problems.push(format!("{at}: {p}"));
-    // The facts: each key a field of the rules' setup, its value read by the
-    // field's type. A fact the file leaves out is the rules' default (an
-    // enum without one, unstated; the navi, none: the checks say a round
-    // needs them).
     let mut facts = Facts::defaults(content);
     for (key, value) in &s.facts.0 {
         let Some(field) = crate::facts::field(content, key) else {
@@ -218,6 +219,14 @@ pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, probl
             Err(e) => say(format!("{key}: {e}")),
         }
     }
+    (problems.len() == start).then_some(facts)
+}
+
+/// A file's side of a match of `game`, each name the game's.
+pub fn resolve_side(content: &Content, game: &str, s: &SideFile, at: &str, problems: &mut Vec<String>) -> Option<Side> {
+    let start = problems.len();
+    // The facts (the navi left out, none: the checks say a round needs it).
+    let facts = resolve_facts(content, game, s, at, problems)?;
     let mut side = Side { facts };
     if side.stated_navi(content).is_none() && problems.len() == start {
         problems.push(format!("{at}: no navi: a side states its own"));
