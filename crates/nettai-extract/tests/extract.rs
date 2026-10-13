@@ -251,11 +251,12 @@ fn pictures(graphics: &nettai_assets::Bundle, held: &[Held]) -> std::collections
     let mut out = std::collections::BTreeMap::new();
     let mut add = |name: String, pixels: &[&[u8]], palettes: &[Palette], all: &dyn Debug| {
         let pixels: Vec<u8> = pixels.concat();
-        // (A placeholder is the checkerboard; a placeholder font is all
-        // of one color.)
+        // (A placeholder has the checkerboard: all of it, or the part a
+        // missing ROM would give, as EXE4's UNITE button's label beside
+        // the window's fill. A placeholder font is all of one color.)
         let checkerboard = |tile: &[u8]| tile.iter().enumerate().all(|(i, &p)| p == if ((i % 8) / 4 + (i / 8) / 4) % 2 == 0 { 1 } else { 2 });
         let placeholder = !pixels.is_empty()
-            && (pixels.chunks_exact(64).all(checkerboard) || (name.ends_with("dialogue-font") && pixels.iter().all(|&p| p == 1)));
+            && (pixels.chunks_exact(64).any(checkerboard) || (name.ends_with("dialogue-font") && pixels.iter().all(|&p| p == 1)));
         let mut digest = Digest(Default::default());
         write!(digest, "{all:?}").unwrap();
         let held = held.iter().enumerate().filter(|(_, h)| h.has(&pixels, palettes)).fold(0, |m, (i, _)| m | 1 << i);
@@ -371,6 +372,13 @@ fn pictures(graphics: &nettai_assets::Bundle, held: &[Held]) -> std::collections
     out
 }
 
+/// Whether the picture `name` of `game` is in no ROM at all: EXE4's two
+/// e-Reader cards' chips' pictures, which are the cards' data and the
+/// extractor's own (its exe4/cards.rs).
+fn in_no_rom(game: Game, name: &str) -> bool {
+    game == Game::Exe4 && ["custom/chip-art/duo", "custom/chip-art/prixpowr"].iter().any(|own| name.ends_with(own))
+}
+
 /// The ROMs of `game` (a bit each, in `Game::codes`' order) that have the
 /// pixels of the picture `name` without having the picture: `Held` finds
 /// its tiles there, and the game's own tables don't give it.
@@ -448,11 +456,6 @@ fn every_source_subset() {
             let problems = audit(game, out.path());
             assert!(problems.is_empty(), "{} {mask:04b}: {problems:#?}", game.id());
         }
-        // (EXE4's packs aren't held to their ROMs yet: its extraction reads
-        // most of a pack from the base ROM alone.)
-        if game == Game::Exe4 {
-            continue;
-        }
         let full = &seen[15];
         let mut wrong = Vec::new();
         for (mask, pack) in seen.iter().enumerate() {
@@ -475,6 +478,9 @@ fn every_source_subset() {
                     continue;
                 }
                 let x = x.unwrap();
+                if in_no_rom(game, name) {
+                    continue;
+                }
                 if !x.empty && x.held & given == 0 {
                     wrong.push(format!("{mask:04b} {name}: in no ROM given"));
                 } else if x.all != whole.all {
