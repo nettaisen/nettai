@@ -17,6 +17,7 @@ import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek } from "screens/play.slin
 import { TrainingScreen, TrainingMenu, TrainingInputs, TrainingView } from "screens/training.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
+import { AboutScreen, AboutOverlay } from "screens/about.slint";
 
 export { Theme, Audit, Nav, NavKind }
 export { Look, PatternKind } from "theme.slint";
@@ -31,6 +32,7 @@ export { PlayView } from "screens/play.slint";
 export { TrainingView } from "screens/training.slint";
 export { BuildsView, NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView } from "screens/builds.slint";
 export { ReplaysView } from "screens/replays.slint";
+export { AboutView } from "screens/about.slint";
 
 export component AppWindow inherits Window {
     // What is shown in place of a menu screen: the bar while the game loads, the two cards before a battle,
@@ -86,6 +88,14 @@ export component AppWindow inherits Window {
     }
     if !root.covered && Shell.screen == Screen.settings: SettingsScreen {
         Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if !root.covered && Shell.screen == Screen.about: Rectangle {
+        AboutScreen {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        AboutOverlay {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
     }
     if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen {
         Rectangle { }  // (Copied in: docs/app.md §14.)
