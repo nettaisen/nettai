@@ -49,6 +49,7 @@ pub fn builds() -> PathBuf {
 
 /// Keep the builds in `dir` from here on, whatever the environment says: the screenshot pass makes and edits
 /// builds of its own, and never the player's.
+#[cfg_attr(not(feature = "tour"), allow(dead_code))]
 pub fn keep_builds_in(dir: PathBuf) {
     if let Ok(mut kept) = BUILDS.lock() {
         *kept = Some(dir);
