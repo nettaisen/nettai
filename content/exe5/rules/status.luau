@@ -463,9 +463,12 @@ local status = {
             -- What the framework does by them: Full Synchro and anger double the next damaging chip (Full Synchro
             -- its palette and aura besides); a worn-out navi's buster deals 1, and anger doesn't start.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
-            -- A counter hit marks the counter and the counterer's rules hear it (0x08016FDC: ./emotion), as EXE6's; a
-            -- chip's use leaves Full Synchro at 0x80 and sounds anger's boost too (after 0x0801026C, as EXE6's).
+            -- A counter hit marks the counter and the counterer's rules hear it (0x08016FDC: ./emotion), as EXE6's;
+            -- otherwise what a tick's hits counted raises the hitter's mood as a recovery does (0x08012802: a mood of 0
+            -- or 0xFF stays, to 0xFE at most), where EXE6's gives nothing. A chip's use leaves Full Synchro at 0x80
+            -- and sounds anger's boost too (after 0x0801026C, as EXE6's).
             hit_mood = "counter_mark",
+            hitter_gain = "short_of_full",
             full_synchro_spent = 0x80,
             anger_boost_sound = true,
             -- A tick's hits of 300 damage or more ask for anger, as 120 ticks stunned do (0x080119C4, as EXE6's).

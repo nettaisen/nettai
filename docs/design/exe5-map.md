@@ -2012,6 +2012,18 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 - **Full Synchro on a counter** (0x08016FDC, EXE6's `sub_801A200`): the counterer, in no soul, to 0xFF through the
   setter (rules/emotion, `exe5:emotion`). The aura (0x0801100C, 0x080C45E0) is EXE6's, for an AI index up to 12 in
   EXE5's emotion 2.
+- **What a hit's count does to the moods** (0x08016FDC, after the tick's hits, unless the battle is over, 0x08008B6E:
+  a side with no navi alive or time up; and not in battle flag 0x40's mode, 0x0802D50C, which no netbattle sets): the
+  count the receiver's collision gathered (+0x88: each hit's counter byte, a counter hit's mark 0x8000) goes to the
+  hitter's side. With the mark, in no soul, the setter's 0xFF (above); otherwise, in a soul with the mark too, the
+  count raises the hitter's mood as a recovery does (0x08012802: a mood of 0 or 0xFF stays, to 0xFE at most; the
+  mark takes it to 0xFE). Then the receiver's mood falls by what the hits wore (+0x86) through 0x08012820 (to 1 at
+  least, a mood of 0 staying). EXE6's gives the hitter nothing but the counter's Full Synchro; EXE4's raises it to
+  0xFF (0x0800F4FA). The status rules' `hitter_gain` (`short_of_full`; EXE6's `none`, EXE4's `to_full`), and the
+  soul's case in rules/emotion's `countered`. The engine had EXE6's from the port's start and no recording compared
+  the mood until verify's replay-coverage audit: 534 of the lab's recordings stopped on it, none where the emotion
+  the moods give differed (a hit's raise stops short of Full Synchro, and the engine's lower moods never crossed 65).
+  souls/01-sword/emotion-counter shows the soul's case (frame 644: 0x80 to 0xFE).
 - **The palette** (0x0800DD94, EXE6's `sub_801002C`; presentation): the hook `navi_palette`, the light and dark
   part's. Dark MegaMan (a navi in auto battle of AI index 0x16 or 0x17) 1, another navi in auto battle 0; MegaMan in AI index
   23 2; unable to charge 1; in a soul 0, or 2 with the Chaos Unison charge armed; else by the mood: 0xFF 4, 0 2 (dark)
