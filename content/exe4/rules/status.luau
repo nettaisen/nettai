@@ -432,8 +432,9 @@ local status = {
         -- worn down, is back with 150 HP 180 ticks later.
         barrier = { stops_while_paused = false, wind = "takes_away", regrowing = { after = 180, hp = 150 } },
         -- Its defensive chips (0x08023048): AntiDmg catches a hit of any damage (one of none passes), AntiSwrd any
-        -- sword's hit (the hit flags 0x2000); no status arms a trap.
-        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
+        -- sword's hit (the hit flags 0x2000); no status arms a trap. A caught hit leaves the navi's pending requests
+        -- (0x080230A2 zeroes the hit alone).
+        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0, drops_requests = 0 },
         -- A chip-destroying hit (hit flag 0x10: 0x0801325A) takes a player's whole hand, the cursor back at its first
         -- chip. (It ends the navi's chip requests too, 0x08013280: the engine's own, for a request with no chip left.)
         chip_destruction = "hand",

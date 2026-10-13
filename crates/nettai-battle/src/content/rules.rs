@@ -1215,6 +1215,11 @@ pub struct AntiTraps {
     /// A sword's hit (hit flags 0x2000) with any of these flags isn't
     /// AntiSwrd's (EXE6's 0x20000; EXE5's and EXE4's none).
     pub sword_spares: u32,
+    /// A caught hit drops these of the navi's pending requests (its flags2)
+    /// too, a panel's slide asked for that tick among them (EXE6's 0x301BE;
+    /// EXE5's and EXE4's none: a move that ends on ice as the trap catches
+    /// a hit still slides).
+    pub drops_requests: u32,
 }
 
 /// How a navi's barrier takes the tick's hits (`IntakeRules::barrier`:
