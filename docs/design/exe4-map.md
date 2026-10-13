@@ -740,9 +740,9 @@ shows the other is a listed deviation (verify's deviations.rs) or a known differ
   alone (`sub_8026DC4`'s call of `sub_801E012`, 0x08027230 in the Japanese Falzar ROM; the US games' starts the
   chip icons alone). nettai's three games all show the window from the close: EXE6 follows its Japanese games
   there, by the user's decision of 2026-10-12, so that the three have one behavior.
-The rest of the first megabyte is not read (the tool shows about 5,000 places in all that decode as instructions on
-both sides, most of them the story's, the menus' and data that happens to decode): a difference in an object's routine shows only
-when a recording reaches it.
+The battle's other code (the core, the objects, the player's actions, the chip records) was read the same way
+afterwards, every place sorted and each a netbattle reaches recorded on Japanese consoles: docs/design/exe4-regions.md.
+The rest of the first megabyte (the story's, the menus', the overworld's) is not read.
 
 **The Japanese consoles' frames** (verify's tools/frontend-compare/exe4-jp.txt: 55 scenarios on the lab's `exe4-jp`
 bases, Red Sun Japan against Blue Moon Japan, each US base's counterpart; 53 are tools/chiplab/gen_exe4_jp.py's
