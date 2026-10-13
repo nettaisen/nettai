@@ -135,7 +135,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
 | The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
 | The dummy while waiting online | A copy of the player's own build, standing still, with the training menu there to change it |
-| Training's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last |
+| Training's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last. (Recording went later: "get rid of recording support, it's so complicated".) |
 | Training and replays | Training is not recorded |
 | Text entry on a pad | The invite code has a six-box picker a pad can use; names, addresses and searches need a keyboard |
 | Closed builds and replays | A replay of a closed-builds match hides the builds in the viewer too |
@@ -334,10 +334,9 @@ Each is in the mockups under the same name.
 - **The training menu** (Start or Esc in training): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right:
-  - Dummy: Action (stands still, moves around, fights, plays your recording, a second pad), with the one setting
-    of its value under it while that value is chosen: Level (easy, normal, hard: how well it fights) under Fights,
-    Recording (Record: the player drives the dummy until Start; it loops) under Plays your recording. Its custom
-    screen goes with its Action. The user: "the dummy menu is so confusing and has so many redundant options and
+  - Dummy: Action (stands still, moves around, fights, a second pad), with its Level (easy, normal, hard: how well
+    it fights) under it while it is Fights. Its custom screen goes with its Action. No recording: "get rid of
+    recording support, it's so complicated". The user: "the dummy menu is so confusing and has so many redundant options and
     it's confusing to navigate. you should make it clearer and less redundant".
   - Battle: Arena and Background (as on the entry; an arena changed starts the set over on it, a background
     changed only redraws: "changing the background shouldn't change the entire arena either in trianing
