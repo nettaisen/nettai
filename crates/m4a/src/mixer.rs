@@ -87,6 +87,9 @@ impl Status {
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Note {
     pub owner: Option<TrackRef>,
+    /// The player whose track started it: kept when the track lets the note go (its release still sounds at
+    /// that player's level, [`crate::Driver::set_level`]).
+    pub player: u8,
     pub order: TrackOrder,
     pub priority: u8,
     /// The key the note named (what EOT matches).
@@ -251,8 +254,9 @@ pub(crate) fn reverb_or_clear(ring: &mut PcmRing, slot: usize, next: usize, reve
 }
 
 /// One Direct Sound channel for a frame: its envelope, then its mix into
-/// frame slot `slot` of the ring.
-pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, ring: &mut PcmRing, slot: usize) {
+/// frame slot `slot` of the ring, at the host's level for its player
+/// (`host`: 256 is as the driver mixes it, to the bit).
+pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq: u32, ring: &mut PcmRing, slot: usize, host: u16) {
     if !ch.status.active() {
         return;
     }
@@ -328,7 +332,7 @@ pub(crate) fn mix_ds(ch: &mut DsChannel, bank: &SoundBank, master: u8, div_freq:
 
     let n = ring.samples_per_frame;
     let base = slot * n;
-    let (vr, vl) = (ch.mix_right as i32, ch.mix_left as i32);
+    let (vr, vl) = ((ch.mix_right as i32 * host as i32) >> 8, (ch.mix_left as i32 * host as i32) >> 8);
     let mut out = |k: usize, s: i32| {
         let r = &mut ring.right[base + k];
         *r = r.wrapping_add(((vr * s) >> 8) as i8);

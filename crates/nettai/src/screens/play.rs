@@ -527,7 +527,7 @@ impl Play {
 
     fn set_levels(&mut self, shell: &mut Shell, music: u32, effects: u32) {
         (shell.settings.music, shell.settings.effects) = (music.min(100), effects.min(100));
-        shell.sound.set_levels(shell.settings.music, shell.settings.effects);
+        shell.set_sound_levels(shell.settings.music, shell.settings.effects);
         shell.save_settings();
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
@@ -1215,7 +1215,7 @@ impl Screen for Play {
         }
         // In a match: both builds while Tab (Select on a pad) is held; the menu opens on its first page.
         if matches!(self.stage, Stage::Match { .. }) {
-            let held = shell.keys.tab || (shell.pad.held(&shell.bindings) | shell.touch) & keys::SELECT != 0;
+            let held = shell.keys.tab || (shell.pad.held(&shell.bindings) | shell.touch.held()) & keys::SELECT != 0;
             self.set_peek(shell, held && shell.battle_has_keys());
             if self.page != MatchPage::Menu && !shell.battle.as_ref().is_some_and(|b| b.menu_open()) {
                 self.page = MatchPage::Menu;

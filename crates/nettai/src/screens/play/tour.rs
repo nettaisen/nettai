@@ -143,7 +143,8 @@ pub fn frame(shell: &mut Shell, now: Instant) {
         (was, rig.held)
     });
     if let Some((was, held)) = held {
-        shell.touch = (shell.touch & !was) | held;
+        // (As keys held: the battle reads them with the pad's and the on-screen pad's.)
+        shell.keys.held = (shell.keys.held & !was) | held;
     }
 }
 
