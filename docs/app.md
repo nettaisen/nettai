@@ -985,6 +985,13 @@ component under one `for`; the input display is in the window throughout and sho
 was 46 KB more; Training has no overlay (an empty one under its `if` was 22 KB); a card places its three texts
 itself, where two layouts were 9 KB more; the display's arrows are the text face's, not paths (11 KB).
 
+The follow-ups after it (the phone's picture edge to edge, a select's list scrolling, a terminate request, a
+game that can't be loaded told; measured the same way, load average 260 to 336) cost 0.06 MB of generated Rust
+(3.88 to 3.94 MB: the select's list as a `ListView`) and nothing measurable in time: a clean build 35.5 s of CPU
+before and 36.7 after, one line of Rust 6.1 and 6.5 to 6.8, one line of a .slint file 7.0 to 7.1 and 7.3 to 7.6.
+A training battle's figures (§5) are the same before and after them: 107.6 to 120.0 frames a second and 117.6 to
+120.0, a key to its picture 11.9 and 11.1 ms against 11.0 and 10.2 (two runs each, back to back).
+
 ## 15. Training
 
 docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
