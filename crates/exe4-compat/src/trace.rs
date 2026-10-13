@@ -513,6 +513,23 @@ impl Round {
         }
     }
 
+    /// The recording's frame the engine's custom screen of the recording
+    /// console's side stands at on the `i`th of `frames`, for what that
+    /// screen's OK changes on its console alone (the Regular chip still to
+    /// come): the frame's own; for `link_delay` frames from the side's OK,
+    /// the frame before the OK (the engine's screen takes its OK that much
+    /// later, [`Round::fed`]); then the frame `link_delay` earlier, until
+    /// the fight resumes ([`Round::screen_late`]).
+    pub fn local_screen_frame<'a>(&'a self, i: usize, frames: &[&'a Frame]) -> &'a Frame {
+        let d = self.link_delay() as u32;
+        let f = frames[i];
+        match self.local_ok(f.frame) {
+            Some(ok) if f.frame >= ok + d => self.frame(f.frame - d).unwrap_or(f),
+            Some(ok) if f.frame >= ok => ok.checked_sub(1).and_then(|before| self.frame(before)).unwrap_or(f),
+            _ => f,
+        }
+    }
+
     /// The recording console's side (its setup's BattleState +0x0D).
     fn local_side(&self) -> usize {
         decode_setup(&self.setup).map_or(0, |d| d.local())
@@ -1044,7 +1061,7 @@ const RECORDED_PATCH_CARD_SLOTS: usize = 6;
 /// sprite's palette (the sprite block's +4); and both sides' stats as the
 /// NaviCust and the patch cards compile them.
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
-    compare_with(b, f, f, compat)
+    compare_with(b, f, f, f, compat)
 }
 
 /// [`compare`] on the `i`th of a round's `frames`, the engine having been fed
@@ -1056,12 +1073,77 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let f = frames[i];
     let late = round.screen_late(i, frames);
     let banner = if late > 0 { round.frame(f.frame - late).unwrap_or(f) } else { f };
-    compare_with(b, f, banner, compat)
+    compare_with(b, f, banner, round.local_screen_frame(i, frames), compat)
 }
 
-/// The mark EXE4's install leaves in each hand entry's modifier flags
-/// (0x0801EA1E: its dark chips' costs, once an entry).
-const INSTALL_MARK: u8 = 0x04;
+/// Side `side`'s auto battle data as the rules' send left it (their state's
+/// `auto_battle_places`), in the block's terms: each place's halfword (a chip
+/// by its number, a pattern record by its index with bit 15, 0 for `zero`),
+/// in order. None: the rules keep no such list.
+fn sent_places(b: &Battle, compat: &Compat, side: u8) -> Option<Vec<u16>> {
+    use nettai_content_api::FieldValue;
+    let (schema, state) = b.rules_state(side)?;
+    let list = schema.place(schema.index_of("auto_battle_places")?);
+    let n = state.len_at(list)?;
+    (0..n)
+        .map(|k| {
+            let p = list.elem(k)?;
+            let chip = match state.get_at(p.field("chip")?) {
+                FieldValue::Ref(Some((Registry::Chip, h))) => {
+                    let key = nettai_match::ids::local(&b.content.defs.chip(nettai_content_api::ChipHandle(h)).key).to_string();
+                    Some(compat.chip_entry(&key).map(|e| e.id).unwrap_or(0xFFFE))
+                }
+                _ => None,
+            };
+            let pattern = match state.get_at(p.field("pattern")?) {
+                FieldValue::U8(n) => n,
+                _ => 0,
+            };
+            let zero = matches!(state.get_at(p.field("zero")?), FieldValue::Bool(true));
+            Some(match (chip, pattern, zero) {
+                (Some(id), _, _) => id,
+                (None, n, _) if n > 0 => 0x8000 | (n as u16 - 1),
+                (None, _, true) => 0,
+                _ => 0xFFFF,
+            })
+        })
+        .collect()
+}
+
+/// The auto battle data as the consoles sent it (the setup's `ai_lists`:
+/// each block's 42 places, the entries packed to the front, and their count
+/// at +0x54) against the rules' send ([`sent_places`]), as the round starts.
+/// (The block's pattern records, from +0x58, are the save's: the send
+/// leaves them, and the rules read them from the setup.) The places are
+/// compared as a set: their order is the engine's shuffle's.
+fn sent_auto_battle_differences(b: &Battle, compat: &Compat, lists: &[String; 2]) -> Vec<String> {
+    let mut d = Vec::new();
+    for side in 0..2u8 {
+        let Ok(block) = unhex(&lists[side as usize]) else { continue };
+        if block.len() < 0x58 {
+            d.push(format!("side {side}'s sent auto battle data: a block of {:#x} bytes", block.len()));
+            continue;
+        }
+        let theirs: Vec<u16> = (0..42).map(|i| u16::from_le_bytes([block[2 * i], block[2 * i + 1]])).collect();
+        let count = u32::from_le_bytes([block[0x54], block[0x55], block[0x56], block[0x57]]);
+        let Some(mut ours) = sent_places(b, compat, side) else {
+            d.push(format!("side {side}'s sent auto battle data: the rules keep no `auto_battle_places`"));
+            continue;
+        };
+        let n = ours.len() as u32;
+        ours.resize(42, 0xFFFF);
+        let show = |v: &[u16]| v.iter().map(|x| format!("{x:04x}")).collect::<Vec<_>>().join(" ");
+        let sorted = |v: &[u16]| {
+            let mut v = v.to_vec();
+            v.sort_unstable();
+            v
+        };
+        if (n, sorted(&ours)) != (count, sorted(&theirs)) {
+            d.push(format!("side {side}'s sent auto battle data: ours {n}: {} theirs {count}: {}", show(&ours), show(&theirs)));
+        }
+    }
+    d
+}
 
 /// The engine's hand in a chip block's terms ([`codec::ChipHand`]): each
 /// chip by its key and the number compat's chips.toml gives it (0xFFFF for a
@@ -1107,8 +1189,10 @@ fn hand_fields(h: &ChipHand) -> Vec<(&'static str, String)> {
     ]
 }
 
-/// [`compare`], the banner compared with `banner`'s.
-fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<String> {
+/// [`compare`], the banner compared with `banner`'s and what the recording
+/// console's screen's OK changes on that console alone with `screen`'s
+/// ([`Round::local_screen_frame`]).
+fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
         if ours != theirs {
@@ -1119,12 +1203,84 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
     check("state", format!("{:?}", [r.top, r.mode, r.sub, r.init]), format!("{:?}", f.state));
     check("rng2", format!("{:#010x}", b.rng.state), format!("{:#010x}", f.rng2));
     check("paused", (b.paused as u8).to_string(), f.paused.to_string());
-    // Each side's chips-enabled bit (BattleState +0x64's 0x04 and 0x08,
-    // EXE6's +0x5C's: the engine's intro bits'; SignlRed's signal clears and
-    // sets its other side's).
+    // BattleState's own, at EXE4's offsets (verify's census,
+    // docs/replay-coverage.md §3.1): the actors and the alive navis by side
+    // (+0x04, +0x12), the custom screens so far (+0x08), the time-up mark
+    // (+0x0B), the two counts of fight ticks (+0x0E, +0x16), the winner
+    // (+0x10), the set's score (+0x18), the delay (+0x28), the flags
+    // (+0x32) but the gauge's (below) and the stage's flag's (0x08, which a
+    // broken flag sets, 0x080E0842, and nothing in EXE4 reads: the engine
+    // keeps none, docs/design/exe4-map.md §18.3) and the fight's ticks
+    // (+0x40); and
+    // the intro bits' low nibble (+0x64: the fade done, the navis in, each
+    // side's chips enabled, which SignlRed's signal clears and sets; the
+    // engine's 0x10, the fade's start, has no bit there).
+    let gauge_full = nettai_battle::battle::battle_flags::GAUGE_FULL;
+    const FLAG_BROKEN: u16 = 0x08;
     if let Ok(bs) = unhex(&f.bs) {
-        if let Some(&bits) = bs.get(0x64) {
-            check("chips enabled", format!("{:#x}", r.intro_bits & 0x0C), format!("{:#x}", bits & 0x0C));
+        if bs.len() >= 0xF0 {
+            check("actors", format!("{:?}", r.actor_count), format!("{:?}", [bs[0x04], bs[0x05]]));
+            check("turn", r.turn.to_string(), bs[0x08].to_string());
+            check("time up", r.time_up.to_string(), bs[0x0B].to_string());
+            check("fight cycles", format!("{:?}", r.cycles), format!("{:?}", [bs[0x0E], bs[0x16]]));
+            check("winner", r.winner.to_string(), bs[0x10].to_string());
+            check("alive", format!("{:?}", r.alive), format!("{:?}", [bs[0x12], bs[0x13]]));
+            check("score", format!("{:?}", [r.wins, r.losses]), format!("{:?}", [bs[0x18], bs[0x19]]));
+            check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
+            let flags = u16::from_le_bytes([bs[0x32], bs[0x33]]);
+            check("battle flags", format!("{:#x}", r.flags & !gauge_full), format!("{:#x}", flags & !(gauge_full | FLAG_BROKEN)));
+            check("battle time", r.battle_time.to_string(), u32::from_le_bytes([bs[0x40], bs[0x41], bs[0x42], bs[0x43]]).to_string());
+            check("intro bits", format!("{:#x}", r.intro_bits & 0x0F), format!("{:#x}", bs[0x64]));
+        }
+    }
+    // The fighting machine (`fight`, 0xC bytes): its state, sub-state and
+    // entry mark (+0, +2, +3), its result (+4), its timer (+8) and the turn
+    // timer (+0x0A). EXE4's machine has no state for the turn's setup (no
+    // sequencer: the turn starts in its start banner's state): its states
+    // are the engine's, EXE6's, less 4 from the start banner on.
+    if let Ok(fight) = unhex(&f.fight) {
+        if fight.len() >= 0xC {
+            let m = &b.fight;
+            // (Not before a round's first fight: the fight's start zeroes
+            // the machine, on the tick after its entry, and until then the
+            // recording's is the last round's, left as that round ended.)
+            let untouched = m.state == 0 && m.sub == 0 && m.init == 0 && m.result == 0 && m.pausing_player == 0 && m.timer == 0 && m.turn_timer == 0;
+            let before_fight = untouched && (r.mode != nettai_battle::battle::mode::FIGHTING || r.init == 0);
+            let word = |at: usize| u16::from_le_bytes([fight[at], fight[at + 1]]);
+            let fields = [
+                ("state", m.state.saturating_sub(4) as u16, fight[0] as u16),
+                ("sub-state", m.sub as u16, fight[2] as u16),
+                ("entry mark", m.init as u16, fight[3] as u16),
+                ("result", m.result as u16, fight[4] as u16),
+                ("timer", m.timer as u16, word(8)),
+                ("turn timer", m.turn_timer, word(0x0A)),
+            ];
+            for (name, ours, theirs) in fields.into_iter().filter(|_| !before_fight) {
+                check(&format!("fight {name}"), format!("{ours:#x}"), format!("{theirs:#x}"));
+            }
+        }
+    }
+    // The recording console's own Regular chip still to come (+0x17), which
+    // its screen's OK clears: compared with the recording of the frame the
+    // engine's screen stands at (`screen`).
+    if let Ok(theirs) = unhex(&screen.bs) {
+        if theirs.len() >= 0xF0 {
+            let local = r.local_side as usize & 1;
+            check("Regular chip to come", (b.custom.sides[local].folder.regular_pending as u8).to_string(), theirs[0x17].to_string());
+        }
+    }
+    // The flags' gauge-full mark, the recording console's own as its gauge
+    // is (it keeps both until its own send, 0x0801E1B4), compared as the
+    // gauge, with the recording of the frame the console's late screen is
+    // at. (While the engine's gauge for the console isn't the battle's,
+    // emptied at the other side's send, the battle's mark isn't the
+    // console's and isn't compared.)
+    if let Ok(late) = unhex(&banner.bs) {
+        if late.len() >= 0xF0 {
+            if b.gauge_for(r.local_side) == b.gauge.value {
+                let theirs = u16::from_le_bytes([late[0x32], late[0x33]]) & gauge_full != 0;
+                check("gauge full", ((r.flags & gauge_full != 0) as u8).to_string(), (theirs as u8).to_string());
+            }
         }
     }
     // The gauge as the recording console holds it (EXE4 keeps it full until
@@ -1155,6 +1311,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
         let Ok(raw) = unhex(hex) else { continue };
         let Ok(raw) = <[u8; crate::codec::NAVI_STATS]>::try_from(raw.as_slice()) else { continue };
         check(&format!("side {side}'s compiled stats"), compiled(b, &b.stats[side]), compiled_of(&crate::codec::navi_stats(&raw)));
+        // (And its mood, +0x00, which the fight changes.)
+        check(&format!("side {side}'s mood"), format!("{:#04x}", b.stats[side].mood), format!("{:#04x}", raw[0x00]));
     }
     // (A panel type is the game's number of it.)
     let panels: Vec<String> = (1..=3)
@@ -1173,13 +1331,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
     for (side, block) in f.chip_blocks.iter().enumerate() {
         let decoded = unhex(block).and_then(|raw| codec::chip_hand(compat, &raw).map(|h| (h, raw)));
         match decoded {
-            Ok((mut theirs, raw)) => {
-                // (Not compared: the install's mark, the modifier flags'
-                // 0x04, which 0x0801EA1E sets on each entry of a hand as it
-                // is installed so that a dark chip costs its user once. The
-                // engine's rules keep that as their own state, rules/
-                // dark_chips' `hand_sent`, and the hand has no such bit.)
-                theirs.modifiers = theirs.modifiers.map(|m| m & !INSTALL_MARK);
+            Ok((theirs, raw)) => {
                 let ours = engine_hand(b, compat, &b.hands[side]);
                 for ((name, x), (_, y)) in hand_fields(&ours).into_iter().zip(hand_fields(&theirs)) {
                     check(&format!("hand {side} {name}"), x, y);
@@ -1256,6 +1408,10 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
                 ("status", flags),
                 ("f1", f1),
                 ("palette", palette),
+                // (A navi's four parameter bytes, +4: the one kind whose
+                // object keeps the original's; the other kinds take their
+                // parameters as their own state.)
+                ("params", if type_of_pool(o.pool) == 1 && entries[i].is_some_and(|k| k.index == 0) { format!("{:#010x}", u32::from_le_bytes(x.params)) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1284,6 +1440,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
                 ("status", format!("{:#x}", o.status)),
                 ("f1", format!("{:#x}", o.f1)),
                 ("palette", o.sprite[0].to_string()),
+                ("params", if o.kind == 1 && o.index == 0 { format!("{:#010x}", o.params) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1357,6 +1514,13 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             return replay;
         }
     }
+    if let Some(lists) = &round.setup.ai_lists {
+        let differences = sent_auto_battle_differences(&b, compat, lists);
+        if !differences.is_empty() {
+            replay.stopped = Some(Stop::Differs { frame: round.setup.frame, differences });
+            return replay;
+        }
+    }
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
@@ -1372,7 +1536,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
         }
         if let Some(next) = frames.get(i + 1) {
             let engine = b.consoles[local].rng.state;
-            if engine == next.rng1 {
+            if nettai_battle::rng::Rng::new(frames[i].rng1).passes(engine, next.rng1, RNG1_PICKS_A_FRAME) {
                 rng1_since = None;
             } else if rng1_since.is_none() {
                 rng1_since = Some((frames[i].frame, engine, next.rng1));
@@ -1395,3 +1559,8 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
 pub fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
     e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default()
 }
+
+/// The most picks a console draws from its RNG1 in a frame that a replay's
+/// check looks along (the main loop's one, a camera shake's two, an
+/// emotion window's flicker: a few).
+const RNG1_PICKS_A_FRAME: u32 = 64;

@@ -265,9 +265,12 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
                 // Each line fits the open box's inside (the line buffer
                 // runs past the description box's right edge).
                 let room = text_room(g, (text_x, text_y), shown.kind);
+                // (In the color the dialogue font's strokes take: EXE4's
+                // palette's 1 is the box's white.)
+                let ink = g.text_palette[assets.hud.dialogue_font.ink() as usize];
                 for (k, (line, units)) in lines.iter().enumerate() {
                     let rect = Rect::new(text_x, text_y + (LINE_ROWS * k) as i32, room, 12);
-                    let item = TextItem::new(line.as_str(), Role::Dialogue, rect, g.text_palette[1], None);
+                    let item = TextItem::new(line.as_str(), Role::Dialogue, rect, ink, None);
                     sink.push(Plane::Sprite(tag), TextItem { clip: sprites, shown: Some(*units), ..item });
                 }
             }

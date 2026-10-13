@@ -7,8 +7,10 @@
 return {
     leave_on_use = false,
     anti_navi_sparkle = { dy = 16, z = 32 },
-    -- A chip's use knows the hand's modifier bits 0x02 and 0x04 alone (`sub_8012C34`): none of EXE5's capsules'.
-    mixed_modifiers = false,
+    -- What a hand entry's marks add to the damage word at the chip's use, by the mark's bit (`sub_8012C34`): 0x02
+    -- (WhiCapsl folded in) its 0x4000, paralysis; 0x04 (Uninstll) its 0x2000. No mark heals.
+    mark_damage = { 0, 0x4000, 0x2000, 0, 0, 0, 0, 0 },
+    mark_heals = 0,
     -- Beat takes any Mega or Giga chip, dark or not.
     beat_spares_dark = false,
     -- A navi's idle, its attacks and a dimming's start hide the chip window on the navi's own console only

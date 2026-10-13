@@ -258,6 +258,7 @@ pub fn end(shell: &mut Shell) {
 }
 
 /// Whether a training session is on (being made ready, or running).
+#[cfg_attr(not(feature = "tour"), allow(dead_code))] // (The screenshot pass asks.)
 pub fn running(shell: &Shell) -> bool {
     shell.training.session.is_some()
 }
