@@ -671,6 +671,12 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press("lobby.change"));
     shot(add, "play-lobby-change", Pair::None);
     add(SETTLE, act(Action::Back));
+    // Esc in the lobby asks before the other player is left, Cancel focused; Cancel stays.
+    add(SETTLE, act(Action::Back));
+    reach(add, |app, _| app.shell.dialog.is_some());
+    shot(add, "play-lobby-leave-question", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+    reach(add, |app, ui| app.shell.dialog.is_none() && together(ui));
     // The link drops (the other player's network is gone for a while) and comes back: the lobby's line.
     add(SETTLE, peer(|p| p.link.outage(OUTAGE)));
     reach(add, |_, ui| ui.global::<PlayView>().get_note() == LobbyNote::Reconnecting);
@@ -724,6 +730,20 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
         shot(add, name, Pair::None);
         add(SETTLE, press("menu.back"));
     }
+    // A build's page scrolls by the keys and the pad: Down and Page Down, then to its end and back.
+    fn sheet_y(ui: &AppWindow) -> f32 {
+        ui.global::<PlayView>().get_sheet_y()
+    }
+    add(SETTLE, press("menu.yours"));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::PageDown));
+    reach(add, |_, ui| sheet_y(ui) < -0.5);
+    shot(add, "play-match-your-build-scrolled", Pair::None);
+    add(SETTLE, act(Action::End));
+    reach(add, |_, ui| (sheet_y(ui) + ui.global::<PlayView>().get_sheet_span()).abs() < 0.5);
+    add(SETTLE, act(Action::Home));
+    reach(add, |_, ui| sheet_y(ui) == 0.0);
+    add(SETTLE, press("menu.back"));
     // The set played to its end (the app's player shoots; the other has 1 HP): the result stays on the
     // picture, then both are back in the lobby, neither ready.
     add(
@@ -863,7 +883,11 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press("menu.leave"));
     reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby);
     shot(add, "play-lobby-left-match", Pair::None);
-    add(SETTLE, press("lobby.leave"));
+    // Esc, and LEAVE in the question: the builds again.
+    add(SETTLE, act(Action::Back));
+    reach(add, |app, _| app.shell.dialog.is_some());
+    add(SETTLE, focus("dialog.button", 1));
+    add(SETTLE, act(Action::Confirm));
     reach(add, |_, ui| part(ui) == PlayPart::Builds);
 
     add(

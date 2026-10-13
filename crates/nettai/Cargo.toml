@@ -26,15 +26,14 @@ log = "0.4"
 sys-locale = "0.3"
 # The log's and a replay's times in the local time.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-# The screenshot pass's pictures.
-png = "0.17"
+# The screenshot pass's pictures (the `tour` feature's).
+png = { version = "0.17", optional = true }
 # A replay's video: its errors are worded here (`errors.rs`); the Replays screen runs the export.
 nettai-video = { path = "../nettai-video" }
 # A replay's file: what its head names (the Replays screen's list) and its writer (the screenshot pass's replays).
 nettai-replay = { path = "../nettai-replay" }
-# Netplay's link: WebRTC through a room of the signaling server. (`testing`: its signaling server in the
-# process, which the screenshot pass's second player meets the first through: `screens/play/tour.rs`.)
-nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
+# Netplay's link: WebRTC through a room of the signaling server.
+nettai-rtc = { path = "../nettai-rtc" }
 # A build from a save: each game's own reader of its saves.
 exe6-compat = { path = "../exe6-compat" }
 exe5-compat = { path = "../exe5-compat" }
@@ -61,7 +60,16 @@ libc = "0.2"
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
+[features]
+# The screenshot pass and the motion probe (docs/app.md §13: `NETTAI_TOUR`), with what they need: the pictures'
+# encoder, and the link library's signaling server in the process, which Play's second player meets the first
+# through (`screens/play/tour.rs`). A player's build has none of it: `cargo run -p nettai --features tour`. The
+# tests compile it whatever the features (the same two dependencies are the tests' below).
+tour = ["dep:png", "nettai-rtc/testing"]
+
 [dev-dependencies]
+png = "0.17"
+nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
 # The tests: the content of the repository.
 nettai-match = { path = "../nettai-match", features = ["testing"] }
 # A short set and graphics with no pack, for a battle played to its end.
