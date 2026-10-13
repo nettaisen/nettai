@@ -825,4 +825,53 @@ mod tests {
         silent.take_samples(&mut samples);
         assert!(samples.is_empty());
     }
+
+    /// The renderer's pause display: drawn while a player holds the fight in the game's own pause, as the
+    /// game draws it (the default), and left out with `pause_display` off, which changes nothing else of the
+    /// frame; out of the pause the two draw alike. (A round that leaves the game its START: its own pause.)
+    #[test]
+    fn the_pause_display_is_left_out_alone() {
+        use crate::driver::bot_buttons;
+        use nettai_battle::input::keys;
+        let content = testing::content();
+        let mut graphics = crate::testing::graphics(&content, 0x001F);
+        // (A HUD with tiles, so it is drawn, and "PAUSE" in a color of its own.)
+        let mut bundle = (*graphics.bundles[0]).clone();
+        bundle.hud.tiles = nettai_assets::Tiles { pixels: vec![0; 0x40 * nettai_assets::Tiles::TILE] };
+        bundle.hud.pause = nettai_assets::Tiles { pixels: vec![1; 10 * nettai_assets::Tiles::TILE] };
+        bundle.hud.enemy_palette[1] = 0x7FFF;
+        graphics.bundles[0] = Arc::new(bundle);
+        let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
+        let folder = folder_of(&content, &[("gundels3", 13)]);
+        let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
+        setup.host_keys.pause = false;
+        let set = || Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup.clone(), [folder, folder])));
+        let mut on = Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
+        let mut off = Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
+        off.renderer().pause_display = false;
+        let (mut tick, mut fought) = (0, 0);
+        while fought < 30 {
+            let k = bot_buttons(on.battle(), 0, tick);
+            assert!(on.tick(k) && off.tick(k) && tick < 3000);
+            tick += 1;
+            fought += on.battle().pausable() as u32;
+            assert_eq!(on.frame().pixels, off.frame().pixels, "tick {tick}: out of the pause, alike");
+        }
+        assert!(on.tick(keys::START) && off.tick(keys::START));
+        assert_eq!(on.battle().paused_by(), Some(0));
+        let (with, without) = (on.frame().pixels, off.frame().pixels);
+        let differ: Vec<usize> = (0..with.len()).filter(|&i| with[i] != without[i]).collect();
+        assert!(!differ.is_empty(), "the pause display is drawn by default");
+        let (x, y) = bundle_pause(&graphics);
+        for i in differ {
+            let (px, py) = (i % 240, i / 240);
+            assert!((x..x + 40).contains(&px) && (y..y + 16).contains(&py), "({px}, {py}) differs, outside the pause display");
+        }
+    }
+
+    /// Where the HUD draws "PAUSE".
+    fn bundle_pause(graphics: &Graphics) -> (usize, usize) {
+        let (x, y) = graphics.bundles[0].hud.layout.pause;
+        (x as usize, y as usize)
+    }
 }

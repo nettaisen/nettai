@@ -387,6 +387,11 @@ fn parse_pool(name: &str) -> Option<Pool> {
 }
 
 impl Compat {
+    /// The number patch card `key` is printed with and a save holds (patch-cards.toml).
+    pub fn patch_card_number(&self, key: &str) -> Option<u8> {
+        self.patch_cards.cards.get(key).copied()
+    }
+
     /// EXE4's compat, as this repository's content/exe4/compat has it.
     pub fn exe4() -> &'static Compat {
         static EXE4_COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();

@@ -484,7 +484,13 @@ every match's setup: `RoundSetup::host_keys`):
   where it may (`Player::set_paused`: live play and replays; a netplay match
   runs on). It is said exactly where the original pauses (the fight running,
   the battle not over, not dimmed: docs/engine/battle-flow.md §3.5), so
-  START on the custom screen is still the cursor's way to OK.
+  START on the custom screen is still the cursor's way to OK. (A host may
+  set up a round that leaves the game its START, `HostKeys::pause` off,
+  and hold the battle in the game's own pause under a menu of its own:
+  `Battle::pausable` says whether START would pause the game now,
+  `Battle::paused_by` who holds it paused, both output only; and the
+  renderer's `pause_display` off leaves the HUD's "PAUSE" out of the
+  picture. nettai's training does: docs/app.md §15.)
 - **L on the custom screen** does nothing: nobody runs from a match, and
   the navi's message that says so isn't shown or heard
   (docs/engine/custom-screen.md §3.5). L and R in the fight ask for the
