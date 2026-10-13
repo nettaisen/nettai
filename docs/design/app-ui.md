@@ -94,6 +94,24 @@ Each is settled unless the user changes it.
     BN4/BN5/BN6"): BN4, BN5 and BN6 in English, EXE4, EXE5 and EXE6 in Japanese, in the header's selector and in
     every message that names a game. Each game states its name in its locales (the text table `game`, `name`);
     the app reads it from the content, so a game without its pack is named too.
+23. **Each game has a look of its own** (2026-10-13): "each selected game in nettai should also have a different
+    visual identity". From the mockup of three (`bn6battle-verify/docs/nettai-ui/game-identities.html`) the user
+    took BN4's comet ("i like bn4c"), BN5's liberation map and BN6's look as it was. Switching the game changes the
+    colors, the glow and the backdrop's pattern (§4); the layout, the sizes, the keys, the motion and the type stay
+    the same. The rest of what they said of it:
+    - *One typeface for every game.* A Latin face per game (Stick for BN4, Saira Condensed for BN5) was tried and
+      dropped: "stick latin font looks ridiculous for bn4. you should use the same latin and japanese typefaces
+      everywhere instead of changing them up per game". Latin display text is Chakra Petch in every game.
+    - *Japanese in a calm gothic:* "you should find fonts that work in japanese as well, since there needs to be
+      japanese support"; of the first candidates, "these japanese fonts look horrible. they should be a little less
+      playful"; and of the six in the mockup, M PLUS 1. Japanese display text is M PLUS 1 at 800 in every game;
+      body text stays Murecho.
+    - *The wordmark is one color:* "don't color nettai separately like that, same color for the whole word".
+    - *The backdrop's pattern as strong as the mockup:* "backdrop pattern looks fine".
+    - *A change of game sweeps:* "switching games should the new game's pattern sweeping across the window". The
+      new game's ground comes in from the side of the arrow pressed, behind a moving edge (§4, "Motion").
+    - Each game's look is stated in its own content, beside its versions' colors and its name; the app names no
+      game, and a game whose content states no look is drawn in the app's own (BN6's).
 
 ## 3. Chosen where the user gave no answer
 
@@ -102,7 +120,8 @@ are the defaults; each is easy to reverse and is listed for review.
 
 | Question | Chosen |
 |---|---|
-| Typefaces | Headings, buttons and labels in Chakra Petch; all other text in Murecho (which also carries Japanese headings); codes and numbers in M PLUS 1 Code |
+| Typefaces | Headings, buttons and labels in Chakra Petch; all other text in Murecho; codes and numbers in M PLUS 1 Code. (Japanese headings were Murecho's until the user chose M PLUS 1 for them: §2.23) |
+| A game's look, where the user said nothing (§2.23) | On a change of game the panels' and the text's colors cross-fade over the sweep's time (they don't change at the moving edge, which would mean drawing every screen twice); no art from the packs in the header |
 | A build's version | Fixed when the build is made, as a save's is ("It can't be changed later") |
 | Netplay rounds | A single battle or best of 3, a shared setting either player can change |
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
@@ -118,25 +137,38 @@ are the defaults; each is easy to reverse and is listed for review.
 
 ## 4. The look
 
-A modern network terminal: dark navy over a faint hexagon field, thin lines, one cut corner on panels and buttons,
-a cyan bracket cursor, amber for the main action, red and blue for the two sides.
+A modern network terminal: a dark ground under a faint pattern, thin lines, one cut corner on panels and buttons, a
+bracket cursor, one bright color for the main action, red and blue for the two sides. Each game has its own colors
+and pattern (§2.23): BN6's is the night-blue, cyan and amber over hexagons the app was first drawn in, BN5's
+field-ops lime and gold over an isometric grid (its liberation missions' map), BN4's ice-blue and magenta over a
+starfield with a comet's streak (Duo's comet).
 
 **Units.** Everything below is in units of a 1280 by 800 window (16:10). The window scales the whole layout from
 that reference; the battle picture alone is always a whole multiple of 240 by 160.
 
-**Colors.**
+**Colors.** The ones that change with the game:
+
+| Role | BN4 | BN5 | BN6 |
+|---|---|---|---|
+| ground, top to bottom | `#09071a` to `#020106` | `#11150f` to `#040603` | `#0a1330` to `#050916` |
+| the glow at its top right | `rgba(159,240,255,0.16)` | `rgba(200,255,90,0.16)` | `rgba(40,110,255,0.28)` |
+| panel fill | `#100d22` | `#141a12` | `#0c1836` |
+| raised (a button, a pressed row) | `#1b1636` | `#1d2619` | `#13254d` |
+| line (every border) | `#3d3574` | `#3f5435` | `#27508f` |
+| inset (a field, a value box) | `#06040e` | `#080b06` | `#040813` |
+| text; muted; dim | `#f1efff`; `#aea8d8`; `#655f94` | `#f0f5e8`; `#a6b597`; `#617056` | `#eaf3ff`; `#8ea8d4`; `#55698f` |
+| the cursor, the active pane's title, the chosen row's bar | `#9ff0ff` | `#c8ff5a` | `#66e0ff` |
+| the main action, its text | `#ff4fd8`, `#1a0016` | `#ffcc33`, `#171200` | `#ffb62e`, `#1b1100` |
+| the backdrop's pattern | a starfield: three lattices of dots (white at 0.22 and 0.14, `#9ff0ff` at 0.20) and a streak across the window at 118 degrees from `#9ff0ff` into the main action's magenta | an isometric grid: 1-unit lines of `#c8ff5a` at 0.055, 46 apart at 30 degrees each way, over a faint wash of it low on the window | hexagons stroked in `#62b4ff` at 0.078 |
+
+The colors made from them follow: a raised control's hover is the raised fill a third brighter; the header's and the
+footer's bar is the ground's foot darker at 0.72 (`rgba(3,6,15,0.72)` in BN6), a dialog's shade the same at 0.8;
+the cursor's glow, the chosen row's tint and a hovered row's are the cursor's color at 0.4, 0.1 and 0.05; the
+out-of-bounds hatching is the muted text at 0.2 with its edge at 0.6. The rest are the same in every game, and each
+stays readable on all three grounds:
 
 | Role | Value |
 |---|---|
-| ground, top to bottom | `#0a1330` to `#050916`, under a faint blue glow from the top right and the hexagon field |
-| panel fill | `#0c1836` |
-| raised (a button, a pressed row) | `#13254d` |
-| line (every border) | `#27508f` |
-| inset (a field, a value box) | `#040813` |
-| the header's and the footer's bar | `rgba(3,6,15,0.72)` |
-| text | `#eaf3ff`; muted `#8ea8d4`; dim `#55698f` |
-| the cursor, the active pane's title, the chosen row's bar | `#66e0ff` |
-| the main action | `#ffb62e`, its text `#1b1100` |
 | player one, player two | `#ff5d50`, `#4a93ff` |
 | good; an error or a reason something can't be done | `#45e0a0`; `#ff9272` |
 | a bug, anywhere | `#b497ff` |
@@ -144,19 +176,22 @@ that reference; the battle picture alone is always a whole multiple of 240 by 16
 | REG; TAG1 and TAG2 | `#ff5c82`; `#7fe36c` |
 | a chip's code | `#ffb62e` |
 | the command line's empty cells | `#0e3550` |
-| the out-of-bounds hatching | `rgba(142,168,212,0.20)`, dashed edge `rgba(142,168,212,0.6)` |
 
-**Type.** Chakra Petch 500/600/700 for titles, buttons, tabs, labels (labels are 11, uppercase, tracked 0.18em);
-Murecho 400 to 900 for text; M PLUS 1 Code 500/700 for codes, numbers and times. All three are under the SIL Open
-Font License and are bundled. Sizes: 11, 12, 13, 14 (the base), 16, 20, 28; the main menu's items 36.
+(Version tags are each version's own color, which the game's content states.)
+
+**Type**, the same in every game. Chakra Petch 500/600/700 for titles, buttons, tabs, labels (labels are 11,
+uppercase, tracked 0.18em); in Japanese these are M PLUS 1 at 800, tracked nearly not; Murecho 400 to 900 for text,
+in either language; M PLUS 1 Code 500/700 for codes, numbers and times. All four are under the SIL Open Font License
+and are bundled. Sizes: 11, 12, 13, 14 (the base), 16, 20, 28; the main menu's items 36. The wordmark "nettai" is
+Chakra Petch 700 in the text's color, one color for the whole word.
 
 **Shapes.** Panels, dialogs and buttons are rectangles with a 1 unit line and the bottom right corner cut at 45
 degrees (12 on a panel, 18 on a dialog or a menu, 9 on a button), the line following the cut. A panel has a short
-cyan accent, 72 by 2, at its top left. Nothing is slanted and nothing is rounded.
+accent in the cursor's color (cyan in BN6), 72 by 2, at its top left. Nothing is slanted and nothing is rounded.
 
-**The cursor** is four corner brackets (each arm 10 long, 2 thick, cyan with a soft glow) drawn over the layout, 5
-outside the focused control. It is one object that slides from control to control; it takes no space, and nothing
-under it changes size. It shows only when a keyboard or a pad is the last thing used.
+**The cursor** is four corner brackets (each arm 10 long, 2 thick, in the cursor's color with a soft glow) drawn
+over the layout, 5 outside the focused control. It is one object that slides from control to control; it takes no
+space, and nothing under it changes size. It shows only when a keyboard or a pad is the last thing used.
 
 **Motion.** The user: "you should have way more ui animations so it feels like an actual game". Everything
 moves, briefly, and nothing waits on it.
@@ -174,7 +209,8 @@ What moves:
 
 | Where | What |
 |---|---|
-| the field | the hexagons drift slowly and a soft pulse crosses them now and then; they rush as a battle is entered |
+| the field | the pattern drifts slowly and a soft pulse crosses it now and then; it rushes as a battle is entered |
+| a change of game | the new game's ground (its gradient, glow and pattern) sweeps across the window from the side of the arrow pressed (200), a lit edge and a soft band of the new cursor's color leading it, while the panels' and the text's colors cross-fade over the same time; a second press mid-sweep sweeps the next game in over both at once |
 | the cursor | it glides between controls, its brackets breathe 2 in and out while idle, and they snap inward on Enter |
 | a screen | leaving, the body slides 16 and fades (120); arriving, the title wipes in behind its cyan bar and the panels come one after another, 30 apart, each rising 12 as it fades in (200); Back runs the other way |
 | the main menu | at start the logo, the four words and the reel assemble in turn; the chosen word's bar grows from the left and its tint sweeps in; changing the game slides the name out and in the arrow's way and crossfades the reel and the music |
