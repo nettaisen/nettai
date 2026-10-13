@@ -8,9 +8,11 @@
 //! shakes and the strip says why. The library is the chips a folder of the build can hold, a row a chip.
 //!
 //! **Enter on a place goes to the library** (on a phone, its sheet); **Enter on a chip puts it in the place and goes
-//! on to the next.** Del empties the place.
+//! on to the next;** Enter (or Del, or a click) on the chip the place holds already takes it out again. Del empties
+//! the place. A pattern's places aren't shown: a build states no pattern records, so none of its places can point at
+//! one (the game's own writer puts none there but a learned pattern's), and a match is sent them empty, a valid block.
 
-use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Layout};
+use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds, Layout};
 use crate::builds::words::kind;
 use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{Draft, Tab};
@@ -44,6 +46,8 @@ pub struct AutoBattle {
     /// The place being filled (from 0), and where each place is in the panel (its column and row).
     place: usize,
     at: Vec<(i32, i32)>,
+    /// The places shown, in their order (a pattern's aren't).
+    editable: Vec<usize>,
     in_library: bool,
     row: usize,
     search: String,
@@ -89,10 +93,13 @@ impl AutoBattle {
         let Some(layout) = self.layout.clone().flatten() else { return };
         let data = Data::of_side(draft.content(), draft.side());
         self.at = vec![(0, 0); auto::PLACES];
+        self.editable.clear();
         let mut row = 0;
         let lines: Vec<PlaceLine> = draft.with_words(shell, |words| {
             let mut lines = Vec::new();
-            for list in &layout.lists {
+            // (A pattern's places aren't shown: a build states no pattern records, the rules' default being
+            // nothing learned, so no place of it points at one, and the game never puts a chip there.)
+            for list in layout.lists.iter().filter(|l| l.holds != Holds::Patterns) {
                 // (A list with no name in a game of one list has no title.)
                 if !list.name.is_empty() {
                     let title = words.names.text(LISTS_TABLE, &list.name).unwrap_or_else(|| list.name.clone());
@@ -102,6 +109,7 @@ impl AutoBattle {
                 for (k, place) in list.places().enumerate() {
                     let (column, r) = ((k % columns) as i32, row + (k / columns) as i32);
                     self.at[place] = (column, r);
+                    self.editable.push(place);
                     lines.push(PlaceLine { chip: AutoBattle::cell(draft, words, data.places[place]), number: k as i32 + 1, place: place as i32, column, row: r, ..Default::default() });
                 }
                 row += list.len.div_ceil(columns) as i32;
@@ -113,8 +121,8 @@ impl AutoBattle {
         view.set_lines(ModelRc::new(VecModel::from(lines)));
         view.set_rows(row);
         view.set_place(self.place as i32);
-        view.set_filled(data.entries() as i32);
-        view.set_places(auto::PLACES as i32);
+        view.set_filled(self.editable.iter().filter(|&&p| data.places[p] != Entry::Empty).count() as i32);
+        view.set_places(self.editable.len() as i32);
     }
 
     /// The library's rows, as sorted and searched.
@@ -136,6 +144,13 @@ impl AutoBattle {
             let found: Vec<ChipInfo> = self.chips.iter().filter(|c| wanted.is_empty() || words.names.chip(c.chip).to_lowercase().contains(&wanted)).cloned().collect();
             build::sorted(&content, &found, SORTS[self.sort.min(SORTS.len() - 1)], self.descending, &|chip| words.names.chip(chip)).into_iter().map(|c| c.id).collect()
         });
+    }
+
+    /// The library's row under the cursor is the chip the place being filled holds (Confirm takes it out again).
+    fn on_placed(&self, shell: &Shell, draft: &Draft) -> bool {
+        let Some(row) = shell.nav.focused().filter(|k| k.id == "lib.rows").map(|k| k.index.max(0) as usize) else { return false };
+        let place = Data::of_side(draft.content(), draft.side()).places.get(self.place).copied();
+        self.rows.get(row).is_some_and(|&chip| place == Some(Entry::Chip(chip)))
     }
 
     fn show_library(&self, shell: &Shell, draft: &Draft) {
@@ -169,6 +184,7 @@ impl AutoBattle {
         view.set_sort(self.sort as i32);
         view.set_descending(self.descending);
         view.set_in_library(self.in_library);
+        view.set_on_placed(self.on_placed(shell, draft));
     }
 
     /// The strip: the chip under the cursor, a place's or a row's, and what the rules have against a place.
@@ -241,9 +257,15 @@ impl AutoBattle {
         let before = draft.side().clone();
         let field = Some(auto::PLACES_FIELD);
         let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field && p.entry == Some(place + 1)).map(|p| p.text.clone()).collect();
+        // (The chip the place holds already: taken out again, from where the cursor is; it flies back to its row.)
+        if Data::of_side(draft.content(), draft.side()).places.get(place) == Some(&Entry::Chip(chip)) {
+            let (icon, name) = draft.with_words(shell, |w| (draft.kit.pictures.icon(chip), w.names.chip(chip)));
+            shell.fly(("places.place", place as i32), ("lib.rows", row as i32), icon, &name);
+            self.remove(shell, draft, place);
+            return self.leave_library(shell);
+        }
         if !draft.edit(|content, side| auto::update(content, side, Edit::Put(place, chip))) {
-            // (The place holds it already: on to the next.)
-            return self.next(shell, draft);
+            return shell.sound.play(Cue::Refused);
         }
         let ui = shell.ui();
         let view = ui.global::<AutoBattleView>();
@@ -273,7 +295,9 @@ impl AutoBattle {
 
     /// On to the next place, back from the library (a phone's sheet shuts).
     fn next(&mut self, shell: &mut Shell, draft: &mut Draft) {
-        self.place = (self.place + 1).min(auto::PLACES - 1);
+        // (The next place shown: a pattern's are passed over.)
+        let at = self.editable.iter().position(|&p| p == self.place);
+        self.place = at.and_then(|i| self.editable.get(i + 1)).copied().unwrap_or(self.place);
         self.notice = None;
         self.changed(shell, draft);
         self.leave_library(shell);
@@ -410,9 +434,11 @@ impl Tab for AutoBattle {
                 self.described = Some(Described::Row(self.row));
                 self.notice = None;
                 view.set_in_library(true);
+                view.set_on_placed(self.on_placed(shell, draft));
                 self.show_detail(shell, draft);
             }
             id if id.starts_with("lib.") => {
+                view.set_on_placed(false);
                 self.in_library = true;
                 view.set_in_library(true);
             }
@@ -439,6 +465,8 @@ impl Tab for AutoBattle {
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
         match (action, AutoBattle::focused_place(shell)) {
             (Action::Delete, Some(i)) => self.remove(shell, draft, i),
+            // (In the library, Del on the chip the place holds takes it out, as Confirm does.)
+            (Action::Delete, None) if self.on_placed(shell, draft) => self.put(shell, draft, self.row),
             _ => return false,
         }
         true

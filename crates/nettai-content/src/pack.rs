@@ -60,13 +60,18 @@ pub type Files = Vec<(String, Vec<u8>)>;
 
 pub fn write_files(root: &Path, files: &Files) -> std::io::Result<()> {
     for (path, data) in files {
-        let p = root.join(path);
-        if let Some(d) = p.parent() {
-            std::fs::create_dir_all(d)?;
-        }
-        std::fs::write(p, data)?;
+        write_file(root, path, data)?;
     }
     Ok(())
+}
+
+/// One of a pack's files ([`write_files`] writes each so), its folders made as it needs them.
+pub fn write_file(root: &Path, path: &str, data: &[u8]) -> std::io::Result<()> {
+    let p = root.join(path);
+    if let Some(d) = p.parent() {
+        std::fs::create_dir_all(d)?;
+    }
+    std::fs::write(p, data)
 }
 
 /// The manifest of `game`'s pack.

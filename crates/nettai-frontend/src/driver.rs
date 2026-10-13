@@ -612,6 +612,13 @@ impl LivePlayer {
         &self.set
     }
 
+    /// Play `set` from its next start (`Driver::start`: the player's
+    /// `restart`) in place of the one it plays, which goes on until then:
+    /// a training session's set on another place.
+    pub fn play_set(&mut self, set: Set) {
+        self.set = set;
+    }
+
     /// The training session's options.
     pub fn training(&self) -> Training {
         self.training
@@ -709,13 +716,15 @@ impl LivePlayer {
     /// The local player's buttons this tick: their own navi's, or none
     /// while they drive the opponent to record it; and START's press ends
     /// that recording (asked before the opponent's buttons: it plays the
-    /// recording from this tick).
+    /// recording from this tick). In the game's pause they are the
+    /// battle's as ever, and end nothing: the START that leaves it is
+    /// the host's (a training menu that closes as the recording begins).
     fn own_buttons(&mut self, b: &Battle, keys: u16) -> u16 {
         if !self.recording_now {
             return keys;
         }
         let pressed = keys & !std::mem::replace(&mut self.last_keys, keys);
-        if b.round.mode == mode::CUSTOM {
+        if b.round.mode == mode::CUSTOM || b.paused_by().is_some() {
             return keys;
         }
         if pressed & keys::START != 0 || self.recording.len() >= RECORDING_MOST {

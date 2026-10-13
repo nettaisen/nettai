@@ -683,6 +683,50 @@ mod tests {
         assert!(!frame(&mut b, 0) && b.game_pause.as_ref().unwrap().buttons() == 0);
     }
 
+    /// A training set put in place of the one playing (Training's Arena or Background row changed:
+    /// `LivePlayer::play_set`) starts over on its place under the open menu, as RESTART starts a set: the
+    /// battle steps through the round's opening with no buttons, its sound going on, and waits on the custom
+    /// screen; every round of it is on that place.
+    #[test]
+    fn under_the_menu_a_set_starts_over_on_another_place() {
+        use nettai_battle::battle::mode;
+        let content = nettai_match::testing::exe6_content();
+        let mut m = short_set::of(&content, "exe6", 7);
+        let mut b = training(&content, &m, 7, Default::default());
+        for _ in 0..400 {
+            frame(&mut b, 0);
+        }
+        b.menu = true;
+        frame(&mut b, 0);
+        let stage = *nettai_match::link_battle_stages(&content, "exe6").last().unwrap();
+        let background = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
+        let place = nettai_match::RoundSettings { stage: Some(stage), background: Some(background.clone()) };
+        m.rounds.iter_mut().for_each(|r| *r = place.clone());
+        let mut first = m.round(&content, 7);
+        first.host_keys.pause = false;
+        let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+        assert_ne!(b.stage.player.battle().setup.settings.stage, stage, "(another place before)");
+        b.stage.player.live_mut().unwrap().play_set(Set::new(content.clone(), first, folders));
+        assert!(b.restart());
+        let background = nettai_match::ids::background(&content, "exe6", &background).unwrap();
+        let setup = &b.stage.player.battle().setup;
+        assert_eq!((setup.settings.stage, setup.settings.background, b.stage.player.ticks()), (stage, background, 0));
+        assert!(setup.later_stages.iter().all(|s| (s.stage, s.background) == (stage, background)), "every round there");
+        made(&mut b);
+        let mut frames = 0;
+        while b.stage.player.battle().round.mode != mode::CUSTOM {
+            frame(&mut b, nettai_battle::input::keys::A);
+            assert!((548..=549).contains(&made(&mut b)), "frame {frames}: the sound goes on");
+            frames += 1;
+            assert!(frames < 1000, "the custom screen never came");
+        }
+        for _ in 0..60 {
+            frame(&mut b, nettai_battle::input::keys::A);
+            let battle = b.stage.player.battle();
+            assert!(battle.round.mode == mode::CUSTOM && battle.paused_by().is_none(), "it waits on the custom screen");
+        }
+    }
+
     /// A training battle of `m`'s (its rounds leaving the game its START), with sound, the dummy as given.
     fn training(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, opponent: nettai_frontend::driver::Opponent) -> Battle {
         let mut first = m.round(content, seed);
@@ -780,5 +824,65 @@ mod tests {
             assert!(battle.round.mode == mode::CUSTOM && battle.paused_by().is_none(), "it waits on the custom screen");
             assert!((548..=549).contains(&made(&mut b)));
         }
+    }
+
+    /// The dummy's recording chosen from the menu, as the training menu's Recording row does: the menu closes
+    /// and the game leaves its pause (the START that leaves it is the menu's, not the player's: it doesn't end
+    /// the recording); the player's buttons drive the dummy and are kept; their START ends it without pausing
+    /// the game, and the dummy plays it.
+    #[test]
+    fn a_recording_chosen_from_the_menu() {
+        use nettai_battle::input::keys;
+        use nettai_frontend::driver::{InFight, Opponent, bot_buttons};
+        let content = nettai_match::testing::exe6_content();
+        let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        let mut b = training(&content, &m, 11, Opponent::default());
+        while !b.stage.player.battle().pausable() {
+            let keys = bot_buttons(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
+            assert!(!frame(&mut b, keys) && b.stage.player.ticks() < 3000);
+        }
+        let dummy = |b: &Battle| {
+            let battle = b.stage.player.battle();
+            battle.player(1).map(|r| battle.objects.get(r).panel)
+        };
+        // The menu opens: the game's pause.
+        b.menu = true;
+        frame(&mut b, 0);
+        assert_eq!(b.stage.player.battle().paused_by(), Some(0));
+        // Recording chosen: the menu closes.
+        b.stage.player.live_mut().expect("live play").record_opponent();
+        b.menu = false;
+        let start = dummy(&b);
+        let mut moved = false;
+        for n in 0..120u32 {
+            // (Up and down by turns, a press every 20 ticks.)
+            let keys = match n % 40 {
+                0..=3 => keys::UP,
+                20..=23 => keys::DOWN,
+                _ => 0,
+            };
+            frame(&mut b, keys);
+            moved |= dummy(&b) != start;
+            let live = b.stage.player.live().expect("live play");
+            assert!(live.recording_now(), "frame {n}: the recording goes on ({} ticks kept)", live.recorded());
+        }
+        assert_eq!(b.stage.player.battle().paused_by(), None, "out of the game's pause");
+        assert!(moved, "the player's buttons drive the dummy");
+        let kept = b.stage.player.live().unwrap().recorded();
+        assert!(kept > 100, "{kept} ticks kept");
+        // The player's START ends it, and doesn't pause the game.
+        frame(&mut b, keys::START);
+        frame(&mut b, 0);
+        let live = b.stage.player.live().unwrap();
+        assert!(!live.recording_now() && live.opponent().in_fight == InFight::PlaysRecording);
+        assert_eq!(b.stage.player.battle().paused_by(), None);
+        // The dummy plays it.
+        let at = dummy(&b);
+        let mut moved = false;
+        for _ in 0..120 {
+            frame(&mut b, 0);
+            moved |= dummy(&b) != at;
+        }
+        assert!(moved, "the dummy plays the recording");
     }
 }

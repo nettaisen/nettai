@@ -35,6 +35,9 @@ pub struct Settings {
     /// Netplay's input delay, in frames: the value the lobby starts with (the library's
     /// `NetOptions::input_delay`).
     pub input_delay: u32,
+    /// The folder the player chose the Legacy Collection's install in, where Steam doesn't list it (docs/app.md
+    /// §17); none: Steam's alone.
+    pub legacy_collection: Option<std::path::PathBuf>,
     /// The keys and the pad buttons bound, by the GBA button's name; one left out is the default.
     pub keys: BTreeMap<String, String>,
     pub pad: BTreeMap<String, String>,
@@ -56,6 +59,7 @@ impl Default for Settings {
             effects: 100,
             input_delay: nettai_frontend::netplay::DEFAULT_INPUT_DELAY,
             keys: BTreeMap::new(),
+            legacy_collection: None,
             pad: BTreeMap::new(),
             remembered: BTreeMap::new(),
         }
@@ -152,8 +156,17 @@ mod tests {
     /// Settings read back as written; a file of other keys, or none, is the defaults.
     #[test]
     fn settings_read_back() {
-        let mut s = Settings { name: "Lan".into(), language: Some("ja".into()), music: 30, full_screen: true, input_delay: 2, ..Settings::default() };
+        let mut s = Settings {
+            name: "Lan".into(),
+            language: Some("ja".into()),
+            music: 30,
+            full_screen: true,
+            input_delay: 2,
+            legacy_collection: Some("Steam Library/Legacy Collection Vol. 2".into()),
+            ..Settings::default()
+        };
         s.remembered.insert("training.build".into(), "Falzar heat".into());
+        s.keys.insert("a".into(), "KeyJ".into());
         let text = toml::to_string(&s).unwrap();
         assert_eq!(toml::from_str::<Settings>(&text).unwrap(), s);
         let other: Settings = toml::from_str("music = 40\nunknown = 1\n").unwrap();

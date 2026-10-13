@@ -1,10 +1,11 @@
 //! Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Its UI is
 //! `ui/screens/training.slint`.
 //!
-//! **The entry** ([`Training`], the screen): two rows, Your build and Dummy's build, both the player's own
-//! builds of the selected game and both remembered between runs, and START TRAINING; beside them the two
-//! builds facing each other on the arena the session opens on. With no build of the game there is one button,
-//! Create a build. A build that can't be used says so in the reserved line, and training doesn't start.
+//! **The entry** ([`Training`], the screen): four rows, Your build and Dummy's build (both the player's own
+//! builds of the selected game), Arena and Background (the game's, after Random: [`Places`]), all remembered
+//! between runs by game, and START TRAINING; beside them the two builds facing each other on the arena the
+//! session opens on. With no build of the game there is one button, Create a build. A build that can't be used
+//! says so in the reserved line, and training doesn't start.
 //!
 //! **A training session** is a battle against a dummy with the training menu over it, and any screen may start
 //! one ([`start`]): Training does from its entry, and Play does beside a waiting invite, with rows of its own at
@@ -30,7 +31,9 @@ use crate::stage::Stage;
 use nettai_frontend::driver::{ChipDraw, InFight, LivePlayer, OnCustomScreen, Opponent, Training as Options};
 use nettai_frontend::player::FRAME_RATE;
 use nettai_match::build::{Builds, Checked};
-use nettai_match::{Match, Set, Side, Wrong};
+use nettai_battle::Content;
+use nettai_content_api::StageHandle;
+use nettai_match::{Match, RoundSettings, Set, Side, Wrong};
 use nettai_ui::{BattleKind, TrainingBuild, TrainingOption, TrainingRow, TrainingView, VersusCard};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
@@ -57,7 +60,10 @@ pub struct Start {
     /// What the dummy does at first, and what the battle's options are; the training menu changes them.
     pub opponent: Opponent,
     pub options: Options,
-    /// What the arenas, each folder's order and the dummy's random presses are picked from.
+    /// Where each round is fought: an arena and a background of the game's ([`Places`]: one it hasn't is
+    /// Random), each picked from the seed where it names none (Random).
+    pub round: RoundSettings,
+    /// What the places left to Random, each folder's order and the dummy's random presses are picked from.
     pub seed: u32,
     /// The screen that starts it, if not Training itself, and the tag it hears of it by: a row it added was
     /// chosen (`Screen::answered(tag, row)`, the row's place in `rows`). Its session has no CHANGE BUILDS and
@@ -76,13 +82,25 @@ impl Start {
     /// A session of `game` as Training starts one: the dummy stands still and picks the first chips it can,
     /// the picture fills the window after the two cards.
     pub fn new(game: &str, you: Build, dummy: Build) -> Start {
-        Start { game: game.to_string(), you, dummy, opponent: Opponent::default(), options: Options::default(), seed: clock_seed(), from: None, rows: Vec::new(), full: true, cards: true }
+        Start {
+            game: game.to_string(),
+            you,
+            dummy,
+            opponent: Opponent::default(),
+            options: Options::default(),
+            round: RoundSettings::default(),
+            seed: clock_seed(),
+            from: None,
+            rows: Vec::new(),
+            full: true,
+            cards: true,
+        }
     }
 
     /// A session screen `from` shows beside something of its own while the player waits (Play, by an invite's
-    /// code): the dummy a copy of the player's own build, standing still, every option at its normal value; the
-    /// picture in the screen's own `Picture`, with no cards before it; `rows` at the top of the training menu,
-    /// each heard by `tag`.
+    /// code): the dummy a copy of the player's own build, standing still, every option at its normal value and
+    /// the places Random; the picture in the screen's own `Picture`, with no cards before it; `rows` at the top
+    /// of the training menu, each heard by `tag`.
     pub fn beside(game: &str, build: Build, from: ScreenId, tag: &'static str, rows: Vec<String>) -> Start {
         Start { from: Some((from, tag)), rows, full: false, cards: false, ..Start::new(game, build.clone(), build) }
     }
@@ -101,6 +119,16 @@ pub struct Shared {
 struct Session {
     /// The screen that started it, if not Training, and the tag it hears of it by.
     from: Option<(ScreenId, &'static str)>,
+    /// Its game, the match it plays (the two builds, every round on the place chosen) and the seed its set is
+    /// picked from: an Arena or Background row changed plays the match's set again on the new place.
+    game: String,
+    m: Match,
+    seed: u32,
+    /// The game's places, what each is called in the language shown (Random not among them), and the two
+    /// chosen (each its list's place, 0 Random).
+    places: Places,
+    place_names: [Vec<String>; 2],
+    place: [usize; 2],
     /// Its picture fills the window.
     full: bool,
     /// The rows its starter added: the menu's first.
@@ -124,12 +152,14 @@ struct Session {
 /// The training menu's rows, in order, under whatever rows another screen added: each group's title, then its
 /// options. A row is added here, worded in training.slint (`TrainingView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Training::step_option`.
-const ROWS: [TrainingOption; 11] = [
+pub(crate) const ROWS: [TrainingOption; 13] = [
     TrainingOption::Dummy,
     TrainingOption::Action,
     TrainingOption::CustomScreen,
     TrainingOption::Recording,
     TrainingOption::Battle,
+    TrainingOption::Arena,
+    TrainingOption::Background,
     TrainingOption::YourHp,
     TrainingOption::DummysHp,
     TrainingOption::CustomGauge,
@@ -139,10 +169,12 @@ const ROWS: [TrainingOption; 11] = [
 ];
 
 /// How many values a row steps through (none: a group's title; Recording has one, its recording, and stepping
-/// it records another).
-fn values(option: TrainingOption) -> usize {
+/// it records another; Arena and Background the game's `places` and Random).
+fn values(option: TrainingOption, places: &Places) -> usize {
     match option {
         TrainingOption::Recording => 1,
+        TrainingOption::Arena => places.len(ARENA),
+        TrainingOption::Background => places.len(BACKGROUND),
         TrainingOption::Action => InFight::ALL.len(),
         TrainingOption::CustomScreen => OnCustomScreen::ALL.len(),
         TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::ChipDraw | TrainingOption::InputDisplay => 2,
@@ -151,9 +183,11 @@ fn values(option: TrainingOption) -> usize {
 }
 
 /// The value a row has: its place among its values.
-fn value(option: TrainingOption, opponent: Opponent, options: Options, inputs: bool) -> usize {
+fn value(option: TrainingOption, opponent: Opponent, options: Options, inputs: bool, place: [usize; 2]) -> usize {
     match option {
         TrainingOption::Recording => 0,
+        TrainingOption::Arena => place[ARENA],
+        TrainingOption::Background => place[BACKGROUND],
         TrainingOption::Action => InFight::ALL.iter().position(|a| *a == opponent.in_fight).unwrap_or(0),
         TrainingOption::CustomScreen => OnCustomScreen::ALL.iter().position(|c| *c == opponent.on_custom_screen).unwrap_or(0),
         TrainingOption::YourHp => options.refills[0] as usize,
@@ -166,13 +200,19 @@ fn value(option: TrainingOption, opponent: Opponent, options: Options, inputs: b
 }
 
 /// A row as the menu shows it: its value's place, or for Recording how long the dummy's recording is, in tenths
-/// of a second (0: none).
+/// of a second (0: none); for Arena and Background, the name of the one chosen (none: Random).
 fn row(option: TrainingOption, session: &Session) -> TrainingRow {
     let value = match option {
         TrainingOption::Recording if session.recorded > 0 => ((session.recorded as f64 * 10.0 / FRAME_RATE).round() as i32).max(1),
-        _ => value(option, session.opponent, session.options, session.inputs) as i32,
+        _ => value(option, session.opponent, session.options, session.inputs, session.place) as i32,
     };
-    TrainingRow { option, value, text: Default::default() }
+    let part = match option {
+        TrainingOption::Arena => Some(ARENA),
+        TrainingOption::Background => Some(BACKGROUND),
+        _ => None,
+    };
+    let text = part.and_then(|part| session.place[part].checked_sub(1).and_then(|at| session.place_names[part].get(at))).map(|name| name.as_str().into()).unwrap_or_default();
+    TrainingRow { option, value, text }
 }
 
 /// Show `options`' rows as `session` has them now.
@@ -238,6 +278,9 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         UserError::Other
     })?;
     m.sides = [start.you.side.clone(), start.dummy.side.clone()];
+    let places = Places::of(content, &start.game);
+    let place = places.chosen(content, &start.round);
+    places.put(&mut m, place);
     // (A set is made of a checked match: both folders whole.)
     if let Some(problem) = nettai_match::check::problems(content, &m).first() {
         crate::errors::log("starting training", &problem.said());
@@ -257,8 +300,15 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         cards
     });
     let inputs = inputs_on(&shell.settings);
+    let place_names = places.names(content, &Names::of(content, &ready.graphics(shell.lang)));
     let session = Session {
         from: start.from,
+        game: start.game.clone(),
+        m,
+        seed: start.seed,
+        places,
+        place_names,
+        place,
         full: start.full,
         added: start.rows.len(),
         opponent: start.opponent,
@@ -268,7 +318,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         recorded: 0,
         menu_open: false,
         // (The menu opens on its first row: a row its starter added, else the first option.)
-        menu_focus: if start.rows.is_empty() { Key::new("menu.rows.option", ROWS.iter().position(|o| values(*o) > 0).unwrap_or(0) as i32) } else { Key::new("menu.rows.added", 0) },
+        menu_focus: if start.rows.is_empty() { Key::new("menu.rows.option", ROWS.iter().position(|o| values(*o, &Places::default()) > 0).unwrap_or(0) as i32) } else { Key::new("menu.rows.added", 0) },
         round: None,
         held: [0; 2],
     };
@@ -286,12 +336,12 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     view.set_recording(false);
     view.set_held_yours(0);
     view.set_held_dummys(0);
-    let driver = LivePlayer::against(set_of(content, &m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
+    let driver = LivePlayer::against(set_of(content, &session.m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
     shell.start_battle(BattleStart {
         owner: ScreenId::Training,
         kind: BattleKind::Training,
         game: start.game.clone(),
-        set: set_of(content, &m, start.seed),
+        set: set_of(content, &session.m, start.seed),
         play: Play::Drive(Box::new(driver)),
         viewer: 0,
         recorder: None,
@@ -356,6 +406,21 @@ fn restart(shell: &mut Shell) -> bool {
     b.restart()
 }
 
+/// The session's set again from its start on the place it has now (an Arena or Background row changed), as
+/// RESTART starts it over, the menu staying open: the battle behind it steps through the round's opening on the
+/// new place and waits in the game's own pause, or on its custom screen, as ever under the menu.
+fn restart_on_place(shell: &mut Shell, session: &mut Session) {
+    let Some(ready) = shell.games.ready(&session.game) else { return };
+    session.places.put(&mut session.m, session.place);
+    let set = set_of(ready.content(), &session.m, session.seed);
+    if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training)
+        && let Some(live) = b.stage.player.live_mut()
+    {
+        live.play_set(set);
+        b.restart();
+    }
+}
+
 /// A build as a card says it: its name, its version's tag and its navi's name in the language shown.
 fn shown(shell: &Shell, game: &str, ready: &Rc<Ready>, build: &Build) -> TrainingBuild {
     let content = ready.content();
@@ -390,15 +455,133 @@ pub fn new_builds(content: &std::sync::Arc<nettai_battle::Content>, game: &str) 
     builds
         .versions
         .iter()
-        .map(|v| {
-            // (A name to tell them by: the version's id, as a title.)
-            let mut name = v.id.replace(['-', '_'], " ");
-            if let Some(first) = name.get_mut(0..1) {
-                first.make_ascii_uppercase();
-            }
-            Ok(Build { name, side: builds.new_build(content, &v.id)? })
-        })
+        // (A name to tell them by: the version's id, as a title.)
+        .map(|v| Ok(Build { name: as_title(&v.id), side: builds.new_build(content, &v.id)? }))
         .collect()
+}
+
+/// A key as a title: its words apart, the first letter a capital (`netbattle-12`, "Netbattle 12").
+fn as_title(key: &str) -> String {
+    let mut name = key.replace(['-', '_'], " ");
+    if let Some(first) = name.get_mut(0..1) {
+        first.make_ascii_uppercase();
+    }
+    name
+}
+
+// ---- The places -----------------------------------------------------------------------------------------------
+
+/// The two lists of [`Places`], by their places in a pair: the arenas and the backgrounds.
+const ARENA: usize = 0;
+const BACKGROUND: usize = 1;
+
+/// The places a training set may be fought on, as the entry and the menu list them: the game's arenas (the
+/// link battle stages a match may name, `nettai_match::link_battle_stages`: the panel layouts and what stands
+/// on them that its netbattles are fought on) and its battle backgrounds, each in its keys' natural order (a run
+/// of digits by its number: Netbattle 2 before Netbattle 10; a background by its name in the pack). Each list is
+/// chosen in after Random: the place picked from the seed each round, as a match that names none has it (what
+/// training did before it had them). A choice is a list's place, 0 Random.
+///
+/// The games keep the two apart: a link battle picks its stage and its background each on its own (the rules'
+/// `link_pick`), so either goes with any of the other. An arena has no name in the content's words (a stage is
+/// its key), and the list says each by its key as a title ("Netbattle 12"); a background is called what the
+/// language's strings call it (their `[backgrounds]`, by the area it comes from).
+#[derive(Clone, Default)]
+pub struct Places {
+    arenas: Vec<StageHandle>,
+    /// By their names in the game's pack.
+    backgrounds: Vec<String>,
+}
+
+impl Places {
+    pub fn of(content: &Content, game: &str) -> Places {
+        let mut arenas = nettai_match::link_battle_stages(content, game);
+        arenas.sort_by_cached_key(|&s| natural(nettai_match::ids::local(&content.defs.stage(s).key)));
+        let mut backgrounds: Vec<String> = nettai_match::ids::backgrounds(content, game).into_iter().map(str::to_string).collect();
+        backgrounds.sort_by_cached_key(|b| natural(b));
+        Places { arenas, backgrounds }
+    }
+
+    /// How many choices list `part` has, Random with them.
+    fn len(&self, part: usize) -> usize {
+        1 + if part == ARENA { self.arenas.len() } else { self.backgrounds.len() }
+    }
+
+    /// A round on the place `chosen`.
+    fn round(&self, chosen: [usize; 2]) -> RoundSettings {
+        RoundSettings {
+            stage: chosen[ARENA].checked_sub(1).and_then(|at| self.arenas.get(at)).copied(),
+            background: chosen[BACKGROUND].checked_sub(1).and_then(|at| self.backgrounds.get(at)).cloned(),
+        }
+    }
+
+    /// Every round of `m` on the place `chosen`.
+    fn put(&self, m: &mut Match, chosen: [usize; 2]) {
+        let round = self.round(chosen);
+        m.rounds.iter_mut().for_each(|r| *r = round.clone());
+    }
+
+    /// The place `round` states, by the lists' places (what it names that they haven't: Random).
+    fn chosen(&self, content: &Content, round: &RoundSettings) -> [usize; 2] {
+        let arena = round.stage.map(|s| nettai_match::ids::local(&content.defs.stage(s).key));
+        [self.find(content, ARENA, arena), self.find(content, BACKGROUND, round.background.as_deref())]
+    }
+
+    /// Where the choice remembered by `key` is in list `part` (none, or one the list hasn't: Random).
+    fn find(&self, content: &Content, part: usize, key: Option<&str>) -> usize {
+        key.and_then(|key| (1..self.len(part)).find(|&at| self.key(content, part, at) == Some(key))).unwrap_or(0)
+    }
+
+    /// The key choice `at` of list `part` is remembered by: a stage's, a background's name in the pack (none:
+    /// Random).
+    fn key<'c>(&'c self, content: &'c Content, part: usize, at: usize) -> Option<&'c str> {
+        let at = at.checked_sub(1)?;
+        if part == ARENA { self.arenas.get(at).map(|&s| nettai_match::ids::local(&content.defs.stage(s).key)) } else { self.backgrounds.get(at).map(String::as_str) }
+    }
+
+    /// What each choice of the two lists but Random is called, in `names`' language.
+    fn names(&self, content: &Content, names: &Names) -> [Vec<String>; 2] {
+        [
+            self.arenas.iter().map(|&s| as_title(nettai_match::ids::local(&content.defs.stage(s).key))).collect(),
+            self.backgrounds.iter().map(|b| names.background_named(b)).collect(),
+        ]
+    }
+
+    /// The place remembered for `game` (Random where nothing is, or the content no longer has it).
+    fn kept(&self, content: &Content, remembered: &std::collections::BTreeMap<String, String>, game: &str) -> [usize; 2] {
+        [ARENA, BACKGROUND].map(|part| self.find(content, part, remembered.get(&kept_place(game, part)).map(String::as_str)))
+    }
+
+    /// Remember choice `at` of list `part` for `game` (Random: nothing).
+    fn keep(&self, content: &Content, remembered: &mut std::collections::BTreeMap<String, String>, game: &str, part: usize, at: usize) {
+        match self.key(content, part, at) {
+            Some(key) => remembered.insert(kept_place(game, part), key.to_string()),
+            None => remembered.remove(&kept_place(game, part)),
+        };
+    }
+}
+
+/// What `key` sorts by in its natural order: each run of digits as wide as any number's, so by its number
+/// (`netbattle-2` before `netbattle-10`).
+fn natural(key: &str) -> String {
+    let (mut out, mut digits) = (String::with_capacity(key.len() + 16), String::new());
+    for c in key.chars().map(Some).chain([None]) {
+        if let Some(c) = c.filter(char::is_ascii_digit) {
+            digits.push(c);
+            continue;
+        }
+        if !digits.is_empty() {
+            out += &format!("{digits:0>20}");
+            digits.clear();
+        }
+        out.extend(c);
+    }
+    out
+}
+
+/// The key the place chosen for `game` is remembered by: its arena's, or its background's.
+fn kept_place(game: &str, part: usize) -> String {
+    format!("training.{}.{game}", if part == ARENA { "arena" } else { "background" })
 }
 
 // ---- The entry ------------------------------------------------------------------------------------------------
@@ -435,6 +618,11 @@ pub struct Training {
     builds: Vec<Listed>,
     /// The builds chosen, by their place in the list: the player's, the dummy's.
     chosen: [usize; 2],
+    /// The game's places, what each is called in the language shown (Random not among them), and the place
+    /// chosen (each its list's place, 0 Random).
+    places: Places,
+    place_names: [Vec<String>; 2],
+    place: [usize; 2],
     /// Each build checked, by what its file says (a build's file is checked once while it says the same).
     checked: HashMap<(String, String), Option<Unusable>>,
     /// What the session will be picked from: the arena shown is the one it opens on.
@@ -454,10 +642,13 @@ fn kept_build(game: &str, dummys: bool) -> String {
 }
 
 impl Training {
-    /// List the selected game's builds, and choose the two remembered: with none remembered, the first that can
-    /// be used (else the first), for both.
+    /// List the selected game's builds and places, and choose those remembered: with no build remembered, the
+    /// first that can be used (else the first), for both; with no place, Random.
     fn list(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
         let content = ready.content();
+        self.places = Places::of(content, game);
+        self.place_names = self.places.names(content, &Names::of(content, &ready.graphics(shell.lang)));
+        self.place = self.places.kept(content, &shell.settings.remembered, game);
         self.builds = if shell.still {
             // (The screenshot pass's pictures don't depend on what the player has made: a new build of each
             // version, and one that can't be used, a side with nothing chosen.)
@@ -528,11 +719,15 @@ impl Training {
         found
     }
 
-    /// Tell the view the entry: the two builds chosen, why one can't be used, whether training can start.
+    /// Tell the view the entry: the two builds chosen and the place, why a build can't be used, whether training
+    /// can start.
     fn tell(&mut self, shell: &mut Shell, game: &str, ready: &Rc<Ready>) {
         let ui = shell.ui();
         let view = ui.global::<TrainingView>();
         view.set_none(self.builds.is_empty());
+        let name = |part: usize| self.place[part].checked_sub(1).and_then(|at| self.place_names[part].get(at)).map(|n| n.as_str().into()).unwrap_or_default();
+        view.set_arena_name(name(ARENA));
+        view.set_background_name(name(BACKGROUND));
         let card = |build: Option<&Listed>| match build {
             Some(Listed { name, side: Some(side), .. }) => shown(shell, game, ready, &Build { name: name.clone(), side: side.clone() }),
             Some(Listed { name, .. }) => TrainingBuild { name: name.as_str().into(), ..Default::default() },
@@ -552,7 +747,7 @@ impl Training {
         // TRAINING can't be pressed, the screen opens on the row to change.
         let on = shell.nav.focused().map(|k| k.id.clone());
         match (self.builds.is_empty(), on.as_deref(), wrong.iter().position(Option::is_some)) {
-            (true, None | Some("start" | "yours" | "dummys"), _) => shell.nav.focus("create", 0),
+            (true, None | Some("start" | "yours" | "dummys" | "arena" | "background"), _) => shell.nav.focus("create", 0),
             (false, Some("create"), None) => shell.nav.focus("start", 0),
             (false, None | Some("start" | "create"), Some(which)) => shell.nav.focus(if which == 1 { "dummys" } else { "yours" }, 0),
             _ => {}
@@ -572,6 +767,25 @@ impl Training {
         self.tell(shell, &game, &ready);
     }
 
+    /// Choose a place of list `part` (the arenas or the backgrounds, 0 Random): remembered for the game, and
+    /// shown (the arena drawn again on it, as for a build).
+    fn choose_place(&mut self, shell: &mut Shell, part: usize, at: usize) {
+        let Some((game, ready)) = shell.ready() else { return };
+        if at >= self.places.len(part) || self.place[part] == at {
+            return;
+        }
+        self.place[part] = at;
+        self.places.keep(ready.content(), &mut shell.settings.remembered, &game, part, at);
+        shell.save_settings();
+        self.changed = Some(Instant::now());
+        self.tell(shell, &game, &ready);
+    }
+
+    /// A list of `part`'s choices as the shell's list shows it: Random, then the game's.
+    fn place_options(&self, shell: &Shell, part: usize) -> Vec<String> {
+        std::iter::once(shell.ui().global::<TrainingView>().get_random().to_string()).chain(self.place_names[part].iter().cloned()).collect()
+    }
+
     /// The two builds chosen, if both can be played.
     fn pair(&mut self, ready: &Ready) -> Option<[Build; 2]> {
         if self.unusable(ready, 0).is_some() || self.unusable(ready, 1).is_some() {
@@ -589,6 +803,7 @@ impl Training {
             let content = ready.content();
             let mut m = Match::empty(content, &game).map_err(|why| crate::errors::log("making the arena's match", &why)).ok()?;
             m.sides = [you.side, dummy.side];
+            self.places.put(&mut m, self.place);
             let mut player = crate::screens::menu::player(shell, &ready, Box::new(LivePlayer::new(Set::of(content, &m, self.seed))));
             let opening = player.battle().round.mode;
             for _ in 0..OPENING {
@@ -609,7 +824,8 @@ impl Training {
     fn start_training(&mut self, shell: &mut Shell) {
         let Some((game, ready)) = shell.ready() else { return };
         let Some([you, dummy]) = self.pair(&ready) else { return shell.sound.play(Cue::Refused) };
-        let start = Start { opponent: kept_opponent(shell), options: kept_options(shell), seed: self.seed, ..Start::new(&game, you, dummy) };
+        let round = self.places.round(self.place);
+        let start = Start { opponent: kept_opponent(shell), options: kept_options(shell), round, seed: self.seed, ..Start::new(&game, you, dummy) };
         self.drop_arena(shell);
         if let Err(error) = self::start(shell, start) {
             shell.fail(error);
@@ -642,11 +858,20 @@ impl Training {
             shell.close_menu();
             return;
         }
-        if let Some(option) = option.filter(|o| values(*o) > 0) {
-            let next = (value(option, session.opponent, session.options, session.inputs) as i32 + by).rem_euclid(values(option) as i32) as usize;
-            // (A session another screen started keeps nothing of the dummy's setup.)
+        if let Some(option) = option.filter(|o| values(*o, &session.places) > 0) {
+            let next = (value(option, session.opponent, session.options, session.inputs, session.place) as i32 + by).rem_euclid(values(option, &session.places) as i32) as usize;
+            // (A session another screen started keeps nothing of the dummy's setup, or of the place.)
             let keep = session.from.is_none();
             match option {
+                // The set again from its start on the new place, as RESTART starts it, the menu staying open.
+                TrainingOption::Arena | TrainingOption::Background => {
+                    let part = if option == TrainingOption::Arena { ARENA } else { BACKGROUND };
+                    session.place[part] = next;
+                    if keep && let Some(ready) = shell.games.ready(&session.game) {
+                        session.places.keep(ready.content(), &mut shell.settings.remembered, &session.game, part, next);
+                    }
+                    restart_on_place(shell, &mut session);
+                }
                 TrainingOption::Action => {
                     session.opponent.in_fight = InFight::ALL[next];
                     if keep && InFight::ALL[next] != InFight::PlaysRecording {
@@ -734,6 +959,11 @@ impl Screen for Training {
                 let options = self.builds.iter().map(|b| b.name.clone()).collect();
                 shell.pick(id, 0, options, self.chosen[which]);
             }
+            "arena" | "background" => {
+                let part = if id == "arena" { ARENA } else { BACKGROUND };
+                let options = self.place_options(shell, part);
+                shell.pick(id, 0, options, self.place[part]);
+            }
             "start" => self.start_training(shell),
             "menu.resume" => shell.close_menu(),
             "menu.restart" => {
@@ -764,14 +994,21 @@ impl Screen for Training {
                 let at = (self.chosen[which] as i32 + by).rem_euclid(self.builds.len() as i32) as usize;
                 self.choose_build(shell, which, at);
             }
+            "arena" | "background" => {
+                let part = if id == "arena" { ARENA } else { BACKGROUND };
+                let at = (self.place[part] as i32 + by).rem_euclid(self.places.len(part) as i32) as usize;
+                self.choose_place(shell, part, at);
+            }
             "menu.rows.option" => self.step_option(shell, index, by),
             _ => {}
         }
     }
 
     fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
-        if matches!(id, "yours" | "dummys") {
-            self.choose_build(shell, (id == "dummys") as usize, choice.max(0) as usize);
+        match id {
+            "yours" | "dummys" => self.choose_build(shell, (id == "dummys") as usize, choice.max(0) as usize),
+            "arena" | "background" => self.choose_place(shell, if id == "arena" { ARENA } else { BACKGROUND }, choice.max(0) as usize),
+            _ => {}
         }
     }
 
@@ -964,23 +1201,69 @@ mod tests {
     /// name of its own.
     #[test]
     fn the_menus_rows_have_their_values() {
-        let (opponent, options, mut seen) = (Opponent::default(), Options::default(), 0);
+        let content = nettai_match::testing::exe6_content();
+        let (opponent, options, places, mut seen) = (Opponent::default(), Options::default(), Places::of(&content, "exe6"), 0);
         for option in ROWS {
-            if values(option) > 0 {
+            if values(option, &places) > 0 {
                 seen += 1;
-                assert!(value(option, opponent, options, false) < values(option), "{option:?}");
+                assert!(value(option, opponent, options, false, [0; 2]) < values(option, &places), "{option:?}");
             }
-            // (A session another screen starts has the battle's options at their normal values: the first.)
-            if matches!(option, TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::ChipDraw) {
-                assert_eq!(value(option, opponent, options, false), 0, "{option:?}");
+            // (A session another screen starts has the battle's options at their normal values and the places
+            // Random: the first.)
+            if matches!(option, TrainingOption::Arena | TrainingOption::Background | TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::ChipDraw) {
+                assert_eq!(value(option, opponent, options, false, [0; 2]), 0, "{option:?}");
             }
         }
-        assert_eq!(seen, 8, "Action, Custom screen, Recording, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
+        assert_eq!(seen, 10, "Action, Custom screen, Recording, Arena, Background, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
         assert_eq!((ACTIONS.len(), CUSTOM_SCREENS.len()), (InFight::ALL.len(), OnCustomScreen::ALL.len()));
-        assert_eq!(value(TrainingOption::Action, Opponent { in_fight: InFight::AttacksAtRandom, ..opponent }, options, false), 2);
-        assert_eq!(value(TrainingOption::CustomScreen, Opponent { on_custom_screen: OnCustomScreen::PicksNothing, ..opponent }, options, false), 0);
-        assert_eq!(value(TrainingOption::DummysHp, opponent, Options { refills: [false, true], ..options }, false), 1);
-        assert_eq!(value(TrainingOption::InputDisplay, opponent, options, true), 1);
+        assert_eq!(value(TrainingOption::Action, Opponent { in_fight: InFight::AttacksAtRandom, ..opponent }, options, false, [0; 2]), 2);
+        assert_eq!(value(TrainingOption::CustomScreen, Opponent { on_custom_screen: OnCustomScreen::PicksNothing, ..opponent }, options, false, [0; 2]), 0);
+        assert_eq!(value(TrainingOption::DummysHp, opponent, Options { refills: [false, true], ..options }, false, [0; 2]), 1);
+        assert_eq!(value(TrainingOption::InputDisplay, opponent, options, true, [0; 2]), 1);
+        assert_eq!(value(TrainingOption::Background, opponent, options, false, [3, 2]), 2);
+        // (The arenas and the backgrounds after Random.)
+        assert_eq!(values(TrainingOption::Arena, &places), 1 + nettai_match::link_battle_stages(&content, "exe6").len());
+        assert_eq!(values(TrainingOption::Background, &places), 1 + nettai_match::ids::backgrounds(&content, "exe6").len());
+    }
+
+    /// Each game's places are its link battle stages and its backgrounds, after Random: a place chosen is every
+    /// round's (and the set's places are those), is remembered by its keys and comes back from them, and Random
+    /// names nothing and is remembered as nothing. An arena is called by its key as a title, a background by the
+    /// language's strings (each of the game's has a name there).
+    #[test]
+    fn the_places_are_the_games_after_random() {
+        use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
+        for (game, content) in [("exe6", exe6_content()), ("exe5", exe5_content()), ("exe4", exe4_content())] {
+            let places = Places::of(&content, game);
+            let (mut arenas, mut stages) = (places.arenas.clone(), nettai_match::link_battle_stages(&content, game));
+            arenas.sort();
+            stages.sort();
+            assert_eq!(arenas, stages, "{game}");
+            assert!(places.len(ARENA) > 1 && places.len(BACKGROUND) > 1, "{game}");
+            assert_eq!(places.round([0, 0]), RoundSettings::default(), "{game}: Random names nothing");
+            let last = [places.len(ARENA) - 1, places.len(BACKGROUND) - 1];
+            let mut m = nettai_match::pick::live(&content, game, 7, None).unwrap();
+            places.put(&mut m, last);
+            let (arena, background) = (*places.arenas.last().unwrap(), places.backgrounds.last().unwrap().clone());
+            assert!(m.rounds.iter().all(|r| *r == RoundSettings { stage: Some(arena), background: Some(background.clone()) }), "{game}");
+            let fought = m.places(&content, 7).unwrap();
+            assert!(fought.iter().all(|p| p.stage == arena && nettai_match::ids::background_name(&content, p.background) == Some(background.as_str())), "{game}: every round there");
+            assert_eq!(places.chosen(&content, &places.round(last)), last, "{game}");
+            let mut remembered = std::collections::BTreeMap::new();
+            places.keep(&content, &mut remembered, game, ARENA, last[ARENA]);
+            places.keep(&content, &mut remembered, game, BACKGROUND, last[BACKGROUND]);
+            assert_eq!(places.kept(&content, &remembered, game), last, "{game}");
+            assert_eq!(remembered.get(&format!("training.background.{game}")), Some(&background));
+            places.keep(&content, &mut remembered, game, ARENA, 0);
+            assert_eq!(places.kept(&content, &remembered, game), [0, last[BACKGROUND]], "{game}: Random is remembered as nothing");
+            assert_eq!(remembered.len(), 1);
+            let [arenas, backgrounds] = places.names(&content, &Names { content: &content, strings: None });
+            assert_eq!(arenas[..3], ["Netbattle 1", "Netbattle 2", "Netbattle 3"], "{game}: in their numbers' order");
+            assert!(arenas.iter().any(|a| a == "Netbattle 10"), "{game}");
+            for (name, key) in backgrounds.iter().zip(&places.backgrounds) {
+                assert!(!name.is_empty() && name != key, "{game}: {key} has a name");
+            }
+        }
     }
 
     /// The builds chosen are remembered by game, the player's and the dummy's apart.

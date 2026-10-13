@@ -31,7 +31,7 @@ export struct PlaceLine {
 export global AutoBattleView {
     out property <[Hint]> hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Pick") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: self.on-placed ? @tr("Remove") : @tr("Pick") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
@@ -58,6 +58,8 @@ export global AutoBattleView {
     in property <int> refused: -1;
     in property <int> refused-seq;
     in property <bool> in-library;
+    // The cursor is on the library's chip that the place being filled holds: Confirm takes it out again.
+    in property <bool> on-placed;
     in property <bool> sheet;
     // How many of the places hold a chip, the note of its library row.
     public pure function in-places(n: int) -> string {
