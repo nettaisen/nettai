@@ -1125,11 +1125,14 @@ impl Screen for Play {
     fn frame(&mut self, shell: &mut Shell, now: Instant, _shown: bool) {
         tour::frame(shell, now);
         let fed = match &mut self.session {
-            Some(session) => session.feed(now),
+            Some(session) => session.feed(now).map(|heard| (heard, session.reconnecting().is_some())),
             None => return,
         };
-        if let Err(error) = fed {
-            self.link_failed(shell, &error);
+        match fed {
+            // (The pass's count of what a link saw, where it keeps one.)
+            Ok((heard, down)) if shell.still => tour::heard(now, heard, down),
+            Ok(_) => {}
+            Err(error) => self.link_failed(shell, &error),
         }
         // (The keys are the training battle's beside an invite: the cursor is on none of the panel's buttons.)
         if matches!(self.stage, Stage::Waiting) && shell.battle_has_keys() {

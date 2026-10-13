@@ -234,9 +234,13 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
-    // (`NETTAI_TOUR_ONLY=play`: Play's steps alone.)
-    if std::env::var("NETTAI_TOUR_ONLY").as_deref() == Ok("play") {
-        return crate::screens::play::tour::steps(&mut add, &shot);
+    // (`NETTAI_TOUR_ONLY=play`: Play's steps alone. `play-away-host` and `play-away-join`: two apps on one
+    // machine, the host's window taken away from under their link.)
+    match std::env::var("NETTAI_TOUR_ONLY").as_deref() {
+        Ok("play") => return crate::screens::play::tour::steps(&mut add, &shot),
+        Ok("play-away-host") => return crate::screens::play::tour::apart(&mut add, true),
+        Ok("play-away-join") => return crate::screens::play::tour::apart(&mut add, false),
+        _ => {}
     }
 
     // Loading, as the app starts.

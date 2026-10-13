@@ -86,9 +86,9 @@ to 318):
 Minimizing and restoring each stop the app for about 0.4 seconds (the system's animation, on the window's
 thread): the ticks of that time are lost, as with any stall that long. With the window in view the latency
 figures are the same with the timer and without (§5: 119.5 to 120.0 frames a second, a key to its picture 10.4
-ms against 10.6, measured back to back). Not tested: the app's own window moved to another desktop (nothing
-moves one without the user), a link's polling itself (no screen has one yet: it rides the same frames), and
-other systems.
+ms against 10.6, measured back to back). A link's polling rides the same frames, and was measured between two
+apps since (§4, "The window away under a link"). Not tested: the app's own window moved to another desktop
+(nothing moves one without the user), and other systems.
 
 Slint on Apple's systems draws its frames from a display link with no window event before them. Its Skia renderer
 on Metal never calls `BeforeRendering`, so the clock needs femtovg, on OpenGL here and WebGL on the web; the app
@@ -397,9 +397,11 @@ A link is made by `Session::open`: an invite (`Link::create_room`: the server pi
 begins when it has said it), a code typed (`Link::join_room`), a direct host (`Link::host`, UDP port 47474) or
 a direct host's address (`Link::join`). The lobby is made the moment the link is open, in the link's role, with
 a timeout of 45 seconds (longer than the link's 30 of making a dropped connection again), and the training
-battle ends. The app is kept awake while there is a link (`Shell::stay_awake`), and nothing is read or checked
-on the window's thread while there is one: the builds are listed before, and a match is made ready a few
-milliseconds a frame.
+battle ends. From the moment a link is asked for until it is dropped (the wait, the lobby, the loading, a
+match and its result) the screen holds `Shell::stay_awake`: the app is kept awake, and the timer runs its
+frames while the window isn't drawn (§1), so the link is fed and polled with the window minimized or hidden.
+Nothing in the two halves needs a frame drawn. And nothing is read or checked on the window's thread while
+there is a link: the builds are listed before, and a match is made ready a few milliseconds a frame.
 
 **A match.** When the lobby says a match is agreed (`Status::Loading`), Play starts the battle
 (`Shell::start_battle`): the two cards, this player's with their build and the other's with their name alone;
@@ -469,7 +471,28 @@ A match recorded by its agreement was played back by nettai-tool once (`--replay
 written, never run: a pad (its SELECT held, its shoulders in the lobby; the code's boxes were drawn and walked
 by the pass, opened as a pad's confirm opens them); the signaling server's other refusals (a full room,
 another version); a lobby's other failures (another version, game or content, this player's build refused, no
-answer); a link that gives up for good (30 seconds down); a match whose player goes silent; two machines.
+answer); a link that gives up for good (30 seconds down); a match whose player goes silent for good; two
+machines (two apps on one machine have met: below).
+
+**The window away under a link** (2026-10-12, macOS; two apps on one machine with a direct link between them,
+§13's two-app check; load average about 140). Each met the other through Play's own controls (one hosting, one
+typing its address), they readied up and played, the host left the match and then the lobby, and the other
+saw each. The host's window was minimized for eight seconds and then hidden for eight, in the lobby and again
+in the match, and the other app wrote what its link saw, a second at a time:
+
+| The host's window | What the other player's app saw of it |
+|---|---|
+| in the lobby, minimized | the lobby's messages 100 ms apart throughout (the longest silence 116 ms), but for 0.62 s as the window went and 0.59 s as it came back |
+| in the lobby, hidden | the longest silence 139 ms |
+| in a match, minimized | 60 or 61 ticks a second and no silence over 34 ms, but for 0.61 s as it went (44 ticks that second) and 0.55 s as it came back (47) |
+| in a match, hidden | 59 to 61 ticks a second, no silence over 50 ms |
+
+The link was never down, for either. The host ran 60 or 61 frames a second by the timer while its window was
+away, none of them drawn. The half second as a window minimizes and comes back is the system's animation on
+the window's thread (§1); hiding has none. The same run with the host's timer left out
+(`NETTAI_NO_TIMER_CLOCK`) is what the check is for: the other app heard nothing for 8.1 to 8.8 seconds each
+time, its link read as down from the third second, and its match stood still (0 ticks for six or seven
+seconds); the link and the match both picked up when the window came back.
 
 The signaling server isn't deployed (with none named, CREATE INVITE and JOIN say the server can't be reached,
 and DIRECT CONNECT works). Run it locally:
@@ -907,6 +930,16 @@ game's versions (never the player's files), the lobby shows a round trip of 42 m
 process measure moves about), and a match isn't recorded unless `$NETTAI_REPLAYS` says where. `NETTAI_TOUR_ONLY=play`
 walks Play's steps alone.
 The motion probe has the lobby's two set pieces, the other player's card sliding in and a ready mark stamping.
+
+**Two apps on one machine** (`tour::apart`): `NETTAI_TOUR_ONLY=play-away-host` in one app and `play-away-join`
+in another, each with a data folder of its own. The first hosts directly on a loopback port both know and the
+second joins it there, each through Play's own controls; they ready up and play. In the lobby, and again in
+the match, the host's window is minimized for eight seconds and then hidden for eight (the calls
+`NETTAI_WINDOW_PROBE` makes, made by the walk where they are wanted). Each app writes what its link saw to its
+log a second at a time (`play watch`): the frames it ran and how many of them the window drew, the datagrams
+the other's link brought, the longest it brought none for, the frames in which its link was down, and the
+match's ticks. The joiner's lines say whether the other side saw the host stall; with `NETTAI_NO_TIMER_CLOCK`
+on the host they show what a stall looks like. No shot is taken.
 
 ## 14. Build time
 
