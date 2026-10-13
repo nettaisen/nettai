@@ -393,6 +393,16 @@ impl Player {
         nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
     }
 
+    /// The host's levels for the battle's sound, each 0 to 1 (1: as the
+    /// game plays it): its music's and its effects'
+    /// (`BattleAudio::set_levels`: the sound driver mixes them, so a
+    /// host can't turn one down in the samples it is given).
+    pub fn set_sound_levels(&mut self, music: f32, effects: f32) {
+        if let Some(audio) = &mut self.audio {
+            audio.set_levels(music, effects);
+        }
+    }
+
     /// The sound of the ticks run since the last call, appended to `out`:
     /// stereo samples at `nettai_audio::SAMPLE_RATE`, about 549 a tick,
     /// for the host's own output. Nothing from a player without audio. (A

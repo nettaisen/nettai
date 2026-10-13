@@ -7,7 +7,8 @@
 //! where they are on the keyboard, timestamped; the menus' as the same few actions a gamepad's buttons are.
 //!
 //! `NETTAI_PLAY_STATS` prints what the battle's picture costs and how late it is, every two seconds;
-//! `NETTAI_KEY_PROBE` presses the right arrow now and then to measure it; `NETTAI_TOUR=<folder>` walks every
+//! `NETTAI_KEY_PROBE` presses the right arrow now and then to measure it; `NETTAI_WINDOW_PROBE` minimizes or
+//! hides the window for a while; `NETTAI_TOUR=<folder>` walks every
 //! screen and writes each to a PNG (`tour`).
 
 mod arenas;
@@ -139,7 +140,19 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
                 EventResult::Propagate
             }
-            WindowEvent::CursorMoved { .. } | WindowEvent::MouseInput { .. } | WindowEvent::MouseWheel { .. } | WindowEvent::Touch(_) => {
+            // A finger: the on-screen pad's if it is on one of its buttons (each finger by itself, where Slint
+            // follows one pointer), else Slint's, as a pointer.
+            WindowEvent::Touch(touch) => {
+                let Ok(mut app) = state.try_borrow_mut() else { return EventResult::Propagate };
+                if app.touched(touch.id, touch.phase, touch.location.x, touch.location.y) {
+                    EventResult::PreventDefault
+                } else if app.pointer() {
+                    EventResult::Propagate
+                } else {
+                    EventResult::PreventDefault
+                }
+            }
+            WindowEvent::CursorMoved { .. } | WindowEvent::MouseInput { .. } | WindowEvent::MouseWheel { .. } => {
                 let taken = state.try_borrow_mut().map_or(true, |mut app| app.pointer());
                 if taken { EventResult::Propagate } else { EventResult::PreventDefault }
             }
@@ -159,6 +172,13 @@ fn main() -> Result<(), slint::PlatformError> {
                 }
                 EventResult::Propagate
             }
+            // (`NETTAI_PLAY_STATS`: whether the system says the window is covered, for the clock's figures.)
+            WindowEvent::Occluded(covered) => {
+                if std::env::var_os("NETTAI_PLAY_STATS").is_some() {
+                    eprintln!("window: the system says it is {}", if *covered { "covered" } else { "in view" });
+                }
+                EventResult::Propagate
+            }
             // (A file dropped on the window is the screen's: a save, for a build of it.)
             WindowEvent::DroppedFile(path) => {
                 let (path, state) = (path.clone(), state.clone());
@@ -170,8 +190,24 @@ fn main() -> Result<(), slint::PlatformError> {
         }
     });
 
+    // The clock when the window isn't drawn (minimized, hidden, covered): a timer runs the app's frame while a
+    // battle or a link must go on, and asks for a redraw so the window's frames take over again when it shows.
+    // (`NETTAI_NO_TIMER_CLOCK` leaves it out, to see what the window does alone.)
+    let idle = slint::Timer::default();
+    if std::env::var_os("NETTAI_NO_TIMER_CLOCK").is_none() {
+        let (weak, state) = (ui.as_weak(), app.clone());
+        idle.start(slint::TimerMode::Repeated, Duration::from_millis(16), move || {
+            let ran = state.try_borrow_mut().is_ok_and(|mut app| app.idle(Instant::now()));
+            if ran && let Some(ui) = weak.upgrade() {
+                ui.window().request_redraw();
+            }
+        });
+    }
     if std::env::var_os("NETTAI_KEY_PROBE").is_some() {
         key_probe();
+    }
+    if let Ok(probe) = std::env::var("NETTAI_WINDOW_PROBE") {
+        window_probe(&ui, &probe);
     }
     if let Some(dir) = tour {
         tour::start(&ui, &app, dir);
@@ -182,6 +218,35 @@ fn main() -> Result<(), slint::PlatformError> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+/// `NETTAI_WINDOW_PROBE=<minimize|hide>:<after>:<for>`: the window minimized or hidden `after` seconds from the
+/// start, and brought back `for` seconds later, each said on the terminal: with `NETTAI_PLAY_STATS`, what the
+/// battle's clock does meanwhile.
+fn window_probe(ui: &AppWindow, probe: &str) {
+    let mut parts = probe.split(':');
+    let what = parts.next().unwrap_or_default().to_string();
+    let mut seconds = || parts.next().and_then(|s| s.parse::<u64>().ok()).unwrap_or(5);
+    let (after, long) = (seconds(), seconds());
+    let set = move |ui: &AppWindow, away: bool| {
+        eprintln!("window probe: {}", if away { format!("{what} now") } else { "back".to_string() });
+        slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| match what.as_str() {
+            "minimize" => w.set_minimized(away),
+            _ => w.set_visible(!away),
+        });
+    };
+    let (weak, away) = (ui.as_weak(), set.clone());
+    slint::Timer::single_shot(Duration::from_secs(after), move || {
+        if let Some(ui) = weak.upgrade() {
+            away(&ui, true);
+        }
+    });
+    let weak = ui.as_weak();
+    slint::Timer::single_shot(Duration::from_secs(after + long), move || {
+        if let Some(ui) = weak.upgrade() {
+            set(&ui, false);
+        }
+    });
 }
 
 /// `NETTAI_KEY_PROBE`: the right arrow pressed every 300 to 400 ms (at no particular point between two frames,
@@ -239,4 +304,6 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     nav.on_edit_done(move |_, _, text| tell(&a, NavInput::EditDone(text.into())));
     let a = app.clone();
     ui.global::<nettai_ui::Shell>().on_touch(move |bit, down| tell(&a, NavInput::Touch(bit, down)));
+    let a = app.clone();
+    ui.global::<nettai_ui::Shell>().on_pad_key(move |bit, x, y, w, h| tell(&a, NavInput::PadKey(bit, Rect { x, y, w, h })));
 }

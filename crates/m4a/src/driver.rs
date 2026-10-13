@@ -432,6 +432,8 @@ pub struct Driver {
     /// The output capacitor's last input and output, left and right.
     dc_in: [f32; 2],
     dc_out: [f32; 2],
+    /// The host's level for each player's notes (256: as the driver plays them).
+    levels: Vec<u16>,
 }
 
 impl Driver {
@@ -476,6 +478,7 @@ impl Driver {
             carry: Vec::new(),
             dc_in: [0.0; 2],
             dc_out: [0.0; 2],
+            levels: vec![256; bank.players.len()],
             bank,
         }
     }
@@ -700,6 +703,23 @@ impl Driver {
         }
     }
 
+    /// The host's level for a player's notes, 0 to 256 (256: as the driver plays them, to the bit). It is
+    /// not the game's: no call of the driver's sets it, and it changes nothing the driver decides (which
+    /// notes sound, which are cut for others, the players' own volumes), only how loud a player's notes are
+    /// mixed. So a host turns the music down under the effects, or the effects under the music: the music is
+    /// one player's. A note keeps its player's level through its release. (The Direct Sound mix has eight
+    /// bits, so a player turned far down is coarser, as a quiet song is on the hardware.)
+    pub fn set_level(&mut self, p: PlayerId, level: u16) {
+        if let Some(l) = self.levels.get_mut(p.0 as usize) {
+            *l = level.min(256);
+        }
+    }
+
+    /// The host's level for a player's notes ([`set_level`](Self::set_level)).
+    pub fn level(&self, p: PlayerId) -> u16 {
+        self.levels.get(p.0 as usize).copied().unwrap_or(256)
+    }
+
     /// `m4aMPlayVolumeControl`: the volume (0x100 = full) of the tracks in
     /// the `tracks` bit mask.
     pub fn set_volume(&mut self, p: PlayerId, tracks: u16, volume: u16) {
@@ -762,9 +782,11 @@ impl Driver {
         let slot = if c >= 2 { frames - (c - 1) } else { 0 };
         let next = if c == 2 { 0 } else { (slot + 1) % frames };
         mixer::reverb_or_clear(&mut self.ring, slot, next, self.reverb);
+        let level = |levels: &[u16], note: &Note| levels.get(note.player as usize).copied().unwrap_or(256);
         for ch in self.ds.iter_mut() {
-            mixer::mix_ds(ch, &self.bank, self.master_volume, self.div_freq, &mut self.ring, slot);
+            mixer::mix_ds(ch, &self.bank, self.master_volume, self.div_freq, &mut self.ring, slot, level(&self.levels, &ch.note));
         }
+        self.apu.set_levels(std::array::from_fn(|i| level(&self.levels, &self.psg[i].note)));
         self.play_hardware();
         self.last_slot = Some(slot);
     }
@@ -1270,6 +1292,7 @@ impl Driver {
         tr.vol_pit_set();
         let note = Note {
             owner: Some(TrackRef { player: p as u8, track: t as u8 }),
+            player: p as u8,
             order,
             priority,
             midi_key: tr.key,
