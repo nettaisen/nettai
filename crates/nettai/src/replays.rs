@@ -121,7 +121,8 @@ enum Job {
 
 enum Told {
     Listed(Vec<Entry>),
-    Played(Key, Played),
+    /// What a replay's playing out gave, and whether it was kept from before.
+    Played(Key, Played, bool),
     Still(Key, Option<Box<Frame>>),
 }
 
@@ -148,6 +149,9 @@ pub struct Library {
     played: HashMap<Key, Played>,
     /// What the thread was asked to play out and hasn't yet.
     asked: HashSet<Key>,
+    /// `NETTAI_PLAY_STATS`: since when the folder is being listed and its replays' outcomes found, and how many
+    /// were played out and how many kept from before.
+    stats: Option<(Instant, u32, u32)>,
 }
 
 impl Library {
@@ -164,6 +168,9 @@ impl Library {
 
     /// List `dir` again (a match just recorded is there): [`Found::Listed`] says when.
     pub fn list(&mut self, dir: &Path) {
+        if self.stats.is_none() && std::env::var_os("NETTAI_PLAY_STATS").is_some() {
+            self.stats = Some((Instant::now(), 0, 0));
+        }
         self.ask(Job::List(dir.to_path_buf()));
     }
 
@@ -203,23 +210,23 @@ impl Library {
                     self.played.retain(|key, _| there.contains(key));
                     found.push(Found::Listed);
                 }
-                Told::Played(key, played) => {
+                Told::Played(key, played, kept) => {
                     self.asked.remove(&key);
                     found.push(Found::Played(key.0.clone()));
                     self.played.insert(key, played);
+                    if let Some((since, out, from_before)) = &mut self.stats {
+                        *if kept { &mut *from_before } else { &mut *out } += 1;
+                        if self.asked.is_empty() {
+                            eprintln!("replays stats: {} files listed, the outcomes of the {} asked for found in {:.2?} ({out} played out, {from_before} kept from before)", self.entries.len(), *out + *from_before, since.elapsed());
+                            self.stats = None;
+                        }
+                    }
                 }
                 Told::Still(key, frame) => found.push(Found::Still(key.0, frame)),
             }
         }
         found
     }
-}
-
-/// What the thread did since the folder was last listed (`NETTAI_PLAY_STATS` says it once all is done).
-struct Since {
-    listed: Instant,
-    played: u32,
-    kept: u32,
 }
 
 /// The thread: a listing first, then the still asked for last, then the replays to play out, oldest asked
@@ -234,17 +241,10 @@ fn work(jobs: Receiver<Job>, tell: Sender<Told>, cache_file: Option<PathBuf>) {
     // (What the last listing read: a file as it was then is not read again. None before the first: the cache
     // keeps all it holds until the folder is known.)
     let mut known: Option<HashMap<PathBuf, Entry>> = None;
-    let mut since: Option<Since> = None;
     loop {
         // What was asked meanwhile; with nothing to do, wait for the next.
         let idle = listing.is_none() && still.is_none() && plays.is_empty();
         if idle {
-            if let Some(s) = since.take()
-                && stats
-                && s.played + s.kept > 0
-            {
-                eprintln!("replays stats: {} played out and {} kept from before, all told {:.2?} after the listing", s.played, s.kept, s.listed.elapsed());
-            }
             if let (Some(cache), Some(known)) = (&mut cache, &known) {
                 let listed: HashSet<u64> = known.values().filter_map(|e| e.digest).collect();
                 cache.save(|file| listed.contains(&file));
@@ -259,10 +259,7 @@ fn work(jobs: Receiver<Job>, tell: Sender<Told>, cache_file: Option<PathBuf>) {
                 Job::List(dir) => listing = Some(dir),
                 Job::Play(key, id, content) => match cache.as_ref().and_then(|c| c.get(&id)) {
                     Some(kept) => {
-                        if let Some(s) = &mut since {
-                            s.kept += 1;
-                        }
-                        if tell.send(Told::Played(key, Ok(kept.clone()))).is_err() {
+                        if tell.send(Told::Played(key, Ok(kept.clone()), true)).is_err() {
                             return;
                         }
                     }
@@ -281,7 +278,6 @@ fn work(jobs: Receiver<Job>, tell: Sender<Told>, cache_file: Option<PathBuf>) {
                 eprintln!("replays stats: {} files listed ({read} of them read) in {:.2?}; {} outcomes kept", entries.len(), began.elapsed(), cache.as_ref().map_or(0, Cache::len));
             }
             known = Some(entries.iter().map(|e| (e.path.clone(), e.clone())).collect());
-            since = Some(Since { listed: Instant::now(), played: 0, kept: 0 });
             Told::Listed(entries)
         } else if let Some(Job::Still(key, side, content, look)) = still.take() {
             let frame = guarded(|| still_of(&key.0, side, &content, &look)).flatten();
@@ -291,10 +287,7 @@ fn work(jobs: Receiver<Job>, tell: Sender<Told>, cache_file: Option<PathBuf>) {
             if let (Some(cache), Ok(outcome)) = (&mut cache, &played) {
                 cache.put(id, outcome.clone());
             }
-            if let Some(s) = &mut since {
-                s.played += 1;
-            }
-            Told::Played(key, played)
+            Told::Played(key, played, false)
         } else {
             continue;
         };
