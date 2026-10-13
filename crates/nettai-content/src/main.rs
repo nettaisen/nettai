@@ -100,6 +100,8 @@ fn main() {
                     nettai_content::locale::check_games(&a.content, &c, &mut r);
                     // The library order, against the definitions.
                     nettai_content::library::check_games(&a.content, &c, &mut r);
+                    // The look the app draws the game's menus in.
+                    nettai_content::look::check_games(&a.content, &c, &mut r);
                 }
                 Err(failed) => r.issues.extend(failed.issues),
             }

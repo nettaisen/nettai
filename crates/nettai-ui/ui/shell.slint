@@ -2,7 +2,7 @@
 // screen is laid out on, the ground behind it, the cursor over it, and the dialog and the list of choices that
 // open over a screen.
 
-import { Theme, Audit } from "theme.slint";
+import { Theme, Audit, Look, PatternKind } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
 import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
@@ -65,6 +65,24 @@ export struct VersusCard {
     version: VersionTag,
     navi: string,
     progress: float,
+}
+
+// A ground behind the menus (`Backdrop`): a game's look, and the side it sweeps in from over the grounds before it
+// (-1 the left, 1 the right; 0 it is there at once).
+export struct Ground {
+    look: Look,
+    from: int,
+}
+
+// The paths the grounds' patterns are drawn with, each over the window and one of its tiles more each way: the
+// hexagons, the isometric grid's lines, and the starfield's three layers of dots (the white, the fainter white,
+// the brighter in the pattern's color). The app draws them for the window's size (`look.rs`).
+export struct PatternPaths {
+    hexagons: string,
+    isometric-grid: string,
+    stars: string,
+    far-stars: string,
+    bright-stars: string,
 }
 
 export global Shell {
@@ -156,8 +174,10 @@ export global Shell {
     in property <PadButton> pad-a: PadButton.south;
     in property <PadButton> pad-b: PadButton.west;
     in property <PadButton> pad-delete: PadButton.east;
-    // The ground's hexagons, as a path over the window in units.
-    in property <string> hexagons;
+    // The grounds behind the menus, the last on top: the selected game's, and while it sweeps in the ones it is
+    // covering (the app drops those once it has). Their patterns' paths, over the window in units.
+    in property <[Ground]> grounds;
+    in property <PatternPaths> patterns;
     // The on-screen pad's buttons (a phone, in battle), each by its GBA button's bit number. The pad takes the
     // window's touches itself, every finger its own (the app: `TouchPad`), so each button says where it is
     // (`pad-key`) and is drawn held when the app says so (`pad-held`, by bit number). The mouse comes through
@@ -445,10 +465,123 @@ export global Fx {
     in property <string> fly-text;
 }
 
-// Dark navy, top to bottom, under a faint blue glow from the top right and the hexagon field. The hexagons drift
-// slowly, a soft pulse crosses them now and then, and they rush as a battle is entered.
+// One ground, over the ones before it: what it covers of the window grows from the side it comes in from as its
+// sweep runs (from its creation, for the theme's `settle`), and a band of its cursor's color leads the edge. Its
+// pattern is one tile larger than the window each way, moves by less than a tile, and is drawn once into a layer,
+// which is what moves: stroking the hexagons anew each frame cost over a millisecond. (The tiles are those the app
+// draws the paths on: `look.rs`.)
+component GroundLayer inherits Rectangle {
+    in property <Ground> ground;
+    in property <float> drift;
+    in property <float> rush;
+    in property <float> pulse;
+    property <Look> look: root.ground.look;
+    property <PatternKind> kind: root.look.pattern;
+    property <bool> stars: root.kind == PatternKind.starfield;
+    property <float> tile-width: root.kind == PatternKind.hexagons ? 42 : root.kind == PatternKind.isometric-grid ? 92 : 292;
+    property <float> tile-height: root.kind == PatternKind.hexagons ? 72.75 : root.kind == PatternKind.isometric-grid ? 53.116 : 244;
+    property <float> shown: root.ground.from == 0 ? 1 : sweep.t;
+    // Where the edge is: past it, on the side the ground came from, is this ground.
+    property <length> edge: root.ground.from < 0 ? root.shown * root.width : (1 - root.shown) * root.width;
+    sweep := Tween { }
+
+    Rectangle {
+        x: root.ground.from < 0 ? 0 : root.edge;
+        width: root.ground.from < 0 ? root.edge : root.width - root.edge;
+        clip: true;
+        Rectangle {
+            x: -parent.x;
+            width: root.width;
+            height: root.height;
+            Rectangle {
+                background: @linear-gradient(180deg, root.look.ground-top 0%, root.look.ground-bottom 100%);
+            }
+
+            Rectangle {
+                x: parent.width * 0.88 - self.width / 2;
+                y: parent.height * -0.1 - self.height / 2;
+                width: parent.width * 1.7;
+                height: self.width;
+                background: @radial-gradient(circle, root.look.ground-glow 0%, transparent 62%);
+            }
+
+            // A starfield's comet: a streak across the window, from the pattern's color into the main action's.
+            Rectangle {
+                visible: root.stars;
+                background: @linear-gradient(118deg, root.look.pattern-color.with-alpha(0) 38%, root.look.pattern-color.with-alpha(root.look.pattern-strength * 0.45) 39%, root.look.action.with-alpha(root.look.pattern-strength * 0.27) 41.5%, root.look.action.with-alpha(0) 44%);
+            }
+
+            // An isometric grid's wash, low on the window.
+            Rectangle {
+                visible: root.kind == PatternKind.isometric-grid;
+                background: @linear-gradient(180deg, root.look.pattern-color.with-alpha(0) 70%, root.look.pattern-color.with-alpha(root.look.pattern-strength * 0.73) 100%);
+            }
+
+            Rectangle {
+                x: -1px * mod(root.drift * 5 + root.rush * 42 * 9, root.tile-width);
+                y: -1px * mod(root.drift * 2.2, root.tile-height);
+                width: parent.width + root.tile-width * 1px;
+                height: parent.height + root.tile-height * 1px;
+                cache-rendering-hint: true;
+                // The hexagons or the grid, stroked; or the starfield's white dots.
+                Path {
+                    commands: root.kind == PatternKind.hexagons ? Shell.patterns.hexagons : root.kind == PatternKind.isometric-grid ? Shell.patterns.isometric-grid : Shell.patterns.stars;
+                    stroke: root.stars ? transparent : root.look.pattern-color.with-alpha(root.look.pattern-strength);
+                    stroke-width: 1px;
+                    fill: root.stars ? #ffffff.with-alpha(root.look.pattern-strength) : transparent;
+                    viewbox-width: self.width / 1px;
+                    viewbox-height: self.height / 1px;
+                    clip: true;
+                }
+
+                // A starfield's fainter white dots, and its brighter ones in the pattern's color.
+                Path {
+                    commands: root.stars ? Shell.patterns.far-stars : "";
+                    fill: #ffffff.with-alpha(root.look.pattern-strength * 0.64);
+                    viewbox-width: self.width / 1px;
+                    viewbox-height: self.height / 1px;
+                    clip: true;
+                }
+
+                Path {
+                    commands: root.stars ? Shell.patterns.bright-stars : "";
+                    fill: root.look.pattern-color.with-alpha(root.look.pattern-strength * 0.91);
+                    viewbox-width: self.width / 1px;
+                    viewbox-height: self.height / 1px;
+                    clip: true;
+                }
+            }
+
+            Rectangle {
+                x: root.pulse * (parent.width + 420px) - 420px;
+                width: 420px;
+                visible: root.pulse < 1;
+                background: @linear-gradient(90deg, root.look.pattern-color.with-alpha(0) 0%, root.look.pattern-color.with-alpha(0.0706) 50%, root.look.pattern-color.with-alpha(0) 100%);
+            }
+        }
+    }
+
+    // The edge as it sweeps: a lit line, and a soft band of the cursor's color behind it, over this ground.
+    Rectangle {
+        x: root.ground.from < 0 ? root.edge - self.width : root.edge;
+        width: 120px;
+        visible: root.ground.from != 0 && root.shown < 1;
+        background: root.ground.from < 0 ? @linear-gradient(90deg, root.look.cursor.with-alpha(0) 0%, root.look.cursor.with-alpha(0.22) 100%) : @linear-gradient(90deg, root.look.cursor.with-alpha(0.22) 0%, root.look.cursor.with-alpha(0) 100%);
+        Rectangle {
+            x: root.ground.from < 0 ? parent.width - self.width : 0px;
+            width: 2px;
+            background: root.look.cursor;
+            drop-shadow-blur: 14px;
+            drop-shadow-color: root.look.cursor.with-alpha(0.4);
+        }
+    }
+}
+
+// The ground behind the menus: the selected game's look's (its gradient, its glow at the top right and its pattern),
+// which drifts slowly, has a soft pulse crossing it now and then, and rushes as a battle is entered. As the game
+// changes, the new game's ground sweeps in over the one before from the side its arrow was pressed on (`Ground`'s
+// `from`), behind a lit edge, over the theme's `settle`; a second change while one sweeps sweeps over both.
 export component Backdrop inherits Rectangle {
-    // (The field is one tile, 42 by 72.75, larger than the window each way, and moves by less than a tile.)
     property <float> drift: Theme.motion ? animation-tick() / 1s : 0;
     property <float> pulse: Theme.motion ? clamp(mod(animation-tick(), 9s) / 2.8s, 0, 1) : 1;
     rush := Pulse {
@@ -456,41 +589,13 @@ export component Backdrop inherits Rectangle {
         duration: 520ms;
     }
 
-    Rectangle {
-        background: @linear-gradient(180deg, Theme.ground-top 0%, Theme.ground-bottom 100%);
-    }
+    for ground in Shell.grounds: GroundLayer {
+        ground: ground;
+        drift: root.drift;
+        rush: 1 - pow(rush.v, 3);
+        pulse: root.pulse;
 
-    Rectangle {
-        x: parent.width * 0.88 - self.width / 2;
-        y: parent.height * -0.1 - self.height / 2;
-        width: parent.width * 1.7;
-        height: self.width;
-        background: @radial-gradient(circle, Theme.ground-glow 0%, transparent 62%);
-    }
-
-    // (Drawn once into a layer, which is what moves: stroking the field anew each frame cost over a
-    // millisecond.)
-    Rectangle {
-        x: -1px * mod(root.drift * 5 + (1 - pow(rush.v, 3)) * 42 * 9, 42);
-        y: -1px * mod(root.drift * 2.2, 72.75);
-        width: parent.width + 42px;
-        height: parent.height + 72.75px;
-        cache-rendering-hint: true;
-        Path {
-            commands: Shell.hexagons;
-            stroke: Theme.hexagons;
-            stroke-width: 1px;
-            viewbox-width: self.width / 1px;
-            viewbox-height: self.height / 1px;
-            clip: true;
-        }
-    }
-
-    Rectangle {
-        x: root.pulse * (parent.width + 420px) - 420px;
-        width: 420px;
-        visible: root.pulse < 1;
-        background: @linear-gradient(90deg, #62b4ff00 0%, #62b4ff12 50%, #62b4ff00 100%);
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
 
@@ -635,7 +740,7 @@ export component Header inherits Rectangle {
             color: Theme.muted;
             font-family: Theme.display;
             font-size: 13px;
-            font-weight: 700;
+            font-weight: Theme.display-bold;
             letter-spacing: Theme.cjk ? 0.3px : 1px;
             vertical-alignment: center;
         }
@@ -666,7 +771,7 @@ export component Header inherits Rectangle {
             color: Theme.text;
             font-family: Theme.display;
             font-size: Theme.phone ? 16px : 20px;
-            font-weight: 700;
+            font-weight: Theme.display-bold;
             letter-spacing: Theme.phone ? min(1.2px, Theme.title-tracking) : Theme.title-tracking;
             vertical-alignment: center;
             overflow: elide;
@@ -1067,7 +1172,7 @@ export component DialogFrame inherits Rectangle {
             color: Theme.text;
             font-family: Theme.display;
             font-size: 20px;
-            font-weight: 700;
+            font-weight: Theme.display-bold;
             letter-spacing: Theme.title-tracking * 0.7;
             vertical-alignment: center;
             wrap: word-wrap;
