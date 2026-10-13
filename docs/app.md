@@ -240,6 +240,7 @@ Replays are their headers. `ui/screens/play.slint` holds:
 - `PlayScreen`, a component that `inherits Page` (shell.slint): the header with its title and where Back goes,
   the footer's key hints, and the screen's own parts in the body.
 - `PlayOverlay`: what the screen opens over itself (its dialogs, on a phone its sheets), over the whole window.
+  (A screen that opens nothing has none, and no `if` for one in app.slint: Training.)
 - For Training and Play, the menu over their battle (`TrainingMenu`, `MatchMenu`, each a `MenuOverlay`).
 
 One thing to know in all of them: a part placed in a `Page`, a `MenuOverlay` or a `DialogFrame` is laid out in
@@ -500,6 +501,29 @@ Measuring found two things, both the ground's hexagons, a path stroked across th
   are drawn once into a layer (`cache-rendering-hint`), and the layer is what moves; with it a frame costs 0.2 ms
   more than with no ground at all.
 
+**With Training built** (§15; 2026-10-12, the same Mac, window and variables; the build before it and the build
+with it run one after the other, twice over, 44 seconds each; load average 139 to 162):
+
+| nettai, `dev`, a training battle | Before Training | With it | With it, the input display on |
+|---|---|---|---|
+| frames a second | 105.5 to 120.0 | 115.1 to 120.0 | 116.3 to 120.1 |
+| frame time p95 / p99 | 8.39 to 16.63 / 8.61 to 16.81 ms | 8.44 to 12.51 / 8.99 to 18.16 ms | 8.42 to 10.56 / 8.69 to 13.66 ms |
+| long frames in 2 s | 0 to 28 | 0 to 11 | 0 to 6 |
+| ticks a second | 59.3 to 60.0 | 59.2 to 60.0 | 59.3 to 60.0 |
+| a picture (presented, written), then to the frame drawn | 3.57 to 4.01 ms, then 0.27 to 0.46 ms | 3.57 to 3.90 ms, then 0.27 to 0.43 ms | 3.55 to 3.90 ms, then 0.31 to 0.40 ms |
+| key to its picture drawn (the two runs' means) | 7.2 to 13.2 ms (10.5, 11.1) | 8.0 to 14.6 ms (10.6, 10.6) | 8.7 to 17.4 ms (11.2, 12.6) |
+| sound queued | 50 to 58 ms | 51 to 58 ms | 45 to 63 ms |
+
+Each is the range over fifteen 2-second windows (fourteen in one) of each of two runs. A training session puts
+nothing on the frame's path but a few comparisons: whether the session's battle is still the one on, the round's
+number, and, with the input display on, the two sides' buttons, told to the UI only when one changes.
+
+Measuring found one thing: **the input display, drawn each frame,** cost 0.3 ms a frame (a frame was drawn
+0.56 to 0.64 ms after its picture, not 0.28 to 0.37: forty boxes and twenty letters). It is drawn into a layer
+(`cache-rendering-hint`) and drawn anew only in a frame a button changes in; the table's last column is with
+that. (The spread of the key's time between the columns is where the probe's presses fell between ticks, four
+or five a window; a frame that shows a press does draw the display anew.)
+
 ## 6. The web
 
 What was tried with the first app, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI SDK 34
@@ -705,6 +729,8 @@ desktop's size and a phone's, in a harness that isn't in the tree (2026-10-12); 
 a phone's edge, which is fixed and now said by the pass. Never run: `Shell::fly`, a replay's viewer through
 `Play::Watch` (and its `set_sound_levels`), an online match's `gate`, `Shell::recorder`, a dropped file, a real
 gamepad, an IME, a touch screen (the pad's fingers are put through the same entry by the screenshot pass).
+Training was the first to show a `Message`, whose text sat in the middle of its line (a text with no width
+of its own is as wide as its words, centered): it is at the line's left now.
 
 Three things about how it is made. A clock reads the frame's time (`animation-tick()`) only while it runs, and
 stops when it is done, so a screen at rest evaluates nothing each frame but what moves by itself. What moves
@@ -912,6 +938,27 @@ and a half minutes of a clean build on the loaded machine (gilrs, which it repla
 offsets they drive), which is in the figures above. The accessibility backend is off: a screen reader sees
 nothing of the app. And with one renderer, a machine without OpenGL can't run it.
 
+**What a screen costs: Training** (§15; measured 2026-10-12 with one script, back to back, the tree before it
+and the tree with it; sccache off; CPU is user and system time together, and the one to compare: the wall
+times follow the machine's load, 129 to 206 before and 166 to 197 after):
+
+| | Before Training | With Training |
+|---|---|---|
+| a clean build of nettai-ui and nettai | 77 s, 33.4 s of CPU | 162 s, 40.6 s of CPU |
+| nothing changed | 2.0 to 2.6 s, 0.7 s of CPU | 2.6 to 3.6 s, 0.6 to 0.9 s of CPU |
+| after one line of Rust changed (a constant of battle.rs, and put back) | 8.8 to 11.1 s, 5.8 to 6.0 s of CPU | 17.4 to 20.3 s, 6.9 to 7.1 s of CPU |
+| after one line of menu.slint changed (a value, and put back) | 20.7 to 31.9 s, 6.5 to 7.5 s of CPU | 38.6 to 40.0 s, 8.2 to 8.3 s of CPU |
+| after one line of training.slint changed (a value, and put back) | | 33.7 to 43.8 s, 7.9 to 8.1 s of CPU |
+| the generated module | 3.33 MB, 28,204 lines | 3.88 MB, 31,925 lines |
+| the Slint | 4,316 lines, 18 `if`s, 6 `for`s | 4,972 lines, 17 `if`s, 7 `for`s |
+
+Training's 656 lines of Slint are 0.55 MB of generated Rust: the entry 0.24 MB (the main menu's screen is 0.23),
+the training menu and its rows 0.22, the input display 0.09, the entry's cards and rows 0.07, less the 0.17 its
+stub was. What kept it there: the entry's parts are shown and hidden, not `if`s; the menu's rows are one
+component under one `for`; the input display is in the window throughout and shown when it is on, where an `if`
+was 46 KB more; Training has no overlay (an empty one under its `if` was 22 KB); a card places its three texts
+itself, where two layouts were 9 KB more; the display's arrows are the text face's, not paths (11 KB).
+
 ## 15. Training
 
 docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
@@ -975,7 +1022,8 @@ too.
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
 each side's custom screen reads (`Battle::custom.sides[n].joypad.held`: this tick's buttons, not the fight's
 delayed ones) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
-corner, under the eighth the battle's own text takes there; on a phone, under MENU.
+corner, under the eighth the battle's own text takes there; on a phone, under MENU. It is drawn into a layer
+and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms a frame).
 
 **On a phone** the entry is one column (the rows, the line, the cards side by side, the arena, START TRAINING at
 the foot), the menu's rows have their label over their arrows and its buttons are one over the other, and in
