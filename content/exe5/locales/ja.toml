@@ -3,6 +3,10 @@
 
 language = "ja"
 
+[game]
+# The game's name as a player sees it: the Japanese games' title, Rockman EXE 5.
+"name" = "EXE5"
+
 [chips]
 "airforce" = { name = "Gエアフォース", description = "ヘリにへんけいして\nそのれつをとび\nばくげきしていく!" }
 "airhoc" = { name = "エアホッケー", description = "かべにはんしゃする\nエアホッケーを\nななめ右になげる!" }
