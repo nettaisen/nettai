@@ -1,5 +1,6 @@
 //! The Builds screens' steps of the screenshot pass (`crate::tour`; docs/app.md §13): the list with none and
-//! with some, a new build's dialog, a build's rename and its deletion's question, and the editor's Navi and
+//! with some, a new build's dialog, a file that is no save dropped on the list, a build's rename and its
+//! deletion's question, and the editor's Navi and
 //! Folder tabs (an entry marked the Regular chip, two tagged, a mark the rules refuse), with pairs a focus move
 //! apart. The builds are the pass's own (`paths::keep_builds_in`): made
 //! here through the screen, as a player makes them.
@@ -78,6 +79,20 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     // The list: the chosen build's overview beside it; its buttons a focus move apart; its dialogs.
     add(SETTLE, focus("builds", 0));
     shot(add, "builds-list", Pair::None);
+    // A file that is no save of the game, dropped on the list: the typed refusal's dialog.
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let folder = crate::paths::builds();
+            let path = folder.join("not-a-save.sav");
+            let _ = std::fs::create_dir_all(&folder);
+            let _ = std::fs::write(&path, b"no save of any game");
+            app.borrow_mut().dropped(&path);
+        }),
+    );
+    shot(add, "builds-import-refused", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, focus("builds", 0));
     if phone {
         add(SETTLE, act(Action::Confirm));
         add(SETTLE, focus("one.edit", 0));
@@ -116,29 +131,51 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     shot(add, "builds-navi-other", Pair::None);
     add(SETTLE, press("navi", 0));
 
-    // The Folder tab: the folder, the strip for the entry under the cursor; the library's controls a focus
-    // move apart; the library sorted so that what can't go in shows why; a chip put in; a chip taken out (the
-    // header says what is wrong); the Regular chip; a search; the sort's list.
+    // The Folder tab. The library is beside the folder on a desktop and a sheet over it on a phone, so each step
+    // says where it is: `library` goes from the entry under the cursor into the library if the cursor isn't
+    // there, `folder` back out of it.
+    fn library() -> Step {
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            if !in_library(&app) {
+                app.act(Action::Confirm);
+            }
+        })
+    }
+    fn folder() -> Step {
+        Box::new(|_, app, _| leave_library(&mut app.borrow_mut()))
+    }
+    // The folder, and the strip for the entry under the cursor; the library, its controls a focus move apart.
     add(SETTLE, press("tab", 1));
     add(SETTLE, focus("slot", 13));
     shot(add, "builds-folder", Pair::None);
-    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, library());
     shot(add, "builds-folder-library", Pair::None);
     add(SETTLE, focus("lib.search", 0));
     shot(add, "builds-folder-search", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "builds-folder-search-focus", Pair::Second);
+    // The library by MB, the most first: the Giga chips, of which another version's say whose they are. A chip
+    // that can't go in, asked for: it stays out (its row shakes, where things move). One that can: it is in
+    // the entry, and the cursor on the next entry.
     add(SETTLE, screen(|s, shell| s.choose(shell, "lib.sort", 0, 3)));
     add(SETTLE, press("lib.direction", 0));
-    add(SETTLE, focus("lib.rows", 2));
+    add(SETTLE, focus("lib.rows", 3));
     shot(add, "builds-folder-sorted", Pair::None);
     add(SETTLE, act(Action::Confirm));
     shot(add, "builds-folder-refused", Pair::None);
-    add(SETTLE, screen(move |s, shell| s.edit(shell, "lib.search", 0, search, true)));
-    add(SETTLE, press("lib.rows", 1));
+    add(SETTLE, library());
+    add(SETTLE, press("lib.rows", 2));
     shot(add, "builds-folder-put", Pair::None);
-    // (The Regular chip: an entry the rules take as one, then one whose chip is past the Regular memory, which
-    // isn't marked and says why. Two entries tagged, in a game whose folders have tag chips.)
+    // A search, and one of what it finds put in.
+    add(SETTLE, folder());
+    add(SETTLE, library());
+    add(SETTLE, screen(move |s, shell| s.edit(shell, "lib.search", 0, search, true)));
+    shot(add, "builds-folder-found", Pair::None);
+    add(SETTLE, press("lib.rows", 1));
+    add(SETTLE, folder());
+    // The Regular chip, an entry the rules take as one; two entries tagged, in a game whose folders have tag
+    // chips. Then an entry whose chip is past the Regular memory: it isn't marked, and the strip says why.
     add(SETTLE, focus("slot", 0));
     add(SETTLE, letter(KeyCode::KeyR, "r"));
     add(SETTLE, focus("slot", 15));
@@ -149,16 +186,18 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     add(SETTLE, focus("slot", 13));
     add(SETTLE, letter(KeyCode::KeyR, "r"));
     shot(add, "builds-folder-mark-refused", Pair::None);
+    // A chip taken out: the header says what is wrong, and the tab is marked.
     add(SETTLE, focus("slot", 4));
     add(SETTLE, act(Action::Delete));
     shot(add, "builds-folder-short", Pair::None);
-    add(SETTLE, act(Action::Confirm));
+    // The sort's list.
+    add(SETTLE, library());
     add(SETTLE, press("lib.sort", 0));
     shot(add, "builds-folder-sort", Pair::None);
     add(SETTLE, act(Action::Back));
 
     // The tabs to come, as they are.
-    add(SETTLE, Box::new(|_, app, _| leave_library(&mut app.borrow_mut())));
+    add(SETTLE, folder());
     add(SETTLE, press("tab", 2));
     shot(add, "builds-navicust", Pair::None);
 
@@ -183,9 +222,14 @@ fn leave(app: &mut App) {
     }
 }
 
+/// Whether the cursor is in the Folder tab's library (on a phone, its sheet is open).
+fn in_library(app: &App) -> bool {
+    app.shell.nav.is_open("lib.") || app.shell.nav.focused().is_some_and(|k| k.id.starts_with("lib."))
+}
+
 /// Out of the library (a phone's sheet), back to the folder.
 fn leave_library(app: &mut App) {
-    if app.shell.nav.focused().is_some_and(|k| k.id.starts_with("lib.")) {
+    if in_library(app) {
         app.act(Action::Back);
     }
 }

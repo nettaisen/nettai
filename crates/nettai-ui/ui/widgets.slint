@@ -975,9 +975,10 @@ component TabItem inherits Rectangle {
 }
 
 // A row of tabs over what they switch (a build's editor): the chosen one's underline slides to the next. Each
-// tab is a control (`nav`, its index its place); the screen switches on `activate`, and on the shoulders. The
-// tabs must fit the bar (on a phone they are smaller and closer): it doesn't scroll, and says so in the
-// screenshot pass when they don't.
+// tab is a control (`nav`, its index its place); the screen switches on `activate`, and on the shoulders. Where
+// the tabs are wider than the bar (five of them on a phone, or four in a long language), the bar is a window on
+// them, which moves to keep the chosen tab whole and in its middle: no tab's word is ever cut, and the one
+// before and the one after show enough to be tapped.
 export component TabBar inherits Rectangle {
     in property <string> nav;
     in property <[Tab]> tabs;
@@ -985,7 +986,8 @@ export component TabBar inherits Rectangle {
     // Where the chosen tab is: the underline's place.
     property <length> under-x;
     property <length> under-width;
-    property <bool> over: Theme.audit && row.preferred-width > self.width + 0.5px;
+    // How far the tabs are moved to the left.
+    property <length> shift: clamp(root.under-x + root.under-width / 2 - self.width / 2, 0px, max(0px, row.preferred-width - self.width));
     height: 40px;
     Rectangle {
         y: parent.height - 1px;
@@ -993,51 +995,56 @@ export component TabBar inherits Rectangle {
         background: Theme.line;
     }
 
-    row := HorizontalLayout {
-        alignment: start;
-        spacing: Theme.phone ? 0px : 4px;
-        for tab[i] in root.tabs: TabItem {
-            property <int> picked: root.chosen;
-            function say() {
-                if i == root.chosen {
-                    root.under-x = self.x;
-                    root.under-width = self.width;
+    Rectangle {
+        clip: true;
+        Rectangle {
+            x: -root.shift;
+            width: max(root.width, row.preferred-width);
+            animate x {
+                duration: Theme.brisk;
+                easing: ease-out;
+            }
+            row := HorizontalLayout {
+                alignment: start;
+                spacing: Theme.phone ? 0px : 4px;
+                for tab[i] in root.tabs: TabItem {
+                    property <int> picked: root.chosen;
+                    function say() {
+                        if i == root.chosen {
+                            root.under-x = self.x;
+                            root.under-width = self.width;
+                        }
+                    }
+                    nav: root.nav;
+                    nav-index: i;
+                    tab: tab;
+                    chosen: i == root.chosen;
+                    init => {
+                        say();
+                    }
+                    changed picked => {
+                        say();
+                    }
+                    changed x => {
+                        say();
+                    }
+                    changed width => {
+                        say();
+                    }
                 }
             }
-            nav: root.nav;
-            nav-index: i;
-            tab: tab;
-            chosen: i == root.chosen;
-            init => {
-                say();
-            }
-            changed picked => {
-                say();
-            }
-            changed x => {
-                say();
-            }
-            changed width => {
-                say();
-            }
-        }
-    }
 
-    Rectangle {
-        x: root.under-x;
-        y: parent.height - 3px;
-        width: root.under-width;
-        height: 3px;
-        background: Theme.cursor;
-        animate x, width {
-            duration: Theme.brisk;
-            easing: ease-out;
-        }
-    }
-
-    changed over => {
-        if over {
-            Audit.clipped("the tab bar's tabs");
+            Rectangle {
+                x: root.under-x;
+                y: parent.height - 3px;
+                width: root.under-width;
+                height: 3px;
+                background: Theme.cursor;
+                animate x, width {
+                    duration: Theme.brisk;
+                    easing: ease-out;
+                }
+            }
         }
     }
 }
