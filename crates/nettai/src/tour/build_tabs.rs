@@ -179,6 +179,35 @@ fn put(spot: Spot) -> Step {
     })
 }
 
+/// Back, if a piece is in hand (it goes back where it came from); nothing, if none is (Back would leave the editor).
+fn put_back() -> Step {
+    Box::new(|ui, app, tour| {
+        if !tour.passing.get() && ui.global::<NavicustView>().get_holding() {
+            app.borrow_mut().act(Action::Back);
+        }
+    })
+}
+
+/// The next pair's second shot may differ in the strip too (the program under the cursor, which a focus move
+/// changes), on a desktop: it is the tab's top, above the board, 104 tall and 12 above the board's panel, whose
+/// cells start 16 into it. (A phone has no strip.)
+fn strip_may_differ() -> Step {
+    Box::new(|ui, app, tour| {
+        let app = app.borrow();
+        if tour.passing.get() || app.shell.scale.phone {
+            return;
+        }
+        let n = ui.global::<NavicustView>().get_columns();
+        let registry = app.shell.nav.registry();
+        let registry = registry.borrow();
+        // (The board's top, from any of its cells: they are 3 apart.)
+        let Some(top) = (0..n * n).find_map(|k| registry.rect(&crate::nav::Key::new("cell", k)).map(|r| r.y - (k / n) as f32 * (r.h + 3.0))) else { return };
+        let bottom = top - 16.0 - 12.0;
+        // (`compare` lets a pair differ 12 around what it is given: this stops 13 short of the strip's bottom.)
+        tour.may_differ(crate::nav::Rect { x: 0.0, y: bottom - 104.0, w: 10_000.0, h: 104.0 - 13.0 });
+    })
+}
+
 /// The cursor on the first cell of the board a placed piece covers.
 fn on_placed() -> Step {
     Box::new(|ui, app, tour| {
@@ -205,6 +234,7 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     shot(add, "tabs-navicust", Pair::First);
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
     add(SETTLE, act(Action::Down));
+    add(SETTLE, strip_may_differ());
     shot(add, "tabs-navicust-focus", Pair::Second);
     // A program taken in hand (it is on the board's middle, the command line's row), moved a cell and turned a
     // quarter; turned back and put down a row lower, on the command line still.
@@ -239,8 +269,9 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, put(Spot::Ring));
     shot(add, "tabs-navicust-ring", Pair::None);
     // A placed program under the cursor (the hints say Del takes it off), picked up (In hand), and put away into the
-    // list with Back (no longer placed).
-    add(SETTLE, act(Action::Back));
+    // list with Back (no longer placed). (The piece on the ring is placed: Back puts one in hand back, where the
+    // game has no ring, and with nothing in hand would leave the editor.)
+    add(SETTLE, put_back());
     add(SETTLE, on_placed());
     shot(add, "tabs-navicust-on-piece", Pair::None);
     add(SETTLE, act(Action::Confirm));
