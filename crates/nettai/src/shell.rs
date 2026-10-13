@@ -371,9 +371,9 @@ impl Shell {
         let shell = ui.global::<nettai_ui::Shell>();
         shell.set_key_l(crate::input::key_cap(self.bindings.key(keys::L)).into());
         shell.set_key_r(crate::input::key_cap(self.bindings.key(keys::R)).into());
-        // (The keys and the pad's buttons that confirm and go back: A's and B's, Enter and Esc where they can't.)
-        shell.set_key_a(crate::input::key_cap(self.bindings.confirm_key()).into());
-        shell.set_key_b(crate::input::key_cap(self.bindings.back_key()).into());
+        // (The keys that confirm and go back are Enter and Esc; the pad's, the buttons bound to A and B.)
+        shell.set_key_a("Enter".into());
+        shell.set_key_b("Esc".into());
         shell.set_pad_a(crate::input::pad_face(self.bindings.confirm_button()));
         shell.set_pad_b(crate::input::pad_face(self.bindings.back_button()));
         shell.set_pad_delete(crate::input::pad_face(self.bindings.delete_button()));
@@ -965,7 +965,7 @@ impl App {
                 let did = self.shell.nav.confirm(&ui);
                 self.did(did);
             }
-            // (START, and Esc: nettai's menu in a battle, shut again by them. Elsewhere they do nothing: A confirms.)
+            // (The pad's START: it shuts the battle's menu it opened. Elsewhere it does nothing: A confirms.)
             Action::Menu if self.shell.battle.as_ref().is_some_and(Battle::menu_open) && !over => self.shell.close_menu(),
             Action::Menu => {}
             Action::Back => self.back(),
@@ -1171,12 +1171,7 @@ impl App {
             self.shell.nav.begin_edit(&self.shell.ui(), text);
             return true;
         }
-        // (Enter on a text field starts editing it, as a letter does: a field's own key, whatever is bound.)
-        let action = match code {
-            KeyCode::Enter | KeyCode::NumpadEnter if self.shell.nav.on_field() => Some(Action::Confirm),
-            _ => menu_action(code, self.shell.shift, &self.shell.bindings),
-        };
-        let Some(action) = action else { return false };
+        let Some(action) = menu_action(code, self.shell.shift, &self.shell.bindings) else { return false };
         // (A key held repeats a move; a choice or a way back is pressed once.)
         if repeat && !matches!(action, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus | Action::PageUp | Action::PageDown) {
             return true;
