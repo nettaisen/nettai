@@ -96,6 +96,13 @@ pub trait Driver {
     fn set_opponent(&mut self, _opponent: Opponent) -> bool {
         false
     }
+    /// Have the opponent it plays press nothing from the next tick on, or
+    /// press again as it chose (`held` false); false from a driver that
+    /// plays no opponent. Its choices and its random presses go on as
+    /// they would: only what reaches the battle is held.
+    fn hold_opponent(&mut self, _held: bool) -> bool {
+        false
+    }
     /// The player's input delay from the next frame on, in ticks, of a
     /// driver that has one (netplay's: `crate::netplay::NetOptions`); false
     /// from one that doesn't.
@@ -377,6 +384,8 @@ pub struct LivePlayer {
     /// The round being played, from 1.
     round: u8,
     opponent: Opponent,
+    /// The opponent's buttons reach nothing (`Driver::hold_opponent`).
+    held: bool,
     /// The seed the opponent's random presses start from, and them.
     seed: u64,
     masher: Masher,
@@ -390,7 +399,7 @@ impl LivePlayer {
     /// A set against `opponent`, whose random presses start from `seed`,
     /// the same each time the set starts.
     pub fn against(set: Set, opponent: Opponent, seed: u64) -> LivePlayer {
-        LivePlayer { set, ticks: 0, round: 1, opponent, seed, masher: masher(seed) }
+        LivePlayer { set, ticks: 0, round: 1, opponent, held: false, seed, masher: masher(seed) }
     }
 
     /// What the opponent does.
@@ -477,7 +486,8 @@ impl Driver for LivePlayer {
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
         self.ticks += 1;
         let local = b.setup.local_side as usize;
-        let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent_buttons(b, side) });
+        // (Held, the opponent's presses are made as ever, and go nowhere.)
+        let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent_buttons(b, side) * !self.held as u16 });
         // (The buttons are the whole input, as a netplay peer's are.)
         let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
         Some(Step { input: players, events, frame: Some(self.ticks) })
@@ -505,6 +515,11 @@ impl Driver for LivePlayer {
 
     fn set_opponent(&mut self, opponent: Opponent) -> bool {
         LivePlayer::set_opponent(self, opponent);
+        true
+    }
+
+    fn hold_opponent(&mut self, held: bool) -> bool {
+        self.held = held;
         true
     }
 }
