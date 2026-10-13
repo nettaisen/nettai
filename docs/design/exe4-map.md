@@ -276,7 +276,10 @@ similar 0.50 at 0x08006B14. Tango's hooks (T, the same addresses in both US ROMs
 start's return (0x08006710), the round result (the KO's win and loss at 0x08007130 and 0x08007144, after the code
 counts the win in BattleState+0x18 or the loss in +0x19, R; the time-out judge's win, loss and draw at 0x080073DA,
 0x080073EE and 0x080073F4; the busting level into +0x1E with a win or a loss, 0x08008558 at 0x08007696 and
-0x080076DA, which its results screen reads and nettai, with none, keeps none of), the battle start's music call (0x080074BC) and the set's end (0x08004F68). A netbattle is
+0x080076DA, which its results screen reads and nettai, with none, keeps none of; each battle of a set starts its
+navis' stats from the saves, 0x08007AA4: the lab's eight two-round recordings, darksoul/ and the flag breaks, set
+round 2 up with every byte of round 1's NaviStats and start its moods from the light/dark value again, whatever round
+1 left, as nettai-match's `next_round` does), the battle start's music call (0x080074BC) and the set's end (0x08004F68). A netbattle is
 a single battle or a triple battle, which the game chains inside its battle mode (T). The flow's states, the banners
 and the turn's gauge are to read routine by routine against EXE5's (§13).
 
