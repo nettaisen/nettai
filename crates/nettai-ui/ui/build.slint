@@ -325,7 +325,8 @@ export component ChipRow inherits Rectangle {
 
     Text {
         x: root.icon-x + 16px + root.gap;
-        width: max(0px, root.mark-x - root.gap - self.x);
+        // (A name has the mark's room too where the entry has no mark: nothing beside it moves.)
+        width: max(0px, (root.chip.mark == ChipMark.none ? root.element-x : root.mark-x) - root.gap - self.x);
         text: root.chip.name;
         color: root.chip.flagged ? Theme.bad : root.chip.kind == ChipKind.mega ? Theme.mega : root.chip.kind == ChipKind.giga ? Theme.giga : Theme.text;
         font-family: Theme.body;
@@ -424,7 +425,7 @@ component StatRow inherits Rectangle {
     height: 16px;
     name := Text {
         x: 0;
-        width: root.narrow ? 84px : parent.width - 96px;
+        width: root.narrow ? 108px : parent.width - 96px;
         text: root.label;
         color: Theme.muted;
         font-family: Theme.body;
@@ -434,7 +435,7 @@ component StatRow inherits Rectangle {
     }
 
     value := Text {
-        x: root.narrow ? 88px : parent.width - 92px;
+        x: root.narrow ? 112px : parent.width - 92px;
         width: root.narrow ? self.preferred-width : 44px;
         text: root.stat.value;
         color: Theme.text;
@@ -505,16 +506,25 @@ component SheetLineRow inherits Rectangle {
 // The build overview: the build's name, navi and version; its stats, with what the NaviCust and the patch cards
 // added beside each in cyan; its abilities; its bugs, each by its name and its level or amount, purple; and its
 // folder's 30 chips in two columns. It is framed (what a build holds is: rule 11), and takes the size it is given:
-// 792 by 540 on the Builds and Play screens; narrower than 620 it is the narrow sheet, which a player's panel in a
-// match is (430 wide) and a phone's (`sheet-height` is how tall it is then: 628). `side` gives it a player's color
-// along its top (1 or 2).
+// 792 by 540 on the Builds and Play screens. Narrower than 620 it is the narrow sheet, which a player's panel in a
+// match is (430 wide, 650 tall): the stats in two columns of four, the abilities and the bugs a line each, then
+// the chips, unnumbered. Narrower than 400, a phone's, everything is one column (the stats eight rows, the folder
+// thirty) and it is 1158 tall. `sheet-height` is how tall it is at the width it has. `side` gives it a player's
+// color along its top (1 or 2).
 export component BuildOverview inherits Rectangle {
     in property <BuildSheet> build;
     in property <int> side;
     out property <bool> narrow: self.width < 620px;
-    out property <length> sheet-height: root.narrow ? 628px : 540px;
+    // (A phone's sheet is too narrow for two columns of chips with their names whole, or of stats with their
+    // labels whole.)
+    out property <bool> single: self.width < 400px;
+    property <int> column: root.single ? 30 : 15;
+    property <int> stat-rows: root.single ? 8 : 4;
+    // (The narrow sheet's stats, and under them the abilities' line and the bugs'.)
+    property <length> narrow-stats: root.stat-rows * 22px + 44px;
+    out property <length> sheet-height: !root.narrow ? 540px : 16px + 44px + 12px + root.narrow-stats + 12px + root.column * (Theme.chip-row + 2px) - 2px + 16px;
     property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Rapid"), @tr("Charge"), @tr("Custom"), @tr("Mega chips"), @tr("Giga chips"), @tr("Regular memory")];
-    // (The narrow sheet's label is short: its column is 84.)
+    // (Two columns of stats have a shorter label for the last: its column is 108.)
     property <[string]> narrow-labels: [@tr("HP"), @tr("Attack"), @tr("Rapid"), @tr("Charge"), @tr("Custom"), @tr("Mega chips"), @tr("Giga chips"), @tr("Regular")];
     property <length> pad: 16px;
     property <length> inner: self.width - 2 * root.pad;
@@ -522,9 +532,11 @@ export component BuildOverview inherits Rectangle {
     // (The stats' column is 240 and the gap 24, where the mockups have 200 and 32: a label 40% longer than
     // "Regular memory" has to fit beside its number.)
     property <length> chips-x: root.narrow ? root.pad : root.pad + 264px;
-    property <length> chips-y: root.narrow ? root.pad + 44px + 12px + 110px + 12px : root.pad + 56px + 12px + 22px;
-    property <length> chip-width: ((root.narrow ? root.inner : root.inner - 264px) - 12px) / 2;
+    property <length> chips-y: root.narrow ? root.pad + 44px + 12px + root.narrow-stats + 12px : root.pad + 56px + 12px + 22px;
+    property <length> chip-width: root.single ? root.inner : ((root.narrow ? root.inner : root.inner - 264px) - 12px) / 2;
     property <length> stats-y: root.narrow ? root.pad + 56px : root.pad + 56px + 12px + 22px;
+    // The narrow sheet's two lines under its stats.
+    property <length> lines-y: root.stats-y + root.stat-rows * 22px;
     PanelBack {
         side: root.side;
     }
@@ -581,7 +593,7 @@ export component BuildOverview inherits Rectangle {
         tone: root.build.version.tone;
     }
 
-    // The stats: a column of eight, or on the narrow sheet two of four.
+    // The stats: a column of eight; on the narrow sheet two of four; on a phone's a column again, the sheet wide.
     Label {
         x: root.pad;
         y: root.pad + 56px + 12px;
@@ -591,11 +603,11 @@ export component BuildOverview inherits Rectangle {
     }
 
     for stat[i] in root.build.stats: StatRow {
-        x: root.narrow ? root.pad + floor(i / 4) * (root.inner / 2) : root.pad;
-        y: root.stats-y + (root.narrow ? mod(i, 4) : i) * 22px;
-        width: root.narrow ? root.inner / 2 - 8px : 240px;
-        narrow: root.narrow;
-        label: root.narrow ? root.narrow-labels[i] : root.stat-labels[i];
+        x: root.narrow && !root.single ? root.pad + floor(i / 4) * (root.inner / 2) : root.pad;
+        y: root.stats-y + (root.narrow && !root.single ? mod(i, 4) : i) * 22px;
+        width: root.single ? root.inner : root.narrow ? root.inner / 2 - 8px : 240px;
+        narrow: root.narrow && !root.single;
+        label: root.narrow && !root.single ? root.narrow-labels[i] : root.stat-labels[i];
         stat: stat;
     }
 
@@ -603,28 +615,24 @@ export component BuildOverview inherits Rectangle {
     for line[i] in root.build.lines: SheetLineRow {
         x: root.pad;
         y: root.stats-y + 8 * 22px + 6px + i * 20px;
-        width: root.narrow ? 0px : 240px;
+        width: 240px;
         visible: !root.narrow;
         line: line;
     }
 
-    Text {
+    StatRow {
         x: root.pad;
-        y: root.stats-y + 4 * 22px;
-        width: 84px;
-        height: 16px;
+        y: root.lines-y;
+        width: 108px;
         visible: root.narrow;
-        text: @tr("Abilities");
-        color: Theme.muted;
-        font-size: 13px;
-        vertical-alignment: center;
-        overflow: elide;
+        narrow: true;
+        label: root.narrow ? @tr("Abilities") : "";
     }
 
     Text {
-        x: root.pad + 88px;
-        y: root.stats-y + 4 * 22px;
-        width: root.inner / 2 - 96px;
+        x: root.pad + 112px;
+        y: root.lines-y;
+        width: root.inner - 112px;
         height: 16px;
         visible: root.narrow;
         text: root.build.abilities == "" ? @tr("None") : root.build.abilities;
@@ -635,23 +643,19 @@ export component BuildOverview inherits Rectangle {
         overflow: elide;
     }
 
-    Text {
-        x: root.pad + root.inner / 2;
-        y: root.stats-y + 4 * 22px;
-        width: 84px;
-        height: 16px;
+    StatRow {
+        x: root.pad;
+        y: root.lines-y + 22px;
+        width: 108px;
         visible: root.narrow;
-        text: @tr("Bugs");
-        color: Theme.muted;
-        font-size: 13px;
-        vertical-alignment: center;
-        overflow: elide;
+        narrow: true;
+        label: root.narrow ? @tr("Bugs") : "";
     }
 
     Text {
-        x: root.pad + root.inner / 2 + 88px;
-        y: root.stats-y + 4 * 22px;
-        width: root.inner / 2 - 88px;
+        x: root.pad + 112px;
+        y: root.lines-y + 22px;
+        width: root.inner - 112px;
         height: 16px;
         visible: root.narrow;
         text: root.build.bugs == "" ? @tr("None") : root.build.bugs;
@@ -666,16 +670,16 @@ export component BuildOverview inherits Rectangle {
     Label {
         x: root.chips-x;
         y: root.pad + 56px + 12px;
-        width: 2 * root.chip-width + 12px;
+        width: root.single ? root.chip-width : 2 * root.chip-width + 12px;
         height: 14px;
         text: root.narrow ? "" : @tr("FOLDER · {n} CHIP" | "FOLDER · {n} CHIPS" % root.build.count);
     }
 
     for chip[i] in root.build.chips: ChipRow {
-        x: root.chips-x + floor(i / 15) * (root.chip-width + 12px);
-        y: root.chips-y + mod(i, 15) * (Theme.chip-row + 2px);
+        x: root.chips-x + floor(i / root.column) * (root.chip-width + 12px);
+        y: root.chips-y + mod(i, root.column) * (Theme.chip-row + 2px);
         width: root.chip-width;
         chip: chip;
-        number: root.narrow ? 0 : i + 1;
+        number: root.narrow && !root.single ? 0 : i + 1;
     }
 }
