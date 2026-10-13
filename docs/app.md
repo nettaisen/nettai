@@ -2074,7 +2074,8 @@ presses are neither the player's nor the menus' (`Pad::apart`). With one pad or 
 its custom screen picks the first chip it can. Any other Action gives the pads back to the player.
 
 **The dummy that fights** (Action Fights). Its AI is nettai-training's `Fighter` (the crate's docs: how well
-each level plays, measured), in the fight and on its custom screen, where it picks every chip it can; it is
+each level plays, measured), in the fight and on its custom screen, where Normal and Hard pick the chips worth
+most first (each tried in a copy of the fight; Easy, every chip it can in the cursor's order); it is
 plugged into the session's live play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and
 taken out otherwise (`training::plug`); another Level plugs in a new one. It presses buttons as a player does: each few
 ticks it tries short plans in copies of the battle, on threads of its own (three at most, fewer on a machine
