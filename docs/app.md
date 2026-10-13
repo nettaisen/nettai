@@ -1535,10 +1535,10 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
    - *A component is shared only where sharing pays.* Slint compiles a component as one of its own, shared by
      its uses, unless a use has children: then it copies it into that use. Shared, a component costs its own
      functions (its item geometry, accessibility and tree functions: a few KB however little is in it) and each
-     use about 3.4 KB of calls into them; copied, it costs what is in it again at each use. So a component used
+     use about 2 KB of calls into them; copied, it costs what is in it again at each use. So a component used
      in one place is copied in: its use is given a bare child, which draws nothing and takes no input,
 
-         TrainingScreen {
+         if !root.covered && Shell.screen == Screen.menu: MenuScreen {
              Rectangle { }  // (Copied in: docs/app.md §14.)
          }
 
@@ -1552,30 +1552,31 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
      inside it is copied into each use, so it keeps only what its children must be inside of: ScrollPage and
      ListView are a flickable and the box the rows go in, and what they do besides (the focus's registration,
      the reveal, a list's rows in view and its chosen mark, the scrollbar) is a `Scroller` they place, compiled
-     once. A use is 13 KB a page and 23 KB a list (it was 26 and 41).
+     once. A use is 16 KB a page and 18 KB a list beside its rows (they were 28 and 41).
    - *Nothing on a component's root that forces a copy it doesn't need:* `visible`, `opacity`, `clip`, a drop
      shadow or a size in percent on the root element of a component makes Slint copy it into every use. They go
      on an element inside it, or on the use.
    - *An element that draws nothing says where it is.* One the source leaves `x` and `y` off is put in the
      middle of its parent by two bindings at every use (and their expressions again in the user's geometry): the
-     clocks state `x: 0; y: 0` (their 87 uses were 120 KB of that).
+     clocks state `x: 0; y: 0` (a use was 3.4 KB, and is 2.1; their 87 uses were 120 KB of that).
    - *`visible`, not `if`, for a small part* shown or hidden; an `if` or a `for` only where a part is truly
      there or not (a screen, a dialog, a list's rows), and one for the parts shown on one condition (a screen and
-     its overlay). An empty one is 15 KB; an element given `visible` is a clip element more, 2.3 KB.
+     its overlay). One around a rectangle is 16 KB; an element given `visible` is a clip element more, 2.4 KB.
    - *A long list is a `ListView`*, whose rows exist only in view.
    - *A part written twice is one component* (the three libraries' heads were three copies).
 
-   What each thing costs, measured by adding ten of it to the main menu's screen (the generated Rust, a use):
+   What each thing costs in the generated Rust, a use (bn6battle-verify's tools/slint-size/cost.py, which adds
+   ten of it to the main menu's screen):
 
    | | |
    |---|---|
-   | a rectangle, placed by constants / by bindings | 1.1 / 1.6 KB |
-   | `visible` on it, `opacity` on it | 2.3, 1.1 KB more |
-   | a text | 3.7 KB |
-   | a use of a shared component, for its calls alone (a clock) | 3.4 KB |
-   | a `Label`, a `Button` | 7, 10 KB |
-   | an `if` around a rectangle | 15.6 KB |
-   | a `ListView`, beyond its rows; a `ScrollPage` | 23, 13 KB |
+   | a rectangle, placed by constants / by bindings | 1.0 / 1.8 KB |
+   | `visible` on it, `opacity` on it | 2.4, 1.2 KB more |
+   | a text | 3.6 KB |
+   | a use of a shared component, for its calls alone (a clock) | 2.1 KB |
+   | a `Label`, a `Button` | 7.2, 9.4 KB |
+   | an `if` around a rectangle | 15.7 KB |
+   | a `ListView` beside its rows; a `ScrollPage` | 17.7, 15.5 KB |
 4. **One renderer and no more features than are used:** femtovg alone (the clock needs it: §1), without the
    software renderer and the accessibility backend the first app also built. No standard widgets are imported.
    The fonts are embedded as files (5.6 MB in all, 3.9 of it M PLUS 1 Code with its Japanese), which costs the
@@ -1683,7 +1684,7 @@ measuring: a build's row and a phone's folder row hold their own `RowTouch` (a r
 copied into its list: 64 and 88 KB, now 46 and 36), and the editor's five tabs are under one `EditorBody` with
 one clock, where an `Arrive` around each tab was copied into each tab's `if` (27 KB an empty tab, now 16).
 What stays large: a `ListView` and a `ScrollPage` are containers, copied into each use (40 to 50 KB each, five
-in Builds), and each `if` page holds the parts it lays out.
+in Builds; 16 to 18 since the size pass, below), and each `if` page holds the parts it lays out.
 
 **What a screen costs: Replays** (§16; measured 2026-10-12 with one script, back to back: the tree before it,
 nettai-ui at b566b2000, and with it, ui-replays at 700c62646; sccache off; CPU is user and system time together,
@@ -1715,7 +1716,7 @@ can't be at once; the panel beside the list, whose `Picture` a phone's sheet has
 the builds over the viewer), and each costs about as much as its own component again.
 
 **The size pass** (2026-10-13). With the four screens built the generated module was 11.64 MB (93,741 lines;
-main at 973ae2144), past the first app's 7.4. It was brought down to 10.24 MB (83,010 lines) without changing
+main at e7765252a), past the first app's 7.4. It was brought down to 10.24 MB (83,010 lines) without changing
 what is drawn or how anything behaves, by the rules above; sizes, not times, are what it was judged by (the
 user: "stop measuring build times that stuff takes forever for no reason"), each from the UI's build script run
 on the Slint alone. Each step, measured against the tree before it:
