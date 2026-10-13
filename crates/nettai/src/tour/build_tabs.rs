@@ -239,8 +239,13 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, put(Spot::Ring));
     shot(add, "tabs-navicust-ring", Pair::None);
     // A placed program under the cursor (the hints say Del takes it off), picked up (In hand), and put away into the
-    // list with Back (no longer placed).
-    add(SETTLE, act(Action::Back));
+    // list with Back (no longer placed). (The piece in hand where it found no ring put away first: with none in
+    // hand, Back would leave the editor.)
+    add(SETTLE, Box::new(|ui, app, tour| {
+        if !tour.passing.get() && ui.global::<NavicustView>().get_holding() {
+            app.borrow_mut().act(Action::Back);
+        }
+    }));
     add(SETTLE, on_placed());
     shot(add, "tabs-navicust-on-piece", Pair::None);
     add(SETTLE, act(Action::Confirm));
@@ -278,29 +283,36 @@ fn drag_piece() -> Step {
         let view = ui.global::<NavicustView>();
         let n = view.get_columns();
         let cells: Vec<nettai_ui::GridCell> = view.get_cells().iter().collect();
-        let Some(start) = cells.iter().position(|c| c.filled) else { return };
-        // (The piece: the filled cells of its color joined to the one pressed.)
-        let (x0, y0) = (start as i32 % n, start as i32 / n);
-        let mut piece = vec![(x0, y0)];
-        let mut i = 0;
-        while i < piece.len() {
-            let (x, y) = piece[i];
-            for (nx, ny) in [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)] {
-                let same = (0..n).contains(&nx) && (0..n).contains(&ny) && {
-                    let c = &cells[(ny * n + nx) as usize];
-                    c.filled && c.tone == cells[start].tone
-                };
-                if same && !piece.contains(&(nx, ny)) {
-                    piece.push((nx, ny));
+        let at = |x: i32, y: i32| ((0..n).contains(&x) && (0..n).contains(&y)).then(|| &cells[(y * n + x) as usize]);
+        // (A piece: the filled cells of one color joined to the one pressed. The first on the board itself that has
+        // the room two cells on.)
+        let piece_of = |start: usize| {
+            let mut piece = vec![(start as i32 % n, start as i32 / n)];
+            let mut i = 0;
+            while i < piece.len() {
+                let (x, y) = piece[i];
+                for (nx, ny) in [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)] {
+                    if at(nx, ny).is_some_and(|c| c.filled && c.tone == cells[start].tone) && !piece.contains(&(nx, ny)) {
+                        piece.push((nx, ny));
+                    }
                 }
+                i += 1;
             }
-            i += 1;
-        }
-        let free = |x: i32, y: i32| (0..n).contains(&x) && (0..n).contains(&y) && {
-            let c = &cells[(y * n + x) as usize];
-            c.kind == nettai_ui::CellKind::Board && (!c.filled || piece.contains(&(x, y)))
+            piece
         };
-        let Some((dx, dy)) = [(1, 0), (-1, 0), (0, 1), (0, -1)].into_iter().find(|&(dx, dy)| piece.iter().all(|&(x, y)| free(x + 2 * dx, y + 2 * dy))) else { return };
+        let room = |piece: &[(i32, i32)], (dx, dy): (i32, i32)| {
+            piece.iter().all(|&(x, y)| at(x + 2 * dx, y + 2 * dy).is_some_and(|c| c.kind == nettai_ui::CellKind::Board && (!c.filled || piece.contains(&(x + 2 * dx, y + 2 * dy)))))
+        };
+        let found = (0..cells.len()).filter(|&i| cells[i].filled).find_map(|start| {
+            let piece = piece_of(start);
+            let on_board = piece.iter().all(|&(x, y)| at(x, y).is_some_and(|c| c.kind == nettai_ui::CellKind::Board));
+            let way = [(-1, 0), (1, 0), (0, 1), (0, -1)].into_iter().find(|&way| room(&piece, way));
+            on_board.then_some(way).flatten().map(|way| (start, way))
+        });
+        let Some((start, (dx, dy))) = found else {
+            eprintln!("tour: no placed piece has the room to be dragged two cells");
+            return;
+        };
         let registry = app.borrow().shell.nav.registry();
         let Some(r) = registry.borrow().rect(&crate::nav::Key::new("cell", start as i32)) else { return };
         // (The board's cells are 3 apart.)
