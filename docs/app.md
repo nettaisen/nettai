@@ -26,8 +26,9 @@ written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`). What the pla
 data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
 `$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are in
 `builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), the settings are
-`settings.toml` (`$NETTAI_SETTINGS`) and the log is `nettai.log` (`$NETTAI_LOG`). For netplay, `$NETTAI_SIGNAL`
-names the signaling server (§4). Some variables are for development:
+`settings.toml` (`$NETTAI_SETTINGS`), what playing replays out gave is `replays-played.toml` beside it (§16), and
+the log is `nettai.log` (`$NETTAI_LOG`). For netplay, `$NETTAI_SIGNAL` names the signaling server (§4). Some
+variables are for development:
 
 | Variable | What it does |
 |---|---|
@@ -35,7 +36,8 @@ names the signaling server (§4). Some variables are for development:
 | `NETTAI_TRAINING=<game>` | Starts straight into a training session of the game: new builds of its first two versions, the other a dummy that stands still. |
 | `NETTAI_REPLAY=<file>` | Starts straight into watching the replay, its game selected; `NETTAI_REPLAY_SPEED=half\|1\|2\|4` at that speed. |
 | `NETTAI_FFMPEG=<program>` | The `ffmpeg` a video is made with, instead of the one found (§16). |
-| `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle, on the main menu and in a replay's viewer. |
+| `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle, on the main menu and in a replay's viewer; with the first, the replays' listing's and play-outs' times, and where each seek of the viewer landed (§16). |
+| `NETTAI_VIEWER_PROBE=<seconds>:<step>,...` | Drives a replay's viewer as a player would (§5): `click:<part>` (the bar pressed and let go `part` of the way along), `drag:<from>:<to>` (pressed, moved over a second, let go), `speed:<half\|1\|2\|4>`. The pointer's are the window's own events. |
 | `NETTAI_WINDOW_PROBE=<minimize\|hide>:<after>:<for>` | Minimizes or hides the window `after` seconds from the start, for `for` seconds (§1, "The clock when the window isn't drawn"). |
 | `NETTAI_NO_TIMER_CLOCK` | Leaves the timer's clock out, to see what the window's frames do alone. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
@@ -765,6 +767,38 @@ plays under 240 ticks. The one run whose windows went wrong (from 120 to 96 fram
 someone using the window as it was measured: its replay jumped from tick 840 to 8,640, 3,120, 13,200 and 23,520
 (clicks on the bar) and the window was made larger; it was run again. With both builds shown over the picture
 (§16) the viewer wasn't measured.
+
+**At half and twice the speed, seeking, dragging** (2026-10-13, the same Mac and window, the build at 9c4e7e6a1,
+the same set; load average 204 to 253; `NETTAI_REPLAY_SPEED` for the speeds, `NETTAI_VIEWER_PROBE` for the
+pointer, whose presses, moves and releases are put to the window as the system's are):
+
+| nettai, `dev`, a replay's viewer | ½x, indexing | ½x, indexed | 2x, indexing | 2x, indexed |
+|---|---|---|---|---|
+| frames a second | 117.0 to 120.1 | 108.1 to 120.0 | 112.8 to 119.5 | 117.6 to 120.1 |
+| frame time p95 / p99 | 8.40 to 10.59 / 8.42 to 16.25 ms | 8.38 to 14.35 / 8.40 to 16.71 ms | 8.95 to 12.87 / 10.15 to 18.37 ms | 8.41 to 9.95 / 8.46 to 13.84 ms |
+| long frames in 2 s | 0 to 4 | 0 to 20 | 1 to 12 | 0 to 6 |
+| ticks a second | 29.5 to 30.0 | 29.9 to 30.0 | 119.1 to 119.8 | 119.3 to 119.6 |
+| pictures a second, and each one | 30; 1.51 to 1.74 ms | 30; 1.64 to 1.73 ms | 113 to 120; 1.57 to 1.85 ms | 113 to 120; 1.75 to 1.85 ms |
+
+(The ½x run's one bad window, 108 frames a second with 20 long, is three from its end; its ticks and pictures
+cost what they did in the others, and the windows around it ran 115 to 119: the machine's load.)
+
+- *The sound at each speed* is a tape's: each two seconds of the replay (120 of its ticks) gave 263,340
+  samples at ½x, 131,670 at 1x, 65,835 at 2x and about 32,918 at 4x, so the device is handed about 65,550 a
+  second at every speed (both channels, at nettai's 32,768 a second), as the ticks a second say.
+- *A seek far ahead while the index is made:* 5 seconds in (tick 298, indexed to 7,099), a click at 90% of the
+  bar asked for tick 25,846. The bar showed it at once, the picture waited (the seek past the index), the index
+  went on at the idle budget (3.2 to 5.0 ms a slice, about 5,900 ticks a second) and the seek landed on tick
+  25,846, the one asked for, 3.17 seconds later. The window drew 119.5 and 119.7 frames a second meanwhile, p99
+  at most 10.9 ms.
+- *A drag:* pressed at 20% of the bar (tick 5,743), moved to 50% in twenty steps over a second and let go: the
+  picture followed in the states kept every 240 ticks (5,520, 6,000, 6,480 ... 14,160), each the one at or
+  before the pointer, and the replay landed on tick 14,359, half of 28,718, where it was let go.
+- *Settings' levels across a seek:* the replay watched four times at Music and Sound effects 100 and 100, 0 and 100,
+  100 and 0, 0 and 0, each clicked to 60% of the bar 25 seconds after it showed. Each landed on tick 17,230. After
+  it, as before it, 0 and 0 was silence sample for sample, and in each stretch the two alone added up (as squares)
+  to the two together within 0.5% (0.26022 and 0.25920, 0.20090 and 0.20022, 0.17623 and 0.17674, 0.18402 and
+  0.18456).
 
 ## 6. The web
 
@@ -1586,8 +1620,16 @@ its own, started when it first asks something, and takes what the thread found a
   there): every `.ntrp` file is read and what it says of itself kept (its head, its info, its length and its
   rounds' starts; not its ticks). A file as it was at the last listing (its size and time) isn't read again.
 - *The score.* A replay holds no result, so each replay of the selected game is played out there (the library's
-  `play_out`: no picture, no sound), newest first, and its row gets its score as it is known. What was played
-  out is kept while the app runs.
+  `play_out`: no picture, no sound), newest first, and its row gets its score as it is known. What it gave is
+  kept between runs (`replays::cache`), in `replays-played.toml` beside the settings (the pass's in its folder),
+  never in a replay: each outcome by the hash of the file's bytes (the engine's stable hash) and of the content
+  it was played on, all of one engine. A kept one is told at once, so only what is new or changed is played
+  out. What is kept of files no longer in the folder is dropped as the cache is written (whole or not at all,
+  when the thread has nothing to do); a cache that can't be read is told to the log and made again. A replay
+  that isn't played here isn't kept: that is found before any of it is played. Listing the pass's folder (18
+  files, fifteen of EXE6's to play out: 77 minutes of sets) took 6 to 20 ms; with nothing kept, their outcomes
+  took 29.6 seconds more, and with all of them kept, 28 to 35 ms in all (load average 217 to 243;
+  `NETTAI_PLAY_STATS` says both).
 - *The still.* The selected replay's picture is a frame the thread draws a moment into its first fight, shown
   through the screen's `Picture` as any picture is (§1): a whole multiple of the frame, the text at the
   window's resolution. The box is empty until the selected replay's own still has come: a still is never shown
@@ -1598,7 +1640,9 @@ whose head names another engine or other content, one the library refuses as it 
 one that plays another battle than it recorded each show their sentence in the row, in the error red, in
 place of the opponent, the score and the length (`UserError::of_replay_read`, `of_refusal`: §12), and beside
 the list with WATCH and EXPORT VIDEO unavailable; SHOW FILE and DELETE stay. Each is written to the log once.
-A file that doesn't read names no game, so it is listed with every game's.
+A file that doesn't read is listed with the replays of the game its head names, where the head reads
+(`nettai_replay::Head::read`: a damaged file, or one of layout 1, whose head is the same), and with every game's
+only where even that doesn't.
 
 **The list** is the selected game's replays, newest first: the date, the opponent (the other player's name;
 `P1` or `P2` where the replay has none), the score as the recorder's (`W 2–1`; the rounds alone where the set
@@ -1676,16 +1720,17 @@ found, the file not written, anything else with the log named). The app keeps aw
 and read on a thread as the menu shows, then given one after another, around. One that doesn't play here is
 passed over and not given again; with none, the reel is the set made for it (§1).
 
-**What has run, and what hasn't.** The screenshot pass walks all of it but the export's real run (§13), in the
-three languages at both sizes; the real export, a stopped one and one with no ffmpeg ran once each through
-`NETTAI_TOUR_EXPORT` (on EXE6: the first replay's last round at twice the frame, 8,539 frames, 143 seconds of
-H.264 and AAC, 19.4 MB; the stopped one's `.part` file was there while it ran and gone after it; with
-`NETTAI_FFMPEG` naming no program the line said "Video export needs ffmpeg. Install it, then try again." and
-nothing was written). The viewer was watched playing by `NETTAI_REPLAY` with `NETTAI_PLAY_STATS` (§5), at 1 and
-4 times. What Play's code records was listed and watched too: Play's steps alone with `$NETTAI_REPLAYS` set
-recorded three matches (one to its result, W 1–0 in 18 seconds; one with closed builds; one left), and Replays'
-steps with them in the folder listed them first, watched the newest, showed both builds of it (its recorder
-played as P2, whose console is shown, so YOU was at the left) and none of the closed-builds one's. Never run: a
-drag of the bar with a real pointer, a seek that waits for the index, ½ and 2 times, a pad, SHOW FILE, Save as's
-system dialog, the main menu's reel playing a replay (its order is a unit test), the levels across a seek, the
-builds with a real key, and anything on a real phone.
+**What has run, and what hasn't.** The screenshot pass walks all of it but the export's real run (§13), in the three
+languages at both sizes; the real export, a stopped one and one with no ffmpeg ran once each through
+`NETTAI_TOUR_EXPORT` (on EXE6: the first replay's last round at twice the frame, 8,539 frames, 143 seconds of H.264
+and AAC, 19.4 MB; the stopped one's `.part` file was there while it ran and gone after it; with `NETTAI_FFMPEG`
+naming no program the line said "Video export needs ffmpeg. Install it, then try again." and nothing was written).
+The viewer was watched playing by `NETTAI_REPLAY` with `NETTAI_PLAY_STATS` (§5), at ½, 1, 2 and 4 times, and driven
+by `NETTAI_VIEWER_PROBE`: a seek past the index, a drag of the bar by the window's pointer events, and Settings'
+levels across a seek (§5). What Play's code records was listed and watched too: Play's steps alone with
+`$NETTAI_REPLAYS` set recorded three matches (one to its result, W 1–0 in 18 seconds; one with closed builds; one
+left), and Replays' steps with them in the folder listed them first, watched the newest, showed both builds of it
+(its recorder played as P2, whose console is shown, so YOU was at the left) and none of the closed-builds one's.
+Never run: a real pointer or a pad (the probe's are the window's events, not the system's), SHOW FILE, Save as's
+system dialog, the main menu's reel playing a replay (its order is a unit test), the builds with a real key, and
+anything on a real phone.
