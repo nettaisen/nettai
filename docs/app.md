@@ -176,7 +176,8 @@ from a training battle, on SIGTERM and on SIGINT. Windows has no such signals an
 **START never pauses the game.** In a fight the library reports START and doesn't act on it
 (`Player::take_pause_requests`: docs/frontend.md §2), and what it opens is nettai's menu (`Shell::open_menu`):
 the battle's owner's own, the training menu or the match menu (§2). A battle that can stop is paused under the
-menu; an online match keeps running, as the menu says.
+menu; an online match keeps running, as the menu says. A training battle is held in **the game's own pause**
+under its menu, not stopped (§15).
 
 **The sound** is nettai-audio's `Output`, fed one stream at the battle's rate (`sound.rs`):
 
@@ -289,7 +290,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 |---|---|
 | `show` | The screen is shown, or something it shows changed under it (the selected game, the language, the window turned upright): set the view from the state. The one method a screen must write. |
 | `hide` | Another screen is shown in its place. |
-| `activate(id, index)` | Enter, a click or a tap on a control. |
+| `activate(id, index)` | A (its key or pad button), a click or a tap on a control. |
 | `step(id, index, by)` | Left or Right on a stepper, a select or a switch, or a click on its arrow. |
 | `choose(id, index, choice)` | A choice made outright: one side of a switch clicked, a slider set, a row of a select's list. |
 | `edit(id, index, text, done)` | A field's text as it is typed, then as it is left. The screen keeps what it wants of it and sets its view's property, which the field then shows. |
@@ -801,6 +802,25 @@ cost what they did in the others, and the windows around it ran 115 to 119: the 
   to the two together within 0.5% (0.26022 and 0.25920, 0.20090 and 0.20022, 0.17623 and 0.17674, 0.18402 and
   0.18456).
 
+**With the training menu open** (2026-10-13, the same Mac, window and variables, the menu opened 22 seconds in
+with the battle in its fight; two runs each, back to back, load average 109 to 161): before, the battle held
+still under the menu; now, in the game's own pause (§15).
+
+| nettai, `dev`, a training battle | Menu closed | Menu open, before | Menu open, in the game's pause |
+|---|---|---|---|
+| frames a second | 99.8 to 120.1 | 119.0 to 120.1 | 117.0 to 120.0 |
+| frame time p95 / p99 | 8.42 to 17.48 / 9.19 to 22.60 ms | 8.40 to 9.03 / 9.13 to 13.49 ms | 8.68 to 10.48 / 9.73 to 16.67 ms |
+| long frames in 2 s | 0 to 39 | 0 to 3 | 0 to 6 |
+| ticks a second | 59.5 to 60.0 | 0 | 59.5 to 60.0 |
+| a picture, then to the frame drawn | 3.13 to 3.87 ms, then 0.28 to 0.41 ms | none | 3.11 to 3.34 ms, then 0.78 to 0.90 ms |
+| key to its picture drawn (the runs' means) | 7.7 to 10.3 ms | | |
+| sound queued | 48 to 56 ms | 41 to 53 ms | 56 to 58 ms |
+| the stream's peak, by second | 0.48 to 0.61 | 0.0 after the first second | 0.36 to 0.67 |
+
+Under the menu the battle now costs what it costs running: a picture a tick, and the menu's panel and shade
+drawn over it (the frame is drawn 0.8 ms after its picture, against 0.3 with nothing over it). The keys go to the
+menu, so no press is timed then.
+
 ## 6. The web
 
 What was tried with the first app, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI SDK 34
@@ -1033,25 +1053,33 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   changes ("HP +500") and each program at work that gives an ability. The bugs are the whole build's, whoever
   brings them (the draft's overview), each by its full name and its level or amount, purple. A bug that wasn't
   there before the last change pulses purple once.
+- *The strip* across the top, as the folder's: the program under the cursor (the piece in hand, the piece on
+  the cell the cursor is on, or the list's row), its name beside its color, and the game's description of it
+  (the locales' `[navicust_programs]` descriptions, the ROMs' own text, on one line). A phone has no strip.
 - *The keys.* The cursor goes over the board cell by cell (each cell is a control, `cell`, its place in the
-  drawn grid). Enter on a placed piece picks it up by that cell; Enter on a program's row takes it in hand, its
-  middle on the board's (a copy already placed in that color says whether it is compressed). While a piece is
-  in hand it is where the cursor is: the arrows (and a pad's stick) move it a cell at a time, the keys bound to
-  L and R (A and S) and the pad's shoulders turn it a quarter about the cell held (the tab's `key` and `button`
-  take them before the frame changes the tab), C or the pad's north button compresses it, Enter puts it down
-  where it fits, and Esc puts it back where it was (one from the list goes back to it). One that doesn't fit is
-  refused with the rules' own kind (`GridData::misfit`: `Wrong::OffBoard` or `Wrong::Overlap`) in the reserved
-  line, and shakes. Del takes off the piece under the cursor, or a program's last copy from its row, or drops
-  the piece in hand. The footer's hints are the hand's while a piece is held. Leaving the tab with a piece in
-  hand puts it back.
+  drawn grid). Confirm on a placed piece picks it up by that cell; Confirm on a program's row takes it in hand,
+  its middle on the board's (a copy already placed in that color says whether it is compressed). While a piece
+  is in hand it is where the cursor is: the arrows (and a pad's stick) move it a cell at a time, the keys bound
+  to L and R (A and S) and the pad's shoulders turn it a quarter about the cell held (the tab's `key` and
+  `button` take them before the frame changes the tab), C or the pad's north button compresses it in place (its
+  other shape turned as it is, about the same middle, held by the same cell where it still has it, else by the
+  nearest, the cursor going there: `Edit::Compress`), Confirm puts it down where it fits, and Back puts it away
+  into the list, as the game's B does. So a placed program is taken off by picking it up and putting it away;
+  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand).
+  One that doesn't fit is refused with the rules' own kind (`GridData::misfit`: `Wrong::OffBoard` or
+  `Wrong::Overlap`) in the reserved line, and shakes. The footer's hints follow the cursor: the hand's while a
+  piece is held (Back: Put away), Del's Take off while the cursor is on a placed piece or a placed program's
+  row (`on-piece`). Leaving the tab with a piece picked up off the board puts it back where it was.
 - *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
   edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
   as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
   flash along its cells one after another (`dropped`).
 
 **The Patch cards tab** (`patch_cards`; §2.19, §2.20): the folder's shape. A card's number, name, MB, slot and
-lines are the game's data: its number its place in the library's order (which lists the cards by their
-numbers), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
+lines are the game's data: its number its own, as the game's compat tables state it (`builds::import::card_number`,
+each compat crate's `patch_card_number`: the number the card is printed with and a save holds; the library's
+order lists the cards by number, but EXE5's two 111s, each team's own, take two places in it, so its place isn't
+the number), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
 lines `builds::cards` (each effect's line from the strings' `patch_card_effects`, a bug's marked by the effect's
 `bug`, the card screen's group by its `group`, an effect that holds effects of its own followed by theirs, and a
 line's names put in as the screen shows them: `cards::named_by`, a slot by its name, a card by its number).
@@ -1240,8 +1268,23 @@ tells the app where it is in the window and takes its clicks. From those rectang
   where the focused one does (Settings, not Exit, under REPLAYS). On a stepper, a select, a switch or a slider,
   Left and Right change the value instead.
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
-- **Enter** activates; **Esc** goes back: out of a list, a dialog or a menu, else within the screen
-  (`Screen::back`), else to the main menu.
+- **The GBA's A** activates and **its B** goes back (out of a list, a dialog or a menu, else within the screen,
+  `Screen::back`, else to the main menu), by the keys the player bound to them: Z and X until rebound. The user:
+  "i feel like the GBA A and B buttons should be the universal confirm/cancel buttons everywhere, instead of
+  enter+esc". `input::menu_action` reads the menus' action of a key: their own keys first (the arrows, Tab and
+  Shift+Tab, Page Up and Down, Home, End), then A's key (`Bindings::confirm_key`) confirms and B's
+  (`back_key`) goes back, L's and R's are previous and next, START's (Enter until rebound) and Esc are the menu
+  (`Action::Menu`: they close a battle's menu, which they opened, and do nothing in the app's own), Delete and
+  Backspace delete. Enter, Space and Esc confirm and go back no more.
+- **A binding that clashes** leaves the menus usable: where A is bound to one of the menus' own keys (an arrow,
+  say: the arrow still moves) or A and B share a key (a settings file written by hand: binding a key swaps it,
+  so the Controls can't make one), Enter confirms; likewise Esc goes back for B. The hints name what does
+  (`Bindings::confirm_key` and `back_key` are what they show). A screen's own letter keys come before A's and
+  B's (R and T in the folder, C in the NaviCust tab, B and E in Replays), so a player who binds A to one of
+  those letters gets the screen's action there. Settings, asking for a key to bind, takes every key but Esc,
+  which stops the question.
+- (Where a screen's own section below says Enter or Esc on a control, as they were written before the change,
+  it is A and B now: the keys and buttons bound to them.)
 - A key held repeats a move; a choice is pressed once.
 
 So no screen writes key handling, and a control added to a screen is reachable by being there. A screen opens
@@ -1251,9 +1294,12 @@ and the focus goes back where it was when it closes.
 **The cursor** is one object, four brackets drawn over the layout 5 outside the focused control, which glides
 from control to control. It shows only while a keyboard or a pad is the last thing used; the pointer hides it.
 
-**Text fields don't trap** (rule 7): the arrows walk past a field without changing it. Enter or a typed letter
-starts editing (the letter is the edit's first); while editing, the keys are the field's own, but Esc restores
-the text it had, Enter confirms, and Up, Down or Tab confirm and move on. The field's border and caret light
+**Text fields don't trap** (rule 7): the arrows walk past a field without changing it. A typed letter starts
+editing (the letter is the edit's first; A's and B's keys, Z and X, are letters, so on a field they type), and
+so do Enter and the pad's A; while editing, the keys are the field's own, but Esc restores the text it had,
+Enter finishes it, and Up, Down or Tab finish it and move on; the pad's A finishes and its B restores. These
+are the one place Enter and Esc confirm and go back, and while a field is edited the footer's hints are the
+field's own ("Enter Done", "Esc Cancel", the `Page`'s `field-hints`). The field's border and caret light
 while it is edited, and its text is clipped at its padding and scrolled to keep the caret in view (rule 8). The
 edit is Slint's `TextInput`, so the desktop's IME composes into it. The screen is told each change and sets the
 text the field shows, so a name is cut to its length and a code put in capitals as they are typed.
@@ -1266,10 +1312,15 @@ outside it. The scrollbar's room is reserved whether or not it shows. A select's
 `ListView` of a set height: it is as tall as its rows up to ten (and to the room the window has under the
 select, or over it), keeps that height, and scrolls for more, the chosen row in view as it opens.
 
-**Pads** (rule 10): the D-pad or the stick moves, the south button is Enter, the east one Esc, the shoulders the
-game before and after (or a screen's tabs), Start is Enter in a menu. The footer's hints show key caps or the
-pad's buttons, by which was last used: a face button by its place in the four, since its letter depends on the
-pad's maker.
+**Pads** (rule 10) follow the pad's bindings in the same way (`Bindings::pad_action`): the D-pad or the stick
+moves, the button bound to A confirms and B's goes back (the south and west buttons until rebound; south and
+east stand in where A or B is bound to a direction or shares a button), the buttons bound to L and R are
+previous and next, Start's is the menu (closing a battle's, nothing elsewhere), the face button that is neither
+A's nor B's on the east or west deletes (east until rebound), and north is a screen's second action. The
+footer's hints show key caps or the pad's buttons, by which was last used: a face button by its place in the
+four, since its letter depends on the pad's maker. They name the keys and buttons bound (`Shell.key-a`,
+`key-b`, `pad-a`, `pad-b`, `pad-delete`, which `Shell::show_bindings` sets), never Enter and Esc but in a
+field's own hints; the Controls in Settings say A · Confirm and B · Back.
 
 **The mouse and touch**: a click or a tap focuses and activates in one; everything tapped on a phone is at least
 44 tall.
@@ -1380,16 +1431,18 @@ to its entry, the entry flashes, a count that changed ticks).
 **The NaviCust's, Patch cards' and Auto battle tabs' steps** (`tour/build_tabs.rs`, a build of the pass's own
 made through the screen): the NaviCust's list a focus move apart (a pair), a program taken in hand, moved and
 turned, put down on the command line, a plus part beside it, another program put off the command line (its bug
-appears), one put over another (refused, and why), and a plus part on EXE6's ring (out of bounds; in a game
-without a ring the shot is of the piece in hand); the patch cards' library, its search and sort a focus move
+appears), one put over another (refused, and why), a plus part on EXE6's ring (out of bounds; in a game
+without a ring the shot is of the piece in hand), and a placed program under the cursor (Del's hint), picked up
+(In hand) and put away into the list with Back (no longer placed); the patch cards' library, its search and sort a focus move
 apart (a pair), three cards put in, the library by MB with a card the MB left can't take refused, one of the
 build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
 filled from the library, one emptied, the places scrolled to the last list. Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
 on the ring, or over another), so the walk is the same whatever the game's shapes. A tab the game hasn't is
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
-EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, put down, put off
-the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
+EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, compressed and
+decompressed (turned as it was, in place), the command line's arrows pulsing by themselves, a piece put down, put
+off the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
 Settings, a dialog, a battle), `training`, `builds`, `build-tabs`, and in the probe `play`; `play` and `replays`
@@ -1670,6 +1723,41 @@ phone, under them) the two builds as cards over the arena.
 match of the two builds (`nettai_match::check::problems`), shows the two cards while the library's `Preload`
 makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)`. It isn't recorded.
 
+- **Its pause is the game's.** The user: "the training pause should actually just use the game's pause
+  behavior: music continues, stuff still animates. but don't show the PAUSED banner in the middle of the
+  screen". A training set's rounds leave the game its START (`HostKeys::pause` off: `training::set_of`; every
+  match's other rounds keep it the host's), and its battle is held under the menu by `Battle::pause_in_game`
+  (`battle/game_pause.rs`), which does nothing that pausing does: it gives the game the START its player
+  would, and reads the game's state.
+  - The menu opens (Esc, the pad's Guide, MENU, as for any battle) where START would pause the game
+    (`nettai_battle::Battle::pausable`: the fight running, not dimmed, not over): the battle is given START
+    for that frame's ticks and is in the game's pause from that tick, and steps on in it under the menu. Its
+    music plays and what the game moves while paused moves (the backgrounds), by the game's own code; the
+    fight itself, the dummy with it, is held as the game holds it. The game's pause sound plays as it pauses
+    and as it goes on, as at the game's own START.
+  - The player's START in the fight is the game's own: it pauses the game, and the menu opens over that pause
+    (`Battle::paused_by`). While the menu is open the player's buttons reach neither the game nor the dummy:
+    the battle is given START and nothing else.
+  - The menu closes (RESUME, Esc, the pad's Start): the battle is given START again and leaves the pause as
+    the game does at its player's START, the fight going on where it was. RESTART, CHANGE BUILDS and QUIT TO
+    MENU work from the pause as from anywhere.
+  - Where START wouldn't pause the game (its custom screen, a dimming, a round being decided), the menu holds
+    the battle still and silent, as any battle under a menu.
+  - **The game's pause display is not drawn:** the HUD's "PAUSE" (what the HUD draws while the fight is in its
+    pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a training battle's
+    renderer alone. The game's pause state is simulated as the game has it; only that drawing is left out.
+  - Nothing else changes: a battle never paused, every online match and every replay steps, sounds and draws
+    as before (the engine's two calls are output only; the same hash over 2,194,500 samples and the same
+    digest after 4,000 ticks of each game before and after; nettai-frontend's
+    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause`).
+  - Checked on each game's packs by stepping a battle as the menu holds it (a scratch program, not kept):
+    ten seconds in the pause, samples came at 32,972 a second, the music's level steady (EXE6 0.15 to 0.22 RMS,
+    EXE5 0.17 to 0.18, EXE4 0.20 to 0.22); 390, 320 and 173 of the 600 frames differed from the one before
+    (the backgrounds move); a frame with the pause display drawn differed from one without in 463 to 550
+    pixels, every one inside "PAUSE"'s box; and the battle went on from where it was at START. The frames
+    were looked at (before, 300 and 330 ticks into the pause, with the display, after); nobody listened. In
+    the app, with the menu open, the battle ran 59.5 to 60.0 ticks a second and the stream's peak stayed at
+    0.36 to 0.67 (§5).
 - It has no end: when the set is decided the shell says `Finished` and Training starts the battle over
   (`Battle::restart`), as RESTART does, and R or F5 on the keyboard and the pad's north button without opening
   the menu (unless the player bound them to a button).
@@ -1677,7 +1765,8 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
   `training::end`, by a battle another screen started in its place, or, shown in another screen's `Picture`,
   by that screen being left.
 
-**The training menu** (Start or Esc; the battle is paused behind it, the dummy in view beside the panel). Its
+**The training menu** (Start or Esc; the battle in the game's own pause behind it, the dummy in view beside the
+panel). Its
 rows are a model (`TrainingView.rows`: one row component under one `for`), made from one list,
 `training::ROWS`:
 
@@ -1730,7 +1819,9 @@ SELECT, START), the player's over the dummy's in their sides' colors, each lit w
 each side's custom screen reads (`Battle::custom.sides[n].joypad.held`: this tick's buttons, not the fight's
 delayed ones) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
 corner, under the eighth the battle's own text takes there; on a phone, under MENU. It is drawn into a layer
-and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms a frame).
+and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms a frame). Under the menu it shows
+nothing held: the battle takes no button then but the START that holds it in the game's pause, and the dummy's
+presses go nowhere.
 
 **On a phone** the entry is one column (the rows, the line, the cards side by side, the arena, START TRAINING at
 the foot), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
@@ -1798,7 +1889,7 @@ screen runs the ticks due, presents the picture into the window's texture if one
   side whose console is shown, EXPORT VIDEO. The focus starts on the bar, where Left and Right go five seconds
   (it is a control whose arrows change it, as a slider is); the speeds and the sides are each a control, so the
   arrows walk through the row and past it. Space plays and pauses, comma and period step a frame (and pause),
-  the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
+  the brackets (and the shoulders) go a round, A on the bar plays and pauses, B goes back to the list.
   At its end a replay stops with the transport there; play starts it again.
 - *No seek stalls the window.* From the moment it shows, the replay is indexed ahead a slice a frame
   (`Viewer::index`), each slice as many ticks as the last one's time says fit a budget: 1.5 ms while the

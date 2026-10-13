@@ -1209,7 +1209,7 @@ impl Screen for Play {
     /// A pad can't type a code: its confirm on the code's field opens the six boxes.
     fn button(&mut self, shell: &mut Shell, button: Button) -> bool {
         let on_field = shell.nav.focused().is_some_and(|k| k.id == "code") && !shell.nav.editing();
-        if button != Button::South || !on_field || !matches!(self.stage, Stage::Idle | Stage::Meeting) || self.boxes.is_some() {
+        if button != shell.bindings.confirm_button() || !on_field || !matches!(self.stage, Stage::Idle | Stage::Meeting) || self.boxes.is_some() {
             return false;
         }
         shell.sound.play(Cue::Pick);

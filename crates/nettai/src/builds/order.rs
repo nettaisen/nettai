@@ -41,12 +41,6 @@ impl Order {
         library::sort_by_rank(list, |(_, h)| nettai_match::ids::local(&c.defs.chip(*h).key), |k| self.chips.get(k).copied());
     }
 
-    /// An entry's place in collection `collection`'s order, from 0 (a card's number less one: the library lists
-    /// the cards by their numbers); none: the order hasn't it.
-    pub fn entry_place(&self, collection: &str, id: &str) -> Option<usize> {
-        self.lib.entry_rank(collection, id).map(|(_, place)| place)
-    }
-
     /// Sort entries of collection `collection`.
     pub fn entries<T>(&self, c: &Content, collection: &str, list: &mut [(T, EntryHandle)]) {
         library::sort_by_rank(list, |(_, h)| c.defs.entry(*h).id(), |k| self.lib.entry_rank(collection, k));
