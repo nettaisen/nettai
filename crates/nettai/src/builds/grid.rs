@@ -3,10 +3,11 @@
 //! shape, never by a game's name. It is a grid where the data fit what it
 //! reads, all of it as data (nothing of the content is called):
 //!
-//! - the setup's `navicust_expansions` (the board, by its place among the
-//!   boards) and `navicust_programs`, a list of `{ program, color, x, y,
+//! - the setup's `navicust_programs`, a list of `{ program, color, x, y,
 //!   rotation, compressed }` (`program` an entry of a collection, `color` an
-//!   enum of color names);
+//!   enum of color names), and `navicust_expansions` (the board, by its place
+//!   among the boards) where the game's setup takes it: a game whose board
+//!   never grows (EXE4's) has its one board;
 //! - each piece's data: its `shape` (rows of `#` and `.`, centered),
 //!   `compressed` (likewise, where it compresses), `colors` (names) and
 //!   `plus` (a plus part's mark);
@@ -44,21 +45,23 @@ const ROTATION: &str = "rotation";
 const COLOR: &str = "color";
 const COMPRESSED: &str = "compressed";
 
-/// The colors a piece comes in, by name (the creator's own).
+/// The colors a piece comes in, by name, as the app draws them (docs/design/app-ui.md's palette: the text's white,
+/// a Giga chip's pink, a yellow, player one's red, player two's blue, the good green).
 pub const PALETTE: [(&str, u32); 6] =
-    [("white", 0xDEDEDE), ("pink", 0xF08CC8), ("yellow", 0xF0D840), ("red", 0xE85048), ("blue", 0x4C8CF0), ("green", 0x58C858)];
+    [("white", 0xEAF3FF), ("pink", 0xFF7EB6), ("yellow", 0xF2CF4A), ("red", 0xFF5D50), ("blue", 0x4A93FF), ("green", 0x45E0A0)];
 
 /// A color by name: the palette's, else gray.
 pub fn rgb(name: Option<&str>) -> u32 {
     name.and_then(|n| PALETTE.iter().find(|(k, _)| *k == n)).map_or(0x909090, |(_, c)| *c)
 }
 
-/// What the grid reads of a game: its boards, its command line, and its
-/// pieces' collection, shapes (plain and compressed), colors and plus
-/// marks.
+/// What the grid reads of a game: its boards (and whether a side says
+/// which: `sized`), its command line, and its pieces' collection, shapes
+/// (plain and compressed), colors and plus marks.
 #[derive(Clone, Debug, Default)]
 pub struct GridData {
     pub boards: Vec<Vec<Vec<u8>>>,
+    pub sized: bool,
     pub command_line: Option<usize>,
     pub collection: String,
     pub shapes: HashMap<(u16, bool), Shape>,
@@ -98,14 +101,14 @@ pub fn read(content: &Arc<Content>, module: Option<&Data>) -> Option<GridData> {
     if !(number(X) && number(Y) && number(ROTATION) && matches!(ty(COLOR), Some(FieldType::Enum(_))) && ty(COMPRESSED) == Some(FieldType::Bool)) {
         return None;
     }
-    field(SIZE_FIELD)?;
+    let sized = field(SIZE_FIELD).is_some();
     let module = module?;
     let Data::List(boards) = module.field("boards") else { return None };
     let boards: Vec<Vec<Vec<u8>>> = boards.iter().map(|b| rows(b, b"of.")).collect::<Option<_>>()?;
     if boards.is_empty() {
         return None;
     }
-    let mut data = GridData { boards, command_line: module.field("COMMAND_LINE").int().map(|r| r as usize), collection: collection.clone(), ..GridData::default() };
+    let mut data = GridData { boards, sized, command_line: module.field("COMMAND_LINE").int().map(|r| r as usize), collection: collection.clone(), ..GridData::default() };
     for h in content.defs.entries_of(&collection) {
         let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(h).key)?;
         let plain = rows(d.spec.field("shape"), b"#.")?;
@@ -235,6 +238,14 @@ pub fn cells(shape: &Shape, x: i32, y: i32) -> Vec<(i32, i32)> {
 }
 
 impl GridData {
+    /// The board of `side`, by its place among the boards: the one its
+    /// setup says, else the last (the full board, every build's); a game
+    /// whose board never grows has its one.
+    pub fn board_of(&self, c: &Content, side: &Side) -> Option<usize> {
+        let last = self.boards.len().checked_sub(1)?;
+        Some(if self.sized { board_index(c, side).filter(|&b| b <= last).unwrap_or(last) } else { last })
+    }
+
     /// A piece's shape as placed: compressed or not, turned.
     pub fn shape(&self, piece: u16, compressed: bool, rotation: u8) -> Shape {
         self.shapes.get(&(piece, compressed)).map_or_else(Vec::new, |s| rotate(s, rotation))
@@ -261,13 +272,20 @@ impl GridData {
     /// on the board or its frame, not all on the frame, over none of
     /// `others`'.
     pub fn fits(&self, board: &[Vec<u8>], others: &[Placed], shape: &Shape, x: i32, y: i32) -> bool {
+        self.misfit(board, others, shape, x, y).is_none()
+    }
+
+    /// Why `shape` doesn't fit on `board` with its center on (x, y), as the
+    /// rules type it of a build: a cell off the board (or every cell on its
+    /// frame), or the piece of `others` it would cover. None: it fits.
+    pub fn misfit(&self, board: &[Vec<u8>], others: &[Placed], shape: &Shape, x: i32, y: i32) -> Option<nettai_match::Wrong> {
         let cs = cells(shape, x, y);
         let at = |(cx, cy): (i32, i32)| board.get(cy as usize).and_then(|r| r.get(cx as usize)).copied().filter(|_| cx >= 0 && cy >= 0);
         if cs.is_empty() || cs.iter().any(|&c| !matches!(at(c), Some(b'o' | b'f'))) || cs.iter().all(|&c| at(c) == Some(b'f')) {
-            return false;
+            return Some(nettai_match::Wrong::OffBoard);
         }
         let taken = self.occupied(others);
-        cs.iter().all(|c| !taken.contains_key(c))
+        cs.iter().find_map(|c| taken.get(c)).map(|&other| nettai_match::Wrong::Overlap { other })
     }
 }
 
@@ -331,7 +349,7 @@ pub fn edit(d: &GridData, c: &Content, side: &mut Side, held: &mut Option<Held>,
         }
         Edit::Place(x, y) => {
             let Some(h) = held.clone() else { return false };
-            let Some(board) = board_index(c, side).and_then(|b| d.boards.get(b)) else { return false };
+            let Some(board) = d.board_of(c, side).and_then(|b| d.boards.get(b)) else { return false };
             let shape = d.shape(h.piece, h.compressed, h.rotation);
             if !d.fits(board, &parts, &shape, x, y) {
                 return false;
@@ -386,7 +404,7 @@ pub fn edit(d: &GridData, c: &Content, side: &mut Side, held: &mut Option<Held>,
             parts.remove(i);
         }
         Edit::Board(b) => {
-            if b >= d.boards.len() || board_index(c, side) == Some(b) {
+            if !d.sized || b >= d.boards.len() || board_index(c, side) == Some(b) {
                 return false;
             }
             return side.set_fact(c, SIZE_FIELD, &[Fact::Value(nettai_content_api::Value::Int(b as i64))]).is_ok();
@@ -408,17 +426,21 @@ mod tests {
         read(content, crate::builds::module_data(content, game, MODULE).as_ref())
     }
 
-    /// Both games' grids read: three boards, the command line row 3, every
-    /// piece's shapes and colors.
+    /// The three games' grids read: EXE6's and EXE5's three boards, EXE4's
+    /// one, the command line row 3, every piece's shapes and colors.
     #[test]
-    fn both_games_grids_read() {
-        for (content, game) in [(nettai_match::testing::exe6_content(), "exe6"), (nettai_match::testing::exe5_content(), "exe5")] {
+    fn the_games_grids_read() {
+        for (content, game, sizes) in [
+            (nettai_match::testing::exe6_content(), "exe6", &["4x4", "5x4", "5x5"][..]),
+            (nettai_match::testing::exe5_content(), "exe5", &["4x4", "5x4", "5x5"][..]),
+            (nettai_match::testing::exe4_content(), "exe4", &["5x5"][..]),
+        ] {
             let data = read_game(&content, game).unwrap_or_else(|| panic!("{game}: the data don't fit the grid"));
-            assert_eq!((data.boards.len(), data.command_line), (3, Some(3)), "{game}");
+            assert_eq!((data.boards.len(), data.command_line, data.sized), (sizes.len(), Some(3), game != "exe4"), "{game}");
             let pieces = content.defs.entries_of(&data.collection).len();
             assert_eq!((data.colors.len(), data.shapes.len()), (pieces, 2 * pieces), "{game}");
-            let sizes: Vec<String> = data.boards.iter().map(|b| size(b)).collect();
-            assert_eq!(sizes, ["4x4", "5x4", "5x5"], "{game}");
+            let read: Vec<String> = data.boards.iter().map(|b| size(b)).collect();
+            assert_eq!(read, sizes, "{game}");
         }
     }
 
