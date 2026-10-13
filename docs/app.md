@@ -34,6 +34,8 @@ names the signaling server (§4). Some variables are for development:
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
 | `NETTAI_TRAINING=<game>` | Starts straight into a training battle of the game: new builds of its first two versions, the other a dummy that stands still. |
 | `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle and on the main menu. |
+| `NETTAI_WINDOW_PROBE=<minimize\|hide>:<after>:<for>` | Minimizes or hides the window `after` seconds from the start, for `for` seconds (§1, "The clock when the window isn't drawn"). |
+| `NETTAI_NO_TIMER_CLOCK` | Leaves the timer's clock out, to see what the window's frames do alone. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
 | `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe. |
@@ -61,9 +63,36 @@ it stopped mid-walk, in the middle of a frame, and never went on. So while a bat
 a screen says it has something that must go on (`Shell::stay_awake`: a link to another player), and during the
 screenshot pass, the app holds a Foundation activity (user-initiated, latency-critical, the display kept on: a
 player on a pad presses no key). It was checked by the system's list of them (`pmset -g assertions` names the
-app's, "a battle is running", during a training battle), not by covering the window under load again. Not
-checked either: whether a hidden or minimized window is still drawn. If it isn't, a battle in one doesn't tick,
-the clock being the drawing. Windows and Linux have nothing held.
+app's, "a battle is running", during a training battle), not by covering the window under load again. Windows
+and Linux have nothing held.
+
+**The clock when the window isn't drawn.** The system draws no frames for a window that is minimized or hidden,
+and the clock is the drawing: a battle in one stood still for as long, and a link would have gone unpolled,
+which the other player sees as a stalled peer. So a timer (16 ms, `main.rs`) runs the app's frame itself
+(`App::idle`) when the window hasn't drawn one for 50 ms and something must go on: a battle, the cards before
+one, or a screen's link (`Shell::stay_awake`). Such a frame is the whole frame but its picture (`Shell::show`
+presents nothing: there is no frame to show it in, and the window's OpenGL isn't the thread's), so the battle
+ticks by the clock, the sound plays, and `Screen::frame` and `Screen::frame_end` run, which is where a link is
+fed and polled. Each asks the window for a redraw, so the window's own frames take over again when it shows.
+While the window draws, the timer does nothing.
+
+Measured on macOS (2026-10-12): a training battle with the window taken away for 8 seconds, by
+`NETTAI_WINDOW_PROBE` for the first two rows and by another program's window for the last two (load average 165
+to 318):
+
+| The window | Without the timer | With it |
+|---|---|---|
+| minimized | no frame, no tick, for the 8 seconds | 59 frames a second run by the timer, 59.3 to 60.1 ticks a second |
+| hidden | no frame, no tick | 59 frames a second by the timer, 59.5 to 60.0 ticks a second |
+| covered by another program's window the size of the screen (the system says "covered") | the window keeps drawing: 120 frames a second, 59.75 ticks | the same; the timer runs nothing |
+| behind another program's full-screen window (the system says "covered") | the same: 120 frames, 59.75 ticks | the same |
+
+Minimizing and restoring each stop the app for about 0.4 seconds (the system's animation, on the window's
+thread): the ticks of that time are lost, as with any stall that long. With the window in view the latency
+figures are the same with the timer and without (§5: 119.5 to 120.0 frames a second, a key to its picture 10.4
+ms against 10.6, measured back to back). Not tested: the app's own window moved to another desktop (nothing
+moves one without the user), a link's polling itself (no screen has one yet: it rides the same frames), and
+other systems.
 
 Slint on Apple's systems draws its frames from a display link with no window event before them. Its Skia renderer
 on Metal never calls `BeforeRendering`, so the clock needs femtovg, on OpenGL here and WebGL on the web; the app
@@ -139,14 +168,24 @@ menu; an online match keeps running, as the menu says.
   cursor, confirm, back and refusal has one.
 - The title music is the selected game's too: the sound its pack names `title-screen`, on a driver of its own. It
   plays across the menu screens, fades in, fades out as a battle starts, and crossfades with the next game's as
-  the game changes. A pack that names no such sound has none (see "What is missing" below).
+  the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
+  screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
+  ROMs. A pack that names no such sound has none: one extracted before the names were given, until it is
+  extracted again.
 - While a battle runs, both are ticked with the battle's ticks and their samples added to the battle's, sample
   for sample; with no battle running they run on their own clock at the same rate. (At first the menus' sound ran
   on its own clock throughout, beside the battle's, at twice the rate the device plays. The queue then sat at
   `Output`'s cap of 200 ms: every sound was late by that much, and dropped samples skipped: §5.)
-- Settings' Music is the title music's level, and Sound effects the level of the menus' sounds and of the
-  battle's whole sound. The battle's own music isn't apart from its effects: the game's driver mixes them, and the
-  library gives a host one stream.
+- Settings' Music is the level of the title music and of the battle's music; Sound effects is the level of the
+  menus' sounds and of the battle's effects. The battle's sound is one stream, mixed by the game's own driver
+  (its Direct Sound channels into one eight-bit buffer, its four PSG channels shared), so the two are set apart
+  inside the driver: it mixes each note at a level the host gives its music player (`m4a::Driver::set_level`;
+  what sounds, and what is cut for what, stays the game's), and the music is one player's. The app gives a
+  battle the two levels against the louder of them (`Sound::battle_levels`, `Player::set_sound_levels`; a
+  replay's viewer takes them the same way and keeps them across seeks) and plays its samples at the louder, so
+  only the difference between the two is turned down in eight bits. At the full level the driver's output is
+  unchanged to the sample. Measured in a training battle of each game: with Music at 0 the stream is silent
+  once the opening effects end; at 50 the music's peak is half (0.30 to 0.39 against 0.6 to 0.7).
 
 **A game is ready in two stretches**, and the loading screen's bar covers both (`games.rs`; docs/frontend.md §9):
 
@@ -170,9 +209,8 @@ fill at once; they show the truth, and the cards stay up half a second so they c
 loads no runtime and reads nothing while it plays, and the app holds itself to that: when a battle ends it asks
 the library what was loaded late (`Player::late`) and writes any runtime or read to the log.
 
-**What is missing.** EXE4's and EXE5's packs name no `title-screen` sound (only EXE6's content names it), so
-those two have no title music until their content does. And the app looks the sound up by that asset name, where
-the menus' sounds go through the rules' sound roles: a role for it would be the content's to add.
+**What is missing.** The app looks the title music up by its asset name, `title-screen`, where the menus'
+sounds go through the rules' sound roles: a role for it would be the content's to add.
 
 ## 2. The shell and the screens
 
@@ -254,11 +292,13 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
   nothing when a battle ends: the owner is told the result or the reason and says what is next.
 - *A replay:* `start_battle` with `Play::Watch(replay, side)` makes its viewer ready behind the same cards and
   hands it over (`BattleEvent::Watching`); the screen shows it in a `Picture` of its own with
-  `show_surface(surface, present)` and plays its sound with `play_samples`.
+  `show_surface(surface, present)` and plays its sound with `play_samples`, having given the viewer the Music
+  and Sound effects levels (`viewer.set_sound_levels` with `sound.battle_levels()`: §1, "The sound").
 - *The rest:* `settings` (and `settings.remembered`, a map for what a screen remembers by its own keys, so it
   adds no field) with `save_settings()`; `set_name`; `lang`; `sound.play(Cue)`; `copy(text)`;
   `choose_file`, `choose_save`; `recorder` for an offline set's replay; `fly` (§10); `stay_awake`, set while
-  the screen has a link open (§1).
+  the screen has a link open: the app isn't napped, and its frames run by a timer when the window isn't drawn
+  (§1).
 
 **Filling in a screen** touches three files: `ui/screens/<name>.slint`, `src/screens/<name>.rs` and
 `lang/ja/<name>.po`. **Adding a screen** is those three and a few lines in three shared files: the `Screen` enum
@@ -281,7 +321,9 @@ Each language names itself: its translation of `msgctxt "language"` / `msgid "En
 It also makes a **pseudo-locale**, `pseudo`: every `@tr` string found in the .slint files, lengthened (each
 vowel doubled, the whole bracketed: about 40% longer) and its letters accented. A layout that can't take a longer
 text shows it, and so does a string that doesn't go through `@tr`. It is made from the sources, so no string is
-missing from it, and no template has to be kept in step. It is in the language list and in the screenshot pass.
+missing from it, and no template has to be kept in step. It is a testing device, and no player's: the
+screenshot pass walks it, `NETTAI_LANG=pseudo` shows it, and Settings' list offers it only while it is the
+language shown; a settings file that names it doesn't bring it back (`lang::offered`, `lang::initial`).
 
 The first language is the settings', else the system's (`sys-locale`, by its primary subtag), else English;
 `$NETTAI_LANG` overrides it. Settings changes it while the app runs: the app's strings switch at once
@@ -480,8 +522,8 @@ Not built. What it would take:
   - Replays in the app's storage, shared with the system's share sheet.
 - **Sound:** cpal plays through AAudio/Oboe on Android and CoreAudio on iOS.
 - **Input:**
-  - Touch is the on-screen pad (`TouchPad`, battle.slint). It needs multi-touch: Slint's `TouchArea` follows one
-    pointer, so two buttons can't be held at once until the pad takes the window's touch events itself.
+  - Touch is the on-screen pad (`TouchPad`, battle.slint; §11, "The on-screen pad"): it takes the window's
+    touches itself, every finger its own. No touch screen has run it.
   - Gamepads: gamepad-facade's native backend is SDL3, which has both platforms' controllers.
 - **Text:** the system IME works through winit on Android and iOS.
 - **Netplay:** nettai-rtc's native backend (the `rtc` crate over UDP) runs on both.
@@ -705,7 +747,8 @@ components no built screen uses yet (`TabBar`, `ListView`, `Panel`, `OptionRow`,
 a `DialogFrame` of a screen's own with a `Field` and its scope) were drawn and walked once, in both, at the
 desktop's size and a phone's, in a harness that isn't in the tree (2026-10-12); it found the tab bar running off
 a phone's edge, which is fixed and now said by the pass. Never run: `Shell::fly`, a replay's viewer through
-`Play::Watch`, an online match's `gate`, `Shell::recorder`, a dropped file, a real gamepad, an IME.
+`Play::Watch` (and its `set_sound_levels`), an online match's `gate`, `Shell::recorder`, a dropped file, a real
+gamepad, an IME, a touch screen (the pad's fingers are put through the same entry by the screenshot pass).
 
 Three things about how it is made. A clock reads the frame's time (`animation-tick()`) only while it runs, and
 stops when it is done, so a screen at rest evaluates nothing each frame but what moves by itself. What moves
@@ -758,6 +801,17 @@ pad's maker.
 **The mouse and touch**: a click or a tap focuses and activates in one; everything tapped on a phone is at least
 44 tall.
 
+**The on-screen pad** (a phone, in battle: `input::TouchPad`). Slint's `TouchArea` follows one pointer, and a
+battle needs a direction and a button held together, so the pad takes the window's touch events itself, before
+Slint (`App::touched`, from the same winit hook as the keys). Each button says where it is as the UI lays it
+out, and is drawn held when the app says so. A finger that comes down on a button is the pad's until it lifts:
+it holds the button under it, and the next one as it slides onto it. The four directions read as one control:
+anywhere in their square the direction is the one the finger is farthest toward from the middle, so a thumb
+needn't land on a key, and in the very middle it holds none. A finger that comes down anywhere else is Slint's,
+as a pointer (MENU, a dialog). The mouse still comes through the buttons' `TouchArea`, one pointer. Unit tests
+hold it to that, and the screenshot pass puts two fingers down at once on a phone's battle (Left and A: both
+held and drawn held, then one lifted).
+
 ## 12. Errors and the log
 
 docs/design/app-ui.md §7. No string from a library's error is ever shown. What a player can be told is one of
@@ -793,6 +847,8 @@ The pictures are for comparing with the mockups by eye. Two things the pass chec
   menu, Settings), or a value changed under it (the input delay from 4 to 10, the picture's size). The two
   pictures may differ only inside the controls the step touched and the cursor around them; a pixel that differs
   anywhere else is something that moved.
+- **Two fingers hold two buttons.** On a phone's battle, a finger on Left and one on A, through the entry the
+  window's touches come by: both are held, and A alone once the other lifts.
 - **Nothing is cut.** Every label, button, heading and tab says when its text doesn't fit its box (the UI's
   `Audit`, on for each shot), and the footer when its hints don't leave the status its room. The
   pseudo-locale makes every string about 40% longer, so a layout sized for English alone shows up there.
@@ -877,8 +933,9 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
    The fonts are embedded as files (5.6 MB in all, 3.9 of it M PLUS 1 Code with its Japanese), which costs the
    linker nothing measurable.
 5. **The build script writes a file only when what it says changed** (the merged catalogs, which Slint has cargo
-   watch). Rewritten on every run, they made every build find the UI changed and compile it again: 14 seconds for
-   a build with nothing to do.
+   watch), and gives what it wrote a time long past. Rewritten on every run, they made every build find the UI
+   changed and compile it again: 14 seconds for a build with nothing to do. Written once but dated by the run,
+   they made the build after every clean one do the same.
 
 **What it costs now** (measured 2026-10-12, dev profile, sccache off, load average 100 to 150):
 
@@ -892,7 +949,12 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
 | after one line of a .slint file changed (a value) | 8 to 12 s | 4.9 s |
 | after a .slint edit that adds or changes components (this work's own edits, with Rust edits) | 14 to 32 s | 20 to 24 s |
 
-The generated module is 3.3 MB (27,952 lines, 102 components) from 4,274 lines of Slint with 18 `if`s and 6
+Measured again after the same day's follow-ups (the pad's touches, the timer's clock, the sound's levels; load
+average 54 to 113): a clean build of the two crates 45 to 68 s of wall time and 28 to 29 s of CPU, the build
+after it 1.9 s; one line of Rust 7.6 s (2.3 s of CPU); one line of a .slint file 26 to 28 s (5.3 to 6.1 s of
+CPU).
+
+The generated module is 3.3 MB (28,204 lines, 102 components) from 4,316 lines of Slint with 18 `if`s and 6
 `for`s. The first app's whole clean build wasn't run again for the new one: the engine's crates, most of it, are
 the same. One dependency is new and slow: gamepad-facade's SDL3 is built from its source with cmake, about three
 and a half minutes of a clean build on the loaded machine (gilrs, which it replaces, took 23 seconds), once.
