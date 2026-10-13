@@ -109,8 +109,8 @@ The same ranges by the same measure (code.py's places, Thumb on both sides, move
 | EXE6 (BR6E / BR6J) | 462 (0x08003000–0x0802F200) | | 13,396 (0x080B9A5C–0x080FF400) |
 
 - **EXE5**: 51 places of code in the core and 65 in the objects, about two thirds of EXE4's (84 and 87), and its 368
-  chip records to compare field by field. Its HUD, custom screen and chatbox were read by EXE5's port; this would be
-  their first full read of the rest.
+  chip records to compare field by field. Its HUD, custom screen and chatbox were read by EXE5's port; the rest is
+  docs/design/exe5-regions.md.
 - **EXE6**: diff can't align its two ROMs' object code (the Japanese releases carry whole routines the US ones
   haven't and the other way round, docs/engine/jp-differences.md §4), so the 13,396 is an artifact of the measure.
   docs/engine/jp-differences.md compared every routine of the US Falzar ROM with its Japanese one by routine
