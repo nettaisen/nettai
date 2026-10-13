@@ -81,6 +81,8 @@ Each is settled unless the user changes it.
     the player"; "the build name should not really be visible across the wire or in replays or anything". (The
     lobby's protocol version 5 sent each build's name, version and navi label: that goes.)
 17. **During a match both builds can be viewed**, as in Tango; and **the lobby has a "closed builds" setting**.
+    The lobby's match settings also have **a toggle for patch cards, on or off** ("for netbattle settings you should
+    also have a toggle for patch cards on/off").
 18. **Connection quality is shown during play.**
 19. **Patch cards are shown comprehensively**, have no image area ("patch cards don't have images"), have no on/off
     switch ("nettai doesn't support turning them off"), and a card that doesn't fit says so in the error red
@@ -254,10 +256,12 @@ Each is in the mockups under the same name.
   opponent"; "The lobby opens when they join."; CANCEL. Keys go to the battle; Esc or Start opens the training menu
   with Copy invite code and Cancel invite added.
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
-  ready, nothing else), then one row of settings: Rounds (a stepper: Single battle, Best of 3), Closed builds
-  (off, on), Input delay (a stepper, yours alone, default 4, remembered), the connection's bars and ping; then
-  READY, CHANGE BUILD, LEAVE; then a reserved status line. Rounds and Closed builds are shared: either player
-  changes them, both see it, and both ready marks clear.
+  ready, nothing else), then one row of settings: Rounds (a stepper: Single battle, Best of 3), Patch cards
+  (on, off), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), the
+  connection's bars and ping; then READY, CHANGE BUILD, LEAVE; then a reserved status line. Rounds, Patch cards
+  and Closed builds are shared: either player changes them, both see it, and both ready marks clear. With Patch
+  cards off, neither player's cards apply in the match: each build plays as it is without them, and a build that
+  breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
 ### Training
 - **Entry:** two rows, Your build and Dummy's build, both remembered, and START TRAINING; beside them the two
