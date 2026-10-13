@@ -632,20 +632,28 @@ fn lose_chip(b: &mut Battle, r: ObjectRef) {
         b.objects.get_mut(r).chips_held = 0;
         return;
     }
-    let rule = b.game_rules().intake.chip_destruction;
+    let takes = b.game_rules().intake.chip_destruction;
     let hand = &mut b.hands[b.objects.get(r).alliance as usize];
-    match rule.takes {
-        crate::content::ChipsTaken::Next => {
+    match takes {
+        crate::content::ChipDestruction::Next => {
             if hand.ids.get(hand.cursor as usize).is_some_and(|id| id.is_some()) {
                 hand.cursor += 1;
             }
         }
-        crate::content::ChipsTaken::Hand => {
+        crate::content::ChipDestruction::Hand => {
             hand.cursor = 0;
             hand.ids[..5].fill(None);
         }
     }
-    if rule.ends_chip_requests {
+    // A chip asked for with none left to use: the request ends. EXE4's
+    // intake does it (0x08013280 clears requests 0x0C once the hand is
+    // gone). EXE5's 0x0801709A and EXE6's `sub_801A2CC` leave the request,
+    // and the navi's idle then uses chip 0xFFFF: a record 0xFFFF places
+    // past the chip table, other bytes in each ROM (the table's address
+    // goes by version and region), so two consoles of different versions
+    // wouldn't agree. The engine doesn't port that read: a deliberate
+    // departure (docs/engine/chips.md §2.9).
+    if super::next_chip(b, r).is_none() {
         ai_mut(b, r).requests &= !(crate::actor::request::CHIP | crate::actor::request::CHARGED_CHIP);
     }
 }
@@ -941,13 +949,13 @@ mod tests {
     }
 
     /// A chip-destroying hit (hit flag 0x10) takes what the rule says of a
-    /// player's hand: EXE6's the next chip (the test content's), EXE5's the
-    /// hand, EXE4's the hand and the chip requests. The hand's cursor and
-    /// chips after it, and the requests left.
+    /// player's hand: EXE6's the next chip (the test content's), EXE5's and
+    /// EXE4's the hand; and a chip request with no chip left to use ends.
+    /// The hand's cursor and chips after it, and the requests left.
     #[test]
     fn a_chip_destroying_hit_takes_the_next_chip_or_the_hand() {
         use crate::actor::request;
-        use crate::content::{ChipDestruction, ChipsTaken};
+        use crate::content::ChipDestruction;
         let hit = |rule: Option<ChipDestruction>, cursor: u8| {
             let (mut b, r) = on_ice(0);
             if let Some(rule) = rule {
@@ -970,11 +978,10 @@ mod tests {
             (b.hands[side].cursor, left, ai(&b, r).requests & (request::CHIP | request::BUSTER))
         };
         let both = request::CHIP | request::BUSTER;
-        assert_eq!(hit(None, 0), (1, 3, both), "the next chip: the cursor past it");
-        assert_eq!(hit(None, 3), (3, 3, both), "no chip at the cursor: it stays");
-        let exe5 = ChipDestruction { takes: ChipsTaken::Hand, ends_chip_requests: false };
-        assert_eq!(hit(Some(exe5), 1), (0, 0, both), "the hand, the cursor back at its first chip");
-        let exe4 = ChipDestruction { takes: ChipsTaken::Hand, ends_chip_requests: true };
-        assert_eq!(hit(Some(exe4), 1), (0, 0, request::BUSTER), "and the chip requests");
+        assert_eq!(hit(None, 0), (1, 3, both), "the next chip: the cursor past it, the request for the one after");
+        assert_eq!(hit(None, 2), (3, 3, request::BUSTER), "the last chip: no chip left, the chip request ends");
+        assert_eq!(hit(None, 3), (3, 3, request::BUSTER), "no chip at the cursor: it stays");
+        let hand = Some(ChipDestruction::Hand);
+        assert_eq!(hit(hand, 1), (0, 0, request::BUSTER), "the hand, the cursor back at its first chip");
     }
 }
