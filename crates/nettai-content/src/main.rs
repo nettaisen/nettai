@@ -30,8 +30,8 @@ struct Args {
 const USAGE: &str = "usage:
   nettai-content check <pack> [--content DIR]         read every file and report what it finds, and
                                                    define the content root's definitions with the
-                                                   pack's assets (default: $NETTAI_CONTENT, else this
-                                                   repository's content/)
+                                                   pack's assets (default: $NETTAI_CONTENT, else a content/
+                                                   beside the program, else this repository's)
   nettai-content verify <pack> <reference-pack> [--seconds N]
                                                    check that two packs load as the same content
                                                    (graphics, sprite timing, sound as timelines and

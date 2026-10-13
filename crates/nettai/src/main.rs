@@ -11,6 +11,10 @@
 //! hides the window for a while; `NETTAI_TOUR=<folder>` walks every
 //! screen and writes each to a PNG (`tour`: a build with the `tour` feature's alone).
 
+// A release build on Windows opens no console window beside its own (what it prints goes nowhere; the log is the
+// data folder's nettai.log). A development build keeps one, for what it prints.
+#![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
+
 mod awake;
 mod battle;
 mod bnlc;
