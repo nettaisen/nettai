@@ -16,7 +16,7 @@ use crate::screens::ScreenId;
 use crate::screens::training;
 use crate::shell::App;
 use nettai_battle::input::keys;
-use nettai_ui::{Theme, TrainingOption};
+use nettai_ui::{AppWindow, Theme, TrainingOption};
 use slint::ComponentHandle;
 use std::time::Instant;
 
@@ -29,6 +29,38 @@ enum Differs {
     Cursors,
     /// That, and what shows the builds and the place chosen: the cards and the arena.
     Builds,
+    /// The cursors, and the game's own picture where the training menu leaves it in view: the battle is in the
+    /// game's pause behind the menu, and the game moves its backgrounds through its pause.
+    Picture,
+}
+
+/// Where the game's picture is in view beside the training menu's panel, each box given exactly (`compare` lets a
+/// pair differ 12 around each box it is given: these are 12 inside), in the UI's units. The panel is the menu's
+/// (`MenuOverlay`, at the side: the theme's margin from the left, 24 from the top and bottom, at most 500 wide),
+/// over everything under it: none of the picture under the panel is let differ.
+fn picture_beside_menu(ui: &AppWindow) -> Vec<Option<Rect>> {
+    let shell = ui.global::<nettai_ui::Shell>();
+    let picture = Rect {
+        x: shell.get_picture_room_x() + shell.get_picture_x(),
+        y: shell.get_picture_room_y() + shell.get_picture_y(),
+        w: shell.get_picture_width(),
+        h: shell.get_picture_height(),
+    };
+    let factor = ui.window().scale_factor();
+    let window = ui.window().size();
+    let (width, height) = (window.width as f32 / factor, window.height as f32 / factor);
+    let margin = ui.global::<Theme>().get_margin();
+    let panel = Rect { x: margin, y: 24.0, w: (width - 2.0 * margin).min(500.0), h: height - 48.0 };
+    let exactly = |l: f32, t: f32, r: f32, b: f32| (r > l && b > t).then_some(Rect { x: l + 12.0, y: t + 12.0, w: r - l - 24.0, h: b - t - 24.0 });
+    let (l, t, r, b) = (picture.x, picture.y, picture.right(), picture.bottom());
+    let (inner_l, inner_r) = (l.max(panel.x), r.min(panel.right()));
+    vec![
+        // Left and right of the panel, the picture's whole height; above and below it, the panel's width.
+        exactly(l, t, r.min(panel.x), b),
+        exactly(l.max(panel.right()), t, r, b),
+        exactly(inner_l, t, inner_r, b.min(panel.y)),
+        exactly(inner_l, t.max(panel.bottom()), inner_r, b),
+    ]
 }
 
 /// Where the entry shows the builds and the place chosen, apart from its rows: beside the rows' column, or on a
@@ -67,8 +99,13 @@ fn shot(add: &mut dyn FnMut(u64, Step), name: &'static str, lang: &'static str, 
             if differs != Differs::Unheld
                 && let Some((first, before, was)) = tour.first.borrow_mut().take()
             {
-                let also = if differs == Differs::Builds { builds_shown(&app.borrow()) } else { None };
-                compare(ui, tour, &first, &before, &tag, &picture, &[was, cursor, also]);
+                let mut allowed = vec![was, cursor];
+                match differs {
+                    Differs::Builds => allowed.push(builds_shown(&app.borrow())),
+                    Differs::Picture => allowed.extend(picture_beside_menu(ui)),
+                    _ => {}
+                }
+                compare(ui, tour, &first, &before, &tag, &picture, &allowed);
             }
             if keep {
                 *tour.first.borrow_mut() = Some((tag.clone(), picture, cursor));
@@ -216,13 +253,15 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(4000, Box::new(|_, _, _| {}));
     shot(add, "training-battle", lang, size, Differs::Unheld, false);
 
-    // The training menu: a value changed under the focus, the focus a row down, the input display turned on.
+    // The training menu: a value changed under the focus, the focus a row down, the input display turned on. (The
+    // game's picture beside the menu may differ in each pair: it is in the game's pause, which moves its
+    // backgrounds.)
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
     shot(add, "training-menu", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
-    shot(add, "training-menu-value", lang, size, Differs::Cursors, true);
+    shot(add, "training-menu-value", lang, size, Differs::Picture, true);
     add(SETTLE, act(Action::Down));
-    shot(add, "training-menu-focus", lang, size, Differs::Cursors, false);
+    shot(add, "training-menu-focus", lang, size, Differs::Picture, false);
     // The Arena row, and its value changed: the set starts over on the next arena behind the menu, which stays
     // open (the battle through the round's opening to its custom screen, where it waits).
     add(SETTLE, focus("menu.rows.option", row(TrainingOption::Arena)));
@@ -241,7 +280,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         add(SETTLE, focus("menu.rows.option", row(option)));
         shot(add, name, lang, size, Differs::Unheld, true);
         add(SETTLE, act(Action::Right));
-        shot(add, changed, lang, size, Differs::Cursors, false);
+        shot(add, changed, lang, size, Differs::Picture, false);
     }
     // The input display, the menu's last row (on a phone, the rows scrolled to it).
     add(
