@@ -1,0 +1,243 @@
+//! The screenshot pass's steps for the build editor's NaviCust, Patch cards and Auto battle tabs (docs/app.md
+//! §13): each tab in the game the pass walks, with pairs a focus move apart, a piece moved, turned, put down,
+//! refused and put back, cards put in and refused, places filled; and the motion probe's bursts of what the tabs
+//! move. A tab the game hasn't (auto battle data: EXE6's setup takes none) is passed over: a step names the tab by
+//! what it is, and `on_tab` reports a picture taken on another.
+//!
+//! The walk makes a build of its own (the pass's builds folder, `paths::keep_builds_in`), as a player makes one.
+
+use super::{Pair, SETTLE, Step};
+use crate::input::{Action, KeyPress};
+use crate::screens::ScreenId;
+use crate::shell::App;
+use nettai_ui::{BuildsPage, BuildsView, EditorTab, NavicustView};
+use slint::winit_030::winit::keyboard::KeyCode;
+use slint::{ComponentHandle, Model};
+
+type Shot<'a> = &'a dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair);
+
+/// The walk is on tab `tab` of the editor; if it isn't, the report says so (as a text the pass counts against the
+/// picture).
+fn on_tab(tab: EditorTab, name: &'static str) -> Step {
+    Box::new(move |ui, _, _| {
+        let view = ui.global::<BuildsView>();
+        if view.get_page() != BuildsPage::Editor || view.get_shown() != tab {
+            ui.global::<nettai_ui::Audit>().invoke_clipped(format!("(the walk isn't on the editor's {name} tab: this picture is of something else)").into());
+        }
+    })
+}
+
+fn act(action: Action) -> Step {
+    Box::new(move |_, app, _| app.borrow_mut().act(action))
+}
+fn focus(id: &'static str, index: i32) -> Step {
+    Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index))
+}
+fn press(id: &'static str, index: i32) -> Step {
+    Box::new(move |_, app, _| {
+        let mut app = app.borrow_mut();
+        app.shell.nav.focus(id, index);
+        app.act(Action::Confirm);
+    })
+}
+fn screen(f: impl Fn(&mut dyn crate::screens::Screen, &mut crate::shell::Shell) + 'static) -> Step {
+    Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Builds, &f))
+}
+/// A key pressed on the Builds screen, as the window's keys reach it (before the menus read it).
+fn key(code: KeyCode, text: &'static str) -> Step {
+    screen(move |s, shell| {
+        s.key(shell, &KeyPress { code, text: Some(text.into()), repeat: false, shift: false });
+    })
+}
+
+/// Out of whatever of the Builds screen is open, back to its list.
+fn leave(app: &mut App) {
+    for _ in 0..4 {
+        if app.shell.screen() == ScreenId::Builds {
+            app.with_screen(ScreenId::Builds, |s, shell| {
+                s.back(shell);
+            });
+        }
+    }
+}
+
+/// A build of the game's first version, made through the screen in an emptied builds folder, and open in the
+/// editor.
+fn open_build(add: &mut dyn FnMut(u64, Step), phone: bool) {
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            if let Some(game) = app.shell.game().map(str::to_string) {
+                let _ = std::fs::remove_dir_all(crate::builds::store::folder(&game));
+            }
+            leave(&mut app);
+            app.go_now(ScreenId::Builds);
+            app.shell.nav.show_cursor(true, false);
+        }),
+    );
+    add(SETTLE, press("new", 0));
+    add(SETTLE, screen(|s, shell| s.edit(shell, "name.name", 0, "Tab tour", true)));
+    add(SETTLE, screen(|s, shell| s.choose(shell, "name.version", 0, 0)));
+    add(SETTLE, press("name.confirm", 0));
+    add(SETTLE, press("builds", 0));
+    if phone {
+        add(SETTLE, press("one.edit", 0));
+    }
+}
+
+/// The editor's tab of kind `tab`, by its place in the bar (a tab the game hasn't: nothing).
+fn to_tab(tab: EditorTab) -> Step {
+    Box::new(move |ui, app, _| {
+        let view = ui.global::<BuildsView>();
+        let names = view.get_tab_names();
+        let word = names.row_data(tab as usize).unwrap_or_default();
+        let Some(at) = view.get_tabs().iter().position(|t| t.text == word && t.enabled) else { return };
+        let mut app = app.borrow_mut();
+        app.shell.nav.focus("tab", at as i32);
+        app.act(Action::Confirm);
+    })
+}
+
+/// Take in hand the `nth` program of the NaviCust's list (from 0) that `which` picks, as Enter on its row does.
+fn take(nth: usize, which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
+    Box::new(move |ui, app, _| {
+        let rows = ui.global::<NavicustView>().get_programs();
+        let Some(at) = rows.iter().enumerate().filter(|(_, r)| which(r)).nth(nth).map(|(i, _)| i) else { return };
+        let mut app = app.borrow_mut();
+        app.shell.nav.focus("programs", at as i32);
+        app.act(Action::Confirm);
+    })
+}
+
+/// Where the piece in hand may go: off the command line, on the out-of-bounds ring, or over another piece.
+#[derive(Clone, Copy, PartialEq)]
+enum Spot {
+    OffTheLine,
+    Ring,
+    Over,
+}
+
+/// Put the piece in hand down at the first cell where it would be at `spot` (and, but `Spot::Over`, fit), as the
+/// cursor moved there and Enter does: found from what the view shows of the board, whatever the game's shapes.
+fn put(spot: Spot) -> Step {
+    Box::new(move |ui, app, _| {
+        let view = ui.global::<NavicustView>();
+        let (n, command) = (view.get_columns(), view.get_command());
+        let cells: Vec<nettai_ui::GridCell> = view.get_cells().iter().collect();
+        let held: Vec<(i32, i32)> = view.get_held().iter().map(|c| (c.x, c.y)).collect();
+        let at = |x: i32, y: i32| (x >= 0 && y >= 0 && x < n && y < n).then(|| &cells[(y * n + x) as usize]);
+        let fits = |gx: i32, gy: i32, ring: bool| -> bool {
+            let on: Vec<Option<&nettai_ui::GridCell>> = held.iter().map(|&(dx, dy)| at(gx + dx, gy + dy)).collect();
+            let real = on.iter().all(|c| c.is_some_and(|c| c.kind != nettai_ui::CellKind::None));
+            let out = on.iter().flatten().filter(|c| c.kind == nettai_ui::CellKind::Out).count();
+            let over = on.iter().flatten().any(|c| c.filled);
+            let line = held.iter().any(|&(_, dy)| gy + dy == command);
+            real && out < held.len()
+                && match spot {
+                    Spot::OffTheLine => !over && !line && (ring || out == 0),
+                    Spot::Ring => !over && out > 0,
+                    Spot::Over => over,
+                }
+        };
+        // (Off the command line on the board itself where the piece has the room, else jutting onto the ring.)
+        let places = || (0..n).flat_map(|y| (0..n).map(move |x| (x, y))).filter(|&(x, y)| at(x, y).is_some_and(|c| c.kind != nettai_ui::CellKind::None));
+        let found = places().find(|&(x, y)| fits(x, y, false)).or_else(|| places().find(|&(x, y)| fits(x, y, true)));
+        let Some((gx, gy)) = found else { return };
+        let mut app = app.borrow_mut();
+        app.shell.nav.focus("cell", gy * n + gx);
+        app.act(Action::Confirm);
+    })
+}
+
+fn plus(r: &nettai_ui::ProgramRow) -> bool {
+    r.plus
+}
+fn program(r: &nettai_ui::ProgramRow) -> bool {
+    !r.plus
+}
+
+/// The NaviCust tab's steps.
+fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    add(SETTLE, focus("programs", 0));
+    shot(add, "tabs-navicust", Pair::First);
+    add(90, on_tab(EditorTab::Navicust, "NaviCust"));
+    add(SETTLE, act(Action::Down));
+    shot(add, "tabs-navicust-focus", Pair::Second);
+    // A program taken in hand (it is on the board's middle, the command line's row), moved a cell and turned a
+    // quarter; turned back and put down a row lower, on the command line still.
+    add(SETTLE, take(0, program));
+    shot(add, "tabs-navicust-held", Pair::None);
+    add(SETTLE, act(Action::Right));
+    add(SETTLE, key(KeyCode::KeyS, "s"));
+    shot(add, "tabs-navicust-turned", Pair::None);
+    add(SETTLE, key(KeyCode::KeyA, "a"));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-navicust-placed", Pair::None);
+    // A plus part at the left; another program at the top, off the command line, which brings its bug (purple,
+    // with its level).
+    add(SETTLE, take(0, plus));
+    add(SETTLE, act(Action::Left));
+    add(SETTLE, act(Action::Left));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, take(1, program));
+    add(SETTLE, put(Spot::OffTheLine));
+    shot(add, "tabs-navicust-bugs", Pair::None);
+    add(90, on_tab(EditorTab::Navicust, "NaviCust"));
+    // A program put over another: refused, and why; put back.
+    add(SETTLE, take(2, program));
+    add(SETTLE, put(Spot::Over));
+    shot(add, "tabs-navicust-refused", Pair::None);
+    add(SETTLE, act(Action::Back));
+    // A plus part on the ring, where the game's board has one (EXE6's: out of bounds, which is no error); a game
+    // without one shows the piece in hand, at the board's middle.
+    add(SETTLE, take(1, plus));
+    add(SETTLE, put(Spot::Ring));
+    shot(add, "tabs-navicust-ring", Pair::None);
+    add(90, on_tab(EditorTab::Navicust, "NaviCust"));
+}
+
+/// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
+/// of a pair).
+pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
+    open_build(add, size == "phone");
+    navicust(add, shot);
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            leave(&mut app);
+            app.go_now(ScreenId::Menu);
+        }),
+    );
+}
+
+/// The tabs' bursts of the motion probe (`burst` takes one: a name, the milliseconds after its trigger at which a
+/// shot is taken, and the trigger): a piece taken up (it lifts), turned (a quarter turn), put down (a pulse along
+/// its cells), refused (it shakes), and a bug appearing (it pulses purple).
+pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
+    open_build(add, false);
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    burst(add, "navicust-lift", &[0, 30, 60, 100, 160, 260], take(0, program));
+    burst(add, "navicust-move", &[0, 30, 60, 100, 160], act(Action::Right));
+    burst(add, "navicust-turn", &[0, 30, 60, 100, 160, 260], key(KeyCode::KeyS, "s"));
+    add(SETTLE, key(KeyCode::KeyA, "a"));
+    add(SETTLE, act(Action::Down));
+    burst(add, "navicust-drop", &[0, 30, 60, 90, 120, 160, 220, 320], act(Action::Confirm));
+    add(SETTLE, take(1, program));
+    burst(add, "navicust-bug", &[0, 40, 80, 120, 200, 320], put(Spot::OffTheLine));
+    add(SETTLE, take(2, program));
+    burst(add, "navicust-refused", &[0, 30, 60, 90, 120, 160, 220, 320], put(Spot::Over));
+    add(SETTLE, act(Action::Back));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            leave(&mut app);
+            app.go_now(ScreenId::Menu);
+        }),
+    );
+}
