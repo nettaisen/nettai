@@ -202,6 +202,8 @@ component InstalledRowView inherits Rectangle {
         y: 5px;
         visible: root.slotted;
         text: root.card.slot;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Text {
@@ -433,6 +435,8 @@ component CardsLibraryPane inherits Rectangle {
             card: PatchCardsView.rows[self.at];
             nav-index: self.at;
             dx: self.at == PatchCardsView.refused ? shake.dx : 0px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 }
@@ -723,6 +727,8 @@ export component PatchCardsTab inherits Rectangle {
         y: Theme.phone ? parent.height - root.together-height : root.pane-y + root.pane-height - root.together-height;
         width: Theme.phone ? parent.width : root.pane-width;
         height: root.together-height;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     // ---- The library, open.
