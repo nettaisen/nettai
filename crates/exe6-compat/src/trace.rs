@@ -834,6 +834,8 @@ fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<Str
         check("fight cycles", format!("{:?}", r.cycles), format!("{:?}", [bs[0x0E], bs[0x16]]));
         check("winner", r.winner.to_string(), bs[0x10].to_string());
         check("score", format!("{:?}", [r.wins, r.losses]), format!("{:?}", [bs[0x18], bs[0x19]]));
+        // (And the round, +0x1A, as the round's start sets it.)
+        check("round", r.round.to_string(), bs[0x1A].to_string());
         check("result", r.result.to_string(), bs[0x1F].to_string());
         check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
     }
