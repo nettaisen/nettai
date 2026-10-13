@@ -100,6 +100,8 @@ impl Words<'_> {
             Wrong::Unstated | Wrong::Missing => say.invoke_missing(part),
             Wrong::Foreign => say.invoke_foreign(part, game()),
             Wrong::FolderSize(c) => say.invoke_folder_size(n(c.used), n(c.limit)),
+            // (A chip the auto battle data can't hold is one its navi can't play.)
+            Wrong::ChipNotAllowed { chip: c } if part == BuildPart::AutoBattle => say.invoke_chip_not_playable(chip(c)),
             Wrong::ChipNotAllowed { chip: c } => say.invoke_chip_not_allowed(chip(c)),
             Wrong::ChipOfAnotherVersion { chip: c } => match self.holders(*c) {
                 Some(version) => say.invoke_chip_only(chip(c), version.into()),

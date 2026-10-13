@@ -19,7 +19,10 @@ type Shot<'a> = &'a dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair);
 /// The walk is on tab `tab` of the editor; if it isn't, the report says so (as a text the pass counts against the
 /// picture).
 fn on_tab(tab: EditorTab, name: &'static str) -> Step {
-    Box::new(move |ui, _, _| {
+    Box::new(move |ui, _, tour| {
+        if tour.passing.get() {
+            return;
+        }
         let view = ui.global::<BuildsView>();
         if view.get_page() != BuildsPage::Editor || view.get_shown() != tab {
             ui.global::<nettai_ui::Audit>().invoke_clipped(format!("(the walk isn't on the editor's {name} tab: this picture is of something else)").into());
@@ -27,21 +30,38 @@ fn on_tab(tab: EditorTab, name: &'static str) -> Step {
     })
 }
 
+// What the walk does: an action, the focus put on a control, a call of the screen's own module. Each does
+// nothing while the pass passes by a tab the game hasn't (`to_tab`).
 fn act(action: Action) -> Step {
-    Box::new(move |_, app, _| app.borrow_mut().act(action))
+    Box::new(move |_, app, tour| {
+        if !tour.passing.get() {
+            app.borrow_mut().act(action);
+        }
+    })
 }
 fn focus(id: &'static str, index: i32) -> Step {
-    Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index))
+    Box::new(move |_, app, tour| {
+        if !tour.passing.get() {
+            app.borrow_mut().shell.nav.focus(id, index);
+        }
+    })
 }
 fn press(id: &'static str, index: i32) -> Step {
-    Box::new(move |_, app, _| {
+    Box::new(move |_, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
         let mut app = app.borrow_mut();
         app.shell.nav.focus(id, index);
         app.act(Action::Confirm);
     })
 }
 fn screen(f: impl Fn(&mut dyn crate::screens::Screen, &mut crate::shell::Shell) + 'static) -> Step {
-    Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Builds, &f))
+    Box::new(move |_, app, tour| {
+        if !tour.passing.get() {
+            app.borrow_mut().with_screen(ScreenId::Builds, &f);
+        }
+    })
 }
 /// A key pressed on the Builds screen, as the window's keys reach it (before the menus read it).
 fn key(code: KeyCode, text: &'static str) -> Step {
@@ -86,13 +106,16 @@ fn open_build(add: &mut dyn FnMut(u64, Step), phone: bool) {
     }
 }
 
-/// The editor's tab of kind `tab`, by its place in the bar (a tab the game hasn't: nothing).
+/// The editor's tab of kind `tab`, by its place in the bar. A tab the game hasn't is passed by: the steps after
+/// this do nothing and take no picture, until the next tab is gone to or the walk ends.
 fn to_tab(tab: EditorTab) -> Step {
-    Box::new(move |ui, app, _| {
+    Box::new(move |ui, app, tour| {
         let view = ui.global::<BuildsView>();
         let names = view.get_tab_names();
         let word = names.row_data(tab as usize).unwrap_or_default();
-        let Some(at) = view.get_tabs().iter().position(|t| t.text == word && t.enabled) else { return };
+        let at = view.get_tabs().iter().position(|t| t.text == word && t.enabled);
+        tour.passing.set(at.is_none());
+        let Some(at) = at else { return };
         let mut app = app.borrow_mut();
         app.shell.nav.focus("tab", at as i32);
         app.act(Action::Confirm);
@@ -101,7 +124,10 @@ fn to_tab(tab: EditorTab) -> Step {
 
 /// Take in hand the `nth` program of the NaviCust's list (from 0) that `which` picks, as Enter on its row does.
 fn take(nth: usize, which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
-    Box::new(move |ui, app, _| {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
         let rows = ui.global::<NavicustView>().get_programs();
         let Some(at) = rows.iter().enumerate().filter(|(_, r)| which(r)).nth(nth).map(|(i, _)| i) else { return };
         let mut app = app.borrow_mut();
@@ -121,7 +147,10 @@ enum Spot {
 /// Put the piece in hand down at the first cell where it would be at `spot` (and, but `Spot::Over`, fit), as the
 /// cursor moved there and Enter does: found from what the view shows of the board, whatever the game's shapes.
 fn put(spot: Spot) -> Step {
-    Box::new(move |ui, app, _| {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
         let view = ui.global::<NavicustView>();
         let (n, command) = (view.get_columns(), view.get_command());
         let cells: Vec<nettai_ui::GridCell> = view.get_cells().iter().collect();
@@ -202,7 +231,10 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
 
 /// Into the library from the build's cards (on a phone, its sheet), if the cursor isn't there; and back out.
 fn library() -> Step {
-    Box::new(|_, app, _| {
+    Box::new(|_, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
         let mut app = app.borrow_mut();
         if !in_library(&app) {
             app.act(Action::Confirm);
@@ -210,7 +242,10 @@ fn library() -> Step {
     })
 }
 fn out_of_library() -> Step {
-    Box::new(|_, app, _| {
+    Box::new(|_, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
         let mut app = app.borrow_mut();
         if in_library(&app) {
             app.act(Action::Back);
@@ -264,20 +299,43 @@ fn patch_cards(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, out_of_library());
 }
 
+/// The Auto battle tab's steps (a game whose setup takes no auto battle data has no such tab: they show what
+/// `on_tab` reports).
+fn auto_battle(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, to_tab(EditorTab::AutoBattle));
+    add(SETTLE, focus("places.place", 0));
+    shot(add, "tabs-auto", Pair::First);
+    add(90, on_tab(EditorTab::AutoBattle, "Auto battle"));
+    add(SETTLE, act(Action::Down));
+    shot(add, "tabs-auto-focus", Pair::Second);
+    // Three places filled from the library, the cursor going on to the next each time; a place emptied.
+    add(SETTLE, focus("places.place", 0));
+    for row in 0..3 {
+        add(SETTLE, library());
+        add(SETTLE, focus("lib.rows", row * 4));
+        add(SETTLE, act(Action::Confirm));
+    }
+    shot(add, "tabs-auto-filled", Pair::None);
+    add(SETTLE, library());
+    add(SETTLE, focus("lib.rows", 1));
+    shot(add, "tabs-auto-library", Pair::None);
+    add(SETTLE, out_of_library());
+    add(SETTLE, focus("places.place", 1));
+    add(SETTLE, act(Action::Delete));
+    shot(add, "tabs-auto-emptied", Pair::None);
+    // The places further down: the page scrolled to the last list.
+    add(SETTLE, focus("places.place", 41));
+    shot(add, "tabs-auto-last", Pair::None);
+}
+
 /// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
 /// of a pair).
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
     open_build(add, size == "phone");
     navicust(add, shot);
     patch_cards(add, shot);
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            leave(&mut app);
-            app.go_now(ScreenId::Menu);
-        }),
-    );
+    auto_battle(add, shot);
+    add(SETTLE, end());
 }
 
 /// The tabs' bursts of the motion probe (`burst` takes one: a name, the milliseconds after its trigger at which a
@@ -309,12 +367,22 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, focus("lib.rows", 0));
     burst(add, "cards-refused", &[0, 30, 60, 90, 120, 160, 220, 320], act(Action::Confirm));
     add(SETTLE, out_of_library());
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            leave(&mut app);
-            app.go_now(ScreenId::Menu);
-        }),
-    );
+    // A chip put in a place (it flies to the place, which flashes, and the cursor goes on to the next), where the
+    // game has auto battle data.
+    add(SETTLE, to_tab(EditorTab::AutoBattle));
+    add(SETTLE, focus("places.place", 0));
+    add(SETTLE, library());
+    add(SETTLE, focus("lib.rows", 0));
+    burst(add, "auto-put", &[0, 30, 60, 90, 120, 160, 200, 260, 340, 480], act(Action::Confirm));
+    add(SETTLE, end());
+}
+
+/// The walk's end: back to the main menu, no tab passed by.
+fn end() -> Step {
+    Box::new(|_, app, tour| {
+        tour.passing.set(false);
+        let mut app = app.borrow_mut();
+        leave(&mut app);
+        app.go_now(ScreenId::Menu);
+    })
 }

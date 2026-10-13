@@ -382,6 +382,15 @@ msgstr "{} MB必要"
 msgid "{} of {} places filled"
 msgstr "{}/{}か所"
 
+# How many of the auto battle data's places hold the chip (a library row's note).
+msgid "In {n} place"
+msgid_plural "In {n} places"
+msgstr[0] "{n}か所"
+
+# A chip the auto battle data can't hold: its navi can't play it.
+msgid "{} can't be played in auto battle"
+msgstr "{}はオートバトルで使えません"
+
 # What the NaviCust changes of a number, the change put in ("HP +100").
 msgid "HP {}"
 msgstr "HP {}"
