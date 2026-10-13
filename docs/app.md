@@ -9,9 +9,8 @@ screen is added or filled in (§2), and the parts every screen shares (§3, §9 
 What exists: the design system, focus and navigation, the keyboard, mouse, touch and gamepads, scaling and the
 upright-phone switch, the languages, the errors and the log, Loading, the main menu with its reel and the title
 music, Settings, the two cards before a battle, and the battle's host with its menu overlay. Training is built
-(§15), and Play, the netplay UI (§4). Builds and Replays are registered and reachable, each with its header and
-Back and an empty body: each is one Slint file and one Rust module, to be filled in without editing a shared
-file (§2).
+(§15), and so are Play, the netplay UI (§4), Builds (§8) and Replays (§16: the list, the viewer with its
+transport, the export): each is one Slint file and one Rust module (§2).
 
 Builds is filled in (§8): the list with a build's overview, a new build, a save's import, and the editor with
 its Navi and Folder tabs; its NaviCust, patch card and auto battle tabs are empty, behind the editor's tab
@@ -34,12 +33,14 @@ names the signaling server (§4). Some variables are for development:
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
 | `NETTAI_TRAINING=<game>` | Starts straight into a training session of the game: new builds of its first two versions, the other a dummy that stands still. |
-| `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle and on the main menu. |
+| `NETTAI_REPLAY=<file>` | Starts straight into watching the replay, its game selected; `NETTAI_REPLAY_SPEED=half\|1\|2\|4` at that speed. |
+| `NETTAI_FFMPEG=<program>` | The `ffmpeg` a video is made with, instead of the one found (§16). |
+| `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle, on the main menu and in a replay's viewer. |
 | `NETTAI_WINDOW_PROBE=<minimize\|hide>:<after>:<for>` | Minimizes or hides the window `after` seconds from the start, for `for` seconds (§1, "The clock when the window isn't drawn"). |
 | `NETTAI_NO_TIMER_CLOCK` | Leaves the timer's clock out, to see what the window's frames do alone. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
-| `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe. |
+| `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe; `NETTAI_TOUR_ONLY=replays` one screen's steps alone. |
 
 ## 1. The battle in a Slint window
 
@@ -111,7 +112,8 @@ the app makes one texture there, the picture's size, and shows it as a borrowed 
 Without that OpenGL (`NETTAI_NO_TEXTURE`, the web), each picture is a new `SharedPixelBuffer` image. That was the
 first prototype's only way, and it was the lag the user saw (§5).
 
-There is one texture and it holds one picture: the battle's, the main menu's reel's, or a replay's viewer's. Each
+There is one texture and it holds one picture: the battle's, the main menu's reel's, a replay's viewer's, or the
+still of the replay selected in the list. Each
 is a `Surface` (`stage.rs`: the buffer something presents itself into, how it fits, whether it is out of date),
 and the one last shown is the one in the texture; another shown after it presents its own picture anew.
 
@@ -253,12 +255,14 @@ again, and so that the UI can be built without optimization (§14).
                       awake.rs                                          the app's time kept (§1)
                       settings.rs lang.rs paths.rs errors.rs tour.rs  §9, §3, §12, §13
                       tour/<name>.rs                                    a screen's steps of the screenshot pass
-                      replays.rs builds/                                kept for the screens to come (§8)
+                      replays.rs                                        the replays folder, read on a thread (§16)
+                      builds/                                           what any screen shows of a build (§8)
                       screens/<name>.rs
                       screens/play/session.rs tour.rs                 Play's link and lobby; its part of §13
 
-**A screen is one Slint file and one Rust module.** Menu, Settings, Training and Play are built; Builds and
-Replays are their headers. `ui/screens/play.slint` holds:
+**A screen is one Slint file and one Rust module** (which may have modules of its own under it:
+`screens/replays/`). Menu, Settings, Training, Play, Builds and Replays are built. `ui/screens/play.slint`
+holds:
 
 - `PlayView`, a global: the screen's data, which its Rust module sets (and may read back). A struct or an enum
   one of its properties uses reaches Rust by that use; nothing is added to app.slint for it.
@@ -729,6 +733,31 @@ Measuring found one thing: **the input display, drawn each frame,** cost 0.3 ms 
 that. (The spread of the key's time between the columns is where the probe's presses fell between ticks, four
 or five a window; a frame that shows a press does draw the display anew.)
 
+**Watching a replay** (§16; 2026-10-12, the same Mac and 1280 by 800 window, `NETTAI_REPLAY=<file>` with
+`NETTAI_PLAY_STATS`, the build at 7bebca494: an eight-minute set of EXE6's, 28,718 ticks in three rounds, its
+picture 720 by 480; load average 243 to 278). The viewer indexes the replay ahead from the moment it shows, so
+each speed has two columns, while it does and once it is done:
+
+| nettai, `dev`, a replay's viewer | 1x, indexing | 1x, indexed | 4x, indexing | 4x, indexed |
+|---|---|---|---|---|
+| frames a second | 115.0 to 120.0 | 120.0 | 117.5 to 120.0 | 118.8 to 120.0 |
+| frame time p95 / p99 | 8.52 to 10.07 / 8.95 to 19.62 ms | 8.37 to 8.59 / 8.50 to 12.43 ms | 8.46 to 10.11 / 9.23 to 12.91 ms | 8.51 to 9.12 / 9.12 to 12.92 ms |
+| long frames in 2 s | 0 to 8 | 0 to 2 | 0 to 4 | 0 to 3 |
+| ticks a second | 59.4 to 60.0 | 59.5 to 60.0 | 238.5 to 239.1 | 238.5 to 239.0 |
+| the ticks of a frame that ran some | 0.08 to 0.18 ms | 0.20 to 0.32 ms | 0.19 to 0.34 ms | 0.25 to 0.37 ms |
+| pictures a second, and each one (presented, written) | 60; 1.68 to 2.13 ms | 60; 1.66 to 1.80 ms | 116 to 120; 1.73 to 1.91 ms | 116 to 120; 1.72 to 1.94 ms |
+| a slice of the index, and the worst | 1.40 to 1.46 ms (3.3 to 7.1) | | 1.37 to 1.45 ms (1.8 to 7.4) | |
+
+Each is the range over eleven to sixteen 2-second windows of one run, about 50 seconds each. What the viewer
+holds: the window's 120 frames a second at both speeds, and the replay's own speed (59.75 ticks a second, and
+four times that). At 1x a picture is presented in every other frame, at 4x in every frame (two ticks to each);
+a frame that does all of it, while the replay is being indexed, spends about 3.5 ms of its 8.3 (the ticks, the
+picture, a slice). The whole set was indexed in 21 to 22 seconds at either speed, after which a seek anywhere
+plays under 240 ticks. The one run whose windows went wrong (from 120 to 96 frames, pictures of 1200 by 800) was
+someone using the window as it was measured: its replay jumped from tick 840 to 8,640, 3,120, 13,200 and 23,520
+(clicks on the bar) and the window was made larger; it was run again. With both builds shown over the picture
+(§16) the viewer wasn't measured.
+
 ## 6. The web
 
 What was tried with the first app, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI SDK 34
@@ -1060,9 +1089,11 @@ a `DialogFrame` of a screen's own with a `Field` and its scope) were drawn and w
 desktop's size and a phone's, in a harness that isn't in the tree (2026-10-12); it found the tab bar running off
 a phone's edge, which is fixed and now said by the pass. Play has since put `ListView`, `Flash` and a
 `DialogFrame` of its own with a `Field` in the pass, and an online match's `gate` runs there between two
-players (§4, §13). Never run: `Shell::fly`, a replay's viewer through `Play::Watch` (and its
-`set_sound_levels`), `Shell::recorder`, a dropped file, a real gamepad, an IME, a touch screen (the pad's
-fingers are put through the same entry by the screenshot pass).
+players (§4, §13). Replays has put a `DialogFrame` of a screen's own with its scope, a `Field` outside a
+scrolling page, a view of a screen's own (`nav.enter`), a replay's viewer through `Play::Watch` and the build
+overview over it in the pass, and its viewer's `set_sound_levels` was checked by its samples (§16). Never run:
+`Shell::fly`, `Shell::recorder`, a dropped file, a real gamepad, an IME, a touch screen (the pad's fingers are
+put through the same entry by the screenshot pass).
 Training and Play were the first to show a `Message`, whose text sat in the middle of its line (a text with no
 width of its own is as wide as its words, centered): it is as wide as its line now, and at its left unless the
 screen says otherwise.
@@ -1148,9 +1179,10 @@ The libraries' errors are typed the same way, a kind for the player and a detail
 (docs/design/rollback.md §4.9): `UserError::of_link` (nettai-rtc's `ErrorKind`), `of_lobby` (the lobby's
 `Reason`), `of_stop` (a match's `StopReason`), `of_replay_read` and `of_refusal` (a replay that doesn't read, or
 isn't played here) and `of_export` (nettai-video's) each write the detail and give the kind's sentence; a test
-holds every kind to one. What breaks a build's rules is nettai-match's `Wrong`, which the Builds screen words in
-its own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that can't be loaded is
-`UserError::GameOutdated`, with the game's name as shown (§1).
+holds every kind to one. Replays shows the first two at the end of a replay's row and beside the list, and the
+last in its export dialog's reserved line (§16). What breaks a build's rules is nettai-match's `Wrong`, which the
+Builds screen words in its own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
+can't be loaded is `UserError::GameOutdated`, with the game's name as shown (§1).
 
 ## 13. The screenshot pass
 
@@ -1186,16 +1218,17 @@ own `write` and `compare`) or the screen's own (`screens/play/tour.rs`), with a 
 for the motion probe, each called from `tour::walk` and `tour::motion_walk` with one line
 (`training::steps(&mut add, lang, size)`; Play's take `walk`'s `add`, a step and the time it is given first,
 and its `shot`, a shot's name and its place in a pair). A pair's second shot may be given more to differ in
-than the two cursors (`training.rs`'s `Differs::Builds`: where the entry shows the builds chosen), found from
-where the screen's controls are. A step that must wait for something that comes by itself says so
+than the two cursors (`training.rs`'s `Differs::Builds`: where the entry shows the builds chosen; `replays.rs`'s
+`Also::Playback`: the picture, the bar and its two times), found from where the screen's controls are. A step that must wait for something that comes by itself says so
 (`Tour::wait_until`: the step after it runs once it has come, or after a minute). Where the shots after it
 depend on its having come, the walk says when it didn't (`Tour::never_came`, which the report lists and the
 pass fails on: Play's `reach`), so that a picture of the wrong thing isn't taken for the right one.
+`NETTAI_TOUR_ONLY=replays` walks Replays' steps alone (it has none for the motion probe).
 
 The pass has nothing of the player's to go by: its settings are the defaults, and Training and Play list a new
 build of each of the game's versions (and one that can't be used) in place of the player's builds. The builds the Builds
 screen lists are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through the
-screen as a player makes them.
+screen as a player makes them, and Replays lists replays of the pass's own.
 
 **Builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`): the list
 with none and with three builds (one named in Japanese, one with a name too long for its row), a new build's
@@ -1221,6 +1254,22 @@ and what is cut. Two things went unseen that way, and each now has its check.
   the content doesn't load (a sprite the content names and the pack hasn't) gives a clean report of EXE4's
   screens. The log says so (`loading exe6: can't load ...`) and the pictures' headers name the game shown; the
   report doesn't. Read one before trusting a run.
+
+**Replays' steps.** While the pass runs the replays folder is `<folder>/replays`, and the first time through
+three sets of the selected game are played by themselves there, recorded, and written again under other names,
+days and kinds of match (fifteen files), with three that aren't played beside them (another layout's, other
+content's, no replay at all). The steps: the list; the actions beside it (a pair: the focus a step along); a
+search; the Online filter; a file that doesn't read; the delete question, and then a delete carried out, of a
+file made for it; the export's dialog as it opens (a pair), as an export under way looks and as a failed one
+does (both set on the view: no export runs); the two cards; the viewer held a little way into the second round
+(a pair a focus move apart, and a pair a second of playback apart); five seconds on; the other console; both
+builds over it; the export from the viewer; a closed-builds match's viewer (BUILDS unavailable); and on a phone
+the selected replay's sheet (a pair). A shot that follows a change of the selected replay waits for that
+replay's still. `replays.txt` in the pass's folder says whether the deleted
+file went and the list followed; that is said, not one of the pass's own checks. `NETTAI_TOUR_EXPORT=1` adds,
+once (in English at the desktop's size), a real export through `ffmpeg` (the first replay's last round, at
+twice the frame, into the pass's folder) and a second one stopped once some of it is written; `export.txt`
+says how each ended and what was in the folder.
 
 **Play's steps have a second player** (`screens/play/tour.rs`): the lobby, the loading, a match and what ends
 them take two. The second is in the same process: the link library's own signaling server (nettai-rtc's
@@ -1408,6 +1457,35 @@ one clock, where an `Arrive` around each tab was copied into each tab's `if` (27
 What stays large: a `ListView` and a `ScrollPage` are containers, copied into each use (40 to 50 KB each, five
 in Builds), and each `if` page holds the parts it lays out.
 
+**What a screen costs: Replays** (§16; measured 2026-10-12 with one script, back to back: the tree before it,
+nettai-ui at a8087d1d4, and with it, ui-replays at 7bebca494; sccache off; CPU is user and system time together,
+the one to compare: load average 198 to 352 throughout):
+
+| | Before Replays | With Replays |
+|---|---|---|
+| a clean build of nettai-ui and nettai | 170 s, 56.7 s of CPU | 316 s, 71.4 s of CPU |
+| nothing changed | 2.3 to 3.1 s, 0.5 to 0.8 s of CPU | 3.3 to 4.6 s, 0.5 to 0.7 s of CPU |
+| after one line of Rust changed (a line added to main.rs, and taken away) | 8.5 to 11.0 s, 2.9 to 3.1 s of CPU | 10.3 to 13.1 s, 3.0 to 3.2 s of CPU |
+| after one line of menu.slint changed (a value, and put back) | 37 to 51 s, 10.9 to 11.4 s of CPU | 64 to 73 s, 12.5 to 12.9 s of CPU |
+| after one line of replays.slint changed (a value, and put back) | | 43 to 92 s, 12.3 to 12.9 s of CPU |
+| the generated module | 6.19 MB, 51,366 lines | 7.62 MB, 61,733 lines |
+| the Slint | 6,211 lines, 29 `if`s, 12 `for`s | 7,462 lines, 35 `if`s, 14 `for`s |
+
+Replays' 1,246 lines of Slint (the stub was 22) are 1.42 MB of generated Rust: the viewer 0.50 (its transport
+0.16 and its page's `if` 0.14, the page 0.06, the transport's buttons, choices and bar 0.14), the list and the panel
+beside it 0.44 (the page 0.11 and its `if` 0.06, a row 0.07 and its `for` 0.02, the panel 0.05 and its `if` 0.05,
+the facts 0.08), the export's dialog 0.2 (its `if` 0.05), both builds over the viewer 0.12 (half of it their
+`if`), a phone's sheet 0.11, the view 0.05. A .slint edit costs 1.6 s more CPU than before, about 14%. Measured
+before the builds over the viewer and the merge of Builds (against nettai-ui at aeaad46ce, load average 176 to
+320), Replays was 1.33 MB (3.88 to 5.21) and a .slint edit 7.1 to 7.5 s of CPU before it, 8.9 to 9.1 with it.
+One thing was made smaller after measuring: the desktop's transport and the phone's were two components under an
+`if` each, and are one whose other shape's parts are hidden (`visible`, and passed by the focus). That was only
+62 KB less, not the 0.21 MB the two `if`s seemed to be: most of a conditional is the item tree of what it holds,
+and the viewer's page's `if` describes the transport's items now (44 KB before, 133 after). What stays: each `if`
+here is a part that is truly there or not (the list's page and the viewer's, each with a `Picture`, which two of
+can't be at once; the panel beside the list, whose `Picture` a phone's sheet has instead; the sheet, the dialog,
+the builds over the viewer), and each costs about as much as its own component again.
+
 ## 15. Training
 
 docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
@@ -1484,3 +1562,120 @@ battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, whi
 - A choice of arena: it is picked from the seed, as a match's is.
 - A real key press: the screenshot pass drives the screens through the same calls a key becomes (`App::act`)
   and holds the battle's buttons directly; the window's own key events were not sent to it.
+
+## 16. Replays
+
+docs/design/app-ui.md §6, "Replays". The screen is `ui/screens/replays.slint` and `src/screens/replays.rs` (with
+`replays/viewer.rs` and `replays/export.rs`); the folder's reading is `src/replays.rs`. The library under all of
+it is docs/frontend.md §8: the file, the viewer and its seeking, the video.
+
+**Nothing of the folder is read on the window's thread** (`crate::replays::Library`). The screen has a thread of
+its own, started when it first asks something, and takes what the thread found at its next frame:
+
+- *The listing.* Each time the screen shows, the replays folder is listed again (a match just recorded is
+  there): every `.ntrp` file is read and what it says of itself kept (its head, its info, its length and its
+  rounds' starts; not its ticks). A file as it was at the last listing (its size and time) isn't read again.
+- *The score.* A replay holds no result, so each replay of the selected game is played out there (the library's
+  `play_out`: no picture, no sound), newest first, and its row gets its score as it is known. What was played
+  out is kept while the app runs.
+- *The still.* The selected replay's picture is a frame the thread draws a moment into its first fight, shown
+  through the screen's `Picture` as any picture is (§1): a whole multiple of the frame, the text at the
+  window's resolution. The box is empty until the selected replay's own still has come: a still is never shown
+  beside another replay than its own.
+
+**A replay that can't be played is a row, not a failure.** A file that doesn't read (`ReadError`), a replay
+whose head names another engine or other content, one the library refuses as it is played out (`Refused`) and
+one that plays another battle than it recorded each show their sentence in the row, in the error red, in
+place of the opponent, the score and the length (`UserError::of_replay_read`, `of_refusal`: §12), and beside
+the list with WATCH and EXPORT VIDEO unavailable; SHOW FILE and DELETE stay. Each is written to the log once.
+A file that doesn't read names no game, so it is listed with every game's.
+
+**The list** is the selected game's replays, newest first: the date, the opponent (the other player's name;
+`P1` or `P2` where the replay has none), the score as the recorder's (`W 2–1`; the rounds alone where the set
+wasn't finished) and the length, each in a column of its own width. The search is by opponent. The filter
+between All and Online is there only while the game has replays of both kinds. Enter on a row watches it, E
+exports it, Delete asks once (Cancel focused) and removes the file. On a phone a tap on a row opens the
+selected replay as a sheet from the bottom, with the four actions one under the other. No build's name is
+anywhere: a replay has none.
+
+**The viewer** (`Watching`) is the library's `Viewer`, which the shell makes ready behind the two cards
+(`Play::Watch`: §2) and hands over. The cards say who played and nothing of what they brought. Each frame the
+screen runs the ticks due, presents the picture into the window's texture if one ran, and hands the sound on:
+
+- *The transport:* the time, the bar (a click or a drag; a mark where each later round begins), the length;
+  to the round's start, a frame back, play or pause, a frame on, the next round; the speed (½, 1, 2, 4), the
+  side whose console is shown, EXPORT VIDEO. The focus starts on the bar, where Left and Right go five seconds
+  (it is a control whose arrows change it, as a slider is); the speeds and the sides are each a control, so the
+  arrows walk through the row and past it. Space plays and pauses, comma and period step a frame (and pause),
+  the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
+  At its end a replay stops with the transport there; play starts it again.
+- *No seek stalls the window.* From the moment it shows, the replay is indexed ahead a slice a frame
+  (`Viewer::index`), each slice as many ticks as the last one's time says fit a budget: 1.5 ms while the
+  replay plays, 5 ms while nothing does. A seek to what is indexed is done at once (it plays under 240 ticks).
+  A seek past it waits: the bar shows where it is going, and it lands when the index has reached it.
+- *A drag moves the picture in steps:* while the bar is held the picture is the state the viewer keeps at or
+  before the pointer (one every four seconds, which costs no playing), and it lands exactly where the bar is
+  let go.
+- *The sound* goes to the shell in whole ticks' worth (`Shell::play_samples`), because the menus' sounds are
+  ticked with what a screen plays: the viewer's own while it plays, at any speed, and while it doesn't,
+  silence at the original's rate, so a move of the cursor is heard over a paused replay and the title music
+  isn't. It is at Settings' levels (`viewer.set_sound_levels(shell.sound.battle_levels())`): Music is the
+  replay's music too. Checked by the viewer's own samples (`NETTAI_PLAY_STATS` says their loudness for each two
+  seconds of the replay, by its ticks): 45 seconds of one replay at Music and Sound effects 100 and 100, 0 and
+  100, 100 and 0, 0 and 0. Both at 0 is silence, sample for sample; Music at 0 leaves the effects' sound in
+  every stretch (rms 0.04 to 0.16, by bursts), Sound effects at 0 the music's (0.14 to 0.19, steady); and in
+  each stretch the two together are within about 1% of what the two alone add up to (as squares). Nobody
+  listened to it.
+- *While the window isn't drawn* (minimized, hidden: §1's timer runs the frame), a replay stands still: it asks
+  for no time and plays no sound, and goes on where it was when the window shows again. Checked with
+  `NETTAI_WINDOW_PROBE=hide:20:12`: the timer ran one frame, then nothing for the 12 seconds, and the replay went
+  on from the tick it was at, its stretches as loud as without the hiding. The app is kept awake
+  (`Shell::stay_awake`) while a replay plays in a window that is drawn, and while a video is being made.
+- *The builds.* Where the match's builds weren't closed, BUILDS (the transport's sixth button, after the five;
+  B, or Select on a pad) shows both over the picture's sides, as a match shows them: each the narrow sheet of
+  `BuildOverview` (§8), the console shown's player's at the left in red, the other's at the right in blue (the
+  colors of their sides of the picture), YOU over the name of the side that recorded it and OPPONENT over the
+  other's, each name the player's (a replay holds no build's). They are a scope of their own: each sheet is a
+  control, and a press or a click on them, BUILDS, B, Select or Esc puts them away; the replay goes on under
+  them, and its keys still work. On a phone they are one under the other in a page that scrolls (each sheet is
+  then one column, 1158 tall). A closed-builds match's sides aren't kept at all (`Info::closed_builds`): its
+  BUILDS can't be pressed.
+- *On a phone* the picture has the window's whole width, as the battle's has (§9): a window 780 of the display's
+  pixels wide shows three times the frame, where the page's gutters left room for two. The transport is under
+  it, with its buttons across, then Speed and View as steppers and EXPORT VIDEO. One component is both shapes
+  (the other shape's parts hidden and passed by), since two under an `if` each cost more (§14).
+
+**The export** (`Export`) is a dialog of one size from its start to its end: Size (2, 4 and 6 times the frame,
+4 chosen), View, Part (the whole match, or a round), Save as, the bar and its line, CANCEL and EXPORT. EXPORT
+runs nettai-video's `export_mp4` on a thread of its own, with a copy of what the window plays from (the game's
+graphics in the language shown, the text as the settings have it, its sound); the thread says how far it is
+and is told to stop through what the two share, which the dialog reads each frame. CANCEL (or Esc) stops an
+export under way and leaves the dialog open; with none under way it closes it. The line says the round and
+the percentage, then "Saved.", or what went wrong in the player's words (`UserError::of_export`: ffmpeg not
+found, the file not written, anything else with the log named). The app keeps awake while one runs (§1).
+
+- *The file* is an MP4 and nothing else: the NUT stream is how the pictures reach ffmpeg, never a file. It is
+  named for the day, the opponent and the part, in the folder last exported to (at first the system's videos
+  folder's `nettai`), with a number after it where that name is taken; Save as asks for another place in the
+  system's dialog. It takes its name only once it is whole: stopped or failed, nothing is left (the library's
+  `mp4::Encoder`).
+- *ffmpeg* is the one on the path, or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`,
+  `/opt/local/bin`: an app started from the desktop has a short path), or `$NETTAI_FFMPEG`.
+
+**The main menu's reel** takes its replays from `crate::replays::Reel`: the selected game's latest five, found
+and read on a thread as the menu shows, then given one after another, around. One that doesn't play here is
+passed over and not given again; with none, the reel is the set made for it (§1).
+
+**What has run, and what hasn't.** The screenshot pass walks all of it but the export's real run (§13), in the
+three languages at both sizes; the real export, a stopped one and one with no ffmpeg ran once each through
+`NETTAI_TOUR_EXPORT` (on EXE6: the first replay's last round at twice the frame, 8,539 frames, 143 seconds of
+H.264 and AAC, 19.4 MB; the stopped one's `.part` file was there while it ran and gone after it; with
+`NETTAI_FFMPEG` naming no program the line said "Video export needs ffmpeg. Install it, then try again." and
+nothing was written). The viewer was watched playing by `NETTAI_REPLAY` with `NETTAI_PLAY_STATS` (§5), at 1 and
+4 times. What Play's code records was listed and watched too: Play's steps alone with `$NETTAI_REPLAYS` set
+recorded three matches (one to its result, W 1–0 in 18 seconds; one with closed builds; one left), and Replays'
+steps with them in the folder listed them first, watched the newest, showed both builds of it (its recorder
+played as P2, whose console is shown, so YOU was at the left) and none of the closed-builds one's. Never run: a
+drag of the bar with a real pointer, a seek that waits for the index, ½ and 2 times, a pad, SHOW FILE, Save as's
+system dialog, the main menu's reel playing a replay (its order is a unit test), the levels across a seek, the
+builds with a real key, and anything on a real phone.

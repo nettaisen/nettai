@@ -46,6 +46,7 @@ use std::time::{Duration, Instant};
 // A screen's own steps (`<screen>::steps`, and `<screen>::motion` for the motion probe), each in a file of its
 // own, called from `walk` and `motion_walk` with one line.
 mod builds;
+mod replays;
 mod training;
 
 /// How long a step is given to be drawn before the next: a few frames.
@@ -253,10 +254,11 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
-    // (`NETTAI_TOUR_ONLY=play`: Play's steps alone. `play-away-host` and `play-away-join`: two apps on one
-    // machine, the host's window taken away from under their link.)
+    // (`NETTAI_TOUR_ONLY=play` or `replays`: that screen's steps alone. `play-away-host` and `play-away-join`:
+    // two apps on one machine, the host's window taken away from under their link.)
     match std::env::var("NETTAI_TOUR_ONLY").as_deref() {
         Ok("play") => return crate::screens::play::tour::steps(&mut add, &shot, size == "phone"),
+        Ok("replays") => return replays::steps(&mut add, lang, size),
         Ok("play-away-host") => return crate::screens::play::tour::apart(&mut add, true),
         Ok("play-away-join") => return crate::screens::play::tour::apart(&mut add, false),
         _ => {}
@@ -285,7 +287,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "menu-pointer", Pair::None);
 
     // The screens to be built.
-    for (name, to) in [("training", ScreenId::Training), ("builds", ScreenId::Builds), ("replays", ScreenId::Replays)] {
+    for (name, to) in [("training", ScreenId::Training), ("builds", ScreenId::Builds)] {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
@@ -413,6 +415,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             app.go_now(ScreenId::Menu);
         }),
     );
+    replays::steps(&mut add, lang, size);
 }
 
 /// The motion probe's steps: at the desktop's size, in English.

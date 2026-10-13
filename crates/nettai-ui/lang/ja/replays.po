@@ -3,3 +3,229 @@ msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
+
+# ---- The list ----
+
+msgid "Search by opponent"
+msgstr "対戦相手で検索"
+
+msgid "ALL"
+msgstr "すべて"
+
+msgid "ONLINE"
+msgstr "オンライン"
+
+# A row's opponent.
+msgid "vs {}"
+msgstr "vs {}"
+
+# The footer: how many replays the game has. (Both forms are given: the catalogs are merged under one header.)
+msgid "{n} replay"
+msgid_plural "{n} replays"
+msgstr[0] "リプレイ {n} 件"
+msgstr[1] "リプレイ {n} 件"
+
+msgid "No replays yet. Every online match is recorded."
+msgstr "リプレイはまだありません。オンライン対戦はすべて記録されます。"
+
+msgid "No replays found."
+msgstr "リプレイが見つかりません。"
+
+msgid "Watch"
+msgstr "再生"
+
+msgid "Export"
+msgstr "書き出し"
+
+msgid "Delete"
+msgstr "削除"
+
+# ---- The selected replay ----
+
+msgid "Played"
+msgstr "対戦日時"
+
+msgid "Result"
+msgstr "結果"
+
+msgid "Length"
+msgstr "長さ"
+
+msgid "WATCH"
+msgstr "再生"
+
+msgid "EXPORT VIDEO"
+msgstr "動画を書き出す"
+
+msgid "SHOW FILE"
+msgstr "ファイルを表示"
+
+msgid "DELETE"
+msgstr "削除"
+
+msgid "Delete replay?"
+msgstr "リプレイを削除しますか?"
+
+msgid "CANCEL"
+msgstr "キャンセル"
+
+# The players of a replay, the one whose console is shown first.
+msgid "{} vs {}"
+msgstr "{} vs {}"
+
+# A player a replay has no name for: the first, the second.
+msgid "P1"
+msgstr "1P"
+
+msgid "P2"
+msgstr "2P"
+
+# ---- Dates: a month's short name, a day of a month ({0} the month, {1} the day), and with its year ({2}) ----
+
+msgid "Jan"
+msgstr "1月"
+
+msgid "Feb"
+msgstr "2月"
+
+msgid "Mar"
+msgstr "3月"
+
+msgid "Apr"
+msgstr "4月"
+
+msgid "May"
+msgstr "5月"
+
+msgid "Jun"
+msgstr "6月"
+
+msgid "Jul"
+msgstr "7月"
+
+msgid "Aug"
+msgstr "8月"
+
+msgid "Sep"
+msgstr "9月"
+
+msgid "Oct"
+msgstr "10月"
+
+msgid "Nov"
+msgstr "11月"
+
+msgid "Dec"
+msgstr "12月"
+
+msgctxt "date"
+msgid "{0} {1}"
+msgstr "{0}{1}日"
+
+msgctxt "date"
+msgid "{0} {1}, {2}"
+msgstr "{2}年{0}{1}日"
+
+# ---- How a set went: a row's letter with the rounds won and lost, and the same in words ----
+
+msgctxt "score"
+msgid "W {}–{}"
+msgstr "勝 {}–{}"
+
+msgctxt "score"
+msgid "L {}–{}"
+msgstr "敗 {}–{}"
+
+msgctxt "score"
+msgid "D {}–{}"
+msgstr "分 {}–{}"
+
+msgid "Won {}–{}"
+msgstr "勝ち {}–{}"
+
+msgid "Lost {}–{}"
+msgstr "負け {}–{}"
+
+msgid "Draw {}–{}"
+msgstr "引き分け {}–{}"
+
+msgid "Not finished · {}–{}"
+msgstr "未決着 · {}–{}"
+
+# ---- The viewer ----
+
+msgid "REPLAY"
+msgstr "リプレイ"
+
+msgid "Round {} of {}"
+msgstr "ラウンド {}/{}"
+
+msgid "SPEED"
+msgstr "速度"
+
+msgid "VIEW"
+msgstr "視点"
+
+msgid "Speed"
+msgstr "速度"
+
+msgid "View"
+msgstr "視点"
+
+msgid "Play or pause"
+msgstr "再生/一時停止"
+
+msgid "Seek 5 s"
+msgstr "5秒移動"
+
+msgid "Step a frame"
+msgstr "コマ送り"
+
+msgid "Previous or next round"
+msgstr "前/次のラウンド"
+
+# ---- The export ----
+
+msgid "Export video"
+msgstr "動画の書き出し"
+
+msgid "Size"
+msgstr "サイズ"
+
+msgid "Part"
+msgstr "範囲"
+
+msgid "Save as"
+msgstr "保存先"
+
+msgid "Whole match · {}"
+msgstr "試合全体 · {}"
+
+msgid "Round {} · {}"
+msgstr "ラウンド {} · {}"
+
+msgid "Exporting round {} of {} · {}%"
+msgstr "書き出し中 ラウンド {}/{} · {}%"
+
+msgid "Saved."
+msgstr "保存しました。"
+
+msgid "Export canceled."
+msgstr "書き出しを中止しました。"
+
+msgid "EXPORT"
+msgstr "書き出す"
+
+msgid "CLOSE"
+msgstr "閉じる"
+
+# What the system's save dialog calls the file.
+msgid "MP4 video"
+msgstr "MP4 動画"
+
+# The viewer: both builds, over the picture (B, Select). Over each one's name: YOU (Training's), OPPONENT.
+msgid "Builds"
+msgstr "ビルド"
+
+msgid "OPPONENT"
+msgstr "対戦相手"
