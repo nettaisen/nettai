@@ -358,16 +358,17 @@ fn shown(shell: &Shell, game: &str, ready: &Rc<Ready>, build: &Build) -> Trainin
 }
 
 /// Start a training session of the selected game between new builds of its first two versions, the dummy
-/// standing still: for development (`NETTAI_TRAINING=<game>`) and the screenshot pass, which have no builds of
-/// the player's to go by.
-pub fn start_development_battle(shell: &mut Shell, seed: u32) {
+/// standing still, the battle's options `options`: for development (`NETTAI_TRAINING=<game>`, with the options
+/// as Training last left them) and the screenshot pass (with none), which have no builds of the player's to go
+/// by.
+pub fn start_development_battle(shell: &mut Shell, seed: u32, options: Options) {
     let Some((game, ready)) = shell.ready() else { return };
     let builds = match new_builds(ready.content(), &game) {
         Ok(builds) => builds,
         Err(why) => return crate::errors::log("making a training match", &why),
     };
     let dummy = builds.get(1).unwrap_or(&builds[0]).clone();
-    let start = Start { seed, ..Start::new(&game, builds[0].clone(), dummy) };
+    let start = Start { seed, options, ..Start::new(&game, builds[0].clone(), dummy) };
     // (Why it can't start is in the log.)
     let _ = self::start(shell, start);
 }
@@ -822,7 +823,8 @@ impl Screen for Training {
                 Ok(_) if shell.ready().is_some() => {
                     self.started = true;
                     shell.go(ScreenId::Training);
-                    start_development_battle(shell, clock_seed());
+                    let options = kept_options(shell);
+                    start_development_battle(shell, clock_seed(), options);
                 }
                 Ok(_) => {}
                 Err(_) => self.started = true,
