@@ -90,6 +90,10 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     burst(add, "builds-refused", &[0, 30, 60, 90, 120, 160, 220, 320], act(Action::Confirm));
     add(SETTLE, focus("lib.rows", 2));
     burst(add, "builds-put", &[0, 30, 60, 90, 120, 160, 200, 260, 340, 480, 700], act(Action::Confirm));
+    // (A count that goes up by more than one, to see it pass through what is between: the Regular chip marked,
+    // its MB counted.)
+    add(SETTLE, focus("slot", 0));
+    burst(add, "builds-regular", &[0, 30, 60, 90, 120, 160, 220, 320], letter(KeyCode::KeyR, "r"));
     add(
         SETTLE,
         Box::new(|_, app, _| {
