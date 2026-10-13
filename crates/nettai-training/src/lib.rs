@@ -26,10 +26,19 @@
 //! in EXE5 and 6–5 in EXE4, and holds a chip some 9 seconds at most where
 //! that one held them 25 to 56.
 //!
+//! Choosing chips (Normal and Hard: `Level::chooses`), against Hard picking
+//! every chip it can in the cursor's order, 16 rounds: 13–3 in EXE6 (289 /
+//! 194), 5–7 in EXE5 (131 / 121, 4 undecided), 4–5 in EXE4 (120 / 108, 7
+//! undecided). Before it, an EXE4 hand held one chip at most: the cursor
+//! found its way by EXE6's neighbors alone, which EXE4's screen hasn't.
+//!
 //! Run at the battle's own speed (`fighter::tests::real_time`, 60 ticks a
 //! second, 20 seconds of each game at each level, three threads), every
 //! decision was ready on its tick: 5 to 35 ms on average, 91 ms at most
-//! (Hard's reaction is 100 ms).
+//! (Hard's reaction is 100 ms). A custom screen's chips were ready after
+//! the half second it looks at them but for one or two screens in 20
+//! seconds, which waited up to 261 ms (the test's player presses OK at
+//! once; a player who takes longer to pick waits for nothing).
 //!
 //! In EXE4 a round could stop in the engine where a chip request outlived a
 //! dimming that took the chip; fixed in the engine (docs/engine/chips.md
