@@ -34,8 +34,8 @@ export enum TrainingOption {
     // A label and a value between arrows.
     action,
     custom-screen,
-    // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen's
-    // name (none: Random).
+    // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen as
+    // the entry's row says it (none: Random).
     arena,
     background,
     // Its value is how long the dummy's recording is, in tenths of a second (0: none); it is never stepped,
@@ -70,9 +70,10 @@ export global TrainingView {
     in property <bool> ready;
     // The arena's picture is there.
     in property <bool> arena;
-    // The arena and the background chosen, by their names (none: Random).
-    in property <string> arena-name;
-    in property <string> background-name;
+    // The arena and the background chosen, as their rows say them: the arena's place in the list ("12 / 96"),
+    // the background's name (or its place, if it has none); none: Random.
+    in property <string> arena-shown;
+    in property <string> background-shown;
 
     // ---- A session.
     // The two builds' names, as the menu's line under its title says them.
@@ -92,7 +93,8 @@ export global TrainingView {
     // Who the two cards before a battle are.
     out property <string> you: @tr("YOU");
     out property <string> dummy: @tr("DUMMY");
-    // The first of the Arena and Background lists: each round's place picked from the seed, as a match's is.
+    // The first of the Arena and Background rows' values: each round's place picked from the seed, as a match's
+    // is.
     out property <string> random: @tr("Random");
     // The line beside MENU on a phone.
     pure public function round-note(round: int) -> string {
@@ -181,8 +183,8 @@ export global TrainingView {
 
 // ---- The entry ----------------------------------------------------------------------------------------------
 
-// One of the entry's rows: a label, and the choice in a box that steps through the choices and opens them as a
-// list. The row is what is focused. (On a phone it is lower, the four rows over the cards and the arena.)
+// One of the entry's build rows: a label, and the choice in a box that steps through the choices and opens them
+// as a list. The row is what is focused. (On a phone it is lower, the four rows over the cards and the arena.)
 component EntryRow inherits Rectangle {
     in property <string> nav;
     in property <string> label;
@@ -228,6 +230,67 @@ component EntryRow inherits Rectangle {
     changed over => {
         if over {
             Audit.clipped(root.label);
+        }
+    }
+}
+
+// One of the entry's place rows (Arena, Background): a label, and the value between arrows (the app's stepper,
+// as the training menu's rows have it), stepped by Left and Right or the arrows, around from the last to Random
+// (the user: "just have like a pager widget that goes through them"). The row is what is focused.
+component PagerRow inherits Rectangle {
+    in property <string> nav;
+    in property <string> label;
+    in property <string> value;
+    in property <bool> enabled: true;
+    property <length> box: Theme.phone ? 200px : 280px;
+    property <bool> over: Theme.audit && (name.preferred-width > name.width + 0.5px || fits.preferred-width > root.box - 72px + 0.5px);
+    height: Theme.phone ? 48px : 56px;
+    Rectangle {
+        background: hit.has-hover ? Theme.raised : Theme.panel;
+        border-width: 1px;
+        border-color: Theme.line;
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+        kind: NavKind.stepper;
+        enabled: root.enabled;
+    }
+
+    name := Text {
+        x: 16px;
+        width: parent.width - root.box - 36px;
+        text: root.label;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 14px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Stepper {
+        x: parent.width - self.width - 8px;
+        y: (parent.height - self.height) / 2;
+        nav: root.nav;
+        value: root.value;
+        value-width: root.box - 72px;
+        enabled: root.enabled;
+        focusable: false;
+    }
+
+    // (The value as the stepper draws it, measured: whether its box holds it.)
+    fits := Text {
+        visible: false;
+        text: root.value;
+        font-family: Theme.body;
+        font-size: 14px;
+        font-weight: 700;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.label + ": " + root.value);
         }
     }
 }
@@ -349,25 +412,25 @@ export component TrainingScreen inherits Page {
             enabled: !TrainingView.none;
         }
 
-        EntryRow {
+        PagerRow {
             x: 0;
             y: 2 * root.row-step;
             width: root.column;
             visible: !TrainingView.none;
             nav: "arena";
             label: @tr("Arena");
-            value: TrainingView.arena-name == "" ? TrainingView.random : TrainingView.arena-name;
+            value: TrainingView.arena-shown == "" ? TrainingView.random : TrainingView.arena-shown;
             enabled: !TrainingView.none;
         }
 
-        EntryRow {
+        PagerRow {
             x: 0;
             y: 3 * root.row-step;
             width: root.column;
             visible: !TrainingView.none;
             nav: "background";
             label: @tr("Background");
-            value: TrainingView.background-name == "" ? TrainingView.random : TrainingView.background-name;
+            value: TrainingView.background-shown == "" ? TrainingView.random : TrainingView.background-shown;
             enabled: !TrainingView.none;
         }
 

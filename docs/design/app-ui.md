@@ -326,8 +326,10 @@ Each is in the mockups under the same name.
 
 ### Training
 - **Entry:** four rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
-  also add arena + background select?": the game's arenas and battle backgrounds, Random first), all
-  remembered, and START TRAINING; beside them the two builds facing each other and the arena. One line: "Set
+  also add arena + background select?": the game's arenas and battle backgrounds, Random first; "the arena
+  names are meaningless so you should just have like a pager widget that goes through them. background should
+  also be a arrow button pager thing": each an arrow pager, the arena by its place, "12 / 96", the background
+  by its name), all remembered, and START TRAINING; beside them the two builds facing each other and the arena. One line: "Set
   up the dummy from the menu once you're in."
 - **The training menu** (Start or Esc in training): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
@@ -335,8 +337,10 @@ Each is in the mockups under the same name.
   - Dummy: Action (stands still, moves around, attacks at random, plays your recording, a second pad), Custom
     screen (picks no chips, picks the first it can), Recording (Record: the player drives the dummy until Start;
     it loops)
-  - Battle: Arena and Background (as on the entry; a change starts the set over on the new place), Your HP and
-    Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled, folder order)
+  - Battle: Arena and Background (as on the entry; an arena changed starts the set over on it, a background
+    changed only redraws: "changing the background shouldn't change the entire arena either in trianing
+    mode"), Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
+    folder order)
   - Display: Input display
   - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
 
