@@ -273,6 +273,8 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static s
     // A search; a file that doesn't read; the delete question.
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.edit(shell, "search", 0, "moo", true))));
     add(SETTLE, focus("search", 0));
+    // (Another replay is selected: its own still is waited for, here and below.)
+    add(SETTLE, until(|view| view.get_still()));
     shot(add, "replays-search", Pair::None, Also::Nothing);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.edit(shell, "search", 0, "", true))));
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "kind", 0, 1))));
@@ -281,6 +283,7 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static s
     add(SETTLE, focus("list", 5));
     shot(add, "replays-unreadable", Pair::None, Also::Nothing);
     add(SETTLE, focus("list", 1));
+    add(SETTLE, until(|view| view.get_still()));
     add(SETTLE, act(Action::Delete));
     shot(add, "replays-delete", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
@@ -289,6 +292,7 @@ pub fn walk(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static s
     // The export's dialog: as it opens; as an export under way and a failed one look (set on the view: no
     // export runs here); then closed.
     add(SETTLE, focus("list", 0));
+    add(SETTLE, until(|view| view.get_still()));
     add(SETTLE, key(KeyCode::KeyE, 1));
     shot(add, "replays-export", Pair::First, Also::Nothing);
     add(SETTLE, act(Action::Left));

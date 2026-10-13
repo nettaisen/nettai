@@ -5,6 +5,10 @@
 //! from the moment it is shown; a seek past what is indexed waits for the index to reach it, the bar showing
 //! where it is going meanwhile. A drag of the bar moves the picture in steps of the states the viewer keeps
 //! (which cost no playing) and lands where it is let go.
+//!
+//! Its sound is at the levels Settings has (the shell's `battle_levels`: Music is the replay's music too). And
+//! it stands still while the window isn't drawn (minimized, hidden, covered: the frames the shell's timer runs
+//! then): nothing of a replay has to go on unseen, and the player finds it where they left it.
 
 use super::{clock, name, played};
 use crate::shell::Shell;
@@ -43,7 +47,13 @@ struct Stats {
     ticking: (Duration, u32, Duration),
     pictures: (Duration, u32, Duration),
     indexing: (Duration, u32, Duration),
+    /// The viewer's own sound over a stretch of the replay (the samples as it gives them, before the device's
+    /// level): the stretch, the sum of their squares, how many, and the loudest.
+    sound: (u32, f64, u64, f32),
 }
+
+/// The ticks of a stretch whose sound is said (`NETTAI_PLAY_STATS`): ten seconds of the replay.
+const SOUND_STRETCH: u32 = 600;
 
 fn add(to: &mut (Duration, u32, Duration), took: Duration) {
     to.0 += took;
@@ -114,6 +124,9 @@ impl Watching {
         if let Some((_, ready)) = shell.ready() {
             self.viewer.set_language(&ready.graphics(shell.lang));
         }
+        // (Settings' Music and Sound effects: the difference between the two is the viewer's, as a battle's.)
+        let (music, effects) = shell.sound.battle_levels();
+        self.viewer.set_sound_levels(music, effects);
         if shell.still && self.told.is_none() {
             // (The screenshot pass: one picture, the same each time.)
             self.viewer.set_paused(true);
@@ -310,7 +323,9 @@ impl Watching {
                 add(&mut s.ticking, began.elapsed());
             }
         }
+        let had = self.queue.len();
         self.viewer.take_samples(&mut self.queue);
+        self.measure_sound(had);
         self.hand_sound(shell, elapsed, playing);
         let Watching { viewer, surface, stats, .. } = self;
         let (stale, began) = (surface.stale, Instant::now());
@@ -320,6 +335,31 @@ impl Watching {
         }
         self.tell(&shell.ui().global::<ReplaysView>());
         self.report(now, elapsed);
+    }
+
+    /// A frame the window doesn't draw (the shell's timer runs it: the window is minimized, hidden or covered):
+    /// the replay stands where it is, and the time that passes isn't its own.
+    pub fn rest(&mut self, shell: &mut Shell) {
+        self.last = None;
+        // (Nothing sounds; and nothing of the menus' music starts under a replay.)
+        shell.play_samples(&mut Vec::new(), 0);
+    }
+
+    /// `NETTAI_PLAY_STATS`: how loud the viewer's own sound was over each stretch of the replay, from the
+    /// samples added to the queue since it held `had`.
+    fn measure_sound(&mut self, had: usize) {
+        let Some(s) = &mut self.stats else { return };
+        let stretch = self.viewer.position() / SOUND_STRETCH;
+        if stretch != s.sound.0 {
+            let (of, squares, count, peak) = s.sound;
+            eprintln!("viewer sound: ticks {} to {}: rms {:.5}, peak {:.4}, {count} samples", of * SOUND_STRETCH, (of + 1) * SOUND_STRETCH, (squares / count.max(1) as f64).sqrt(), peak);
+            s.sound = (stretch, 0.0, 0, 0.0);
+        }
+        for sample in &self.queue[had.min(self.queue.len())..] {
+            s.sound.1 += (sample[0] as f64).powi(2) + (sample[1] as f64).powi(2);
+            s.sound.2 += 2;
+            s.sound.3 = s.sound.3.max(sample[0].abs()).max(sample[1].abs());
+        }
     }
 
     /// Hand the device this frame's sound. The menus' sounds are ticked with what is handed over (as with a
