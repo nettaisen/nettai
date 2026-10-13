@@ -1304,8 +1304,9 @@ the same. One dependency is new and slow: gamepad-facade's SDL3 is built from it
 and a half minutes of a clean build on the loaded machine (gilrs, which it replaces, took 23 seconds), once.
 
 **With Play** (2026-10-12; one script before the screen was written and after, on the branch it was written
-on: dev profile, sccache off, the two crates cleaned with their dependencies built; the load average was 270
-to 330 before and 200 to 230 after, so the CPU times are the ones to compare):
+on, before Training and Builds were merged into it: dev profile, sccache off, the two crates cleaned with their
+dependencies built; the load average was 270 to 330 before and 200 to 230 after, so the CPU times are the ones
+to compare):
 
 | | Before Play: wall, CPU | With Play: wall, CPU |
 |---|---|---|
