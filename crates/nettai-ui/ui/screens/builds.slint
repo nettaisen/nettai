@@ -149,11 +149,21 @@ component EditorBody inherits Rectangle {
     Rectangle {
         x: (1 - tw.t) * BuildsView.tab-way * 24px;
         opacity: tw.t;
-        if BuildsView.shown == EditorTab.navi: NaviTab { }
-        if BuildsView.shown == EditorTab.folder: FolderTab { }
-        if BuildsView.shown == EditorTab.navicust: NavicustTab { }
-        if BuildsView.shown == EditorTab.patch-cards: PatchCardsTab { }
-        if BuildsView.shown == EditorTab.auto-battle: AutoBattleTab { }
+        if BuildsView.shown == EditorTab.navi: NaviTab {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if BuildsView.shown == EditorTab.folder: FolderTab {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if BuildsView.shown == EditorTab.navicust: NavicustTab {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if BuildsView.shown == EditorTab.patch-cards: PatchCardsTab {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+        if BuildsView.shown == EditorTab.auto-battle: AutoBattleTab {
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
     }
 }
 
@@ -342,6 +352,8 @@ export component BuildsScreen inherits Page {
             x: -Theme.margin;
             y: root.bar-y + 39px;
             width: root.body-width + 2 * Theme.margin;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         TabBar {
@@ -351,6 +363,8 @@ export component BuildsScreen inherits Page {
             nav: "tab";
             tabs: BuildsView.tabs;
             chosen: BuildsView.tab;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         EditorBody {
@@ -358,6 +372,8 @@ export component BuildsScreen inherits Page {
             y: root.tab-y;
             width: root.body-width;
             height: root.tab-height;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 }
@@ -399,6 +415,8 @@ component NameDialog inherits DialogFrame {
         width: root.inner-width;
         versions: BuildsView.versions;
         chosen: BuildsView.dialog-version;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Note {
@@ -431,8 +449,16 @@ component NameDialog inherits DialogFrame {
 // What opens over Builds: its dialogs, and on a phone the Folder's, the Patch cards' and the Auto battle tab's
 // sheets. It covers the whole window, over the screen and under the shell's own dialogs; empty, it takes no clicks.
 export component BuildsOverlay inherits Rectangle {
-    if BuildsView.dialog != BuildsDialog.none: NameDialog { }
-    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.folder && FolderView.sheet: FolderOverlay { }
-    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.patch-cards && PatchCardsView.sheet: PatchCardsOverlay { }
-    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.auto-battle && AutoBattleView.sheet: AutoBattleOverlay { }
+    if BuildsView.dialog != BuildsDialog.none: NameDialog {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.folder && FolderView.sheet: FolderOverlay {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.patch-cards && PatchCardsView.sheet: PatchCardsOverlay {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.auto-battle && AutoBattleView.sheet: AutoBattleOverlay {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
 }

@@ -723,6 +723,7 @@ export component TrainingInputs inherits Rectangle {
         border-color: Theme.p2;
         Rectangle {
             x: 10px;
+            y: 9px;
             width: 8px;
             height: 8px;
             background: Theme.p2;
@@ -730,6 +731,8 @@ export component TrainingInputs inherits Rectangle {
 
         rec := Text {
             x: 26px;
+            y: 0;
+            height: parent.height;
             text: @tr("RECORDING");
             color: Theme.text;
             font-family: Theme.display;
