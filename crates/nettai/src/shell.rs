@@ -371,6 +371,12 @@ impl Shell {
         let shell = ui.global::<nettai_ui::Shell>();
         shell.set_key_l(crate::input::key_cap(self.bindings.key(keys::L)).into());
         shell.set_key_r(crate::input::key_cap(self.bindings.key(keys::R)).into());
+        // (The keys and the pad's buttons that confirm and go back: A's and B's, Enter and Esc where they can't.)
+        shell.set_key_a(crate::input::key_cap(self.bindings.confirm_key()).into());
+        shell.set_key_b(crate::input::key_cap(self.bindings.back_key()).into());
+        shell.set_pad_a(crate::input::pad_face(self.bindings.confirm_button()));
+        shell.set_pad_b(crate::input::pad_face(self.bindings.back_button()));
+        shell.set_pad_delete(crate::input::pad_face(self.bindings.delete_button()));
     }
 
     // ---- Motion ------------------------------------------------------------------------------------------
@@ -959,13 +965,9 @@ impl App {
                 let did = self.shell.nav.confirm(&ui);
                 self.did(did);
             }
-            // (The pad's Start: nettai's menu in a battle, shut again by it; Enter's in a menu.)
+            // (START, and Esc: nettai's menu in a battle, shut again by them. Elsewhere they do nothing: A confirms.)
             Action::Menu if self.shell.battle.as_ref().is_some_and(Battle::menu_open) && !over => self.shell.close_menu(),
-            Action::Menu => {
-                self.shell.nav.pressed(&ui);
-                let did = self.shell.nav.confirm(&ui);
-                self.did(did);
-            }
+            Action::Menu => {}
             Action::Back => self.back(),
             Action::Previous | Action::Next | Action::Delete | Action::Alternate if !over => {
                 let hearer = self.hearer();
@@ -1094,21 +1096,27 @@ impl App {
     /// A key of the window, before Slint sees it. True if it was the app's (Slint doesn't get it); false and
     /// it goes on to Slint (a text field being typed in, a shortcut of the system's).
     pub fn key(&mut self, event: &KeyEvent) -> bool {
-        let now = Instant::now();
         let PhysicalKey::Code(code) = event.physical_key else { return false };
+        self.key_of(code, event.state == ElementState::Pressed, event.text.as_ref().map(|t| t.to_string()), event.repeat)
+    }
+
+    /// [`App::key`], of a key's parts: what it is, whether it went down, the text it types, whether it is a
+    /// held key's repeat. (The screenshot pass presses keys through here, as the window does.)
+    pub fn key_of(&mut self, code: KeyCode, pressed: bool, text: Option<String>, repeat: bool) -> bool {
+        let now = Instant::now();
         // The battle's buttons follow the keys whatever has them, so none sticks.
-        self.shell.keys.event(&self.shell.bindings, event, now);
+        self.shell.keys.key(&self.shell.bindings, code, pressed, repeat, now);
         let editing = self.shell.nav.editing();
-        if event.state != ElementState::Pressed {
+        if !pressed {
             return !editing;
         }
-        let press = KeyPress { code, text: event.text.as_ref().map(|t| t.to_string()), repeat: event.repeat, shift: self.shell.shift };
+        let press = KeyPress { code, text, repeat, shift: self.shell.shift };
         // The battle has the keys: Esc is nettai's menu, a key bound to no button may be its owner's.
         if self.shell.battle_has_keys() {
             self.shell.nav.used_keys(false);
             if code == KeyCode::Escape {
                 self.shell.open_menu();
-            } else if self.shell.bindings.of_key(code).is_none() && !event.repeat {
+            } else if self.shell.bindings.of_key(code).is_none() && !repeat {
                 let hearer = self.hearer();
                 self.call(hearer, |s, shell| s.key(shell, &press));
                 self.settle();
@@ -1163,14 +1171,14 @@ impl App {
             self.shell.nav.begin_edit(&self.shell.ui(), text);
             return true;
         }
+        // (Enter on a text field starts editing it, as a letter does: a field's own key, whatever is bound.)
         let action = match code {
-            _ if self.shell.bindings.of_key(code) == Some(keys::L) && menu_action(code, false).is_none() => Some(Action::Previous),
-            _ if self.shell.bindings.of_key(code) == Some(keys::R) && menu_action(code, false).is_none() => Some(Action::Next),
-            _ => menu_action(code, self.shell.shift),
+            KeyCode::Enter | KeyCode::NumpadEnter if self.shell.nav.on_field() => Some(Action::Confirm),
+            _ => menu_action(code, self.shell.shift, &self.shell.bindings),
         };
         let Some(action) = action else { return false };
         // (A key held repeats a move; a choice or a way back is pressed once.)
-        if event.repeat && !matches!(action, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus | Action::PageUp | Action::PageDown) {
+        if repeat && !matches!(action, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus | Action::PageUp | Action::PageDown) {
             return true;
         }
         self.shell.nav.used_keys(false);
