@@ -811,7 +811,9 @@ impl Screen for Training {
         let battle = b.stage.player.battle();
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
-        let held = if session.inputs { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
+        // (Under the menu the battle takes no button but the START that holds it in the game's pause, and the
+        // dummy's go nowhere: nothing is shown held.)
+        let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {
             return;
