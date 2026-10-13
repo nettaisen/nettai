@@ -6,7 +6,7 @@
 // Build cost (docs/app.md §14): the rows are leaves, each under one `for`.
 
 import { Theme, Audit } from "theme.slint";
-import { Label, Pill, PanelBack, Mono } from "widgets.slint";
+import { Label, Pill, PanelBack, Mono, RowTouch } from "widgets.slint";
 
 // A version's tag: the version's name as the game's strings have it, in capitals, in the version's own color
 // (the game's builds data states both: `crate::builds::version_tag`). No text: no tag.
@@ -372,13 +372,15 @@ export component ChipRow inherits Rectangle {
 }
 
 // A build's row in a list, 52 tall: its name over its status, and its version's tag. The list is a `ListView`
-// (`row-height: 52px`), which marks the chosen row; the row's clicks are a `RowTouch` over it.
+// (`row-height: 52px`), which marks the chosen row; a click on the row is the list's row `nav-index` of `nav`.
+// (Its touch is its own, so a list's `for` places a leaf: a row with a child would be copied into the list.)
 export component BuildRow inherits Rectangle {
     in property <BuildEntry> build;
-    in property <bool> hover;
+    in property <string> nav;
+    in property <int> nav-index;
     height: 52px;
     Rectangle {
-        background: root.hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
     }
 
     Text {
@@ -412,6 +414,11 @@ export component BuildRow inherits Rectangle {
         x: parent.width - 12px - self.width;
         text: root.build.version.text;
         tone: root.build.version.tone;
+    }
+
+    touch := RowTouch {
+        nav: root.nav;
+        nav-index: root.nav-index;
     }
 }
 
