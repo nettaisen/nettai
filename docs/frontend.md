@@ -1149,9 +1149,11 @@ text mode, the original's into the frame (text-rendering.md §10.3).
 The bundled font is Murecho (`crates/nettai-render/fonts/murecho`, SIL
 Open Font License 1.1, its license beside it): Latin, kana and some 2,300
 kanji, weight 700 for the 8x16 font's strings and 300 for the chatbox's.
-A string too wide for its box is squeezed (to 85%, 70% with kana or kanji)
-and then made smaller; it never leaves its box, and its layout never
-reaches the simulation.
+Each of the two has one size: kana and kanji as tall as the capitals and
+centered on them, as the original's fonts draw them, on the capitals'
+baseline. A string too wide for its box is narrowed to it, never made
+smaller (text-rendering.md §9.4); it never leaves its box, and its layout
+never reaches the simulation.
 
 ### What the engine gives the frontend
 
