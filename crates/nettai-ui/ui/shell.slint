@@ -4,7 +4,7 @@
 
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Heading, Button, ButtonKind, Stepper, Chevron, RowBack, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Heading, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -135,10 +135,12 @@ export global Shell {
     // It is a failure's: it shakes once as it arrives.
     in property <bool> dialog-shake;
 
-    // A select's choices, open under it (on a phone, a sheet from the bottom).
+    // A select's choices, open under it (on a phone, a sheet from the bottom): a list of `picker-rows` rows'
+    // height, which scrolls where there are more.
     in property <bool> picker;
     in property <[string]> picker-options;
     in property <int> picker-chosen;
+    in property <int> picker-rows;
     in property <length> picker-x;
     in property <length> picker-y;
     in property <length> picker-width;
@@ -183,6 +185,7 @@ export enum ErrorKind {
     cant-write-video,
     export-failed,
     wrong-game-save,
+    game-outdated,
     other,
 }
 
@@ -259,6 +262,9 @@ export global Errors {
         if kind == ErrorKind.wrong-game-save {
             return @tr("Not an {} save.", detail);
         }
+        if kind == ErrorKind.game-outdated {
+            return @tr("{}'s data is out of date. Extract it again.", detail);
+        }
         return @tr("Something went wrong. Details are in the log file.");
     }
     // A dialog's title for it, and its message under the title.
@@ -332,6 +338,9 @@ export global Errors {
         if kind == ErrorKind.wrong-game-save {
             return @tr("Not an {} save", detail);
         }
+        if kind == ErrorKind.game-outdated {
+            return @tr("{}'s data is out of date", detail);
+        }
         return @tr("Something went wrong");
     }
     public pure function body(kind: ErrorKind, detail: string) -> string {
@@ -403,6 +412,9 @@ export global Errors {
         }
         if kind == ErrorKind.wrong-game-save {
             return "";
+        }
+        if kind == ErrorKind.game-outdated {
+            return @tr("Extract it again.");
         }
         return @tr("Details are in the log file.");
     }
@@ -1071,15 +1083,13 @@ export component DialogLayer inherits DialogFrame {
     }
 }
 
-// A choice of a select's list.
+// A choice of a select's list: a row of the list, which is what is focused.
 component PickRow inherits Rectangle {
     in property <string> text;
     in property <int> nav-index;
-    in property <bool> chosen;
     height: Theme.row;
     RowBack {
-        chosen: root.chosen;
-        hover: hit.has-hover;
+        hover: touch.has-hover;
     }
 
     Value {
@@ -1089,16 +1099,18 @@ component PickRow inherits Rectangle {
         font-weight: 400;
     }
 
-    hit := Focusable {
+    touch := RowTouch {
         nav: "pick.option";
         nav-index: root.nav-index;
     }
 }
 
 // A select's choices: a list under it, or on a phone a sheet from the bottom. It drops into place as it opens.
+// The list is as tall as the rows the app says it shows (`Shell.picker-rows`: as many as there are, up to what
+// the window has room for) and keeps that height: more choices scroll, the focused one into view.
 export component PickerLayer inherits Rectangle {
     property <length> pad: Theme.phone ? 8px : 1px;
-    property <length> list-height: Shell.picker-options.length * Theme.row + 2 * self.pad;
+    property <length> list-height: Shell.picker-rows * Theme.row + 2 * self.pad;
     arrive := Tween {
         duration: Theme.quick;
     }
@@ -1125,13 +1137,22 @@ export component PickerLayer inherits Rectangle {
         border-color: Theme.line;
         drop-shadow-blur: 16px;
         drop-shadow-color: #000000a0;
-        for option[i] in Shell.picker-options: PickRow {
+        list := ListView {
             x: root.pad;
-            y: root.pad + i * Theme.row;
+            y: root.pad;
             width: parent.width - 2 * root.pad;
-            text: option;
-            nav-index: i;
-            chosen: i == Shell.picker-chosen;
+            height: parent.height - 2 * root.pad;
+            nav: "pick.option";
+            count: Shell.picker-options.length;
+            gap: 0px;
+            chosen: Shell.picker-chosen;
+            for slot in list.shown: PickRow {
+                property <int> at: list.first + slot;
+                y: self.at * list.pitch;
+                width: list.row-width;
+                text: Shell.picker-options[self.at];
+                nav-index: self.at;
+            }
         }
     }
 }

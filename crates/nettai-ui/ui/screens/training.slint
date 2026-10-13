@@ -224,13 +224,16 @@ component BuildCard inherits Rectangle {
 
 export component TrainingScreen inherits Page {
     // The rows' column, and beside it (on a phone, under it) the cards over the arena's picture, which is the
-    // battle's at three times.
+    // battle's at three times; on a phone the arena's box is the window's width, past the page's gutters, as
+    // the battle's is, so the widest whole multiple fits.
     property <length> column: Theme.phone ? self.body-width : 460px;
-    property <length> picture-width: Theme.phone ? self.body-width : 720px;
-    property <length> picture-height: self.picture-width * 2 / 3;
-    property <length> picture-x: Theme.phone ? 0px : self.column + 24px + (self.body-width - self.column - 24px - self.picture-width) / 2;
+    property <length> side-width: Theme.phone ? self.body-width : 720px;
+    property <length> side-x: Theme.phone ? 0px : self.column + 24px + (self.body-width - self.column - 24px - self.side-width) / 2;
     property <length> cards-y: Theme.phone ? 212px : 0px;
-    property <length> card-width: Theme.phone ? (self.body-width - 12px) / 2 : (self.picture-width - 56px) / 2;
+    property <length> card-width: Theme.phone ? (self.body-width - 12px) / 2 : (self.side-width - 56px) / 2;
+    property <length> arena-x: Theme.phone ? -Theme.margin : self.side-x;
+    property <length> arena-width: Theme.phone ? self.body-width + 2 * Theme.margin : self.side-width;
+    property <length> arena-height: self.arena-width * 2 / 3;
     title: @tr("TRAINING");
     back: @tr("MENU");
     hints: TrainingView.none ? [
@@ -318,7 +321,7 @@ export component TrainingScreen inherits Page {
         order: 1;
         visible: !TrainingView.none;
         BuildCard {
-            x: root.picture-x;
+            x: root.side-x;
             y: root.cards-y;
             width: root.card-width;
             role: TrainingView.you;
@@ -327,7 +330,7 @@ export component TrainingScreen inherits Page {
         }
 
         Text {
-            x: root.picture-x + root.card-width;
+            x: root.side-x + root.card-width;
             y: root.cards-y;
             width: 56px;
             height: 92px;
@@ -342,7 +345,7 @@ export component TrainingScreen inherits Page {
         }
 
         BuildCard {
-            x: root.picture-x + root.picture-width - root.card-width;
+            x: root.side-x + root.side-width - root.card-width;
             y: root.cards-y;
             width: root.card-width;
             role: TrainingView.dummy;
@@ -359,10 +362,10 @@ export component TrainingScreen inherits Page {
         // (Its box is there whether or not the picture is: the picture shows once it is the arena's own, and
         // never past its box.)
         Rectangle {
-            x: root.picture-x;
+            x: root.arena-x;
             y: root.cards-y + 104px;
-            width: root.picture-width;
-            height: root.picture-height;
+            width: root.arena-width;
+            height: root.arena-height;
             background: Theme.inset;
             clip: true;
             Picture {
@@ -372,8 +375,8 @@ export component TrainingScreen inherits Page {
         }
 
         Rectangle {
-            x: root.picture-x + 12px;
-            y: root.cards-y + 104px + root.picture-height - 12px - self.height;
+            x: root.arena-x + 12px;
+            y: root.cards-y + 104px + root.arena-height - 12px - self.height;
             width: tag.preferred-width + 16px;
             height: 22px;
             visible: TrainingView.arena && !Shell.leaving;
