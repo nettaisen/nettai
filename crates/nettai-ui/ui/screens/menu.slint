@@ -117,8 +117,15 @@ export component MenuScreen inherits Page {
             text: @tr("Settings");
         }
 
-        MinorItem {
+        about := MinorItem {
             x: settings.x + settings.width + 16px;
+            y: settings.y;
+            nav: "about";
+            text: @tr("About");
+        }
+
+        MinorItem {
+            x: about.x + about.width + 16px;
             y: settings.y;
             nav: "exit";
             text: @tr("Exit");

@@ -267,12 +267,13 @@ again, and so that the UI can be built without optimization (§14).
                       tour/<name>.rs                                    a screen's steps of the screenshot pass
                       replays.rs                                        the replays folder, read on a thread (§16)
                       bnlc.rs packs.rs                                  the packs, from the Legacy Collection (§17)
+               build.rs                                                 the software it is made of, for About (§18)
                       builds/                                           what any screen shows of a build (§8)
                       screens/<name>.rs
                       screens/play/session.rs tour.rs                 Play's link and lobby; its part of §13
 
 **A screen is one Slint file and one Rust module** (which may have modules of its own under it:
-`screens/replays/`). Menu, Settings, Training, Play, Builds and Replays are built. `ui/screens/play.slint`
+`screens/replays/`). Menu, Settings, Training, Play, Builds, Replays and About are built. `ui/screens/play.slint`
 holds:
 
 - `PlayView`, a global: the screen's data, which its Rust module sets (and may read back). A struct or an enum
@@ -2343,3 +2344,53 @@ and on Linux under Proton); the real archives' layout and compression (Tango rea
 `.srl` entries wherever they are, as this does; the app reads deflate and stored entries, and another method is an
 `ExtractFailed` with the method in the log); the real folder's name, for the chosen folder (any of its three
 folders is taken).
+
+## 18. About
+
+The user: "add an about screen with license and dependency info etc like for slint".
+
+**What it shows.** About is reached from the main menu (Settings, About, Exit). At its left: the app's name, its
+version and its license (the workspace's `license = "MIT"`); Slint's own `AboutSlint` widget, the "Made with
+Slint" logo with Slint's version and address; and under MADE WITH, a list of the software the app is made of:
+the four fonts it bundles, then every package built into it, by name, each row its name, its version and its
+license as it states it (an SPDX expression). Beside the list, in a panel, the chosen one's name, version, license
+and repository, and its license files as its package ships them, each file's name over its text in the monospaced
+face, scrolling. The footer counts them ("394 packages · 4 fonts" today). On a phone the list is the page, and a
+tap on a row opens its license as a sheet from the bottom, with CLOSE.
+
+**Why Slint's widget.** Slint is used under its royalty-free license (`LicenseRef-Slint-Royalty-free-2.0`, one
+of the three its packages offer), whose attribution clause asks an app to show `AboutSlint` "in an 'About' screen
+or dialog that is accessible from the top level menu of the Application". This is that screen. (The same clause
+asks for the "Made with Slint" badge on a public webpage, preferably where the app is downloaded: that is the
+project's page's to do, not the app's.) The widget is Slint's, drawn in its own type; its logo is the one for a
+dark scheme (`Palette.color-scheme`, set by the screen: the app uses no other standard widget).
+
+**Where the list comes from** (`crates/nettai/build.rs`). At build time, the packages `cargo tree -p nettai`
+lists for the target being built, with the features a build of the app alone gives them (`-e normal`: not the
+tools that build or test it; `cargo metadata` would unify the whole workspace's features and list packages the app
+never builds), and the sources of a library a build script compiles into it (a `*-src` package: SDL's, Luau's).
+`cargo metadata` says where each one's files are; its license files are those named LICENSE, LICENCE, COPYING,
+COPYRIGHT, NOTICE or UNLICENSE (in its folder or a folder of its own), everything in a `LICENSES` folder, and the
+file its manifest names. The workspace's own crates are not listed. The fonts and their OFL files are named in the
+build script. What it writes (`licenses.rs`, in the build's output) holds each text once, as many packages ship
+the same one: 251 texts for 398 entries, about 0.9 MB in the binary. It is written again when Cargo.lock, the
+app's manifest or a font's license changes.
+
+41 of the packages ship no license file in what they publish (the rtc-* crates, the objc2 family, the lyon ones,
+libc, taffy, gamepad-facade and some others): their row and panel name their license, and the panel says the
+package comes with none.
+
+**The keys.** Up and Down go through the list, and the license beside it follows the focus; Enter (A) goes to the
+license, where Up and Down scroll it a step, Page Up and Page Down a page, Home and End to its ends
+(`About::scroll`, as a build's page in the match's menu scrolls), and Back (or Left) returns to the list; Back
+from the list goes to the menu. A click on a row chooses it and leaves the focus there; the wheel or a drag
+scrolls the license wherever the focus is. L and R do nothing here: the header offers no game. Come back to from
+another screen, About has the focus on the row it was on, the list scrolled to it (a list made anew starts at
+its top, and a remembered focus alone doesn't scroll it).
+
+**What has run.** The screen's tests (`screens/about.rs`): the fonts are listed with their OFL texts, Slint is
+listed with its royalty-free license among its files, no workspace crate is and nothing only the workspace's
+other members build is (skia); a license's pieces are its files' names over their paragraphs. The screenshot pass
+has `about` (the list, the first font's license beside it) and `about-license` (Slint's license reached with the
+keys and paged down; on a phone its sheet) and `about-again` (the menu and back: Slint's row focused and in
+view): walked in English and Japanese at both sizes, nothing cut, and the pictures looked at.
