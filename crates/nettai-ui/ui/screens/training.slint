@@ -547,6 +547,8 @@ export component TrainingMenu inherits MenuOverlay {
             for row[i] in TrainingView.rows: MenuRow {
                 entry: row;
                 index: i;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
     }
