@@ -2,8 +2,10 @@
 
 **Status (2026-10-02): built.** The user chose crisp text at the window's resolution (option B of §2.1, which §6
 had rejected as the default) with a bundled open-license font, as the default; §9 "As built" says what was built
-and how, and records the decisions. §10 is the languages built on it (`--lang en|ja`) and where display text lives
-(no definition holds any: `locales/<lang>.toml`). §0 to §8 are the investigation as written before it, unchanged.
+and how, and records the decisions; §9.8 (2026-10-13) is the fix of its sizes and of Japanese off its line: one size
+a role, a string narrowed to its box, kana and kanji on the capitals. §10 is the languages built on it
+(`--lang en|ja`) and where display text lives (no definition holds any: `locales/<lang>.toml`). §0 to §8 are the
+investigation as written before it, unchanged.
 
 The question was: should the frontend draw its text (chip names, descriptions, telops and the rest) with a real
 font file rasterized at run time, instead of the pixel fonts extracted from the user's ROM? This document says what
@@ -749,6 +751,90 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
   game's font) isn't reported.
 - The HUD's lines as content strings (§4.2): not done; they stay the pack's text script, per language (§10).
   Translated strings tables (§4.3) are built: §10.
+
+### 9.8 One size a role, kana on the capitals (2026-10-13)
+
+The user (2026-10-13): "the text rendering in game for sharp text looks a little janky in places, some japanese
+is misaligned and the variable font size looks kind of funny".
+
+**What was wrong**, measured on frames rendered headless at 3x and 4x in both text modes (the ink's rows and
+columns in each text box against the original mode's):
+
+- **The sizes.** A string too wide for its box was squeezed to 85% (70% with kana or kanji) and then made smaller,
+  each by what it needed, so the names of one list came in different sizes. In Japanese nearly every name was made
+  smaller: the 8x16 font's cells are half-width, Murecho's kana at the role's size are 13.7 frame pixels wide, so a
+  Japanese name needed 56 to 75% and was drawn at 80 to 100% of the role's size, by its length.
+- **Japanese off its line.** Murecho draws kana and kanji in its em box, which is lower and taller than its capitals:
+  its bold kana are 1.11 times its capitals' height and reach 0.05 em under the baseline, its kanji 1.27 times and
+  0.1 em under. The original's fonts draw kana in their capitals' rows (the 8x16 font's kana, capitals and digits all
+  take rows 4 to 13, in each of the three games' fonts that has kana; the Japanese dialogue font's rows 1 to 10). With the
+  shrink, which also moved a string down to keep it on the capitals' middle, the chip window's バッドメディスン
+  stood in rows 13.5 to 23.75 where the original's stands in 10 to 22 (1.75 pixels low at the bottom, 2 short),
+  the digit of スプレッドガン1 stood higher than its kana, and each name sat at its own height. The cause was the
+  fit and the font's metrics for kana; no offset was tuned for Latin only (each role's baseline and capitals are the
+  original's, and Latin was where it should be). In the chatbox the kana happened to be close (9.5 pixels, centered).
+- **Descenders out of their cells.** Murecho's descenders reach 3.3 pixels under the 8x16 font's baseline, the
+  original's one: the chip window's "Spreadr1" drew its p over the chip's picture, the enemy name's g ran past its
+  bar.
+- **A comma closing words up.** The US scripts write "Lan,this is no time to run away!" (EXE6's and EXE5's MegaMan,
+  20 strings in the three games): the original's fonts give a comma a capital's advance, so the words stand apart;
+  the font's comma is narrow and joined them.
+
+**What the text layer does now** (`vfont.rs`; §9.4 has the rules):
+
+- every string of a role at the role's size; one too wide narrowed to its box, its height and baseline kept; the
+  table of §9.4 says what is narrowed and how much (every Japanese name, to 62-79%, the original's own half-width
+  proportions);
+- kana and kanji at the size that makes the font's kana box (`Face`: the median ink of its full-size katakana at the
+  role's weight, measured once a weight) the capitals' height, centered on them: the chip window's name now stands
+  in rows 11 to 22.5 (the original's 10 to 22, its voiced marks reaching row 10), the description's first line in
+  108.5 to 119.25 and 97.5 pixels wide (the original's 108 to 119 and 98), and Latin, kana and kanji of a string
+  share one baseline;
+- a cell string is cut at its box's rows (`Style::in_rows`), as the original's glyphs stay in their cells; the
+  chatbox's lines keep their descenders as before;
+- a comma a letter follows at once is followed by a space's width (not between digits: "1,000").
+
+**Left as they are, listed:**
+
+- The hand window's name stands on the screen's last rows (its cells are rows 144 to 159): a descender loses its
+  last 1.3 pixels there, cut by the cells and the screen alike.
+- In the chip window and the Program Advance's names, whose box is 8 cells whatever the name, a short Japanese name
+  has room and is drawn at its natural width (キャノン) while a long one is narrowed to about two thirds
+  (バッドメディスン): their kana differ in width from name to name, never in height. The hand, the telop and the
+  enemy names, whose boxes are the names' own cells, narrow every Japanese name alike. Drawing every kana at the
+  original's cell width would make them alike everywhere, at the cost of narrowing names that fit; not done.
+- Murecho's digits in Japanese text are its proportional ones, where the Japanese dialogue font's are full-width
+  (11 pixels): "前方のてき1たいを" is tighter around its 1 than the original. The font's design.
+- Murecho has no hinting (hinted and unhinted glyphs are the same pixels from 20 to 37 pixels an em, measured), so
+  `HINT_BELOW` changes nothing with it, and a string's kana and Latin are drawn alike at every scale. Narrowing thins
+  vertical strokes against horizontal ones (Murecho's bold kana at 62%: 0.10 em against 0.145); looked at, it reads
+  as the original's narrow kana do, so the strokes aren't thickened to make up for it.
+
+**Looked at**: headless frames at 2x, 3x and 4x, in the font mode before and after and in the original mode, of
+each game in each language: the custom screen with a full hand (the chip window's name for two chips of the hand,
+the enemy name), the hand window with its damage, a telop (EXE6's; the EXE5 and EXE4 matches' other side used no
+chip), a chip's description and the no-running message (the chip lab's recordings: custom/description-keys and
+custom/run-message, EXE5's custom/description and custom/run-message, EXE4's custom/describe and
+custom/run-message), from match files with long names (WindRack, Spreadr1, VarSwrd, AntiRecv: フウジンラケット,
+スプレッドガン1, バリアブルソード, バッドメディスン); every chip name of EXE6 in both languages, in its own cells and
+in 8 cells, and of EXE5 and EXE4 in Japanese, on sheets with the capitals' rows marked. The ink was measured in each
+box against the original's.
+
+**The original mode is unchanged**: with packs that have both languages' lettering it never reaches the vector
+font, and the verification workspace's identity check (`tools/frontend-compare/identity.sh`, main's frontend against
+this one, both `--text original`) found every frame byte for byte the same: EXE6's chatbox and custom-screen
+lists in English and drawn in Japanese (68 scenarios each, 62,351 frames each), EXE5's and EXE4's lists (209
+scenarios, 196,197 frames; 449, 538,975) and their Japanese consoles' (9, 10,845; 53, 95,249), the two of the
+Japanese EXE6 consoles' list whose recordings the lab still has (2,891 frames; the other 141 aren't in it), and
+with the last commit's frontend EXE6's sample (173 scenarios, 215,699 frames) and its chatbox list drawn in Japanese
+again (27, 15,182). Only `nettai-render` changed; the simulation reads nothing of it, so no digest moved.
+
+**Cost**: the frame's text as before. Drawing the custom screen's busiest text (the chip window's name, the enemy
+name, three description lines) over a 4x frame, cached, took 180 µs in English and 236 µs in Japanese before and
+182-189 µs and 225-236 µs after (3x: 108 and 139 µs before, 111-114 and 132-138 after; the development profile,
+the least of eight batches of 200 frames; scaling the frame's picture takes 0.9 ms at 4x). A first frame (layouts
+and glyphs made) is 2 to 4 ms in either. A string's layout is cached as before; the kana box is measured once a
+weight, from 45 outlines.
 
 ## 10. Languages and display text (as built, 2026-10-02)
 
