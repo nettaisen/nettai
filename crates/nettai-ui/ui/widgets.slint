@@ -135,6 +135,8 @@ export component Message inherits Rectangle {
     in property <TextHorizontalAlignment> horizontal-alignment: left;
     height: 16px;
     Text {
+        x: 0;
+        width: parent.width;
         text: root.text;
         color: root.tone;
         font-family: Theme.body;
@@ -324,7 +326,8 @@ export component Button inherits Rectangle {
 // A value between two arrows: Left and Right change it at once. The value's box has one width
 // (`value-width`), so the arrows stay where they are whatever it says. `locked` shows the value alone, in the
 // same place (the game's name where the game can't change). A new value slides in within the box, the way the
-// arrow pressed points, as the old one slides out.
+// arrow pressed points, as the old one slides out. Where the row it is in is what is focused (a `Focusable` of
+// the row's own, of this name: a menu's rows), `focusable` is off: its arrows still step it.
 export component Stepper inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
@@ -336,6 +339,7 @@ export component Stepper inherits Rectangle {
     in property <bool> title;
     in property <bool> locked;
     in property <bool> enabled: true;
+    in property <bool> focusable: true;
     out property <bool> focused: hit.focused;
     // The value before this one, and the way it left.
     property <string> last;
@@ -352,10 +356,10 @@ export component Stepper inherits Rectangle {
     }
 
     hit := Focusable {
-        nav: root.nav;
+        nav: root.focusable ? root.nav : "";
         nav-index: root.nav-index;
         kind: NavKind.stepper;
-        enabled: root.enabled && !root.locked;
+        enabled: root.enabled && !root.locked && root.focusable;
     }
 
     Rectangle {
@@ -610,12 +614,14 @@ export component Slider inherits Rectangle {
     }
 }
 
-// A box with its value and an arrow: Left and Right step through its choices, Enter opens them as a list.
+// A box with its value and an arrow: Left and Right step through its choices, Enter opens them as a list. Where
+// the row it is in is what is focused (a `Focusable` of the row's own), `focusable` is off.
 export component Select inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> value;
     in property <bool> enabled: true;
+    in property <bool> focusable: true;
     out property <bool> focused: hit.focused;
     height: 40px;
     Rectangle {
@@ -637,10 +643,10 @@ export component Select inherits Rectangle {
     }
 
     hit := Focusable {
-        nav: root.nav;
+        nav: root.focusable ? root.nav : "";
         nav-index: root.nav-index;
         kind: NavKind.stepper;
-        enabled: root.enabled;
+        enabled: root.enabled && root.focusable;
     }
 }
 

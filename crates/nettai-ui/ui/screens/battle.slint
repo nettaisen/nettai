@@ -175,13 +175,27 @@ component PadKey inherits Rectangle {
     }
 }
 
-// The pad under the picture on a phone: the GBA's buttons where thumbs reach, and MENU.
+// The pad under the picture on a phone: the GBA's buttons where thumbs reach, and MENU, with what the battle is
+// beside it (`Shell.battle-note`: its owner's words).
 component TouchPad inherits Rectangle {
-    Button {
+    menu := Button {
         x: 0;
         y: 0;
         nav: "pad.menu";
         text: @tr("MENU");
+    }
+
+    Text {
+        x: menu.width + 12px;
+        y: 0;
+        width: parent.width - self.x;
+        height: menu.height;
+        text: Shell.battle-note;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
     }
 
     PadKey {
