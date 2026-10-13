@@ -1812,7 +1812,9 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   them, but the background a flat (18, 9, 18) where the frontend whitens it too; and a blinded console hides the
   other side's navi's HP number (chips/0x10d-sparkman/side1, frames 653 to 754), which the frontend still draws.
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
-  first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
+  first tick (its first barrier's visual's blind test, 0x0800B0CA from 0x080E24B0): recorded, a software interrupt's
+  opcode, 0xE3A02004, with the blind bit, as EXE6's (modcards/011-first-barrier-100-side1 and its -rocks and
+  -obstacles: side 1's visual's header flags 0x15 on frame 130, 0x17 from the next).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
 - Roll's chips against an armed AntiRecv (the spawner's own spring, 0x080E5554: the counterattack three times half
   the chip's damage word, its dimming with no cut-in): no recording has Roll used into AntiRecv yet.
@@ -3356,14 +3358,19 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     navi's chip requests ended (0x08013280 clears requests 0x0C; the Japanese releases lack that call, §11). EXE5's
     (0x0801709A) empties the hand the same way and leaves the requests; EXE6's `sub_801A2CC` takes the next chip
     alone, the cursor stepping past it. The engine had EXE6's for all three. The status section's
-    `chip_destruction` (`takes`: "hand", EXE6's "next"; `ends_chip_requests`: EXE4's alone), read by the shared
-    intake. Recorded in the three labs (EXE4 destruction/, 12; EXE5 destruction/, 9; EXE6 jp/destruction/, 7): a hand
-    of three, one and none, one used before, the hit during a chip's use and on the frame it is asked for (the
-    request ended: `asked`, which stops at the empty hand's use without the rule's second part), on the hitter's
-    console and the hit side's; the hit side presses A afterwards, which is what shows a wrong hand. All replay,
-    states and sounds, and the frames around the hit and the A are pixel-exact on both consoles (EXE4 hand,
-    hand-bluemoon, used-first, rollaro, rollaro-bluemoon, jealousy; EXE5 hand, traced; EXE6 hand, traced): the chip
-    icons over the navi and the chip window going. Not recorded: SearchMan's powered last shot (the same hit flag).
+    `chip_destruction` ("hand"; EXE6's "next"), read by the shared intake. The request's end is the engine's own in
+    every game: after the loss, a chip request with no chip left at the cursor ends. That is EXE4's US behavior
+    whole (its hand is always empty then), and a deliberate departure from EXE5 and EXE6, whose navi uses chip
+    0xFFFF there, a record past the chip table (docs/design/exe5-map.md §15.6, docs/engine/chips.md §2.9).
+    Recorded in the three labs (EXE4 destruction/, 13; EXE5 destruction/, 12; EXE6 jp/destruction/, 9): a hand of
+    three, one and none, one used before, the hit during a chip's use and on the frame it is asked for (`asked`:
+    nothing is used; without the request's end the replay stops at the empty hand's use), on the hitter's console
+    and the hit side's, and each source (RollSoul's shot, RollAro1's arrow, Jealousy, SearchMan's scope locked with
+    A and B for his powered last shot); the hit side presses A afterwards, which showed a wrong hand before the
+    replays compared hands. All replay, states and sounds, but EXE5's and EXE6's four of the empty hand's use, which
+    match up to it (listed deviations). The frames around the hit and the A are pixel-exact on both consoles (EXE4
+    hand, hand-bluemoon, used-first, rollaro, rollaro-bluemoon, jealousy; EXE5 hand, traced; EXE6 hand, traced): the
+    chip icons over the navi and the chip window going.
 
 ### 18.8 The chips (group F)
 
