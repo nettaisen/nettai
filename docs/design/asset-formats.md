@@ -536,9 +536,17 @@ its code is:
   black one, which their definitions' `art_palette` replaces when drawn.
 
 **Languages.** The words a battle's pictures and fonts show are the pack's
-own language's (`language` in `hud.json`, "en" for a pack from the US ROMs)
-and, for another language the pack has (nettai-assets `lettering`), that
-language's own files, named with it: `hud.json`'s `languages.ja` holds the
+own language's (`language` in `hud.json`: "en" for a pack with a US ROM,
+"ja" for one of Japanese ROMs alone) and, for another language the pack
+has (nettai-assets `lettering`), that language's own files, named with it.
+A pack has the words of the releases its ROMs are of and no others:
+`language` and the keys of `languages` are the statement (a pack of all
+four ROMs: "en" with `languages.ja`; of US ROMs alone: "en" and no
+`languages`; of Japanese ROMs alone: "ja" and no `languages`). A
+frontend set to a language the pack lacks draws the pack's own pictures
+with words (`Bundle::for_language`) and the content's strings in its
+own language (docs/frontend.md, "Languages"), so a language a pack lacks
+is no set of placeholders. The other language's files: `hud.json`'s `languages.ja` holds the
 Japanese 8x16 font (`font-ja.png`) and what each glyph draws, the dialogue
 font (`dialogue-font-ja.png`, its advances and characters), the HUD's text
 lines in its glyphs, the banners whose words differ (`banners/NAME-ja.png`,
@@ -558,7 +566,7 @@ come from the Japanese ROMs (exe6-extract's and exe5-extract's
 `lettering`); the fonts' characters from compat/text.toml's `[jp]`, the
 Japanese ROMs' encoding. Everything else a battle shows is the same
 pictures in a game's four ROMs. A frontend in that
-language swaps them in (`Bundle::in_language`). The content's display text
+language swaps them in (`Bundle::for_language`). The content's display text
 (names, descriptions, messages) is no asset: it is the content root's strings
 (`locales/<lang>.toml`, docs/design/text-rendering.md §10).
 

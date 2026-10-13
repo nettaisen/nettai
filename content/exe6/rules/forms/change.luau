@@ -29,9 +29,6 @@ export type State = {
 
 export type Sequence = "cross" | "beast_out" | "cross_beast" | "beast_cross" | "beast_over"
 
--- the rules' state (init.luau): what a change notes of the round.
-type Record = { went_beast_out: boolean, crossed: boolean }
-
 -- The sounds it plays.
 local FORM_CHANGE = asset.sound("form-change")
 local GREGAR_ROAR = asset.sound("gregar-roar")
@@ -178,9 +175,8 @@ local function vanish(me: Object, s: State, seq: Sequence, target: FormDef)
         end
         if spawned then
             me.pos = me.pos + Vec3.new(0, 0xC0_0000, 0)
-            -- `sub_800AB2E`
-            local record = rules.state() :: Record
-            record.went_beast_out = true
+            -- (`sub_800AB2E` notes the navi went Beast Out: for the next
+            -- battle's counter, ../forms/init.luau, which nettai keeps none of.)
             -- The roar is Gregar's for the Gregar beasts and Falzar's
             -- otherwise; the cameras shake at magnitude 2 (`sub_80302B6`),
             -- 60 ticks (75 for Beast Over).
@@ -348,20 +344,16 @@ local function finish(me: Object)
 end
 
 -- Step 0xC (`sub_8014F04`, `sub_8015128`, `sub_80153B0`, `sub_8014CC0`,
--- `sub_80155CC`): 21 ticks, then the change is done and the navi idles;
--- the Crosses note the side crossed.
-local function settle(me: Object, s: State, seq: Sequence)
+-- `sub_80155CC`): 21 ticks, then the change is done and the navi idles.
+-- (The Crosses note the side crossed, `sub_800AB2E`, for the busting level
+-- alone: the results screen's, which nettai has none of.)
+local function settle(me: Object, s: State)
     if me.step_init == 0 then
         s.timer = 0x14
         me.step_init = 4
     end
     if not timer_ran_out(s) then
         return
-    end
-    if seq == "cross" or seq == "cross_beast" or seq == "beast_cross" then
-        -- `sub_800AB2E`
-        local record = rules.state() :: Record
-        record.crossed = true
     end
     finish(me)
 end
@@ -389,7 +381,7 @@ function change.update(me: Object, s: State)
     elseif step == EMERGE then
         emerge(me, s, seq, target)
     elseif step == SETTLE then
-        settle(me, s, seq)
+        settle(me, s)
     else
         error(string.format("form change step %#x runs off its table (sub_8014A38)", step))
     end

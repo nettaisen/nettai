@@ -112,7 +112,6 @@ pub struct RoundState {
     pub max_combo: u8,
     pub combo: u8,
     pub combo_window: u8,
-    pub busting_level: u8,
     pub result: u8,
     /// Low-HP music latch per side (`sub_8009158`).
     pub low_hp_music: [bool; 2],
@@ -1507,10 +1506,10 @@ impl Battle {
             6 => self.enter_mode(mode::CUSTOM),
             _ => {
                 match r {
-                    1 | 2 => {
-                        self.round.result = r;
-                        self.round.busting_level = self.busting_level();
-                    }
+                    // (The original's busting level, BattleState +0x1E
+                    // here, `sub_800AF84`, is its results screen's: nettai
+                    // has none, and nothing in a battle reads it.)
+                    1 | 2 => self.round.result = r,
                     _ => {}
                 }
                 self.enter_mode(mode::FADE_OUT);
@@ -2166,10 +2165,6 @@ impl Battle {
             .flatten()
             .filter(|&&r| self.content.identity(self.objects.get(r).identity).quiet_win)
             .count()
-    }
-
-    fn busting_level(&self) -> u8 {
-        crate::kinds::busting_level(self)
     }
 
     // ---- End of round ------------------------------------------------------

@@ -190,12 +190,22 @@ export global BuildWords {
     public pure function dark-limit() -> string {
         return @tr("Dark limit reached");
     }
+    // ---- Why an entry can't go into a list of a build now (a patch card): the end of its library row.
+    public pure function installed() -> string {
+        return @tr("Installed");
+    }
+    public pure function needs-megabytes(n: int) -> string {
+        return @tr("Needs {} MB", n);
+    }
     // ---- What is wrong with a build, each kind with its numbers.
     public pure function folder-size(used: int, limit: int) -> string {
         return @tr("{} chips, a folder has {}", used, limit);
     }
     public pure function chip-not-allowed(chip: string) -> string {
         return @tr("{} can't be in a folder", chip);
+    }
+    public pure function chip-not-playable(chip: string) -> string {
+        return @tr("{} can't be played in auto battle", chip);
     }
     public pure function chip-only(chip: string, version: string) -> string {
         return @tr("{} is {} only", chip, version);
