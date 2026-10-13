@@ -52,6 +52,20 @@ fn step(f: impl Fn(&mut App) + 'static) -> Step {
 /// The steps, after the shell's dialog: `add` takes a step and the time it is given first; `shot` a shot's
 /// steps.
 pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
+    // (From a known place: the game loaded (alone, these steps may come before it is), no battle, which would
+    // take the keys, the default bindings.)
+    add(SETTLE, Box::new(|_, _, tour: &Rc<Tour>| tour.wait_until(|app| app.shell.ready().is_some())));
+    add(
+        SETTLE,
+        step(|app| {
+            crate::screens::training::end(&mut app.shell);
+            if app.shell.battle.is_some() {
+                app.shell.end_battle();
+            }
+            app.shell.set_bindings(Bindings::default());
+            app.go_now(ScreenId::Menu);
+        }),
+    );
     // Z (A) answers a dialog.
     add(SETTLE, step(|app| app.shell.fail(UserError::Other)));
     add(SETTLE, press(KeyCode::KeyZ, "z"));
