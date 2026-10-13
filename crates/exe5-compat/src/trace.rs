@@ -1202,7 +1202,7 @@ pub use crate::codec::{navicust, patch_cards};
 /// `Compat::navi_action`), phase and its init byte, panel, side, HP,
 /// position, timer, animation and its collision's status flags.
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
-    compare_with(b, f, f, f, compat)
+    compare_with(b, f, f, f, None, compat)
 }
 
 /// [`compare`] on the `i`th of a round's `frames`, the engine having been fed
@@ -1214,7 +1214,106 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let f = frames[i];
     let late = round.screen_late(i, frames);
     let banner = if late > 0 { round.frame(f.frame - late).unwrap_or(f) } else { f };
-    compare_with(b, f, banner, round.local_screen_frame(i, frames), compat)
+    let exchange = round.exchanges.iter().rfind(|e| e.frame <= f.frame);
+    compare_with(b, f, banner, round.local_screen_frame(i, frames), exchange, compat)
+}
+
+/// Side `side`'s auto battle data as the rules' send left it (their state's
+/// `auto_battle_places`), in the block's terms: each place's halfword (a chip
+/// by its number, a pattern record by its index with bit 15, 0 for `zero`),
+/// in order. None: the rules keep no such list.
+fn sent_places(b: &Battle, compat: &Compat, side: u8) -> Option<Vec<u16>> {
+    use nettai_content_api::FieldValue;
+    let (schema, state) = b.rules_state(side)?;
+    let list = schema.place(schema.index_of("auto_battle_places")?);
+    let n = state.len_at(list)?;
+    (0..n)
+        .map(|k| {
+            let p = list.elem(k)?;
+            let chip = match state.get_at(p.field("chip")?) {
+                FieldValue::Ref(Some((Registry::Chip, h))) => {
+                    let key = nettai_match::ids::local(&b.content.defs.chip(nettai_content_api::ChipHandle(h)).key).to_string();
+                    Some(compat.chips.get(&key).map(|c| c.id).unwrap_or(0xFFFE))
+                }
+                _ => None,
+            };
+            let pattern = match state.get_at(p.field("pattern")?) {
+                FieldValue::U8(n) => n,
+                _ => 0,
+            };
+            let zero = matches!(state.get_at(p.field("zero")?), FieldValue::Bool(true));
+            Some(match (chip, pattern, zero) {
+                (Some(id), _, _) => id,
+                (None, n, _) if n > 0 => 0x8000 | (n as u16 - 1),
+                (None, _, true) => 0,
+                _ => 0xFFFF,
+            })
+        })
+        .collect()
+}
+
+/// The auto battle data as the consoles sent it (the setup's `ai_lists`:
+/// each block's 42 places, the entries packed to the front, and their count
+/// at +0x54) against the rules' send ([`sent_places`]), as the round starts.
+/// (The block's pattern records, from +0x58, are the save's: the send
+/// leaves them, and the rules read them from the setup.) The places are
+/// compared as a set: their order is the engine's shuffle's.
+fn sent_auto_battle_differences(b: &Battle, compat: &Compat, lists: &[String; 2]) -> Vec<String> {
+    let mut d = Vec::new();
+    for side in 0..2u8 {
+        let Ok(block) = unhex(&lists[side as usize]) else { continue };
+        if block.len() < 0x58 {
+            d.push(format!("side {side}'s sent auto battle data: a block of {:#x} bytes", block.len()));
+            continue;
+        }
+        let theirs: Vec<u16> = (0..42).map(|i| u16::from_le_bytes([block[2 * i], block[2 * i + 1]])).collect();
+        let count = u32::from_le_bytes([block[0x54], block[0x55], block[0x56], block[0x57]]);
+        let Some(mut ours) = sent_places(b, compat, side) else {
+            d.push(format!("side {side}'s sent auto battle data: the rules keep no `auto_battle_places`"));
+            continue;
+        };
+        let n = ours.len() as u32;
+        ours.resize(42, 0xFFFF);
+        let show = |v: &[u16]| v.iter().map(|x| format!("{x:04x}")).collect::<Vec<_>>().join(" ");
+        let sorted = |v: &[u16]| {
+            let mut v = v.to_vec();
+            v.sort_unstable();
+            v
+        };
+        if (n, sorted(&ours)) != (count, sorted(&theirs)) {
+            d.push(format!("side {side}'s sent auto battle data: ours {n}: {} theirs {count}: {}", show(&ours), show(&theirs)));
+        }
+    }
+    d
+}
+
+/// A side's stats as the comparison of an exchange line says them: the fields
+/// [`navi_stats`] reads of a block (but the folder's, which the battle
+/// folder holds, the starting form, the navi's base, and the HP: the block's
+/// +0x40 is the save's, which a battle doesn't write, where the navi's own
+/// is its object's, compared there; a compiled NaviCust's engine stats hold
+/// the maximum), and `form`, the form by EXE5's number (NaviStats +0x2C).
+fn stats_fields(s: &EngineNaviStats, form: Option<u8>) -> Vec<(&'static str, String)> {
+    vec![
+        ("form", format!("{form:?}")),
+        ("mood", format!("{:#04x}", s.mood)),
+        ("element", s.element.to_string()),
+        ("navi", format!("{:?} variant {}", s.navi, s.navi_variant)),
+        ("max HP", format!("{} (base {})", s.max_hp, s.max_base_hp)),
+        ("buster", format!("{} {} {}", s.attack, s.rapid, s.charge)),
+        ("levels", format!("custom {} mega {} giga {} reg-up {}", s.custom_level, s.mega_level, s.giga_level, s.reg_up)),
+        ("gauge speed", format!("{:?}", s.gauge_speed)),
+        ("first barrier", format!("{:?}", s.first_barrier)),
+        ("support", format!("{:?}", s.support)),
+        ("armor and shoes", format!("{} {} {} {}", s.super_armor, s.float_shoes, s.air_shoes, s.undershirt)),
+        ("weapons", format!("{:?}", s.weapons)),
+        // (But the four bug bytes [`navi_stats`] doesn't read of EXE5's
+        // block, which the engine's patch cards may set: EXE6's places of
+        // them, +0x11, +0x3D, +0x52 and +0x63, are to confirm in EXE5's.)
+        ("bugs", format!("{:?}", NaviCustBugs { auto_step: 0, starting_damage: 0, status_immunity: false, hand_shrink_turn: 0, ..s.bugs })),
+        ("chip recovery", s.chip_recovery.to_string()),
+        ("its own stats", format!("{:?}", s.game)),
+    ]
 }
 
 /// The engine's hand in a chip block's terms ([`codec::ChipHand`]): each
@@ -1263,8 +1362,9 @@ fn hand_fields(h: &ChipHand) -> Vec<(&'static str, String)> {
 
 /// [`compare`], the banner compared with `banner`'s and what the recording
 /// console's screen's OK changes on that console alone with `screen`'s
-/// ([`Round::local_screen_frame`]).
-fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &Compat) -> Vec<String> {
+/// ([`Round::local_screen_frame`]); each side's stats with `exchange`'s, the
+/// exchange line of the blocks' last change.
+fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange: Option<&Exchange>, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
         if ours != theirs {
@@ -1401,6 +1501,26 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             Err(e) => check(&format!("hand {side}"), "a chip block".to_string(), e),
         }
     }
+    // Each side's stats as the block stands (the exchange line of its last
+    // change), field by field as [`navi_stats`] reads a block, and its form
+    // (+0x2C) by EXE5's number. (The exchanged transform records aren't
+    // compared: a Soul Unison's record is the screen's own, 0x0203C940, and
+    // the exchanged one's +0 reads 0xFF at every install of the lab's souls,
+    // its +4 an address.)
+    if let Some(e) = exchange {
+        for p in 0..2 {
+            let ours = &b.stats[p];
+            let our_form = compat.form_number(nettai_match::ids::local(&b.content.defs.form(ours.form).key));
+            match navi_stats_hex(&e.navi_stats[p]).and_then(|raw| navi_stats(&b.content, compat, &raw).map(|s| (raw.form, s))) {
+                Ok((form, theirs)) => {
+                    for ((name, x), (_, y)) in stats_fields(ours, our_form).into_iter().zip(stats_fields(&theirs, Some(form))) {
+                        check(&format!("side {p}'s stats: {name}"), x, y);
+                    }
+                }
+                Err(err) => check(&format!("side {p}'s stats"), "a NaviStats block".to_string(), err),
+            }
+        }
+    }
     let pool_type = |p: Pool| match p {
         Pool::Actor => 1,
         Pool::Attack => 3,
@@ -1521,6 +1641,11 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("timer", x.timer.to_string()),
                 ("anim", x.anim.to_string()),
                 ("status", status_field(i, format!("{status:#x}"))),
+                ("facing", x.flip.to_string()),
+                // (A navi's four parameter bytes, +4: the one kind whose
+                // object keeps the original's; the other kinds take their
+                // parameters as their own state.)
+                ("params", if pool_type(o.pool) == 1 && entries[i].is_some_and(|k| k.index == 0) { format!("{:#010x}", u32::from_le_bytes(x.params)) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1546,6 +1671,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("timer", o.timer.to_string()),
                 ("anim", o.anim.to_string()),
                 ("status", status_field(i, format!("{:#x}", o.status))),
+                ("facing", o.flip.to_string()),
+                ("params", if o.kind == 1 && o.index == 0 { format!("{:#010x}", o.params) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1615,6 +1742,13 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             return replay;
         }
     };
+    if let Some(lists) = &round.setup.ai_lists {
+        let differences = sent_auto_battle_differences(&b, compat, lists);
+        if !differences.is_empty() {
+            replay.stopped = Some(Stop::Differs { frame: round.setup.frame, differences });
+            return replay;
+        }
+    }
     // The recording console's RNG1 (the trace's `rng1`), sampled after the
     // battle's update and before the main loop's draw: the engine after
     // frame N is the trace at N + 1. Picks the console makes after the
