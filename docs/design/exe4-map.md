@@ -1558,9 +1558,12 @@ compat/actions.toml; each verified on its lab recordings (hit, adjacent, miss, s
 
 `nettai-extract exe4 <pack> <ROM ...>` writes an EXE4 pack (crates/nettai-extract/src/exe4), its names and text
 encodings from content/exe4/compat (assets.toml, chips.toml, text.toml), which the verification workspace's
-tools/exe4/gen_content.py writes from the ROMs and `check`s again; the exe4-compat crate reads them. Each address is
-Red Sun US's and its counterpart in the other three ROMs: the value of the same literal of the same routine (the
-ROM data maps, `bmap.py --to <CODE> romdata`).
+tools/exe4/gen_content.py writes from the ROMs and `check`s again; the exe4-compat crate reads them. Each address
+below is Red Sun US's; the extractor states each block by where the game's own pointer to it is in each of the four
+ROMs (the same literal of the same routine: the ROM data maps, `bmap.py --to <CODE> romdata`, and the verification's
+tools/cross-rom/words.py), and reads it from whichever ROM given holds it: what the four have alike from any, each
+release's words from a ROM of that release, a version's souls' faces from a ROM of that version (the extractor's
+README has what each set of ROMs lacks).
 
 - **Sprites** (R): the sprite list (0x0802793C; Blue Moon 0x08027940, the Japanese 0x08027890 and 0x08027894), its
   battle categories (byte offsets 0x00 to 0x14) as EXE5's: 225 sprites, the same archives in all four ROMs.
@@ -1597,14 +1600,14 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   of what isn't ported) are written under their numbers (`sprite-cc-ii`, `sound-nnn`) and listed in the pack's
   extraction.txt (`unnamed:`), to name by what loads them as the port reads EXE4's own code (the verification
   workspace's tools/exe4/assetloads.py lists each one's loads).
-- **The field** (R, Red Sun US's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
+- **The field** (R, any ROM's): the field's load (0x08006A40: its tiles to VRAM 0x06001460, as EXE5's and EXE6's;
   its transfer list 0x08006A68: background palettes 1 to 8), the panel blocks (0x080093FC: 6 * type + 3 * owner + row
   - 1 from 0x08706640, for EXE4's 12 panel types), the highlight (0x0800948A: one block, for both highlights), the front
   edges by owner (0x080094C4, 0x08706F60), and the panel palettes that cycle (0x08009556, as the field is drawn: six,
   each a frame every 14 ticks from a table of palette pointers, their timers starting at 14, 13, 12, 11, 10 and 9:
   0x08009120). Each type is drawn as the engine's type compat/panels.toml gives its number (content's names for them).
   What the blocks show: 5 a riveted metal plate, 10 a sand pit, 11 a hole (§18 item 12: `metal`, `pitfall`, `hole`).
-- **The HUD** (R, Red Sun US's; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
+- **The HUD** (R, any ROM's but for the words; exe4/hud.rs): the tasks (0x08014D10's table at 0x08014D34, EXE6 `sub_801BF64`'s
   counterpart) and the load list (0x08015A0C): the HUD layer's tiles from 0x130 and the gauge's from 0x80, both in
   EXE6's order; the HP box (6x2, 0x08016B2C) and the gauge frame (18x2 with "CUSTOM", 0x08016B44); the HP box's palettes
   (0x08708260, three colors); the opponents' HP digits (0x08014EB8: one color); the hidden chip's icon; "PAUSE"
@@ -1614,7 +1617,7 @@ ROM data maps, `bmap.py --to <CODE> romdata`).
   0 to 5); the chatbox (0x0804E3B4: one box, which descriptions show in too). The Japanese ROMs' banners and
   "カスタム中…" are the pack's Japanese lettering. Not drawn yet: "PLAN-B..." (0x08016AE8's list, the other waiting
   words, 作戦変更中… in Japanese), shown while the other player is in what group A's screen calls the second screen.
-- **The custom screen** (R, Red Sun US's; exe4/custom.rs), as EXE5's in its parts, from EXE4's own routines: the
+- **The custom screen** (R, any ROM's but for the words; exe4/custom.rs), as EXE5's in its parts, from EXE4's own routines: the
   window (0x0801DC28: the map 0x0870CC80, its patch list 0x0801DD90 from tile 0x9C, one frame color for every chip,
   0x0870C340) and the HUD's load list (the frame's tiles, the picked column's cells, "FINAL TURN", the UNITE button's
   and the emblem's tiles); the chip window (0x0801FC40: the name, picture, code and damage; the element icon a sprite

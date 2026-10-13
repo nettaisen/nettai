@@ -16,7 +16,7 @@
 //!   a black one, and each chip's definition gives its own (`art_palette`),
 //!   as EXE5's e-Reader chips' and EXE6's gift chips' do.
 
-use super::rom::{Addresses, Rom};
+use super::rom::Rom;
 use nettai_assets::{Picture, Tiles};
 
 /// The last chip whose record points at its icon in the ROM: the cards'
@@ -34,13 +34,14 @@ fn tiles_of(id: u16) -> Option<&'static str> {
 }
 
 /// A card's chip's picture (its palette black: the definition's
-/// `art_palette` colors it) and its icon from `rom`; none for another chip.
-pub(super) fn media(rom: &Rom, a: &Addresses, id: u16, icon_bytes: usize) -> Option<(Picture, Tiles)> {
+/// `art_palette` colors it) and its icon from `rom`, whose chip records are
+/// at `chip_table`; none for another chip.
+pub(super) fn media(rom: &Rom, chip_table: u32, id: u16, icon_bytes: usize) -> Option<(Picture, Tiles)> {
     let hex = tiles_of(id)?.as_bytes();
     let nibble = |c: u8| (c as char).to_digit(16).expect("the cards' pictures are hex") as u8;
     let bytes: Vec<u8> = hex.chunks(2).map(|p| nibble(p[0]) << 4 | nibble(p[1])).collect();
     let picture = Picture { tiles: Tiles::from_4bpp(&bytes), palette: Default::default() };
-    let before = rom.u32(a.chip_table + 0x2C * BEFORE as u32 + 0x20);
+    let before = rom.u32(chip_table + 0x2C * BEFORE as u32 + 0x20);
     let icon = crate::decode::tiles(rom, before + (icon_bytes as u32) * (id - BEFORE) as u32, icon_bytes);
     Some((picture, icon))
 }
