@@ -204,6 +204,9 @@ export global BuildWords {
     public pure function chip-not-allowed(chip: string) -> string {
         return @tr("{} can't be in a folder", chip);
     }
+    public pure function chip-not-playable(chip: string) -> string {
+        return @tr("{} can't be played in auto battle", chip);
+    }
     public pure function chip-only(chip: string, version: string) -> string {
         return @tr("{} is {} only", chip, version);
     }

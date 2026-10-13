@@ -97,6 +97,8 @@ pub(crate) struct Tour {
     /// The on-screen pad's check, where it failed.
     pad: RefCell<Vec<String>>,
     seen: RefCell<Vec<String>>,
+    /// The shots and bursts are passed by: what they would be of isn't there (an editor's tab the game hasn't).
+    passing: Cell<bool>,
 }
 
 /// A shot of a burst: the milliseconds since it began, the picture, and each control's size.
@@ -157,6 +159,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         never: Default::default(),
         pad: Default::default(),
         seen: Default::default(),
+        passing: Cell::new(false),
     });
     let t = tour.clone();
     ui.global::<Audit>().on_clipped(move |text| {
@@ -218,13 +221,16 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                 ui.global::<Theme>().set_audit(false);
             }),
         );
-        add(90, Box::new(|ui, _, _| ui.global::<Theme>().set_audit(true)));
+        add(90, Box::new(|ui, _, tour| ui.global::<Theme>().set_audit(!tour.passing.get())));
         add(
             90,
             Box::new(move |ui, app, tour| {
                 // (The audit is on for the shot alone: what is cut for a moment between two, as the window
                 // changes its size or a screen arrives, isn't a shot's.)
                 ui.global::<Theme>().set_audit(false);
+                if tour.passing.get() {
+                    return;
+                }
                 let Some(picture) = write(ui, tour, &tag) else { return };
                 let cursor = app.borrow().shell.nav.cursor();
                 match pair {
@@ -453,6 +459,9 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
         add(
             SETTLE * 2,
             Box::new(move |ui, app, tour| {
+                if tour.passing.get() {
+                    return;
+                }
                 trigger(ui, app, tour);
                 *tour.burst.borrow_mut() = Some(Burst { name, began: Instant::now(), shots: Vec::new() });
             }),
