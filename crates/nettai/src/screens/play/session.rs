@@ -158,15 +158,17 @@ impl Session {
     }
 
     /// The frame's first half, before the battle's ticks: every datagram the link has to the lobby, a match's
-    /// frames too, and how the link is. Before the lobby, the link kept up. An error is the link's, and the
-    /// end.
-    pub fn feed(&mut self, now: Instant) -> Result<(), Error> {
-        let Some(lobby) = &mut self.lobby else { return self.link.poll() };
+    /// frames too, and how the link is. Before the lobby, the link kept up. It says how many datagrams there
+    /// were. An error is the link's, and the end.
+    pub fn feed(&mut self, now: Instant) -> Result<usize, Error> {
+        let Some(lobby) = &mut self.lobby else { return self.link.poll().map(|()| 0) };
+        let mut heard = 0;
         while let Some(datagram) = self.link.recv()? {
             lobby.receive(now, datagram);
+            heard += 1;
         }
         lobby.set_link_down(self.link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: self.link.gives_up_in() }));
-        Ok(())
+        Ok(heard)
     }
 
     /// The frame's second half, after the battle's ticks: the lobby polled.
