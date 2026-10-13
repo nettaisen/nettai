@@ -1785,7 +1785,11 @@ the menu): host-side options a training session sets between ticks, applied to t
 (a navi's HP, the custom gauge, the battle folder the custom screen deals from) before each tick, never a rule
 of the simulation. With them at their normal values the battle is
 the set's as it was before they existed, tick for tick by digest (the library's test of it, docs/frontend.md
-§2), and every online match and replay is untouched: only live play has them.
+§2), and every online match and replay is untouched: only live play has them. They act on the battle as it
+steps behind the menu in the game's own pause, or held still where the game wouldn't pause, and change
+nothing of the pause: a refill shows there (the HP rolls back up under the menu), the gauge's value is full
+there and the engine flags it full once the fight runs again, the folder is put in order there (the library's
+`the_options_act_in_the_games_own_pause`).
 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
@@ -1800,14 +1804,16 @@ wherever it is (the player's own navi stands still; on the custom screen the pla
 screen's as ever, and the dummy's screen does what its Custom screen row says). RECORDING shows over the
 battle meanwhile (in the dummy's color, with the input display's layer: `TrainingInputs`). Each tick the fight
 runs (not the turn's banner, the custom screen, the game's pause) its buttons are kept, up to a minute. Start
-ends it (or the menu opening, or starting over, or the minute): the dummy's Action becomes Plays your
+ends it, and doesn't pause the game (or the menu opening, or starting over, or the minute end it): the
+dummy's Action becomes Plays your
 recording, and it plays the buttons over and over from wherever it stands, while the player has their navi
 back. A new recording replaces it. Nothing of it is kept between sessions, and Plays your recording isn't
 remembered as the Action (with nothing recorded the dummy stands still).
 
 **A second pad.** With the dummy's Action "A second pad", the second gamepad used (the pads are known in the
 order each was first pressed, `input::Pad`) is the dummy's: what it holds is the dummy's buttons, in the fight
-and on its custom screen (the library's `LivePlayer::set_second_pad`, each frame before the ticks), and its
+and on its custom screen (the library's `LivePlayer::set_second_pad`, each frame before the ticks; its START
+reaches the battle on the custom screen alone, the game's pause being the player's), and its
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen does as its row says. Any other Action gives the pads back to the player.
 
