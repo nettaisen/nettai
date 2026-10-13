@@ -3,7 +3,9 @@
 //!
 //! The link is nettai-rtc's: made in a room of the signaling server (a new room, whose code the server picks:
 //! an invite; or the room of a code typed) or directly (this machine hosting on a UDP port, or the host's
-//! address typed). Once it is open the lobby is made over it, and lasts for as long as the two players stay
+//! address typed). Making one may wait on the system's resolver (the STUN server's name, a direct host's), so
+//! it is made on a thread of its own, and the session waits for it without waiting ([`Session::feed`]): a
+//! window that waited would draw nothing, and a link nobody polls for three seconds reads as dropped. Once it is open the lobby is made over it, and lasts for as long as the two players stay
 //! together: through every match they play, and between them. Each frame, whatever is on screen: every
 //! datagram the link has goes to the lobby ([`Session::feed`], before the battle's ticks), the lobby is polled
 //! ([`Session::poll`], after them), and what it has to say is sent ([`Session::send`]).
@@ -93,49 +95,113 @@ pub enum Stands {
 
 /// The link, and the lobby once the link is open.
 pub struct Session {
-    link: Link,
+    /// None while it is being made.
+    link: Option<Link>,
+    /// The link being made, on its thread: what it gives is the link, or why there is none.
+    #[cfg(not(target_arch = "wasm32"))]
+    making: Option<std::sync::mpsc::Receiver<Result<Link, Error>>>,
     pub way: Way,
     lobby: Option<Lobby>,
 }
 
 impl Session {
-    /// Make the link `way` says. An error is the link library's: its kind is what the player is told
-    /// (`UserError::of_link`), its detail goes to the log.
+    /// Make the link `way` says: at once what can be said at once (no server named, a code that can't be
+    /// one, a port that can't be listened on); the rest on a thread, which [`Session::feed`] hears. An error is
+    /// the link library's: its kind is what the player is told (`UserError::of_link`), its detail goes to the
+    /// log.
     pub fn open(way: Way, net: &Net) -> Result<Session, Error> {
         // (With no signaling server named, there is none to reach.)
         let server = || net.server.clone().ok_or_else(|| Error { kind: ErrorKind::ServerUnreachable, detail: "no signaling server is named ($NETTAI_SIGNAL)".into() });
         let config = net.config.clone();
-        let link = match &way {
-            Way::Invite => Link::create_room(&server()?, config),
-            Way::Code(code) => Link::join_room(&server()?, code, config)?,
+        let make: Box<dyn FnOnce() -> Result<Link, Error> + Send> = match &way {
+            Way::Invite => {
+                let server = server()?;
+                Box::new(move || Ok(Link::create_room(&server, config)))
+            }
+            Way::Code(code) => {
+                let server = server()?;
+                if nettai_rtc::signal::normalize_code(code).is_none() {
+                    return Err(Error { kind: ErrorKind::NoSuchRoom, detail: format!("{code:?} isn't a room's code") });
+                }
+                let code = code.clone();
+                Box::new(move || Link::join_room(&server, &code, config))
+            }
+            // (Hosting resolves nothing: at once.)
             #[cfg(not(target_arch = "wasm32"))]
-            Way::Host => Link::host(net.port, config)?,
+            Way::Host => return Ok(Session::of(Link::host(net.port, config)?, way)),
             #[cfg(not(target_arch = "wasm32"))]
-            Way::Address(address) => Link::join(address, config)?,
+            Way::Address(address) => {
+                let address = address.clone();
+                Box::new(move || Link::join(&address, config))
+            }
             #[cfg(target_arch = "wasm32")]
             Way::Host | Way::Address(_) => return Err(Error { kind: ErrorKind::Internal, detail: "a direct link needs a socket".into() }),
         };
-        Ok(Session { link, way, lobby: None })
+        // (On the web nothing is resolved here: the browser does it.)
+        #[cfg(target_arch = "wasm32")]
+        return Ok(Session::of(make()?, way));
+        #[cfg(not(target_arch = "wasm32"))]
+        {
+            let (tell, making) = std::sync::mpsc::channel();
+            std::thread::Builder::new()
+                .name("nettai-link".into())
+                .spawn(move || {
+                    let _ = tell.send(make());
+                })
+                .map_err(|e| Error { kind: ErrorKind::Internal, detail: format!("can't start the thread a link is made on: {e}") })?;
+            Ok(Session { link: None, making: Some(making), way, lobby: None })
+        }
+    }
+
+    /// A session of a link made already.
+    fn of(link: Link, way: Way) -> Session {
+        Session {
+            link: Some(link),
+            #[cfg(not(target_arch = "wasm32"))]
+            making: None,
+            way,
+            lobby: None,
+        }
+    }
+
+    /// The link, once its thread has made it: Ok(false) while it is being made. An error is why it couldn't
+    /// be (the server's name doesn't resolve, nor the host's address), as the library says it.
+    fn made(&mut self) -> Result<bool, Error> {
+        #[cfg(not(target_arch = "wasm32"))]
+        if let Some(making) = &self.making {
+            match making.try_recv() {
+                Ok(made) => {
+                    self.making = None;
+                    self.link = Some(made?);
+                }
+                Err(std::sync::mpsc::TryRecvError::Empty) => return Ok(false),
+                Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                    self.making = None;
+                    return Err(Error { kind: ErrorKind::Internal, detail: "the thread making the link ended without it".into() });
+                }
+            }
+        }
+        Ok(self.link.is_some())
     }
 
     /// The room's code: the one joined by, or the one the server gave a new room, once it has.
     pub fn code(&self) -> Option<&str> {
-        self.link.code()
+        self.link.as_ref()?.code()
     }
 
     /// The UDP port a direct host listens on.
     pub fn port(&self) -> Option<u16> {
-        self.link.port()
+        self.link.as_ref()?.port()
     }
 
     /// Whether the link's channel is open: the other player has come.
     pub fn is_open(&self) -> bool {
-        self.link.is_open()
+        self.link.as_ref().is_some_and(Link::is_open)
     }
 
     /// What the link is to, for the log.
     pub fn describe(&self) -> String {
-        self.link.describe()
+        self.link.as_ref().map_or_else(|| "a link being made".to_string(), Link::describe)
     }
 
     /// The lobby, once the link is open.
@@ -147,7 +213,7 @@ impl Session {
     /// hears the host's) and bringing `side`, this player named `name`, its nonces drawn from `entropy`. False
     /// while the link has no role.
     pub fn make_lobby(&mut self, content: &Arc<Content>, settings: Settings, side: Side, name: &str, entropy: u64) -> bool {
-        let role = match self.link.role() {
+        let role = match self.link.as_ref().and_then(Link::role) {
             Some(nettai_rtc::Role::Host) => Role::Host,
             Some(nettai_rtc::Role::Join) => Role::Join,
             None => return false,
@@ -162,13 +228,17 @@ impl Session {
     /// frames too, and how the link is. Before the lobby, the link kept up. It says how many datagrams there
     /// were. An error is the link's, and the end.
     pub fn feed(&mut self, now: Instant) -> Result<usize, Error> {
-        let Some(lobby) = &mut self.lobby else { return self.link.poll().map(|()| 0) };
+        if !self.made()? {
+            return Ok(0);
+        }
+        let Some(link) = &mut self.link else { return Ok(0) };
+        let Some(lobby) = &mut self.lobby else { return link.poll().map(|()| 0) };
         let mut heard = 0;
-        while let Some(datagram) = self.link.recv()? {
+        while let Some(datagram) = link.recv()? {
             lobby.receive(now, datagram);
             heard += 1;
         }
-        lobby.set_link_down(self.link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: self.link.gives_up_in() }));
+        lobby.set_link_down(link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: link.gives_up_in() }));
         Ok(heard)
     }
 
@@ -200,9 +270,9 @@ impl Session {
     /// Send what the lobby has to say: its own, and the frame the match's player made this frame. An error
     /// is the link's, and the end.
     pub fn send(&mut self) -> Result<(), Error> {
-        let Some(lobby) = &mut self.lobby else { return Ok(()) };
+        let (Some(lobby), Some(link)) = (&mut self.lobby, &mut self.link) else { return Ok(()) };
         for datagram in lobby.outgoing() {
-            self.link.send(&datagram)?;
+            link.send(&datagram)?;
         }
         Ok(())
     }
@@ -223,6 +293,39 @@ impl Session {
 
     /// While the link is down and being made again: the seconds it has left before it gives up.
     pub fn reconnecting(&self) -> Option<u64> {
-        self.link.gives_up_in().map(|left| left.as_secs())
+        self.link.as_ref()?.gives_up_in().map(|left| left.as_secs())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// Making a link waits on nothing: a direct host's name that resolves to nothing is the thread's to find,
+    /// and the session says so when it is fed, as the address's error.
+    #[test]
+    fn a_link_is_made_without_waiting() {
+        let net = Net { server: None, config: Config::default(), port: 0 };
+        let began = Instant::now();
+        let mut session = Session::open(Way::Address("nettai-no-such-host.invalid:47474".into()), &net).expect("a thread makes it");
+        assert!(began.elapsed() < Duration::from_millis(200), "opening waited {:?}", began.elapsed());
+        assert!(!session.is_open() && session.code().is_none());
+        let failed = loop {
+            match session.feed(Instant::now()) {
+                Ok(_) if began.elapsed() < Duration::from_secs(60) => std::thread::sleep(Duration::from_millis(10)),
+                Ok(_) => panic!("the name was never found not to resolve"),
+                Err(e) => break e,
+            }
+        };
+        assert_eq!(failed.kind, ErrorKind::BadAddress);
+    }
+
+    /// What can be said at once is: no server named, a code that can't be one.
+    #[test]
+    fn what_can_be_said_at_once_is() {
+        let none = Net { server: None, config: Config::default(), port: 0 };
+        assert_eq!(Session::open(Way::Invite, &none).err().map(|e| e.kind), Some(ErrorKind::ServerUnreachable));
+        let server = Net { server: Some("ws://127.0.0.1:9".into()), ..none };
+        assert_eq!(Session::open(Way::Code("!!".into()), &server).err().map(|e| e.kind), Some(ErrorKind::NoSuchRoom));
     }
 }
