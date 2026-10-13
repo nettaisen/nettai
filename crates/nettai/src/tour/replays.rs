@@ -541,7 +541,9 @@ mod tests {
 
     /// A folder is listed on the library's thread, newest first, a file that doesn't read among the rest with
     /// why (and by when it was written), and other files left out. Each replay is then played out there: one
-    /// whole, one cut short, and one of other content, which is told as refused and not as a failure.
+    /// whole, one cut short, and one of other content, which is told as refused and not as a failure. What was
+    /// played out is kept: a second library with the same cache takes it from there, playing nothing; a file
+    /// whose bytes changed is played out again.
     #[test]
     fn a_folder_is_listed_and_its_replays_played_out_off_the_thread() {
         let content = nettai_match::testing::exe6_content();
@@ -557,8 +559,10 @@ mod tests {
         std::fs::write(dir.join("other.ntrp"), written(&other, &info(200, 0), None)).unwrap();
         std::fs::write(dir.join("old.ntrp"), b"NTRP\x01an older nettai's").unwrap();
         std::fs::write(dir.join("notes.txt"), b"not a replay, and not named as one").unwrap();
+        let cache = dir.join("kept/replays-played.toml");
 
         let mut library = Library::default();
+        library.cache = Some(cache.clone());
         library.list(&dir);
         wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));
         let entries = library.entries.clone();
@@ -568,10 +572,11 @@ mod tests {
         let second = entries[1].read.as_ref().unwrap();
         assert_eq!((second.ticks, second.rounds.as_slice(), second.info.side, second.head.game.as_str()), (600, &[0][..], 1, "exe6"));
 
+        let hash = content.hash().0;
         for entry in &entries[1..] {
-            library.play(entry, &content);
+            library.play(entry, &content, hash);
             // (Asked twice, it is played once.)
-            library.play(entry, &content);
+            library.play(entry, &content, hash);
         }
         wait(&mut library, |found| found.iter().filter(|f| matches!(f, Found::Played(_))).count() == 3);
         let played = |at: usize| library.played(&entries[at]).unwrap();
@@ -579,6 +584,61 @@ mod tests {
         assert!(matches!(played(2), Err(Refused::OtherVersion(_))), "{:?}", played(2));
         assert!(matches!(played(3), Ok(out) if out.ticks == 900 && out.diverged.is_none()), "{:?}", played(3));
         assert!(library.played(&entries[0]).is_none());
+        // (The cache is written once the thread has nothing to do.)
+        let began = std::time::Instant::now();
+        while !cache.exists() {
+            assert!(began.elapsed() < std::time::Duration::from_secs(60), "the cache wasn't written");
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+
+        // Another run: the two that played are kept, the refused one is found refused again, and a file changed
+        // since is played out anew.
+        std::fs::write(dir.join("first.ntrp"), written(&replay, &info(100, 1), None)).unwrap();
+        let mut again = Library::default();
+        again.cache = Some(cache.clone());
+        again.list(&dir);
+        wait(&mut again, |found| found.iter().any(|f| matches!(f, Found::Listed)));
+        let entries = again.entries.clone();
+        let began = std::time::Instant::now();
+        for entry in &entries[1..] {
+            again.play(entry, &content, hash);
+        }
+        wait(&mut again, |found| found.iter().filter(|f| matches!(f, Found::Played(_))).count() == 3);
+        assert!(matches!(again.played(&entries[1]), Some(Ok(out)) if out.ticks == 600));
+        assert!(matches!(again.played(&entries[2]), Some(Err(Refused::OtherVersion(_)))));
+        assert!(matches!(again.played(&entries[3]), Some(Ok(out)) if out.ticks == 900));
+        let text = std::fs::read_to_string(&cache).unwrap();
+        assert_eq!(text.matches("[[played]]").count(), 2, "{text}");
+        eprintln!("the second listing's three answered in {:.2?}", began.elapsed());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A file whose head reads names its game whatever is wrong after it, and is listed with that game's
+    /// replays alone; one whose head doesn't read names none.
+    #[test]
+    fn a_file_that_doesnt_read_is_listed_with_the_game_its_head_names() {
+        let content = nettai_match::testing::exe6_content();
+        let dir = std::env::temp_dir().join(format!("nettai-replays-games-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let replay = record(&content, "exe6", 7, 60).unwrap();
+        let bytes = written(&replay, &Info { when: 100, ..Info::of(MatchKind::Online, 0) }, None);
+        let mut damaged = bytes.clone();
+        damaged.push(0xE0);
+        let mut other_game = replay.clone();
+        other_game.head.game = "exe5".into();
+        let mut other_damaged = written(&other_game, &Info { when: 100, ..Info::of(MatchKind::Online, 0) }, None);
+        other_damaged.push(0xE0);
+        std::fs::write(dir.join("damaged.ntrp"), &damaged).unwrap();
+        std::fs::write(dir.join("other.ntrp"), &other_damaged).unwrap();
+        std::fs::write(dir.join("old.ntrp"), b"NTRP\x01an older nettai's").unwrap();
+        let mut library = Library::default();
+        library.list(&dir);
+        wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));
+        let of = |name: &str| library.entries.iter().find(|e| e.path.ends_with(name)).map(|e| (e.read.is_ok(), e.game.clone())).unwrap();
+        assert_eq!(of("damaged.ntrp"), (false, Some("exe6".into())));
+        assert_eq!(of("other.ntrp"), (false, Some("exe5".into())));
+        assert_eq!(of("old.ntrp"), (false, None));
         let _ = std::fs::remove_dir_all(&dir);
     }
 }
