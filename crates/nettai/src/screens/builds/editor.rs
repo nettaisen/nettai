@@ -358,6 +358,16 @@ impl Editor {
         }
         let (tab, draft) = self.tab();
         tab.activate(shell, draft, id, index);
+        // (A click on one of the build's own rows, an entry, a card, a slot or a place, chooses it as Enter does,
+        // which takes the cursor on to the library for a chip or a card to put in it; but where the library is
+        // beside it (not a phone's sheet), the focus stays on what was clicked, so the next key acts on it (R, T,
+        // Del, the arrows) and a click on the library's row puts what it holds in there. The pointer down took the
+        // focus there already: this keeps it from going on.)
+        let moved_on = shell.nav.focused().is_some_and(|k| k.id.starts_with("lib.") && !id.starts_with("lib."));
+        if shell.nav.pointing() && !shell.scale.phone && moved_on {
+            shell.nav.focus(id, index);
+            tab.focused(shell, draft, id, index);
+        }
         self.after(shell);
     }
 

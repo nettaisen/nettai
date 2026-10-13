@@ -456,6 +456,12 @@ fn pointer(script: impl Fn(&Board, &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev
     })
 }
 
+/// A left click on control `id`'s `index`, then key `code` 300 ms on, as the window has them.
+fn click_then(id: &'static str, index: i32, code: KeyCode) -> Step {
+    let at = Point::Control(id, index);
+    pointer(move |_, _| Some(vec![(0, Ev::Press(at)), (40, Ev::Release(at)), (300, Ev::Key(code))]))
+}
+
 /// A right click on control `id`'s `index`.
 fn right_on(id: &'static str, index: i32) -> Step {
     pointer(move |_, _| Some(vec![(0, Ev::Right(Point::Control(id, index)))]))
@@ -669,6 +675,114 @@ fn auto_battle(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     shot(add, "tabs-auto-last", Pair::None);
 }
 
+/// A left click on control `id`'s `index`, as the window has one (pressed and let go there).
+fn click(id: &'static str, index: i32) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(position) = locate(ui, app, Point::Control(id, index)) else {
+            tour.key_wrong(format!("a click on {id} {index}: it isn't on the screen"));
+            return;
+        };
+        use slint::platform::{PointerEventButton as Button, WindowEvent as W};
+        ui.window().dispatch_event(W::PointerPressed { position, button: Button::Left });
+        ui.window().dispatch_event(W::PointerReleased { position, button: Button::Left });
+    })
+}
+
+/// A key pressed and let go as the window has it (`App::key_of`, the window's hook).
+fn press_key(code: KeyCode, text: &'static str) -> Step {
+    Box::new(move |_, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let typed = (!text.is_empty()).then(|| text.to_string());
+        app.borrow_mut().key_of(code, true, typed, false);
+        app.borrow_mut().key_of(code, false, None, false);
+    })
+}
+
+/// A check of what a click and the keys after it did: `wrong` says what isn't so, if anything (the pass reports it
+/// with the keys that didn't do what they do, and fails).
+fn expect(wrong: impl Fn(&nettai_ui::AppWindow, &App) -> Option<String> + 'static) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        if let Some(said) = wrong(ui, &app.borrow()) {
+            tour.key_wrong(said);
+        }
+    })
+}
+
+/// The focus is on control `id`'s `index`, else what it is on.
+fn focus_on(app: &App, id: &str, index: i32) -> Option<String> {
+    let at = app.shell.nav.focused();
+    (at.as_ref().map(|k| (k.id.as_str(), k.index)) != Some((id, index))).then(|| format!("the focus is on {at:?}, not {id} {index}"))
+}
+
+/// A click on one of the build's rows takes the focus there, so the keys after it act on what was clicked: in the
+/// folder, R makes the clicked entry the Regular chip, T tags another clicked one, Down goes on from it, and Del
+/// empties the entry the cursor came to; a patch card clicked and Del (it is taken out), and Down from one; an
+/// auto battle place clicked and Del (it is emptied). (A desktop's: a phone's click opens the library's sheet.)
+fn clicks(add: &mut dyn FnMut(u64, Step)) {
+    use nettai_ui::{AutoBattleView, ChipMark, FolderView, PatchCardsView};
+    add(SETTLE, to_tab(EditorTab::Folder));
+    add(SETTLE, focus("slot", 0));
+    add(SETTLE, click("slot", 3));
+    add(SETTLE, press_key(KeyCode::KeyR, "r"));
+    add(SETTLE, expect(|ui, app| {
+        let mark = ui.global::<FolderView>().get_slots().row_data(3).map(|s| s.mark);
+        focus_on(app, "slot", 3).or_else(|| (mark != Some(ChipMark::Regular)).then(|| format!("R after a click on entry 4: its mark is {mark:?}, not Regular")))
+    }));
+    // (T on two entries makes them the tag chips, where the game has them: each clicked first.)
+    add(SETTLE, click("slot", 4));
+    add(SETTLE, press_key(KeyCode::KeyT, "t"));
+    add(SETTLE, click("slot", 5));
+    add(SETTLE, press_key(KeyCode::KeyT, "t"));
+    add(SETTLE, expect(|ui, app| {
+        let view = ui.global::<FolderView>();
+        let mark = |i: usize| view.get_slots().row_data(i).map(|s| s.mark);
+        let tagged = |i: usize| matches!(mark(i), Some(ChipMark::Tag1 | ChipMark::Tag2));
+        let wrong = view.get_counts().tags && !(tagged(4) && tagged(5));
+        focus_on(app, "slot", 5).or_else(|| wrong.then(|| format!("T after clicks on entries 5 and 6: their marks are {:?} and {:?}, not the tags", mark(4), mark(5))))
+    }));
+    add(SETTLE, press_key(KeyCode::ArrowDown, ""));
+    add(SETTLE, expect(|_, app| focus_on(app, "slot", 6).map(|s| format!("Down after a click on entry 6: {s}"))));
+    add(SETTLE, press_key(KeyCode::Delete, ""));
+    add(SETTLE, expect(|ui, _| {
+        let there = ui.global::<FolderView>().get_slots().row_data(6).map(|s| s.there);
+        (there != Some(false)).then(|| "Del after a click and Down: entry 7 isn't emptied".to_string())
+    }));
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    add(SETTLE, out_of_library());
+    fn cards(ui: &nettai_ui::AppWindow) -> usize {
+        ui.global::<PatchCardsView>().get_installed().iter().filter(|c| c.there).count()
+    }
+    add(SETTLE, click("card", 1));
+    add(SETTLE, expect(|_, app| focus_on(app, "card", 1).map(|s| format!("a click on the build's second card: {s}"))));
+    add(SETTLE, press_key(KeyCode::ArrowUp, ""));
+    add(SETTLE, expect(|_, app| focus_on(app, "card", 0).map(|s| format!("Up after a click on the second card: {s}"))));
+    let before = Rc::new(std::cell::Cell::new(0usize));
+    let kept = before.clone();
+    add(SETTLE, Box::new(move |ui, _, _| kept.set(cards(ui))));
+    add(SETTLE, click("card", 0));
+    add(SETTLE, press_key(KeyCode::Delete, ""));
+    add(SETTLE, expect(move |ui, app| {
+        let was = before.get();
+        focus_on(app, "card", 0).or_else(|| (cards(ui) + 1 != was).then(|| format!("Del after a click on the first card: {} cards, not {}", cards(ui), was.saturating_sub(1))))
+    }));
+    add(SETTLE, to_tab(EditorTab::AutoBattle));
+    add(SETTLE, focus("places.place", 2));
+    add(SETTLE, click("places.place", 0));
+    add(SETTLE, press_key(KeyCode::Delete, ""));
+    add(SETTLE, expect(|ui, app| {
+        let there = ui.global::<AutoBattleView>().get_lines().iter().find(|l| !l.title && l.place == 0).map(|l| l.chip.there);
+        focus_on(app, "places.place", 0).or_else(|| (there != Some(false)).then(|| "Del after a click on place 1: it isn't emptied".to_string()))
+    }));
+}
+
 /// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
 /// of a pair).
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
@@ -676,6 +790,9 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     navicust(add, shot);
     patch_cards(add, shot);
     auto_battle(add, shot);
+    if size == "desktop" {
+        clicks(add);
+    }
     add(SETTLE, end());
 }
 
@@ -689,6 +806,10 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, to_tab(EditorTab::Folder));
     add(SETTLE, focus("slot", 0));
     burst(add, "folder-right-click", &[0, 60, 120, 200, 320, 480], right_on("slot", 3));
+    // A click on an entry and R (it is the Regular chip), a click on another and T (it is tagged): the keys act on
+    // what was clicked.
+    burst(add, "folder-click-r", &[0, 100, 250, 380, 520], click_then("slot", 8, KeyCode::KeyR));
+    burst(add, "folder-click-t", &[0, 100, 250, 380, 520], click_then("slot", 10, KeyCode::KeyT));
     add(SETTLE, to_tab(EditorTab::Navicust));
     burst(add, "navicust-lift", &[0, 30, 60, 100, 160, 260], take(0, program));
     burst(add, "navicust-move", &[0, 30, 60, 100, 160], act(Action::Right));
@@ -741,6 +862,11 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, out_of_library());
     burst(add, "cards-right-click", &[0, 30, 60, 90, 120, 160, 220, 320, 480], right_on("card", 0));
+    add(SETTLE, library());
+    add(SETTLE, focus("lib.rows", 0));
+    add(SETTLE, act(Action::Confirm));
+    // A click on the build's card, the cursor in the library, and Del: it is taken out.
+    burst(add, "cards-click-del", &[0, 100, 250, 330, 420, 560], click_then("card", 0, KeyCode::Delete));
     add(SETTLE, library());
     add(SETTLE, focus("lib.rows", 0));
     add(SETTLE, act(Action::Confirm));

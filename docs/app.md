@@ -1144,6 +1144,13 @@ place holds takes it out again (it flies back; its hint Remove, `on-placed`), De
 (their `validate`: one its navi can't play) isn't put: its row shakes and the strip says why, worded for the
 part (`Words::problem`: "{chip} can't be played in auto battle").
 
+**A click chooses** one of the build's rows (a folder's entry, a patch card or an EXE4 slot, an auto battle place)
+as Enter does, but where the library is beside it the focus stays on what was clicked (the editor's `activate`
+brings it back from the library the tab's Enter went on to), so the next key acts on it (R, T, Del, the arrows)
+and a click on a library row puts what it holds there; a phone's click opens the library's sheet, as Enter.
+The pass checks it as the window has it (`build_tabs::clicks`: a click, then R, T, Down and Del in the folder, Up
+and Del on a patch card, Del on a place).
+
 **A right click removes**, as Del does, wherever the build holds something: a folder's entry (its Regular mark and
 tags with it), a placed NaviCust piece on the board or a placed program's row (its last copy), an auto battle
 place, a patch card in the build's list or on its row in the library (in a game with slots, its slot emptied).
