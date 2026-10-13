@@ -6,9 +6,10 @@
 //!
 //! The bundled font is Murecho (fonts/murecho, SIL Open Font License 1.1):
 //! a sans with Latin, Greek, Cyrillic, kana and some 2,300 kanji, in one
-//! variable file with a weight axis. A font with a width axis (`--font`)
-//! draws a name too wide for the original's box in a narrower cut of
-//! itself before squeezing it.
+//! variable file with a weight axis. A role's text has one size (`Role`):
+//! a string too wide for the original's box is narrowed to it, never made
+//! smaller; a font with a width axis (`--font`) draws it in a narrower cut
+//! of itself before narrowing it.
 
 use crate::compose::{HEIGHT, WIDTH, apply_fade, to_rgb};
 use crate::present::Placement;
@@ -27,17 +28,18 @@ use swash::{CacheKey, FontRef, GlyphId, Setting};
 pub const BUNDLED: &[u8] = include_bytes!("../fonts/murecho/Murecho-VariableFont_wght.ttf");
 
 /// The narrowest width a font with a width axis condenses a name to
-/// before it squeezes it (the axis's "condensed").
+/// before it narrows it (the axis's "condensed").
 const NARROWEST: f32 = 75.0;
-/// A string is squeezed horizontally down to this before it is made
-/// smaller; one with kana or kanji down to `WIDE_SQUEEZE`.
-const SQUEEZE: f32 = 0.85;
-const WIDE_SQUEEZE: f32 = 0.7;
 
-/// Whether a character is a wide one (kana, kanji, full-width forms).
-fn wide(c: char) -> bool {
+/// Whether a character is drawn by the font's kana and kanji metrics (kana,
+/// kanji, their punctuation, full-width forms): see [`Face`].
+fn cjk(c: char) -> bool {
     matches!(c, '\u{3000}'..='\u{9FFF}' | '\u{F900}'..='\u{FAFF}' | '\u{FF00}'..='\u{FFEF}')
 }
+
+/// The full-size katakana whose ink the font's kana box is measured from
+/// ([`Face`]): no voiced, small or long forms.
+const KANA: &str = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン";
 /// A button's letter (Ⓐ drawn by the text layer) against the text's size,
 /// and its ring's diameter and stroke against the capitals' height.
 const BUTTON_LETTER: f32 = 0.68;
@@ -60,20 +62,27 @@ const HINT_BELOW: u32 = 40;
 const CACHE_GLYPHS: usize = 4096;
 
 /// What a string is drawn as: which of the original's fonts it stands in
-/// for, which sets its size, its place in its box and its weight.
+/// for, which sets its size, its place in its box and its weight. A role's
+/// size is fixed: every string of it is drawn at it, and one too wide for
+/// its box is narrowed, never made smaller.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Role {
     /// The 8x16 font's strings (names, the telop, the HUD's lines): a cell
-    /// 16 rows high whose capitals take rows 4 to 13; bold, with a shadow.
+    /// 16 rows high whose capitals, digits and kana take rows 4 to 13;
+    /// bold, with a shadow.
     Cell,
     /// The dialogue font's (the chatbox): lines 12 rows high whose
-    /// capitals take rows 0 to 10.
+    /// capitals, digits and kana take rows 1 to 10 (the Japanese font's;
+    /// the US font's capitals rows 0 to 10).
     Dialogue,
 }
 
 #[derive(Clone, Copy, Debug)]
 struct Style {
-    /// Capital height, in frame pixels.
+    /// Capital height, in frame pixels; the kana's too: kana and kanji are
+    /// drawn at the size that makes the font's kana box ([`Face`]) this
+    /// high, centered on the capitals, as the original's kana stand in its
+    /// capitals' rows.
     cap: f32,
     /// The baseline, down from the box's top, in frame pixels.
     baseline: f32,
@@ -92,6 +101,22 @@ impl Role {
             Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0 },
         }
     }
+}
+
+/// Where a font's kana stand, at a weight: the median top and bottom of
+/// the ink of its full-size katakana ([`KANA`]), over the em, up from the
+/// baseline. A Japanese font draws its kana and kanji in its em box, which
+/// sits lower than its capitals and is taller (Murecho's bold kana are 1.1
+/// times its capitals' height and reach 0.05 em under the baseline), where
+/// the original's fonts draw kana in their capitals' rows; the text layer
+/// draws them at the size that makes this box the capitals' height,
+/// centered on the capitals. One measure of the font's, so every kana and
+/// kanji of a string, and of every string, shares one size and one
+/// baseline with its Latin.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Face {
+    top: f32,
+    bottom: f32,
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -249,10 +274,7 @@ struct Layout {
     glyphs: Vec<Placed>,
     rings: Vec<Ring>,
     width: f32,
-    /// How far the baseline moves down (a string made smaller stays
-    /// centered on its capitals).
-    drop: f32,
-    /// A static font's horizontal squeeze.
+    /// How much it is narrowed to fit its box (1: not at all).
     xscale: f32,
 }
 
@@ -277,6 +299,9 @@ pub struct TextRenderer {
     shaper: ShapeContext,
     layouts: HashMap<(String, Role, i32), Layout>,
     glyphs: HashMap<GlyphKey, Option<Image>>,
+    /// The font's kana box by weight (16ths), once measured (none: the
+    /// font has no kana).
+    faces: HashMap<i32, Option<Face>>,
     made: Made,
 }
 
@@ -299,6 +324,7 @@ impl TextRenderer {
             shaper: ShapeContext::new(),
             layouts: HashMap::new(),
             glyphs: HashMap::new(),
+            faces: HashMap::new(),
             made: Made::default(),
         }
     }
@@ -331,18 +357,16 @@ impl TextRenderer {
         &self.layouts[&key]
     }
 
-    /// Lay `text` out within `room` frame pixels: at the role's size and
-    /// the font's normal width if it fits; else, with a width axis, in
-    /// narrower cuts down to [`NARROWEST`]; else squeezed horizontally down
-    /// to [`SQUEEZE`] ([`WIDE_SQUEEZE`] for a string with kana or kanji,
-    /// whose glyphs are an em wide where the original's cells are half
-    /// that); else that, smaller. Never wider than the room.
+    /// Lay `text` out within `room` frame pixels, at the role's size and on
+    /// its baseline whatever its length: at the font's normal width if it
+    /// fits; else, with a width axis, in narrower cuts down to
+    /// [`NARROWEST`]; else narrowed horizontally to the room, its height
+    /// and baseline unchanged. Never wider than the room, never smaller.
     fn fit(&mut self, text: &str, role: Role, room: f32) -> Layout {
         let st = role.style();
-        let size = st.cap / self.font.cap;
         let weight = self.font.weight.map(|a| st.weight.clamp(a.min, a.max));
         let mut width = self.font.width.map(|a| a.default.clamp(a.min, a.max));
-        let mut l = self.shape(text, size, width, weight);
+        let mut l = self.shape(text, st, width, weight);
         if l.width <= room || l.width <= 0.0 {
             return l;
         }
@@ -350,19 +374,13 @@ impl TextRenderer {
             let narrowest = NARROWEST.clamp(a.min, a.default);
             for k in 1..=8 {
                 width = Some(a.default + (narrowest - a.default) * k as f32 / 8.0);
-                l = self.shape(text, size, width, weight);
+                l = self.shape(text, st, width, weight);
                 if l.width <= room {
                     return l;
                 }
             }
         }
-        let least = if text.chars().any(wide) { WIDE_SQUEEZE } else { SQUEEZE };
-        let x = room / l.width;
-        let (xscale, f) = if x >= least { (x, 1.0) } else { (least, x / least) };
-        if f < 1.0 {
-            l = self.shape(text, size * f, width, weight);
-            l.drop = st.cap * (1.0 - f) / 2.0;
-        }
+        let xscale = room / l.width;
         for g in &mut l.glyphs {
             g.x *= xscale;
         }
@@ -374,13 +392,60 @@ impl TextRenderer {
         l
     }
 
-    /// Shape `text` at `size` (frame pixels an em): runs of characters with
-    /// the font's kerning; a mark the font has no glyph for as the layer
-    /// draws it ([`mark`]): a button's letter, smaller, in a ring centered on
-    /// the capitals, or a stacked mark's two letters, each half the
-    /// capitals' height less a gap, the first above the second, filling
+    /// The font's kana box at `weight` ([`Face`]), measured once.
+    fn face(&mut self, weight: Option<f32>) -> Option<Face> {
+        let key = weight.map_or(0, |w| (w * 16.0).round() as i32);
+        if let Some(&f) = self.faces.get(&key) {
+            return f;
+        }
+        let font = self.font.font();
+        let cmap = font.charmap();
+        let upem = font.metrics(&[]).units_per_em as f32;
+        let settings: Vec<Setting<f32>> = weight.filter(|_| self.font.weight.is_some()).map(|w| ("wght", w).into()).into_iter().collect();
+        let mut scaler = self.scaler.builder(font).size(upem).variations(settings).build();
+        let (mut tops, mut bottoms) = (Vec::new(), Vec::new());
+        for c in KANA.chars() {
+            let id = cmap.map(c);
+            if id == 0 {
+                continue;
+            }
+            if let Some(o) = scaler.scale_outline(id) {
+                let b = o.bounds();
+                if b.max.y > b.min.y {
+                    tops.push(b.max.y / upem);
+                    bottoms.push(b.min.y / upem);
+                }
+            }
+        }
+        let median = |v: &mut Vec<f32>| {
+            v.sort_by(f32::total_cmp);
+            v[v.len() / 2]
+        };
+        let f = (tops.len() >= KANA.chars().count() / 2).then(|| Face { top: median(&mut tops), bottom: median(&mut bottoms) });
+        self.faces.insert(key, f);
+        f
+    }
+
+    /// Shape `text` in a role's style: runs of characters with the font's
+    /// kerning, Latin and the rest at the size that gives the capitals the
+    /// role's height, kana and kanji at the size that gives the font's
+    /// kana box that height too, raised or lowered onto the capitals'
+    /// middle ([`Face`]); a mark the font has no glyph for as
+    /// the layer draws it ([`mark`]): a button's letter, smaller, in a ring
+    /// centered on the capitals, or a stacked mark's two letters, each half
+    /// the capitals' height less a gap, the first above the second, filling
     /// one cell between the capitals' top and the baseline.
-    fn shape(&mut self, text: &str, size: f32, width: Option<f32>, weight: Option<f32>) -> Layout {
+    fn shape(&mut self, text: &str, st: Style, width: Option<f32>, weight: Option<f32>) -> Layout {
+        let size = st.cap / self.font.cap;
+        // Kana and kanji: their size, and how far up from the baseline
+        // their glyphs' origin goes.
+        let (kana_size, kana_rise) = match self.face(weight) {
+            Some(f) => {
+                let k = st.cap / (f.top - f.bottom);
+                (k, st.cap / 2.0 - k * (f.top + f.bottom) / 2.0)
+            }
+            None => (size, 0.0),
+        };
         let font = self.font.font();
         let cmap = font.charmap();
         let cap = self.font.cap;
@@ -436,8 +501,12 @@ impl TextRenderer {
                     i += 1;
                 }
                 None => {
-                    let j = (i + 1..chars.len()).find(|&k| drawn[k].is_some()).unwrap_or(chars.len());
+                    // A run: up to the next mark the layer draws, or to where
+                    // kana and kanji start or end.
+                    let kana = cjk(chars[i].1);
+                    let j = (i + 1..chars.len()).find(|&k| drawn[k].is_some() || cjk(chars[k].1) != kana).unwrap_or(chars.len());
                     let (start, end) = (chars[i].0, chars.get(j).map_or(text.len(), |c| c.0));
+                    let (size, rise) = if kana { (kana_size, kana_rise) } else { (size, 0.0) };
                     let s = settings(weight);
                     let mut b = self.shaper.builder(font).size(size).variations(s.iter().copied()).build();
                     b.add_str(&text[start..end]);
@@ -445,7 +514,7 @@ impl TextRenderer {
                         let at = start + c.source.start as usize;
                         let unit = chars.partition_point(|&(k, _)| k <= at).saturating_sub(1);
                         for g in c.glyphs {
-                            out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: g.y, size, width, weight, stretch: 1.0, unit });
+                            out.glyphs.push(Placed { id: g.id, x: pen + g.x, y: rise + g.y, size, width, weight, stretch: 1.0, unit });
                             pen += g.advance;
                         }
                     });
@@ -505,7 +574,7 @@ impl TextRenderer {
                 Align::Center => ((item.rect.w as f32 - layout.width) / 2.0).round(),
                 Align::Right => item.rect.w as f32 - layout.width,
             };
-        let baseline = item.rect.y as f32 + st.baseline + layout.drop;
+        let baseline = item.rect.y as f32 + st.baseline;
         // The squash: about the box's middle, cut by its rows.
         let (k, baseline, clip) = match item.vscale {
             Some(n) if n > 0 => {
@@ -553,7 +622,7 @@ impl TextRenderer {
                 }
             }
             // A button mark's ring: antialiased, its stroke inside its
-            // outer edge, squeezed and squashed with the text.
+            // outer edge, narrowed and squashed with the text.
             for r in layout.rings.iter().filter(|r| r.unit < shown) {
                 let (rx, ry) = (r.radius * layout.xscale * s, r.radius * k * s);
                 let stroke = (BUTTON_STROKE * st.cap * s).max(1.0);
@@ -734,26 +803,55 @@ mod tests {
         assert!(!lit_columns(dark, depth).iter().any(|&l| l));
     }
 
+    /// A string too wide for its box is narrowed to it, however much: its
+    /// glyphs keep the role's size and baseline (the bundled font has no
+    /// width axis).
     #[test]
-    fn a_squeeze_comes_before_a_smaller_size() {
-        // (The bundled font has no width axis: it is squeezed.)
+    fn a_string_too_wide_is_narrowed_never_made_smaller() {
         let mut r = renderer();
-        let wide = r.fitted_width("WWWWWWWW", Role::Cell, 1000);
-        // Just too wide: squeezed, not made smaller.
-        let l = r.layout("WWWWWWWW", Role::Cell, (wide * 0.95) as i32).clone();
-        assert_eq!(l.drop, 0.0);
-        assert!(l.xscale < 1.0 && l.xscale >= SQUEEZE);
-        // Far too wide: squeezed all it may be, and smaller.
-        let l = r.layout("WWWWWWWW", Role::Cell, (wide * 0.3) as i32).clone();
-        assert!(l.drop > 0.0);
-        assert_eq!(l.xscale, SQUEEZE);
+        let natural = r.layout("WWWWWWWW", Role::Cell, 1000).clone();
+        for k in [0.95, 0.6, 0.3] {
+            let room = (natural.width * k) as i32;
+            let l = r.layout("WWWWWWWW", Role::Cell, room).clone();
+            let fits = (room as f32 - Role::Cell.style().margin) / natural.width;
+            assert!((l.xscale - fits).abs() < 1e-4, "{k}: {} for {fits}", l.xscale);
+            assert_eq!(l.glyphs.len(), natural.glyphs.len());
+            for (g, n) in l.glyphs.iter().zip(&natural.glyphs) {
+                assert_eq!((g.size, g.y), (n.size, n.y), "{k}");
+                assert!((g.x - n.x * l.xscale).abs() < 1e-3);
+            }
+        }
     }
 
+    /// Kana and kanji share one size and one baseline with the Latin of
+    /// their role, in every string: the font's kana box is the capitals'
+    /// height, centered on them, whatever the string's length or its box.
     #[test]
-    fn kana_and_kanji_lay_out() {
+    fn kana_stand_on_the_capitals_at_one_size() {
         let mut r = renderer();
-        let w = r.fitted_width("ガンデルソル3", Role::Cell, 64);
-        assert!(w > 0.0 && w <= 64.0);
+        for role in [Role::Cell, Role::Dialogue] {
+            let st = role.style();
+            let face = r.face(Some(st.weight)).expect("Murecho has kana");
+            assert!(face.bottom < 0.0 && face.top > r.font.cap, "{face:?}: lower and taller than the capitals");
+            let mut sizes = Vec::new();
+            for (text, room) in [("キャノン", 1000), ("バッドメディスン", 64), ("ロックマンEXE", 56), ("攻撃力✕2", 160), ("ガンデルソル3", 56)] {
+                let l = r.layout(text, role, room).clone();
+                let kana: Vec<&Placed> = l.glyphs.iter().filter(|g| text.chars().nth(g.unit).is_some_and(cjk)).collect();
+                assert!(!kana.is_empty() && kana.iter().all(|g| g.id != 0), "{text}");
+                for g in &kana {
+                    let (top, bottom) = (g.y + g.size * face.top, g.y + g.size * face.bottom);
+                    assert!((top - bottom - st.cap).abs() < 1e-3, "{text}: the kana box {bottom}..{top}");
+                    assert!(((top + bottom) / 2.0 - st.cap / 2.0).abs() < 1e-3, "{text}: on the capitals' middle");
+                    sizes.push(g.size);
+                }
+                // The Latin of the string: on the baseline, at the
+                // capitals' size.
+                for g in l.glyphs.iter().filter(|g| !text.chars().nth(g.unit).is_some_and(cjk)) {
+                    assert_eq!((g.y, g.size), (0.0, st.cap / r.font.cap), "{text}");
+                }
+            }
+            assert!(sizes.windows(2).all(|w| w[0] == w[1]), "{role:?}: one size");
+        }
         let l = r.layout("熱斗", Role::Dialogue, 192).clone();
         assert_eq!(l.glyphs.len(), 2);
         assert!(l.glyphs.iter().all(|g| g.id != 0));
