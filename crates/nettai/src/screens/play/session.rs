@@ -13,7 +13,7 @@
 
 use nettai_battle::Content;
 use nettai_frontend::connection::{Ping, Reconnecting};
-use nettai_frontend::lobby::{Agreement, Failure, Lobby, MatchChannel, Role, Settings, Status, entropy};
+use nettai_frontend::lobby::{Agreement, Failure, Lobby, MatchChannel, Role, Settings, Status};
 use nettai_match::Side;
 use nettai_rtc::{Config, Error, ErrorKind, Link};
 use std::sync::Arc;
@@ -144,14 +144,15 @@ impl Session {
     }
 
     /// The link is open: the lobby over it, in the link's role, holding `settings` (a joiner's last until it
-    /// hears the host's) and bringing `side`, this player named `name`. False while the link has no role.
-    pub fn make_lobby(&mut self, content: &Arc<Content>, settings: Settings, side: Side, name: &str) -> bool {
+    /// hears the host's) and bringing `side`, this player named `name`, its nonces drawn from `entropy`. False
+    /// while the link has no role.
+    pub fn make_lobby(&mut self, content: &Arc<Content>, settings: Settings, side: Side, name: &str, entropy: u64) -> bool {
         let role = match self.link.role() {
             Some(nettai_rtc::Role::Host) => Role::Host,
             Some(nettai_rtc::Role::Join) => Role::Join,
             None => return false,
         };
-        let mut lobby = Lobby::new(role, content, settings, side, entropy(), LOBBY_TIMEOUT);
+        let mut lobby = Lobby::new(role, content, settings, side, entropy, LOBBY_TIMEOUT);
         lobby.set_name(name);
         self.lobby = Some(lobby);
         true

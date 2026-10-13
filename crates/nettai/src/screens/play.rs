@@ -444,7 +444,9 @@ impl Play {
             return self.ended(shell, Some(UserError::Other));
         };
         let rounds = shell.settings.remembered.get(REMEMBERED_ROUNDS).and_then(|r| r.parse().ok()).filter(|r| ROUNDS.contains(r)).unwrap_or(ROUNDS[1]);
-        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), Settings::new(&game, rounds), side, &shell.settings.name));
+        // (The screenshot pass's matches are the same from run to run.)
+        let entropy = tour::entropy().unwrap_or_else(nettai_frontend::lobby::entropy);
+        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), Settings::new(&game, rounds), side, &shell.settings.name, entropy));
         if !made {
             return;
         }
