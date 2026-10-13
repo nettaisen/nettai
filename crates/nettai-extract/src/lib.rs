@@ -253,8 +253,9 @@ pub fn extract_reporting(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32
 /// its lettering.
 const JAPANESE: &str = "ja";
 
-/// The share of an extraction's time its graphics take, the sound the rest ([`extract_reporting`]; measured on
-/// the three games' four ROMs each).
+/// The share of an extraction's time its graphics take, the sound the rest ([`extract_reporting`]). (Not
+/// measured apart: the whole is a few hundredths of a second for a game's four ROMs in a release build, and a
+/// pack's writing, with its encoding, nearly all of its time.)
 const GRAPHICS_SHARE: f32 = 0.6;
 
 fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
@@ -435,8 +436,9 @@ impl Extraction {
             )));
         }
         let files = self.files()?;
-        // (The share of the time the files' making and their writing take; their reading back is the rest.)
-        let (made, written) = (0.15, 0.55);
+        // (The share of the time the files' making (their encoding) and their writing take, their reading back
+        // the rest: about 40, 30 and 30 of 100 for each game's four ROMs, in a release build.)
+        let (made, written) = (0.4, 0.7);
         progress(made);
         let total = files.iter().map(|(_, data)| data.len() as u64).sum::<u64>().max(1);
         let mut done = 0;
