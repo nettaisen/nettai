@@ -813,8 +813,11 @@ mod tests {
 
     /// Live play's keys on each game's custom screen, held as a person
     /// holds them (eight ticks), the cursor on the first chip: R opens the
-    /// chip's description, L the navi's no-running message, SELECT hides
-    /// the window; each stays when the key is let go.
+    /// chip's description, SELECT hides the window; each stays when the key
+    /// is let go. L, the run key, is the match's host's
+    /// (`nettai_match::HOST_KEYS`: nobody runs from a match), so it opens
+    /// nothing; in a round whose host takes no keys, a console's, it opens
+    /// the navi's no-running message, which stays too.
     #[test]
     fn rl_and_select_work_on_each_games_live_screen() {
         for game in ["exe4", "exe5", "exe6"] {
@@ -823,9 +826,13 @@ mod tests {
                 "exe5" => nettai_match::testing::exe5_content(),
                 _ => nettai_match::testing::exe6_content(),
             };
-            for key in [keys::R, keys::L, keys::SELECT] {
+            let hosts = nettai_match::HOST_KEYS;
+            for (key, host_keys) in [(keys::R, hosts), (keys::L, hosts), (keys::L, nettai_battle::HostKeys::NONE), (keys::SELECT, hosts)] {
                 let m = nettai_match::pick::live(&content, game, 5, None).unwrap();
-                let mut live = LivePlayer::new(Set::of(&content, &m, 5));
+                let set = Set::of(&content, &m, 5);
+                let first = RoundSetup { host_keys, ..set.first().clone() };
+                let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+                let mut live = LivePlayer::new(Set::new(content.clone(), first, folders));
                 let mut b = live.start();
                 play_until(&mut live, &mut b, 4000, |_, _| 0, |b| choosing(b).is_some());
                 keys_in_turn(&mut live, &mut b, &[0; 20]);
@@ -835,10 +842,11 @@ mod tests {
                 let phase = b.custom.sides[0].screen.unwrap().phase;
                 let right = match key {
                     keys::R => matches!(phase, Phase::Description { window: None, .. }),
+                    keys::L if host_keys.run => phase == Phase::Choosing,
                     keys::L => matches!(phase, Phase::RunMessage { chatbox: Some(_) }),
                     _ => matches!(phase, Phase::Hidden { .. }),
                 };
-                assert!(right, "{game}: key {key:#x}: {phase:?}");
+                assert!(right, "{game}: key {key:#x}, {host_keys:?}: {phase:?}");
             }
         }
     }
