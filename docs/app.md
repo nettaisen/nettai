@@ -9,8 +9,9 @@ screen is added or filled in (§2), and the parts every screen shares (§3, §9 
 What exists: the design system, focus and navigation, the keyboard, mouse, touch and gamepads, scaling and the
 upright-phone switch, the languages, the errors and the log, Loading, the main menu with its reel and the title
 music, Settings, the two cards before a battle, and the battle's host with its menu overlay. Training is built
-(§15). Play, Builds and Replays are registered and reachable, each with its header and Back and an empty body:
-each is one Slint file and one Rust module, to be filled in without editing a shared file (§2).
+(§15), and Play, the netplay UI (§4). Builds and Replays are registered and reachable, each with its header and
+Back and an empty body: each is one Slint file and one Rust module, to be filled in without editing a shared
+file (§2).
 
 Builds is filled in (§8): the list with a build's overview, a new build, a save's import, and the editor with
 its Navi and Folder tabs; its NaviCust, patch card and auto battle tabs are empty, behind the editor's tab
@@ -90,9 +91,9 @@ to 318):
 Minimizing and restoring each stop the app for about 0.4 seconds (the system's animation, on the window's
 thread): the ticks of that time are lost, as with any stall that long. With the window in view the latency
 figures are the same with the timer and without (§5: 119.5 to 120.0 frames a second, a key to its picture 10.4
-ms against 10.6, measured back to back). Not tested: the app's own window moved to another desktop (nothing
-moves one without the user), a link's polling itself (no screen has one yet: it rides the same frames), and
-other systems.
+ms against 10.6, measured back to back). A link's polling rides the same frames, and was measured between two
+apps since (§4, "The window away under a link"). Not tested: the app's own window moved to another desktop
+(nothing moves one without the user), and other systems.
 
 Slint on Apple's systems draws its frames from a display link with no window event before them. Its Skia renderer
 on Metal never calls `BeforeRendering`, so the clock needs femtovg, on OpenGL here and WebGL on the web; the app
@@ -143,7 +144,8 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
 - Esc opens nettai's menu;
-- in training, R (or F5) starts the set over, unless the player bound it to a button.
+- in training, R (or F5) starts the set over, unless the player bound it to a button;
+- in an online match, Tab held shows both builds (§4): no button can be bound to it.
 
 **The gamepads** are read through [gamepad-facade](https://github.com/tangobattle/gamepad-facade) (SDL3's
 gamepads behind a small API; the user's choice) and polled each frame (`input::Pad`). Every pad plays the one
@@ -251,10 +253,11 @@ again, and so that the UI can be built without optimization (§14).
                       awake.rs                                          the app's time kept (§1)
                       settings.rs lang.rs paths.rs errors.rs tour.rs  §9, §3, §12, §13
                       tour/<name>.rs                                    a screen's steps of the screenshot pass
-                      lobby.rs netplay.rs replays.rs builds/            kept for the screens to come (§4, §8)
+                      replays.rs builds/                                kept for the screens to come (§8)
                       screens/<name>.rs
+                      screens/play/session.rs tour.rs                 Play's link and lobby; its part of §13
 
-**A screen is one Slint file and one Rust module.** Menu, Settings and Training are built; Play, Builds and
+**A screen is one Slint file and one Rust module.** Menu, Settings, Training and Play are built; Builds and
 Replays are their headers. `ui/screens/play.slint` holds:
 
 - `PlayView`, a global: the screen's data, which its Rust module sets (and may read back). A struct or an enum
@@ -263,7 +266,8 @@ Replays are their headers. `ui/screens/play.slint` holds:
   the footer's key hints, and the screen's own parts in the body.
 - `PlayOverlay`: what the screen opens over itself (its dialogs, on a phone its sheets), over the whole window.
   (A screen that opens nothing has none, and no `if` for one in app.slint: Training.)
-- For Training and Play, the menu over their battle (`TrainingMenu`, `MatchMenu`, each a `MenuOverlay`).
+- For Training and Play, the menu over their battle (`TrainingMenu`, `MatchMenu`, each a `MenuOverlay`); for
+  Play also `MatchPeek`, what shows over an online match with no menu open.
 
 One thing to know in all of them: a part placed in a `Page`, a `MenuOverlay` or a `DialogFrame` is laid out in
 the area the component gives it, but `parent` there is Slint's lexical parent, the whole component. Its parts
@@ -307,7 +311,9 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 - *A battle:* `start_battle(BattleStart)`: who owns it, which menu Start opens, the set and what plays it, the
   two cards, whether it fills the window, and for an online match a `gate` that is told this side's fraction
   each frame and answers the other side's (the lobby's `set_loading` and `their_loading`: the battle starts when
-  both are 1). Then `open_menu`, `close_menu`, `end_battle`, and `battle` for the player itself
+  both are 1), with `Play::Make` for a driver that can be made only as the battle begins (the match's, on the
+  channel its lobby gives once both sides have loaded: §4). Then `open_menu`, `close_menu`, `end_battle`, and
+  `battle` for the player itself
   (`battle.stage.player`: the dummy's choices) and `battle.restart()` (a battle that can stop, from its start:
   it runs again, and its owner will hear of its next end). `loading_of(owner)` says whose battle the cards are
   making ready. The shell owns no link and no lobby, and decides nothing when a battle ends: the owner is told
@@ -401,25 +407,191 @@ beside the others).
 
 ## 4. Netplay
 
-The Play screen isn't built. What is there for it:
+Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match", "After a match"):
+`ui/screens/play.slint` and `src/screens/play.rs`, with the link and the lobby in `screens/play/session.rs`.
 
-- **The link** (`lobby.rs`, `LobbyState`): made in a room of nettai-rtc's signaling server (a code typed, or a
-  new room, whose code the server picks) or directly (an address, or this machine hosting on UDP port 47474).
-  It is the session alone: it shows nothing and reads no screen.
-- **The agreeing** over it (`netplay.rs`: `Agreeing`, and `Framed`, the link taken for one match's channel) is
-  the first app's way, kept compiling against the library. The library's `Lobby` now lives for as long as the
-  two players stay together and carries their matches' frames (docs/frontend.md §2, "After a match"): the host
-  runs one loop from the link opening until it is dropped, whatever is on screen, and the match's channel is
-  `lobby.channel()`. `Screen::frame` and `Screen::frame_end` are that loop's two halves for the Play screen: feed
-  every datagram to the lobby; then, after the battle's ticks, poll it and send what it has to send.
-- **What a player is told** when it goes wrong: each layer's error is a kind and a detail, and
-  `UserError::of_link`, `of_lobby` and `of_stop` give the kind's sentence and write the detail to the log (§12).
-- **The connection's quality** in a match: the battle's host shows the library's four bars and the round trip
-  in a corner, and "Reconnecting N s" while the link is down.
-- **The input delay**: Settings keeps the player's (Online, 4 by default, 0 to 10: the library's range), for the
-  lobby to start with (`NetOptions::input_delay`).
+**The screen has three parts**, one shown at a time (`PlayView.part`), and two things over a match:
 
-The signaling server isn't deployed. Run it locally:
+- **The builds.** The player's builds of the selected game as a list, as the Builds screen lists them
+  (`builds::shelf::load`, its `BuildRow`s: each read from its file and checked by the game's rules; one that
+  can't be played says how many problems it has, in the error red), the chosen one's overview beside it (the
+  wide sheet, §8), and one row under them: CREATE INVITE, the code's field with JOIN
+  and a space for a message, DIRECT CONNECT. The chosen build is the one under the list's cursor, remembered by
+  game. With no build of the game there is one button in the list's place, which goes to Builds, and the row
+  is unavailable. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
+  whatever it was typed with (`code_typed`, `code_shown`). A pad can't type: its confirm on the field opens the
+  code as six boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through
+  a box's characters (the alphabet codes are written in), and a character typed goes into the box and on to
+  the next. (A box is a list to the app's focus, its rows all in one place: `CodeBox`, `Nav::set_row`.) DIRECT
+  CONNECT opens a dialog (a `DialogFrame` in `PlayOverlay`, its scope `direct.`): this machine's address with
+  COPY, and HOST; an address's field, and CONNECT.
+- **Waiting** for the other player: the invite's code (a direct host's address), large, in fixed-width type,
+  with COPY CODE and CANCEL, and a training session beside it in a `Picture` of the screen's own. The session
+  is Training's (`training::start` with `Start::beside`, §2: the player's build against a copy of it that
+  stands still; Training owns its battle, starts its sets over and hears its menu), with Play's rows at the
+  top of the training menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
+  menu, and CANCEL INVITE (STOP HOSTING), each heard as `Screen::answered` by the tag Play gave. The keys are
+  the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc or Start
+  opens the training menu. The session ends when the other player comes (`training::end`) or the wait is
+  given up.
+  *On a phone* a battle has its pad only where it fills the window (§2), and a battle to watch is no training:
+  so there the session isn't started with the wait. The invite shows with a TRAINING button under it; the
+  session then fills the window, pad and MENU under the picture as in any battle, and its menu has a third
+  row of Play's, STOP TRAINING, which goes back to the invite. The other player coming ends it for the lobby
+  as on the desktop.
+- **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
+  the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
+  nothing of a build), one row of settings (Rounds, Patch cards and Closed builds are the match's: either
+  player changes them, both see it, and both ready marks clear; Input delay is the player's own, and is the
+  Settings' value, kept as it is changed) with the connection's bars and round trip at its end, READY, CHANGE
+  BUILD (a list of the builds, in a dialog; nothing of the new one is said to the other player) and LEAVE, and
+  a line that is there whether or not it says anything: who is waited for, "Reconnecting N s" while the link is
+  down, or why the match before ended. In the row each setting's name is over its control (`LobbyFacts`): with
+  the names beside them, as the mockup has three, five cells don't fit the window in a language a third longer
+  than English. On a phone each is a line, its name at the left. Left and Right change a setting, so the row
+  can't be walked with them: Tab does, and in the lobby so do the shoulders and the keys bound to L and R
+  (`Screen::action`). Patch cards is the lobby's own setting (`Lobby::set_patch_cards`, on at first; off,
+  neither player's cards apply and each build plays without them: docs/frontend.md §2). The lobby checks this
+  player's build as the settings would play it whenever either changes (`Lobby::problems`, typed); while it
+  has a problem READY is refused (`Lobby::set_ready` says so, and the mark is the lobby's answer) and the line
+  says what is wrong with it, in the error red. So CHANGE BUILD takes any build whose
+  file reads, and the lobby is what says one can't be played.
+- **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, YOUR BUILD,
+  THEIR BUILD (not with closed builds), CONTROLS (what is bound to each button, to read), SETTINGS (the input
+  delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
+- **Both builds** (`MatchPeek`, which app.slint shows over an online match): while Tab is held (`Keys::tab`), or
+  the pad's button bound to SELECT, the player's build on their side and the other player's on theirs; with
+  closed builds the player's own alone. The match takes its keys meanwhile.
+
+Where a build is shown whole, it is the Builds screen's overview (`BuildOverview`, filled by
+`builds::overview::sheet`, §8): beside the list, the wide sheet of the build as it is (made again only when
+the build chosen or the language changes); a player's panel in a match, on its YOUR BUILD and THEIR BUILD
+pages and while Tab is held, the narrow sheet of the agreement's side, which is the build as the match plays
+it (without its patch cards where those were off), under the player's name. The menu's page is shorter than
+the sheet at the reference size, so it scrolls (a `ScrollPage`: the wheel, a drag; no control in it to move
+to). On a phone a sheet is a column taller than the window: the menu's page scrolls it, and with Tab held each
+of the two is half the window, its top (the navi, its stats, abilities and bugs). This player's card in the
+lobby says the build's name, navi and version as the settings would play it (`Lobby::side_as_played`).
+
+**The link and the lobby** are one `Session` (`session.rs`), and the screen runs the library's one loop over it
+(docs/design/rollback.md §4.7, "What a host does") in its two frame halves, whatever is on screen:
+
+- `Screen::frame`, before the battle's ticks: `Session::feed` gives every datagram the link has to the lobby, a
+  match's frames too, and tells the lobby how the link is. Before the link is open, it keeps the link up.
+- `Screen::frame_end`, after them: this side's loading is said (`set_loading`, `set_loaded`); `Session::poll`
+  says how the lobby stands, which moves the screen on; `Session::send` sends what the lobby has to say and the
+  frame the match's player made this frame.
+
+A link is made by `Session::open`: an invite (`Link::create_room`: the server picks the code, and the wait
+begins when it has said it), a code typed (`Link::join_room`), a direct host (`Link::host`, UDP port 47474) or
+a direct host's address (`Link::join`). The lobby is made the moment the link is open, in the link's role, with
+a timeout of 45 seconds (longer than the link's 30 of making a dropped connection again), and the training
+battle ends. From the moment a link is asked for until it is dropped (the wait, the lobby, the loading, a
+match and its result) the screen holds `Shell::stay_awake`: the app is kept awake, and the timer runs its
+frames while the window isn't drawn (§1), so the link is fed and polled with the window minimized or hidden.
+Nothing in the two halves needs a frame drawn. And nothing is read or checked on the window's thread while
+there is a link: the builds are listed before, and a match is made ready a few milliseconds a frame.
+
+**A match.** When the lobby says a match is agreed (`Status::Loading`), Play starts the battle
+(`Shell::start_battle`): the two cards, this player's with their build and the other's with their name alone;
+the agreement's set, for this player's side; and a `gate`, through which the shell says how far this machine's
+preload is each frame and hears how far the other is (`Lobby::their_loading`). The match's driver can't be made
+yet: the lobby gives the match's channel only once both sides have loaded. So the battle's `play` is
+`Play::Make`, a driver made as the battle begins: when the lobby says `Status::Start`, Play takes
+`Lobby::channel`, makes the `NetPlayer` on it with the player's input delay, and lets the gate through. If the
+other player takes their ready back in the moment the match was agreed, the lobby says so and the cards go.
+The match is recorded from its first tick by its agreement (`Recorder::of_agreement`: an online match, from
+this player's side, by the names the lobby had, closed builds where they were agreed), to a new file in the
+replays folder.
+
+**After a match** both players are back in the lobby on the same link (`Play::reopen`: the battle ended, which
+drops the match's player, then `Lobby::reopen`), nobody ready, the settings as they were:
+
+- *Its set is over.* The game shows the result itself, in its own way, before the set is over for the engine
+  (the winner's banner, then the picture fades out); half a second after that, the lobby.
+- *LEAVE MATCH*, or the other player leaving it (`StopReason::OpponentLeft`, or the other's lobby heard again
+  while this player's set isn't over, `Lobby::their_reopened`), or the other's player going silent
+  (`ConnectionLost`), or something internal: the lobby's line says which, as its kind's sentence.
+- The lobby's LEAVE, Esc or Back in the lobby, and another screen all leave the other player
+  (`Lobby::leave`, then the link is dropped): their lobby ends, told.
+
+**What a player is told** when it goes wrong is the typed kind's sentence (§12), where it belongs:
+
+- *Before the two have met*, the problem is the control's that asked: in the space beside JOIN (the server
+  can't be reached, no match has that code, the match is full, the build can't be used), or in the direct
+  connection's dialog (that isn't an address, the port is taken, no connection could be made). While a link is
+  being made the same space says so.
+- *In the lobby*, a build the settings can't play is the lobby's line (above): it doesn't end the lobby.
+- *Once they have met*, a link that gives up (`Link::recv`'s error) or a lobby that ends (`Status::Failed`:
+  another version, another game, the other player left, no answer; a build refused only where the other
+  program revealed one anyway) ends what the player was doing: the shell's dialog, with BACK TO PLAY, over
+  the builds again.
+
+**What it adds to the shell**, all small: `battle::Play::Make` (above); `Keys::tab`; `Nav::set_row` (the row
+the focus comes to a list at, where that is the screen's to say); `Button`'s `natural-width` (for a button
+given a width only on a phone); and the screenshot pass's hooks (§13). And three things of the shell's that a
+link between two players showed wrong, mended: the corner's box in a match is wide enough for "Reconnecting 30
+s" in the language shown (it was cut to "Reconnecting 2…"); a dialog's title takes the lines it needs (a
+failure's title is a sentence, and the pass found "Your opponent left" cut on a phone in the pseudo-locale;
+on the desktop "Your opponent's build can't be used" just fits its one line); `Message`'s text is as wide as
+its line (it sat in the line's middle whatever its alignment).
+
+**What is wrong with a build** is said in the Builds screen's words for its kind (`builds::words`): beside JOIN
+before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), and in the lobby's line
+(`words::problem` of the first of `Lobby::problems`, which names the part of the build it is about): "This build can't be used: 28 chips, a folder has 30."
+
+**Not done.** CONTROLS in the match menu shows the bindings and doesn't change them. Making a link resolves the STUN server's name on the window's thread
+(`Link::create_room`, `join_room`), before any lobby exists.
+
+**What has run, and what was only written** (2026-10-12). Between two players in one process over real links
+(the screenshot pass's second player, §13), in English, Japanese and the pseudo-locale at both sizes:
+
+- an invite made, and joined by its code; a code no match has, refused by the server; a direct host joined at
+  its address; the other player's invite joined by its code, typed in small letters;
+- the wait's training session: started beside the invite (on a phone, by its button, filling the window), its
+  menu's COPY INVITE CODE, STOP TRAINING (a phone) and CANCEL INVITE each chosen, and the session ended by the
+  other player coming;
+- the lobby's rounds, patch cards and closed builds changed by one player and taken by the other; the input
+  delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
+  saying why), and the first again;
+- the link dropped for six seconds in the lobby and in a match, and made again;
+- a match agreed, loaded with the other side held at 74%, and played to its end (the game's own "WIN" banner,
+  then the lobby again, nobody ready); a second match on the same link with patch cards off and closed builds,
+  left by the other player; a match as the joiner, on the right navi's console, left by LEAVE MATCH;
+- the other player bringing a build that breaks a rule (its lobby won't make it ready, and this player waits,
+  ready); the other player leaving the lobby; this player leaving it.
+
+The three matches of a pass, recorded by their agreements (a set played to its end, a match with patch cards
+off the other player left, a match this one left as the joiner), were played back by nettai-tool
+(`--replay`): each reproduces. A
+recording holds the two players' names as the lobby had them, and no build's. Only written, never run: a pad (its SELECT held, its shoulders in the lobby; the code's boxes were drawn and walked
+by the pass, opened as a pad's confirm opens them); the signaling server's other refusals (a full room,
+another version); a lobby's other failures (another version, game or content, this player's build refused, no
+answer); a link that gives up for good (30 seconds down); a match whose player goes silent for good; two
+machines (two apps on one machine have met: below).
+
+**The window away under a link** (2026-10-12, macOS; two apps on one machine with a direct link between them,
+§13's two-app check; load average about 140). Each met the other through Play's own controls (one hosting, one
+typing its address), they readied up and played, the host left the match and then the lobby, and the other
+saw each. The host's window was minimized for eight seconds and then hidden for eight, in the lobby and again
+in the match, and the other app wrote what its link saw, a second at a time:
+
+| The host's window | What the other player's app saw of it |
+|---|---|
+| in the lobby, minimized | the lobby's messages 100 ms apart throughout (the longest silence 116 ms), but for 0.62 s as the window went and 0.59 s as it came back |
+| in the lobby, hidden | the longest silence 139 ms |
+| in a match, minimized | 60 or 61 ticks a second and no silence over 34 ms, but for 0.61 s as it went (44 ticks that second) and 0.55 s as it came back (47) |
+| in a match, hidden | 59 to 61 ticks a second, no silence over 50 ms |
+
+The link was never down, for either. The host ran 60 or 61 frames a second by the timer while its window was
+away, none of them drawn. The half second as a window minimizes and comes back is the system's animation on
+the window's thread (§1); hiding has none. The same run with the host's timer left out
+(`NETTAI_NO_TIMER_CLOCK`) is what the check is for: the other app heard nothing for 8.1 to 8.8 seconds each
+time, its link read as down from the third second, and its match stood still (0 ticks for six or seven
+seconds); the link and the match both picked up when the window came back.
+
+The signaling server isn't deployed (with none named, CREATE INVITE and JOIN say the server can't be reached,
+and DIRECT CONNECT works). Run it locally:
 
     cd signaling && npx wrangler dev        # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
@@ -875,11 +1047,14 @@ else on the row activates it, and the list `Shell::pick` opens is as wide as the
 components no built screen uses yet (`TabBar`, `ListView`, `Panel`, `OptionRow`, `Count`, `Flash`, `Shake`, and
 a `DialogFrame` of a screen's own with a `Field` and its scope) were drawn and walked once, in both, at the
 desktop's size and a phone's, in a harness that isn't in the tree (2026-10-12); it found the tab bar running off
-a phone's edge, which is fixed and now said by the pass. Never run: `Shell::fly`, a replay's viewer through
-`Play::Watch` (and its `set_sound_levels`), an online match's `gate`, `Shell::recorder`, a dropped file, a real
-gamepad, an IME, a touch screen (the pad's fingers are put through the same entry by the screenshot pass).
-Training was the first to show a `Message`, whose text sat in the middle of its line (a text with no width
-of its own is as wide as its words, centered): it is at the line's left now.
+a phone's edge, which is fixed and now said by the pass. Play has since put `ListView`, `Flash` and a
+`DialogFrame` of its own with a `Field` in the pass, and an online match's `gate` runs there between two
+players (§4, §13). Never run: `Shell::fly`, a replay's viewer through `Play::Watch` (and its
+`set_sound_levels`), `Shell::recorder`, a dropped file, a real gamepad, an IME, a touch screen (the pad's
+fingers are put through the same entry by the screenshot pass).
+Training and Play were the first to show a `Message`, whose text sat in the middle of its line (a text with no
+width of its own is as wide as its words, centered): it is as wide as its line now, and at its left unless the
+screen says otherwise.
 
 Three things about how it is made. A clock reads the frame's time (`animation-tick()`) only while it runs, and
 stops when it is done, so a screen at rest evaluates nothing each frame but what moves by itself. What moves
@@ -996,13 +1171,18 @@ same instant as a screen change land on the new screen's controls, and a directi
 moves the focus at every repeat).
 
 A screen's steps are a file of its own, `src/tour/<name>.rs` (a child module of `tour`, so it has the pass's
-own `write` and `compare`), with a function for the pass and one for the motion probe, each called from
-`tour::walk` and `tour::motion_walk` with one line (`training::steps(&mut add, lang, size)`). A pair's second
-shot may be given more to differ in than the two cursors (`training.rs`'s `Differs::Builds`: where the entry
-shows the builds chosen), found from where the screen's controls are.
+own `write` and `compare`) or the screen's own (`screens/play/tour.rs`), with a function for the pass and one
+for the motion probe, each called from `tour::walk` and `tour::motion_walk` with one line
+(`training::steps(&mut add, lang, size)`; Play's take `walk`'s `add`, a step and the time it is given first,
+and its `shot`, a shot's name and its place in a pair). A pair's second shot may be given more to differ in
+than the two cursors (`training.rs`'s `Differs::Builds`: where the entry shows the builds chosen), found from
+where the screen's controls are. A step that must wait for something that comes by itself says so
+(`Tour::wait_until`: the step after it runs once it has come, or after a minute). Where the shots after it
+depend on its having come, the walk says when it didn't (`Tour::never_came`, which the report lists and the
+pass fails on: Play's `reach`), so that a picture of the wrong thing isn't taken for the right one.
 
-The pass has nothing of the player's to go by: its settings are the defaults, and Training lists a new build of
-each of the game's versions (and one that can't be used) in place of the player's builds. The builds the Builds
+The pass has nothing of the player's to go by: its settings are the defaults, and Training and Play list a new
+build of each of the game's versions (and one that can't be used) in place of the player's builds. The builds the Builds
 screen lists are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through the
 screen as a player makes them.
 
@@ -1030,6 +1210,32 @@ and what is cut. Two things went unseen that way, and each now has its check.
   the content doesn't load (a sprite the content names and the pack hasn't) gives a clean report of EXE4's
   screens. The log says so (`loading exe6: can't load ...`) and the pictures' headers name the game shown; the
   report doesn't. Read one before trusting a run.
+
+**Play's steps have a second player** (`screens/play/tour.rs`): the lobby, the loading, a match and what ends
+them take two. The second is in the same process: the link library's own signaling server (nettai-rtc's
+`testing`, on loopback), and a peer with a link, a lobby and a match's player of its own, run as the library's
+tests seat two players. The app's side is the Play screen itself, driven through its controls; the peer does
+what the steps tell it (ready, load to 74% and hold, drop its network for six seconds, leave the match, leave).
+So the pass runs the whole way between two players over real links, each time it is run: an invite, a wrong
+code, a direct connection, the lobby's shared settings, the two bars, a match to its result (the app's player
+shoots; the other's build has 1 HP), a second match with closed builds, both ways of leaving. Four things are
+the pass's own, so that its pictures are the same from run to run: the builds listed are new builds of the
+game's versions (never the player's files), the lobby shows a round trip of 42 ms (what two players of one
+process measure moves about), the two lobbies draw their nonces from numbers of the pass's (a match's seed
+picks its arenas, and an arena with a rock between the two navis kept the first pass that met one from its
+result for over a minute), and a match isn't recorded unless `$NETTAI_REPLAYS` says where.
+`NETTAI_TOUR_ONLY=play` walks Play's steps alone.
+The motion probe has the lobby's two set pieces, the other player's card sliding in and a ready mark stamping.
+
+**Two apps on one machine** (`tour::apart`): `NETTAI_TOUR_ONLY=play-away-host` in one app and `play-away-join`
+in another, each with a data folder of its own. The first hosts directly on a loopback port both know and the
+second joins it there, each through Play's own controls; they ready up and play. In the lobby, and again in
+the match, the host's window is minimized for eight seconds and then hidden for eight (the calls
+`NETTAI_WINDOW_PROBE` makes, made by the walk where they are wanted). Each app writes what its link saw to its
+log a second at a time (`play watch`): the frames it ran and how many of them the window drew, the datagrams
+the other's link brought, the longest it brought none for, the frames in which its link was down, and the
+match's ticks. The joiner's lines say whether the other side saw the host stall; with `NETTAI_NO_TIMER_CLOCK`
+on the host they show what a stall looks like. No shot is taken.
 
 ## 14. Build time
 
@@ -1112,6 +1318,25 @@ The generated module is 3.3 MB (28,204 lines, 102 components) from 4,316 lines o
 `for`s. The first app's whole clean build wasn't run again for the new one: the engine's crates, most of it, are
 the same. One dependency is new and slow: gamepad-facade's SDL3 is built from its source with cmake, about three
 and a half minutes of a clean build on the loaded machine (gilrs, which it replaces, took 23 seconds), once.
+
+**With Play** (2026-10-12; one script before the screen was written and after, on the branch it was written
+on, before Training and Builds were merged into it: dev profile, sccache off, the two crates cleaned with their
+dependencies built; the load average was 270 to 330 before and 200 to 230 after, so the CPU times are the ones
+to compare):
+
+| | Before Play: wall, CPU | With Play: wall, CPU |
+|---|---|---|
+| a clean build of nettai-ui and nettai | 113 s, 28.2 s | 184 s, 45.5 s |
+| nothing changed | 23 s, 3.7 s | 3.2 s, 0.4 s |
+| after one line of Rust changed | 9.5 s, 1.7 s | 7.4 s, 1.8 s |
+| after one value of a .slint file changed | 43 to 48 s, 5.5 s | 33 to 52 s, 7.1 to 7.3 s |
+
+The generated module went from 3.32 MB (102 components) to 5.14 MB (131), which is what the clean build and
+the .slint edit pay for: Play is 1,500 of the UI's 5,800 lines of Slint, with 12 of its 31 conditional
+elements and 4 of its 10 `for`s. It is the screen with the most on it (three parts, three dialogs, a menu of
+five pages and the two builds over a match), and it was 5.35 MB before its conditionals were merged: one
+conditional a part, with what differs on a phone placed and shown by `visible` inside it, where the first
+draft had one for each thing that differs. An edit to the app's Rust costs what it did.
 
 **What trades against it.** Motion (§10) added 0.43 MB of generated Rust (2.76 to 3.19 MB: the clocks and the
 offsets they drive), which is in the figures above. The accessibility backend is off: a screen reader sees

@@ -4,7 +4,7 @@
 
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Heading, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -996,6 +996,9 @@ export component DialogFrame inherits Rectangle {
     in property <length> content-height;
     in property <bool> shake;
     out property <length> inner-width: panel.width - 48px;
+    // The title takes the lines it needs (a failure's is a sentence, and a phone's dialog is narrow): one line
+    // is 26 tall.
+    property <length> title-height: heading.preferred-height > 36px ? heading.preferred-height : 26px;
     arrive := Tween {
         duration: Theme.brisk;
     }
@@ -1014,7 +1017,7 @@ export component DialogFrame inherits Rectangle {
     panel := Rectangle {
         x: (parent.width - self.width) / 2 + swing.dx;
         width: min(parent.width - 32px, root.panel-width);
-        height: 24px + 26px + 12px + root.content-height + 24px;
+        height: 24px + root.title-height + 12px + root.content-height + 24px;
         opacity: arrive.t;
         transform-scale: 0.96 + 0.04 * arrive.t;
         Cut {
@@ -1029,17 +1032,24 @@ export component DialogFrame inherits Rectangle {
             background: @linear-gradient(90deg, Theme.cursor 0%, Theme.clear 100%);
         }
 
-        Heading {
+        heading := Text {
             x: 24px;
             y: 24px;
             width: parent.width - 48px;
-            height: 26px;
+            height: root.title-height;
             text: root.title;
+            color: Theme.text;
+            font-family: Theme.display;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: Theme.title-tracking * 0.7;
+            vertical-alignment: center;
+            wrap: word-wrap;
         }
 
         Rectangle {
             x: 24px;
-            y: 62px;
+            y: 36px + root.title-height;
             width: parent.width - 48px;
             height: root.content-height;
             @children

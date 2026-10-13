@@ -497,6 +497,12 @@ impl Nav {
         }
     }
 
+    /// The row the focus comes to list `id` at, the next time it comes from outside it: where the row is the
+    /// screen's to say, not the one the focus last left (a box of a code's characters).
+    pub fn set_row(&mut self, id: &str, row: i32) {
+        self.rows.insert(id.to_string(), row);
+    }
+
     fn take(&mut self, key: Key) {
         if self.registry.borrow().lists.contains_key(&key.id) {
             self.rows.insert(key.id.clone(), key.index);

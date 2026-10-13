@@ -297,6 +297,8 @@ pub struct Keys {
     pub held: u16,
     /// The presses since the last tick, when each came.
     pub pressed: Vec<Instant>,
+    /// Tab is held: in an online match, both builds show while it is (no button is bound to it).
+    pub tab: bool,
 }
 
 impl Keys {
@@ -304,6 +306,9 @@ impl Keys {
     /// whatever has the keys, so none sticks.) The button, if it was newly pressed.
     pub fn event(&mut self, bindings: &Bindings, event: &KeyEvent, at: Instant) -> Option<u16> {
         let PhysicalKey::Code(code) = event.physical_key else { return None };
+        if code == KeyCode::Tab {
+            self.tab = event.state == ElementState::Pressed;
+        }
         let bit = bindings.of_key(code)?;
         if event.state != ElementState::Pressed {
             self.held &= !bit;
@@ -320,6 +325,7 @@ impl Keys {
     /// Every key let go (the window lost the keyboard, the bindings changed).
     pub fn release(&mut self) {
         self.held = 0;
+        self.tab = false;
     }
 }
 
