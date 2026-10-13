@@ -1,9 +1,9 @@
 //! The screenshot pass's steps for Training (docs/app.md §13): the entry (with no build, with builds, the focus a
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
-//! can't be used, the arena and the background changed, the arenas' list), the two cards, the battle, the
-//! training menu (a value changed, the focus a row apart, the arena changed under it, each Battle row a value
-//! apart, the input display, a recording made and played, the rows another screen adds), and the motion probe's
-//! bursts of what Training moves.
+//! can't be used, the arena and the background stepped, the arena around its end), the two cards, the battle, the
+//! training menu (a value changed, the focus a row apart, the arena and the background changed under it, each
+//! Battle row a value apart, the input display, a recording made and played, the rows another screen adds), and
+//! the motion probe's bursts of what Training moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
 //! entry lists a new build of each of the game's versions and one that can't be used
@@ -192,7 +192,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-none", lang, size, Differs::Unheld, false);
 
     // The entry: the focus a control up from START TRAINING; the dummy's build stepped to the next; the builds'
-    // list; a build that can't be used; the arena stepped to the next, the arenas' list, the background stepped.
+    // list; a build that can't be used; the arena stepped to the next, and around from Random to the last; the
+    // background stepped.
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -229,9 +230,11 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-entry-places", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
     shot(add, "training-entry-arena", lang, size, Differs::Builds, false);
-    add(SETTLE, act(Action::Confirm));
-    shot(add, "training-entry-arena-list", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Back));
+    add(SETTLE, act(Action::Left));
+    add(SETTLE, act(Action::Left));
+    shot(add, "training-entry-arena-around", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Right));
     // (Two on: one other than the round's own pick from the pass's seed, whatever that is.)
     add(SETTLE, focus("background", 0));
     add(SETTLE, act(Action::Right));
@@ -269,6 +272,12 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, act(Action::Right));
     add(2500, Box::new(|_, _, _| {}));
     shot(add, "training-menu-arena-value", lang, size, Differs::Unheld, false);
+    // The Background row, and its value changed: the battle goes on where it is, drawn on the next background
+    // (the field, the HP and the round as they were).
+    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Background)));
+    shot(add, "training-menu-background", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Right));
+    shot(add, "training-menu-background-value", lang, size, Differs::Unheld, false);
     // Each of the other Battle rows, and its value changed (at once, on the battle behind the menu: the HP
     // refilled, the gauge full, the folders put in their own order).
     for (name, changed, option) in [

@@ -286,7 +286,7 @@ impl Shell {
         self.load(id);
         let ui = self.ui();
         ui.global::<nettai_ui::Shell>().set_game(Shell::game_name(id).into());
-        self.looks.show(&ui, Some(id), from, Instant::now());
+        self.looks.show(&ui, Some(id), from);
         ui.global::<nettai_ui::Shell>().set_no_games(false);
     }
 
@@ -642,6 +642,9 @@ pub struct App {
     pending: Vec<(Action, u8)>,
     /// When the window last drew a frame.
     drawn_at: Option<Instant>,
+    /// The motion probe's watch on a press: when it was made, and when the window's first frame after it began and
+    /// when the app's work for it ended, before Slint drew it (docs/app.md §13).
+    pub(crate) first_frame_after: Option<(Instant, Option<(Instant, Instant)>)>,
     /// `NETTAI_PLAY_STATS`: since when, the frames the window drew and the frames the timer ran since.
     clock_stats: Option<(Instant, u32, u32)>,
 }
@@ -707,6 +710,7 @@ impl App {
             screens: screens::all().into_iter().map(Some).collect(),
             pending: Vec::new(),
             drawn_at: None,
+            first_frame_after: None,
             clock_stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| (Instant::now(), 0, 0)),
         }
     }
@@ -735,7 +739,7 @@ impl App {
                 self.shell.load(&id);
                 shell.set_game(Shell::game_name(&id).into());
                 // (In its look from the first frame.)
-                self.shell.looks.show(&ui, Some(&id), 0, Instant::now());
+                self.shell.looks.show(&ui, Some(&id), 0);
             }
             None => shell.set_no_games(true),
         }
@@ -1226,9 +1230,13 @@ impl App {
     /// A frame the window is about to draw: the app's clock (docs/app.md §1).
     pub fn frame(&mut self, now: Instant) {
         self.drawn_at = Some(now);
+        let first = self.first_frame_after.as_ref().is_some_and(|(at, first)| first.is_none() && now > *at);
         self.shell.drawing = true;
         self.count(now, true);
         self.run(now);
+        if first && let Some((_, seen)) = &mut self.first_frame_after {
+            *seen = Some((now, Instant::now()));
+        }
     }
 
     /// How long the window may go without drawing a frame before the timer runs the app's: three of a 60 Hz

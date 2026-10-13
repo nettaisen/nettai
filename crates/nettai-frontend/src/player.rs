@@ -381,6 +381,31 @@ impl Player {
         true
     }
 
+    /// Live play's set on other backgrounds (a training session's
+    /// Background changed): `set` is the one it plays from now, the same
+    /// as the one playing but for its rounds' backgrounds. The battle goes
+    /// on as it is, drawn on the background `set` has for the round being
+    /// played, and the rounds after (and the set's next start) are on
+    /// theirs. A round's background is in its setup, and the digest with
+    /// it, but no tick reads it: the renderer alone does, so the battle
+    /// steps as it would have. False (and nothing changes) for a battle
+    /// that isn't live play, and while a recording is made.
+    pub fn set_backgrounds(&mut self, set: nettai_match::Set) -> bool {
+        let session = &mut self.session;
+        let Some(live) = session.driver.live_mut().filter(|_| session.recorder.is_none()) else { return false };
+        let (first, setup) = (set.first(), &mut session.battle.setup);
+        // (The round's place among the set's: the rounds before it, as its score counts them.)
+        setup.settings.background = match setup.score.round {
+            0 => first.settings.background,
+            n => first.later_stages.get(n as usize - 1).map_or(setup.settings.background, |s| s.background),
+        };
+        for (now, then) in setup.later_stages.iter_mut().zip(&first.later_stages) {
+            now.background = then.background;
+        }
+        live.play_set(set);
+        true
+    }
+
     /// Live play's driver, for the rest a training session sets on it (the
     /// opponent's recording, its second pad); none for a battle that isn't
     /// live play.

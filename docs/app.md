@@ -1086,8 +1086,15 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   one's last copy off the board); while the button is held the piece follows the pointer cell by cell, and the
   wheel turns it. Let go over the board, it is put down where it fits, else it shakes and then goes back where it
   came from; let go off the board, it is put away into the list. A press let go where it was pressed is a click,
-  Confirm there. A key or button pressed during a drag ends it, as a put-back. (The list doesn't scroll by a
-  mouse's drag, `ListView`'s `mouse-pan`, so a row's drag is its program's; the wheel scrolls it.)
+  Confirm there; so the mouse works by clicks too: a piece a click takes up follows the pointer over the board with
+  no button held (the board's pointer area tells its moves while a piece is in hand), cell by cell, and stays at
+  the last cell it was over when the pointer leaves the board; the next click on the board puts it down (or it
+  shakes and stays in hand), a click off the board (on the list too) puts it away. A right click puts the piece in
+  hand away into the list however it was taken, by a click, a drag or the keys: off the board, never back where it
+  was. A key or button pressed during a drag ends it, as a put-back; with a piece a click took, it moves the piece
+  from where it is, and the pointer's next move takes it back under the pointer. (The footer's hints are the keys'
+  and the pad's; the mouse has none. The list doesn't scroll by a mouse's drag, `ListView`'s `mouse-pan`, so a
+  row's drag is its program's; the wheel scrolls it.)
 - *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
   edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
   as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
@@ -1220,6 +1227,20 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
   the colors fade on from where they were (four grounds at the most: a fifth drops the oldest). Nothing waits on
   it, nothing changes a size, and with motion off the new look is there at once. The motion probe watches it both
   ways and twice over (§13).
+- *Its clock starts at the frame after the press*, not at the press: the ground is pushed, and the colors' fade
+  started, in the app's frame (`Looks::frame`, before Slint draws it, with that frame's time). The probe's first
+  run, with the ground pushed at the press, showed the sweep 90% across in the first frame drawn after it.
+- *The menu's reel waits for the sweep.* The window's first frame after a change of game begins 5 to 8 ms after
+  the press, but its work was 40 to 57 ms (the motion probe's "the press to its first frame, and its work"): all
+  of it the main menu making the new game's reel, its match, battle and player (23 to 33 ms, on the window's
+  thread, where the content's runtime is), and in the screenshot pass the reel played on to the tick it is held
+  at (12 to 29 ms more). The press, the sound's change and the looks cost nothing measurable. So after a change
+  of game the menu holds its next reel until the sweep has crossed and 60 ms more (`Menu::hold`; none with motion
+  off), the old reel's last picture standing under the sweep, and the new one fades in as a reel always does. The
+  first frame's work is 0.1 to 0.3 ms now, and the sweep shows from it: 39, 82 and 98% across at 79, 137 and 197 ms
+  after the press, done by 258, where before the first frame to show it was at 144 ms, 45% across. (The shots are
+  60 ms apart at the least: taking one holds the window that long.) The cost moved to the frame that makes the
+  reel, after the sweep; the battle's own frames are untouched.
 - *What it costs*: 0.14 MB of generated Rust (10.21 to 10.35 MB: the ground's component 0.08, under its `for`, and
   the rest the theme's colors read where they were constants), and the bundled faces 1.8 MB more (M PLUS 1 at 800,
   with its Japanese).
@@ -1446,10 +1467,12 @@ animation, so it takes a burst of shots through each (a screen leaving and the n
 glide, a change of game sweeping in from the right, from the left and twice over, a value sliding, a press, a
 list opening, a page scrolling, a dialog, the cards and the wipe into a battle, a menu over it), each named for
 the milliseconds since it began. (Before the change of game's bursts it steps once around the games, waiting for
-each to be ready, so that no game's runtime loads, the window still, inside a burst.) It checks and fails on two things: that
-in every shot each control is the size it has at rest, and that a press acts at once (two moves pressed in the
-same instant as a screen change land on the new screen's controls, and a direction held down a scrolling page
-moves the focus at every repeat).
+each to be ready, so that no game's runtime loads, the window still, inside a burst.) It checks and fails on two
+things: that in every shot each control is the size it has at rest, and that a press acts at once (two moves
+pressed in the same instant as a screen change land on the new screen's controls, and a direction held down a
+scrolling page moves the focus at every repeat). And it says, for each burst, how soon the window's first frame
+after the press began and how long the app's work for that frame was (`App::first_frame_after`): a press that
+holds the window shows there, though the shots, each of which holds it some 60 ms itself, can't.
 
 A screen's steps are a file of its own, `src/tour/<name>.rs` (a child module of `tour`, so it has the pass's
 own `write` and `compare`) or the screen's own (`screens/play/tour.rs`), with a function for the pass and one
@@ -1864,17 +1887,25 @@ foot; beside them (on a phone, under them) the two builds as cards over the aren
   the game's arenas, the link battle stages a match may name (`nettai_match::link_battle_stages`, the rules'
   `link_pick.match_stages`: EXE6's 96, EXE5's 94, EXE4's 96), and its battle backgrounds
   (`nettai_match::ids::backgrounds`, the pack's), each in its keys' natural order (a run of digits by its
-  number: Netbattle 2 before Netbattle 10). Each is stepped and opened as a
-  list as a build row is, and remembered by game (`training.arena.<game>` by the stage's key,
-  `training.background.<game>` by the background's name in the pack; Random is nothing remembered).
+  number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the training
+  menu's rows have it (the user: "the arena names are meaningless so you should just have like a pager widget
+  that goes through them. background should also be a arrow button pager thing"): Left and Right or its arrows
+  step it, around from the last to Random, a held key repeating; Enter steps it on; it opens no list. It is
+  remembered by game (`training.arena.<game>` by the stage's key, `training.background.<game>` by the
+  background's name in the pack; Random is nothing remembered). Each step draws the arena again after the same
+  160 ms as a build's, so a run of steps draws once.
   - The two are apart in the games' own data: a link battle picks its stage and its background each on its
     own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
     own background is shown only where the rules list none to pick from. So either is chosen with any of the
     other, and nothing ties them.
-  - Their words: a background is called what the language's strings call it (`[backgrounds]`, by the area it
-    comes from: `Names::background_named`); an arena has no name in the content's words (a stage is its key),
-    and the list says each by its key as a title ("Netbattle 12", in every language). No names were added to
-    the locales: they would only restate the keys.
+  - Their words: an arena is said by its place in the list, "12 / 96" (a stage is its key in the content,
+    and the user found the keys' names meaningless); a background by what the language's strings call it
+    (`[backgrounds]`, by the area it comes from: `Names::background_named`), or by its place, "7 / 21", where
+    they don't name it. No names were added to the locales.
+  - A background stepped keeps the arena: with Arena Random the seed picks each round's arena whether the
+    round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
+    the same arena on the new background, and Random is the same arena each time the entry comes back to it,
+    until a session is over (each entry after a session has a seed of its own); the session opens on it.
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
   held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
@@ -1958,18 +1989,30 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 | Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
 | Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
-| Battle: Arena, Background | Random, then the game's, as the entry lists them | the set starts over on the new place, as RESTART starts it, the menu staying open: below |
+| Battle: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
+| Battle: Background | Random, then the game's by name, as on the entry | the battle goes on where it is, drawn on the new background: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Display: Input display | Off, On | the app's own drawing, below |
 
-Arena and Background change where the set is fought, which a round fixes as it starts, so a change starts the
-set over on the new place: the session's match is put on it, its set made again from the session's seed, and
-the live driver plays that set from its next start (the library's `LivePlayer::play_set`) as the battle starts
-over (`Battle::restart`, RESTART's). The menu stays open, and the battle behind it steps through the round's
-opening with no buttons and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
+Arena changes the field, which a round sets as it starts, so a change starts the set over on the new arena:
+the session's match is put on it, its set made again from the session's seed, and the live driver plays that
+set from its next start (the library's `LivePlayer::play_set`) as the battle starts over (`Battle::restart`,
+RESTART's). The menu stays open, and the battle behind it steps through the round's opening with no buttons
+and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
 `under_the_menu_a_set_starts_over_on_another_place`). The dummy's setup, its recording and the options stay.
+
+Background changes the background alone (the user: "changing the background shouldn't change the entire
+arena either in trianing mode"). A round's background is in its setup (`RoundSetup::settings.background`, and
+`later_stages` for the rounds after), and the battle's digest covers the setup, but no tick reads it: the
+renderer alone does. So the battle goes on where it is, the arena, the HP, the dummy and the round as they
+were: the set made again on the new background (its arenas the same, above) is put in the playing one's place,
+and the battle's setup says its backgrounds (the library's `Player::set_backgrounds`), drawn from the next
+frame, the rounds after and a RESTART on them too. Stepped on from there, the battle is the one without the
+change tick for tick, its digest the same but for the background its setup says (nettai's
+`on_another_background_the_battle_goes_on`); training is neither online nor recorded, so no digest of it is
+compared with another's.
 
 The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
@@ -2033,7 +2076,6 @@ battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, whi
 **What isn't there.**
 
 - The rule a build breaks, in the reserved line (above).
-- A name for an arena in the content's words (the list says its key).
 - A real key press: the screenshot pass drives the screens through the same calls a key becomes (`App::act`)
   and holds the battle's buttons directly; the window's own key events were not sent to it.
 
