@@ -796,6 +796,38 @@ mod tests {
         }
     }
 
+    /// Live play's keys on each game's custom screen, held as a person
+    /// holds them (eight ticks), the cursor on the first chip: R opens the
+    /// chip's description, L the navi's no-running message, SELECT hides
+    /// the window; each stays when the key is let go.
+    #[test]
+    fn rl_and_select_work_on_each_games_live_screen() {
+        for game in ["exe4", "exe5", "exe6"] {
+            let content = match game {
+                "exe4" => nettai_match::testing::exe4_content(),
+                "exe5" => nettai_match::testing::exe5_content(),
+                _ => nettai_match::testing::exe6_content(),
+            };
+            for key in [keys::R, keys::L, keys::SELECT] {
+                let m = nettai_match::pick::live(&content, game, 5, None).unwrap();
+                let mut live = LivePlayer::new(Set::of(&content, &m, 5));
+                let mut b = live.start();
+                play_until(&mut live, &mut b, 4000, |_, _| 0, |b| choosing(b).is_some());
+                keys_in_turn(&mut live, &mut b, &[0; 20]);
+                assert!(matches!(choosing(&b).unwrap().slots[0].kind, SlotKind::Chip { .. }), "{game}: a chip dealt");
+                keys_in_turn(&mut live, &mut b, &[key; 8]);
+                keys_in_turn(&mut live, &mut b, &[0; 8]);
+                let phase = b.custom.sides[0].screen.unwrap().phase;
+                let right = match key {
+                    keys::R => matches!(phase, Phase::Description { window: None, .. }),
+                    keys::L => matches!(phase, Phase::RunMessage { chatbox: Some(_) }),
+                    _ => matches!(phase, Phase::Hidden { .. }),
+                };
+                assert!(right, "{game}: key {key:#x}: {phase:?}");
+            }
+        }
+    }
+
     /// Run `live` until `done`, with the local player's buttons from
     /// `keys` (tick, battle); panics past `limit` ticks.
     fn play_until(

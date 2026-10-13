@@ -1585,18 +1585,14 @@ fn emblem_part<'a>(v: &View, tiles: &'a Tiles, x_slide: u32, spin: u8) -> Sprite
 
 /// The chip window's element icon as a sprite (EXE4's, 0x0801EECC: 16x16
 /// in its own palette, at the window's left edge less its scroll while the
-/// scroll is 40 or less), while the cursor is on a chip, from the screen's
-/// open on (0x0801E314, 0x08020DB4): the last chip's element's.
+/// scroll is 40 or less), on the ticks the screen's states draw it (the
+/// look's `drawn.element`: the slide in, the chips' state, a description or
+/// a message over them; not the tick a key leaves the choosing, nor while
+/// SELECT hides the window): the last chip's element's.
 fn element_part<'a>(v: &View, a: &'a CustomScreen, place: Placement) -> Option<SpritePart<'a>> {
     let e = a.element_sprite?;
     let s = v.screen;
-    // (Not before the window is on the layer: the opening's first tick,
-    // which draws none of it, shows none.)
-    let window_out = place.from >= place.to;
-    if !matches!(s.slots[s.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_))
-        || place.scroll > ELEMENT_SHOWN_TO
-        || window_out
-    {
+    if !s.look.drawn.element || place.scroll > ELEMENT_SHOWN_TO {
         return None;
     }
     let c = s.look.chip_window.last_chip?;

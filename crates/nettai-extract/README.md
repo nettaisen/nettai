@@ -22,26 +22,21 @@ truncated and duplicate images are errors. The supported originals are 8 MiB:
 | EXE5 | BRBE (ProtoMan) | BRKE (Colonel) | BRBJ (Blues) | BRKJ (Colonel) |
 | EXE6 | BR6E (Falzar) | BR5E (Gregar) | BR6J (Falzar) | BR5J (Gregar) |
 
-Any subset, including none, produces a pack. Extraction selects available ROMs for
-shared sprites and portraits, chip media, Japanese lettering and audio. Version-specific
-pictures require their own version; unavailable graphics become checkerboards (black/magenta for assets with their own palettes),
-and unavailable named songs become valid silent MIDI tracks.
-
-EXE6's pack has every asset one of the ROMs given holds: what the four ROMs have alike is
-read from whichever is there, a version's own pictures from a ROM of that version, each
-release's words from a ROM of that release, and the US ROM's wherever both releases have
-their own. Each block is stated by where the game's own pointer to it is (a routine's
-literal, a load list's entry), so a ROM is read the way its own code reaches the block. A
-placeholder is left only for what no ROM given holds. EXE5's and EXE4's packs still take
-the field, the backgrounds and the general screen layout and art from the base US ROM
-alone: without it those sections are placeholders even where another ROM given has them.
+Any subset, including none, produces a pack, and a pack has every asset one of the ROMs
+given holds: what the four ROMs have alike is read from whichever is there, a version's
+own pictures from a ROM of that version, each release's words from a ROM of that release,
+and the US ROM's wherever both releases have their own. Each block is stated by where the
+game's own pointer to it is (a routine's literal, a load list's entry), so a ROM is read
+the way its own code reaches the block. A placeholder is left only for what no ROM given
+holds: unavailable graphics become checkerboards (black/magenta for assets with their own
+palettes), and unavailable named songs become valid silent MIDI tracks.
 
 Placeholders preserve asset names and references but cannot reproduce missing animation
 timing or the original appearance. They keep the game's shape where a frontend looks for
 it: a banner is the kind its ROM record says (one with a number, one that holds until
-removed, a telop's, the judge's) whatever its picture, and EXE4's screen has its own
-emblem, cursor colors and element sprite. An EXE4 US ROM that isn't Red Sun's gives its fonts,
-text lines and banners; the HUD's other art is read at Red Sun US's addresses alone.
+removed, a telop's, the judge's) whatever its picture, and EXE4's HUD and screen are laid
+out as its code lays them out (its telops, its own emblem, cursor colors and element
+sprite).
 
 ### What is a placeholder, by the ROMs given
 
@@ -50,44 +45,44 @@ Counted 2026-10-12 from packs of each set of ROMs against the pack of all four a
 placeholders of a kind's assets; `-` is none. "Recolored" is a picture read from a ROM and drawn with a palette
 that is a placeholder: the right shapes in magenta and black. The Japanese banners that a full pack has as the
 base's own words, and a sheet whose palette rows past its archive's own differ with the ROM, count as real; a
-placeholder picture in a real palette counts as a placeholder. EXE6's table is of the extraction that reads
-every ROM given (`every_source_subset` holds its sixteen packs to the ROMs' own bytes); EXE4's and EXE5's are
-of the one that reads the base US ROM alone for most.
+placeholder picture in a real palette counts as a placeholder, and so does one with a placeholder part
+(EXE4's UNITE button without its label). `every_source_subset` holds each game's sixteen packs to the ROMs'
+own bytes: a placeholder stands only where no ROM given holds the picture.
 
 **EXE4**
 
 | | both JP | Red Sun JP | Blue Moon JP | both US | Red Sun US | Blue Moon US |
 |---|---|---|---|---|---|---|
-| HUD pieces | 12 of 12 | 12 of 12 | 12 of 12 | - | - | 10 of 12 |
-| custom screen pieces | 19 of 21 | 19 of 21 | 19 of 21 | - | - | 19 of 21 |
+| HUD pieces | 1 of 13 | 1 of 13 | 1 of 13 | - | - | - |
+| custom screen pieces | 4 of 22 | 4 of 22 | 4 of 22 | - | - | - |
 | banners (the US words) | 41 of 41 | 41 of 41 | 41 of 41 | - | - | - |
-| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | 1 recolored |
-| Japanese lettering | 1 of 50, 1 recolored | 1 of 50, 1 recolored | 1 of 50, 1 recolored | 50 of 50 | 50 of 50 | 50 of 50 |
+| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | - |
+| Japanese lettering | - | - | - | 48 of 50 | 48 of 50 | 48 of 50 |
 | chip pictures | - | - | - | - | - | - |
-| chip icons | one gray off | one gray off | one gray off | - | - | one gray off |
+| chip icons | - | - | - | - | - | - |
 | sprites, portraits | - | - | - | - | - | - |
 | backgrounds | - | - | - | - | - | - |
-| field | 1 of 1 | 1 of 1 | 1 of 1 | - | - | 1 of 1 |
-| mugshots | 17 of 17 | 17 of 17 | 17 of 17 | - | 6 of 22 | 17 of 17 |
+| field | - | - | - | - | - | - |
+| mugshots | - | 6 of 22 | 6 of 22 | - | 6 of 22 | 6 of 22 |
 | songs | - | - | - | - | - | - |
 
 **EXE5**
 
 | | both JP | Team of Blues JP | Team of Colonel JP | both US | Team ProtoMan US | Team Colonel US |
 |---|---|---|---|---|---|---|
-| HUD pieces | 12 of 12 | 12 of 12 | 12 of 12 | - | - | 12 of 12 |
-| custom screen pieces | 20 of 22 | 20 of 22 | 20 of 22 | - | - | 20 of 22 |
-| banners (the US words) | 47 of 47 | 47 of 47 | 47 of 47 | - | - | 47 of 47 |
-| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | 2 of 2 |
-| Japanese lettering | 3 recolored | 3 recolored | 3 recolored | 58 of 58 | 58 of 58 | 58 of 58 |
+| HUD pieces | 1 of 12, 1 recolored | 1 of 12, 1 recolored | 1 of 12, 1 recolored | - | - | - |
+| custom screen pieces | 5 of 23 | 5 of 23 | 5 of 23 | - | - | - |
+| banners (the US words) | 47 of 47 | 47 of 47 | 47 of 47 | - | - | - |
+| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | - |
+| Japanese lettering | - | - | - | 55 of 57 | 55 of 57 | 55 of 57 |
 | chip pictures | - | 12 of 396 | 12 of 396 | - | 12 of 396 | 12 of 396 |
-| chip icons | 396 recolored | 6 of 396, 390 recolored | 6 of 396, 390 recolored | - | 6 of 396 | 6 of 396, 390 recolored |
+| chip icons | - | 6 of 396 | 6 of 396 | - | 6 of 396 | 6 of 396 |
 | sprites | - | - | - | - | - | - |
 | portraits | - | 4 of 13 | 5 of 13 | - | 4 of 13 | 5 of 13 |
-| backgrounds | - | - | 22 of 22 | - | - | 22 of 22 |
-| field | 1 of 1 | 1 of 1 | 1 of 1 | - | - | 1 of 1 |
-| mugshots | 56 of 56 | 56 of 56 | 56 of 56 | - | 18 of 56 | 44 of 56 |
-| emblems | 13 of 13 | 13 of 13 | 13 of 13 | - | 6 of 13 | 7 of 13 |
+| backgrounds | - | - | - | - | - | - |
+| field | - | - | - | - | - | - |
+| mugshots | - | 18 of 56 | 18 of 56 | - | 18 of 56 | 18 of 56 |
+| emblems | - | 6 of 13 | 6 of 13 | - | 6 of 13 | 6 of 13 |
 | songs | - | - | - | - | - | - |
 
 **EXE6**
@@ -128,31 +123,32 @@ What a player sees, and whether the ROMs they have hold what is missing.
   archive is in it with no entry of the portraits' table pointing at it, so the extractor states where.
 - **Only US ROMs.** The fifteen chip pictures and six sprites the US release cut, and the Japanese words.
 
-**EXE5 and EXE4**, until their extraction reads every ROM as EXE6's does:
+**EXE5**, likewise:
 
-- **Only Japanese ROMs.** A battle is drawn with real navis, attacks and chip pictures, and sounds right, over
-  checkerboards: the field's panels, the whole HUD (the HP boxes, the gauge, the digits, the emotion window and
-  its faces, the chatbox) and the custom screen (its window, slots, codes, cursor, buttons, emblems). The chips'
-  icons and the Japanese words are their true shapes in magenta and black, as their palettes are the HUD's
-  (EXE4's icons keep their colors but for one gray). **The Japanese ROMs hold all of it**: the same blocks, at
-  other addresses (the verification's cross-ROM sweep found each one's bytes there). The extractor reads them
-  at the base US ROM's addresses alone. Only the US words (the banners, the two US fonts) aren't in a Japanese
-  ROM, and a Japanese player's language has its own.
-- **Only the other version's US ROM** (Blue Moon, Team Colonel). The same checkerboards, with EXE5's
-  backgrounds and US words too. **The ROM holds all of it**; the extractor has the base version's addresses
-  alone. EXE4 already reads Blue Moon US's fonts, text lines and banners (the font in the HUD's placeholder
-  colors).
-- **Only the base US ROM** (Red Sun, Team ProtoMan). Complete but for what the ROM doesn't have: the other
-  version's own art and the Japanese ROMs'.
-  - EXE4: Blue Moon's six souls' faces.
-  - EXE5: Team Colonel's six chips (pictures and icons) and its six navis' chips' pictures, four of its navis'
-    portraits, eighteen faces and six emblems.
-  - In both, the Japanese lettering.
-- **Both US ROMs.** Complete but for the Japanese lettering. (Where the releases' art differs, every pack with a
-  US ROM has the US art: EXE5's goldfish and quieter hit. A pack of Japanese ROMs alone has theirs.)
-- **Two gaps of the same kind in the Japanese sets**, each an address the extractor lacks: EXE5's backgrounds
-  are read from Team of Blues JP (or Team ProtoMan US) alone, so Team of Colonel JP by itself has none; EXE4
-  without Red Sun US takes the chips' icon palette by another path, one gray a step off.
+- **Only Japanese ROMs.** A whole battle in Japanese. What is missing is the English words: the 47 banners, the
+  two fonts, the notice of the other player customizing, the chip window's four worded pictures (OK, OK picked,
+  the other, the re-deal button's) and the soul button's label. (The gauge and Arm Change's picture have no
+  words in EXE5: any ROM gives them. The banners' digits take the banners' palette, as in EXE6.) Yai's HP
+  background, the battle mode 1 label and the hit's loudness are the Japanese ROMs' own, where the releases
+  differ.
+- **One version's ROM alone**, of either release. Everything but the other team's own: its six version chips'
+  pictures and icons and its six navis' chips' pictures, four or five of its navis' portraits, its souls' and
+  its navis' eighteen faces, its six emblems, and its soul icons' outline color. A Team Colonel ROM gives
+  MegaMan's five dark faces in its own colors (four differ from Team ProtoMan's in two or three colors) and
+  Colonel's and NumberMan's portraits as it has them.
+- **Only US ROMs.** The Japanese words.
+
+**EXE4**, likewise:
+
+- **Only Japanese ROMs.** A whole battle in Japanese. What is missing is the English words: the 41 banners, the
+  two fonts, "BUSY...", the chip window's three worded pictures (OK, OK picked, SHUFFLE's) and the UNITE button's
+  label. (The gauge with "CUSTOM", UNITE's picture and the banners' digits and palette are the same in every
+  ROM.)
+- **One version's ROM alone**, of either release. Everything but the other version's six souls' faces. (Every
+  ROM has every chip's picture and icon. Four chips' icons aren't the same in a Blue Moon ROM as in a Red Sun
+  one: a pack of Blue Moon ROMs has Blue Moon's.)
+- **Only US ROMs.** The Japanese words.
+- In no ROM: the two e-Reader cards' chips' pictures, which the extractor has of its own.
 
 Every pack includes `extraction.txt`. The library result exposes `missing_roms`, `warnings`
 and `placeholders` (named assets supplied by the completion pass; source-specific UI
