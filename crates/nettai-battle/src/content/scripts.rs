@@ -584,7 +584,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         hp_loss = "hp_alone",
         hit_sound = "by_console",
         barrier = { stops_while_paused = true, wind = "pops" },
-        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000 },
+        anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000, drops_requests = 0x301BE },
         chip_destruction = "next",
         emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "hitter_gains", full_synchro_spent = 0x99, anger_boost_sound = false },
         form_break = "marked_forms",
