@@ -5,8 +5,8 @@ msgstr ""
 "Language: ja\n"
 
 # The app's line under its name: its version, then its license.
-msgid "{} · MIT License"
-msgstr "{} · MIT ライセンス"
+msgid "{} · Mozilla Public License 2.0"
+msgstr "{} · Mozilla Public License 2.0"
 
 # Over the list of the fonts and the packages the app is made of.
 msgid "MADE WITH"

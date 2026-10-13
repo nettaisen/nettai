@@ -2361,9 +2361,9 @@ folders is taken).
 The user: "add an about screen with license and dependency info etc like for slint".
 
 **What it shows.** About is reached from the main menu (Settings, About, Exit). At its left: the app's name, its
-version and its license (the workspace's `license = "MIT"`); Slint's own `AboutSlint` widget, the "Made with
-Slint" logo with Slint's version and address; and under MADE WITH, a list of the software the app is made of:
-the four fonts it bundles, then every package built into it, by name, each row its name, its version and its
+version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
+repository's root); Slint's own `AboutSlint` widget, the "Made with Slint" logo with Slint's version and address;
+and under MADE WITH, a list of the software the app is made of: the four fonts it bundles, then every package built into it, by name, each row its name, its version and its
 license as it states it (an SPDX expression). Beside the list, in a panel, the chosen one's name, version, license
 and repository, and its license files as its package ships them, each file's name over its text in the monospaced
 face, scrolling. The footer counts them ("394 packages · 4 fonts" today). On a phone the list is the page, and a
