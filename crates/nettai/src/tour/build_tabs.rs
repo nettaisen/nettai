@@ -249,6 +249,82 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     shot(add, "tabs-navicust-put-away", Pair::None);
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
+    // A placed program's row under the cursor (its hint: Enter takes it off), and Enter: its copy off the board.
+    add(SETTLE, row(|r| r.state == nettai_ui::ProgramState::Placed));
+    shot(add, "tabs-navicust-row-placed", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-navicust-row-taken-off", Pair::None);
+}
+
+/// The cursor on the first row of the NaviCust's list that `which` picks.
+fn row(which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let rows = ui.global::<NavicustView>().get_programs();
+        let Some(at) = rows.iter().position(|r| which(&r)) else { return };
+        app.borrow_mut().shell.nav.focus("programs", at as i32);
+    })
+}
+
+/// The mouse pressed on a placed piece of the board, moved two cells (one at a time, where the piece fits two cells
+/// on: right, left, down or up) and let go, as the window's pointer events: each a timer's, `at` ms on.
+fn drag_piece() -> Step {
+    Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let view = ui.global::<NavicustView>();
+        let n = view.get_columns();
+        let cells: Vec<nettai_ui::GridCell> = view.get_cells().iter().collect();
+        let Some(start) = cells.iter().position(|c| c.filled) else { return };
+        // (The piece: the filled cells of its color joined to the one pressed.)
+        let (x0, y0) = (start as i32 % n, start as i32 / n);
+        let mut piece = vec![(x0, y0)];
+        let mut i = 0;
+        while i < piece.len() {
+            let (x, y) = piece[i];
+            for (nx, ny) in [(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)] {
+                let same = (0..n).contains(&nx) && (0..n).contains(&ny) && {
+                    let c = &cells[(ny * n + nx) as usize];
+                    c.filled && c.tone == cells[start].tone
+                };
+                if same && !piece.contains(&(nx, ny)) {
+                    piece.push((nx, ny));
+                }
+            }
+            i += 1;
+        }
+        let free = |x: i32, y: i32| (0..n).contains(&x) && (0..n).contains(&y) && {
+            let c = &cells[(y * n + x) as usize];
+            c.kind == nettai_ui::CellKind::Board && (!c.filled || piece.contains(&(x, y)))
+        };
+        let Some((dx, dy)) = [(1, 0), (-1, 0), (0, 1), (0, -1)].into_iter().find(|&(dx, dy)| piece.iter().all(|&(x, y)| free(x + 2 * dx, y + 2 * dy))) else { return };
+        let registry = app.borrow().shell.nav.registry();
+        let Some(r) = registry.borrow().rect(&crate::nav::Key::new("cell", start as i32)) else { return };
+        // (The board's cells are 3 apart.)
+        let pitch = r.w + 3.0;
+        let at =|k: f32| slint::LogicalPosition::new(r.x + r.w / 2.0 + k * dx as f32 * pitch, r.y + r.h / 2.0 + k * dy as f32 * pitch);
+        use slint::platform::{PointerEventButton, WindowEvent};
+        let button = PointerEventButton::Left;
+        let events = [
+            (0, WindowEvent::PointerPressed { position: at(0.0), button }),
+            (150, WindowEvent::PointerMoved { position: at(0.5) }),
+            (200, WindowEvent::PointerMoved { position: at(1.0) }),
+            (350, WindowEvent::PointerMoved { position: at(1.5) }),
+            (400, WindowEvent::PointerMoved { position: at(2.0) }),
+            (550, WindowEvent::PointerReleased { position: at(2.0), button }),
+        ];
+        for (ms, event) in events {
+            let ui = ui.as_weak();
+            slint::Timer::single_shot(std::time::Duration::from_millis(ms), move || {
+                if let Some(ui) = ui.upgrade() {
+                    ui.window().dispatch_event(event);
+                }
+            });
+        }
+    })
 }
 
 /// Into the library from the build's cards (on a phone, its sheet), if the cursor isn't there; and back out.
@@ -298,9 +374,9 @@ fn patch_cards(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     shot(add, "tabs-cards-put", Pair::None);
     // The cursor on a card that is in (its hint: Remove), and Enter taking it out from there; put back in.
     add(SETTLE, focus("lib.rows", 2));
-    shot(add, "tabs-cards-on-installed", Pair::First);
+    shot(add, "tabs-cards-on-installed", Pair::None);
     add(SETTLE, act(Action::Confirm));
-    shot(add, "tabs-cards-taken-out", Pair::Second);
+    shot(add, "tabs-cards-taken-out", Pair::None);
     add(SETTLE, act(Action::Confirm));
     // The library by MB (in a game with slots, by slot), the most first: a card the MB left can't take, refused
     // and why; in a game with slots, a card put in its slot in place of the one there.
@@ -388,6 +464,9 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, take(2, program));
     burst(add, "navicust-refused", &[0, 30, 60, 90, 120, 160, 220, 320], put(Spot::Over));
     add(SETTLE, act(Action::Back));
+    // A placed piece dragged with the mouse: pressed (it lifts), two cells on (it follows the pointer from cell to
+    // cell, outlined where it would land), let go (put down there, with its pulse).
+    burst(add, "navicust-drag", &[0, 60, 120, 170, 230, 300, 370, 430, 500, 580, 640, 720, 900], drag_piece());
     // A card put in (it flies from its row to the build's, which flashes, and the MB tick), and one the MB left
     // can't take (its row shakes).
     add(SETTLE, to_tab(EditorTab::PatchCards));
