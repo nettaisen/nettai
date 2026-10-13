@@ -12,8 +12,8 @@
 import { Theme } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, DialogFrame } from "../shell.slint";
-import { Button, ButtonKind, Field, Label, Note, Message, ListView, RowTouch, TabBar, Tab, Rule, ScrollPage } from "../widgets.slint";
-import { Arrive } from "../motion.slint";
+import { Button, ButtonKind, Field, Label, Note, Message, ListView, TabBar, Tab, Rule, ScrollPage } from "../widgets.slint";
+import { Arrive, Tween } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
 import { NaviView, NaviTab } from "builds/navi.slint";
 import { FolderView, FolderTab, FolderOverlay } from "builds/folder.slint";
@@ -133,6 +133,30 @@ component VersionChoice inherits Rectangle {
     }
 }
 
+// The editor's body: the tab chosen, arriving from the way it was reached each time it changes. A tab is here by
+// its `if`, which holds the tab alone: one clock moves the five (an `Arrive` around each tab was copied into
+// each `if`).
+component EditorBody inherits Rectangle {
+    property <EditorTab> shown: BuildsView.shown;
+    property <int> seq;
+    changed shown => {
+        root.seq += 1;
+    }
+    tw := Tween {
+        seq: root.seq;
+    }
+
+    Rectangle {
+        x: (1 - tw.t) * BuildsView.tab-way * 24px;
+        opacity: tw.t;
+        if BuildsView.shown == EditorTab.navi: NaviTab { }
+        if BuildsView.shown == EditorTab.folder: FolderTab { }
+        if BuildsView.shown == EditorTab.navicust: NavicustTab { }
+        if BuildsView.shown == EditorTab.patch-cards: PatchCardsTab { }
+        if BuildsView.shown == EditorTab.auto-battle: AutoBattleTab { }
+    }
+}
+
 export component BuildsScreen inherits Page {
     property <bool> editing: BuildsView.page == BuildsPage.editor;
     property <[Hint]> list-hints: [
@@ -196,11 +220,8 @@ export component BuildsScreen inherits Page {
                 y: self.at * list.pitch;
                 width: list.row-width;
                 build: BuildsView.builds[self.at];
-                hover: touch.has-hover;
-                touch := RowTouch {
-                    nav: "builds";
-                    nav-index: parent.at;
-                }
+                nav: "builds";
+                nav-index: self.at;
             }
         }
 
@@ -331,51 +352,8 @@ export component BuildsScreen inherits Page {
             tabs: BuildsView.tabs;
             chosen: BuildsView.tab;
         }
-    }
 
-    if root.editing && BuildsView.shown == EditorTab.navi: Arrive {
-        from-x: BuildsView.tab-way * 24px;
-        NaviTab {
-            x: 0;
-            y: root.tab-y;
-            width: root.body-width;
-            height: root.tab-height;
-        }
-    }
-
-    if root.editing && BuildsView.shown == EditorTab.folder: Arrive {
-        from-x: BuildsView.tab-way * 24px;
-        FolderTab {
-            x: 0;
-            y: root.tab-y;
-            width: root.body-width;
-            height: root.tab-height;
-        }
-    }
-
-    if root.editing && BuildsView.shown == EditorTab.navicust: Arrive {
-        from-x: BuildsView.tab-way * 24px;
-        NavicustTab {
-            x: 0;
-            y: root.tab-y;
-            width: root.body-width;
-            height: root.tab-height;
-        }
-    }
-
-    if root.editing && BuildsView.shown == EditorTab.patch-cards: Arrive {
-        from-x: BuildsView.tab-way * 24px;
-        PatchCardsTab {
-            x: 0;
-            y: root.tab-y;
-            width: root.body-width;
-            height: root.tab-height;
-        }
-    }
-
-    if root.editing && BuildsView.shown == EditorTab.auto-battle: Arrive {
-        from-x: BuildsView.tab-way * 24px;
-        AutoBattleTab {
+        EditorBody {
             x: 0;
             y: root.tab-y;
             width: root.body-width;
