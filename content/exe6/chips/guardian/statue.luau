@@ -37,6 +37,9 @@ local made = common.make {
         look = { sprite = asset.sprite("guardian-statue"), anim = 0, palette = 0, shadow = true },
     },
     hp = 1,
+    -- The damage word a stage's statues strike with (the actor list's entry type 9, `sub_800751C`: `byte_80077F4`'s
+    -- second word, 0x00A800C8): 200, and the counter byte 0xA8, whose low bits (0x28) a struck navi's mood loses.
+    stage_damage = 0x00A8_00C8,
     sounds = {
         place = asset.sound("appear"),
         crumble = asset.sound("panel-poison"),

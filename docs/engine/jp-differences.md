@@ -378,11 +378,14 @@ tables give their starts.
 None of these touches the simulation. A trace that compares memory would still see some of them, marked
 *(trace)* below.
 
-**nettai has one presentation**: where the releases differ, the Japanese games' (the user, 2026-10-06: "nettai
-should not have any region specific code", and of the chip window, "go with jp everywhere"). For the packs' art
-and sound the user turned that around on 2026-10-12 ("you should use the US assets where regions differ"): a pack
-has the US ROMs' asset where both releases have their own, and the Japanese ROMs' only where the US ROMs have none
-(§4.4, §4.5) or none is given. No part of nettai
+**nettai has one presentation and one behavior** (the user, 2026-10-06: "nettai should not have any region specific
+code"). Where the releases differ, it has the US release's (the user, 2026-10-12: "you should match the US behavior if
+the behaviors differ" and "you should use the US assets where regions differ"): a pack has the US ROMs' asset where
+both releases have their own, and the Japanese ROMs' only where the US ROMs have none (§4.4, §4.5) or none is given.
+The Japanese release's is kept where the US one is broken or missing (§3's stalls, the cut chips) and in two named
+cases: ElemTrap's routine, and the chip window shown from the custom screen's close, which EXE4, EXE5 and the Japanese
+EXE6 do alike (the user: "make all three games do the same thing"), so a US EXE6 console's later window is the listed
+difference. Words and their layout go by the language, not the region. No part of nettai
 knows a console's region: its packs carry no region, and the renderer draws every console's screen the same. What
 a console of the other region shows otherwise (a US console's placeholders and its chip window's later start below;
 a Japanese console's own art: EXE5's background 0x05, HeatMan's flames) is the verification's to know: its frame comparison knows each

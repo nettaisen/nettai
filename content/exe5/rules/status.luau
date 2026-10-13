@@ -434,8 +434,9 @@ local status = {
         -- A barrier stands still while paused; wind, or the hit flags 0xA20, pop it (EXE6's code).
         barrier = { stops_while_paused = true, wind = "pops" },
         -- Its defensive chips (0x08029A60): AntiDmg, or the trap the navi's status arms, catches a hit of any damage
-        -- (one of none passes); AntiSwrd any sword's hit (the hit flags 0x2000).
-        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
+        -- (one of none passes); AntiSwrd any sword's hit (the hit flags 0x2000). A caught hit leaves the navi's pending
+        -- requests (0x08029AE0 zeroes the hit alone): a move that ended on ice that tick slides.
+        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0, drops_requests = 0 },
         -- A chip-destroying hit (hit flag 0x10: 0x0801709A) takes a player's whole hand, the cursor back at its first
         -- chip. (EXE5's leaves the navi's chip requests, and one pending uses chip 0xFFFF's record, past the chip table:
         -- the engine ends it instead, docs/design/exe5-map.md §15.6.)
@@ -462,9 +463,12 @@ local status = {
             -- What the framework does by them: Full Synchro and anger double the next damaging chip (Full Synchro
             -- its palette and aura besides); a worn-out navi's buster deals 1, and anger doesn't start.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out" },
-            -- A counter hit marks the counter and the counterer's rules hear it (0x08016FDC: ./emotion), as EXE6's; a
-            -- chip's use leaves Full Synchro at 0x80 and sounds anger's boost too (after 0x0801026C, as EXE6's).
+            -- A counter hit marks the counter and the counterer's rules hear it (0x08016FDC: ./emotion), as EXE6's;
+            -- otherwise what a tick's hits counted raises the hitter's mood as a recovery does (0x08012802: a mood of 0
+            -- or 0xFF stays, to 0xFE at most), where EXE6's gives nothing. A chip's use leaves Full Synchro at 0x80
+            -- and sounds anger's boost too (after 0x0801026C, as EXE6's).
             hit_mood = "counter_mark",
+            hitter_gain = "short_of_full",
             full_synchro_spent = 0x80,
             anger_boost_sound = true,
             -- A tick's hits of 300 damage or more ask for anger, as 120 ticks stunned do (0x080119C4, as EXE6's).

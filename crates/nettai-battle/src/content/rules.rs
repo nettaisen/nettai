@@ -169,11 +169,18 @@ pub struct ChipUseRules {
     /// in pixels from the panel's center (the navi chip's, the healer's):
     /// down the field, and up.
     pub anti_navi_sparkle: SparkleOffset,
-    /// The hand's modifier bits 0x08, 0x10 and 0x20 count at a chip's use
-    /// (EXE5's capsules: 0x08010368 turns 0x08 and 0x20 into the damage
-    /// word's 0x1000 and 0x0800, and 0x0800FFF6 heals the user a tenth of
-    /// its HP on 0x10); EXE6's `sub_8012C34` knows bits 0x02 and 0x04 alone.
-    pub mixed_modifiers: bool,
+    /// What a hand entry's marks (`ChipHand::modifiers`) add to the attack's
+    /// damage word at its chip's use, by the mark's bit number. EXE6's
+    /// `sub_8012C34`: 0x02 the word's 0x4000 (WhiCapsl folded in:
+    /// paralysis) and 0x04 its 0x2000 (Uninstll). EXE5's 0x08010368: those
+    /// (its white and yellow capsules') and 0x08 its 0x1000, 0x20 its
+    /// 0x0800 (the black and the purple). EXE4's use adds none: its 0x02
+    /// marks a chip offered again (0x0801F0B8) and its 0x04 an entry whose
+    /// hand was installed (0x0801EA1E).
+    pub mark_damage: [u16; 8],
+    /// The marks with which the use heals its user a tenth of its HP
+    /// (EXE5's 0x0800FFF6: 0x10, its pink capsule's; 0: none).
+    pub mark_heals: u8,
     /// The opponent's NaviCust support Beat lets a dark chip go: EXE4's
     /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
     /// only if it isn't dark; EXE6's `sub_80106C0` and EXE5's take any.
@@ -1208,6 +1215,11 @@ pub struct AntiTraps {
     /// A sword's hit (hit flags 0x2000) with any of these flags isn't
     /// AntiSwrd's (EXE6's 0x20000; EXE5's and EXE4's none).
     pub sword_spares: u32,
+    /// A caught hit drops these of the navi's pending requests (its flags2)
+    /// too, a panel's slide asked for that tick among them (EXE6's 0x301BE;
+    /// EXE5's and EXE4's none: a move that ends on ice as the trap catches
+    /// a hit still slides).
+    pub drops_requests: u32,
 }
 
 /// How a navi's barrier takes the tick's hits (`IntakeRules::barrier`:
@@ -1365,6 +1377,9 @@ pub struct EmotionRules {
     pub roles: Vec<Option<EmotionRole>>,
     /// What a hit's counter byte does to the moods.
     pub hit_mood: HitMood,
+    /// What the hitter's mood takes of the bytes a navi's hits counted in a
+    /// tick (a counter's mark aside, which the counterer's rules hear).
+    pub hitter_gain: HitterGain,
     /// The mood a Full Synchro boost leaves, through the setter (EXE6's and
     /// EXE5's 0x80; EXE4's 0x99, 0x0800D568).
     pub full_synchro_spent: u8,
@@ -1378,20 +1393,37 @@ pub struct EmotionRules {
 }
 
 /// What a hit's counter byte (the hitter's collision +5's low bits) does
-/// to the moods (`EmotionRules::hit_mood`).
+/// to the moods (`EmotionRules::hit_mood`): the bytes a tick's hits count
+/// wear the receiver's mood, and what the hitter's takes of them is
+/// [`HitterGain`]'s; this is what a counter hit counts.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum HitMood {
-    /// The byte wears the receiver's mood; a counter hit (in the
-    /// receiver's counter window) marks the counter (0x8000) and wears
-    /// none, and the counterer's side's rules hear it (`countered`): EXE6's
-    /// hit kernel and `sub_801A200`, EXE5's.
+    /// A counter hit (in the receiver's counter window) marks the count
+    /// (0x8000) and wears none, and the counterer's side's rules hear it
+    /// (`countered`) where the hitter would gain: EXE6's hit kernel and
+    /// `sub_801A200`, EXE5's (0x08016FDC).
     CounterMark,
-    /// The bytes the receiver takes in a tick raise the other side's mood
-    /// (to 0xFF; a mood of 0 stays), a counter hit's counting 0xFF, and
-    /// wear the receiver's (a counter hit's 0x7F): EXE4's hit kernel
-    /// (0x08012C10) and status routine (0x080131E4). No `countered`.
-    HitterGains,
+    /// A counter hit counts 0xFF and wears 0x7F; no `countered`: EXE4's hit
+    /// kernel (0x08012C10) and status routine (0x080131E4).
+    CounterCounts,
+}
+
+/// What the hitter's mood takes of the bytes the other side's navi counted
+/// in a tick (`EmotionRules::hitter_gain`), after the hits, unless the
+/// battle is over.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum HitterGain {
+    /// Nothing: EXE6's `sub_801A200` (a counter's Full Synchro alone).
+    None,
+    /// They raise it, to 0xFF (Full Synchro) at most; a mood of 0 stays:
+    /// EXE4's 0x080131F4 through 0x0800F4FA.
+    ToFull,
+    /// They raise it, to 0xFE at most; a mood of 0 or 0xFF stays: EXE5's
+    /// 0x08016FDC through 0x08012802 (a recovery's raise), when the count
+    /// has no counter's mark.
+    ShortOfFull,
 }
 
 /// The status visual over a navi (effect object #6, `sub_80E08FC`): the
@@ -1580,6 +1612,7 @@ struct EmotionSection {
     #[serde(default)]
     roles: std::collections::BTreeMap<String, EmotionRole>,
     hit_mood: HitMood,
+    hitter_gain: HitterGain,
     full_synchro_spent: u8,
     anger_boost_sound: bool,
     #[serde(default)]
@@ -1602,6 +1635,7 @@ impl TryFrom<EmotionSection> for EmotionRules {
         let rules = EmotionRules::new(s.mood_held, s.anger_end, order, s.roles.into_iter().collect())?;
         Ok(EmotionRules {
             hit_mood: s.hit_mood,
+            hitter_gain: s.hitter_gain,
             full_synchro_spent: s.full_synchro_spent,
             anger_boost_sound: s.anger_boost_sound,
             anger_damage: s.anger_damage,
@@ -1653,6 +1687,7 @@ impl EmotionRules {
             order,
             roles,
             hit_mood: HitMood::CounterMark,
+            hitter_gain: HitterGain::None,
             full_synchro_spent: 0x80,
             anger_boost_sound: true,
             anger_damage: Some(300),

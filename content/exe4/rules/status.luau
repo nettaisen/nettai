@@ -432,8 +432,9 @@ local status = {
         -- worn down, is back with 150 HP 180 ticks later.
         barrier = { stops_while_paused = false, wind = "takes_away", regrowing = { after = 180, hp = 150 } },
         -- Its defensive chips (0x08023048): AntiDmg catches a hit of any damage (one of none passes), AntiSwrd any
-        -- sword's hit (the hit flags 0x2000); no status arms a trap.
-        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
+        -- sword's hit (the hit flags 0x2000); no status arms a trap. A caught hit leaves the navi's pending requests
+        -- (0x080230A2 zeroes the hit alone).
+        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0, drops_requests = 0 },
         -- A chip-destroying hit (hit flag 0x10: 0x0801325A) takes a player's whole hand, the cursor back at its first
         -- chip. (It ends the navi's chip requests too, 0x08013280: the engine's own, for a request with no chip left.)
         chip_destruction = "hand",
@@ -456,10 +457,12 @@ local status = {
             -- Synchro with its aura besides (0x0800D9AE); worn out or in a soul, anger doesn't start (0x0800C56E: the
             -- soul, 0x0800C57E: the emotion 5; the framework's `tired`). The buster knows no emotion.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "tired", soul = "tired" },
-            -- A hit's counter byte raises the hitter's mood and wears the receiver's, a counter hit's counting 0xFF
-            -- (Full Synchro) and wearing 0x7F (0x08012C10, 0x080131E4). A chip's use leaves Full Synchro at 0x99
-            -- (0x0800D568) and plays the boost's sound for it alone (anger's ends silent, 0x0800D57C).
-            hit_mood = "hitter_gains",
+            -- A hit's counter byte wears the receiver's mood, a counter hit's counting 0xFF and wearing 0x7F
+            -- (0x08012C10), and what a tick's hits counted raises the hitter's, to 0xFF (Full Synchro) at most
+            -- (0x080131E4: 0x0800F4FA). A chip's use leaves Full Synchro at 0x99 (0x0800D568) and plays the boost's
+            -- sound for it alone (anger's ends silent, 0x0800D57C).
+            hit_mood = "counter_counts",
+            hitter_gain = "to_full",
             full_synchro_spent = 0x99,
             anger_boost_sound = false,
             -- (No `anger_damage`: only 120 ticks stunned ask for anger, 0x0800C540; no damage does.)
