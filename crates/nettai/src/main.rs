@@ -225,7 +225,9 @@ fn main() -> Result<(), slint::PlatformError> {
         tour::start(&ui, &app, dir);
     }
     ui.run()?;
-    // (The screenshot pass found something cut or moved.)
+    // (The screenshot pass found something cut or moved, or was ended before its walk was done.)
+    #[cfg(feature = "tour")]
+    tour::ended(quit::asked());
     #[cfg(feature = "tour")]
     if tour::failed() {
         std::process::exit(1);

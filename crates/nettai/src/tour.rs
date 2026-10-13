@@ -102,6 +102,8 @@ pub(crate) struct Tour {
     seen: RefCell<Vec<String>>,
     /// The shots and bursts are passed by: what they would be of isn't there (an editor's tab the game hasn't).
     passing: Cell<bool>,
+    /// More the next pair's second shot may differ in, beyond the two cursors ([`Tour::may_differ`]).
+    also: RefCell<Option<Rect>>,
 }
 
 /// A shot of a burst: the milliseconds since it began, the picture, and each control's size.
@@ -136,6 +138,12 @@ impl Tour {
     pub(crate) fn key_wrong(&self, said: String) {
         self.keys.borrow_mut().push(said);
     }
+
+    /// The next pair's second shot may differ in `rect` too (in the UI's units): what the step between the two
+    /// changes besides the controls it touched (the NaviCust's strip shows the program under the cursor).
+    pub(crate) fn may_differ(&self, rect: Rect) {
+        *self.also.borrow_mut() = Some(rect);
+    }
 }
 
 /// Whether the pass found something wrong (the process's status).
@@ -145,6 +153,19 @@ pub fn failed() -> bool {
 
 thread_local! {
     static FAILED: Cell<bool> = const { Cell::new(false) };
+    /// The pass under way, until its walk is done ([`ended`] reads it).
+    static WALKING: RefCell<Option<Rc<Tour>>> = const { RefCell::new(None) };
+}
+
+/// The app's window loop has ended. If the pass's walk wasn't done (the window was closed, or a terminate request
+/// came from outside: `terminated`), its report says so, with what it had found until then, and the pass fails: a
+/// pass ended from outside doesn't end as one that walked through.
+pub fn ended(terminated: bool) {
+    let Some(tour) = WALKING.with(|w| w.borrow_mut().take()) else { return };
+    let why = if terminated { "a terminate request from outside (the system's SIGTERM, or SIGINT)" } else { "its window was closed" };
+    let note = format!("The pass was ended before its walk was done: {why}, after {} shots, the last arranged {:?}.\n\n", tour.shots.get(), tour.tag.borrow());
+    report(&tour, &note);
+    FAILED.with(|f| f.set(true));
 }
 
 /// Walk the screens, writing each to `dir`, then quit.
@@ -170,7 +191,9 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         pad: Default::default(),
         seen: Default::default(),
         passing: Cell::new(false),
+        also: Default::default(),
     });
+    WALKING.with(|w| *w.borrow_mut() = Some(tour.clone()));
     let t = tour.clone();
     ui.global::<Audit>().on_clipped(move |text| {
         t.cut.borrow_mut().insert((t.tag.borrow().clone(), text.to_string()));
@@ -247,8 +270,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
                     Pair::None => {}
                     Pair::First => *tour.first.borrow_mut() = Some((tag.clone(), picture, cursor)),
                     Pair::Second => {
+                        let also = tour.also.borrow_mut().take();
                         if let Some((first, before, was)) = tour.first.borrow_mut().take() {
-                            compare(ui, tour, &first, &before, &tag, &picture, &[was, cursor]);
+                            compare(ui, tour, &first, &before, &tag, &picture, &[was, cursor, also]);
                         }
                     }
                 }
@@ -808,7 +832,14 @@ fn compare(ui: &AppWindow, tour: &Tour, first: &str, before: &SharedPixelBuffer<
 
 /// Write the report, and leave.
 fn finish(tour: &Tour) {
-    let mut report = String::new();
+    WALKING.with(|w| *w.borrow_mut() = None);
+    report(tour, "");
+    let _ = slint::quit_event_loop();
+}
+
+/// Write the report (`report.txt`, `note` first) and say it on the terminal, and set whether the pass failed.
+fn report(tour: &Tour, note: &str) {
+    let mut report = String::from(note);
     let (cut, moved) = (tour.cut.borrow(), tour.moved.borrow());
     let (resized, late, seen) = (tour.resized.borrow(), tour.late.borrow(), tour.seen.borrow());
     let _ = writeln!(report, "{} shots, {} pairs compared.", tour.shots.get(), tour.pairs.get());
@@ -859,5 +890,4 @@ fn finish(tour: &Tour) {
     }
     eprint!("tour: {report}");
     FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty() || !never.is_empty() || !keys.is_empty()));
-    let _ = slint::quit_event_loop();
 }
