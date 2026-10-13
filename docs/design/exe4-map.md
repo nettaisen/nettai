@@ -1812,7 +1812,9 @@ Assumptions waiting on a recording (the chip lab's EXE4 recordings settle each):
   them, but the background a flat (18, 9, 18) where the frontend whitens it too; and a blinded console hides the
   other side's navi's HP number (chips/0x10d-sparkman/side1, frames 653 to 754), which the frontend still draws.
 - `status.missing_collision_status`: what EXE4's console reads through a navi's missing collision data on a round's
-  first tick, if its code reads it there at all (EXE5's open-bus value until a recording shows).
+  first tick (its first barrier's visual's blind test, 0x0800B0CA from 0x080E24B0): recorded, a software interrupt's
+  opcode, 0xE3A02004, with the blind bit, as EXE6's (modcards/011-first-barrier-100-side1 and its -rocks and
+  -obstacles: side 1's visual's header flags 0x15 on frame 130, 0x17 from the next).
 - The obstacles' own actions from 6: an obstacle's action table, as the player's (§15 effects).
 - Roll's chips against an armed AntiRecv (the spawner's own spring, 0x080E5554: the counterattack three times half
   the chip's damage word, its dimming with no cut-in): no recording has Roll used into AntiRecv yet.
