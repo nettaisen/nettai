@@ -1748,7 +1748,9 @@ SELECT, START), the player's over the dummy's in their sides' colors, each lit w
 each side's custom screen reads (`Battle::custom.sides[n].joypad.held`: this tick's buttons, not the fight's
 delayed ones) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
 corner, under the eighth the battle's own text takes there; on a phone, under MENU. It is drawn into a layer
-and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms a frame).
+and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms a frame). Under the menu it shows
+nothing held: the battle takes no button then but the START that holds it in the game's pause, and the dummy's
+presses go nowhere.
 
 **On a phone** the entry is one column (the rows, the line, the cards side by side, the arena, START TRAINING at
 the foot), the menu's rows have their label over their arrows and its buttons are one over the other, and in
