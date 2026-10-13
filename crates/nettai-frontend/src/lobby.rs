@@ -1958,6 +1958,50 @@ mod tests {
         assert!(!carded.is_empty() && carded == by_hand);
     }
 
+    /// The same in each of the three games, whatever a patch card is there
+    /// (EXE4's goes in a slot): two new builds with a card each agree a
+    /// match with patch cards off, and it is the match of the builds
+    /// without their cards (the same sides, the same first round by its
+    /// digest), not the match of the builds as they are.
+    #[test]
+    fn in_each_game_a_match_without_patch_cards_is_of_the_builds_without_them() {
+        use nettai_battle::rules::Fact;
+        use nettai_content_api::{Registry, Value};
+        use nettai_match::facts::PATCH_CARDS;
+        use nettai_match::testing::{exe4_content, exe5_content, exe6_content, patch_cards};
+        for (content, game, versions, card) in [
+            (exe4_content(), "exe4", ["redsun", "bluemoon"], "017-custom2"),
+            (exe5_content(), "exe5", ["protoman", "colonel"], "quaker"),
+            (exe6_content(), "exe6", ["gregar", "falzar"], "canodumb"),
+        ] {
+            let builds = nettai_match::build::Builds::of(&content, game).unwrap();
+            let with = versions.map(|version| {
+                let mut side = builds.new_build(&content, version).unwrap();
+                // (EXE4's list holds a card with the slot it is in.)
+                let cards = if game == "exe4" {
+                    let card = nettai_match::ids::entry(&content, game, PATCH_CARDS, card).unwrap();
+                    vec![Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::Entry, card.0))), ("slot", Fact::Value(Value::Int(0)))])]
+                } else {
+                    patch_cards(&content, game, card)
+                };
+                side.set_fact(&content, PATCH_CARDS, &cards).unwrap();
+                side
+            });
+            let bare = with.each_ref().map(|side| side.without_patch_cards(&content));
+            assert_ne!(with, bare, "{game}");
+            let on = Settings::new(game, 1);
+            let off = Settings { patch_cards: false, ..on.clone() };
+            let [played, joiner] = agree(&content, &off, with.clone());
+            let [by_hand, _] = agree(&content, &on, bare.clone());
+            let [as_they_are, _] = agree(&content, &on, with.clone());
+            assert_eq!((&played.sides, &played.m, &joiner.m), (&bare, &by_hand.m, &by_hand.m), "{game}");
+            assert_eq!(as_they_are.sides, with, "{game}");
+            let digest = |a: &Agreement| a.set.start().digest();
+            assert_eq!((digest(&played), digest(&joiner)), (digest(&by_hand), digest(&by_hand)), "{game}");
+            assert_ne!(digest(&played), digest(&as_they_are), "{game}: the cards change the round");
+        }
+    }
+
     /// A build is checked as the match will play it. One legal only by a
     /// card of its own (six Mega chips, the sixth by StarMan's card) can be
     /// readied with patch cards on. Turned off by the other player, the
