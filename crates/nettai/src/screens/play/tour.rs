@@ -590,7 +590,8 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     // The code's six boxes, as a pad's confirm on the field opens them: the focus a box along.
     add(SETTLE, focus("code", 0));
     add(SETTLE, step(|app| app.with_screen(ScreenId::Play, |s, shell| {
-        s.button(shell, gamepad_facade::Button::South);
+        let confirm = shell.bindings.confirm_button();
+        s.button(shell, confirm);
     })));
     shot(add, "play-code-boxes", Pair::First);
     add(SETTLE, act(Action::Right));

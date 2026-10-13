@@ -238,6 +238,19 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
     shot(add, "training-inputs", lang, size, Differs::Unheld, false);
 
+    // Through the custom screen to the fight (START to OK, A on it), and the menu opened there: the battle in
+    // the game's own pause behind it, its pause display left out, and a moment later still in it.
+    for n in 0..16 {
+        add(150, Box::new(move |_, app, _| app.borrow_mut().shell.keys.held = if n % 2 == 0 { keys::START } else { keys::A }));
+    }
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.keys.held = 0));
+    add(1500, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
+    shot(add, "training-menu-paused", lang, size, Differs::Unheld, false);
+    add(700, Box::new(|_, _, _| {}));
+    shot(add, "training-menu-paused-later", lang, size, Differs::Unheld, false);
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.close_menu()));
+    shot(add, "training-resumed", lang, size, Differs::Unheld, false);
+
     // What the Battle rows set, driven and drawn: the dummy shot (a charged shot and three more), its HP down;
     // a rest, its HP full again; the gauge full the while; L, and the custom screen deals the folder from its top.
     let hold = |held: u16| -> Step { Box::new(move |_, app, _| app.borrow_mut().shell.keys.held = held) };

@@ -464,6 +464,11 @@ const EXE6: [(&str, &str); 14] = [
 ];
 
 impl Compat {
+    /// The number patch card `key` is printed with and a Japanese save holds (patch-cards.toml).
+    pub fn patch_card_number(&self, key: &str) -> Option<u8> {
+        self.patch_cards.get(key).copied()
+    }
+
     /// EXE6's compat, as this repository's content/exe6/compat has it.
     pub fn exe6() -> &'static Compat {
         static EXE6_COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();

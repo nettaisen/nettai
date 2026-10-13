@@ -286,12 +286,12 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     view.set_recording(false);
     view.set_held_yours(0);
     view.set_held_dummys(0);
-    let driver = LivePlayer::against(Set::of(content, &m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
+    let driver = LivePlayer::against(set_of(content, &m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
     shell.start_battle(BattleStart {
         owner: ScreenId::Training,
         kind: BattleKind::Training,
         game: start.game.clone(),
-        set: Set::of(content, &m, start.seed),
+        set: set_of(content, &m, start.seed),
         play: Play::Drive(Box::new(driver)),
         viewer: 0,
         recorder: None,
@@ -301,6 +301,17 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     });
     shell.training.session = Some(session);
     Ok(())
+}
+
+/// The set a training session plays: the match's, its rounds leaving the game its START (`HostKeys::pause`
+/// off), so the training menu holds the battle in the game's own pause (`Battle::pause_in_game`). The rest of
+/// the round is as any match's. (A match's every round has the host answer START, for both players of an
+/// online one and its replay; training is neither online nor recorded.)
+fn set_of(content: &std::sync::Arc<nettai_battle::Content>, m: &Match, seed: u32) -> Set {
+    let mut first = m.round(content, seed);
+    first.host_keys.pause = false;
+    let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().expect("a checked match's folder is whole"));
+    Set::new(content.clone(), first, folders)
 }
 
 /// End the training session on, if one is: its battle (or the cards before it) goes, and the screen shown is
@@ -798,7 +809,16 @@ impl Screen for Training {
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match event {
-            BattleEvent::Started | BattleEvent::Watching(_) => {}
+            // Under the training menu the battle is in the game's own pause (the user: "the training pause should
+            // actually just use the game's pause behavior: music continues, stuff still animates. but don't
+            // show the PAUSED banner in the middle of the screen"): its HUD's pause display is left out.
+            BattleEvent::Started => {
+                if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training) {
+                    b.pause_in_game();
+                    b.stage.player.renderer().pause_display = false;
+                }
+            }
+            BattleEvent::Watching(_) => {}
             // Training has no end: a set that ends starts over.
             BattleEvent::Finished(_) => {
                 if let Some(b) = shell.battle.as_mut() {
@@ -916,7 +936,9 @@ impl Screen for Training {
         let battle = b.stage.player.battle();
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
-        let held = if session.inputs { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
+        // (Under the menu the battle takes no button but the START that holds it in the game's pause, and the
+        // dummy's go nowhere: nothing is shown held.)
+        let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {
             return;
