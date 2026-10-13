@@ -1427,10 +1427,22 @@ flinch or a drag, without EXE6's damage test and latch (`sub_8013F1E`).
 A chip-destroying hit (hit flag 0x10: the Roll patch card's charged shot, one shot in eight; Jealousy's hits;
 SearchMan's powered last shot) empties a player's whole hand (0x0801709A, from the four player intakes: the chip
 block's first two bytes zeroed, ten bytes of 0xFFFF from +0x02), where EXE6's `sub_801A2CC` takes the next chip
-alone; the navi's chip requests stay. The status section's `chip_destruction` (`takes = "hand"`; the engine had
-EXE6's until the EXE4 pass found it, docs/design/exe4-map.md §18 item 136). The lab's destruction/ (9 scenarios: a
-hand of three, one, none, one used before, a chip in use, an A the frame before and after the hit, the hit side the
-traced console's, Jealousy) replays, and the frames around the hit are pixel-exact on both consoles.
+alone. The status section's `chip_destruction` ("hand"; the engine had EXE6's until the EXE4 pass found it,
+docs/design/exe4-map.md §18 item 136). The lab's destruction/ (a hand of three, one, none, one used before, a chip in
+use, an A the frame before and after the hit, the hit side the traced console's, Jealousy, SearchMan's powered last
+shot) replays, and the frames around the hit are pixel-exact on both consoles.
+
+**A deliberate departure: the emptied hand's chip isn't used.** EXE5's routine leaves the navi's chip requests, so a
+chip asked for on the hit's own frame (the request is set before the intake and read after it; the navi must not
+flinch: SprArmr) is used from the empty hand: chip 0xFFFF, whose record is 0xFFFF places past the chip table, other
+data's bytes. The table's address goes by ROM (0x0801E214 US Team ProtoMan, 0x0801E210 US Team Colonel, 0x0801E1D0
+and 0x0801E1CC the Japanese), so the record does (0x082DE1E8, 0x082DE1E4, 0x082DE1A4, 0x082DE1A0: four different
+rows of bytes), and the two consoles of one battle read different chips. Recorded as the lab's destruction/asked
+and asked-colonel, one battle traced on each console: on Team ProtoMan's the navi starts action 0x30, brings the dark
+survival's shade (actor 0x2E) and then moves and shoots by itself; on Team Colonel's it starts action 0x33 and
+neither happens, and the consoles disagree from that frame (588) on. The engine ends the chip request when the hit
+leaves no chip at the cursor, as EXE4's US release does (0x08013280), in every game: decided 2026-10-12, a read past
+the chip table not being ported. Both recordings match every frame up to it (verify's deviations.rs, `CHIP_FFFF`).
 
 Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's and MoonBld's charged step;
 Slasher's request 0x80000 (`actions.stun_strike`, EXE5's action 0x49: DarkInvs's drive's end, which only that drive's
