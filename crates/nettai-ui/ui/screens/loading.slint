@@ -1,15 +1,18 @@
 // Loading (docs/design/app-ui.md §6): the logo and one bar while the selected game loads, as the app starts and
-// whenever the player steps to a game that isn't ready yet. The bar has one width and the percentage fixed-width
-// digits, so nothing moves as it fills.
+// whenever the player steps to a game that isn't ready yet; before that, while its pack is extracted from the
+// Legacy Collection, the bar is the extraction's. The bar has one width and the percentage fixed-width digits, so
+// nothing moves as it fills.
 
 import { Theme } from "../theme.slint";
-import { Shell } from "../shell.slint";
-import { Label, Mono, Bar, Note } from "../widgets.slint";
+import { Shell, Errors, ErrorKind } from "../shell.slint";
+import { Label, Mono, Bar, Note, Button, ButtonKind } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 
 export component LoadingScreen inherits Rectangle {
     property <length> column: min(480px, self.width - 2 * Theme.margin);
     property <length> top: (self.height - 158px) / 2;
+    // No game, and the Legacy Collection not found: its error's line, and the way to its folder.
+    property <bool> wants-folder: Shell.no-games && Shell.extracts;
     // The logo settles into place as the app starts.
     arrive := Tween {
         duration: Theme.set-piece;
@@ -42,7 +45,7 @@ export component LoadingScreen inherits Rectangle {
         width: root.column - 56px;
         height: 16px;
         visible: !Shell.no-games;
-        text: @tr("LOADING {}", Shell.game);
+        text: Shell.extracting ? @tr("EXTRACTING {}", Shell.game) : @tr("LOADING {}", Shell.game);
     }
 
     Mono {
@@ -55,15 +58,27 @@ export component LoadingScreen inherits Rectangle {
         horizontal-alignment: right;
     }
 
-    // No game has a pack: what to do about it. (The folder starts a line of its own, and breaks where it must.)
+    // No game has a pack: what to do about it. With the app's own packs, the Legacy Collection is what is missing
+    // (the error's own line). Else the packs folder named (`$NETTAI_PACKS`), which starts a line of its own and
+    // breaks where it must.
     Note {
         y: root.top + 116px;
         width: root.column;
-        height: 88px;
+        height: root.wants-folder ? 56px : 88px;
         vertical-alignment: TextVerticalAlignment.top;
-        wrap: char-wrap;
+        wrap: root.wants-folder ? word-wrap : char-wrap;
         visible: Shell.no-games;
-        text: @tr("No game data was found. Put a game's pack in {}.", "\n" + Shell.packs-folder);
+        text: root.wants-folder ? Errors.line(ErrorKind.no-legacy-collection, "") : @tr("No game data was found. Put a game's pack in {}.", "\n" + Shell.packs-folder);
         horizontal-alignment: center;
+    }
+
+    Button {
+        x: (parent.width - self.width) / 2;
+        y: root.top + 184px;
+        visible: root.wants-folder;
+        enabled: root.wants-folder;
+        nav: "source.choose";
+        kind: ButtonKind.main;
+        text: Errors.choose-folder();
     }
 }

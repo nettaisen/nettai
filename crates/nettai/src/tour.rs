@@ -301,13 +301,40 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "loading", Pair::None);
     add(SETTLE, Box::new(|ui, _, _| ui.global::<nettai_ui::Shell>().set_no_games(true)));
     shot(&mut add, "no-games", Pair::None);
+    // The app's own packs (docs/app.md §17; the pass extracts nothing, so they are set on the view): a game's
+    // being extracted from the Legacy Collection, and no game with the collection not found, the way to its
+    // folder under the error's line; then the error's dialog, where a game can be played.
+    add(
+        SETTLE,
+        Box::new(|ui, _, _| {
+            let shell = ui.global::<nettai_ui::Shell>();
+            shell.set_no_games(false);
+            shell.set_extracting(true);
+        }),
+    );
+    shot(&mut add, "extracting", Pair::None);
+    add(
+        SETTLE,
+        Box::new(|ui, _, _| {
+            let shell = ui.global::<nettai_ui::Shell>();
+            shell.set_extracting(false);
+            shell.set_extracts(true);
+            shell.set_no_games(true);
+        }),
+    );
+    shot(&mut add, "no-legacy-collection", Pair::None);
     add(
         SETTLE,
         Box::new(|ui, app, _| {
-            ui.global::<nettai_ui::Shell>().set_no_games(false);
+            let shell = ui.global::<nettai_ui::Shell>();
+            shell.set_no_games(false);
+            shell.set_extracts(false);
             app.borrow_mut().shell.hold_loading = None;
         }),
     );
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.ask_for_source()));
+    shot(&mut add, "no-legacy-collection-dialog", Pair::None);
+    add(SETTLE, act(Action::Back));
 
     // The main menu: the focus a step down, and the pad's hints.
     shot(&mut add, "menu", Pair::First);
