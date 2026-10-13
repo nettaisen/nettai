@@ -2561,7 +2561,12 @@ reads its status word through the null pointer, from the BIOS. EXE6's read gives
 at 0x0800CE18 with a scratch trap in the chip lab), without it: the visual shows at once. The status section's
 `missing_collision_status` (the engine's `Rules::missing_collision_status`, which each game states) says which; the
 replays' full object comparison caught it (navicust-compile/bug-colors, patch-cards-stats/bugstop, cards-02, cards-03,
-cards-08, clamps-hp: both sides with first barriers).
+cards-08, clamps-hp: both sides with first barriers). Those are stages with no objects in their actor lists. On a
+stage with boulders or rocks EXE5's console reads a software interrupt's opcode instead (the visual's header flags
+0x15 on frame 142 where the engine has 0x17: patch-cards/barrier-side1-boulders, seed 4369's grass stage, and
+barrier-side1-rocks), and the comparison lets the visual's VISIBLE bit go on the tick the round's actors are spawned
+(compat/kinds.toml's `round_start_open_bus_flags`). The screen is black on that tick, so no picture differs
+(the engine's objects-and-player.md §2).
 
 ### 15.15 EXE5's supports (as built)
 
