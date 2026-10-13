@@ -370,7 +370,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             let mut app = app.borrow_mut();
             app.go_now(ScreenId::Training);
             app.shell.hold_cards = true;
-            crate::screens::training::start_development_battle(&mut app.shell, 7);
+            crate::screens::training::start_development_battle(&mut app.shell, 7, Default::default());
         }),
     );
     shot(&mut add, "versus", Pair::None);
@@ -568,7 +568,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
         &mut add,
         "battle-entered",
         &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100],
-        Box::new(|_, app, _| crate::screens::training::start_development_battle(&mut app.borrow_mut().shell, 7)),
+        Box::new(|_, app, _| crate::screens::training::start_development_battle(&mut app.borrow_mut().shell, 7, Default::default())),
     );
     add(1500, Box::new(|_, _, _| {}));
     burst(&mut add, "menu-over-battle", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
