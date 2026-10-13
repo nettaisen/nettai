@@ -1511,10 +1511,9 @@ screen as a player makes them, and Replays lists replays of the pass's own.
 (each Battle row with its value changed, a pair apart), and drive the options in the battle as a player would,
 the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
 the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
-Recording row chosen, a recording made (RECORDING over the battle) and played. `training.txt` in the pass's
-folder says what no picture does at each: both navis' HP, the gauge, the options, each side's deal beside the
-top of its folder as saved, and the dummy's buttons and panel a quarter of a second apart as it plays the
-recording; that is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
+dummy's Action Fights with its Level under it. `training.txt` in the pass's folder says what no picture does at
+each: both navis' HP, the gauge, the options, and each side's deal beside the top of its folder as saved; that
+is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
 locked screen draws no frames, and the training battle never starts (`training.txt` says "no battle").
 
 **Builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`): the list
@@ -2002,9 +2001,8 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 
 | Row | Values | What it sets |
 |---|---|---|
-| Dummy: Action | Stands still, Moves around, Fights, Plays your recording, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
+| Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
-| Dummy: Recording (under Plays your recording alone) | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
 | Battle: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Battle: Background | Random, then the game's by name, as on the entry | the battle goes on where it is, drawn on the new background: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
@@ -2050,25 +2048,15 @@ game as the entry's rows are; a session another screen started begins as that sc
 battle option at its normal value and the place Random, and keeps nothing of the dummy's, the battle's or the
 place.
 
-**The dummy's rows.** One row says what the dummy does, its Action, and the one setting a value of it has
-comes under it while that value is chosen: the Level under Fights, the Recording under Plays your recording
-(`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it, the
-Action's own and the focus with it, staying where they are). Its custom screen goes with its Action (`dummy`):
-the AI's for one that fights, a second pad's own, else the first chip it can. The user (2026-10-13): "the dummy
-menu is so confusing and has so many redundant options and it's confusing to navigate. you should make it
-clearer and less redundant": before, Level, Custom screen and Recording were rows of their own whatever the
-Action, and Attacks at random was a weaker Fights; they went.
-
-**The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the
-Recording row closes the menu (the START that takes the game out of its pause is the menu's and doesn't end the
-recording: `a_recording_chosen_from_the_menu`), and from the battle as it stands the player's buttons drive the dummy, from
-wherever it is (the player's own navi stands still; on the custom screen the player's buttons are their own
-screen's as ever, and the dummy's picks the first chip it can). RECORDING shows over the
-battle meanwhile (in the dummy's color, with the input display's layer: `TrainingInputs`). Each tick the fight
-runs (not the turn's banner, the custom screen, the game's pause) its buttons are kept, up to a minute. Start
-ends it, and doesn't pause the game (or the menu opening, or starting over, or the minute end it): the
-dummy plays the buttons over and over from wherever it stands, while the player has their navi back. A new recording replaces it. Nothing of it is kept between sessions, and Plays your recording isn't
-remembered as the Action (with nothing recorded the dummy stands still).
+**The dummy's rows.** One row says what the dummy does, its Action, and its Level comes under it while it is
+Fights (`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it,
+the Action's own and the focus with it, staying where they are). Its custom screen goes with its Action
+(`dummy`): the AI's for one that fights, a second pad's own, else the first chip it can. The user (2026-10-13):
+"the dummy menu is so confusing and has so many redundant options and it's confusing to navigate. you should
+make it clearer and less redundant": before, Level, Custom screen and Recording were rows of their own whatever
+the Action, and Attacks at random was a weaker Fights; they went. Then, of the dummy's recording (the player
+drove the dummy, and it played their buttons back): "get rid of recording support, it's so complicated"; it
+went, from the menu and from the library.
 
 **A second pad.** With the dummy's Action "A second pad", the second gamepad used (the pads are known in the
 order each was first pressed, `input::Pad`) is the dummy's: what it holds is the dummy's buttons, in the fight

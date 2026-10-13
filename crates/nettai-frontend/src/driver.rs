@@ -4,7 +4,7 @@
 //! (`crate::netplay`). A host may bring its own (the desktop program's
 //! replays the original's recordings).
 
-use nettai_battle::battle::{fight, mode};
+use nettai_battle::battle::mode;
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
@@ -98,8 +98,8 @@ pub trait Driver {
         false
     }
     /// Live play's driver, for what a training session sets on it beside
-    /// the opponent (its options, the opponent's recording and its second
-    /// pad: [`LivePlayer`]); none from any other.
+    /// the opponent (its options, its AI and its second pad:
+    /// [`LivePlayer`]); none from any other.
     fn live(&self) -> Option<&LivePlayer> {
         None
     }
@@ -380,11 +380,6 @@ pub enum InFight {
     /// shoots and charges, uses its chips, and presses L and R
     /// (`nettai_netplay::standin::Masher`). Never START.
     AttacksAtRandom,
-    /// It plays the local player's recording of it
-    /// ([`LivePlayer::record_opponent`]),
-    /// over and over: the buttons recorded, one a tick of the fight running,
-    /// from wherever it stands. With nothing recorded it stands still.
-    PlaysRecording,
     /// A second pad the host has drives it (`LivePlayer::set_second_pad`),
     /// in the fight and on its custom screen, as a second player, but for
     /// START outside the custom screen (the pause is the local player's).
@@ -398,8 +393,7 @@ pub enum InFight {
 
 impl InFight {
     /// Every choice, in the order a host offers them.
-    pub const ALL: [InFight; 6] =
-        [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::Ai, InFight::PlaysRecording, InFight::SecondPad];
+    pub const ALL: [InFight; 5] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::Ai, InFight::SecondPad];
 }
 
 /// What an opponent does on its custom screen.
@@ -496,26 +490,11 @@ pub struct LivePlayer {
     refill: [Refill; 2],
     /// The order each side's battle folder is in this round.
     arranged: [ChipDraw; 2],
-    /// The opponent's recording: its buttons, a tick of the fight running
-    /// at a time; whether the local player is driving it to record them
-    /// (`record_opponent`), the local player's buttons the tick before (for
-    /// START's press), and where its playing is.
-    recording: Vec<u16>,
-    recording_now: bool,
-    last_keys: u16,
-    played: usize,
-    /// START ended the recording and is held still: it isn't the game's
-    /// until it is let go.
-    start_ended: bool,
     /// What the host's second pad holds this tick, while it has one.
     second_pad: Option<u16>,
     /// The host's AI, for an opponent whose choices are its.
     ai: Option<Box<dyn Ai>>,
 }
-
-/// The longest recording: a minute of the fight. One that reaches it ends
-/// as START would end it.
-pub const RECORDING_MOST: usize = 3584;
 
 /// Put what is left of `side`'s battle folder in `draw`'s order: the
 /// folder's own (`saved`, from its top), with no Regular chip first and no
@@ -547,11 +526,11 @@ fn arrange(b: &mut Battle, side: usize, draw: ChipDraw, saved: &SavedFolder) {
     b.consoles[side].tag_pair = tag_pair;
 }
 
-/// Whether the fight runs on the tick after `b`: what the opponent's
-/// recording is made of and played on (not the turn's banner, the custom
-/// screen, the game's pause or a round decided).
+/// Whether the fight runs on the tick after `b` (not the turn's banner,
+/// the custom screen, the game's pause or a round decided).
+#[cfg(test)]
 fn fight_runs(b: &Battle) -> bool {
-    b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING && !b.paused && !b.is_battle_over()
+    b.round.mode == mode::FIGHTING && b.fight.state == nettai_battle::battle::fight::FIGHTING && !b.paused && !b.is_battle_over()
 }
 
 impl LivePlayer {
@@ -573,11 +552,6 @@ impl LivePlayer {
             training: Training::default(),
             refill: Default::default(),
             arranged: [ChipDraw::Shuffled; 2],
-            recording: Vec::new(),
-            recording_now: false,
-            last_keys: 0,
-            played: 0,
-            start_ended: false,
             second_pad: None,
             ai: None,
         }
@@ -595,44 +569,6 @@ impl LivePlayer {
     /// that is its choice ([`InFight::SecondPad`]).
     pub fn set_second_pad(&mut self, held: Option<u16>) {
         self.second_pad = held;
-    }
-
-    /// Record the opponent from the next tick: the local player drives it
-    /// with their own buttons from wherever it stands (their own navi
-    /// stands still meanwhile), and each tick the fight runs its buttons
-    /// are kept, until START (pressed anywhere but on the custom screen,
-    /// where their buttons are their own screen's as ever, and the
-    /// opponent's screen does what it does) or [`RECORDING_MOST`] ticks.
-    /// Then the opponent plays it ([`InFight::PlaysRecording`]). The
-    /// recording before it is gone.
-    pub fn record_opponent(&mut self) {
-        self.recording.clear();
-        self.recording_now = true;
-        // (A START held as it begins isn't a press.)
-        self.last_keys = keys::START;
-    }
-
-    /// End the recording being made, as START does: the opponent plays it,
-    /// if it holds anything (else it does what it did). Nothing if none is
-    /// being made.
-    pub fn stop_recording(&mut self) {
-        if !std::mem::take(&mut self.recording_now) {
-            return;
-        }
-        self.played = 0;
-        if !self.recording.is_empty() {
-            self.opponent.in_fight = InFight::PlaysRecording;
-        }
-    }
-
-    /// Whether the local player is driving the opponent to record it.
-    pub fn recording_now(&self) -> bool {
-        self.recording_now
-    }
-
-    /// How many ticks the recording holds.
-    pub fn recorded(&self) -> usize {
-        self.recording.len()
     }
 
     /// The same, with a training session's options from its first tick.
@@ -714,13 +650,13 @@ impl LivePlayer {
     }
 
     /// The opponent's buttons on side `side` this tick (`keys`: the local
-    /// player's, which drive it while it is recorded).
+    /// player's, which its AI hears of).
     fn opponent_buttons(&mut self, b: &Battle, side: usize, keys: u16) -> u16 {
         const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
         let mashed = self.masher.buttons();
         // (START outside the custom screen is the pause's, the local player's alone: the game's own pause, in a
         // round that pauses itself.)
-        if let Some(held) = self.second_pad.filter(|_| self.opponent.in_fight == InFight::SecondPad && !self.recording_now) {
+        if let Some(held) = self.second_pad.filter(|_| self.opponent.in_fight == InFight::SecondPad) {
             return if b.round.mode == mode::CUSTOM { held } else { held & !keys::START };
         }
         if b.round.mode == mode::CUSTOM {
@@ -729,50 +665,13 @@ impl LivePlayer {
                 (choice, _) => custom_buttons(b, side, self.ticks, choice != OnCustomScreen::PicksNothing),
             };
         }
-        if self.recording_now {
-            let driven = keys & !keys::START;
-            if fight_runs(b) {
-                self.recording.push(driven);
-            }
-            return driven;
-        }
         match self.opponent.in_fight {
             InFight::StandsStill => 0,
             InFight::MovesAround => mashed & MOVES,
             InFight::AttacksAtRandom => mashed,
-            // (Held, its place is held too: it plays on from there.)
-            InFight::PlaysRecording if fight_runs(b) && !self.recording.is_empty() && !self.held => {
-                let at = self.played % self.recording.len();
-                self.played = at + 1;
-                self.recording[at]
-            }
-            InFight::PlaysRecording | InFight::SecondPad => 0,
+            InFight::SecondPad => 0,
             InFight::Ai => self.ai.as_mut().map_or(0, |ai| ai.fight(b, side as u8, keys)),
         }
-    }
-
-    /// The local player's buttons this tick: their own navi's, or none
-    /// while they drive the opponent to record it; and START's press ends
-    /// that recording (asked before the opponent's buttons: it plays the
-    /// recording from this tick). The START that ended it isn't theirs
-    /// until it is let go: held on, the game would take it for a press of
-    /// its pause's. In the game's pause they are the battle's as ever, and
-    /// end nothing: the START that leaves it is the host's (a training menu
-    /// that closes as the recording begins).
-    fn own_buttons(&mut self, b: &Battle, keys: u16) -> u16 {
-        if !self.recording_now {
-            self.start_ended &= keys & keys::START != 0;
-            return if self.start_ended { keys & !keys::START } else { keys };
-        }
-        let pressed = keys & !std::mem::replace(&mut self.last_keys, keys);
-        if b.round.mode == mode::CUSTOM || b.paused_by().is_some() {
-            return keys;
-        }
-        if pressed & keys::START != 0 || self.recording.len() >= RECORDING_MOST {
-            self.stop_recording();
-            self.start_ended = pressed & keys::START != 0;
-        }
-        0
     }
 }
 
@@ -830,9 +729,6 @@ impl Driver for LivePlayer {
         }
         self.refill = Default::default();
         self.arranged = [ChipDraw::Shuffled; 2];
-        // (A recording being made ends; the one made plays from its start.)
-        self.stop_recording();
-        self.played = 0;
         self.set.start()
     }
 
@@ -854,9 +750,8 @@ impl Driver for LivePlayer {
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
         self.ticks += 1;
         let local = b.setup.local_side as usize;
-        let own = self.own_buttons(b, keys);
         // (Held, the opponent's presses are made as ever, and go nowhere.)
-        let buttons = [0, 1].map(|side| if side == local { own } else { self.opponent_buttons(b, side, keys) * !self.held as u16 });
+        let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent_buttons(b, side, keys) * !self.held as u16 });
         // (The buttons are the whole input, as a netplay peer's are.)
         let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
         Some(Step { input: players, events, frame: Some(self.ticks) })
@@ -1145,7 +1040,7 @@ mod tests {
                         assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
                         attacked += (pressed & !MOVES != 0) as u32;
                     }
-                    InFight::PlaysRecording | InFight::SecondPad | InFight::Ai => unreachable!("not chosen here"),
+                    InFight::SecondPad | InFight::Ai => unreachable!("not chosen here"),
                 }
             }
             let turn = b.round.turn;
@@ -1183,8 +1078,8 @@ mod tests {
                 InFight::StandsStill => 0,
                 InFight::MovesAround => mashed & MOVES,
                 InFight::AttacksAtRandom => mashed,
-                // (Nothing recorded, no second pad: it stands still.)
-                InFight::PlaysRecording | InFight::SecondPad => 0,
+                // (No second pad: it stands still.)
+                InFight::SecondPad => 0,
                 // (No AI given: it stands still.)
                 InFight::Ai => 0,
             }
@@ -1366,97 +1261,6 @@ mod tests {
         assert_eq!(s.battle.gauge.value, CustomGauge::FULL);
     }
 
-    /// The opponent recorded: from the fight, the local player's buttons
-    /// drive it (their own navi stands still) and are kept a tick of the
-    /// fight running at a time, until START; then it plays them, over and
-    /// over, and the player has their navi back. A set started over plays
-    /// the recording from its start.
-    #[test]
-    fn the_opponent_plays_the_recording_made_of_it() {
-        let content = nettai_match::testing::exe6_content();
-        let m = long_match(&content);
-        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9);
-        let mut b = live.start();
-        let screen = |tick: u32, b: &Battle| if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { 0 };
-        play_until(&mut live, &mut b, 3000, screen, fight_runs);
-        live.record_opponent();
-        assert!(live.recording_now());
-        let pattern = [keys::UP, keys::UP, 0, keys::B, 0, keys::DOWN, keys::DOWN, 0, keys::A, 0, keys::LEFT, keys::LEFT, 0];
-        let mut recorded = Vec::new();
-        for tick in 0..400u32 {
-            let custom = b.round.mode == mode::CUSTOM;
-            let keys = if custom { bot_buttons(&b, 0, tick) } else { pattern[tick as usize % pattern.len()] };
-            let runs = fight_runs(&b);
-            let step = live.next(&b, keys).unwrap();
-            if !custom {
-                assert_eq!((step.input[0].held, step.input[1].held), (0, keys), "tick {tick}: the player drives the dummy");
-                if runs {
-                    recorded.push(keys);
-                }
-            }
-            b.tick(&step.input, step.events);
-        }
-        assert_eq!((live.recording_now(), live.recorded()), (true, recorded.len()));
-        assert!(recorded.len() > 200, "{} ticks recorded", recorded.len());
-        // START: the dummy plays it, from this tick on, over and over; the player's buttons are their navi's.
-        let mut played = Vec::new();
-        for tick in 0..2000u32 {
-            let custom = b.round.mode == mode::CUSTOM;
-            let keys = if tick == 0 { keys::START } else if custom { bot_buttons(&b, 0, tick) } else { keys::B * (tick % 9 == 0) as u16 };
-            let runs = fight_runs(&b);
-            let step = live.next(&b, keys).unwrap();
-            if tick == 0 {
-                assert!(!live.recording_now() && live.opponent().in_fight == InFight::PlaysRecording);
-            }
-            if !custom {
-                assert_eq!(step.input[0].held, if tick == 0 { 0 } else { keys }, "tick {tick}");
-                if runs {
-                    played.push(step.input[1].held);
-                } else {
-                    assert_eq!(step.input[1].held, 0, "tick {tick}");
-                }
-            }
-            b.tick(&step.input, step.events);
-        }
-        assert!(played.len() > 2 * recorded.len(), "{} played", played.len());
-        let looped: Vec<u16> = recorded.iter().cycle().take(played.len()).copied().collect();
-        assert_eq!(played, looped);
-        // Started over: from its start.
-        let mut b = live.start();
-        play_until(&mut live, &mut b, 3000, screen, fight_runs);
-        assert_eq!(live.next(&b, 0).unwrap().input[1].held, recorded[0]);
-    }
-
-    /// The START that ends a recording, held as a player's press is (some
-    /// ticks), ends it on its first tick and is no press of the game's
-    /// while it stays held: the game doesn't pause, and the dummy plays the
-    /// recording. Once let go, START is the player's again.
-    #[test]
-    fn a_held_start_ends_the_recording_and_pauses_nothing() {
-        let content = nettai_match::testing::exe6_content();
-        let m = long_match(&content);
-        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9);
-        let mut b = live.start();
-        let screen = |tick: u32, b: &Battle| if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { 0 };
-        play_until(&mut live, &mut b, 3000, screen, fight_runs);
-        live.record_opponent();
-        for tick in 0..60u32 {
-            let step = live.next(&b, if tick % 4 == 0 { keys::UP } else { 0 }).unwrap();
-            b.tick(&step.input, step.events);
-        }
-        assert!(live.recording_now() && live.recorded() > 0);
-        for tick in 0..10u32 {
-            let step = live.next(&b, keys::START).unwrap();
-            assert!(!live.recording_now() && live.opponent().in_fight == InFight::PlaysRecording, "tick {tick}");
-            assert_eq!(step.input[0].held & keys::START, 0, "tick {tick}: the START that ended the recording isn't the game's");
-            b.tick(&step.input, step.events);
-            assert!(b.paused_by().is_none(), "tick {tick}: the game paused");
-        }
-        let step = live.next(&b, 0).unwrap();
-        b.tick(&step.input, step.events);
-        assert_eq!(live.next(&b, keys::START).unwrap().input[0].held & keys::START, keys::START, "let go, START is the player's again");
-    }
-
     /// A second pad drives the opponent while that is its choice: what it
     /// holds is the opponent's buttons, in the fight and on its custom
     /// screen (the pad picking its chips); with no pad the opponent stands
@@ -1508,8 +1312,8 @@ mod tests {
     /// The options on a battle stepping in the game's own pause, as a
     /// training menu holds one (a round that pauses itself, START given and
     /// nothing else): the refill, the full gauge and the folder's order are
-    /// applied in the pause and leave it as it is, the recording neither
-    /// grows nor plays there, and START takes the fight out of it as ever.
+    /// applied in the pause and leave it as it is, and START takes the
+    /// fight out of it as ever.
     #[test]
     fn the_options_act_in_the_games_own_pause() {
         let content = nettai_match::testing::exe6_content();
@@ -1521,38 +1325,30 @@ mod tests {
         let mut b = live.start();
         let screen = |tick: u32, b: &Battle| if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { 0 };
         play_until(&mut live, &mut b, 3000, screen, fight_runs);
-        // A recording of a few ticks, played; the dummy's HP down; the gauge running.
-        live.record_opponent();
-        keys_in_turn(&mut live, &mut b, &[keys::UP, keys::UP, 0, keys::DOWN, keys::DOWN, 0, keys::START]);
-        assert_eq!((live.recorded(), live.opponent().in_fight), (6, InFight::PlaysRecording));
+        // The dummy's HP down; the gauge running.
         let r = b.player(1).unwrap();
         b.objects.get_mut(r).hp -= 100;
-        // The game's pause: START, and no buttons. (A press of its own: the START that ended the recording is let
-        // go first.)
-        keys_in_turn(&mut live, &mut b, &[0, keys::START, 0]);
+        // The game's pause: START, and no buttons.
+        keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
         assert_eq!(b.paused_by(), Some(0));
         let options = Training { refills: [true, true], full_gauge: true, chip_draw: ChipDraw::FolderOrder };
         live.set_training(options, &mut b);
-        let played = live.played;
         for tick in 0..300u32 {
             let step = live.next(&b, 0).unwrap();
-            assert_eq!(step.input[1].held, 0, "tick {tick}: nothing played in the pause");
+            assert_eq!(step.input[1].held, 0, "tick {tick}: the dummy presses nothing in the pause");
             Driver::prepare(&mut live, &mut b);
             b.tick(&step.input, step.events);
             assert_eq!(b.paused_by(), Some(0), "tick {tick}: still in the game's pause");
         }
-        assert_eq!(live.played, played, "the recording's place held");
         assert_eq!(hp(&b, 1).0, hp(&b, 1).1, "the refill, in the pause");
         assert_eq!(b.gauge.value, CustomGauge::FULL);
         let saved = live.set().folders()[0].chips;
         let left: Vec<FolderChip> = b.custom.sides[0].folder.chips.iter().flatten().copied().collect();
         assert!(in_order(&left, &saved), "in the folder's order: {left:?}");
-        // START: the fight goes on, the recording with it.
+        // START: the fight goes on.
         keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
         play_until(&mut live, &mut b, 100, |_, _| 0, fight_runs);
         assert_eq!(b.paused_by(), None);
-        let next = live.recording[live.played % live.recording.len()];
-        assert_eq!(live.next(&b, 0).unwrap().input[1].held, next, "the recording plays on from where it was");
     }
 
     /// What is left of each side's battle folder as each custom screen
