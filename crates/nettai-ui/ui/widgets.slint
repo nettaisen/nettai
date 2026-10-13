@@ -235,6 +235,9 @@ export component Button inherits Rectangle {
     // 52 tall (START TRAINING).
     in property <bool> big;
     out property <bool> focused: hit.focused;
+    // As wide as its text asks (what it is where no `width` is given it: a layout that gives it another on a
+    // phone alone reads this for the desktop's).
+    out property <length> natural-width: max(120px, label.preferred-width + 32px);
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     property <brush> fill-main: hit.has-hover ? Theme.action.brighter(12%) : Theme.action;
     property <brush> fill-ghost: hit.has-hover && root.enabled ? Theme.tint : transparent;
@@ -247,7 +250,7 @@ export component Button inherits Rectangle {
     // The main action's sheen: a band of light across it every few seconds.
     property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
     height: root.big ? 52px : 40px;
-    width: max(120px, label.preferred-width + 32px);
+    width: root.natural-width;
     press := Pulse {
         seq: root.presses;
     }
@@ -918,10 +921,12 @@ export component OptionRow inherits Rectangle {
 
 // ---- Frames ---------------------------------------------------------------------------------------------
 
-// A tab of a `TabBar`: its word, and whether it can be gone to (one that can't stays in its place, greyed).
+// A tab of a `TabBar`: its word, whether it can be gone to (one that can't stays in its place, greyed), and
+// whether something in it is wrong (a mark in the error red by its word).
 export struct Tab {
     text: string,
     enabled: bool,
+    flagged: bool,
 }
 
 // One tab.
@@ -945,6 +950,15 @@ component TabItem inherits Rectangle {
         animate color {
             duration: Theme.brisk;
         }
+    }
+
+    // (Something in the tab is wrong: a mark at its word's upper right.)
+    Rectangle {
+        x: parent.width - (Theme.phone ? 9px : 13px);
+        y: 9px;
+        width: 5px;
+        height: 5px;
+        background: root.tab.flagged && root.tab.enabled ? Theme.bad : transparent;
     }
 
     hit := Focusable {
