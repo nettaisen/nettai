@@ -61,10 +61,10 @@ export component AppWindow inherits Window {
     if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
     if Shell.versus: VersusScreen { }
     if root.in-battle: BattleScreen { }
-    // (Training's input display: over its battle's picture, wherever that is shown. It is there throughout
-    // and shown when it is on: an `if` would be a component for it.)
+    // (Training's input display and its recording's mark: over its battle's picture, wherever that is shown.
+    // They are there throughout and shown when they are on: an `if` would be a component for them.)
     TrainingInputs {
-        visible: Shell.battle == BattleKind.training && TrainingView.inputs;
+        visible: Shell.battle == BattleKind.training && (TrainingView.inputs || TrainingView.recording);
     }
 
     if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu { }
