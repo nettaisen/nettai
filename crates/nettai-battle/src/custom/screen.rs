@@ -702,7 +702,25 @@ impl Screen {
     /// and the cursor, by the frame counted.
     fn draw_choosing_return(&mut self, folder: &BattleFolder) {
         self.look.draw_regular(folder.regular_pending, true);
+        self.draw_cursor();
+    }
+
+    /// The cursor as the choosing's state draws it: on a chip, with the chip
+    /// window's element icon (EXE4's chips' state, 0x08020D8C: the cursor
+    /// then 0x0801EECC, unless the slot is a button's, its flag 8; OK's and
+    /// the button's states draw the cursor alone, 0x08020DBC, 0x08020DD0).
+    fn draw_cursor(&mut self) {
         self.look.draw_cursor();
+        self.draw_element_on_chip();
+    }
+
+    /// The chip window's element icon while the cursor rests on a chip
+    /// (EXE4's: also what R's description and L's message draw each tick,
+    /// with no cursor, when they came from the chips' state, 0x08020E10).
+    fn draw_element_on_chip(&mut self) {
+        if matches!(self.slots[self.cursor as usize].kind, SlotKind::Chip { .. } | SlotKind::Offered(_)) {
+            self.look.draw_element();
+        }
     }
 
     /// `sub_802A394`: choosing chips or reading a chip's description, the
@@ -736,6 +754,12 @@ impl Screen {
                 };
                 self.look.frame = SLIDE - SLIDE_STEP * tick as u32;
                 self.look.draw_emblem(self.look.frame);
+                // (EXE4's slide in draws the chip window's element icon each
+                // tick of a screen that dealt from a folder with chips,
+                // 0x0801E306: the screen's +0x15 and +0x11.)
+                if self.chips_left != 0 && self.hand_size != 0 {
+                    self.look.draw_element();
+                }
                 None
             }
             Phase::Settling => {
@@ -748,7 +772,7 @@ impl Screen {
                 self.count_choosing_frame();
                 self.look.draw_emblem(0);
                 self.look.draw_regular(folder.regular_pending, true);
-                self.look.draw_cursor();
+                self.draw_cursor();
                 None
             }
             Phase::Choosing => {
@@ -772,7 +796,7 @@ impl Screen {
                 // key leaves the window, OK or SELECT: 0x0801E412.)
                 let drawn_after = view.library.layout().cursor_after_leaving || self.phase == Phase::Choosing;
                 if drawn_after {
-                    self.look.draw_cursor();
+                    self.draw_cursor();
                 }
                 self.look.draw_emblem(0);
                 self.look.draw_regular(folder.regular_pending && !regular_taken, counts_first);
@@ -847,6 +871,9 @@ impl Screen {
                 }
                 chatbox.update(joy.held, joy.pressed);
                 self.phase = Phase::Description { window, form, chatbox };
+                if in_choosing {
+                    self.draw_element_on_chip();
+                }
                 None
             }
             Phase::RunMessage { chatbox } => {
@@ -863,6 +890,9 @@ impl Screen {
                     return None;
                 }
                 self.step_run_message(joy, view);
+                if in_choosing {
+                    self.draw_element_on_chip();
+                }
                 None
             }
             Phase::Window { window, tick } => {
