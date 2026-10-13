@@ -6,6 +6,11 @@
 //! a US ROM, Japanese with a Japanese one), its own language the first of them.
 //! The same API drives `nettai-extract` command.
 //!
+//! A ROM is given as its bytes (`RomSet::insert`), from wherever the host has it: nettai reads its ROMs out of
+//! an installed Legacy Collection's archives into memory and writes none to disk. [`recognize`] tells a ROM's
+//! game from its header alone; [`extract_reporting`] and [`Extraction::write_reporting`] say how far they are as
+//! they go; [`fingerprint`] tells apart the packs two builds write.
+//!
 //! ```no_run
 //! use nettai_extract::{extract, Game, RomSet};
 //! let mut roms = RomSet::default();
@@ -39,6 +44,14 @@ pub enum Game {
 }
 
 impl Game {
+    /// Every game the extractor makes a pack of.
+    pub const ALL: [Game; 3] = [Game::Exe4, Game::Exe5, Game::Exe6];
+
+    /// The game whose id ([`Game::id`]: a content's game, `exe6`) is `id`, if the extractor makes its pack.
+    pub fn named(id: &str) -> Option<Game> {
+        Game::ALL.into_iter().find(|g| g.id() == id)
+    }
+
     pub fn id(self) -> &'static str {
         match self {
             Self::Exe4 => "exe4",
@@ -53,6 +66,41 @@ impl Game {
             Self::Exe5 => ["BRBE", "BRKE", "BRBJ", "BRKJ"],
             Self::Exe6 => ["BR6E", "BR5E", "BR6J", "BR5J"],
         }
+    }
+}
+
+/// How much of a ROM [`recognize`] reads: its header, up to and with the game code at 0xAC.
+pub const HEADER_LEN: usize = 0xB0;
+
+/// The game a ROM is of, and its game code (`BR6E`), by its header: the code at 0xAC. `header` may be the ROM's
+/// first [`HEADER_LEN`] bytes alone, so that a host reading ROMs out of archives can sort them by game before it
+/// reads one whole. None: no ROM of a game the extractor takes. (Whether a ROM is whole is
+/// [`RomSet::insert`]'s to say.)
+pub fn recognize(header: &[u8]) -> Option<(Game, &'static str)> {
+    let code = header.get(0xAC..HEADER_LEN)?;
+    Game::ALL.into_iter().find_map(|game| game.codes().into_iter().find(|c| c.as_bytes() == code).map(|c| (game, c)))
+}
+
+/// What tells apart the packs of `game` that two builds of the extractor write: a digest, as 16 hex digits, of
+/// the pack format's version and of the names the pack's assets are written under, which a frontend finds them
+/// by: the content's `compat/assets.toml`, and the names given by the content's other tables (a chip's icon by
+/// its id, a navi's emblem by its key, what each of the fonts' glyphs draws). Two builds whose digests are the
+/// same write packs that the same content loads; a build whose content names an asset under another name, or
+/// one more, has another. (A change to how an asset is decoded that names nothing new doesn't change it.)
+pub fn fingerprint(game: Game) -> String {
+    let said = format!("{} {} {:?}", pack::FORMAT, pack::VERSION, asset_names(game));
+    // (FNV-1a, 64 bits: the same digest from every build and toolchain, which the standard library's hasher
+    // doesn't promise.)
+    let digest = said.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x0100_0000_01b3));
+    format!("{digest:016x}")
+}
+
+/// The names `game`'s pack is written under (its content's compat tables).
+fn asset_names(game: Game) -> AssetNames {
+    match game {
+        Game::Exe4 => exe4::names::asset_names(),
+        Game::Exe5 => exe5::names::asset_names(),
+        Game::Exe6 => exe6::names::asset_names(),
     }
 }
 
@@ -185,7 +233,13 @@ pub fn songs_played_otherwise(a: &[u8], b: &[u8]) -> Result<Vec<u16>, Error> {
 /// treated as a missing source. Existing game decoders' assertions are translated
 /// to errors at this boundary (on targets with unwinding enabled).
 pub fn extract(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
-    std::panic::catch_unwind(|| extract_inner(game, roms)).map_err(|panic| {
+    extract_reporting(game, roms, &mut |_| {})
+}
+
+/// [`extract`], telling `progress` how far it is as it goes (a fraction, 0 to 1, after each of its stretches:
+/// the graphics, the sound, the checks), for a host that shows a bar.
+pub fn extract_reporting(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| extract_inner(game, roms, progress))).map_err(|panic| {
         let detail = panic
             .downcast_ref::<String>()
             .map(String::as_str)
@@ -199,12 +253,13 @@ pub fn extract(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
 /// its lettering.
 const JAPANESE: &str = "ja";
 
-fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
-    let names = match game {
-        Game::Exe4 => exe4::names::asset_names(),
-        Game::Exe5 => exe5::names::asset_names(),
-        Game::Exe6 => exe6::names::asset_names(),
-    };
+/// The share of an extraction's time its graphics take, the sound the rest ([`extract_reporting`]). (Not
+/// measured apart: the whole is a few hundredths of a second for a game's four ROMs in a release build, and a
+/// pack's writing, with its encoding, nearly all of its time.)
+const GRAPHICS_SHARE: f32 = 0.6;
+
+fn extract_inner(game: Game, roms: &RomSet, progress: &mut dyn FnMut(f32)) -> Result<Extraction, Error> {
+    let names = asset_names(game);
     let codes = game.codes();
     let sources = codes.map(|code| roms.get(code));
     let missing_roms = codes
@@ -227,6 +282,7 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
         Game::Exe6 => exe6::graphics::panel_names(),
     };
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
+    progress(GRAPHICS_SHARE);
     // A pack has the words of the releases its ROMs are of (`sources`: the
     // two US ROMs, then their Japanese ones). With Japanese ROMs alone its
     // own language is Japanese; with no Japanese ROM it has no Japanese
@@ -274,7 +330,9 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
         SongVersions::default()
     };
     placeholders.extend(placeholders::songs(&mut sound, &names, &missing_songs));
+    progress(0.95);
     sound.validate().map_err(|e| Error(e.to_string()))?;
+    progress(1.0);
     Ok(Extraction {
         game,
         graphics,
@@ -365,6 +423,12 @@ impl Extraction {
     /// read back. Refuses nonempty directories so stale assets cannot survive a
     /// later extraction from fewer ROMs. Use `files` for custom overwrite policies.
     pub fn write(&self, root: &Path) -> Result<(), Error> {
+        self.write_reporting(root, &mut |_| {})
+    }
+
+    /// [`Extraction::write`], telling `progress` how far it is as it goes (a fraction, 0 to 1: the files made,
+    /// each written, then read back), for a host that shows a bar. What it writes is `write`'s, byte for byte.
+    pub fn write_reporting(&self, root: &Path, progress: &mut dyn FnMut(f32)) -> Result<(), Error> {
         if root.exists() && std::fs::read_dir(root)?.next().is_some() {
             return Err(Error(format!(
                 "{} is not empty; choose a new pack directory",
@@ -372,7 +436,17 @@ impl Extraction {
             )));
         }
         let files = self.files()?;
-        pack::write_files(root, &files)?;
+        // (The share of the time the files' making (their encoding) and their writing take, their reading back
+        // the rest: about 40, 30 and 30 of 100 for each game's four ROMs, in a release build.)
+        let (made, written) = (0.4, 0.7);
+        progress(made);
+        let total = files.iter().map(|(_, data)| data.len() as u64).sum::<u64>().max(1);
+        let mut done = 0;
+        for (path, data) in &files {
+            pack::write_file(root, path, data)?;
+            done += data.len() as u64;
+            progress(made + (written - made) * (done as f64 / total as f64) as f32);
+        }
         let mut report = Report::default();
         let back = pack::import_graphics(root, &mut report)
             .ok_or_else(|| Error(format!("graphics do not load:\n{report}")))?;
@@ -416,6 +490,7 @@ impl Extraction {
         {
             return Err(Error("sound structure reads back differently".into()));
         }
+        progress(1.0);
         Ok(())
     }
 }

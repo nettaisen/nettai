@@ -3136,6 +3136,17 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
      (BattleState +0x70 and 12 a side, where the registry starts at +0x68: EXE5's reads the first), then the other
      side's navi; a netbattle's search goes round those two (0x0800E8B6).
 
+     **The places' lists** are EXE5's (rules/auto_battle/block's `LISTS`, `@exelib/auto_battle/places`). The routine
+     that writes the block from the player's battles (0x0800EFA8, for block 0 from 0x08006EAE, as EXE5's 0x0802C540
+     is from 0x0800713C) sorts the chips into lists by class (record +0x08) from two count tables of 0x170 chips (the
+     use counts at 0x02006F50 and the counts at 0x02001BB0), sorts each list (0x08110BC4), builds the 42 places on
+     its stack (each list's places 0xFFFF first, 0x0800F19C) and copies them to the block (0x0800F158, 0x54 bytes):
+     places 1 to 3 the second table's three most counted standard chips (0x0800F0FA), 4 to 27 the use counts'
+     sixteen most used standard chips by the repeat table 0x0800F1F8 (4, 4, 2, 2, then once each; 0x0800F1C2), 28 to
+     32 the five most used mega chips (0x0800F118), 33 the most used giga chip (0x0800F128), 34 to 41 the patterns
+     (0x0800F138: 0x0800F2DC), 42 the most used program advance (0x0800F142). (US Red Sun's addresses; Blue Moon's
+     repeat table is at the same address, the Japanese Red Sun's at 0x0800F1A4.)
+
      **Getting in place** (0x0800F394, `rules/auto_battle/place`; its state 16 bytes a side at 0x0203C030): the
      chip record's byte 13 names one of 46 classes (0x0800F3C8; each chip's `auto_battle.class`, with its reach list
      or spot test, byte 23, the lists 0x0801DAD0: `rules/auto_battle/data`), all of them some folder chip's. About

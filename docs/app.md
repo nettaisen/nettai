@@ -19,10 +19,14 @@ it, Auto battle. The overview, a build's row and a version's tag are components 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
 the command line with no window, for frames, audits and checks (docs/tools.md).
 
+    cargo run --release -p nettai
     NETTAI_PACKS=<packs> cargo run --release -p nettai
 
-The packs are found as nettai-tool finds them (`$NETTAI_PACKS`, else `data`, each pack by the game it says;
-written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`). What the player makes is kept in the app's
+The app extracts each game's pack itself, as it starts, from the player's Battle Network Legacy Collection Vol. 2
+(Steam's), into its data folder's `packs/`, and again when another version of nettai made it (§17). With
+`$NETTAI_PACKS` set, the packs are that folder's, found as nettai-tool finds them (each pack by the game it says;
+written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`), and nothing is looked for or extracted: for
+development and the screenshot pass. What the player makes is kept in the app's
 data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/nettai` on macOS,
 `$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are in
 `builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), the settings are
@@ -223,8 +227,10 @@ content names a sprite the pack hasn't) is passed over, and the player is told o
 dialog of the shell's own: "BN6's data is out of date. Extract it again." (`UserError::GameOutdated`; what the
 loader said is in the log). The other games load and play; if it was the game the app opened on, the next one
 is. It is told as its load fails, at start-up, but never over another dialog or a battle: then once that is
-gone (`Games::take_failed`, asked each frame by `App::follow_games`). A game with no pack at all is passed over
-without a word, as ever. Another language's graphics are loaded on a thread too
+gone (`Games::take_notice`, asked each frame by `App::follow_games`). A game with no pack at all is passed over;
+with the app's own packs, that is said once, with the way to the Legacy Collection's folder (§17). Before a game
+loads, its pack may be extracted: the bar is that first, "EXTRACTING BN6" (§17). Another language's graphics are
+loaded on a thread too
 (`Games::load_language`) when the language changes, never on the window's thread where they are first asked for;
 the screens and the main menu's reel are shown again in the language when they arrive.
 
@@ -260,6 +266,7 @@ again, and so that the UI can be built without optimization (§14).
                       settings.rs lang.rs paths.rs errors.rs tour.rs  §9, §3, §12, §13
                       tour/<name>.rs                                    a screen's steps of the screenshot pass
                       replays.rs                                        the replays folder, read on a thread (§16)
+                      bnlc.rs packs.rs                                  the packs, from the Legacy Collection (§17)
                       builds/                                           what any screen shows of a build (§8)
                       screens/<name>.rs
                       screens/play/session.rs tour.rs                 Play's link and lobby; its part of §13
@@ -1066,11 +1073,21 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   other shape turned as it is, about the same middle, held by the same cell where it still has it, else by the
   nearest, the cursor going there: `Edit::Compress`), Confirm puts it down where it fits, and Back puts it away
   into the list, as the game's B does. So a placed program is taken off by picking it up and putting it away;
-  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand).
-  One that doesn't fit is refused with the rules' own kind (`GridData::misfit`: `Wrong::OffBoard` or
-  `Wrong::Overlap`) in the reserved line, and shakes. The footer's hints follow the cursor: the hand's while a
-  piece is held (Back: Put away), Del's Take off while the cursor is on a placed piece or a placed program's
-  row (`on-piece`). Leaving the tab with a piece picked up off the board puts it back where it was.
+  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand),
+  and so does Confirm on a placed program's row. One that doesn't fit is refused with the rules' own kind
+  (`GridData::misfit`: `Wrong::OffBoard` or `Wrong::Overlap`) in the reserved line, and shakes; the piece in hand
+  is outlined white where it would fit and red, its cells washed red, where it wouldn't (`held-fits`). The
+  footer's hints follow the cursor: the hand's while a piece is held (Back: Put away), Del's Take off while the
+  cursor is on a placed piece, Confirm's Take off on a placed program's row and Take on another (`on-piece`,
+  `in-list`). Leaving the tab with a piece picked up off the board puts it back where it was.
+- *The mouse.* The board and the list's rows tell the tab what the pointer does (`Nav.choose("drag", phase,
+  where)`: where is the window's point, which the tab turns into the cell under it from where the cells are
+  laid out). A press on a placed piece picks it up; a drag out of a program's row takes it in hand (a placed
+  one's last copy off the board); while the button is held the piece follows the pointer cell by cell, and the
+  wheel turns it. Let go over the board, it is put down where it fits, else it shakes and then goes back where it
+  came from; let go off the board, it is put away into the list. A press let go where it was pressed is a click,
+  Confirm there. A key or button pressed during a drag ends it, as a put-back. (The list doesn't scroll by a
+  mouse's drag, `ListView`'s `mouse-pan`, so a row's drag is its program's; the wheel scrolls it.)
 - *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
   edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
   as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
@@ -1096,22 +1113,27 @@ line's names put in as the screen shows them: `cards::named_by`, a slot by its n
   and MB used (or Slots filled) in the header, ticking as they change, and Together at the foot: what the cards
   add up to, the build's overview without its NaviCust (the numbers they change, what they give, their bugs).
 - *The library*, open: every card of the game with its lines, a search by name, and a sort (number, name, MB;
-  in a game with slots, number, name, slot). A card that can't go in is greyed with why: Installed, or in the
-  error red what it needs. No pictures (a card has none) and no on or off (nettai plays every card in).
+  in a game with slots, number, name, slot). A card that is in says Installed; one that can't go in is greyed
+  with why, in the error red what it needs. No pictures (a card has none) and no on or off (nettai plays every
+  card in).
 - *The keys.* Enter on one of the build's rows goes to the library (on a phone, its sheet); Enter on a card puts
   it in (at the list's end; in a game with slots, in the slot it belongs in, in place of what was there), and the
-  cursor stays in the library to put in another. Del takes the card under the cursor out; `[` and `]` (the pad's
-  north button: up) move it, as the order matters. A card put in flies from its row to the build's, which
-  flashes; one refused shakes.
+  cursor stays in the library to put in another; Enter, Del or a click on a card that is in takes it out again
+  (in a game with slots, empties its slot), its hint Remove (`on-installed`). Del takes the build's card under
+  the cursor out; `[` and `]` (the pad's north button: up) move it, as the order matters. A card put in flies
+  from its row to the build's, which flashes; one taken out flies back; one refused shakes.
 
 **The Auto battle tab** (`auto_battle`), in a game whose setup takes the places: the folder's shape again. The
 places and their lists are the game's (`builds::auto`: its rules/auto_battle/block's `LISTS`, each named in its
-strings' `auto_battle_lists`; a block that states no lists, EXE4's, has its 42 places as one, untitled). A
-build states the places alone (its pattern records are the rules' default), so a place holds a chip or nothing.
-The strip describes the chip under the cursor; the places are framed under their lists' titles in two columns,
-scrolled (a `ScrollPage`, `places.`); the library is a row a chip of those a folder of the build can hold, each
-saying in how many places it is. Enter on a place goes to the library, Enter on a chip puts it in and goes on to
-the next place (it flies there, the place flashes), Del empties a place. A chip the rules refuse in a place
+strings' `auto_battle_lists`: EXE4's and EXE5's alike, as their writers fill them; a block that states no lists
+would have its 42 places as one, untitled). A build states the places alone (its pattern records are the rules'
+default, nothing learned), so a place holds a chip or nothing, and the pattern list's places aren't shown (the
+game puts none there but a learned pattern's: a match is sent them empty, a valid block); the status counts the
+places shown. The strip describes the chip under the cursor; the places are framed under their lists' titles in
+two columns, scrolled (a `ScrollPage`, `places.`); the library is a row a chip of those a folder of the build
+can hold, each saying in how many places it is. Enter on a place goes to the library, Enter on a chip puts it in
+and goes on to the next place shown (it flies there, the place flashes), Enter, Del or a click on the chip the
+place holds takes it out again (it flies back; its hint Remove, `on-placed`), Del empties a place. A chip the rules refuse in a place
 (their `validate`: one its navi can't play) isn't put: its row shakes and the strip says why, worded for the
 part (`Words::problem`: "{chip} can't be played in auto battle").
 
@@ -1130,7 +1152,8 @@ the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits 
 app starts: the player's name (their account's on this machine until they choose one), the language, the game
 last used, the picture's size (the largest that fits, or at most 1 to 8 times), full screen, Reduce motion (as
 the system asks until the player says), the battle's text (sharp or original), the levels of the music and the
-sound effects, the input delay (4), the keys and the pad's buttons bound (those that differ from the defaults),
+sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
+where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
 and what screens remember by their own keys (`remembered`). A setting the file leaves out is the app's default.
 
 The Settings screen is one scrolling page with a list at its left that jumps to a group: General, Video, Audio,
@@ -1397,7 +1420,10 @@ isn't played here) and `of_export` (nettai-video's) each write the detail and gi
 holds every kind to one. Replays shows the first two at the end of a replay's row and beside the list, and the
 last in its export dialog's reserved line (§16). What breaks a build's rules is nettai-match's `Wrong`, which the
 Builds screen words in its own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
-can't be loaded is `UserError::GameOutdated`, with the game's name as shown (§1).
+can't be loaded is `UserError::GameOutdated`, with the game's name as shown (§1). With the app's own packs (§17),
+no Legacy Collection to extract a missing pack from is `UserError::NoLegacyCollection`, whose dialog has the way
+to the collection's folder, and a pack that couldn't be extracted is `UserError::ExtractFailed`, by the game's
+name.
 
 ## 13. The screenshot pass
 
@@ -1476,8 +1502,10 @@ made through the screen): the NaviCust's list a focus move apart (a pair), a pro
 turned, put down on the command line, a plus part beside it, another program put off the command line (its bug
 appears), one put over another (refused, and why), a plus part on EXE6's ring (out of bounds; in a game
 without a ring the shot is of the piece in hand), and a placed program under the cursor (Del's hint), picked up
-(In hand) and put away into the list with Back (no longer placed); the patch cards' library, its search and sort a focus move
-apart (a pair), three cards put in, the library by MB with a card the MB left can't take refused, one of the
+(In hand) and put away into the list with Back (no longer placed), and a placed program's row under the cursor
+(Confirm's Take off) and Confirm on it; the patch cards' library, its search and sort a focus move apart (a
+pair), three cards put in, the cursor on one that is in (Confirm's Remove) and Confirm taking it out, the library
+by MB with a card the MB left can't take refused, one of the
 build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
 filled from the library, one emptied, the places scrolled to the last list. Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
@@ -1485,12 +1513,15 @@ on the ring, or over another), so the walk is the same whatever the game's shape
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
 EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, compressed and
 decompressed (turned as it was, in place), the command line's arrows pulsing by themselves, a piece put down, put
-off the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
+off the command line (a bug pulses), refused, a placed piece dragged two cells by the mouse (`drag_piece`: the
+window's pointer events, a press, moves and a release by timers, as Replays' bar is dragged); a card put in and
+one refused; a chip put in a place.
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
-Settings, a dialog, a battle; in the probe, a change of game too), `training`, `builds`, `build-tabs`, `play`
-and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (Until the games' looks,
-`shell` walked Play's and Replays' steps too.)
+Settings, a dialog, a battle; in the probe, a change of game too), `packs` (a pack being extracted, and the Legacy
+Collection not found: the loading screen's line and button, and its dialog), `training`, `builds`, `build-tabs`,
+`play` and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (The pass extracts
+nothing: its packs are `$NETTAI_PACKS`'s, and the extraction's screens are set on the view.)
 
 **A picture's name says what it is of, and the pass doesn't check that**: it checks what moves between a pair
 and what is cut. Two things went unseen that way, and each now has its check.
@@ -1827,20 +1858,38 @@ the components used in one place (given the child, or measured copied in).
 docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
 `src/screens/training.rs` and `ui/screens/training.slint`.
 
-**The entry.** Two rows, Your build and Dummy's build, and START TRAINING at the column's foot; beside them (on a
-phone, under them) the two builds as cards over the arena.
+**The entry.** Four rows, Your build, Dummy's build, Arena and Background, and START TRAINING at the column's
+foot; beside them (on a phone, under them) the two builds as cards over the arena.
 
 - Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
   opened as a list with Enter. Both are remembered by game between runs (the settings' `remembered`:
   `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
   the first build that can be used.
+- Arena and Background (the user: "in training mode can you also add arena + background select?") are where
+  every round of the session is fought (`training::Places`, from the game's content alone): Random first, a
+  place picked from the seed each round as a match that names none has it (what training did before), then
+  the game's arenas, the link battle stages a match may name (`nettai_match::link_battle_stages`, the rules'
+  `link_pick.match_stages`: EXE6's 96, EXE5's 94, EXE4's 96), and its battle backgrounds
+  (`nettai_match::ids::backgrounds`, the pack's), each in its keys' natural order (a run of digits by its
+  number: Netbattle 2 before Netbattle 10). Each is stepped and opened as a
+  list as a build row is, and remembered by game (`training.arena.<game>` by the stage's key,
+  `training.background.<game>` by the background's name in the pack; Random is nothing remembered).
+  - The two are apart in the games' own data: a link battle picks its stage and its background each on its
+    own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
+    own background is shown only where the rules list none to pick from. So either is chosen with any of the
+    other, and nothing ties them.
+  - Their words: a background is called what the language's strings call it (`[backgrounds]`, by the area it
+    comes from: `Names::background_named`); an arena has no name in the content's words (a stage is its key),
+    and the list says each by its key as a title ("Netbattle 12", in every language). No names were added to
+    the locales: they would only restate the keys.
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
   held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
   is. (The window has one texture: the entry's box shows it only once the arena is what is in it, from the
-  second frame the window draws of it.) It is made once the builds chosen have stayed 160 ms (making a round holds the window about 20 ms: a
-  step through the builds doesn't make one each time), and what the session will be picked from is drawn as the
-  entry lists a game's builds and after each session, so the arena shown is the one START TRAINING opens on.
+  second frame the window draws of it.) It is made once the builds and the place chosen have stayed 160 ms (making a round holds the window about 20 ms: a
+  step through them doesn't make one each time), on the place chosen, and what the session will be picked
+  from is drawn as the entry lists a game's builds and after each session, so the arena shown (a Random one
+  too) is the one START TRAINING opens on.
 - With no build of the game there is one button, CREATE A BUILD, which goes to Builds.
 - A build is checked as the lobby will check one (`nettai_match::build::Checked`), once for what its file
   says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
@@ -1916,12 +1965,20 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 | Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
 | Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
+| Battle: Arena, Background | Random, then the game's, as the entry lists them | the set starts over on the new place, as RESTART starts it, the menu staying open: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Display: Input display | Off, On | the app's own drawing, below |
 
-The Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
+Arena and Background change where the set is fought, which a round fixes as it starts, so a change starts the
+set over on the new place: the session's match is put on it, its set made again from the session's seed, and
+the live driver plays that set from its next start (the library's `LivePlayer::play_set`) as the battle starts
+over (`Battle::restart`, RESTART's). The menu stays open, and the battle behind it steps through the round's
+opening with no buttons and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
+`under_the_menu_a_set_starts_over_on_another_place`). The dummy's setup, its recording and the options stay.
+
+The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
 (a navi's HP, the custom gauge, the battle folder the custom screen deals from) before each tick, never a rule
 of the simulation. With them at their normal values the battle is
@@ -1936,11 +1993,14 @@ A row is focused as a whole and changed at once by Left and Right (Enter steps i
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
 MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
 display are remembered between runs (`training.action`, `training.custom-screen`, `training.your-hp`,
-`training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`); a session another screen started begins as that screen says, every
-battle option at its normal value, and keeps nothing of the dummy's or the battle's.
+`training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`), and the place by
+game as the entry's rows are; a session another screen started begins as that screen says, every
+battle option at its normal value and the place Random, and keeps nothing of the dummy's, the battle's or the
+place.
 
 **The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the
-Recording row closes the menu, and from the battle as it stands the player's buttons drive the dummy, from
+Recording row closes the menu (the START that takes the game out of its pause is the menu's and doesn't end the
+recording: `a_recording_chosen_from_the_menu`), and from the battle as it stands the player's buttons drive the dummy, from
 wherever it is (the player's own navi stands still; on the custom screen the player's buttons are their own
 screen's as ever, and the dummy's screen does what its Custom screen row says). RECORDING shows over the
 battle meanwhile (in the dummy's color, with the input display's layer: `TrainingInputs`). Each tick the fight
@@ -1958,8 +2018,9 @@ reaches the battle on the custom screen alone, the game's pause being the player
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen does as its row says. Any other Action gives the pads back to the player.
 
-*Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`), its place in
-`ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row too.
+*Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`; a row whose
+values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in
+`values`, `value` and `Training::step_option`. A group's title is a row too.
 
 **The input display** (`TrainingInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
@@ -1970,15 +2031,16 @@ and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms 
 nothing held: the battle takes no button then but the START that holds it in the game's pause, and the dummy's
 presses go nowhere.
 
-**On a phone** the entry is one column (the rows, the line, the cards side by side, the arena, START TRAINING at
-the foot), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
+**On a phone** the entry is one column (the four rows, lower than a desktop's, 48, the line, the cards side by
+side, the arena, START TRAINING at the foot; side by side, two rows would each step with Left and Right and
+the arrows couldn't go from one to the other), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
 a desktop holds them all) and its buttons are one over the other, and in
 battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, which a battle's owner sets).
 
 **What isn't there.**
 
 - The rule a build breaks, in the reserved line (above).
-- A choice of arena: it is picked from the seed, as a match's is.
+- A name for an arena in the content's words (the list says its key).
 - A real key press: the screenshot pass drives the screens through the same calls a key becomes (`App::act`)
   and holds the battle's buttons directly; the window's own key events were not sent to it.
 
@@ -2109,3 +2171,111 @@ left), and Replays' steps with them in the folder listed them first, watched the
 Never run: a real pointer or a pad (the probe's are the window's events, not the system's), SHOW FILE, Save as's
 system dialog, the main menu's reel playing a replay (its order is a unit test), the builds with a real key, and
 anything on a real phone.
+
+## 17. The packs, from the Legacy Collection
+
+The user: "you should detect bnlc vol2 and extract all assets from there on startup if they are not extracted yet
+(and if nettai version changes, reextract assets). there is bnlc detection code in tango you can steal".
+
+**Where the packs are** (`packs.rs`). In the data folder's `packs/`, a folder a game (`packs/exe6`), which the app
+makes itself. `$NETTAI_PACKS` wins: when it is set the packs are that folder's, by the game each says, and nothing
+is looked for or extracted (development, and the screenshot pass, which never extracts: it keeps nothing of its
+own in the player's data folder).
+
+**Finding the collection** (`bnlc.rs`, ported from Tango's `tango-library/src/bnlc.rs`, its `locate_app_dir`,
+`rom_archives` and `scan_rom_archive`, Vol. 2 alone, with the crates it uses: `steamlocate` and `zip`). The
+folder the player chose is looked in first (the settings' `legacy_collection`: the install's own folder, its
+`exe` or its `exe/data`, whichever was chosen), then Steam, for the app id of Vol. 2, 1798020. `steamlocate`
+finds Steam on Windows by the registry's `InstallPath` (`HKLM\SOFTWARE\Wow6432Node\Valve\Steam`, else
+`SOFTWARE\Valve\Steam`), on macOS at `~/Library/Application Support/Steam`, and on Linux in each of Flatpak's,
+the usual (`$XDG_DATA_HOME/Steam`, `~/.steam/steam`, `~/.steam/root`, `~/.steam/debian-installation`) and Snap's
+folders that has a `steamapps` folder; then each library Steam lists (`steamapps/libraryfolders.vdf`) for the
+app's manifest, whose folder is `<library>/steamapps/common/<installdir>`. (Tango's lock has steamlocate 2.0.1,
+which on Linux takes the first of those that exists; this is 2.1.1, and every Steam found is looked in.) The
+collection is a Windows game: Linux's Steam installs it with Proton in its own libraries, where it is found;
+macOS's doesn't install it, and a Windows Steam in a compatibility layer (CrossOver, Whisky) is a folder to
+choose. On this Mac Steam has no collection, so only the chosen folder has run.
+
+The ROMs are the `.srl` entries of the per-game archives `exe/data/exe*.dat` (zip files; the shared `exe.dat`
+holds the collection's own art and is passed over), wherever in an archive they are. Each is read only as far as
+its header, and the extractor says whose it is (`nettai_extract::recognize`: the app names no game); a second
+copy of one game code is passed over. Steam isn't asked when no pack is wanted.
+
+**When a pack is extracted.** As the app starts, for each of the content's games whose pack is missing, or was
+made by another build: each pack is stamped (`stamp.toml` in it) with what made it,
+
+    nettai = "0.1.0"
+    assets = "1f3eed2364479361"
+
+the app's version, and the extractor's fingerprint of the game's asset names (`nettai_extract::fingerprint`: a
+digest of the pack format's version and of the names the pack's assets are written under, from the content's
+compat tables: `assets.toml`, a chip's icon by its id, a navi's emblem by its key, the fonts' glyphs). A pack
+whose stamp isn't this build's, or that has none (one `nettai-extract` wrote), is extracted again. The version is
+the user's word; it doesn't change between builds while it stays 0.1.0, and two builds of it differ in their
+packs above all where the content names an asset the other's pack hasn't (a sprite added, a song named): the pack
+loads and the content can't find it, which is what `UserError::GameOutdated` told before. The fingerprint is
+that. A change to how an asset is decoded that names nothing new doesn't change it: that is the version's to say.
+(A digest of the extractor's own source would catch that too, and would extract every pack again at nearly every
+commit.)
+
+**How.** On one thread, the games one after the other, the one the app opens on first; stepping to one still
+waiting moves it to the front. For each, its ROMs are read out of their archives into memory (none is written to
+disk) and handed to the extractor's library as bytes (`RomSet::insert`, `extract_reporting`), which writes the
+pack into a new folder, `packs/.new/<game>` (`Extraction::write_reporting`, which reads it back), and the stamp is
+written beside it. Then it is put in place by a rename: the old pack is moved aside to `packs/.old/<game>` the
+moment before, and deleted after. A crash leaves the old pack or none, never half of one; what it leaves is
+tidied as the app starts (a pack moved aside and not replaced is put back, the rest goes). The extractor's rule
+stands: its inputs are ROMs alone, and a pack is whole from whichever of the game's ROMs hold each asset. The pack's
+files are the extractor's, as `nettai-extract` writes them from the same ROMs (checked: below); the stamp is the
+one file more. Each game's end goes to the log, with how long each stretch took.
+
+**What the player sees.** The loading screen's bar is the extraction's first, "EXTRACTING BN6" and its
+percentage, then the load's, "LOADING BN6". A game is playable as its pack lands: the menu shows once the game it
+opens on is loaded, and the others are extracted behind it, each loaded as it lands; stepping to one not extracted
+yet shows its bar.
+
+**When there is nothing to extract from.** A game with no pack, and no collection found, is
+`UserError::NoLegacyCollection`: "nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or
+choose its folder." (in Japanese by the collection's Japanese name, ロックマンエグゼ アドバンスドコレクション
+Vol.2). Where some game can be played, it is a dialog, once, with CHOOSE FOLDER and OK; where none can, the loading
+screen shows the line and CHOOSE FOLDER. Either opens the system's folder dialog: a folder that holds the
+collection is kept in the settings, and the packs wanted are extracted from it; one that doesn't says the error
+again, and nothing is kept. A game whose pack another build made is loaded as it is while there is nothing to
+make it again from; if it doesn't load, that is the same error. A failure while reading the archives or
+extracting is `UserError::ExtractFailed` ("BN6's data couldn't be extracted. Details are in the log file."), the
+old pack kept where there is one; what went wrong is in the log alone.
+
+**How long it takes** (2026-10-13, a release build, each game's four ROMs, from the archives of the folder below,
+as the app's log said them; load average 17 to 35; the game the app opened on first):
+
+| Game | Its ROMs read out of the archives | Extracted | Its pack written (encoded, written, read back) | In all |
+|---|---|---|---|---|
+| BN6 | 0.18 s | 0.04 s | 1.55 s | 1.77 s |
+| BN4 | 0.12 s | 0.02 s | 1.00 s | 1.14 s |
+| BN5 | 0.11 s | 0.04 s | 0.91 s | 1.06 s |
+
+So a first run waits about two seconds for the game it opens on, and the three are there in four. The writing's
+own split is about 40, 30 and 30 of 100 (its files encoded, written, read back: the bar is weighted so). The
+command, `nettai-extract` in a release build with the same ROMs from their files, takes 1.0 s for BN4 and BN5
+and 1.1 s for BN6, at its peak 100 MB of memory (BN5's 210 MB).
+
+**What has run.** End to end, on this Mac: a folder shaped like an install (`exe/data/exe4.dat`, `exe5.dat` and
+`exe6.dat`, zip archives of each game's four ROMs at their root, as the collection names them, `exe4_rom_e.srl`
+and the rest; an `exe.dat` beside them), chosen as the player would by the settings' `legacy_collection`, with the
+data folder an empty one of its own. The app found the folder, extracted BN6 first (the settings' game), then BN4
+and BN5, with no load failing in the log, and ended on a terminate request with status 0; each of the three
+packs is byte for byte the one `nettai-extract` writes from the same ROMs' files (`diff -r`: the stamp is the one
+file more). In tests (`bnlc.rs`, `packs.rs`, `games.rs`, each with archives and packs of its own in temporary
+folders, the ROMs fake bytes where the code only moves them): an install found from
+any of its three folders; the ROMs found by their headers wherever in an archive they are, other entries and a
+second copy passed over, an archive that isn't one passed over, each ROM read back whole; a pack current by its
+stamp, stale by another's or none; a pack replaced only once whole, a failed one leaving the old; what a crash
+leaves tidied; a failed extraction leaving the old pack; the extraction's thread taking the games in turn, the one
+asked for first, and starting again for more; a game playable as its pack lands, a failure told once and its old
+pack played. The screenshot pass has the two screens (`extracting`, `no-legacy-collection`) and the dialog
+(`no-legacy-collection-dialog`), set on the view (`NETTAI_TOUR_ONLY=packs`): walked in English and Japanese at
+the desktop's size, nothing cut and the pictures looked at; not yet at a phone's, nor in the pseudo-locale. **What waits on a real install:** Steam finding it (on Windows,
+and on Linux under Proton); the real archives' layout and compression (Tango reads them as zip archives with
+`.srl` entries wherever they are, as this does; the app reads deflate and stored entries, and another method is an
+`ExtractFailed` with the method in the log); the real folder's name, for the chosen folder (any of its three
+folders is taken).

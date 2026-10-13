@@ -9,8 +9,10 @@
 //!
 //! **Enter on one of the build's cards goes to the library** (on a phone, its sheet); **Enter on a card of the
 //! library puts it in**: at the end of the list, or in the slot it belongs in, in place of the card there, and the
-//! cursor stays in the library. Del takes the card under the cursor out; `[` and `]` (the pad's north button: up)
-//! move it in the list's order, which matters (a later card can undo an earlier one's work).
+//! cursor stays in the library; Enter (or Del, or a click) on a card of the library that is in takes it out again,
+//! so a card is put in and taken out from where the cursor is. Del takes the build's card under the cursor out;
+//! `[` and `]` (the pad's north button: up) move it in the list's order, which matters (a later card can undo an
+//! earlier one's work).
 
 use crate::builds::cards::{self, Line};
 use crate::builds::edit::{self, ListEdit};
@@ -275,11 +277,11 @@ impl PatchCards {
             .iter()
             .map(|&h| {
                 let mut row = self.row_of(shell, draft, Some(h), None, budget);
-                if slots.is_some() {
-                    // (A card goes in its own slot whatever it holds: no card is refused.)
-                    if held.contains(&Some(h)) {
-                        row.note = shell.ui().global::<BuildWords>().invoke_installed();
-                    }
+                // (A card that is in says so, and isn't greyed: Enter takes it out again. In a game with slots a
+                // card goes in its own slot whatever it holds: no card is refused.)
+                if held.contains(&Some(h)) {
+                    row.note = shell.ui().global::<BuildWords>().invoke_installed();
+                } else if slots.is_some() {
                 } else if let Some(refusal) = budget.and_then(|b| b.refusal(content, draft.side(), h)) {
                     row.note = draft.with_words(shell, |w| w.entry_refusal(refusal)).into();
                     row.refused = true;
@@ -295,6 +297,15 @@ impl PatchCards {
         view.set_sort(self.sort as i32);
         view.set_descending(self.descending);
         view.set_in_library(self.in_library);
+        view.set_on_installed(self.on_installed(shell, draft).is_some());
+    }
+
+    /// The library's row under the cursor, if its card is in: its place among the build's (Confirm and Del take it
+    /// out again).
+    fn on_installed(&self, shell: &Shell, draft: &Draft) -> Option<(usize, usize)> {
+        let row = shell.nav.focused().filter(|k| k.id == "lib.rows").map(|k| k.index.max(0) as usize)?;
+        let h = *self.rows.get(row)?;
+        PatchCards::installed(draft).iter().position(|c| *c == Some(h)).map(|i| (row, i))
     }
 
     /// The strip: the card under the cursor, the build's or the library's.
@@ -381,10 +392,16 @@ impl PatchCards {
         self.show_detail(shell, draft, budget.as_ref());
     }
 
-    /// Put row `row`'s card in: at the end of the list, or in its own slot in place of what that slot held. A card
-    /// the list can't take isn't put in: its row shakes, and the strip says why.
+    /// Put row `row`'s card in: at the end of the list, or in its own slot in place of what that slot held; one
+    /// already in is taken out again (it flies back to its row). A card the list can't take isn't put in: its row
+    /// shakes, and the strip says why.
     fn put(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
         let Some(&h) = self.rows.get(row) else { return };
+        if let Some(i) = PatchCards::installed(draft).iter().position(|c| *c == Some(h)) {
+            let name = draft.with_words(shell, |w| w.names.entry(h));
+            shell.fly(("card", i as i32), ("lib.rows", row as i32), slint::Image::default(), &name);
+            return self.remove(shell, draft, i);
+        }
         let budget = PatchCards::budget(draft);
         let ui = shell.ui();
         let view = ui.global::<PatchCardsView>();
@@ -602,10 +619,12 @@ impl Tab for PatchCards {
                 self.described = Some(Described::Row(self.row));
                 self.notice = None;
                 view.set_in_library(true);
+                view.set_on_installed(self.on_installed(shell, draft).is_some());
                 let budget = PatchCards::budget(draft);
                 self.show_detail(shell, draft, budget.as_ref());
             }
             id if id.starts_with("lib.") => {
+                view.set_on_installed(false);
                 self.in_library = true;
                 view.set_in_library(true);
             }
@@ -639,6 +658,11 @@ impl Tab for PatchCards {
 
     /// Delete takes the card out; the pad's north button moves it up.
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
+        // (In the library, Del on a card that is in takes it out, as Confirm does.)
+        if let (Action::Delete, Some((row, _))) = (action, self.on_installed(shell, draft)) {
+            self.put(shell, draft, row);
+            return true;
+        }
         let Some(i) = PatchCards::focused_card(shell) else { return false };
         match action {
             Action::Delete => self.remove(shell, draft, i),

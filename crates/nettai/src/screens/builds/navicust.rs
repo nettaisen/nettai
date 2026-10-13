@@ -14,8 +14,16 @@
 //! puts it down where it fits (else it shakes and the line under the key says why, typed as the rules say it), and
 //! Back (Esc, B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
 //! up and putting it away. Del takes the piece under the cursor off at once, or a program's last copy from the
-//! list, or puts the piece in hand away. The strip across the top describes the program under the cursor, in the
-//! game's words.
+//! list, or puts the piece in hand away; Enter on a placed program's row takes its last copy off too. The strip
+//! across the top describes the program under the cursor, in the game's words. The piece in hand is outlined white
+//! where it could be put down, red where it can't.
+//!
+//! **The mouse** (the view's pointer areas, told here as `Tab::choose`'s "drag"): a press on a placed piece picks it
+//! up, and a drag out of a program's row takes it (a placed one's last copy off the board); while the button is
+//! held the piece follows the pointer from cell to cell, and the wheel turns it. Let go over the board, it is put
+//! down where it fits, else it shakes and goes back where it came from; let go off the board, it is put away into
+//! the list. A press and release that never left the cell or row is a click, as Enter there. A key or button
+//! pressed during a drag ends it, as a put-back.
 
 use crate::builds::grid::{self, Edit, GridData, Held};
 use crate::builds::overview;
@@ -30,9 +38,41 @@ use nettai_match::build::{Checked, Overview, Stat};
 use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
+use std::time::Duration;
 
 /// The lines each of the effects' and the bugs' panels has room for under its title.
 const LINES: usize = 10;
+
+/// What the view's pointer areas tell (`Nav.choose("drag", phase, value)`): a press on a row of the list (`value` its
+/// place) or on the board, a move, a release (`value` where the pointer is: x * 65536 + y, the window's logical
+/// pixels), the wheel (`value` its delta), a press the window took back; and the put-back due after a refusal
+/// (`value` its count).
+const PRESS_ROW: i32 = 0;
+const PRESS_BOARD: i32 = 1;
+const MOVE: i32 = 2;
+const RELEASE: i32 = 3;
+const WHEEL: i32 = 4;
+const CANCEL: i32 = 5;
+const PUT_BACK: i32 = 6;
+
+/// How far the wheel goes for a quarter turn (a mouse's notch is more).
+const NOTCH: i32 = 40;
+
+/// How long a piece let go where it can't be put down shakes before it goes back (Shake's own length).
+const SHAKE: Duration = Duration::from_millis(280);
+
+/// A press of the mouse's, until it is let go.
+#[derive(Clone, Copy, Debug)]
+struct Drag {
+    /// The list's row it was pressed on (else the board).
+    row: Option<usize>,
+    /// The board's cell it was pressed on.
+    cell: Option<(i32, i32)>,
+    /// A piece was in hand at the press (a click puts it down there).
+    had: bool,
+    /// The pointer has left where it was pressed with a piece in hand: letting go puts it down.
+    moving: bool,
+}
 
 #[derive(Default)]
 pub struct Navicust {
@@ -60,6 +100,12 @@ pub struct Navicust {
     notice: Option<String>,
     /// The bugs shown last (one that wasn't there pulses).
     bugs: Option<Vec<String>>,
+    /// The mouse's press, while it is held; the wheel's way toward the next quarter turn.
+    drag: Option<Drag>,
+    wheel: i32,
+    /// A piece let go where it can't be put down goes back once it has shaken: the count of the put-back due.
+    back_due: Option<i32>,
+    backs: i32,
 }
 
 /// What `board` has at a place of the engine's grid: `o` a cell, `f` its frame, `.` none.
@@ -212,6 +258,7 @@ impl Navicust {
                 let (cx, cy) = (self.at.0 - h.grab.0, self.at.1 - h.grab.1);
                 let held = piece(&grid::cells(&shape, cx, cy), self.at);
                 let color = d.colors.get(&h.piece).and_then(|c| c.get(h.color as usize)).cloned();
+                view.set_held_fits(d.misfit(board, &parts, &shape, cx, cy).is_none());
                 view.set_held(ModelRc::new(VecModel::from(held)));
                 view.set_held_tone(tone(color.as_deref()));
                 view.set_held_plus(d.plus.contains(&h.piece));
@@ -343,9 +390,9 @@ impl Navicust {
     }
 
     /// Enter on cell (x, y): the piece in hand put down there (by the cell it is held by), or the piece there
-    /// picked up by it.
-    fn press(&mut self, shell: &mut Shell, draft: &mut Draft, at: (i32, i32)) {
-        let Some(Some(d)) = &self.data else { return };
+    /// picked up by it. Whether the piece in hand couldn't be put down (it shakes, and the line says why).
+    fn press(&mut self, shell: &mut Shell, draft: &mut Draft, at: (i32, i32)) -> bool {
+        let Some(Some(d)) = &self.data else { return false };
         let parts = grid::placed(draft.content(), draft.side());
         match &self.held {
             Some(h) => {
@@ -356,7 +403,8 @@ impl Navicust {
                     self.refused += 1;
                     self.notice = Some(draft.with_words(shell, |words| words.wrong(&wrong)));
                     shell.sound.play(Cue::Refused);
-                    return self.show_board(shell, draft);
+                    self.show_board(shell, draft);
+                    return true;
                 }
                 let dropped = piece(&grid::cells(&shape, cx, cy), (self.first, self.first));
                 if self.edit(draft, Edit::Place(cx, cy)) {
@@ -370,7 +418,7 @@ impl Navicust {
                 }
             }
             None => {
-                let Some(&i) = d.occupied(&parts).get(&at) else { return };
+                let Some(&i) = d.occupied(&parts).get(&at) else { return false };
                 if self.edit(draft, Edit::PickUp(i, at.0, at.1)) {
                     self.at = at;
                     self.lifted += 1;
@@ -380,6 +428,212 @@ impl Navicust {
                 }
             }
         }
+        false
+    }
+
+    /// The program's last copy on the board taken off (Del on its row, or Enter there).
+    fn take_off(&mut self, shell: &mut Shell, draft: &mut Draft, i: Option<usize>) {
+        match i {
+            Some(i) if self.edit(draft, Edit::Remove(i)) => {
+                shell.sound.play(Cue::Back);
+                self.changed(shell, draft);
+            }
+            _ => shell.sound.play(Cue::Refused),
+        }
+    }
+
+    /// The last copy on the board of row `row`'s program, in its color.
+    fn last_copy(&self, draft: &Draft, row: usize) -> Option<usize> {
+        let Some(Some(d)) = &self.data else { return None };
+        let &(piece, color) = self.rows.get(row)?;
+        let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
+        grid::placed(draft.content(), draft.side()).iter().rposition(|p| p.piece == piece && p.color == name)
+    }
+
+    /// The piece in hand back where it came from, nothing shown: one picked up off the board goes back on it, one
+    /// taken from the list back into it. Whether the build changed.
+    fn let_go(&mut self, draft: &mut Draft) -> bool {
+        let Some(from_board) = self.held.as_ref().map(|h| h.origin.is_some()) else { return false };
+        let changed = self.edit(draft, if from_board { Edit::PutBack } else { Edit::Drop });
+        self.held = None;
+        changed
+    }
+
+    /// The piece in hand back where it came from (a drag ended by a key, or let go where it can't be put down).
+    fn put_back(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        if self.held.is_none() {
+            return;
+        }
+        self.let_go(draft);
+        shell.sound.play(Cue::Back);
+        self.changed(shell, draft);
+    }
+
+    /// The piece in hand over cell `at`, as the mouse takes it (the cursor goes there where it is a cell).
+    fn follow(&mut self, shell: &mut Shell, draft: &Draft, at: (i32, i32)) {
+        self.at = at;
+        self.glide = true;
+        self.notice = None;
+        self.focus_cell(shell, at);
+        self.show_board(shell, draft);
+    }
+
+    /// The cursor to cell `at`, where it is one (EXE6's corners aren't).
+    fn focus_cell(&self, shell: &mut Shell, at: (i32, i32)) {
+        let index = self.index_of(at);
+        let real = shell.nav.registry().borrow().rect(&crate::nav::Key::new("cell", index)).is_some();
+        if real {
+            shell.nav.focus("cell", index);
+        }
+    }
+
+    /// The drawn grid's cell under window point `at` (`x * 65536 + y`), from where the view lays its cells out;
+    /// none off the grid.
+    fn cell_under(&self, shell: &Shell, at: i32) -> Option<(i32, i32)> {
+        let (x, y) = ((at >> 16) as f32, (at & 0xFFFF) as f32);
+        let n = self.columns;
+        let registry = shell.nav.registry();
+        let registry = registry.borrow();
+        let rect = |i: i32| registry.rect(&crate::nav::Key::new("cell", i));
+        // (Two cells side by side give the grid's pitch: EXE6's corners are no cells.)
+        let (i, a, b) = (0..n * n).filter(|i| i % n + 1 < n).find_map(|i| Some((i, rect(i)?, rect(i + 1)?)))?;
+        let pitch = b.x - a.x;
+        if pitch <= 0.0 {
+            return None;
+        }
+        let (x0, y0) = (a.x - (i % n) as f32 * pitch, a.y - (i / n) as f32 * pitch);
+        let (cx, cy) = (((x - x0) / pitch).floor() as i32, ((y - y0) / pitch).floor() as i32);
+        ((0..n).contains(&cx) && (0..n).contains(&cy)).then_some((self.first + cx, self.first + cy))
+    }
+
+    /// The program of row `row` in hand for a drag out of the list: a placed one's last copy picked up off the
+    /// board (by its first cell), else one taken from the list.
+    fn lift_row(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
+        let Some(Some(d)) = &self.data else { return };
+        match self.last_copy(draft, row) {
+            Some(i) => {
+                let parts = grid::placed(draft.content(), draft.side());
+                let Some(at) = d.occupied(&parts).iter().filter(|&(_, &j)| j == i).map(|(&c, _)| c).min() else { return };
+                self.let_go(draft);
+                self.press(shell, draft, at);
+            }
+            None => self.take(shell, draft, row),
+        }
+    }
+
+    /// What the mouse did (`PRESS_ROW` and the rest).
+    fn dragged(&mut self, shell: &mut Shell, draft: &mut Draft, phase: i32, value: i32) {
+        match phase {
+            PRESS_ROW | PRESS_BOARD => {
+                self.back_due = None;
+                self.wheel = 0;
+                shell.nav.used_pointer();
+                let had = self.held.is_some();
+                if phase == PRESS_ROW {
+                    self.drag = Some(Drag { row: Some(value.max(0) as usize), cell: None, had, moving: false });
+                    return;
+                }
+                let cell = self.cell_under(shell, value);
+                self.drag = Some(Drag { row: None, cell, had, moving: false });
+                match cell {
+                    // (The piece in hand comes to the cell pressed; else a placed piece there is picked up.)
+                    Some(at) if had => self.follow(shell, draft, at),
+                    Some(at) => {
+                        self.press(shell, draft, at);
+                        self.focus_cell(shell, at);
+                    }
+                    None => {}
+                }
+            }
+            MOVE => {
+                let Some(mut drag) = self.drag else { return };
+                let cell = self.cell_under(shell, value);
+                if !drag.moving {
+                    match drag.row {
+                        // (Out of its row: the program is in hand.)
+                        Some(row) => {
+                            self.lift_row(shell, draft, row);
+                            if self.held.is_none() {
+                                self.drag = None;
+                                return;
+                            }
+                        }
+                        None if self.held.is_some() && cell != drag.cell => {}
+                        None => return,
+                    }
+                    drag.moving = true;
+                    self.drag = Some(drag);
+                }
+                if let Some(at) = cell
+                    && at != self.at
+                {
+                    self.follow(shell, draft, at);
+                }
+            }
+            RELEASE => {
+                let Some(drag) = self.drag.take() else { return };
+                if !drag.moving {
+                    // (A click: as Enter on what was pressed; a piece picked up by the press stays in hand.)
+                    match (drag.row, drag.cell) {
+                        (Some(row), _) => self.activate(shell, draft, "programs", row as i32),
+                        (None, Some(at)) if drag.had => {
+                            self.press(shell, draft, at);
+                        }
+                        _ => {}
+                    }
+                    return;
+                }
+                match self.cell_under(shell, value) {
+                    Some(at) => {
+                        self.at = at;
+                        if self.press(shell, draft, at) {
+                            // (It shakes where it was let go, then goes back.)
+                            self.backs += 1;
+                            self.back_due = Some(self.backs);
+                            let (ui, due) = (shell.ui().as_weak(), self.backs);
+                            slint::Timer::single_shot(SHAKE, move || {
+                                if let Some(ui) = ui.upgrade() {
+                                    ui.global::<nettai_ui::Nav>().invoke_choose("drag".into(), PUT_BACK, due);
+                                }
+                            });
+                        }
+                    }
+                    None => self.put_away(shell, draft),
+                }
+            }
+            WHEEL if self.held.is_some() => {
+                self.wheel += value;
+                while self.wheel.abs() >= NOTCH {
+                    let way = self.wheel.signum();
+                    self.turn(shell, draft, way < 0);
+                    self.wheel -= way * NOTCH;
+                }
+            }
+            CANCEL => {
+                if self.drag.take().is_some_and(|d| d.moving) {
+                    self.put_back(shell, draft);
+                }
+            }
+            PUT_BACK if self.back_due == Some(value) => {
+                self.back_due = None;
+                self.put_back(shell, draft);
+            }
+            _ => {}
+        }
+    }
+
+    /// A key or button pressed while the mouse holds a piece (or one let go is about to go back): the drag ends,
+    /// the piece goes back where it came from, and the key does nothing else. Whether it did.
+    fn end_drag(&mut self, shell: &mut Shell, draft: &mut Draft) -> bool {
+        let drag = self.drag.take();
+        let due = self.back_due.take().is_some();
+        // (A press on an empty cell held nothing: the key is the key's.)
+        let holding = drag.is_some_and(|d| d.moving || !d.had) && self.held.is_some();
+        if !(holding || due) {
+            return false;
+        }
+        self.put_back(shell, draft);
+        true
     }
 
     /// The piece in hand turned a quarter (`clockwise`, or back), about the cell it is held by.
@@ -507,23 +761,33 @@ impl Tab for Navicust {
 
     /// A piece in hand isn't lost: one picked up off the board goes back where it was.
     fn hide(&mut self, shell: &mut Shell, draft: &mut Draft) {
-        if self.held.is_some() {
-            let from_board = self.held.as_ref().is_some_and(|h| h.origin.is_some());
-            self.edit(draft, if from_board { Edit::PutBack } else { Edit::Drop });
-            self.held = None;
-        }
+        self.let_go(draft);
+        (self.drag, self.back_due) = (None, None);
         self.notice = None;
         let _ = shell;
     }
 
+    /// Enter on a program's row takes it in hand, or a placed one's last copy off; on a cell, see `press`.
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        self.back_due = None;
         match id {
+            "programs" if self.held.is_none() && self.last_copy(draft, index.max(0) as usize).is_some() => {
+                let i = self.last_copy(draft, index.max(0) as usize);
+                self.take_off(shell, draft, i);
+            }
             "programs" => self.take(shell, draft, index.max(0) as usize),
             "cell" => {
                 let at = self.cell_at(index);
                 self.press(shell, draft, at);
             }
             _ => {}
+        }
+    }
+
+    /// The mouse's press, drag and release (the view's pointer areas).
+    fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
+        if id == "drag" {
+            self.dragged(shell, draft, index, choice);
         }
     }
 
@@ -546,6 +810,9 @@ impl Tab for Navicust {
 
     /// The piece in hand: A and S (the keys bound to L and R) turn it, C compresses it.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
+        if self.end_drag(shell, draft) {
+            return true;
+        }
         if self.held.is_none() {
             return false;
         }
@@ -561,6 +828,9 @@ impl Tab for Navicust {
 
     /// The piece in hand: the pad's shoulders turn it, its north button compresses it.
     fn button(&mut self, shell: &mut Shell, draft: &mut Draft, button: gamepad_facade::Button) -> bool {
+        if self.end_drag(shell, draft) {
+            return true;
+        }
         if self.held.is_none() {
             return false;
         }
@@ -575,6 +845,9 @@ impl Tab for Navicust {
 
     /// Delete: the piece in hand put away, the piece under the cursor taken off, or a program's last copy.
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
+        if self.end_drag(shell, draft) {
+            return true;
+        }
         if action != Action::Delete {
             return false;
         }
@@ -586,25 +859,18 @@ impl Tab for Navicust {
         let parts = grid::placed(draft.content(), draft.side());
         let at = match (self.focused_cell(shell), shell.nav.focused()) {
             (Some(cell), _) => d.occupied(&parts).get(&cell).copied(),
-            (None, Some(k)) if k.id == "programs" => self.rows.get(k.index.max(0) as usize).and_then(|&(piece, color)| {
-                let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
-                parts.iter().rposition(|p| p.piece == piece && p.color == name)
-            }),
+            (None, Some(k)) if k.id == "programs" => self.last_copy(draft, k.index.max(0) as usize),
             _ => None,
         };
-        match at {
-            Some(i) if self.edit(draft, Edit::Remove(i)) => {
-                shell.sound.play(Cue::Back);
-                self.changed(shell, draft);
-                self.show_strip(shell, draft);
-            }
-            _ => shell.sound.play(Cue::Refused),
-        }
+        self.take_off(shell, draft, at);
         true
     }
 
     /// Back (Esc, the pad's east button) with a piece in hand puts it away into the list.
     fn back(&mut self, shell: &mut Shell, draft: &mut Draft) -> bool {
+        if self.end_drag(shell, draft) {
+            return true;
+        }
         if self.held.is_none() {
             return false;
         }
