@@ -1574,8 +1574,9 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 
 | Row | Values | What it sets |
 |---|---|---|
-| Dummy: Action | Stands still, Moves around, Attacks at random | the library's `Opponent::in_fight`, from the next tick |
+| Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
+| Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Display: Input display | Off, On | the app's own drawing, below |
@@ -1592,6 +1593,17 @@ MENU. The menu opens where the focus last was in it. The dummy's setup, the batt
 display are remembered between runs (`training.action`, `training.custom-screen`, `training.your-hp`,
 `training.dummys-hp`, `training.custom-gauge`, `training.inputs`); a session another screen started begins as that screen says, every
 battle option at its normal value, and keeps nothing of the dummy's or the battle's.
+
+**The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the
+Recording row closes the menu, and from the battle as it stands the player's buttons drive the dummy, from
+wherever it is (the player's own navi stands still; on the custom screen the player's buttons are their own
+screen's as ever, and the dummy's screen does what its Custom screen row says). RECORDING shows over the
+battle meanwhile (in the dummy's color, with the input display's layer: `TrainingInputs`). Each tick the fight
+runs (not the turn's banner, the custom screen, the game's pause) its buttons are kept, up to a minute. Start
+ends it (or the menu opening, or starting over, or the minute): the dummy's Action becomes Plays your
+recording, and it plays the buttons over and over from wherever it stands, while the player has their navi
+back. A new recording replaces it. Nothing of it is kept between sessions, and Plays your recording isn't
+remembered as the Action (with nothing recorded the dummy stands still).
 
 *Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`), its place in
 `ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row too.
