@@ -214,7 +214,7 @@ runtime when the player steps to it, behind the bar again.
 
 **A game whose pack is there and can't be loaded** (extracted for another version of the game's content: the
 content names a sprite the pack hasn't) is passed over, and the player is told once, by the game's name, in a
-dialog of the shell's own: "EXE6's data is out of date. Extract it again." (`UserError::GameOutdated`; what the
+dialog of the shell's own: "BN6's data is out of date. Extract it again." (`UserError::GameOutdated`; what the
 loader said is in the log). The other games load and play; if it was the game the app opened on, the next one
 is. It is told as its load fails, at start-up, but never over another dialog or a battle: then once that is
 gone (`Games::take_failed`, asked each frame by `App::follow_games`). A game with no pack at all is passed over
@@ -395,6 +395,17 @@ The first language is the settings', else the system's (`sys-locale`, by its pri
 (`slint::select_bundled_translation`), and the content's names and the battle's own drawing switch once each
 game's graphics in the language are loaded, on a thread (§1). A language the content has no table for shows the
 content's own names.
+
+**A game's name is its own, in the language shown**: BN4, BN5 and BN6 in English, EXE4, EXE5 and EXE6 in
+Japanese (docs/design/app-ui.md §2.22). Each game states it in its locales, in the text table `game` its manifest
+declares (`"name" = "BN6"`), and `nettai_content::locale::game_name(dir, game, lang)` reads it from the content
+alone (a language with no table, the pseudo-locale, has the game's own language's), so a game with no pack, or
+one whose pack fails to load, is named too. The shell reads every game's at start-up and when the language
+changes (`Shell::name_games`), and `Shell::game_name(id)` gives it to whoever names a game: the header's
+selector, the loading screen, "Not a BN6 save", "This navi isn't BN6's", a lobby's or a replay's other game, a
+pack that is out of date. The header's name changes with the language at once. A game whose locales can't be
+read at all is shown by its id in capitals (EXE6); Rust and Slint name no game. `locale::tests::
+each_game_is_named_in_its_languages` holds the three games to their names in both languages.
 
 **Adding a language** is adding its folder: copy `lang/ja/` to `lang/<code>/`, translate each `msgstr`, and
 build; the build lists what is left. `msgfmt --check -o /dev/null` validates a file.
@@ -816,7 +827,7 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   version with all a version sets (`Builds::take_version`), each choice on the preset the save is on
   (`Builds::settle`, which says which it took, typed: the list says "Imported as Dark MegaMan") and the facts
   no build states at the rules' defaults (`Builds::as_built`). A file that is no save of the game is the typed
-  "Not an EXE6 save"; what the readers say in words goes to the log.
+  "Not a BN6 save"; what the readers say in words goes to the log.
 
 What the screens ask of the game is nettai-match's `build` (docs/frontend.md §6): the game's versions in the
 order every list shows them, a build checked with its problems typed (`Checked`, `nettai_match::Wrong`), its
