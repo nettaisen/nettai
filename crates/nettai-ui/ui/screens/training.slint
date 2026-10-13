@@ -233,7 +233,8 @@ component PagerRow inherits Rectangle {
     in property <string> value;
     in property <bool> enabled: true;
     property <length> box: Theme.phone ? 200px : 280px;
-    property <bool> over: Theme.audit && (name.preferred-width > name.width + 0.5px || fits.preferred-width > root.box - 72px + 0.5px);
+    // (Its value fits itself to the stepper's box, which tells the pass if it can't: docs/app.md §13.)
+    property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
     height: Theme.phone ? 48px : 56px;
     Rectangle {
         background: hit.has-hover ? Theme.raised : Theme.panel;
@@ -269,18 +270,9 @@ component PagerRow inherits Rectangle {
         focusable: false;
     }
 
-    // (The value as the stepper draws it, measured: whether its box holds it.)
-    fits := Text {
-        visible: false;
-        text: root.value;
-        font-family: Theme.body;
-        font-size: 14px;
-        font-weight: 700;
-    }
-
     changed over => {
         if over {
-            Audit.clipped(root.label + ": " + root.value);
+            Audit.clipped(root.label);
         }
     }
 }
@@ -547,10 +539,10 @@ component MenuRow inherits Rectangle {
     property <bool> option: !root.added && !root.title;
     property <string> label: TrainingView.label(root.entry.option);
     property <string> value: root.option && root.entry.text != "" ? root.entry.text : TrainingView.value(root.entry.option, root.entry.value);
-    // The value's box: sized for the longest value in the longest language (the screenshot pass says when one
-    // is cut: `fits`).
+    // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
+    // and tells the pass if it can't).
     property <length> value-width: Theme.phone ? root.width - 72px : 196px;
-    property <bool> over: Theme.audit && root.option && (name.preferred-width > name.width + 0.5px || fits.preferred-width > root.value-width + 0.5px);
+    property <bool> over: Theme.audit && root.option && name.preferred-width > name.width + 0.5px;
     height: root.title ? head.height : (root.added ? 48px : (Theme.phone ? 64px : Theme.row));
     head := GroupTitle {
         x: 0;
@@ -603,19 +595,11 @@ component MenuRow inherits Rectangle {
             focusable: false;
         }
 
-        // (The value as the stepper draws it, measured: whether its box holds it.)
-        fits := Text {
-            visible: false;
-            text: root.value;
-            font-family: Theme.body;
-            font-size: 14px;
-            font-weight: 700;
-        }
     }
 
     changed over => {
         if over {
-            Audit.clipped(root.label + ": " + root.value);
+            Audit.clipped(root.label);
         }
     }
 }
