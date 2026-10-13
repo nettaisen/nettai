@@ -781,4 +781,64 @@ mod tests {
             assert!((548..=549).contains(&made(&mut b)));
         }
     }
+
+    /// The dummy's recording chosen from the menu, as the training menu's Recording row does: the menu closes
+    /// and the game leaves its pause (the START that leaves it is the menu's, not the player's: it doesn't end
+    /// the recording); the player's buttons drive the dummy and are kept; their START ends it without pausing
+    /// the game, and the dummy plays it.
+    #[test]
+    fn a_recording_chosen_from_the_menu() {
+        use nettai_battle::input::keys;
+        use nettai_frontend::driver::{InFight, Opponent, bot_buttons};
+        let content = nettai_match::testing::exe6_content();
+        let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        let mut b = training(&content, &m, 11, Opponent::default());
+        while !b.stage.player.battle().pausable() {
+            let keys = bot_buttons(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
+            assert!(!frame(&mut b, keys) && b.stage.player.ticks() < 3000);
+        }
+        let dummy = |b: &Battle| {
+            let battle = b.stage.player.battle();
+            battle.player(1).map(|r| battle.objects.get(r).panel)
+        };
+        // The menu opens: the game's pause.
+        b.menu = true;
+        frame(&mut b, 0);
+        assert_eq!(b.stage.player.battle().paused_by(), Some(0));
+        // Recording chosen: the menu closes.
+        b.stage.player.live_mut().expect("live play").record_opponent();
+        b.menu = false;
+        let start = dummy(&b);
+        let mut moved = false;
+        for n in 0..120u32 {
+            // (Up and down by turns, a press every 20 ticks.)
+            let keys = match n % 40 {
+                0..=3 => keys::UP,
+                20..=23 => keys::DOWN,
+                _ => 0,
+            };
+            frame(&mut b, keys);
+            moved |= dummy(&b) != start;
+            let live = b.stage.player.live().expect("live play");
+            assert!(live.recording_now(), "frame {n}: the recording goes on ({} ticks kept)", live.recorded());
+        }
+        assert_eq!(b.stage.player.battle().paused_by(), None, "out of the game's pause");
+        assert!(moved, "the player's buttons drive the dummy");
+        let kept = b.stage.player.live().unwrap().recorded();
+        assert!(kept > 100, "{kept} ticks kept");
+        // The player's START ends it, and doesn't pause the game.
+        frame(&mut b, keys::START);
+        frame(&mut b, 0);
+        let live = b.stage.player.live().unwrap();
+        assert!(!live.recording_now() && live.opponent().in_fight == InFight::PlaysRecording);
+        assert_eq!(b.stage.player.battle().paused_by(), None);
+        // The dummy plays it.
+        let at = dummy(&b);
+        let mut moved = false;
+        for _ in 0..120 {
+            frame(&mut b, 0);
+            moved |= dummy(&b) != at;
+        }
+        assert!(moved, "the dummy plays the recording");
+    }
 }

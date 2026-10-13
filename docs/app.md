@@ -1933,7 +1933,8 @@ display are remembered between runs (`training.action`, `training.custom-screen`
 battle option at its normal value, and keeps nothing of the dummy's or the battle's.
 
 **The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the
-Recording row closes the menu, and from the battle as it stands the player's buttons drive the dummy, from
+Recording row closes the menu (the START that takes the game out of its pause is the menu's and doesn't end the
+recording: `a_recording_chosen_from_the_menu`), and from the battle as it stands the player's buttons drive the dummy, from
 wherever it is (the player's own navi stands still; on the custom screen the player's buttons are their own
 screen's as ever, and the dummy's screen does what its Custom screen row says). RECORDING shows over the
 battle meanwhile (in the dummy's color, with the input display's layer: `TrainingInputs`). Each tick the fight
