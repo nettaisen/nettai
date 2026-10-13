@@ -33,13 +33,10 @@ fn empty_sets_make_loadable_packs_and_language_variants() {
         assert_eq!(assets.missing_roms.len(), 4);
         assert!(!assets.placeholders.is_empty());
         assert!(!assets.graphics.sprites.is_empty());
-        assets
-            .graphics
-            .clone()
-            .in_language("ja")
-            .unwrap()
-            .in_language("en")
-            .unwrap();
+        // A pack of no ROM has placeholder words in one language, its own;
+        // a frontend set to another draws those.
+        assert_eq!(assets.graphics.hud.languages(), ["en"]);
+        assert!(assets.graphics.clone().for_language("ja") == assets.graphics);
         assets.sound.validate().unwrap();
         let dir = tempfile::tempdir().unwrap();
         assets.write(dir.path()).unwrap();
@@ -81,7 +78,7 @@ fn banner_kinds(game: Game) -> Vec<(usize, u8)> {
 /// no other, and no glyphs for a telop's.
 fn check_banner_kinds(game: Game, graphics: &nettai_assets::Bundle, what: &str) {
     for lang in ["en", "ja"] {
-        let hud = graphics.clone().in_language(lang).unwrap().hud;
+        let hud = graphics.clone().for_language(lang).hud;
         let stated: Vec<(usize, u8)> = hud.banners.iter().enumerate().filter(|(_, b)| b.kind != 0).map(|(id, b)| (id, b.kind)).collect();
         assert_eq!(stated, banner_kinds(game), "{} {what} ({lang}): the banners' kinds", game.id());
         for (id, b) in hud.banners.iter().enumerate() {
@@ -101,7 +98,7 @@ fn an_empty_set_makes_an_exe4_pack() {
     assert!(assets.placeholders.iter().any(|p| p == "sprite/megaman"));
     assert!(assets.graphics.custom.buttons.iter().any(|(n, b)| n == "soul" && b.place.is_some()));
     assert!(assets.graphics.custom.window_emblem.is_some() && assets.graphics.custom.cursor_palette.is_some());
-    assets.graphics.clone().in_language("ja").unwrap().in_language("en").unwrap();
+    assert_eq!(assets.graphics.hud.languages(), ["en"]);
     let dir = tempfile::tempdir().unwrap();
     assets.write(dir.path()).unwrap();
 }
@@ -234,10 +231,12 @@ struct Seen {
     all: u64,
 }
 
-/// A pack's pictures by name, in each of its languages (the worded ones
-/// differ): the sprites, the field, the backgrounds, and the HUD's and the
-/// custom screen's parts, each with what goes with it. Parts read from
-/// different ROMs (a button's states and its worded picture) are apart.
+/// A pack's pictures by name, as a frontend set to English and one set to
+/// Japanese draw them (the worded ones differ where the pack has both; a
+/// pack with one language's words is drawn in it either way): the sprites,
+/// the field, the backgrounds, and the HUD's and the custom screen's parts,
+/// each with what goes with it. Parts read from different ROMs (a button's
+/// states and its worded picture) are apart.
 fn pictures(graphics: &nettai_assets::Bundle, held: &[Held]) -> std::collections::BTreeMap<String, Seen> {
     use nettai_assets::Palette;
     use std::fmt::{Debug, Write};
@@ -274,7 +273,7 @@ fn pictures(graphics: &nettai_assets::Bundle, held: &[Held]) -> std::collections
         }
     }
     for lang in ["en", "ja"] {
-        let b = graphics.clone().in_language(lang).unwrap();
+        let b = graphics.clone().for_language(lang);
         let (h, c) = (&b.hud, &b.custom);
         // (`NONE`: a picture drawn in palettes that aren't its own.)
         const NONE: &[Palette] = &[];
@@ -413,7 +412,10 @@ fn unreached(game: Game, name: &str) -> u8 {
 /// (`Held`): a picture is a placeholder only where no ROM given holds it
 /// (as any pack has it), a real one is in a ROM given, and it is the pack
 /// of all four's unless no ROM given holds that one or gives it alone (the
-/// two really differ).
+/// two really differ). That is of the pictures in each language a frontend
+/// may be set to: a pack states the languages it has words in, and a
+/// picture with words is in one of them, never a placeholder for want of
+/// the other.
 /// No copyrighted fixtures are needed for the normal tests.
 #[test]
 #[ignore = "requires local ROMs via NETTAI_EXTRACT_ROM_DIR"]
@@ -443,7 +445,16 @@ fn every_source_subset() {
             let assets =
                 extract(game, &roms).unwrap_or_else(|e| panic!("{} {mask:04b}: {e}", game.id()));
             assert_eq!(assets.missing_roms.len(), 4 - mask.count_ones() as usize);
-            assets.graphics.clone().in_language("ja").unwrap();
+            // A pack says which languages it has words in: the releases'
+            // its ROMs are of, its own first; English placeholders with none.
+            let (us, jp) = (mask & 0b0011 != 0, mask & 0b1100 != 0);
+            let stated: &[&str] = match (us, jp) {
+                (true, true) => &["en", "ja"],
+                (false, true) => &["ja"],
+                _ => &["en"],
+            };
+            assert_eq!(assets.graphics.hud.languages(), stated, "{} {mask:04b}: the languages", game.id());
+            assert_eq!(assets.graphics.custom.languages.len(), stated.len() - 1, "{} {mask:04b}: the custom screen's languages", game.id());
             check_banner_kinds(game, &assets.graphics, &format!("{mask:04b}"));
             seen.push(pictures(&assets.graphics, &held));
             let out = tempfile::tempdir().unwrap();

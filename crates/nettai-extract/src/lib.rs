@@ -2,6 +2,8 @@
 //!
 //! ROMs are identified by their headers, in any order. Missing sources produce
 //! checkerboard graphics and silent songs, with omissions recorded in the result.
+//! A pack has the lettering of the languages its ROMs have words in (English with
+//! a US ROM, Japanese with a Japanese one), its own language the first of them.
 //! The same API drives `nettai-extract` command.
 //!
 //! ```no_run
@@ -193,6 +195,10 @@ pub fn extract(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
     })?
 }
 
+/// The language of the Japanese ROMs' words, as each game's module names
+/// its lettering.
+const JAPANESE: &str = "ja";
+
 fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
     let names = match game {
         Game::Exe4 => exe4::names::asset_names(),
@@ -221,6 +227,18 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
         Game::Exe6 => exe6::graphics::panel_names(),
     };
     let mut placeholders = placeholders::complete(&mut graphics, &names, &panel_names);
+    // A pack has the words of the releases its ROMs are of (`sources`: the
+    // two US ROMs, then their Japanese ones). With Japanese ROMs alone its
+    // own language is Japanese; with no Japanese ROM it has no Japanese
+    // lettering. A frontend set to a language the pack lacks draws the
+    // pack's own (`Bundle::for_language`), so no language is a set of
+    // placeholders.
+    let (us, jp) = (sources[..2].iter().any(|r| r.is_present()), sources[2..].iter().any(|r| r.is_present()));
+    let graphics = match (us, jp) {
+        (true, true) => graphics,
+        (false, true) => graphics.in_language(JAPANESE).map_err(Error)?.without_language(nettai_assets::BASE_LANGUAGE),
+        _ => graphics.without_language(JAPANESE),
+    };
     // (`sources`: the two US ROMs, then their Japanese ones. A US ROM's
     // bank where there is one: EXE5's hit, song 0x6D, is louder in the
     // Japanese ROMs, volume 127 for 112.)

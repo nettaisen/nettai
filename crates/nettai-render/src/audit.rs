@@ -175,7 +175,10 @@ pub struct Problems {
     /// (`Mark`): `sprite:NAME` (an object drawn with that sprite; with
     /// `:ANIM`, while it plays that animation),
     /// `background:NAME` (the frame's background), `chip:KEY` (the chip's
-    /// picture in the custom screen's chip window), `button:NAME` (a custom
+    /// picture in the custom screen's chip window), `chip-window:KEY` (what
+    /// that window draws by the chip's record: its cells in the colors of
+    /// the chip's class, picture and element, and the damage's digits),
+    /// `button:NAME` (a custom
     /// screen button's picture there), `chip-icon:KEY` (the
     /// chip's icon: over its navi, in the custom screen's slots and its
     /// picked chips' column, and carried over the screen),
