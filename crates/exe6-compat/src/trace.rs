@@ -760,7 +760,7 @@ impl Round {
 /// original's object slots for the engine's kinds. (A replay compares with
 /// [`compare_at`], which knows what the original's link made differ.)
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
-    compare_with(b, f, Known { banner: f, screen: f, opening: [false; 2] }, compat)
+    compare_with(b, f, Known { banner: f, screen: f, opening: [false; 2], exchange: None, installed: false }, compat)
 }
 
 /// What differs between the engine and a recording only as the original's
@@ -776,6 +776,11 @@ struct Known<'a> {
     /// Per side: the custom screen opened within the link's delay, so its
     /// bit is the engine's at once and still on its way in the recording.
     opening: [bool; 2],
+    /// The round's exchange line as the blocks last changed by this frame.
+    exchange: Option<&'a Exchange>,
+    /// This frame installed the custom screens' results (the fight resumes
+    /// on the next): the exchanged transform records are whole.
+    installed: bool,
 }
 
 /// [`compare`] on the `i`th of a round's `frames`, the engine having been fed
@@ -795,7 +800,9 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let opening = std::array::from_fn(|side| {
         opened.and_then(|o| round.screen_bit_arrives(o, side)).is_some_and(|arrives| (arrives.saturating_sub(delay)..arrives).contains(&f.frame))
     });
-    compare_with(b, f, Known { banner, screen: round.local_screen_frame(i, frames), opening }, compat)
+    let exchange = round.exchanges.iter().rfind(|e| e.frame <= f.frame);
+    let installed = f.state[0] == 4 && f.state[1] == 8 && frames.get(i + 1).is_some_and(|n| n.state[0] == 4 && n.state[1] == 0x0C);
+    compare_with(b, f, Known { banner, screen: round.local_screen_frame(i, frames), opening, exchange, installed }, compat)
 }
 
 fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<String> {
@@ -922,6 +929,29 @@ fn compare_with(b: &Battle, f: &Frame, known: Known, compat: &Compat) -> Vec<Str
     for p in 0..2 {
         let ours = codec::chip_hand_bytes(&b.hands[p], &ids).iter().map(|x| format!("{x:02x}")).collect::<String>();
         check(&format!("hand {p}"), ours, f.chip_blocks[p].clone());
+    }
+    // Each side's NaviStats as the block stands (the exchange line of its
+    // last change): the block the codec writes of the engine's stats, byte
+    // for byte, but the bytes the stats hold nothing of
+    // ([`codec::STATS_NOT_HELD`]). And on the frame the custom screens'
+    // results are installed, each side's transform record: its form (+0)
+    // and its navi (+4). (Between installs the record's place is the link's
+    // buffer, written a word at a time.)
+    if let Some(e) = known.exchange {
+        for p in 0..2 {
+            let (ours, theirs) = (codec::navi_stats_bytes(&b.stats[p], &ids), unhex(&e.navi_stats[p]));
+            let differing = |block: &[u8]| {
+                let at = (0..ours.len().min(theirs.len())).filter(|at| !codec::STATS_NOT_HELD.contains(at) && ours[*at] != theirs[*at]);
+                at.map(|at| format!("+{at:#04x} {:#04x}", block[at])).collect::<Vec<_>>().join(", ")
+            };
+            check(&format!("side {p}'s stats"), differing(&ours), differing(&theirs));
+            let record = unhex(&e.transform[p]);
+            if known.installed && record.len() >= 5 {
+                let request = b.transform_requests[p];
+                let ours = [request.form.map_or(0xFF, |f| ids.form_number(f)), request.navi_switch.map_or(0xFF, |n| ids.navi_number(n))];
+                check(&format!("side {p}'s transformation as installed (form, navi)"), format!("{ours:02x?}"), format!("{:02x?}", [record[0], record[4]]));
+            }
+        }
     }
     d
 }
@@ -1066,7 +1096,8 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
             return format!("T{} {kind}: {e}", crate::pool_type(r.pool));
         }
     };
-    describe_fields(
+    let own = facing_and_params(crate::pool_type(r.pool), index, o.flip, u32::from_le_bytes(o.params));
+    let fields = describe_fields(
         compat,
         crate::pool_type(r.pool),
         index,
@@ -1080,12 +1111,23 @@ fn describe(b: &Battle, compat: &Compat, r: nettai_battle::object::ObjectRef, un
         o.anim,
         status,
         unknown,
-    )
+    );
+    format!("{fields}{own}")
 }
 
 fn describe_trace(compat: &Compat, o: &Object, unknown: Unknown) -> String {
     let hp = [o.hp, o.max_hp];
-    describe_fields(compat, o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, unknown)
+    let fields = describe_fields(compat, o.kind, o.index, o.flags, o.state, o.panel, o.alliance, hp, o.pos, o.timer, o.anim, o.status, unknown);
+    format!("{fields}{}", facing_and_params(o.kind, o.index, o.flip, o.params))
+}
+
+/// An object's facing (+0x17) and, for a navi (type 1, #0), its four
+/// parameter bytes (+4): the one kind whose object keeps the original's (a
+/// form change's and a dimming chip's marks; the other kinds take their
+/// parameters as their own state, and their objects' are zero or the
+/// engine's own).
+fn facing_and_params(kind: u8, index: u8, flip: u8, params: u32) -> String {
+    if kind == 1 && index == 0 { format!(" fl{flip} par{params:#010x}") } else { format!(" fl{flip}") }
 }
 
 /// Run a round through the engine on `content`; returns the number of
@@ -1097,6 +1139,16 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
     if !setup.is_empty() {
         return (0, Some((round.setup.frame, setup)));
     }
+    // The recording console's RNG1 (the trace's `rng1`), sampled after the
+    // battle's update and before the main loop's draw: the engine after
+    // frame N is the trace at N + 1. Picks the console makes after the
+    // sample (an emotion window's flicker, a camera shake's) make the two
+    // differ for a frame or a few, then agree again; a difference still
+    // there at the round's end is the model's, and stops the round at the
+    // frame it began; one that begins on the last frame compared has no
+    // frame left to agree on, and is left. (As exe5-compat's.)
+    let local = b.setup.local_side as usize & 1;
+    let mut rng1_since: Option<(usize, u32, u32)> = None;
     for i in 0..frames.len() {
         let (input, events) = round.tick_inputs(i, &frames);
         let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.tick(&input, events)));
@@ -1108,6 +1160,22 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> (usi
         if !diffs.is_empty() {
             return (i, Some((frames[i].frame, diffs)));
         }
+        if let Some(next) = frames.get(i + 1) {
+            let engine = b.consoles[local].rng.state;
+            if engine == next.rng1 {
+                rng1_since = None;
+            } else if rng1_since.is_none() {
+                rng1_since = Some((i, engine, next.rng1));
+            }
+        }
+    }
+    if let Some((i, engine, trace)) = rng1_since.filter(|&(i, _, _)| Some(i) != frames.len().checked_sub(2)) {
+        let frame = frames[i].frame;
+        let difference = format!(
+            "rng1: the recording console's RNG1 differs from frame {frame} to the round's end (engine {engine:#010x}, trace {trace:#010x} at frame {})",
+            frame + 1
+        );
+        return (i, Some((frame, vec![difference])));
     }
     (frames.len(), None)
 }
