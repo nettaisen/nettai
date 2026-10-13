@@ -101,6 +101,12 @@ msgstr "通常"
 msgid "Refills"
 msgstr "回復する"
 
+msgid "Custom gauge"
+msgstr "カスタムゲージ"
+
+msgid "Always full"
+msgstr "常に満タン"
+
 msgid "Input display"
 msgstr "入力表示"
 
