@@ -445,7 +445,8 @@ export component Stepper inherits Rectangle {
 }
 
 // One of two: off and on, sharp and original. Left and Right choose, Enter takes the other. The chosen half's
-// tint and underline slide across to the other.
+// tint and underline slide across to the other. `enabled` off is the unavailable look: what is chosen still
+// shows, and the focus passes it by.
 export component Seg inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
@@ -453,6 +454,7 @@ export component Seg inherits Rectangle {
     in property <string> second;
     // 0 the first, 1 the second.
     in property <int> chosen;
+    in property <bool> enabled: true;
     out property <bool> focused: hit.focused;
     property <length> first-width: max(44px, a.preferred-width + 24px);
     property <length> second-width: max(44px, b.preferred-width + 24px);
@@ -466,6 +468,7 @@ export component Seg inherits Rectangle {
     }
 
     hit := Focusable {
+        enabled: root.enabled;
         nav: root.nav;
         nav-index: root.nav-index;
         kind: NavKind.stepper;
@@ -475,7 +478,7 @@ export component Seg inherits Rectangle {
     Rectangle {
         x: root.chosen == 0 ? 0px : root.first-width + 1px;
         width: root.chosen == 0 ? root.first-width : root.second-width;
-        background: Theme.tint;
+        background: root.enabled ? Theme.tint : transparent;
         animate x, width {
             duration: Theme.brisk;
             easing: ease-out;
@@ -483,7 +486,7 @@ export component Seg inherits Rectangle {
         Rectangle {
             y: parent.height - 2px;
             height: 2px;
-            background: Theme.cursor;
+            background: root.enabled ? Theme.cursor : Theme.dim;
         }
     }
 
@@ -491,7 +494,7 @@ export component Seg inherits Rectangle {
         x: 0;
         width: root.first-width;
         text: root.first;
-        color: root.chosen == 0 ? Theme.cursor : Theme.muted;
+        color: !root.enabled ? (root.chosen == 0 ? Theme.muted : Theme.dim) : root.chosen == 0 ? Theme.cursor : Theme.muted;
         font-family: Theme.display;
         font-size: 13px;
         font-weight: 700;
@@ -506,6 +509,7 @@ export component Seg inherits Rectangle {
     TouchArea {
         x: 0;
         width: root.first-width;
+        enabled: root.enabled;
         clicked => {
             Nav.point(root.nav, root.nav-index);
             Nav.choose(root.nav, root.nav-index, 0);
@@ -522,7 +526,7 @@ export component Seg inherits Rectangle {
         x: root.first-width + 1px;
         width: root.second-width;
         text: root.second;
-        color: root.chosen == 1 ? Theme.cursor : Theme.muted;
+        color: !root.enabled ? (root.chosen == 1 ? Theme.muted : Theme.dim) : root.chosen == 1 ? Theme.cursor : Theme.muted;
         font-family: Theme.display;
         font-size: 13px;
         font-weight: 700;
@@ -537,6 +541,7 @@ export component Seg inherits Rectangle {
     TouchArea {
         x: root.first-width + 1px;
         width: root.second-width;
+        enabled: root.enabled;
         clicked => {
             Nav.point(root.nav, root.nav-index);
             Nav.choose(root.nav, root.nav-index, 1);

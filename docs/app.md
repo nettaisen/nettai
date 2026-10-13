@@ -367,13 +367,18 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   or Start opens the training menu.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
-  nothing of a build), one row of settings (Rounds and Closed builds are the match's: either player changes
-  them, both see it, and both ready marks clear; Input delay is the player's own, and is the Settings' value,
-  kept as it is changed), the connection's bars and round trip, READY, CHANGE BUILD (a list of the builds, in a
-  dialog; nothing of the new one is said to the other player) and LEAVE, and a line that is there whether or
-  not it says anything: who is waited for, "Reconnecting N s" while the link is down, or why the match before
-  ended. Left and Right change a setting, so the row can't be walked with them: Tab does, and in the lobby so
-  do the shoulders and the keys bound to L and R (`Screen::action`).
+  nothing of a build), one row of settings (Rounds, Patch cards and Closed builds are the match's: either
+  player changes them, both see it, and both ready marks clear; Input delay is the player's own, and is the
+  Settings' value, kept as it is changed) with the connection's bars and round trip at its end, READY, CHANGE
+  BUILD (a list of the builds, in a dialog; nothing of the new one is said to the other player) and LEAVE, and
+  a line that is there whether or not it says anything: who is waited for, "Reconnecting N s" while the link is
+  down, or why the match before ended. In the row each setting's name is over its control (`LobbyFacts`): with
+  the names beside them, as the mockup has three, five cells don't fit the window in a language a third longer
+  than English. On a phone each is a line, its name at the left. Left and Right change a setting, so the row
+  can't be walked with them: Tab does, and in the lobby so do the shoulders and the keys bound to L and R
+  (`Screen::action`). *Patch cards isn't a setting of the lobby's yet* (the library's lobby has rounds and
+  closed builds): its control is in its place, on, as a match is played today, and unavailable (`Seg`'s
+  `enabled`), so nothing moves when it is.
 - **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, YOUR BUILD,
   THEIR BUILD (not with closed builds), CONTROLS (what is bound to each button, to read), SETTINGS (the input
   delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
@@ -438,14 +443,16 @@ drops the match's player, then `Lobby::reopen`), nobody ready, the settings as t
 
 **What it adds to the shell**, all small: `battle::Play::Make` (above); `Keys::tab`; `Nav::set_row` (the row
 the focus comes to a list at, where that is the screen's to say); `Button`'s `natural-width` (for a button
-given a width only on a phone); and the screenshot pass's hooks (§13). And three things of the shell's that a
+given a width only on a phone); `Seg`'s `enabled` (the unavailable look the other controls have); and the screenshot pass's hooks (§13). And three things of the shell's that a
 link between two players showed wrong, mended: the corner's box in a match is wide enough for "Reconnecting 30
 s" in the language shown (it was cut to "Reconnecting 2…"); a dialog's title takes the lines it needs (a
 failure's title is a sentence, and the pass found "Your opponent left" cut on a phone in the pseudo-locale;
 on the desktop "Your opponent's build can't be used" just fits its one line); `Message`'s text is as wide as
 its line (it sat in the line's middle whatever its alignment).
 
-**Not done.** A build that can't be used says how many problems it has, not which: the Builds screen words
+**Not done.** Patch cards off: when the library's lobby has the setting, the control takes it as Closed
+builds does (`Play::set_closed`), and the player's card in the lobby and the panels in a match show the build
+as it will be played. A build that can't be used says how many problems it has, not which: the Builds screen words
 each kind, and Play says "This build can't be used." until it does. The training battle beside an invite is a
 plain one with the foundation's training menu (Resume, and Quit, which cancels the invite): the training
 session started from outside, with Copy invite code and Cancel invite in its menu, is the Training screen's to
