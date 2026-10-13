@@ -90,6 +90,10 @@ Each is settled unless the user changes it.
 20. **EXE4's patch card slots are named 0A to 0F**, and not every card fits every slot: each card states the one
     slot it belongs in (`slot = cards.SLOT_0A` to `SLOT_0F` in its definition).
 21. **Phone (upright) layouts are in scope.**
+22. **A game is called by its own name in the language shown** ("in english, EXE4/EXE5/EXE6 should be called
+    BN4/BN5/BN6"): BN4, BN5 and BN6 in English, EXE4, EXE5 and EXE6 in Japanese, in the header's selector and in
+    every message that names a game. Each game states its name in its locales (the text table `game`, `name`);
+    the app reads it from the content, so a game without its pack is named too.
 
 ## 3. Chosen where the user gave no answer
 
@@ -230,7 +234,7 @@ These answer the user's first paragraph (§1), and a screenshot pass checks them
 Each is in the mockups under the same name.
 
 ### Loading
-- **Starting up:** the logo, one bar 480 wide, "Loading EXE6" and a percentage. The game last used loads before the
+- **Starting up:** the logo, one bar 480 wide, "Loading BN6" and a percentage. The game last used loads before the
   menu appears; the others load behind it, and switching to one not ready shows the bar again.
 - **Before a battle** (online, training, a replay): the two players' cards facing each other, each with its own bar.
   Everything the match can use is loaded before its first frame: both navis and their forms, every chip in both
@@ -375,15 +379,15 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | the link dropped for good | Connection lost. The match has ended. |
 | a replay is from another version | This replay is from a different version and can't be played. |
 | the server needs a newer app | This version of nettai is too old for the server. Get the latest. |
-| the opponent chose another game | Your opponent is on EXE5. Pick the same game. |
+| the opponent chose another game | Your opponent is on BN5. Pick the same game. |
 | the opponent's build breaks a rule | Your opponent's build can't be used. |
 | the opponent left the lobby or the match | Your opponent left. |
 | the opponent never answered | No answer from your opponent. |
 | a link couldn't be made | Couldn't connect to your opponent. |
 | a direct address is malformed | That isn't an address. Use host:port. |
 | the port to host on is taken | That port is already in use. |
-| a save is another game's | Not an EXE6 save. |
-| a game's pack is there and can't be loaded | EXE6's data is out of date. Extract it again. |
+| a save is another game's | Not a BN6 save. |
+| a game's pack is there and can't be loaded | BN6's data is out of date. Extract it again. |
 | anything else | Something went wrong. Details are in the log file. |
 
 ## 8. Behind the screens

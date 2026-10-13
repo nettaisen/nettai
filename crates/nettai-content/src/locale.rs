@@ -72,6 +72,13 @@ use std::path::{Path, PathBuf};
 /// The directory of a pack that holds its tables.
 pub const DIR: &str = "locales";
 
+/// A game's text table of its own words (its manifest declares it): `name`, the game's name as a player sees
+/// it in the language (BN6 in English, EXE6 in Japanese).
+pub const GAME: &str = "game";
+
+/// The key of [`GAME`] that is the game's name.
+pub const GAME_NAME: &str = "name";
+
 /// The content's own language: its table is the content's words.
 pub const OWN: &str = "en";
 
@@ -111,6 +118,25 @@ pub fn load_for(dir: &Path, packs: &[String], lang: &str) -> Result<Option<Strin
         }
     }
     Ok(out)
+}
+
+/// Game `game`'s name as a player sees it in `lang`, from its locales in content folder `dir` ([`GAME`]'s
+/// [`GAME_NAME`]): its own language's where `lang` has no table or says none. Read from the content alone, so a
+/// game whose asset pack is missing or can't be loaded has its name too. None where neither table says one, or
+/// they can't be read.
+pub fn game_name(dir: &Path, game: &str, lang: &str) -> Option<String> {
+    // (Only the game's own words: the rest of the table isn't read into anything.)
+    #[derive(serde::Deserialize)]
+    struct Words {
+        #[serde(default, rename = "game")]
+        own: std::collections::BTreeMap<String, String>,
+    }
+    let read = |lang: &str| -> Option<String> {
+        let text = std::fs::read_to_string(path(&dir.join(game), lang)).ok()?;
+        let words: Words = toml::from_str(&text).ok()?;
+        words.own.get(GAME_NAME).cloned()
+    };
+    read(lang).or_else(|| read(OWN))
 }
 
 /// The languages pack folder `pack` has tables of.
@@ -298,6 +324,25 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Each game states its name in English and Japanese: in English the English games' (BN4, BN5, BN6), in
+    /// Japanese the Japanese games' (EXE4, EXE5, EXE6). A language with no table of its own has the game's own
+    /// language's.
+    #[test]
+    fn each_game_is_named_in_its_languages() {
+        let dir = crate::index::content();
+        let games = crate::index::games(&dir).unwrap();
+        assert_eq!(games, ["exe4", "exe5", "exe6"]);
+        for (game, en, ja) in [("exe4", "BN4", "EXE4"), ("exe5", "BN5", "EXE5"), ("exe6", "BN6", "EXE6")] {
+            assert_eq!(game_name(&dir, game, "en").as_deref(), Some(en), "{game}");
+            assert_eq!(game_name(&dir, game, "ja").as_deref(), Some(ja), "{game}");
+            assert_eq!(game_name(&dir, game, "pseudo").as_deref(), Some(en), "{game}: no table of its own");
+            // (Declared, so the locales' check holds the table to its game's.)
+            let manifest = std::fs::read_to_string(dir.join(game).join("manifest.toml")).unwrap();
+            assert!(manifest.lines().any(|l| l.starts_with("text = [") && l.contains("\"game\"")), "{game}");
+        }
+        assert_eq!(game_name(&dir, "nowhere", "en"), None);
+    }
 
     #[test]
     fn a_table_parses_and_refuses_unknown_fields() {
