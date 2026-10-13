@@ -134,8 +134,8 @@ component CountBox inherits Rectangle {
 }
 
 // One of the folder's entries: the overview's row, as a control.
-// A folder's entry as a phone's list row, 40 tall: the chip's row, and a click on it the entry's. (One leaf, so
-// the list's `for` places it alone: a row with a child would be copied into the list.)
+// A folder's entry as a phone's list row, 40 tall: the chip's row, and a click on it the entry's. (Its touch is
+// its own; it is in one list, and copied into it: docs/app.md §14.)
 component SlotRow inherits Rectangle {
     in property <int> index;
     height: 40px;

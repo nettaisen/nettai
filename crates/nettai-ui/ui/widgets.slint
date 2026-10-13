@@ -5,10 +5,12 @@
 // and a click, an arrow or an edit goes to the app with that name (nav.slint), where the screen's Rust module
 // decides.
 //
-// Build cost (docs/app.md §14): a component used with nothing inside it is compiled once, however often it is
-// used; one used with children inside it (`Panel { ... }`) is copied into each user, and every `if` or `for` is a
-// component of its own. So the pieces here are leaves, the containers hold a leaf and little else, and a part
-// shown or hidden is `visible`, not `if`.
+// Build cost (docs/app.md §14): a component used with nothing inside it is compiled once and shared by its uses;
+// one used with children inside it (`Panel { ... }`) is copied into each, and every `if` or `for` is a component
+// of its own. Sharing pays only for a component with much in it used in several places: one used in one place,
+// or a small one in a few, is copied in (its use given a bare child). So the pieces here with much in them are
+// leaves, a container holds what must be inside it and places a leaf for the rest (`Scroller`), and a part shown
+// or hidden is `visible`, not `if`.
 //
 // Motion (docs/app.md §10): each control moves by itself (a press flashes, a value slides in its box, a chosen
 // row's bar slides to the next), with the theme's durations. A screen writes no animation to get that.
@@ -1415,8 +1417,8 @@ export component ScrollPage inherits Rectangle {
 //         nav: "builds";  nav-index: self.at;
 //     }
 //
-// A row holds its own `RowTouch` (as `BuildRow` and the folder's rows do), so the `for` places one leaf: a row
-// given a child here is copied into the list, 20 to 60 KB of generated Rust a list (docs/app.md §14). What the
+// A row holds its own `RowTouch` (as `BuildRow` and the folder's rows do). A row used in one list is copied into
+// it (its use is given a bare child); one in several lists (`BuildRow`) is shared (docs/app.md §14). What the
 // list does besides holding its rows is a `Scroller`, compiled once.
 export component ListView inherits Rectangle {
     in property <string> nav;
