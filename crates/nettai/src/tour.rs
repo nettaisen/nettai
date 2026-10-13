@@ -32,6 +32,8 @@ use crate::input::Action;
 use crate::nav::{Key, Rect};
 use crate::screens::ScreenId;
 use crate::shell::App;
+use nettai_battle::input::keys;
+use slint::winit_030::winit::event::TouchPhase;
 use nettai_ui::{AppWindow, Audit, BattleKind, Theme};
 use slint::{ComponentHandle, PhysicalSize, Rgba8Pixel, SharedPixelBuffer, Timer};
 use std::cell::{Cell, RefCell};
@@ -76,6 +78,8 @@ pub(crate) struct Tour {
     /// What the motion probe found wrong, and what it saw of the focus.
     resized: RefCell<Vec<String>>,
     late: RefCell<Vec<String>>,
+    /// The on-screen pad's check, where it failed.
+    pad: RefCell<Vec<String>>,
     seen: RefCell<Vec<String>>,
 }
 
@@ -123,6 +127,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         burst: Default::default(),
         resized: Default::default(),
         late: Default::default(),
+        pad: Default::default(),
         seen: Default::default(),
     });
     let t = tour.clone();
@@ -317,6 +322,40 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_cards = false));
     add(5000, Box::new(|_, _, _| {}));
     shot(&mut add, "battle", Pair::None);
+    // On a phone, the pad under the picture: two fingers at once, as the window's touches come (a direction and
+    // a button held together), then one lifted.
+    if size == "phone" {
+        add(
+            SETTLE,
+            Box::new(move |_, app, tour| {
+                let mut app = app.borrow_mut();
+                let unit = (app.shell.scale.os * app.shell.scale.unit) as f64;
+                let middle = |app: &App, bit: u8| app.shell.touch.rect(bit).map(|r| ((r.x + r.w / 2.0) as f64 * unit, (r.y + r.h / 2.0) as f64 * unit));
+                let (Some(left), Some(a)) = (middle(&app, 5), middle(&app, 0)) else {
+                    tour.pad.borrow_mut().push(format!("{lang}: the pad's buttons aren't laid out"));
+                    return;
+                };
+                let taken = [app.touched(1, TouchPhase::Started, left.0, left.1), app.touched(2, TouchPhase::Started, a.0, a.1)];
+                let held = app.shell.touch.held();
+                if taken != [true, true] || held != keys::LEFT | keys::A {
+                    tour.pad.borrow_mut().push(format!("{lang}: a finger on Left and one on A: taken {taken:?}, held {held:#05x}"));
+                }
+            }),
+        );
+        shot(&mut add, "battle-pad-held", Pair::None);
+        add(
+            SETTLE,
+            Box::new(move |_, app, tour| {
+                let mut app = app.borrow_mut();
+                app.touched(1, TouchPhase::Ended, 0.0, 0.0);
+                let held = app.shell.touch.held();
+                if held != keys::A {
+                    tour.pad.borrow_mut().push(format!("{lang}: Left's finger lifted: held {held:#05x}, not A alone"));
+                }
+                app.touched(2, TouchPhase::Ended, 0.0, 0.0);
+            }),
+        );
+    }
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
     shot(&mut add, "battle-training-menu", Pair::None);
     // (An online match's corner and menu, shown over the training battle: there is no link here.)
@@ -625,11 +664,18 @@ fn finish(tour: &Tour) {
     for (tag, text) in cut.iter() {
         let _ = writeln!(report, "  {tag}: {text:?}");
     }
+    let pad = tour.pad.borrow();
+    if !pad.is_empty() {
+        let _ = writeln!(report, "\nThe on-screen pad, two fingers at once: {} wrong", pad.len());
+        for line in pad.iter() {
+            let _ = writeln!(report, "  {line}");
+        }
+    }
     let path = tour.dir.join("report.txt");
     if let Err(e) = std::fs::write(&path, &report) {
         eprintln!("tour: {}: {e}", path.display());
     }
     eprint!("tour: {report}");
-    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty()));
+    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty()));
     let _ = slint::quit_event_loop();
 }

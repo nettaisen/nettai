@@ -236,6 +236,7 @@ toadman-portrait = "20-4a"
 # Sounds: the song table's numbers, music and sound effects.
 [sounds]
 no-music = 0x000
+title-screen = 0x001
 transmission = 0x00f
 virus-battle = 0x015
 winner-0 = 0x019

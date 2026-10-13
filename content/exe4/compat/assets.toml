@@ -188,6 +188,7 @@ megaman-portrait = "20-40"  # the no-running message's speaker, F4 00 40 (0x0804
 
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
+title-screen = 0x000  # the start screen's music, which its first state sets as the screen opens (`movs r0, #0` at 0x08025430, then the setter 0x08000586; Blue Moon 0x08025434, the Japanese ROMs 0x08025374 and 0x08025378): EXE4's song table has no silent entry at 0, as EXE5's and EXE6's have
 netbattle-single = 0x014  # a single battle's music, which the fight's setup starts by the battle's type (0x080074A4, the table 0x08007510: types 0x46 and 0x47; the lab's timer/win, frame 130)
 netbattle = 0x015  # a triple battle's music (the same table: types 0x48 and 0x49; the lab's flow/buster-duel, frame 130)
 winner-special = 0x018  # the winner's music in a special battle, battle flag 2 (0x080071F8)
