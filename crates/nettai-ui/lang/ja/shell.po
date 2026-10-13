@@ -51,6 +51,13 @@ msgstr "決定"
 msgid "Back"
 msgstr "もどる"
 
+# A text field's own hints, while it is typed in: Enter finishes it, Esc leaves it as it was.
+msgid "Done"
+msgstr "確定"
+
+msgid "Cancel"
+msgstr "キャンセル"
+
 msgid "Change game"
 msgstr "ゲーム切り替え"
 
