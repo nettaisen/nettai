@@ -403,10 +403,19 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   CONNECT opens a dialog (a `DialogFrame` in `PlayOverlay`, its scope `direct.`): this machine's address with
   COPY, and HOST; an address's field, and CONNECT.
 - **Waiting** for the other player: the invite's code (a direct host's address), large, in fixed-width type,
-  with COPY CODE and CANCEL, and a training battle beside it in a `Picture` of the screen's own. The battle is
-  Play's (`BattleStart` with no cards, not `full`): the player's build against a copy of it that stands still.
-  The keys are the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc
-  or Start opens the training menu.
+  with COPY CODE and CANCEL, and a training session beside it in a `Picture` of the screen's own. The session
+  is Training's (`training::start` with `Start::beside`, §2: the player's build against a copy of it that
+  stands still; Training owns its battle, starts its sets over and hears its menu), with Play's rows at the
+  top of the training menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
+  menu, and CANCEL INVITE (STOP HOSTING), each heard as `Screen::answered` by the tag Play gave. The keys are
+  the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc or Start
+  opens the training menu. The session ends when the other player comes (`training::end`) or the wait is
+  given up.
+  *On a phone* a battle has its pad only where it fills the window (§2), and a battle to watch is no training:
+  so there the session isn't started with the wait. The invite shows with a TRAINING button under it; the
+  session then fills the window, pad and MENU under the picture as in any battle, and its menu has a third
+  row of Play's, STOP TRAINING, which goes back to the invite. The other player coming ends it for the lobby
+  as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
   nothing of a build), one row of settings (Rounds, Patch cards and Closed builds are the match's: either
@@ -495,10 +504,7 @@ its line (it sat in the line's middle whatever its alignment).
 **Not done.** Patch cards off: when the library's lobby has the setting, the control takes it as Closed
 builds does (`Play::set_closed`), and the player's card in the lobby and the panels in a match show the build
 as it will be played. A build that can't be used says how many problems it has, not which: the Builds screen words
-each kind, and Play says "This build can't be used." until it does. The training battle beside an invite is a
-plain one with the foundation's training menu (Resume, and Quit, which cancels the invite): the training
-session started from outside, with Copy invite code and Cancel invite in its menu, is the Training screen's to
-give. On a phone the wait shows the picture without the pad under it. CONTROLS in the match menu shows the
+each kind, and Play says "This build can't be used." until it does. CONTROLS in the match menu shows the
 bindings and doesn't change them. Making a link resolves the STUN server's name on the window's thread
 (`Link::create_room`, `join_room`), before any lobby exists.
 
@@ -507,6 +513,9 @@ bindings and doesn't change them. Making a link resolves the STUN server's name 
 
 - an invite made, and joined by its code; a code no match has, refused by the server; a direct host joined at
   its address; the other player's invite joined by its code, typed in small letters;
+- the wait's training session: started beside the invite (on a phone, by its button, filling the window), its
+  menu's COPY INVITE CODE, STOP TRAINING (a phone) and CANCEL INVITE each chosen, and the session ended by the
+  other player coming;
 - the lobby's rounds and closed builds changed by one player and taken by the other; the input delay changed;
   the list of builds to change to opened;
 - the link dropped for six seconds in the lobby and in a match, and made again;
@@ -1001,7 +1010,9 @@ for the motion probe, each called from `tour::walk` and `tour::motion_walk` with
 and its `shot`, a shot's name and its place in a pair). A pair's second shot may be given more to differ in
 than the two cursors (`training.rs`'s `Differs::Builds`: where the entry shows the builds chosen), found from
 where the screen's controls are. A step that must wait for something that comes by itself says so
-(`Tour::wait_until`: the step after it runs once it has come).
+(`Tour::wait_until`: the step after it runs once it has come, or after a minute). Where the shots after it
+depend on its having come, the walk says when it didn't (`Tour::never_came`, which the report lists and the
+pass fails on: Play's `reach`), so that a picture of the wrong thing isn't taken for the right one.
 
 The pass has nothing of the player's to go by: its settings are the defaults, and Training and Play list a new
 build of each of the game's versions (and one that can't be used) in place of the player's builds.
@@ -1013,11 +1024,13 @@ tests seat two players. The app's side is the Play screen itself, driven through
 what the steps tell it (ready, load to 74% and hold, drop its network for six seconds, leave the match, leave).
 So the pass runs the whole way between two players over real links, each time it is run: an invite, a wrong
 code, a direct connection, the lobby's shared settings, the two bars, a match to its result (the app's player
-shoots; the other's build has 1 HP), a second match with closed builds, both ways of leaving. Three things are
+shoots; the other's build has 1 HP), a second match with closed builds, both ways of leaving. Four things are
 the pass's own, so that its pictures are the same from run to run: the builds listed are new builds of the
 game's versions (never the player's files), the lobby shows a round trip of 42 ms (what two players of one
-process measure moves about), and a match isn't recorded unless `$NETTAI_REPLAYS` says where. `NETTAI_TOUR_ONLY=play`
-walks Play's steps alone.
+process measure moves about), the two lobbies draw their nonces from numbers of the pass's (a match's seed
+picks its arenas, and an arena with a rock between the two navis kept the first pass that met one from its
+result for over a minute), and a match isn't recorded unless `$NETTAI_REPLAYS` says where.
+`NETTAI_TOUR_ONLY=play` walks Play's steps alone.
 The motion probe has the lobby's two set pieces, the other player's card sliding in and a ready mark stamping.
 
 **Two apps on one machine** (`tour::apart`): `NETTAI_TOUR_ONLY=play-away-host` in one app and `play-away-join`

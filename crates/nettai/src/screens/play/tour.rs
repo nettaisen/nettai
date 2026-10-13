@@ -24,7 +24,7 @@ use nettai_content_api::Value;
 use nettai_frontend::connection::Reconnecting;
 use nettai_frontend::driver::bot_buttons;
 use nettai_frontend::game::{Graphics, TextMode};
-use nettai_frontend::lobby::{Lobby, Role, Settings, Status, entropy};
+use nettai_frontend::lobby::{Lobby, Role, Settings, Status};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
 use nettai_frontend::player::Player;
 use nettai_frontend::preload::Preload;
@@ -42,6 +42,10 @@ const BUILDS: [&str; 5] = ["Ladder 10-18", "Swords", "Rush", "Tournament", "ã‚¸ã
 
 /// The second player's name.
 const PEER: &str = "weenie";
+
+/// What the two players' lobbies draw their nonces from in the pass, so that a match's seed (its arenas, each
+/// folder's order) is the same from run to run.
+const ENTROPY: [u64; 2] = [1, 2];
 
 /// How long the second player's network is gone for, where the pass shows a link being made again: longer
 /// than the link takes to call silence a drop (3 seconds).
@@ -162,6 +166,12 @@ pub fn heard(now: Instant, datagrams: usize, down: bool) {
     });
 }
 
+/// What the app's player's lobby draws its nonces from in the pass. None outside it, and where the other
+/// player is another app ([`apart`]).
+pub fn entropy() -> Option<u64> {
+    with_rig(|rig| (!rig.apart).then_some(ENTROPY[0])).flatten()
+}
+
 /// The builds Play lists in the pass: new builds of `game`'s versions, by the pass's names. None outside
 /// the pass (`still`: the pass runs).
 pub fn builds(still: bool, content: &Arc<Content>, game: &str) -> Option<Vec<(String, Side)>> {
@@ -277,7 +287,7 @@ impl Peer {
                 Some(nettai_rtc::Role::Host) => Role::Host,
                 _ => Role::Join,
             };
-            let mut lobby = Lobby::new(role, &self.content, Settings::new(&self.game, 1), self.side.clone(), entropy() ^ 1, Duration::from_secs(45));
+            let mut lobby = Lobby::new(role, &self.content, Settings::new(&self.game, 1), self.side.clone(), ENTROPY[1], Duration::from_secs(45));
             lobby.set_name(PEER);
             self.lobby = Some(lobby);
         }
@@ -495,6 +505,37 @@ fn peer(f: impl Fn(&mut Peer) + 'static) -> Step {
     Box::new(move |_, _, _| with_peer(&f))
 }
 
+/// The walk goes on once `come` has: a wait, and a step after it that has the pass say so if its minute passed
+/// without it (what comes next would be pictures of something else).
+fn reach(add: &mut dyn FnMut(u64, Step), come: impl Fn(&App, &AppWindow) -> bool + 'static) {
+    let come = Rc::new(come);
+    let wait = come.clone();
+    add(
+        SETTLE,
+        Box::new(move |_, _, tour: &Rc<Tour>| {
+            let come = wait.clone();
+            tour.wait_until(move |app| come(app, &app.shell.ui()));
+        }),
+    );
+    add(
+        0,
+        Box::new(move |ui, app, tour: &Rc<Tour>| {
+            if !app.try_borrow().is_ok_and(|app| come(&app, ui)) {
+                tour.never_came();
+            }
+        }),
+    );
+}
+
+/// The match's result is on the picture: the fight is won or lost, and its banner has had a quarter of a second
+/// of the wait the game holds it for.
+fn result_shown(app: &App) -> bool {
+    app.shell.battle.as_ref().is_some_and(|b| {
+        let fight = &b.stage.player.battle().fight;
+        matches!(fight.state, fight::WIN | fight::LOSE) && fight.init != 0 && fight.timer <= 85
+    })
+}
+
 /// The app's player and the other are together in the lobby.
 fn together(ui: &AppWindow) -> bool {
     part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()
@@ -543,7 +584,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, typed("zz9 zz9"));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, press("join"));
-    add(SETTLE, until(|_, ui| !ui.global::<PlayView>().get_message_quiet()));
+    reach(add, |_, ui| !ui.global::<PlayView>().get_message_quiet());
     shot(add, "play-no-match", Pair::None);
     // The code's six boxes, as a pad's confirm on the field opens them: the focus a box along.
     add(SETTLE, focus("code", 0));
@@ -589,28 +630,28 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     // it, and filling the window); the training menu over that, with Play's rows at its top. Copy invite
     // code closes the menu; on a phone, Stop training is the way back to the invite.
     add(SETTLE, press("invite"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     if phone {
         shot(add, "play-waiting", Pair::None);
         add(SETTLE, press("wait.train"));
     }
-    add(SETTLE, until(|app, _| training(app)));
+    reach(add, |app, _| training(app));
     add(2500, step(|_| {}));
     shot(add, if phone { "play-waiting-training" } else { "play-waiting" }, Pair::None);
     add(SETTLE, step(|app| app.shell.open_menu()));
     shot(add, "play-waiting-menu", Pair::None);
     add(SETTLE, press_at("menu.added", 0));
-    add(SETTLE, until(|app, _| training(app)));
+    reach(add, |app, _| training(app));
     if phone {
         add(SETTLE, step(|app| app.shell.open_menu()));
         add(SETTLE, press_at("menu.added", 1));
-        add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting));
+        reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting);
     }
 
     // The second player joins by the code: the lobby. The focus a step along; a setting changed under it
     // (the match's, then the player's own).
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::Weak))));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    reach(add, |_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present());
     add(SETTLE, focus("lobby.ready", 0));
     shot(add, "play-lobby", Pair::First);
     add(SETTLE, act(Action::Right));
@@ -618,7 +659,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, focus("lobby.rounds", 0));
     shot(add, "play-lobby-rounds", Pair::First);
     add(SETTLE, act(Action::Right));
-    add(SETTLE, until(|_, ui| ui.global::<PlayView>().get_rounds() == 1));
+    reach(add, |_, ui| ui.global::<PlayView>().get_rounds() == 1);
     shot(add, "play-lobby-rounds-single", Pair::Second);
     add(SETTLE, focus("lobby.delay", 0));
     shot(add, "play-lobby-delay", Pair::First);
@@ -631,12 +672,12 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, act(Action::Back));
     // The link drops (the other player's network is gone for a while) and comes back: the lobby's line.
     add(SETTLE, peer(|p| p.link.outage(OUTAGE)));
-    add(SETTLE, until(|_, ui| ui.global::<PlayView>().get_note() == LobbyNote::Reconnecting));
+    reach(add, |_, ui| ui.global::<PlayView>().get_note() == LobbyNote::Reconnecting);
     shot(add, "play-lobby-reconnecting", Pair::None);
-    add(SETTLE, until(|_, ui| ui.global::<PlayView>().get_note() != LobbyNote::Reconnecting && ui.global::<PlayView>().get_ping() >= 0));
+    reach(add, |_, ui| ui.global::<PlayView>().get_note() != LobbyNote::Reconnecting && ui.global::<PlayView>().get_ping() >= 0);
     // The other player ready; then this one, the other's loading held: the two cards, a bar each.
     add(SETTLE, peer(|p| p.wishes.ready = true));
-    add(SETTLE, until(|_, ui| ui.global::<PlayView>().get_their_ready()));
+    reach(add, |_, ui| ui.global::<PlayView>().get_their_ready());
     add(SETTLE, focus("lobby.ready", 0));
     shot(add, "play-lobby-their-ready", Pair::None);
     add(
@@ -647,7 +688,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
         }),
     );
     add(SETTLE, press("lobby.ready"));
-    add(SETTLE, until(|app, _| app.shell.loading_battle()));
+    reach(add, |app, _| app.shell.loading_battle());
     add(1200, step(|_| {}));
     shot(add, "play-loading", Pair::None);
 
@@ -659,14 +700,14 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
             with_peer(|p| p.wishes.hold_loading = None);
         }),
     );
-    add(SETTLE, until(|app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online)));
+    reach(add, |app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online));
     add(5000, step(|_| {}));
     shot(add, "play-match", Pair::None);
     // The link drops in the match and comes back: the corner counts down what it has left.
     add(SETTLE, peer(|p| p.link.outage(OUTAGE)));
-    add(SETTLE, until(|_, ui| ui.global::<nettai_ui::Shell>().get_connection_down() >= 0));
+    reach(add, |_, ui| ui.global::<nettai_ui::Shell>().get_connection_down() >= 0);
     shot(add, "play-match-reconnecting", Pair::None);
-    add(SETTLE, until(|_, ui| ui.global::<nettai_ui::Shell>().get_connection_down() < 0));
+    reach(add, |_, ui| ui.global::<nettai_ui::Shell>().get_connection_down() < 0);
     add(SETTLE, step(|app| app.shell.keys.tab = true));
     shot(add, "play-match-builds", Pair::None);
     add(
@@ -691,24 +732,35 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
             with_rig(|rig| rig.shoots = true);
         }),
     );
-    add(SETTLE, until(|app, _| app.shell.battle.as_ref().is_some_and(|b| matches!(b.stage.player.battle().fight.state, fight::WIN | fight::LOSE))));
-    add(900, step(|_| {}));
+    // (Up to three minutes, where the arena has something between the two. The shot is taken by the game's own
+    // clock, with its banner up: the result's wait is under two seconds.)
+    for _ in 0..3 {
+        add(0, until(|app, _| result_shown(app)));
+    }
+    add(
+        0,
+        Box::new(|_, app, tour: &Rc<Tour>| {
+            if !result_shown(&app.borrow()) {
+                tour.never_came();
+            }
+        }),
+    );
     shot(add, "play-match-result", Pair::None);
-    add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby));
+    reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby);
     add(SETTLE, step(|_| {
         with_rig(|rig| rig.shoots = false);
     }));
-    add(SETTLE, until(|_, ui| !ui.global::<PlayView>().get_ready() && !ui.global::<PlayView>().get_their_ready()));
+    reach(add, |_, ui| !ui.global::<PlayView>().get_ready() && !ui.global::<PlayView>().get_their_ready());
     shot(add, "play-lobby-again", Pair::None);
 
     // A second match on the same link, with closed builds; the other player leaves it: both are back in the
     // lobby, which says why.
     add(SETTLE, focus("lobby.closed", 0));
     add(SETTLE, act(Action::Right));
-    add(SETTLE, until(|_, ui| ui.global::<PlayView>().get_closed()));
+    reach(add, |_, ui| ui.global::<PlayView>().get_closed());
     add(SETTLE, peer(|p| p.wishes.ready = true));
     add(SETTLE, press("lobby.ready"));
-    add(SETTLE, until(|app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online)));
+    reach(add, |app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online));
     add(3000, step(|app| app.shell.keys.tab = true));
     shot(add, "play-match-closed-builds", Pair::None);
     add(
@@ -726,12 +778,12 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
             with_peer(|p| p.wishes.leave_match = true);
         }),
     );
-    add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby));
+    reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby);
     shot(add, "play-lobby-opponent-left-match", Pair::None);
 
     // The other player leaves for good: a failure that ends what the player was doing.
     add(SETTLE, peer(|p| p.wishes.leave = true));
-    add(SETTLE, until(|app, _| app.shell.dialog.is_some()));
+    reach(add, |app, _| app.shell.dialog.is_some());
     shot(add, "play-opponent-left", Pair::None);
     add(SETTLE, act(Action::Confirm));
 
@@ -739,33 +791,33 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     // other joins its address; then the lobby's own Leave.
     add(SETTLE, press("direct"));
     add(SETTLE, press("direct.host"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     shot(add, "play-waiting-direct", Pair::None);
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    reach(add, |_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present());
     add(SETTLE, press("lobby.leave"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Builds));
+    reach(add, |_, ui| part(ui) == PlayPart::Builds);
 
     // An invite cancelled from the training menu: the builds again.
     add(SETTLE, press("invite"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     if phone {
         add(SETTLE, press("wait.train"));
     }
-    add(SETTLE, until(|app, _| training(app)));
+    reach(add, |app, _| training(app));
     add(SETTLE, step(|app| app.shell.open_menu()));
     add(SETTLE, press_at("menu.added", if phone { 2 } else { 1 }));
-    add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Builds));
+    reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Builds);
 
     // The other player comes with a build that breaks a rule: both ready, and the app's lobby refuses it and
     // ends, saying so.
     add(SETTLE, press("invite"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::Broken))));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    reach(add, |_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present());
     add(SETTLE, peer(|p| p.wishes.ready = true));
     add(SETTLE, press("lobby.ready"));
-    add(SETTLE, until(|app, _| app.shell.dialog.is_some()));
+    reach(add, |app, _| app.shell.dialog.is_some());
     shot(add, "play-their-build-refused", Pair::None);
     add(SETTLE, act(Action::Confirm));
 
@@ -773,26 +825,26 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     // host's settings taken), a match from the right navi's console, and LEAVE MATCH, which puts both back
     // in the lobby.
     add(SETTLE, step(|app| come(app, Comes::Inviting)));
-    add(SETTLE, until(|_, _| peer_code().is_some()));
+    reach(add, |_, _| peer_code().is_some());
     add(SETTLE, focus("code", 0));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, step(|app| app.input(crate::shell::NavInput::Edited(peer_code().unwrap_or_default().to_lowercase()))));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, press("join"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    reach(add, |_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present());
     add(SETTLE, focus("lobby.ready", 0));
     shot(add, "play-lobby-joined", Pair::None);
     add(SETTLE, peer(|p| p.wishes.ready = true));
     add(SETTLE, press("lobby.ready"));
-    add(SETTLE, until(|app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online)));
+    reach(add, |app, _| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online));
     add(4000, step(|_| {}));
     shot(add, "play-match-joined", Pair::None);
     add(SETTLE, step(|app| app.shell.open_menu()));
     add(SETTLE, press("menu.leave"));
-    add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby));
+    reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby);
     shot(add, "play-lobby-left-match", Pair::None);
     add(SETTLE, press("lobby.leave"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Builds));
+    reach(add, |_, ui| part(ui) == PlayPart::Builds);
 
     add(
         SETTLE,
@@ -908,9 +960,9 @@ pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64,
     );
     // (The screen arrives first: a press is for a control that is there.)
     add(800, press("invite"));
-    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
-    add(SETTLE, until(|_, ui| together(ui)));
+    reach(add, |_, ui| together(ui));
     // (The other player has come by now: their card is taken away, and comes as it came.)
     add(800, Box::new(|ui, _, _| ui.global::<PlayView>().set_their_present(false)));
     burst(add, "lobby-opponent-joins", &[0, 40, 80, 130, 200, 320], Box::new(|ui, _, _| ui.global::<PlayView>().set_their_present(true)));
