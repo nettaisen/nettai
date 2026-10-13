@@ -491,9 +491,12 @@ component ListPage inherits Page {
             placeholder: @tr("Search by opponent");
         }
 
-        if ReplaysView.kinds: Seg {
+        // (Hidden, not under an `if`: a small part, docs/app.md §14.)
+        Seg {
             x: Theme.phone ? 0px : root.list-width - self.width;
             y: Theme.phone ? 50px : 2px;
+            visible: ReplaysView.kinds;
+            enabled: ReplaysView.kinds;
             nav: "kind";
             first: @tr("ALL");
             second: @tr("ONLINE");
@@ -607,6 +610,8 @@ component Choice inherits Rectangle {
     in property <int> nav-index;
     in property <string> text;
     in property <bool> chosen;
+    // Off: passed by (a choice hidden on its instance).
+    in property <bool> enabled: true;
     width: 48px;
     height: 36px;
     Rectangle {
@@ -645,6 +650,7 @@ component Choice inherits Rectangle {
     hit := Focusable {
         nav: root.nav;
         nav-index: root.nav-index;
+        enabled: root.enabled;
     }
 }
 
@@ -754,39 +760,48 @@ component TransportButtons inherits Rectangle {
 }
 
 // The transport under the picture: the time, the bar, the length; then the buttons, the round, and at the
-// right the speed, the side watched from and the export. The times are in boxes of their own width, so the
-// bar keeps its length as the clock runs.
+// right the speed, the side watched from and the export. On a phone the bar, the buttons across, then the speed,
+// the side and the export one under the other. The times are in boxes of their own width, so the bar keeps its
+// length as the clock runs. (One component for both: the parts of the other shape are hidden and can't be
+// focused, which costs less than a conditional for each, docs/app.md §14.)
 component Transport inherits Rectangle {
+    property <bool> phone: Theme.phone;
+    property <length> edge: root.phone ? 12px : 16px;
+    property <length> inner: self.width - 2 * root.edge;
+    property <length> clock: root.phone ? 44px : 48px;
     PanelBack { }
 
     Mono {
-        x: 16px;
-        y: 16px;
-        width: 48px;
+        x: root.edge;
+        y: root.edge;
+        width: root.clock;
         height: 24px;
         text: ReplaysView.time;
+        font-size: root.phone ? 12px : 13px;
     }
 
     SeekBar {
-        x: 76px;
-        y: 16px;
-        width: parent.width - 152px;
+        x: root.edge + root.clock + (root.phone ? 8px : 12px);
+        y: root.edge;
+        width: parent.width - 2 * self.x;
     }
 
     Mono {
-        x: parent.width - 64px;
-        y: 16px;
-        width: 48px;
+        x: parent.width - root.edge - root.clock;
+        y: root.edge;
+        width: root.clock;
         height: 24px;
         text: ReplaysView.total;
+        font-size: root.phone ? 12px : 13px;
         horizontal-alignment: right;
     }
 
     TransportButtons {
-        x: 16px;
-        y: 52px;
-        width: 248px;
-        height: 40px;
+        x: root.edge;
+        y: root.phone ? 48px : 52px;
+        width: root.phone ? root.inner : 248px;
+        height: root.phone ? 44px : 40px;
+        pitch: root.phone ? (root.inner - 52px) / 4 : 52px;
     }
 
     Text {
@@ -794,6 +809,7 @@ component Transport inherits Rectangle {
         y: 52px;
         width: 170px;
         height: 40px;
+        visible: !root.phone;
         text: @tr("Round {} of {}", ReplaysView.round, ReplaysView.rounds);
         color: Theme.muted;
         font-family: Theme.body;
@@ -804,8 +820,9 @@ component Transport inherits Rectangle {
     }
 
     export := Button {
-        x: parent.width - 16px - self.width;
-        y: 52px;
+        x: root.phone ? root.edge : parent.width - root.edge - self.natural-width;
+        y: root.phone ? 204px : 52px;
+        width: root.phone ? root.inner : self.natural-width;
         nav: "export";
         text: @tr("EXPORT VIDEO");
     }
@@ -817,6 +834,8 @@ component Transport inherits Rectangle {
         nav-index: 1;
         text: ReplaysView.p2;
         chosen: ReplaysView.view == 1;
+        visible: !root.phone;
+        enabled: !root.phone;
     }
 
     side1 := Choice {
@@ -826,6 +845,8 @@ component Transport inherits Rectangle {
         nav-index: 0;
         text: ReplaysView.p1;
         chosen: ReplaysView.view == 0;
+        visible: !root.phone;
+        enabled: !root.phone;
     }
 
     view-label := Label {
@@ -833,6 +854,7 @@ component Transport inherits Rectangle {
         y: 52px;
         width: self.preferred-width;
         height: 40px;
+        visible: !root.phone;
         text: @tr("VIEW");
     }
 
@@ -843,6 +865,8 @@ component Transport inherits Rectangle {
         nav-index: 3;
         text: "4×";
         chosen: ReplaysView.speed == 3;
+        visible: !root.phone;
+        enabled: !root.phone;
     }
 
     speed2 := Choice {
@@ -852,6 +876,8 @@ component Transport inherits Rectangle {
         nav-index: 2;
         text: "2×";
         chosen: ReplaysView.speed == 2;
+        visible: !root.phone;
+        enabled: !root.phone;
     }
 
     speed1 := Choice {
@@ -861,6 +887,8 @@ component Transport inherits Rectangle {
         nav-index: 1;
         text: "1×";
         chosen: ReplaysView.speed == 1;
+        visible: !root.phone;
+        enabled: !root.phone;
     }
 
     speed-half := Choice {
@@ -870,6 +898,8 @@ component Transport inherits Rectangle {
         nav-index: 0;
         text: "½×";
         chosen: ReplaysView.speed == 0;
+        visible: !root.phone;
+        enabled: !root.phone;
     }
 
     Label {
@@ -877,87 +907,46 @@ component Transport inherits Rectangle {
         y: 52px;
         width: self.preferred-width;
         height: 40px;
+        visible: !root.phone;
         text: @tr("SPEED");
-    }
-}
-
-// The same on a phone: the bar, the buttons across, then the speed, the side and the export one under the
-// other.
-component PhoneTransport inherits Rectangle {
-    property <length> inner: self.width - 24px;
-    PanelBack { }
-
-    Mono {
-        x: 12px;
-        y: 12px;
-        width: 44px;
-        height: 24px;
-        text: ReplaysView.time;
-        font-size: 12px;
-    }
-
-    SeekBar {
-        x: 64px;
-        y: 12px;
-        width: parent.width - 128px;
-    }
-
-    Mono {
-        x: parent.width - 56px;
-        y: 12px;
-        width: 44px;
-        height: 24px;
-        text: ReplaysView.total;
-        font-size: 12px;
-        horizontal-alignment: right;
-    }
-
-    TransportButtons {
-        x: 12px;
-        y: 48px;
-        width: root.inner;
-        height: 44px;
-        pitch: (root.inner - 52px) / 4;
     }
 
     Value {
-        x: 12px;
+        x: root.edge;
         y: 104px;
         width: root.inner - 196px;
         height: 44px;
+        visible: root.phone;
         text: @tr("Speed");
     }
 
     Stepper {
-        x: parent.width - 12px - self.width;
+        x: parent.width - root.edge - self.width;
         y: 108px;
+        visible: root.phone;
+        enabled: root.phone;
         nav: "speed-step";
         value: ReplaysView.speed == 0 ? "½×" : ReplaysView.speed == 1 ? "1×" : ReplaysView.speed == 2 ? "2×" : "4×";
         value-width: 112px;
     }
 
     Value {
-        x: 12px;
+        x: root.edge;
         y: 152px;
         width: root.inner - 196px;
         height: 44px;
+        visible: root.phone;
         text: @tr("View");
     }
 
     Stepper {
-        x: parent.width - 12px - self.width;
+        x: parent.width - root.edge - self.width;
         y: 156px;
+        visible: root.phone;
+        enabled: root.phone;
         nav: "view-step";
         value: ReplaysView.view == 0 ? ReplaysView.p1 : ReplaysView.p2;
         value-width: 112px;
-    }
-
-    Button {
-        x: 12px;
-        y: 204px;
-        width: root.inner;
-        nav: "export";
-        text: @tr("EXPORT VIDEO");
     }
 }
 
@@ -999,17 +988,11 @@ component ViewerPage inherits Page {
 
     Arrive {
         order: 1;
-        if !Theme.phone: Transport {
+        Transport {
             x: 0;
-            y: root.top + root.picture-height + 16px;
+            y: root.top + root.picture-height + (Theme.phone ? 12px : 16px);
             width: root.body-width;
-            height: 108px;
-        }
-        if Theme.phone: PhoneTransport {
-            x: 0;
-            y: root.top + root.picture-height + 12px;
-            width: root.body-width;
-            height: 256px;
+            height: Theme.phone ? 256px : 108px;
         }
     }
 }
