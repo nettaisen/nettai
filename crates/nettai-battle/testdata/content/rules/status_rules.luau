@@ -30,7 +30,7 @@ return {
     hp_loss = "hp_alone",
     hit_sound = "by_console",
     barrier = { stops_while_paused = true, wind = "pops" },
-    anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000 },
+    anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000, drops_requests = 0x301BE },
     chip_destruction = "next",
     -- Worn out (exhausted, or a mood of 0) before anger, then held tired, Full
     -- Synchro, else normal; a navi held tired or exhausted holds its mood, and

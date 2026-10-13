@@ -434,8 +434,9 @@ local status = {
         -- A barrier stands still while paused; wind, or the hit flags 0xA20, pop it (EXE6's code).
         barrier = { stops_while_paused = true, wind = "pops" },
         -- Its defensive chips (0x08029A60): AntiDmg, or the trap the navi's status arms, catches a hit of any damage
-        -- (one of none passes); AntiSwrd any sword's hit (the hit flags 0x2000).
-        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
+        -- (one of none passes); AntiSwrd any sword's hit (the hit flags 0x2000). A caught hit leaves the navi's pending
+        -- requests (0x08029AE0 zeroes the hit alone): a move that ended on ice that tick slides.
+        anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0, drops_requests = 0 },
         -- A chip-destroying hit (hit flag 0x10: 0x0801709A) takes a player's whole hand, the cursor back at its first
         -- chip. (EXE5's leaves the navi's chip requests, and one pending uses chip 0xFFFF's record, past the chip table:
         -- the engine ends it instead, docs/design/exe5-map.md §15.6.)
