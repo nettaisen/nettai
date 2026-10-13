@@ -112,6 +112,13 @@ pub trait Driver {
     /// options are all at their normal values: the battle is then a
     /// function of its setup and the buttons, as ever.
     fn prepare(&mut self, _b: &mut Battle) {}
+    /// Have the opponent it plays press nothing from the next tick on, or
+    /// press again as it chose (`held` false); false from a driver that
+    /// plays no opponent. Its choices and its random presses go on as
+    /// they would: only what reaches the battle is held.
+    fn hold_opponent(&mut self, _held: bool) -> bool {
+        false
+    }
     /// The player's input delay from the next frame on, in ticks, of a
     /// driver that has one (netplay's: `crate::netplay::NetOptions`); false
     /// from one that doesn't.
@@ -459,6 +466,8 @@ pub struct LivePlayer {
     /// The round being played, from 1.
     round: u8,
     opponent: Opponent,
+    /// The opponent's buttons reach nothing (`Driver::hold_opponent`).
+    held: bool,
     /// The seed the opponent's random presses start from, and them.
     seed: u64,
     masher: Masher,
@@ -473,7 +482,7 @@ pub struct LivePlayer {
     /// START's press), and where its playing is.
     recording: Vec<u16>,
     recording_now: bool,
-    held: u16,
+    last_keys: u16,
     played: usize,
     /// What the host's second pad holds this tick, while it has one.
     second_pad: Option<u16>,
@@ -533,6 +542,7 @@ impl LivePlayer {
             ticks: 0,
             round: 1,
             opponent,
+            held: false,
             seed,
             masher: masher(seed),
             training: Training::default(),
@@ -540,7 +550,7 @@ impl LivePlayer {
             arranged: [ChipDraw::Shuffled; 2],
             recording: Vec::new(),
             recording_now: false,
-            held: 0,
+            last_keys: 0,
             played: 0,
             second_pad: None,
         }
@@ -565,7 +575,7 @@ impl LivePlayer {
         self.recording.clear();
         self.recording_now = true;
         // (A START held as it begins isn't a press.)
-        self.held = keys::START;
+        self.last_keys = keys::START;
     }
 
     /// End the recording being made, as START does: the opponent plays it,
@@ -686,7 +696,8 @@ impl LivePlayer {
             InFight::StandsStill => 0,
             InFight::MovesAround => mashed & MOVES,
             InFight::AttacksAtRandom => mashed,
-            InFight::PlaysRecording if fight_runs(b) && !self.recording.is_empty() => {
+            // (Held, its place is held too: it plays on from there.)
+            InFight::PlaysRecording if fight_runs(b) && !self.recording.is_empty() && !self.held => {
                 let at = self.played % self.recording.len();
                 self.played = at + 1;
                 self.recording[at]
@@ -703,7 +714,7 @@ impl LivePlayer {
         if !self.recording_now {
             return keys;
         }
-        let pressed = keys & !std::mem::replace(&mut self.held, keys);
+        let pressed = keys & !std::mem::replace(&mut self.last_keys, keys);
         if b.round.mode == mode::CUSTOM {
             return keys;
         }
@@ -790,7 +801,8 @@ impl Driver for LivePlayer {
         self.ticks += 1;
         let local = b.setup.local_side as usize;
         let own = self.own_buttons(b, keys);
-        let buttons = [0, 1].map(|side| if side == local { own } else { self.opponent_buttons(b, side, keys) });
+        // (Held, the opponent's presses are made as ever, and go nowhere.)
+        let buttons = [0, 1].map(|side| if side == local { own } else { self.opponent_buttons(b, side, keys) * !self.held as u16 });
         // (The buttons are the whole input, as a netplay peer's are.)
         let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
         Some(Step { input: players, events, frame: Some(self.ticks) })
@@ -831,6 +843,11 @@ impl Driver for LivePlayer {
 
     fn set_opponent(&mut self, opponent: Opponent) -> bool {
         LivePlayer::set_opponent(self, opponent);
+        true
+    }
+
+    fn hold_opponent(&mut self, held: bool) -> bool {
+        self.held = held;
         true
     }
 }
@@ -1581,8 +1598,11 @@ mod tests {
 
     /// Live play's keys on each game's custom screen, held as a person
     /// holds them (eight ticks), the cursor on the first chip: R opens the
-    /// chip's description, L the navi's no-running message, SELECT hides
-    /// the window; each stays when the key is let go.
+    /// chip's description, SELECT hides the window; each stays when the key
+    /// is let go. L, the run key, is the match's host's
+    /// (`nettai_match::HOST_KEYS`: nobody runs from a match), so it opens
+    /// nothing; in a round whose host takes no keys, a console's, it opens
+    /// the navi's no-running message, which stays too.
     #[test]
     fn rl_and_select_work_on_each_games_live_screen() {
         for game in ["exe4", "exe5", "exe6"] {
@@ -1591,9 +1611,13 @@ mod tests {
                 "exe5" => nettai_match::testing::exe5_content(),
                 _ => nettai_match::testing::exe6_content(),
             };
-            for key in [keys::R, keys::L, keys::SELECT] {
+            let hosts = nettai_match::HOST_KEYS;
+            for (key, host_keys) in [(keys::R, hosts), (keys::L, hosts), (keys::L, nettai_battle::HostKeys::NONE), (keys::SELECT, hosts)] {
                 let m = nettai_match::pick::live(&content, game, 5, None).unwrap();
-                let mut live = LivePlayer::new(Set::of(&content, &m, 5));
+                let set = Set::of(&content, &m, 5);
+                let first = RoundSetup { host_keys, ..set.first().clone() };
+                let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+                let mut live = LivePlayer::new(Set::new(content.clone(), first, folders));
                 let mut b = live.start();
                 play_until(&mut live, &mut b, 4000, |_, _| 0, |b| choosing(b).is_some());
                 keys_in_turn(&mut live, &mut b, &[0; 20]);
@@ -1603,10 +1627,11 @@ mod tests {
                 let phase = b.custom.sides[0].screen.unwrap().phase;
                 let right = match key {
                     keys::R => matches!(phase, Phase::Description { window: None, .. }),
+                    keys::L if host_keys.run => phase == Phase::Choosing,
                     keys::L => matches!(phase, Phase::RunMessage { chatbox: Some(_) }),
                     _ => matches!(phase, Phase::Hidden { .. }),
                 };
-                assert!(right, "{game}: key {key:#x}: {phase:?}");
+                assert!(right, "{game}: key {key:#x}, {host_keys:?}: {phase:?}");
             }
         }
     }
