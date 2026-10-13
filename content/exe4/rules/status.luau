@@ -404,9 +404,11 @@ local status = {
         form_keeps_back_special = true,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x08010430).
         flash_hides_on_clear = true,
-        -- What a navi's status word reads as before its init made its collision data: EXE5's open-bus value, to
-        -- confirm by recording (exe4-map.md §16).
-        missing_collision_status = 0xE55EC002,
+        -- A navi's status word read before its init made its collision data (through the null pointer, from the
+        -- BIOS: a round's first tick, the other side's first barrier's visual asking whether the local navi is blind,
+        -- 0x0800B0CA): a software interrupt's opcode, with the blind bit, as EXE6's (the visual hidden for that
+        -- tick: the lab's modcards/011-first-barrier-100-side1 and its two stages with objects).
+        missing_collision_status = 0xE3A02004,
         -- Its status block (0x08013A48) is EXE5's order: the flash's timer first, whatever the battle's flags
         -- (0x080134F6), then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "flash_timer_first",
