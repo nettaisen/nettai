@@ -207,10 +207,10 @@ msgstr "このリプレイは壊れています"
 msgid "It can't be played."
 msgstr "再生できません。"
 
-msgid "This is an {} replay. Pick {} to watch it."
+msgid "This is a {} replay. Pick {} to watch it."
 msgstr "これは {} のリプレイです。{} を選ぶと見られます。"
 
-msgid "This is an {} replay"
+msgid "This is a {} replay"
 msgstr "これは {} のリプレイです"
 
 msgid "Pick {} to watch it."
@@ -240,11 +240,11 @@ msgstr "動画を作成できませんでした。詳しくはログファイル
 msgid "The video couldn't be made"
 msgstr "動画を作成できませんでした"
 
-msgid "Not an {} save."
+msgid "Not a {} save."
 msgstr "{}のセーブではありません。"
 
 # (A dialog's title: it has a phone's dialog's width, 310, at 20.)
-msgid "Not an {} save"
+msgid "Not a {} save"
 msgstr "{}のセーブではありません"
 
 # A game whose pack is there and can't be loaded: {} is the game, as the header shows it.

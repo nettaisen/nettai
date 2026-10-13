@@ -191,6 +191,11 @@ pub fn navi_only_fields(content: &Content) -> Vec<String> {
     all().iter().filter(|t| t.own_navi_only()).flat_map(|t| taken(content, t.as_ref())).collect()
 }
 
+/// The tab whose facts include fact `field`, if one's do (what a problem with it is about, for its sentence).
+pub fn tab_of(content: &Content, field: &str) -> Option<EditorTab> {
+    all().iter().find(|t| t.fields(content).iter().any(|f| f == field)).map(|t| t.id())
+}
+
 /// The key the last tab used is remembered under, in the settings.
 const REMEMBERED: &str = "builds.tab";
 
