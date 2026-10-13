@@ -10,29 +10,30 @@
 //! sides the same build at 400 HP, the left navi pressing at random (live
 //! play's "attacks at random", picking every chip it can), the right one
 //! the fighter at each level; rounds won and lost (the rest undecided in
-//! three minutes, or stopped by the engine), and the HP it took away and
-//! lost a minute.
+//! three minutes), and the HP it took away and lost a minute.
 //!
 //! | Game | Random presses | Easy | Normal | Hard |
 //! |---|---|---|---|---|
-//! | EXE6 | 11–13, 298 / 334 | 11–13, 320 / 319 | 15–9, 305 / 277 | 18–6, 344 / 223 |
-//! | EXE5 | 9–14, 144 / 202 | 12–8, 150 / 161 | 15–8, 179 / 133 | 15–4, 179 / 98 |
-//! | EXE4 | 13–6, 155 / 129 | 8–10, 160 / 159 | 9–10, 160 / 156 | 15–7, 186 / 129 |
+//! | EXE6 | 11–13, 298 / 334 | 16–7, 334 / 245 | 20–4, 363 / 231 | 20–4, 362 / 164 |
+//! | EXE5 | 9–14, 144 / 202 | 11–9, 164 / 169 | 12–7, 157 / 132 | 15–4, 173 / 97 |
+//! | EXE4 | 13–6, 155 / 129 | 12–7, 153 / 131 | 15–4, 176 / 121 | 19–2, 181 / 93 |
 //!
-//! Each level against the one below it (`FIGHTER_PLAYER`), EXE6, 12
-//! rounds: Hard beat Normal 8–4 (333 / 229), Normal beat Easy 8–4 (322 /
-//! 221).
+//! Against each other (`FIGHTER_PLAYER`), EXE6, 16 rounds: Hard beat Normal
+//! 12–4 (311 / 202), Normal beat Easy 10–6 (314 / 276). The user found Hard
+//! "not really that hard": against the Hard before it, which counted the
+//! most it could lose in any guess, used no chip it didn't have to and
+//! decided on its beat alone, today's beat it 12–3 in EXE6 (381 / 208), 9–3
+//! in EXE5 and 6–5 in EXE4, and holds a chip some 9 seconds at most where
+//! that one held them 25 to 56.
 //!
-//! A decision averages 18 ms (EXE6) to 55 ms (EXE4, EXE5) at Hard, on three
-//! threads, four rounds at once on a loaded machine. Run at the battle's own
-//! speed (`fighter::tests::real_time`, 60 ticks a second, 20 seconds of each
-//! game at each level), every decision was ready on its tick: 8 to 44 ms on
-//! average, 82 ms at most (Hard's reaction is 100 ms).
+//! Run at the battle's own speed (`fighter::tests::real_time`, 60 ticks a
+//! second, 20 seconds of each game at each level, three threads), every
+//! decision was ready on its tick: 5 to 35 ms on average, 91 ms at most
+//! (Hard's reaction is 100 ms).
 //!
-//! In EXE4 about one round in twelve of these was stopped by the engine:
-//! a player's chip request outlives a dimming that took the chip, and is
-//! taken after it with the hand empty ("the empty hand's chip reads past
-//! the chip table"; seed 16 at Normal, tick 514, the player's side).
+//! In EXE4 a round could stop in the engine where a chip request outlived a
+//! dimming that took the chip; fixed in the engine (docs/engine/chips.md
+//! §2.9): none of these rounds stopped.
 //!
 //! The measurements: `cargo test -p nettai-training --lib -- --ignored
 //! --nocapture` with the test's name (`against_random_presses`,
