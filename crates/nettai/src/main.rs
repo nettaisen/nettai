@@ -9,7 +9,7 @@
 //! `NETTAI_PLAY_STATS` prints what the battle's picture costs and how late it is, every two seconds;
 //! `NETTAI_KEY_PROBE` presses the right arrow now and then to measure it; `NETTAI_WINDOW_PROBE` minimizes or
 //! hides the window for a while; `NETTAI_TOUR=<folder>` walks every
-//! screen and writes each to a PNG (`tour`).
+//! screen and writes each to a PNG (`tour`: a build with the `tour` feature's alone).
 
 mod awake;
 mod battle;
@@ -28,6 +28,10 @@ mod settings;
 mod shell;
 mod sound;
 mod stage;
+// (The screenshot pass is the `tour` feature's: a player's build has none of it. The tests compile it all the
+// same, so that it keeps compiling.)
+#[cfg(any(test, feature = "tour"))]
+#[cfg_attr(not(feature = "tour"), allow(dead_code, unused_imports))]
 mod tour;
 
 use nav::{Rect, Registry};
@@ -61,6 +65,10 @@ fn main() -> Result<(), slint::PlatformError> {
     nettai_frontend::session::quiet_engine_panics();
     errors::catch_library_logs();
     let tour = std::env::var_os("NETTAI_TOUR").map(std::path::PathBuf::from);
+    if cfg!(not(feature = "tour")) && tour.is_some() {
+        eprintln!("nettai: this build has no screenshot pass (NETTAI_TOUR): build it with `--features tour`");
+        std::process::exit(2);
+    }
     // (The clock needs the renderer that tells when it draws: femtovg.)
     let mut backend = slint::BackendSelector::new().backend_name("winit".into()).renderer_name("femtovg".into());
     if tour.is_some() {
@@ -209,11 +217,13 @@ fn main() -> Result<(), slint::PlatformError> {
     if let Ok(probe) = std::env::var("NETTAI_WINDOW_PROBE") {
         window_probe(&ui, &probe);
     }
+    #[cfg(feature = "tour")]
     if let Some(dir) = tour {
         tour::start(&ui, &app, dir);
     }
     ui.run()?;
     // (The screenshot pass found something cut or moved.)
+    #[cfg(feature = "tour")]
     if tour::failed() {
         std::process::exit(1);
     }

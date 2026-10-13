@@ -123,6 +123,13 @@ pub trait Screen {
         false
     }
 
+    /// Up, Down, Page Up, Page Down, Home or End (the keys, the pad's D-pad and stick), before the focus
+    /// moves by it: for a page of the screen's own that scrolls with no control in it to move to (a build's
+    /// sheet in the match's menu). True if the screen took it.
+    fn scroll(&mut self, _shell: &mut Shell, _action: Action) -> bool {
+        false
+    }
+
     /// Esc or Back. True if the screen went back within itself (from a lobby to its first view); false, and
     /// the shell goes back to the menu.
     fn back(&mut self, _shell: &mut Shell) -> bool {
