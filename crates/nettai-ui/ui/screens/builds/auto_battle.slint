@@ -59,6 +59,10 @@ export global AutoBattleView {
     in property <int> refused-seq;
     in property <bool> in-library;
     in property <bool> sheet;
+    // How many of the places hold a chip, the note of its library row.
+    public pure function in-places(n: int) -> string {
+        return @tr("In {n} place" | "In {n} places" % n);
+    }
 }
 
 // A line of the places: a list's title, or a place, the overview's chip row as a control of the places' page (empty:
