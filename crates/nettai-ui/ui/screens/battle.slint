@@ -83,12 +83,21 @@ export component MenuOverlay inherits Rectangle {
 // The connection's quality, in a corner for the whole match: four bars and the round trip, or how long the link
 // has been down.
 component Connection inherits Rectangle {
-    width: 132px;
+    // (One width whichever it says: room for the longest thing it says, the link down with all its time left.)
+    width: max(132px, longest.preferred-width + 28px);
     height: 30px;
     Rectangle {
         background: Theme.shade;
         border-width: 1px;
         border-color: Theme.line;
+    }
+
+    longest := Text {
+        visible: false;
+        text: @tr("Reconnecting {} s", 30);
+        font-family: Theme.body;
+        font-size: 13px;
+        font-weight: 700;
     }
 
     Bars {
