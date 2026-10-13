@@ -6,8 +6,9 @@
 //!
 //! A change of game is two motions over the theme's `settle`. The new game's ground sweeps across the window from
 //! the side its arrow was pressed on, over the one before (`Shell.grounds`, the last on top: each ground runs its
-//! own sweep from its creation, and those under it are dropped once it is done), and the theme's colors cross-fade
-//! from the ones shown to the new game's (`Theme.fade`, moved here a frame at a time, eased as the sweep is). A
+//! own sweep from its creation, at the frame after the press, and those under it are dropped once it is done), and
+//! the theme's colors cross-fade from the ones shown to the new game's (`Theme.fade`, moved here a frame at a time,
+//! eased as the sweep is). A
 //! second change while one runs starts at once from what is shown: a third ground sweeps over the two, and the
 //! colors fade on from where they were. Nothing waits on either, and neither changes a size. With motion off, the
 //! new look is there at once.
@@ -39,6 +40,8 @@ pub struct Looks {
     target: Look,
     /// The colors' cross-fade under way: since when.
     fading: Option<Instant>,
+    /// A change's ground, to come in at the next frame.
+    coming: Option<Ground>,
     /// The grounds the window shows, the last on top, and when each came.
     grounds: Rc<VecModel<Ground>>,
     came: Vec<Instant>,
@@ -62,12 +65,17 @@ impl Looks {
         let plain = ui.global::<Theme>().get_look();
         let grounds = Rc::new(VecModel::from(vec![Ground { look: plain.clone(), from: 0 }]));
         ui.global::<nettai_ui::Shell>().set_grounds(ModelRc::from(grounds.clone()));
-        Looks { by_game, target: plain.clone(), plain, fading: None, grounds, came: vec![Instant::now()] }
+        Looks { by_game, target: plain.clone(), plain, fading: None, coming: None, grounds, came: vec![Instant::now()] }
     }
 
     /// Show game `game`'s look, its ground sweeping in from side `from` (-1 the left, 1 the right); `from` 0, or
     /// motion turned off, and it is there at once.
-    pub fn show(&mut self, ui: &AppWindow, game: Option<&str>, from: i32, now: Instant) {
+    ///
+    /// The sweep and the colors' fade start at the next frame ([`Looks::frame`]), not here: what the change of game
+    /// does besides (the screen shown again for the new game, the menu's reel starting its demo) holds the window
+    /// for a tenth of a second or so after the press, and a clock started now would have run most of its way before
+    /// a frame of it was drawn. Until that frame the colors are the ones shown.
+    pub fn show(&mut self, ui: &AppWindow, game: Option<&str>, from: i32) {
         let look = game.and_then(|g| self.by_game.get(g)).unwrap_or(&self.plain).clone();
         if look == self.target {
             return;
@@ -79,21 +87,31 @@ impl Looks {
         theme.set_was(shown);
         theme.set_look(look.clone());
         theme.set_fade(if at_once { 1.0 } else { 0.0 });
-        self.fading = (!at_once).then_some(now);
+        self.fading = None;
         self.target = look.clone();
-        self.grounds.push(Ground { look, from: if at_once { 0 } else { from.signum() } });
-        self.came.push(now);
-        let keep = if at_once { 1 } else { MOST_GROUNDS };
-        while self.grounds.row_count() > keep {
-            self.grounds.remove(0);
-            self.came.remove(0);
+        if at_once {
+            self.coming = None;
+            self.grounds.set_vec(vec![Ground { look, from: 0 }]);
+            self.came = vec![Instant::now()];
+        } else {
+            self.coming = Some(Ground { look, from: from.signum() });
         }
     }
 
-    /// A frame at `now`: the colors a step further, and the grounds the last has covered dropped.
+    /// A frame at `now`, before it is drawn: a change's ground comes in (its sweep's clock starting at this frame)
+    /// and its colors start to fade, the colors a step further, and the grounds the last has covered dropped.
     pub fn frame(&mut self, ui: &AppWindow, now: Instant) {
         let theme = ui.global::<Theme>();
         let settle = Duration::from_millis(theme.get_settle().max(0) as u64);
+        if let Some(ground) = self.coming.take() {
+            self.grounds.push(ground);
+            self.came.push(now);
+            while self.grounds.row_count() > MOST_GROUNDS {
+                self.grounds.remove(0);
+                self.came.remove(0);
+            }
+            self.fading = Some(now);
+        }
         if let Some(at) = self.fading {
             let linear = if settle.is_zero() { 1.0 } else { (now.saturating_duration_since(at).as_secs_f32() / settle.as_secs_f32()).min(1.0) };
             // (Eased out, as the sweep's clock is: `Tween`'s `t`.)
