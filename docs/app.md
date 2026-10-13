@@ -667,14 +667,25 @@ line needs the content to name each navi's.
 | The build overview | `BuildOverview { build: <BuildSheet>; }` | `builds::overview::sheet(shell, kit, label, name, side)` |
 | A game's builds for a list | `BuildRow { build: <BuildEntry>; nav: "builds"; nav-index: at; }` under a `ListView` of 52-tall rows (the row holds its own touch) | `builds::shelf::load(shell, kit)` (`Shelved`: the file, the build, whether it is ready, its row) |
 | A chip's row | `ChipRow { chip: <ChipCell>; number: 1; }` | `builds::overview::chip_cell` |
-| What is wrong with a build, in the player's words | the catalog's `BuildWords` | `builds::words::wrong(shell, game, ready, &Wrong)`: the kind's sentence with its numbers and names. `words::first_problem(shell, kit, side)` checks a side and words its first problem, for `UserError::BuildUnusable`. `builds::words::Words` (`problem`, `refusal`, `status`) where many are worded at once |
+| What is wrong with a build, in the player's words | the catalog's `BuildWords` | `builds::words::problem(shell, game, ready, &Problem)`: the kind's sentence with its numbers and names, about the part of the build its fact is (`words::wrong(.., &Wrong)` for a kind alone: the general sentence). `words::first_problem(shell, kit, side)` checks a side and words its first problem, for `UserError::BuildUnusable`. `builds::words::Words` (`problem`, `refusal`, `status`) where many are worded at once |
 
 **A problem's sentence** has no full stop and is whole by itself: "2 Giga chips, limit 1", "Gregar is Gregar
 only", "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
 after a colon in another's sentence, which ends it (Training's reserved line: "Your build can't be used: 31
-chips, a folder has 30."; the shell's "This build can't be used: {}."). `wrong` words any `nettai_match::Wrong`,
-whichever screen is shown; `Words::wrong` matches the kinds with no catch-all, so a kind added to nettai-match
-doesn't compile until it has its sentence.
+chips, a folder has 30."; the shell's "This build can't be used: {}."). `problem` words any
+`nettai_match::check::Problem`, whichever screen is shown; its kinds are matched with no catch-all, so a kind
+added to nettai-match doesn't compile until it has its sentence.
+
+**It says what it is about.** A problem names the fact it is about (`Problem::field`, the setup field's name),
+and `words::part_of` says which part of a build that is (the UI's `BuildPart`): the navi, its level and the
+folder by the engine's roles of their facts, the version by the facts the game's versions set and the forms
+they bring (souls, Crosses), else the editor's tab whose facts include it (the NaviCust, the patch cards, the
+auto battle data). A kind that would otherwise say "something" says the part: "No navi chosen", "No version
+chosen", "This navi isn't EXE6's", "Something in the patch cards is there twice", "This navi can't use the
+NaviCust". A problem that names no fact, or one with no part, keeps the general sentence ("Something isn't
+chosen"). `words::tests::a_problem_is_about_its_part` holds the parts to the facts (a side with no navi, a new
+EXE6 side with no version); the sentences are the catalog's, seen in Training's reserved line ("The dummy's
+build can't be used: No version chosen.").
 
 **The overview on another screen.** A screen's view has a property of the model, its Slint places the
 component, and its module fills the model from a side:

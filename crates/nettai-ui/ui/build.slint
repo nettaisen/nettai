@@ -92,6 +92,20 @@ export struct BuildSheet {
 
 // A build in a list: its name, its navi and whether it is ready ("MegaMan · ready", or what is wrong, in the
 // error red), and its version's tag.
+// What part of a build a problem is about, by the fact it names (the app's `builds::words`): the navi, the
+// version (and the forms it brings), the navi's level, the folder, a tab's facts; none where the problem names
+// no fact, or one with no word of its own. A problem's sentence says what it is about by it.
+export enum BuildPart {
+    none,
+    navi,
+    version,
+    level,
+    folder,
+    navicust,
+    patch-cards,
+    auto-battle,
+}
+
 export struct BuildEntry {
     name: string,
     status: string,
@@ -228,13 +242,53 @@ export global BuildWords {
     public pure function range(value: int, least: int, most: int) -> string {
         return @tr("{} is outside {} to {}", value, least, most);
     }
-    public pure function not-taken() -> string {
+    // (A part of a build, in a sentence about something in it.)
+    pure function part-name(part: BuildPart) -> string {
+        if part == BuildPart.folder {
+            return @tr("the folder");
+        }
+        if part == BuildPart.navicust {
+            return @tr("the NaviCust");
+        }
+        if part == BuildPart.patch-cards {
+            return @tr("the patch cards");
+        }
+        if part == BuildPart.auto-battle {
+            return @tr("the auto battle data");
+        }
+        return "";
+    }
+    public pure function not-taken(part: BuildPart) -> string {
+        if part == BuildPart.level {
+            return @tr("This navi has no level");
+        }
+        if part == BuildPart.version {
+            return @tr("This navi doesn't change form");
+        }
+        if part-name(part) != "" {
+            return @tr("This navi can't use {}", part-name(part));
+        }
         return @tr("This navi can't use it");
     }
-    public pure function missing() -> string {
-        return @tr("Something this navi needs is missing");
+    public pure function missing(part: BuildPart) -> string {
+        if part == BuildPart.navi {
+            return @tr("No navi chosen");
+        }
+        if part == BuildPart.version {
+            return @tr("No version chosen");
+        }
+        if part == BuildPart.level {
+            return @tr("No level chosen");
+        }
+        if part-name(part) != "" {
+            return @tr("Something in {} isn't chosen", part-name(part));
+        }
+        return @tr("Something isn't chosen");
     }
-    public pure function twice() -> string {
+    public pure function twice(part: BuildPart) -> string {
+        if part-name(part) != "" {
+            return @tr("Something in {} is there twice", part-name(part));
+        }
         return @tr("Something is there twice");
     }
     public pure function budget(used: int, limit: int) -> string {
@@ -252,13 +306,35 @@ export global BuildWords {
     public pure function other-game() -> string {
         return @tr("Made for another game");
     }
-    public pure function unstated() -> string {
-        return @tr("Something isn't chosen");
+    // (`game`: the game's name as shown, EXE6.)
+    public pure function foreign(part: BuildPart, game: string) -> string {
+        if part == BuildPart.navi {
+            return @tr("This navi isn't {}'s", game);
+        }
+        if part == BuildPart.version {
+            return @tr("This version isn't {}'s", game);
+        }
+        if part == BuildPart.folder {
+            return @tr("A chip in the folder isn't {}'s", game);
+        }
+        if part-name(part) != "" {
+            return @tr("Something in {} isn't {}'s", part-name(part), game);
+        }
+        return @tr("Something here isn't {}'s", game);
     }
-    public pure function foreign() -> string {
-        return @tr("Something here isn't this game's");
-    }
-    public pure function invalid() -> string {
+    public pure function invalid(part: BuildPart) -> string {
+        if part == BuildPart.navi {
+            return @tr("This navi can't be used");
+        }
+        if part == BuildPart.version {
+            return @tr("This version can't be used");
+        }
+        if part == BuildPart.level {
+            return @tr("This level can't be used");
+        }
+        if part-name(part) != "" {
+            return @tr("Something in {} can't be used", part-name(part));
+        }
         return @tr("Something here can't be used");
     }
     public pure function internal() -> string {
