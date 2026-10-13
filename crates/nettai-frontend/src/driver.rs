@@ -355,6 +355,19 @@ pub struct Opponent {
     pub on_custom_screen: OnCustomScreen,
 }
 
+/// An AI that plays the opponent, which a host gives live play
+/// ([`LivePlayer::set_ai`]): buttons, a tick at a time, as a player's are.
+/// The library has none of its own (nettai-training's is the app's).
+pub trait Ai: Send {
+    /// Its buttons in the fight for the navi of `side` in `b`, this tick
+    /// (`theirs`: what the local player holds).
+    fn fight(&mut self, b: &Battle, side: u8, theirs: u16) -> u16;
+    /// Its buttons on its custom screen, this tick.
+    fn custom_screen(&mut self, b: &Battle, side: u8) -> u16;
+    /// The set starts over: it is as it was given.
+    fn reset(&mut self);
+}
+
 /// What an opponent does in the fight.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum InFight {
@@ -378,11 +391,15 @@ pub enum InFight {
     /// With none, it stands still, and its custom screen does as its choice
     /// says.
     SecondPad,
+    /// The host's AI plays it ([`Ai::fight`], [`LivePlayer::set_ai`]).
+    /// With none, it stands still.
+    Ai,
 }
 
 impl InFight {
     /// Every choice, in the order a host offers them.
-    pub const ALL: [InFight; 5] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::PlaysRecording, InFight::SecondPad];
+    pub const ALL: [InFight; 6] =
+        [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::Ai, InFight::PlaysRecording, InFight::SecondPad];
 }
 
 /// What an opponent does on its custom screen.
@@ -393,11 +410,14 @@ pub enum OnCustomScreen {
     /// It picks the first chip it can and presses OK ([`bot_buttons`]).
     #[default]
     PicksFirst,
+    /// The host's AI presses it ([`Ai::custom_screen`],
+    /// [`LivePlayer::set_ai`]). With none, it picks the first chip it can.
+    Ai,
 }
 
 impl OnCustomScreen {
     /// Every choice, in the order a host offers them.
-    pub const ALL: [OnCustomScreen; 2] = [OnCustomScreen::PicksNothing, OnCustomScreen::PicksFirst];
+    pub const ALL: [OnCustomScreen; 3] = [OnCustomScreen::PicksNothing, OnCustomScreen::PicksFirst, OnCustomScreen::Ai];
 }
 
 /// What a training session changes of live play's battle between its
@@ -489,6 +509,8 @@ pub struct LivePlayer {
     start_ended: bool,
     /// What the host's second pad holds this tick, while it has one.
     second_pad: Option<u16>,
+    /// The host's AI, for an opponent whose choices are its.
+    ai: Option<Box<dyn Ai>>,
 }
 
 /// The longest recording: a minute of the fight. One that reaches it ends
@@ -557,7 +579,15 @@ impl LivePlayer {
             played: 0,
             start_ended: false,
             second_pad: None,
+            ai: None,
         }
+    }
+
+    /// The host's AI, which plays the opponent where its choices are the
+    /// AI's ([`InFight::Ai`], [`OnCustomScreen::Ai`]), from the next tick
+    /// (none: there it stands still, and picks the first chip it can).
+    pub fn set_ai(&mut self, ai: Option<Box<dyn Ai>>) {
+        self.ai = ai;
     }
 
     /// What a second pad of the host's holds from the next tick, while it
@@ -694,7 +724,10 @@ impl LivePlayer {
             return if b.round.mode == mode::CUSTOM { held } else { held & !keys::START };
         }
         if b.round.mode == mode::CUSTOM {
-            return custom_buttons(b, side, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
+            return match (self.opponent.on_custom_screen, &mut self.ai) {
+                (OnCustomScreen::Ai, Some(ai)) => ai.custom_screen(b, side as u8),
+                (choice, _) => custom_buttons(b, side, self.ticks, choice != OnCustomScreen::PicksNothing),
+            };
         }
         if self.recording_now {
             let driven = keys & !keys::START;
@@ -714,6 +747,7 @@ impl LivePlayer {
                 self.recording[at]
             }
             InFight::PlaysRecording | InFight::SecondPad => 0,
+            InFight::Ai => self.ai.as_mut().map_or(0, |ai| ai.fight(b, side as u8, keys)),
         }
     }
 
@@ -791,6 +825,9 @@ impl Driver for LivePlayer {
         self.ticks = 0;
         self.round = 1;
         self.masher = masher(self.seed);
+        if let Some(ai) = &mut self.ai {
+            ai.reset();
+        }
         self.refill = Default::default();
         self.arranged = [ChipDraw::Shuffled; 2];
         // (A recording being made ends; the one made plays from its start.)
@@ -1046,7 +1083,7 @@ mod tests {
             };
             let (hand, moved, attacked, presses) = run();
             assert_eq!(hand, Some(if opponent.on_custom_screen == OnCustomScreen::PicksNothing { 0 } else { 1 }), "{opponent:?}");
-            assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded and no second pad, it stands still");
+            assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded, no second pad and no AI given, it stands still");
             assert_eq!(attacked, opponent.in_fight == InFight::AttacksAtRandom, "{opponent:?}");
             assert_eq!(run().3, presses, "{opponent:?}: the same presses again");
         }
@@ -1108,7 +1145,7 @@ mod tests {
                         assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
                         attacked += (pressed & !MOVES != 0) as u32;
                     }
-                    InFight::PlaysRecording | InFight::SecondPad => unreachable!("not chosen here"),
+                    InFight::PlaysRecording | InFight::SecondPad | InFight::Ai => unreachable!("not chosen here"),
                 }
             }
             let turn = b.round.turn;
@@ -1140,7 +1177,7 @@ mod tests {
             self.ticks += 1;
             let mashed = self.masher.buttons();
             if b.round.mode == mode::CUSTOM {
-                return custom_buttons(b, 1, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
+                return custom_buttons(b, 1, self.ticks, self.opponent.on_custom_screen != OnCustomScreen::PicksNothing);
             }
             match self.opponent.in_fight {
                 InFight::StandsStill => 0,
@@ -1148,6 +1185,8 @@ mod tests {
                 InFight::AttacksAtRandom => mashed,
                 // (Nothing recorded, no second pad: it stands still.)
                 InFight::PlaysRecording | InFight::SecondPad => 0,
+                // (No AI given: it stands still.)
+                InFight::Ai => 0,
             }
         }
     }
