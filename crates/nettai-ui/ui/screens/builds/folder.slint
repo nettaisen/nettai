@@ -82,9 +82,12 @@ export global FolderView {
     ];
     // The strip.
     in property <ChipDetail> detail;
-    // The folder: its entries, the one being filled (marked), and what it holds.
+    // The folder: its entries, the one being filled, and what it holds. The one being filled has the chosen row's
+    // mark while the focus is on it or in the library, the cursor shown or not (after a click the cursor is hidden,
+    // and the focus stays on the entry clicked: the mark is what shows it); -1, no entry marked.
     in property <[ChipCell]> slots;
     in property <int> slot;
+    out property <int> marked: (self.in-library || Nav.id == "slot") ? self.slot : -1;
     in property <FolderCounts> counts;
     // The entry a chip just landed in, counted: it flashes.
     in property <int> landed;
@@ -604,7 +607,7 @@ export component FolderTab inherits Rectangle {
             width: root.slot-width;
             chip: chip;
             index: i;
-            chosen: FolderView.in-library && i == FolderView.slot;
+            chosen: i == FolderView.marked;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -636,6 +639,7 @@ export component FolderTab inherits Rectangle {
             nav: "slot";
             count: FolderView.slots.length;
             row-height: 40px;
+            chosen: FolderView.marked;
             for at in folder.shown: SlotRow {
                 y: self.index * folder.pitch;
                 width: folder.row-width;
