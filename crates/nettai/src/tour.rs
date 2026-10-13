@@ -516,6 +516,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
                 if tour.passing.get() {
                     return;
                 }
+                app.borrow_mut().first_frame_after = Some((Instant::now(), None));
                 trigger(ui, app, tour);
                 *tour.burst.borrow_mut() = Some(Burst { name, began: Instant::now(), shots: Vec::new() });
             }),
@@ -534,7 +535,20 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             );
             last = ms;
         }
-        add(10, Box::new(|_, _, tour| flush_burst(tour)));
+        add(
+            10,
+            Box::new(|_, app, tour| {
+                // How long the press held the window: from it to the first frame after it, and that frame's work.
+                if let (Some(burst), Some((at, first))) = (tour.burst.borrow().as_ref(), app.borrow_mut().first_frame_after.take()) {
+                    let waited = first.map_or_else(
+                        || "none drawn".to_string(),
+                        |(began, done)| format!("{} ms, and its work {:.1} ms", began.saturating_duration_since(at).as_millis(), done.saturating_duration_since(began).as_secs_f64() * 1e3),
+                    );
+                    tour.seen.borrow_mut().push(format!("{}: the press to its first frame, {waited}", burst.name));
+                }
+                flush_burst(tour)
+            }),
+        );
     };
     let go = |to: ScreenId| -> Step { Box::new(move |_, app, _| app.borrow_mut().go_now(to)) };
     let act = |action: Action| -> Step { Box::new(move |_, app, _| app.borrow_mut().act(action)) };
