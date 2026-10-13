@@ -6,36 +6,102 @@
 import "../fonts/chakra-petch/ChakraPetch-Medium.ttf";
 import "../fonts/chakra-petch/ChakraPetch-SemiBold.ttf";
 import "../fonts/chakra-petch/ChakraPetch-Bold.ttf";
+import "../fonts/m-plus-1/MPLUS1-ExtraBold.ttf";
 import "../fonts/m-plus-1-code/MPLUS1Code-VariableFont_wght.ttf";
 import "../../nettai-render/fonts/murecho/Murecho-VariableFont_wght.ttf";
 
-export global Theme {
-    // The ground, top to bottom, and the glow at its top right.
-    out property <color> ground-top: #0a1330;
-    out property <color> ground-bottom: #050916;
-    out property <color> ground-glow: #286eff47;
-    out property <color> hexagons: #62b4ff14;
+// What a backdrop's pattern is drawn of (the ground: shell.slint's `Backdrop`).
+export enum PatternKind {
+    // A field of hexagons, stroked.
+    hexagons,
+    // Lines at 30 degrees each way across the window.
+    isometric-grid,
+    // Three layers of dots, white and the pattern's color, with a streak across them from the pattern's color
+    // into the main action's.
+    starfield,
+}
+
+// A look: the colors everything is drawn in and the backdrop's pattern. Each game states its own (its content's
+// look.toml), and the app sets the selected game's (`look.rs`). This one's values are the app's own look, which a
+// game whose content states none is drawn in.
+export struct Look {
+    // The ground, top to bottom, and the glow at its top right (its color and its opacity).
+    ground-top: color,
+    ground-bottom: color,
+    ground-glow: color,
     // Surfaces.
-    out property <color> panel: #0c1836;
-    out property <color> raised: #13254d;
-    out property <color> raised-hover: #1a3266;
-    out property <color> line: #27508f;
-    out property <color> inset: #040813;
-    out property <color> bar: #03060fb8;
-    out property <color> shade: #030610cc;
+    panel: color,
+    raised: color,
+    line: color,
+    inset: color,
     // Text.
-    out property <color> text: #eaf3ff;
-    out property <color> muted: #8ea8d4;
-    out property <color> dim: #55698f;
-    // The cursor, the active pane's title, the chosen row's bar.
-    out property <color> cursor: #66e0ff;
-    out property <color> glow: #66e0ff66;
-    out property <color> tint: #66e0ff1a;
+    text: color,
+    muted: color,
+    dim: color,
+    // The cursor, the active pane's title, the chosen row's bar; the main action and the text on it.
+    cursor: color,
+    action: color,
+    action-ink: color,
+    // The ground's pattern, its color, and the opacity its marks are drawn at.
+    pattern: PatternKind,
+    pattern-color: color,
+    pattern-strength: float,
+}
+
+export global Theme {
+    // The selected game's look, and the one before it: as the game changes the colors cross-fade from `was` to
+    // `look` while `fade` goes from 0 to 1 (the app moves it, over `settle`, as the new ground sweeps in).
+    in property <Look> look: {
+        ground-top: #0a1330,
+        ground-bottom: #050916,
+        ground-glow: #286eff47,
+        panel: #0c1836,
+        raised: #13254d,
+        line: #27508f,
+        inset: #040813,
+        text: #eaf3ff,
+        muted: #8ea8d4,
+        dim: #55698f,
+        cursor: #66e0ff,
+        action: #ffb62e,
+        action-ink: #1b1100,
+        pattern: PatternKind.hexagons,
+        pattern-color: #62b4ff,
+        pattern-strength: 0.078,
+    };
+    in property <Look> was: root.look;
+    in property <float> fade: 1;
+    pure function blend(new: color, old: color) -> color {
+        return root.fade >= 1 ? new : new.mix(old, root.fade);
+    }
+
+    // The ground, top to bottom. (Its glow and its pattern are each ground's own: `Backdrop`.)
+    out property <color> ground-top: root.blend(root.look.ground-top, root.was.ground-top);
+    out property <color> ground-bottom: root.blend(root.look.ground-bottom, root.was.ground-bottom);
+    // Surfaces.
+    out property <color> panel: root.blend(root.look.panel, root.was.panel);
+    out property <color> raised: root.blend(root.look.raised, root.was.raised);
+    out property <color> raised-hover: root.raised.brighter(0.33);
+    out property <color> line: root.blend(root.look.line, root.was.line);
+    out property <color> inset: root.blend(root.look.inset, root.was.inset);
+    // The header's and the footer's bar, and the shade under a dialog: the ground's foot, darker.
+    out property <color> bar: root.ground-bottom.darker(0.47).with-alpha(0.72);
+    out property <color> shade: root.ground-bottom.darker(0.4).with-alpha(0.8);
+    // Text.
+    out property <color> text: root.blend(root.look.text, root.was.text);
+    out property <color> muted: root.blend(root.look.muted, root.was.muted);
+    out property <color> dim: root.blend(root.look.dim, root.was.dim);
+    // The cursor, the active pane's title, the chosen row's bar; its glow; the chosen row's tint and a hovered
+    // one's.
+    out property <color> cursor: root.blend(root.look.cursor, root.was.cursor);
+    out property <color> glow: root.cursor.with-alpha(0.4);
+    out property <color> tint: root.cursor.with-alpha(0.1);
+    out property <color> tint-hover: root.cursor.with-alpha(0.05);
     // (The cursor's color with nothing of it: what its gradients fade to.)
-    out property <color> clear: #66e0ff00;
+    out property <color> clear: root.cursor.with-alpha(0);
     // The main action.
-    out property <color> action: #ffb62e;
-    out property <color> action-ink: #1b1100;
+    out property <color> action: root.blend(root.look.action, root.was.action);
+    out property <color> action-ink: root.blend(root.look.action-ink, root.was.action-ink);
     // The two sides.
     out property <color> p1: #ff5d50;
     out property <color> p2: #4a93ff;
@@ -52,18 +118,22 @@ export global Theme {
     out property <color> tag: #7fe36c;
     out property <color> code: #ffb62e;
     out property <color> command-line: #0e3550;
-    out property <color> out-of-bounds: #8ea8d433;
-    out property <color> out-of-bounds-edge: #8ea8d499;
+    out property <color> out-of-bounds: root.muted.with-alpha(0.2);
+    out property <color> out-of-bounds-edge: root.muted.with-alpha(0.6);
     // A NaviCust piece: the dark of a plus part's cross and of the hatching over a piece out of bounds, and the
     // outline of the piece in hand.
-    out property <color> piece-mark: #04081380;
+    out property <color> piece-mark: root.inset.with-alpha(0.5);
     out property <color> piece-held: #ffffff;
 
     // Type. Headings, buttons and labels are Chakra Petch; a language it has no letters for (`cjk`, set by the
-    // app with the language) has them in Murecho, which is everything else's face. Codes, numbers and times are
-    // M PLUS 1 Code, whose digits are one width.
+    // app with the language) has them in M PLUS 1 at 800, whatever the game. Everything else is Murecho. Codes,
+    // numbers and times are M PLUS 1 Code, whose digits are one width.
     in property <bool> cjk;
-    out property <string> display: cjk ? "Murecho" : "Chakra Petch";
+    out property <string> display: cjk ? "M PLUS 1" : "Chakra Petch";
+    // The display face's weights: its bold (a title, the main action) and its semibold (a label, a button). M PLUS 1
+    // is bundled at 800 alone.
+    out property <int> display-bold: cjk ? 800 : 700;
+    out property <int> display-semibold: cjk ? 800 : 600;
     out property <string> body: "Murecho";
     out property <string> mono: "M PLUS 1 Code";
     // A label's capitals are tracked 0.18em; a script set solid nearly not.
@@ -90,7 +160,8 @@ export global Theme {
     // A control: the cursor's glide, a press, a value sliding in its box, a row's bar.
     out property <duration> quick: motion ? 110ms : 0ms;
     out property <duration> brisk: motion ? 150ms : 0ms;
-    // A panel, a dialog, a menu, a screen arriving; a screen leaving.
+    // A panel, a dialog, a menu, a screen arriving; a screen leaving. (A change of game's sweep and its colors'
+    // cross-fade take `settle` too.)
     out property <duration> settle: motion ? 200ms : 0ms;
     out property <duration> leave: motion ? 120ms : 0ms;
     // The two set pieces: entering a battle, a result.

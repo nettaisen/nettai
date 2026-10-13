@@ -349,7 +349,7 @@ component ProgramRowView inherits Rectangle {
     in property <int> nav-index;
     in property <bool> big;
     Rectangle {
-        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Rectangle {

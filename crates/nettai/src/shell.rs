@@ -103,7 +103,7 @@ pub struct Scale {
     pub unit: f32,
     pub phone: bool,
     size: (u32, u32),
-    /// The window in units, as the ground's hexagons were last drawn for.
+    /// The window in units, as the ground's patterns were last drawn for.
     ground: (i32, i32),
 }
 
@@ -135,6 +135,8 @@ pub struct Shell {
     pub(crate) own_ticks: Option<u32>,
     /// The selected game.
     game: Option<String>,
+    /// Each game's look, and the change of game's sweep and cross-fade under way (docs/app.md §10).
+    pub(crate) looks: crate::look::Looks,
     /// The game the screens were last shown with, once it was ready.
     announced: Option<String>,
     /// The frames the bar has shown the selected game's parts as read, before its runtime is loaded (which
@@ -259,8 +261,15 @@ impl Shell {
         self.ui().global::<nettai_ui::Shell>().get_game_locked()
     }
 
-    /// Select a game: it loads if it hasn't, and the screen shown is shown again with it once it is ready.
+    /// Select a game: it loads if it hasn't, and the screen shown is shown again with it once it is ready. Its
+    /// look sweeps in from the right.
     pub fn select_game(&mut self, id: &str) {
+        self.select_game_from(id, 1);
+    }
+
+    /// [`Shell::select_game`], its look sweeping in from side `from` (-1 the left, 1 the right: the side of the
+    /// arrow pressed).
+    fn select_game_from(&mut self, id: &str, from: i32) {
         if self.game.as_deref() == Some(id) {
             return;
         }
@@ -268,7 +277,9 @@ impl Shell {
         self.settings.game = Some(id.to_string());
         self.save_settings();
         self.load(id);
-        self.ui().global::<nettai_ui::Shell>().set_game(Shell::game_name(id).into());
+        let ui = self.ui();
+        ui.global::<nettai_ui::Shell>().set_game(Shell::game_name(id).into());
+        self.looks.show(&ui, Some(id), from, Instant::now());
     }
 
     /// The game after (or before) the selected one, around from the last to the first; a game with no pack is
@@ -280,7 +291,7 @@ impl Shell {
         }
         let at = self.game.as_ref().and_then(|g| games.iter().position(|id| id == g)).unwrap_or(0) as i32;
         let next = games[(at + by).rem_euclid(games.len() as i32) as usize].clone();
-        self.select_game(&next);
+        self.select_game_from(&next, by.signum());
     }
 
     /// Start loading a game on its thread.
@@ -565,50 +576,14 @@ impl Shell {
             window.dispatch_event(slint::platform::WindowEvent::Resized { size: size.to_logical(factor) });
         }
         ui.global::<Theme>().set_phone(phone);
-        // The ground's hexagons, for the window in units.
+        // The ground's patterns, for the window in units.
         let units = ((size.width as f32 / factor).ceil() as i32, (size.height as f32 / factor).ceil() as i32);
         if units != self.scale.ground {
             self.scale.ground = units;
-            ui.global::<nettai_ui::Shell>().set_hexagons(hexagons(units.0, units.1).into());
+            ui.global::<nettai_ui::Shell>().set_patterns(crate::look::patterns(units.0, units.1));
         }
         turned
     }
-}
-
-/// The ground's field of hexagons over a window of `width` by `height` units, as a path: a tile 42 by 72.75
-/// holds one hexagon and the stem to the one under it, and each tile draws the edges its neighbors don't.
-fn hexagons(width: i32, height: i32) -> String {
-    use std::fmt::Write as _;
-    const TILE: (f32, f32) = (42.0, 72.75);
-    let (columns, rows) = ((width as f32 / TILE.0).ceil() as i32 + 1, (height as f32 / TILE.1).ceil() as i32 + 1);
-    let mut path = String::new();
-    for row in 0..rows {
-        for column in 0..columns {
-            let (x, y) = (column as f32 * TILE.0, row as f32 * TILE.1);
-            // The left edge up to the top and down the right shoulder; the two lower edges; the stem.
-            let _ = write!(
-                path,
-                "M{:.2} {:.2}V{:.2}L{:.2} {:.2}L{:.2} {:.2}M{:.2} {:.2}L{:.2} {:.2}L{:.2} {:.2}M{:.2} {:.2}V{:.2}",
-                x,
-                y + 36.38,
-                y + 12.12,
-                x + 21.0,
-                y,
-                x + 42.0,
-                y + 12.12,
-                x,
-                y + 36.38,
-                x + 21.0,
-                y + 48.5,
-                x + 42.0,
-                y + 36.38,
-                x + 21.0,
-                y + 48.5,
-                y + 72.75,
-            );
-        }
-    }
-    path
 }
 
 /// What the UI's callbacks tell the app (`main::wire`).
@@ -653,9 +628,11 @@ impl App {
         let mut sound = if still { Sound::silent() } else { Sound::open() };
         sound.set_levels(settings.music, settings.effects);
         let bindings = settings.bindings();
+        let games = Games::find();
+        let looks = crate::look::Looks::new(ui, games.list.iter().map(|g| g.id.as_str()));
         let shell = Shell {
             ui: ui.as_weak(),
-            games: Games::find(),
+            games,
             settings,
             sound,
             nav: Nav::new(),
@@ -672,6 +649,7 @@ impl App {
             own_samples: Vec::new(),
             own_ticks: None,
             game: None,
+            looks,
             announced: None,
             runtime_due: 0,
             screen: ScreenId::Menu,
@@ -725,6 +703,8 @@ impl App {
                 self.shell.game = Some(id.clone());
                 self.shell.load(&id);
                 shell.set_game(Shell::game_name(&id).into());
+                // (In its look from the first frame.)
+                self.shell.looks.show(&ui, Some(&id), 0, Instant::now());
             }
             None => shell.set_no_games(true),
         }
@@ -1237,6 +1217,8 @@ impl App {
         }
         self.read_pad(now);
         self.follow_games();
+        // (A change of game's colors a step further.)
+        self.shell.looks.frame(&self.shell.ui(), now);
         let shown = self.shell.screen;
         for id in ScreenId::ALL {
             self.call(id, |s, shell| s.frame(shell, now, id == shown && shell.battle.as_ref().is_none_or(|b| !b.full)));

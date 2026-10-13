@@ -375,7 +375,7 @@ export component ChipRow inherits Rectangle {
     property <length> mark-x: root.element-x - root.gap - root.mark-width;
     height: root.big ? 40px : Theme.chip-row;
     Rectangle {
-        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : root.hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : root.hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Rectangle {
@@ -466,7 +466,7 @@ export component BuildRow inherits Rectangle {
     in property <int> nav-index;
     height: 52px;
     Rectangle {
-        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Text {
