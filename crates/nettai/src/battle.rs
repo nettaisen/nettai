@@ -683,6 +683,50 @@ mod tests {
         assert!(!frame(&mut b, 0) && b.game_pause.as_ref().unwrap().buttons() == 0);
     }
 
+    /// A training set put in place of the one playing (Training's Arena or Background row changed:
+    /// `LivePlayer::play_set`) starts over on its place under the open menu, as RESTART starts a set: the
+    /// battle steps through the round's opening with no buttons, its sound going on, and waits on the custom
+    /// screen; every round of it is on that place.
+    #[test]
+    fn under_the_menu_a_set_starts_over_on_another_place() {
+        use nettai_battle::battle::mode;
+        let content = nettai_match::testing::exe6_content();
+        let mut m = short_set::of(&content, "exe6", 7);
+        let mut b = training(&content, &m, 7, Default::default());
+        for _ in 0..400 {
+            frame(&mut b, 0);
+        }
+        b.menu = true;
+        frame(&mut b, 0);
+        let stage = *nettai_match::link_battle_stages(&content, "exe6").last().unwrap();
+        let background = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
+        let place = nettai_match::RoundSettings { stage: Some(stage), background: Some(background.clone()) };
+        m.rounds.iter_mut().for_each(|r| *r = place.clone());
+        let mut first = m.round(&content, 7);
+        first.host_keys.pause = false;
+        let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+        assert_ne!(b.stage.player.battle().setup.settings.stage, stage, "(another place before)");
+        b.stage.player.live_mut().unwrap().play_set(Set::new(content.clone(), first, folders));
+        assert!(b.restart());
+        let background = nettai_match::ids::background(&content, "exe6", &background).unwrap();
+        let setup = &b.stage.player.battle().setup;
+        assert_eq!((setup.settings.stage, setup.settings.background, b.stage.player.ticks()), (stage, background, 0));
+        assert!(setup.later_stages.iter().all(|s| (s.stage, s.background) == (stage, background)), "every round there");
+        made(&mut b);
+        let mut frames = 0;
+        while b.stage.player.battle().round.mode != mode::CUSTOM {
+            frame(&mut b, nettai_battle::input::keys::A);
+            assert!((548..=549).contains(&made(&mut b)), "frame {frames}: the sound goes on");
+            frames += 1;
+            assert!(frames < 1000, "the custom screen never came");
+        }
+        for _ in 0..60 {
+            frame(&mut b, nettai_battle::input::keys::A);
+            let battle = b.stage.player.battle();
+            assert!(battle.round.mode == mode::CUSTOM && battle.paused_by().is_none(), "it waits on the custom screen");
+        }
+    }
+
     /// A training battle of `m`'s (its rounds leaving the game its START), with sound, the dummy as given.
     fn training(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, opponent: nettai_frontend::driver::Opponent) -> Battle {
         let mut first = m.round(content, seed);

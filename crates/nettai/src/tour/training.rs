@@ -1,9 +1,9 @@
 //! The screenshot pass's steps for Training (docs/app.md §13): the entry (with no build, with builds, the focus a
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
-//! can't be used), the two cards, the battle, the
-//! training menu (a value changed, the focus a row apart, each Battle row a value apart, the input display, a
-//! recording made and played, the rows another screen adds), and the motion probe's bursts of what Training
-//! moves.
+//! can't be used, the arena and the background changed, the arenas' list), the two cards, the battle, the
+//! training menu (a value changed, the focus a row apart, the arena changed under it, each Battle row a value
+//! apart, the input display, a recording made and played, the rows another screen adds), and the motion probe's
+//! bursts of what Training moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
 //! entry lists a new build of each of the game's versions and one that can't be used
@@ -16,7 +16,7 @@ use crate::screens::ScreenId;
 use crate::screens::training;
 use crate::shell::App;
 use nettai_battle::input::keys;
-use nettai_ui::Theme;
+use nettai_ui::{Theme, TrainingOption};
 use slint::ComponentHandle;
 use std::time::Instant;
 
@@ -27,19 +27,19 @@ enum Differs {
     Unheld,
     /// Inside the control the cursor was on and the one it is on.
     Cursors,
-    /// That, and what shows the builds chosen: the cards and the arena.
+    /// That, and what shows the builds and the place chosen: the cards and the arena.
     Builds,
 }
 
-/// Where the entry shows the builds chosen, apart from its rows: beside the rows' column, or on a phone between
-/// the rows and START TRAINING (in the UI's units, from where those controls are).
+/// Where the entry shows the builds and the place chosen, apart from its rows: beside the rows' column, or on a
+/// phone between the rows and START TRAINING (in the UI's units, from where those controls are).
 fn builds_shown(app: &App) -> Option<Rect> {
     let registry = app.shell.nav.registry();
     let registry = registry.borrow();
-    let (start, dummys) = (registry.rect(&Key::new("start", 0))?, registry.rect(&Key::new("dummys", 0))?);
+    let (start, dummys, last) = (registry.rect(&Key::new("start", 0))?, registry.rect(&Key::new("dummys", 0))?, registry.rect(&Key::new("background", 0))?);
     // (`compare` lets a pair differ 12 around each: these stop 13 short of the controls.)
     Some(if app.shell.scale.phone {
-        Rect { x: 0.0, y: dummys.bottom() + 13.0, w: 10_000.0, h: start.y - dummys.bottom() - 26.0 }
+        Rect { x: 0.0, y: last.bottom() + 13.0, w: 10_000.0, h: start.y - last.bottom() - 26.0 }
     } else {
         Rect { x: start.right() + 13.0, y: dummys.y - 56.0, w: 10_000.0, h: start.bottom() - dummys.y + 56.0 }
     })
@@ -129,6 +129,11 @@ fn focus(id: &'static str, index: i32) -> Step {
     Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index))
 }
 
+/// The training menu's row of `option`, by its place (`training::ROWS`'s, no row added above them).
+fn row(option: TrainingOption) -> i32 {
+    training::ROWS.iter().position(|o| *o == option).expect("a row of the menu") as i32
+}
+
 /// What the pass has changed of Training's remembered choices, forgotten: each walk starts from none.
 fn forget(app: &mut App) {
     app.shell.settings.remembered.retain(|key, _| !key.starts_with("training."));
@@ -150,7 +155,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-none", lang, size, Differs::Unheld, false);
 
     // The entry: the focus a control up from START TRAINING; the dummy's build stepped to the next; the builds'
-    // list; a build that can't be used.
+    // list; a build that can't be used; the arena stepped to the next, the arenas' list, the background stepped.
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -163,6 +168,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-entry", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Up));
     shot(add, "training-entry-focus", lang, size, Differs::Cursors, true);
+    add(SETTLE, focus("dummys", 0));
     add(SETTLE, act(Action::Right));
     shot(add, "training-entry-dummy", lang, size, Differs::Builds, false);
     add(SETTLE, act(Action::Confirm));
@@ -181,6 +187,17 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, act(Action::Right));
     shot(add, "training-entry-unusable", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Left));
+    // (The arena drawn again on each place, as for a build.)
+    add(SETTLE, focus("arena", 0));
+    shot(add, "training-entry-places", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Right));
+    shot(add, "training-entry-arena", lang, size, Differs::Builds, false);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "training-entry-arena-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, focus("background", 0));
+    add(SETTLE, act(Action::Right));
+    shot(add, "training-entry-background", lang, size, Differs::Builds, false);
 
     // START TRAINING: the two cards, then the battle.
     add(SETTLE, focus("start", 0));
@@ -204,15 +221,22 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-menu-value", lang, size, Differs::Cursors, true);
     add(SETTLE, act(Action::Down));
     shot(add, "training-menu-focus", lang, size, Differs::Cursors, false);
-    // Each of the Battle rows, and its value changed (at once, on the battle behind the menu: the HP refilled,
-    // the gauge full, the folders put in their own order). (Their places in the menu: `training::ROWS`'s.)
-    for (name, changed, index) in [
-        ("training-menu-your-hp", "training-menu-your-hp-value", 5),
-        ("training-menu-dummys-hp", "training-menu-dummys-hp-value", 6),
-        ("training-menu-gauge", "training-menu-gauge-value", 7),
-        ("training-menu-draw", "training-menu-draw-value", 8),
+    // The Arena row, and its value changed: the set starts over on the next arena behind the menu, which stays
+    // open (the battle through the round's opening to its custom screen, where it waits).
+    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Arena)));
+    shot(add, "training-menu-arena", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Right));
+    add(2500, Box::new(|_, _, _| {}));
+    shot(add, "training-menu-arena-value", lang, size, Differs::Unheld, false);
+    // Each of the other Battle rows, and its value changed (at once, on the battle behind the menu: the HP
+    // refilled, the gauge full, the folders put in their own order).
+    for (name, changed, option) in [
+        ("training-menu-your-hp", "training-menu-your-hp-value", TrainingOption::YourHp),
+        ("training-menu-dummys-hp", "training-menu-dummys-hp-value", TrainingOption::DummysHp),
+        ("training-menu-gauge", "training-menu-gauge-value", TrainingOption::CustomGauge),
+        ("training-menu-draw", "training-menu-draw-value", TrainingOption::ChipDraw),
     ] {
-        add(SETTLE, focus("menu.rows.option", index));
+        add(SETTLE, focus("menu.rows.option", row(option)));
         shot(add, name, lang, size, Differs::Unheld, true);
         add(SETTLE, act(Action::Right));
         shot(add, changed, lang, size, Differs::Cursors, false);
@@ -222,7 +246,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
-            app.shell.nav.focus("menu.rows.option", 10);
+            app.shell.nav.focus("menu.rows.option", row(TrainingOption::InputDisplay));
             app.act(Action::Right);
         }),
     );
@@ -283,7 +307,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             let mut app = app.borrow_mut();
             app.shell.keys.held = 0;
             app.shell.open_menu();
-            app.shell.nav.focus("menu.rows.option", 3);
+            app.shell.nav.focus("menu.rows.option", row(TrainingOption::Recording));
         }),
     );
     shot(add, "training-menu-recording", lang, size, Differs::Unheld, false);
