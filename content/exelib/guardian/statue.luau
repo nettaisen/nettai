@@ -58,7 +58,8 @@ export type Look = {
     strike_is: CollisionType,
     strike_hits: CollisionType,
     strike: Strike,
-    -- The damage word a stage's statues strike with (EXE6's 200; EXE5's 200 with the counter byte 0xA8: 0x0800694A).
+    -- The damage word a stage's statues strike with (EXE6's and EXE5's 200 with the counter byte 0xA8: `sub_800751C`,
+    -- 0x0800694A); none: 200 alone.
     stage_damage: number?,
     -- How it looks absorbed (EXE6's: absorbed, it flies to the absorber, and a removal may blink it out); none
     -- (EXE5's): a removal leaves a puff.
