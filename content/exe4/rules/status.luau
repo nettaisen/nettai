@@ -404,9 +404,11 @@ local status = {
         form_keeps_back_special = true,
         -- The mercy flash hides the navi while its timer's bit 1 is clear (0x08010430).
         flash_hides_on_clear = true,
-        -- What a navi's status word reads as before its init made its collision data: EXE5's open-bus value, to
-        -- confirm by recording (exe4-map.md §16).
-        missing_collision_status = 0xE55EC002,
+        -- A navi's status word read before its init made its collision data (through the null pointer, from the
+        -- BIOS: a round's first tick, the other side's first barrier's visual asking whether the local navi is blind,
+        -- 0x0800B0CA): a software interrupt's opcode, with the blind bit, as EXE6's (the visual hidden for that
+        -- tick: the lab's modcards/011-first-barrier-100-side1 and its two stages with objects).
+        missing_collision_status = 0xE3A02004,
         -- Its status block (0x08013A48) is EXE5's order: the flash's timer first, whatever the battle's flags
         -- (0x080134F6), then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
         reactions = "flash_timer_first",
@@ -433,8 +435,8 @@ local status = {
         -- sword's hit (the hit flags 0x2000); no status arms a trap.
         anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
         -- A chip-destroying hit (hit flag 0x10: 0x0801325A) takes a player's whole hand, the cursor back at its first
-        -- chip, and ends the navi's chip requests (0x08013280: an A pressed on the hit's tick uses nothing).
-        chip_destruction = { takes = "hand", ends_chip_requests = true },
+        -- chip. (It ends the navi's chip requests too, 0x08013280: the engine's own, for a request with no chip left.)
+        chip_destruction = "hand",
         -- EXE4's emotions (0x0800F49C, in its order: the first that holds is the side's): in a soul (NaviStats +0x24,
         -- neither 0 nor 15) the soul's (its face the soul form's); angry (AIData +0x2E, anger's ticks); a mood of 0
         -- (the dark MegaMan's: worn out); Full Synchro (0xFF); a mood under 65 worried; else normal. Its setter
