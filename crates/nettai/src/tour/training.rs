@@ -195,7 +195,9 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, act(Action::Confirm));
     shot(add, "training-entry-arena-list", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Back));
+    // (Two on: one other than the round's own pick from the pass's seed, whatever that is.)
     add(SETTLE, focus("background", 0));
+    add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Right));
     shot(add, "training-entry-background", lang, size, Differs::Builds, false);
 
