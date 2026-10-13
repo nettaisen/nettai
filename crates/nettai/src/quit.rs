@@ -12,6 +12,14 @@
 //! A second request, while the app is closing, ends it as the system would have: the handlers are the
 //! system's own again by then.
 
+/// Whether a terminate request from outside ended the app's window loop (the screenshot pass says so in its
+/// report, when one ends it before its walk is done).
+pub fn asked() -> bool {
+    ASKED.load(std::sync::atomic::Ordering::Relaxed)
+}
+
+static ASKED: std::sync::atomic::AtomicBool = std::sync::atomic::AtomicBool::new(false);
+
 /// Take terminate requests from here on. Called once, after the gamepads' library has started (it is SDL's
 /// start that takes the signals: the last to take them has them).
 #[cfg(unix)]
@@ -52,6 +60,7 @@ pub fn watch() {
             }
             break;
         }
+        ASKED.store(true, Ordering::Relaxed);
         // (A second request isn't waited out.)
         for signal in SIGNALS {
             // SAFETY: the system's own handling, put back.
