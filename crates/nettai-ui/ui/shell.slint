@@ -532,18 +532,24 @@ export component Cursor inherits Rectangle {
     Corner {
         x: root.inset;
         y: root.inset;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Corner {
         x: parent.width - 10px - root.inset;
         y: root.inset;
         right: true;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Corner {
         x: root.inset;
         y: parent.height - 10px - root.inset;
         bottom: true;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Corner {
@@ -551,6 +557,8 @@ export component Cursor inherits Rectangle {
         y: parent.height - 10px - root.inset;
         right: true;
         bottom: true;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
 
@@ -821,6 +829,8 @@ component HintView inherits Rectangle {
     Dpad {
         x: 1px;
         visible: root.shown && Nav.pad && root.hint.pad == PadButton.move;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     first := KeyCap {
@@ -868,6 +878,8 @@ export component Footer inherits Rectangle {
             alignment: start;
             for hint in root.hints: HintView {
                 hint: hint;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
 
@@ -1113,6 +1125,8 @@ component PickRow inherits Rectangle {
     height: Theme.row;
     RowBack {
         hover: touch.has-hover;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Value {
@@ -1175,6 +1189,8 @@ export component PickerLayer inherits Rectangle {
                 width: list.row-width;
                 text: Shell.picker-options[self.at];
                 nav-index: self.at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
     }

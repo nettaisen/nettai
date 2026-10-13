@@ -134,8 +134,8 @@ component CountBox inherits Rectangle {
 }
 
 // One of the folder's entries: the overview's row, as a control.
-// A folder's entry as a phone's list row, 40 tall: the chip's row, and a click on it the entry's. (One leaf, so
-// the list's `for` places it alone: a row with a child would be copied into the list.)
+// A folder's entry as a phone's list row, 40 tall: the chip's row, and a click on it the entry's. (Its touch is
+// its own; it is in one list, and copied into it: docs/app.md §14.)
 component SlotRow inherits Rectangle {
     in property <int> index;
     height: 40px;
@@ -300,16 +300,20 @@ component DirectionButton inherits Rectangle {
     }
 }
 
-// The library: its title, the search field, the sort and its direction, and under them its rows, fifteen
-// showing. (A phone's sheet has no room for the two titles.)
-component LibraryPane inherits Rectangle {
+// A library's head: its title, the search field, the sort and its direction. The Folder's, the Patch cards' and
+// the Auto battle's libraries have it (one component, where it was three copies), each with what its view says:
+// `in-library` lights the title while the focus is in the library. (A phone's sheet has no room for the two
+// titles.)
+export component LibraryHead inherits Rectangle {
+    in property <bool> in-library;
+    in property <string> search;
+    in property <string> placeholder;
+    in property <string> sort;
+    in property <bool> descending;
     property <length> title-width: Theme.phone ? 0px : title.preferred-width + 12px;
     property <length> sort-width: Theme.phone ? 132px : 176px;
     property <length> sort-title-width: Theme.phone ? 0px : sort-title.preferred-width + 12px;
-    shake := Shake {
-        seq: FolderView.refused-seq;
-    }
-
+    height: 40px;
     title := Label {
         x: 0;
         y: 0;
@@ -317,7 +321,7 @@ component LibraryPane inherits Rectangle {
         height: 40px;
         visible: !Theme.phone;
         text: @tr("LIBRARY");
-        color: FolderView.in-library ? Theme.cursor : Theme.muted;
+        color: root.in-library ? Theme.cursor : Theme.muted;
     }
 
     Field {
@@ -325,8 +329,8 @@ component LibraryPane inherits Rectangle {
         y: 0;
         width: parent.width - root.title-width - root.sort-title-width - root.sort-width - 12px - 40px - 12px;
         nav: "lib.search";
-        text: FolderView.search;
-        placeholder: @tr("Search chips");
+        text: root.search;
+        placeholder: root.placeholder;
     }
 
     sort-title := Label {
@@ -343,12 +347,33 @@ component LibraryPane inherits Rectangle {
         y: 0;
         width: root.sort-width;
         nav: "lib.sort";
-        value: FolderView.sorts[FolderView.sort];
+        value: root.sort;
     }
 
     DirectionButton {
         x: parent.width - 40px;
         y: 0;
+        descending: root.descending;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+}
+
+// The library: its title, the search field, the sort and its direction, and under them its rows, fifteen
+// showing. (A phone's sheet has no room for the two titles.)
+component LibraryPane inherits Rectangle {
+    shake := Shake {
+        seq: FolderView.refused-seq;
+    }
+
+    LibraryHead {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        in-library: FolderView.in-library;
+        search: FolderView.search;
+        placeholder: @tr("Search chips");
+        sort: FolderView.sorts[FolderView.sort];
         descending: FolderView.descending;
     }
 
@@ -369,6 +394,8 @@ component LibraryPane inherits Rectangle {
             line: FolderView.rows[self.at];
             nav-index: self.at;
             dx: self.at == FolderView.refused ? shake.dx : 0px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 }
@@ -576,6 +603,8 @@ export component FolderTab inherits Rectangle {
             chip: chip;
             index: i;
             chosen: FolderView.in-library && i == FolderView.slot;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
         // (The entry a chip landed in.)
         Flash {
@@ -584,6 +613,8 @@ export component FolderTab inherits Rectangle {
             width: root.slot-width;
             height: Theme.chip-row;
             seq: FolderView.landed-seq;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         // ---- The library, open.
@@ -607,6 +638,8 @@ export component FolderTab inherits Rectangle {
                 y: self.index * folder.pitch;
                 width: folder.row-width;
                 index: folder.first + at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
     }
