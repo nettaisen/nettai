@@ -67,6 +67,12 @@ pub enum UserError {
     /// A game's pack is there and can't be loaded (it was extracted for another version of the game's
     /// content): `game` is the game, as shown. The other games play.
     GameOutdated { game: String },
+    /// A game has no pack, and there is no Legacy Collection to extract it from: none is found through Steam,
+    /// nor in the folder the player chose (docs/app.md §17). Its dialog offers to choose the folder.
+    NoLegacyCollection,
+    /// A game's pack couldn't be extracted from the Legacy Collection (its archives didn't read, or the
+    /// extraction failed): `game` is the game, as shown.
+    ExtractFailed { game: String },
     /// Anything else: the details are in the log.
     Other,
 }
@@ -98,6 +104,8 @@ impl UserError {
             UserError::ExportFailed => (ErrorKind::ExportFailed, ""),
             UserError::WrongGameSave { game } => (ErrorKind::WrongGameSave, game),
             UserError::GameOutdated { game } => (ErrorKind::GameOutdated, game),
+            UserError::NoLegacyCollection => (ErrorKind::NoLegacyCollection, ""),
+            UserError::ExtractFailed { game } => (ErrorKind::ExtractFailed, game),
             UserError::Other => (ErrorKind::Other, ""),
         }
     }
