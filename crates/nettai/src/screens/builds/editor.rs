@@ -172,16 +172,23 @@ fn all() -> Vec<Box<dyn Tab>> {
     ]
 }
 
-/// Whether the game has tab `tab`: its own facts, where it has any, are all facts the game's setup takes.
+/// The facts of `tab` that the game's setup takes (a tab names every fact its view can edit; a game may take
+/// only some: EXE4's NaviCust has its programs and no board to expand).
+fn taken(content: &Content, tab: &dyn Tab) -> Vec<String> {
+    tab.fields(content).into_iter().filter(|f| nettai_match::facts::takes(content, f)).collect()
+}
+
+/// Whether the game has tab `tab`: it names no facts of its own (the navi's, the folder's are every game's), or
+/// the game's setup takes at least one of those it names.
 fn has(content: &Content, tab: &dyn Tab) -> bool {
-    tab.fields(content).iter().all(|f| nettai_match::facts::takes(content, f))
+    tab.fields(content).is_empty() || !taken(content, tab).is_empty()
 }
 
 /// The build's facts that are the game's own navi's alone: those of the tabs that are (the NaviCust's, the
 /// patch cards', the auto battle data's, where the game has them). What a build's file keeps aside while its
 /// navi is another.
 pub fn navi_only_fields(content: &Content) -> Vec<String> {
-    all().iter().filter(|t| t.own_navi_only() && has(content, t.as_ref())).flat_map(|t| t.fields(content)).collect()
+    all().iter().filter(|t| t.own_navi_only()).flat_map(|t| taken(content, t.as_ref())).collect()
 }
 
 /// The key the last tab used is remembered under, in the settings.
@@ -414,5 +421,28 @@ impl Editor {
         let (tab, draft) = self.tab();
         tab.answered(shell, draft, tag, choice);
         self.after(shell);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
+
+    /// Each game has the tabs its setup has something for: a NaviCust and patch cards in all three (EXE4's
+    /// NaviCust has its programs and no board to expand: a tab is there for any of the facts it names), auto
+    /// battle data in EXE4 and EXE5. What is the game's own navi's alone, and kept aside for another, is those
+    /// tabs' facts that the game takes.
+    #[test]
+    fn each_game_has_its_tabs() {
+        let tabs = |content: &Content| -> Vec<EditorTab> { all().iter().filter(|t| has(content, t.as_ref())).map(|t| t.id()).collect() };
+        let four = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards];
+        let five = [EditorTab::Navi, EditorTab::Folder, EditorTab::Navicust, EditorTab::PatchCards, EditorTab::AutoBattle];
+        assert_eq!(tabs(&exe6_content()), four);
+        assert_eq!(tabs(&exe5_content()), five);
+        assert_eq!(tabs(&exe4_content()), five);
+        assert_eq!(navi_only_fields(&exe6_content()), ["navicust_programs", "navicust_expansions", "patch_cards"]);
+        assert_eq!(navi_only_fields(&exe5_content()), ["navicust_programs", "navicust_expansions", "patch_cards", "auto_battle_places"]);
+        assert_eq!(navi_only_fields(&exe4_content()), ["navicust_programs", "patch_cards", "auto_battle_places"]);
     }
 }

@@ -1046,6 +1046,26 @@ export component TabBar inherits Rectangle {
                 }
             }
         }
+
+        // Where there are more tabs past an end of the window, that end fades: a tab's word there is on its way
+        // out, not cut by an edge.
+        Rectangle {
+            x: 0px;
+            width: 36px;
+            height: parent.height - 1px;
+            y: 0px;
+            visible: root.shift > 0px;
+            background: @linear-gradient(90deg, Theme.ground-top 0%, #0a133000 100%);
+        }
+
+        Rectangle {
+            x: parent.width - self.width;
+            width: 36px;
+            height: parent.height - 1px;
+            y: 0px;
+            visible: root.shift < row.preferred-width - root.width;
+            background: @linear-gradient(90deg, #0a133000 0%, Theme.ground-top 100%);
+        }
     }
 }
 
