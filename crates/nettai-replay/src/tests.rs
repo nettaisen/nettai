@@ -209,3 +209,28 @@ fn the_head_says_what_it_plays_on() {
     assert_eq!(engine, Mismatch::Engine { replay: "0.1.0".into(), here: "0.2.0".into() });
     assert_eq!(engine.to_string(), "the replay was made on engine 0.1.0, this is 0.2.0");
 }
+
+/// A file's head reads by itself, whatever is wrong after it: a file cut
+/// inside its info, or one whose ticks no writer writes, still says its
+/// game. Bytes that aren't a replay, another layout's, and a file that
+/// ends inside its head say nothing.
+#[test]
+fn a_head_reads_whatever_follows_it() {
+    let bytes = written(&ticks());
+    assert_eq!(Head::read(&bytes), Some(head()));
+    let info_at = bytes.windows(4).position(|w| w == b"INFO").unwrap();
+    let cut = &bytes[..info_at + 6];
+    assert!(Replay::read(cut).is_err());
+    assert_eq!(Head::read(cut), Some(head()));
+    let mut wrong = written(&[]);
+    wrong.push(0xE0);
+    assert!(Replay::read(&wrong).is_err());
+    assert_eq!(Head::read(&wrong), Some(head()));
+    let mut older = bytes.clone();
+    older[4] = 1;
+    assert_eq!(Head::read(&older), Some(head()));
+    older[4] = 3;
+    assert_eq!(Head::read(&older), None);
+    assert_eq!(Head::read(b"not a replay"), None);
+    assert_eq!(Head::read(&bytes[..info_at - 3]), None);
+}
