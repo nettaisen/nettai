@@ -58,6 +58,15 @@ struct Rig {
     held: u16,
     /// The player has no build of the game.
     no_builds: bool,
+    /// The other player is another app on this machine ([`apart`]): no server, a port both know.
+    apart: bool,
+    watch: Option<Watch>,
+}
+
+impl Rig {
+    fn new() -> Rig {
+        Rig { server: nettai_rtc::testing::Server::start(), peer: None, shoots: false, held: 0, no_builds: false, apart: false, watch: None }
+    }
 }
 
 thread_local! {
@@ -83,7 +92,74 @@ fn config() -> Config {
 
 /// Where Play makes its links in the pass: the rig's server. None outside the pass.
 pub fn net() -> Option<Net> {
-    with_rig(|rig| Net { server: Some(rig.server.url()), config: config(), port: 0 })
+    with_rig(|rig| match rig.apart {
+        true => Net { server: None, config: config(), port: APART_PORT },
+        false => Net { server: Some(rig.server.url()), config: config(), port: 0 },
+    })
+}
+
+/// The loopback UDP port the host listens on where two apps of one machine meet ([`apart`]).
+const APART_PORT: u16 = 47_476;
+
+/// What a player of the two-app check ([`apart`]) counts of its link, written to the log a second at a time:
+/// the frames the app ran (and how many of them the window drew), the datagrams the other player's link
+/// brought and the longest it brought none for, the frames in which the link was down, and the match's ticks.
+struct Watch {
+    who: &'static str,
+    since: Instant,
+    frames: u32,
+    drawn: u32,
+    heard: usize,
+    last_heard: Option<Instant>,
+    silence: Duration,
+    down: u32,
+    ticks: Option<u64>,
+}
+
+impl Watch {
+    fn new(who: &'static str) -> Watch {
+        Watch { who, since: Instant::now(), frames: 0, drawn: 0, heard: 0, last_heard: None, silence: Duration::ZERO, down: 0, ticks: None }
+    }
+
+    /// A frame of the app.
+    fn frame(&mut self, shell: &Shell, now: Instant) {
+        self.frames += 1;
+        self.drawn += shell.drawing as u32;
+        if now.saturating_duration_since(self.since) < Duration::from_secs(1) {
+            return;
+        }
+        let ticks = shell.battle.as_ref().filter(|b| b.kind == BattleKind::Online).map(|b| b.stage.player.ticks() as u64);
+        let ran = match (self.ticks, ticks) {
+            (Some(was), Some(is)) => format!("{} ticks", is.saturating_sub(was)),
+            _ => "no match".to_string(),
+        };
+        let silence = self.silence.max(self.last_heard.map_or(Duration::ZERO, |at| now.saturating_duration_since(at)));
+        let Watch { frames, drawn, heard, down, .. } = *self;
+        let said = format!("{frames} frames ({drawn} drawn), {heard} datagrams heard, {} ms the longest silence, the link down in {down} frames, {ran}", silence.as_millis());
+        crate::errors::log(self.who, &said);
+        *self = Watch { last_heard: self.last_heard, ticks, since: now, ..Watch::new(self.who) };
+    }
+
+    /// What the link brought this frame, and whether it is down.
+    fn heard(&mut self, now: Instant, datagrams: usize, down: bool) {
+        if datagrams > 0 {
+            if let Some(at) = self.last_heard {
+                self.silence = self.silence.max(now.saturating_duration_since(at));
+            }
+            self.last_heard = Some(now);
+            self.heard += datagrams;
+        }
+        self.down += down as u32;
+    }
+}
+
+/// What the app's link brought this frame, for the two-app check's count.
+pub fn heard(now: Instant, datagrams: usize, down: bool) {
+    with_rig(|rig| {
+        if let Some(watch) = &mut rig.watch {
+            watch.heard(now, datagrams, down);
+        }
+    });
 }
 
 /// The builds Play lists in the pass: new builds of `game`'s versions, by the pass's names. None outside
@@ -124,6 +200,9 @@ pub fn frame(shell: &mut Shell, now: Instant) {
     let held = with_rig(|rig| {
         if rig.peer.as_mut().is_some_and(|peer| !peer.frame(now)) {
             rig.peer = None;
+        }
+        if let Some(watch) = &mut rig.watch {
+            watch.frame(shell, now);
         }
         let was = rig.held;
         rig.held = match &shell.battle {
@@ -361,50 +440,69 @@ fn come(app: &App, comes: Comes) {
     }
 }
 
+/// The time a step is given before it.
+const SETTLE: u64 = 260;
+
+fn step(f: impl Fn(&mut App) + 'static) -> Step {
+    Box::new(move |_, app, _| f(&mut app.borrow_mut()))
+}
+
+fn act(action: Action) -> Step {
+    step(move |app| app.act(action))
+}
+
+fn focus(id: &'static str, index: i32) -> Step {
+    step(move |app| app.shell.nav.focus(id, index))
+}
+
+/// The field being edited takes `text`, as typing gives it.
+fn typed(text: &'static str) -> Step {
+    step(move |app| app.input(crate::shell::NavInput::Edited(text.into())))
+}
+
+/// A control of Play pressed, as a click presses it.
+fn press(id: &'static str) -> Step {
+    step(move |app| {
+        app.shell.nav.focus(id, 0);
+        app.input(crate::shell::NavInput::Activate(id.into(), 0));
+    })
+}
+
+/// The step after waits for `come` (or a minute).
+fn until(come: impl Fn(&App, &AppWindow) -> bool + 'static) -> Step {
+    let come = Rc::new(come);
+    Box::new(move |_, _, tour: &Rc<Tour>| {
+        let come = come.clone();
+        tour.wait_until(move |app| come(app, &app.shell.ui()));
+    })
+}
+
+fn part(ui: &AppWindow) -> PlayPart {
+    ui.global::<PlayView>().get_part()
+}
+
+fn peer(f: impl Fn(&mut Peer) + 'static) -> Step {
+    Box::new(move |_, _, _| with_peer(&f))
+}
+
+/// The app's player and the other are together in the lobby.
+fn together(ui: &AppWindow) -> bool {
+    part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()
+}
+
+/// An online match is up.
+fn in_match(app: &App) -> bool {
+    app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online)
+}
+
 /// Play's steps of the pass, in `lang` at `size`: `add` takes a step and the time it is given before it;
 /// `shot` adds a shot's steps (its name; whether it is the first or the second of a pair).
 pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
-    const SETTLE: u64 = 260;
-    fn step(f: impl Fn(&mut App) + 'static) -> Step {
-        Box::new(move |_, app, _| f(&mut app.borrow_mut()))
-    }
-    fn act(action: Action) -> Step {
-        step(move |app| app.act(action))
-    }
-    fn focus(id: &'static str, index: i32) -> Step {
-        step(move |app| app.shell.nav.focus(id, index))
-    }
-    // The field being edited takes `text`, as typing gives it.
-    fn typed(text: &'static str) -> Step {
-        step(move |app| app.input(crate::shell::NavInput::Edited(text.into())))
-    }
-    // A control of Play pressed, as a click presses it.
-    fn press(id: &'static str) -> Step {
-        step(move |app| {
-            app.shell.nav.focus(id, 0);
-            app.input(crate::shell::NavInput::Activate(id.into(), 0));
-        })
-    }
-    // The step after waits for `come` (or a minute).
-    fn until(come: impl Fn(&App, &AppWindow) -> bool + 'static) -> Step {
-        let come = Rc::new(come);
-        Box::new(move |_, _, tour: &Rc<Tour>| {
-            let come = come.clone();
-            tour.wait_until(move |app| come(app, &app.shell.ui()));
-        })
-    }
-    fn part(ui: &AppWindow) -> PlayPart {
-        ui.global::<PlayView>().get_part()
-    }
-    fn peer(f: impl Fn(&mut Peer) + 'static) -> Step {
-        Box::new(move |_, _, _| with_peer(&f))
-    }
-
     // The rig: the pass's own server. With no build of the game, one button.
     add(
         SETTLE,
         step(|app| {
-            RIG.with(|rig| *rig.borrow_mut() = Some(Rig { server: nettai_rtc::testing::Server::start(), peer: None, shoots: false, held: 0, no_builds: true }));
+            RIG.with(|rig| *rig.borrow_mut() = Some(Rig { no_builds: true, ..Rig::new() }));
             // (What a pass before this one left remembered.)
             app.shell.settings.remembered.retain(|key, _| !key.starts_with("play."));
             app.shell.settings.input_delay = nettai_frontend::netplay::DEFAULT_INPUT_DELAY;
@@ -670,6 +768,98 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     );
 }
 
+/// How long the window is taken away for, each time ([`apart`]).
+const AWAY: u64 = 8000;
+
+/// The window taken away (`what`: minimized, or hidden) or brought back, as the foundation's
+/// `NETTAI_WINDOW_PROBE` does it, and said in the log.
+fn away(what: &'static str, gone: bool) -> Step {
+    Box::new(move |ui, _, _| {
+        crate::errors::log("play apart", &if gone { format!("the window away ({what})") } else { "the window back".to_string() });
+        slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| match what {
+            "minimize" => w.set_minimized(gone),
+            _ => w.set_visible(!gone),
+        });
+    })
+}
+
+/// A link while its window isn't drawn (docs/app.md §1, "The clock when the window isn't drawn"), between two
+/// apps on one machine: `NETTAI_TOUR_ONLY=play-away-host` in one and `play-away-join` in the other. The host
+/// hosts directly on [`APART_PORT`] and the other joins it there, each through Play's own controls with a
+/// build of the pass's. In the lobby, and again in the match they then play, the host's window is minimized
+/// for eight seconds and then hidden for eight. Each app writes what its link saw to its log a second at a
+/// time ([`Watch`]): the other's says whether it saw the host stall. No shot is taken.
+pub fn apart(add: &mut dyn FnMut(u64, Step), hosts: bool) {
+    let who = if hosts { "play watch (host)" } else { "play watch (join)" };
+    add(
+        SETTLE,
+        step(|app| {
+            RIG.with(|rig| *rig.borrow_mut() = Some(Rig { apart: true, ..Rig::new() }));
+            app.shell.settings.remembered.retain(|key, _| !key.starts_with("play."));
+            app.shell.settings.input_delay = nettai_frontend::netplay::DEFAULT_INPUT_DELAY;
+            app.go_now(ScreenId::Play);
+        }),
+    );
+    add(SETTLE, press("direct"));
+    if hosts {
+        add(SETTLE, press("direct.host"));
+        add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+        add(SETTLE, step(|_| crate::errors::log("play apart", &"hosting")));
+    } else {
+        add(SETTLE, focus("direct.address", 0));
+        add(SETTLE, act(Action::Confirm));
+        add(SETTLE, step(|app| app.input(crate::shell::NavInput::Edited(format!("127.0.0.1:{APART_PORT}").into()))));
+        add(SETTLE, act(Action::Confirm));
+        add(SETTLE, press("direct.connect"));
+    }
+    // (The other app may still be loading its game: each wait is a minute at most.)
+    for _ in 0..5 {
+        add(SETTLE, until(|_, ui| together(ui)));
+    }
+    add(
+        SETTLE,
+        step(move |_| {
+            with_rig(|rig| (rig.shoots, rig.watch) = (true, Some(Watch::new(who))));
+        }),
+    );
+    if hosts {
+        // In the lobby.
+        add(4000, away("minimize", true));
+        add(AWAY, away("minimize", false));
+        add(4000, away("hide", true));
+        add(AWAY, away("hide", false));
+        add(4000, press("lobby.ready"));
+        add(SETTLE, until(|app, _| in_match(app)));
+        // In the match (the two are through their first custom screens by then).
+        add(12000, away("minimize", true));
+        add(AWAY, away("minimize", false));
+        add(4000, away("hide", true));
+        add(AWAY, away("hide", false));
+        add(4000, step(|app| app.shell.open_menu()));
+        add(SETTLE, press("menu.leave"));
+        add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby));
+        add(3000, press("lobby.leave"));
+        add(SETTLE, until(|_, ui| part(ui) == PlayPart::Builds));
+    } else {
+        // Ready at once; then for as long as the host keeps the two together.
+        add(1000, press("lobby.ready"));
+        for _ in 0..3 {
+            add(SETTLE, until(|app, _| in_match(app)));
+        }
+        for _ in 0..3 {
+            add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby));
+        }
+        add(SETTLE, until(|app, ui| app.shell.dialog.is_some() || part(ui) == PlayPart::Builds));
+    }
+    add(
+        1000,
+        step(|app| {
+            RIG.with(|rig| *rig.borrow_mut() = None);
+            app.go_now(ScreenId::Menu);
+        }),
+    );
+}
+
 /// Play's bursts of the motion probe: the lobby's two set pieces, the other player's card sliding in as they
 /// join and a ready mark stamping. `burst` adds a burst's steps (its name, the milliseconds its shots are
 /// taken at, what starts the animation).
@@ -692,7 +882,7 @@ pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64,
     add(
         SETTLE,
         step(|app| {
-            RIG.with(|rig| *rig.borrow_mut() = Some(Rig { server: nettai_rtc::testing::Server::start(), peer: None, shoots: false, held: 0, no_builds: false }));
+            RIG.with(|rig| *rig.borrow_mut() = Some(Rig::new()));
             app.go_now(ScreenId::Play);
             press(app, "invite");
         }),
