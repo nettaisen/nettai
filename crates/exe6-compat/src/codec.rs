@@ -397,6 +397,17 @@ const GAME_STATS: &[(&str, usize, Byte)] = &[
     ("number_open", 0x61, Byte::One),
 ];
 
+/// The bytes of a NaviStats block the engine's stats hold nothing of, where
+/// the recordings' blocks do ([`navi_stats_bytes`] leaves them zero): +0x00,
+/// +0x27, +0x30, +0x46, +0x4A, +0x5A and +0x5B, the same in every recording
+/// (8, 0x1F, 0xFF, 1, 0x0A, 0xFF, 0xFF); +0x1F, set at times on the
+/// recording console's own side alone; +0x20, the console's version; and
+/// what a NaviCust program or a patch card writes that a battle doesn't
+/// read there: +0x1E (the encounter bug), +0x25 (Humor), +0x33 (Collect),
+/// +0x35 (the status bug, SlipRunr), +0x36 (AutoHeal), +0x4C (BassBX's
+/// card), +0x5F (Poem). A replay compares every other byte of the block.
+pub const STATS_NOT_HELD: &[usize] = &[0x00, 0x1E, 0x1F, 0x20, 0x25, 0x27, 0x30, 0x33, 0x35, 0x36, 0x46, 0x4A, 0x4C, 0x5A, 0x5B, 0x5F];
+
 /// The game's 0x64-byte NaviStats block of the modeled fields (the other
 /// bytes are zero).
 pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
