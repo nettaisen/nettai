@@ -1,8 +1,9 @@
 //! The screenshot pass's steps for Training (docs/app.md §13): the entry (with no build, with builds, the focus a
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
 //! can't be used, the arena and the background stepped, the arena around its end), the two cards, the battle, the
-//! training menu (a value changed, the focus a row apart, the arena and the background changed under it, each
-//! Battle row a value apart, the input display, a recording made and played, the rows another screen adds), and
+//! training menu (a value changed, the focus a row apart, the dummy that fights (its Action, Level and custom
+//! screen), the arena and the background changed under it, each Battle row a value apart, the input display, a
+//! recording made and played, the rows another screen adds), and
 //! the motion probe's bursts of what Training moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
@@ -226,6 +227,27 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-menu-value", lang, size, Differs::Cursors, true);
     add(SETTLE, act(Action::Down));
     shot(add, "training-menu-focus", lang, size, Differs::Cursors, false);
+    // The dummy that fights: its Action Fights (two on from Moves around), its Level Hard, its custom screen Picks
+    // all it can; each the row a value apart. Then each back as it was (around from its last value), so the
+    // dummy stands still again for what follows.
+    for (name, changed, option, steps) in [
+        ("training-menu-action", "training-menu-fights", TrainingOption::Action, 2),
+        ("training-menu-level", "training-menu-level-hard", TrainingOption::Level, 1),
+        ("training-menu-custom-screen", "training-menu-picks-all", TrainingOption::CustomScreen, 1),
+    ] {
+        add(SETTLE, focus("menu.rows.option", row(option)));
+        shot(add, name, lang, size, Differs::Unheld, true);
+        for _ in 0..steps {
+            add(SETTLE, act(Action::Right));
+        }
+        shot(add, changed, lang, size, Differs::Cursors, false);
+    }
+    for (option, steps) in [(TrainingOption::Action, 4), (TrainingOption::Level, 2), (TrainingOption::CustomScreen, 2)] {
+        add(SETTLE, focus("menu.rows.option", row(option)));
+        for _ in 0..steps {
+            add(SETTLE, act(Action::Right));
+        }
+    }
     // The Arena row, and its value changed: the set starts over on the next arena behind the menu, which stays
     // open (the battle through the round's opening to its custom screen, where it waits).
     add(SETTLE, focus("menu.rows.option", row(TrainingOption::Arena)));

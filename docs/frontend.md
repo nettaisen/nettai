@@ -377,7 +377,6 @@ asked for the opponent's buttons a tick at a time (`fight`, with what the
 local player holds; `custom_screen`) and told when the set starts over
 (`reset`). The library has no AI of its own: nettai-training's `Fighter`
 is one. With none given it stands still and picks the first chip it can.
-Neither choice is in `ALL` yet: no host offers them.
 
 Its random presses are seeded (from the set's seed in nettai) and run every
 tick of the set, taken or not: what it presses on a tick goes by the seed,
