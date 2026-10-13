@@ -22,8 +22,12 @@
 //! up, and a drag out of a program's row takes it (a placed one's last copy off the board); while the button is
 //! held the piece follows the pointer from cell to cell, and the wheel turns it. Let go over the board, it is put
 //! down where it fits, else it shakes and goes back where it came from; let go off the board, it is put away into
-//! the list. A press and release that never left the cell or row is a click, as Enter there. A key or button
-//! pressed during a drag ends it, as a put-back.
+//! the list. A press and release that never left the cell or row is a click, as Enter there: a piece a click takes
+//! up follows the pointer over the board with no button held, cell by cell (off the board it stays at the last cell
+//! it was over), the next click on the board puts it down (or it shakes and stays in hand), and a click off the
+//! board puts it away. A right click puts the piece in hand away, however it was taken: off the board, never back
+//! where it was. A key or button pressed during a drag ends it, as a put-back; one pressed with a piece a click took
+//! moves it from where it is, and the pointer's next move takes it back under the pointer.
 
 use crate::builds::grid::{self, Edit, GridData, Held};
 use crate::builds::overview;
@@ -45,8 +49,9 @@ const LINES: usize = 10;
 
 /// What the view's pointer areas tell (`Nav.choose("drag", phase, value)`): a press on a row of the list (`value` its
 /// place) or on the board, a move, a release (`value` where the pointer is: x * 65536 + y, the window's logical
-/// pixels), the wheel (`value` its delta), a press the window took back; and the put-back due after a refusal
-/// (`value` its count).
+/// pixels), the wheel (`value` its delta), a press the window took back; the put-back due after a refusal (`value`
+/// its count); the pointer over the board with no button held (`value` where), a right click, and a press off the
+/// board and the list, each while a piece is in hand.
 const PRESS_ROW: i32 = 0;
 const PRESS_BOARD: i32 = 1;
 const MOVE: i32 = 2;
@@ -54,6 +59,9 @@ const RELEASE: i32 = 3;
 const WHEEL: i32 = 4;
 const CANCEL: i32 = 5;
 const PUT_BACK: i32 = 6;
+const HOVER: i32 = 7;
+const RIGHT_CLICK: i32 = 8;
+const PRESS_OFF: i32 = 9;
 
 /// How far the wheel goes for a quarter turn (a mouse's notch is more).
 const NOTCH: i32 = 40;
@@ -573,8 +581,11 @@ impl Navicust {
             RELEASE => {
                 let Some(drag) = self.drag.take() else { return };
                 if !drag.moving {
-                    // (A click: as Enter on what was pressed; a piece picked up by the press stays in hand.)
+                    // (A click: as Enter on what was pressed, and a piece picked up by the press stays in hand,
+                    // following the pointer; with a piece in hand, a click on the board puts it down there, one off
+                    // the board, on the list too, puts it away.)
                     match (drag.row, drag.cell) {
+                        (_, None) if drag.had => self.put_away(shell, draft),
                         (Some(row), _) => self.activate(shell, draft, "programs", row as i32),
                         (None, Some(at)) if drag.had => {
                             self.press(shell, draft, at);
@@ -586,7 +597,8 @@ impl Navicust {
                 match self.cell_under(shell, value) {
                     Some(at) => {
                         self.at = at;
-                        if self.press(shell, draft, at) {
+                        // (One the mouse had in hand before the press shakes and stays there, as a click's.)
+                        if self.press(shell, draft, at) && !(drag.row.is_none() && drag.had) {
                             // (It shakes where it was let go, then goes back.)
                             self.backs += 1;
                             self.back_due = Some(self.backs);
@@ -601,12 +613,12 @@ impl Navicust {
                     None => self.put_away(shell, draft),
                 }
             }
+            // (A notch turns it a quarter; a trackpad's small steps add up to one.)
             WHEEL if self.held.is_some() => {
                 self.wheel += value;
-                while self.wheel.abs() >= NOTCH {
-                    let way = self.wheel.signum();
-                    self.turn(shell, draft, way < 0);
-                    self.wheel -= way * NOTCH;
+                if self.wheel.abs() >= NOTCH {
+                    self.turn(shell, draft, self.wheel < 0);
+                    self.wheel = 0;
                 }
             }
             CANCEL => {
@@ -617,6 +629,23 @@ impl Navicust {
             PUT_BACK if self.back_due == Some(value) => {
                 self.back_due = None;
                 self.put_back(shell, draft);
+            }
+            // (A row's drag out over the board is the board's to tell: the list keeps no pointer that leaves it.)
+            HOVER if self.drag.is_some_and(|d| d.row.is_some()) => self.dragged(shell, draft, MOVE, value),
+            // (The piece in hand follows the pointer over the board with no button held, from cell to cell; off
+            // the board it stays at the last cell it was over.)
+            HOVER if self.held.is_some() && self.drag.is_none() && self.back_due.is_none() => {
+                if let Some(at) = self.cell_under(shell, value)
+                    && at != self.at
+                {
+                    self.follow(shell, draft, at);
+                }
+            }
+            // (A right click puts the piece in hand away into the list, whoever took it and from where: off the
+            // board, never back where it was; a press off the board and the list does too.)
+            RIGHT_CLICK | PRESS_OFF if self.held.is_some() => {
+                (self.drag, self.back_due) = (None, None);
+                self.put_away(shell, draft);
             }
             _ => {}
         }
