@@ -1994,10 +1994,9 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 
 | Row | Values | What it sets |
 |---|---|---|
-| Dummy: Action | Stands still, Moves around, Attacks at random, Fights, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick; Fights is its AI's (`InFight::Ai`): below |
-| Dummy: Level | Easy, Normal, Hard | how well it fights (nettai-training's `Level`), when its Action or its custom screen is the AI's |
-| Dummy: Custom screen | Picks no chips, Picks the first it can, Picks all it can | `Opponent::on_custom_screen`; Picks all it can is the AI's (`OnCustomScreen::Ai`) |
-| Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
+| Dummy: Action | Stands still, Moves around, Fights, Plays your recording, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
+| Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
+| Dummy: Recording (under Plays your recording alone) | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
 | Battle: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Battle: Background | Random, then the game's by name, as on the entry | the battle goes on where it is, drawn on the new background: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
@@ -2037,23 +2036,30 @@ there and the engine flags it full once the fight runs again, the folder is put 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
 MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
-display are remembered between runs (`training.action`, `training.level`, `training.custom-screen`, `training.your-hp`,
+display are remembered between runs (`training.action`, `training.level`, `training.your-hp`,
 `training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`), and the place by
 game as the entry's rows are; a session another screen started begins as that screen says, every
 battle option at its normal value and the place Random, and keeps nothing of the dummy's, the battle's or the
 place.
 
+**The dummy's rows.** One row says what the dummy does, its Action, and the one setting a value of it has
+comes under it while that value is chosen: the Level under Fights, the Recording under Plays your recording
+(`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it, the
+Action's own and the focus with it, staying where they are). Its custom screen goes with its Action (`dummy`):
+the AI's for one that fights, a second pad's own, else the first chip it can. The user (2026-10-13): "the dummy
+menu is so confusing and has so many redundant options and it's confusing to navigate. you should make it
+clearer and less redundant": before, Level, Custom screen and Recording were rows of their own whatever the
+Action, and Attacks at random was a weaker Fights; they went.
+
 **The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the
 Recording row closes the menu (the START that takes the game out of its pause is the menu's and doesn't end the
 recording: `a_recording_chosen_from_the_menu`), and from the battle as it stands the player's buttons drive the dummy, from
 wherever it is (the player's own navi stands still; on the custom screen the player's buttons are their own
-screen's as ever, and the dummy's screen does what its Custom screen row says). RECORDING shows over the
+screen's as ever, and the dummy's picks the first chip it can). RECORDING shows over the
 battle meanwhile (in the dummy's color, with the input display's layer: `TrainingInputs`). Each tick the fight
 runs (not the turn's banner, the custom screen, the game's pause) its buttons are kept, up to a minute. Start
 ends it, and doesn't pause the game (or the menu opening, or starting over, or the minute end it): the
-dummy's Action becomes Plays your
-recording, and it plays the buttons over and over from wherever it stands, while the player has their navi
-back. A new recording replaces it. Nothing of it is kept between sessions, and Plays your recording isn't
+dummy plays the buttons over and over from wherever it stands, while the player has their navi back. A new recording replaces it. Nothing of it is kept between sessions, and Plays your recording isn't
 remembered as the Action (with nothing recorded the dummy stands still).
 
 **A second pad.** With the dummy's Action "A second pad", the second gamepad used (the pads are known in the
@@ -2061,12 +2067,12 @@ order each was first pressed, `input::Pad`) is the dummy's: what it holds is the
 and on its custom screen (the library's `LivePlayer::set_second_pad`, each frame before the ticks; its START
 reaches the battle on the custom screen alone, the game's pause being the player's), and its
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
-its custom screen does as its row says. Any other Action gives the pads back to the player.
+its custom screen picks the first chip it can. Any other Action gives the pads back to the player.
 
-**The dummy that fights** (Action Fights; its custom screen's Picks all it can). Its AI is nettai-training's
-`Fighter` (the crate's docs: how well each level plays, measured), plugged into the session's live play
-(`LivePlayer::set_ai`) while the Action or the Custom screen is the AI's, at the Level chosen, and taken out
-otherwise (`training::plug`); another Level plugs in a new one. It presses buttons as a player does: each few
+**The dummy that fights** (Action Fights). Its AI is nettai-training's `Fighter` (the crate's docs: how well
+each level plays, measured), in the fight and on its custom screen, where it picks every chip it can; it is
+plugged into the session's live play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and
+taken out otherwise (`training::plug`); another Level plugs in a new one. It presses buttons as a player does: each few
 ticks it tries short plans in copies of the battle, on threads of its own (three at most, fewer on a machine
 with fewer cores to spare), and acts on its decision a reaction time later (Easy's half a second, Normal's about a
 quarter, Hard's a tenth); a decision not ready by then is waited for (measured at 60 ticks a second: none was
