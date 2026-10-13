@@ -249,7 +249,9 @@ export component Button inherits Rectangle {
     // The main action's sheen: a band of light across it every few seconds.
     property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
     height: root.big ? 52px : 40px;
-    width: max(120px, label.preferred-width + 32px);
+    // As wide as its text needs (at the least 120): what an instance given another width can still place by.
+    out property <length> natural-width: max(120px, label.preferred-width + 32px);
+    width: self.natural-width;
     press := Pulse {
         seq: root.presses;
     }
