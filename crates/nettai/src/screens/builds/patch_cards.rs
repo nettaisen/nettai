@@ -1,8 +1,8 @@
 //! The Patch cards tab of a build's editor (docs/design/app-ui.md §6, "Patch cards"; §2 items 19 and 20).
 //!
 //! A card's number, name, MB, slot and lines are the game's data (`crate::builds::cards`: its effects' lines from
-//! the strings, a bug's marked; its number its place in the library's order; its MB the field the rules' budget
-//! names). What the cards may be is the game's rules': the list's budget and why a card can't go in now
+//! the strings, a bug's marked; its number its own, the game's compat tables' (`builds::import::card_number`); its
+//! MB the field the rules' budget names). What the cards may be is the game's rules': the list's budget and why a card can't go in now
 //! (nettai-match's `Overview::budget`, `Budget::refusal`), and in a game whose cards go in slots, each card's own
 //! (`Builds::slots`: `Slots::own`, `held`, `put`, `clear`). What they add up to is the build's overview without its
 //! NaviCust.
@@ -155,7 +155,7 @@ impl PatchCards {
     /// The card's number as its game shows it (`074`).
     fn number(&self, draft: &Draft, h: EntryHandle) -> String {
         let id = draft.content().defs.entry(h).id();
-        draft.kit.order.entry_place(&self.collection, id).map(|p| format!("{:03}", p + 1)).unwrap_or_default()
+        crate::builds::import::card_number(&draft.kit.game, id).map(|n| format!("{n:03}")).unwrap_or_default()
     }
 
     /// The library's rows, as sorted and searched.
@@ -202,7 +202,7 @@ impl PatchCards {
         let say = ui.global::<BuildWords>();
         let Some(h) = card else { return CardRow { slot: slot.map(slot_name).unwrap_or_default().into(), ..Default::default() } };
         draft.with_words(shell, |words| {
-            let named = cards::named_by(words.kit, &self.collection);
+            let named = cards::named_by(words.kit);
             let lines = cards::lines(words.names, h, &named).unwrap_or_default();
             let own = slots.and_then(|s| s.own(content, h));
             CardRow {
@@ -323,7 +323,7 @@ impl PatchCards {
             };
             let problem = self.notice.clone().or(problem).unwrap_or_default();
             let Some(h) = card else { return CardDetail { problem: problem.into(), ..Default::default() } };
-            let named = cards::named_by(words.kit, &self.collection);
+            let named = cards::named_by(words.kit);
             let lines = cards::lines(words.names, h, &named).unwrap_or_default();
             // The two groups: the card screen's, by the lines' groups in their order; a game whose cards have none,
             // what it does and the bugs it adds to or clears.
@@ -661,6 +661,26 @@ impl Tab for PatchCards {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// Every card of each game has its own number (the game's compat tables'), each number one card's but EXE5's 111,
+    /// each team's own; the library lists them in that order (its place is the number but for the second 111, which
+    /// is why the number isn't taken from it).
+    #[test]
+    fn every_card_has_its_own_number() {
+        let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
+        for (content, game, count) in [(nettai_match::testing::exe6_content(), "exe6", 117), (nettai_match::testing::exe5_content(), "exe5", 112), (nettai_match::testing::exe4_content(), "exe4", 133)] {
+            let order = crate::builds::order::Order::load(dir, game);
+            let collection = collection_of(&content, FIELD).unwrap();
+            let mut cards: Vec<((), EntryHandle)> = edit::of_game(&content, game, Registry::Entry, Some(&collection)).into_iter().map(|h| ((), EntryHandle(h))).collect();
+            order.entries(&content, &collection, &mut cards);
+            let numbers: Vec<u8> = cards.iter().map(|(_, h)| crate::builds::import::card_number(game, content.defs.entry(*h).id()).unwrap_or_else(|| panic!("{game}: {} has no number", content.defs.entry(*h).id()))).collect();
+            assert_eq!(numbers.len(), count, "{game}");
+            assert!(numbers.windows(2).all(|w| w[0] <= w[1]), "{game}: the library's order is the numbers'");
+            let mut distinct = numbers.clone();
+            distinct.dedup();
+            assert_eq!(numbers.len() - distinct.len(), usize::from(game == "exe5"), "{game}: numbers twice");
+        }
+    }
 
     /// Each game's cards are a collection the tab finds by the field's type, and each card of it writes lines (an
     /// EXE4 card's from the content's own table, a two-part card's naming its other half), a bug's marked.
