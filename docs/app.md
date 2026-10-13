@@ -175,7 +175,8 @@ from a training battle, on SIGTERM and on SIGINT. Windows has no such signals an
 **START never pauses the game.** In a fight the library reports START and doesn't act on it
 (`Player::take_pause_requests`: docs/frontend.md §2), and what it opens is nettai's menu (`Shell::open_menu`):
 the battle's owner's own, the training menu or the match menu (§2). A battle that can stop is paused under the
-menu; an online match keeps running, as the menu says.
+menu; an online match keeps running, as the menu says. A training battle is held in **the game's own pause**
+under its menu, not stopped (§15).
 
 **The sound** is nettai-audio's `Output`, fed one stream at the battle's rate (`sound.rs`):
 
@@ -799,6 +800,25 @@ cost what they did in the others, and the windows around it ran 115 to 119: the 
   it, as before it, 0 and 0 was silence sample for sample, and in each stretch the two alone added up (as squares)
   to the two together within 0.5% (0.26022 and 0.25920, 0.20090 and 0.20022, 0.17623 and 0.17674, 0.18402 and
   0.18456).
+
+**With the training menu open** (2026-10-13, the same Mac, window and variables, the menu opened 22 seconds in
+with the battle in its fight; two runs each, back to back, load average 180 to 340): before, the battle held
+still under the menu; now, in the game's own pause (§15).
+
+| nettai, `dev`, a training battle | Menu closed | Menu open, before | Menu open, in the game's pause |
+|---|---|---|---|
+| frames a second | 99.8 to 120.1 | 119.0 to 120.1 | 117.0 to 120.0 |
+| frame time p95 / p99 | 8.42 to 17.48 / 9.19 to 22.60 ms | 8.40 to 9.03 / 9.13 to 13.49 ms | 8.68 to 10.48 / 9.73 to 16.67 ms |
+| long frames in 2 s | 0 to 39 | 0 to 3 | 0 to 6 |
+| ticks a second | 59.5 to 60.0 | 0 | 59.5 to 60.0 |
+| a picture, then to the frame drawn | 3.13 to 3.87 ms, then 0.28 to 0.41 ms | none | 3.11 to 3.34 ms, then 0.78 to 0.90 ms |
+| key to its picture drawn (the runs' means) | 7.7 to 10.3 ms | | |
+| sound queued | 48 to 56 ms | 41 to 53 ms | 56 to 58 ms |
+| the stream's peak, by second | 0.48 to 0.61 | 0.0 after the first second | 0.36 to 0.67 |
+
+Under the menu the battle now costs what it costs running: a picture a tick, and the menu's panel and shade
+drawn over it (the frame is drawn 0.8 ms after its picture, against 0.3 with nothing over it). The keys go to the
+menu, so no press is timed then.
 
 ## 6. The web
 
@@ -1561,6 +1581,41 @@ phone, under them) the two builds as cards over the arena.
 match of the two builds (`nettai_match::check::problems`), shows the two cards while the library's `Preload`
 makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)`. It isn't recorded.
 
+- **Its pause is the game's.** The user: "the training pause should actually just use the game's pause
+  behavior: music continues, stuff still animates. but don't show the PAUSED banner in the middle of the
+  screen". A training set's rounds leave the game its START (`HostKeys::pause` off: `training::set_of`; every
+  match's other rounds keep it the host's), and its battle is held under the menu by `Battle::pause_in_game`
+  (`battle/game_pause.rs`), which does nothing that pausing does: it gives the game the START its player
+  would, and reads the game's state.
+  - The menu opens (Esc, the pad's Guide, MENU, as for any battle) where START would pause the game
+    (`nettai_battle::Battle::pausable`: the fight running, not dimmed, not over): the battle is given START
+    for that frame's ticks and is in the game's pause from that tick, and steps on in it under the menu. Its
+    music plays and what the game moves while paused moves (the backgrounds), by the game's own code; the
+    fight itself, the dummy with it, is held as the game holds it. The game's pause sound plays as it pauses
+    and as it goes on, as at the game's own START.
+  - The player's START in the fight is the game's own: it pauses the game, and the menu opens over that pause
+    (`Battle::paused_by`). While the menu is open the player's buttons reach neither the game nor the dummy:
+    the battle is given START and nothing else.
+  - The menu closes (RESUME, Esc, the pad's Start): the battle is given START again and leaves the pause as
+    the game does at its player's START, the fight going on where it was. RESTART, CHANGE BUILDS and QUIT TO
+    MENU work from the pause as from anywhere.
+  - Where START wouldn't pause the game (its custom screen, a dimming, a round being decided), the menu holds
+    the battle still and silent, as any battle under a menu.
+  - **The game's pause display is not drawn:** the HUD's "PAUSE" (what the HUD draws while the fight is in its
+    pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a training battle's
+    renderer alone. The game's pause state is simulated as the game has it; only that drawing is left out.
+  - Nothing else changes: a battle never paused, every online match and every replay steps, sounds and draws
+    as before (the engine's two calls are output only; the same hash over 2,194,500 samples and the same
+    digest after 4,000 ticks of each game before and after; nettai-frontend's
+    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause`).
+  - Checked on each game's packs by stepping a battle as the menu holds it (a scratch program, not kept):
+    ten seconds in the pause, samples came at 32,972 a second, the music's level steady (EXE6 0.15 to 0.22 RMS,
+    EXE5 0.17 to 0.18, EXE4 0.20 to 0.22); 390, 320 and 173 of the 600 frames differed from the one before
+    (the backgrounds move); a frame with the pause display drawn differed from one without in 463 to 550
+    pixels, every one inside "PAUSE"'s box; and the battle went on from where it was at START. The frames
+    were looked at (before, 300 and 330 ticks into the pause, with the display, after); nobody listened. In
+    the app, with the menu open, the battle ran 59.5 to 60.0 ticks a second and the stream's peak stayed at
+    0.36 to 0.67 (§5).
 - It has no end: when the set is decided the shell says `Finished` and Training starts the battle over
   (`Battle::restart`), as RESTART does, and R or F5 on the keyboard and the pad's north button without opening
   the menu (unless the player bound them to a button).
@@ -1568,7 +1623,8 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
   `training::end`, by a battle another screen started in its place, or, shown in another screen's `Picture`,
   by that screen being left.
 
-**The training menu** (Start or Esc; the battle is paused behind it, the dummy in view beside the panel). Its
+**The training menu** (Start or Esc; the battle in the game's own pause behind it, the dummy in view beside the
+panel). Its
 rows are a model (`TrainingView.rows`: one row component under one `for`), made from one list,
 `training::ROWS`:
 
