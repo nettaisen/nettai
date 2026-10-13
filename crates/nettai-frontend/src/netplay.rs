@@ -82,8 +82,13 @@ pub const INPUT_DELAY: std::ops::RangeInclusive<u32> = 0..=10;
 /// settings' rounds, every place stated as the match's seed picks those
 /// they leave (as a replay keeps them), each player's side on their side
 /// (`sides` by side: the host's, then the joiner's; checked ones, their
-/// folders whole).
+/// folders whole) as the settings play it: without its patch cards where
+/// they are off (`Settings::as_played`). This is where the agreed match is
+/// made of the two sides, on both peers alike, so the set, its first
+/// round's digest and the match a recording keeps all hold the sides as
+/// they are played.
 pub fn netplay_setup(content: &Arc<Content>, seed: u32, settings: &crate::lobby::Settings, sides: [Side; 2]) -> Result<(Set, Match), String> {
+    let sides = sides.map(|side| settings.as_played(content, &side));
     let m = Match { game: settings.game.clone(), seed: Some(seed), rounds: settings.rounds.clone(), sides };
     let m = m.stated(content, seed)?;
     Ok((Set::of(content, &m, seed), m))

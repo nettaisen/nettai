@@ -30,9 +30,11 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
   joined by its address); a dropped connection is made again and the match goes on where it was. What goes wrong is
   a kind a host can say to its player in its own words, with the detail apart, for a log (§4.8, §4.9).
 - **Before the match**: a lobby checks the protocol, the engine, the game and the content; holds the match's
-  settings, which are both players' (the rounds, and whether builds are closed: either changes them, both see the
-  same, and both ready marks clear); says nothing of either player's build; then the handshake swaps what each
-  player brings and agrees the seed, each host loads the match, and the first tick runs once both have (§4.7).
+  settings, which are both players' (the rounds, whether patch cards apply, and whether builds are closed: either
+  changes them, both see the same, and both ready marks clear); checks each build as the settings will play it
+  (without its patch cards where they are off); says nothing of either player's build; then the handshake swaps
+  what each player brings and agrees the seed, each host loads the match, and the first tick runs once both have
+  (§4.7).
 - **After the match**: the two players are back in the same lobby on the same link, with the same settings and
   nobody ready, each free to bring another build; another match needs no new invite. A match's frames say which
   match they are of, so nothing of the one before reaches the next (§4.7, item 5).
@@ -546,9 +548,10 @@ twice is answered again, so a reliable channel of their own would add nothing.
 
 **The lobby, the handshake, the loading and the way back** are nettai-frontend's `lobby::Lobby`, without IO: the
 host feeds it every datagram that arrives (`receive`), polls it each frame (`poll`), and sends what it hands back
-(`outgoing`). This is version 7 of the protocol (`protocol::VERSION`; a peer of another version is told from the
+(`outgoing`). This is version 8 of the protocol (`protocol::VERSION`; a peer of another version is told from the
 first field of its lobby messages and refusals, and nothing after that field is read of it). Version 6 was the
-lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby go on after one (item 5).
+lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby go on after one (item 5); version
+8 adds the setting for patch cards (item 1), which changes how a match is set up from its sides.
 
 1. **Lobby.** Each peer says its lobby state when it changes and every 100 ms:
    - **The compatibility fields**: the protocol's version, the engine's (the crate version: peers must run the same
@@ -556,9 +559,11 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
      match is of one), the content's hash (`Content::hash`) and the role. A peer that can't play with the other
      refuses at once (below).
    - **The match's settings** (`lobby::Settings`): the game, the rounds (each round's stage and background by name
-     or left to the seed; one round is a single battle, three a best of three, and a set takes 1 to 99) and
+     or left to the seed; one round is a single battle, three a best of three, and a set takes 1 to 99),
+     `patch_cards` (whether the players' patch cards apply: on unless a player turns them off) and
      `closed_builds`. They are **the match's, not a player's**. Either player changes them (`Lobby::propose`, or
-     `set_rounds` and `set_closed_builds`), the other peer adopts the change, so both lobbies show the same
+     `set_rounds`, `set_patch_cards` and `set_closed_builds`), the other peer adopts the change, so both lobbies
+     show the same
      (`Lobby::settings`), and both players' ready marks clear. It sits on the proposal model the lobby had: each
      peer still says the settings it holds, and they are agreed when both are ready on the same. What is new is
      how two peers' settings become the same without the players doing it. Every change carries a **stamp**, one
@@ -570,6 +575,40 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
      taken for who they are; its control characters dropped, 16 characters at most).
    - **A clock**, and the other's clock said back with how long it was held: the round trip (§4.11).
 
+   **Patch cards off, and a build as it will be played.** The user's instruction: "for netbattle settings you
+   should also have a toggle for patch cards on/off". With `patch_cards` off neither player's cards apply: each
+   side plays as it is without them. One function says what that is, `Settings::as_played(content, side)`: the side
+   itself with cards on, and with them off `nettai_match::Side::without_patch_cards`, which empties the list a
+   game's rules keep a side's cards in and changes nothing else. That list is the setup field `patch_cards` in
+   every game that has cards (EXE6's and EXE5's a list of cards, EXE4's of a card and its slot), and its name is
+   all Rust knows of patch cards (`nettai_match::facts::PATCH_CARDS`): no game is named, and a game whose setup has
+   no such field has no cards to leave out. Everything that needs a side "as this match plays it" asks that one
+   function:
+   - **The match is made of the sides so**, in `netplay::netplay_setup`, where the agreed match is made of the two
+     sides on both peers: the set, its first round's digest (which both say as they load, item 4) and the match a
+     recording keeps (`Agreement::m`) hold each side without its cards. `Agreement::sides` are the sides as
+     played, and `Agreement::patch_cards()` says which way it was.
+   - **A build is checked so.** A build that keeps a rule only by a card of its own (a sixth Mega chip that a
+     card's Mega folder +1 allows) breaks it in a match without cards. `Settings::checked(content, side)` is a
+     build's check of the side as played: `nettai_match::build::Checked::of`, the check the build screens ask
+     (what a match's checks say of any side, and the rules' `build_check` besides: EXE4's card out of its slot),
+     so the lobby and a build screen never give two answers of one build. A peer checks its own player's build
+     when the lobby is made, when the build changes and whenever the settings change, its own change or one
+     adopted: `Lobby::problems()` is what is wrong, typed (`nettai_match::Wrong`, with the setup field and entry
+     each is of), and a player whose build has problems can't be ready (`Lobby::set_ready` says false, and the
+     mark stays clear). Turning the cards on again, or bringing another build, checks again.
+   - **A side is revealed so** (item 3): cards that don't apply never cross the wire.
+
+   Held to it by tests: nettai-match's `a_side_without_its_patch_cards` (the three games: the list empty, no
+   other fact changed, the round's stats those of the build before it had the card); nettai-frontend's
+   `with_patch_cards_off_a_match_is_played_without_them` (two EXE6 builds with cards agree a match with cards
+   off: its seed, sides, first digest and 1,500 ticks of battle are those of the same builds with their cards
+   taken out by hand and cards on, its recording holds the sides without cards, and its Reveals are the same
+   bytes), `in_each_game_a_match_without_patch_cards_is_of_the_builds_without_them`, and
+   `a_build_legal_only_by_its_cards_cant_be_played_without_them` (six Mega chips by StarMan's card: ready with
+   cards on; with them off "six Mega chips, five at most", typed, no ready mark, and a program that reveals it
+   anyway refused, with the problem on both sides).
+
    **Nothing of a player's build is in it** (the user's instruction: "the lobby shouldn't show build name or which
    game, since that's private information to the player"; "the build name should not really be visible across the
    wire or in replays or anything"). Version 5's lobby said each build's name, its version and its navi; version 6
@@ -580,15 +619,18 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
 2. **Hello.** A peer that sees the settings agreed (both ready, on the same settings of the same stamp) commits:
    its Hello carries the compatibility fields, the lobby revisions it agrees to and the rounds' count, in the
    clear, and SHA-256 of the agreed settings' hash and the bytes of the Reveal it will send. The settings' hash
-   covers `closed_builds`, so both commit to it. A peer reveals nothing before it has the other's Hello; a change
+   covers `patch_cards` and `closed_builds`, so both commit to them. A peer reveals nothing before it has the other's Hello; a change
    in the lobby takes the commitment back (and a Reveal already sent is spent: the next one has a fresh nonce).
 3. **Reveal.** The lobby revisions it is of (as its Hello said them), a peer's half of the seed (a 64-bit nonce
-   from the clock and the process) and its side (the player's setup, in nettai-match's binary). A Reveal of other
-   revisions is one of an agreement that was taken back, come late: it is left. Each peer checks the other's
-   Reveal against its commitment, and stops on one that doesn't match; then reads the other's side and checks it
-   against the content as a match file's side is. The seed comes from both nonces (SplitMix64), and the match is
-   the agreed rounds, each part they leave picked from the seed alike on both, with both sides
-   (`netplay::netplay_setup`). From here each peer has both sides, as the shared simulation needs them:
+   from the clock and the process) and its side as the match will play it (the player's setup, in nettai-match's
+   binary; `Settings::as_played`). A Reveal of other revisions is one of an agreement that was taken back, come
+   late: it is left. Each peer checks the other's Reveal against its commitment, and stops on one that doesn't
+   match; then reads the other's side and checks it as it checks its own player's (`Settings::checked`: a
+   build's check of the side as played). A side that breaks a rule ends both lobbies, each with the problems
+   typed: `Reason::TheirBuild { problems }` on the peer that read it, and `Reason::YourBuild { problems }` on the
+   one that sent it (its own check's answer of its own build; the refusal carries words for a log, not the
+   problems). The seed comes from both nonces (SplitMix64), and the match is the agreed rounds, each part they
+   leave picked from the seed alike on both, with both sides as played (`netplay::netplay_setup`). From here each peer has both sides, as the shared simulation needs them:
    `closed_builds` is not secrecy between the two programs, it is what each host shows its player
    (`Agreement::closed_builds`: the player's own build only, where with open builds a host may show both). (The
    commitment keeps a peer from choosing its side or its nonce after seeing the other's. It doesn't keep a peer
@@ -648,7 +690,7 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
 **Two builds of the program** must not get as far as a tick. Three things keep them from it, each ending both
 lobbies with `Reason::DifferentVersion`:
 
-- The protocol's version (`protocol::VERSION`, 7) stands for the wire's layout and for how a match is set up. It is
+- The protocol's version (`protocol::VERSION`, 8) stands for the wire's layout and for how a match is set up. It is
   the first field of every lobby message, Hello and refusal, and a peer of another version is refused on its first
   word. Version 6 is also the first whose rounds are set up with the keys their host answers
   (`RoundSetup::host_keys`, §2.2): a program of version 5 sets the same match up without them, and every digest
@@ -837,8 +879,8 @@ finds the other's build broken has `TheirBuild`, and the other, refused, has `Yo
 | `DifferentVersion` | The two programs differ: another netplay protocol, another engine, or engines that set the agreed match up differently (the digests of its start differ: §4.7). (A refusal from a peer of another protocol, in whatever form that protocol has, reads as this.) |
 | `DifferentGame { theirs }` | The other player's match is of another game, `theirs` by its id |
 | `DifferentContent` | The same game, but other content: the two players' packs differ |
-| `YourBuild` | This player's build breaks a rule of the game by the other side's checks, which refused it |
-| `TheirBuild` | The other player's build breaks a rule of the game (their Reveal's side didn't pass the checks a match file's side does) |
+| `YourBuild { problems }` | This player's build breaks a rule of the game as the match would play it, by the other side's checks, which refused it. `problems` is this peer's own check of it, typed (none where this peer finds nothing wrong: the two programs differ). A host never gets here by its own player's doing: a build with problems can't be readied (`Lobby::problems`, `Lobby::set_ready`) |
+| `TheirBuild { problems }` | The other player's build breaks a rule of the game as the match would play it (their Reveal's side didn't pass a build's check): `problems` is what, typed |
 | `OpponentLeft` | The other player left the lobby |
 | `Left` | This player left the lobby (`Lobby::leave`) |
 | `NoAnswer` | Nothing came from the other side for the lobby's timeout |

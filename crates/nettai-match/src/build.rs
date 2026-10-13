@@ -49,13 +49,29 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// A version of a game a build is one of (EXE6's Gregar, EXE5's Team
-/// ProtoMan, EXE4's Red Sun): its id, by which a screen words it, and the
-/// facts it sets of a side.
+/// ProtoMan, EXE4's Red Sun): its id, by which a screen words it (the game's
+/// strings' text table [`TEXT_TABLE`] names it: [`Version::text_key`]), the
+/// color a screen draws its tag in (0xRRGGBB: the version's own, Red Sun's
+/// red and Blue Moon's blue), and the facts it sets of a side.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Version {
     pub id: String,
+    pub color: u32,
     set: Data,
 }
+
+impl Version {
+    /// The key of the version's name in the game's strings' text table
+    /// [`TEXT_TABLE`].
+    pub fn text_key(&self) -> String {
+        format!("version.{}", self.id)
+    }
+}
+
+/// The game's strings' text table that names what a build is made of: each
+/// version (`version.<id>`) and each preset of each choice
+/// (`<choice>.<preset>`).
+pub const TEXT_TABLE: &str = "builds";
 
 /// One of a choice's presets: its id, by which a screen words it, the least
 /// value of the choice's fact that is this preset's (the game's line, where
@@ -86,6 +102,12 @@ impl Choice {
     /// The preset named `id`.
     pub fn preset(&self, id: &str) -> Option<&Preset> {
         self.presets.iter().find(|p| p.id == id)
+    }
+
+    /// The key of preset `preset`'s name in the game's strings' text table
+    /// [`TEXT_TABLE`].
+    pub fn text_key(&self, preset: &Preset) -> String {
+        format!("{}.{}", self.id, preset.id)
     }
 
     /// The facts the choice's presets set, by name, each once.
@@ -279,9 +301,9 @@ impl Builds {
         let data = nettai_battle::behavior::content_module_data(content, &module).ok_or_else(|| format!("{game} says nothing of its builds (no module {MODULE})"))??;
         let versions: Vec<Version> = items(data.field("versions"))
             .iter()
-            .map(|v| match v.field("id") {
-                Data::Str(id) => Ok(Version { id: id.clone(), set: v.field("set").clone() }),
-                _ => Err(format!("{module}: a version has its `id`")),
+            .map(|v| match (v.field("id"), v.field("color").int().and_then(|c| u32::try_from(c).ok()).filter(|c| *c <= 0xFF_FFFF)) {
+                (Data::Str(id), Some(color)) => Ok(Version { id: id.clone(), color, set: v.field("set").clone() }),
+                _ => Err(format!("{module}: a version has its `id` and its `color` (0xRRGGBB)")),
             })
             .collect::<Result<_, _>>()?;
         if versions.is_empty() {
@@ -1040,6 +1062,61 @@ mod tests {
                 assert_eq!(builds.as_built(&content, &mut again), Vec::<String>::new(), "{game} {version}");
             }
             assert!(builds.new_build(&content, "nowhere").unwrap_err().contains("no version"));
+        }
+    }
+
+    /// A side without its patch cards, in each game (`Side::without_patch_cards`:
+    /// what a match played with patch cards off plays). The list its rules
+    /// keep them in is empty, whatever a card is there (EXE6's and EXE5's a
+    /// card, EXE4's a card in its slot), and no other fact of the side
+    /// changes. It is the build before it had the card, by what its round
+    /// starts with (which the card had changed) and by its cards' MB, and
+    /// nothing is wrong with it. A side with no cards is the same without
+    /// them.
+    #[test]
+    fn a_side_without_its_patch_cards() {
+        let entry = |h: EntryHandle| Fact::Value(Value::Def(Registry::Entry, h.0));
+        for (content, game, versions) in games() {
+            let builds = Builds::of(&content, game).unwrap();
+            let plain = builds.new_build(&content, versions[0]).unwrap();
+            let cards = match game {
+                "exe4" => {
+                    let custom2 = ids::entry(&content, game, facts::PATCH_CARDS, "017-custom2").unwrap();
+                    vec![Fact::Record(vec![("card", entry(custom2)), ("slot", Fact::Value(Value::Int(0)))])]
+                }
+                "exe5" => patch_cards(&content, game, "quaker"),
+                _ => patch_cards(&content, game, "canodumb"),
+            };
+            let mut with = plain.clone();
+            with.set_fact(&content, facts::PATCH_CARDS, &cards).unwrap();
+            assert_eq!(Checked::of(&content, game, &with).problems, Vec::new(), "{game}");
+            let bare = with.without_patch_cards(&content);
+            assert_ne!(bare, with, "{game}");
+            // The list is empty, and every other fact is as it was.
+            for f in facts::fields(&content) {
+                let (was, is) = (with.facts.get(&content, f.name), bare.facts.get(&content, f.name));
+                if f.name == facts::PATCH_CARDS {
+                    assert_eq!(is, Some(Stated::List(Vec::new())), "{game}");
+                } else {
+                    assert_eq!(was, is, "{game}: {}", f.name);
+                }
+            }
+            // The build before it had the card.
+            let looked = |side: &Side| {
+                let mut checked = Checked::of(&content, game, side);
+                assert_eq!(checked.problems, Vec::new(), "{game}");
+                let used = checked.overview(&content, side).unwrap().budget(facts::PATCH_CARDS).map(|b| b.count.used);
+                (*checked.stats().unwrap(), used)
+            };
+            let (of_plain, of_with, of_bare) = (looked(&plain), looked(&with), looked(&bare));
+            assert_eq!(of_bare, of_plain, "{game}");
+            assert_ne!(of_with.0, of_plain.0, "{game}: the card changes what the round starts with");
+            // (EXE4's cards go by their slots: its list has no MB to count.)
+            assert!(of_with.1 > of_bare.1 || game == "exe4", "{game}: the cards' MB");
+            // A side with none is the same without them, and taking them
+            // out twice is taking them out.
+            assert_eq!(looked(&plain.without_patch_cards(&content)), of_plain, "{game}");
+            assert_eq!(bare.without_patch_cards(&content), bare, "{game}");
         }
     }
 

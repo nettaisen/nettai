@@ -746,3 +746,11 @@ language = "ja"
 "step_bug" = "いどうバグ"
 # Ours.
 "support" = "サポートバグ"
+
+# A build's versions and its choices' presets, by name (rules/builds): the Japanese games' own words.
+[builds]
+"versions" = "ソウルとギガクラスチップが決まります。"
+"version.protoman" = "チーム オブ ブルース"
+"version.colonel" = "チーム オブ カーネル"
+"light_dark.light" = "ライト"
+"light_dark.dark" = "ダーク"

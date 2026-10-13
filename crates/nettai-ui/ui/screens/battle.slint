@@ -294,27 +294,29 @@ component TouchPad inherits Rectangle {
 // The battle's own part of the window: the picture, the connection's corner, the phone's pad. The menus over it
 // are put in by app.slint, each from its screen's file.
 export component BattleScreen inherits Rectangle {
-    property <length> picture-height: Theme.phone ? min(self.height, (self.width - 2 * Theme.margin) * 2 / 3) : self.height;
+    // (On a phone the picture's room is the window's width, at its top, with no gutter: the picture is a whole
+    // multiple of the game's, and a gutter's 32 can be the difference between one multiple and the next.)
+    property <length> picture-height: Theme.phone ? min(self.height, self.width * 2 / 3) : self.height;
     Rectangle {
         background: Theme.phone ? transparent : #000000;
     }
 
     Picture {
-        x: Theme.phone ? Theme.margin : 0px;
-        y: Theme.phone ? Theme.margin : 0px;
-        width: Theme.phone ? parent.width - 2 * Theme.margin : parent.width;
+        x: 0;
+        y: 0;
+        width: parent.width;
         height: root.picture-height;
     }
 
     Connection {
         x: parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
-        y: (Theme.phone ? Theme.margin + root.picture-height : parent.height) - self.height - 16px;
+        y: (Theme.phone ? root.picture-height : parent.height) - self.height - 16px;
         visible: Shell.connection-shown;
     }
 
     if Theme.phone: TouchPad {
         x: Theme.margin;
-        y: Theme.margin + root.picture-height + 16px;
+        y: root.picture-height + 16px;
         width: parent.width - 2 * Theme.margin;
         height: parent.height - self.y - Theme.margin;
     }

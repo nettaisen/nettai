@@ -71,11 +71,14 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 /// first tick.) Version 7 has a match's frames say which match they are of
 /// (its seed, after the frame's kind), since the two players of a match
 /// play another on the same link, and lets a lobby go on after a match.
+/// Version 8 adds a setting of the match, whether patch cards apply: with
+/// them off the match is set up from each side without its cards, which a
+/// program of version 7 wouldn't do.
 ///
 /// A peer of another version is told from its first field, which every
 /// version's lobby messages and refusals start with, and nothing after it
 /// is read of such a peer.
-pub const VERSION: u16 = 7;
+pub const VERSION: u16 = 8;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer

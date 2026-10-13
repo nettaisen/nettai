@@ -382,6 +382,7 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | a direct address is malformed | That isn't an address. Use host:port. |
 | the port to host on is taken | That port is already in use. |
 | a save is another game's | Not an EXE6 save. |
+| a game's pack is there and can't be loaded | EXE6's data is out of date. Extract it again. |
 | anything else | Something went wrong. Details are in the log file. |
 
 ## 8. Behind the screens
