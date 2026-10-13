@@ -61,6 +61,9 @@ msgstr "トレーニング · ラウンド{}"
 msgid "{} vs {}"
 msgstr "{} vs {}"
 
+msgid "BATTLE"
+msgstr "バトル"
+
 msgid "DISPLAY"
 msgstr "表示"
 
@@ -76,6 +79,13 @@ msgstr "動き回る"
 msgid "Attacks at random"
 msgstr "ランダムに攻撃"
 
+msgid "Plays your recording"
+msgstr "記録を再生"
+
+# The dummy is played on a second connected gamepad.
+msgid "A second pad"
+msgstr "2つ目のパッド"
+
 msgid "Custom screen"
 msgstr "カスタム画面"
 
@@ -84,6 +94,49 @@ msgstr "チップを選ばない"
 
 msgid "Picks the first it can"
 msgstr "最初のチップを選ぶ"
+
+# The dummy's recording: none, or how long it is ({} is its seconds, to a tenth). Choosing the row records one.
+msgid "Recording"
+msgstr "記録"
+
+msgid "None"
+msgstr "なし"
+
+msgid "{} s"
+msgstr "{}秒"
+
+# Over the battle while the player drives the dummy to record it.
+msgid "RECORDING"
+msgstr "記録中"
+
+# Battle: a side's HP stays as it goes, or comes back full once a hit is over.
+msgid "Your HP"
+msgstr "あなたのHP"
+
+msgid "Dummy's HP"
+msgstr "ダミーのHP"
+
+msgid "Normal"
+msgstr "通常"
+
+msgid "Refills"
+msgstr "回復する"
+
+msgid "Custom gauge"
+msgstr "カスタムゲージ"
+
+msgid "Always full"
+msgstr "常に満タン"
+
+# The order the custom screen deals the folder in: shuffled, or from the folder's top.
+msgid "Chip draw"
+msgstr "チップの配り方"
+
+msgid "Shuffled"
+msgstr "シャッフル"
+
+msgid "Folder order"
+msgstr "フォルダ順"
 
 msgid "Input display"
 msgstr "入力表示"

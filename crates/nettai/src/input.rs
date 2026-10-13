@@ -13,7 +13,7 @@
 //! finger by itself, so a direction and a button are held together.
 
 use crate::nav::Rect;
-use gamepad_facade::{Axis, Button, EventKind};
+use gamepad_facade::{Axis, Button, EventKind, Id};
 use nettai_battle::input::keys;
 use slint::winit_030::winit::event::{ElementState, KeyEvent};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
@@ -466,14 +466,19 @@ pub struct PadEvents {
     pub at: Option<Instant>,
 }
 
-/// The gamepads, through gamepad-facade. Every pad plays the one player.
+/// The gamepads, through gamepad-facade. Every pad plays the one player, unless training's dummy has the second
+/// ([`Pad::apart`]).
 #[derive(Default)]
 pub struct Pad {
-    /// The buttons held, as pad buttons (the bindings may change under them).
-    down: Vec<Button>,
-    /// The directions the left stick holds, as GBA buttons.
-    stick: u16,
-    stick_at: (f32, f32),
+    /// The buttons held, as pad buttons, by the pad holding them (the bindings may change under them).
+    down: Vec<(Id, Button)>,
+    /// Each pad's left stick: where it is, and the directions it holds as GBA buttons.
+    sticks: Vec<(Id, (f32, f32), u16)>,
+    /// The pads, in the order they were first used (a pad is known by its first event).
+    pads: Vec<Id>,
+    /// The second pad is training's dummy's (its Action "a second pad"): its buttons aren't the player's, and
+    /// its presses don't reach the menus.
+    pub apart: bool,
     /// The direction held in the menus, since when, and when it last repeated.
     repeat: Option<(Action, Instant, Instant)>,
 }
@@ -485,21 +490,46 @@ impl Pad {
         Pad::default()
     }
 
-    /// The GBA buttons the pads hold, as `bindings` has them; the left stick moves whatever is bound.
-    pub fn held(&self, bindings: &Bindings) -> u16 {
-        self.down.iter().fold(self.stick, |held, b| held | bindings.of_pad(*b))
+    /// Whether `id` is the dummy's pad: the second used, while it is apart.
+    fn dummys(&self, id: Id) -> bool {
+        self.apart && self.pads.get(1) == Some(&id)
     }
 
-    /// Take what the pads did since the last poll.
+    /// What the pads `of` hold, as `bindings` has them; the left stick moves whatever is bound.
+    fn held_by(&self, bindings: &Bindings, of: impl Fn(Id) -> bool) -> u16 {
+        let sticks = self.sticks.iter().filter(|(id, ..)| of(*id)).fold(0, |held, (.., at)| held | at);
+        self.down.iter().filter(|(id, _)| of(*id)).fold(sticks, |held, (_, b)| held | bindings.of_pad(*b))
+    }
+
+    /// The GBA buttons the player's pads hold, as `bindings` has them; the left stick moves whatever is bound.
+    pub fn held(&self, bindings: &Bindings) -> u16 {
+        self.held_by(bindings, |id| !self.dummys(id))
+    }
+
+    /// The GBA buttons training's dummy's pad holds, while there is one (the second used, while it is apart).
+    pub fn second(&self, bindings: &Bindings) -> Option<u16> {
+        let id = *self.pads.get(1).filter(|_| self.apart)?;
+        Some(self.held_by(bindings, |of| of == id))
+    }
+
+    /// Take what the pads did since the last poll (the dummy's pad's presses aren't the menus').
     pub fn poll(&mut self, bindings: &Bindings, now: Instant) -> PadEvents {
         let mut out = PadEvents::default();
         while let Some(event) = gamepad_facade::next_event() {
+            let id = event.id;
+            if !matches!(event.kind, EventKind::Disconnected) && !self.pads.contains(&id) {
+                self.pads.push(id);
+            }
+            let dummys = self.dummys(id);
             match event.kind {
                 EventKind::ButtonDown(button) => {
-                    out.at.get_or_insert(now);
-                    if !self.down.contains(&button) {
-                        self.down.push(button);
+                    if !self.down.contains(&(id, button)) {
+                        self.down.push((id, button));
                     }
+                    if dummys {
+                        continue;
+                    }
+                    out.at.get_or_insert(now);
                     out.buttons.push(button);
                     out.pressed |= bindings.of_pad(button);
                     let Some(action) = bindings.pad_action(button) else { continue };
@@ -509,28 +539,39 @@ impl Pad {
                     }
                 }
                 EventKind::ButtonUp(button) => {
-                    self.down.retain(|b| *b != button);
-                    if matches!(button, Button::DPadUp | Button::DPadDown | Button::DPadLeft | Button::DPadRight) {
+                    self.down.retain(|d| *d != (id, button));
+                    if !dummys && matches!(button, Button::DPadUp | Button::DPadDown | Button::DPadLeft | Button::DPadRight) {
                         self.repeat = None;
                     }
                 }
                 EventKind::AxisMotion { axis, value } => {
+                    let at = match self.sticks.iter().position(|(of, ..)| *of == id) {
+                        Some(at) => at,
+                        None => {
+                            self.sticks.push((id, (0.0, 0.0), 0));
+                            self.sticks.len() - 1
+                        }
+                    };
+                    let (_, stick_at, stick) = &mut self.sticks[at];
                     match axis {
-                        Axis::LeftX => self.stick_at.0 = value,
+                        Axis::LeftX => stick_at.0 = value,
                         // (Up is negative.)
-                        Axis::LeftY => self.stick_at.1 = value,
+                        Axis::LeftY => stick_at.1 = value,
                         _ => continue,
                     }
-                    let was = self.stick;
-                    self.stick = 0;
-                    for (at, minus, plus) in [(self.stick_at.0, keys::LEFT, keys::RIGHT), (self.stick_at.1, keys::UP, keys::DOWN)] {
+                    let was = *stick;
+                    *stick = 0;
+                    for (at, minus, plus) in [(stick_at.0, keys::LEFT, keys::RIGHT), (stick_at.1, keys::UP, keys::DOWN)] {
                         if at < -0.5 {
-                            self.stick |= minus;
+                            *stick |= minus;
                         } else if at > 0.5 {
-                            self.stick |= plus;
+                            *stick |= plus;
                         }
                     }
-                    let fresh = self.stick & !was;
+                    let (now_held, fresh) = (*stick, *stick & !was);
+                    if dummys {
+                        continue;
+                    }
                     if fresh != 0 {
                         out.at.get_or_insert(now);
                         out.pressed |= fresh;
@@ -542,15 +583,17 @@ impl Pad {
                         };
                         out.actions.push(action);
                         self.repeat = Some((action, now, now));
-                    } else if self.stick == 0 && was != 0 {
+                    } else if now_held == 0 && was != 0 {
                         self.repeat = None;
                     }
                 }
                 EventKind::Disconnected => {
-                    self.down.clear();
-                    self.stick = 0;
-                    self.stick_at = (0.0, 0.0);
-                    self.repeat = None;
+                    self.down.retain(|(of, _)| *of != id);
+                    self.sticks.retain(|(of, ..)| *of != id);
+                    self.pads.retain(|of| *of != id);
+                    if !dummys {
+                        self.repeat = None;
+                    }
                 }
                 EventKind::Connected => {}
             }
