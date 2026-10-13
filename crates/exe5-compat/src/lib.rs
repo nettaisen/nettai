@@ -184,6 +184,20 @@ pub struct KindEntry {
     /// one. The comparison skips it.
     #[serde(default)]
     pub scratch_status: bool,
+    /// The header-flag bits the other side's console decides off its open
+    /// bus on the tick a round's actors are spawned, which the comparison
+    /// skips on that tick: a first barrier's visual asks whether the local
+    /// navi is blind (0x0800CDF4) before that navi's init made its
+    /// collision data, and the status word read through the null pointer
+    /// is the opcode the BIOS last fetched, an interrupt's (no blind bit:
+    /// the visual is seen) or a software interrupt's (the bit: hidden for
+    /// the tick), by where the tick's interrupt landed. With objects in
+    /// the stage's actor list the recorded consoles read the second,
+    /// without them the first, which the engine keeps
+    /// (`status.missing_collision_status`); the screen is black on that
+    /// tick either way.
+    #[serde(default)]
+    pub round_start_open_bus_flags: u8,
 }
 
 /// Where a ROM other than Team ProtoMan's US one has what compat names by

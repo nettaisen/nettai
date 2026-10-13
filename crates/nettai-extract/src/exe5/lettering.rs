@@ -24,94 +24,41 @@
 //! HUD's and the custom screen's blocks, every chip's icon and picture, the
 //! backgrounds a netbattle has, the sprites; and its frame comparison knows
 //! what a Japanese console shows otherwise: background 0x05, the battle mode
-//! 1 label 14-17). Team of Blues' and Team of Colonel's lettering is the same, which
-//! is checked here: the pack's is Team of Blues'. The addresses are the
-//! Japanese ROMs' own (their data moved against the US ROMs'): where the
-//! routines the two builds share load what the US ROMs' load at
-//! hud.rs's and custom.rs's addresses.
+//! 1 label 14-17). Team of Blues' and Team of Colonel's lettering is the
+//! same: the pack's is whichever's is given. The same code reaches each
+//! block as in the US ROMs: hud.rs's and custom.rs's places.
 
-use crate::exe5::rom::{Rom, Roms};
+use crate::exe5::rom::Roms;
 use nettai_assets::{ButtonLettering, CustomLettering, Hud, HudLettering, SlotPictures};
 use nettai_content::names::AssetNames;
 
 /// The language the Japanese ROMs' lettering is.
 pub const LANGUAGE: &str = "ja";
 
-/// Where a Japanese ROM has its words.
-struct Addresses {
-    /// The 8x16 font (the US Team ProtoMan ROM's 0x086CBA68).
-    font: u32,
-    /// The dialogue font (0x086C14C8) and its advances (0x080426B4).
-    dialogue_font: (u32, u32),
-    /// The HUD's text lines (0x0873ACF0).
-    texts: u32,
-    /// The banners and their glyph filler (0x0801B810, 0x0801C6F4), and
-    /// their palette (0x0873D1F8).
-    banners: (u32, u32),
-    banner_palette: u32,
-    /// "Cstmzing..." (the first of the three transfer lists before the
-    /// banners: 7x2 tiles here).
-    waiting: (u32, usize),
-    /// The gauge's tiles (0x086FA2CC).
-    gauge_tiles: u32,
-    /// The chip window's pictures and their palettes (as custom.rs's `OK`,
-    /// `OK_PICKED`, `OTHER`, `REDEAL`, `SCRAP`).
-    ok: (u32, u32),
-    ok_picked: (u32, u32),
-    other: (u32, u32),
-    redeal: (u32, u32),
-    scrap: (u32, u32),
-    /// The soul button's tiles (0x086FBB64).
-    soul_buttons: u32,
-}
+/// The Japanese ROMs' notice of the other player customizing: seven tiles
+/// wide, for the US ROMs' eight.
+const WAITING_BYTES: usize = 0x1C0;
 
-/// Team of Blues' (`ROCKEXE5_TOB`, BRBJ).
-const BLUES: Addresses = Addresses {
-    font: 0x086E_20FC,
-    dialogue_font: (0x086D_7B5C, 0x0804_25C0),
-    texts: 0x0875_133C,
-    banners: (0x0801_B7DC, 0x0801_C6B0),
-    banner_palette: 0x0875_3638,
-    waiting: (0x0875_2DF8, 0x1C0),
-    gauge_tiles: 0x0871_08C4,
-    ok: (0x0874_83A0, 0x0874_B3A0),
-    ok_picked: (0x0874_7E60, 0x0874_B320),
-    other: (0x0874_7E60, 0x0874_B300),
-    redeal: (0x0874_83A0, 0x0874_B380),
-    scrap: (0x0876_533C, 0x0876_589C),
-    soul_buttons: 0x0871_215C,
-};
-
-/// Team of Colonel's (`ROCKEXE5_TOC`, BRKJ): the same data, 0x1470 bytes
-/// further on mostly.
-const COLONEL: Addresses = Addresses {
-    font: 0x086E_3590,
-    dialogue_font: (0x086D_8FF0, 0x0804_25C8),
-    texts: 0x0875_27AC,
-    banners: (0x0801_B7D8, 0x0801_C6AC),
-    banner_palette: 0x0875_4AA8,
-    waiting: (0x0875_4268, 0x1C0),
-    gauge_tiles: 0x0871_1D34,
-    ok: (0x0874_9810, 0x0874_C810),
-    ok_picked: (0x0874_92D0, 0x0874_C790),
-    other: (0x0874_92D0, 0x0874_C770),
-    redeal: (0x0874_9810, 0x0874_C7F0),
-    scrap: (0x0876_67DC, 0x0876_6D3C),
-    soul_buttons: 0x0871_35CC,
-};
-
-/// A Japanese ROM's HUD lettering; `base` is the pack's own HUD (a banner
-/// whose glyphs are the same is left to it).
-fn hud_of(
-    rom: &Rom,
-    a: &Addresses,
-    base: &Hud,
-    names: &AssetNames,
-    base_present: bool,
-) -> HudLettering {
+/// The HUD's Japanese lettering, from a Japanese ROM: placeholders without
+/// one, but the gauge's tiles, which are the same in the four ROMs. `base`
+/// is the pack's own HUD (a banner whose glyphs are the same is left to
+/// it).
+pub fn hud(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
     use crate::exe5::hud::{
-        BANNER_COUNT, FONT_GLYPHS, GAUGE_BYTES, banner_at, dialogue_font, palette, texts, tiles,
+        BANNER_COUNT, BANNER_PALETTE, FONT, FONT_GLYPHS, GAUGE_BYTES, GAUGE_TILES, TEXTS, WAITING, banner, dialogue_font, palette, texts,
+        tiles,
     };
+    let (jp, any) = (roms.jp(), roms.any());
+    let gauge_tiles = if any.is_present() {
+        tiles(any.rom, any.at(GAUGE_TILES), GAUGE_BYTES)
+    } else {
+        crate::placeholders::tiles(GAUGE_BYTES / 32)
+    };
+    if !jp.is_present() {
+        return HudLettering { gauge_tiles, ..crate::placeholders::lettering(base, names, LANGUAGE) };
+    }
+    let (rom, at) = (jp.rom, |place| jp.at(place));
+    let base_present = roms.us().is_present();
     let (cell, dialogue) = names
         .language_glyphs
         .get(LANGUAGE)
@@ -123,9 +70,7 @@ fn hud_of(
         .iter()
         .enumerate()
         .map(|(id, own)| {
-            let b = banner_at(rom, a.banners, id as u32);
-            // The words differ, and where a banner starts with them (a
-            // longer name further left); not what kind of banner it is.
+            let b = banner(jp, id as u32);
             if base_present {
                 assert_eq!(
                     (b.kind, b.number_at, b.glyphs.len()),
@@ -138,112 +83,58 @@ fn hud_of(
         })
         .collect();
     HudLettering {
-        font: tiles(rom, a.font, 0x40 * FONT_GLYPHS),
+        font: tiles(rom, at(FONT), 0x40 * FONT_GLYPHS),
         font_chars: (0..FONT_GLYPHS)
             .map(|k| cell.get(k).cloned().unwrap_or_else(|| format!("[{k:03x}]")))
             .collect(),
-        dialogue_font: dialogue_font(rom, a.dialogue_font, (&cell, &dialogue)),
-        texts: texts(rom, a.texts),
+        dialogue_font: dialogue_font(jp, (&cell, &dialogue)),
+        texts: texts(rom, at(TEXTS)),
         banners,
-        banner_palette: palette(rom, a.banner_palette),
-        waiting: tiles(rom, a.waiting.0, a.waiting.1),
-        waiting_palette: palette(rom, a.banner_palette),
-        gauge_tiles: tiles(rom, a.gauge_tiles, GAUGE_BYTES),
-        // (Its text where the US games' is.)
+        banner_palette: palette(rom, at(BANNER_PALETTE)),
+        waiting: tiles(rom, at(WAITING), WAITING_BYTES),
+        waiting_palette: palette(rom, at(BANNER_PALETTE)),
+        gauge_tiles,
         chatbox_text: None,
     }
 }
 
-/// A Japanese ROM's custom-screen lettering.
-fn custom_of(rom: &Rom, a: &Addresses) -> CustomLettering {
+/// The custom screen's Japanese lettering, from a Japanese ROM: the chip
+/// window's worded pictures and the soul button's label. (Arm Change's
+/// picture, which the lettering has too, has no words: any ROM's.)
+pub fn custom(roms: &Roms) -> CustomLettering {
     use crate::exe5::custom::{
-        ARM_CHANGE_BUTTON, REDEAL_BUTTON, SOUL_BUTTON, SOUL_BUTTON_BYTES, picture,
+        ARM_CHANGE_BUTTON, OK, OK_PICKED, OTHER, REDEAL, REDEAL_BUTTON, SCRAP, SOUL_BUTTON, SOUL_BUTTONS, picture, tiles,
     };
+    let (jp, any) = (roms.jp(), roms.any());
     CustomLettering {
         pictures: SlotPictures {
-            ok: picture(rom, a.ok),
-            ok_picked: picture(rom, a.ok_picked),
-            other: picture(rom, a.other),
+            ok: picture(jp, OK),
+            ok_picked: picture(jp, OK_PICKED),
+            other: picture(jp, OTHER),
         },
-        // (EXE5 has no Cross window.)
         form_names: Vec::new(),
-        // Arm Change's and the re-deal button's pictures in the chip window,
-        // and the soul button's tiles (by name, as a pack keeps them).
         buttons: vec![
             (
                 ARM_CHANGE_BUTTON.into(),
                 ButtonLettering {
                     tiles: None,
-                    picture: Some(picture(rom, a.scrap)),
+                    picture: Some(picture(any, SCRAP)),
                 },
             ),
             (
                 REDEAL_BUTTON.into(),
                 ButtonLettering {
                     tiles: None,
-                    picture: Some(picture(rom, a.redeal)),
+                    picture: Some(picture(jp, REDEAL)),
                 },
             ),
             (
                 SOUL_BUTTON.into(),
                 ButtonLettering {
-                    tiles: Some(crate::exe5::hud::tiles(
-                        rom,
-                        a.soul_buttons,
-                        SOUL_BUTTON_BYTES,
-                    )),
+                    tiles: Some(tiles(jp, SOUL_BUTTONS)),
                     picture: None,
                 },
             ),
         ],
-    }
-}
-
-/// The HUD's Japanese lettering (Team of Blues'; Team of Colonel's is the
-/// same).
-pub fn hud(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
-    let source = [(roms.protoman_jp, &BLUES), (roms.colonel_jp, &COLONEL)]
-        .into_iter()
-        .find(|(r, _)| r.is_present());
-    match source {
-        Some((rom, a)) => hud_of(rom, a, base, names, roms.protoman.is_present()),
-        None => crate::placeholders::lettering(base, names, LANGUAGE),
-    }
-}
-
-/// The custom screen's Japanese lettering (likewise).
-pub fn custom(roms: &Roms) -> CustomLettering {
-    let source = [(roms.protoman_jp, &BLUES), (roms.colonel_jp, &COLONEL)]
-        .into_iter()
-        .find(|(r, _)| r.is_present());
-    match source {
-        Some((rom, a)) => custom_of(rom, a),
-        None => CustomLettering {
-            pictures: crate::placeholders::slot_pictures(),
-            buttons: vec![
-                (
-                    crate::exe5::custom::SOUL_BUTTON.into(),
-                    ButtonLettering {
-                        tiles: Some(crate::placeholders::tiles(18)),
-                        picture: Some(crate::placeholders::picture()),
-                    },
-                ),
-                (
-                    crate::exe5::custom::REDEAL_BUTTON.into(),
-                    ButtonLettering {
-                        tiles: None,
-                        picture: Some(crate::placeholders::picture()),
-                    },
-                ),
-                (
-                    crate::exe5::custom::ARM_CHANGE_BUTTON.into(),
-                    ButtonLettering {
-                        tiles: None,
-                        picture: Some(crate::placeholders::picture()),
-                    },
-                ),
-            ],
-            ..Default::default()
-        },
     }
 }
