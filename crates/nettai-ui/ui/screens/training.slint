@@ -10,7 +10,7 @@
 import { Theme, Audit } from "../theme.slint";
 import { NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture } from "../shell.slint";
-import { Button, ButtonKind, Select, Stepper, Label, Note, Message, Value, Pill, PanelBack, MenuItem, GroupTitle } from "../widgets.slint";
+import { Button, ButtonKind, Select, Stepper, Label, Note, Message, Value, Pill, PanelBack, MenuItem, GroupTitle, ScrollPage } from "../widgets.slint";
 import { Arrive } from "../motion.slint";
 import { MenuOverlay } from "battle.slint";
 import { VersionTag } from "../build.slint";
@@ -29,10 +29,18 @@ export enum TrainingOption {
     added,
     // The groups' titles.
     dummy,
+    battle,
     display,
     // A label and a value between arrows.
     action,
     custom-screen,
+    // Its value is how long the dummy's recording is, in tenths of a second (0: none); it is never stepped,
+    // and choosing it records one.
+    recording,
+    your-hp,
+    dummys-hp,
+    custom-gauge,
+    chip-draw,
     input-display,
 }
 
@@ -66,6 +74,8 @@ export global TrainingView {
     // The menu's rows, and whether it has CHANGE BUILDS and QUIT TO MENU (a session Training started itself).
     in property <[TrainingRow]> rows;
     in property <bool> leave;
+    // The player is driving the dummy to record it (until Start).
+    in property <bool> recording;
     // The input display: shown, and the buttons each side holds (the GBA's bits).
     in property <bool> inputs;
     in property <int> held-yours;
@@ -92,6 +102,9 @@ export global TrainingView {
         if option == TrainingOption.dummy {
             return @tr("DUMMY");
         }
+        if option == TrainingOption.battle {
+            return @tr("BATTLE");
+        }
         if option == TrainingOption.display {
             return @tr("DISPLAY");
         }
@@ -101,6 +114,21 @@ export global TrainingView {
         if option == TrainingOption.custom-screen {
             return @tr("Custom screen");
         }
+        if option == TrainingOption.recording {
+            return @tr("Recording");
+        }
+        if option == TrainingOption.your-hp {
+            return @tr("Your HP");
+        }
+        if option == TrainingOption.dummys-hp {
+            return @tr("Dummy's HP");
+        }
+        if option == TrainingOption.custom-gauge {
+            return @tr("Custom gauge");
+        }
+        if option == TrainingOption.chip-draw {
+            return @tr("Chip draw");
+        }
         if option == TrainingOption.input-display {
             return @tr("Input display");
         }
@@ -108,10 +136,22 @@ export global TrainingView {
     }
     pure public function value(option: TrainingOption, value: int) -> string {
         if option == TrainingOption.action {
-            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : @tr("Attacks at random"));
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Attacks at random") : (value == 3 ? @tr("Plays your recording") : @tr("A second pad"))));
         }
         if option == TrainingOption.custom-screen {
             return value == 0 ? @tr("Picks no chips") : @tr("Picks the first it can");
+        }
+        if option == TrainingOption.recording {
+            return value == 0 ? @tr("None") : @tr("{} s", "\{floor(value / 10)}.\{mod(value, 10)}");
+        }
+        if option == TrainingOption.your-hp || option == TrainingOption.dummys-hp {
+            return value == 0 ? @tr("Normal") : @tr("Refills");
+        }
+        if option == TrainingOption.custom-gauge {
+            return value == 0 ? @tr("Normal") : @tr("Always full");
+        }
+        if option == TrainingOption.chip-draw {
+            return value == 0 ? @tr("Shuffled") : @tr("Folder order");
         }
         if option == TrainingOption.input-display {
             return value == 0 ? @tr("Off") : @tr("On");
@@ -404,7 +444,7 @@ component MenuRow inherits Rectangle {
     in property <TrainingRow> entry;
     in property <int> index;
     property <bool> added: root.entry.option == TrainingOption.added;
-    property <bool> title: root.entry.option == TrainingOption.dummy || root.entry.option == TrainingOption.display;
+    property <bool> title: root.entry.option == TrainingOption.dummy || root.entry.option == TrainingOption.battle || root.entry.option == TrainingOption.display;
     property <bool> option: !root.added && !root.title;
     property <string> label: TrainingView.label(root.entry.option);
     property <string> value: TrainingView.value(root.entry.option, root.entry.value);
@@ -425,7 +465,7 @@ component MenuRow inherits Rectangle {
         x: 0;
         y: 0;
         visible: root.added;
-        nav: root.added ? "menu.added" : "";
+        nav: root.added ? "menu.rows.added" : "";
         nav-index: root.index;
         text: root.entry.text;
     }
@@ -434,7 +474,7 @@ component MenuRow inherits Rectangle {
         visible: root.option;
         background: hit.has-hover ? Theme.tint : transparent;
         hit := Focusable {
-            nav: root.option ? "menu.option" : "";
+            nav: root.option ? "menu.rows.option" : "";
             nav-index: root.index;
             kind: NavKind.stepper;
             enabled: root.option;
@@ -457,7 +497,7 @@ component MenuRow inherits Rectangle {
         Stepper {
             x: Theme.phone ? 0px : parent.width - self.width - 8px;
             y: Theme.phone ? 24px : (parent.height - self.height) / 2;
-            nav: "menu.option";
+            nav: "menu.rows.option";
             nav-index: root.index;
             value: root.value;
             value-width: root.value-width;
@@ -491,16 +531,23 @@ export component TrainingMenu inherits MenuOverlay {
     title: @tr("TRAINING");
     note: @tr("{} vs {}", TrainingView.session-yours, TrainingView.session-dummys);
     side: true;
-    VerticalLayout {
+    // (The rows scroll where they don't all fit, as on a phone: the page's bar is in the panel's margin, so the
+    // rows are the panel's width either way.)
+    rows := ScrollPage {
         x: 0;
         y: 0;
-        width: root.inner-width;
-        height: root.buttons-y;
-        alignment: start;
-        spacing: 4px;
-        for row[i] in TrainingView.rows: MenuRow {
-            entry: row;
-            index: i;
+        width: root.inner-width + 12px;
+        height: root.buttons-y - 8px;
+        nav: "menu.rows";
+        content-height: list.preferred-height;
+        list := VerticalLayout {
+            width: rows.view-width;
+            alignment: start;
+            spacing: 4px;
+            for row[i] in TrainingView.rows: MenuRow {
+                entry: row;
+                index: i;
+            }
         }
     }
 
@@ -662,9 +709,42 @@ component InputRow inherits Rectangle {
 
 // The input display: the player's buttons over the dummy's, in the picture's top right corner, under the line
 // the battle's own text takes there (its top eighth); on a phone, where the picture is small, under MENU. It is
-// over the battle and under the menu, and takes no clicks.
+// over the battle and under the menu, and takes no clicks. With it, the mark that the dummy is being recorded:
+// over the picture's middle under the same line; on a phone under the picture at its right.
 export component TrainingInputs inherits Rectangle {
     Rectangle {
+        x: Theme.phone ? parent.width - Theme.margin - self.width : Shell.picture-room-x + Shell.picture-x + (Shell.picture-width - self.width) / 2;
+        y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
+        width: rec.preferred-width + 34px;
+        height: 26px;
+        visible: TrainingView.recording;
+        background: Theme.shade;
+        border-width: 1px;
+        border-color: Theme.p2;
+        Rectangle {
+            x: 10px;
+            y: 9px;
+            width: 8px;
+            height: 8px;
+            background: Theme.p2;
+        }
+
+        rec := Text {
+            x: 26px;
+            y: 0;
+            height: parent.height;
+            text: @tr("RECORDING");
+            color: Theme.text;
+            font-family: Theme.display;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: Theme.label-tracking;
+            vertical-alignment: center;
+        }
+    }
+
+    Rectangle {
+        visible: TrainingView.inputs;
         x: Theme.phone ? Theme.margin : Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
         y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
         width: 259px;

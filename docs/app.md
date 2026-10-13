@@ -33,7 +33,7 @@ variables are for development:
 | Variable | What it does |
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
-| `NETTAI_TRAINING=<game>` | Starts straight into a training session of the game: new builds of its first two versions, the other a dummy that stands still. |
+| `NETTAI_TRAINING=<game>` | Starts straight into a training session of the game: new builds of its first two versions, the other a dummy that stands still, the Battle options (§15) as Training last left them. |
 | `NETTAI_REPLAY=<file>` | Starts straight into watching the replay, its game selected; `NETTAI_REPLAY_SPEED=half\|1\|2\|4` at that speed. |
 | `NETTAI_FFMPEG=<program>` | The `ffmpeg` a video is made with, instead of the one found (§16). |
 | `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle, on the main menu and in a replay's viewer; with the first, the replays' listing's and play-outs' times, and where each seek of the viewer landed (§16). |
@@ -157,6 +157,7 @@ player:
 
 - the buttons are bound as the keys are; the defaults are the south button A, the west button B, the shoulders L
   and R, Start and Back;
+- in training, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
 - the left stick moves whatever is bound;
 - the Guide button opens nettai's menu, and in training the north button starts over.
 
@@ -1405,6 +1406,16 @@ build of each of the game's versions (and one that can't be used) in place of th
 screen lists are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through the
 screen as a player makes them, and Replays lists replays of the pass's own.
 
+**Training's steps** (`tour/training.rs`) walk the entry, the two cards, the battle and the training menu
+(each Battle row with its value changed, a pair apart), and drive the options in the battle as a player would,
+the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
+the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
+Recording row chosen, a recording made (RECORDING over the battle) and played. `training.txt` in the pass's
+folder says what no picture does at each: both navis' HP, the gauge, the options, each side's deal beside the
+top of its folder as saved, and the dummy's buttons and panel a quarter of a second apart as it plays the
+recording; that is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
+locked screen draws no frames, and the training battle never starts (`training.txt` says "no battle").
+
 **Builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`): the list
 with none and with three builds (one named in Japanese, one with a name too long for its row), a new build's
 dialog with the focus a control on, a file that is no save dropped on the list, a build's rename and the
@@ -1847,20 +1858,53 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 
 | Row | Values | What it sets |
 |---|---|---|
-| Dummy: Action | Stands still, Moves around, Attacks at random | the library's `Opponent::in_fight`, from the next tick |
+| Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
+| Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
+| Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
+| Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
+| Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Display: Input display | Off, On | the app's own drawing, below |
+
+The Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
+the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
+(a navi's HP, the custom gauge, the battle folder the custom screen deals from) before each tick, never a rule
+of the simulation. With them at their normal values the battle is
+the set's as it was before they existed, tick for tick by digest (the library's test of it, docs/frontend.md
+§2), and every online match and replay is untouched: only live play has them. They act on the battle as it
+steps behind the menu in the game's own pause, or held still where the game wouldn't pause, and change
+nothing of the pause: a refill shows there (the HP rolls back up under the menu), the gauge's value is full
+there and the engine flags it full once the fight runs again, the folder is put in order there (the library's
+`the_options_act_in_the_games_own_pause`).
 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
-MENU. The menu opens where the focus last was in it. The dummy's setup and the input display are remembered
-between runs (`training.action`, `training.custom-screen`, `training.inputs`); a session another screen started
-begins as that screen says and keeps nothing of the dummy's.
+MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
+display are remembered between runs (`training.action`, `training.custom-screen`, `training.your-hp`,
+`training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`); a session another screen started begins as that screen says, every
+battle option at its normal value, and keeps nothing of the dummy's or the battle's.
 
-*Adding a row* (the design's Your HP, Dummy's HP, Custom gauge, Chip draw, Recording and a second pad wait for
-the engine, and aren't shown): a value of `TrainingOption` and its words in training.slint (`label`, `value`),
-its place in `ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row
-too.
+**The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the
+Recording row closes the menu, and from the battle as it stands the player's buttons drive the dummy, from
+wherever it is (the player's own navi stands still; on the custom screen the player's buttons are their own
+screen's as ever, and the dummy's screen does what its Custom screen row says). RECORDING shows over the
+battle meanwhile (in the dummy's color, with the input display's layer: `TrainingInputs`). Each tick the fight
+runs (not the turn's banner, the custom screen, the game's pause) its buttons are kept, up to a minute. Start
+ends it, and doesn't pause the game (or the menu opening, or starting over, or the minute end it): the
+dummy's Action becomes Plays your
+recording, and it plays the buttons over and over from wherever it stands, while the player has their navi
+back. A new recording replaces it. Nothing of it is kept between sessions, and Plays your recording isn't
+remembered as the Action (with nothing recorded the dummy stands still).
+
+**A second pad.** With the dummy's Action "A second pad", the second gamepad used (the pads are known in the
+order each was first pressed, `input::Pad`) is the dummy's: what it holds is the dummy's buttons, in the fight
+and on its custom screen (the library's `LivePlayer::set_second_pad`, each frame before the ticks; its START
+reaches the battle on the custom screen alone, the game's pause being the player's), and its
+presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
+its custom screen does as its row says. Any other Action gives the pads back to the player.
+
+*Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`), its place in
+`ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row too.
 
 **The input display** (`TrainingInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
@@ -1872,7 +1916,8 @@ nothing held: the battle takes no button then but the START that holds it in the
 presses go nowhere.
 
 **On a phone** the entry is one column (the rows, the line, the cards side by side, the arena, START TRAINING at
-the foot), the menu's rows have their label over their arrows and its buttons are one over the other, and in
+the foot), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
+a desktop holds them all) and its buttons are one over the other, and in
 battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, which a battle's owner sets).
 
 **What isn't there.**
