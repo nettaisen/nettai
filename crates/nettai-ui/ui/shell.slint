@@ -248,7 +248,7 @@ export global Errors {
             return @tr("This replay is damaged and can't be played.");
         }
         if kind == ErrorKind.replay-other-game {
-            return @tr("This is an {} replay. Pick {} to watch it.", detail, detail);
+            return @tr("This is a {} replay. Pick {} to watch it.", detail, detail);
         }
         if kind == ErrorKind.no-ffmpeg {
             return @tr("ffmpeg wasn't found. Install it to export video.");
@@ -260,7 +260,7 @@ export global Errors {
             return @tr("The video couldn't be made. Details are in the log file.");
         }
         if kind == ErrorKind.wrong-game-save {
-            return @tr("Not an {} save.", detail);
+            return @tr("Not a {} save.", detail);
         }
         if kind == ErrorKind.game-outdated {
             return @tr("{}'s data is out of date. Extract it again.", detail);
@@ -324,7 +324,7 @@ export global Errors {
             return @tr("This replay is damaged");
         }
         if kind == ErrorKind.replay-other-game {
-            return @tr("This is an {} replay", detail);
+            return @tr("This is a {} replay", detail);
         }
         if kind == ErrorKind.no-ffmpeg {
             return @tr("ffmpeg wasn't found");
@@ -336,7 +336,7 @@ export global Errors {
             return @tr("The video couldn't be made");
         }
         if kind == ErrorKind.wrong-game-save {
-            return @tr("Not an {} save", detail);
+            return @tr("Not a {} save", detail);
         }
         if kind == ErrorKind.game-outdated {
             return @tr("{}'s data is out of date", detail);

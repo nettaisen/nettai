@@ -5,7 +5,8 @@
 id = "exe4"
 kind = "game"
 depends = ["exelib"]
-# Its locales' text tables (top-level tables of key to text that no definition owns): `bugs`, each NaviCust bug's
-# name, by the bug's name in the rules; `builds`, what a build is made of, by name (rules/builds: its versions and its
+# Its locales' text tables (top-level tables of key to text that no definition owns): `game`, the game's `name` as a
+# player sees it (BN4 in English, EXE4 in Japanese: the header's, a message's); `bugs`, each NaviCust bug's name, by
+# the bug's name in the rules; `builds`, what a build is made of, by name (rules/builds: its versions and its
 # choices' presets).
-text = ["bugs", "builds"]
+text = ["game", "bugs", "builds"]
