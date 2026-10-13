@@ -52,8 +52,8 @@ mod replays;
 mod training;
 
 /// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`, the
-/// screens' own: `training`, `builds`, `build-tabs`, `play` in the motion probe), for looking at one screen without
-/// the whole walk. (`play`, `replays` and Play's two apps apart walk those alone, in `walk`.)
+/// screens' own: `training`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen without the
+/// whole walk. (`play`, `replays` and Play's two apps apart, named alone, walk those alone, in `walk`.)
 fn walks(part: &str) -> bool {
     std::env::var("NETTAI_TOUR_ONLY").ok().is_none_or(|only| only.split(',').any(|p| p == part))
 }
@@ -331,10 +331,11 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     builds::steps(&mut add, &shot, lang, size);
     taking.set(walks("build-tabs"));
     build_tabs::steps(&mut add, &shot, lang, size);
-    taking.set(walks("shell"));
 
     // Play, with a second player (its own steps: `screens/play/tour.rs`).
+    taking.set(walks("play"));
     crate::screens::play::tour::steps(&mut add, &shot, size == "phone");
+    taking.set(walks("shell"));
 
     // Settings: the focus a step down; a value changed under the focus; a field being edited; a select's list;
     // the groups down the page.
@@ -456,6 +457,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
             app.go_now(ScreenId::Menu);
         }),
     );
+    taking.set(walks("replays"));
     replays::steps(&mut add, lang, size);
 }
 
@@ -513,6 +515,34 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     );
     taking.set(walks("shell"));
     burst(&mut add, "cursor-glide", &[0, 30, 60, 100, 180], act(Action::Down));
+
+    // A change of game: the new game's ground sweeps in from the side of the shoulder pressed (R's: from the
+    // right; L's: from the left) as the colors cross-fade, and a second press while it sweeps starts the next at
+    // once, over both. (Each game is made ready first, so that no game's runtime loads in a burst, the window
+    // still: three steps around the three games.)
+    for _ in 0..3 {
+        add(SETTLE, act(Action::Next));
+        add(SETTLE, Box::new(|_, _, tour| tour.wait_until(|app| app.shell.ready().is_some())));
+    }
+    let sweep = [0, 30, 60, 90, 120, 160, 200, 260, 400];
+    burst(&mut add, "game-from-the-right", &sweep, act(Action::Next));
+    burst(&mut add, "game-from-the-left", &sweep, act(Action::Previous));
+    burst(
+        &mut add,
+        "game-twice",
+        &[0, 30, 60, 90, 120, 160, 200, 240, 280, 340, 480],
+        Box::new(|_, app, tour| {
+            app.borrow_mut().act(Action::Next);
+            let (app, tour) = (app.clone(), tour.clone());
+            Timer::single_shot(Duration::from_millis(90), move || {
+                let mut app = app.borrow_mut();
+                app.act(Action::Next);
+                tour.seen.borrow_mut().push(format!("a second change of game 90 ms into the first's sweep: {} grounds", app.shell.looks.grounds()));
+            });
+        }),
+    );
+    add(SETTLE, act(Action::Previous));
+    add(SETTLE, act(Action::Previous));
     burst(&mut add, "screen-to-settings", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Settings));
     burst(&mut add, "screen-back-to-menu", &[0, 40, 80, 130, 170, 220, 300, 450], go(ScreenId::Menu));
 

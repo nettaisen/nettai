@@ -103,7 +103,7 @@ export component Label inherits Text {
     color: Theme.muted;
     font-family: Theme.display;
     font-size: 11px;
-    font-weight: 600;
+    font-weight: Theme.display-semibold;
     letter-spacing: Theme.label-tracking;
     vertical-alignment: center;
     overflow: elide;
@@ -180,7 +180,7 @@ export component Heading inherits Text {
     color: Theme.text;
     font-family: Theme.display;
     font-size: 20px;
-    font-weight: 700;
+    font-weight: Theme.display-bold;
     letter-spacing: Theme.title-tracking * 0.7;
     vertical-alignment: center;
     overflow: elide;
@@ -208,7 +208,7 @@ export component Pill inherits Rectangle {
         color: root.tone;
         font-family: Theme.display;
         font-size: 11px;
-        font-weight: 700;
+        font-weight: Theme.display-bold;
         letter-spacing: 0.7px;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -298,7 +298,7 @@ export component Button inherits Rectangle {
         color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : Theme.text;
         font-family: Theme.display;
         font-size: root.big ? 16px : 13px;
-        font-weight: root.kind == ButtonKind.main ? 700 : 600;
+        font-weight: root.kind == ButtonKind.main ? Theme.display-bold : Theme.display-semibold;
         letter-spacing: Theme.button-tracking;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -396,7 +396,7 @@ export component Stepper inherits Rectangle {
             color: root.enabled ? Theme.text : Theme.dim;
             font-family: root.family;
             font-size: root.title ? 16px : 14px;
-            font-weight: 700;
+            font-weight: root.title ? Theme.display-bold : 700;
             letter-spacing: root.title ? 0.6px : 0px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -411,7 +411,7 @@ export component Stepper inherits Rectangle {
             color: root.enabled ? Theme.text : Theme.dim;
             font-family: root.family;
             font-size: root.title ? 16px : 14px;
-            font-weight: 700;
+            font-weight: root.title ? Theme.display-bold : 700;
             letter-spacing: root.title ? 0.6px : 0px;
             horizontal-alignment: center;
             vertical-alignment: center;
@@ -502,7 +502,7 @@ export component Seg inherits Rectangle {
         color: root.chosen == 0 ? (root.enabled ? Theme.cursor : Theme.muted) : (root.enabled ? Theme.muted : Theme.dim);
         font-family: Theme.display;
         font-size: 13px;
-        font-weight: 700;
+        font-weight: Theme.display-bold;
         letter-spacing: 0.5px;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -534,7 +534,7 @@ export component Seg inherits Rectangle {
         color: root.chosen == 1 ? (root.enabled ? Theme.cursor : Theme.muted) : (root.enabled ? Theme.muted : Theme.dim);
         font-family: Theme.display;
         font-size: 13px;
-        font-weight: 700;
+        font-weight: Theme.display-bold;
         letter-spacing: 0.5px;
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -799,7 +799,7 @@ export component RowBack inherits Rectangle {
     in property <bool> chosen;
     in property <bool> hover;
     Rectangle {
-        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : root.hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : root.hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Rectangle {
@@ -890,7 +890,7 @@ export component MenuItem inherits Rectangle {
         color: root.danger ? Theme.bad : (root.on || !root.big ? Theme.text : Theme.muted);
         font-family: Theme.display;
         font-size: !root.big ? 14px : (Theme.phone ? 26px : 36px);
-        font-weight: 700;
+        font-weight: Theme.display-bold;
         letter-spacing: !root.big ? 0.9px : (Theme.cjk ? 1px : 2.9px);
         vertical-alignment: center;
         overflow: elide;
@@ -958,7 +958,7 @@ component TabItem inherits Rectangle {
         color: !root.tab.enabled ? Theme.dim : (root.chosen ? Theme.text : Theme.muted);
         font-family: Theme.display;
         font-size: Theme.phone ? 11px : 13px;
-        font-weight: 700;
+        font-weight: Theme.display-bold;
         letter-spacing: Theme.cjk ? 0.3px : (Theme.phone ? 0.6px : 1px);
         horizontal-alignment: center;
         vertical-alignment: center;
@@ -1072,7 +1072,7 @@ export component TabBar inherits Rectangle {
             height: parent.height - 1px;
             y: 0px;
             visible: root.shift > 0px;
-            background: @linear-gradient(90deg, Theme.ground-top 0%, #0a133000 100%);
+            background: @linear-gradient(90deg, Theme.ground-top 0%, Theme.ground-top.with-alpha(0) 100%);
         }
 
         Rectangle {
@@ -1081,7 +1081,7 @@ export component TabBar inherits Rectangle {
             height: parent.height - 1px;
             y: 0px;
             visible: root.shift < row.preferred-width - root.width;
-            background: @linear-gradient(90deg, #0a133000 0%, Theme.ground-top 100%);
+            background: @linear-gradient(90deg, Theme.ground-top.with-alpha(0) 0%, Theme.ground-top 100%);
         }
     }
 }
