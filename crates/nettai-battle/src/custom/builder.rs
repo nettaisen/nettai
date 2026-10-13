@@ -8,21 +8,18 @@ use crate::content::{ChipClass, ChipCode, ChipFlags, ChipModifier, Recipe};
 use crate::hand::ChipHand;
 use nettai_content_api::ChipHandle;
 
-/// `ChipHand::modifiers` bits.
+/// The marks the builder leaves in a hand entry (`ChipHand::modifiers`).
+/// What a mark does at the chip's use is its game's to say (the chip-use
+/// rules' `mark_damage` and `mark_heals`), and a game's screen may mark a
+/// pick with others (`Pick::marks`: EXE5's capsules, EXE4's chip offered
+/// again).
 pub mod modifier_bits {
     /// The chip is the folder's Regular chip.
     pub const REGULAR: u8 = 0x01;
-    /// WhiCapsl folded in: the chip paralyzes.
+    /// A paralyzing modifier chip folded in (EXE6's WhiCapsl).
     pub const PARALYZE: u8 = 0x02;
-    /// Uninstll folded in: the chip uninstalls (the damage word's 0x2000;
-    /// EXE5's confusion, mixed in by its yellow capsule).
+    /// An uninstalling modifier chip folded in (EXE6's Uninstll).
     pub const UNINSTALL: u8 = 0x04;
-    /// EXE5's capsules (0x08023824, by 0x08010368 and 0x0800FFF6): the
-    /// damage word's 0x1000 (its blindness), its 0x0800 (its HP bug), and
-    /// the user healed a tenth of its HP at the use.
-    pub const DAMAGE_1000: u8 = 0x08;
-    pub const HEAL: u8 = 0x10;
-    pub const DAMAGE_0800: u8 = 0x20;
 }
 
 /// Program Advances a player has formed this round (once each), by the
@@ -48,12 +45,14 @@ pub struct Pick {
     /// The chip as it counts (after `screen::checked`).
     pub chip: FolderChip,
     pub regular: bool,
-    /// The modifier bits a button mixed into the pick (the slot's `marks`:
-    /// EXE5's capsules).
+    /// The marks the pick carries into the hand: what a button mixed into
+    /// it (the slot's `marks`: EXE5's capsules) and its offer's own (EXE4's
+    /// chip offered again, 0x0801F0B8).
     pub marks: u8,
     /// Whether the hand's selection lists it: a chip dealt or offered, not
     /// one a picked button puts in the hand (EXE4's soul's, which
-    /// 0x0801F11C leaves out, its chip of family 15).
+    /// 0x0801F11C leaves out, its chip of family 15) nor an offer that says
+    /// it isn't (EXE4's chip offered again, 0x0801F118).
     pub listed: bool,
 }
 
