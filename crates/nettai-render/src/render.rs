@@ -68,6 +68,11 @@ pub struct Renderer {
     /// Make only the frame's lookups (`--audit`): nothing is drawn or
     /// composed, and `render` returns an empty frame.
     lookups_only: bool,
+    /// The HUD draws its pause display while a player holds the fight in
+    /// the game's own pause (the default, as the game does); off, it is
+    /// left out, and nothing else of the frame changes: a host that shows
+    /// a menu of its own over the game's pause.
+    pub pause_display: bool,
 }
 
 impl Renderer {
@@ -96,6 +101,7 @@ impl Renderer {
             measure: None,
             strings: None,
             lookups_only: false,
+            pause_display: true,
         }
     }
 
@@ -253,7 +259,7 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();
