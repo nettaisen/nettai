@@ -13,11 +13,13 @@ import { Shell, Page, PadButton, Picture } from "../shell.slint";
 import { Button, ButtonKind, Select, Stepper, Label, Note, Message, Value, Pill, PanelBack, MenuItem, GroupTitle } from "../widgets.slint";
 import { Arrive } from "../motion.slint";
 import { MenuOverlay } from "battle.slint";
+import { VersionTag } from "../build.slint";
 
-// A build as its card says it: its name, its version's tag and its navi.
+// A build as its card says it: its name, its version's tag (in the version's own color: the app's
+// `builds::version_tag`) and its navi.
 export struct TrainingBuild {
     name: string,
-    version: string,
+    version: VersionTag,
     navi: string,
 }
 
@@ -204,8 +206,8 @@ component BuildCard inherits Rectangle {
     tag := Pill {
         x: Theme.phone ? root.pad : name.x + name.width + 8px;
         y: Theme.phone ? 58px : 30px;
-        text: root.build.version;
-        tone: root.side == 1 ? Theme.p1 : Theme.p2;
+        text: root.build.version.text;
+        tone: root.build.version.tone;
     }
 
     Value {
