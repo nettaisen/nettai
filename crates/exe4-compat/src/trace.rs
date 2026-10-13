@@ -1074,6 +1074,69 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     compare_with(b, f, banner, round.local_screen_frame(i, frames), compat)
 }
 
+/// Side `side`'s auto battle data as the rules' send left it (their state's
+/// `auto_battle_places`), in the block's terms: each place's halfword (a chip
+/// by its number, a pattern record by its index with bit 15, 0 for `zero`),
+/// in order. None: the rules keep no such list.
+fn sent_places(b: &Battle, compat: &Compat, side: u8) -> Option<Vec<u16>> {
+    use nettai_content_api::FieldValue;
+    let (schema, state) = b.rules_state(side)?;
+    let list = schema.place(schema.index_of("auto_battle_places")?);
+    let n = state.len_at(list)?;
+    (0..n)
+        .map(|k| {
+            let p = list.elem(k)?;
+            let chip = match state.get_at(p.field("chip")?) {
+                FieldValue::Ref(Some((Registry::Chip, h))) => {
+                    let key = nettai_match::ids::local(&b.content.defs.chip(nettai_content_api::ChipHandle(h)).key).to_string();
+                    Some(compat.chip_entry(&key).map(|e| e.id).unwrap_or(0xFFFE))
+                }
+                _ => None,
+            };
+            let pattern = match state.get_at(p.field("pattern")?) {
+                FieldValue::U8(n) => n,
+                _ => 0,
+            };
+            let zero = matches!(state.get_at(p.field("zero")?), FieldValue::Bool(true));
+            Some(match (chip, pattern, zero) {
+                (Some(id), _, _) => id,
+                (None, n, _) if n > 0 => 0x8000 | (n as u16 - 1),
+                (None, _, true) => 0,
+                _ => 0xFFFF,
+            })
+        })
+        .collect()
+}
+
+/// The auto battle data as the consoles sent it (the setup's `ai_lists`:
+/// each block's 42 places, the entries packed to the front, and their count
+/// at +0x54) against the rules' send ([`sent_places`]), as the round starts.
+/// (The block's pattern records, from +0x58, are the save's: the send
+/// leaves them, and the rules read them from the setup.)
+fn sent_auto_battle_differences(b: &Battle, compat: &Compat, lists: &[String; 2]) -> Vec<String> {
+    let mut d = Vec::new();
+    for side in 0..2u8 {
+        let Ok(block) = unhex(&lists[side as usize]) else { continue };
+        if block.len() < 0x58 {
+            d.push(format!("side {side}'s sent auto battle data: a block of {:#x} bytes", block.len()));
+            continue;
+        }
+        let theirs: Vec<u16> = (0..42).map(|i| u16::from_le_bytes([block[2 * i], block[2 * i + 1]])).collect();
+        let count = u32::from_le_bytes([block[0x54], block[0x55], block[0x56], block[0x57]]);
+        let Some(mut ours) = sent_places(b, compat, side) else {
+            d.push(format!("side {side}'s sent auto battle data: the rules keep no `auto_battle_places`"));
+            continue;
+        };
+        let n = ours.len() as u32;
+        ours.resize(42, 0xFFFF);
+        let show = |v: &[u16]| v.iter().map(|x| format!("{x:04x}")).collect::<Vec<_>>().join(" ");
+        if (n, &ours) != (count, &theirs) {
+            d.push(format!("side {side}'s sent auto battle data: ours {n}: {} theirs {count}: {}", show(&ours), show(&theirs)));
+        }
+    }
+    d
+}
+
 /// The mark EXE4's install leaves in each hand entry's modifier flags
 /// (0x0801EA1E: its dark chips' costs, once an entry).
 const INSTALL_MARK: u8 = 0x04;
@@ -1448,6 +1511,13 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
                 (ours != theirs).then(|| format!("side {side}'s compiled stats: ours {ours} theirs {theirs}"))
             })
             .collect();
+        if !differences.is_empty() {
+            replay.stopped = Some(Stop::Differs { frame: round.setup.frame, differences });
+            return replay;
+        }
+    }
+    if let Some(lists) = &round.setup.ai_lists {
+        let differences = sent_auto_battle_differences(&b, compat, lists);
         if !differences.is_empty() {
             replay.stopped = Some(Stop::Differs { frame: round.setup.frame, differences });
             return replay;
