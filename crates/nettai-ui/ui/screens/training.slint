@@ -29,10 +29,13 @@ export enum TrainingOption {
     added,
     // The groups' titles.
     dummy,
+    battle,
     display,
     // A label and a value between arrows.
     action,
     custom-screen,
+    your-hp,
+    dummys-hp,
     input-display,
 }
 
@@ -92,6 +95,9 @@ export global TrainingView {
         if option == TrainingOption.dummy {
             return @tr("DUMMY");
         }
+        if option == TrainingOption.battle {
+            return @tr("BATTLE");
+        }
         if option == TrainingOption.display {
             return @tr("DISPLAY");
         }
@@ -100,6 +106,12 @@ export global TrainingView {
         }
         if option == TrainingOption.custom-screen {
             return @tr("Custom screen");
+        }
+        if option == TrainingOption.your-hp {
+            return @tr("Your HP");
+        }
+        if option == TrainingOption.dummys-hp {
+            return @tr("Dummy's HP");
         }
         if option == TrainingOption.input-display {
             return @tr("Input display");
@@ -112,6 +124,9 @@ export global TrainingView {
         }
         if option == TrainingOption.custom-screen {
             return value == 0 ? @tr("Picks no chips") : @tr("Picks the first it can");
+        }
+        if option == TrainingOption.your-hp || option == TrainingOption.dummys-hp {
+            return value == 0 ? @tr("Normal") : @tr("Refills");
         }
         if option == TrainingOption.input-display {
             return value == 0 ? @tr("Off") : @tr("On");
@@ -404,7 +419,7 @@ component MenuRow inherits Rectangle {
     in property <TrainingRow> entry;
     in property <int> index;
     property <bool> added: root.entry.option == TrainingOption.added;
-    property <bool> title: root.entry.option == TrainingOption.dummy || root.entry.option == TrainingOption.display;
+    property <bool> title: root.entry.option == TrainingOption.dummy || root.entry.option == TrainingOption.battle || root.entry.option == TrainingOption.display;
     property <bool> option: !root.added && !root.title;
     property <string> label: TrainingView.label(root.entry.option);
     property <string> value: TrainingView.value(root.entry.option, root.entry.value);

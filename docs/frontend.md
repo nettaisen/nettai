@@ -362,6 +362,30 @@ opponent was changed on the way replays as it was played). The match sets
 up the battle (§6), including its game, rounds, each side's navi, folder,
 forms, patch cards, NaviCust and stats.
 
+**A training session's options** (`driver::Training`, `Player::set_training`,
+`LivePlayer::set_training`; the training menu's Battle rows) change live
+play's battle between its ticks, as a training mode does. They are a host's
+options, not rules of the simulation: the driver applies them to the
+battle's own typed state before each tick (`Driver::prepare`, which the
+session calls before it asks for the tick's inputs; nothing from any other
+driver), and each acts at once when it is set, on the battle as it stands,
+paused or not. With all of them off (the default) the hook does nothing and
+the battle is the set's, a function of its setup and the buttons: a test
+plays a set of each game with them off beside the same set stepped as live
+play stepped it before they existed, and the two agree tick for tick by
+digest (`driver::tests::a_set_with_the_normal_options_is_the_set_as_before`).
+A set with any of them on is no match's: it isn't recorded (`record`
+refuses, and `set_training` is refused while a replay is written).
+
+- **Refills**, by side: the navi's HP (its object's `hp`, back to its
+  `max_hp`) is full again once a hit is over: `REFILL_REST` ticks (a second
+  and a half) after it last lost any. The HUD's number rolls down to what a
+  hit left in about half a second, so a combo's damage is read before the
+  refill rolls it back up, and a refill doesn't land inside a combo. A navi
+  at 0 HP is being deleted and is left to it, as is a round already decided:
+  a hit (or hits closer together than the rest) of its whole HP still ends
+  the round. Turned on with HP missing, it is full at once.
+
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number
 from 1 to 99): when a round ends the
@@ -2070,7 +2094,8 @@ renderer, the font mode's text renderer and the battle's audio:
 - `opponent()` and `set_opponent(Opponent { in_fight, on_custom_screen })`
   are live play's: what the other navi does, read and changed while the
   set runs (§2); none and false for a battle whose other navi is
-  somebody's.
+  somebody's. `training()` and `set_training(Training { .. })` are live
+  play's too: a training session's options (§2), at once.
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
 - `set_sound_levels(music, effects)` is the host's level for the battle's
