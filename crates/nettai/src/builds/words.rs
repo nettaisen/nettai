@@ -15,7 +15,7 @@ use crate::games::Names;
 use nettai_battle::content::{ChipClass, PlayerFact};
 use nettai_content_api::ChipHandle;
 use nettai_match::Wrong;
-use nettai_match::build::{Checked, Extent};
+use nettai_match::build::{Checked, EntryRefusal, Extent};
 use nettai_match::check::Problem;
 use nettai_ui::{AppWindow, BuildPart, BuildWords, ChipKind, EditorTab};
 use slint::ComponentHandle;
@@ -100,6 +100,8 @@ impl Words<'_> {
             Wrong::Unstated | Wrong::Missing => say.invoke_missing(part),
             Wrong::Foreign => say.invoke_foreign(part, game()),
             Wrong::FolderSize(c) => say.invoke_folder_size(n(c.used), n(c.limit)),
+            // (A chip the auto battle data can't hold is one its navi can't play.)
+            Wrong::ChipNotAllowed { chip: c } if part == BuildPart::AutoBattle => say.invoke_chip_not_playable(chip(c)),
             Wrong::ChipNotAllowed { chip: c } => say.invoke_chip_not_allowed(chip(c)),
             Wrong::ChipOfAnotherVersion { chip: c } => match self.holders(*c) {
                 Some(version) => say.invoke_chip_only(chip(c), version.into()),
@@ -147,6 +149,15 @@ impl Words<'_> {
             other => return self.wrong(other),
         };
         said.into()
+    }
+
+    /// Why an entry can't go into a list of the build now (`nettai_match::build::Budget::refusal`: a patch
+    /// card), for the end of its library row: it is in already, or what it needs.
+    pub fn entry_refusal(&self, refusal: EntryRefusal) -> String {
+        match refusal {
+            EntryRefusal::Installed => self.say().invoke_installed().into(),
+            EntryRefusal::Needs { needs, .. } => self.say().invoke_needs_megabytes(needs as i32).into(),
+        }
     }
 
     /// How much of a bug there is: its level, or the amount a card writes.
