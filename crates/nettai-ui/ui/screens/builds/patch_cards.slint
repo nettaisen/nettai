@@ -124,6 +124,8 @@ export global PatchCardsView {
 component CardLinesView inherits Rectangle {
     in property <[CardLine]> lines;
     in property <bool> dim;
+    // It is drawn over a panel's fill: where its lines run past it, they fade into it (else they are cut).
+    in property <bool> on-panel: true;
     in property <length> font-size: 12px;
     clip: true;
     row := HorizontalLayout {
@@ -154,7 +156,7 @@ component CardLinesView inherits Rectangle {
     Rectangle {
         x: parent.width - self.width;
         width: 28px;
-        visible: row.preferred-width > root.width + 0.5px;
+        visible: root.on-panel && row.preferred-width > root.width + 0.5px;
         background: @linear-gradient(90deg, #0c183600 0%, Theme.panel 100%);
     }
 }
@@ -249,6 +251,8 @@ component InstalledRowView inherits Rectangle {
         width: parent.width - self.x - 8px;
         height: 16px;
         lines: root.card.lines;
+        // (A phone's cards are over the ground.)
+        on-panel: !Theme.phone;
     }
 
     touch := RowTouch {
@@ -301,6 +305,8 @@ component CardLibraryRowView inherits Rectangle {
         height: parent.height;
         lines: root.card.lines;
         dim: root.card.refused;
+        // (The library is over the ground on a desktop, and over its sheet's panel on a phone.)
+        on-panel: Theme.phone;
     }
 
     Text {

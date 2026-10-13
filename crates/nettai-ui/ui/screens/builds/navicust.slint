@@ -119,6 +119,8 @@ export global NavicustView {
     in property <bool> held-plus;
     in property <int> grab-x;
     in property <int> grab-y;
+    // The piece in hand is being moved (it glides to the next cell), not taken up.
+    in property <bool> glide;
     in property <int> lifted;
     in property <int> turned;
     in property <int> turn-way: 1;
@@ -617,8 +619,9 @@ export component NavicustTab inherits Rectangle {
             width: root.cell;
             height: root.cell;
             visible: NavicustView.holding;
+            // (It glides as it is moved, and is where it is taken up at once.)
             animate x, y {
-                duration: Theme.quick;
+                duration: NavicustView.glide ? Theme.quick : 0ms;
                 easing: ease-out;
             }
             lift := Tween {

@@ -51,6 +51,8 @@ pub struct Navicust {
     turned: i32,
     turn_way: i32,
     refused: i32,
+    /// The piece in hand was moved last (it glides to the cell), not taken up (it is there at once).
+    glide: bool,
     /// Why the last piece couldn't be put down, until it moves.
     notice: Option<String>,
     /// The bugs shown last (one that wasn't there pulses).
@@ -210,6 +212,7 @@ impl Navicust {
                 view.set_held(ModelRc::new(VecModel::from(held)));
                 view.set_held_tone(tone(color.as_deref()));
                 view.set_held_plus(d.plus.contains(&h.piece));
+                view.set_glide(self.glide);
                 view.set_grab_x(self.at.0 - first);
                 view.set_grab_y(self.at.1 - first);
                 view.set_holding(true);
@@ -323,6 +326,7 @@ impl Navicust {
         let middle = board.len() as i32 / 2;
         self.at = (middle, middle);
         self.lifted += 1;
+        self.glide = false;
         self.notice = None;
         shell.sound.play(Cue::Pick);
         if changed {
@@ -366,6 +370,7 @@ impl Navicust {
                 if self.edit(draft, Edit::PickUp(i, at.0, at.1)) {
                     self.at = at;
                     self.lifted += 1;
+                    self.glide = false;
                     shell.sound.play(Cue::Pick);
                     self.changed(shell, draft);
                 }
@@ -474,6 +479,7 @@ impl Tab for Navicust {
         }
         if id == "cell" && self.held.is_some() {
             self.at = self.cell_at(index);
+            self.glide = true;
             self.notice = None;
             self.show_board(shell, draft);
         }
