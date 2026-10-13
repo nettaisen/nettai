@@ -613,6 +613,8 @@ their own; the extractor's README has what each set of ROMs lacks):
     `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared, 2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
+- **The Japanese battle code:** where it does otherwise than the US releases' (every place, sorted, and the ones a
+  netbattle reaches recorded as listed deviations) is docs/design/exe5-regions.md.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
   root names them in its compat, as EXE6's does.
 - **Shared decoding:** `nettai-extract` now owns one ROM/LZ77 reader, sprite and portrait decoder, field/background
