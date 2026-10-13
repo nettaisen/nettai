@@ -255,7 +255,8 @@ Each is in the mockups under the same name.
 ### Main menu
 - Left: PLAY, TRAINING, BUILDS, REPLAYS, each the word alone, 36, in a column 416 wide, rows 72 tall. Below a line:
   Settings and Exit, 16, muted.
-- Right: the demo reel, the battle picture at three times (720 by 480), with who is fighting under it.
+- Right: the demo reel, the battle picture at three times (720 by 480), with no caption under it ("don't show the
+  caption text").
 - The selected game's title music plays across the menu screens and fades out as a battle starts.
 
 ### Play
