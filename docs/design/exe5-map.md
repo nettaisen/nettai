@@ -536,7 +536,10 @@ The verification workspace traces EXE5 consoles as it does EXE6's, with the same
 ## 11. The EXE5 pack (as built)
 
 `nettai-extract exe5 <pack-dir> <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>` (any subset, identified by header,
-as the same extractor takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
+as the same extractor takes EXE6's) writes a pack whose manifest says `game = "exe5"`. Each asset is read from
+whichever ROM given holds it, through the game's own pointer to it in that ROM (what the four have alike from any, a
+team's own from a ROM of its version, each release's words from a ROM of that release, the US ROM's where both have
+their own; the extractor's README has what each set of ROMs lacks):
 
 - **What it has:** the 272 battle sprites (the same in both US ROMs), the field (11 panel types, EXE6 13; one
   highlight block for both highlights, EXE6 two), the 29 battle backgrounds with their scrolling and animations, the
@@ -605,9 +608,8 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
   - The Japanese ROMs' one different sprite (14-17, the "BLOCK!" label, ブロック! there): the US release localized
     it rather than cut it, so the pack keeps the US's, as EXE6's does; no content draws it.
   - The Japanese ROMs' background 0x05 (Yai's HP), which is another picture than the US ROMs' (bubbles in the dark,
-    still, for goldfish, scrolling): the pack's backgrounds are the US Team ProtoMan ROM's (the Japanese Team of
-    Blues ROM's in a pack of no US ROM; the other 28 are the same in both releases, pictures, scrolls and
-    animations), and what a Japanese console draws there is the verification's to know (its consoles.tsv;
+    still, for goldfish, scrolling): the pack's backgrounds are a US ROM's (a Japanese ROM's in a pack of no US
+    ROM; the other 28 are the same in both releases, pictures, scrolls and animations), and what a Japanese console draws there is the verification's to know (its consoles.tsv;
     `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared, 2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
@@ -2581,7 +2583,12 @@ reads its status word through the null pointer, from the BIOS. EXE6's read gives
 at 0x0800CE18 with a scratch trap in the chip lab), without it: the visual shows at once. The status section's
 `missing_collision_status` (the engine's `Rules::missing_collision_status`, which each game states) says which; the
 replays' full object comparison caught it (navicust-compile/bug-colors, patch-cards-stats/bugstop, cards-02, cards-03,
-cards-08, clamps-hp: both sides with first barriers).
+cards-08, clamps-hp: both sides with first barriers). Those are stages with no objects in their actor lists. On a
+stage with boulders or rocks EXE5's console reads a software interrupt's opcode instead (the visual's header flags
+0x15 on frame 142 where the engine has 0x17: patch-cards/barrier-side1-boulders, seed 4369's grass stage, and
+barrier-side1-rocks), and the comparison lets the visual's VISIBLE bit go on the tick the round's actors are spawned
+(compat/kinds.toml's `round_start_open_bus_flags`). The screen is black on that tick, so no picture differs
+(the engine's objects-and-player.md §2).
 
 ### 15.15 EXE5's supports (as built)
 

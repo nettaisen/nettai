@@ -407,7 +407,10 @@ local status = {
         flash_hides_on_clear = true,
         -- A navi's status word read before its init made its collision data (through the null pointer, from the
         -- BIOS: a round's first tick, the other side's first barrier's visual asking whether the local navi is blind,
-        -- 0x0800CDF4): an interrupt's opcode (read on the console at 0x0800CE18), without EXE6's blind bit.
+        -- 0x0800CDF4): an interrupt's opcode (read on the console at 0x0800CE18), without EXE6's blind bit. That is
+        -- a stage with no objects in its actor list; with boulders or rocks the recorded consoles read a software
+        -- interrupt's (the bit: the visual hidden for that tick, on a black screen), which the comparison lets go
+        -- (compat's kinds.toml, `round_start_open_bus_flags`: the lab's patch-cards/barrier-side1-*).
         missing_collision_status = 0xE55EC002,
         -- Its status block (0x08017CC8 on) runs the flash's timer first, whatever the battle's flags (0x080173C4),
         -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
