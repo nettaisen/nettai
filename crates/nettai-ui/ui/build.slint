@@ -711,6 +711,8 @@ export component BuildOverview inherits Rectangle {
         width: 240px;
         visible: !root.narrow;
         line: line;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     StatRow {

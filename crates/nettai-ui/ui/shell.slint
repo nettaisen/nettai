@@ -1162,6 +1162,8 @@ export component PickerLayer inherits Rectangle {
                 width: list.row-width;
                 text: Shell.picker-options[self.at];
                 nav-index: self.at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
     }
