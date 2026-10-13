@@ -59,12 +59,12 @@ export component LoadingScreen inherits Rectangle {
     }
 
     // No game has a pack: what to do about it. With the app's own packs, the Legacy Collection is what is missing
-    // (the error's own line). Else the packs folder named (`$NETTAI_PACKS`), which starts a line of its own and
-    // breaks where it must.
+    // (the error's own line: three lines on a phone in Japanese, down to the button's top less 4). Else the packs
+    // folder named (`$NETTAI_PACKS`), which starts a line of its own and breaks where it must.
     Note {
         y: root.top + 116px;
         width: root.column;
-        height: root.wants-folder ? 56px : 88px;
+        height: root.wants-folder ? 64px : 88px;
         vertical-alignment: TextVerticalAlignment.top;
         wrap: root.wants-folder ? word-wrap : char-wrap;
         visible: Shell.no-games;

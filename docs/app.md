@@ -1470,6 +1470,10 @@ The pictures are for comparing with the mockups by eye. Two things the pass chec
   `Audit`, on for each shot), and the footer when its hints don't leave the status its room. The
   pseudo-locale makes every string about 40% longer, so a layout sized for English alone shows up there.
 
+A pass ended before its walk is done (a terminate request from outside, SIGTERM or SIGINT, or its window closed)
+writes its report as it stands, under a line that says why it ended and after which shot, and fails too: it
+doesn't end as one that walked through (`tour::ended`).
+
 **The motion probe** (`NETTAI_TOUR_MOTION=1`) is the pass with things moving. A still picture can't show an
 animation, so it takes a burst of shots through each (a screen leaving and the next arriving, the cursor's
 glide, a change of game sweeping in from the right, from the left and twice over, a value sliding, a press, a
@@ -1487,8 +1491,12 @@ own `write` and `compare`) or the screen's own (`screens/play/tour.rs`), with a 
 for the motion probe, each called from `tour::walk` and `tour::motion_walk` with one line
 (`training::steps(&mut add, lang, size)`; Play's take `walk`'s `add`, a step and the time it is given first,
 and its `shot`, a shot's name and its place in a pair). A pair's second shot may be given more to differ in
-than the two cursors (`training.rs`'s `Differs::Builds`: where the entry shows the builds chosen; `replays.rs`'s
-`Also::Playback`: the picture, the bar and its two times), found from where the screen's controls are. A step that must wait for something that comes by itself says so
+than the two cursors (`training.rs`'s `Differs::Builds`: where the entry shows the builds chosen; its
+`Differs::Picture`: the game's picture where the training menu leaves it in view, as the game moves its
+backgrounds through its pause, each box given exactly so that none of the picture under the panel is let
+differ; `replays.rs`'s `Also::Playback`: the picture, the bar and its two times; `Tour::may_differ`, for the
+next pair of `walk`'s `shot`: the NaviCust's strip, which shows the program under the cursor), found from where
+the screen's controls are. A step that must wait for something that comes by itself says so
 (`Tour::wait_until`: the step after it runs once it has come, or after a minute). Where the shots after it
 depend on its having come, the walk says when it didn't (`Tour::never_came`, which the report lists and the
 pass fails on: Play's `reach`), so that a picture of the wrong thing isn't taken for the right one.
