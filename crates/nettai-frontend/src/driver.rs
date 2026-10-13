@@ -392,14 +392,14 @@ pub enum InFight {
     /// says.
     SecondPad,
     /// The host's AI plays it ([`Ai::fight`], [`LivePlayer::set_ai`]).
-    /// With none, it stands still. Not offered yet (not in
-    /// [`InFight::ALL`]).
+    /// With none, it stands still.
     Ai,
 }
 
 impl InFight {
     /// Every choice, in the order a host offers them.
-    pub const ALL: [InFight; 5] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::PlaysRecording, InFight::SecondPad];
+    pub const ALL: [InFight; 6] =
+        [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::Ai, InFight::PlaysRecording, InFight::SecondPad];
 }
 
 /// What an opponent does on its custom screen.
@@ -412,13 +412,12 @@ pub enum OnCustomScreen {
     PicksFirst,
     /// The host's AI presses it ([`Ai::custom_screen`],
     /// [`LivePlayer::set_ai`]). With none, it picks the first chip it can.
-    /// Not offered yet (not in [`OnCustomScreen::ALL`]).
     Ai,
 }
 
 impl OnCustomScreen {
     /// Every choice, in the order a host offers them.
-    pub const ALL: [OnCustomScreen; 2] = [OnCustomScreen::PicksNothing, OnCustomScreen::PicksFirst];
+    pub const ALL: [OnCustomScreen; 3] = [OnCustomScreen::PicksNothing, OnCustomScreen::PicksFirst, OnCustomScreen::Ai];
 }
 
 /// What a training session changes of live play's battle between its
@@ -1076,7 +1075,7 @@ mod tests {
             };
             let (hand, moved, attacked, presses) = run();
             assert_eq!(hand, Some(if opponent.on_custom_screen == OnCustomScreen::PicksNothing { 0 } else { 1 }), "{opponent:?}");
-            assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded and no second pad, it stands still");
+            assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded, no second pad and no AI given, it stands still");
             assert_eq!(attacked, opponent.in_fight == InFight::AttacksAtRandom, "{opponent:?}");
             assert_eq!(run().3, presses, "{opponent:?}: the same presses again");
         }
@@ -1170,7 +1169,7 @@ mod tests {
             self.ticks += 1;
             let mashed = self.masher.buttons();
             if b.round.mode == mode::CUSTOM {
-                return custom_buttons(b, 1, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
+                return custom_buttons(b, 1, self.ticks, self.opponent.on_custom_screen != OnCustomScreen::PicksNothing);
             }
             match self.opponent.in_fight {
                 InFight::StandsStill => 0,
@@ -1178,7 +1177,8 @@ mod tests {
                 InFight::AttacksAtRandom => mashed,
                 // (Nothing recorded, no second pad: it stands still.)
                 InFight::PlaysRecording | InFight::SecondPad => 0,
-                InFight::Ai => unreachable!("not among every opponent"),
+                // (No AI given: it stands still.)
+                InFight::Ai => 0,
             }
         }
     }
