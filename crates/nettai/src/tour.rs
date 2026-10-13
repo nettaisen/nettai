@@ -47,6 +47,7 @@ use std::time::{Duration, Instant};
 // own, called from `walk` and `motion_walk` with one line.
 mod build_tabs;
 mod builds;
+mod confirm_keys;
 mod replays;
 mod training;
 
@@ -94,6 +95,8 @@ pub(crate) struct Tour {
     late: RefCell<Vec<String>>,
     /// What a walk waited for and never saw ([`Tour::never_came`]), by the shot before.
     never: RefCell<Vec<String>>,
+    /// What a key pressed through the window's path didn't do ([`Tour::key_wrong`]).
+    keys: RefCell<Vec<String>>,
     /// The on-screen pad's check, where it failed.
     pad: RefCell<Vec<String>>,
     seen: RefCell<Vec<String>>,
@@ -127,6 +130,12 @@ impl Tour {
     pub(crate) fn never_came(&self) {
         self.never.borrow_mut().push(format!("after {}", self.tag.borrow()));
     }
+
+    /// A key pressed as the window presses it didn't do what it does (`tour/confirm_keys.rs`): the pass says so, and
+    /// fails.
+    pub(crate) fn key_wrong(&self, said: String) {
+        self.keys.borrow_mut().push(said);
+    }
 }
 
 /// Whether the pass found something wrong (the process's status).
@@ -157,6 +166,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         resized: Default::default(),
         late: Default::default(),
         never: Default::default(),
+        keys: Default::default(),
         pad: Default::default(),
         seen: Default::default(),
         passing: Cell::new(false),
@@ -362,6 +372,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
     shot(&mut add, "dialog", Pair::None);
     add(SETTLE, act(Action::Confirm));
+
+    // The keys as the window presses them: A's and B's confirm and go back, Enter and Esc finish and leave a
+    // text field, and A rebound confirms by its new key.
+    confirm_keys::steps(&mut add, &shot);
 
     // Before a battle, the battle, and the menus over it.
     add(
@@ -745,6 +759,11 @@ fn finish(tour: &Tour) {
             let _ = writeln!(report, "  {line}");
         }
     }
+    let keys = tour.keys.borrow();
+    let _ = writeln!(report, "\nKeys pressed as the window presses them that didn't do what they do: {}", keys.len());
+    for line in keys.iter() {
+        let _ = writeln!(report, "  {line}");
+    }
     let pad = tour.pad.borrow();
     if !pad.is_empty() {
         let _ = writeln!(report, "\nThe on-screen pad, two fingers at once: {} wrong", pad.len());
@@ -757,6 +776,6 @@ fn finish(tour: &Tour) {
         eprintln!("tour: {}: {e}", path.display());
     }
     eprint!("tour: {report}");
-    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty() || !never.is_empty()));
+    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty() || !never.is_empty() || !keys.is_empty()));
     let _ = slint::quit_event_loop();
 }
