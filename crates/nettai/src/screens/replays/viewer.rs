@@ -52,8 +52,9 @@ struct Stats {
     sound: (u32, f64, u64, f32),
 }
 
-/// The ticks of a stretch whose sound is said (`NETTAI_PLAY_STATS`): ten seconds of the replay.
-const SOUND_STRETCH: u32 = 600;
+/// The ticks of a stretch whose sound is said (`NETTAI_PLAY_STATS`): two seconds of the replay, by its own
+/// ticks, so that two runs of one replay say the same stretches.
+const SOUND_STRETCH: u32 = 120;
 
 fn add(to: &mut (Duration, u32, Duration), took: Duration) {
     to.0 += took;
@@ -421,7 +422,8 @@ impl Watching {
             self.viewer.indexed(),
             self.viewer.length(),
         );
-        *s = Stats { since: Some(now), ..Stats::default() };
+        // (The sound's stretch is the replay's own, and goes on across the two seconds.)
+        *s = Stats { since: Some(now), sound: s.sound, ..Stats::default() };
     }
 }
 
