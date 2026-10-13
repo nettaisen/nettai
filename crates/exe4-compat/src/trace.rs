@@ -1059,6 +1059,54 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     compare_with(b, f, banner, compat)
 }
 
+/// The mark EXE4's install leaves in each hand entry's modifier flags
+/// (0x0801EA1E: its dark chips' costs, once an entry).
+const INSTALL_MARK: u8 = 0x04;
+
+/// The engine's hand in a chip block's terms ([`codec::ChipHand`]): each
+/// chip by its key and the number compat's chips.toml gives it (0xFFFF for a
+/// chip it has none for, which no block holds).
+fn engine_hand(b: &Battle, compat: &Compat, h: &nettai_battle::hand::ChipHand) -> ChipHand {
+    let chip = |c: nettai_content_api::ChipHandle| {
+        let key = nettai_match::ids::local(&b.content.defs.chip(c).key).to_string();
+        codec::Chip { id: compat.chip_entry(&key).map_or(0xFFFF, |e| e.id), key: Some(key) }
+    };
+    ChipHand {
+        cursor: h.cursor,
+        ids: h.ids.map(|c| c.map(chip)),
+        damage: h.damage,
+        attack_bonus: h.attack_bonus,
+        charge_bonus: h.charge_bonus,
+        selection: h.selection.map(|c| c.map(|c| (chip(c.id), c.code.0))),
+        turn: h.turn,
+        modifiers: h.modifiers,
+    }
+}
+
+/// A hand's fields, each as the comparison says it: the cursor (the next
+/// chip's place: the chips before it are used), the six chips (`-`: none; a
+/// block keeps what lay past its first empty entry), their damage and their
+/// two bonuses, the six picks with their codes, the turn each was picked in
+/// and their modifier flags.
+fn hand_fields(h: &ChipHand) -> Vec<(&'static str, String)> {
+    let chip = |c: &codec::Chip| match &c.key {
+        Some(k) => format!("{k} ({:#05x})", c.id),
+        None => format!("{:#05x}", c.id),
+    };
+    let chips: Vec<String> = h.ids.iter().map(|c| c.as_ref().map_or("-".to_string(), chip)).collect();
+    let picks: Vec<String> = h.selection.iter().map(|c| c.as_ref().map_or("-".to_string(), |(c, code)| format!("{} code {code}", chip(c)))).collect();
+    vec![
+        ("cursor", h.cursor.to_string()),
+        ("chips", chips.join(", ")),
+        ("damage", format!("{:?}", h.damage)),
+        ("attack bonus", format!("{:?}", h.attack_bonus)),
+        ("charge bonus", format!("{:?}", h.charge_bonus)),
+        ("picks", picks.join(", ")),
+        ("turns", format!("{:?}", h.turn)),
+        ("modifiers", format!("{:?}", h.modifiers)),
+    ]
+}
+
 /// [`compare`], the banner compared with `banner`'s.
 fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
@@ -1118,7 +1166,31 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
         .collect();
     let theirs: Vec<String> = f.panels.iter().map(|[t, a]| format!("[{t}, {a}]")).collect();
     check("panels", panels.join(", "), theirs.join(", "));
-    let entry_of = |o: nettai_battle::object::ObjectRef| compat.kinds.get(&b.content.defs.kind(b.objects.get(o).kind).key);
+    // Each side's hand, its whole chip block (0x50 bytes a side, EXE6's
+    // layout): the cursor, the chips in order, their damage and bonuses, the
+    // picks with their codes, their turns and their modifier flags; and the
+    // block's bytes no field covers (+1, +0x4A on), zero in every recording.
+    for (side, block) in f.chip_blocks.iter().enumerate() {
+        let decoded = unhex(block).and_then(|raw| codec::chip_hand(compat, &raw).map(|h| (h, raw)));
+        match decoded {
+            Ok((mut theirs, raw)) => {
+                // (Not compared: the install's mark, the modifier flags'
+                // 0x04, which 0x0801EA1E sets on each entry of a hand as it
+                // is installed so that a dark chip costs its user once. The
+                // engine's rules keep that as their own state, rules/
+                // dark_chips' `hand_sent`, and the hand has no such bit.)
+                theirs.modifiers = theirs.modifiers.map(|m| m & !INSTALL_MARK);
+                let ours = engine_hand(b, compat, &b.hands[side]);
+                for ((name, x), (_, y)) in hand_fields(&ours).into_iter().zip(hand_fields(&theirs)) {
+                    check(&format!("hand {side} {name}"), x, y);
+                }
+                let rest: Vec<u8> = std::iter::once(raw[1]).chain(raw[0x4A..].iter().copied()).collect();
+                check(&format!("hand {side}'s bytes no field covers"), format!("{:?}", [0u8; 7]), format!("{rest:?}"));
+            }
+            Err(e) => check(&format!("hand {side}"), "a chip block".to_string(), e),
+        }
+    }
+    let entry_of =|o: nettai_battle::object::ObjectRef| compat.kinds.get(&b.content.defs.kind(b.objects.get(o).kind).key);
     let entries: Vec<Option<&crate::KindEntry>> = b.objects.in_order().map(entry_of).collect();
     // (Whether each object's owner, its first related object, is of a kind
     // whose position is scratch.)

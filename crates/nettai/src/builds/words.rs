@@ -46,10 +46,16 @@ impl Words<'_> {
 
     /// What is wrong, as a build's problem: its kind's sentence with its numbers.
     pub fn problem(&self, problem: &Problem) -> String {
+        self.wrong(&problem.what)
+    }
+
+    /// The sentence of what is wrong, by its kind, with its numbers ("2 Giga chips, limit 1": no full stop,
+    /// it goes after "can't be used:" as well as on a line of its own).
+    pub fn wrong(&self, wrong: &Wrong) -> String {
         let say = self.say();
         let chip = |c: &ChipHandle| slint::SharedString::from(self.names.chip(*c));
         let n = |v: u32| v as i32;
-        let said = match &problem.what {
+        let said = match wrong {
             Wrong::Match | Wrong::Invalid => say.invoke_invalid(),
             Wrong::OtherGame => say.invoke_other_game(),
             Wrong::Unstated => say.invoke_unstated(),
@@ -100,7 +106,7 @@ impl Words<'_> {
             Wrong::Class { class, .. } => say.invoke_class_limit(kind(*class)),
             Wrong::Dark(_) => say.invoke_dark_limit(),
             // (No other kind is a reason of a library's row: said as the problem it is.)
-            other => return self.problem(&Problem { side: None, field: None, entry: None, what: other.clone(), text: String::new() }),
+            other => return self.wrong(other),
         };
         said.into()
     }
@@ -136,6 +142,19 @@ impl Words<'_> {
     pub fn first_problem(&self, checked: &Checked) -> Option<String> {
         checked.problems.first().map(|p| self.problem(p))
     }
+}
+
+/// What is wrong with a build of `game`, in the language shown: the sentence of `wrong`'s kind from the
+/// catalogs, with its numbers and the chip's and the version's names ("2 Giga chips, limit 1", "Gregar is
+/// Gregar only"). It has no full stop: it goes after "Your build can't be used:" or on a line of its own. For
+/// any screen, whichever is shown: Training's reserved line, a lobby's. Empty where the game says nothing of its
+/// builds (the line then says only that the build can't be used; why is in the log).
+pub fn wrong(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate::games::Ready>, wrong: &Wrong) -> String {
+    let Some(kit) = crate::builds::kit_of(game, ready) else { return String::new() };
+    let ui = shell.ui();
+    let graphics = ready.graphics(shell.lang);
+    let names = Names::of(ready.content(), &graphics);
+    Words { ui: &ui, kit: &kit, names: &names }.wrong(wrong)
 }
 
 /// The first thing wrong with `side` as a build of `kit`'s game, in the language shown: the reason of
