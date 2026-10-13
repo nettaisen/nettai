@@ -799,7 +799,8 @@ impl Tab for Navicust {
             self.in_list = in_list;
             shell.ui().global::<NavicustView>().set_in_list(in_list);
         }
-        if id == "cell" && self.held.is_some() {
+        // (A cursor that comes where the piece is already, as after the mouse picks one up, doesn't move it.)
+        if id == "cell" && self.held.is_some() && self.cell_at(index) != self.at {
             self.at = self.cell_at(index);
             self.glide = true;
             self.notice = None;
