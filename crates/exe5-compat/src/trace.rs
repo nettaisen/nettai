@@ -1745,13 +1745,15 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
     }
     // The recording console's RNG1 (the trace's `rng1`), sampled after the
     // battle's update and before the main loop's draw: the engine after
-    // frame N is the trace at N + 1. Picks the console makes after the
-    // sample (an emotion window's flicker, a camera shake's) make the two
-    // differ for a frame or a few, then agree again; a difference still
-    // there at the round's end is the model's, and stops the round at the
-    // frame it began; one that begins on the last frame compared (a flicker's
-    // draw as the recording ends) has no frame left to agree on, and is
-    // left.
+    // frame N, which made the frame's picks, the battle's and the main
+    // loop's, is on the way from the trace at N to the trace at N + 1
+    // (`Rng::passes`; at N + 1 when the next frame's battle update draws
+    // none). A camera shake's picks come in the battle's update
+    // (EXE6's `sub_802FFF4` after the objects), so through a shake the engine is
+    // between the two samples, not at either: Timpani's drum shakes for
+    // as long as it plays. A difference left at the round's end stops the
+    // round at the frame it began; one that begins on the last frame
+    // compared has no frame left to agree on, and is left.
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
@@ -1767,7 +1769,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
         }
         if let Some(next) = frames.get(i + 1) {
             let engine = b.consoles[local].rng.state;
-            if engine == next.rng1 {
+            if nettai_battle::rng::Rng::new(frames[i].rng1).passes(engine, next.rng1, RNG1_PICKS_A_FRAME) {
                 rng1_since = None;
             } else if rng1_since.is_none() {
                 rng1_since = Some((frames[i].frame, engine, next.rng1));
@@ -1790,3 +1792,8 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
 pub fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
     e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default()
 }
+
+/// The most picks a console draws from its RNG1 in a frame that a replay's
+/// check looks along (the main loop's one, a camera shake's two, an
+/// emotion window's flicker: a few).
+const RNG1_PICKS_A_FRAME: u32 = 64;
