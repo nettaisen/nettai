@@ -456,10 +456,12 @@ local status = {
             -- Synchro with its aura besides (0x0800D9AE); worn out or in a soul, anger doesn't start (0x0800C56E: the
             -- soul, 0x0800C57E: the emotion 5; the framework's `tired`). The buster knows no emotion.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "tired", soul = "tired" },
-            -- A hit's counter byte raises the hitter's mood and wears the receiver's, a counter hit's counting 0xFF
-            -- (Full Synchro) and wearing 0x7F (0x08012C10, 0x080131E4). A chip's use leaves Full Synchro at 0x99
-            -- (0x0800D568) and plays the boost's sound for it alone (anger's ends silent, 0x0800D57C).
-            hit_mood = "hitter_gains",
+            -- A hit's counter byte wears the receiver's mood, a counter hit's counting 0xFF and wearing 0x7F
+            -- (0x08012C10), and what a tick's hits counted raises the hitter's, to 0xFF (Full Synchro) at most
+            -- (0x080131E4: 0x0800F4FA). A chip's use leaves Full Synchro at 0x99 (0x0800D568) and plays the boost's
+            -- sound for it alone (anger's ends silent, 0x0800D57C).
+            hit_mood = "counter_counts",
+            hitter_gain = "to_full",
             full_synchro_spent = 0x99,
             anger_boost_sound = false,
             -- (No `anger_damage`: only 120 ticks stunned ask for anger, 0x0800C540; no damage does.)
