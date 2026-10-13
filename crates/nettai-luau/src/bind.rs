@@ -1530,6 +1530,7 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         t.raw_set("place", s.place.map(|p| p as i64 + 1))?;
         t.raw_set("regular", s.regular)?;
         t.raw_set("picked", s.picked)?;
+        t.raw_set("listed", s.listed)?;
         Ok(LuaValue::Table(t))
     });
     lib_fn!(lua, t, "picks", |lua, side: LuaValue| {
@@ -1549,13 +1550,25 @@ fn custom_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
         let (a, b) = (place(&a, "a")?, place(&b, "b")?);
         with(|api, _| api.custom_swap_folder(side, a, b).map_err(api_error))
     });
-    lib_fn!(lua, t, "offer", |_, (side, slot, chip, code): (LuaValue, LuaValue, LuaValue, LuaValue)| {
-        let side = u8_arg(side, "side")? & 1;
-        let slot = u8_arg(slot, "slot")?;
-        let chip = bound(|b| chip_arg(b, &chip, "chip"))?.ok_or_else(|| mlua::Error::runtime("custom.offer: no chip"))?;
-        let code = code_arg(&code, "custom.offer")?;
-        with(|api, _| api.custom_offer(side, slot, chip, code).map_err(api_error))
-    });
+    lib_fn!(
+        lua,
+        t,
+        "offer",
+        |_, (side, slot, chip, code, what): (LuaValue, LuaValue, LuaValue, LuaValue, Option<mlua::Table>)| {
+            let side = u8_arg(side, "side")? & 1;
+            let slot = u8_arg(slot, "slot")?;
+            let chip = bound(|b| chip_arg(b, &chip, "chip"))?.ok_or_else(|| mlua::Error::runtime("custom.offer: no chip"))?;
+            let code = code_arg(&code, "custom.offer")?;
+            // (What the offer says of itself: no marks, listed, not shading.)
+            let (mut marks, mut listed, mut shades) = (0, true, false);
+            if let Some(what) = what {
+                marks = what.raw_get::<Option<LuaValue>>("marks")?.map(|m| u8_arg(m, "marks")).transpose()?.unwrap_or(0);
+                listed = what.raw_get::<Option<bool>>("listed")?.unwrap_or(true);
+                shades = what.raw_get::<Option<bool>>("shades")?.unwrap_or(false);
+            }
+            with(|api, _| api.custom_offer(side, slot, chip, code, marks, listed, shades).map_err(api_error))
+        }
+    );
     lib_fn!(lua, t, "hand_size", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| api.custom_hand_size(side).map_err(api_error))
@@ -2395,6 +2408,14 @@ fn battle_lib(lua: &Lua) -> mlua::Result<mlua::Table> {
     lib_fn!(lua, t, "hand_left", |_, side: LuaValue| {
         let side = u8_arg(side, "side")? & 1;
         with(|api, _| Ok(api.hand_left(side)))
+    });
+    lib_fn!(lua, t, "hand_marks", |_, (side, i): (LuaValue, LuaValue)| {
+        let (side, i) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?);
+        with(|api, _| Ok(api.hand_marks(side, i)))
+    });
+    lib_fn!(lua, t, "add_hand_marks", |_, (side, i, marks): (LuaValue, LuaValue, LuaValue)| {
+        let (side, i, marks) = (u8_arg(side, "side")? & 1, u8_arg(i, "hand index")?, u8_arg(marks, "marks")?);
+        with(|api, _| Ok(api.add_hand_marks(side, i, marks)))
     });
     // Subtype 8 (Wind and Fan).
     lib_fn!(lua, t, "wind", |lua, side: LuaValue| {

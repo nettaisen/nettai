@@ -2785,27 +2785,43 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     - **Done: a soul's chip is no pick.** The block's picks (+0x32, 0x0801F110) leave out a chip of family 15, the
       souls' chips (0x160 on, class 3), which a unison's hand holds first; the engine listed it (115 recordings
       stopped as that hand was installed: frame 409 of souls/fire/hit). The builder's `Pick::listed`.
-    - **Open (the custom screen's): a chip offered again is no pick either, and is marked.** 0x0801EF4C answers a
-      slot flagged 0x10 (JunkSoul's offer from the sent list) with Z clear, so the pick's flags gain 2 (0x0801F0B8):
-      0x0801F118 leaves it out of the picks, and its hand entry's modifier flags hold 0x02. The engine lists it and
-      marks nothing: souls/junk/recycle, -dark, -hurt, -keep, -mega, -one, -side1 and -theirs stop as the offered
-      chip's hand is installed (frames 1206, 980, 1227, 1221, 1227, 1191, 1196 and 1194), on the picks and the
-      modifier flags alone (with the picks, the turns and the modifier flags left out each replays to its end). The
-      mark's readers in the fight: the use's 0x0800D59A (a dark chip so marked isn't counted in the side's count 2,
-      and outside a netbattle doesn't set the mood), and the local console's check of its next chip, 0x0800865C (at
-      0x08008692 and 0x080086D4: to read). The engine's chip use reads a hand entry's 0x02 and 0x04 as EXE6's
-      WhiCapsl and Uninstll whatever the game (`modifier_bits`), so EXE4's marks can't go in the hand as they are:
-      what a mark means is each game's to state.
-    - **Open: the install's mark.** 0x0801EA1E marks each entry of an installed hand 0x04 as it charges a dark chip's
-      cost, once an entry; the engine's rules keep `hand_sent` instead, and the comparison leaves that bit out.
-      WoodSoul's fold on the hand (0x0800E302, 0x0800E308) moves the turn and the modifier bytes at twice the index,
-      so the mark turns up in a turn byte: souls/wood/merge stops at frame 594 (turns 0, 0, 0, 0, 4, 0; the engine
-      moves each entry's own, and holds no mark to move).
-    - **Open, not recorded: the dark chips sent.** The picks list a dark chip (dark/drklance, frame 331: 0x36BF, its
+    - **Done (group A): what a hand entry's marks mean is each game's to state.** The engine's chip use read a hand
+      entry's 0x02 and 0x04 as EXE6's WhiCapsl and Uninstll whatever the game, so EXE4's marks couldn't go in the
+      hand. The chip-use rules' `mark_damage` (what each mark, by its bit, adds to the damage word) and
+      `mark_heals`, in `mixed_modifiers`' place: EXE6's `sub_8012C34` (0x02 the word's 0x4000, 0x04 its 0x2000),
+      EXE5's 0x08010368 and 0x0800FFF6 (those, 0x08 its 0x1000, 0x20 its 0x0800; 0x10 heals), EXE4's none (its use,
+      0x0800D4C0, has no such step). EXE4's three marks: 0x01 the Regular chip, 0x02 a chip offered again, 0x04 an
+      installed entry.
+    - **Done (group A): a chip offered again is no pick either, and is marked.** 0x0801EF4C answers a slot flagged
+      0x10 (JunkSoul's offer from the sent list) with Z clear, so the pick's flags gain 2 (0x0801F0B8): 0x0801F118
+      leaves it out of the picks, and its hand entry's marks hold 0x02. An offer now says so (`custom.offer`'s
+      `marks` and `listed`; JunkSoul's recycle: 0x02, not listed), and the eight recordings that stopped on it
+      (souls/junk/recycle, -dark, -hurt, -keep, -mega, -one, -side1, -theirs) replay. The mark's readers, none the
+      engine's: the use's 0x0800D59A (a dark chip so marked doesn't set the side's statistic 2, which the story's
+      karma reads, 0x0800F5E2, nor outside a netbattle the mood) and the local console's check of its own next
+      chip, 0x0800865C (a chip not offered again must be the folder's, 0x0800642C, and a Mega or Giga chip within
+      the navi's limit, one more for a chip offered again; a chip that fails becomes 0x184; the engine checks a
+      build before the battle and has no such check).
+    - **Done (group A): the install's mark.** 0x0801EA1E marks each entry of an installed hand 0x04 as it charges a
+      dark chip's cost, once an entry. The rules' dark chips do the same on the hand (`battle.hand_marks`,
+      `add_hand_marks`) in place of their own `hand_sent`, after the soul's part of the build (WoodSoul's fold on
+      the screen's list comes before the install: souls/wood/fold2's two entries marked, not three), and the
+      comparison holds the marks whole.
+    - **Done (group A): WoodSoul's fold on the hand** (0x0800E302, 0x0800E308) moves the turn and the mark bytes
+      through the entry's pointer, two bytes an entry: the byte at twice the entry's index takes the one two on, in
+      the turns and again in the marks, the turns running on into the marks (souls/wood/merge: the install's mark in
+      a turn byte, turns 0, 0, 0, 0, 4, 0). Ported as it is (`ChipHand::move_flag_bytes`): the marks are read (the
+      install, the use), and the turn bytes come with them. (The turn bytes' one reader is the use, 0x0800D4F6: the
+      local console's save statistics, 0x0800EC68 to 0x02006F50, no battle state.)
+    - **Done (group A): the dark chips sent.** The picks list a dark chip (dark/drklance, frame 331: 0x36BF, its
       slot's flag 0x20 answered with Z set), 0x08007E92 puts every pick of an installed hand in the console's sent
       list unfiltered, and a dark chip's class is 0, a standard chip's: JunkSoul's screen can offer a dark chip
-      either side sent (which is what 0x0800D59A's test of the mark is for). The engine's `sent_chips.confirmed`
-      lists the folder's picks alone. No recording has a dark chip sent beside a JunkSoul.
+      either side sent. Recorded: souls/junk/recycle-theirs-dark and -dark-used (a dark MegaMan sends the two dark
+      chips his screen offers; the light JunkSoul's next screen offers both again, takes them marked 0x02 and uses
+      them). `sent_chips.confirmed` lists every listed pick. And the cursor on a dark chip offered again shades
+      nothing: the hover reads its slot's flag 0x20, the dark offer's (0x0801E4DE), not the chip, so an offer says
+      whether it shades (`custom.offer`'s `shades`; the engine had tested the chip, and made the hover's volume
+      calls there).
     - **Item 136's: a destroyed hand.** With the hands compared and before that item's rule,
       chips/0x0d4-jealousy/holding stopped at frame 467 (EXE5's at 524): the original empties the whole hand (every
       chip gone, the cursor left at 0), the engine moved the cursor on one chip. A recording of both labs had the
