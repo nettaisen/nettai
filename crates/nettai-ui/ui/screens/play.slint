@@ -137,6 +137,11 @@ export global PlayView {
 
     // ---- In a match --------------------------------------------------------------------------------------
     in property <MatchPage> page;
+    // How far a build's page in the match's menu is scrolled (as its `Flickable`'s `content-y`: 0 or less), and
+    // how far it can be: the keys and the pad scroll it from the app (`Play::scroll`), the wheel and a drag here.
+    in-out property <length> sheet-y;
+    in-out property <length> sheet-span;
+    in-out property <length> sheet-view;
     // The builds are shown (Tab, or Select on a pad, is held).
     in property <bool> peek;
     // The match's builds are closed: the other player's isn't shown.
@@ -152,6 +157,10 @@ export global PlayView {
     out property <string> you: @tr("YOU");
     out property <string> opponent: @tr("OPPONENT");
     out property <string> back-to-play: @tr("BACK TO PLAY");
+    // Esc in the lobby asks before the other player is left.
+    out property <string> leave-question: @tr("Leave the lobby?");
+    out property <string> cancel-word: @tr("CANCEL");
+    out property <string> leave-word: @tr("LEAVE");
     out property <string> connecting: @tr("Connecting…");
     // A row Play adds to the training menu while the other player is waited for (src/screens/play.rs's
     // `WaitRow`, by its number), with an invite out or this machine hosting directly.
@@ -1039,21 +1048,43 @@ export component MatchMenu inherits MenuOverlay {
         y: 0;
         width: root.inner-width;
         height: root.inner-height;
-        page := ScrollPage {
+        // (The sheet is taller than the page: Up and Down, Page Up and Down, Home and End scroll it, as the
+        // wheel and a drag do.)
+        page := Flickable {
             x: 0;
             y: 0;
-            width: root.inner-width + 12px;
+            width: root.inner-width;
             height: root.inner-height - 52px;
-            nav: "menu.sheet.";
-            content-height: sheet.sheet-height;
+            content-width: self.width;
+            content-height: max(self.height, sheet.sheet-height);
+            content-y <=> PlayView.sheet-y;
             sheet := BuildOverview {
                 x: 0;
                 y: 0;
-                width: page.view-width;
+                width: page.width - 12px;
                 height: self.sheet-height;
                 build: PlayView.page == MatchPage.yours ? PlayView.mine : PlayView.theirs;
                 side: PlayView.page == MatchPage.yours ? 1 : 2;
             }
+
+            init => {
+                PlayView.sheet-view = self.height;
+                PlayView.sheet-span = max(0px, sheet.sheet-height - self.height);
+            }
+            changed height => {
+                PlayView.sheet-view = self.height;
+                PlayView.sheet-span = max(0px, sheet.sheet-height - self.height);
+            }
+        }
+
+        // Where the page is, as a thumb along its right edge.
+        Rectangle {
+            x: root.inner-width - 4px;
+            y: page.height * (-PlayView.sheet-y) / max(1px, sheet.sheet-height);
+            width: 4px;
+            height: page.height * page.height / max(1px, sheet.sheet-height);
+            visible: sheet.sheet-height > page.height + 0.5px;
+            background: Theme.line;
         }
 
         Button {
