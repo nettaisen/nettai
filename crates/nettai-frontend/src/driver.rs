@@ -763,6 +763,101 @@ mod tests {
         assert_eq!((hands[0], hands[1]), (0, 1), "no chip from the first screen, the first chip from the second: {hands:?}");
     }
 
+    /// The opponent's buttons as live play pressed them before the training
+    /// session's options and the dummy's recording and second pad (2026-10-12,
+    /// nettai-ui at 6834a06ca), frozen here: the seed's presses every tick,
+    /// taken or not; on the custom screen its choice's presses.
+    struct FrozenOpponent {
+        opponent: Opponent,
+        masher: Masher,
+        ticks: u32,
+    }
+
+    impl FrozenOpponent {
+        fn buttons(&mut self, b: &Battle) -> u16 {
+            const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+            self.ticks += 1;
+            let mashed = self.masher.buttons();
+            if b.round.mode == mode::CUSTOM {
+                return custom_buttons(b, 1, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
+            }
+            match self.opponent.in_fight {
+                InFight::StandsStill => 0,
+                InFight::MovesAround => mashed & MOVES,
+                InFight::AttacksAtRandom => mashed,
+                _ => unreachable!("the frozen opponent does what live play did"),
+            }
+        }
+    }
+
+    /// A set of `m` played as a training session plays it, with every
+    /// option at its normal value, through the session (whose driver's
+    /// hooks run before every tick), beside the same set stepped by hand
+    /// as live play stepped it before those options: the two are the same
+    /// battle, tick for tick, by digest. The local player mashes in the
+    /// fight and picks through each custom screen. The digests, folded (for
+    /// the test's output), the rounds that ended and whether the set did.
+    fn same_as_before(content: &Arc<Content>, m: &nettai_match::Match, seed: u32, opponent: Opponent, ticks: u32) -> (u64, u32, bool) {
+        let set = Set::of(content, m, seed);
+        let mut session = crate::session::Session::new(Box::new(LivePlayer::against(set.clone(), opponent, seed as u64)));
+        let mut frozen = FrozenOpponent { opponent, masher: masher(seed as u64), ticks: 0 };
+        let mut by_hand = set.start();
+        let mut player = Masher::new(seed as u64 ^ 0x5EED);
+        let (mut fold, mut rounds) = (0u64, 0);
+        for tick in 0..ticks {
+            let mashed = player.buttons();
+            let keys = if by_hand.round.mode == mode::CUSTOM { bot_buttons(&by_hand, 0, tick) } else { mashed };
+            let them = frozen.buttons(&by_hand);
+            let TickInput { players, events } = nettai_netplay::standin::tick_input(&by_hand, [keys, them]);
+            by_hand.tick(&players, events);
+            let went_on = session.step(keys);
+            // (A round that ended is the next one's battle at its start, as the session shows it.)
+            match set.after(&by_hand, 0) {
+                None => assert!(went_on, "{opponent:?}: tick {tick}"),
+                Some(After::Round(next)) => {
+                    by_hand = *next;
+                    rounds += 1;
+                }
+                Some(_) => {
+                    assert_eq!(session.battle.digest(), by_hand.digest(), "{opponent:?}: tick {tick}");
+                    assert!(session.finished, "{opponent:?}: the set ended at tick {tick}");
+                    return (fold ^ by_hand.digest(), rounds + 1, true);
+                }
+            }
+            assert_eq!(session.battle.digest(), by_hand.digest(), "{opponent:?}: tick {tick}");
+            fold = fold.rotate_left(5) ^ by_hand.digest();
+        }
+        (fold, rounds, false)
+    }
+
+    /// A set played with the training session's options all at their
+    /// normal values is the set live play played before there were any:
+    /// every game, every opponent, a long round and a short set's rounds
+    /// to its end.
+    #[test]
+    fn a_set_with_the_normal_options_is_the_set_as_before() {
+        for game in ["exe4", "exe5", "exe6"] {
+            let content = match game {
+                "exe4" => nettai_match::testing::exe4_content(),
+                "exe5" => nettai_match::testing::exe5_content(),
+                _ => nettai_match::testing::exe6_content(),
+            };
+            let mut long = nettai_match::pick::live(&content, game, 5, None).unwrap();
+            for s in &mut long.sides {
+                s.set_fact(&content, "hp", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1000))]).unwrap();
+            }
+            let mut folds = Vec::new();
+            for opponent in every_opponent() {
+                folds.push(same_as_before(&content, &long, 5, opponent, 1500).0);
+            }
+            let short = short_set::duel(&content, game, 7, 3);
+            let (fold, rounds, ended) = same_as_before(&content, &short, 7, Opponent { in_fight: InFight::MovesAround, on_custom_screen: OnCustomScreen::PicksFirst }, 30_000);
+            assert!(ended && rounds >= 2, "{game}: the short set played {rounds} rounds and ended: {ended}");
+            folds.push(fold);
+            eprintln!("{game}: {folds:x?}");
+        }
+    }
+
     /// `--save-match` then `--match`: live play's draw for a seed, written
     /// as a match file and played from it, is the same battle as playing
     /// the draw itself, the same digest every tick (the local player
