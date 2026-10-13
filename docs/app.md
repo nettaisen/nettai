@@ -1149,8 +1149,14 @@ part (`Words::problem`: "{chip} can't be played in auto battle").
 as Enter does, but where the library is beside it the focus stays on what was clicked (the editor's `activate`
 brings it back from the library the tab's Enter went on to), so the next key acts on it (R, T, Del, the arrows)
 and a click on a library row puts what it holds there; a phone's click opens the library's sheet, as Enter.
-The pass checks it as the window has it (`build_tabs::clicks`: a click, then R, T, Down and Del in the folder, Up
-and Del on a patch card, Del on a place).
+**What was clicked is marked.** The pointer hides the cursor, so the build's row the tab is on (the entry, card
+or place being filled: the views' `marked`) has the chosen row's bar and tint while the focus is on it or in the
+library, the cursor shown or not. It had them only while the focus was in the library, the cursor's brackets
+alone marking it otherwise, and with the focus kept on a clicked row nothing did (the user: "it is impossible to
+tell now what is selected with the mouse on the left hand side in patch card/chip/abd etc"). A phone's folder,
+a `ListView` of its own, marks it with the list's `chosen`. The pass checks it as the window has it
+(`build_tabs::clicks`: a click, then R, T, Down and Del in the folder, Up and Del on a patch card, Del on a place;
+and a shot of each tab's first click with the pointer gone on to another row, §13).
 
 **A right click removes**, as Del does, wherever the build holds something: a folder's entry (its Regular mark and
 tags with it), a placed NaviCust piece on the board or a placed program's row (its last copy), an auto battle
@@ -1388,6 +1394,8 @@ and the focus goes back where it was when it closes.
 
 **The cursor** is one object, four brackets drawn over the layout 5 outside the focused control, which glides
 from control to control. It shows only while a keyboard or a pad is the last thing used; the pointer hides it.
+Where a list marks its row, the mark stays when it hides: a library's focused row, and the build's row the
+editor's tab is on, have the chosen row's bar and tint whether the cursor shows or not (§8, "A click chooses").
 
 **Text fields don't trap** (rule 7): the arrows walk past a field without changing it. Enter or a typed letter
 starts editing (the letter is the edit's first), and so does the pad's A; while editing, the keys are the
@@ -1547,7 +1555,10 @@ without a ring the shot is of the piece in hand), and a placed program under the
 pair), three cards put in, the cursor on one that is in (Confirm's Remove) and Confirm taking it out, the library
 by MB with a card the MB left can't take refused, one of the
 build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
-filled from the library, one emptied, the places scrolled to the last list. Where a piece goes is found from
+filled from the library, one emptied, the places scrolled to the last list; on a desktop, a click on one of the
+build's rows in each tab, shot with the pointer gone on to another row (`tabs-folder-clicked`,
+`tabs-cards-clicked`, `tabs-auto-clicked`: the cursor hidden, the row clicked marked, the other lit by the
+pointer), and the keys after the clicks (`clicks`). Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
 on the ring, or over another), so the walk is the same whatever the game's shapes. A tab the game hasn't is
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
