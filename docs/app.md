@@ -1355,6 +1355,16 @@ build of each of the game's versions (and one that can't be used) in place of th
 screen lists are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through the
 screen as a player makes them, and Replays lists replays of the pass's own.
 
+**Training's steps** (`tour/training.rs`) walk the entry, the two cards, the battle and the training menu
+(each Battle row with its value changed, a pair apart), and drive the options in the battle as a player would,
+the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
+the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
+Recording row chosen, a recording made (RECORDING over the battle) and played. `training.txt` in the pass's
+folder says what no picture does at each: both navis' HP, the gauge, the options, each side's deal beside the
+top of its folder as saved, and the dummy's buttons and panel a quarter of a second apart as it plays the
+recording; that is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
+locked screen draws no frames, and the training battle never starts (`training.txt` says "no battle").
+
 **Builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`): the list
 with none and with three builds (one named in Japanese, one with a name too long for its row), a new build's
 dialog with the focus a control on, a file that is no save dropped on the list, a build's rename and the
