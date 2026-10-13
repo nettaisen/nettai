@@ -539,6 +539,22 @@ mod tests {
         }
     }
 
+    /// The cache's text once it keeps the outcomes of `files` and no others (a minute at the most). The thread
+    /// writes it when it has nothing left to do: after its last answer, not with it, so a cache read as the last
+    /// answer comes may be the one before.
+    fn kept(cache: &std::path::Path, files: &[&crate::replays::Entry]) -> String {
+        let want: Vec<String> = files.iter().map(|e| format!("file = \"{:016x}\"", e.digest.unwrap())).collect();
+        let began = std::time::Instant::now();
+        loop {
+            let text = std::fs::read_to_string(cache).unwrap_or_default();
+            if text.matches("[[played]]").count() == want.len() && want.iter().all(|w| text.contains(w.as_str())) {
+                return text;
+            }
+            assert!(began.elapsed() < std::time::Duration::from_secs(60), "the cache doesn't keep {want:?} alone:\n{text}");
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+    }
+
     /// A folder is listed on the library's thread, newest first, a file that doesn't read among the rest with
     /// why (and by when it was written), and other files left out. Each replay is then played out there: one
     /// whole, one cut short, and one of other content, which is told as refused and not as a failure. What was
@@ -584,12 +600,8 @@ mod tests {
         assert!(matches!(played(2), Err(Refused::OtherVersion(_))), "{:?}", played(2));
         assert!(matches!(played(3), Ok(out) if out.ticks == 900 && out.diverged.is_none()), "{:?}", played(3));
         assert!(library.played(&entries[0]).is_none());
-        // (The cache is written once the thread has nothing to do.)
-        let began = std::time::Instant::now();
-        while !cache.exists() {
-            assert!(began.elapsed() < std::time::Duration::from_secs(60), "the cache wasn't written");
-            std::thread::sleep(std::time::Duration::from_millis(5));
-        }
+        // (The two played out are kept, the refused one isn't.)
+        kept(&cache, &[&entries[1], &entries[3]]);
 
         // Another run: the two that played are kept, the refused one is found refused again, and a file changed
         // since is played out anew.
@@ -607,8 +619,8 @@ mod tests {
         assert!(matches!(again.played(&entries[1]), Some(Ok(out)) if out.ticks == 600));
         assert!(matches!(again.played(&entries[2]), Some(Err(Refused::OtherVersion(_)))));
         assert!(matches!(again.played(&entries[3]), Some(Ok(out)) if out.ticks == 900));
-        let text = std::fs::read_to_string(&cache).unwrap();
-        assert_eq!(text.matches("[[played]]").count(), 2, "{text}");
+        // (The changed file's new outcome in the old one's place.)
+        kept(&cache, &[&entries[1], &entries[3]]);
         eprintln!("the second listing's three answered in {:.2?}", began.elapsed());
         let _ = std::fs::remove_dir_all(&dir);
     }
