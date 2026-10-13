@@ -86,26 +86,18 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
     };
     let mut seen = BTreeSet::new();
     for (k, (lang, strings)) in languages.iter().enumerate() {
-        let b = std::mem::take(&mut bundles[own.index()]);
         // (A language the content has strings in and its pack no lettering
-        // for is a problem: a console in it can't be shown.)
-        let have = b.hud.languages().join(", ");
-        if k > 0 && !b.hud.languages().contains(&lang.as_str()) {
-            out.problems.push(format!("({lang}) the pack has no lettering in {lang:?} (it has {have}): extract it again"));
-            bundles[own.index()] = b;
-            continue;
-        }
-        bundles[own.index()] = match b.in_language(lang) {
-            Ok(b) => b,
-            Err(e) => {
-                out.problems.push(format!("({lang}) {e}"));
-                continue;
-            }
-        };
+        // for is shown with the pack's own lettering, as a frontend shows
+        // it, `Bundle::for_language`: its strings are the vector font's to
+        // draw, not the pack's fonts'.)
+        let b = std::mem::take(&mut bundles[own.index()]);
+        let lettered = b.hud.has_language(lang);
+        let pack_language = b.hud.language().to_string();
+        bundles[own.index()] = b.for_language(lang);
         let packs = Packs::new(bundles.iter().collect(), own);
         let text = DisplayText::new(strings.as_deref());
         let mut problems = Problems::default();
-        check(c, &packs, &text, if k == 0 { banks } else { None }, &mut problems);
+        check(c, &packs, &text, lettered, if k == 0 { banks } else { None }, &mut problems);
         for (game, lines, made) in other_packs(c, &packs, lang, &text) {
             for what in lines {
                 problems.note(format!("({game}'s pack) {what}"));
@@ -118,6 +110,11 @@ pub fn audit(c: &Content, mut bundles: Vec<Bundle>, own: PackId, banks: Option<&
         out.made.extend(problems.lookups().map(|l| l.describe(c)));
         if k == 0 {
             out.notes = problems.said_lines();
+        }
+        if !lettered {
+            out.notes.push(format!(
+                "the pack has no {lang} lettering: its pictures with words are drawn in its own ({pack_language}), and {lang} names and descriptions with the frontend's font (not checked against the pack's)"
+            ));
         }
         out.languages.push(lang.clone());
         // (Another game's pack without this language's lettering draws its
@@ -193,8 +190,10 @@ fn other_packs(c: &Content, packs: &Packs, lang: &str, text: &DisplayText) -> Ve
     out
 }
 
-/// Every lookup, in one language (`text`, the HUD's lettering in `packs`).
-fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a::SoundBank>]>, p: &mut Problems) {
+/// Every lookup, in one language (`text`, the HUD's lettering in `packs`;
+/// `lettered`: the pack has fonts of the language, so its strings are
+/// looked up in them).
+fn check(c: &Content, packs: &Packs, text: &DisplayText, lettered: bool, banks: Option<&[Arc<m4a::SoundBank>]>, p: &mut Problems) {
     let own = packs.own();
     let (hud, a) = (&own.hud, &own.custom);
     lookups::chatbox_graphics(hud, p);
@@ -215,11 +214,12 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
         if !beast_out.contains(&chip) {
             lookups::chip_art(packs, c, chip, p);
         }
-        let name = text.chip_name(c, chip);
-        lookups::chip_name(hud, c, chip, name, p);
+        if lettered {
+            lookups::chip_name(hud, c, chip, text.chip_name(c, chip), p);
+        }
         let code = d.record.codes.iter().map(|c| c.0).max().unwrap_or(ChipCode::ASTERISK.0);
         lookups::chip_window(a, c, chip, code, p);
-        if let Some(said) = text.chip_description(c, chip) {
+        if let Some(said) = text.chip_description(c, chip).filter(|_| lettered) {
             lookups::dialogue(font, Lookup::ChipDescription(chip), said.text, p);
         }
     }
@@ -246,11 +246,13 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
             lookups::navi_face(packs, c, navi, p);
         }
         lookups::emblem(a, c, navi, p);
-        lookups::navi_name(hud, navi, false, text.navi_name(c, navi), p);
-        if let Some(name) = text.navi_variant_name(c, navi) {
+        if lettered {
+            lookups::navi_name(hud, navi, false, text.navi_name(c, navi), p);
+        }
+        if let Some(name) = text.navi_variant_name(c, navi).filter(|_| lettered) {
             lookups::navi_name(hud, navi, true, name, p);
         }
-        if let Some(said) = text.run_message(c, navi) {
+        if let Some(said) = text.run_message(c, navi).filter(|_| lettered) {
             lookups::dialogue(font, Lookup::RunMessage(navi), said.text, p);
         }
         // A game whose custom screen has the no-running message (its roles
@@ -293,7 +295,7 @@ fn check(c: &Content, packs: &Packs, text: &DisplayText, banks: Option<&[Arc<m4a
                 continue;
             }
             lookups::form_name(a, c, navi, form, p);
-            if let Some(said) = text.form_description(c, form) {
+            if let Some(said) = text.form_description(c, form).filter(|_| lettered) {
                 lookups::dialogue(font, Lookup::FormDescription(form), said.text, p);
             }
         }

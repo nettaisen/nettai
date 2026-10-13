@@ -802,8 +802,17 @@ the US's (the user's choice).
 ### 10.3 How the frontend uses them
 
 - `--lang ja` loads the pack's graphics, swaps the Japanese lettering into the HUD's and the custom screen's fields
-  (`Bundle::in_language`; nothing that draws them changed), and loads `locales/ja.toml`. A language the content root
-  has no table of, or the pack no lettering in, stops the frontend with what there is.
+  (`Bundle::for_language`; nothing that draws them changed), and loads `locales/ja.toml`. A language the content
+  root has no table of stops the frontend with what there is.
+- **A pack without the language's lettering** (one made from the other release's ROMs alone: a pack states the
+  languages it has, asset-formats.md "Languages") is drawn in its own language, the content's strings still in the
+  chosen one: its pictures with words (the banners, the gauge's word, the chip window's pictures, the Crosses' names,
+  the waiting words) are the language it has them in, never placeholders. Its fonts are that language's too, without
+  most of the chosen language's characters (the US font has no kana; the Japanese fonts have 36 and 26 of the 62
+  Latin letters and digits), so the strings are drawn with the vector font in either text mode: the font mode as
+  always, and the original mode into the 240x160 frame at its resolution (`Renderer::render`, `present::draw_text`),
+  rather than in the other language's glyphs. The frame comparison has nothing to compare there: no console draws a
+  language its ROM has no font for.
 - The places that draw content's text (hud.rs, custom.rs, chatbox.rs) ask the frame's `TextSink` for it
   (`strings.rs`, `DisplayText`): the language's string, else the content's own, else the key; `--audit` lists what
   the language's table lacks. The frontend's own text (live play's status line, folder listings) is the content's own
@@ -817,8 +826,9 @@ the US's (the user's choice).
   two lines where the English has three); a translated no-running message prints in the proportion of the own
   message's characters printed, so it ends when that would. A Japanese console times its chatbox by its own text, so
   those boxes take keys a tick or more apart from the engine's; nothing else in the battle reads text.
-- **The Japanese games' HUD code** (docs/engine/jp-differences.md §5), drawn on every console (nettai has the
-  Japanese games' presentation where the releases differ): the custom screen's close also starts the chip window's
+- **The Japanese games' HUD code** (docs/engine/jp-differences.md §5), drawn on every console where the user chose it
+  (nettai has the US release's presentation where the releases differ, with named exceptions, this among them): the
+  custom screen's close also starts the chip window's
   HUD task, so the next chip's name shows from the screens' exchange through the turn's banner (`HudState`); "Cstmzing..." is as wide as its picture. One fix the Japanese consoles showed: a palette flash of variant 0 leaves the HUD layer as the
   transformation's fade left it (black), where the frontend had cleared that fade.
 - **No key switches the language while the window runs** (the user's choice for now): the renderer borrows one

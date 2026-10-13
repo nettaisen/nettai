@@ -613,6 +613,8 @@ their own; the extractor's README has what each set of ROMs lacks):
     `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared, 2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
+- **The Japanese battle code:** where it does otherwise than the US releases' (every place, sorted, and the ones a
+  netbattle reaches recorded as listed deviations) is docs/design/exe5-regions.md.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
   root names them in its compat, as EXE6's does.
 - **Shared decoding:** `nettai-extract` now owns one ROM/LZ77 reader, sprite and portrait decoder, field/background
@@ -2010,6 +2012,14 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 - **Full Synchro on a counter** (0x08016FDC, EXE6's `sub_801A200`): the counterer, in no soul, to 0xFF through the
   setter (rules/emotion, `exe5:emotion`). The aura (0x0801100C, 0x080C45E0) is EXE6's, for an AI index up to 12 in
   EXE5's emotion 2.
+- **The busting level** (0x08009716, into BattleState +0x1E with a win or a loss, 0x08007FDA, 0x08008030): its results
+  screen's. Nothing in a battle reads it; nettai, with no results screen, keeps none.
+- **What a round's end leaves the next battle** (0x08007120 on, EXE6's 0x08007D4E): the PET's HP under battle effect
+  0x40 (BattleState +0x34); the light/dark value (+0x44) under effect 0x800, which a netbattle has (0xE8C), as
+  0x0801289C leaves it, unchanged in a link battle (effect 8: it changes it only outside one); and outside a link
+  battle the mood (+0x0E, 0x08007184) and the souls' records (0x08028D02, 0x08028CC6, 0x08028D28). Each round of a set
+  reloads the saves' stats: verify's flow/next-round (ProtoSoul, the mood worn to 0x58, side 1 deleted) starts round 2
+  as round 1 started, mood 0x80 and 0xBE, the base form, HP 850 and 10, as nettai-match's `next_round` does.
 - **What a hit's count does to the moods** (0x08016FDC, after the tick's hits, unless the battle is over, 0x08008B6E:
   a side with no navi alive or time up; and not in battle flag 0x40's mode, 0x0802D50C, which no netbattle sets): the
   count the receiver's collision gathered (+0x88: each hit's counter byte, a counter hit's mark 0x8000) goes to the

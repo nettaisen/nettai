@@ -64,7 +64,9 @@ pub fn hud(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
 }
 
 /// The custom screen's Japanese words: the chip window's pictures from a
-/// Japanese ROM, each version's forms' names from its own.
+/// Japanese ROM, each version's forms' names from its own Japanese ROM
+/// where its US ROM gives the pack's own (with the Japanese ROM alone the
+/// pack's own names are the Japanese ones, `custom::version_pictures`).
 pub fn custom(roms: &Roms) -> CustomLettering {
     use crate::exe6::custom::{FORM_NAMES, OK, OK_PICKED, OTHER, REDEAL, REDEAL_BUTTON, SCRAP, SCRAP_BUTTON, picture, tiles};
     let jp = roms.jp();
@@ -84,8 +86,10 @@ pub fn custom(roms: &Roms) -> CustomLettering {
             other: picture(jp, OTHER),
         },
         form_names: [Version::Falzar, Version::Gregar]
+            .into_iter()
+            .filter(|&v| roms.us_of(v).is_present() && roms.jp_of(v).is_present())
             .map(|v| (v.name().to_string(), tiles(roms.jp_of(v), FORM_NAMES)))
-            .into(),
+            .collect(),
         buttons: vec![button(REDEAL_BUTTON, REDEAL), button(SCRAP_BUTTON, SCRAP)],
     }
 }
