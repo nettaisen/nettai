@@ -41,6 +41,21 @@ pub const INVALID_CODE: ChipCode = ChipCode(0x1B);
 const SPECIAL_CODES: [ChipCode; 2] = [ChipCode(0x1B), ChipCode(0x1C)];
 
 /// What a slot holds.
+/// A chip the side's rules offer in a slot (`custom.offer`): the chip, the
+/// marks its pick carries into the hand, whether the hand's picks list it,
+/// and whether the cursor on it shades the screen (the dark chips' hover).
+/// EXE4's two kinds, by the slot's flags: a dark chip offered to a dark
+/// MegaMan (0x20: no marks, listed, shading, 0x0801E4DE) and JunkSoul's chip
+/// offered again (0x10: marked 0x02, not listed, not shading though it be
+/// a dark chip).
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub struct Offer {
+    pub chip: FolderChip,
+    pub marks: u8,
+    pub listed: bool,
+    pub shades: bool,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum SlotKind {
     /// A dealt chip: entry `index` of the battle folder. `regular`: it is
@@ -326,7 +341,7 @@ pub struct Screen {
     pub look: ScreenLook,
     /// The chips the side's rules offer as the screen deals (`custom.offer`),
     /// by slot: the slots show them once laid out.
-    pub offers: [Option<FolderChip>; SLOTS],
+    pub offers: [Option<Offer>; SLOTS],
 }
 
 /// A button picked in a chip's place (`custom.trade_last_pick`): the
@@ -541,8 +556,8 @@ impl Screen {
         }
         // The chips the side's rules offer (EXE4's dark chips, 0x0801DF38:
         // slots 8 and 9), over what the screen dealt there.
-        for (slot, chip) in self.offers.iter().enumerate().filter_map(|(s, c)| c.map(|c| (s, c))) {
-            self.slots[slot].kind = SlotKind::Offered(chip);
+        for (slot, offer) in self.offers.iter().enumerate().filter_map(|(s, o)| o.map(|o| (s, o))) {
+            self.slots[slot].kind = SlotKind::Offered(offer.chip);
         }
         if layout.slots.iter().all(|s| s.moves.neighbors().is_some()) {
             self.fix_neighbors(layout);
@@ -691,10 +706,17 @@ impl Screen {
     }
 
     /// `sub_802A394`: choosing chips or reading a chip's description, the
-    /// cursor rests on a dark chip (as it counts in a selection).
+    /// cursor rests on a dark chip (as it counts in a selection); on a chip
+    /// the rules offered, what the offer says (EXE4's 0x0801E4CC reads its
+    /// slot's flag).
     fn on_shading_chip(&self, view: &PlayerView, folder: &BattleFolder) -> bool {
+        let slot = self.cursor as usize;
+        let offered = self.offers[slot].filter(|_| matches!(self.slots[slot].kind, SlotKind::Offered(_)));
         matches!(self.phase, Phase::Settling | Phase::Choosing | Phase::Description { window: None, .. })
-            && self.chip_in(self.cursor, folder).is_some_and(|c| is_dark(checked(c, view), view))
+            && match offered {
+                Some(offer) => offer.shades,
+                None => self.chip_in(self.cursor, folder).is_some_and(|c| is_dark(checked(c, view), view)),
+            }
     }
 
     fn step(&mut self, joy: &Joypad, view: &PlayerView, folder: &mut BattleFolder, console: &mut Console, extras: &mut dyn super::Extras) -> Option<Request> {
