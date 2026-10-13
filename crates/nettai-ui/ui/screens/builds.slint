@@ -18,8 +18,8 @@ import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../
 import { NaviView, NaviTab } from "builds/navi.slint";
 import { FolderView, FolderTab, FolderOverlay } from "builds/folder.slint";
 import { NavicustView, NavicustTab } from "builds/navicust.slint";
-import { PatchCardsView, PatchCardsTab } from "builds/patch_cards.slint";
-import { AutoBattleView, AutoBattleTab } from "builds/auto_battle.slint";
+import { PatchCardsView, PatchCardsTab, PatchCardsOverlay } from "builds/patch_cards.slint";
+import { AutoBattleView, AutoBattleTab, AutoBattleOverlay } from "builds/auto_battle.slint";
 
 // Each tab's view reaches the app through here (app.slint exports what this file does).
 export { NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView }
@@ -428,9 +428,11 @@ component NameDialog inherits DialogFrame {
     }
 }
 
-// What opens over Builds: its dialogs, and on a phone the Folder tab's sheet. It covers the whole window, over
-// the screen and under the shell's own dialogs; empty, it takes no clicks.
+// What opens over Builds: its dialogs, and on a phone the Folder's, the Patch cards' and the Auto battle tab's
+// sheets. It covers the whole window, over the screen and under the shell's own dialogs; empty, it takes no clicks.
 export component BuildsOverlay inherits Rectangle {
     if BuildsView.dialog != BuildsDialog.none: NameDialog { }
     if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.folder && FolderView.sheet: FolderOverlay { }
+    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.patch-cards && PatchCardsView.sheet: PatchCardsOverlay { }
+    if BuildsView.page == BuildsPage.editor && BuildsView.shown == EditorTab.auto-battle && AutoBattleView.sheet: AutoBattleOverlay { }
 }
