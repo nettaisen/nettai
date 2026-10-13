@@ -1,0 +1,31 @@
+# BN6's look in nettai (docs/app.md §10; docs/design/app-ui.md §4): the colors the app's menus are drawn in while the
+# game is selected, and the pattern of their backdrop. Gregar and Falzar's net at night: night-blue, cyan, hexagons.
+# The app reads it from the content alone, as it reads the game's name, so the menus are in the game's look before
+# the game is loaded; the battle reads none of it. A color is 0xRRGGBB; a strength is the opacity something is drawn
+# at, from 0 to 1.
+
+# The backdrop's ground, top to bottom, and the glow at its top right.
+ground_top = 0x0A1330
+ground_bottom = 0x050916
+glow = 0x286EFF
+glow_strength = 0.28
+# A panel, a control raised on it (a button, a pressed row), every line, and a well cut into them (a field, a
+# value's box).
+panel = 0x0C1836
+raised = 0x13254D
+line = 0x27508F
+inset = 0x040813
+# Text, text that says less, and text that says least.
+text = 0xEAF3FF
+muted = 0x8EA8D4
+dim = 0x55698F
+# The cursor (and the chosen row's bar, the active pane's title), the main action, and the text on the main action.
+cursor = 0x66E0FF
+action = 0xFFB62E
+action_ink = 0x1B1100
+
+# The backdrop's pattern: a field of hexagons, stroked.
+[pattern]
+kind = "hexagons"
+color = 0x62B4FF
+strength = 0.078
