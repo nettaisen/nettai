@@ -109,6 +109,19 @@ impl Battle {
     pub fn menu_open(&self) -> bool {
         self.menu
     }
+
+    /// Start what it plays over from its beginning (a set from its first round), if it can stop (not an online
+    /// match): it runs again, and its owner will hear of its end again (a training set that ended starts over).
+    /// False, and nothing changes, in real time.
+    pub fn restart(&mut self) -> bool {
+        if !self.stage.player.restart() {
+            return false;
+        }
+        self.over = false;
+        self.stage.hold();
+        self.stage.surface.stale = true;
+        true
+    }
 }
 
 /// A battle being made ready.
@@ -250,6 +263,11 @@ impl Shell {
     /// Whether a battle is being made ready (the cards show).
     pub fn loading_battle(&self) -> bool {
         self.loading.is_some()
+    }
+
+    /// Whether the battle being made ready is `owner`'s.
+    pub fn loading_of(&self, owner: ScreenId) -> bool {
+        self.loading.as_ref().is_some_and(|l| l.start.owner == owner)
     }
 
     /// Give up the battle being made ready (its owner asks: an invite canceled).
@@ -452,5 +470,41 @@ impl Shell {
             Recorder::new(Box::new(std::io::BufWriter::new(file)), content, &m, &info)
         })();
         made.map_err(|why| crate::errors::log("making a replay's file", &why)).ok()
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_frontend::driver::LivePlayer;
+    use nettai_frontend::player::Player;
+    use nettai_frontend::testing::{graphics, short_set};
+
+    /// A battle whose set was played to its end starts over (training has no end): it has the keys again,
+    /// from the set's first tick, and plays on; its owner will hear of its next end.
+    #[test]
+    fn a_set_that_ended_starts_over() {
+        let content = nettai_match::testing::exe6_content();
+        // (A set a shot decides: the dummy has 1 HP.)
+        let m = short_set::of(&content, "exe6", 7);
+        let driver = LivePlayer::new(Set::of(&content, &m, 7));
+        let player = Player::with(graphics(&content, 0x7FFF).renderer(TextMode::Original, None), None, None, Box::new(driver));
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Training, kind: BattleKind::Training, game: "exe6".into(), full: true, viewer: 0, menu: false, over: false };
+        let play_out = |b: &mut Battle| {
+            while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
+                assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
+            }
+            assert!(b.stage.player.finished());
+            b.stage.player.ticks()
+        };
+        let ticks = play_out(&mut b);
+        // (As the shell leaves it once its owner has heard.)
+        b.over = true;
+        assert!(!b.playing());
+        assert!(b.restart());
+        assert!(b.playing() && !b.stage.player.finished());
+        assert_eq!((b.stage.player.ticks(), b.stage.player.stopped()), (0, None));
+        // The same set again, to the same end.
+        assert_eq!(play_out(&mut b), ticks);
     }
 }
