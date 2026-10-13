@@ -633,7 +633,7 @@ component Choice inherits Rectangle {
     width: 48px;
     height: 36px;
     Rectangle {
-        background: root.chosen ? Theme.tint : (hit.has-hover ? #66e0ff0d : Theme.inset);
+        background: root.chosen ? Theme.tint : (hit.has-hover ? Theme.tint-hover : Theme.inset);
         border-width: 1px;
         border-color: Theme.line;
         animate background {
@@ -657,7 +657,7 @@ component Choice inherits Rectangle {
         color: root.chosen ? Theme.cursor : Theme.muted;
         font-family: Theme.display;
         font-size: 13px;
-        font-weight: 700;
+        font-weight: Theme.display-bold;
         horizontal-alignment: center;
         vertical-alignment: center;
         animate color {

@@ -106,7 +106,7 @@ component AutoLibraryRowView inherits Rectangle {
     property <length> note-width: Theme.phone ? 118px : 150px;
     property <length> note-x: root.megabytes-x - 8px - root.note-width;
     Rectangle {
-        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Image {
