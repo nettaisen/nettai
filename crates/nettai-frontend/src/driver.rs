@@ -405,6 +405,25 @@ pub struct Training {
     /// flag and plays its sound as it fills to it, on the next tick that
     /// fills it (none while the battle is paused or dimmed).
     pub full_gauge: bool,
+    /// The order both sides' custom screens deal their folders in.
+    pub chip_draw: ChipDraw,
+}
+
+/// The order a custom screen deals the battle folder in.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ChipDraw {
+    /// As the round shuffled it (each console's own shuffle at the round's
+    /// start: the match's).
+    #[default]
+    Shuffled,
+    /// The folder's own order, dealt from its top, as the games deal a
+    /// folder they don't shuffle (the battle's effect 0x80 clear,
+    /// `sub_800A3E4`: no Regular chip first and no tag pair either). What a
+    /// screen leaves unpicked stays at the top for the next. Set during a
+    /// round, what is left of the folder is put in that order (the round's
+    /// shuffle again, set back), from the next screen's deal on; a custom
+    /// screen being shown keeps its deal.
+    FolderOrder,
 }
 
 /// How long a navi with refills goes with no HP lost before its HP is full
@@ -439,6 +458,8 @@ pub struct LivePlayer {
     training: Training,
     /// Each side's navi's HP, followed for its refills.
     refill: [Refill; 2],
+    /// The order each side's battle folder is in this round.
+    arranged: [ChipDraw; 2],
     /// The opponent's recording: its buttons, a tick of the fight running
     /// at a time; whether the local player is driving it to record them
     /// (`record`), the local player's buttons the tick before (for START's
@@ -452,6 +473,36 @@ pub struct LivePlayer {
 /// The longest recording: a minute of the fight. One that reaches it ends
 /// as START would end it.
 pub const RECORDING_MOST: usize = 3584;
+
+/// Put what is left of `side`'s battle folder in `draw`'s order: the
+/// folder's own (`saved`, from its top), with no Regular chip first and no
+/// tag pair, as a game's unshuffled folder has; or the round's shuffle (its
+/// setup's battle folder), with its Regular chip first and its tag pair if
+/// no custom screen has dealt from it yet. A chip the order hasn't (none a
+/// folder's own) goes last.
+fn arrange(b: &mut Battle, side: usize, draw: ChipDraw, saved: &SavedFolder) {
+    let dealt = b.custom.sides[side].screen.is_some();
+    let setup = &b.setup.players[side];
+    let (order, regular, tag_pair): (Vec<FolderChip>, bool, Option<u8>) = match draw {
+        ChipDraw::FolderOrder => (saved.chips.to_vec(), false, None),
+        ChipDraw::Shuffled => {
+            let order = setup.folder.chips.iter().flatten().copied().collect();
+            (order, !dealt && setup.folder.regular_pending, setup.console.tag_pair.filter(|_| !dealt))
+        }
+    };
+    let folder = &mut b.custom.sides[side].folder;
+    let mut left: Vec<FolderChip> = folder.chips.iter().flatten().copied().collect();
+    let mut placed: Vec<FolderChip> = Vec::with_capacity(left.len());
+    for chip in order {
+        if let Some(at) = left.iter().position(|c| *c == chip) {
+            placed.push(left.remove(at));
+        }
+    }
+    placed.append(&mut left);
+    folder.chips = std::array::from_fn(|i| placed.get(i).copied());
+    folder.regular_pending = regular;
+    b.consoles[side].tag_pair = tag_pair;
+}
 
 /// Whether the fight runs on the tick after `b`: what the opponent's
 /// recording is made of and played on (not the turn's banner, the custom
@@ -477,6 +528,7 @@ impl LivePlayer {
             masher: masher(seed),
             training: Training::default(),
             refill: Default::default(),
+            arranged: [ChipDraw::Shuffled; 2],
             recording: Vec::new(),
             recording_now: false,
             held: 0,
@@ -564,6 +616,13 @@ impl LivePlayer {
         // (The gauge runs from each custom screen's end until the next opens, and not after the round is decided.)
         if self.training.full_gauge && b.gauge.enabled && b.gauge.value < CustomGauge::FULL {
             b.gauge.value = CustomGauge::FULL;
+        }
+        // (A custom screen being shown deals from where its folder's chips are: it keeps them there.)
+        for side in 0..2 {
+            if self.arranged[side] != self.training.chip_draw && b.round.mode != mode::CUSTOM {
+                arrange(b, side, self.training.chip_draw, &self.set.folders()[side]);
+                self.arranged[side] = self.training.chip_draw;
+            }
         }
     }
 
@@ -678,6 +737,7 @@ impl Driver for LivePlayer {
         self.round = 1;
         self.masher = masher(self.seed);
         self.refill = Default::default();
+        self.arranged = [ChipDraw::Shuffled; 2];
         // (A recording being made ends; the one made plays from its start.)
         self.stop_recording();
         self.played = 0;
@@ -688,7 +748,7 @@ impl Driver for LivePlayer {
     /// each navi with refills that lost no HP for [`REFILL_REST`] ticks has
     /// all of it back.
     fn prepare(&mut self, b: &mut Battle) {
-        if self.training == Training::default() {
+        if self.training == Training::default() && self.arranged == [ChipDraw::Shuffled; 2] {
             return;
         }
         for side in 0..2 {
@@ -713,6 +773,9 @@ impl Driver for LivePlayer {
         let after = self.set.after(b, b.setup.local_side)?;
         if matches!(after, After::Round(_)) {
             self.round += 1;
+            // (The next round's folders are shuffled as its start, and its navis are new.)
+            self.arranged = [ChipDraw::Shuffled; 2];
+            self.refill = Default::default();
         }
         Some(after)
     }
@@ -1262,6 +1325,101 @@ mod tests {
         let mut b = live.start();
         play_until(&mut live, &mut b, 3000, screen, fight_runs);
         assert_eq!(live.next(&b, 0).unwrap().input[1].held, recorded[0]);
+    }
+
+    /// What is left of each side's battle folder as each custom screen
+    /// deals from it (in the order it deals), and the round's own shuffle
+    /// of it, through `screens` screens of a set of `m`: the player and the
+    /// dummy each pick the first chip they can; the player opens a screen
+    /// as soon as the gauge is full, and from the `shoot`th screen on shoots
+    /// instead (a match of 1 HP: the round ends). `changes`: the options
+    /// set in the fight after that many screens.
+    fn deals(content: &Arc<Content>, m: &nettai_match::Match, training: Training, changes: &[(usize, Training)], shoot: usize, screens: usize) -> Vec<[(Vec<FolderChip>, Vec<FolderChip>); 2]> {
+        let live = LivePlayer::against(Set::of(content, m, 5), Opponent::default(), 9).with_training(training);
+        let mut s = crate::session::Session::new(Box::new(live));
+        let mut out = Vec::new();
+        let mut was_open = false;
+        for tick in 0..60_000u32 {
+            let b = &s.battle;
+            let open = b.round.mode == mode::CUSTOM && (0..2).all(|side| b.custom.sides[side].screen.as_ref().is_some_and(|x| x.phase == Phase::Choosing));
+            if open && !was_open {
+                out.push([0, 1].map(|side| {
+                    let left = b.custom.sides[side].folder.chips.iter().flatten().copied().collect();
+                    (left, b.setup.players[side].folder.chips.iter().flatten().copied().collect())
+                }));
+                if out.len() == screens {
+                    break;
+                }
+            }
+            was_open = open;
+            if b.round.mode == mode::FIGHTING
+                && let Some(&(_, then)) = changes.iter().find(|(after, then)| *after == out.len() && s.driver.live().unwrap().training() != *then)
+            {
+                s.driver.live_mut().unwrap().set_training(then, &mut s.battle);
+            }
+            let b = &s.battle;
+            let keys = if b.round.mode == mode::CUSTOM {
+                bot_buttons(b, 0, tick)
+            } else if out.len() >= shoot {
+                short_set::shooter(b, 0, tick)
+            } else if b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+                keys::L
+            } else {
+                0
+            };
+            assert!(s.step(keys), "tick {tick}");
+        }
+        assert_eq!(out.len(), screens);
+        out
+    }
+
+    /// Whether `part` is in `whole`'s order (each of its chips found
+    /// further on than the last).
+    fn in_order(part: &[FolderChip], whole: &[FolderChip]) -> bool {
+        let mut rest = whole.iter();
+        part.iter().all(|c| rest.any(|w| w == c))
+    }
+
+    /// Folder order deals each folder from its top, every screen and every
+    /// round, for both sides: what is left of the folder is in the folder's
+    /// order, and a round's first screen deals the whole folder as it was
+    /// saved (no Regular chip first). Shuffled deals as each round shuffled
+    /// it. Set in the fight, from the next screen on; set back, the next
+    /// deals the round's shuffle again.
+    #[test]
+    fn folder_order_deals_from_the_top() {
+        let content = nettai_match::testing::exe6_content();
+        let m = short_set::duel(&content, "exe6", 7, 3);
+        let saved = Set::of(&content, &m, 5).folders().map(|f| f.chips.to_vec());
+        let folder_order = Training { chip_draw: ChipDraw::FolderOrder, ..Training::default() };
+        // (Three screens of the first round, then the second round's first: two rounds won end the set.)
+        let ordered = deals(&content, &m, folder_order, &[], 3, 4);
+        let mut firsts = 0;
+        for (n, deal) in ordered.iter().enumerate() {
+            for side in 0..2 {
+                let (left, _) = &deal[side];
+                assert!(in_order(left, &saved[side]), "screen {n}, side {side}: {left:?}");
+                if left.len() == 30 {
+                    assert_eq!(left, &saved[side], "screen {n}, side {side}: a round's first");
+                    firsts += 1;
+                }
+            }
+        }
+        assert!(firsts >= 4, "two rounds' first screens, both sides: {firsts}");
+        let shuffled = deals(&content, &m, Training::default(), &[], 3, 4);
+        for (n, deal) in shuffled.iter().enumerate() {
+            for (side, (left, round)) in deal.iter().enumerate() {
+                assert!(in_order(left, round), "screen {n}, side {side}");
+            }
+        }
+        assert!(shuffled.iter().any(|d| d.iter().zip(&saved).any(|((left, _), saved)| !in_order(left, saved))), "a shuffle isn't the folder's order");
+        // Set after the first screen, and back after the second.
+        let changed = deals(&content, &m, Training::default(), &[(1, folder_order), (2, Training::default())], 99, 3);
+        for side in 0..2 {
+            assert!(in_order(&changed[1][side].0, &saved[side]), "side {side}");
+            assert!(in_order(&changed[2][side].0, &changed[2][side].1), "side {side}");
+        }
+        assert_eq!(changed[0], shuffled[0]);
     }
 
     /// `--save-match` then `--match`: live play's draw for a seed, written

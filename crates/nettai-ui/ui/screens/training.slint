@@ -40,6 +40,7 @@ export enum TrainingOption {
     your-hp,
     dummys-hp,
     custom-gauge,
+    chip-draw,
     input-display,
 }
 
@@ -125,6 +126,9 @@ export global TrainingView {
         if option == TrainingOption.custom-gauge {
             return @tr("Custom gauge");
         }
+        if option == TrainingOption.chip-draw {
+            return @tr("Chip draw");
+        }
         if option == TrainingOption.input-display {
             return @tr("Input display");
         }
@@ -145,6 +149,9 @@ export global TrainingView {
         }
         if option == TrainingOption.custom-gauge {
             return value == 0 ? @tr("Normal") : @tr("Always full");
+        }
+        if option == TrainingOption.chip-draw {
+            return value == 0 ? @tr("Shuffled") : @tr("Folder order");
         }
         if option == TrainingOption.input-display {
             return value == 0 ? @tr("Off") : @tr("On");

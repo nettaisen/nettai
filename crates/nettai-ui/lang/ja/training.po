@@ -124,6 +124,16 @@ msgstr "カスタムゲージ"
 msgid "Always full"
 msgstr "常に満タン"
 
+# The order the custom screen deals the folder in: shuffled, or from the folder's top.
+msgid "Chip draw"
+msgstr "チップの配り方"
+
+msgid "Shuffled"
+msgstr "シャッフル"
+
+msgid "Folder order"
+msgstr "フォルダ順"
+
 msgid "Input display"
 msgstr "入力表示"
 

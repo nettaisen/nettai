@@ -1677,11 +1677,13 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 | Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
+| Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Display: Input display | Off, On | the app's own drawing, below |
 
 The Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
-(a navi's HP, the custom gauge) before each tick, never a rule of the simulation. With them at their normal values the battle is
+(a navi's HP, the custom gauge, the battle folder the custom screen deals from) before each tick, never a rule
+of the simulation. With them at their normal values the battle is
 the set's as it was before they existed, tick for tick by digest (the library's test of it, docs/frontend.md
 §2), and every online match and replay is untouched: only live play has them.
 
@@ -1689,7 +1691,7 @@ A row is focused as a whole and changed at once by Left and Right (Enter steps i
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
 MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
 display are remembered between runs (`training.action`, `training.custom-screen`, `training.your-hp`,
-`training.dummys-hp`, `training.custom-gauge`, `training.inputs`); a session another screen started begins as that screen says, every
+`training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`); a session another screen started begins as that screen says, every
 battle option at its normal value, and keeps nothing of the dummy's or the battle's.
 
 **The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the

@@ -404,6 +404,17 @@ refuses, and `set_training` is refused while a replay is written).
   dimmed, nor in the final turns, where a full gauge isn't flagged), so the
   game's own pause is left as it is and L or R opens the custom screen from
   the turn's start on (about a second, its banner, where without it is ten).
+- **Chip draw** (`ChipDraw`), both sides: as each round shuffled the folder
+  (the default), or in **folder order**, as the games deal a folder they
+  don't shuffle (the battle's effect 0x80 clear, `sub_800A3E4`): from the
+  folder's top as it was saved, no Regular chip first and no tag pair, what
+  a screen leaves unpicked staying on top for the next. It is the battle
+  folder the custom screen deals from (`custom.sides[n].folder`) put in that
+  order: what is left of it, at once outside the custom screen (a screen
+  being shown keeps its deal, and the folder is put in order as it closes)
+  and again as each round starts; set back, what is left is put in the
+  round's own shuffle again (with its Regular chip and tag pair if no screen
+  has dealt yet).
 
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number
