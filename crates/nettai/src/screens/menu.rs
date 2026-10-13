@@ -1,9 +1,10 @@
 //! The main menu (docs/design/app-ui.md §6): PLAY, TRAINING, BUILDS, REPLAYS, Settings, Exit, and the demo reel.
 //!
 //! The reel is a battle of the selected game playing itself: the player's latest replays of the game, one after
-//! another; with none, a set between new builds of the game's first two versions (`nettai_match::build`: each
-//! with the folder a new save starts with), each side pressing by itself. It is silent (the title music plays
-//! over the menu) and takes no keys.
+//! another (`crate::replays::Reel`: found and read on a thread as the menu shows; one that doesn't play here
+//! is passed over); with none, a set between new builds of the game's first two versions
+//! (`nettai_match::build`: each with the folder a new save starts with), each side pressing by itself. It is
+//! silent (the title music plays over the menu) and takes no keys.
 
 use crate::games::{Names, Ready};
 use crate::screens::{Screen, ScreenId};
@@ -12,15 +13,12 @@ use crate::stage::Stage;
 use nettai_frontend::driver::{Driver, InFight, LivePlayer, OnCustomScreen, Opponent};
 use nettai_frontend::game::TextMode;
 use nettai_frontend::player::Player;
-use nettai_frontend::replay::{Replay, ReplayPlayer};
+use nettai_frontend::replay::ReplayPlayer;
 use nettai_render::vfont::TextRenderer;
 use nettai_ui::MenuView;
 use slint::ComponentHandle;
 use std::rc::Rc;
 use std::time::Instant;
-
-/// The replays the reel goes through: the latest few.
-const REPLAYS: usize = 5;
 
 /// The tick the screenshot pass holds the reel at: in the first turn's fight.
 const STILL_AT: u32 = 700;
@@ -40,10 +38,8 @@ struct Reel {
 #[derive(Default)]
 pub struct Menu {
     reel: Option<Reel>,
-    /// The selected game's replays, newest first, and the one the reel plays next.
-    replays: Vec<Replay>,
-    replays_of: Option<String>,
-    next: usize,
+    /// Where the reel's replays come from: the game they are of, and its latest.
+    source: Option<(String, crate::replays::Reel)>,
     /// The reel's battles, counted for the UI.
     reels: i32,
 }
@@ -71,6 +67,8 @@ impl Screen for Menu {
 
     fn hide(&mut self, _shell: &mut Shell) {
         self.reel = None;
+        // (The replays are found again when the menu next shows: a match played since is among them.)
+        self.source = None;
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, _index: i32) {
@@ -91,8 +89,10 @@ impl Screen for Menu {
         }
         let Some((game, ready)) = shell.ready() else { return };
         // The next battle, when there is none or the last one is over: it fades in.
-        if self.reel.as_ref().is_none_or(|r| r.stage.player.stopped().is_some()) {
-            self.reel = self.next_reel(shell, &game, &ready);
+        if self.reel.as_ref().is_none_or(|r| r.stage.player.stopped().is_some())
+            && let Some(next) = self.next_reel(shell, &game, &ready)
+        {
+            self.reel = Some(next);
             self.reels += 1;
             shell.ui().global::<MenuView>().set_reel_seq(self.reels);
         }
@@ -120,20 +120,27 @@ impl Screen for Menu {
 
 impl Menu {
     /// The reel's next battle: the next of the game's latest replays that plays on this content, else a set
-    /// made for it.
+    /// made for it. None while the replays are still being found.
     fn next_reel(&mut self, shell: &mut Shell, game: &str, ready: &Rc<Ready>) -> Option<Reel> {
-        if self.replays_of.as_deref() != Some(game) {
+        use crate::replays::Next;
+        if self.source.as_ref().is_none_or(|(of, _)| of != game) {
             // (The screenshot pass plays no replay: its pictures don't depend on what the player has recorded.)
-            let found = if shell.still { Vec::new() } else { crate::replays::scan(&crate::paths::replays()) };
-            self.replays = found.into_iter().filter_map(|e| e.replay.ok()).filter(|r| r.head.game == game).take(REPLAYS).collect();
-            self.replays_of = Some(game.to_string());
-            self.next = 0;
+            let source = if shell.still { crate::replays::Reel::empty() } else { crate::replays::Reel::of(game, crate::replays::folder()) };
+            self.source = Some((game.to_string(), source));
         }
+        let (_, source) = self.source.as_mut().expect("made above");
         let content = ready.content();
-        for _ in 0..self.replays.len() {
-            let replay = &self.replays[self.next % self.replays.len()];
-            self.next += 1;
-            let (Ok(driver), Ok(m)) = (ReplayPlayer::new(content, replay, Some(replay.info.side)), nettai_match::binary::read_match(content, &replay.match_bytes)) else { continue };
+        loop {
+            let replay = match source.next() {
+                Next::Wait => return None,
+                Next::Nothing => break,
+                Next::Replay(replay) => replay,
+            };
+            // (One that isn't played here is passed over, and not given again.)
+            let (Ok(driver), Ok(m)) = (ReplayPlayer::new(content, &replay, Some(replay.info.side)), nettai_match::binary::read_match(content, &replay.match_bytes)) else {
+                source.skip();
+                continue;
+            };
             // (The console shown has its side at the left.)
             let sides = if replay.info.side == 0 { [&m.sides[0], &m.sides[1]] } else { [&m.sides[1], &m.sides[0]] };
             caption(shell, game, ready, sides);
