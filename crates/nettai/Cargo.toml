@@ -9,6 +9,8 @@ description = "The nettai app: the menus, the builds, netplay and the replays ar
 # The UI: the Slint files compiled, a crate of its own so an edit here doesn't compile it again (docs/app.md §14).
 nettai-ui = { path = "../nettai-ui" }
 nettai-frontend = { path = "../nettai-frontend" }
+# The training dummy's AI (its Action "Fights"), plugged into live play.
+nettai-training = { path = "../nettai-training" }
 nettai-battle = { path = "../nettai-battle" }
 nettai-render = { path = "../nettai-render" }
 nettai-content = { path = "../nettai-content" }
