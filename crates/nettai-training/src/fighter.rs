@@ -8,8 +8,9 @@
 //! it a second or so on (the HP each navi has then), against a few guesses
 //! at the other player: they go on as they are, step up or down, or attack
 //! at once. A plan counts what it takes away on average over the guesses,
-//! less the most it loses in any, so it keeps out of the way of an attack
-//! that may come. Every chip of every game's content is played as the
+//! less what it loses (the most in any, and the average, by its caution),
+//! and using a chip counts for something of itself: a chip held is no use,
+//! and an opponent that never risks one is none to train against. Every chip of every game's content is played as the
 //! content plays it, with nothing about any of them here. It presses only
 //! buttons and asks the engine for nothing else; a battle is plain data, so
 //! a copy to try a plan in is a clone (as a rollback's snapshot is).
@@ -17,6 +18,8 @@
 //! What makes it a partner to train against rather than one that sees the
 //! future is its [`Level`]: it acts on what it decided a reaction time ago,
 //! it now and then picks a plan at random, and it looks only so far ahead.
+//! Normal and Hard decide again as soon as the other player presses A or B
+//! or lands a hit, not only on their beat: they see an attack coming.
 //! The reaction time is also when it thinks: a decision is worked out on a
 //! thread of its own while the battle goes on, and taken on the tick it was
 //! due (the battle waits for it if it isn't ready). Its picks are seeded and
@@ -52,12 +55,23 @@ pub struct Level {
     /// does: a shot lets go (the charged shot, once the charge is full) and
     /// presses it again.
     pub charges: bool,
+    /// It decides again at once (a reaction time on, as ever) when the
+    /// other player presses A or B, or it loses HP: it sees an attack come,
+    /// not only on its beat (`every`).
+    pub alert: bool,
+    /// In a hundred, how much of what a plan loses is the most it loses in
+    /// any guess (the rest the average over them): 100 keeps out of the way
+    /// of any attack that may come, 0 risks what is likely.
+    pub caution: u32,
+    /// In HP, what using a chip is worth besides what it takes away: a
+    /// chip held is no use.
+    pub eager: u32,
 }
 
 impl Level {
-    pub const EASY: Level = Level { reaction: 30, horizon: 40, every: 20, blunders: 50, charges: true };
-    pub const NORMAL: Level = Level { reaction: 14, horizon: 50, every: 12, blunders: 15, charges: true };
-    pub const HARD: Level = Level { reaction: 6, horizon: 60, every: 12, blunders: 0, charges: true };
+    pub const EASY: Level = Level { reaction: 30, horizon: 40, every: 20, blunders: 50, charges: true, alert: false, caution: 50, eager: 10 };
+    pub const NORMAL: Level = Level { reaction: 14, horizon: 50, every: 12, blunders: 15, charges: true, alert: true, caution: 50, eager: 10 };
+    pub const HARD: Level = Level { reaction: 6, horizon: 60, every: 12, blunders: 0, charges: true, alert: true, caution: 50, eager: 10 };
 }
 
 impl Default for Level {
@@ -303,10 +317,11 @@ struct Job {
     plans: Vec<Exec>,
     side: u8,
     theirs: u16,
-    /// The ticks from the decision to the aheads.
+    /// The ticks from the decision to the aheads; the level, its horizon
+    /// what each plan is tried for.
     waited: u32,
     horizon: u32,
-
+    level: Level,
     /// Each plan tried for its ticks whatever the battle's state
     /// ([`Question::warm`]).
     warm: bool,
@@ -317,7 +332,7 @@ impl Job {
     /// guesses, less the most it loses in any, times the guesses), tried in
     /// `trial`; and the ticks that took.
     fn score(&self, i: usize, trial: &mut Battle) -> (i64, u64) {
-        let (mut dealt, mut taken, mut ticks) = (0, 0, 0u64);
+        let (mut dealt, mut taken, mut lost, mut ticks) = (0, 0, 0, 0u64);
         for (k, ahead, alike) in &self.aheads {
             let k = *k;
             trial.clone_from(ahead);
@@ -332,8 +347,13 @@ impl Job {
             let (d, l) = outcome(ahead, trial, self.side);
             dealt += d * alike;
             taken = taken.max(l);
+            lost += l * alike;
         }
-        (dealt - taken * GUESSES as i64, ticks)
+        // (The most it loses, and the average, by its caution; both times the guesses, as `dealt` is.)
+        let caution = self.level.caution.min(100) as i64;
+        let taken = (taken * GUESSES as i64 * caution + lost * (100 - caution)) / 100;
+        let eager = if self.plans[i].plan.then == Then::Chip { self.level.eager as i64 * DEALT * GUESSES as i64 } else { 0 };
+        (dealt - taken + eager, ticks)
     }
 
     /// Plans `share`, `share + of`, `share + 2 of` and so on: by index, what
@@ -415,7 +435,7 @@ impl Search {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 let of = self.helpers.len() + 1;
-                let job = std::sync::Arc::new(Job { aheads: vec![(0, b.clone(), 1)], plans: vec![q.now; of], side, theirs, waited: 0, horizon: 1, warm: true });
+                let job = std::sync::Arc::new(Job { aheads: vec![(0, b.clone(), 1)], plans: vec![q.now; of], side, theirs, waited: 0, horizon: 1, level: q.level, warm: true });
                 for (n, helper) in self.helpers.iter().enumerate() {
                     helper.jobs.send((job.clone(), n + 1, of)).expect("the helper is there");
                 }
@@ -470,7 +490,7 @@ impl Search {
             ticks += t as u64;
         }
         let plans: Vec<Exec> = plans(chip, &steps).into_iter().map(|p| Exec::new(p, level.charges)).chain(std::iter::once(q.now)).collect();
-        let job = Job { aheads, plans, side, theirs, waited, horizon: level.horizon, warm: false };
+        let job = Job { aheads, plans, side, theirs, waited, horizon: level.horizon, level, warm: false };
         let mut worths = vec![0; job.plans.len()];
         #[cfg(not(target_arch = "wasm32"))]
         let job = {
@@ -599,6 +619,12 @@ pub struct Fighter {
     /// Its ticks, and the ticks of the fight since it last decided.
     ticks: u32,
     since: u32,
+    /// What the other player held the tick before, its own HP then, and
+    /// whether it has seen an attack come since it last decided
+    /// ([`Level::alert`]).
+    last_theirs: u16,
+    last_hp: Option<i64>,
+    alerted: bool,
     /// It pressed L the tick before (to let go between presses), and a copy
     /// of the battle to see whether L opens the custom screen.
     l_pressed: bool,
@@ -639,6 +665,9 @@ impl Fighter {
             asked: 0,
             ticks: 0,
             since: 0,
+            last_theirs: 0,
+            last_hp: None,
+            alerted: false,
             l_pressed: false,
             probe: None,
             picker: Picker::default(),
@@ -654,6 +683,7 @@ impl Fighter {
         self.now = Exec::new(Plan { steps: [0, 0], then: Then::Wait }, self.level.charges);
         self.pending = None;
         (self.ticks, self.since, self.l_pressed) = (0, 0, false);
+        (self.last_theirs, self.last_hp, self.alerted) = (0, None, false);
         self.picker = Picker::default();
     }
 
@@ -690,8 +720,14 @@ impl Fighter {
             return keys::L;
         }
         self.since += 1;
-        if self.since >= self.level.every && self.pending.is_none() {
+        // (An attack seen coming, or a hit taken: a decision as soon as none is pending.)
+        let pressed = theirs & !std::mem::replace(&mut self.last_theirs, theirs);
+        let hp_now = hp(b, side);
+        let hit = self.last_hp.replace(hp_now).is_some_and(|was| hp_now < was);
+        self.alerted |= self.level.alert && (pressed & (keys::A | keys::B) != 0 || hit);
+        if (self.since >= self.level.every || self.alerted) && self.pending.is_none() {
             self.since = 0;
+            self.alerted = false;
             self.asked += 1;
             self.pending = Some((self.asked, self.ticks + self.level.reaction));
             let q = Question { id: self.asked, battle: Box::new(b.clone()), now: self.now, theirs, side, level: self.level, warm: false };
@@ -1045,6 +1081,9 @@ mod tests {
                 'e' => level.every = n,
                 'b' => level.blunders = n,
                 'c' => level.charges = n != 0,
+                'a' => level.alert = n != 0,
+                'k' => level.caution = n,
+                'g' => level.eager = n,
                 _ => panic!("no level part {c:?} in {name:?}"),
             }
             rest = &rest[1 + digits.len()..];
