@@ -252,7 +252,11 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             app.shell.nav.show_cursor(true, false);
         }),
     );
-    add(SETTLE, until(|view| view.get_listed() && view.get_still() && view.get_rows().iter().all(|row| !row.score.is_empty() || !row.reason.is_empty())));
+    // (Each wait is a minute at the most, and playing fifteen sets out takes longer than one on a busy machine:
+    // a shot of a list whose scores are still coming in isn't the same twice.)
+    for _ in 0..6 {
+        add(SETTLE, until(|view| view.get_listed() && view.get_still() && view.get_rows().iter().all(|row| !row.score.is_empty() || !row.reason.is_empty())));
+    }
     add(SETTLE, Box::new(|_, _, _| {}));
     shot(add, "replays", Pair::None, Also::Nothing);
     if phone {
