@@ -6,7 +6,10 @@
 //!
 //! In the original mode ([`TextMode::Original`]) nothing changes: every
 //! string is drawn into the 240x160 frame in the game's fonts, as the
-//! comparison with the original needs. In the font mode the places that
+//! comparison with the original needs. (With a pack that has no lettering
+//! in the language shown, whose fonts are another language's, the original
+//! mode draws the strings with the vector font into the frame, at the
+//! frame's resolution: `Renderer::render`.) In the font mode the places that
 //! draw text ask a [`TextSink`] first: for a string the font can draw they
 //! leave the glyphs out of the frame and hand the sink a [`TextItem`] in
 //! the original's box instead; the renderer works out each item's depth
@@ -21,7 +24,9 @@ use crate::vfont::{Role, VectorFont};
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum TextMode {
     /// The game's own fonts into the frame, exactly as the original draws
-    /// them: the reference the frame comparison and the tests use.
+    /// them: the reference the frame comparison and the tests use. Where
+    /// the pack has no fonts of the language shown, the vector font into
+    /// the frame.
     #[default]
     Original,
     /// A vector font at the output's resolution, on a layer above the

@@ -1069,7 +1069,7 @@ pack's Japanese lettering (the Japanese ROMs' 8x16 and dialogue fonts in
 their encoding, the HUD's lines in their glyphs, the banners whose words
 differ, カスタム中…, the gauge's "L or R", the chip window's pictures for
 OK, the re-deal and scrap, the Cross window's names) swapped in for the
-English (`Bundle::in_language`), and the content's strings from
+English (`Bundle::for_language`), and the content's strings from
 each game pack's `locales/ja.toml` (chip names and descriptions, the
 Crosses' descriptions, the navis' names and no-running messages;
 `strings.rs`, `DisplayText`: a string the table lacks is the content's
@@ -1080,7 +1080,11 @@ prints in step with it (a description's whole lines in the proportion of
 the own lines printed, a message's characters in the proportion of the own
 characters), so two players of different languages play one battle. The
 program's own text (what it prints: folder listings, a match's
-description) is the content's own strings.
+description) is the content's own strings. A pack made from one release's
+ROMs alone has that release's words only (`hud.json`'s `language` and
+`languages` say which): in the other language its pictures with words
+stay its own, and the strings are drawn with the vector font in either
+text mode, the original's into the frame (text-rendering.md §10.3).
 
 The bundled font is Murecho (`crates/nettai-render/fonts/murecho`, SIL
 Open Font License 1.1, its license beside it): Latin, kana and some 2,300
