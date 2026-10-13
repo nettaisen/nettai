@@ -416,6 +416,8 @@ component CardsLibraryPane inherits Rectangle {
         x: parent.width - 40px;
         y: 0;
         descending: PatchCardsView.descending;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     list := ListView {
@@ -719,6 +721,8 @@ export component PatchCardsTab inherits Rectangle {
             y: PatchCardsView.landed * cards.pitch - cards.scroll;
             height: cards.row-height;
             seq: PatchCardsView.landed-seq;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 

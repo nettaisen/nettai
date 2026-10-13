@@ -832,6 +832,8 @@ export component Row inherits Rectangle {
     RowBack {
         chosen: root.chosen;
         hover: hit.has-hover;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Value {
@@ -1153,6 +1155,8 @@ export component GroupTitle inherits Rectangle {
 
     Rule {
         y: parent.height - 1px;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
 
@@ -1313,6 +1317,8 @@ component Scroller inherits Rectangle {
                     duration: Theme.quick;
                     easing: ease-out;
                 }
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
     }
