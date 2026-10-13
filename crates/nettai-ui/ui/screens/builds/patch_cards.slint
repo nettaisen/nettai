@@ -87,10 +87,13 @@ export global PatchCardsView {
     out property <string> status: self.counts.slotted ? @tr("{n} slot free" | "{n} slots free" % (self.counts.slots - self.counts.filled)) : (self.counts.budget ? @tr("{} MB free", max(0, self.counts.limit - self.counts.megabytes)) : "");
     // The strip.
     in property <CardDetail> detail;
-    // The build's cards (in a game with slots, its slots), the one marked (the cursor's, or the one a card from the
-    // library goes in), and what they hold.
+    // The build's cards (in a game with slots, its slots), the one the cursor was last on (the one a card from the
+    // library goes in), and what they hold. That one has the chosen row's mark while the focus is on it or in the
+    // library, the cursor shown or not (after a click the cursor is hidden, and the focus stays on the card
+    // clicked: the mark is what shows it); -1, none marked.
     in property <[CardRow]> installed;
     in property <int> slot;
+    out property <int> marked: (self.in-library || Nav.id == "card") ? self.slot : -1;
     in property <CardCounts> counts;
     // What the cards add up to: the numbers they change, what they give, their bugs.
     in property <string> together-numbers;
@@ -652,7 +655,7 @@ export component PatchCardsTab inherits Rectangle {
             card: PatchCardsView.installed[self.index];
             nav-index: self.index;
             slotted: PatchCardsView.counts.slotted;
-            chosen: PatchCardsView.in-library && self.index == PatchCardsView.slot;
+            chosen: self.index == PatchCardsView.marked;
         }
     }
 
