@@ -1396,6 +1396,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, exchange:
             check("winner", r.winner.to_string(), bs[0x10].to_string());
             check("alive", format!("{:?}", r.alive), format!("{:?}", [bs[0x12], bs[0x13]]));
             check("score", format!("{:?}", [r.wins, r.losses]), format!("{:?}", [bs[0x18], bs[0x19]]));
+            // (And the round, +0x1A, as the round's start sets it.)
+            check("round", r.round.to_string(), bs[0x1A].to_string());
             check("result", r.result.to_string(), bs[0x1F].to_string());
             check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
             check("battle flags", format!("{:#x}", r.flags), format!("{:#x}", u16::from_le_bytes([bs[0x32], bs[0x33]])));
