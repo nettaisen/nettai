@@ -777,11 +777,11 @@ language = "en"
 "ability" = "Ability"
 
 # The auto battle data's lists, by name (rules/auto_battle/block's `LISTS`), for a tool that shows a build's data
-# under them (the build editor's auto battle): what the game writes in each. Ours.
+# under them (the build editor's auto battle, which shows no pattern places: a build states no patterns): what
+# the game writes in each. Ours.
 [auto_battle_lists]
 "first" = "First"
 "standard" = "Standard"
 "mega" = "Mega"
 "giga" = "Giga"
-"patterns" = "Patterns"
 "program_advance" = "Program Advance"

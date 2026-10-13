@@ -694,3 +694,13 @@ language = "en"
 "version.bluemoon" = "Blue Moon"
 "light_dark.light" = "Light"
 "light_dark.dark" = "Dark"
+
+# The auto battle data's lists, by name (rules/auto_battle/block's `LISTS`, EXE5's), for a tool that shows a build's
+# data under them (the build editor's auto battle, which shows no pattern places): what the game writes in each. Ours,
+# as EXE5's.
+[auto_battle_lists]
+"first" = "First"
+"standard" = "Standard"
+"mega" = "Mega"
+"giga" = "Giga"
+"program_advance" = "Program Advance"

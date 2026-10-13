@@ -71,7 +71,7 @@ export global PatchCardsView {
     out property <[Hint]> hints: self.counts.slotted ? self.slot-hints : self.list-hints;
     property <[Hint]> list-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Add") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: self.on-installed ? @tr("Remove") : @tr("Add") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
         { key: "[", key2: "]", pad: PadButton.north, text: @tr("Move up or down") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
@@ -79,7 +79,7 @@ export global PatchCardsView {
     ];
     property <[Hint]> slot-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Put in") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: self.on-installed ? @tr("Remove") : @tr("Put in") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("verb" => "Empty") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
@@ -110,6 +110,8 @@ export global PatchCardsView {
     in property <int> refused-seq;
     // The cursor is in the library: its title is lit, the cards' isn't.
     in property <bool> in-library;
+    // The cursor is on a card of the library that is in: Confirm (and Del) take it out again.
+    in property <bool> on-installed;
     // On a phone: the library's sheet is open.
     in property <bool> sheet;
     // ---- Words the app asks for: the strip's two groups where a game's cards have none of the card screen's,
