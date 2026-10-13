@@ -797,6 +797,12 @@ impl Screen {
                 let drawn_after = view.library.layout().cursor_after_leaving || self.phase == Phase::Choosing;
                 if drawn_after {
                     self.draw_cursor();
+                } else if matches!(self.phase, Phase::Description { window: None, .. } | Phase::RunMessage { .. }) {
+                    // (R's description and L's message are states of the
+                    // choosing, which its tick draws by the state the key
+                    // left: the element icon, no cursor, 0x08020E10 and
+                    // 0x08020E24.)
+                    self.draw_element_on_chip();
                 }
                 self.look.draw_emblem(0);
                 self.look.draw_regular(folder.regular_pending && !regular_taken, counts_first);
