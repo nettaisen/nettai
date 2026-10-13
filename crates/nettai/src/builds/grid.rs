@@ -384,8 +384,13 @@ pub fn edit(d: &GridData, c: &Content, side: &mut Side, held: &mut Option<Held>,
         Edit::Compress => {
             if let Some(h) = held.as_mut().filter(|h| d.compresses(h.piece)) {
                 h.compressed = !h.compressed;
-                // (Another shape: held by its center.)
-                h.grab = (0, 0);
+                // (The other shape, turned as the piece is, about the same center: held by the same cell where it
+                // still has it, else by its nearest.)
+                let others = cells(&d.shape(h.piece, h.compressed, h.rotation), 0, 0);
+                if !others.contains(&h.grab) {
+                    let far = |&(x, y): &(i32, i32)| (x - h.grab.0).abs() + (y - h.grab.1).abs();
+                    h.grab = others.iter().min_by_key(|c| far(c)).copied().unwrap_or((0, 0));
+                }
             }
             return false;
         }
@@ -485,6 +490,31 @@ mod tests {
         assert_eq!(board_index(&content, side), Some(1));
         assert!(go(side, &mut held, Edit::Board(2)));
         assert_eq!(nettai_match::check_match(&content, &m), Vec::<String>::new());
+    }
+
+    /// Compressing a piece in hand keeps its turns, and the cell it is held by where its other shape still has it
+    /// (else the nearest one it has).
+    #[test]
+    fn compressing_keeps_the_turn_and_the_cell_held() {
+        let content = nettai_match::testing::exe6_content();
+        let mut m = nettai_match::pick::live(&content, "exe6", 7, None).unwrap();
+        nettai_match::testing::set_navicust(&content, &mut m.sides[0], &[], 2);
+        let data = read_game(&content, "exe6").unwrap();
+        let armor = nettai_match::ids::entry(&content, "exe6", &data.collection, "suprarmr").unwrap().0;
+        let side = &mut m.sides[0];
+        let mut held = Some(Held { piece: armor, color: 0, rotation: 1, compressed: false, grab: (0, 0), origin: None });
+        edit(&data, &content, side, &mut held, Edit::Compress);
+        let h = held.clone().unwrap();
+        assert_eq!((h.compressed, h.rotation, h.grab), (true, 1, (0, 0)), "the middle, which both shapes have");
+        // (SuprArmr's plain shape has a column its compressed one hasn't: turned once, its left one.)
+        let plain = cells(&data.shape(armor, false, 1), 0, 0);
+        let squeezed = cells(&data.shape(armor, true, 1), 0, 0);
+        let gone = *plain.iter().find(|c| !squeezed.contains(c)).unwrap();
+        held = Some(Held { compressed: false, grab: gone, ..h });
+        edit(&data, &content, side, &mut held, Edit::Compress);
+        let h = held.unwrap();
+        assert_eq!(h.rotation, 1);
+        assert!(squeezed.contains(&h.grab) && (h.grab.0 - gone.0).abs() + (h.grab.1 - gone.1).abs() == 1, "{gone:?} to {:?}", h.grab);
     }
 
     #[test]

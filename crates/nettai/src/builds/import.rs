@@ -92,6 +92,18 @@ pub fn auto_battle_of_save(content: &Content, builds: &Builds, file: &[u8], side
     }
 }
 
+/// The number patch card `id` (its key in the game's cards) is printed with and a save holds, as the game's compat
+/// tables state it (patch-cards.toml): what a screen shows as the card's number. None: a game whose compat states
+/// no such card.
+pub fn card_number(game: &str, id: &str) -> Option<u8> {
+    match game {
+        exe6_compat::ROOT => exe6_compat::Compat::exe6().patch_card_number(id),
+        exe5_compat::ROOT => exe5_compat::Compat::exe5().patch_card_number(id),
+        exe4_compat::ROOT => exe4_compat::Compat::exe4().patch_card_number(id),
+        _ => None,
+    }
+}
+
 fn read<S>(game: &str, file: &[u8], reader: fn(&[u8]) -> Result<S, String>) -> Result<S, Refused> {
     reader(file).map_err(|why| {
         crate::errors::log(&format!("reading a save of {game}"), &why);

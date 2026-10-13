@@ -63,16 +63,16 @@ fn of_effects(effects: &[Data], text: &dyn Fn(&str) -> Option<String>, named: Na
     }
 }
 
-/// What the names of a line of an entry of `collection` are as its screen
-/// shows them: a slot by its name (the game's builds data's slots, by the
-/// field of an entry's data that names one), an entry by its number (its
-/// place in the library's order, which lists them by their numbers).
-pub fn named_by<'a>(kit: &'a crate::builds::Kit, collection: &'a str) -> impl Fn(&str, &Data) -> Option<String> + 'a {
+/// What the names of a card's line are as its screen shows them: a slot by
+/// its name (the game's builds data's slots, by the field of an entry's
+/// data that names one), a card by its own number (the game's compat
+/// tables': `import::card_number`).
+pub fn named_by<'a>(kit: &'a crate::builds::Kit) -> impl Fn(&str, &Data) -> Option<String> + 'a {
     move |path, value| {
         let last = path.rsplit('.').next().unwrap_or(path);
         match value {
             Data::Int(n) => kit.builds.slots.as_ref().filter(|s| s.slot_field() == last).and_then(|s| s.name(usize::try_from(*n).ok()?)).map(str::to_string),
-            Data::Str(id) => kit.order.entry_place(collection, id).map(|p| format!("{:03}", p + 1)),
+            Data::Str(id) => crate::builds::import::card_number(&kit.game, id).map(|n| format!("{n:03}")),
             _ => None,
         }
     }
