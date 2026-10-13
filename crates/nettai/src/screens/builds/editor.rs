@@ -367,9 +367,15 @@ impl Editor {
         self.after(shell);
     }
 
+    /// A right click on a row that holds something of the build (its `removable` touch, which brought the focus to
+    /// it) removes it, as Del there does.
     pub fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         let (tab, draft) = self.tab();
-        tab.choose(shell, draft, id, index, choice);
+        if id == "remove" {
+            tab.action(shell, draft, Action::Delete);
+        } else {
+            tab.choose(shell, draft, id, index, choice);
+        }
         self.after(shell);
     }
 
