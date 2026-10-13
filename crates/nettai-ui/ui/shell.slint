@@ -148,10 +148,11 @@ export global Shell {
     // The keys bound to L and R, for the hints (the menus' previous and next).
     in property <string> key-l: "A";
     in property <string> key-r: "S";
-    // The keys and the pad's buttons that confirm and go back in the menus (those bound to A and B: the app's
-    // `Bindings::confirm_key` and the rest), and the pad's button that deletes, for the hints.
-    in property <string> key-a: "Z";
-    in property <string> key-b: "X";
+    // The keys and the pad's buttons that confirm and go back in the menus (Enter and Esc; the pad's buttons
+    // bound to A and B: the app's `Bindings::confirm_button` and the rest), and the pad's button that deletes, for
+    // the hints.
+    in property <string> key-a: "Enter";
+    in property <string> key-b: "Esc";
     in property <PadButton> pad-a: PadButton.south;
     in property <PadButton> pad-b: PadButton.west;
     in property <PadButton> pad-delete: PadButton.east;
