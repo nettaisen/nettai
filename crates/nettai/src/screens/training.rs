@@ -347,10 +347,9 @@ struct Listed {
     side: Option<Side>,
 }
 
-/// Why a build can't be used: nothing a file's own words say (those are in the log), but what kind of thing is
-/// wrong, for the reserved line.
+/// Why a build can't be used: its first problem, typed (its own words are in the log), for the reserved line.
 #[derive(Clone, Debug, PartialEq)]
-struct Unusable(Wrong);
+struct Unusable(nettai_match::check::Problem);
 
 #[derive(Default)]
 pub struct Training {
@@ -436,7 +435,10 @@ impl Training {
     fn unusable_at(&mut self, ready: &Ready, at: usize) -> Option<Unusable> {
         let game = self.game.clone()?;
         let build = self.builds.get(at)?;
-        let Some(side) = &build.side else { return Some(Unusable(Wrong::Foreign)) };
+        let Some(side) = &build.side else {
+            // (Its file names what the game hasn't: what, the log has.)
+            return Some(Unusable(nettai_match::check::Problem { side: None, field: None, entry: None, what: Wrong::Foreign, text: String::new() }));
+        };
         // (A build of the screenshot pass has no file: it is told by its name.)
         let key = (build.file.clone(), build.text.clone());
         if let Some(known) = self.checked.get(&key) {
@@ -446,7 +448,7 @@ impl Training {
         for problem in &checked.problems {
             crate::errors::log(&format!("checking the build {}", build.name), &problem.said());
         }
-        let found = checked.problems.first().map(|p| Unusable(p.what.clone()));
+        let found = checked.problems.first().map(|p| Unusable(p.clone()));
         self.checked.insert(key, found.clone());
         found
     }
@@ -594,9 +596,9 @@ impl Training {
 }
 
 /// The rule a build breaks, in the player's words, for the reserved line: its kind's sentence of the builds'
-/// catalog (`builds::words::wrong`; docs/app.md §8), with its numbers.
+/// catalog with its numbers, and what it is about (`builds::words::problem`; docs/app.md §8).
 fn rule(shell: &Shell, game: &str, ready: &Rc<Ready>, why: &Unusable) -> String {
-    crate::builds::words::wrong(shell, game, ready, &why.0)
+    crate::builds::words::problem(shell, game, ready, &why.0)
 }
 
 impl Screen for Training {

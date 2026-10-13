@@ -134,6 +134,24 @@ component CountBox inherits Rectangle {
 }
 
 // One of the folder's entries: the overview's row, as a control.
+// A folder's entry as a phone's list row, 40 tall: the chip's row, and a click on it the entry's. (One leaf, so
+// the list's `for` places it alone: a row with a child would be copied into the list.)
+component SlotRow inherits Rectangle {
+    in property <int> index;
+    height: 40px;
+    ChipRow {
+        big: true;
+        chip: FolderView.slots[root.index];
+        number: root.index + 1;
+        hover: touch.has-hover;
+    }
+
+    touch := RowTouch {
+        nav: "slot";
+        nav-index: root.index;
+    }
+}
+
 component SlotView inherits Rectangle {
     in property <ChipCell> chip;
     in property <int> index;
@@ -585,17 +603,10 @@ export component FolderTab inherits Rectangle {
             nav: "slot";
             count: FolderView.slots.length;
             row-height: 40px;
-            for at in folder.shown: ChipRow {
-                property <int> index: folder.first + at;
+            for at in folder.shown: SlotRow {
                 y: self.index * folder.pitch;
                 width: folder.row-width;
-                big: true;
-                chip: FolderView.slots[self.index];
-                number: self.index + 1;
-                RowTouch {
-                    nav: "slot";
-                    nav-index: parent.index;
-                }
+                index: folder.first + at;
             }
         }
     }

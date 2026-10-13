@@ -55,8 +55,17 @@ const SETTLE: u64 = 260;
 /// The sizes walked, in points: the reference window, and a phone held upright.
 const SIZES: [(&str, u32, u32); 2] = [("desktop", 1280, 800), ("phone", 390, 800)];
 
+/// A shot's place in a pair: the first is kept, and the second compared with it (they may differ only inside
+/// the controls the step between them touched, and the cursor around them).
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Pair {
+    None,
+    First,
+    Second,
+}
+
 /// What the pass keeps as it goes.
-struct Tour {
+pub(crate) struct Tour {
     dir: PathBuf,
     /// The shot being arranged (`menu-en-desktop`): what a cut text is reported under.
     tag: RefCell<String>,
@@ -75,6 +84,8 @@ struct Tour {
     /// What the motion probe found wrong, and what it saw of the focus.
     resized: RefCell<Vec<String>>,
     late: RefCell<Vec<String>>,
+    /// What a walk waited for and never saw ([`Tour::never_came`]), by the shot before.
+    never: RefCell<Vec<String>>,
     /// The on-screen pad's check, where it failed.
     pad: RefCell<Vec<String>>,
     seen: RefCell<Vec<String>>,
@@ -91,16 +102,21 @@ struct Burst {
 
 /// A step of the walk. (A screen's own steps are a function in its module, which [`walk`] calls: it is handed
 /// `add`, which adds a step after a wait, and `shot`, which takes a picture under a name.)
-type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
+pub(crate) type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
 type Until = Box<dyn Fn(&App) -> bool>;
 
-/// A shot's part in a pair: the pair's first is kept, and its second compared with it (the two may differ only
-/// inside the two cursors).
-#[derive(Clone, Copy, PartialEq)]
-enum Pair {
-    None,
-    First,
-    Second,
+impl Tour {
+    /// The step after this one waits for `come`, beyond its time (or a minute): something that comes by
+    /// itself (a thread's work, another player's answer).
+    pub(crate) fn wait_until(&self, come: impl Fn(&App) -> bool + 'static) {
+        *self.until.borrow_mut() = Some(Box::new(come));
+    }
+
+    /// Something a walk waited for never came (its minute passed): the pass says so, and fails. A walk whose
+    /// later shots depend on it says this, so that a picture of the wrong thing isn't taken for the right one.
+    pub(crate) fn never_came(&self) {
+        self.never.borrow_mut().push(format!("after {}", self.tag.borrow()));
+    }
 }
 
 /// Whether the pass found something wrong (the process's status).
@@ -130,6 +146,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
         burst: Default::default(),
         resized: Default::default(),
         late: Default::default(),
+        never: Default::default(),
         pad: Default::default(),
         seen: Default::default(),
     });
@@ -237,9 +254,14 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     add(SETTLE * 2, Box::new(|_, _, _| {}));
-    // (`NETTAI_TOUR_ONLY=replays`: that screen's steps alone.)
-    if std::env::var("NETTAI_TOUR_ONLY").as_deref() == Ok("replays") {
-        return replays::steps(&mut add, lang, size);
+    // (`NETTAI_TOUR_ONLY=play` or `replays`: that screen's steps alone. `play-away-host` and `play-away-join`:
+    // two apps on one machine, the host's window taken away from under their link.)
+    match std::env::var("NETTAI_TOUR_ONLY").as_deref() {
+        Ok("play") => return crate::screens::play::tour::steps(&mut add, &shot, size == "phone"),
+        Ok("replays") => return replays::steps(&mut add, lang, size),
+        Ok("play-away-host") => return crate::screens::play::tour::apart(&mut add, true),
+        Ok("play-away-join") => return crate::screens::play::tour::apart(&mut add, false),
+        _ => {}
     }
 
     // Loading, as the app starts.
@@ -265,7 +287,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "menu-pointer", Pair::None);
 
     // The screens to be built.
-    for (name, to) in [("play", ScreenId::Play), ("training", ScreenId::Training), ("builds", ScreenId::Builds)] {
+    for (name, to) in [("training", ScreenId::Training), ("builds", ScreenId::Builds)] {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
@@ -273,6 +295,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
 
     // Builds: the list, its dialogs, and the editor's tabs.
     builds::steps(&mut add, &shot, lang, size);
+
+    // Play, with a second player (its own steps: `screens/play/tour.rs`).
+    crate::screens::play::tour::steps(&mut add, &shot, size == "phone");
 
     // Settings: the focus a step down; a value changed under the focus; a field being edited; a select's list;
     // the groups down the page.
@@ -495,6 +520,8 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
     add(SETTLE, act(Action::Confirm));
     builds::motion(&mut add, &burst);
+    // The lobby's set pieces, with a second player (`screens/play/tour.rs`).
+    crate::screens::play::tour::motion(&mut add, &burst);
     add(SETTLE, go(ScreenId::Training));
     burst(
         &mut add,
@@ -669,6 +696,13 @@ fn finish(tour: &Tour) {
     for (tag, text) in cut.iter() {
         let _ = writeln!(report, "  {tag}: {text:?}");
     }
+    let never = tour.never.borrow();
+    if !never.is_empty() {
+        let _ = writeln!(report, "\nWhat a walk waited a minute for and never saw: {}", never.len());
+        for line in never.iter() {
+            let _ = writeln!(report, "  {line}");
+        }
+    }
     let pad = tour.pad.borrow();
     if !pad.is_empty() {
         let _ = writeln!(report, "\nThe on-screen pad, two fingers at once: {} wrong", pad.len());
@@ -681,6 +715,6 @@ fn finish(tour: &Tour) {
         eprintln!("tour: {}: {e}", path.display());
     }
     eprint!("tour: {report}");
-    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty()));
+    FAILED.with(|f| f.set(!cut.is_empty() || !moved.is_empty() || !resized.is_empty() || !late.is_empty() || !pad.is_empty() || !never.is_empty()));
     let _ = slint::quit_event_loop();
 }
