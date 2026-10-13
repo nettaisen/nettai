@@ -106,6 +106,15 @@ impl Sound {
         self.effects = effects.min(100) as f32 / 100.0;
     }
 
+    /// The levels a battle's sound is to be given (`Player::set_sound_levels`, a viewer's): its music's and
+    /// its effects', against the louder of the two, which is what its samples are played at here. (The game's
+    /// driver mixes the two with eight bits: turning one down inside it is coarser than turning samples down,
+    /// so only the difference between the two is the driver's.)
+    pub fn battle_levels(&self) -> (f32, f32) {
+        let most = self.music.max(self.effects);
+        if most <= 0.0 { (0.0, 0.0) } else { (self.music / most, self.effects / most) }
+    }
+
     /// The menus' sounds and music from `game` (its id), if they aren't its already.
     pub fn use_game(&mut self, id: &str, game: &Loaded) {
         if self.game.as_deref() == Some(id) {
@@ -212,9 +221,11 @@ impl Sound {
                 self.leaving = None;
             }
         }
+        // (The battle's own sound: its music and its effects are set apart inside it, `battle_levels`.)
+        let most = self.music.max(self.effects);
         for s in battle.iter_mut() {
-            s[0] *= self.effects;
-            s[1] *= self.effects;
+            s[0] *= most;
+            s[1] *= most;
         }
         if ticks.is_none() {
             battle.clear();
