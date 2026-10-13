@@ -392,7 +392,8 @@ enum Brings {
     New,
     /// With 1 HP: the app's player's first shot decides a round.
     Weak,
-    /// With two of its folder's entries empty: no build the rules let into a match.
+    /// With two of its folder's entries empty: no build the rules let into a match (its lobby won't make it
+    /// ready).
     Broken,
 }
 
@@ -753,8 +754,26 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     reach(add, |_, ui| !ui.global::<PlayView>().get_ready() && !ui.global::<PlayView>().get_their_ready());
     shot(add, "play-lobby-again", Pair::None);
 
-    // A second match on the same link, with closed builds; the other player leaves it: both are back in the
-    // lobby, which says why.
+    // Patch cards off, the focus on it: the other player's lobby takes it. Then a build the settings can't
+    // play, chosen in the lobby: READY is refused, and the line says why; the first build again.
+    add(SETTLE, focus("lobby.cards", 0));
+    shot(add, "play-lobby-cards", Pair::First);
+    add(SETTLE, act(Action::Right));
+    reach(add, |_, ui| !ui.global::<PlayView>().get_patch_cards());
+    shot(add, "play-lobby-cards-off", Pair::Second);
+    reach(add, |_, _| with_rig(|rig| rig.peer.as_ref().and_then(|p| p.lobby.as_ref()).is_some_and(|l| !l.settings().patch_cards)) == Some(true));
+    add(SETTLE, press("lobby.change"));
+    add(SETTLE, press_at("change.builds", BUILDS.len() as i32 - 1));
+    reach(add, |_, ui| !ui.global::<PlayView>().get_changing());
+    add(SETTLE, press("lobby.ready"));
+    reach(add, |_, ui| ui.global::<PlayView>().get_note() == LobbyNote::Unusable && !ui.global::<PlayView>().get_ready());
+    shot(add, "play-lobby-build-unusable", Pair::None);
+    add(SETTLE, press("lobby.change"));
+    add(SETTLE, press_at("change.builds", 0));
+    reach(add, |_, ui| !ui.global::<PlayView>().get_changing() && ui.global::<PlayView>().get_note() != LobbyNote::Unusable);
+
+    // A second match on the same link, with patch cards off and closed builds; the other player leaves it:
+    // both are back in the lobby, which says why.
     add(SETTLE, focus("lobby.closed", 0));
     add(SETTLE, act(Action::Right));
     reach(add, |_, ui| ui.global::<PlayView>().get_closed());
@@ -809,17 +828,18 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press_at("menu.added", if phone { 2 } else { 1 }));
     reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Builds);
 
-    // The other player comes with a build that breaks a rule: both ready, and the app's lobby refuses it and
-    // ends, saying so.
+    // The other player comes with a build that breaks a rule: its own lobby won't make it ready, and this
+    // player, ready, waits for it. Then the lobby's Leave.
     add(SETTLE, press("invite"));
     reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::Broken))));
-    reach(add, |_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present());
+    reach(add, |_, ui| together(ui));
     add(SETTLE, peer(|p| p.wishes.ready = true));
     add(SETTLE, press("lobby.ready"));
-    reach(add, |app, _| app.shell.dialog.is_some());
-    shot(add, "play-their-build-refused", Pair::None);
-    add(SETTLE, act(Action::Confirm));
+    add(2000, step(|_| {}));
+    reach(add, |_, ui| ui.global::<PlayView>().get_ready() && !ui.global::<PlayView>().get_their_ready() && ui.global::<PlayView>().get_note() == LobbyNote::Them);
+    add(SETTLE, press("lobby.leave"));
+    reach(add, |_, ui| part(ui) == PlayPart::Builds);
 
     // The other player invites, and the app's player joins by the code, typed: the lobby as the joiner (the
     // host's settings taken), a match from the right navi's console, and LEAVE MATCH, which puts both back
