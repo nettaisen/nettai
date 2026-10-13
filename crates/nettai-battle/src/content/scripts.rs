@@ -430,7 +430,8 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 r#"
         leave_on_use = true,
         anti_navi_sparkle = { dy = 0, z = 16 },
-        mixed_modifiers = false,
+        mark_damage = { 0, 0x4000, 0x2000, 0, 0, 0, 0, 0 },
+        mark_heals = 0,
         beat_spares_dark = false,
         window_hides_every_console = false,
         charged_null_alt_routine = true,
@@ -585,7 +586,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         barrier = { stops_while_paused = true, wind = "pops" },
         anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000 },
         chip_destruction = "next",
-        emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "hitter_gains", full_synchro_spent = 0x99, anger_boost_sound = false },
+        emotion = { mood_held = "at_zero", anger_end = "resets_mood", order = { { emotion = "worn_out", when = { { mood = 0 }, { exhausted = true } } }, { emotion = "worried", when = { { mood_below = 40, in_form = false } } }, { emotion = "normal" } }, roles = { worn_out = "worn_out" }, hit_mood = "counter_counts", hitter_gain = "to_full", full_synchro_spent = 0x99, anger_boost_sound = false },
         form_break = "marked_forms",
         weakness_hit_breaks_form = true,
         weakness_mark = "weak_element_damage",
@@ -650,7 +651,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
         assert_eq!((r.weakness_hit_breaks_form, r.weakness_mark), (true, WeaknessMark::WeakElementDamage));
         let m = &r.emotion;
         assert_eq!((m.mood_held, m.anger_end, m.names.clone()), (MoodHeld::AtZero, AngerEnd::ResetsMood, vec!["normal".to_string(), "worn_out".into(), "worried".into()]));
-        assert_eq!((m.hit_mood, m.full_synchro_spent, m.anger_boost_sound), (crate::content::HitMood::HitterGains, 0x99, false));
+        assert_eq!((m.hit_mood, m.hitter_gain, m.full_synchro_spent, m.anger_boost_sound), (crate::content::HitMood::CounterCounts, crate::content::HitterGain::ToFull, 0x99, false));
         let worried = crate::content::EmotionWhen { mood_below: Some(40), in_form: Some(false), ..Default::default() };
         assert_eq!((m.order.len(), m.order[1].when.clone(), m.role(crate::content::Emotion(1)), m.role(crate::content::Emotion(0))), (3, vec![worried], Some(crate::content::EmotionRole::WornOut), None));
         let aura = r.effects.full_synchro_aura;
@@ -685,7 +686,7 @@ local step = { grounded = { any_panel, any_panel }, floor_free = { any_panel, an
                 fields += 1;
             }
         }
-        assert_eq!(fields, 129, "every field of every section");
+        assert_eq!(fields, 130, "every field of every section");
         // A field of a table of settings, too; but one that is none unless
         // stated.
         let e = game(rules(None, None, Some((" anger_end = \"resets_mood\",", "")))).unwrap_err();

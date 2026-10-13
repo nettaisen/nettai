@@ -880,6 +880,9 @@ pub struct CustomSlot {
     pub place: Option<u8>,
     pub regular: bool,
     pub picked: bool,
+    /// Whether the hand's picks list it once picked (a dealt chip; an
+    /// offered one by its offer).
+    pub listed: bool,
 }
 
 /// What a side's custom screen reads of its player (`custom.player`).
@@ -1376,11 +1379,17 @@ pub trait CoreApi {
     /// button's slot where one is picked).
     fn custom_slot(&self, side: u8, slot: u8) -> ApiResult<Option<CustomSlot>>;
     fn custom_picks(&self, side: u8) -> ApiResult<Vec<u8>>;
-    /// `custom.offer(side, slot, chip, code)`: as the screen deals (the
-    /// rules' `deal`), a chip from outside the folder the screen shows in a
-    /// slot (0 to 11) once laid out (EXE4's dark chips); `code` the code's
-    /// number (A 0, `*` 26), none: the code outside the alphabet (0x1B).
-    fn custom_offer(&mut self, side: u8, slot: u8, chip: crate::ChipHandle, code: Option<u8>) -> ApiResult<()>;
+    /// `custom.offer(side, slot, chip, code, what)`: as the screen deals
+    /// (the rules' `deal`), a chip from outside the folder the screen shows
+    /// in a slot (0 to 11) once laid out (EXE4's dark chips); `code` the
+    /// code's number (A 0, `*` 26), none: the code outside the alphabet
+    /// (0x1B). `marks`: the marks its pick carries into its hand entry;
+    /// `listed`: whether the hand's picks list it (EXE4's chip offered
+    /// again, 0x0801F0B8 and 0x0801F118: marked 0x02 and not listed);
+    /// `shades`: whether the cursor on it shades the screen as on a dark
+    /// chip (EXE4's dark offer, 0x0801E4DE).
+    #[allow(clippy::too_many_arguments)]
+    fn custom_offer(&mut self, side: u8, slot: u8, chip: crate::ChipHandle, code: Option<u8>, marks: u8, listed: bool, shades: bool) -> ApiResult<()>;
     fn custom_hand_size(&self, side: u8) -> ApiResult<u8>;
     fn custom_sacrifice(&mut self, side: u8) -> ApiResult<()>;
     fn custom_redeal(&mut self, side: u8) -> ApiResult<()>;
@@ -1549,6 +1558,12 @@ pub trait CoreApi {
     /// The chip at `i` of a side's hand, if any (the hand from its first
     /// chip, used ones too).
     fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle>;
+    /// The marks of the entry at `i` of a side's hand (its modifier flags:
+    /// what its game's chip-use rules read at the use, and what its rules
+    /// keep there), and marks added to them (EXE4's install marks each
+    /// entry 0x04 as it takes a dark chip's cost, 0x0801EA1E).
+    fn hand_marks(&self, side: u8, i: u8) -> u8;
+    fn add_hand_marks(&mut self, side: u8, i: u8, marks: u8);
     /// EXE5's Jealousy (0x080E4596): the chips left in a side's hand, from
     /// its cursor to the first empty slot.
     fn hand_left(&self, side: u8) -> u8;

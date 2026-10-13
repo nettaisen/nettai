@@ -2,33 +2,53 @@
 //! fonts and the HUD's text lines, the field, the backgrounds, in the
 //! pack's typed form (nettai-assets); the HUD's and the custom screen's in
 //! hud.rs and custom.rs. The routines that read them are EXE6's or EXE5's,
-//! the same or nearly (docs/design/exe4-map.md §3), or EXE4's own (§14); the
-//! addresses are where their literals point in each ROM (rom.rs).
+//! the same or nearly (docs/design/exe4-map.md §3), or EXE4's own (§14);
+//! each block is stated by where the game's own pointer to it is in each of
+//! the four ROMs (`Place`: those routines' literals; the addresses in the
+//! comments are Red Sun US's), so any ROM gives what it holds: what the
+//! four have alike from whichever is there, each release's words from a
+//! ROM of that release, a version's own chips from a ROM of that version.
 
 use crate::decode::{BackgroundDescriptor, background_picture_by, gfx_anims, speeding_scroll, tiles};
-use crate::exe4::rom::{Addresses, RED_SUN, Rom, Roms, Version};
+use crate::exe4::rom::{Place, Rom, Roms, Source, Version};
 use nettai_assets::*;
 use nettai_content::names::AssetNames;
 
 /// The language the Japanese ROMs' lettering is.
 pub const LANGUAGE: &str = "ja";
 
+/// The sprite list (EXE6 `SpritePointersList`; Red Sun US's 0x0802793C):
+/// per category, a table of sprite archive pointers.
+const SPRITE_LIST: Place = Place::pointer(0x0800_28BC, 0x0800_289C);
 /// The categories of the sprite list with battle sprites (byte offsets
 /// 0x00..=0x14, as EXE5's and EXE6's).
 const BATTLE_CATEGORIES: usize = 6;
+
+/// The chip records (0x2C bytes: +0x20 the icon, +0x24 the picture, +0x28
+/// its palette; the chip accessor's literal, Red Sun US's table 0x080197EC).
+const CHIPS: Place = Place::pointer(0x0801_90DC, 0x0801_901C);
 
 /// A chip's picture: 7x6 tiles.
 const PICTURE_BYTES: usize = 0x540;
 /// A chip's icon: 2x2 tiles.
 const ICON_BYTES: usize = 0x80;
 
-/// The 8x16 font's glyphs (0x40 bytes each; what follows them is other
-/// data). The US fonts draw the first 0x70; the Japanese fonts their
-/// encoding's first page and the second page up to here.
+/// The 8x16 font (0x40 bytes a glyph; what follows its glyphs is other
+/// data; Red Sun US's 0x0868DF5C), which the chip's name is drawn with
+/// (0x08015078) in the HP box's palette. The US fonts draw the first 0x70;
+/// the Japanese fonts their encoding's first page and the second page up to
+/// `FONT_GLYPHS`.
+const FONT: Place = Place::pointer(0x0801_51F4, 0x0801_5190);
 const FONT_GLYPHS: usize = 0x1A0;
-/// The dialogue font's glyphs (16x12, 0x60 bytes each).
+/// The dialogue font (16x12 glyphs, 0x60 bytes each; 0x08694F5C) and its
+/// advances (a word a glyph; 0x080515E0): the chatbox's literals, at an
+/// address of their own in each ROM.
+const DIALOGUE_FONT: Place = Place::pointer_in_each([0x0803_1BEC, 0x0803_1BF0, 0x0803_1B00, 0x0803_1B04]);
+const DIALOGUE_ADVANCES: Place = Place::pointer_in_each([0x0804_E294, 0x0804_E29C, 0x0804_E184, 0x0804_E18C]);
 const DIALOGUE_GLYPHS: usize = 0x1C0;
-/// The HUD's text lines end in 0xE5 (EXE5's and EXE6's 0xE6).
+/// The HUD's text lines (EXE6 `TextScript86F0374`'s counterpart;
+/// 0x087491CC), which end in 0xE5 (EXE5's and EXE6's 0xE6).
+const TEXTS: Place = Place::pointer(0x0801_543C, 0x0801_53D8);
 const TEXT_END: u8 = 0xE5;
 
 /// The version chips (compat/chips.toml's `version`): a version's own giga
@@ -42,55 +62,29 @@ fn version_of(id: u16) -> Option<Version> {
     )
 }
 
-/// Everything the pack draws with that EXE4's ROMs give so far: `names`
-/// gives the chips their keys and the fonts their characters.
+/// Everything the pack draws with that EXE4's ROMs give: `names` gives the
+/// chips their keys and the fonts their characters.
 pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
-    let mut sprites = roms.any().map(|(rom, a)| sprites(rom, a.sprite_list)).unwrap_or_default();
-    sprites.extend(roms.any().map(|(rom, a)| portraits(rom, a.sprite_list, names)).unwrap_or_default());
+    // What the four ROMs have alike (the sprites, the backgrounds, the
+    // field and most of the HUD and the custom screen) is whichever ROM's
+    // is there.
+    let art = roms.any();
+    let mut sprites = if art.is_present() { sprites(art) } else { Vec::new() };
+    if art.is_present() {
+        sprites.extend(portraits(art, names));
+    }
     sprites.sort_by_key(|s| (s.category, s.index));
-    // The HUD's art is Red Sun US's (exe4/hud.rs); without it the fonts,
-    // text lines and banners of a US ROM present, the rest placeholders.
-    let mut hud = if roms.redsun.is_present() {
-        let encoding = (names.glyphs.as_slice(), names.dialogue_glyphs.as_slice());
-        super::hud::hud(roms.redsun, &RED_SUN, roms.bluemoon, names, chip_icons(roms, names), dialogue_font(roms.redsun, &RED_SUN, encoding))
-    } else {
-        let mut hud = match roms.us() {
-            Some((rom, a)) => hud(rom, a, names),
-            None => {
-                let (font, font_chars) = placeholder_font((names.glyphs.as_slice(), names.dialogue_glyphs.as_slice()));
-                let banners = crate::placeholders::banners(super::hud::BANNER_COUNT as usize, &super::hud::BANNER_RECORDS);
-                Hud { font, font_chars, banners, ..crate::placeholders::hud(names, 0) }
-            }
-        };
-        hud.chip_icons = chip_icons(roms, names);
-        if let Some((rom, a)) = roms.any() {
-            hud.icon_palette = palette(rom, rom.u32(a.icon_palette_pointer));
-        }
-        hud
-    };
-    let lettering = match roms.jp() {
-        Some((rom, a)) => lettering(rom, a, &hud, names),
-        None => {
-            let (cell, dialogue) = names.language_glyphs.get(LANGUAGE).cloned().unwrap_or_default();
-            let (font, font_chars) = placeholder_font((cell.as_slice(), dialogue.as_slice()));
-            HudLettering { font, font_chars, ..crate::placeholders::lettering(&hud, names, LANGUAGE) }
-        }
-    };
+    let mut hud = super::hud::hud(roms, names, chip_icons(roms, names));
     // (The Japanese games place the chatbox's text themselves: code, the
     // same with or without their ROMs.)
-    let lettering = HudLettering { chatbox_text: Some(super::hud::CHATBOX_TEXT_JA), ..lettering };
+    let lettering = HudLettering { chatbox_text: Some(super::hud::CHATBOX_TEXT_JA), ..lettering(roms, &hud, names) };
     hud.languages.push((LANGUAGE.to_string(), lettering));
     hud.language = BASE_LANGUAGE.into();
-    // The custom screen (exe4/custom.rs), Red Sun US's; its Japanese
-    // lettering a Japanese ROM's.
     let mut custom = super::custom::custom(roms, chip_art(roms, names));
     let lettering = super::custom::lettering(roms, &custom);
     custom.languages.push((LANGUAGE.to_string(), lettering));
-    // The backgrounds are the same in the four ROMs but for where they are.
-    let backgrounds = roms.any().map(|(rom, a)| backgrounds(rom, a)).unwrap_or_default();
-    // The field, the HUD's and the custom screen's art are Red Sun US's (the
-    // base US ROM's, as the other games' packs take theirs).
-    let field = if roms.redsun.is_present() { field(roms.redsun) } else { Field::default() };
+    let backgrounds = if art.is_present() { backgrounds(art) } else { Vec::new() };
+    let field = if art.is_present() { field(art) } else { Field::default() };
     Bundle { sprites, field, backgrounds, hud, custom }
 }
 
@@ -99,12 +93,12 @@ pub fn bundle(roms: &Roms, names: &AssetNames) -> Bundle {
 /// The field's tiles (the field's load, 0x08006A40: decompressed to VRAM
 /// 0x06001460, as EXE5's and EXE6's) and background palettes 1..=8 (its
 /// transfer list, 0x08006A68, to the palette buffer's 0x03002A70).
-const FIELD_TILES: u32 = 0x0870_4660;
-const FIELD_PALETTES: u32 = 0x0870_73C0;
+const FIELD_TILES: Place = Place::pointer(0x0800_6A94, 0x0800_6A74);
+const FIELD_PALETTES: Place = Place::pointer(0x0800_6A68, 0x0800_6A48);
 /// Panel blocks: 32 bytes (5x3 map entries) per 6 * type + 3 * owner + row
 /// - 1 (0x080093FC, EXE6 `sub_800C01C`'s counterpart), for EXE4's 12 panel
 /// types (0x0800A3A8's flag words).
-const PANEL_BLOCKS: u32 = 0x0870_6640;
+const PANEL_BLOCKS: Place = Place::pointer(0x0800_944C, 0x0800_9418);
 const PANEL_TYPES: u8 = 12;
 
 /// EXE4's panel types' names by number (compat/panels.toml).
@@ -114,9 +108,9 @@ pub fn panel_names() -> Vec<String> {
 }
 /// The highlighted panel block (0x0800948A, EXE6 `sub_800C0BA`'s): one,
 /// which EXE4 draws for both highlights (it takes no highlight number).
-const HIGHLIGHT_BLOCK: u32 = 0x0870_6F40;
+const HIGHLIGHT_BLOCK: Place = Place::pointer(0x0800_94BC, 0x0800_9488);
 /// The front edges by owner (0x080094C4: + 32 an owner).
-const FRONT_EDGES: u32 = 0x0870_6F60;
+const FRONT_EDGES: Place = Place::pointer(0x0800_9530, 0x0800_94FC);
 /// The palette buffer's background palette 0 (the field's transfer list's
 /// palette 1 is at + 0x20).
 const FIELD_PALETTE_BUFFER: u32 = 0x0300_2A50;
@@ -125,38 +119,40 @@ const FIELD_PALETTE_BUFFER: u32 = 0x0300_2A50;
 /// than from a list): each a counter pair at 0x02037AB0 + 2k (its frame,
 /// then a timer from 14, 13, 12, 11, 10 and 9, 0x08009120), a frame every 14
 /// ticks, from a table of palette pointers (its first the palette the field
-/// loads there) to a palette of the buffer.
-const PANEL_PALETTE_ANIMS: [(u32, usize, u32); 6] = [
-    (0x0800_9648, 10, 0x0300_2A70),
-    (0x0800_9678, 10, 0x0300_2AF0),
-    (0x0800_96A8, 6, 0x0300_2AB0),
-    (0x0800_96C8, 6, 0x0300_2B30),
-    (0x0800_96E8, 10, 0x0300_2AD0),
-    (0x0800_9718, 10, 0x0300_2B50),
+/// loads there; Red Sun US's tables 0x08009648 on) to a palette of the
+/// buffer.
+const PANEL_PALETTE_ANIMS: [(Place, usize, u32); 6] = [
+    (Place::pointer(0x0800_9644, 0x0800_9610), 10, 0x0300_2A70),
+    (Place::pointer(0x0800_9674, 0x0800_9640), 10, 0x0300_2AF0),
+    (Place::pointer(0x0800_96A4, 0x0800_9670), 6, 0x0300_2AB0),
+    (Place::pointer(0x0800_96C4, 0x0800_9690), 6, 0x0300_2B30),
+    (Place::pointer(0x0800_96E4, 0x0800_96B0), 10, 0x0300_2AD0),
+    (Place::pointer(0x0800_9714, 0x0800_96E0), 10, 0x0300_2B50),
 ];
 const PANEL_PALETTE_TICKS: u8 = 14;
 
-/// The field from Red Sun US: its panel blocks by EXE4's numbers, each type
-/// by the name content gives that number (compat/panels.toml).
-fn field(rom: &Rom) -> Field {
+/// The field: its panel blocks by EXE4's numbers, each type by the name
+/// content gives that number (compat/panels.toml).
+fn field(src: Source) -> Field {
+    let rom = src.rom;
     let panel_types = panel_names();
     let palette_anims = PANEL_PALETTE_ANIMS
         .iter()
         .enumerate()
         .map(|(k, &(table, count, dest))| PaletteAnim {
             slot: ((dest - FIELD_PALETTE_BUFFER) / 32) as u8,
-            frames: (0..count as u32).map(|i| (palette(rom, rom.u32(table + 4 * i)), PANEL_PALETTE_TICKS)).collect(),
+            frames: (0..count as u32).map(|i| (palette(rom, rom.u32(src.at(table) + 4 * i)), PANEL_PALETTE_TICKS)).collect(),
             initial_timer: PANEL_PALETTE_TICKS - k as u8,
         })
         .collect();
     crate::decode::field_with(
         rom,
         crate::decode::FieldAddresses {
-            tiles: FIELD_TILES,
-            palettes: FIELD_PALETTES,
-            panels: PANEL_BLOCKS,
-            highlights: [HIGHLIGHT_BLOCK; 2],
-            edges: FRONT_EDGES,
+            tiles: src.at(FIELD_TILES),
+            palettes: src.at(FIELD_PALETTES),
+            panels: src.at(PANEL_BLOCKS),
+            highlights: [src.at(HIGHLIGHT_BLOCK); 2],
+            edges: src.at(FRONT_EDGES),
             palette_anims: 0,
             palette_buffer: FIELD_PALETTE_BUFFER,
         },
@@ -174,8 +170,20 @@ fn palette(rom: &Rom, a: u32) -> Palette {
 
 /// EXE4's battle backgrounds (0 to 26: the loader 0x08085430 takes the game
 /// state's +0x0F, else the battle settings' +5, else the map's from
-/// 0x08085BAC).
+/// 0x08085BAC): their load descriptors by background id (the loader's
+/// literal; Red Sun US's 0x0808563C), their scroll records (16 bytes each:
+/// two callbacks, the second BG1's, an argument and display bits;
+/// 0x08085488) and their GFX animation lists (0x08085A50; EXE5's
+/// 0x0808C578, 0x0808C32C, 0x0808C96C). The same backgrounds in the four
+/// ROMs, the literals at an address of their own in each.
+const BACKGROUNDS: Place = Place::pointer_in_each([0x0808_5638, 0x0808_5644, 0x0808_5684, 0x0808_5690]);
+const BACKGROUND_SCROLL: Place = Place::pointer_in_each([0x0808_5484, 0x0808_5490, 0x0808_54D0, 0x0808_54DC]);
+const BACKGROUND_ANIMS: Place = Place::pointer_in_each([0x0808_5480, 0x0808_548C, 0x0808_54CC, 0x0808_54D8]);
 const BACKGROUND_COUNT: u32 = 27;
+/// The first of the scroll callbacks (a routine that returns; the ones
+/// after it at the same offsets in the four ROMs): code, which the scroll
+/// records point into, so its own address is stated.
+const SCROLLERS: Place = Place::stated([0x0800_1ED0, 0x0800_1ED0, 0x0800_1EB0, 0x0800_1EB0]);
 /// EXE4's descriptor (0x08026234, 0x08026266): the tiles' archive, its
 /// buffer, their VRAM destination, the map's archive, its buffer and
 /// destination, the palette's source.
@@ -184,12 +192,12 @@ const DESCRIPTOR: BackgroundDescriptor = BackgroundDescriptor { gfx: 0, dest: 8,
 /// destination; EXE5's 0x03003960).
 const PALETTE_BUFFER: u32 = 0x0300_2A50;
 /// The BG1 scroll callbacks by their offset from the first
-/// (`Addresses::scrollers`), and their counters' steps (1/16 pixel a frame):
+/// (`SCROLLERS`), and their counters' steps (1/16 pixel a frame):
 /// EXE6's `BGScrollCB_*` and EXE5's in EXE4's order. +0xB8 (Red Sun US's
 /// 0x08001F88, background 0x17's) speeds a left scroll up from the
 /// background's load, by 1/16 pixel a frame each frame to 4 pixels a frame:
 /// a `speeding` scroll, read from its code (`speeding_scroll`).
-const SCROLLERS: [(u32, (i32, i32)); 6] = [
+const SCROLLER_STEPS: [(u32, (i32, i32)); 6] = [
     (0x00, (0, 0)),   // returns (EXE6 nullsub_35)
     (0x02, (-8, -4)), // EXE6 BGScrollCB_BG1Diagonal3to2Scroll
     (0x4C, (0, -4)),  // BGScrollCB_BG1UpScroll
@@ -198,16 +206,18 @@ const SCROLLERS: [(u32, (i32, i32)); 6] = [
     (0xE4, (0, 0)),   // returns (EXE5's 0x08001A24)
 ];
 
-fn backgrounds(rom: &Rom, a: &Addresses) -> Vec<Option<Background>> {
+fn backgrounds(src: Source) -> Vec<Option<Background>> {
+    let rom = src.rom;
+    let (loads, scrolls, anim_lists, scrollers) = (src.at(BACKGROUNDS), src.at(BACKGROUND_SCROLL), src.at(BACKGROUND_ANIMS), src.at(SCROLLERS));
     (0..BACKGROUND_COUNT)
         .map(|id| {
             let (tiles, first_tile, map, map_width, map_height, palette) =
-                background_picture_by(rom, rom.u32(a.backgrounds + 4 * id), DESCRIPTOR)?;
-            let callback = rom.u32(a.background_scroll + 16 * id + 4) & !1;
-            let cb = callback.wrapping_sub(a.scrollers);
-            let scroll = SCROLLERS.iter().find(|(o, _)| *o == cb).map(|(_, v)| *v).unwrap_or((0, 0));
+                background_picture_by(rom, rom.u32(loads + 4 * id), DESCRIPTOR)?;
+            let callback = rom.u32(scrolls + 16 * id + 4) & !1;
+            let cb = callback.wrapping_sub(scrollers);
+            let scroll = SCROLLER_STEPS.iter().find(|(o, _)| *o == cb).map(|(_, v)| *v).unwrap_or((0, 0));
             let speeding = speeding_scroll(rom, callback);
-            let anims = gfx_anims(rom, rom.u32(a.background_anims + 4 * id), PALETTE_BUFFER);
+            let anims = gfx_anims(rom, rom.u32(anim_lists + 4 * id), PALETTE_BUFFER);
             Some(Background { tiles, first_tile, map, map_width, map_height, palette, scroll, speeding, anims })
         })
         .collect()
@@ -215,9 +225,10 @@ fn backgrounds(rom: &Rom, a: &Addresses) -> Vec<Option<Background>> {
 
 // ---- Sprites ------------------------------------------------------------------------
 
-/// The battle sprites of the sprite list at `list` (the four ROMs have the
-/// same ones), by (category, index).
-fn sprites(rom: &Rom, list: u32) -> Vec<SpriteSheet> {
+/// The battle sprites of a ROM's sprite list (the four ROMs have the same
+/// ones), by (category, index).
+fn sprites(src: Source) -> Vec<SpriteSheet> {
+    let (rom, list) = (src.rom, src.at(SPRITE_LIST));
     let cats: Vec<u32> = (0..10).map(|i| rom.u32(list + 4 * i)).collect();
     let mut out = Vec::new();
     for (ci, &c) in cats.iter().enumerate().take(BATTLE_CATEGORIES) {
@@ -242,8 +253,9 @@ const PORTRAITS: u8 = 0x20;
 /// The portraits content names (the chatbox's speakers: a no-running
 /// message's `F4 00 n`, 0x0804F750). The four ROMs have the same pictures:
 /// any one's.
-fn portraits(rom: &Rom, list: u32, names: &AssetNames) -> Vec<SpriteSheet> {
-    let table = rom.u32(list + PORTRAITS as u32);
+fn portraits(src: Source, names: &AssetNames) -> Vec<SpriteSheet> {
+    let rom = src.rom;
+    let table = rom.u32(src.at(SPRITE_LIST) + PORTRAITS as u32);
     names
         .sprites
         .keys()
@@ -263,18 +275,21 @@ pub(super) fn glyph_names((cell, dialogue): (&[String], &[String]), n: usize) ->
     (0..n).map(|k| cell.iter().chain(dialogue).nth(k).cloned().unwrap_or_else(|| format!("[{k:03x}]"))).collect()
 }
 
-/// The dialogue font at `a`, its glyphs drawing the encoding's characters.
-fn dialogue_font(rom: &Rom, a: &Addresses, encoding: (&[String], &[String])) -> DialogueFont {
+/// A source's dialogue font, its glyphs drawing the encoding's characters.
+pub(super) fn dialogue_font(src: Source, encoding: (&[String], &[String])) -> DialogueFont {
+    let (rom, font, advances) = (src.rom, src.at(DIALOGUE_FONT), src.at(DIALOGUE_ADVANCES));
     DialogueFont {
-        pixels: rom.bytes(a.dialogue_font, 0x60 * DIALOGUE_GLYPHS).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
-        advances: (0..DIALOGUE_GLYPHS as u32).map(|i| rom.u32(a.dialogue_advances + 4 * i) as u8).collect(),
+        pixels: rom.bytes(font, 0x60 * DIALOGUE_GLYPHS).iter().flat_map(|&b| [b & 15, b >> 4]).collect(),
+        advances: (0..DIALOGUE_GLYPHS as u32).map(|i| rom.u32(advances + 4 * i) as u8).collect(),
         chars: glyph_names(encoding, DIALOGUE_GLYPHS),
     }
 }
 
-/// The HUD's text lines at `at`: a line with anything but glyphs in it (a
+/// A source's HUD text lines: a line with anything but glyphs in it (a
 /// text command) is cut there.
-pub(super) fn texts(rom: &Rom, at: u32, first_control: u8) -> Vec<Vec<u16>> {
+pub(super) fn texts(src: Source) -> Vec<Vec<u16>> {
+    let (rom, at) = (src.rom, src.at(TEXTS));
+    let first_control = exe4_compat::Compat::exe4().text.first_control;
     let offset = |i: u32| rom.u16(at + 2 * i) as u32;
     (0..offset(0) / 2)
         .map(|i| {
@@ -288,52 +303,50 @@ pub(super) fn texts(rom: &Rom, at: u32, first_control: u8) -> Vec<Vec<u16>> {
 }
 
 /// The 8x16 font's glyphs an encoding names (no more than the font has).
-pub(super) fn font_glyphs(encoding: (&[String], &[String])) -> usize {
+fn font_glyphs(encoding: (&[String], &[String])) -> usize {
     (encoding.0.len() + encoding.1.len()).min(FONT_GLYPHS)
+}
+
+/// A source's 8x16 font: the glyphs its release's encoding names, with
+/// their characters.
+pub(super) fn font(src: Source, encoding: (&[String], &[String])) -> (Tiles, Vec<String>) {
+    let n = font_glyphs(encoding);
+    (tiles(src.rom, src.at(FONT), 0x40 * n), glyph_names(encoding, n))
 }
 
 /// An encoding's 8x16 font with no ROM to read it from: a placeholder glyph
 /// for every character the ROM's font would have (`glyph_names`, the cell
 /// font's and what it shares of the dialogue font's), so a pack of fewer
 /// ROMs has a glyph for the same names a full one has.
-fn placeholder_font(encoding: (&[String], &[String])) -> (Tiles, Vec<String>) {
+pub(super) fn placeholder_font(encoding: (&[String], &[String])) -> (Tiles, Vec<String>) {
     let n = font_glyphs(encoding);
     (crate::placeholders::tiles(2 * n), glyph_names(encoding, n))
 }
 
-/// The HUD from a US ROM that isn't Red Sun's: what its own addresses give
-/// (its fonts, text lines and banners, with their digits, palette and
-/// "BUSY..."); the rest, which exe4/hud.rs reads at Red Sun US's addresses,
-/// placeholders.
-fn hud(rom: &Rom, a: &Addresses, names: &AssetNames) -> Hud {
-    let encoding = (names.glyphs.as_slice(), names.dialogue_glyphs.as_slice());
-    let n = font_glyphs(encoding);
-    let first_control = exe4_compat::Compat::exe4().text.first_control;
-    Hud {
-        font: tiles(rom, a.font, 0x40 * n),
-        font_chars: glyph_names(encoding, n),
-        dialogue_font: dialogue_font(rom, a, encoding),
-        texts: texts(rom, a.texts, first_control),
-        banners: (0..super::hud::BANNER_COUNT).map(|id| super::hud::banner(rom, a.banners, id)).collect(),
-        banner_digits: super::hud::banner_digits(rom, a.banner_digits),
-        banner_palette: palette(rom, a.banner_palette),
-        waiting: tiles(rom, a.waiting, super::hud::WAITING_BYTES),
-        waiting_palette: palette(rom, a.banner_palette),
-        ..crate::placeholders::hud(names, 0)
-    }
-}
-
-/// The Japanese lettering from a Japanese ROM: its fonts and text lines.
-fn lettering(rom: &Rom, a: &Addresses, base: &Hud, names: &AssetNames) -> HudLettering {
+/// The HUD's Japanese lettering, from a Japanese ROM: its fonts, its text
+/// lines, its banners and "BUSY...". Placeholders without one, but what has
+/// no words and is the pack's own (`base`): the gauge's tiles ("CUSTOM" in
+/// every ROM) and the banners' palette.
+fn lettering(roms: &Roms, base: &Hud, names: &AssetNames) -> HudLettering {
     let (cell, dialogue) = names.language_glyphs.get(LANGUAGE).cloned().unwrap_or_default();
     let encoding = (cell.as_slice(), dialogue.as_slice());
-    let n = font_glyphs(encoding);
-    let first_control = exe4_compat::Compat::exe4().text.first_control;
-    HudLettering {
-        font: tiles(rom, a.font, 0x40 * n),
-        font_chars: glyph_names(encoding, n),
-        dialogue_font: dialogue_font(rom, a, encoding),
-        texts: texts(rom, a.texts, first_control),
+    let own = |l: HudLettering| HudLettering {
+        gauge_tiles: base.gauge_tiles.clone(),
+        banner_palette: base.banner_palette,
+        waiting_palette: base.waiting_palette,
+        ..l
+    };
+    let jp = roms.jp();
+    if !jp.is_present() {
+        let (font, font_chars) = placeholder_font(encoding);
+        return own(HudLettering { font, font_chars, ..crate::placeholders::lettering(base, names, LANGUAGE) });
+    }
+    let (font, font_chars) = font(jp, encoding);
+    own(HudLettering {
+        font,
+        font_chars,
+        dialogue_font: dialogue_font(jp, encoding),
+        texts: texts(jp),
         // The banners whose words differ, each where it starts (a longer
         // name further left); not what kind of banner it is.
         banners: base
@@ -341,36 +354,35 @@ fn lettering(rom: &Rom, a: &Addresses, base: &Hud, names: &AssetNames) -> HudLet
             .iter()
             .enumerate()
             .map(|(id, own)| {
-                let b = super::hud::banner(rom, a.banners, id as u32);
+                let b = super::hud::banner(jp, id as u32);
                 (b != *own).then_some(b)
             })
             .collect(),
-        banner_palette: palette(rom, a.banner_palette),
         // ("カスタム中…", seven tiles wide as the US's "BUSY...".)
-        waiting: tiles(rom, a.waiting, super::hud::WAITING_BYTES),
-        waiting_palette: palette(rom, a.banner_palette),
-        // (The gauge's tiles, "CUSTOM" among them, are the US ROMs'.)
-        gauge_tiles: base.gauge_tiles.clone(),
+        waiting: super::hud::waiting(jp),
         ..crate::placeholders::lettering(base, names, LANGUAGE)
-    }
+    })
 }
 
 // ---- Chips -----------------------------------------------------------------------------
 
-/// A chip's picture and icon, from its version's ROM (a version's own chip)
-/// or Red Sun US's (any other; else whichever ROM is present). An e-Reader
-/// card's chip's record points at RAM for them: its icon is the ROM's all
-/// the same, its picture the extractor's own (cards.rs).
+/// A chip's picture and icon. Every ROM has every chip's, a version's own
+/// chips' too: a ROM of the chip's version is read where one is given
+/// (any other chip: a Red Sun ROM, as four chips' icons aren't the same in
+/// a Blue Moon ROM and the pack has Red Sun's), else whichever ROM is
+/// there. An e-Reader card's chip's record points at RAM for them: its
+/// icon is the ROM's all the same, its picture the extractor's own
+/// (cards.rs).
 fn chip_media(roms: &Roms, id: u16) -> (Picture, Tiles) {
-    let source = match version_of(id) {
-        Some(v) => roms.of(v),
-        None => roms.any(),
-    };
-    let Some((rom, a)) = source else { return (Picture::default(), Tiles::default()) };
-    if let Some(media) = super::cards::media(rom, a, id, ICON_BYTES) {
+    let src = roms.preferring(version_of(id).unwrap_or(Version::RedSun));
+    if !src.is_present() {
+        return (Picture::default(), Tiles::default());
+    }
+    let (rom, table) = (src.rom, src.at(CHIPS));
+    if let Some(media) = super::cards::media(rom, table, id, ICON_BYTES) {
         return media;
     }
-    let r = a.chip_table + 0x2C * id as u32;
+    let r = table + 0x2C * id as u32;
     let (icon, gfx, pal) = (rom.u32(r + 0x20), rom.u32(r + 0x24), rom.u32(r + 0x28));
     let picture = if rom.contains(gfx) {
         Picture { tiles: tiles(rom, gfx, PICTURE_BYTES), palette: if rom.contains(pal) { palette(rom, pal) } else { Default::default() } }
