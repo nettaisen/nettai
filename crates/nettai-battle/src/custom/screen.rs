@@ -575,20 +575,27 @@ impl Screen {
     /// cell's. EXE4's SHUFFLE: LEFT from either cell is slot 8's,
     /// 0x0802044E, RIGHT goes on to OK, 0x0802041C.)
     fn target(&self, key: ScreenKey, layout: &CustomScreenLayout) -> Option<u8> {
-        let here = &self.slots[self.cursor as usize];
+        self.target_from(self.cursor, key, layout)
+    }
+
+    /// Where the cursor goes from slot `at` on the direction `key`, as
+    /// [`Screen::target`] says from the cursor's own slot (none: nowhere):
+    /// for a player that finds its way about the screen (an AI's).
+    pub fn target_from(&self, at: u8, key: ScreenKey, layout: &CustomScreenLayout) -> Option<u8> {
+        let here = &self.slots[at as usize];
         let own = match key {
             ScreenKey::Up | ScreenKey::Down => here.vertical,
             ScreenKey::Left => here.left,
             ScreenKey::Right => here.right,
             _ => None,
         };
-        if own.is_some() || matches!(layout.slots[self.cursor as usize].moves, SlotMoves::Neighbors { .. }) {
+        if own.is_some() || matches!(layout.slots[at as usize].moves, SlotMoves::Neighbors { .. }) {
             return own;
         }
         let end = match (here.kind, key) {
-            (SlotKind::Button { cell: ButtonCell::Right, .. }, ScreenKey::Left) => self.cursor - 1,
-            (SlotKind::Button { cell: ButtonCell::Left, .. }, ScreenKey::Right) => self.cursor + 1,
-            _ => self.cursor,
+            (SlotKind::Button { cell: ButtonCell::Right, .. }, ScreenKey::Left) => at - 1,
+            (SlotKind::Button { cell: ButtonCell::Left, .. }, ScreenKey::Right) => at + 1,
+            _ => at,
         };
         let SlotMoves::Candidates { up, down, left, right, .. } = &layout.slots[end as usize].moves else { return None };
         let list = match key {
