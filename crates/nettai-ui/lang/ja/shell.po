@@ -241,10 +241,11 @@ msgid "The video couldn't be made"
 msgstr "動画を作成できませんでした"
 
 msgid "Not an {} save."
-msgstr "{} のセーブデータではありません。"
+msgstr "{}のセーブではありません。"
 
+# (A dialog's title: it has a phone's dialog's width, 310, at 20.)
 msgid "Not an {} save"
-msgstr "{} のセーブデータではありません"
+msgstr "{}のセーブではありません"
 
 msgid "Something went wrong. Details are in the log file."
 msgstr "問題が発生しました。詳しくはログファイルをご覧ください。"

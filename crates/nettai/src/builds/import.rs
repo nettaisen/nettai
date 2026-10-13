@@ -1,92 +1,135 @@
-//! A build from a save file: each game's compat crate reads its own game's
-//! saves (`exe6_compat::import`, `exe5_compat::import`,
-//! `exe4_compat::import`: the original's bytes into the game's facts, by
-//! field name), and the build's game picks which. A save of another game is
-//! refused, not switched to.
+//! A build from a save file: each game's compat crate reads its own game's saves (`exe6_compat::import`,
+//! `exe5_compat::import`, `exe4_compat::import`: the original's bytes into the game's facts, by field name),
+//! and the build's game picks which. A save of another game is refused, not switched to.
+//!
+//! What a save gives is then made a build, as the game's builds data says one is (`nettai_match::build`): the
+//! save's version with all that version sets (its whole form list, its Giga chips), each choice on the preset
+//! the save is on ([`Imported::taken`] says which, where that changed what the save held: a light/dark value
+//! of 100 is the dark preset's), and the facts no build states at the rules' defaults (a save's HP, Regular
+//! memory and deletion times are none of a build's).
+//!
+//! What the readers say of a save in words is for the log alone; what a player is told is typed
+//! ([`Imported`], [`Refused`]).
 
 use nettai_battle::content::Content;
 use nettai_match::Side;
+use nettai_match::build::{Builds, Taken};
 
-/// A side of game `game` from the save in `file` (a .sav's bytes, or a raw
-/// save image as Tango's netplay templates hold), and what is worth saying
-/// about it; or why the file gives none.
-pub fn side_of_save(content: &Content, game: &str, file: &[u8]) -> Result<(Side, Vec<String>), String> {
-    let mut side = Side::fresh(content, game)?;
-    // (The save's version, where its game's rules state none: EXE5's team,
-    // which names its preset. EXE6's is its `version` fact.)
-    let (mut notes, version) = match game {
-        exe6_compat::ROOT => (exe6_compat::import::import(content, &mut side, &read(game, file, exe6_compat::import::read)?)?, None),
+/// A save, made a build's side.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Imported {
+    pub side: Side,
+    /// The presets the save was put on that changed what it held, each by its choice and its own id.
+    pub taken: Vec<Taken>,
+}
+
+/// Why a file gives no build.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Refused {
+    /// It is no save of the build's game (another game's, or no save at all).
+    NotThisGames,
+    /// It is the game's save, and no build could be made of it: the log says why.
+    Failed,
+}
+
+/// A side of game `game` from the save in `file` (a .sav's bytes, or a raw save image as Tango's netplay
+/// templates hold), as a build of the game is.
+pub fn side_of_save(content: &Content, builds: &Builds, file: &[u8]) -> Result<Imported, Refused> {
+    let game = builds.game();
+    let failed = |why: String| {
+        crate::errors::log(&format!("importing a save of {game}"), &why);
+        Refused::Failed
+    };
+    let mut side = Side::fresh(content, game).map_err(failed)?;
+    // What the save holds, and its version (the id the game's builds data names it by).
+    let (notes, version) = match game {
+        exe6_compat::ROOT => {
+            let save = read(game, file, exe6_compat::import::read)?;
+            (exe6_compat::import::import(content, &mut side, &save).map_err(failed)?, save.version().name())
+        }
         exe5_compat::ROOT => {
             let save = read(game, file, exe5_compat::import::read)?;
-            (exe5_compat::import::import(content, game, &mut side, &save), Some(save.version().name()))
+            (exe5_compat::import::import(content, game, &mut side, &save), save.version().name())
         }
-        exe4_compat::ROOT => (exe4_compat::import::import(content, game, &mut side, &read(game, file, exe4_compat::import::read)?), None),
-        other => return Err(format!("{other} has no save import")),
+        exe4_compat::ROOT => {
+            let save = read(game, file, exe4_compat::import::read)?;
+            (exe4_compat::import::import(content, game, &mut side, &save), save.version.name())
+        }
+        other => return Err(failed(format!("{other} has no save import"))),
     };
-    // (What a build in the app never states is the rules' defaults: a save's
-    // HP, Regular memory, times and patterns are none of a build's. What it
-    // states as a preset is the preset it is on: EXE5's light/dark value;
-    // the save's version, with its whole form list.)
-    notes.extend(built(content, game, &mut side, version));
-    Ok((side, notes))
-}
-
-/// The side set to what a build in the app is (`layout::as_built`; a save's
-/// `version` naming its preset), and what that changed, said.
-fn built(content: &Content, game: &str, side: &mut Side, version: Option<&str>) -> Vec<String> {
-    let built = crate::builds::layout::as_built_with(content, game, side, version);
-    let mut notes: Vec<String> = built.taken.iter().map(|t| format!("{}, as every build in the app", t.said())).collect();
-    if !built.reset.is_empty() {
-        notes.push(format!("set to the defaults, as every build in the app: {}", built.reset.join(", ")));
+    for note in notes {
+        crate::errors::log(&format!("importing a save of {game}"), &note);
     }
-    notes
+    builds.take_version(content, &mut side, version).map_err(failed)?;
+    let taken = builds.settle(content, &mut side);
+    let reset = builds.as_built(content, &mut side);
+    if !reset.is_empty() {
+        crate::errors::log(&format!("importing a save of {game}"), &format_args!("set to what every build has: {}", reset.join(", ")));
+    }
+    Ok(Imported { side, taken })
 }
 
-/// Whether game `game`'s saves can be read.
-pub fn reads_saves(game: &str) -> bool {
-    matches!(game, exe6_compat::ROOT | exe5_compat::ROOT | exe4_compat::ROOT)
-}
-
-/// The auto battle data of the save in `file` alone, as `side`'s (its other
-/// facts kept).
-pub fn auto_battle_of_save(content: &Content, game: &str, file: &[u8], side: &mut Side) -> Result<Vec<String>, String> {
-    let mut notes = match game {
-        exe5_compat::ROOT => exe5_compat::import::auto_battle_of_save(content, game, file, side)?,
-        other => return Err(format!("{other}'s saves keep no auto battle data")),
+/// The auto battle data of the save in `file` alone, as `side`'s (its other facts kept).
+#[allow(dead_code)] // (The auto battle tab's, which isn't built yet.)
+pub fn auto_battle_of_save(content: &Content, builds: &Builds, file: &[u8], side: &mut Side) -> Result<(), Refused> {
+    let game = builds.game();
+    let said = match game {
+        exe5_compat::ROOT => exe5_compat::import::auto_battle_of_save(content, game, file, side),
+        other => Err(format!("{other}'s saves keep no auto battle data")),
     };
-    notes.extend(built(content, game, side, None));
-    Ok(notes)
+    match said {
+        Ok(notes) => {
+            for note in notes {
+                crate::errors::log(&format!("importing a save's auto battle data of {game}"), &note);
+            }
+            builds.as_built(content, side);
+            Ok(())
+        }
+        Err(why) => {
+            crate::errors::log(&format!("importing a save's auto battle data of {game}"), &why);
+            Err(Refused::NotThisGames)
+        }
+    }
 }
 
-fn read<S>(game: &str, file: &[u8], reader: fn(&[u8]) -> Result<S, String>) -> Result<S, String> {
-    reader(file).map_err(|e| format!("not a save of {game} ({e})"))
+fn read<S>(game: &str, file: &[u8], reader: fn(&[u8]) -> Result<S, String>) -> Result<S, Refused> {
+    reader(file).map_err(|why| {
+        crate::errors::log(&format!("reading a save of {game}"), &why);
+        Refused::NotThisGames
+    })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use nettai_match::build::Checked;
+    use nettai_match::facts::Stated;
     use nettai_match::testing::{exe5_content, exe6_content};
 
-    /// A save of the build's game gives the side; one of the other game is
-    /// refused. Its light/dark value takes the preset on its side of the
-    /// game's line (100: dark), and the import says so.
+    /// A save of the build's game gives a build of its version, with all the version sets; one of another
+    /// game is refused. Its light/dark value takes the preset on its side of the game's line (100: dark), and
+    /// the import says so, typed.
     #[test]
-    fn a_save_gives_its_games_side() {
-        use nettai_match::facts::Stated;
+    fn a_save_gives_its_games_build() {
         let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
         image[0x29E0..0x29E0 + 20].copy_from_slice(b"REXE5TOB 20041006 US");
         image[0x554C..0x554C + 0xE0].fill(0xFF);
         image[0x52A8 + 0x44..0x52A8 + 0x46].copy_from_slice(&100u16.to_le_bytes());
         let five = exe5_content();
-        let (side, notes) = side_of_save(&five, "exe5", &image).unwrap();
+        let builds = Builds::of(&five, "exe5").unwrap();
+        let imported = side_of_save(&five, &builds, &image).unwrap();
+        let side = &imported.side;
         assert_eq!((side.facts.get(&five, "karma"), side.facts.get(&five, "hp")), (Some(Stated::Number(0)), Some(Stated::Number(997))));
-        assert!(notes.iter().any(|n| n == "karma 100 is dark's: the dark preset (hp 997, karma 0), as every build in the app"), "{notes:?}");
-        // (A Team ProtoMan save with no souls: its team's six, as every build.)
-        let team: Vec<String> = side.facts.get(&five, "souls").unwrap().defs().iter().map(|&h| five.defs.form(nettai_content_api::FormHandle(h)).key.clone()).collect();
+        assert_eq!(imported.taken, [Taken { choice: "light_dark".into(), preset: "dark".into(), was: Some(100) }]);
+        // (A Team ProtoMan save with no souls: its team's six, as every build of the version.)
+        assert_eq!(builds.version_of(&five, side), Some("protoman"));
+        let souls = side.facts.get(&five, "souls").unwrap().defs();
+        let team: Vec<&str> = souls.iter().map(|&h| nettai_match::ids::local(&five.defs.form(nettai_content_api::FormHandle(h)).key)).collect();
         assert_eq!(team, ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"]);
-        assert!(notes.iter().any(|n| n == "souls none is protoman's: the protoman preset (giga_chips: 7, souls: 6), as every build in the app"), "{notes:?}");
+        // (Its folder is the save's, an empty one: what is wrong with it is the folder's to say.)
+        let checked = Checked::of(&five, "exe5", side);
+        assert!(checked.problems.iter().all(|p| p.field.as_deref() == Some("folder")), "{:?}", checked.problems);
         let six = exe6_content();
-        let e = side_of_save(&six, "exe6", &image).unwrap_err();
-        assert!(e.starts_with("not a save of exe6"), "{e}");
+        assert_eq!(side_of_save(&six, &Builds::of(&six, "exe6").unwrap(), &image), Err(Refused::NotThisGames));
     }
 }

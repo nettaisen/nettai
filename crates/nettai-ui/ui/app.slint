@@ -21,12 +21,14 @@ import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
 export { Theme, Audit, Nav, NavKind }
 export { Shell, Screen, BattleKind, DialogButton, VersusCard, PadButton, ErrorKind, Errors, Fx } from "shell.slint";
 export { ButtonKind } from "widgets.slint";
+// What any screen shows of a build, and its words (`crate::builds`).
+export { BuildWords } from "build.slint";
 // What each screen's Rust module sets: its view.
 export { MenuView } from "screens/menu.slint";
 export { SettingsView } from "screens/settings.slint";
 export { PlayView } from "screens/play.slint";
 export { TrainingView } from "screens/training.slint";
-export { BuildsView } from "screens/builds.slint";
+export { BuildsView, NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView } from "screens/builds.slint";
 export { ReplaysView } from "screens/replays.slint";
 
 export component AppWindow inherits Window {
