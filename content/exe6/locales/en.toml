@@ -783,3 +783,9 @@ language = "en"
 "versions" = "Sets the Crosses and Giga chips."
 "version.gregar" = "Gregar"
 "version.falzar" = "Falzar"
+
+# The two groups a patch card's screen lists its effects in, by the effects' `group` (@exelib/patch_cards/effects),
+# for a tool that lays a card out as its screen does (the build editor's patch cards).
+[patch_card_groups]
+"parameter" = "Parameter"
+"ability" = "Ability"

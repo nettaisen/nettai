@@ -13,8 +13,8 @@ music, Settings, the two cards before a battle, and the battle's host with its m
 transport, the export): each is one Slint file and one Rust module (§2).
 
 Builds is filled in (§8): the list with a build's overview, a new build, a save's import, and the editor with
-its Navi and Folder tabs; its NaviCust, patch card and auto battle tabs are empty, behind the editor's tab
-interface. The overview, a build's row and a version's tag are components any screen uses.
+its five tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
+it, Auto battle. The overview, a build's row and a version's tag are components any screen uses.
 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
 the command line with no window, for frames, audits and checks (docs/tools.md).
@@ -970,7 +970,7 @@ Rust module**, as a screen is for the shell:
 - `ui/screens/builds/<tab>.slint` has `<Tab>View`, a global the module sets (with `hints`, the footer's key
   hints while the tab shows, and `status`, its one short status), and `<Tab>Tab`, a component the frame places
   under the tab bar, the page's body wide. What a tab opens over the window is a component of its own, named in
-  `BuildsOverlay` (the Folder tab's sheet on a phone).
+  `BuildsOverlay` (the Folder's, the Patch cards' and the Auto battle tab's sheets on a phone).
 - `src/screens/builds/<tab>.rs` has a struct that implements `editor::Tab`: the calls a `Screen` gets (`show`,
   `activate`, `step`, `choose`, `edit`, `focused`, `key`, `button`, `action`, `back`, `answered`), each handed
   the shell and the `Draft`.
@@ -1003,16 +1003,96 @@ more tabs past it fades.
 room, and on a line of their own under it where they don't (the header keeps its height; which it is depends
 on the language alone, and the pass is told if the counts don't fit even so).
 
-NAVI and FOLDER are built. NAVICUST, PATCH CARDS and AUTO BATTLE are empty tabs behind this interface
-(`navicust`, `patch_cards`, `auto_battle`: each names its facts and nothing else). **Filling one in** touches
-its two files and `lang/ja/builds.po`. **Adding a tab** is those and a few lines: its place in `EditorTab` and
-its `if` (builds.slint's `EditorBody`, whose one clock brings in whichever tab is chosen), its view's export (builds.slint and app.slint), its word in `BuildsView.tab-names`, and
-its module in `editor::all()`.
+The five tabs are built. **Adding a tab** is its two files, `lang/ja/builds.po` and a few lines: its place in
+`EditorTab` and its `if` (builds.slint's `EditorBody`, whose one clock brings in whichever tab is chosen), its
+view's export (builds.slint and app.slint), its word in `BuildsView.tab-names`, its module in `editor::all()`,
+and its sheet's `if` in `BuildsOverlay` if it opens one on a phone.
 
-`crates/nettai/src/builds/` also keeps, from the first app's creator, what the tabs to come take: the NaviCust's
-grid (`grid`), the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits (`edit`) and the
-library's order (`order`). Its `presets`, `layout` and `builds.toml` went: nettai-match's `build` is the one
-source of what a game says of its builds.
+**The NaviCust tab** (`navicust`; docs/design/app-ui.md §2.10). What it draws is the game's data, read by
+`builds::grid` (the boards and the command line from the game's rules/navicust/board module as it loaded, each
+program's shape, compressed shape, colors and plus mark from its definition; a board by the setup's
+`navicust_expansions` where the game takes it, else its one: EXE4's): no game is named.
+
+- *The board*, framed at the left: the square of the engine's 7x7 grid any of the game's boards has a cell on,
+  so EXE6's 7x7 (cells 50) and EXE5's and EXE4's 5x5 (cells 64; the board column is EXE6's width in every game,
+  so the columns don't move with the game). A cell of the board is inset with a line; one of the frame (EXE6's
+  out-of-bounds ring) hatched with a dashed edge; none at all where the board has none (EXE6's corners); the
+  board's own cells outlined in white where a ring is round them. A placed piece's cells are its color, with no
+  border; a plus part's crossed edge to edge in the board's dark; a piece over the ring hatched over its color.
+  The command line is a line over and under its row, drawn over what is placed on it and running past the grid
+  to the frame's sides, where an arrow points in at each end (they pulse, `animation-tick`, with motion on), and
+  its empty cells are tinted. Under the board, its key (Board, Command line, Plus part, and Out of bounds where
+  there is a ring), on one line or two by the language's words alone, and a reserved line for why a piece can't
+  go down.
+- *Programs*, the open list in the middle: each program in each of its colors (a row a color, as the folder's
+  library has a row a code), in the library's order, with its color, its cross if a plus part, and where it is:
+  Placed, In hand, or Out of bounds (a placed copy over the ring: no error, and nothing red).
+- *Effects and Bugs*, two panels at the right. The effects are what the NaviCust alone does: the build's
+  overview without its patch cards (`Checked::of` a second time, the cards' fact emptied), each number it
+  changes ("HP +500") and each program at work that gives an ability. The bugs are the whole build's, whoever
+  brings them (the draft's overview), each by its full name and its level or amount, purple. A bug that wasn't
+  there before the last change pulses purple once.
+- *The keys.* The cursor goes over the board cell by cell (each cell is a control, `cell`, its place in the
+  drawn grid). Enter on a placed piece picks it up by that cell; Enter on a program's row takes it in hand, its
+  middle on the board's (a copy already placed in that color says whether it is compressed). While a piece is
+  in hand it is where the cursor is: the arrows (and a pad's stick) move it a cell at a time, the keys bound to
+  L and R (A and S) and the pad's shoulders turn it a quarter about the cell held (the tab's `key` and `button`
+  take them before the frame changes the tab), C or the pad's north button compresses it, Enter puts it down
+  where it fits, and Esc puts it back where it was (one from the list goes back to it). One that doesn't fit is
+  refused with the rules' own kind (`GridData::misfit`: `Wrong::OffBoard` or `Wrong::Overlap`) in the reserved
+  line, and shakes. Del takes off the piece under the cursor, or a program's last copy from its row, or drops
+  the piece in hand. The footer's hints are the hand's while a piece is held. Leaving the tab with a piece in
+  hand puts it back.
+- *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
+  edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
+  as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
+  flash along its cells one after another (`dropped`).
+
+**The Patch cards tab** (`patch_cards`; §2.19, §2.20): the folder's shape. A card's number, name, MB, slot and
+lines are the game's data: its number its place in the library's order (which lists the cards by their
+numbers), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
+lines `builds::cards` (each effect's line from the strings' `patch_card_effects`, a bug's marked by the effect's
+`bug`, the card screen's group by its `group`, an effect that holds effects of its own followed by theirs, and a
+line's names put in as the screen shows them: `cards::named_by`, a slot by its name, a card by its number).
+
+- *The strip* lays the card under the cursor out: its number, name, MB or slot, why it can't go in (in the
+  error red: the typed `EntryRefusal`, worded by `Words::entry_refusal`: "Needs 24 MB"; of one of the build's,
+  the rules' problem with it), and its lines in its two groups under their names in the game's strings
+  (`patch_card_groups`: Parameter, Ability); where a game's cards have no groups (EXE4's), what it does and the
+  bugs it adds to or clears.
+- *The build's cards*, framed: in their order, a row a card (number, name, MB, then every line it writes on one
+  line, a bar between its groups, bugs purple, fading where they run past the row), and an Empty row after them
+  while the list has room; in a game whose cards go in slots, each slot by its name with its card or Empty. Cards
+  and MB used (or Slots filled) in the header, ticking as they change, and Together at the foot: what the cards
+  add up to, the build's overview without its NaviCust (the numbers they change, what they give, their bugs).
+- *The library*, open: every card of the game with its lines, a search by name, and a sort (number, name, MB;
+  in a game with slots, number, name, slot). A card that can't go in is greyed with why: Installed, or in the
+  error red what it needs. No pictures (a card has none) and no on or off (nettai plays every card in).
+- *The keys.* Enter on one of the build's rows goes to the library (on a phone, its sheet); Enter on a card puts
+  it in (at the list's end; in a game with slots, in the slot it belongs in, in place of what was there), and the
+  cursor stays in the library to put in another. Del takes the card under the cursor out; `[` and `]` (the pad's
+  north button: up) move it, as the order matters. A card put in flies from its row to the build's, which
+  flashes; one refused shakes.
+
+**The Auto battle tab** (`auto_battle`), in a game whose setup takes the places: the folder's shape again. The
+places and their lists are the game's (`builds::auto`: its rules/auto_battle/block's `LISTS`, each named in its
+strings' `auto_battle_lists`; a block that states no lists, EXE4's, has its 42 places as one, untitled). A
+build states the places alone (its pattern records are the rules' default), so a place holds a chip or nothing.
+The strip describes the chip under the cursor; the places are framed under their lists' titles in two columns,
+scrolled (a `ScrollPage`, `places.`); the library is a row a chip of those a folder of the build can hold, each
+saying in how many places it is. Enter on a place goes to the library, Enter on a chip puts it in and goes on to
+the next place (it flies there, the place flashes), Del empties a place. A chip the rules refuse in a place
+(their `validate`: one its navi can't play) isn't put: its row shakes and the strip says why, worded for the
+part (`Words::problem`: "{chip} can't be played in auto battle").
+
+**On a phone** each of the three is one column: the NaviCust's board over its key, the effects and the bugs a line
+each, then the programs; the patch cards' counts, their cards and Together, with the library as a sheet from the
+bottom (`PatchCardsOverlay`, with UP, DOWN and REMOVE, or EMPTY); the auto battle's places, one column, with
+the library as a sheet (`AutoBattleOverlay`, with REMOVE). The strips are left out, as the folder's is.
+
+`crates/nettai/src/builds/` keeps the parts they share with no screen's code: the NaviCust's grid (`grid`),
+the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits (`edit`) and the library's order
+(`order`). nettai-match's `build` is the one source of what a game says of its builds.
 
 ## 9. Settings, scaling and the phone
 
@@ -1285,6 +1365,24 @@ sort's list), then the tab after it. A game may have one navi or thirteen, a cho
 a step names the control it is for and does nothing where the game has none. The probe's bursts are the
 editor's body arriving as the tab changes, a chip the rules refuse (its row shakes) and a chip put in (it flies
 to its entry, the entry flashes, a count that changed ticks).
+
+**The NaviCust's, Patch cards' and Auto battle tabs' steps** (`tour/build_tabs.rs`, a build of the pass's own
+made through the screen): the NaviCust's list a focus move apart (a pair), a program taken in hand, moved and
+turned, put down on the command line, a plus part beside it, another program put off the command line (its bug
+appears), one put over another (refused, and why), and a plus part on EXE6's ring (out of bounds; in a game
+without a ring the shot is of the piece in hand); the patch cards' library, its search and sort a focus move
+apart (a pair), three cards put in, the library by MB with a card the MB left can't take refused, one of the
+build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
+filled from the library, one emptied, the places scrolled to the last list. Where a piece goes is found from
+what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
+on the ring, or over another), so the walk is the same whatever the game's shapes. A tab the game hasn't is
+passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
+EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, put down, put off
+the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
+
+`NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
+Settings, a dialog, a battle), `training`, `builds`, `build-tabs`, and in the probe `play`; `play` and `replays`
+walk Play's and Replays' steps alone.
 
 **A picture's name says what it is of, and the pass doesn't check that**: it checks what moves between a pair
 and what is cut. Two things went unseen that way, and each now has its check.

@@ -64,18 +64,27 @@ pub struct Layout {
 
 impl Layout {
     /// The layout `block` (the game's module, as data) states, where it is
-    /// the one this view draws: 42 places in lists, eight records of five
-    /// chips; and only where the game's setup takes the data.
+    /// the one this view draws: 42 places in lists (where it states none,
+    /// one list of them all: EXE4's, whose writer isn't mapped), and where
+    /// the game's setup takes pattern records, eight of five chips; and
+    /// only where the game's setup takes the places.
     pub fn read(content: &Content, block: Option<&nettai_content_api::Data>) -> Option<Layout> {
-        if !(nettai_match::facts::takes(content, PLACES_FIELD) && nettai_match::facts::takes(content, RECORDS_FIELD)) {
+        if !nettai_match::facts::takes(content, PLACES_FIELD) {
             return None;
         }
         let d = block?;
         let size = |k: &str| d.field(k).int().map(|n| n as usize);
-        if (size("PLACES"), size("RECORDS"), size("RECORD_CHIPS")) != (Some(PLACES), Some(RECORDS), Some(RECORD_CHIPS)) {
+        if size("PLACES") != Some(PLACES) {
             return None;
         }
-        let nettai_content_api::Data::List(items) = d.field("LISTS") else { return None };
+        if nettai_match::facts::takes(content, RECORDS_FIELD) && (size("RECORDS"), size("RECORD_CHIPS")) != (Some(RECORDS), Some(RECORD_CHIPS)) {
+            return None;
+        }
+        let items = match d.field("LISTS") {
+            nettai_content_api::Data::List(items) => items.as_slice(),
+            nettai_content_api::Data::Nil => return Some(Layout { lists: vec![List { name: String::new(), start: 0, len: PLACES, holds: Holds::Any }] }),
+            _ => return None,
+        };
         let mut lists = Vec::new();
         for l in items {
             let name = l.field("name").str()?.to_string();
@@ -264,7 +273,10 @@ impl AutoBattle {
             .collect();
         let mut facts = side.facts.clone();
         facts.set(content, PLACES_FIELD, &places)?;
-        facts.set(content, RECORDS_FIELD, &records)?;
+        // (A game whose setup states no records has none to write.)
+        if nettai_match::facts::takes(content, RECORDS_FIELD) {
+            facts.set(content, RECORDS_FIELD, &records)?;
+        }
         side.facts = facts;
         Ok(())
     }
@@ -348,6 +360,15 @@ mod tests {
         );
         let six = nettai_match::testing::exe6_content();
         assert!(Layout::read(&six, block.as_ref()).is_none(), "EXE6's setup takes no such data");
+        // EXE4's block states no lists: its 42 places are one.
+        let four = nettai_match::testing::exe4_content();
+        let block = crate::builds::module_data(&four, "exe4", MODULE);
+        let layout = Layout::read(&four, block.as_ref()).expect("EXE4's block's layout");
+        assert_eq!(layout.lists, [List { name: String::new(), start: 0, len: PLACES, holds: Holds::Any }]);
+        let mut m = nettai_match::pick::live(&four, "exe4", 3, None).unwrap();
+        let cannon = ids::chip(&four, "exe4", "cannon").unwrap();
+        assert!(update(&four, &mut m.sides[0], Edit::Put(5, cannon)));
+        assert_eq!(AutoBattle::of_side(&four, &m.sides[0]).places[5], Entry::Chip(cannon));
     }
 
     #[test]

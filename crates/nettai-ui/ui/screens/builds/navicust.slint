@@ -1,17 +1,800 @@
-// The NaviCust tab of a build's editor (docs/design/app-ui.md §6, "NaviCust"). Not built yet: the tab is here,
-// empty. Its Rust half is src/screens/builds/navicust.rs; docs/app.md §8 says what a tab is given.
+// The NaviCust tab of a build's editor (docs/design/app-ui.md §6, "NaviCust"; §2 item 10). At the left the board,
+// framed, with its key under it: the game's board alone where it has no out-of-bounds cells (a 5x5), and EXE6's
+// 7x7 with its board outlined in white, the ring of out-of-bounds cells around it hatched and no cells at the
+// corners. The command line is marked three ways: a line over and under its row that runs over what is placed
+// there, an arrow at each end outside the board, and a tint in its empty cells. A plus part's cell is its color
+// crossed edge to edge, with no border. In the middle PROGRAMS, the open list to pick from: each program in each of
+// its colors, and whether it is placed, in hand or out of bounds (which is no error). At the right what the NaviCust
+// does and every bug the build has, by its full name and its level, purple.
+//
+// The piece in hand is drawn over the board where the cursor holds it: lifted (a little larger, with a shadow), and
+// it turns a quarter at a time and drops with a pulse along its cells. On a phone the board is over the list, and
+// the effects and the bugs are a line each under it. Its Rust half is src/screens/builds/navicust.rs.
 
+import { Theme, Audit } from "../../theme.slint";
+import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
+import { PanelBack, Label, ListView, RowTouch, ArrowLeft, ArrowRight, Message } from "../../widgets.slint";
+import { Tween, Pulse, Shake } from "../../motion.slint";
 
-// What the tab shows: src/screens/builds/navicust.rs sets these. Every tab's view has the footer's key hints
-// while the tab shows, and its one short status at the footer's right.
+// What the board has at a cell: nothing (EXE6's corners), a cell of the board, or one of its out-of-bounds ring.
+export enum CellKind {
+    none,
+    board,
+    out,
+}
+
+// A cell of the grid as drawn: what the board has there, and the piece placed over it (its color, whether it is a
+// plus part).
+export struct GridCell {
+    kind: CellKind,
+    filled: bool,
+    tone: color,
+    plus: bool,
+}
+
+// A cell of the piece in hand (from the cell the cursor holds it by), or of one just put down (its place in the
+// drawn grid), and which of its sides are the piece's edge (the piece in hand is outlined along them).
+export struct PieceCell {
+    x: int,
+    y: int,
+    top: bool,
+    right: bool,
+    bottom: bool,
+    left: bool,
+}
+
+// Where a program of the list is: nowhere, on the board, in hand, or on the board and over its ring.
+export enum ProgramState {
+    none,
+    placed,
+    held,
+    out,
+}
+
+// A program in one of its colors, as the list shows it.
+export struct ProgramRow {
+    name: string,
+    tone: color,
+    plus: bool,
+    state: ProgramState,
+}
+
+// A line of the effects or the bugs: a title, an effect, a bug with its level or amount (`extent`), a list with
+// nothing in it, or how many more there are than room. `fresh`: a bug that wasn't there before the last change (it
+// pulses purple once).
+export enum EffectKind {
+    effects,
+    effect,
+    bugs,
+    bug,
+    nothing,
+    more,
+}
+
+export struct EffectLine {
+    kind: EffectKind,
+    text: string,
+    extent: string,
+    fresh: bool,
+}
+
+// What the tab shows: src/screens/builds/navicust.rs sets these.
 export global NavicustView {
-    out property <[Hint]> hints: [
+    out property <[Hint]> hints: self.holding ? self.holding-hints : self.hints-at-rest;
+    property <[Hint]> hints-at-rest: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Pick up") },
+        { key: "Del", pad: PadButton.west, text: @tr("Take off") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: "Esc", pad: PadButton.east, text: @tr("Back") },
     ];
-    in property <string> status;
+    property <[Hint]> holding-hints: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move piece") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Turn") },
+        { key: "C", pad: PadButton.north, text: @tr("Compress") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Place") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Put back") },
+    ];
+    out property <string> status: @tr("{n} program placed" | "{n} programs placed" % self.placed);
+    in property <int> placed;
+    // The game's data draw a board (else the list alone: a game whose board isn't one the tab reads).
+    in property <bool> board;
+    // The grid as drawn: `columns` cells a side (7, or 5 where the game's boards are its middle), row by row.
+    in property <int> columns: 7;
+    in property <[GridCell]> cells;
+    // The command line's row of the drawn grid (-1: none).
+    in property <int> command: -1;
+    // The board's out-of-bounds ring is drawn (EXE6's): the board's own cells, which the white line goes around.
+    in property <bool> ring;
+    in property <int> board-x;
+    in property <int> board-y;
+    in property <int> board-columns;
+    in property <int> board-rows;
+    // The piece in hand: its cells, its color, a plus part's, the cell of it the cursor holds; `lifted` counts the
+    // pieces taken up (it lifts), `turned` the quarter turns and `turn-way` the last one's (1 clockwise).
+    in property <bool> holding;
+    in property <[PieceCell]> held;
+    in property <color> held-tone;
+    in property <bool> held-plus;
+    in property <int> grab-x;
+    in property <int> grab-y;
+    // The piece in hand is being moved (it glides to the next cell), not taken up.
+    in property <bool> glide;
+    in property <int> lifted;
+    in property <int> turned;
+    in property <int> turn-way: 1;
+    // A piece put down: its cells, counted (they pulse one after another). A piece that couldn't be put down,
+    // counted (it shakes), and why.
+    in property <[PieceCell]> dropped;
+    in property <int> dropped-seq;
+    in property <int> refused-seq;
+    in property <string> notice;
+    // The list: each program in each of its colors.
+    in property <[ProgramRow]> programs;
+    // The cursor is in the list: its title is lit, the board's isn't.
+    in property <bool> in-list;
+    // What the NaviCust does, and the build's bugs.
+    in property <[EffectLine]> effects;
+    in property <[EffectLine]> bugs;
+    // The same on a line each, for a phone.
+    in property <string> effects-line;
+    in property <string> bugs-line;
+    // A stat's change, in the overview's words: HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular
+    // memory.
+    public pure function stat(i: int, by: string) -> string {
+        if i == 0 {
+            return @tr("HP {}", by);
+        }
+        if i == 1 {
+            return @tr("Attack {}", by);
+        }
+        if i == 2 {
+            return @tr("Rapid {}", by);
+        }
+        if i == 3 {
+            return @tr("Charge {}", by);
+        }
+        if i == 4 {
+            return @tr("Custom {}", by);
+        }
+        if i == 5 {
+            return @tr("Mega chips {}", by);
+        }
+        if i == 6 {
+            return @tr("Giga chips {}", by);
+        }
+        return @tr("Regular memory {}", by);
+    }
 }
 
-// The tab: the editor gives it its place under the tab bar, the page's body wide.
-export component NavicustTab inherits Rectangle { }
+// Hatching: the out-of-bounds ring's (`tone` its stripes, `edge` its dashed line), or over a piece's color where it
+// is placed on the ring. It fills what it is given.
+component Hatch inherits Rectangle {
+    in property <color> tone;
+    in property <color> edge;
+    clip: true;
+    Path {
+        viewbox-width: 100;
+        viewbox-height: 100;
+        stroke: root.tone;
+        stroke-width: 4px;
+        commands: "M 0 11.3 L 11.3 0 M 0 33.9 L 33.9 0 M 0 56.5 L 56.5 0 M 0 79.1 L 79.1 0 M 1.7 100 L 100 1.7 M 24.3 100 L 100 24.3 M 46.9 100 L 100 46.9 M 69.5 100 L 100 69.5 M 92.1 100 L 100 92.1";
+    }
+
+    Path {
+        viewbox-width: 100;
+        viewbox-height: 100;
+        stroke: root.edge;
+        stroke-width: 1px;
+        commands: "M 0 0.5 L 6 0.5 M 0 99.5 L 6 99.5 M 0.5 0 L 0.5 6 M 99.5 0 L 99.5 6 M 12 0.5 L 18 0.5 M 12 99.5 L 18 99.5 M 0.5 12 L 0.5 18 M 99.5 12 L 99.5 18 M 24 0.5 L 30 0.5 M 24 99.5 L 30 99.5 M 0.5 24 L 0.5 30 M 99.5 24 L 99.5 30 M 36 0.5 L 42 0.5 M 36 99.5 L 42 99.5 M 0.5 36 L 0.5 42 M 99.5 36 L 99.5 42 M 48 0.5 L 54 0.5 M 48 99.5 L 54 99.5 M 0.5 48 L 0.5 54 M 99.5 48 L 99.5 54 M 60 0.5 L 66 0.5 M 60 99.5 L 66 99.5 M 0.5 60 L 0.5 66 M 99.5 60 L 99.5 66 M 72 0.5 L 78 0.5 M 72 99.5 L 78 99.5 M 0.5 72 L 0.5 78 M 99.5 72 L 99.5 78 M 84 0.5 L 90 0.5 M 84 99.5 L 90 99.5 M 0.5 84 L 0.5 90 M 99.5 84 L 99.5 90 M 96 0.5 L 100 0.5 M 96 99.5 L 100 99.5 M 0.5 96 L 0.5 100 M 99.5 96 L 99.5 100";
+    }
+}
+
+// A plus part's cross: two bars of the board's dark, edge to edge (`bar` thick), over its color.
+component Cross inherits Rectangle {
+    in property <length> bar: 3px;
+    Rectangle {
+        x: (parent.width - root.bar) / 2;
+        width: root.bar;
+        background: Theme.piece-mark;
+    }
+
+    Rectangle {
+        y: (parent.height - root.bar) / 2;
+        height: root.bar;
+        background: Theme.piece-mark;
+    }
+}
+
+// A cell of the grid: an empty cell of the board (on the command line, tinted), an empty one of the ring
+// (hatched), or a placed piece's color (a plus part's crossed; on the ring, hatched over), with no border. A cell
+// is a control: the cursor goes over the board cell by cell.
+component CellView inherits Rectangle {
+    in property <GridCell> cell;
+    in property <bool> command;
+    in property <int> nav-index;
+    property <bool> empty: !root.cell.filled;
+    Rectangle {
+        visible: root.cell.kind == CellKind.board && root.empty;
+        background: root.command ? Theme.command-line : Theme.inset;
+        border-width: 1px;
+        border-color: root.command ? Theme.cursor : Theme.line;
+    }
+
+    Hatch {
+        visible: root.cell.kind == CellKind.out && root.empty;
+        tone: Theme.out-of-bounds;
+        edge: Theme.out-of-bounds-edge;
+    }
+
+    Rectangle {
+        visible: root.cell.filled;
+        background: root.cell.tone;
+    }
+
+    Cross {
+        visible: root.cell.filled && root.cell.plus;
+    }
+
+    Hatch {
+        visible: root.cell.filled && root.cell.kind == CellKind.out;
+        tone: Theme.piece-mark;
+        edge: transparent;
+    }
+
+    Focusable {
+        nav: root.cell.kind == CellKind.none ? "" : "cell";
+        nav-index: root.nav-index;
+    }
+}
+
+// A cell of the piece in hand: its color (a plus part's crossed) with a shadow under it, and the piece's white
+// outline along its sides that are the piece's edge.
+component HeldCellView inherits Rectangle {
+    in property <PieceCell> at;
+    in property <color> tone;
+    in property <bool> plus;
+    Rectangle {
+        background: root.tone;
+        drop-shadow-blur: 10px;
+        drop-shadow-offset-y: 4px;
+        drop-shadow-color: #00000090;
+    }
+
+    Cross {
+        visible: root.plus;
+    }
+
+    Rectangle {
+        x: -3px;
+        y: -3px;
+        width: parent.width + 6px;
+        height: 2px;
+        visible: root.at.top;
+        background: Theme.piece-held;
+    }
+
+    Rectangle {
+        x: -3px;
+        y: parent.height + 1px;
+        width: parent.width + 6px;
+        height: 2px;
+        visible: root.at.bottom;
+        background: Theme.piece-held;
+    }
+
+    Rectangle {
+        x: -3px;
+        y: -3px;
+        width: 2px;
+        height: parent.height + 6px;
+        visible: root.at.left;
+        background: Theme.piece-held;
+    }
+
+    Rectangle {
+        x: parent.width + 1px;
+        y: -3px;
+        width: 2px;
+        height: parent.height + 6px;
+        visible: root.at.right;
+        background: Theme.piece-held;
+    }
+}
+
+// A cell a piece was put down on: a flash, `delay` after the drop (the cells pulse one after another).
+component DropFlash inherits Rectangle {
+    in property <duration> delay;
+    tw := Tween {
+        delay: root.delay;
+        duration: Theme.settle;
+    }
+
+    Rectangle {
+        background: Theme.piece-held;
+        opacity: tw.linear > 0 ? (1 - tw.t) * 0.6 : 0;
+    }
+}
+
+// A program of the list: its color (a plus part's crossed), its name, and where it is.
+component ProgramRowView inherits Rectangle {
+    in property <ProgramRow> program;
+    in property <int> nav-index;
+    in property <bool> big;
+    Rectangle {
+        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+    }
+
+    Rectangle {
+        x: 8px;
+        y: (parent.height - 14px) / 2;
+        width: 14px;
+        height: 14px;
+        background: root.program.tone;
+        Cross {
+            visible: root.program.plus;
+            bar: 1.5px;
+        }
+    }
+
+    Text {
+        x: 32px;
+        width: parent.width - 32px - 8px - state.width - 8px;
+        text: root.program.name;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: root.big ? 14px : 12px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    state := Text {
+        x: parent.width - 8px - self.width;
+        width: 110px;
+        text: root.program.state == ProgramState.placed ? @tr("Placed") : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : "";
+        color: root.program.state == ProgramState.held ? Theme.cursor : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    touch := RowTouch {
+        nav: "programs";
+        nav-index: root.nav-index;
+    }
+}
+
+// A line of the effects or the bugs.
+component EffectRow inherits Rectangle {
+    in property <EffectLine> line;
+    property <bool> title: root.line.kind == EffectKind.effects || root.line.kind == EffectKind.bugs;
+    property <bool> bug: root.line.kind == EffectKind.bug;
+    property <bool> quiet: root.line.kind == EffectKind.nothing || root.line.kind == EffectKind.more;
+    height: 20px;
+    pulse := Tween {
+        duration: Theme.settle;
+    }
+
+    // (A bug that has just appeared pulses purple once.)
+    Rectangle {
+        x: -6px;
+        width: parent.width + 12px;
+        background: Theme.bug;
+        opacity: root.line.fresh ? (1 - pulse.t) * 0.35 : 0;
+    }
+
+    Label {
+        x: 0;
+        y: 4px;
+        width: parent.width;
+        height: 14px;
+        text: !root.title ? "" : (root.line.kind == EffectKind.effects ? @tr("EFFECTS") : @tr("BUGS"));
+    }
+
+    Text {
+        x: 0;
+        width: parent.width - (root.line.extent == "" ? 0px : extent.width + 8px);
+        text: root.title ? "" : (root.line.kind == EffectKind.nothing ? @tr("None") : root.line.text);
+        color: root.bug ? Theme.bug : root.quiet ? Theme.dim : Theme.text;
+        font-family: Theme.body;
+        font-size: 13px;
+        font-weight: root.quiet ? 400 : 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    extent := Text {
+        x: parent.width - self.width;
+        width: self.preferred-width;
+        text: root.line.extent;
+        color: Theme.bug;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: 700;
+        vertical-alignment: center;
+    }
+}
+
+// One entry of the key under the board: its swatch and its word.
+component KeyEntry inherits Rectangle {
+    in property <string> text;
+    // 0 a board cell, 1 the command line, 2 a plus part, 3 out of bounds.
+    in property <int> swatch;
+    width: 14px + 6px + word.preferred-width;
+    height: 14px;
+    Rectangle {
+        x: 0;
+        width: 14px;
+        visible: root.swatch == 0 || root.swatch == 1;
+        background: root.swatch == 1 ? Theme.command-line : Theme.inset;
+        border-width: root.swatch == 0 ? 1px : 0px;
+        border-color: Theme.line;
+        Rectangle {
+            y: 0;
+            height: 2px;
+            visible: root.swatch == 1;
+            background: Theme.cursor;
+        }
+
+        Rectangle {
+            y: parent.height - 2px;
+            height: 2px;
+            visible: root.swatch == 1;
+            background: Theme.cursor;
+        }
+    }
+
+    Rectangle {
+        x: 0;
+        width: 14px;
+        visible: root.swatch == 2;
+        background: Theme.giga;
+        Cross {
+            bar: 1.5px;
+        }
+    }
+
+    Hatch {
+        x: 0;
+        width: 14px;
+        visible: root.swatch == 3;
+        tone: Theme.out-of-bounds;
+        edge: Theme.out-of-bounds-edge;
+    }
+
+    word := Text {
+        x: 20px;
+        width: self.preferred-width;
+        text: root.text;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+}
+
+export component NavicustTab inherits Rectangle {
+    // The board's frame: its cells, the room for the command line's arrows at its sides, and its height.
+    property <length> gap: 3px;
+    property <length> pad-x: Theme.phone ? 26px : 34px;
+    property <length> pad-y: Theme.phone ? 12px : 16px;
+    property <length> board-width: Theme.phone ? self.width : (NavicustView.columns == 7 ? 436px : 400px);
+    property <length> cell: Theme.phone ? floor((root.board-width - 2 * root.pad-x - (NavicustView.columns - 1) * root.gap) / NavicustView.columns / 1px) * 1px : (NavicustView.columns == 7 ? 50px : 64px);
+    property <length> pitch: root.cell + root.gap;
+    property <length> grid-width: NavicustView.columns * root.pitch - root.gap;
+    property <length> grid-x: (root.board-width - root.grid-width) / 2;
+    property <length> grid-y: root.pad-y;
+    property <length> board-height: NavicustView.board ? root.grid-width + 2 * root.pad-y : 0px;
+    property <length> key-y: root.board-height + 12px;
+    property <length> key-width: 4 * 20px + 3 * 16px + board-key-word.preferred-width + line-key-word.preferred-width + plus-key-word.preferred-width + (NavicustView.ring ? ring-key-word.preferred-width : -36px);
+    property <int> key-lines: root.key-width > root.board-width ? 2 : 1;
+    property <length> key-height: root.key-lines == 2 ? 36px : 14px;
+    // (The screenshot pass is told if the key doesn't fit even on two lines.)
+    property <bool> key-over: Theme.audit && root.key-lines == 2 && max(line-key.x + line-key.width, ring-key.x + ring-key.width) > root.board-width + 0.5px;
+    // (The words measured, for the key's lines.)
+    board-key-word := Text {
+        visible: false;
+        text: @tr("Board");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    line-key-word := Text {
+        visible: false;
+        text: @tr("Command line");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    plus-key-word := Text {
+        visible: false;
+        text: @tr("Plus part");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    ring-key-word := Text {
+        visible: false;
+        text: @tr("Out of bounds");
+        font-family: Theme.body;
+        font-size: 12px;
+    }
+
+    // The list, and the effects and bugs beside it (on a phone, a line each under the board). The board's column
+    // is EXE6's board's width in every game, so the columns are where they are whatever the game.
+    property <length> list-x: Theme.phone ? 0px : 436px + 24px;
+    property <length> list-width: Theme.phone ? self.width : 320px;
+    property <length> lines-y: root.key-y + root.key-height + 10px + 16px + 8px;
+    property <length> list-y: Theme.phone ? root.lines-y + 2 * 22px + 8px : 0px;
+    property <length> side-x: root.list-x + root.list-width + 24px;
+    property <length> side-width: self.width - root.side-x;
+    property <length> effects-height: (self.height - 12px) * 0.5;
+    // The command line's arrows pulse.
+    property <float> breath: Theme.motion ? 0.6 + 0.4 * sin(animation-tick() / 900ms * 360deg) : 1;
+    // ---- The board, framed.
+    PanelBack {
+        x: 0;
+        y: 0;
+        width: root.board-width;
+        height: root.board-height;
+        visible: NavicustView.board;
+    }
+
+    if NavicustView.board: Rectangle {
+        x: 0;
+        y: 0;
+        width: root.board-width;
+        height: root.board-height;
+        // (EXE6's board, outlined in white within its ring.)
+        Rectangle {
+            x: root.grid-x + NavicustView.board-x * root.pitch - 3px;
+            y: root.grid-y + NavicustView.board-y * root.pitch - 3px;
+            width: NavicustView.board-columns * root.pitch - root.gap + 6px;
+            height: NavicustView.board-rows * root.pitch - root.gap + 6px;
+            visible: NavicustView.ring;
+            border-width: 2px;
+            border-color: Theme.text;
+        }
+
+        for cell[i] in NavicustView.cells: CellView {
+            x: root.grid-x + mod(i, NavicustView.columns) * root.pitch;
+            y: root.grid-y + floor(i / NavicustView.columns) * root.pitch;
+            width: root.cell;
+            height: root.cell;
+            cell: cell;
+            command: floor(i / NavicustView.columns) == NavicustView.command;
+            nav-index: i;
+        }
+
+        // The command line: a line over and under its row, over what is placed on it, and an arrow at each end.
+        Rectangle {
+            x: root.grid-x - 28px;
+            y: root.grid-y + NavicustView.command * root.pitch - 4px;
+            width: root.grid-width + 56px;
+            height: root.cell + 8px;
+            visible: NavicustView.command >= 0;
+            Rectangle {
+                y: 0;
+                height: 2px;
+                background: Theme.cursor;
+            }
+
+            Rectangle {
+                y: parent.height - 2px;
+                height: 2px;
+                background: Theme.cursor;
+            }
+
+            ArrowRight {
+                x: 9px;
+                y: (parent.height - self.height) / 2;
+                opacity: root.breath;
+            }
+
+            ArrowLeft {
+                x: parent.width - 9px - self.width;
+                y: (parent.height - self.height) / 2;
+                opacity: root.breath;
+            }
+        }
+
+        // The cells a piece was just put down on.
+        for c[i] in NavicustView.dropped: DropFlash {
+            x: root.grid-x + c.x * root.pitch;
+            y: root.grid-y + c.y * root.pitch;
+            width: root.cell;
+            height: root.cell;
+            delay: i * Theme.stagger;
+        }
+
+        // The piece in hand, lifted, over the cell the cursor holds it by: it glides from cell to cell, turns about
+        // that cell, and shakes where it can't be put down. (Its cells are from the cell held.)
+        Rectangle {
+            x: root.grid-x + NavicustView.grab-x * root.pitch;
+            y: root.grid-y + NavicustView.grab-y * root.pitch;
+            width: root.cell;
+            height: root.cell;
+            visible: NavicustView.holding;
+            // (It glides as it is moved, and is where it is taken up at once.)
+            animate x, y {
+                duration: NavicustView.glide ? Theme.quick : 0ms;
+                easing: ease-out;
+            }
+            lift := Tween {
+                seq: NavicustView.lifted;
+                duration: Theme.brisk;
+            }
+
+            turn := Tween {
+                seq: NavicustView.turned;
+                duration: Theme.brisk;
+            }
+
+            shake := Shake {
+                seq: NavicustView.refused-seq;
+            }
+
+            Rectangle {
+                x: shake.dx;
+                transform-origin: { x: root.cell / 2, y: root.cell / 2 };
+                transform-scale: 1 + 0.06 * lift.t;
+                transform-rotation: (1 - turn.t) * -90deg * NavicustView.turn-way;
+                for c in NavicustView.held: HeldCellView {
+                    x: c.x * root.pitch;
+                    y: c.y * root.pitch;
+                    width: root.cell;
+                    height: root.cell;
+                    at: c;
+                    tone: NavicustView.held-tone;
+                    plus: NavicustView.held-plus;
+                }
+            }
+        }
+    }
+
+    // ---- The key under the board: on one line where the language's words leave it the room, else on two (which
+    // depends on the language alone).
+    board-key := KeyEntry {
+        x: 0;
+        y: root.key-y;
+        visible: NavicustView.board;
+        text: @tr("Board");
+        swatch: 0;
+    }
+
+    line-key := KeyEntry {
+        x: board-key.width + 16px;
+        y: root.key-y;
+        visible: NavicustView.board;
+        text: @tr("Command line");
+        swatch: 1;
+    }
+
+    plus-key := KeyEntry {
+        x: root.key-lines == 2 ? 0px : line-key.x + line-key.width + 16px;
+        y: root.key-y + (root.key-lines == 2 ? 22px : 0px);
+        visible: NavicustView.board;
+        text: @tr("Plus part");
+        swatch: 2;
+    }
+
+    ring-key := KeyEntry {
+        x: plus-key.x + plus-key.width + 16px;
+        y: plus-key.y;
+        visible: NavicustView.board && NavicustView.ring;
+        text: @tr("Out of bounds");
+        swatch: 3;
+    }
+
+    changed key-over => {
+        if root.key-over {
+            Audit.clipped("the NaviCust's key");
+        }
+    }
+
+    // (Why the piece in hand couldn't be put down.)
+    Message {
+        x: 0;
+        y: root.key-y + root.key-height + 10px;
+        width: root.board-width;
+        text: NavicustView.notice;
+    }
+
+    // ---- The programs: an open list.
+    Label {
+        x: root.list-x;
+        y: root.list-y;
+        width: root.list-width;
+        height: 20px;
+        text: @tr("PROGRAMS");
+        color: NavicustView.in-list ? Theme.cursor : Theme.muted;
+    }
+
+    list := ListView {
+        x: root.list-x;
+        y: root.list-y + 28px;
+        width: root.list-width;
+        height: root.height - self.y;
+        nav: "programs";
+        count: NavicustView.programs.length;
+        row-height: Theme.phone ? 40px : Theme.chip-row;
+        chosen: self.focused-row;
+        for slot in list.shown: ProgramRowView {
+            property <int> at: list.first + slot;
+            y: self.at * list.pitch;
+            width: list.row-width;
+            height: list.row-height;
+            program: NavicustView.programs[self.at];
+            nav-index: self.at;
+            big: Theme.phone;
+        }
+    }
+
+    // ---- What the NaviCust does, and the build's bugs: two panels beside the list, or on a phone a line each.
+    if !Theme.phone: Rectangle {
+        PanelBack {
+            x: root.side-x;
+            y: 0;
+            width: root.side-width;
+            height: root.effects-height;
+            accent: false;
+        }
+
+        for line[i] in NavicustView.effects: EffectRow {
+            x: root.side-x + 16px;
+            y: 10px + i * 20px;
+            width: root.side-width - 32px;
+            line: line;
+        }
+
+        PanelBack {
+            x: root.side-x;
+            y: root.effects-height + 12px;
+            width: root.side-width;
+            height: root.effects-height;
+            accent: false;
+        }
+
+        for line[i] in NavicustView.bugs: EffectRow {
+            x: root.side-x + 16px;
+            y: root.effects-height + 12px + 10px + i * 20px;
+            width: root.side-width - 32px;
+            line: line;
+        }
+    }
+
+    if Theme.phone: Rectangle {
+        for line[i] in [{ title: @tr("Effects"), text: NavicustView.effects-line, bug: false }, { title: @tr("Bugs"), text: NavicustView.bugs-line, bug: true }]: Rectangle {
+            x: 0;
+            y: root.lines-y + i * 22px;
+            width: root.width;
+            height: 16px;
+            Text {
+                x: 0;
+                width: 96px;
+                text: line.title;
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 13px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
+            Text {
+                x: 100px;
+                width: parent.width - 100px;
+                text: line.text == "" ? @tr("None") : line.text;
+                color: line.text == "" ? Theme.dim : (line.bug ? Theme.bug : Theme.text);
+                font-family: Theme.body;
+                font-size: 13px;
+                font-weight: 600;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+        }
+    }
+}
