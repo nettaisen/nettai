@@ -364,6 +364,10 @@ player's buttons are their own screen's, and the opponent's screen does as
 its choice says. Then it plays them, one a tick of the fight running, over
 and over from wherever it stands. It is still buttons alone: what the
 recording changes is what the opponent presses, and nothing of the battle.
+Or a second pad of the host's drives it (`InFight::SecondPad`, the host
+saying what the pad holds each frame with `LivePlayer::set_second_pad`), in
+the fight and on its custom screen; while the host has none, it stands
+still.
 
 Its random presses are seeded (from the set's seed in nettai) and run every
 tick of the set, taken or not: what it presses on a tick goes by the seed,

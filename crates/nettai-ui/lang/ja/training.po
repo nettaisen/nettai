@@ -82,6 +82,10 @@ msgstr "ランダムに攻撃"
 msgid "Plays your recording"
 msgstr "記録を再生"
 
+# The dummy is played on a second connected gamepad.
+msgid "A second pad"
+msgstr "2つ目のパッド"
+
 msgid "Custom screen"
 msgstr "カスタム画面"
 

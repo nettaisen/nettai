@@ -136,7 +136,7 @@ export global TrainingView {
     }
     pure public function value(option: TrainingOption, value: int) -> string {
         if option == TrainingOption.action {
-            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Attacks at random") : @tr("Plays your recording")));
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Attacks at random") : (value == 3 ? @tr("Plays your recording") : @tr("A second pad"))));
         }
         if option == TrainingOption.custom-screen {
             return value == 0 ? @tr("Picks no chips") : @tr("Picks the first it can");
