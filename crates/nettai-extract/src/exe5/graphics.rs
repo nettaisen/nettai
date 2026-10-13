@@ -174,21 +174,17 @@ const PORTRAITS: u8 = 0x20;
 const PLACEHOLDER_PORTRAIT: u32 = 0x2A;
 
 /// The portraits content names (the chatbox's speakers: a no-running
-/// message's `F5 00 n`), each from the ROM that has its face: Team
-/// ProtoMan's unless it has the placeholder there, then Team Colonel's
-/// (the Japanese ROMs have the same pictures and the same placeholders).
+/// message's `F5 00 n`), each from a ROM that has its face: a Team
+/// ProtoMan ROM's unless it has the placeholder there, then a Team
+/// Colonel ROM's (a version's Japanese ROM has the same pictures and the
+/// same placeholders as its US one).
 /// Team ProtoMan's ROM has the placeholder for four of Team Colonel's
 /// navis, Team Colonel's for five of Team ProtoMan's: a console operates
 /// its own team's navis alone (a save has a stats block for no other), so
 /// no placeholder is ever shown, and the pack keeps no mark of whose a
 /// face is.
 fn portraits(roms: &Roms, names: &AssetNames) -> Vec<SpriteSheet> {
-    let sources = [
-        roms.us_of(Version::ProtoMan),
-        roms.us_of(Version::Colonel),
-        roms.jp_of(Version::ProtoMan),
-        roms.jp_of(Version::Colonel),
-    ];
+    let sources = [roms.of(Version::ProtoMan), roms.of(Version::Colonel)];
     names
         .sprites
         .keys()
