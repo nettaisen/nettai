@@ -358,9 +358,21 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "viewer-5s-on", Pair::None, Also::Nothing);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| if shell.scale.phone { s.step(shell, "view-step", 0, 1) } else { s.activate(shell, "view", 1) })));
     shot(add, "viewer-other-side", Pair::None, Also::Nothing);
+    // Both builds (the match's weren't closed), the other console's player's at the left.
+    add(SETTLE, activate("builds", 0));
+    shot(add, "viewer-builds", Pair::None, Also::Nothing);
+    add(SETTLE, act(Action::Back));
     add(SETTLE, activate("export", 0));
     shot(add, "viewer-export", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
+    add(SETTLE, act(Action::Back));
+    // A closed-builds match's viewer: BUILDS unavailable.
+    add(SETTLE, focus("list", 3));
+    add(SETTLE, until(|view| view.get_still()));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.activate(shell, if shell.scale.phone { "sheet.watch" } else { "watch" }, 0))));
+    add(SETTLE, until(|view| view.get_watching()));
+    add(SETTLE * 2, focus("seek", 0));
+    shot(add, "viewer-closed", Pair::None, Also::Nothing);
     add(
         SETTLE,
         Box::new(|_, app, _| {

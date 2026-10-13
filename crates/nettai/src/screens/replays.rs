@@ -144,8 +144,10 @@ pub struct Replays {
     hash: Option<(String, u64)>,
     still: Still,
     watching: Option<Watching>,
-    /// The replay being made ready to watch (the two cards show).
+    /// The replay being made ready to watch (the two cards show), and its two sides where its builds may be
+    /// shown (the match's weren't closed).
     opening: Option<PathBuf>,
+    sides: Option<Box<[nettai_match::Side; 2]>>,
     export: Option<Export>,
     /// A phone: the selected replay's sheet is open.
     sheet: bool,
@@ -400,6 +402,8 @@ impl Replays {
             Err(refused) => return shell.fail(UserError::of_refusal(&doing, &refused)),
         };
         let side = side.unwrap_or(replay.info.side).min(1);
+        // (A closed-builds match's sides aren't kept at all.)
+        self.sides = (!replay.info.closed_builds).then(|| nettai_match::binary::read_match(ready.content(), &replay.match_bytes).ok()).flatten().map(|m| Box::new(m.sides));
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
         // (The console shown has its side at the left. A card says who played, and nothing of what they
@@ -429,6 +433,7 @@ impl Replays {
         }
         shell.lock_game(false);
         shell.ui().global::<ReplaysView>().set_watching(false);
+        shell.ui().global::<ReplaysView>().set_builds_shown(false);
         shell.nav.enter(ScreenId::Replays.name(), self.main());
         self.still.surface.refresh();
         self.fill(shell);
@@ -440,6 +445,7 @@ impl Replays {
         let Ok(summary) = &entry.read else { return };
         if let Some(w) = &mut self.watching {
             w.pause();
+            w.hide_builds(shell);
         }
         self.export = Some(Export::open(shell, path, summary, side.unwrap_or(summary.info.side)));
     }
@@ -567,6 +573,7 @@ impl Screen for Replays {
                 "next-round" => w.round(1),
                 "frame-back" => w.step(-1),
                 "frame-on" => w.step(1),
+                "builds" | "builds.sheet" => w.toggle_builds(shell),
                 "speed" => w.set_speed(index),
                 "view" => w.set_view(shell, index),
                 "export" => {
@@ -675,6 +682,8 @@ impl Screen for Replays {
                 KeyCode::BracketLeft if !key.repeat => w.round(-1),
                 KeyCode::BracketRight if !key.repeat => w.round(1),
                 KeyCode::BracketLeft | KeyCode::BracketRight => {}
+                KeyCode::KeyB if !key.repeat => w.toggle_builds(shell),
+                KeyCode::KeyB => {}
                 _ => return false,
             }
             return true;
@@ -689,6 +698,17 @@ impl Screen for Replays {
             return true;
         }
         false
+    }
+
+    fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
+        // Select shows both builds, or puts them away.
+        match &mut self.watching {
+            Some(w) if self.export.is_none() && button == gamepad_facade::Button::Back => {
+                w.toggle_builds(shell);
+                true
+            }
+            _ => false,
+        }
     }
 
     fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
@@ -722,6 +742,11 @@ impl Screen for Replays {
         }
         if self.sheet {
             self.close_sheet(shell);
+            return true;
+        }
+        if let Some(w) = &mut self.watching
+            && w.hide_builds(shell)
+        {
             return true;
         }
         if self.watching.is_some() {
@@ -766,7 +791,7 @@ impl Screen for Replays {
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         let BattleEvent::Watching(viewer) = event else { return };
         let Some(path) = self.opening.take() else { return };
-        self.watching = Some(Watching::new(viewer, path));
+        self.watching = Some(Watching::new(viewer, path, self.sides.take()));
         // (`show` sets the viewer's view.)
         shell.refresh();
     }

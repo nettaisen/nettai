@@ -6,8 +6,9 @@
 import { Theme } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture, DialogFrame } from "../shell.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Stepper, ListView, RowBack, RowTouch, PanelBack, Bar } from "../widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Stepper, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage } from "../widgets.slint";
 import { Arrive, Tween, Pulse } from "../motion.slint";
+import { BuildSheet, BuildOverview } from "../build.slint";
 
 // A replay's row in the list.
 export struct ReplayRow {
@@ -79,8 +80,12 @@ export global ReplaysView {
     in property <int> speed: 1;
     // The side whose console is shown.
     in property <int> view;
-    // Both builds may be shown (the match's weren't closed): where the build overview goes.
+    // Both builds may be shown (the match's weren't closed), and are: the console shown's player's at the
+    // left, the other's at the right.
     in property <bool> builds-open;
+    in property <bool> builds-shown;
+    in property <BuildSheet> left-build;
+    in property <BuildSheet> right-build;
 
     // ---- The export's dialog ----
     in property <bool> exporting;
@@ -98,6 +103,9 @@ export global ReplaysView {
     out property <[string]> months: [@tr("Jan"), @tr("Feb"), @tr("Mar"), @tr("Apr"), @tr("May"), @tr("Jun"), @tr("Jul"), @tr("Aug"), @tr("Sep"), @tr("Oct"), @tr("Nov"), @tr("Dec")];
     out property <string> p1: @tr("P1");
     out property <string> p2: @tr("P2");
+    // Over a build's player's name: the recorder's, the other's.
+    out property <string> you: @tr("YOU");
+    out property <string> opponent: @tr("OPPONENT");
     out property <string> delete-title: @tr("Delete replay?");
     out property <string> delete: @tr("DELETE");
     out property <string> cancel: @tr("CANCEL");
@@ -552,11 +560,14 @@ component IconButton inherits Rectangle {
     in property <string> icon;
     // The main action: amber.
     in property <bool> main;
+    in property <bool> enabled: true;
+    // What it shows is on (BUILDS): its edge in the cursor's cyan.
+    in property <bool> lit;
     property <int> presses;
     property <int> key-press: Nav.press-seq;
     property <bool> down: hit.pressed;
     property <length> dip: press.v > 0.4 ? 1px : 0px;
-    width: Theme.phone ? 52px : 40px;
+    width: Theme.phone ? 48px : 40px;
     height: Theme.phone ? 44px : 40px;
     press := Pulse {
         seq: root.presses;
@@ -565,8 +576,8 @@ component IconButton inherits Rectangle {
     Cut {
         y: root.dip;
         cut: 7px;
-        background: root.main ? (hit.has-hover ? Theme.action.brighter(12%) : Theme.action) : (hit.has-hover ? Theme.raised-hover : Theme.raised);
-        line: root.main ? Theme.action : Theme.line;
+        background: root.main ? (hit.has-hover ? Theme.action.brighter(12%) : Theme.action) : (hit.has-hover && root.enabled ? Theme.raised-hover : Theme.raised);
+        line: root.main ? Theme.action : (root.lit ? Theme.cursor : Theme.line);
     }
 
     Cut {
@@ -582,13 +593,14 @@ component IconButton inherits Rectangle {
         width: 16px;
         height: 16px;
         commands: root.icon;
-        fill: root.main ? Theme.action-ink : Theme.text;
+        fill: root.main ? Theme.action-ink : (root.enabled ? Theme.text : Theme.dim);
         viewbox-width: 16;
         viewbox-height: 16;
     }
 
     hit := Focusable {
         nav: root.nav;
+        enabled: root.enabled;
     }
 
     changed key-press => {
@@ -723,10 +735,11 @@ component SeekBar inherits Rectangle {
     }
 }
 
-// The five buttons of the transport: to the round's start, a frame back, play or pause, a frame on, the next
-// round. `pitch` is how far apart they are.
+// The buttons of the transport: to the round's start, a frame back, play or pause, a frame on, the next round;
+// and, `apart` further on, both builds (where the match's weren't closed). `pitch` is how far apart they are.
 component TransportButtons inherits Rectangle {
     in property <length> pitch: 52px;
+    in property <length> apart: 12px;
     IconButton {
         x: 0;
         nav: "round-start";
@@ -756,6 +769,15 @@ component TransportButtons inherits Rectangle {
         x: 4 * root.pitch;
         nav: "next-round";
         icon: "M 3 3 L 9.5 8 L 3 13 Z M 11 3 h 2 v 10 h -2 Z";
+    }
+
+    // (Two sheets side by side, each hollow.)
+    IconButton {
+        x: 5 * root.pitch + root.apart;
+        nav: "builds";
+        icon: "M 1 3 h 6 v 10 h -6 Z M 2.5 4.5 v 7 h 3 v -7 Z M 9 3 h 6 v 10 h -6 Z M 10.5 4.5 v 7 h 3 v -7 Z";
+        enabled: ReplaysView.builds-open;
+        lit: ReplaysView.builds-shown;
     }
 }
 
@@ -799,15 +821,16 @@ component Transport inherits Rectangle {
     TransportButtons {
         x: root.edge;
         y: root.phone ? 48px : 52px;
-        width: root.phone ? root.inner : 248px;
+        width: root.phone ? root.inner : 312px;
         height: root.phone ? 44px : 40px;
-        pitch: root.phone ? (root.inner - 52px) / 4 : 52px;
+        pitch: root.phone ? (root.inner - 48px) / 5 : 52px;
+        apart: root.phone ? 0px : 12px;
     }
 
     Text {
-        x: 280px;
+        x: 344px;
         y: 52px;
-        width: 170px;
+        width: 150px;
         height: 40px;
         visible: !root.phone;
         text: @tr("Round {} of {}", ReplaysView.round, ReplaysView.rounds);
@@ -951,14 +974,23 @@ component Transport inherits Rectangle {
 }
 
 component ViewerPage inherits Page {
-    // The picture's box: three times the frame at the reference size; on a phone as wide as the page.
-    property <length> picture-width: Theme.phone ? self.body-width : 720px;
+    // The picture's box: three times the frame at the reference size; on a phone the window's whole width, as
+    // the battle's (the gutters can be the difference between one multiple and the next).
+    property <length> picture-width: Theme.phone ? self.body-width + 2 * Theme.margin : 720px;
     property <length> picture-height: self.picture-width * 2 / 3;
     property <length> top: Theme.phone ? 28px : max(0px, (self.body-height - self.picture-height - 124px) / 2);
     title: Theme.phone ? @tr("REPLAY") : ReplaysView.title;
     back: @tr("REPLAYS");
     status: ReplaysView.when;
-    hints: [
+    // (B and Select show both builds, where they may be.)
+    hints: ReplaysView.builds-open ? [
+        { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
+        { key: "←→", pad: PadButton.move, text: @tr("Seek 5 s") },
+        { key: ",", key2: ".", text: @tr("Step a frame") },
+        { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
+        { key: "B", pad: PadButton.select, text: @tr("Builds") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+    ] : [
         { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
         { key: "←→", pad: PadButton.move, text: @tr("Seek 5 s") },
         { key: ",", key2: ".", text: @tr("Step a frame") },
@@ -976,14 +1008,12 @@ component ViewerPage inherits Page {
         }
 
         Picture {
-            x: (root.body-width - root.picture-width) / 2;
+            x: Theme.phone ? -Theme.margin : (root.body-width - root.picture-width) / 2;
             y: root.top;
             width: root.picture-width;
             height: root.picture-height;
             ground: Theme.inset;
         }
-        // (Both builds, where the match's weren't closed (`ReplaysView.builds-open`), are to be shown over the
-        // picture's sides as a match shows them: the Builds screen's overview, once it is built.)
     }
 
     Arrive {
@@ -1161,7 +1191,78 @@ component ExportDialog inherits DialogFrame {
 
 // What opens over Replays: a phone's sheet of the selected replay, and the export's dialog. It covers the whole
 // window, over the screen and under the shell's own dialogs; empty, it takes no clicks.
+// Both builds over the viewer, while BUILDS is on: the console shown's player's over the picture's left side, the
+// other's over its right, as a match shows them, each the narrow sheet a player's panel in a match is, in the
+// color of its side of the picture (the shown console's is red, at the left). On a phone they are one under the
+// other in a page that scrolls. They are a scope of their own (`builds.`): each sheet is a control, which a
+// press or a click puts away (as do BUILDS, B, Select and Esc).
+component ViewerBuilds inherits Rectangle {
+    property <length> top: Theme.header + (Theme.phone ? 0px : 12px);
+    property <length> bottom: Theme.phone ? 0px : Theme.footer + 12px;
+    property <length> sheet-width: Theme.phone ? page.view-width : 430px;
+    Rectangle {
+        y: root.top;
+        height: parent.height - root.top;
+        visible: Theme.phone;
+        background: Theme.shade;
+    }
+
+    page := ScrollPage {
+        x: Theme.margin;
+        y: root.top + (Theme.phone ? 16px : 0px);
+        width: parent.width - 2 * Theme.margin + (Theme.phone ? 0px : 12px);
+        height: parent.height - self.y - root.bottom;
+        nav: "builds.";
+        content-height: Theme.phone ? left.sheet-height + 16px + right.sheet-height : left.sheet-height;
+        // (A click between them puts them away too.)
+        TouchArea {
+            width: page.view-width;
+            height: page.content-height;
+            clicked => {
+                Nav.activate("builds", 0);
+            }
+        }
+
+        left := BuildOverview {
+            x: 0;
+            y: 0;
+            width: root.sheet-width;
+            height: self.sheet-height;
+            build: ReplaysView.left-build;
+            side: 1;
+        }
+
+        right := BuildOverview {
+            x: Theme.phone ? 0px : page.view-width - self.width;
+            y: Theme.phone ? left.sheet-height + 16px : 0px;
+            width: root.sheet-width;
+            height: self.sheet-height;
+            build: ReplaysView.right-build;
+            side: 2;
+        }
+
+        Focusable {
+            x: left.x;
+            y: left.y;
+            width: left.width;
+            height: left.height;
+            nav: "builds.sheet";
+            nav-index: 0;
+        }
+
+        Focusable {
+            x: right.x;
+            y: right.y;
+            width: right.width;
+            height: right.height;
+            nav: "builds.sheet";
+            nav-index: 1;
+        }
+    }
+}
+
 export component ReplaysOverlay inherits Rectangle {
+    if ReplaysView.watching && ReplaysView.builds-shown: ViewerBuilds { }
     if Theme.phone && ReplaysView.detail && !ReplaysView.watching: DetailSheet { }
     if ReplaysView.exporting: ExportDialog { }
 }
