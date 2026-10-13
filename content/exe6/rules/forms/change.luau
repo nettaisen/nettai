@@ -29,9 +29,6 @@ export type State = {
 
 export type Sequence = "cross" | "beast_out" | "cross_beast" | "beast_cross" | "beast_over"
 
--- the rules' state (init.luau): what a change notes of the round.
-type Record = { went_beast_out: boolean }
-
 -- The sounds it plays.
 local FORM_CHANGE = asset.sound("form-change")
 local GREGAR_ROAR = asset.sound("gregar-roar")
@@ -178,9 +175,8 @@ local function vanish(me: Object, s: State, seq: Sequence, target: FormDef)
         end
         if spawned then
             me.pos = me.pos + Vec3.new(0, 0xC0_0000, 0)
-            -- `sub_800AB2E`
-            local record = rules.state() :: Record
-            record.went_beast_out = true
+            -- (`sub_800AB2E` notes the navi went Beast Out: for the next
+            -- battle's counter, ../forms/init.luau, which nettai keeps none of.)
             -- The roar is Gregar's for the Gregar beasts and Falzar's
             -- otherwise; the cameras shake at magnitude 2 (`sub_80302B6`),
             -- 60 ticks (75 for Beast Over).
