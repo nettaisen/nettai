@@ -15,7 +15,7 @@ use crate::games::Names;
 use nettai_battle::content::{ChipClass, PlayerFact};
 use nettai_content_api::ChipHandle;
 use nettai_match::Wrong;
-use nettai_match::build::{Checked, Extent};
+use nettai_match::build::{Checked, EntryRefusal, Extent};
 use nettai_match::check::Problem;
 use nettai_ui::{AppWindow, BuildPart, BuildWords, ChipKind, EditorTab};
 use slint::ComponentHandle;
@@ -147,6 +147,15 @@ impl Words<'_> {
             other => return self.wrong(other),
         };
         said.into()
+    }
+
+    /// Why an entry can't go into a list of the build now (`nettai_match::build::Budget::refusal`: a patch
+    /// card), for the end of its library row: it is in already, or what it needs.
+    pub fn entry_refusal(&self, refusal: EntryRefusal) -> String {
+        match refusal {
+            EntryRefusal::Installed => self.say().invoke_installed().into(),
+            EntryRefusal::Needs { needs, .. } => self.say().invoke_needs_megabytes(needs as i32).into(),
+        }
     }
 
     /// How much of a bug there is: its level, or the amount a card writes.

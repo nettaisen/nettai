@@ -166,6 +166,13 @@ impl Slots {
         self.names.get(slot).map(String::as_str)
     }
 
+    /// The field of an entry's data that names a slot by its number (its own
+    /// slot; in a table of its data, another slot it names: a two-part
+    /// card's other half's).
+    pub fn slot_field(&self) -> &str {
+        &self.own
+    }
+
     /// `side`'s list: each entry and the slot it is in, in the list's order.
     fn stated(&self, content: &Content, side: &Side) -> Vec<(EntryHandle, usize)> {
         let Some(Stated::List(items)) = side.facts.get(content, &self.field) else { return Vec::new() };

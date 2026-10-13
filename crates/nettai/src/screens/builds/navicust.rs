@@ -278,7 +278,7 @@ impl Navicust {
                     view.invoke_stat(i as i32, by.into()).to_string()
                 })
                 .collect();
-            effects.extend(alone.iter().flat_map(|o| o.abilities.iter()).map(|&s| overview::source(words.names, s)));
+            effects.extend(alone.iter().flat_map(|o| o.abilities.iter()).map(|&s| overview::source(words, s)));
             let bugs: Vec<(String, String)> = full.iter().flat_map(|o| o.bugs.iter()).map(|b| overview::bug(words, b)).collect();
             (effects, bugs)
         });

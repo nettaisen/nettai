@@ -304,6 +304,84 @@ msgstr "コマンドライン"
 msgid "Plus part"
 msgstr "プラスパーツ"
 
+# ---- The Patch cards tab.
+
+msgid "Add"
+msgstr "入れる"
+
+msgid "Move up or down"
+msgstr "上下に移動"
+
+msgid "Put in"
+msgstr "入れる"
+
+# A slot with no card (and a list's room for one more).
+msgid "Empty"
+msgstr "空き"
+
+msgid "EMPTY"
+msgstr "空にする"
+
+# The key hint: empty a slot.
+msgctxt "verb"
+msgid "Empty"
+msgstr "空にする"
+
+msgid "UP"
+msgstr "上へ"
+
+msgid "DOWN"
+msgstr "下へ"
+
+msgid "{} MB free"
+msgstr "残り {} MB"
+
+msgid "{n} slot free"
+msgid_plural "{n} slots free"
+msgstr[0] "空きスロット {n}"
+
+msgid "Cards"
+msgstr "カード"
+
+msgid "Slots"
+msgstr "スロット"
+
+# A card's number ("No. 074").
+msgid "No. {}"
+msgstr "No. {}"
+
+# The slot a card belongs in ("Slot 0C").
+msgid "Slot {}"
+msgstr "スロット{}"
+
+msgid "TOGETHER"
+msgstr "合計"
+
+# What cards add up to, where they add up to nothing.
+msgid "Nothing"
+msgstr "なし"
+
+msgid "Search cards"
+msgstr "カードを検索"
+
+msgid "Number"
+msgstr "番号順"
+
+msgid "Slot"
+msgstr "スロット"
+
+# Why a card can't go in now: it is in already; what it costs where the MB left is less.
+msgid "Installed"
+msgstr "入れています"
+
+msgid "Needs {} MB"
+msgstr "{} MB必要"
+
+# ---- The Auto battle tab.
+
+msgid "{} of {} places filled"
+msgstr "{}/{}か所"
+
 # What the NaviCust changes of a number, the change put in ("HP +100").
 msgid "HP {}"
 msgstr "HP {}"

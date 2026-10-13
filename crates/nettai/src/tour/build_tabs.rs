@@ -200,11 +200,76 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
 }
 
+/// Into the library from the build's cards (on a phone, its sheet), if the cursor isn't there; and back out.
+fn library() -> Step {
+    Box::new(|_, app, _| {
+        let mut app = app.borrow_mut();
+        if !in_library(&app) {
+            app.act(Action::Confirm);
+        }
+    })
+}
+fn out_of_library() -> Step {
+    Box::new(|_, app, _| {
+        let mut app = app.borrow_mut();
+        if in_library(&app) {
+            app.act(Action::Back);
+        }
+    })
+}
+fn in_library(app: &App) -> bool {
+    app.shell.nav.is_open("lib.") || app.shell.nav.focused().is_some_and(|k| k.id.starts_with("lib."))
+}
+
+/// The Patch cards tab's steps.
+fn patch_cards(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    add(SETTLE, focus("card", 0));
+    shot(add, "tabs-cards", Pair::None);
+    add(90, on_tab(EditorTab::PatchCards, "Patch cards"));
+    // The library, its controls a focus move apart; three cards put in, the cursor staying in the library.
+    add(SETTLE, library());
+    shot(add, "tabs-cards-library", Pair::None);
+    add(SETTLE, focus("lib.search", 0));
+    shot(add, "tabs-cards-search", Pair::First);
+    add(SETTLE, act(Action::Right));
+    shot(add, "tabs-cards-search-focus", Pair::Second);
+    for row in 0..3 {
+        add(SETTLE, focus("lib.rows", row));
+        add(SETTLE, act(Action::Confirm));
+    }
+    shot(add, "tabs-cards-put", Pair::None);
+    // The library by MB (in a game with slots, by slot), the most first: a card the MB left can't take, refused
+    // and why; in a game with slots, a card put in its slot in place of the one there.
+    add(SETTLE, screen(|s, shell| s.choose(shell, "lib.sort", 0, 2)));
+    add(SETTLE, press("lib.direction", 0));
+    add(SETTLE, focus("lib.rows", 0));
+    shot(add, "tabs-cards-sorted", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-cards-refused", Pair::None);
+    // A card of the build's under the cursor, moved up, taken out.
+    add(SETTLE, out_of_library());
+    add(SETTLE, focus("card", 1));
+    shot(add, "tabs-cards-installed", Pair::None);
+    add(90, on_tab(EditorTab::PatchCards, "Patch cards"));
+    add(SETTLE, key(KeyCode::BracketLeft, "["));
+    shot(add, "tabs-cards-moved", Pair::None);
+    add(SETTLE, act(Action::Delete));
+    shot(add, "tabs-cards-removed", Pair::None);
+    // The sort's list.
+    add(SETTLE, library());
+    add(SETTLE, press("lib.sort", 0));
+    shot(add, "tabs-cards-sort", Pair::None);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, out_of_library());
+}
+
 /// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
 /// of a pair).
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
     open_build(add, size == "phone");
     navicust(add, shot);
+    patch_cards(add, shot);
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -232,6 +297,18 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, take(2, program));
     burst(add, "navicust-refused", &[0, 30, 60, 90, 120, 160, 220, 320], put(Spot::Over));
     add(SETTLE, act(Action::Back));
+    // A card put in (it flies from its row to the build's, which flashes, and the MB tick), and one the MB left
+    // can't take (its row shakes).
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    add(SETTLE, focus("card", 0));
+    add(SETTLE, library());
+    add(SETTLE, focus("lib.rows", 0));
+    burst(add, "cards-put", &[0, 30, 60, 90, 120, 160, 200, 260, 340, 480], act(Action::Confirm));
+    add(SETTLE, screen(|s, shell| s.choose(shell, "lib.sort", 0, 2)));
+    add(SETTLE, press("lib.direction", 0));
+    add(SETTLE, focus("lib.rows", 0));
+    burst(add, "cards-refused", &[0, 30, 60, 90, 120, 160, 220, 320], act(Action::Confirm));
+    add(SETTLE, out_of_library());
     add(
         SETTLE,
         Box::new(|_, app, _| {

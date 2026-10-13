@@ -1,17 +1,814 @@
-// The patch cards tab of a build's editor (docs/design/app-ui.md §6, "Patch cards"). Not built yet: the tab is
-// here, empty. Its Rust half is src/screens/builds/patch_cards.rs; docs/app.md §8 says what a tab is given.
+// The Patch cards tab of a build's editor (docs/design/app-ui.md §6, "Patch cards"; §2 items 19 and 20): the folder's
+// shape. A strip across the top lays the card under the cursor out, from either pane: its number, its name, its MB
+// or its slot, why it can't go in (in the error red), and its lines in its card screen's two groups (a game whose
+// cards have none: what it does, and the bugs it adds to or clears). Under it, framed, what the build holds: its
+// cards in their order (a game with slots: each slot by its name, with its card or Empty), each with its number, its
+// name, its MB and every line it writes, a bug's purple; their count and MB in the header, and what they add up to at
+// the foot. Beside it the library, an open list, with a search and a sort. No pictures (cards have none), and no
+// on and off (nettai can't turn a card off). A card that can't go in stays, greyed, with why.
+//
+// On a phone the cards are one column under their counts, and the library opens as a sheet from the bottom
+// (`PatchCardsOverlay`), with what a card's keys do as buttons. Its Rust half is src/screens/builds/patch_cards.rs.
 
+import { Theme, Audit } from "../../theme.slint";
+import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch } from "../../widgets.slint";
+import { Tween, Flash, Shake, Count } from "../../motion.slint";
 
-// What the tab shows: src/screens/builds/patch_cards.rs sets these. Every tab's view has the footer's key hints
-// while the tab shows, and its one short status at the footer's right.
+// One line a card writes, and what comes before it in a row of them: nothing, a dot between two of one group, a bar
+// between the groups.
+export struct CardLine {
+    text: string,
+    bug: bool,
+    lead: string,
+}
+
+// A card, as a row shows it: its number and name, its MB (none in a game without), the slot it belongs in (a game
+// with slots), its lines; in the library, a note (it is in, or why it can't go in: `refused` greys the row, `bad`
+// puts the note in the error red). `there` off: a slot or a place with no card.
+export struct CardRow {
+    there: bool,
+    number: string,
+    name: string,
+    megabytes: string,
+    slot: string,
+    lines: [CardLine],
+    note: string,
+    refused: bool,
+    bad: bool,
+}
+
+// The card under the cursor, for the strip: its number, name and facts (its MB, its slot), why it can't go in, and its
+// lines in its two groups under their titles.
+export struct CardDetail {
+    there: bool,
+    number: string,
+    name: string,
+    facts: string,
+    problem: string,
+    first-title: string,
+    first: [CardLine],
+    second-title: string,
+    second: [CardLine],
+}
+
+// What the build's cards hold: how many cards, their MB against the most (`budget`: the game's cards cost MB); in a
+// game with slots (`slotted`), how many of its slots hold a card.
+export struct CardCounts {
+    cards: int,
+    megabytes: int,
+    limit: int,
+    budget: bool,
+    slotted: bool,
+    filled: int,
+    slots: int,
+}
+
+// What the tab shows: src/screens/builds/patch_cards.rs sets these.
 export global PatchCardsView {
-    out property <[Hint]> hints: [
+    out property <[Hint]> hints: self.counts.slotted ? self.slot-hints : self.list-hints;
+    property <[Hint]> list-hints: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Add") },
+        { key: "Del", pad: PadButton.west, text: @tr("Remove") },
+        { key: "[", key2: "]", pad: PadButton.north, text: @tr("Move up or down") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: "Esc", pad: PadButton.east, text: @tr("Back") },
     ];
-    in property <string> status;
+    property <[Hint]> slot-hints: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Put in") },
+        { key: "Del", pad: PadButton.west, text: @tr("verb" => "Empty") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+    ];
+    out property <string> status: self.counts.slotted ? @tr("{n} slot free" | "{n} slots free" % (self.counts.slots - self.counts.filled)) : (self.counts.budget ? @tr("{} MB free", max(0, self.counts.limit - self.counts.megabytes)) : "");
+    // The strip.
+    in property <CardDetail> detail;
+    // The build's cards (in a game with slots, its slots), the one marked (the cursor's, or the one a card from the
+    // library goes in), and what they hold.
+    in property <[CardRow]> installed;
+    in property <int> slot;
+    in property <CardCounts> counts;
+    // What the cards add up to: the numbers they change, what they give, their bugs.
+    in property <string> together-numbers;
+    in property <string> together-abilities;
+    in property <string> together-bugs;
+    // The installed row a card just went into, counted: it flashes.
+    in property <int> landed;
+    in property <int> landed-seq;
+    // The library: its rows as sorted and searched, the sort (its place in `sorts`) and its direction.
+    in property <[CardRow]> rows;
+    in property <string> search;
+    in property <int> sort;
+    in property <bool> descending;
+    out property <[string]> sorts: self.counts.slotted ? [@tr("Number"), @tr("Name"), @tr("Slot")] : [@tr("Number"), @tr("Name"), @tr("MB")];
+    // The row that was refused, counted: it shakes.
+    in property <int> refused: -1;
+    in property <int> refused-seq;
+    // The cursor is in the library: its title is lit, the cards' isn't.
+    in property <bool> in-library;
+    // On a phone: the library's sheet is open.
+    in property <bool> sheet;
+    // ---- Words the app asks for: the strip's two groups where a game's cards have none of the card screen's,
+    // and a card's own slot.
+    out property <string> effects-title: @tr("EFFECTS");
+    out property <string> bugs-title: @tr("BUGS");
+    public pure function slot-word(name: string) -> string {
+        return @tr("Slot {}", name);
+    }
 }
 
-// The tab: the editor gives it its place under the tab bar, the page's body wide.
-export component PatchCardsTab inherits Rectangle { }
+// A card's lines on one line, each after its lead, a bug's purple. Cut where they run past its width, which fades.
+component CardLinesView inherits Rectangle {
+    in property <[CardLine]> lines;
+    in property <bool> dim;
+    in property <length> font-size: 12px;
+    clip: true;
+    row := HorizontalLayout {
+        x: 0;
+        width: max(root.width, self.preferred-width);
+        alignment: start;
+        for line in root.lines: HorizontalLayout {
+            Text {
+                text: line.lead;
+                color: Theme.dim;
+                font-family: Theme.body;
+                font-size: root.font-size;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: line.text;
+                color: line.bug ? Theme.bug : Theme.text;
+                opacity: root.dim ? 0.5 : 1;
+                font-family: Theme.body;
+                font-size: root.font-size;
+                font-weight: 600;
+                vertical-alignment: center;
+            }
+        }
+    }
+
+    Rectangle {
+        x: parent.width - self.width;
+        width: 28px;
+        visible: row.preferred-width > root.width + 0.5px;
+        background: @linear-gradient(90deg, #0c183600 0%, Theme.panel 100%);
+    }
+}
+
+// A slot's name in a box (EXE4's 0A to 0F).
+component SlotName inherits Rectangle {
+    in property <string> text;
+    width: 34px;
+    height: 18px;
+    border-width: 1px;
+    border-color: Theme.line;
+    Text {
+        text: root.text;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 11px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// One of the build's cards (or slots): its slot's name, its number, its name and its MB over its lines; Empty where
+// it holds none.
+component InstalledRowView inherits Rectangle {
+    in property <CardRow> card;
+    in property <int> nav-index;
+    in property <bool> chosen;
+    in property <bool> slotted;
+    property <length> lead: root.slotted ? 8px + 34px + 8px : 8px;
+    Rectangle {
+        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+    }
+
+    Rectangle {
+        x: 0;
+        width: 2px;
+        background: root.chosen ? Theme.cursor : transparent;
+    }
+
+    SlotName {
+        x: 8px;
+        y: 5px;
+        visible: root.slotted;
+        text: root.card.slot;
+    }
+
+    Text {
+        x: root.lead;
+        y: 4px;
+        width: 30px;
+        height: 20px;
+        text: root.card.number;
+        color: Theme.dim;
+        font-family: Theme.mono;
+        font-size: 11px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+
+    Text {
+        x: root.lead + 30px + 8px;
+        y: 4px;
+        width: parent.width - self.x - 8px - 56px - 8px;
+        height: 20px;
+        text: root.card.there ? root.card.name : @tr("Empty");
+        color: root.card.there ? Theme.text : Theme.dim;
+        font-family: Theme.body;
+        font-size: 13px;
+        font-weight: root.card.there ? 600 : 400;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: parent.width - 8px - 56px;
+        y: 4px;
+        width: 56px;
+        height: 20px;
+        text: root.card.megabytes;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: 500;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+
+    CardLinesView {
+        x: root.lead + 30px + 8px;
+        y: 24px;
+        width: parent.width - self.x - 8px;
+        height: 16px;
+        lines: root.card.lines;
+    }
+
+    touch := RowTouch {
+        nav: "card";
+        nav-index: root.nav-index;
+    }
+}
+
+// A card of the library: its number, its name, its lines, a note (it is in; or why it can't go in, in the error red,
+// the row greyed), its MB or the slot it belongs in. `dx` shakes it.
+component CardLibraryRowView inherits Rectangle {
+    in property <CardRow> card;
+    in property <int> nav-index;
+    in property <length> dx;
+    property <length> end-width: Theme.phone ? 0px : (PatchCardsView.counts.slotted ? 40px : 52px);
+    property <length> end-x: self.width - 8px - root.end-width;
+    property <length> note-width: Theme.phone ? 96px : 104px;
+    property <length> note-x: root.end-x - (Theme.phone ? 0px : 8px) - root.note-width;
+    property <length> name-width: Theme.phone ? 108px : (PatchCardsView.counts.slotted ? 196px : 128px);
+    Rectangle {
+        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+    }
+
+    Text {
+        x: 8px + root.dx;
+        width: 30px;
+        text: root.card.number;
+        color: Theme.dim;
+        font-family: Theme.mono;
+        font-size: 11px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+
+    Text {
+        x: 8px + 30px + 8px + root.dx;
+        width: root.name-width;
+        text: root.card.name;
+        color: root.card.refused ? Theme.dim : Theme.text;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 12px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    CardLinesView {
+        x: 8px + 30px + 8px + root.name-width + 8px + root.dx;
+        width: max(0px, root.note-x - 8px - self.x);
+        height: parent.height;
+        lines: root.card.lines;
+        dim: root.card.refused;
+    }
+
+    Text {
+        x: root.note-x + root.dx;
+        width: root.note-width;
+        text: root.card.note;
+        color: root.card.bad ? Theme.bad : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: root.card.bad ? 500 : 400;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.end-x;
+        width: root.end-width;
+        visible: !Theme.phone;
+        text: PatchCardsView.counts.slotted ? root.card.slot : root.card.megabytes;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: PatchCardsView.counts.slotted ? 700 : 500;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+
+    touch := RowTouch {
+        nav: "lib.rows";
+        nav-index: root.nav-index;
+    }
+}
+
+// The sort's direction: an arrow, down for descending. Enter turns it.
+component DirectionButton inherits Rectangle {
+    in property <bool> descending;
+    width: 40px;
+    height: 40px;
+    Cut {
+        cut: 7px;
+        background: hit.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
+    }
+
+    Path {
+        width: 10px;
+        height: 12px;
+        stroke: Theme.text;
+        stroke-width: 1.5px;
+        commands: root.descending ? "M 5 0 L 5 11 M 1 7 L 5 11 L 9 7" : "M 5 12 L 5 1 M 1 5 L 5 1 L 9 5";
+    }
+
+    hit := Focusable {
+        nav: "lib.direction";
+    }
+}
+
+// The library: its title, the search field, the sort and its direction, and under them its rows. (A phone's sheet
+// has no room for the two titles.)
+component CardsLibraryPane inherits Rectangle {
+    property <length> title-width: Theme.phone ? 0px : title.preferred-width + 12px;
+    property <length> sort-width: Theme.phone ? 132px : 176px;
+    property <length> sort-title-width: Theme.phone ? 0px : sort-title.preferred-width + 12px;
+    shake := Shake {
+        seq: PatchCardsView.refused-seq;
+    }
+
+    title := Label {
+        x: 0;
+        y: 0;
+        width: self.preferred-width;
+        height: 40px;
+        visible: !Theme.phone;
+        text: @tr("LIBRARY");
+        color: PatchCardsView.in-library ? Theme.cursor : Theme.muted;
+    }
+
+    Field {
+        x: root.title-width;
+        y: 0;
+        width: parent.width - root.title-width - root.sort-title-width - root.sort-width - 12px - 40px - 12px;
+        nav: "lib.search";
+        text: PatchCardsView.search;
+        placeholder: @tr("Search cards");
+    }
+
+    sort-title := Label {
+        x: parent.width - 40px - 12px - root.sort-width - 12px - self.width;
+        y: 0;
+        width: self.preferred-width;
+        height: 40px;
+        visible: !Theme.phone;
+        text: @tr("SORT");
+    }
+
+    Select {
+        x: parent.width - 40px - 12px - root.sort-width;
+        y: 0;
+        width: root.sort-width;
+        nav: "lib.sort";
+        value: PatchCardsView.sorts[PatchCardsView.sort];
+    }
+
+    DirectionButton {
+        x: parent.width - 40px;
+        y: 0;
+        descending: PatchCardsView.descending;
+    }
+
+    list := ListView {
+        x: Theme.phone ? 0px : 4px;
+        y: 52px;
+        width: parent.width - self.x;
+        height: parent.height - 52px;
+        nav: "lib.rows";
+        count: PatchCardsView.rows.length;
+        row-height: Theme.phone ? 40px : Theme.chip-row;
+        chosen: self.focused-row;
+        for slot in list.shown: CardLibraryRowView {
+            property <int> at: list.first + slot;
+            y: self.at * list.pitch;
+            width: list.row-width;
+            height: list.row-height;
+            card: PatchCardsView.rows[self.at];
+            nav-index: self.at;
+            dx: self.at == PatchCardsView.refused ? shake.dx : 0px;
+        }
+    }
+}
+
+// One of the build's counts: its word and its number, which ticks as it changes (in the error red past its limit).
+component CountBox inherits Rectangle {
+    in property <string> label;
+    in property <int> value;
+    in property <string> suffix;
+    in property <length> value-width;
+    in property <bool> over;
+    width: name.preferred-width + 4px + root.value-width;
+    height: 16px;
+    name := Text {
+        x: 0;
+        width: self.preferred-width;
+        text: root.label;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+
+    Count {
+        x: name.preferred-width + 4px;
+        width: root.value-width;
+        value: root.value;
+        suffix: root.suffix;
+        color: root.over ? Theme.bad : Theme.text;
+    }
+}
+
+// A group of the strip: its title, then its lines, one a row (as many as there is room for).
+component GroupColumn inherits Rectangle {
+    in property <string> title;
+    in property <[CardLine]> lines;
+    Label {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: 14px;
+        text: root.title;
+    }
+
+    Text {
+        x: 0;
+        y: 20px;
+        width: parent.width;
+        height: 17px;
+        visible: root.title != "" && root.lines.length == 0;
+        text: @tr("None");
+        color: Theme.dim;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+    }
+
+    for line[i] in root.lines: Text {
+        x: 0;
+        y: 20px + i * 17px;
+        width: parent.width;
+        height: 17px;
+        text: line.text;
+        color: line.bug ? Theme.bug : Theme.text;
+        font-family: Theme.body;
+        font-size: 13px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+// What the cards add up to: the numbers, what they give, their bugs (purple), a line each.
+component Together inherits Rectangle {
+    property <[string]> parts: [PatchCardsView.together-numbers, PatchCardsView.together-abilities, PatchCardsView.together-bugs];
+    Rectangle {
+        y: 0;
+        height: 1px;
+        background: Theme.line;
+    }
+
+    Label {
+        x: 12px;
+        y: 10px;
+        width: parent.width - 24px;
+        height: 14px;
+        text: @tr("TOGETHER");
+    }
+
+    for part[i] in root.parts: Text {
+        x: 12px;
+        y: 30px + i * 18px;
+        width: parent.width - 24px;
+        height: 18px;
+        text: i == 0 && part == "" && root.parts[1] == "" && root.parts[2] == "" ? @tr("Nothing") : part;
+        color: i == 2 ? Theme.bug : (part == "" ? Theme.dim : Theme.text);
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: part == "" ? 400 : 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+}
+
+export component PatchCardsTab inherits Rectangle {
+    // (As the folder's: the strip, the two panes and their gaps are the page's whole height.)
+    property <length> top: -4px;
+    property <length> pane-y: root.top + 104px + 12px;
+    property <length> pane-width: 528px;
+    property <length> pane-height: 482px;
+    property <length> together-height: 30px + 3 * 18px + 8px;
+    // A phone: the counts' box over the cards, and what they add up to under them.
+    property <length> counts-height: 44px;
+    // ---- The strip: the card under the cursor.
+    PanelBack {
+        x: 0;
+        y: root.top;
+        height: Theme.phone ? 0px : 104px;
+        visible: !Theme.phone;
+    }
+
+    Text {
+        x: 16px;
+        y: root.top + 12px;
+        width: 200px;
+        height: 14px;
+        visible: !Theme.phone;
+        text: PatchCardsView.detail.number == "" ? "" : @tr("No. {}", PatchCardsView.detail.number);
+        color: Theme.dim;
+        font-family: Theme.mono;
+        font-size: 11px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+
+    Text {
+        x: 16px;
+        y: root.top + 28px;
+        width: 224px;
+        height: 22px;
+        visible: !Theme.phone;
+        text: PatchCardsView.detail.there ? PatchCardsView.detail.name : "";
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 16px;
+        font-weight: 700;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: 16px;
+        y: root.top + 54px;
+        width: 224px;
+        height: 16px;
+        visible: !Theme.phone;
+        text: PatchCardsView.detail.facts;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // (Why the card can't go in, or what the rules have against the build's cards.)
+    Text {
+        x: 16px;
+        y: root.top + 74px;
+        width: 224px;
+        height: 16px;
+        visible: !Theme.phone;
+        text: PatchCardsView.detail.problem;
+        color: Theme.bad;
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: 500;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    GroupColumn {
+        x: 256px;
+        y: root.top + 12px;
+        width: (parent.width - 256px - 16px - 24px) / 2;
+        height: 84px;
+        visible: !Theme.phone && PatchCardsView.detail.there;
+        title: Theme.phone ? "" : PatchCardsView.detail.first-title;
+        lines: PatchCardsView.detail.first;
+    }
+
+    GroupColumn {
+        x: 256px + (parent.width - 256px - 16px - 24px) / 2 + 24px;
+        y: root.top + 12px;
+        width: (parent.width - 256px - 16px - 24px) / 2;
+        height: 84px;
+        visible: !Theme.phone && PatchCardsView.detail.there;
+        title: Theme.phone ? "" : PatchCardsView.detail.second-title;
+        lines: PatchCardsView.detail.second;
+    }
+
+    // ---- The build's cards, framed: the title and the counts, the cards, what they add up to.
+    PanelBack {
+        x: 0;
+        y: Theme.phone ? 0px : root.pane-y;
+        width: Theme.phone ? parent.width : root.pane-width;
+        height: Theme.phone ? root.counts-height : root.pane-height;
+        accent: !Theme.phone;
+        fill: Theme.phone ? Theme.inset : Theme.panel;
+    }
+
+    Label {
+        x: 12px;
+        y: root.pane-y;
+        width: root.pane-width - 24px - counts.width - 12px;
+        height: 44px;
+        visible: !Theme.phone;
+        text: @tr("PATCH CARDS");
+        color: PatchCardsView.in-library ? Theme.muted : Theme.cursor;
+    }
+
+    counts := HorizontalLayout {
+        x: Theme.phone ? 12px : root.pane-width - 12px - self.width;
+        y: Theme.phone ? 14px : root.pane-y + 14px;
+        width: self.preferred-width;
+        height: 16px;
+        spacing: 12px;
+        CountBox {
+            visible: !PatchCardsView.counts.slotted;
+            label: @tr("Cards");
+            value: PatchCardsView.counts.cards;
+            value-width: 22px;
+        }
+
+        CountBox {
+            visible: PatchCardsView.counts.budget;
+            label: @tr("MB");
+            value: PatchCardsView.counts.megabytes;
+            suffix: "/\{PatchCardsView.counts.limit}";
+            value-width: 46px;
+            over: PatchCardsView.counts.megabytes > PatchCardsView.counts.limit;
+        }
+
+        CountBox {
+            visible: PatchCardsView.counts.slotted;
+            label: @tr("Slots");
+            value: PatchCardsView.counts.filled;
+            suffix: "/\{PatchCardsView.counts.slots}";
+            value-width: 32px;
+        }
+    }
+
+    cards := ListView {
+        x: Theme.phone ? 0px : 4px;
+        y: Theme.phone ? root.counts-height + 12px : root.pane-y + 44px;
+        width: (Theme.phone ? parent.width : root.pane-width - 4px) - (Theme.phone ? 0px : 4px);
+        height: Theme.phone ? parent.height - self.y - root.together-height : root.pane-height - 44px - root.together-height;
+        nav: "card";
+        count: PatchCardsView.installed.length;
+        row-height: Theme.phone ? 48px : 44px;
+        for at in cards.shown: InstalledRowView {
+            property <int> index: cards.first + at;
+            y: self.index * cards.pitch;
+            width: cards.row-width;
+            height: cards.row-height;
+            card: PatchCardsView.installed[self.index];
+            nav-index: self.index;
+            slotted: PatchCardsView.counts.slotted;
+            chosen: PatchCardsView.in-library && self.index == PatchCardsView.slot;
+        }
+    }
+
+    // (The row a card went into, over the list where it is scrolled to.)
+    Rectangle {
+        x: cards.x;
+        y: cards.y;
+        width: cards.row-width;
+        height: cards.height;
+        clip: true;
+        Flash {
+            y: PatchCardsView.landed * cards.pitch - cards.scroll;
+            height: cards.row-height;
+            seq: PatchCardsView.landed-seq;
+        }
+    }
+
+    Together {
+        x: 0;
+        y: Theme.phone ? parent.height - root.together-height : root.pane-y + root.pane-height - root.together-height;
+        width: Theme.phone ? parent.width : root.pane-width;
+        height: root.together-height;
+    }
+
+    // ---- The library, open.
+    if !Theme.phone: CardsLibraryPane {
+        x: root.pane-width + 24px;
+        y: root.pane-y;
+        width: parent.width - self.x;
+        height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+    }
+}
+
+// What the Patch cards tab opens over the window: on a phone, the library as a sheet from the bottom, for the card
+// tapped. Over the library's rows, what a card's keys do on a desktop: taking it out, moving it up or down. Its
+// controls' names begin with `lib.`: while it is open the keys reach nothing else.
+export component PatchCardsOverlay inherits Rectangle {
+    property <length> sheet-height: min(self.height - 72px, 660px);
+    property <bool> slotted: PatchCardsView.counts.slotted;
+    property <bool> there: PatchCardsView.installed[PatchCardsView.slot].there;
+    arrive := Tween { }
+
+    Rectangle {
+        background: Theme.shade;
+        opacity: arrive.t;
+        TouchArea {
+            clicked => {
+                Nav.activate("lib.close", 0);
+            }
+        }
+    }
+
+    Rectangle {
+        x: 0;
+        y: parent.height - root.sheet-height + (1 - arrive.t) * 24px;
+        height: root.sheet-height;
+        opacity: arrive.t;
+        background: Theme.panel;
+        TouchArea { }
+
+        Rectangle {
+            y: 0;
+            height: 1px;
+            background: Theme.line;
+        }
+
+        // The card being changed, and what its keys do.
+        InstalledRowView {
+            x: 8px;
+            y: 8px;
+            width: parent.width - 16px;
+            height: 44px;
+            card: PatchCardsView.installed[PatchCardsView.slot];
+            nav-index: -1;
+            slotted: root.slotted;
+        }
+
+        // (Moving it up or down, a list's alone, over taking it out.)
+        Button {
+            x: 16px;
+            y: 60px;
+            width: (parent.width - 44px) / 2;
+            visible: !root.slotted;
+            enabled: !root.slotted && root.there;
+            nav: root.slotted ? "" : "lib.up";
+            text: @tr("UP");
+        }
+
+        Button {
+            x: 16px + (parent.width - 44px) / 2 + 12px;
+            y: 60px;
+            width: (parent.width - 44px) / 2;
+            visible: !root.slotted;
+            enabled: !root.slotted && root.there;
+            nav: root.slotted ? "" : "lib.down";
+            text: @tr("DOWN");
+        }
+
+        Button {
+            x: 16px;
+            y: root.slotted ? 60px : 108px;
+            width: parent.width - 32px;
+            enabled: root.there;
+            nav: "lib.remove";
+            text: root.slotted ? @tr("EMPTY") : @tr("REMOVE");
+            kind: ButtonKind.ghost;
+            danger: true;
+        }
+
+        CardsLibraryPane {
+            x: 16px;
+            y: (root.slotted ? 60px : 108px) + 40px + 12px;
+            width: parent.width - 32px;
+            height: parent.height - self.y - 8px;
+        }
+    }
+}
