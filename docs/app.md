@@ -921,17 +921,19 @@ phone, under them) the two builds as cards over the arena.
 - Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
   opened as a list with Enter. Both are remembered by game between runs (the settings' `remembered`:
   `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
-  the first build.
+  the first build that can be used.
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
   held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
-  is. It is made once the builds chosen have stayed 160 ms (making a round holds the window about 20 ms: a
+  is. (The window has one texture: the entry's box shows it only once the arena is what is in it, from the
+  second frame the window draws of it.) It is made once the builds chosen have stayed 160 ms (making a round holds the window about 20 ms: a
   step through the builds doesn't make one each time), and what the session will be picked from is drawn as the
   entry lists a game's builds and after each session, so the arena shown is the one START TRAINING opens on.
 - With no build of the game there is one button, CREATE A BUILD, which goes to Builds.
 - A build is checked as the lobby will check one (`nettai_match::build::Checked`), once for what its file
   says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
-  can't be used."), START TRAINING is unavailable and no arena is drawn. *The rule it breaks isn't said yet:*
+  can't be used."), START TRAINING is unavailable, no arena is drawn, and the screen opens with the focus on
+  the row to change. *The rule it breaks isn't said yet:*
   `Wrong`'s kinds are the Builds screen's to word (§12), and `training::rule` is where that wording goes, as
   the line's own `{}`; meanwhile each problem is in the log.
 
