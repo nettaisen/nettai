@@ -429,9 +429,6 @@ msgstr "{}は{}〜{}の範囲外です"
 msgid "This navi can't use it"
 msgstr "このナビでは使えません"
 
-msgid "Something this navi needs is missing"
-msgstr "このナビに必要な設定がありません"
-
 msgid "Something is there twice"
 msgstr "同じものが2つあります"
 
@@ -454,8 +451,68 @@ msgstr "別のゲームのビルドです"
 msgid "Something isn't chosen"
 msgstr "未選択の項目があります"
 
-msgid "Something here isn't this game's"
-msgstr "このゲームにないものが含まれています"
+msgid "the folder"
+msgstr "フォルダ"
+
+msgid "the NaviCust"
+msgstr "ナビカス"
+
+msgid "the patch cards"
+msgstr "パッチカード"
+
+msgid "the auto battle data"
+msgstr "オートバトルデータ"
+
+msgid "This navi has no level"
+msgstr "このナビにはレベルがありません"
+
+msgid "This navi doesn't change form"
+msgstr "このナビは変身しません"
+
+msgid "This navi can't use {}"
+msgstr "このナビは{}を使えません"
+
+msgid "No navi chosen"
+msgstr "ナビが選ばれていません"
+
+msgid "No version chosen"
+msgstr "バージョンが選ばれていません"
+
+msgid "No level chosen"
+msgstr "レベルが選ばれていません"
+
+msgid "Something in {} isn't chosen"
+msgstr "{}に選ばれていないものがあります"
+
+msgid "Something in {} is there twice"
+msgstr "{}に同じものが2つあります"
+
+msgid "This navi isn't {}'s"
+msgstr "{}のナビではありません"
+
+msgid "This version isn't {}'s"
+msgstr "{}のバージョンではありません"
+
+msgid "A chip in the folder isn't {}'s"
+msgstr "フォルダに{}にないチップがあります"
+
+msgid "Something in {} isn't {}'s"
+msgstr "{0}に{1}にないものがあります"
+
+msgid "Something here isn't {}'s"
+msgstr "{}にないものが含まれています"
+
+msgid "This navi can't be used"
+msgstr "このナビは使えません"
+
+msgid "This version can't be used"
+msgstr "このバージョンは使えません"
+
+msgid "This level can't be used"
+msgstr "このレベルは使えません"
+
+msgid "Something in {} can't be used"
+msgstr "{}に使えないものがあります"
 
 msgid "Something here can't be used"
 msgstr "使えないものが含まれています"
