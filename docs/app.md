@@ -1049,8 +1049,10 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   flash along its cells one after another (`dropped`).
 
 **The Patch cards tab** (`patch_cards`; §2.19, §2.20): the folder's shape. A card's number, name, MB, slot and
-lines are the game's data: its number its place in the library's order (which lists the cards by their
-numbers), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
+lines are the game's data: its number its own, as the game's compat tables state it (`builds::import::card_number`,
+each compat crate's `patch_card_number`: the number the card is printed with and a save holds; the library's
+order lists the cards by number, but EXE5's two 111s, each team's own, take two places in it, so its place isn't
+the number), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
 lines `builds::cards` (each effect's line from the strings' `patch_card_effects`, a bug's marked by the effect's
 `bug`, the card screen's group by its `group`, an effect that holds effects of its own followed by theirs, and a
 line's names put in as the screen shows them: `cards::named_by`, a slot by its name, a card by its number).
