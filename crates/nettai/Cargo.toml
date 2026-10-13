@@ -30,8 +30,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 png = "0.17"
 # A replay's video: its errors are worded here (`errors.rs`); the Replays screen runs the export.
 nettai-video = { path = "../nettai-video" }
-# Netplay's link: WebRTC through a room of the signaling server.
-nettai-rtc = { path = "../nettai-rtc" }
+# Netplay's link: WebRTC through a room of the signaling server. (`testing`: its signaling server in the
+# process, which the screenshot pass's second player meets the first through: `screens/play/tour.rs`.)
+nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
 # A build from a save: each game's own reader of its saves.
 exe6-compat = { path = "../exe6-compat" }
 exe5-compat = { path = "../exe5-compat" }
@@ -59,8 +60,7 @@ objc2 = "0.6"
 objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSProcessInfo", "NSString"] }
 
 [dev-dependencies]
-# The tests: a signaling server in process, the content of the repository.
-nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
+# The tests: the content of the repository.
 nettai-match = { path = "../nettai-match", features = ["testing"] }
 # A short set and graphics with no pack, for a battle played to its end.
 nettai-frontend = { path = "../nettai-frontend", features = ["testing"] }
