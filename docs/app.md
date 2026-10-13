@@ -467,8 +467,9 @@ bindings and doesn't change them. Making a link resolves the STUN server's name 
 - the other player bringing a build that breaks a rule (refused when both are ready: the lobby ends, saying
   so); the other player leaving the lobby; this player leaving it.
 
-A match recorded by its agreement was played back by nettai-tool once (`--replay`: it reproduces). Only
-written, never run: a pad (its SELECT held, its shoulders in the lobby; the code's boxes were drawn and walked
+The three matches of a pass, recorded by their agreements (a set played to its end, a match the other player
+left, a match this one left as the joiner), were played back by nettai-tool (`--replay`): each reproduces. A
+recording holds the two players' names as the lobby had them, and no build's. Only written, never run: a pad (its SELECT held, its shoulders in the lobby; the code's boxes were drawn and walked
 by the pass, opened as a pad's confirm opens them); the signaling server's other refusals (a full room,
 another version); a lobby's other failures (another version, game or content, this player's build refused, no
 answer); a link that gives up for good (30 seconds down); a match whose player goes silent for good; two
