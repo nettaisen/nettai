@@ -92,8 +92,8 @@ the match's game's (see "Field and background" below).
 
 The content goes with the packs (`nettai_content::pack::load_game`;
 docs/design/content-model-v2.md §4.0): `--content <dir>` names the content
-directory (so does `$NETTAI_CONTENT`); without it, this repository's
-content/. A match plays one game: the frontend loads that game's pack (its
+directory (so does `$NETTAI_CONTENT`); without it, a content/ beside the
+program (a packaged app's), else this repository's content/. A match plays one game: the frontend loads that game's pack (its
 top module, init.luau, and what it requires, with the support packs it
 depends on, exelib) and its asset pack, nothing else; `nettai_content::pack::games`
 lists the games it can offer, each with its asset pack or the command that
