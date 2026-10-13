@@ -353,6 +353,18 @@ made alone and changed at any tick of the set (`Player::set_opponent`,
 - **on its custom screen** (`OnCustomScreen`): it picks nothing and presses
   OK, or picks the first chip it can and presses OK (the default).
 
+In the fight it may also play a recording of it (`InFight::PlaysRecording`):
+`LivePlayer::record_opponent` has the local player's buttons drive it from
+the next tick (their own navi gets none), keeping them a tick of the fight
+running at a time (`fight_runs`: the fight's own state, not the turn's
+banner, the custom screen, the game's pause or a round decided), until
+START's press outside the custom screen, `stop_recording`, the set starting
+over, or `RECORDING_MOST` ticks (a minute). On the custom screen the local
+player's buttons are their own screen's, and the opponent's screen does as
+its choice says. Then it plays them, one a tick of the fight running, over
+and over from wherever it stands. It is still buttons alone: what the
+recording changes is what the opponent presses, and nothing of the battle.
+
 Its random presses are seeded (from the set's seed in nettai) and run every
 tick of the set, taken or not: what it presses on a tick goes by the seed,
 the tick, the battle and its choices on that tick, whatever its choices
