@@ -238,12 +238,6 @@ pub fn thaw(b: &mut Battle, r: ObjectRef) {
     s.status_timers[crate::collision::timer::FREEZE] = 0;
 }
 
-/// `sub_800AF84`: busting level at the end of a round.
-pub fn busting_level(_b: &Battle) -> u8 {
-    // Only stored for the results screen; netbattles saw 0x0B.
-    0x0B
-}
-
 /// `sub_802CEC8`: a defensive-chip record goes when the navi that used
 /// the chip is deleted (its HP reaches 0).
 pub fn update_linked_registry(b: &mut Battle) {
