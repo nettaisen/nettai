@@ -257,6 +257,8 @@ component CellView inherits Rectangle {
 
     Cross {
         visible: root.cell.filled && root.cell.plus;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Hatch {
@@ -286,6 +288,8 @@ component HeldCellView inherits Rectangle {
 
     Cross {
         visible: root.plus;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Rectangle {
@@ -357,6 +361,8 @@ component ProgramRowView inherits Rectangle {
         Cross {
             visible: root.program.plus;
             bar: 1.5px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 
@@ -477,6 +483,8 @@ component KeyEntry inherits Rectangle {
         background: Theme.giga;
         Cross {
             bar: 1.5px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 
@@ -643,6 +651,8 @@ export component NavicustTab inherits Rectangle {
             cell: cell;
             command: floor(i / NavicustView.columns) == NavicustView.command;
             nav-index: i;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         // The command line: a line over and under its row, over what is placed on it, and an arrow at each end.
@@ -684,6 +694,8 @@ export component NavicustTab inherits Rectangle {
             width: root.cell;
             height: root.cell;
             delay: i * Theme.stagger;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         // The piece in hand, lifted, over the cell the cursor holds it by: it glides from cell to cell, turns about
@@ -726,6 +738,8 @@ export component NavicustTab inherits Rectangle {
                     at: c;
                     tone: NavicustView.held-tone;
                     plus: NavicustView.held-plus;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
                 }
             }
         }
@@ -806,6 +820,8 @@ export component NavicustTab inherits Rectangle {
             program: NavicustView.programs[self.at];
             nav-index: self.at;
             big: Theme.phone;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 
