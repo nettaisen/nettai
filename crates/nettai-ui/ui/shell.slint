@@ -146,8 +146,13 @@ export global Shell {
     in property <string> key-r: "S";
     // The ground's hexagons, as a path over the window in units.
     in property <string> hexagons;
-    // The on-screen pad's buttons (a phone, in battle): a GBA button's bit, pressed or let go.
+    // The on-screen pad's buttons (a phone, in battle), each by its GBA button's bit number. The pad takes the
+    // window's touches itself, every finger its own (the app: `TouchPad`), so each button says where it is
+    // (`pad-key`) and is drawn held when the app says so (`pad-held`, by bit number). The mouse comes through
+    // the UI, one pointer: `touch`, pressed or let go.
     callback touch(int, bool);
+    callback pad-key(int, length, length, length, length);
+    in property <[bool]> pad-held;
 }
 
 // What can go wrong, as the player reads it (docs/design/app-ui.md §7; the app's `UserError`). The code's own
