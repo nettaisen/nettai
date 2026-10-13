@@ -277,13 +277,14 @@ fn row(which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
 
 /// Where one of the motion probe's pointer events is: a cell of the NaviCust's drawn grid (by its column and row; a
 /// fraction is between cells), a row of its list, off the board and the list (the effects' panel), or where the
-/// piece in hand would fit nearest the board's middle (found when the event is due).
+/// piece in hand would fit nearest the board's middle (found when the event is due); or any control, by its key.
 #[derive(Clone, Copy, Debug)]
 enum Point {
     Cell(f32, f32),
     Row(i32),
     Off,
     Fit,
+    Control(&'static str, i32),
 }
 
 /// One of the probe's pointer events: the left button pressed or let go, the pointer moved (no button held unless
@@ -384,13 +385,14 @@ fn locate(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, point: Point) -> Op
         }
         Point::Row(r) => rect("programs", r).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
         Point::Off => rect("programs", 0).map(|r| slint::LogicalPosition::new(r.x + r.w + 150.0, r.y + 200.0)),
+        Point::Control(id, i) => rect(id, i).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
         Point::Fit => None,
     }
 }
 
 /// The pointer events `script` makes of the board as it is, each at its time (ms after the step), as the window's:
 /// as Replays' bar is dragged.
-fn pointer(script: fn(&Board, &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>>) -> Step {
+fn pointer(script: impl Fn(&Board, &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> + 'static) -> Step {
     Box::new(move |ui, app, tour| {
         if tour.passing.get() {
             return;
@@ -431,6 +433,24 @@ fn pointer(script: fn(&Board, &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>>) 
             });
         }
     })
+}
+
+/// A right click on control `id`'s `index`.
+fn right_on(id: &'static str, index: i32) -> Step {
+    pointer(move |_, _| Some(vec![(0, Ev::Right(Point::Control(id, index)))]))
+}
+
+/// A right click on the first placed piece of the board.
+fn right_piece(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+    let (x, y) = *b.filled().first()?;
+    Some(vec![(0, Ev::Right(Point::Cell(x as f32, y as f32)))])
+}
+
+/// A right click on the first placed program's row.
+fn right_row(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+    let rows = ui.global::<NavicustView>().get_programs();
+    let row = rows.iter().take(12).position(|r| r.state == nettai_ui::ProgramState::Placed)? as i32;
+    Some(vec![(0, Ev::Right(Point::Row(row)))])
 }
 
 /// A placed piece pressed, dragged two cells (one at a time) and let go there.
@@ -644,6 +664,11 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
     open_build(add, false);
     add(SETTLE, to_tab(EditorTab::Navicust));
+    // A right click on a folder's entry, the cursor elsewhere: the cursor comes to it, and it is emptied.
+    add(SETTLE, to_tab(EditorTab::Folder));
+    add(SETTLE, focus("slot", 0));
+    burst(add, "folder-right-click", &[0, 60, 120, 200, 320, 480], right_on("slot", 3));
+    add(SETTLE, to_tab(EditorTab::Navicust));
     burst(add, "navicust-lift", &[0, 30, 60, 100, 160, 260], take(0, program));
     burst(add, "navicust-move", &[0, 30, 60, 100, 160], act(Action::Right));
     burst(add, "navicust-turn", &[0, 30, 60, 100, 160, 260], key(KeyCode::KeyS, "s"));
@@ -675,6 +700,13 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     burst(add, "navicust-drag-right-click", &[0, 100, 200, 350, 500, 650], pointer(drag_right));
     burst(add, "navicust-drag-off", &[0, 100, 200, 350, 500, 650], pointer(drag_off));
     burst(add, "navicust-click-wheel-right", &[0, 120, 260, 340, 460, 560, 700, 850], pointer(click_wheel_right));
+    // Right clicks with nothing in hand: on a placed piece (taken off), and on a placed program's row (its copy off).
+    add(SETTLE, take(0, program));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, take(1, program));
+    add(SETTLE, put(Spot::OffTheLine));
+    burst(add, "navicust-right-click", &[0, 60, 120, 200, 320, 480], pointer(right_piece));
+    burst(add, "navicust-row-right-click", &[0, 60, 120, 200, 320, 480], pointer(right_row));
     // A card put in (it flies from its row to the build's, which flashes, and the MB tick), and one the MB left
     // can't take (its row shakes).
     add(SETTLE, to_tab(EditorTab::PatchCards));
@@ -682,6 +714,15 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, library());
     add(SETTLE, focus("lib.rows", 0));
     burst(add, "cards-put", &[0, 30, 60, 90, 120, 160, 200, 260, 340, 480], act(Action::Confirm));
+    // A right click on that card's row in the library (taken out, flying back; in a game with slots, its slot
+    // emptied), and it put back; then one on the build's card (taken out).
+    burst(add, "cards-right-click-library", &[0, 30, 60, 90, 120, 160, 220, 320, 480], right_on("lib.rows", 0));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, out_of_library());
+    burst(add, "cards-right-click", &[0, 30, 60, 90, 120, 160, 220, 320, 480], right_on("card", 0));
+    add(SETTLE, library());
+    add(SETTLE, focus("lib.rows", 0));
+    add(SETTLE, act(Action::Confirm));
     add(SETTLE, screen(|s, shell| s.choose(shell, "lib.sort", 0, 2)));
     add(SETTLE, press("lib.direction", 0));
     add(SETTLE, focus("lib.rows", 0));
@@ -694,6 +735,8 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, library());
     add(SETTLE, focus("lib.rows", 0));
     burst(add, "auto-put", &[0, 30, 60, 90, 120, 160, 200, 260, 340, 480], act(Action::Confirm));
+    // A right click on the place just filled, the cursor on the next: the cursor comes back to it, and it is emptied.
+    burst(add, "auto-right-click", &[0, 60, 120, 200, 320, 480], right_on("places.place", 0));
     add(SETTLE, end());
 }
 

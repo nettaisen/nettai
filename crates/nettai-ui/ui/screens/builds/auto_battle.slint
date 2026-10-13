@@ -93,6 +93,7 @@ component PlaceView inherits Rectangle {
     hit := Focusable {
         nav: root.line.title ? "" : "places.place";
         nav-index: root.line.place;
+        removable: true;
     }
 }
 
