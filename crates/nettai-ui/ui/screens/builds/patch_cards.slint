@@ -263,6 +263,7 @@ component InstalledRowView inherits Rectangle {
     touch := RowTouch {
         nav: "card";
         nav-index: root.nav-index;
+        removable: true;
     }
 }
 
@@ -343,6 +344,7 @@ component CardLibraryRowView inherits Rectangle {
     touch := RowTouch {
         nav: "lib.rows";
         nav-index: root.nav-index;
+        removable: true;
     }
 }
 
