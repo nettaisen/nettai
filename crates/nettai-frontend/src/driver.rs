@@ -4,11 +4,12 @@
 //! (`crate::netplay`). A host may bring its own (the desktop program's
 //! replays the original's recordings).
 
-use nettai_battle::battle::mode;
+use nettai_battle::battle::{fight, mode};
 use nettai_battle::console::ConsoleSetup;
 use nettai_battle::cues::CueAction;
 use nettai_battle::content::{ChipCode, Content};
 use nettai_battle::custom::{self, BattleFolder, FolderChip, Phase, PlayerSetup, SavedFolder, SlotKind, SlotState};
+use nettai_battle::hud::CustomGauge;
 use nettai_battle::input::keys;
 use nettai_battle::setup::{BattleSettings, RoundSetup, SetScore};
 use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput};
@@ -96,6 +97,21 @@ pub trait Driver {
     fn set_opponent(&mut self, _opponent: Opponent) -> bool {
         false
     }
+    /// Live play's driver, for what a training session sets on it beside
+    /// the opponent (its options, the opponent's recording and its second
+    /// pad: [`LivePlayer`]); none from any other.
+    fn live(&self) -> Option<&LivePlayer> {
+        None
+    }
+    fn live_mut(&mut self) -> Option<&mut LivePlayer> {
+        None
+    }
+    /// Change the battle before the next tick's inputs are asked, as the
+    /// driver's own options say (live play's training options,
+    /// [`Training`]). Nothing from a driver without any, nor from one whose
+    /// options are all at their normal values: the battle is then a
+    /// function of its setup and the buttons, as ever.
+    fn prepare(&mut self, _b: &mut Battle) {}
     /// Have the opponent it plays press nothing from the next tick on, or
     /// press again as it chose (`held` false); false from a driver that
     /// plays no opponent. Its choices and its random presses go on as
@@ -351,11 +367,22 @@ pub enum InFight {
     /// shoots and charges, uses its chips, and presses L and R
     /// (`nettai_netplay::standin::Masher`). Never START.
     AttacksAtRandom,
+    /// It plays the local player's recording of it
+    /// ([`LivePlayer::record_opponent`]),
+    /// over and over: the buttons recorded, one a tick of the fight running,
+    /// from wherever it stands. With nothing recorded it stands still.
+    PlaysRecording,
+    /// A second pad the host has drives it (`LivePlayer::set_second_pad`),
+    /// in the fight and on its custom screen, as a second player, but for
+    /// START outside the custom screen (the pause is the local player's).
+    /// With none, it stands still, and its custom screen does as its choice
+    /// says.
+    SecondPad,
 }
 
 impl InFight {
     /// Every choice, in the order a host offers them.
-    pub const ALL: [InFight; 3] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom];
+    pub const ALL: [InFight; 5] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::PlaysRecording, InFight::SecondPad];
 }
 
 /// What an opponent does on its custom screen.
@@ -373,10 +400,65 @@ impl OnCustomScreen {
     pub const ALL: [OnCustomScreen; 2] = [OnCustomScreen::PicksNothing, OnCustomScreen::PicksFirst];
 }
 
+/// What a training session changes of live play's battle between its
+/// ticks, as a training mode does (`LivePlayer::set_training`,
+/// `crate::Player::set_training`). Each is a host's option, applied to the
+/// battle's own typed state before each tick (`Driver::prepare`), never a
+/// rule of the simulation: a battle with all of them off (the default) is
+/// the set's as ever, and one with any on is no match's (it isn't
+/// recorded). Each acts at once, and in a battle paused or not.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct Training {
+    /// By side: its navi's HP returns to its full value once a hit is over,
+    /// [`REFILL_REST`] ticks after it last lost any. (A hit, or hits that
+    /// close together, of its whole HP still delete it.)
+    pub refills: [bool; 2],
+    /// The custom gauge is full whenever it runs: L or R opens the custom
+    /// screen at any time in the fight. The engine sets the gauge's full
+    /// flag and plays its sound as it fills to it, on the next tick that
+    /// fills it (none while the battle is paused or dimmed).
+    pub full_gauge: bool,
+    /// The order both sides' custom screens deal their folders in.
+    pub chip_draw: ChipDraw,
+}
+
+/// The order a custom screen deals the battle folder in.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum ChipDraw {
+    /// As the round shuffled it (each console's own shuffle at the round's
+    /// start: the match's).
+    #[default]
+    Shuffled,
+    /// The folder's own order, dealt from its top, as the games deal a
+    /// folder they don't shuffle (the battle's effect 0x80 clear,
+    /// `sub_800A3E4`: no Regular chip first and no tag pair either). What a
+    /// screen leaves unpicked stays at the top for the next. Set during a
+    /// round, what is left of the folder is put in that order (the round's
+    /// shuffle again, set back), from the next screen's deal on; a custom
+    /// screen being shown keeps its deal.
+    FolderOrder,
+}
+
+/// How long a navi with refills goes with no HP lost before its HP is full
+/// again: a second and a half. The HUD's HP number rolls down to what a hit
+/// left in under a second (an eighth of the way and 2 more a tick), so a
+/// combo's damage is read before the refill rolls it back up, and the
+/// refill doesn't land in the combo.
+pub const REFILL_REST: u32 = 90;
+
+/// What live play follows of a navi's HP for its refills.
+#[derive(Clone, Copy, Debug, Default)]
+struct Refill {
+    /// Its HP before the tick just run, and the ticks since it last fell.
+    hp: Option<u16>,
+    rest: u32,
+}
+
 /// Plays a set from the keyboard, round after round to its end: the local
 /// player is the left navi, with their own custom screen; the right navi
 /// is an [`Opponent`]'s (by default one that stands still, and whose custom
-/// screen picks the first chip it can and presses OK).
+/// screen picks the first chip it can and presses OK). A training session's
+/// options ([`Training`]) change the battle between its ticks.
 pub struct LivePlayer {
     set: Set,
     /// Ticks played since the start, through every round (a frame's number).
@@ -389,6 +471,62 @@ pub struct LivePlayer {
     /// The seed the opponent's random presses start from, and them.
     seed: u64,
     masher: Masher,
+    training: Training,
+    /// Each side's navi's HP, followed for its refills.
+    refill: [Refill; 2],
+    /// The order each side's battle folder is in this round.
+    arranged: [ChipDraw; 2],
+    /// The opponent's recording: its buttons, a tick of the fight running
+    /// at a time; whether the local player is driving it to record them
+    /// (`record_opponent`), the local player's buttons the tick before (for
+    /// START's press), and where its playing is.
+    recording: Vec<u16>,
+    recording_now: bool,
+    last_keys: u16,
+    played: usize,
+    /// What the host's second pad holds this tick, while it has one.
+    second_pad: Option<u16>,
+}
+
+/// The longest recording: a minute of the fight. One that reaches it ends
+/// as START would end it.
+pub const RECORDING_MOST: usize = 3584;
+
+/// Put what is left of `side`'s battle folder in `draw`'s order: the
+/// folder's own (`saved`, from its top), with no Regular chip first and no
+/// tag pair, as a game's unshuffled folder has; or the round's shuffle (its
+/// setup's battle folder), with its Regular chip first and its tag pair if
+/// no custom screen has dealt from it yet. A chip the order hasn't (none a
+/// folder's own) goes last.
+fn arrange(b: &mut Battle, side: usize, draw: ChipDraw, saved: &SavedFolder) {
+    let dealt = b.custom.sides[side].screen.is_some();
+    let setup = &b.setup.players[side];
+    let (order, regular, tag_pair): (Vec<FolderChip>, bool, Option<u8>) = match draw {
+        ChipDraw::FolderOrder => (saved.chips.to_vec(), false, None),
+        ChipDraw::Shuffled => {
+            let order = setup.folder.chips.iter().flatten().copied().collect();
+            (order, !dealt && setup.folder.regular_pending, setup.console.tag_pair.filter(|_| !dealt))
+        }
+    };
+    let folder = &mut b.custom.sides[side].folder;
+    let mut left: Vec<FolderChip> = folder.chips.iter().flatten().copied().collect();
+    let mut placed: Vec<FolderChip> = Vec::with_capacity(left.len());
+    for chip in order {
+        if let Some(at) = left.iter().position(|c| *c == chip) {
+            placed.push(left.remove(at));
+        }
+    }
+    placed.append(&mut left);
+    folder.chips = std::array::from_fn(|i| placed.get(i).copied());
+    folder.regular_pending = regular;
+    b.consoles[side].tag_pair = tag_pair;
+}
+
+/// Whether the fight runs on the tick after `b`: what the opponent's
+/// recording is made of and played on (not the turn's banner, the custom
+/// screen, the game's pause or a round decided).
+fn fight_runs(b: &Battle) -> bool {
+    b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING && !b.paused && !b.is_battle_over()
 }
 
 impl LivePlayer {
@@ -399,7 +537,125 @@ impl LivePlayer {
     /// A set against `opponent`, whose random presses start from `seed`,
     /// the same each time the set starts.
     pub fn against(set: Set, opponent: Opponent, seed: u64) -> LivePlayer {
-        LivePlayer { set, ticks: 0, round: 1, opponent, held: false, seed, masher: masher(seed) }
+        LivePlayer {
+            set,
+            ticks: 0,
+            round: 1,
+            opponent,
+            held: false,
+            seed,
+            masher: masher(seed),
+            training: Training::default(),
+            refill: Default::default(),
+            arranged: [ChipDraw::Shuffled; 2],
+            recording: Vec::new(),
+            recording_now: false,
+            last_keys: 0,
+            played: 0,
+            second_pad: None,
+        }
+    }
+
+    /// What a second pad of the host's holds from the next tick, while it
+    /// has one (none: it has no second pad): the opponent's buttons, when
+    /// that is its choice ([`InFight::SecondPad`]).
+    pub fn set_second_pad(&mut self, held: Option<u16>) {
+        self.second_pad = held;
+    }
+
+    /// Record the opponent from the next tick: the local player drives it
+    /// with their own buttons from wherever it stands (their own navi
+    /// stands still meanwhile), and each tick the fight runs its buttons
+    /// are kept, until START (pressed anywhere but on the custom screen,
+    /// where their buttons are their own screen's as ever, and the
+    /// opponent's screen does what it does) or [`RECORDING_MOST`] ticks.
+    /// Then the opponent plays it ([`InFight::PlaysRecording`]). The
+    /// recording before it is gone.
+    pub fn record_opponent(&mut self) {
+        self.recording.clear();
+        self.recording_now = true;
+        // (A START held as it begins isn't a press.)
+        self.last_keys = keys::START;
+    }
+
+    /// End the recording being made, as START does: the opponent plays it,
+    /// if it holds anything (else it does what it did). Nothing if none is
+    /// being made.
+    pub fn stop_recording(&mut self) {
+        if !std::mem::take(&mut self.recording_now) {
+            return;
+        }
+        self.played = 0;
+        if !self.recording.is_empty() {
+            self.opponent.in_fight = InFight::PlaysRecording;
+        }
+    }
+
+    /// Whether the local player is driving the opponent to record it.
+    pub fn recording_now(&self) -> bool {
+        self.recording_now
+    }
+
+    /// How many ticks the recording holds.
+    pub fn recorded(&self) -> usize {
+        self.recording.len()
+    }
+
+    /// The same, with a training session's options from its first tick.
+    pub fn with_training(mut self, training: Training) -> LivePlayer {
+        self.training = training;
+        self
+    }
+
+    /// The set it plays.
+    pub fn set(&self) -> &Set {
+        &self.set
+    }
+
+    /// The training session's options.
+    pub fn training(&self) -> Training {
+        self.training
+    }
+
+    /// Have the training session's options change the battle `b` (the
+    /// set's, as it stands) from now: at once, and before every tick after
+    /// (`Driver::prepare`). A navi whose refills come on with HP missing has
+    /// it back at once.
+    pub fn set_training(&mut self, training: Training, b: &mut Battle) {
+        let was = std::mem::replace(&mut self.training, training);
+        for side in 0..2 {
+            if training.refills[side] && !was.refills[side] {
+                self.refill[side].rest = REFILL_REST;
+            }
+        }
+        self.apply_training(b);
+    }
+
+    /// The options on `b` as it stands: what [`Driver::prepare`] does, with
+    /// no tick counted.
+    fn apply_training(&mut self, b: &mut Battle) {
+        let over = b.is_battle_over();
+        for side in 0..2 {
+            let Some(r) = b.player(side as u8) else { continue };
+            let navi = b.objects.get_mut(r);
+            // (A navi at 0 is being deleted, and a round that is over is
+            // decided: those go on.)
+            if self.training.refills[side] && self.refill[side].rest >= REFILL_REST && navi.hp > 0 && navi.hp < navi.max_hp && !over {
+                navi.hp = navi.max_hp;
+            }
+            self.refill[side].hp = Some(navi.hp);
+        }
+        // (The gauge runs from each custom screen's end until the next opens, and not after the round is decided.)
+        if self.training.full_gauge && b.gauge.enabled && b.gauge.value < CustomGauge::FULL {
+            b.gauge.value = CustomGauge::FULL;
+        }
+        // (A custom screen being shown deals from where its folder's chips are: it keeps them there.)
+        for side in 0..2 {
+            if self.arranged[side] != self.training.chip_draw && b.round.mode != mode::CUSTOM {
+                arrange(b, side, self.training.chip_draw, &self.set.folders()[side]);
+                self.arranged[side] = self.training.chip_draw;
+            }
+        }
     }
 
     /// What the opponent does.
@@ -416,18 +672,56 @@ impl LivePlayer {
         self.opponent = opponent;
     }
 
-    /// The opponent's buttons on side `side` this tick.
-    fn opponent_buttons(&mut self, b: &Battle, side: usize) -> u16 {
+    /// The opponent's buttons on side `side` this tick (`keys`: the local
+    /// player's, which drive it while it is recorded).
+    fn opponent_buttons(&mut self, b: &Battle, side: usize, keys: u16) -> u16 {
         const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
         let mashed = self.masher.buttons();
+        // (START outside the custom screen is the pause's, the local player's alone: the game's own pause, in a
+        // round that pauses itself.)
+        if let Some(held) = self.second_pad.filter(|_| self.opponent.in_fight == InFight::SecondPad && !self.recording_now) {
+            return if b.round.mode == mode::CUSTOM { held } else { held & !keys::START };
+        }
         if b.round.mode == mode::CUSTOM {
             return custom_buttons(b, side, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
+        }
+        if self.recording_now {
+            let driven = keys & !keys::START;
+            if fight_runs(b) {
+                self.recording.push(driven);
+            }
+            return driven;
         }
         match self.opponent.in_fight {
             InFight::StandsStill => 0,
             InFight::MovesAround => mashed & MOVES,
             InFight::AttacksAtRandom => mashed,
+            // (Held, its place is held too: it plays on from there.)
+            InFight::PlaysRecording if fight_runs(b) && !self.recording.is_empty() && !self.held => {
+                let at = self.played % self.recording.len();
+                self.played = at + 1;
+                self.recording[at]
+            }
+            InFight::PlaysRecording | InFight::SecondPad => 0,
         }
+    }
+
+    /// The local player's buttons this tick: their own navi's, or none
+    /// while they drive the opponent to record it; and START's press ends
+    /// that recording (asked before the opponent's buttons: it plays the
+    /// recording from this tick).
+    fn own_buttons(&mut self, b: &Battle, keys: u16) -> u16 {
+        if !self.recording_now {
+            return keys;
+        }
+        let pressed = keys & !std::mem::replace(&mut self.last_keys, keys);
+        if b.round.mode == mode::CUSTOM {
+            return keys;
+        }
+        if pressed & keys::START != 0 || self.recording.len() >= RECORDING_MOST {
+            self.stop_recording();
+        }
+        0
     }
 }
 
@@ -480,14 +774,35 @@ impl Driver for LivePlayer {
         self.ticks = 0;
         self.round = 1;
         self.masher = masher(self.seed);
+        self.refill = Default::default();
+        self.arranged = [ChipDraw::Shuffled; 2];
+        // (A recording being made ends; the one made plays from its start.)
+        self.stop_recording();
+        self.played = 0;
         self.set.start()
+    }
+
+    /// The training session's options on the battle the last tick left:
+    /// each navi with refills that lost no HP for [`REFILL_REST`] ticks has
+    /// all of it back.
+    fn prepare(&mut self, b: &mut Battle) {
+        if self.training == Training::default() && self.arranged == [ChipDraw::Shuffled; 2] {
+            return;
+        }
+        for side in 0..2 {
+            let hp = b.player(side as u8).map(|r| b.objects.get(r).hp);
+            let f = &mut self.refill[side];
+            f.rest = if matches!((f.hp, hp), (Some(was), Some(now)) if now < was) { 0 } else { f.rest.saturating_add(1) };
+        }
+        self.apply_training(b);
     }
 
     fn next(&mut self, b: &Battle, keys: u16) -> Option<Step> {
         self.ticks += 1;
         let local = b.setup.local_side as usize;
+        let own = self.own_buttons(b, keys);
         // (Held, the opponent's presses are made as ever, and go nowhere.)
-        let buttons = [0, 1].map(|side| if side == local { keys } else { self.opponent_buttons(b, side) * !self.held as u16 });
+        let buttons = [0, 1].map(|side| if side == local { own } else { self.opponent_buttons(b, side, keys) * !self.held as u16 });
         // (The buttons are the whole input, as a netplay peer's are.)
         let TickInput { players, events } = nettai_netplay::standin::tick_input(b, buttons);
         Some(Step { input: players, events, frame: Some(self.ticks) })
@@ -497,6 +812,9 @@ impl Driver for LivePlayer {
         let after = self.set.after(b, b.setup.local_side)?;
         if matches!(after, After::Round(_)) {
             self.round += 1;
+            // (The next round's folders are shuffled as its start, and its navis are new.)
+            self.arranged = [ChipDraw::Shuffled; 2];
+            self.refill = Default::default();
         }
         Some(after)
     }
@@ -505,8 +823,18 @@ impl Driver for LivePlayer {
         format!("live round {} tick {}", self.round, self.ticks)
     }
 
+    /// (A set changed by a training session's options is no match's: it
+    /// isn't recorded.)
     fn record(&mut self) -> bool {
-        self.ticks == 0
+        self.ticks == 0 && self.training == Training::default()
+    }
+
+    fn live(&self) -> Option<&LivePlayer> {
+        Some(self)
+    }
+
+    fn live_mut(&mut self) -> Option<&mut LivePlayer> {
+        Some(self)
     }
 
     fn opponent(&self) -> Option<Opponent> {
@@ -701,7 +1029,7 @@ mod tests {
             };
             let (hand, moved, attacked, presses) = run();
             assert_eq!(hand, Some(if opponent.on_custom_screen == OnCustomScreen::PicksNothing { 0 } else { 1 }), "{opponent:?}");
-            assert_eq!(moved, opponent.in_fight != InFight::StandsStill, "{opponent:?}");
+            assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded and no second pad, it stands still");
             assert_eq!(attacked, opponent.in_fight == InFight::AttacksAtRandom, "{opponent:?}");
             assert_eq!(run().3, presses, "{opponent:?}: the same presses again");
         }
@@ -763,6 +1091,7 @@ mod tests {
                         assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
                         attacked += (pressed & !MOVES != 0) as u32;
                     }
+                    InFight::PlaysRecording | InFight::SecondPad => unreachable!("not chosen here"),
                 }
             }
             let turn = b.round.turn;
@@ -776,6 +1105,462 @@ mod tests {
         assert!(stood > 300 && moved > 100 && attacked > 100, "{stood} ticks standing, {moved} moving, {attacked} attacking");
         assert!(hands.len() >= 2, "{hands:?}");
         assert_eq!((hands[0], hands[1]), (0, 1), "no chip from the first screen, the first chip from the second: {hands:?}");
+    }
+
+    /// The opponent's buttons as live play pressed them before the training
+    /// session's options and the dummy's recording and second pad (2026-10-12,
+    /// nettai-ui at 6834a06ca), frozen here: the seed's presses every tick,
+    /// taken or not; on the custom screen its choice's presses.
+    struct FrozenOpponent {
+        opponent: Opponent,
+        masher: Masher,
+        ticks: u32,
+    }
+
+    impl FrozenOpponent {
+        fn buttons(&mut self, b: &Battle) -> u16 {
+            const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
+            self.ticks += 1;
+            let mashed = self.masher.buttons();
+            if b.round.mode == mode::CUSTOM {
+                return custom_buttons(b, 1, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
+            }
+            match self.opponent.in_fight {
+                InFight::StandsStill => 0,
+                InFight::MovesAround => mashed & MOVES,
+                InFight::AttacksAtRandom => mashed,
+                // (Nothing recorded, no second pad: it stands still.)
+                InFight::PlaysRecording | InFight::SecondPad => 0,
+            }
+        }
+    }
+
+    /// A set of `m` played as a training session plays it, with every
+    /// option at its normal value, through the session (whose driver's
+    /// hooks run before every tick), beside the same set stepped by hand
+    /// as live play stepped it before those options: the two are the same
+    /// battle, tick for tick, by digest. The local player mashes in the
+    /// fight and picks through each custom screen. The digests, folded (for
+    /// the test's output), the rounds that ended and whether the set did.
+    fn same_as_before(content: &Arc<Content>, m: &nettai_match::Match, seed: u32, opponent: Opponent, ticks: u32) -> (u64, u32, bool) {
+        let set = Set::of(content, m, seed);
+        let mut session = crate::session::Session::new(Box::new(LivePlayer::against(set.clone(), opponent, seed as u64)));
+        let mut frozen = FrozenOpponent { opponent, masher: masher(seed as u64), ticks: 0 };
+        let mut by_hand = set.start();
+        let mut player = Masher::new(seed as u64 ^ 0x5EED);
+        let (mut fold, mut rounds) = (0u64, 0);
+        for tick in 0..ticks {
+            let mashed = player.buttons();
+            let keys = if by_hand.round.mode == mode::CUSTOM { bot_buttons(&by_hand, 0, tick) } else { mashed };
+            let them = frozen.buttons(&by_hand);
+            let TickInput { players, events } = nettai_netplay::standin::tick_input(&by_hand, [keys, them]);
+            by_hand.tick(&players, events);
+            let went_on = session.step(keys);
+            // (A round that ended is the next one's battle at its start, as the session shows it.)
+            match set.after(&by_hand, 0) {
+                None => assert!(went_on, "{opponent:?}: tick {tick}"),
+                Some(After::Round(next)) => {
+                    by_hand = *next;
+                    rounds += 1;
+                }
+                Some(_) => {
+                    assert_eq!(session.battle.digest(), by_hand.digest(), "{opponent:?}: tick {tick}");
+                    assert!(session.finished, "{opponent:?}: the set ended at tick {tick}");
+                    return (fold ^ by_hand.digest(), rounds + 1, true);
+                }
+            }
+            assert_eq!(session.battle.digest(), by_hand.digest(), "{opponent:?}: tick {tick}");
+            fold = fold.rotate_left(5) ^ by_hand.digest();
+        }
+        (fold, rounds, false)
+    }
+
+    /// A set played with the training session's options all at their
+    /// normal values is the set live play played before there were any:
+    /// every game, every opponent, a long round and a short set's rounds
+    /// to its end.
+    #[test]
+    fn a_set_with_the_normal_options_is_the_set_as_before() {
+        for game in ["exe4", "exe5", "exe6"] {
+            let content = match game {
+                "exe4" => nettai_match::testing::exe4_content(),
+                "exe5" => nettai_match::testing::exe5_content(),
+                _ => nettai_match::testing::exe6_content(),
+            };
+            let mut long = nettai_match::pick::live(&content, game, 5, None).unwrap();
+            for s in &mut long.sides {
+                s.set_fact(&content, "hp", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1000))]).unwrap();
+            }
+            let mut folds = Vec::new();
+            for opponent in every_opponent() {
+                folds.push(same_as_before(&content, &long, 5, opponent, 1500).0);
+            }
+            let short = short_set::duel(&content, game, 7, 3);
+            let (fold, rounds, ended) = same_as_before(&content, &short, 7, Opponent { in_fight: InFight::MovesAround, on_custom_screen: OnCustomScreen::PicksFirst }, 30_000);
+            assert!(ended && rounds >= 2, "{game}: the short set played {rounds} rounds and ended: {ended}");
+            folds.push(fold);
+            eprintln!("{game}: {folds:x?}");
+        }
+    }
+
+    /// A navi's HP and its full HP, by side, in `b` (none before it is on the field).
+    fn hp(b: &Battle, side: u8) -> (u16, u16) {
+        b.player(side).map_or((0, 0), |r| (b.objects.get(r).hp, b.objects.get(r).max_hp))
+    }
+
+    /// With refills, a navi's HP is full again [`REFILL_REST`] ticks after
+    /// it last lost any, and not before: shot again and again (the buster
+    /// every few ticks), the dummy's HP goes down and stays down while the
+    /// shots land, and comes back once they stop; the other side's, without
+    /// refills, is left as it goes. Turned on with HP missing, at once. And
+    /// a set with refills isn't recorded.
+    #[test]
+    fn hp_refills_once_a_hit_is_over() {
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let refills = Training { refills: [false, true], ..Training::default() };
+        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent { in_fight: InFight::StandsStill, on_custom_screen: OnCustomScreen::PicksFirst }, 9).with_training(refills);
+        assert!(!live.record(), "a set with the options isn't recorded");
+        let mut s = crate::session::Session::new(Box::new(live));
+        let (mut lost_at, mut losses, mut refilled) = (None, 0, 0);
+        for tick in 0..3000u32 {
+            let b = &s.battle;
+            // The buster for a stretch, then nothing; on the custom screen, a chip and OK.
+            let keys = if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else if tick < 1200 { short_set::shooter(b, 0, tick) } else { 0 };
+            let before = hp(&s.battle, 1).0;
+            assert!(s.step(keys), "tick {tick}");
+            let (now, max) = hp(&s.battle, 1);
+            if now < before && before > 0 {
+                lost_at = Some(tick);
+                losses += 1;
+            } else if now > before && before > 0 {
+                assert_eq!(now, max, "tick {tick}: all of it");
+                assert_eq!(lost_at.map(|at| tick - at), Some(REFILL_REST + 1), "tick {tick}: a rest after the last hit");
+                refilled += 1;
+            }
+        }
+        assert!(losses > 10 && refilled > 0, "{losses} hits, {refilled} refills");
+        assert_eq!(hp(&s.battle, 1).0, hp(&s.battle, 1).1, "full once the shots stopped");
+        assert!(!s.battle.is_battle_over());
+        // The player's, without refills (its HP taken down by hand: the dummy never shoots).
+        let r = s.battle.player(0).unwrap();
+        s.battle.objects.get_mut(r).hp -= 100;
+        for _ in 0..200 {
+            s.step(0);
+        }
+        assert_eq!(hp(&s.battle, 0).0 + 100, hp(&s.battle, 0).1, "no refills: as it goes");
+        // Refills turned on with HP missing: at once.
+        let both = Training { refills: [true, true], ..Training::default() };
+        s.driver.live_mut().unwrap().set_training(both, &mut s.battle);
+        assert_eq!(hp(&s.battle, 0).0, hp(&s.battle, 0).1);
+    }
+
+    /// With the gauge always full, it is full whenever it runs, from the
+    /// tick after each custom screen ends, and the engine flags it full (L
+    /// or R opens the screen) on the first tick it fills, once the turn's
+    /// start lets it (about a second, the turn's banner); without, it fills
+    /// at its rate, ten seconds a turn. Turned on mid-fight, at once.
+    #[test]
+    fn the_gauge_is_always_full() {
+        use nettai_battle::battle::battle_flags;
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        for full_gauge in [false, true] {
+            let live = LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9).with_training(Training { full_gauge, ..Training::default() });
+            let mut s = crate::session::Session::new(Box::new(live));
+            let (mut opened, mut running, mut waits) = (0, 0u32, Vec::new());
+            for tick in 0..6000u32 {
+                let b = &s.battle;
+                // On the custom screen a chip and OK; in the fight L as soon as the gauge is full.
+                let keys = if b.round.mode == mode::CUSTOM {
+                    bot_buttons(b, 0, tick)
+                } else if b.round.flags & battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+                    keys::L
+                } else {
+                    0
+                };
+                let (custom, was_full) = (b.round.mode == mode::CUSTOM, b.round.flags & battle_flags::GAUGE_FULL != 0);
+                assert!(s.step(keys), "tick {tick}");
+                let b = &s.battle;
+                opened += (!custom && b.round.mode == mode::CUSTOM) as u32;
+                if b.gauge.enabled && b.round.mode == mode::FIGHTING && !was_full {
+                    running += 1;
+                    if full_gauge && running > 1 {
+                        assert_eq!(b.gauge.value, CustomGauge::FULL, "tick {tick}");
+                    }
+                    if b.round.flags & battle_flags::GAUGE_FULL != 0 {
+                        waits.push(running);
+                        running = 0;
+                    }
+                }
+            }
+            if full_gauge {
+                assert!(opened >= 10 && waits.iter().all(|&w| w < 100), "{opened} screens, waits {waits:?}");
+            } else {
+                assert!(opened >= 2 && waits.iter().all(|&w| w > 500), "{opened} screens, waits {waits:?}");
+            }
+        }
+        // Turned on in the fight, with the gauge running: full at once.
+        let mut s = crate::session::Session::new(Box::new(LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9)));
+        while !(s.battle.gauge.enabled && s.battle.round.mode == mode::FIGHTING && s.battle.gauge.value > 0) {
+            let keys = if s.battle.round.mode == mode::CUSTOM { bot_buttons(&s.battle, 0, s.ticks as u32) } else { 0 };
+            assert!(s.step(keys) && s.ticks < 3000);
+        }
+        s.driver.live_mut().unwrap().set_training(Training { full_gauge: true, ..Training::default() }, &mut s.battle);
+        assert_eq!(s.battle.gauge.value, CustomGauge::FULL);
+    }
+
+    /// The opponent recorded: from the fight, the local player's buttons
+    /// drive it (their own navi stands still) and are kept a tick of the
+    /// fight running at a time, until START; then it plays them, over and
+    /// over, and the player has their navi back. A set started over plays
+    /// the recording from its start.
+    #[test]
+    fn the_opponent_plays_the_recording_made_of_it() {
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9);
+        let mut b = live.start();
+        let screen = |tick: u32, b: &Battle| if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { 0 };
+        play_until(&mut live, &mut b, 3000, screen, fight_runs);
+        live.record_opponent();
+        assert!(live.recording_now());
+        let pattern = [keys::UP, keys::UP, 0, keys::B, 0, keys::DOWN, keys::DOWN, 0, keys::A, 0, keys::LEFT, keys::LEFT, 0];
+        let mut recorded = Vec::new();
+        for tick in 0..400u32 {
+            let custom = b.round.mode == mode::CUSTOM;
+            let keys = if custom { bot_buttons(&b, 0, tick) } else { pattern[tick as usize % pattern.len()] };
+            let runs = fight_runs(&b);
+            let step = live.next(&b, keys).unwrap();
+            if !custom {
+                assert_eq!((step.input[0].held, step.input[1].held), (0, keys), "tick {tick}: the player drives the dummy");
+                if runs {
+                    recorded.push(keys);
+                }
+            }
+            b.tick(&step.input, step.events);
+        }
+        assert_eq!((live.recording_now(), live.recorded()), (true, recorded.len()));
+        assert!(recorded.len() > 200, "{} ticks recorded", recorded.len());
+        // START: the dummy plays it, from this tick on, over and over; the player's buttons are their navi's.
+        let mut played = Vec::new();
+        for tick in 0..2000u32 {
+            let custom = b.round.mode == mode::CUSTOM;
+            let keys = if tick == 0 { keys::START } else if custom { bot_buttons(&b, 0, tick) } else { keys::B * (tick % 9 == 0) as u16 };
+            let runs = fight_runs(&b);
+            let step = live.next(&b, keys).unwrap();
+            if tick == 0 {
+                assert!(!live.recording_now() && live.opponent().in_fight == InFight::PlaysRecording);
+            }
+            if !custom {
+                assert_eq!(step.input[0].held, if tick == 0 { 0 } else { keys }, "tick {tick}");
+                if runs {
+                    played.push(step.input[1].held);
+                } else {
+                    assert_eq!(step.input[1].held, 0, "tick {tick}");
+                }
+            }
+            b.tick(&step.input, step.events);
+        }
+        assert!(played.len() > 2 * recorded.len(), "{} played", played.len());
+        let looped: Vec<u16> = recorded.iter().cycle().take(played.len()).copied().collect();
+        assert_eq!(played, looped);
+        // Started over: from its start.
+        let mut b = live.start();
+        play_until(&mut live, &mut b, 3000, screen, fight_runs);
+        assert_eq!(live.next(&b, 0).unwrap().input[1].held, recorded[0]);
+    }
+
+    /// A second pad drives the opponent while that is its choice: what it
+    /// holds is the opponent's buttons, in the fight and on its custom
+    /// screen (the pad picking its chips); with no pad the opponent stands
+    /// still and its screen does as its choice says; with another choice
+    /// the pad is nobody's.
+    #[test]
+    fn a_second_pad_drives_the_opponent() {
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent { in_fight: InFight::SecondPad, ..Opponent::default() }, 9);
+        let mut b = live.start();
+        let mut custom_ticks = 0;
+        for tick in 0..3000u32 {
+            // The second pad: on the custom screen as the player's own is pressed, in the fight up and down, and
+            // L once the gauge is full.
+            let full = b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0;
+            let pad = if b.round.mode == mode::CUSTOM {
+                bot_buttons(&b, 1, tick)
+            } else if full && tick % 2 == 1 {
+                keys::L
+            } else {
+                [keys::UP, keys::UP, 0, 0, keys::DOWN, keys::DOWN, 0, 0][tick as usize % 8]
+            };
+            let mine = if b.round.mode == mode::CUSTOM { bot_buttons(&b, 0, tick) } else { 0 };
+            let with_pad = tick < 2000;
+            live.set_second_pad(with_pad.then_some(pad));
+            custom_ticks += (b.round.mode == mode::CUSTOM) as u32;
+            let step = live.next(&b, mine).unwrap();
+            if with_pad {
+                assert_eq!(step.input[1].held, pad, "tick {tick}");
+                assert!(b.round.mode == mode::CUSTOM || pad & keys::START == 0);
+            } else if b.round.mode != mode::CUSTOM {
+                assert_eq!(step.input[1].held, 0, "tick {tick}: no pad");
+            }
+            b.tick(&step.input, step.events);
+        }
+        assert!(custom_ticks > 0 && b.round.turn >= 2, "the pad's custom screens went on: turn {}", b.round.turn);
+        while b.round.mode == mode::CUSTOM {
+            let step = live.next(&b, bot_buttons(&b, 0, b.round.ticks)).unwrap();
+            b.tick(&step.input, step.events);
+        }
+        live.set_second_pad(Some(keys::START | keys::B));
+        assert_eq!(live.next(&b, 0).unwrap().input[1].held, keys::B, "the pause is the local player's");
+        live.set_opponent(Opponent::default());
+        live.set_second_pad(Some(keys::B));
+        assert_eq!(live.next(&b, 0).unwrap().input[1].held, 0, "standing still: the pad is nobody's");
+    }
+
+    /// The options on a battle stepping in the game's own pause, as a
+    /// training menu holds one (a round that pauses itself, START given and
+    /// nothing else): the refill, the full gauge and the folder's order are
+    /// applied in the pause and leave it as it is, the recording neither
+    /// grows nor plays there, and START takes the fight out of it as ever.
+    #[test]
+    fn the_options_act_in_the_games_own_pause() {
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let mut first = m.round(&content, 5);
+        first.host_keys.pause = false;
+        let set = Set::new(content.clone(), first, [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap()));
+        let mut live = LivePlayer::against(set, Opponent::default(), 9);
+        let mut b = live.start();
+        let screen = |tick: u32, b: &Battle| if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { 0 };
+        play_until(&mut live, &mut b, 3000, screen, fight_runs);
+        // A recording of a few ticks, played; the dummy's HP down; the gauge running.
+        live.record_opponent();
+        keys_in_turn(&mut live, &mut b, &[keys::UP, keys::UP, 0, keys::DOWN, keys::DOWN, 0, keys::START]);
+        assert_eq!((live.recorded(), live.opponent().in_fight), (6, InFight::PlaysRecording));
+        let r = b.player(1).unwrap();
+        b.objects.get_mut(r).hp -= 100;
+        // The game's pause: START, and no buttons.
+        keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
+        assert_eq!(b.paused_by(), Some(0));
+        let options = Training { refills: [true, true], full_gauge: true, chip_draw: ChipDraw::FolderOrder };
+        live.set_training(options, &mut b);
+        let played = live.played;
+        for tick in 0..300u32 {
+            let step = live.next(&b, 0).unwrap();
+            assert_eq!(step.input[1].held, 0, "tick {tick}: nothing played in the pause");
+            Driver::prepare(&mut live, &mut b);
+            b.tick(&step.input, step.events);
+            assert_eq!(b.paused_by(), Some(0), "tick {tick}: still in the game's pause");
+        }
+        assert_eq!(live.played, played, "the recording's place held");
+        assert_eq!(hp(&b, 1).0, hp(&b, 1).1, "the refill, in the pause");
+        assert_eq!(b.gauge.value, CustomGauge::FULL);
+        let saved = live.set().folders()[0].chips;
+        let left: Vec<FolderChip> = b.custom.sides[0].folder.chips.iter().flatten().copied().collect();
+        assert!(in_order(&left, &saved), "in the folder's order: {left:?}");
+        // START: the fight goes on, the recording with it.
+        keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
+        play_until(&mut live, &mut b, 100, |_, _| 0, fight_runs);
+        assert_eq!(b.paused_by(), None);
+        let next = live.recording[live.played % live.recording.len()];
+        assert_eq!(live.next(&b, 0).unwrap().input[1].held, next, "the recording plays on from where it was");
+    }
+
+    /// What is left of each side's battle folder as each custom screen
+    /// deals from it (in the order it deals), and the round's own shuffle
+    /// of it, through `screens` screens of a set of `m`: the player and the
+    /// dummy each pick the first chip they can; the player opens a screen
+    /// as soon as the gauge is full, and from the `shoot`th screen on shoots
+    /// instead (a match of 1 HP: the round ends). `changes`: the options
+    /// set in the fight after that many screens.
+    fn deals(content: &Arc<Content>, m: &nettai_match::Match, training: Training, changes: &[(usize, Training)], shoot: usize, screens: usize) -> Vec<[(Vec<FolderChip>, Vec<FolderChip>); 2]> {
+        let live = LivePlayer::against(Set::of(content, m, 5), Opponent::default(), 9).with_training(training);
+        let mut s = crate::session::Session::new(Box::new(live));
+        let mut out = Vec::new();
+        let mut was_open = false;
+        for tick in 0..60_000u32 {
+            let b = &s.battle;
+            let open = b.round.mode == mode::CUSTOM && (0..2).all(|side| b.custom.sides[side].screen.as_ref().is_some_and(|x| x.phase == Phase::Choosing));
+            if open && !was_open {
+                out.push([0, 1].map(|side| {
+                    let left = b.custom.sides[side].folder.chips.iter().flatten().copied().collect();
+                    (left, b.setup.players[side].folder.chips.iter().flatten().copied().collect())
+                }));
+                if out.len() == screens {
+                    break;
+                }
+            }
+            was_open = open;
+            if b.round.mode == mode::FIGHTING
+                && let Some(&(_, then)) = changes.iter().find(|(after, then)| *after == out.len() && s.driver.live().unwrap().training() != *then)
+            {
+                s.driver.live_mut().unwrap().set_training(then, &mut s.battle);
+            }
+            let b = &s.battle;
+            let keys = if b.round.mode == mode::CUSTOM {
+                bot_buttons(b, 0, tick)
+            } else if out.len() >= shoot {
+                short_set::shooter(b, 0, tick)
+            } else if b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0 && tick % 2 == 1 {
+                keys::L
+            } else {
+                0
+            };
+            assert!(s.step(keys), "tick {tick}");
+        }
+        assert_eq!(out.len(), screens);
+        out
+    }
+
+    /// Whether `part` is in `whole`'s order (each of its chips found
+    /// further on than the last).
+    fn in_order(part: &[FolderChip], whole: &[FolderChip]) -> bool {
+        let mut rest = whole.iter();
+        part.iter().all(|c| rest.any(|w| w == c))
+    }
+
+    /// Folder order deals each folder from its top, every screen and every
+    /// round, for both sides: what is left of the folder is in the folder's
+    /// order, and a round's first screen deals the whole folder as it was
+    /// saved (no Regular chip first). Shuffled deals as each round shuffled
+    /// it. Set in the fight, from the next screen on; set back, the next
+    /// deals the round's shuffle again.
+    #[test]
+    fn folder_order_deals_from_the_top() {
+        let content = nettai_match::testing::exe6_content();
+        let m = short_set::duel(&content, "exe6", 7, 3);
+        let saved = Set::of(&content, &m, 5).folders().map(|f| f.chips.to_vec());
+        let folder_order = Training { chip_draw: ChipDraw::FolderOrder, ..Training::default() };
+        // (Three screens of the first round, then the second round's first: two rounds won end the set.)
+        let ordered = deals(&content, &m, folder_order, &[], 3, 4);
+        let mut firsts = 0;
+        for (n, deal) in ordered.iter().enumerate() {
+            for side in 0..2 {
+                let (left, _) = &deal[side];
+                assert!(in_order(left, &saved[side]), "screen {n}, side {side}: {left:?}");
+                if left.len() == 30 {
+                    assert_eq!(left, &saved[side], "screen {n}, side {side}: a round's first");
+                    firsts += 1;
+                }
+            }
+        }
+        assert!(firsts >= 4, "two rounds' first screens, both sides: {firsts}");
+        let shuffled = deals(&content, &m, Training::default(), &[], 3, 4);
+        for (n, deal) in shuffled.iter().enumerate() {
+            for (side, (left, round)) in deal.iter().enumerate() {
+                assert!(in_order(left, round), "screen {n}, side {side}");
+            }
+        }
+        assert!(shuffled.iter().any(|d| d.iter().zip(&saved).any(|((left, _), saved)| !in_order(left, saved))), "a shuffle isn't the folder's order");
+        // Set after the first screen, and back after the second.
+        let changed = deals(&content, &m, Training::default(), &[(1, folder_order), (2, Training::default())], 99, 3);
+        for side in 0..2 {
+            assert!(in_order(&changed[1][side].0, &saved[side]), "side {side}");
+            assert!(in_order(&changed[2][side].0, &changed[2][side].1), "side {side}");
+        }
+        assert_eq!(changed[0], shuffled[0]);
     }
 
     /// `--save-match` then `--match`: live play's draw for a seed, written

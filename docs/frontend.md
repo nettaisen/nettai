@@ -353,6 +353,22 @@ made alone and changed at any tick of the set (`Player::set_opponent`,
 - **on its custom screen** (`OnCustomScreen`): it picks nothing and presses
   OK, or picks the first chip it can and presses OK (the default).
 
+In the fight it may also play a recording of it (`InFight::PlaysRecording`):
+`LivePlayer::record_opponent` has the local player's buttons drive it from
+the next tick (their own navi gets none), keeping them a tick of the fight
+running at a time (`fight_runs`: the fight's own state, not the turn's
+banner, the custom screen, the game's pause or a round decided), until
+START's press outside the custom screen, `stop_recording`, the set starting
+over, or `RECORDING_MOST` ticks (a minute). On the custom screen the local
+player's buttons are their own screen's, and the opponent's screen does as
+its choice says. Then it plays them, one a tick of the fight running, over
+and over from wherever it stands. It is still buttons alone: what the
+recording changes is what the opponent presses, and nothing of the battle.
+Or a second pad of the host's drives it (`InFight::SecondPad`, the host
+saying what the pad holds each frame with `LivePlayer::set_second_pad`), in
+the fight and on its custom screen; while the host has none, it stands
+still.
+
 Its random presses are seeded (from the set's seed in nettai) and run every
 tick of the set, taken or not: what it presses on a tick goes by the seed,
 the tick, the battle and its choices on that tick, whatever its choices
@@ -361,6 +377,48 @@ player's buttons and nothing else (a recording keeps them, so a set whose
 opponent was changed on the way replays as it was played). The match sets
 up the battle (§6), including its game, rounds, each side's navi, folder,
 forms, patch cards, NaviCust and stats.
+
+**A training session's options** (`driver::Training`, `Player::set_training`,
+`LivePlayer::set_training`; the training menu's Battle rows) change live
+play's battle between its ticks, as a training mode does. They are a host's
+options, not rules of the simulation: the driver applies them to the
+battle's own typed state before each tick (`Driver::prepare`, which the
+session calls before it asks for the tick's inputs; nothing from any other
+driver), and each acts at once when it is set, on the battle as it stands,
+paused or not. With all of them off (the default) the hook does nothing and
+the battle is the set's, a function of its setup and the buttons: a test
+plays a set of each game with them off beside the same set stepped as live
+play stepped it before they existed, and the two agree tick for tick by
+digest (`driver::tests::a_set_with_the_normal_options_is_the_set_as_before`).
+A set with any of them on is no match's: it isn't recorded (`record`
+refuses, and `set_training` is refused while a replay is written).
+
+- **Refills**, by side: the navi's HP (its object's `hp`, back to its
+  `max_hp`) is full again once a hit is over: `REFILL_REST` ticks (a second
+  and a half) after it last lost any. The HUD's number rolls down to what a
+  hit left in under a second, so a combo's damage is read before the
+  refill rolls it back up, and a refill doesn't land inside a combo. A navi
+  at 0 HP is being deleted and is left to it, as is a round already decided:
+  a hit (or hits closer together than the rest) of its whole HP still ends
+  the round. Turned on with HP missing, it is full at once.
+- **The full gauge**: the custom gauge's value is at its full whenever the
+  gauge runs (from each custom screen's end, not after the round is
+  decided). The engine itself then flags it full and plays its sound, on the
+  first tick it fills (`fill_gauge`: none while the battle is paused or
+  dimmed, nor in the final turns, where a full gauge isn't flagged), so the
+  game's own pause is left as it is and L or R opens the custom screen from
+  the turn's start on (about a second, its banner, where without it is ten).
+- **Chip draw** (`ChipDraw`), both sides: as each round shuffled the folder
+  (the default), or in **folder order**, as the games deal a folder they
+  don't shuffle (the battle's effect 0x80 clear, `sub_800A3E4`): from the
+  folder's top as it was saved, no Regular chip first and no tag pair, what
+  a screen leaves unpicked staying on top for the next. It is the battle
+  folder the custom screen deals from (`custom.sides[n].folder`) put in that
+  order: what is left of it, at once outside the custom screen (a screen
+  being shown keeps its deal, and the folder is put in order as it closes)
+  and again as each round starts; set back, what is left is put in the
+  round's own shuffle again (with its Regular chip and tag pair if no screen
+  has dealt yet).
 
 Live play is a set of the rounds the match lists, as a link battle is (the
 original's triple battle: three, best of three; a match may list any number
@@ -2084,7 +2142,9 @@ renderer, the font mode's text renderer and the battle's audio:
   the next tick on (a host's menu over a battle that steps on), and
   `hold_opponent(false)` lets them through again: its choices and its
   random presses go on as they would, so what it presses after is what it
-  would have pressed.
+  would have pressed. `training()` and
+  `set_training(Training { .. })` are live play's too: a training session's
+  options (§2), at once.
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
 - `set_sound_levels(music, effects)` is the host's level for the battle's
