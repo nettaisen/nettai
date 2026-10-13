@@ -501,10 +501,13 @@ impl TextRenderer {
                     i += 1;
                 }
                 None => {
-                    // A run: up to the next mark the layer draws, or to where
-                    // kana and kanji start or end.
+                    // A run: up to the next mark the layer draws, to where
+                    // kana and kanji start or end, or past a comma the next
+                    // word follows at once.
                     let kana = cjk(chars[i].1);
-                    let j = (i + 1..chars.len()).find(|&k| drawn[k].is_some() || cjk(chars[k].1) != kana).unwrap_or(chars.len());
+                    let j = (i + 1..chars.len())
+                        .find(|&k| drawn[k].is_some() || cjk(chars[k].1) != kana || tight_comma(&chars, k - 1))
+                        .unwrap_or(chars.len());
                     let (start, end) = (chars[i].0, chars.get(j).map_or(text.len(), |c| c.0));
                     let (size, rise) = if kana { (kana_size, kana_rise) } else { (size, 0.0) };
                     let s = settings(weight);
@@ -518,6 +521,9 @@ impl TextRenderer {
                             pen += g.advance;
                         }
                     });
+                    if tight_comma(&chars, j - 1) {
+                        pen += letter_glyphs(&mut self.shaper, font, ' ', size, &s).1;
+                    }
                     i = j;
                 }
             }
@@ -643,6 +649,16 @@ impl TextRenderer {
             }
         }
     }
+}
+
+/// Whether the character at `k` is a comma the next word follows at once
+/// ("Lan,this is no time"): the US scripts write no space there, because
+/// the original's fonts give a comma a capital's advance (the dialogue
+/// font's 8 pixels) and the words stand apart; a font's comma is narrow, so
+/// the text layer puts a space's width after it. (Not between digits:
+/// "1,000".)
+fn tight_comma(chars: &[(usize, char)], k: usize) -> bool {
+    chars.get(k).is_some_and(|c| c.1 == ',') && chars.get(k + 1).is_some_and(|c| c.1.is_alphabetic())
 }
 
 /// A letter's glyphs at `size` (frame pixels an em), each with its place
@@ -801,6 +817,20 @@ mod tests {
         // Its layer faded all the way to black: nothing shows.
         let dark = TextItem { fades: [Fade::Black(16), Fade::None], ..item };
         assert!(!lit_columns(dark, depth).iter().any(|&l| l));
+    }
+
+    /// A comma the next word follows at once is drawn with a space after
+    /// it, as the original's wide comma stands; one between digits isn't.
+    #[test]
+    fn a_comma_before_a_word_keeps_the_words_apart() {
+        let mut r = renderer();
+        for role in [Role::Dialogue, Role::Cell] {
+            let w = |r: &mut TextRenderer, s: &str| r.fitted_width(s, role, 10_000);
+            assert!((w(&mut r, "Lan,this") - w(&mut r, "Lan, this")).abs() < 0.01, "{role:?}");
+            assert!(w(&mut r, "1,000") < w(&mut r, "1, 000") - 0.5);
+            let l = r.layout("Lan,this", role, 10_000).clone();
+            assert_eq!(l.glyphs.iter().map(|g| g.unit).collect::<Vec<_>>(), (0..8).collect::<Vec<_>>(), "a glyph a character");
+        }
     }
 
     /// A string too wide for its box is narrowed to it, however much: its
