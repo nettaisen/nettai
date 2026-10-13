@@ -1221,12 +1221,19 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
   it, nothing changes a size, and with motion off the new look is there at once. The motion probe watches it both
   ways and twice over (§13).
 - *Its clock starts at the frame after the press*, not at the press: the ground is pushed, and the colors' fade
-  started, in the app's frame (`Looks::frame`, before Slint draws it, with that frame's time). The press's own work
-  (the screen shown again for the new game, the menu's reel starting its demo) holds the window for about a tenth
-  of a second, and the probe's first run, with the ground pushed at the press, showed the sweep 90% across in the
-  first frame drawn after it; pushed at the next frame, it crosses in four frames (at 144, 203 and 261 ms after the
-  press, 45, 86 and 99% across; done by 316). The window's first frame after a change of game comes about 140 ms
-  after the press either way, which is the change's own work and was so before the looks.
+  started, in the app's frame (`Looks::frame`, before Slint draws it, with that frame's time). The probe's first
+  run, with the ground pushed at the press, showed the sweep 90% across in the first frame drawn after it.
+- *The menu's reel waits for the sweep.* The window's first frame after a change of game begins 5 to 8 ms after
+  the press, but its work was 40 to 57 ms (the motion probe's "the press to its first frame, and its work"): all
+  of it the main menu making the new game's reel, its match, battle and player (23 to 33 ms, on the window's
+  thread, where the content's runtime is), and in the screenshot pass the reel played on to the tick it is held
+  at (12 to 29 ms more). The press, the sound's change and the looks cost nothing measurable. So after a change
+  of game the menu holds its next reel until the sweep has crossed and 60 ms more (`Menu::hold`; none with motion
+  off), the old reel's last picture standing under the sweep, and the new one fades in as a reel always does. The
+  first frame's work is 0.1 to 0.3 ms now, and the sweep shows from it: 39, 82 and 98% across at 79, 137 and 197 ms
+  after the press, done by 258, where before the first frame to show it was at 144 ms, 45% across. (The shots are
+  60 ms apart at the least: taking one holds the window that long.) The cost moved to the frame that makes the
+  reel, after the sweep; the battle's own frames are untouched.
 - *What it costs*: 0.14 MB of generated Rust (10.21 to 10.35 MB: the ground's component 0.08, under its `for`, and
   the rest the theme's colors read where they were constants), and the bundled faces 1.8 MB more (M PLUS 1 at 800,
   with its Japanese).
@@ -1453,10 +1460,12 @@ animation, so it takes a burst of shots through each (a screen leaving and the n
 glide, a change of game sweeping in from the right, from the left and twice over, a value sliding, a press, a
 list opening, a page scrolling, a dialog, the cards and the wipe into a battle, a menu over it), each named for
 the milliseconds since it began. (Before the change of game's bursts it steps once around the games, waiting for
-each to be ready, so that no game's runtime loads, the window still, inside a burst.) It checks and fails on two things: that
-in every shot each control is the size it has at rest, and that a press acts at once (two moves pressed in the
-same instant as a screen change land on the new screen's controls, and a direction held down a scrolling page
-moves the focus at every repeat).
+each to be ready, so that no game's runtime loads, the window still, inside a burst.) It checks and fails on two
+things: that in every shot each control is the size it has at rest, and that a press acts at once (two moves
+pressed in the same instant as a screen change land on the new screen's controls, and a direction held down a
+scrolling page moves the focus at every repeat). And it says, for each burst, how soon the window's first frame
+after the press began and how long the app's work for that frame was (`App::first_frame_after`): a press that
+holds the window shows there, though the shots, each of which holds it some 60 ms itself, can't.
 
 A screen's steps are a file of its own, `src/tour/<name>.rs` (a child module of `tour`, so it has the pass's
 own `write` and `compare`) or the screen's own (`screens/play/tour.rs`), with a function for the pass and one
