@@ -440,11 +440,12 @@ impl<'a> Names<'a> {
     /// A name by `key` from the language's table, else the content's, else
     /// the key, on one line.
     fn pick(&self, key: &str, get: impl Fn(&Strings, &str) -> Option<String>) -> String {
-        self.strings
-            .and_then(|s| get(s, key))
-            .or_else(|| get(&self.content.strings, key))
-            .map(|s| Names::line(&s))
-            .unwrap_or_else(|| nettai_match::ids::local(key).to_string())
+        self.found(key, get).unwrap_or_else(|| nettai_match::ids::local(key).to_string())
+    }
+
+    /// A name by `key` from the language's table, else the content's, on one line; none if neither has one.
+    fn found(&self, key: &str, get: impl Fn(&Strings, &str) -> Option<String>) -> Option<String> {
+        self.strings.and_then(|s| get(s, key)).or_else(|| get(&self.content.strings, key)).map(|s| Names::line(&s))
     }
 
     pub fn navi(&self, navi: nettai_content_api::NaviHandle) -> String {
@@ -462,12 +463,13 @@ impl<'a> Names<'a> {
     /// A background's name (its area's, as the game's menus name it), else
     /// its asset name.
     pub fn background(&self, background: nettai_battle::content::BackgroundId) -> String {
-        self.background_named(nettai_match::ids::background_name(self.content, background).unwrap_or_default())
+        let key = nettai_match::ids::background_name(self.content, background).unwrap_or_default();
+        self.background_named(key).unwrap_or_else(|| nettai_match::ids::local(key).to_string())
     }
 
-    /// A background by its name in the game's pack (`acdc-area`).
-    pub fn background_named(&self, name: &str) -> String {
-        self.pick(name, |s, k| s.background(k).and_then(|b| b.name.clone()))
+    /// What the strings call a background, by its name in the game's pack (`acdc-area`), if they name it.
+    pub fn background_named(&self, name: &str) -> Option<String> {
+        self.found(name, |s, k| s.background(k).and_then(|b| b.name.clone()))
     }
 
     /// An entry of one of the game's collections (a card, a program).
