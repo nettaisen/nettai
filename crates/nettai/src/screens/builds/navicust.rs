@@ -647,6 +647,18 @@ impl Navicust {
                 (self.drag, self.back_due) = (None, None);
                 self.put_away(shell, draft);
             }
+            // (With nothing in hand, a right click on a placed piece takes it off, as Del does; the cursor comes to
+            // it first, as a click's does.)
+            RIGHT_CLICK => {
+                let Some(at) = self.cell_under(shell, value) else { return };
+                shell.nav.used_pointer();
+                self.focus_cell(shell, at);
+                let Some(Some(d)) = &self.data else { return };
+                let parts = grid::placed(draft.content(), draft.side());
+                if let Some(&i) = d.occupied(&parts).get(&at) {
+                    self.take_off(shell, draft, Some(i));
+                }
+            }
             _ => {}
         }
     }

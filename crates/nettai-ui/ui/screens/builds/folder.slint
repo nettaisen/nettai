@@ -149,6 +149,7 @@ component SlotRow inherits Rectangle {
     touch := RowTouch {
         nav: "slot";
         nav-index: root.index;
+        removable: true;
     }
 }
 
@@ -167,6 +168,7 @@ component SlotView inherits Rectangle {
     hit := Focusable {
         nav: "slot";
         nav-index: root.index;
+        removable: true;
     }
 }
 
