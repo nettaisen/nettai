@@ -484,6 +484,9 @@ pub struct LivePlayer {
     recording_now: bool,
     last_keys: u16,
     played: usize,
+    /// START ended the recording and is held still: it isn't the game's
+    /// until it is let go.
+    start_ended: bool,
     /// What the host's second pad holds this tick, while it has one.
     second_pad: Option<u16>,
 }
@@ -552,6 +555,7 @@ impl LivePlayer {
             recording_now: false,
             last_keys: 0,
             played: 0,
+            start_ended: false,
             second_pad: None,
         }
     }
@@ -716,12 +720,15 @@ impl LivePlayer {
     /// The local player's buttons this tick: their own navi's, or none
     /// while they drive the opponent to record it; and START's press ends
     /// that recording (asked before the opponent's buttons: it plays the
-    /// recording from this tick). In the game's pause they are the
-    /// battle's as ever, and end nothing: the START that leaves it is
-    /// the host's (a training menu that closes as the recording begins).
+    /// recording from this tick). The START that ended it isn't theirs
+    /// until it is let go: held on, the game would take it for a press of
+    /// its pause's. In the game's pause they are the battle's as ever, and
+    /// end nothing: the START that leaves it is the host's (a training menu
+    /// that closes as the recording begins).
     fn own_buttons(&mut self, b: &Battle, keys: u16) -> u16 {
         if !self.recording_now {
-            return keys;
+            self.start_ended &= keys & keys::START != 0;
+            return if self.start_ended { keys & !keys::START } else { keys };
         }
         let pressed = keys & !std::mem::replace(&mut self.last_keys, keys);
         if b.round.mode == mode::CUSTOM || b.paused_by().is_some() {
@@ -729,6 +736,7 @@ impl LivePlayer {
         }
         if pressed & keys::START != 0 || self.recording.len() >= RECORDING_MOST {
             self.stop_recording();
+            self.start_ended = pressed & keys::START != 0;
         }
         0
     }
@@ -1378,6 +1386,36 @@ mod tests {
         let mut b = live.start();
         play_until(&mut live, &mut b, 3000, screen, fight_runs);
         assert_eq!(live.next(&b, 0).unwrap().input[1].held, recorded[0]);
+    }
+
+    /// The START that ends a recording, held as a player's press is (some
+    /// ticks), ends it on its first tick and is no press of the game's
+    /// while it stays held: the game doesn't pause, and the dummy plays the
+    /// recording. Once let go, START is the player's again.
+    #[test]
+    fn a_held_start_ends_the_recording_and_pauses_nothing() {
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent::default(), 9);
+        let mut b = live.start();
+        let screen = |tick: u32, b: &Battle| if b.round.mode == mode::CUSTOM { bot_buttons(b, 0, tick) } else { 0 };
+        play_until(&mut live, &mut b, 3000, screen, fight_runs);
+        live.record_opponent();
+        for tick in 0..60u32 {
+            let step = live.next(&b, if tick % 4 == 0 { keys::UP } else { 0 }).unwrap();
+            b.tick(&step.input, step.events);
+        }
+        assert!(live.recording_now() && live.recorded() > 0);
+        for tick in 0..10u32 {
+            let step = live.next(&b, keys::START).unwrap();
+            assert!(!live.recording_now() && live.opponent().in_fight == InFight::PlaysRecording, "tick {tick}");
+            assert_eq!(step.input[0].held & keys::START, 0, "tick {tick}: the START that ended the recording isn't the game's");
+            b.tick(&step.input, step.events);
+            assert!(b.paused_by().is_none(), "tick {tick}: the game paused");
+        }
+        let step = live.next(&b, 0).unwrap();
+        b.tick(&step.input, step.events);
+        assert_eq!(live.next(&b, keys::START).unwrap().input[0].held & keys::START, keys::START, "let go, START is the player's again");
     }
 
     /// A second pad drives the opponent while that is its choice: what it
