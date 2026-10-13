@@ -137,6 +137,9 @@ pub fn replace(dir: &Path, id: &str, make: impl FnOnce(&Path) -> Result<(), Stri
     if old.exists() {
         let _ = std::fs::remove_dir_all(&old);
     }
+    // (The two folders, if nothing else is in them.)
+    let _ = std::fs::remove_dir(dir.join(".new"));
+    let _ = std::fs::remove_dir(dir.join(".old"));
     Ok(())
 }
 
@@ -158,9 +161,10 @@ pub enum Told {
 }
 
 /// How far into a game's extraction its stretches end: its ROMs read out of the archives, extracted; the pack
-/// written and read back is the rest.
-const READ: f32 = 0.08;
-const EXTRACTED: f32 = 0.5;
+/// written (its files encoded, written and read back) is the rest, nearly all of it (a release build, each
+/// game's four ROMs: about 0.15 s, 0.04 s and 1 s).
+const READ: f32 = 0.12;
+const EXTRACTED: f32 = 0.15;
 
 /// Extract `job`'s pack into the packs folder `dir` (in place of the old one, once it is whole), telling
 /// `progress` how far it is. The time each stretch took.
@@ -323,6 +327,7 @@ mod tests {
         assert_eq!(files(dir.path()), ["exe6/content.toml", "exe6/graphics/a.png"]);
         replace(dir.path(), "exe6", write(&["content.toml", "sound/b.json"])).unwrap();
         assert_eq!(files(dir.path()), ["exe6/content.toml", "exe6/sound/b.json"], "nothing of the old one is left");
+        assert_eq!(std::fs::read_dir(dir.path()).unwrap().count(), 1, "nor the folders it was made and moved in");
         let failed = replace(dir.path(), "exe6", |new| {
             nettai_content::pack::write_file(new, "content.toml", b"half").unwrap();
             Err("the disk is full".to_string())
