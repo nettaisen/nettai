@@ -41,19 +41,31 @@ pub fn chip_cell(kit: &Kit, names: &Names, folder: &Folder, entry: usize, flagge
 }
 
 /// The line of effect `index` of entry `entry` (a patch card's, as its game's card screen lists it); none: the
-/// screen shows no line for it.
-fn effect_line(names: &Names, entry: EntryHandle, index: usize) -> Option<String> {
+/// screen shows no line for it. An effect that holds effects of its own (a two-part card's half: what it does with
+/// its other half in) is what they do, their lines together.
+fn effect_line(kit: &Kit, names: &Names, entry: EntryHandle, index: usize) -> Option<String> {
     let c = names.content;
     let d = c.defs.definitions.get(Registry::Entry, &c.defs.entry(entry).key)?;
     let Data::List(effects) = d.spec.field(cards::FIELD) else { return None };
-    cards::line(effects.get(index)?, |key| names.text(cards::TABLE, key)).map(|l| l.text)
+    let effect = effects.get(index)?;
+    let collection = &c.defs.entry(entry).collection;
+    let named = cards::named_by(kit, collection);
+    let text = |key: &str| names.text(cards::TABLE, key);
+    let inner: Vec<String> = match effect {
+        Data::Map(fields) => fields.iter().filter_map(|(_, v)| if let Data::List(e) = v.field(cards::FIELD) { Some(e) } else { None }).flatten().filter_map(|e| cards::line(e, text, &named)).map(|l| l.text).collect(),
+        _ => Vec::new(),
+    };
+    if !inner.is_empty() {
+        return Some(inner.join(", "));
+    }
+    cards::line(effect, text, &named).map(|l| l.text)
 }
 
 /// What gives an ability or a bug, by name: a program's name, or a card's line.
-pub fn source(names: &Names, source: Source) -> String {
+pub fn source(words: &Words, source: Source) -> String {
     match source {
-        Source::Entry(entry) => names.entry(entry),
-        Source::Effect(entry, index) => effect_line(names, entry, index).unwrap_or_else(|| names.entry(entry)),
+        Source::Entry(entry) => words.names.entry(entry),
+        Source::Effect(entry, index) => effect_line(words.kit, words.names, entry, index).unwrap_or_else(|| words.names.entry(entry)),
     }
 }
 
@@ -62,7 +74,7 @@ pub fn source(names: &Names, source: Source) -> String {
 pub fn bug(words: &Words, bug: &Bug) -> (String, String) {
     match bug {
         Bug::Named { key, extent } => (words.names.text(build::BUGS_TABLE, key).unwrap_or_else(|| key.clone()), words.extent(*extent)),
-        Bug::From(from) => (source(words.names, *from), String::new()),
+        Bug::From(from) => (source(words, *from), String::new()),
     }
 }
 
@@ -113,7 +125,7 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         // (The round doesn't start: nothing is known of its numbers.)
         None => vec![StatLine::default(); 8],
     };
-    let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|&s| source(names, s)).collect();
+    let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|&s| source(words, s)).collect();
     let bugs: Vec<(String, String)> = overview.iter().flat_map(|o| o.bugs.iter()).map(|b| bug(words, b)).collect();
     // The lines under the stats: the bugs keep four of them where both lists are long.
     let ability_lines: Vec<SheetLine> = abilities.iter().map(|a| SheetLine { kind: SheetLineKind::Ability, text: a.into(), ..Default::default() }).collect();

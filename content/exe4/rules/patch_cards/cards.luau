@@ -117,12 +117,13 @@ function cards.holds(stats: Navi, e: PatchCardEffect): boolean
     error(string.format("patch card effect %q: no pair tests it", tostring(e.kind)))
 end
 
--- A bug's count raised (0x080476E0), or cleared (0x080476EC): the bug by its name (`what`).
+-- A bug's count raised (0x080476E0), or cleared (0x080476EC): the bug by its name (`what`). A tool shows either as
+-- one of the card's bugs (`bug`, which nothing here reads).
 function cards.bug(bug: string, n: number): PatchCardEffect
-    return effect { kind = "bug", what = bug, amount = n }
+    return effect { kind = "bug", what = bug, amount = n, bug = true }
 end
 function cards.clear_bug(bug: string): PatchCardEffect
-    return effect { kind = "clear_bug", what = bug }
+    return effect { kind = "clear_bug", what = bug, bug = true }
 end
 
 -- What effect `e` does to `stats`, the work and the counts.
