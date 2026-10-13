@@ -477,7 +477,8 @@ const BACKGROUND: usize = 1;
 
 /// The places a training set may be fought on, as the entry and the menu list them: the game's arenas (the
 /// link battle stages a match may name, `nettai_match::link_battle_stages`: the panel layouts and what stands
-/// on them that its netbattles are fought on) and its battle backgrounds, in the content's order. Each list is
+/// on them that its netbattles are fought on) and its battle backgrounds, each in its keys' natural order (a run
+/// of digits by its number: Netbattle 2 before Netbattle 10; a background by its name in the pack). Each list is
 /// chosen in after Random: the place picked from the seed each round, as a match that names none has it (what
 /// training did before it had them). A choice is a list's place, 0 Random.
 ///
@@ -494,8 +495,11 @@ pub struct Places {
 
 impl Places {
     pub fn of(content: &Content, game: &str) -> Places {
-        let backgrounds = nettai_match::ids::backgrounds(content, game).into_iter().map(str::to_string).collect();
-        Places { arenas: nettai_match::link_battle_stages(content, game), backgrounds }
+        let mut arenas = nettai_match::link_battle_stages(content, game);
+        arenas.sort_by_cached_key(|&s| natural(nettai_match::ids::local(&content.defs.stage(s).key)));
+        let mut backgrounds: Vec<String> = nettai_match::ids::backgrounds(content, game).into_iter().map(str::to_string).collect();
+        backgrounds.sort_by_cached_key(|b| natural(b));
+        Places { arenas, backgrounds }
     }
 
     /// How many choices list `part` has, Random with them.
@@ -555,6 +559,24 @@ impl Places {
             None => remembered.remove(&kept_place(game, part)),
         };
     }
+}
+
+/// What `key` sorts by in its natural order: each run of digits as wide as any number's, so by its number
+/// (`netbattle-2` before `netbattle-10`).
+fn natural(key: &str) -> String {
+    let (mut out, mut digits) = (String::with_capacity(key.len() + 16), String::new());
+    for c in key.chars().map(Some).chain([None]) {
+        if let Some(c) = c.filter(char::is_ascii_digit) {
+            digits.push(c);
+            continue;
+        }
+        if !digits.is_empty() {
+            out += &format!("{digits:0>20}");
+            digits.clear();
+        }
+        out.extend(c);
+    }
+    out
 }
 
 /// The key the place chosen for `game` is remembered by: its arena's, or its background's.
@@ -1213,7 +1235,10 @@ mod tests {
         use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
         for (game, content) in [("exe6", exe6_content()), ("exe5", exe5_content()), ("exe4", exe4_content())] {
             let places = Places::of(&content, game);
-            assert_eq!(places.arenas, nettai_match::link_battle_stages(&content, game), "{game}");
+            let (mut arenas, mut stages) = (places.arenas.clone(), nettai_match::link_battle_stages(&content, game));
+            arenas.sort();
+            stages.sort();
+            assert_eq!(arenas, stages, "{game}");
             assert!(places.len(ARENA) > 1 && places.len(BACKGROUND) > 1, "{game}");
             assert_eq!(places.round([0, 0]), RoundSettings::default(), "{game}: Random names nothing");
             let last = [places.len(ARENA) - 1, places.len(BACKGROUND) - 1];
@@ -1233,7 +1258,8 @@ mod tests {
             assert_eq!(places.kept(&content, &remembered, game), [0, last[BACKGROUND]], "{game}: Random is remembered as nothing");
             assert_eq!(remembered.len(), 1);
             let [arenas, backgrounds] = places.names(&content, &Names { content: &content, strings: None });
-            assert_eq!(arenas[0], "Netbattle 1", "{game}");
+            assert_eq!(arenas[..3], ["Netbattle 1", "Netbattle 2", "Netbattle 3"], "{game}: in their numbers' order");
+            assert!(arenas.iter().any(|a| a == "Netbattle 10"), "{game}");
             for (name, key) in backgrounds.iter().zip(&places.backgrounds) {
                 assert!(!name.is_empty() && name != key, "{game}: {key} has a name");
             }
