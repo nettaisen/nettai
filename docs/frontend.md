@@ -2080,7 +2080,11 @@ renderer, the font mode's text renderer and the battle's audio:
 - `opponent()` and `set_opponent(Opponent { in_fight, on_custom_screen })`
   are live play's: what the other navi does, read and changed while the
   set runs (§2); none and false for a battle whose other navi is
-  somebody's.
+  somebody's. `hold_opponent(true)` has its presses reach nothing from
+  the next tick on (a host's menu over a battle that steps on), and
+  `hold_opponent(false)` lets them through again: its choices and its
+  random presses go on as they would, so what it presses after is what it
+  would have pressed.
 - `take_samples` gives the sound of the ticks run since the last call (about
   549 samples a tick); a player made without sound gives none.
 - `set_sound_levels(music, effects)` is the host's level for the battle's
