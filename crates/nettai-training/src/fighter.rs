@@ -55,7 +55,7 @@ pub struct Level {
 }
 
 impl Level {
-    pub const EASY: Level = Level { reaction: 24, horizon: 40, every: 16, blunders: 35, charges: true };
+    pub const EASY: Level = Level { reaction: 30, horizon: 40, every: 20, blunders: 50, charges: true };
     pub const NORMAL: Level = Level { reaction: 14, horizon: 50, every: 12, blunders: 15, charges: true };
     pub const HARD: Level = Level { reaction: 6, horizon: 60, every: 12, blunders: 0, charges: true };
 }
@@ -91,9 +91,6 @@ const STEP_MOST: u8 = 20;
 const OPEN_EVERY: u32 = 8;
 const OPEN_TICKS: u32 = 12;
 
-/// In a plan's trial, once it's done, it shoots every so many ticks: what
-/// a place is worth is also what the buster does from there.
-const TRIAL_SHOTS: u16 = 8;
 /// The ticks it supposes the player goes on holding what they hold now.
 const PLAYER_HOLDS: u32 = 8;
 /// What a plan is worth, in tenths of HP: an HP it takes away, and one it
@@ -112,11 +109,8 @@ struct Exec {
     step: u8,
     held: u8,
     from: Option<PanelPos>,
-    /// Whether it's done, and the ticks since.
+    /// Whether it's done.
     done: bool,
-    after: u16,
-    /// It's being tried: once done, it shoots ([`TRIAL_SHOTS`]).
-    trial: bool,
     /// It holds B ([`Level::charges`]).
     charges: bool,
     /// What it pressed the tick before (a press is a button not held then).
@@ -125,7 +119,7 @@ struct Exec {
 
 impl Exec {
     fn new(plan: Plan, charges: bool) -> Exec {
-        Exec { plan, step: 0, held: 0, from: None, done: false, after: 0, trial: false, charges, last: 0 }
+        Exec { plan, step: 0, held: 0, from: None, done: false, charges, last: 0 }
     }
 
     /// Its buttons this tick, for the navi of `side` in `b`.
@@ -167,8 +161,7 @@ impl Exec {
             return Some(dir);
         }
         if self.done {
-            self.after += 1;
-            return (self.trial && self.after % TRIAL_SHOTS == 0).then_some(keys::B);
+            return None;
         }
         match self.plan.then {
             Then::Wait => {
@@ -313,6 +306,7 @@ struct Job {
     /// The ticks from the decision to the aheads.
     waited: u32,
     horizon: u32,
+
     /// Each plan tried for its ticks whatever the battle's state
     /// ([`Question::warm`]).
     warm: bool,
@@ -327,7 +321,7 @@ impl Job {
         for (k, ahead, alike) in &self.aheads {
             let k = *k;
             trial.clone_from(ahead);
-            let mut exec = Exec { trial: true, ..self.plans[i] };
+            let mut exec = self.plans[i];
             let mut t = 0;
             while t < self.horizon && (self.warm || fight_goes_on(trial)) {
                 let mine = exec.buttons(trial, self.side);
@@ -955,13 +949,17 @@ mod tests {
     /// The first round of `m` stepped by hand: the left navi pressing at
     /// random, the right one `dummy`; up to `most` ticks.
     fn first_round(content: &Arc<Content>, m: &nettai_match::Match, seed: u32, dummy: &mut dyn Ai, most: u32) -> Round {
+        first_round_against(content, m, seed, &mut RandomPresses::new(seed as u64 ^ 0x5EED), dummy, most)
+    }
+
+    /// The same, the left navi `player`.
+    fn first_round_against(content: &Arc<Content>, m: &nettai_match::Match, seed: u32, player: &mut dyn Ai, dummy: &mut dyn Ai, most: u32) -> Round {
         let mut b = Set::of(content, m, seed).start();
-        let mut player = RandomPresses::new(seed as u64 ^ 0x5EED);
         let (mut ticks, mut decided) = (0, Decided { started: false });
         let (mut chips, mut screens, mut holding, mut held) = ([0; 2], 0, [0; 2], [0u32; 2]);
         while ticks < most && !decided.now(&b) && !b.is_stopped() {
             ticks += 1;
-            let [left, right] = both(&b, [&mut player, dummy]);
+            let [left, right] = both(&b, [&mut *player, &mut *dummy]);
             let (hands, custom) = (b.hands.each_ref().map(|h| h.remaining()), b.round.mode == mode::CUSTOM);
             step(&mut b, 0, left, right);
             for side in 0..2 {
@@ -1062,6 +1060,7 @@ mod tests {
     /// against_random_presses -- --ignored --nocapture`, with
     /// `FIGHTER_GAMES` (exe6,exe5,exe4), `FIGHTER_LEVELS`
     /// (random,easy,normal,hard; or parts, [`level_named`]),
+    /// `FIGHTER_PLAYER` (what plays the player: random, or a level),
     /// `FIGHTER_SEEDS` (24) and `FIGHTER_THREADS` (4).
     #[test]
     #[ignore]
@@ -1073,6 +1072,7 @@ mod tests {
         let threads: usize = var("FIGHTER_THREADS", "4").parse().unwrap();
         let seeds: u32 = var("FIGHTER_SEEDS", "24").parse().unwrap();
         let (games, levels) = (var("FIGHTER_GAMES", "exe6,exe5,exe4"), var("FIGHTER_LEVELS", "random,easy,normal,hard"));
+        let player = level_named(&var("FIGHTER_PLAYER", "random"));
         println!("| game | dummy | won | lost | undecided | HP a minute (dealt / taken) | chips a minute (its / player's) | longest hold, s (its / player's) | custom screens a minute | ticks a round | decisions a round | ms a decision (mean / longest) | late a round (ms waited) | trial ticks a decision | µs a trial tick |");
         println!("|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|");
         for game in games.split(',') {
@@ -1093,7 +1093,11 @@ mod tests {
                                 let (round, spent) = match level {
                                     Some(level) => {
                                         let mut fighter = Fighter::new(level, seed as u64);
-                                        (first_round(&content, &m, seed, &mut fighter, MOST), fighter.spent)
+                                        let round = match &player {
+                                            Some(level) => first_round_against(&content, &m, seed, &mut Fighter::new(*level, seed as u64 ^ 0x5EED), &mut fighter, MOST),
+                                            None => first_round(&content, &m, seed, &mut fighter, MOST),
+                                        };
+                                        (round, fighter.spent)
                                     }
                                     None => (first_round(&content, &m, seed, &mut RandomPresses::new(seed as u64), MOST), Spent::default()),
                                 };
