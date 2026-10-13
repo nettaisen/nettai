@@ -42,13 +42,13 @@ use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 /// How long a step is given to be drawn before the next: a few frames.
-const SETTLE: u64 = 260;
+pub(crate) const SETTLE: u64 = 260;
 
 /// The sizes walked, in points: the reference window, and a phone held upright.
 const SIZES: [(&str, u32, u32); 2] = [("desktop", 1280, 800), ("phone", 390, 800)];
 
 /// What the pass keeps as it goes.
-struct Tour {
+pub(crate) struct Tour {
     dir: PathBuf,
     /// The shot being arranged (`menu-en-desktop`): what a cut text is reported under.
     tag: RefCell<String>,
@@ -79,8 +79,19 @@ struct Burst {
     shots: Vec<BurstShot>,
 }
 
-type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
+/// A step of the walk. (A screen's own steps are a function in its module, which [`walk`] calls: it is handed
+/// `add`, which adds a step after a wait, and `shot`, which takes a picture under a name.)
+pub(crate) type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
 type Until = Box<dyn Fn(&App) -> bool>;
+
+/// A shot's part in a pair: the pair's first is kept, and its second compared with it (the two may differ only
+/// inside the two cursors).
+#[derive(Clone, Copy, PartialEq)]
+pub(crate) enum Pair {
+    None,
+    First,
+    Second,
+}
 
 /// Whether the pass found something wrong (the process's status).
 pub fn failed() -> bool {
@@ -94,6 +105,9 @@ thread_local! {
 /// Walk the screens, writing each to `dir`, then quit.
 pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     let _ = std::fs::create_dir_all(&dir);
+    // (The builds the pass makes and lists are its own, never the player's.)
+    let _ = std::fs::remove_dir_all(dir.join("builds"));
+    crate::paths::keep_builds_in(dir.join("builds"));
     let tour = Rc::new(Tour {
         dir,
         tag: Default::default(),
@@ -152,12 +166,6 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     let mut add = |wait: u64, step: Step| steps.push((wait, step));
     // A shot: the texts' check started again, the picture written (and kept, if `first` of a pair; compared
     // with the pair's first, if `second`, which may differ only inside `also` and the two cursors).
-    #[derive(Clone, Copy, PartialEq)]
-    enum Pair {
-        None,
-        First,
-        Second,
-    }
     let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair| {
         let tag = format!("{name}-{lang}-{size}");
         let t = tag.clone();
@@ -246,6 +254,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
+
+    // Builds: the list, its dialogs, and the editor's tabs.
+    crate::screens::builds::tour::walk(&mut add, &shot, lang, size);
 
     // Settings: the focus a step down; a value changed under the focus; a field being edited; a select's list;
     // the groups down the page.

@@ -1,0 +1,681 @@
+// What any screen shows of a build (docs/design/app-ui.md §6, "The build overview"; docs/app.md §8): a version's
+// tag, a chip's row, a build's row in a list, and the build overview, which the Builds screen, the Play screen and
+// each player's panel in a match all show. The app fills their models from a build (`crate::builds::overview`,
+// `crate::builds::shelf`); nothing here knows a game.
+//
+// Build cost (docs/app.md §14): the rows are leaves, each under one `for`.
+
+import { Theme, Audit } from "theme.slint";
+import { Label, Pill, PanelBack, Mono } from "widgets.slint";
+
+// A version's tag: the version's name as the game's strings have it, in capitals, in the version's own color
+// (the game's builds data states both: `crate::builds::version_tag`). No text: no tag.
+export struct VersionTag {
+    text: string,
+    tone: color,
+}
+
+// What colors a chip's name: its class, which has no column of its own.
+export enum ChipKind {
+    standard,
+    mega,
+    giga,
+}
+
+// A folder's entry marked: its Regular chip, or one of its two tag chips.
+export enum ChipMark {
+    none,
+    regular,
+    tag1,
+    tag2,
+}
+
+// A folder's entry, as a row shows it.
+export struct ChipCell {
+    // (An entry with no chip: a folder being made.)
+    there: bool,
+    icon: image,
+    name: string,
+    kind: ChipKind,
+    mark: ChipMark,
+    element: image,
+    code: string,
+    // The folder's rules have something against the entry: its row is marked.
+    flagged: bool,
+}
+
+// A number of the overview: as the build leaves it, and what the build's installed parts added to it.
+export struct StatLine {
+    value: string,
+    added: string,
+}
+
+// A line under the overview's stats.
+export enum SheetLineKind {
+    abilities,
+    ability,
+    bugs,
+    bug,
+    // (A list with nothing in it; and what a list has no room for: "+3 more".)
+    nothing,
+    more,
+}
+
+export struct SheetLine {
+    kind: SheetLineKind,
+    text: string,
+    // A bug's level or amount.
+    extent: string,
+}
+
+// A build, as the overview shows it.
+export struct BuildSheet {
+    // Over the name, where the sheet is a player's in a match: YOU, OPPONENT. Else none.
+    label: string,
+    // The build's name (in a match, the player's).
+    name: string,
+    navi: string,
+    // The face the round starts the navi with.
+    face: image,
+    version: VersionTag,
+    // HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory.
+    stats: [StatLine],
+    // The abilities and the bugs, each under its title, as many lines as the sheet has room for.
+    lines: [SheetLine],
+    // The same on one line each, for the narrow sheet.
+    abilities: string,
+    bugs: string,
+    // How many of the folder's entries have a chip, and the entries.
+    count: int,
+    chips: [ChipCell],
+}
+
+// A build in a list: its name, its navi and whether it is ready ("MegaMan · ready", or what is wrong, in the
+// error red), and its version's tag.
+export struct BuildEntry {
+    name: string,
+    status: string,
+    bad: bool,
+    version: VersionTag,
+}
+
+// What the builds' views say in words, for the app to ask (`crate::builds::words`): a typed problem's sentence
+// with its numbers, a refusal's reason, a bug's level. Short, in the player's words.
+export global BuildWords {
+    // ---- A build in a list.
+    public pure function ready(navi: string) -> string {
+        return @tr("{} · ready", navi);
+    }
+    public pure function problems(navi: string, n: int) -> string {
+        return @tr("{} · {n} problem" | "{} · {n} problems" % n, navi);
+    }
+    public pure function unreadable() -> string {
+        return @tr("Can't be read");
+    }
+    // ---- The editor's header.
+    public pure function ready-to-play() -> string {
+        return @tr("✓ Ready to play");
+    }
+    public pure function problem-count(n: int) -> string {
+        return @tr("{n} problem" | "{n} problems" % n);
+    }
+    // ---- A bug's level or amount, and a list with nothing or too much in it.
+    public pure function level(n: int) -> string {
+        return @tr("Lv {}", n);
+    }
+    public pure function amount-of(amount: int, of: int) -> string {
+        return @tr("{} of {}", amount, of);
+    }
+    public pure function more(n: int) -> string {
+        return @tr("+{} more", n);
+    }
+    public pure function megabytes(n: int) -> string {
+        return @tr("{} MB", n);
+    }
+    // ---- A chip's class, and its facts in the folder's strip.
+    public pure function class(kind: ChipKind, dark: bool) -> string {
+        if dark {
+            return @tr("Dark");
+        }
+        if kind == ChipKind.mega {
+            return @tr("Mega");
+        }
+        if kind == ChipKind.giga {
+            return @tr("Giga");
+        }
+        return @tr("Standard");
+    }
+    public pure function attack(n: int) -> string {
+        return @tr("{} attack", n);
+    }
+    public pure function in-folder(n: int) -> string {
+        return @tr("{} in folder", n);
+    }
+    // ---- Why a chip can't go into the folder now: the end of its library row.
+    public pure function only(version: string) -> string {
+        return @tr("{} only", version);
+    }
+    public pure function other-version() -> string {
+        return @tr("Another version's");
+    }
+    public pure function folder-full() -> string {
+        return @tr("Folder full");
+    }
+    public pure function copies-at-most(limit: int) -> string {
+        return @tr("{n} copy at most" | "{n} copies at most" % limit);
+    }
+    public pure function class-limit(kind: ChipKind) -> string {
+        if kind == ChipKind.giga {
+            return @tr("Giga limit reached");
+        }
+        if kind == ChipKind.mega {
+            return @tr("Mega limit reached");
+        }
+        return @tr("Limit reached");
+    }
+    public pure function dark-limit() -> string {
+        return @tr("Dark limit reached");
+    }
+    // ---- What is wrong with a build, each kind with its numbers.
+    public pure function folder-size(used: int, limit: int) -> string {
+        return @tr("{} chips, a folder has {}", used, limit);
+    }
+    public pure function chip-not-allowed(chip: string) -> string {
+        return @tr("{} can't be in a folder", chip);
+    }
+    public pure function chip-only(chip: string, version: string) -> string {
+        return @tr("{} is {} only", chip, version);
+    }
+    public pure function chip-other-version(chip: string) -> string {
+        return @tr("{} is another version's", chip);
+    }
+    public pure function chip-code(chip: string, code: string) -> string {
+        return @tr("{} has no code {}", chip, code);
+    }
+    public pure function copies(chip: string, used: int, limit: int) -> string {
+        return @tr("{} {}, limit {}", used, chip, limit);
+    }
+    public pure function class-over(kind: ChipKind, used: int, limit: int) -> string {
+        if kind == ChipKind.giga {
+            return @tr("{} Giga chips, limit {}", used, limit);
+        }
+        if kind == ChipKind.mega {
+            return @tr("{} Mega chips, limit {}", used, limit);
+        }
+        return @tr("{} chips, limit {}", used, limit);
+    }
+    public pure function dark-over(used: int, limit: int) -> string {
+        return @tr("{} Dark chips, limit {}", used, limit);
+    }
+    public pure function regular-memory(chip: string, used: int, limit: int) -> string {
+        return @tr("{} is {} MB, Regular memory is {} MB", chip, used, limit);
+    }
+    public pure function tag-memory(used: int, limit: int) -> string {
+        return @tr("Tag chips are {} MB, Tag memory is {} MB", used, limit);
+    }
+    public pure function regular-entry() -> string {
+        return @tr("The Regular chip's slot is empty");
+    }
+    public pure function tag-entries() -> string {
+        return @tr("Tag chips are two slots with a chip");
+    }
+    public pure function tag-regular() -> string {
+        return @tr("The Regular chip can't be a tag chip");
+    }
+    public pure function no-tags() -> string {
+        return @tr("This game has no tag chips");
+    }
+    public pure function range(value: int, least: int, most: int) -> string {
+        return @tr("{} is outside {} to {}", value, least, most);
+    }
+    public pure function not-taken() -> string {
+        return @tr("This navi can't use it");
+    }
+    public pure function missing() -> string {
+        return @tr("Something this navi needs is missing");
+    }
+    public pure function twice() -> string {
+        return @tr("Something is there twice");
+    }
+    public pure function budget(used: int, limit: int) -> string {
+        return @tr("{} MB, limit {}", used, limit);
+    }
+    public pure function off-board() -> string {
+        return @tr("A piece is off the board");
+    }
+    public pure function overlap() -> string {
+        return @tr("Two pieces overlap");
+    }
+    public pure function wrong-slot(entry: string, own: string) -> string {
+        return @tr("{} belongs in slot {}", entry, own);
+    }
+    public pure function other-game() -> string {
+        return @tr("Made for another game");
+    }
+    public pure function unstated() -> string {
+        return @tr("Something isn't chosen");
+    }
+    public pure function foreign() -> string {
+        return @tr("Something here isn't this game's");
+    }
+    public pure function invalid() -> string {
+        return @tr("Something here can't be used");
+    }
+    public pure function internal() -> string {
+        return @tr("It couldn't be checked. Details are in the log file");
+    }
+    // ---- A save made a build: the preset it was put on, where that changed what the save held.
+    public pure function imported-as(preset: string, navi: string) -> string {
+        return @tr("Imported as {} {}", preset, navi);
+    }
+}
+
+// A chip's row, 26 tall (`big`: 40, a phone's list): its number in the folder, its icon, its name (Mega blue, Giga
+// pink), REG or TAG1 or TAG2, its element, its code. The overview's rows, and the folder editor's. `chosen` marks
+// it (the slot a folder editor is filling).
+export component ChipRow inherits Rectangle {
+    in property <ChipCell> chip;
+    // Its number, from 1; 0: no number (a player's panel in a match).
+    in property <int> number;
+    in property <bool> big;
+    in property <bool> chosen;
+    in property <bool> hover;
+    property <length> gap: root.number > 0 ? 8px : 6px;
+    property <length> pad: root.number > 0 ? 8px : 4px;
+    property <length> icon-x: root.number > 0 ? root.pad + 22px + root.gap : root.pad;
+    property <length> code-x: self.width - root.pad - 18px;
+    property <length> element-x: root.code-x - root.gap - 16px;
+    property <length> mark-width: root.number > 0 ? 34px : 30px;
+    property <length> mark-x: root.element-x - root.gap - root.mark-width;
+    height: root.big ? 40px : Theme.chip-row;
+    Rectangle {
+        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : root.hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+    }
+
+    Rectangle {
+        x: 0;
+        width: 2px;
+        background: root.chosen ? Theme.cursor : transparent;
+    }
+
+    Text {
+        x: root.pad;
+        width: 22px;
+        text: root.number <= 0 ? "" : (root.number < 10 ? "0\{root.number}" : "\{root.number}");
+        color: root.chip.flagged ? Theme.bad : Theme.dim;
+        font-family: Theme.mono;
+        font-size: 11px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+
+    // (An empty entry: where its chip's icon would be.)
+    Rectangle {
+        x: root.icon-x;
+        y: (parent.height - 16px) / 2;
+        width: 16px;
+        height: 16px;
+        border-width: root.chip.there ? 0px : 1px;
+        border-color: root.chip.flagged ? Theme.bad : Theme.line;
+        Image {
+            source: root.chip.icon;
+            image-rendering: pixelated;
+        }
+    }
+
+    Text {
+        x: root.icon-x + 16px + root.gap;
+        width: max(0px, root.mark-x - root.gap - self.x);
+        text: root.chip.name;
+        color: root.chip.flagged ? Theme.bad : root.chip.kind == ChipKind.mega ? Theme.mega : root.chip.kind == ChipKind.giga ? Theme.giga : Theme.text;
+        font-family: Theme.body;
+        font-size: root.big ? 14px : 12px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.mark-x;
+        width: root.mark-width;
+        text: root.chip.mark == ChipMark.regular ? "REG" : root.chip.mark == ChipMark.tag1 ? "TAG1" : root.chip.mark == ChipMark.tag2 ? "TAG2" : "";
+        color: root.chip.mark == ChipMark.regular ? Theme.reg : Theme.tag;
+        font-family: Theme.body;
+        font-size: 10px;
+        font-weight: 700;
+        letter-spacing: 0.6px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    Image {
+        x: root.element-x;
+        y: (parent.height - 16px) / 2;
+        width: 16px;
+        height: 16px;
+        source: root.chip.element;
+        image-rendering: pixelated;
+    }
+
+    Text {
+        x: root.code-x;
+        width: 18px;
+        text: root.chip.code;
+        color: Theme.code;
+        font-family: Theme.mono;
+        font-size: 13px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// A build's row in a list, 52 tall: its name over its status, and its version's tag. The list is a `ListView`
+// (`row-height: 52px`), which marks the chosen row; the row's clicks are a `RowTouch` over it.
+export component BuildRow inherits Rectangle {
+    in property <BuildEntry> build;
+    in property <bool> hover;
+    height: 52px;
+    Rectangle {
+        background: root.hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+    }
+
+    Text {
+        x: 12px;
+        y: 8px;
+        width: parent.width - 24px - tag.width - (tag.width > 0 ? 12px : 0px);
+        height: 20px;
+        text: root.build.name;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 14px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: 12px;
+        y: 28px;
+        width: parent.width - 24px - tag.width - (tag.width > 0 ? 12px : 0px);
+        height: 16px;
+        text: root.build.status;
+        color: root.build.bad ? Theme.bad : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    tag := Pill {
+        x: parent.width - 12px - self.width;
+        text: root.build.version.text;
+        tone: root.build.version.tone;
+    }
+}
+
+// One of the overview's numbers: its label, its value, and what was added in cyan.
+component StatRow inherits Rectangle {
+    in property <string> label;
+    in property <StatLine> stat;
+    // The narrow sheet: the value straight after the label's column.
+    in property <bool> narrow;
+    property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
+    height: 16px;
+    name := Text {
+        x: 0;
+        width: root.narrow ? 84px : parent.width - 96px;
+        text: root.label;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    value := Text {
+        x: root.narrow ? 88px : parent.width - 92px;
+        width: root.narrow ? self.preferred-width : 44px;
+        text: root.stat.value;
+        color: Theme.text;
+        font-family: Theme.mono;
+        font-size: 13px;
+        font-weight: 700;
+        horizontal-alignment: root.narrow ? left : right;
+        vertical-alignment: center;
+    }
+
+    Text {
+        x: value.x + value.width + 8px;
+        width: 40px;
+        text: root.stat.added;
+        color: Theme.cursor;
+        font-family: Theme.mono;
+        font-size: 11px;
+        font-weight: 500;
+        vertical-alignment: center;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.label);
+        }
+    }
+}
+
+// A line under the stats: a title, an ability, a bug with its level (purple).
+component SheetLineRow inherits Rectangle {
+    in property <SheetLine> line;
+    property <bool> title: root.line.kind == SheetLineKind.abilities || root.line.kind == SheetLineKind.bugs;
+    property <bool> bug: root.line.kind == SheetLineKind.bug;
+    property <bool> quiet: root.line.kind == SheetLineKind.nothing || root.line.kind == SheetLineKind.more;
+    height: 20px;
+    Label {
+        x: 0;
+        y: 4px;
+        width: parent.width;
+        height: 14px;
+        text: !root.title ? "" : (root.line.kind == SheetLineKind.abilities ? @tr("ABILITIES") : @tr("BUGS"));
+    }
+
+    Text {
+        x: 0;
+        width: parent.width - (root.line.extent == "" ? 0px : extent.width + 8px);
+        text: root.title ? "" : (root.line.kind == SheetLineKind.nothing ? @tr("None") : root.line.text);
+        color: root.bug ? Theme.bug : root.quiet ? Theme.dim : Theme.text;
+        font-family: Theme.body;
+        font-size: 13px;
+        font-weight: root.quiet ? 400 : 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    extent := Text {
+        x: parent.width - self.width;
+        width: self.preferred-width;
+        text: root.line.extent;
+        color: Theme.bug;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: 700;
+        vertical-alignment: center;
+    }
+}
+
+// The build overview: the build's name, navi and version; its stats, with what the NaviCust and the patch cards
+// added beside each in cyan; its abilities; its bugs, each by its name and its level or amount, purple; and its
+// folder's 30 chips in two columns. It is framed (what a build holds is: rule 11), and takes the size it is given:
+// 792 by 540 on the Builds and Play screens; narrower than 620 it is the narrow sheet, which a player's panel in a
+// match is (430 wide) and a phone's (`sheet-height` is how tall it is then: 628). `side` gives it a player's color
+// along its top (1 or 2).
+export component BuildOverview inherits Rectangle {
+    in property <BuildSheet> build;
+    in property <int> side;
+    out property <bool> narrow: self.width < 620px;
+    out property <length> sheet-height: root.narrow ? 628px : 540px;
+    property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Rapid"), @tr("Charge"), @tr("Custom"), @tr("Mega chips"), @tr("Giga chips"), @tr("Regular memory")];
+    // (The narrow sheet's label is short: its column is 84.)
+    property <[string]> narrow-labels: [@tr("HP"), @tr("Attack"), @tr("Rapid"), @tr("Charge"), @tr("Custom"), @tr("Mega chips"), @tr("Giga chips"), @tr("Regular")];
+    property <length> pad: 16px;
+    property <length> inner: self.width - 2 * root.pad;
+    // Where the two columns of chips are, and how wide each.
+    // (The stats' column is 240 and the gap 24, where the mockups have 200 and 32: a label 40% longer than
+    // "Regular memory" has to fit beside its number.)
+    property <length> chips-x: root.narrow ? root.pad : root.pad + 264px;
+    property <length> chips-y: root.narrow ? root.pad + 44px + 12px + 110px + 12px : root.pad + 56px + 12px + 22px;
+    property <length> chip-width: ((root.narrow ? root.inner : root.inner - 264px) - 12px) / 2;
+    property <length> stats-y: root.narrow ? root.pad + 56px : root.pad + 56px + 12px + 22px;
+    PanelBack {
+        side: root.side;
+    }
+
+    // The face, the name over the navi, the version.
+    Image {
+        x: root.pad;
+        y: root.pad + 12px;
+        width: root.narrow ? 0px : 64px;
+        height: 32px;
+        source: root.build.face;
+        image-rendering: pixelated;
+    }
+
+    Label {
+        x: root.pad;
+        y: root.pad;
+        width: root.inner - tag.width - 12px;
+        height: 14px;
+        text: root.narrow ? root.build.label : "";
+    }
+
+    Text {
+        x: root.narrow ? root.pad : root.pad + 80px;
+        y: root.narrow ? root.pad + (root.build.label == "" ? 8px : 16px) : root.pad + 6px;
+        width: root.inner - (root.narrow ? 0px : 80px) - tag.width - 12px - (root.narrow ? navi.width + 12px : 0px);
+        height: 26px;
+        text: root.build.name;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 20px;
+        font-weight: 900;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    navi := Text {
+        x: root.narrow ? root.width - root.pad - tag.width - 12px - self.width : root.pad + 80px;
+        y: root.narrow ? root.pad + 11px : root.pad + 34px;
+        width: root.narrow ? min(self.preferred-width, 120px) : root.inner - 80px - tag.width - 12px;
+        height: root.narrow ? 22px : 16px;
+        text: root.build.navi;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    tag := Pill {
+        x: parent.width - root.pad - self.width;
+        y: root.narrow ? root.pad + 11px : root.pad + 17px;
+        text: root.build.version.text;
+        tone: root.build.version.tone;
+    }
+
+    // The stats: a column of eight, or on the narrow sheet two of four.
+    Label {
+        x: root.pad;
+        y: root.pad + 56px + 12px;
+        width: 200px;
+        height: 14px;
+        text: root.narrow ? "" : @tr("STATS");
+    }
+
+    for stat[i] in root.build.stats: StatRow {
+        x: root.narrow ? root.pad + floor(i / 4) * (root.inner / 2) : root.pad;
+        y: root.stats-y + (root.narrow ? mod(i, 4) : i) * 22px;
+        width: root.narrow ? root.inner / 2 - 8px : 240px;
+        narrow: root.narrow;
+        label: root.narrow ? root.narrow-labels[i] : root.stat-labels[i];
+        stat: stat;
+    }
+
+    // The abilities and the bugs: lines under the stats, or on the narrow sheet one line each.
+    for line[i] in root.build.lines: SheetLineRow {
+        x: root.pad;
+        y: root.stats-y + 8 * 22px + 6px + i * 20px;
+        width: root.narrow ? 0px : 240px;
+        visible: !root.narrow;
+        line: line;
+    }
+
+    Text {
+        x: root.pad;
+        y: root.stats-y + 4 * 22px;
+        width: 84px;
+        height: 16px;
+        visible: root.narrow;
+        text: @tr("Abilities");
+        color: Theme.muted;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.pad + 88px;
+        y: root.stats-y + 4 * 22px;
+        width: root.inner / 2 - 96px;
+        height: 16px;
+        visible: root.narrow;
+        text: root.build.abilities == "" ? @tr("None") : root.build.abilities;
+        color: root.build.abilities == "" ? Theme.dim : Theme.text;
+        font-size: 13px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.pad + root.inner / 2;
+        y: root.stats-y + 4 * 22px;
+        width: 84px;
+        height: 16px;
+        visible: root.narrow;
+        text: @tr("Bugs");
+        color: Theme.muted;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.pad + root.inner / 2 + 88px;
+        y: root.stats-y + 4 * 22px;
+        width: root.inner / 2 - 88px;
+        height: 16px;
+        visible: root.narrow;
+        text: root.build.bugs == "" ? @tr("None") : root.build.bugs;
+        color: root.build.bugs == "" ? Theme.dim : Theme.bug;
+        font-size: 13px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    // The folder: two columns of fifteen.
+    Label {
+        x: root.chips-x;
+        y: root.pad + 56px + 12px;
+        width: 2 * root.chip-width + 12px;
+        height: 14px;
+        text: root.narrow ? "" : @tr("FOLDER · {n} CHIP" | "FOLDER · {n} CHIPS" % root.build.count);
+    }
+
+    for chip[i] in root.build.chips: ChipRow {
+        x: root.chips-x + floor(i / 15) * (root.chip-width + 12px);
+        y: root.chips-y + mod(i, 15) * (Theme.chip-row + 2px);
+        width: root.chip-width;
+        chip: chip;
+        number: root.narrow ? 0 : i + 1;
+    }
+}

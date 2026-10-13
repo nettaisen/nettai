@@ -12,6 +12,10 @@ music, Settings, the two cards before a battle, and the battle's host with its m
 Builds and Replays are registered and reachable, each with its header and Back and an empty body: each is one
 Slint file and one Rust module, to be filled in without editing a shared file (§2).
 
+Builds is filled in (§8): the list with a build's overview, a new build, a save's import, and the editor with
+its Navi and Folder tabs; its NaviCust, patch card and auto battle tabs are empty, behind the editor's tab
+interface. The overview, a build's row and a version's tag are components any screen uses.
+
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
 the command line with no window, for frames, audits and checks (docs/tools.md).
 
@@ -486,29 +490,115 @@ Not built. What it would take:
 
 ## 8. Builds
 
-The Builds screen isn't built. A **build** is a player's side of one game, named and kept: a TOML file of its
-own, `builds/<game>/<name>.toml` in the data folder. It names its game and the build, then states the side under
-`[side]` as a match file states one (`nettai_match::file::side_toml`, read back by `resolve_side`):
+A **build** is a player's side of one game, named and kept: a TOML file of its own,
+`builds/<game>/<name>.toml` in the data folder (`builds/store.rs`). It names its game and the build, then states
+the side under `[side]` as a match file states one (`nettai_match::file::side_toml`, read back by
+`resolve_side`):
 
     game = "exe6"
-    name = "Falzar heat"
+    name = "Tengu rush"
 
     [side]
-    navi = "megaman"
+    navi = "tenguman"
     version = "falzar"
     folder = [ ... ]
 
-What a build screen asks of the game is nettai-match's `build` (docs/frontend.md §6): the game's versions in the
-order every list shows them and a new build of one (`Builds`, read from the game's own data,
-content/<game>/rules/builds: the folder a new save starts with), a build checked, with its problems typed
-(`Checked`, `nettai_match::Wrong`), its overview, and the chips' rows and sorts. The main menu's reel and the
-development battle already make their sides with `Builds::new_build`.
+    [aside]
+    navicust_programs = [ ... ]
+    patch_cards = [ ... ]
 
-`crates/nettai/src/builds/` is the first app's creator's logic without its screens, kept for the Builds screen to
-take what it reuses: the files (`store`), a save's import through each game's compat crate (`import`), the
-NaviCust's grid (`grid`), the patch cards' lines (`cards`), EXE5's auto battle data (`auto`), the library's order
-(`order`) and the pictures of chips, forms and navis (`pictures`). `presets`, `layout` and
-`crates/nettai/builds.toml` are what nettai-match's `build` replaces; nothing new is built on them.
+- **The name is the file's alone.** `[side]` is what a match, a lobby and a replay are given, and it holds no
+  name (docs/design/app-ui.md §2.16).
+- **A build made new** is `Builds::new_build(content, version)`: the game's own navi, that version, the folder a
+  new save of the game starts with. There are no random builds.
+- **What is kept aside.** A NaviCust, patch cards and auto battle data are the game's own navi's alone, the one
+  that changes form. While a build's navi is another, the facts of the editor's tabs that are that navi's
+  (`screens::builds::editor::navi_only_fields`) are kept under `[aside]`, outside the side (the rules refuse a
+  NaviCust on a navi that compiles none), and put back when the game's own navi is chosen again
+  (`Build::set_navi`, `Build::settle_aside`).
+- **A build from a save** (`builds/import.rs`): each game's compat crate reads its own saves; then the save's
+  version with all a version sets (`Builds::take_version`), each choice on the preset the save is on
+  (`Builds::settle`, which says which it took, typed: the list says "Imported as Dark MegaMan") and the facts
+  no build states at the rules' defaults (`Builds::as_built`). A file that is no save of the game is the typed
+  "Not an EXE6 save"; what the readers say in words goes to the log.
+
+What the screens ask of the game is nettai-match's `build` (docs/frontend.md §6): the game's versions in the
+order every list shows them, a build checked with its problems typed (`Checked`, `nettai_match::Wrong`), its
+overview, the folder's view and the chips' rows and sorts. The game's builds data
+(content/<game>/rules/builds) states each version's color beside it, and the game's strings name what a build is
+made of (the text table `builds`: `version.<id>`, `<choice>.<preset>`, and `versions`, what a version sets).
+Rust and Slint name no version, and hold no color of one.
+
+**What any screen uses** (`crates/nettai/src/builds/`, with no screen's code; `ui/build.slint`):
+
+| What | The UI's | The app's |
+|---|---|---|
+| A game's kit: its builds data, its pictures, its library's order, made once | | `builds::kit(shell)` (`Kit`) |
+| A version's tag, in the version's own color | `VersionTag`, drawn by a `Pill` | `builds::version_tag(shell, game, ready, side)`, `Kit::version_tag` |
+| The build overview | `BuildOverview { build: <BuildSheet>; }` | `builds::overview::sheet(shell, kit, label, name, side)` |
+| A game's builds for a list | `BuildRow { build: <BuildEntry>; }` under a `ListView` of 52-tall rows | `builds::shelf::load(shell, kit)` (`Shelved`: the file, the build, whether it is ready, its row) |
+| A chip's row | `ChipRow { chip: <ChipCell>; number: 1; }` | `builds::overview::chip_cell` |
+| A typed problem in the player's words | the catalog's `BuildWords` | `builds::words::Words` (`problem`, `refusal`, `status`), `words::first_problem(shell, kit, side)` for `UserError::BuildUnusable` |
+
+**The overview on another screen.** A screen's view has a property of the model, its Slint places the
+component, and its module fills the model from a side:
+
+    // ui/screens/play.slint
+    import { BuildSheet, BuildOverview } from "../build.slint";
+    export global PlayView { in property <BuildSheet> build; }
+    BuildOverview { x: 424px; width: 792px; height: self.sheet-height; build: PlayView.build; }
+
+    // src/screens/play.rs
+    let Some(kit) = crate::builds::kit(shell) else { return };
+    view.set_build(crate::builds::overview::sheet(shell, &kit, "", &build.name, &build.side));
+
+The component is framed and takes the size it is given. At 620 wide or more it is the wide sheet, 540 tall: the
+face the round starts with, the name over the navi, the version's tag; Stats, each with what the NaviCust and
+the patch cards added beside it in cyan; Abilities; Bugs, each by its full name and its level or amount, purple;
+and the folder's 30 chips in two columns of 26-tall rows. Narrower, it is the narrow sheet, 628 tall, which a
+player's panel in a match is (430 wide: `label` is YOU or OPPONENT, `name` the player's, `side` 1 or 2 for the
+player's color along its top) and a phone's. Every number is the compiled one (`Checked::overview`).
+
+**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, version and
+"✓ Ready to play" (or how many problems), the tab bar, and the tab chosen. **A tab is one Slint file and one
+Rust module**, as a screen is for the shell:
+
+- `ui/screens/builds/<tab>.slint` has `<Tab>View`, a global the module sets (with `hints`, the footer's key
+  hints while the tab shows, and `status`, its one short status), and `<Tab>Tab`, a component the frame places
+  under the tab bar, the page's body wide. What a tab opens over the window is a component of its own, named in
+  `BuildsOverlay` (the Folder tab's sheet on a phone).
+- `src/screens/builds/<tab>.rs` has a struct that implements `editor::Tab`: the calls a `Screen` gets (`show`,
+  `activate`, `step`, `choose`, `edit`, `focused`, `key`, `button`, `action`, `back`, `answered`), each handed
+  the shell and the `Draft`.
+
+| `Draft` | What it is |
+|---|---|
+| `kit` | The game's builds data, pictures and library order |
+| `build`, `side()` | The build, and the side a match is handed |
+| `checked` | The build checked (`nettai_match::build::Checked`): its problems, its round's stats, the folder's view, the navi's first face. Made again at each change |
+| `edit(|content, side| -> bool)` | **How a tab changes the build.** The closure says whether it did; the draft is checked again at once |
+| `choose_navi(navi)` | The navi changed, with what is kept aside moved |
+| `with_words(shell, |words| ...)` | The catalogs' and the game's words in the language shown |
+
+A tab neither saves nor checks. When its call returns, the frame keeps the build's file if the draft changed and
+shows the header and the tabs' marks anew.
+
+A tab also says which of the build's facts are its own (`Tab::fields`, by their setup fields' names). From that
+alone the frame knows three things: a problem with one of them marks the tab's word in the bar; a tab none of
+whose facts the game's setup takes isn't in the bar (auto battle data: EXE4's and EXE5's); and the facts of a
+tab that is the game's own navi's alone (`Tab::own_navi_only`) are kept aside while the navi is another, the tab
+staying in its place, greyed.
+
+NAVI and FOLDER are built. NAVICUST, PATCH CARDS and AUTO BATTLE are empty tabs behind this interface
+(`navicust`, `patch_cards`, `auto_battle`: each names its facts and nothing else). **Filling one in** touches
+its two files and `lang/ja/builds.po`. **Adding a tab** is those and a few lines: its place in `EditorTab` and
+its `if` (builds.slint), its view's export (builds.slint and app.slint), its word in `BuildsView.tab-names`, and
+its module in `editor::all()`.
+
+`crates/nettai/src/builds/` also keeps, from the first app's creator, what the tabs to come take: the NaviCust's
+grid (`grid`), the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits (`edit`) and the
+library's order (`order`). Its `presets`, `layout` and `builds.toml` went: nettai-match's `build` is the one
+source of what a game says of its builds.
 
 ## 9. Settings, scaling and the phone
 
@@ -715,7 +805,21 @@ in every shot each control is the size it has at rest, and that a press acts at 
 same instant as a screen change land on the new screen's controls, and a direction held down a scrolling page
 moves the focus at every repeat).
 
-A screen added to the app adds its steps to `tour::walk`.
+A screen added to the app adds its steps to `tour::walk`: a function in the screen's own module, which `walk`
+calls with one line and hands `add` (a step after a wait) and `shot` (a picture under a name, alone or as one
+of a pair). Builds' are `screens::builds::tour::walk`: the list with none and with three builds (one named in
+Japanese, one with a name too long for its row), a new build's dialog with the focus a control on, a build's
+rename and the question before it is deleted, the Navi tab with the focus a card on and with another navi
+chosen, and the Folder tab (an entry, the library, its controls a focus move apart, the library sorted so that
+what can't go in says why, a chip put in, the Regular chip and two tag chips marked, a mark the rules refuse
+with its reason, a chip taken out, the sort's list). The builds it makes and lists are its own, in
+`<folder>/builds` (`paths::keep_builds_in`), never the player's.
+
+**A game that doesn't load is passed over, and the pass goes on with another.** The shell selects the next game
+that can be played, and the pass then walks that one and ends well: `NETTAI_TOUR_GAME=exe6` with a pack the
+content doesn't load (a sprite the content names and the pack hasn't) gives a clean report of EXE4's screens.
+The log says so (`loading exe6: can't load ...`) and the pictures' headers name the game shown; the report
+doesn't. Read one before trusting a run.
 
 ## 14. Build time
 

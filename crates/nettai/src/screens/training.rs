@@ -10,7 +10,7 @@ use crate::battle::{BattleEvent, BattleStart, Play};
 use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress};
-use crate::screens::menu::{starter_match, version_tag};
+use crate::screens::menu::starter_match;
 use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
 use nettai_frontend::driver::{LivePlayer, Opponent};
@@ -107,7 +107,7 @@ pub fn start_development_battle(shell: &mut Shell, seed: u32) {
         role,
         name: name.into(),
         build: Default::default(),
-        version: version_tag(content, &game, side).into(),
+        version: crate::builds::version_tag(shell, &game, &ready, side),
         navi: names.navi(side.navi(content)).into(),
         progress: 0.0,
     };

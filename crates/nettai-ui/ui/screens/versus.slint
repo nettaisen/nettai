@@ -47,8 +47,8 @@ component Card inherits Rectangle {
         }
 
         Pill {
-            text: root.card.version;
-            tone: root.side == 1 ? Theme.p1 : Theme.p2;
+            text: root.card.version.text;
+            tone: root.card.version.tone;
         }
     }
 
