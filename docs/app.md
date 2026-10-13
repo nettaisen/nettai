@@ -1747,11 +1747,14 @@ What was looked at and left: the header and the footer once in the window, not i
 Back, and its title and hints are the screen's bindings); Settings' column as positions stated, not a layout
 (about 0.06 MB, with the layout's own arithmetic to match to the pixel); the text styles (`Label`, `Value`,
 `Mono`, `Note`) copied in by an `opacity` on their root (a Label so is 0.13 MB more, a Value 0.01 less); the
-whole UI copied in (Slint's `SLINT_INLINING`: 22.9 MB). The held-back files (training.slint, battle.slint) keep
+accessibility Slint writes though its backend is off (its functions are 0.83 MB, nearly all of it each item
+tree's own share whatever is in it: every text, field and image given no role is 0.03 MB less); the whole UI
+copied in (Slint's `SLINT_INLINING`: 22.9 MB). The held-back files (training.slint, battle.slint) keep
 their components used in one place shared until the branches changing them are merged.
 
 The tools that measured it are bn6battle-verify's tools/slint-size: the module's size from the build script
-alone, its breakdown by component and by kind of code, a construct's cost, and a component's uses copied in.
+alone, its breakdown by kind of code and by component, what one component's code is, a construct's cost, and
+the components used in one place (given the child, or measured copied in).
 
 ## 15. Training
 
