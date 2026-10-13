@@ -169,11 +169,18 @@ pub struct ChipUseRules {
     /// in pixels from the panel's center (the navi chip's, the healer's):
     /// down the field, and up.
     pub anti_navi_sparkle: SparkleOffset,
-    /// The hand's modifier bits 0x08, 0x10 and 0x20 count at a chip's use
-    /// (EXE5's capsules: 0x08010368 turns 0x08 and 0x20 into the damage
-    /// word's 0x1000 and 0x0800, and 0x0800FFF6 heals the user a tenth of
-    /// its HP on 0x10); EXE6's `sub_8012C34` knows bits 0x02 and 0x04 alone.
-    pub mixed_modifiers: bool,
+    /// What a hand entry's marks (`ChipHand::modifiers`) add to the attack's
+    /// damage word at its chip's use, by the mark's bit number. EXE6's
+    /// `sub_8012C34`: 0x02 the word's 0x4000 (WhiCapsl folded in:
+    /// paralysis) and 0x04 its 0x2000 (Uninstll). EXE5's 0x08010368: those
+    /// (its white and yellow capsules') and 0x08 its 0x1000, 0x20 its
+    /// 0x0800 (the black and the purple). EXE4's use adds none: its 0x02
+    /// marks a chip offered again (0x0801F0B8) and its 0x04 an entry whose
+    /// hand was installed (0x0801EA1E).
+    pub mark_damage: [u16; 8],
+    /// The marks with which the use heals its user a tenth of its HP
+    /// (EXE5's 0x0800FFF6: 0x10, its pink capsule's; 0: none).
+    pub mark_heals: u8,
     /// The opponent's NaviCust support Beat lets a dark chip go: EXE4's
     /// (0x0800C86C tests the record's flag 0x20) takes a Mega or Giga chip
     /// only if it isn't dark; EXE6's `sub_80106C0` and EXE5's take any.
