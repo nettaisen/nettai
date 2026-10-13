@@ -369,6 +369,8 @@ component LibraryPane inherits Rectangle {
             line: FolderView.rows[self.at];
             nav-index: self.at;
             dx: self.at == FolderView.refused ? shake.dx : 0px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 }
@@ -576,6 +578,8 @@ export component FolderTab inherits Rectangle {
             chip: chip;
             index: i;
             chosen: FolderView.in-library && i == FolderView.slot;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
         // (The entry a chip landed in.)
         Flash {
@@ -607,6 +611,8 @@ export component FolderTab inherits Rectangle {
                 y: self.index * folder.pitch;
                 width: folder.row-width;
                 index: folder.first + at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
     }

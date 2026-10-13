@@ -632,6 +632,8 @@ export component PlayScreen inherits Page {
                 enabled: Theme.phone && !root.none;
                 nav: "build";
                 build: PlayView.build;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
 
             // With no build of the game, one button in their place.
@@ -928,6 +930,8 @@ export component PlayScreen inherits Page {
                 x: Theme.phone ? 0px : (root.body-width - self.natural-width) / 2;
                 y: root.facts-top;
                 width: Theme.phone ? root.body-width : self.natural-width;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
 
@@ -1401,6 +1405,8 @@ export component PlayOverlay inherits Rectangle {
             nav: "boxes.\{i}";
             value: PlayView.box-characters[i];
             count: PlayView.code-set;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         Button {

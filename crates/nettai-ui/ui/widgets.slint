@@ -1042,6 +1042,8 @@ export component TabBar inherits Rectangle {
                     changed width => {
                         say();
                     }
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
                 }
             }
 
@@ -1320,6 +1322,8 @@ component Scroller inherits Rectangle {
         view: root.height;
         content: root.content-height;
         scroll: root.scroll - root.offset;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     init => {

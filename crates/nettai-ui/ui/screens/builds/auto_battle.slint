@@ -277,6 +277,8 @@ component ChipsPane inherits Rectangle {
             row-data: AutoBattleView.chips[self.at];
             nav-index: self.at;
             dx: self.at == AutoBattleView.refused ? shake.dx : 0px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 }
@@ -409,6 +411,8 @@ export component AutoBattleTab inherits Rectangle {
             height: root.pitch - 2px;
             line: line;
             chosen: !line.title && AutoBattleView.in-library && line.place == AutoBattleView.place;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         // (The place a chip went into.)
