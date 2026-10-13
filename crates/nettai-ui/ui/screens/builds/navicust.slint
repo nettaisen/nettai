@@ -96,23 +96,23 @@ export global NavicustView {
     out property <[Hint]> hints: self.holding ? self.holding-hints : self.on-piece ? self.piece-hints : self.hints-at-rest;
     property <[Hint]> hints-at-rest: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: "Enter", pad: PadButton.south, text: @tr("Pick up") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Pick up") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     property <[Hint]> piece-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: "Enter", pad: PadButton.south, text: @tr("Pick up") },
-        { key: "Del", pad: PadButton.west, text: @tr("Take off") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Pick up") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("Take off") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     property <[Hint]> holding-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move piece") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Turn") },
         { key: "C", pad: PadButton.north, text: @tr("Compress") },
-        { key: "Enter", pad: PadButton.south, text: @tr("Place") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Put away") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Place") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Put away") },
     ];
     // The cursor is on a placed piece (or a placed program's row).
     in property <bool> on-piece;

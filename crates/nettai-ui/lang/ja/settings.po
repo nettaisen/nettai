@@ -10,11 +10,12 @@ msgstr "設定"
 msgid "Move"
 msgstr "移動"
 
-msgid "Edit or confirm"
-msgstr "編集・決定"
 
-msgid "Undo edit, then back"
-msgstr "編集を取り消す・もどる"
+msgid "A · Confirm"
+msgstr "A · 決定"
+
+msgid "B · Back"
+msgstr "B · もどる"
 
 msgid "Next"
 msgstr "次へ"
