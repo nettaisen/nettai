@@ -416,6 +416,8 @@ component ProgramRowView inherits Rectangle {
                 Nav.choose("drag", 0, root.nav-index);
             } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
                 Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down && NavicustView.holding {
+                Nav.choose("drag", 8, 0);
             } else if e.kind == PointerEventKind.cancel {
                 Nav.choose("drag", 5, 0);
             }
@@ -615,6 +617,18 @@ export component NavicustTab inherits Rectangle {
     property <length> effects-height: (self.height - root.body-y - 12px) * 0.5;
     // The command line's arrows pulse.
     property <float> breath: Theme.motion ? 0.6 + 0.4 * sin(animation-tick() / 900ms * 360deg) : 1;
+    // (Under everything: with a piece in hand, a click where nothing else takes it, off the board and the list,
+    // puts it away, and so does a right click; a row's drag let go here ends.)
+    TouchArea {
+        pointer-event(e) => {
+            if NavicustView.holding && e.kind == PointerEventKind.down {
+                Nav.choose("drag", e.button == PointerEventButton.right ? 8 : 9, 0);
+            } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            }
+        }
+    }
+
     // ---- The strip: the program under the cursor, its name in its color and the game's description of it.
     PanelBack {
         x: 0;
@@ -797,12 +811,17 @@ export component NavicustTab inherits Rectangle {
         // turns it. Each is told to the Rust half with where the pointer is (`Pointer`), which finds the cell; a
         // release that never left the cell pressed is a click, as Enter there.
         TouchArea {
-            mouse-cursor: self.pressed && NavicustView.holding ? MouseCursor.grabbing : MouseCursor.default;
+            mouse-cursor: NavicustView.holding ? MouseCursor.grabbing : MouseCursor.default;
             pointer-event(e) => {
-                if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
+                    // (With no button held, the piece in hand follows the pointer.)
+                    Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
                     Nav.choose("drag", 1, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
                 } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
                     Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down && NavicustView.holding {
+                    Nav.choose("drag", 8, 0);
                 } else if e.kind == PointerEventKind.cancel {
                     Nav.choose("drag", 5, 0);
                 }
