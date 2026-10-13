@@ -49,13 +49,29 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 /// A version of a game a build is one of (EXE6's Gregar, EXE5's Team
-/// ProtoMan, EXE4's Red Sun): its id, by which a screen words it, and the
-/// facts it sets of a side.
+/// ProtoMan, EXE4's Red Sun): its id, by which a screen words it (the game's
+/// strings' text table [`TEXT_TABLE`] names it: [`Version::text_key`]), the
+/// color a screen draws its tag in (0xRRGGBB: the version's own, Red Sun's
+/// red and Blue Moon's blue), and the facts it sets of a side.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Version {
     pub id: String,
+    pub color: u32,
     set: Data,
 }
+
+impl Version {
+    /// The key of the version's name in the game's strings' text table
+    /// [`TEXT_TABLE`].
+    pub fn text_key(&self) -> String {
+        format!("version.{}", self.id)
+    }
+}
+
+/// The game's strings' text table that names what a build is made of: each
+/// version (`version.<id>`) and each preset of each choice
+/// (`<choice>.<preset>`).
+pub const TEXT_TABLE: &str = "builds";
 
 /// One of a choice's presets: its id, by which a screen words it, the least
 /// value of the choice's fact that is this preset's (the game's line, where
@@ -86,6 +102,12 @@ impl Choice {
     /// The preset named `id`.
     pub fn preset(&self, id: &str) -> Option<&Preset> {
         self.presets.iter().find(|p| p.id == id)
+    }
+
+    /// The key of preset `preset`'s name in the game's strings' text table
+    /// [`TEXT_TABLE`].
+    pub fn text_key(&self, preset: &Preset) -> String {
+        format!("{}.{}", self.id, preset.id)
     }
 
     /// The facts the choice's presets set, by name, each once.
@@ -279,9 +301,9 @@ impl Builds {
         let data = nettai_battle::behavior::content_module_data(content, &module).ok_or_else(|| format!("{game} says nothing of its builds (no module {MODULE})"))??;
         let versions: Vec<Version> = items(data.field("versions"))
             .iter()
-            .map(|v| match v.field("id") {
-                Data::Str(id) => Ok(Version { id: id.clone(), set: v.field("set").clone() }),
-                _ => Err(format!("{module}: a version has its `id`")),
+            .map(|v| match (v.field("id"), v.field("color").int().and_then(|c| u32::try_from(c).ok()).filter(|c| *c <= 0xFF_FFFF)) {
+                (Data::Str(id), Some(color)) => Ok(Version { id: id.clone(), color, set: v.field("set").clone() }),
+                _ => Err(format!("{module}: a version has its `id` and its `color` (0xRRGGBB)")),
             })
             .collect::<Result<_, _>>()?;
         if versions.is_empty() {

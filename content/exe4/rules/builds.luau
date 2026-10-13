@@ -8,10 +8,13 @@ return {
     -- version (it is the save's, and the two play alike), so a version is what its saves can have, which a build's
     -- version sets as it is made: its six souls (0x08020018, the UNITE button's table: Red Sun's souls 1 to 6, Blue
     -- Moon's 7 to 12, by compat's numbers; exe4-compat's `Version::soul_flag`), and its Giga chips (./folder: its
-    -- game's five, and the e-Reader's Duo, which either version's save can have).
+    -- game's five, and the e-Reader's Duo, which either version's save can have). A version's `color` (0xRRGGBB) is the
+    -- color a tool draws its tag in: Red Sun's red, Blue Moon's blue. Its name is the locales' ([builds],
+    -- `version.<id>`).
     versions = {
         {
             id = "redsun",
+            color = 0xFF5D50,
             set = {
                 souls = { "rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul" },
                 giga_chips = { "bass", "redsun", "holydrem", "blakbarr", "bugcharg", "duo" },
@@ -19,6 +22,7 @@ return {
         },
         {
             id = "bluemoon",
+            color = 0x4A93FF,
             set = {
                 souls = { "protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul" },
                 giga_chips = { "deltaray", "bugcurse", "signlred", "bassanly", "bluemoon", "duo" },
