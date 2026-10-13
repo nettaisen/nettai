@@ -769,3 +769,19 @@ language = "en"
 "version.colonel" = "Team Colonel"
 "light_dark.light" = "Light"
 "light_dark.dark" = "Dark"
+
+# The two groups a patch card's screen lists its effects in, by the effects' `group` (@exelib/patch_cards/effects),
+# for a tool that lays a card out as its screen does (the build editor's patch cards).
+[patch_card_groups]
+"parameter" = "Parameter"
+"ability" = "Ability"
+
+# The auto battle data's lists, by name (rules/auto_battle/block's `LISTS`), for a tool that shows a build's data
+# under them (the build editor's auto battle): what the game writes in each. Ours.
+[auto_battle_lists]
+"first" = "First"
+"standard" = "Standard"
+"mega" = "Mega"
+"giga" = "Giga"
+"patterns" = "Patterns"
+"program_advance" = "Program Advance"

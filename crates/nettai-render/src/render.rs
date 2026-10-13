@@ -62,6 +62,9 @@ pub struct Renderer {
     /// The font mode's layouts, for what the frame places after a string
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
+    /// What the original mode draws strings with where the pack has no
+    /// lettering in the language shown (`render`): made when first needed.
+    stand_in: Option<(Arc<VectorFont>, std::cell::RefCell<crate::vfont::TextRenderer>)>,
     /// The player's language's strings table (`--lang`), if not the
     /// content's own.
     strings: Option<Arc<nettai_content::locale::Strings>>,
@@ -94,6 +97,7 @@ impl Renderer {
             text_mode: TextMode::Original,
             font: None,
             measure: None,
+            stand_in: None,
             strings: None,
             lookups_only: false,
         }
@@ -121,11 +125,16 @@ impl Renderer {
     }
 
     /// Draw text in `mode`; the font mode hands the strings `font` has to
-    /// the text layer (without a font it draws as the original does).
+    /// the text layer (without a font it draws as the original does). The
+    /// original mode draws every string into the frame in the pack's
+    /// fonts, and with a pack that has no lettering in the language shown
+    /// (its fonts are another language's) in `font`, else the font the
+    /// frontend comes with, at the frame's resolution (`render`).
     pub fn set_text(&mut self, mode: TextMode, font: Option<Arc<VectorFont>>) {
         self.text_mode = mode;
         self.measure = font.clone().map(|f| std::cell::RefCell::new(crate::vfont::TextRenderer::new(f)));
         self.font = font;
+        self.stand_in = None;
     }
 
     pub fn text_mode(&self) -> TextMode {
@@ -225,11 +234,27 @@ impl Renderer {
         self.hud.clear();
         self.names.clear();
         self.dialogue.clear();
-        let mut text =
-            TextSink::new(self.text_mode, self.font.as_deref()).measuring(self.measure.as_ref()).with_language(self.strings.as_deref());
         // (The local player's custom screen and chatbox: the game's pack's.)
         let local = b.setup.local_side as usize & 1;
         let own_game = packs.game(&b.content);
+        // A pack with no lettering in the language shown is drawn in its
+        // own (`Bundle::for_language`): its pictures with words are that
+        // language's, and so are its fonts, which lack most of the shown
+        // language's characters. The original mode then lays the strings
+        // out as the font mode does and draws them with the vector font
+        // into the frame, at the frame's resolution: the frame still
+        // carries all its text.
+        let shown = self.strings.as_ref().map_or(nettai_content::locale::OWN, |s| s.language.as_str());
+        let stand_in = self.text_mode == TextMode::Original && own_game.hud.language() != shown;
+        if stand_in && self.stand_in.is_none() {
+            let font = self.font.clone().unwrap_or_else(|| Arc::new(VectorFont::bundled()));
+            self.stand_in = Some((font.clone(), std::cell::RefCell::new(crate::vfont::TextRenderer::new(font))));
+        }
+        let (mode, font, measure) = match &self.stand_in {
+            Some((font, measure)) if stand_in => (TextMode::Font, Some(&**font), Some(measure)),
+            _ => (self.text_mode, self.font.as_deref(), self.measure.as_ref()),
+        };
+        let mut text = TextSink::new(mode, font).measuring(measure).with_language(self.strings.as_deref());
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
         let (emblem, emblem_palette) = (crate::custom::emblem_sprite(emblem), emblem.map_or([0; 16], |e| e.palette));
         let chatbox = crate::chatbox::prepare(b, own_game, &packs, &text, &mut self.problems);
@@ -337,7 +362,11 @@ impl Renderer {
                 Some(item)
             })
             .collect();
-        Frame { pixels, depth, text }
+        let mut frame = Frame { pixels, depth, text };
+        if let Some((_, renderer)) = self.stand_in.as_ref().filter(|_| stand_in) {
+            crate::present::draw_text(&mut frame, &mut renderer.borrow_mut());
+        }
+        frame
     }
 }
 
