@@ -536,7 +536,10 @@ The verification workspace traces EXE5 consoles as it does EXE6's, with the same
 ## 11. The EXE5 pack (as built)
 
 `nettai-extract exe5 <pack-dir> <protoman-us> <colonel-us> <protoman-jp> <colonel-jp>` (any subset, identified by header,
-as the same extractor takes EXE6's) writes a pack whose manifest says `game = "exe5"`:
+as the same extractor takes EXE6's) writes a pack whose manifest says `game = "exe5"`. Each asset is read from
+whichever ROM given holds it, through the game's own pointer to it in that ROM (what the four have alike from any, a
+team's own from a ROM of its version, each release's words from a ROM of that release, the US ROM's where both have
+their own; the extractor's README has what each set of ROMs lacks):
 
 - **What it has:** the 272 battle sprites (the same in both US ROMs), the field (11 panel types, EXE6 13; one
   highlight block for both highlights, EXE6 two), the 29 battle backgrounds with their scrolling and animations, the
@@ -605,9 +608,8 @@ as the same extractor takes EXE6's) writes a pack whose manifest says `game = "e
   - The Japanese ROMs' one different sprite (14-17, the "BLOCK!" label, ブロック! there): the US release localized
     it rather than cut it, so the pack keeps the US's, as EXE6's does; no content draws it.
   - The Japanese ROMs' background 0x05 (Yai's HP), which is another picture than the US ROMs' (bubbles in the dark,
-    still, for goldfish, scrolling): the pack's backgrounds are the US Team ProtoMan ROM's (the Japanese Team of
-    Blues ROM's in a pack of no US ROM; the other 28 are the same in both releases, pictures, scrolls and
-    animations), and what a Japanese console draws there is the verification's to know (its consoles.tsv;
+    still, for goldfish, scrolling): the pack's backgrounds are a US ROM's (a Japanese ROM's in a pack of no US
+    ROM; the other 28 are the same in both releases, pictures, scrolls and animations), and what a Japanese console draws there is the verification's to know (its consoles.tsv;
     `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared, 2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
@@ -1605,7 +1607,7 @@ them.
     (0x0802373A: the window `capsule`, the soul's choice's steps with the capsule's icon), whose white step marks
     the pick (`custom.attach_to_last_pick`: the slot's +4 and +5, by 0x08023824) and uses the capsule; B on the
     chip frees it (0x08024D78). The mark goes into the hand's flag byte (+68, `ChipHand::modifiers`), and the
-    chip's use reads it (0x08010368, 0x0800FFF6; the chip-use rule `mixed_modifiers`): 0x04 the damage word's
+    chip's use reads it (0x08010368, 0x0800FFF6; the chip-use rules' `mark_damage` and `mark_heals`): 0x04 the damage word's
     0x2000 (YelCapsl: confusion), 0x08 its 0x1000 (BlkCapsl: blindness), 0x02 its 0x4000 (WhiCapsl: paralysis),
     0x20 its 0x0800 (PrpCapsl: the HP bug), 0x10 a tenth of the user's maximum HP healed, rounded up (PnkCapsl).
     The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
@@ -2010,6 +2012,18 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 - **Full Synchro on a counter** (0x08016FDC, EXE6's `sub_801A200`): the counterer, in no soul, to 0xFF through the
   setter (rules/emotion, `exe5:emotion`). The aura (0x0801100C, 0x080C45E0) is EXE6's, for an AI index up to 12 in
   EXE5's emotion 2.
+- **What a hit's count does to the moods** (0x08016FDC, after the tick's hits, unless the battle is over, 0x08008B6E:
+  a side with no navi alive or time up; and not in battle flag 0x40's mode, 0x0802D50C, which no netbattle sets): the
+  count the receiver's collision gathered (+0x88: each hit's counter byte, a counter hit's mark 0x8000) goes to the
+  hitter's side. With the mark, in no soul, the setter's 0xFF (above); otherwise, in a soul with the mark too, the
+  count raises the hitter's mood as a recovery does (0x08012802: a mood of 0 or 0xFF stays, to 0xFE at most; the
+  mark takes it to 0xFE). Then the receiver's mood falls by what the hits wore (+0x86) through 0x08012820 (to 1 at
+  least, a mood of 0 staying). EXE6's gives the hitter nothing but the counter's Full Synchro; EXE4's raises it to
+  0xFF (0x0800F4FA). The status rules' `hitter_gain` (`short_of_full`; EXE6's `none`, EXE4's `to_full`), and the
+  soul's case in rules/emotion's `countered`. The engine had EXE6's from the port's start and no recording compared
+  the mood until verify's replay-coverage audit: 534 of the lab's recordings stopped on it, none where the emotion
+  the moods give differed (a hit's raise stops short of Full Synchro, and the engine's lower moods never crossed 65).
+  souls/01-sword/emotion-counter shows the soul's case (frame 644: 0x80 to 0xFE).
 - **The palette** (0x0800DD94, EXE6's `sub_801002C`; presentation): the hook `navi_palette`, the light and dark
   part's. Dark MegaMan (a navi in auto battle of AI index 0x16 or 0x17) 1, another navi in auto battle 0; MegaMan in AI index
   23 2; unable to charge 1; in a soul 0, or 2 with the Chaos Unison charge armed; else by the mood: 0xFF 4, 0 2 (dark)

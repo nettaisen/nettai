@@ -257,12 +257,14 @@ local rules: Rules = {
         round_start = function(side: number)
             soul_turns.round_start(battle.navi(side).form)
         end,
-        -- As each hand is installed: its folder chips listed (./sent_chips), its dark chips' costs (./dark_chips), and
-        -- what the soul the navi is in does to it (./souls/custom).
+        -- As each hand is installed: first what the soul the navi is in did to it as OK built it (./souls/custom: the
+        -- engine builds a hand without the soul's part, so WoodSoul's fold comes here, before the install sees the
+        -- hand); then its picks listed (./sent_chips) and each entry marked, a dark chip costing its user
+        -- (./dark_chips).
         custom_result = function(side: number)
+            souls.custom.installed(side)
             sent_chips.installed(side)
             dark_chips.custom_result(side)
-            souls.custom.installed(side)
         end,
         -- Light and dark MegaMan (./light_dark): his starting mood; each tick of the navi's intake, WoodSoul's heal on
         -- grass (./souls, 0x08012FB6), the holy panel a dark one clears and the hole a navi that isn't dark closes;
