@@ -1,5 +1,383 @@
-# Japanese: Builds (ui/screens/builds.slint).
+# Japanese: Builds (ui/screens/builds.slint, ui/screens/builds/*.slint), and what any screen shows of a build
+# (ui/build.slint: the overview, a build's row, the words of a typed problem).
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# ---- The list.
+
+msgid "Edit"
+msgstr "編集"
+
+msgid "Delete"
+msgstr "削除"
+
+msgid "{n} build"
+msgid_plural "{n} builds"
+msgstr[0] "ビルド {n}件"
+
+msgid "NEW BUILD"
+msgstr "新規ビルド"
+
+msgid "IMPORT SAVE…"
+msgstr "セーブを読み込む…"
+
+msgid "EDIT"
+msgstr "編集"
+
+msgid "DUPLICATE"
+msgstr "複製"
+
+msgid "RENAME"
+msgstr "名前を変更"
+
+msgid "DELETE"
+msgstr "削除"
+
+msgid "CANCEL"
+msgstr "キャンセル"
+
+msgid "Delete {}?"
+msgstr "{}を削除しますか？"
+
+msgid "Save files"
+msgstr "セーブファイル"
+
+# A build's row: its navi and whether it is ready.
+
+msgid "{} · ready"
+msgstr "{} · 準備OK"
+
+msgid "{} · {n} problem"
+msgid_plural "{} · {n} problems"
+msgstr[0] "{} · 問題 {n}件"
+
+msgid "Can't be read"
+msgstr "読み込めません"
+
+# A save made a build: the preset it was put on, then the navi ("Imported as Dark MegaMan").
+msgid "Imported as {} {}"
+msgstr "{}{}として読み込みました"
+
+# ---- A new build, and a build's new name.
+
+msgid "New build"
+msgstr "新しいビルド"
+
+msgid "NAME"
+msgstr "名前"
+
+msgid "VERSION"
+msgstr "バージョン"
+
+# After what a version sets, in the game's own words ("Sets the Crosses and Giga chips.").
+msgid "{} It can't be changed later."
+msgstr "{} あとから変更できません。"
+
+msgid "CREATE BUILD"
+msgstr "ビルドを作成"
+
+# ---- The build overview.
+
+msgid "STATS"
+msgstr "ステータス"
+
+msgid "HP"
+msgstr "HP"
+
+msgid "Attack"
+msgstr "アタック"
+
+msgid "Rapid"
+msgstr "ラピッド"
+
+msgid "Charge"
+msgstr "チャージ"
+
+msgid "Custom"
+msgstr "カスタム"
+
+msgid "Mega chips"
+msgstr "メガチップ"
+
+msgid "Giga chips"
+msgstr "ギガチップ"
+
+msgid "Regular memory"
+msgstr "レギュラーメモリ"
+
+msgid "Regular"
+msgstr "レギュラー"
+
+msgid "ABILITIES"
+msgstr "アビリティ"
+
+msgid "Abilities"
+msgstr "アビリティ"
+
+msgid "BUGS"
+msgstr "バグ"
+
+msgid "Bugs"
+msgstr "バグ"
+
+msgid "None"
+msgstr "なし"
+
+msgid "FOLDER · {n} CHIP"
+msgid_plural "FOLDER · {n} CHIPS"
+msgstr[0] "フォルダ · {n}枚"
+
+# A bug's level, and the amount a card writes of how many ("4 of 16").
+
+msgid "Lv {}"
+msgstr "Lv {}"
+
+msgid "{} of {}"
+msgstr "{1}中{0}"
+
+msgid "+{} more"
+msgstr "ほか{}件"
+
+msgid "{} MB"
+msgstr "{} MB"
+
+# ---- The editor.
+
+msgid "NAVI"
+msgstr "ナビ"
+
+msgid "FOLDER"
+msgstr "フォルダ"
+
+msgid "NAVICUST"
+msgstr "ナビカス"
+
+msgid "PATCH CARDS"
+msgstr "改造カード"
+
+msgid "AUTO BATTLE"
+msgstr "オートバトル"
+
+msgid "Tab"
+msgstr "タブ"
+
+msgid "✓ Ready to play"
+msgstr "✓ 対戦できます"
+
+msgid "{n} problem"
+msgid_plural "{n} problems"
+msgstr[0] "問題 {n}件"
+
+# ---- The Navi tab.
+
+msgid "Choose"
+msgstr "選ぶ"
+
+msgid "{n} navi"
+msgid_plural "{n} navis"
+msgstr[0] "ナビ {n}体"
+
+msgid "Element"
+msgstr "属性"
+
+# The game's own navi's name goes in ("MegaMan").
+msgid "NaviCust and patch cards are {} only."
+msgstr "ナビカスと改造カードは{}専用です。"
+
+# ---- The Folder tab.
+
+msgid "Slot {} of {}"
+msgstr "スロット {}/{}"
+
+msgid "Pick"
+msgstr "選ぶ"
+
+msgid "Remove"
+msgstr "外す"
+
+msgid "Tag"
+msgstr "タッグ"
+
+msgid "Chips"
+msgstr "チップ"
+
+msgid "Mega"
+msgstr "メガ"
+
+msgid "Giga"
+msgstr "ギガ"
+
+msgid "Reg"
+msgstr "レギュラー"
+
+msgid "LIBRARY"
+msgstr "ライブラリ"
+
+msgid "Search chips"
+msgstr "チップを検索"
+
+msgid "SORT"
+msgstr "並び順"
+
+msgid "Library order"
+msgstr "ライブラリ順"
+
+msgid "Name"
+msgstr "名前"
+
+msgid "Code"
+msgstr "コード"
+
+msgid "MB"
+msgstr "MB"
+
+# The sort by a chip's attack power (the overview's "Attack" is the buster's).
+msgctxt "sort"
+msgid "Attack"
+msgstr "攻撃力"
+
+msgid "REGULAR"
+msgstr "レギュラー"
+
+msgid "TAG"
+msgstr "タッグ"
+
+msgid "REMOVE"
+msgstr "外す"
+
+# The strip: a chip's class and its facts.
+
+msgid "Standard"
+msgstr "スタンダード"
+
+msgid "Dark"
+msgstr "ダーク"
+
+msgid "{} attack"
+msgstr "攻撃力 {}"
+
+msgid "{} in folder"
+msgstr "フォルダに{}枚"
+
+# ---- Why a chip can't go into the folder now: the end of its library row.
+
+# A version's name goes in ("Gregar only").
+msgid "{} only"
+msgstr "{}のみ"
+
+msgid "Another version's"
+msgstr "別バージョンのチップ"
+
+msgid "Folder full"
+msgstr "フォルダがいっぱい"
+
+msgid "{n} copy at most"
+msgid_plural "{n} copies at most"
+msgstr[0] "{n}枚まで"
+
+msgid "Giga limit reached"
+msgstr "ギガはこれ以上入りません"
+
+msgid "Mega limit reached"
+msgstr "メガはこれ以上入りません"
+
+msgid "Dark limit reached"
+msgstr "ダークはこれ以上入りません"
+
+msgid "Limit reached"
+msgstr "これ以上入りません"
+
+# ---- What is wrong with a build, each kind with its numbers.
+
+msgid "{} chips, a folder has {}"
+msgstr "チップが{}枚 (フォルダは{}枚)"
+
+msgid "{} can't be in a folder"
+msgstr "{}はフォルダに入れられません"
+
+# A chip's name, then a version's ("BigHook is Gregar only").
+msgid "{} is {} only"
+msgstr "{}は{}のみ"
+
+msgid "{} is another version's"
+msgstr "{}は別バージョンのチップです"
+
+msgid "{} has no code {}"
+msgstr "{}にコード{}はありません"
+
+# How many, a chip's name, the most a folder holds ("5 Cannon, limit 4").
+msgid "{} {}, limit {}"
+msgstr "{1}が{0}枚 (上限{2}枚)"
+
+msgid "{} Giga chips, limit {}"
+msgstr "ギガが{}枚 (上限{}枚)"
+
+msgid "{} Mega chips, limit {}"
+msgstr "メガが{}枚 (上限{}枚)"
+
+msgid "{} Dark chips, limit {}"
+msgstr "ダークが{}枚 (上限{}枚)"
+
+msgid "{} chips, limit {}"
+msgstr "{}枚 (上限{}枚)"
+
+msgid "{} is {} MB, Regular memory is {} MB"
+msgstr "{}は{} MB (レギュラーメモリは{} MB)"
+
+msgid "Tag chips are {} MB, Tag memory is {} MB"
+msgstr "タッグチップは{} MB (タッグメモリは{} MB)"
+
+msgid "The Regular chip's slot is empty"
+msgstr "レギュラーチップのスロットが空です"
+
+msgid "Tag chips are two slots with a chip"
+msgstr "タッグチップはチップの入った2スロットです"
+
+msgid "The Regular chip can't be a tag chip"
+msgstr "レギュラーチップはタッグにできません"
+
+msgid "This game has no tag chips"
+msgstr "このゲームにタッグチップはありません"
+
+msgid "{} is outside {} to {}"
+msgstr "{}は{}〜{}の範囲外です"
+
+msgid "This navi can't use it"
+msgstr "このナビでは使えません"
+
+msgid "Something this navi needs is missing"
+msgstr "このナビに必要な設定がありません"
+
+msgid "Something is there twice"
+msgstr "同じものが2つあります"
+
+msgid "{} MB, limit {}"
+msgstr "{} MB (上限{} MB)"
+
+msgid "A piece is off the board"
+msgstr "ボードからはみ出したパーツがあります"
+
+msgid "Two pieces overlap"
+msgstr "パーツが重なっています"
+
+# A card's name, then its slot's ("Roll belongs in slot 0C").
+msgid "{} belongs in slot {}"
+msgstr "{}はスロット{}用です"
+
+msgid "Made for another game"
+msgstr "別のゲームのビルドです"
+
+msgid "Something isn't chosen"
+msgstr "未選択の項目があります"
+
+msgid "Something here isn't this game's"
+msgstr "このゲームにないものが含まれています"
+
+msgid "Something here can't be used"
+msgstr "使えないものが含まれています"
+
+msgid "It couldn't be checked. Details are in the log file"
+msgstr "チェックできませんでした。詳細はログファイルにあります"

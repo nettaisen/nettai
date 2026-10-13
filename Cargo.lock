@@ -3247,6 +3247,7 @@ dependencies = [
  "exe6-compat",
  "gamepad-facade",
  "glow 0.16.0",
+ "libc 0.2.190",
  "log",
  "nettai-audio",
  "nettai-battle",

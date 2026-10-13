@@ -1,0 +1,18 @@
+// The auto battle tab of a build's editor (docs/design/app-ui.md §6, "Auto battle"), in a game whose builds
+// have auto battle data. Not built yet: the tab is here, empty. Its Rust half is
+// src/screens/builds/auto_battle.rs; docs/app.md §8 says what a tab is given.
+
+import { Shell, Hint, PadButton } from "../../shell.slint";
+
+// What the tab shows: src/screens/builds/auto_battle.rs sets these. Every tab's view has the footer's key hints
+// while the tab shows, and its one short status at the footer's right.
+export global AutoBattleView {
+    out property <[Hint]> hints: [
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+    ];
+    in property <string> status;
+}
+
+// The tab: the editor gives it its place under the tab bar, the page's body wide.
+export component AutoBattleTab inherits Rectangle { }

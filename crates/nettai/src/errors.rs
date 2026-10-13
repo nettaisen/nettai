@@ -64,6 +64,9 @@ pub enum UserError {
     ExportFailed,
     /// A save is another game's: `game` is the game it was to be of, as shown (EXE6).
     WrongGameSave { game: String },
+    /// A game's pack is there and can't be loaded (it was extracted for another version of the game's
+    /// content): `game` is the game, as shown. The other games play.
+    GameOutdated { game: String },
     /// Anything else: the details are in the log.
     Other,
 }
@@ -94,6 +97,7 @@ impl UserError {
             UserError::CantWriteVideo => (ErrorKind::CantWriteVideo, ""),
             UserError::ExportFailed => (ErrorKind::ExportFailed, ""),
             UserError::WrongGameSave { game } => (ErrorKind::WrongGameSave, game),
+            UserError::GameOutdated { game } => (ErrorKind::GameOutdated, game),
             UserError::Other => (ErrorKind::Other, ""),
         }
     }
@@ -139,8 +143,8 @@ impl UserError {
         Some(match &failure.reason {
             Reason::DifferentVersion | Reason::DifferentContent => UserError::VersionMismatch,
             Reason::DifferentGame { theirs } => UserError::OtherGame { game: crate::shell::Shell::game_name(theirs) },
-            Reason::YourBuild => UserError::BuildUnusable { reason: None },
-            Reason::TheirBuild => UserError::TheirBuildUnusable,
+            Reason::YourBuild { .. } => UserError::BuildUnusable { reason: None },
+            Reason::TheirBuild { .. } => UserError::TheirBuildUnusable,
             Reason::OpponentLeft => UserError::OpponentLeft,
             Reason::NoAnswer => UserError::NoAnswer,
             Reason::Left | Reason::Protocol => UserError::Other,
@@ -260,8 +264,8 @@ mod tests {
         let lobby = |reason| UserError::of_lobby(&Failure { reason, detail: String::new() });
         assert_eq!(lobby(Reason::Left), None, "leaving is no failure");
         assert_eq!(lobby(Reason::DifferentGame { theirs: "exe5".into() }), Some(UserError::OtherGame { game: "EXE5".into() }));
-        assert_eq!(lobby(Reason::YourBuild), Some(UserError::BuildUnusable { reason: None }));
-        assert_eq!(lobby(Reason::TheirBuild), Some(UserError::TheirBuildUnusable));
+        assert_eq!(lobby(Reason::YourBuild { problems: Vec::new() }), Some(UserError::BuildUnusable { reason: None }));
+        assert_eq!(lobby(Reason::TheirBuild { problems: Vec::new() }), Some(UserError::TheirBuildUnusable));
         assert_eq!(lobby(Reason::Protocol), Some(UserError::Other));
         use nettai_frontend::replay::{ReadError, Refused};
         assert_eq!(UserError::of_replay_read("testing", &ReadError::OtherLayout { layout: 1 }), UserError::ReplayVersion);
