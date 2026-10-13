@@ -1534,7 +1534,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
         }
         if let Some(next) = frames.get(i + 1) {
             let engine = b.consoles[local].rng.state;
-            if engine == next.rng1 {
+            if nettai_battle::rng::Rng::new(frames[i].rng1).passes(engine, next.rng1, RNG1_PICKS_A_FRAME) {
                 rng1_since = None;
             } else if rng1_since.is_none() {
                 rng1_since = Some((frames[i].frame, engine, next.rng1));
@@ -1557,3 +1557,8 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
 pub fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
     e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default()
 }
+
+/// The most picks a console draws from its RNG1 in a frame that a replay's
+/// check looks along (the main loop's one, a camera shake's two, an
+/// emotion window's flicker: a few).
+const RNG1_PICKS_A_FRAME: u32 = 64;
