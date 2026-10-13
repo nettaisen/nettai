@@ -39,9 +39,6 @@ export enum TrainingOption {
     // the entry's row says it (none: Random).
     arena,
     background,
-    // Its value is how long the dummy's recording is, in tenths of a second (0: none); it is never stepped,
-    // and choosing it records one. Under the Action while it is Plays your recording.
-    recording,
     your-hp,
     dummys-hp,
     custom-gauge,
@@ -83,8 +80,6 @@ export global TrainingView {
     // The menu's rows, and whether it has CHANGE BUILDS and QUIT TO MENU (a session Training started itself).
     in property <[TrainingRow]> rows;
     in property <bool> leave;
-    // The player is driving the dummy to record it (until Start).
-    in property <bool> recording;
     // The input display: shown, and the buttons each side holds (the GBA's bits).
     in property <bool> inputs;
     in property <int> held-yours;
@@ -126,9 +121,6 @@ export global TrainingView {
         if option == TrainingOption.level {
             return @tr("Level");
         }
-        if option == TrainingOption.recording {
-            return @tr("Recording");
-        }
         if option == TrainingOption.arena {
             return @tr("Arena");
         }
@@ -154,13 +146,10 @@ export global TrainingView {
     }
     pure public function value(option: TrainingOption, value: int) -> string {
         if option == TrainingOption.action {
-            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Fights") : (value == 3 ? @tr("Plays your recording") : @tr("A second pad"))));
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Fights") : @tr("A second pad")));
         }
         if option == TrainingOption.level {
             return value == 0 ? @tr("level" => "Easy") : (value == 1 ? @tr("level" => "Normal") : @tr("level" => "Hard"));
-        }
-        if option == TrainingOption.recording {
-            return value == 0 ? @tr("None") : @tr("{} s", "\{floor(value / 10)}.\{mod(value, 10)}");
         }
         if option == TrainingOption.your-hp || option == TrainingOption.dummys-hp {
             return value == 0 ? @tr("Normal") : @tr("Refills");
@@ -821,40 +810,8 @@ component InputRow inherits Rectangle {
 
 // The input display: the player's buttons over the dummy's, in the picture's top right corner, under the line
 // the battle's own text takes there (its top eighth); on a phone, where the picture is small, under MENU. It is
-// over the battle and under the menu, and takes no clicks. With it, the mark that the dummy is being recorded:
-// over the picture's middle under the same line; on a phone under the picture at its right.
+// over the battle and under the menu, and takes no clicks.
 export component TrainingInputs inherits Rectangle {
-    Rectangle {
-        x: Theme.phone ? parent.width - Theme.margin - self.width : Shell.picture-room-x + Shell.picture-x + (Shell.picture-width - self.width) / 2;
-        y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
-        width: rec.preferred-width + 34px;
-        height: 26px;
-        visible: TrainingView.recording;
-        background: Theme.shade;
-        border-width: 1px;
-        border-color: Theme.p2;
-        Rectangle {
-            x: 10px;
-            y: 9px;
-            width: 8px;
-            height: 8px;
-            background: Theme.p2;
-        }
-
-        rec := Text {
-            x: 26px;
-            y: 0;
-            height: parent.height;
-            text: @tr("RECORDING");
-            color: Theme.text;
-            font-family: Theme.display;
-            font-size: 11px;
-            font-weight: Theme.display-bold;
-            letter-spacing: Theme.label-tracking;
-            vertical-alignment: center;
-        }
-    }
-
     Rectangle {
         visible: TrainingView.inputs;
         x: Theme.phone ? Theme.margin : Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;

@@ -30,7 +30,6 @@ use crate::sound::Cue;
 use crate::stage::Stage;
 use nettai_frontend::driver::{Ai, ChipDraw, InFight, LivePlayer, OnCustomScreen, Opponent, Training as Options};
 use nettai_training::{Fighter, Level};
-use nettai_frontend::player::FRAME_RATE;
 use nettai_match::build::{Builds, Checked};
 use nettai_battle::Content;
 use nettai_content_api::StageHandle;
@@ -146,10 +145,6 @@ struct Session {
     inputs: bool,
     /// The level of the AI plugged into the dummy's live play, while one is ([`plug`]).
     ai: Option<usize>,
-    /// The player is driving the dummy to record it, and how many ticks its recording holds (as the UI was last
-    /// told them).
-    recording: bool,
-    recorded: usize,
     /// The menu is open, and the row the focus was last on in it (it opens there).
     menu_open: bool,
     menu_focus: Key,
@@ -160,14 +155,12 @@ struct Session {
 
 /// The training menu's rows, in order, under whatever rows another screen added: each group's title, then its
 /// options. A row is added here, worded in training.slint (`TrainingView.label` and `value`), and given what it
-/// does in [`values`], [`value`] and `Training::step_option`. The dummy's Action has a row of its own under it
-/// for two of its values, shown with them alone ([`shown_rows`]): Fights its Level, Plays your recording its
-/// Recording.
-pub(crate) const ROWS: [TrainingOption; 13] = [
+/// does in [`values`], [`value`] and `Training::step_option`. The dummy's Level is shown under its Action while
+/// that is Fights alone ([`shown_rows`]).
+pub(crate) const ROWS: [TrainingOption; 12] = [
     TrainingOption::Dummy,
     TrainingOption::Action,
     TrainingOption::Level,
-    TrainingOption::Recording,
     TrainingOption::Battle,
     TrainingOption::Arena,
     TrainingOption::Background,
@@ -179,11 +172,10 @@ pub(crate) const ROWS: [TrainingOption; 13] = [
     TrainingOption::InputDisplay,
 ];
 
-/// How many values a row steps through (none: a group's title; Recording has one, its recording, and stepping
-/// it records another; Arena and Background the game's `places` and Random).
+/// How many values a row steps through (none: a group's title; Arena and Background the game's `places` and
+/// Random).
 fn values(option: TrainingOption, places: &Places) -> usize {
     match option {
-        TrainingOption::Recording => 1,
         TrainingOption::Arena => places.len(ARENA),
         TrainingOption::Background => places.len(BACKGROUND),
         TrainingOption::Action => ACTIONS.len(),
@@ -197,7 +189,6 @@ fn values(option: TrainingOption, places: &Places) -> usize {
 fn value(option: TrainingOption, opponent: Opponent, level: usize, options: Options, inputs: bool, place: [usize; 2]) -> usize {
     match option {
         TrainingOption::Level => level,
-        TrainingOption::Recording => 0,
         TrainingOption::Arena => place[ARENA],
         TrainingOption::Background => place[BACKGROUND],
         TrainingOption::Action => ACTIONS.iter().position(|(_, a)| *a == opponent.in_fight).unwrap_or(0),
@@ -210,13 +201,10 @@ fn value(option: TrainingOption, opponent: Opponent, level: usize, options: Opti
     }
 }
 
-/// A row as the menu shows it: its value's place, or for Recording how long the dummy's recording is, in tenths
-/// of a second (0: none); for Arena and Background, the name of the one chosen (none: Random).
+/// A row as the menu shows it: its value's place; for Arena and Background, the name of the one chosen (none:
+/// Random).
 fn row(option: TrainingOption, session: &Session) -> TrainingRow {
-    let value = match option {
-        TrainingOption::Recording if session.recorded > 0 => ((session.recorded as f64 * 10.0 / FRAME_RATE).round() as i32).max(1),
-        _ => value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32,
-    };
+    let value = value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32;
     let part = match option {
         TrainingOption::Arena => Some(ARENA),
         TrainingOption::Background => Some(BACKGROUND),
@@ -226,16 +214,9 @@ fn row(option: TrainingOption, session: &Session) -> TrainingRow {
     TrainingRow { option, value, text }
 }
 
-/// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone) and
-/// the Recording (with Plays your recording alone).
+/// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone).
 fn shown_rows(in_fight: InFight) -> Vec<TrainingOption> {
-    ROWS.into_iter()
-        .filter(|o| match o {
-            TrainingOption::Level => in_fight == InFight::Ai,
-            TrainingOption::Recording => in_fight == InFight::PlaysRecording,
-            _ => true,
-        })
-        .collect()
+    ROWS.into_iter().filter(|o| *o != TrainingOption::Level || in_fight == InFight::Ai).collect()
 }
 
 /// Show `options`' rows as `session` has them now (those shown).
@@ -296,13 +277,11 @@ const KEPT_GAUGE: &str = "training.custom-gauge";
 const KEPT_DRAW: &str = "training.chip-draw";
 const KEPT_INPUTS: &str = "training.inputs";
 
-/// The dummy's Actions, in the row's order, by their names in the settings. (Playing its recording is never kept:
-/// the recording isn't.)
-const ACTIONS: [(&str, InFight); 5] = [
+/// The dummy's Actions, in the row's order, by their names in the settings.
+const ACTIONS: [(&str, InFight); 4] = [
     ("stands-still", InFight::StandsStill),
     ("moves-around", InFight::MovesAround),
     ("fights", InFight::Ai),
-    ("plays-recording", InFight::PlaysRecording),
     ("second-pad", InFight::SecondPad),
 ];
 
@@ -398,8 +377,6 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         options: start.options,
         inputs,
         ai: None,
-        recording: false,
-        recorded: 0,
         menu_open: false,
         // (The menu opens on its first row: a row its starter added, else the first option.)
         menu_focus: if start.rows.is_empty() { Key::new("menu.rows.option", shown_rows(start.opponent.in_fight).iter().position(|o| values(*o, &Places::default()) > 0).unwrap_or(0) as i32) } else { Key::new("menu.rows.added", 0) },
@@ -417,7 +394,6 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     view.set_session_yours(start.you.name.as_str().into());
     view.set_session_dummys(start.dummy.name.as_str().into());
     view.set_inputs(inputs);
-    view.set_recording(false);
     view.set_held_yours(0);
     view.set_held_dummys(0);
     let mut driver = LivePlayer::against(set_of(content, &session.m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
@@ -480,7 +456,6 @@ fn forget(shell: &Shell) {
     let ui = shell.ui();
     ui.global::<nettai_ui::Shell>().set_battle_note(Default::default());
     let view = ui.global::<TrainingView>();
-    view.set_recording(false);
     view.set_held_yours(0);
     view.set_held_dummys(0);
 }
@@ -944,20 +919,6 @@ impl Training {
     fn step_option(&mut self, shell: &mut Shell, index: i32, by: i32) {
         let Some(mut session) = shell.training.session.take() else { return };
         let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
-        // Recording: the menu closes, and the player drives the dummy until Start (the library's
-        // `LivePlayer::record_opponent`); then the dummy plays it.
-        if option == Some(TrainingOption::Recording) {
-            let live = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training).and_then(|b| b.stage.player.live_mut());
-            if let Some(live) = live {
-                live.record_opponent();
-                (session.recording, session.recorded) = (true, 0);
-                shell.ui().global::<TrainingView>().set_recording(true);
-                tell_rows(shell, &session, &[TrainingOption::Recording]);
-            }
-            shell.training.session = Some(session);
-            shell.close_menu();
-            return;
-        }
         if let Some(option) = option.filter(|o| values(*o, &session.places) > 0) {
             let next = (value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32 + by).rem_euclid(values(option, &session.places) as i32) as usize;
             // (A session another screen started keeps nothing of the dummy's setup, or of the place.)
@@ -980,7 +941,7 @@ impl Training {
                 TrainingOption::Action => {
                     let (name, in_fight) = ACTIONS[next];
                     session.opponent = dummy(in_fight);
-                    if keep && in_fight != InFight::PlaysRecording {
+                    if keep {
                         shell.settings.remembered.insert(KEPT_ACTION.into(), name.into());
                     }
                 }
@@ -1020,7 +981,7 @@ impl Training {
                     view.set_held_yours(0);
                     view.set_held_dummys(0);
                 }
-                TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display | TrainingOption::Recording => {}
+                TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => {}
             }
             shell.save_settings();
             // (At once, on the battle as it stands behind the menu.)
@@ -1215,10 +1176,6 @@ impl Screen for Training {
             && session.menu_open != open
         {
             session.menu_open = open;
-            // (A recording being made ends as the menu opens, as Start would end it.)
-            if let Some(live) = shell.battle.as_mut().filter(|b| open && b.owner == ScreenId::Training).and_then(|b| b.stage.player.live_mut()) {
-                live.stop_recording();
-            }
             if open {
                 let at = session.menu_focus.clone();
                 shell.nav.focus(&at.id, at.index);
@@ -1259,20 +1216,6 @@ impl Screen for Training {
     /// After the battle's ticks: the round, for the line beside MENU on a phone, and with the input display on,
     /// the buttons each side holds.
     fn frame_end(&mut self, shell: &mut Shell, _now: Instant) {
-        let Some(b) = shell.battle.as_ref().filter(|b| b.owner == ScreenId::Training) else { return };
-        let Some(session) = shell.training.session.as_mut() else { return };
-        // The dummy's recording, as the library has it: being made (the mark over the battle), or made, and the
-        // dummy playing it (the Action and Recording rows).
-        if let Some(live) = b.stage.player.live()
-            && (live.recording_now() != session.recording || (!session.recording && (live.recorded() != session.recorded || live.opponent() != session.opponent)))
-        {
-            (session.recording, session.recorded, session.opponent) = (live.recording_now(), live.recorded(), live.opponent());
-            let mut session = shell.training.session.take().expect("on");
-            shell.ui().global::<TrainingView>().set_recording(session.recording);
-            tell_rows(shell, &session, &[TrainingOption::Action, TrainingOption::Recording]);
-            lay_out_rows(shell, &mut session);
-            shell.training.session = Some(session);
-        }
         let Some(b) = shell.battle.as_ref().filter(|b| b.owner == ScreenId::Training) else { return };
         let Some(session) = shell.training.session.as_mut() else { return };
         let battle = b.stage.player.battle();
@@ -1336,8 +1279,8 @@ mod tests {
                 assert_eq!(value(option, opponent, NORMAL, options, false, [0; 2]), 0, "{option:?}");
             }
         }
-        assert_eq!(seen, 10, "Action, Level, Recording, Arena, Background, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
-        assert_eq!(ACTIONS.map(|(_, a)| a), [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::PlaysRecording, InFight::SecondPad]);
+        assert_eq!(seen, 9, "Action, Level, Arena, Background, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
+        assert_eq!(ACTIONS.map(|(_, a)| a), [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
         assert_eq!(value(TrainingOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), 2);
         assert_eq!(value(TrainingOption::Level, opponent, NORMAL, options, false, [0; 2]), 1, "Normal at first");
         assert_eq!(LEVELS.map(|(_, level)| level), [Level::EASY, Level::NORMAL, Level::HARD]);
@@ -1349,8 +1292,8 @@ mod tests {
         assert_eq!(values(TrainingOption::Background, &places), 1 + nettai_match::ids::backgrounds(&content, "exe6").len());
     }
 
-    /// The dummy's Action has its own row under it for two of its values: Fights its Level, Plays your recording
-    /// its Recording; and its custom screen goes with it (the AI's for one that fights).
+    /// The dummy's Level is under its Action while that is Fights alone; and its custom screen goes with its Action
+    /// (the AI's for one that fights).
     #[test]
     fn the_dummys_action_brings_its_own_row() {
         // (How many rows it shows, and the one under the Action.)
@@ -1359,11 +1302,10 @@ mod tests {
             let at = rows.iter().position(|o| *o == TrainingOption::Action).unwrap();
             (rows.len(), rows.get(at + 1).copied())
         };
-        let (none, one) = (ROWS.len() - 2, ROWS.len() - 1);
+        let (none, one) = (ROWS.len() - 1, ROWS.len());
         assert_eq!(under(InFight::StandsStill), (none, Some(TrainingOption::Battle)));
         assert_eq!(under(InFight::MovesAround), (none, Some(TrainingOption::Battle)));
         assert_eq!(under(InFight::Ai), (one, Some(TrainingOption::Level)));
-        assert_eq!(under(InFight::PlaysRecording), (one, Some(TrainingOption::Recording)));
         assert_eq!(under(InFight::SecondPad), (none, Some(TrainingOption::Battle)));
         assert_eq!(dummy(InFight::Ai).on_custom_screen, OnCustomScreen::Ai);
         assert_eq!(dummy(InFight::StandsStill), Opponent::default());
