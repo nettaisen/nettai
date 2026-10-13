@@ -23,6 +23,7 @@ mod lobby;
 mod nav;
 mod netplay;
 mod paths;
+mod quit;
 mod replays;
 mod screens;
 mod settings;
@@ -74,6 +75,8 @@ fn main() -> Result<(), slint::PlatformError> {
     APP.with(|a| a.set(app.clone())).unwrap_or_else(|_| unreachable!("the app starts once"));
     wire(&ui, &app);
     app.borrow_mut().start();
+    // (After the app's own start: the gamepads' library has taken the terminate requests by now.)
+    quit::watch();
 
     // The clock: before each frame is drawn, the app's frame; after it, the next frame asked for.
     let (weak, state) = (ui.as_weak(), app.clone());

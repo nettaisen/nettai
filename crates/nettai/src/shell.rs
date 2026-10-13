@@ -42,6 +42,19 @@ pub fn button(text: &str, kind: ButtonKind) -> DialogButton {
     DialogButton { text: text.into(), kind, danger: false }
 }
 
+/// The most rows a select's list shows at once (`Shell::pick`): more scroll. And a row's height, the theme's.
+const PICKER_ROWS: usize = 10;
+const PICKER_ROW: f32 = 44.0;
+
+/// The rows a select's list of `options` choices shows at once, and whether it goes under its select: as many
+/// as it has, up to [`PICKER_ROWS`] and to the whole rows there is room for, `under` the select or `over` it.
+/// It goes under, unless it doesn't fit there and there is more room over.
+fn picker_rows(options: usize, under: f32, over: f32) -> (usize, bool) {
+    let fit = |room: f32| ((room - 2.0) / PICKER_ROW).floor().max(1.0) as usize;
+    let wanted = options.clamp(1, PICKER_ROWS);
+    if wanted <= fit(under) || under >= over { (wanted.min(fit(under)), true) } else { (wanted.min(fit(over)), false) }
+}
+
 /// The dialog open, and the screen that asked it (none: the shell's own, a failure's).
 pub(crate) struct Asked {
     tag: &'static str,
@@ -435,16 +448,19 @@ impl Shell {
     }
 
     /// Open a select's choices as a list by it (on a phone, a sheet from the bottom): `id` and `index` are the
-    /// select's own, and the screen hears the choice as `Screen::choose(id, index, choice)`.
+    /// select's own, and the screen hears the choice as `Screen::choose(id, index, choice)`. The list shows as
+    /// many rows as it has, up to [`PICKER_ROWS`] and to what the window has room for by the select; more
+    /// scroll, the chosen one in view as it opens.
     pub fn pick(&mut self, id: &str, index: i32, options: Vec<String>, chosen: usize) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let key = Key::new(id, index);
         let by = self.nav.registry().borrow().rect(&key).unwrap_or_default();
-        let height = options.len() as f32 * 44.0 + 2.0;
         let window = ui.window().size().to_logical(ui.window().scale_factor());
-        // (Under the select, or over it where there is no room under.)
-        let y = if by.bottom() + 4.0 + height <= window.height { by.bottom() + 4.0 } else { (by.y - 4.0 - height).max(0.0) };
+        // (A phone's sheet is at the window's foot, three fifths of it at the most.)
+        let (rows, under) = if self.scale.phone { picker_rows(options.len(), window.height * 0.6, 0.0) } else { picker_rows(options.len(), window.height - by.bottom() - 8.0, by.y - 8.0) };
+        let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - (rows as f32 * PICKER_ROW + 2.0) };
+        shell.set_picker_rows(rows as i32);
         shell.set_picker_options(ModelRc::new(VecModel::from(options.into_iter().map(Into::into).collect::<Vec<slint::SharedString>>())));
         shell.set_picker_chosen(chosen as i32);
         shell.set_picker_x(by.x);
@@ -453,6 +469,8 @@ impl Shell {
         shell.set_picker(true);
         self.picking = Some(Picking { owner: self.screen, key });
         self.nav.open("pick.", Key::new("pick.option", chosen as i32));
+        // (The chosen row, scrolled into view once the list is there.)
+        self.nav.focus("pick.option", chosen as i32);
     }
 
     fn close_picker(&mut self) -> Option<Picking> {
@@ -1299,6 +1317,15 @@ impl App {
     fn follow_games(&mut self) {
         let ui = self.shell.ui();
         let shell = ui.global::<nettai_ui::Shell>();
+        // A game whose pack is there and couldn't be loaded: the player is told once, by the game's name (the
+        // others go on loading, and play). Not over another dialog, nor over a battle.
+        if self.shell.dialog.is_none()
+            && self.shell.battle.is_none()
+            && !self.shell.loading_battle()
+            && let Some(game) = self.shell.games.take_failed()
+        {
+            self.shell.fail(UserError::GameOutdated { game: Shell::game_name(&game) });
+        }
         if let Some(held) = self.shell.hold_loading {
             shell.set_loading(true);
             shell.set_loading_progress(held);
@@ -1336,15 +1363,19 @@ impl App {
                     self.settle();
                 }
             }
-            Some(State::Failed) | Some(State::NoPack) | None => {
-                // It can't be played: the next that can, and the player told once.
+            state @ (Some(State::Failed) | Some(State::NoPack) | None) => {
+                // It can't be played: the next that can. One whose pack couldn't be loaded is told above, by
+                // its name; one asked for that has no pack at all, as something gone wrong.
+                let told = matches!(state, Some(State::Failed));
                 let games = self.shell.games.playable();
                 self.shell.game = None;
                 match games.first() {
                     Some(next) => self.shell.select_game(&next.clone()),
                     None => shell.set_no_games(true),
                 }
-                self.shell.fail(UserError::Other);
+                if !told {
+                    self.shell.fail(UserError::Other);
+                }
             }
             Some(State::NotLoaded) => self.shell.load(&id),
             Some(State::Loading(_)) => {
@@ -1377,5 +1408,32 @@ impl App {
         let shown = self.shell.screen;
         self.call(shown, |s, shell| s.dropped(shell, path));
         self.settle();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A select's list is as tall as its rows, up to ten and to the room the window has by the select: under
+    /// it, or over it where it doesn't fit under and there is more room over. It is never taller than its room.
+    #[test]
+    fn a_selects_list_fits_the_window() {
+        assert_eq!(picker_rows(3, 600.0, 100.0), (3, true));
+        assert_eq!(picker_rows(24, 600.0, 100.0), (10, true), "more than ten scroll");
+        assert_eq!(picker_rows(24, 300.0, 100.0), (6, true), "as many whole rows as there is room for");
+        assert_eq!(picker_rows(24, 100.0, 500.0), (10, false), "over the select, where the room is");
+        assert_eq!(picker_rows(24, 100.0, 200.0), (4, false));
+        assert_eq!(picker_rows(3, 100.0, 500.0), (3, false));
+        assert_eq!(picker_rows(2, 100.0, 500.0), (2, true), "what fits under goes under");
+        assert_eq!(picker_rows(0, 10.0, 5.0), (1, true));
+        for options in 0..40 {
+            for (under, over) in [(700.0, 60.0), (60.0, 700.0), (380.0, 380.0), (150.0, 240.0), (800.0 * 0.6, 0.0)] {
+                let (rows, is_under) = picker_rows(options, under, over);
+                let room: f32 = if is_under { under } else { over };
+                assert!((1..=PICKER_ROWS).contains(&rows) && rows <= options.max(1));
+                assert!(rows as f32 * PICKER_ROW + 2.0 <= room, "{options} choices in {under} under, {over} over: {rows} rows");
+            }
+        }
     }
 }
