@@ -279,7 +279,7 @@ impl Shell {
         self.load(id);
         let ui = self.ui();
         ui.global::<nettai_ui::Shell>().set_game(Shell::game_name(id).into());
-        self.looks.show(&ui, Some(id), from, Instant::now());
+        self.looks.show(&ui, Some(id), from);
     }
 
     /// The game after (or before) the selected one, around from the last to the first; a game with no pack is
@@ -704,7 +704,7 @@ impl App {
                 self.shell.load(&id);
                 shell.set_game(Shell::game_name(&id).into());
                 // (In its look from the first frame.)
-                self.shell.looks.show(&ui, Some(&id), 0, Instant::now());
+                self.shell.looks.show(&ui, Some(&id), 0);
             }
             None => shell.set_no_games(true),
         }
