@@ -221,3 +221,11 @@ A whole match file (both sides and the rounds) is written by hand, or by `nettai
 The engine is verified against the original game in a separate workspace, `bn6battle-verify`: golden traces of
 real matches and a chip lab of recorded scenarios, compared frame by frame with the engine. Nothing in this
 repository depends on it.
+
+## License
+
+nettai is under the Mozilla Public License 2.0 ([LICENSE](LICENSE)), every crate of the workspace and the
+signaling server alike. What is in it from others keeps its own license: the fonts under the SIL Open Font License
+(each folder's `OFL.txt`), and `crates/nettai-luau/wasm/Unwind-wasm.c`, LLVM's, under the Apache License 2.0 with
+LLVM Exceptions (`LICENSE-LLVM` beside it). The app's About screen lists the packages it is built from, each with
+its license.
