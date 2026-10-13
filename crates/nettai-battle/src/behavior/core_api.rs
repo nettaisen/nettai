@@ -809,9 +809,9 @@ impl CoreApi for Battle {
         let Some(here) = screen.slots.get(slot as usize) else {
             return Err(ApiError::Other(format!("custom.slot: a slot is 0 to 11, not {slot}")));
         };
-        let (place, regular) = match here.kind {
-            SlotKind::Chip { index, regular } => (Some(index), regular),
-            SlotKind::Offered(_) => (None, false),
+        let (place, regular, listed) = match here.kind {
+            SlotKind::Chip { index, regular } => (Some(index), regular, true),
+            SlotKind::Offered(_) => (None, false, screen.offers[slot as usize].is_none_or(|o| o.listed)),
             _ => return Ok(None),
         };
         let folder = &self.custom.sides[side as usize & 1].folder;
@@ -821,6 +821,7 @@ impl CoreApi for Battle {
             place,
             regular,
             picked: here.state == SlotState::Selected,
+            listed,
         }))
     }
 
@@ -838,13 +839,13 @@ impl CoreApi for Battle {
         Ok(())
     }
 
-    fn custom_offer(&mut self, side: u8, slot: u8, chip: ChipHandle, code: Option<u8>) -> ApiResult<()> {
+    fn custom_offer(&mut self, side: u8, slot: u8, chip: ChipHandle, code: Option<u8>, marks: u8, listed: bool, shades: bool) -> ApiResult<()> {
         let screen = self.custom_screen_mut(side)?;
         let Some(place) = screen.offers.get_mut(slot as usize) else {
             return Err(ApiError::Other(format!("custom.offer: a slot is 0 to 11, not {slot}")));
         };
         let code = crate::content::ChipCode(code.unwrap_or(crate::custom::screen::INVALID_CODE.0));
-        *place = Some(crate::custom::FolderChip { id: chip, code });
+        *place = Some(crate::custom::screen::Offer { chip: crate::custom::FolderChip { id: chip, code }, marks, listed, shades });
         Ok(())
     }
 
@@ -1287,6 +1288,16 @@ impl CoreApi for Battle {
 
     fn hand_chip(&self, side: u8, i: u8) -> Option<ChipHandle> {
         self.hands[side as usize & 1].ids.get(i as usize).copied().flatten()
+    }
+
+    fn hand_marks(&self, side: u8, i: u8) -> u8 {
+        self.hands[side as usize & 1].modifiers.get(i as usize).copied().unwrap_or(0)
+    }
+
+    fn add_hand_marks(&mut self, side: u8, i: u8, marks: u8) {
+        if let Some(m) = self.hands[side as usize & 1].modifiers.get_mut(i as usize) {
+            *m |= marks;
+        }
     }
 
     fn linked(&self, side: u8) -> LinkedChip {

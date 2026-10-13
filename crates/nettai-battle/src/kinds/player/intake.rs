@@ -439,9 +439,11 @@ fn anti_damage_traps(b: &mut Battle, r: ObjectRef) {
     zero_trapped_hit(b, r);
 }
 
-/// The trap's ZERO path: the hit and any running paralysis, freeze,
-/// bubble and pending requests are dropped.
+/// The trap's ZERO path: the hit and any running paralysis, freeze and
+/// bubble are dropped, and the pending requests the rules' `drops_requests`
+/// name.
 fn zero_trapped_hit(b: &mut Battle, r: ObjectRef) {
+    let drops = b.game_rules().intake.anti_traps.drops_requests;
     let c = coll_mut(b, r);
     absorb_hit(c);
     c.acc.exclamation = 0;
@@ -452,7 +454,7 @@ fn zero_trapped_hit(b: &mut Battle, r: ObjectRef) {
     c.status_timers[timer::FREEZE] = 0;
     c.status_timers[timer::BUBBLE] = 0;
     c.acc.hit_flags &= !0x40;
-    c.f2 &= !0x301BE;
+    c.f2 &= !drops;
 }
 
 /// `sub_801A6B4` and `sub_801A720`: the bugs a hit's code brings any

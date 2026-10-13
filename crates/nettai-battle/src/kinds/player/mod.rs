@@ -488,7 +488,8 @@ pub(crate) fn set_mood(b: &mut Battle, side: u8, mood: u8) {
 }
 
 /// EXE5's 0x08012802: a side's mood rises by `n`, to 254 at most; a mood
-/// of 0 or 0xFF (Full Synchro) stays.
+/// of 0 or 0xFF (Full Synchro) stays. (A recovery's raise, and what EXE5's
+/// hits counted give the hitter: `HitterGain::ShortOfFull`.)
 pub(crate) fn gain_mood(b: &mut Battle, side: u8, n: u16) {
     let s = &mut b.stats[side as usize & 1];
     if s.mood != 0 && s.mood != 0xFF {

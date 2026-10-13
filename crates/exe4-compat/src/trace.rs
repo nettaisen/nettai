@@ -1074,9 +1074,68 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     compare_with(b, f, banner, round.local_screen_frame(i, frames), compat)
 }
 
-/// The mark EXE4's install leaves in each hand entry's modifier flags
-/// (0x0801EA1E: its dark chips' costs, once an entry).
-const INSTALL_MARK: u8 = 0x04;
+/// Side `side`'s auto battle data as the rules' send left it (their state's
+/// `auto_battle_places`), in the block's terms: each place's halfword (a chip
+/// by its number, a pattern record by its index with bit 15, 0 for `zero`),
+/// in order. None: the rules keep no such list.
+fn sent_places(b: &Battle, compat: &Compat, side: u8) -> Option<Vec<u16>> {
+    use nettai_content_api::FieldValue;
+    let (schema, state) = b.rules_state(side)?;
+    let list = schema.place(schema.index_of("auto_battle_places")?);
+    let n = state.len_at(list)?;
+    (0..n)
+        .map(|k| {
+            let p = list.elem(k)?;
+            let chip = match state.get_at(p.field("chip")?) {
+                FieldValue::Ref(Some((Registry::Chip, h))) => {
+                    let key = nettai_match::ids::local(&b.content.defs.chip(nettai_content_api::ChipHandle(h)).key).to_string();
+                    Some(compat.chip_entry(&key).map(|e| e.id).unwrap_or(0xFFFE))
+                }
+                _ => None,
+            };
+            let pattern = match state.get_at(p.field("pattern")?) {
+                FieldValue::U8(n) => n,
+                _ => 0,
+            };
+            let zero = matches!(state.get_at(p.field("zero")?), FieldValue::Bool(true));
+            Some(match (chip, pattern, zero) {
+                (Some(id), _, _) => id,
+                (None, n, _) if n > 0 => 0x8000 | (n as u16 - 1),
+                (None, _, true) => 0,
+                _ => 0xFFFF,
+            })
+        })
+        .collect()
+}
+
+/// The auto battle data as the consoles sent it (the setup's `ai_lists`:
+/// each block's 42 places, the entries packed to the front, and their count
+/// at +0x54) against the rules' send ([`sent_places`]), as the round starts.
+/// (The block's pattern records, from +0x58, are the save's: the send
+/// leaves them, and the rules read them from the setup.)
+fn sent_auto_battle_differences(b: &Battle, compat: &Compat, lists: &[String; 2]) -> Vec<String> {
+    let mut d = Vec::new();
+    for side in 0..2u8 {
+        let Ok(block) = unhex(&lists[side as usize]) else { continue };
+        if block.len() < 0x58 {
+            d.push(format!("side {side}'s sent auto battle data: a block of {:#x} bytes", block.len()));
+            continue;
+        }
+        let theirs: Vec<u16> = (0..42).map(|i| u16::from_le_bytes([block[2 * i], block[2 * i + 1]])).collect();
+        let count = u32::from_le_bytes([block[0x54], block[0x55], block[0x56], block[0x57]]);
+        let Some(mut ours) = sent_places(b, compat, side) else {
+            d.push(format!("side {side}'s sent auto battle data: the rules keep no `auto_battle_places`"));
+            continue;
+        };
+        let n = ours.len() as u32;
+        ours.resize(42, 0xFFFF);
+        let show = |v: &[u16]| v.iter().map(|x| format!("{x:04x}")).collect::<Vec<_>>().join(" ");
+        if (n, &ours) != (count, &theirs) {
+            d.push(format!("side {side}'s sent auto battle data: ours {n}: {} theirs {count}: {}", show(&ours), show(&theirs)));
+        }
+    }
+    d
+}
 
 /// The engine's hand in a chip block's terms ([`codec::ChipHand`]): each
 /// chip by its key and the number compat's chips.toml gives it (0xFFFF for a
@@ -1159,6 +1218,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             check("winner", r.winner.to_string(), bs[0x10].to_string());
             check("alive", format!("{:?}", r.alive), format!("{:?}", [bs[0x12], bs[0x13]]));
             check("score", format!("{:?}", [r.wins, r.losses]), format!("{:?}", [bs[0x18], bs[0x19]]));
+            // (And the round, +0x1A, as the round's start sets it.)
+            check("round", r.round.to_string(), bs[0x1A].to_string());
             check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
             let flags = u16::from_le_bytes([bs[0x32], bs[0x33]]);
             check("battle flags", format!("{:#x}", r.flags & !gauge_full), format!("{:#x}", flags & !(gauge_full | FLAG_BROKEN)));
@@ -1244,8 +1305,16 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
         let Ok(raw) = unhex(hex) else { continue };
         let Ok(raw) = <[u8; crate::codec::NAVI_STATS]>::try_from(raw.as_slice()) else { continue };
         check(&format!("side {side}'s compiled stats"), compiled(b, &b.stats[side]), compiled_of(&crate::codec::navi_stats(&raw)));
-        // (And its mood, +0x00, which the fight changes.)
+        // (And its mood, +0x00, which the fight changes, and its weapons:
+        // the B button's, the charged shot's and B+Left's routines, +0x09,
+        // +0x0A and +0x0C, by compat's names of them, which a chip's
+        // effect may change, BugChain's taunt.)
         check(&format!("side {side}'s mood"), format!("{:#04x}", b.stats[side].mood), format!("{:#04x}", raw[0x00]));
+        let w = &b.stats[side].weapons;
+        let ours = [w.buster, w.charge_shot, w.back_special]
+            .map(|h| h.map(|h| nettai_match::ids::local(&b.content.defs.weapon(h).key).to_string()));
+        let theirs = [Some(raw[0x09]), Some(raw[0x0A]), (raw[0x0C] != 0xFF).then_some(raw[0x0C])].map(|n| n.map(|n| compat.weapon(n).unwrap_or_else(|e| e)));
+        check(&format!("side {side}'s weapons"), format!("{ours:?}"), format!("{theirs:?}"));
     }
     // (A panel type is the game's number of it.)
     let panels: Vec<String> = (1..=3)
@@ -1264,13 +1333,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
     for (side, block) in f.chip_blocks.iter().enumerate() {
         let decoded = unhex(block).and_then(|raw| codec::chip_hand(compat, &raw).map(|h| (h, raw)));
         match decoded {
-            Ok((mut theirs, raw)) => {
-                // (Not compared: the install's mark, the modifier flags'
-                // 0x04, which 0x0801EA1E sets on each entry of a hand as it
-                // is installed so that a dark chip costs its user once. The
-                // engine's rules keep that as their own state, rules/
-                // dark_chips' `hand_sent`, and the hand has no such bit.)
-                theirs.modifiers = theirs.modifiers.map(|m| m & !INSTALL_MARK);
+            Ok((theirs, raw)) => {
                 let ours = engine_hand(b, compat, &b.hands[side]);
                 for ((name, x), (_, y)) in hand_fields(&ours).into_iter().zip(hand_fields(&theirs)) {
                     check(&format!("hand {side} {name}"), x, y);
@@ -1347,6 +1410,10 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("status", flags),
                 ("f1", f1),
                 ("palette", palette),
+                // (A navi's four parameter bytes, +4: the one kind whose
+                // object keeps the original's; the other kinds take their
+                // parameters as their own state.)
+                ("params", if type_of_pool(o.pool) == 1 && entries[i].is_some_and(|k| k.index == 0) { format!("{:#010x}", u32::from_le_bytes(x.params)) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1375,6 +1442,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("status", format!("{:#x}", o.status)),
                 ("f1", format!("{:#x}", o.f1)),
                 ("palette", o.sprite[0].to_string()),
+                ("params", if o.kind == 1 && o.index == 0 { format!("{:#010x}", o.params) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1448,6 +1516,13 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
             return replay;
         }
     }
+    if let Some(lists) = &round.setup.ai_lists {
+        let differences = sent_auto_battle_differences(&b, compat, lists);
+        if !differences.is_empty() {
+            replay.stopped = Some(Stop::Differs { frame: round.setup.frame, differences });
+            return replay;
+        }
+    }
     let local = b.setup.local_side as usize & 1;
     let mut rng1_since: Option<(u32, u32, u32)> = None;
     for i in 0..frames.len() {
@@ -1463,7 +1538,7 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
         }
         if let Some(next) = frames.get(i + 1) {
             let engine = b.consoles[local].rng.state;
-            if engine == next.rng1 {
+            if nettai_battle::rng::Rng::new(frames[i].rng1).passes(engine, next.rng1, RNG1_PICKS_A_FRAME) {
                 rng1_since = None;
             } else if rng1_since.is_none() {
                 rng1_since = Some((frames[i].frame, engine, next.rng1));
@@ -1486,3 +1561,8 @@ pub fn run_round(round: &Round, content: &Arc<Content>, compat: &Compat) -> Repl
 pub fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
     e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_default()
 }
+
+/// The most picks a console draws from its RNG1 in a frame that a replay's
+/// check looks along (the main loop's one, a camera shake's two, an
+/// emotion window's flicker: a few).
+const RNG1_PICKS_A_FRAME: u32 = 64;
