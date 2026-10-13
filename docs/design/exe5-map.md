@@ -2016,6 +2016,12 @@ which the engine runs for a side whose rules say so (the status section's `emoti
   EXE5's emotion 2.
 - **The busting level** (0x08009716, into BattleState +0x1E with a win or a loss, 0x08007FDA, 0x08008030): its results
   screen's. Nothing in a battle reads it; nettai, with no results screen, keeps none.
+- **What a round's end leaves the next battle** (0x08007120 on, EXE6's 0x08007D4E): the PET's HP under battle effect
+  0x40 (BattleState +0x34); the light/dark value (+0x44) under effect 0x800, which a netbattle has (0xE8C), as
+  0x0801289C leaves it, unchanged in a link battle (effect 8: it changes it only outside one); and outside a link
+  battle the mood (+0x0E, 0x08007184) and the souls' records (0x08028D02, 0x08028CC6, 0x08028D28). Each round of a set
+  reloads the saves' stats: verify's flow/next-round (ProtoSoul, the mood worn to 0x58, side 1 deleted) starts round 2
+  as round 1 started, mood 0x80 and 0xBE, the base form, HP 850 and 10, as nettai-match's `next_round` does.
 - **What a hit's count does to the moods** (0x08016FDC, after the tick's hits, unless the battle is over, 0x08008B6E:
   a side with no navi alive or time up; and not in battle flag 0x40's mode, 0x0802D50C, which no netbattle sets): the
   count the receiver's collision gathered (+0x88: each hit's counter byte, a counter hit's mark 0x8000) goes to the

@@ -657,6 +657,11 @@ struct Window {
     /// The chip window's picture's mark, where the caller names its chip
     /// (`chip:KEY`, or a button's `button:NAME`: `Problems::marking`).
     picture_mark: Option<String>,
+    /// The mark of what the chip window draws by the chip's record, where
+    /// the caller names it (`chip-window:KEY`): the cells drawn in the
+    /// frame's colors by class (palette 9), the picture's (10) and the
+    /// element's (11), and the damage's digits.
+    record_mark: Option<String>,
     /// In the font text mode, the strings whose tiles were left blank for
     /// the text layer: the chip window's name, and the Program Advance
     /// animation's names by their place (each with the cells it has, and
@@ -737,6 +742,7 @@ impl Window {
             palettes: [[0; 16]; 16],
             picture_known: None,
             picture_mark: None,
+            record_mark: None,
             name: None,
             advance_names: Vec::new(),
             layout: a.layout,
@@ -1027,6 +1033,10 @@ impl Window {
     fn chip_details(&mut self, v: &View, c: FolderChip, text: &TextSink, problems: &mut Problems) {
         let a = v.assets;
         let data = v.b.content.chip(c.id);
+        let what = format!("chip-window:{}", nettai_content_api::keys::local(&v.b.content.defs.chip(c.id).key));
+        if problems.wants(&what) {
+            self.record_mark = Some(what);
+        }
         self.chip_name_and_art(v, c.id, text, problems);
         // The frame's colors by class, a dark chip's (of the first
         // three classes) dark; the code's glyph, the element's icon.
@@ -1322,6 +1332,31 @@ impl Window {
 
     /// Where the window's cells that show `tiles` of its block are, on the
     /// screen (none: none shows).
+    /// The rectangles of the layer's cells on screen that `drawn` picks
+    /// (by their map entry), a run of neighbors in a row each.
+    fn cells_rects(&self, place: Placement, drawn: impl Fn(&MapEntry) -> bool) -> Vec<[i32; 4]> {
+        let mut out = Vec::new();
+        for y in 0..ROWS {
+            let mut run: Option<[i32; 4]> = None;
+            for x in place.from..place.to {
+                let px = screen_x(x as i32, place.scroll).filter(|_| drawn(&self.map[y * COLUMNS + x]));
+                match (px, run.as_mut()) {
+                    (Some(px), Some(r)) if r[2] == px => r[2] = px + 8,
+                    (Some(px), _) => {
+                        out.extend(run.take());
+                        run = Some([px, 8 * y as i32, px + 8, 8 * y as i32 + 8]);
+                    }
+                    (None, _) => out.extend(run.take()),
+                }
+            }
+            out.extend(run);
+        }
+        out.into_iter()
+            .map(|[x0, y0, x1, y1]| [x0.max(0), y0, x1.min(240), y1])
+            .filter(|r| r[0] < r[2])
+            .collect()
+    }
+
     fn tiles_rect(&self, place: Placement, tiles: std::ops::Range<u16>) -> Option<[i32; 4]> {
         let mut rect: Option<[i32; 4]> = None;
         for y in 0..ROWS {
@@ -1419,7 +1454,10 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let variant = if v.b.looks[side].name_variant { text.strings.navi_variant_name(&v.b.content, other) } else { None };
     let name = variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other));
     let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), name, problems);
-    let len = glyphs.len().min(ENEMY_NAME_CELLS);
+    // (On the text layer, a character a cell where the pack's font lacks
+    // the language's: the name still ends at column 30.)
+    let len = if text.takes(name) { fonts::box_cells(v.hud, name, glyphs.len(), ENEMY_NAME_CELLS) } else { glyphs.len() };
+    let len = len.min(ENEMY_NAME_CELLS);
     let col = 0x1E - len as i32;
     let palette = &w.palettes[13];
     fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * col, 0), Align::Left);
@@ -1710,6 +1748,16 @@ pub fn draw<'a>(
     w.draw(hud_layer, place);
     if let Some(why) = w.picture_known {
         w.known_picture(place, why, problems);
+    }
+    if let Some(what) = w.record_mark.take() {
+        // (A console whose record of the chip is another, the US release's
+        // placeholder of a chip it cut, draws these otherwise: its class's
+        // and element's colors, no picture, no damage.)
+        let digits = w.layout.digits..w.layout.digits + 6;
+        let (jx, jy) = hud_jitter(b);
+        for [x0, y0, x1, y1] in w.cells_rects(place, |e| matches!(e.palette & 15, 9..=11) || digits.contains(&e.tile)) {
+            problems.mark([x0 - jx, y0 - jy, x1 - jx, y1 - jy], what.clone());
+        }
     }
     if let Some(what) = w.picture_mark.take() {
         let tiles = w.layout.art..w.layout.art + PICTURE_TILES;
