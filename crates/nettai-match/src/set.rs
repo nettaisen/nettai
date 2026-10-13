@@ -52,6 +52,12 @@ impl Set {
         &self.content
     }
 
+    /// The players' folders as they saved them, by side (what each round
+    /// shuffles).
+    pub fn folders(&self) -> &[SavedFolder; 2] {
+        &self.folders
+    }
+
     /// The set's first round.
     pub fn first(&self) -> &RoundSetup {
         &self.first
