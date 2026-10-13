@@ -353,20 +353,7 @@ made alone and changed at any tick of the set (`Player::set_opponent`,
 - **on its custom screen** (`OnCustomScreen`): it picks nothing and presses
   OK, or picks the first chip it can and presses OK (the default).
 
-In the fight it may also play a recording of it (`InFight::PlaysRecording`):
-`LivePlayer::record_opponent` has the local player's buttons drive it from
-the next tick (their own navi gets none), keeping them a tick of the fight
-running at a time (`fight_runs`: the fight's own state, not the turn's
-banner, the custom screen, the game's pause or a round decided), until
-START's press outside the custom screen, `stop_recording`, the set starting
-over, or `RECORDING_MOST` ticks (a minute). On the custom screen the local
-player's buttons are their own screen's, and the opponent's screen does as
-its choice says; in the game's pause they are the battle's and end nothing
-(the START that leaves it is a host's: a training menu closing as the
-recording begins). Then it plays them, one a tick of the fight running, over
-and over from wherever it stands. It is still buttons alone: what the
-recording changes is what the opponent presses, and nothing of the battle.
-Or a second pad of the host's drives it (`InFight::SecondPad`, the host
+In the fight a second pad of the host's may also drive it (`InFight::SecondPad`, the host
 saying what the pad holds each frame with `LivePlayer::set_second_pad`), in
 the fight and on its custom screen; while the host has none, it stands
 still.
