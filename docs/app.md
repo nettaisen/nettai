@@ -2166,7 +2166,8 @@ stamp, stale by another's or none; a pack replaced only once whole, a failed one
 leaves tidied; a failed extraction leaving the old pack; the extraction's thread taking the games in turn, the one
 asked for first, and starting again for more; a game playable as its pack lands, a failure told once and its old
 pack played. The screenshot pass has the two screens (`extracting`, `no-legacy-collection`) and the dialog
-(`no-legacy-collection-dialog`), set on the view. **What waits on a real install:** Steam finding it (on Windows,
+(`no-legacy-collection-dialog`), set on the view (`NETTAI_TOUR_ONLY=packs`): walked in English and Japanese at
+the desktop's size, nothing cut and the pictures looked at; not yet at a phone's, nor in the pseudo-locale. **What waits on a real install:** Steam finding it (on Windows,
 and on Linux under Proton); the real archives' layout and compression (Tango reads them as zip archives with
 `.srl` entries wherever they are, as this does; the app reads deflate and stored entries, and another method is an
 `ExtractFailed` with the method in the log); the real folder's name, for the chosen folder (any of its three
