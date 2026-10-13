@@ -11,6 +11,7 @@ use crate::input::{Action, KeyPress};
 use crate::shell::Shell;
 use std::time::Instant;
 
+pub mod about;
 pub mod builds;
 pub mod menu;
 pub mod play;
@@ -27,10 +28,11 @@ pub enum ScreenId {
     Builds,
     Replays,
     Settings,
+    About,
 }
 
 impl ScreenId {
-    pub const ALL: [ScreenId; 6] = [ScreenId::Menu, ScreenId::Play, ScreenId::Training, ScreenId::Builds, ScreenId::Replays, ScreenId::Settings];
+    pub const ALL: [ScreenId; 7] = [ScreenId::Menu, ScreenId::Play, ScreenId::Training, ScreenId::Builds, ScreenId::Replays, ScreenId::Settings, ScreenId::About];
 
     /// The UI's name for it.
     pub fn view(self) -> nettai_ui::Screen {
@@ -41,6 +43,7 @@ impl ScreenId {
             ScreenId::Builds => nettai_ui::Screen::Builds,
             ScreenId::Replays => nettai_ui::Screen::Replays,
             ScreenId::Settings => nettai_ui::Screen::Settings,
+            ScreenId::About => nettai_ui::Screen::About,
         }
     }
 
@@ -53,6 +56,7 @@ impl ScreenId {
             ScreenId::Builds => "builds",
             ScreenId::Replays => "replays",
             ScreenId::Settings => "settings",
+            ScreenId::About => "about",
         }
     }
 }
@@ -66,6 +70,7 @@ pub fn all() -> Vec<Box<dyn Screen>> {
         Box::new(builds::Builds::default()),
         Box::new(replays::Replays::default()),
         Box::new(settings::Settings::default()),
+        Box::new(about::About::default()),
     ]
 }
 

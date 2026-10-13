@@ -119,6 +119,10 @@ Each is settled unless the user changes it.
     its own data folder as it starts: when the pack is missing, or another version of nettai made it. A game is
     playable as its pack lands. Without the collection, a game with no pack says so, with a way to choose the
     collection's folder. (docs/app.md §17.)
+25. **An About screen** (2026-10-13): "add an about screen with license and dependency info etc like for slint".
+    About is a minor item of the main menu, beside Settings: the app's version and license, Slint's "Made with
+    Slint" widget (which Slint's royalty-free license asks for in an About screen reached from the top menu), and
+    every font and package the app is built from with its license's texts (§6, docs/app.md §18).
 
 ## 3. Chosen where the user gave no answer
 
@@ -299,7 +303,7 @@ Each is in the mockups under the same name.
 
 ### Main menu
 - Left: PLAY, TRAINING, BUILDS, REPLAYS, each the word alone, 36, in a column 416 wide, rows 72 tall. Below a line:
-  Settings and Exit, 16, muted.
+  Settings, About and Exit, 16, muted.
 - Right: the demo reel, the battle picture at three times (720 by 480), with no caption under it ("don't show the
   caption text").
 - The selected game's title music plays across the menu screens and fades out as a battle starts.
@@ -427,6 +431,12 @@ One scrolling page, a list at the left jumping to a group: General (Name, "Shown
 Video (Picture size, Full screen, Battle text: sharp or original, Reduce motion), Audio (Music, Sound effects), Online (Input
 delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
 button, each rebindable), About.
+
+### About
+The app's name, its version and its license; Slint's "Made with Slint" widget; and MADE WITH, a list 440 wide of
+the fonts the app bundles and every package built into it (each row its name, its version, and its license under
+them), the chosen one's license files beside it in a panel, scrolling (§2.25). On a phone the list is the page and
+a license opens as a sheet from the bottom.
 
 ### On a phone
 One column; pickers and the chip library open as sheets from the bottom; everything tapped is at least 44 tall; no
