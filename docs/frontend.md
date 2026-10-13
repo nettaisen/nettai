@@ -396,7 +396,7 @@ refuses, and `set_training` is refused while a replay is written).
 - **Refills**, by side: the navi's HP (its object's `hp`, back to its
   `max_hp`) is full again once a hit is over: `REFILL_REST` ticks (a second
   and a half) after it last lost any. The HUD's number rolls down to what a
-  hit left in about half a second, so a combo's damage is read before the
+  hit left in under a second, so a combo's damage is read before the
   refill rolls it back up, and a refill doesn't land inside a combo. A navi
   at 0 HP is being deleted and is left to it, as is a round already decided:
   a hit (or hits closer together than the rest) of its whole HP still ends
