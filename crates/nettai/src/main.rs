@@ -19,6 +19,7 @@ mod games;
 mod gl;
 mod input;
 mod lang;
+mod look;
 mod nav;
 mod paths;
 mod quit;

@@ -158,7 +158,7 @@ component CardLinesView inherits Rectangle {
         x: parent.width - self.width;
         width: 28px;
         visible: root.on-panel && row.preferred-width > root.width + 0.5px;
-        background: @linear-gradient(90deg, #0c183600 0%, Theme.panel 100%);
+        background: @linear-gradient(90deg, Theme.panel.with-alpha(0) 0%, Theme.panel 100%);
     }
 }
 
@@ -189,7 +189,7 @@ component InstalledRowView inherits Rectangle {
     in property <bool> slotted;
     property <length> lead: root.slotted ? 8px + 34px + 8px : 8px;
     Rectangle {
-        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Rectangle {
@@ -276,7 +276,7 @@ component CardLibraryRowView inherits Rectangle {
     property <length> note-x: root.end-x - (Theme.phone ? 0px : 8px) - root.note-width;
     property <length> name-width: Theme.phone ? 108px : (PatchCardsView.counts.slotted ? 196px : 128px);
     Rectangle {
-        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+        background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
     Text {

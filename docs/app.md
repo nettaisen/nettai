@@ -420,10 +420,11 @@ each_game_is_named_in_its_languages` holds the three games to their names in bot
 build; the build lists what is left. `msgfmt --check -o /dev/null` validates a file.
 
 **Typography.** Headings, buttons and labels are Chakra Petch, which has Latin alone; a language set in another
-script (`lang::cjk`: Chinese, Japanese, Korean) has them in Murecho, with the labels' tracking nearly none.
-Murecho covers Latin and Japanese. For a script it lacks, Slint falls back to the system's fonts on the desktop;
-the web has none and a phone's may lack one, so such a language needs its font bundled (imported in theme.slint
-beside the others).
+script (`lang::cjk`: Chinese, Japanese, Korean) has them in M PLUS 1 at 800 (the user's choice: docs/design/app-ui.md
+§2.23), with the labels' tracking nearly none, in every game. Body text is Murecho in either. M PLUS 1 and Murecho
+cover Latin and Japanese. For a script they lack, Slint falls back to the system's fonts on the desktop; the web has
+none and a phone's may lack one, so such a language needs its font bundled (imported in theme.slint beside the
+others).
 
 ## 4. Netplay
 
@@ -1157,9 +1158,48 @@ difference between one multiple and the next (a window 780 of the display's pixe
 
 docs/design/app-ui.md §4 is the look; this is where it lives.
 
-**The theme** (theme.slint): every color, the three faces (Chakra Petch 500, 600 and 700, M PLUS 1 Code and
-Murecho, all under the SIL Open Font License, each with its license beside it in `fonts/`), the metrics, and the
-durations. A screen uses these and writes no color, size or duration of its own.
+**The theme** (theme.slint): every color, the four faces (Chakra Petch 500, 600 and 700, M PLUS 1 800 for
+Japanese display text, M PLUS 1 Code and Murecho, all under the SIL Open Font License, each with its license
+beside it in `fonts/`), the metrics, and the durations. A screen uses these and writes no color, size or duration
+of its own: a display text's weight is the theme's too (`display-bold`, `display-semibold`: 700 and 600 in Chakra
+Petch, 800 in M PLUS 1, which is bundled at that weight alone).
+
+**A game's look** (docs/design/app-ui.md §2.23, §4). Each game states its own in its content, beside its versions'
+colors (rules/builds) and its name (its locales): `content/<game>/look.toml`, which `nettai_content::look` reads.
+It holds what the app draws and nothing more: the ground's two colors and its glow (a color and a strength, the
+opacity it is drawn at), the panel, raised, line and inset colors, the text's three, the cursor, the main action and
+the text on it, and the backdrop's pattern (`[pattern]`: its `kind`, `color` and `strength`). It is TOML, read from
+the content alone as the game's name is, because the menus must be in the selected game's look before the game's
+content is loaded (a Luau table would wait for its runtime); the battle reads none of it, and `nettai-content
+check` holds each to its fields. A game whose content states none is drawn in the app's own look, the theme's
+defaults (BN6's), and one whose file doesn't read is too, with the reason in the log.
+
+- *The theme* is the selected game's look (`Theme.look`, a `Look`), and the colors every screen uses are made from
+  it: the twelve stated, and those that follow from them (a raised control's hover, the header's bar, a dialog's
+  shade, the cursor's glow and tints, the out-of-bounds hatching, a piece's marks). The other tokens (the players'
+  colors, good and bad, a bug's purple, Mega and Giga, REG, TAG, a chip's code, the command line) are the same in
+  every game. Nothing in Rust or Slint names a game.
+- *The patterns* are the app's, by what they are (`PatternKind`: hexagons, an isometric grid, a starfield with a
+  streak), each drawn in the look's pattern color at its strength, with the kind's other marks at fixed fractions of
+  it (a starfield's fainter dots and its streak into the main action's color, a grid's wash). Their paths are
+  drawn by the app for the window's size, once for a size (`look::patterns`), each over the window and one of its
+  tiles more each way, and each ground draws its path once into a layer that drifts by less than a tile, as the
+  hexagons always were (§5): a ground at rest costs what the hexagons did.
+- *A change of game* (`look::Looks`). The new game's ground (its gradient, glow and pattern) is pushed onto
+  `Shell.grounds`, the last drawn on top; each ground (`GroundLayer`) covers the window from the side it came in
+  from as its own clock runs (from its creation, for the theme's `settle`), clipped at its edge, with a lit line and
+  a soft band of its cursor's color leading it; once the last has swept, those under it are dropped. Its side is
+  the arrow pressed (the stepper's left arrow or L: from the left; the right one or R: from the right; a game
+  selected otherwise, a replay's or a build's, from the right). Over the same time the theme's colors cross-fade
+  from those shown (`Theme.was`) to the new look, by `Theme.fade`, which the app moves a frame at a time and eases
+  as the sweep is. The panels and the text cross-fade rather than change at the edge: that would mean drawing every
+  screen twice. A second press mid-sweep starts at once from what is shown: a third ground sweeps over the two, and
+  the colors fade on from where they were (four grounds at the most: a fifth drops the oldest). Nothing waits on
+  it, nothing changes a size, and with motion off the new look is there at once. The motion probe watches it both
+  ways and twice over (§13).
+- *What it costs*: 0.14 MB of generated Rust (10.21 to 10.35 MB: the ground's component 0.08, under its `for`, and
+  the rest the theme's colors read where they were constants), and the bundled faces 1.8 MB more (M PLUS 1 at 800,
+  with its Japanese).
 
 **The components** (widgets.slint, shell.slint):
 
@@ -1181,7 +1221,7 @@ durations. A screen uses these and writes no color, size or duration of its own.
 | `Page`, `Header`, `Footer`, `Hint` | A menu screen; its header (Back, the title, the game) and footer (key hints, one status) |
 | `Picture` | Where the battle's picture goes (§1) |
 | `DialogFrame`, `MenuOverlay` | A dialog of a screen's own; a menu over the battle |
-| `Backdrop`, `Cursor` | The ground with its hexagons; the bracket cursor |
+| `Backdrop`, `Cursor` | The ground, in the selected game's look, with its pattern (the grounds of a change of game sweeping in over it); the bracket cursor |
 
 **The rules** (docs/design/app-ui.md §5) are built into them: a value has a box of a set width and is cut with an
 ellipsis; a line for a message is there when empty; digits are M PLUS 1 Code's, one width; the cursor is drawn
@@ -1199,8 +1239,10 @@ writing an animation:
 - a panel's accent draws in; a progress bar fills under a moving highlight; a message fades in;
 - a screen's body slides and fades as it leaves, and the next one's title wipes in; a dialog grows in as its
   shade fades in, and a failure's shakes once; a menu over the battle slides in from the left;
-- the two cards before a battle slide in from their sides, VS stamps, the hexagons rush, and the screen wipes
-  into the battle; the hexagons drift otherwise, and a soft pulse crosses them now and then.
+- the two cards before a battle slide in from their sides, VS stamps, the ground's pattern rushes, and the screen
+  wipes into the battle; the pattern drifts otherwise, and a soft pulse crosses it now and then;
+- a change of game sweeps the new game's ground across the window from the side of the arrow pressed as the
+  colors cross-fade (above).
 
 What a screen does write is *which of its parts arrive, in what order*: each part goes in an `Arrive` with its
 place in the order (the main menu's words, then what is under them, then the reel), and rises as it fades in, 30
@@ -1251,7 +1293,7 @@ screen says otherwise.
 
 Three things about how it is made. A clock reads the frame's time (`animation-tick()`) only while it runs, and
 stops when it is done, so a screen at rest evaluates nothing each frame but what moves by itself. What moves
-without stopping is drawn once and moved as a picture: the ground's hexagons are a cached layer (§5). And the
+without stopping is drawn once and moved as a picture: the ground's pattern is a cached layer (§5). And the
 cursor's glide is the app's (`Nav::settle`: a share of the way to the focused control each frame), not a Slint
 animation: that starts over each time its target moves, and the cursor crawled behind a screen arriving or a page
 scrolling.
@@ -1375,8 +1417,10 @@ The pictures are for comparing with the mockups by eye. Two things the pass chec
 
 **The motion probe** (`NETTAI_TOUR_MOTION=1`) is the pass with things moving. A still picture can't show an
 animation, so it takes a burst of shots through each (a screen leaving and the next arriving, the cursor's
-glide, a value sliding, a press, a list opening, a page scrolling, a dialog, the cards and the wipe into a
-battle, a menu over it), each named for the milliseconds since it began. It checks and fails on two things: that
+glide, a change of game sweeping in from the right, from the left and twice over, a value sliding, a press, a
+list opening, a page scrolling, a dialog, the cards and the wipe into a battle, a menu over it), each named for
+the milliseconds since it began. (Before the change of game's bursts it steps once around the games, waiting for
+each to be ready, so that no game's runtime loads, the window still, inside a burst.) It checks and fails on two things: that
 in every shot each control is the size it has at rest, and that a press acts at once (two moves pressed in the
 same instant as a screen change land on the new screen's controls, and a direction held down a scrolling page
 moves the focus at every repeat).
@@ -1437,8 +1481,9 @@ decompressed (turned as it was, in place), the command line's arrows pulsing by 
 off the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
-Settings, a dialog, a battle), `training`, `builds`, `build-tabs`, and in the probe `play`; `play` and `replays`
-walk Play's and Replays' steps alone.
+Settings, a dialog, a battle; in the probe, a change of game too), `training`, `builds`, `build-tabs`, `play`
+and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (Until the games' looks,
+`shell` walked Play's and Replays' steps too.)
 
 **A picture's name says what it is of, and the pass doesn't check that**: it checks what moves between a pair
 and what is cut. Two things went unseen that way, and each now has its check.
@@ -1582,8 +1627,8 @@ Slint compiler in the build script was 8 s, and linking 2. Three things made it 
    | a `ListView` beside its rows; a `ScrollPage` | 17.7, 15.5 KB |
 4. **One renderer and no more features than are used:** femtovg alone (the clock needs it: §1), without the
    software renderer and the accessibility backend the first app also built. No standard widgets are imported.
-   The fonts are embedded as files (5.6 MB in all, 3.9 of it M PLUS 1 Code with its Japanese), which costs the
-   linker nothing measurable.
+   The fonts are embedded as files (7.4 MB in all: 3.9 of it M PLUS 1 Code and 1.8 M PLUS 1 at 800, each with
+   its Japanese), which costs the linker nothing measurable.
 5. **The build script writes a file only when what it says changed** (the merged catalogs, which Slint has cargo
    watch), and gives what it wrote a time long past. Rewritten on every run, they made every build find the UI
    changed and compile it again: 14 seconds for a build with nothing to do. Written once but dated by the run,
@@ -1759,6 +1804,12 @@ at 14bfaf42b, 10.29 MB: Training's options had added 0.05 MB) their three compon
 copied in (the menu's row, the connection's mark, the touch pad): 10.26 MB, 83,075 lines. Their components used
 in a few places are smaller shared: copied in, the pad's keys would be 0.22 MB more, the input display's keys
 0.06, a build's card and option 0.02 and 0.01, an input row 0.02.
+
+The games' looks (§10; main at dc55c1752, 10.21 MB, 82,825 lines, after the main menu's caption went) are 0.14
+MB more: 10.35 MB, 84,686 lines. The ground's component under its `for` is 0.08 MB (the three pattern paths of
+its layer 0.02, of which a starfield uses all three and the others one); the theme's colors, which were constants
+Slint wrote into each use, are read from the theme now, about 0.05 MB over their uses; the theme's own code 0.015
+more. The display texts' weights from the theme cost nothing measurable (0.004 MB less than constants).
 
 The tools that measured it are bn6battle-verify's tools/slint-size: the module's size from the build script
 alone, its breakdown by kind of code and by component, what one component's code is, a construct's cost, and
