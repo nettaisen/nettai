@@ -168,23 +168,6 @@ export global PlayView {
 
 // ---- The builds ------------------------------------------------------------------------------------------
 
-// A build of a list: the Builds screen's row (`BuildRow`, 52 tall), with its clicks.
-component BuildItem inherits Rectangle {
-    in property <BuildEntry> build;
-    in property <string> nav;
-    in property <int> nav-index;
-    BuildRow {
-        width: parent.width;
-        build: root.build;
-        hover: touch.has-hover;
-    }
-
-    touch := RowTouch {
-        nav: root.nav;
-        nav-index: root.nav-index;
-    }
-}
-
 // The chosen build in one box, on a phone: Left and Right step through the builds, Enter opens them as a sheet.
 component BuildBox inherits Rectangle {
     in property <BuildEntry> build;
@@ -620,7 +603,7 @@ export component PlayScreen inherits Page {
                 count: Theme.phone ? 0 : PlayView.builds.length;
                 row-height: 52px;
                 chosen: PlayView.chosen;
-                for slot in list.shown: BuildItem {
+                for slot in list.shown: BuildRow {
                     property <int> at: list.first + slot;
                     x: 0;
                     y: self.at * list.pitch;
@@ -1420,7 +1403,7 @@ export component PlayOverlay inherits Rectangle {
             count: PlayView.builds.length;
             row-height: 52px;
             chosen: PlayView.chosen;
-            for slot in list.shown: BuildItem {
+            for slot in list.shown: BuildRow {
                 property <int> at: list.first + slot;
                 x: 0;
                 y: self.at * list.pitch;

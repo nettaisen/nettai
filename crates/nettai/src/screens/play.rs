@@ -133,7 +133,7 @@ struct Live {
     rounds: i32,
     patch_cards: bool,
     /// What is wrong with this player's build as the settings would play it: the first thing.
-    problem: Option<nettai_match::Wrong>,
+    problem: Option<nettai_match::check::Problem>,
     closed: bool,
     bars: i32,
     ping: i32,
@@ -620,7 +620,7 @@ impl Play {
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
             // (A build the settings can't play: the lobby's own check, typed. Until the Builds screen words each
             // kind, the line says only that it can't be used so.)
-            problem: lobby.problems().first().map(|p| p.what.clone()),
+            problem: lobby.problems().first().cloned(),
             note: Some(match (reconnecting, ready, their_ready) {
                 (Some(_), ..) => LobbyNote::Reconnecting,
                 (None, ..) if !lobby.problems().is_empty() => LobbyNote::Unusable,
@@ -653,7 +653,7 @@ impl Play {
         // (The build's problem in the player's words: the Builds screen's for each kind.)
         if live.problem != self.live.problem || live.patch_cards != self.live.patch_cards {
             let said = match (&live.problem, shell.ready()) {
-                (Some(wrong), Some((game, ready))) => Some(words::wrong(shell, &game, &ready, wrong)),
+                (Some(problem), Some((game, ready))) => Some(words::problem(shell, &game, &ready, problem)),
                 _ => None,
             };
             let line = said.map(|said| UserError::BuildUnusable { reason: Some(said).filter(|s| !s.is_empty()) }.line(&ui));

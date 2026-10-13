@@ -1314,10 +1314,13 @@ export component ScrollPage inherits Rectangle {
 //     // inside it:
 //     for slot in list.shown: BuildRow {
 //         property <int> at: list.first + slot;
-//         y: at * list.pitch;  width: list.row-width;  height: list.row-height;
-//         row: View.rows[at];
-//         RowTouch { nav: list.nav; nav-index: at; }
+//         y: self.at * list.pitch;  width: list.row-width;
+//         build: View.rows[self.at];
+//         nav: "builds";  nav-index: self.at;
 //     }
+//
+// A row holds its own `RowTouch` (as `BuildRow` and the folder's rows do), so the `for` places one leaf: a row
+// given a child here is copied into the list, 20 to 60 KB of generated Rust a list (docs/app.md §14).
 export component ListView inherits Rectangle {
     in property <string> nav;
     in property <int> count;
