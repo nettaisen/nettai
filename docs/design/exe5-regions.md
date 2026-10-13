@@ -22,11 +22,11 @@ matches its consoles but for one known difference: a Japanese console times the 
 - **The objects and the player's actions** (US 0x080B8BD0–0x080FC000: the actor, attack and effect tables' routines,
   0x08003958, 0x08003B80, 0x08003F60, the chip actions' table 0x080EB42C, indexed by the action less 0x10, and the
   game-played navis' rows, 0x080F228C): 65 places in 26 kinds or places, each filed under the routine that holds it
-  (verify scratch's `kind_hunks5.py`) and the content's name for its kind.
+  (verify's tools/exe5/region_kinds.py) and the content's name for its kind.
 - **The chip records** (368 records of 0x2C bytes: Team ProtoMan 0x0801E214 against Team of Blues 0x0801E1D0, Team
-  Colonel 0x0801E210 against Team of Colonel 0x0801E1CC), field by field, the art by what its pointers point at.
+  Colonel 0x0801E210 against Team of Colonel 0x0801E1CC), field by field, the art by what its pointers point at (verify's tools/exe5/region_chips.py).
 - **The whole lab on Japanese consoles**: every library-exe5 scenario (2,542) copied onto Japanese bases (Team of
-  Blues against Team of Colonel, Tango's netplay saves for the Japanese ROMs: verify scratch's `jp5_sweep.py`),
+  Blues against Team of Colonel, Tango's netplay saves for the Japanese ROMs: verify's tools/exe5/jp_sweep.py),
   recorded and replayed against the engine: 2,487 recorded (55 picked chips the Japanese saves' folders don't deal),
   2,444 match every frame, 2 stop at their listed deviation (destruction/asked, the engine's own), and 41 stop at a
   place below: 40 at the status visual's panel, 1 at the no-running message's pace. Their sounds match but for that
@@ -94,7 +94,7 @@ One place is of that last class (Roll against an armed AntiRecv, §7); no other 
 | 0x080EB3CE to 0x080EB3F2 (6) | 0x080EA9DE to 0x080EAA8A | after effect #0x90 | the player's tables, and the Japanese ROMs' routines placed before them | same (data) | |
 | 0x080EB428 | 0x080EAAF8 | the player's action table's end | the same | same (data) | |
 | 0x080ED34A, 0x080ED35A | 0x080ED06E, 0x080ED07A | action 0x29, Slasher (slasher/action) | when a trap's counter (requests 0x600) or the drive's end (0x80000) takes over, the US ends the invulnerability Slasher set (0xFFFF ticks from when it sees its target) | JP defect (the content's) | not shown: while invulnerable its user takes no hit to spring a trap |
-| 0x080ED8C2, 0x080ED8DC | 0x080ED5DE, 0x080ED5F4 | action 0x2C, AntiDmg's counter (antidmg/counter) | as the navi vanishes the US resets the slide's step and puts it on its panel's center (EXE6's and Japan's don't: the content's is EXE6's code) | same in a netbattle: the counter starts from the idle, after any slide, the navi on its panel's center | stages/ice/antidmg-move-end (US) and verify scratch's antidmg-slide set: the counter waits for the slide's end |
+| 0x080ED8C2, 0x080ED8DC | 0x080ED5DE, 0x080ED5F4 | action 0x2C, AntiDmg's counter (antidmg/counter) | as the navi vanishes the US resets the slide's step and puts it on its panel's center (EXE6's and Japan's don't: the content's is EXE6's code) | same in a netbattle: the counter starts from the idle, after any slide, the navi on its panel's center | stages/ice/antidmg-move-end (US) and 16 like it, the Cannon landing at other moments of the slides: the counter waits for the slide's end |
 | 0x080EDDF6 | 0x080EDB06 | action 0x2F, GunDelSol (gundels) | the US stops firing once the battle is over | JP defect (the content's `battle.over()`) | not shown: a GunDelS1 deleting a 60-HP navi ends the same on both consoles |
 | 0x080EFEA8, 0x080EFEAE, 0x080EFEB6, 0x080EFF04, 0x080EFF80, 0x080EFFC4 | 0x080EFBB0, 0x080EFBB6, 0x080EFBB8, 0x080EFC02, 0x080EFC7C, 0x080EFCB4 | action 0x30, a dark MegaMan's last stand (rules/emotion/dark_survival) | the US's take-over clears the flags 0x101C40 and 0x110 and the slide's step (Japan's 0x40 alone), and its fade-in shows the HUD of the netbattle's last turns (0x0800916A) | JP defect (the content's) | the sweep's Japanese copies of dark-survival/*: the same throughout |
 | 0x080F01E8 | 0x080EFED4 | action 0x58, HotBody | the literal pool (the take-over's two words) | same (data) | |
@@ -122,7 +122,7 @@ deviation with no state frame, `SOUND_ALONE`, isn't asked of the state replay).
 
 A trap that catches a hit zeroes the hit; EXE6's also drops the navi's pending requests (0x301BE), EXE5's (0x08029AE0)
 and EXE4's (0x080230A2) don't. The engine dropped them in every game, so a move ending on ice as AntiDmg caught a hit
-didn't slide on (verify scratch's antidmg-slide set: 8 of 16 US recordings stopped). The rules' `anti_traps` now say
+didn't slide on (of 16 US recordings of AntiDmg catching a Cannon around a navi's steps on ice, 8 stopped there). The rules' `anti_traps` now say
 it (`drops_requests`: EXE6's 0x301BE, EXE5's and EXE4's 0); stages/ice/antidmg-move-end records it.
 
 ## 7. US omission? Roll against an armed AntiRecv
