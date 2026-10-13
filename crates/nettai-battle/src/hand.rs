@@ -26,7 +26,11 @@ pub struct ChipHand {
     pub selection: [Option<FolderChip>; 6],
     /// Which turn (custom screen, from 0) each chip was picked in.
     pub turn: [u8; 6],
-    /// Modifier flags per entry (bit 1: WhiCapsl folded, bit 2: Uninstll).
+    /// Each entry's marks (the original's modifier flags): 0x01 the folder's
+    /// Regular chip; the rest by game (the builder's folded modifier chips,
+    /// a screen's marked picks, what the rules add), and what they do at
+    /// the chip's use by the game's chip-use rules (`mark_damage`,
+    /// `mark_heals`).
     pub modifiers: [u8; 6],
 }
 
@@ -94,10 +98,8 @@ impl ChipHand {
     ///
     /// `whole`: the status reset's (0x0800E294, on the hand: the damage,
     /// the Atk+ bonus and the charge bonus added; every per-slot field
-    /// moves, 0x0800E2F0. The original steps its halfword pointer through
-    /// the turn and modifier bytes too, moving them at twice the index;
-    /// only the local console's chip records read those, 0x0800EC68, so
-    /// each entry's own move here). Else the custom screen's as OK builds
+    /// moves, 0x0800E2F0, the turn and mark bytes as `move_flag_bytes`
+    /// says). Else the custom screen's as OK builds
     /// the hand (0x0801F242, on its list at 0x02033000: the damage and the
     /// Atk+ bonus added; the chips move up with their damage alone, it
     /// copies the list's +12, +36 and +48: each slot's Atk+ bonus and
@@ -123,14 +125,31 @@ impl ChipHand {
                 self.attack_bonus[k] = self.attack_bonus[next];
                 self.charge_bonus[k] = self.charge_bonus[next];
                 self.selection[k] = self.selection[next];
-                self.turn[k] = self.turn[next];
-                self.modifiers[k] = self.modifiers[next];
+                self.move_flag_bytes(k);
             }
             if self.ids[k].is_none() {
                 return;
             }
             k = next;
         }
+    }
+
+    /// What EXE4's fold on the hand does to the turn and mark bytes as
+    /// entry `k` takes the next one's fields (0x0800E302, 0x0800E308). It
+    /// reads and writes them through the entry's pointer, which steps two
+    /// bytes an entry where these are a byte each: the byte at twice the
+    /// entry's index takes the one two on, in the block's six turns
+    /// (+0x3E) and again in its six marks (+0x44). The turns run on into
+    /// the marks (an install's mark turns up in a turn byte), and the marks
+    /// into the block's six unused bytes after them, which are zero.
+    fn move_flag_bytes(&mut self, k: usize) {
+        let mut bytes = [0u8; 18];
+        bytes[..6].copy_from_slice(&self.turn);
+        bytes[6..12].copy_from_slice(&self.modifiers);
+        bytes[2 * k] = bytes[2 * k + 2];
+        bytes[6 + 2 * k] = bytes[6 + 2 * k + 2];
+        self.turn.copy_from_slice(&bytes[..6]);
+        self.modifiers.copy_from_slice(&bytes[6..12]);
     }
 
     /// Chips left, counting from the cursor.

@@ -9,7 +9,6 @@ use crate::battle::Battle;
 use crate::collision::f1;
 use crate::field::PanelType;
 use crate::content::{ChipData, ChipFamily, ChipFlags, ChipTraits, Content};
-use crate::custom::builder::modifier_bits;
 use crate::object::{ObjectRef, PanelPos, Vec3};
 use nettai_content_api::{ChipHandle, WeaponHandle};
 
@@ -19,8 +18,6 @@ mod damage_flags {
     pub const DOUBLE: u16 = 0x8000;
     /// Paralyzes (a folded WhiCapsl, an ElecCross charged chip).
     pub const PARALYZE: u16 = 0x4000;
-    /// Uninstalls (a folded Uninstll).
-    pub const UNINSTALL: u16 = 0x2000;
     /// EraseCross's damaging Null-family chips: bug code 0xF7, which
     /// raises the HP bug of a navi with a 4 in its HP.
     pub const ERASE_CROSS: u16 = 0x1000;
@@ -127,8 +124,8 @@ struct HandEntry {
     damage: u16,
     /// Atk+ and charge bonuses plus any form or aura bonus.
     extra: u16,
-    /// Modifier flags folded into the entry (`modifier_bits`: bit 1
-    /// paralyze, bit 2 uninstall; EXE5's capsules' bits 3 to 5).
+    /// The entry's marks (`ChipHand::modifiers`), which the game's chip-use
+    /// rules read (`mark_damage`, `mark_heals`).
     modifiers: u8,
     /// The type of panel the bonus came from, which the use turns Normal
     /// (the navi's `panel_bonus`: EXE5's sea, 0x0800D0A6's bonus kind 4).
@@ -265,26 +262,20 @@ fn prepare_from(b: &mut Battle, r: ObjectRef, charge: u8, slot_in: bool) -> supe
     }
     prime(b, r, cd);
     let mut damage = ai(b, r).attack.damage;
-    // sub_8012C34 (EXE5's 0x08010368, which knows two more: its capsules').
-    if e.modifiers & modifier_bits::PARALYZE != 0 {
-        damage |= damage_flags::PARALYZE;
-    }
-    if e.modifiers & modifier_bits::UNINSTALL != 0 {
-        damage |= damage_flags::UNINSTALL;
-    }
-    let mixed = b.game_rules().chip_use.mixed_modifiers;
-    if mixed && e.modifiers & modifier_bits::DAMAGE_1000 != 0 {
-        damage |= 0x1000;
-    }
-    if mixed && e.modifiers & modifier_bits::DAMAGE_0800 != 0 {
-        damage |= 0x0800;
+    // sub_8012C34 (EXE5's 0x08010368): what the hand entry's marks add, by
+    // the game's chip-use rules (EXE4's use reads none of them).
+    let marks = b.game_rules().chip_use;
+    for (bit, &add) in marks.mark_damage.iter().enumerate() {
+        if e.modifiers & (1 << bit) != 0 {
+            damage |= add;
+        }
     }
     // sub_8012C4A
     if deals_damage(cd.flags) && non_elemental(b, cd.family) && form_of(b, r).traits.has(crate::content::FormTraits::ERASES) {
         damage |= damage_flags::ERASE_CROSS;
     }
     ai_mut(b, r).attack.damage = damage;
-    heal_on_use(b, r, e.chip, mixed && e.modifiers & modifier_bits::HEAL != 0);
+    heal_on_use(b, r, e.chip, e.modifiers & marks.mark_heals != 0);
     // (The original adds one to the side's count 6 for a navi chip here,
     // `sub_800AB46(side, 6, 1)`; the engine keeps no such count: no game
     // reads it in a netbattle. docs/design/exe5-map.md §6.1.)

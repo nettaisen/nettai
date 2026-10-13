@@ -635,6 +635,26 @@ impl DialogueFont {
         self.pixels.get(n * i..n * (i + 1))
     }
 
+    /// The palette index the glyphs' strokes are drawn in: the commonest of
+    /// their pixels that is neither clear nor the cells' ground (the index
+    /// commonest in the glyphs' top left corners). EXE6's and EXE5's glyphs
+    /// are clear around their strokes, in 1; EXE4's fill their cells with 1,
+    /// the box's white, around strokes in 3. What a text drawn in another
+    /// font in the glyphs' place takes for its color.
+    pub fn ink(&self) -> u8 {
+        let n = Self::WIDTH * Self::HEIGHT;
+        let mut corners = [0usize; 16];
+        for glyph in self.pixels.chunks(n) {
+            corners[glyph[0] as usize & 15] += 1;
+        }
+        let ground = (0..16).max_by_key(|&i| (corners[i], std::cmp::Reverse(i))).unwrap_or(0);
+        let mut counts = [0usize; 16];
+        for &p in &self.pixels {
+            counts[p as usize & 15] += 1;
+        }
+        (1..16).filter(|&i| i != ground).max_by_key(|&i| (counts[i], std::cmp::Reverse(i))).unwrap_or(1) as u8
+    }
+
     /// The glyphs of a string, each glyph's longest name first, and the
     /// characters none draws.
     pub fn glyphs(&self, text: &str) -> (Vec<u16>, Vec<char>) {
@@ -778,5 +798,31 @@ mod tests {
         assert_eq!(s.offset(0), (0, 0));
         assert_eq!(s.offset(256), (0, 640));
         assert_eq!(s.offset(257).1 - s.offset(256).1, 4);
+    }
+
+    /// The dialogue font's ink is its strokes' index, whatever fills the
+    /// cells around them: EXE6's and EXE5's glyphs are clear around strokes
+    /// in 1 (a shade in 3); EXE4's fill their cells with 1, the box's
+    /// white, around strokes in 3, and a text in the vector font drawn in 1
+    /// there was white on white.
+    #[test]
+    fn the_dialogue_fonts_ink_is_its_strokes() {
+        let n = DialogueFont::WIDTH * DialogueFont::HEIGHT;
+        let font = |ground: u8, stroke: u8, shade: u8| {
+            let mut pixels = Vec::new();
+            for _ in 0..4 {
+                let mut g = vec![ground; n];
+                for p in g.iter_mut().skip(20).take(30) {
+                    *p = stroke;
+                }
+                for p in g.iter_mut().skip(60).take(5) {
+                    *p = shade;
+                }
+                pixels.extend(g);
+            }
+            DialogueFont { pixels, advances: vec![8; 4], chars: vec![String::new(); 4] }
+        };
+        assert_eq!(font(0, 1, 3).ink(), 1, "EXE6's and EXE5's");
+        assert_eq!(font(1, 3, 2).ink(), 3, "EXE4's");
     }
 }
