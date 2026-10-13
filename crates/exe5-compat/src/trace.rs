@@ -518,6 +518,23 @@ impl Round {
         }
     }
 
+    /// The recording's frame the engine's custom screen of the recording
+    /// console's side stands at on the `i`th of `frames`, for what that
+    /// screen's OK changes on its console alone (the Regular chip still to
+    /// come): the frame's own; for `link_delay` frames from the side's OK,
+    /// the frame before the OK (the engine's screen takes its OK that much
+    /// later, [`Round::fed`]); then the frame `link_delay` earlier, until
+    /// the fight resumes ([`Round::screen_late`]).
+    pub fn local_screen_frame<'a>(&'a self, i: usize, frames: &[&'a Frame]) -> &'a Frame {
+        let d = self.link_delay() as u32;
+        let f = frames[i];
+        match self.local_ok(f.frame) {
+            Some(ok) if f.frame >= ok + d => self.frame(f.frame - d).unwrap_or(f),
+            Some(ok) if f.frame >= ok => ok.checked_sub(1).and_then(|before| self.frame(before)).unwrap_or(f),
+            _ => f,
+        }
+    }
+
     /// The recording console's side (its setup's BattleState +0x0D).
     fn local_side(&self) -> usize {
         decode_setup(&self.setup).map_or(0, |d| d.battle_state[0x0D] as usize & 1)
@@ -1185,7 +1202,7 @@ pub use crate::codec::{navicust, patch_cards};
 /// `Compat::navi_action`), phase and its init byte, panel, side, HP,
 /// position, timer, animation and its collision's status flags.
 pub fn compare(b: &Battle, f: &Frame, compat: &Compat) -> Vec<String> {
-    compare_with(b, f, f, compat)
+    compare_with(b, f, f, f, compat)
 }
 
 /// [`compare`] on the `i`th of a round's `frames`, the engine having been fed
@@ -1197,7 +1214,7 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     let f = frames[i];
     let late = round.screen_late(i, frames);
     let banner = if late > 0 { round.frame(f.frame - late).unwrap_or(f) } else { f };
-    compare_with(b, f, banner, compat)
+    compare_with(b, f, banner, round.local_screen_frame(i, frames), compat)
 }
 
 /// The engine's hand in a chip block's terms ([`codec::ChipHand`]): each
@@ -1244,8 +1261,10 @@ fn hand_fields(h: &ChipHand) -> Vec<(&'static str, String)> {
     ]
 }
 
-/// [`compare`], the banner compared with `banner`'s.
-fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<String> {
+/// [`compare`], the banner compared with `banner`'s and what the recording
+/// console's screen's OK changes on that console alone with `screen`'s
+/// ([`Round::local_screen_frame`]).
+fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
     let mut check = |what: &str, ours: String, theirs: String| {
         if ours != theirs {
@@ -1258,6 +1277,75 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
     check("rng2", format!("{:#010x}", b.rng.state), format!("{:#010x}", f.rng2));
     check("paused", (b.paused as u8).to_string(), f.paused.to_string());
     check("gauge", format!("{:#x}", b.gauge.value), format!("{:#x}", f.gauge));
+    // BattleState's own, at EXE6's offsets: the actors and the alive navis
+    // by side (+0x04, +0x12), the custom screens so far (+0x07), whether
+    // the battle runs (+0x0A), the time-up mark (+0x0B), the two counts of
+    // fight ticks (+0x0E, +0x16), the winner (+0x10), the set's score
+    // (+0x18), the result (+0x1F), the delay (+0x28), the flags (+0x32) and
+    // the fight's ticks (+0x40); and the intro bits' low nibble (+0x5C: the
+    // fade done, the navis in, each side's chips enabled. Its other bits
+    // are EXE5's own: 0x10 and 0x20 ColonelSoul's, 0x40 set from the start,
+    // where the engine's 0x10 is the fade's start).
+    if let Ok(bs) = unhex(&f.bs) {
+        if bs.len() >= 0xF0 {
+            check("actors", format!("{:?}", r.actor_count), format!("{:?}", [bs[0x04], bs[0x05]]));
+            check("turn", r.turn.to_string(), bs[0x07].to_string());
+            check("running", r.running.to_string(), bs[0x0A].to_string());
+            check("time up", r.time_up.to_string(), bs[0x0B].to_string());
+            check("fight cycles", format!("{:?}", r.cycles), format!("{:?}", [bs[0x0E], bs[0x16]]));
+            check("winner", r.winner.to_string(), bs[0x10].to_string());
+            check("alive", format!("{:?}", r.alive), format!("{:?}", [bs[0x12], bs[0x13]]));
+            check("score", format!("{:?}", [r.wins, r.losses]), format!("{:?}", [bs[0x18], bs[0x19]]));
+            check("result", r.result.to_string(), bs[0x1F].to_string());
+            check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
+            check("battle flags", format!("{:#x}", r.flags), format!("{:#x}", u16::from_le_bytes([bs[0x32], bs[0x33]])));
+            check("battle time", r.battle_time.to_string(), u32::from_le_bytes([bs[0x40], bs[0x41], bs[0x42], bs[0x43]]).to_string());
+            check("intro bits", format!("{:#x}", r.intro_bits & 0x0F), format!("{:#x}", bs[0x5C] & 0x0F));
+        }
+    }
+    // The fighting machine (`fight`, 0xC bytes): its state, sub-state and
+    // entry mark (+0, +2, +3), its result (+4), the pausing player (+5), its
+    // timer (+8) and the turn timer (+0x0A). EXE5's setup state marks its
+    // second step in the byte at +0x0A (0x0800776A), where EXE6's marks it
+    // in the sub-state and the engine does as EXE6: in that state the
+    // engine's sub-state is compared with that byte; after it the mark
+    // stays there (the state's word store clears +0 to +3 alone) until the
+    // last turns' timer is written over it (0x080073E6) or the machine is
+    // zeroed for the next turn, so a turn timer of none is a 4 there.
+    if let Ok(fight) = unhex(&f.fight) {
+        if fight.len() >= 0xC {
+            let m = &b.fight;
+            // (Not before a round's first fight: the fight's start zeroes
+            // the machine, on the tick after its entry, and until then the
+            // recording's is the last round's, left as that round ended.)
+            let untouched = m.state == 0 && m.sub == 0 && m.init == 0 && m.result == 0 && m.pausing_player == 0 && m.timer == 0 && m.turn_timer == 0;
+            let before_fight = untouched && (r.mode != nettai_battle::battle::mode::FIGHTING || r.init == 0);
+            let word = |at: usize| u16::from_le_bytes([fight[at], fight[at + 1]]);
+            let setup = m.state == nettai_battle::battle::fight::SETUP;
+            let turn_timer = if setup || (m.turn_timer == 0 && word(0x0A) == 4) { m.turn_timer } else { word(0x0A) };
+            let fields = [
+                ("state", m.state as u16, fight[0] as u16),
+                ("sub-state", m.sub as u16, if setup { fight[0x0A] as u16 } else { fight[2] as u16 }),
+                ("entry mark", m.init as u16, fight[3] as u16),
+                ("result", m.result as u16, fight[4] as u16),
+                ("pausing player", m.pausing_player as u16, fight[5] as u16),
+                ("timer", m.timer as u16, word(8)),
+                ("turn timer", m.turn_timer, turn_timer),
+            ];
+            for (name, ours, theirs) in fields.into_iter().filter(|_| !before_fight) {
+                check(&format!("fight {name}"), format!("{ours:#x}"), format!("{theirs:#x}"));
+            }
+        }
+    }
+    // The recording console's own Regular chip still to come (+0x17), which
+    // its screen's OK clears: compared with the recording of the frame the
+    // engine's screen stands at (`screen`).
+    if let Ok(theirs) = unhex(&screen.bs) {
+        if theirs.len() >= 0xF0 {
+            let local = r.local_side as usize & 1;
+            check("Regular chip to come", (b.custom.sides[local].folder.regular_pending as u8).to_string(), theirs[0x17].to_string());
+        }
+    }
     // The banner: its task (bit 15 of the HUD's tasks) and, while it shows,
     // the number the traced console's record holds (its +1: the banner
     // 0x0801B02E started, 0 for a telop), which for a result's is the
