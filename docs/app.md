@@ -288,7 +288,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 |---|---|
 | `show` | The screen is shown, or something it shows changed under it (the selected game, the language, the window turned upright): set the view from the state. The one method a screen must write. |
 | `hide` | Another screen is shown in its place. |
-| `activate(id, index)` | Enter, a click or a tap on a control. |
+| `activate(id, index)` | A (its key or pad button), a click or a tap on a control. |
 | `step(id, index, by)` | Left or Right on a stepper, a select or a switch, or a click on its arrow. |
 | `choose(id, index, choice)` | A choice made outright: one side of a switch clicked, a slider set, a row of a select's list. |
 | `edit(id, index, text, done)` | A field's text as it is typed, then as it is left. The screen keeps what it wants of it and sets its view's property, which the field then shows. |
@@ -1032,25 +1032,33 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   changes ("HP +500") and each program at work that gives an ability. The bugs are the whole build's, whoever
   brings them (the draft's overview), each by its full name and its level or amount, purple. A bug that wasn't
   there before the last change pulses purple once.
+- *The strip* across the top, as the folder's: the program under the cursor (the piece in hand, the piece on
+  the cell the cursor is on, or the list's row), its name beside its color, and the game's description of it
+  (the locales' `[navicust_programs]` descriptions, the ROMs' own text, on one line). A phone has no strip.
 - *The keys.* The cursor goes over the board cell by cell (each cell is a control, `cell`, its place in the
-  drawn grid). Enter on a placed piece picks it up by that cell; Enter on a program's row takes it in hand, its
-  middle on the board's (a copy already placed in that color says whether it is compressed). While a piece is
-  in hand it is where the cursor is: the arrows (and a pad's stick) move it a cell at a time, the keys bound to
-  L and R (A and S) and the pad's shoulders turn it a quarter about the cell held (the tab's `key` and `button`
-  take them before the frame changes the tab), C or the pad's north button compresses it, Enter puts it down
-  where it fits, and Esc puts it back where it was (one from the list goes back to it). One that doesn't fit is
-  refused with the rules' own kind (`GridData::misfit`: `Wrong::OffBoard` or `Wrong::Overlap`) in the reserved
-  line, and shakes. Del takes off the piece under the cursor, or a program's last copy from its row, or drops
-  the piece in hand. The footer's hints are the hand's while a piece is held. Leaving the tab with a piece in
-  hand puts it back.
+  drawn grid). Confirm on a placed piece picks it up by that cell; Confirm on a program's row takes it in hand,
+  its middle on the board's (a copy already placed in that color says whether it is compressed). While a piece
+  is in hand it is where the cursor is: the arrows (and a pad's stick) move it a cell at a time, the keys bound
+  to L and R (A and S) and the pad's shoulders turn it a quarter about the cell held (the tab's `key` and
+  `button` take them before the frame changes the tab), C or the pad's north button compresses it in place (its
+  other shape turned as it is, about the same middle, held by the same cell where it still has it, else by the
+  nearest, the cursor going there: `Edit::Compress`), Confirm puts it down where it fits, and Back puts it away
+  into the list, as the game's B does. So a placed program is taken off by picking it up and putting it away;
+  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand).
+  One that doesn't fit is refused with the rules' own kind (`GridData::misfit`: `Wrong::OffBoard` or
+  `Wrong::Overlap`) in the reserved line, and shakes. The footer's hints follow the cursor: the hand's while a
+  piece is held (Back: Put away), Del's Take off while the cursor is on a placed piece or a placed program's
+  row (`on-piece`). Leaving the tab with a piece picked up off the board puts it back where it was.
 - *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
   edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
   as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
   flash along its cells one after another (`dropped`).
 
 **The Patch cards tab** (`patch_cards`; §2.19, §2.20): the folder's shape. A card's number, name, MB, slot and
-lines are the game's data: its number its place in the library's order (which lists the cards by their
-numbers), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
+lines are the game's data: its number its own, as the game's compat tables state it (`builds::import::card_number`,
+each compat crate's `patch_card_number`: the number the card is printed with and a save holds; the library's
+order lists the cards by number, but EXE5's two 111s, each team's own, take two places in it, so its place isn't
+the number), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
 lines `builds::cards` (each effect's line from the strings' `patch_card_effects`, a bug's marked by the effect's
 `bug`, the card screen's group by its `group`, an effect that holds effects of its own followed by theirs, and a
 line's names put in as the screen shows them: `cards::named_by`, a slot by its name, a card by its number).
@@ -1239,8 +1247,23 @@ tells the app where it is in the window and takes its clicks. From those rectang
   where the focused one does (Settings, not Exit, under REPLAYS). On a stepper, a select, a switch or a slider,
   Left and Right change the value instead.
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
-- **Enter** activates; **Esc** goes back: out of a list, a dialog or a menu, else within the screen
-  (`Screen::back`), else to the main menu.
+- **The GBA's A** activates and **its B** goes back (out of a list, a dialog or a menu, else within the screen,
+  `Screen::back`, else to the main menu), by the keys the player bound to them: Z and X until rebound. The user:
+  "i feel like the GBA A and B buttons should be the universal confirm/cancel buttons everywhere, instead of
+  enter+esc". `input::menu_action` reads the menus' action of a key: their own keys first (the arrows, Tab and
+  Shift+Tab, Page Up and Down, Home, End), then A's key (`Bindings::confirm_key`) confirms and B's
+  (`back_key`) goes back, L's and R's are previous and next, START's (Enter until rebound) and Esc are the menu
+  (`Action::Menu`: they close a battle's menu, which they opened, and do nothing in the app's own), Delete and
+  Backspace delete. Enter, Space and Esc confirm and go back no more.
+- **A binding that clashes** leaves the menus usable: where A is bound to one of the menus' own keys (an arrow,
+  say: the arrow still moves) or A and B share a key (a settings file written by hand: binding a key swaps it,
+  so the Controls can't make one), Enter confirms; likewise Esc goes back for B. The hints name what does
+  (`Bindings::confirm_key` and `back_key` are what they show). A screen's own letter keys come before A's and
+  B's (R and T in the folder, C in the NaviCust tab, B and E in Replays), so a player who binds A to one of
+  those letters gets the screen's action there. Settings, asking for a key to bind, takes every key but Esc,
+  which stops the question.
+- (Where a screen's own section below says Enter or Esc on a control, as they were written before the change,
+  it is A and B now: the keys and buttons bound to them.)
 - A key held repeats a move; a choice is pressed once.
 
 So no screen writes key handling, and a control added to a screen is reachable by being there. A screen opens
@@ -1250,9 +1273,12 @@ and the focus goes back where it was when it closes.
 **The cursor** is one object, four brackets drawn over the layout 5 outside the focused control, which glides
 from control to control. It shows only while a keyboard or a pad is the last thing used; the pointer hides it.
 
-**Text fields don't trap** (rule 7): the arrows walk past a field without changing it. Enter or a typed letter
-starts editing (the letter is the edit's first); while editing, the keys are the field's own, but Esc restores
-the text it had, Enter confirms, and Up, Down or Tab confirm and move on. The field's border and caret light
+**Text fields don't trap** (rule 7): the arrows walk past a field without changing it. A typed letter starts
+editing (the letter is the edit's first; A's and B's keys, Z and X, are letters, so on a field they type), and
+so do Enter and the pad's A; while editing, the keys are the field's own, but Esc restores the text it had,
+Enter finishes it, and Up, Down or Tab finish it and move on; the pad's A finishes and its B restores. These
+are the one place Enter and Esc confirm and go back, and while a field is edited the footer's hints are the
+field's own ("Enter Done", "Esc Cancel", the `Page`'s `field-hints`). The field's border and caret light
 while it is edited, and its text is clipped at its padding and scrolled to keep the caret in view (rule 8). The
 edit is Slint's `TextInput`, so the desktop's IME composes into it. The screen is told each change and sets the
 text the field shows, so a name is cut to its length and a code put in capitals as they are typed.
@@ -1265,10 +1291,15 @@ outside it. The scrollbar's room is reserved whether or not it shows. A select's
 `ListView` of a set height: it is as tall as its rows up to ten (and to the room the window has under the
 select, or over it), keeps that height, and scrolls for more, the chosen row in view as it opens.
 
-**Pads** (rule 10): the D-pad or the stick moves, the south button is Enter, the east one Esc, the shoulders the
-game before and after (or a screen's tabs), Start is Enter in a menu. The footer's hints show key caps or the
-pad's buttons, by which was last used: a face button by its place in the four, since its letter depends on the
-pad's maker.
+**Pads** (rule 10) follow the pad's bindings in the same way (`Bindings::pad_action`): the D-pad or the stick
+moves, the button bound to A confirms and B's goes back (the south and west buttons until rebound; south and
+east stand in where A or B is bound to a direction or shares a button), the buttons bound to L and R are
+previous and next, Start's is the menu (closing a battle's, nothing elsewhere), the face button that is neither
+A's nor B's on the east or west deletes (east until rebound), and north is a screen's second action. The
+footer's hints show key caps or the pad's buttons, by which was last used: a face button by its place in the
+four, since its letter depends on the pad's maker. They name the keys and buttons bound (`Shell.key-a`,
+`key-b`, `pad-a`, `pad-b`, `pad-delete`, which `Shell::show_bindings` sets), never Enter and Esc but in a
+field's own hints; the Controls in Settings say A · Confirm and B · Back.
 
 **The mouse and touch**: a click or a tap focuses and activates in one; everything tapped on a phone is at least
 44 tall.
@@ -1369,16 +1400,18 @@ to its entry, the entry flashes, a count that changed ticks).
 **The NaviCust's, Patch cards' and Auto battle tabs' steps** (`tour/build_tabs.rs`, a build of the pass's own
 made through the screen): the NaviCust's list a focus move apart (a pair), a program taken in hand, moved and
 turned, put down on the command line, a plus part beside it, another program put off the command line (its bug
-appears), one put over another (refused, and why), and a plus part on EXE6's ring (out of bounds; in a game
-without a ring the shot is of the piece in hand); the patch cards' library, its search and sort a focus move
+appears), one put over another (refused, and why), a plus part on EXE6's ring (out of bounds; in a game
+without a ring the shot is of the piece in hand), and a placed program under the cursor (Del's hint), picked up
+(In hand) and put away into the list with Back (no longer placed); the patch cards' library, its search and sort a focus move
 apart (a pair), three cards put in, the library by MB with a card the MB left can't take refused, one of the
 build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
 filled from the library, one emptied, the places scrolled to the last list. Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
 on the ring, or over another), so the walk is the same whatever the game's shapes. A tab the game hasn't is
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
-EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, put down, put off
-the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
+EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, compressed and
+decompressed (turned as it was, in place), the command line's arrows pulsing by themselves, a piece put down, put
+off the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
 Settings, a dialog, a battle), `training`, `builds`, `build-tabs`, and in the probe `play`; `play` and `replays`
@@ -1759,7 +1792,7 @@ screen runs the ticks due, presents the picture into the window's texture if one
   side whose console is shown, EXPORT VIDEO. The focus starts on the bar, where Left and Right go five seconds
   (it is a control whose arrows change it, as a slider is); the speeds and the sides are each a control, so the
   arrows walk through the row and past it. Space plays and pauses, comma and period step a frame (and pause),
-  the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
+  the brackets (and the shoulders) go a round, A on the bar plays and pauses, B goes back to the list.
   At its end a replay stops with the transport there; play starts it again.
 - *No seek stalls the window.* From the moment it shows, the replay is indexed ahead a slice a frame
   (`Viewer::index`), each slice as many ticks as the last one's time says fit a budget: 1.5 ms while the

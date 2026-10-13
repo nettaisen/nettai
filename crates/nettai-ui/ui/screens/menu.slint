@@ -53,7 +53,7 @@ export component MenuScreen inherits Page {
     logo: true;
     hints: [
         { key: "↑↓", pad: PadButton.move, text: @tr("Select") },
-        { key: "Enter", pad: PadButton.south, text: @tr("Open") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
     // (The parts assemble in turn as the menu arrives: the four words, what is under them, the reel.)
