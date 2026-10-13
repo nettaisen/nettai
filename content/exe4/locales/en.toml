@@ -583,3 +583,13 @@ language = "en"
 "support" = "Support Bug"
 # Ours: EXE4's alone, the charged shot replaced.
 "weapon" = "Weapon Bug"
+
+# What a build is made of, by name, for a tool that makes and lists builds (rules/builds; nettai-match's `build`): each
+# version a build is one of, `version.<id>`, and each preset of a choice, `<choice>.<preset>` (MegaMan light or dark).
+[builds]
+# What a version sets, for a tool that asks which a new build is of.
+"versions" = "Sets the souls and Giga chips."
+"version.redsun" = "Red Sun"
+"version.bluemoon" = "Blue Moon"
+"light_dark.light" = "Light"
+"light_dark.dark" = "Dark"

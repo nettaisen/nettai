@@ -57,6 +57,29 @@ pub fn chip_art(packs: &Packs, c: &Content, chip: ChipHandle) -> Option<Image> {
     image(&art.picture.tiles, 7, 6, &c.chip(chip).art_palette.unwrap_or(art.picture.palette))
 }
 
+/// A chip family's 16x16 element icon, as the game's pack's chip window
+/// shows it for a chip of the family: the custom screen's element tiles in
+/// the icons' palette with the family's six colors from color 10, or in the
+/// icon's own palette where the pack draws it as a sprite. None: the pack
+/// has no icon for the family.
+pub fn element_icon(packs: &Packs, c: &Content, family: nettai_battle::content::ChipFamily) -> Option<Image> {
+    let a = &packs.game(c).custom;
+    let family = family.0 as usize;
+    let palette = match &a.element_sprite {
+        Some(sprite) => sprite.palette,
+        None => {
+            let mut palette = a.icon_palette;
+            palette[10..].copy_from_slice(a.element_colors.get(family)?);
+            palette
+        }
+    };
+    let mut tiles = Tiles::default();
+    for t in 4 * family..4 * family + 4 {
+        tiles.pixels.extend_from_slice(a.elements.get(t)?);
+    }
+    image(&tiles, 2, 2, &palette)
+}
+
 /// A form's face in the emotion window (its definition's mugshot, the
 /// plain emotion's), 32x16, in its first palette: a soul's or a Cross's
 /// picture for a tool.

@@ -1,0 +1,681 @@
+// The Folder tab of a build's editor (docs/design/app-ui.md §6, "Folder"; §2 items 11 to 14). A strip across the
+// top describes the chip under the cursor, from either pane. Under it, at the build overview's spacing: the
+// folder, framed, its header holding what it has against its limits, then the overview's own two columns of
+// fifteen; and beside it the library, an open list, with a search field, the sort and its direction, and a row
+// for each chip in each of its codes. No filters, no class column: a Mega chip's name is blue and a Giga chip's
+// pink. A chip that can't go in stays, greyed, with why at the end of its row in the error red.
+//
+// On a phone the folder is one column under its counts, and the library opens as a sheet from the bottom
+// (`FolderOverlay`), with what a slot's keys do as buttons. Its Rust half is src/screens/builds/folder.rs.
+
+import { Theme, Audit } from "../../theme.slint";
+import { Nav, Focusable } from "../../nav.slint";
+import { Shell, Hint, PadButton } from "../../shell.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown } from "../../widgets.slint";
+import { Tween, Flash, Shake, Count } from "../../motion.slint";
+import { ChipCell, ChipKind, ChipRow } from "../../build.slint";
+
+// The chip under the cursor, for the strip: its picture, its name and code, the game's description of it, its
+// element's icon, its facts (its class, its MB, its attack, how many the folder holds), and what the folder's
+// rules have against it where it is in the folder.
+export struct ChipDetail {
+    there: bool,
+    art: image,
+    name: string,
+    kind: ChipKind,
+    code: string,
+    description: string,
+    element: image,
+    facts: [string],
+    problem: string,
+}
+
+// A chip in one of its codes, as the library lists it. `note` is how many the folder holds, or with `refused`
+// why it can't go in.
+export struct LibraryRow {
+    icon: image,
+    name: string,
+    kind: ChipKind,
+    note: string,
+    refused: bool,
+    megabytes: string,
+    attack: string,
+    element: image,
+    code: string,
+}
+
+// What the folder holds against its limits. `tags`: the game's folders have tag chips.
+export struct FolderCounts {
+    chips: int,
+    size: int,
+    mega: int,
+    mega-limit: int,
+    giga: int,
+    giga-limit: int,
+    regular: int,
+    regular-limit: int,
+    tag: int,
+    tag-limit: int,
+    tags: bool,
+}
+
+// What the tab shows: src/screens/builds/folder.rs sets these.
+export global FolderView {
+    out property <[Hint]> hints: self.counts.tags ? self.with-tags : self.without-tags;
+    out property <string> status: @tr("Slot {} of {}", self.slot + 1, self.slots.length);
+    property <[Hint]> with-tags: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Pick") },
+        { key: "Del", pad: PadButton.west, text: @tr("Remove") },
+        { key: "R", pad: PadButton.north, text: @tr("Regular") },
+        { key: "T", pad: PadButton.select, text: @tr("Tag") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+    ];
+    property <[Hint]> without-tags: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Pick") },
+        { key: "Del", pad: PadButton.west, text: @tr("Remove") },
+        { key: "R", pad: PadButton.north, text: @tr("Regular") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+    ];
+    // The strip.
+    in property <ChipDetail> detail;
+    // The folder: its entries, the one being filled (marked), and what it holds.
+    in property <[ChipCell]> slots;
+    in property <int> slot;
+    in property <FolderCounts> counts;
+    // The entry a chip just landed in, counted: it flashes.
+    in property <int> landed;
+    in property <int> landed-seq;
+    // The library: its rows as sorted and searched, the sort (its place in `sorts`) and its direction.
+    in property <[LibraryRow]> rows;
+    in property <string> search;
+    in property <int> sort;
+    in property <bool> descending;
+    out property <[string]> sorts: [@tr("Library order"), @tr("Name"), @tr("Code"), @tr("MB"), @tr("Element"), @tr("sort" => "Attack")];
+    // The row that was refused, counted: it shakes.
+    in property <int> refused: -1;
+    in property <int> refused-seq;
+    // The cursor is in the library: its title is lit, the folder's isn't.
+    in property <bool> in-library;
+    // On a phone: the library's sheet is open.
+    in property <bool> sheet;
+}
+
+// One of the folder's counts: its word, and what the folder holds of its limit, which ticks as it changes. In the
+// error red when it is past its limit.
+component CountBox inherits Rectangle {
+    in property <string> label;
+    in property <int> value;
+    in property <string> suffix;
+    in property <length> value-width;
+    in property <bool> over;
+    width: name.preferred-width + 4px + root.value-width;
+    height: 16px;
+    name := Text {
+        x: 0;
+        width: self.preferred-width;
+        text: root.label;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+    }
+
+    Count {
+        x: name.preferred-width + 4px;
+        width: root.value-width;
+        value: root.value;
+        suffix: root.suffix;
+        color: root.over ? Theme.bad : Theme.text;
+    }
+}
+
+// One of the folder's entries: the overview's row, as a control.
+component SlotView inherits Rectangle {
+    in property <ChipCell> chip;
+    in property <int> index;
+    in property <bool> chosen;
+    height: Theme.chip-row;
+    ChipRow {
+        chip: root.chip;
+        number: root.index + 1;
+        chosen: root.chosen;
+        hover: hit.has-hover;
+    }
+
+    hit := Focusable {
+        nav: "slot";
+        nav-index: root.index;
+    }
+}
+
+// A row of the library: the chip's icon and name, a note (how many the folder holds; or why it can't go in, in
+// the error red, the row greyed), its MB and its attack, its element, its code. `dx` shakes it.
+component LibraryRowView inherits Rectangle {
+    in property <LibraryRow> line;
+    in property <int> nav-index;
+    in property <length> dx;
+    property <length> code-x: self.width - 8px - 18px;
+    property <length> element-x: root.code-x - 8px - 16px;
+    // (A phone's sheet has no room for the MB and the attack.)
+    property <length> attack-x: Theme.phone ? root.element-x : root.element-x - 8px - 40px;
+    property <length> megabytes-x: Theme.phone ? root.element-x : root.attack-x - 8px - 56px;
+    property <length> note-width: Theme.phone ? 118px : 150px;
+    property <length> note-x: root.megabytes-x - 8px - root.note-width;
+    Rectangle {
+        background: touch.has-hover ? @linear-gradient(90deg, #66e0ff0d 0%, Theme.clear 85%) : transparent;
+    }
+
+    Image {
+        x: 8px + root.dx;
+        y: (parent.height - 16px) / 2;
+        width: 16px;
+        height: 16px;
+        source: root.line.icon;
+        image-rendering: pixelated;
+        opacity: root.line.refused ? 0.5 : 1;
+    }
+
+    Text {
+        x: 32px + root.dx;
+        width: max(0px, root.note-x - 8px - 32px);
+        text: root.line.name;
+        color: root.line.kind == ChipKind.mega ? Theme.mega : root.line.kind == ChipKind.giga ? Theme.giga : (root.line.refused ? Theme.dim : Theme.text);
+        opacity: root.line.refused && root.line.kind != ChipKind.standard ? 0.5 : 1;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 12px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.note-x + root.dx;
+        width: root.note-width;
+        text: root.line.note;
+        color: root.line.refused ? Theme.bad : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: root.line.refused ? 500 : 400;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: root.megabytes-x;
+        width: 56px;
+        visible: !Theme.phone;
+        text: root.line.megabytes;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: 500;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+
+    Text {
+        x: root.attack-x;
+        width: 40px;
+        visible: !Theme.phone;
+        text: root.line.attack;
+        color: Theme.muted;
+        font-family: Theme.mono;
+        font-size: 12px;
+        font-weight: 500;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+    }
+
+    Image {
+        x: root.element-x;
+        y: (parent.height - 16px) / 2;
+        width: 16px;
+        height: 16px;
+        source: root.line.element;
+        image-rendering: pixelated;
+        opacity: root.line.refused ? 0.5 : 1;
+    }
+
+    Text {
+        x: root.code-x;
+        width: 18px;
+        text: root.line.code;
+        color: Theme.code;
+        font-family: Theme.mono;
+        font-size: 13px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+
+    touch := RowTouch {
+        nav: "lib.rows";
+        nav-index: root.nav-index;
+    }
+}
+
+// The sort's direction: an arrow, down for descending. Enter turns it.
+component DirectionButton inherits Rectangle {
+    in property <bool> descending;
+    width: 40px;
+    height: 40px;
+    Cut {
+        cut: 7px;
+        background: hit.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
+    }
+
+    Path {
+        width: 10px;
+        height: 12px;
+        stroke: Theme.text;
+        stroke-width: 1.5px;
+        commands: root.descending ? "M 5 0 L 5 11 M 1 7 L 5 11 L 9 7" : "M 5 12 L 5 1 M 1 5 L 5 1 L 9 5";
+    }
+
+    hit := Focusable {
+        nav: "lib.direction";
+    }
+}
+
+// The library: its title, the search field, the sort and its direction, and under them its rows, fifteen
+// showing. (A phone's sheet has no room for the two titles.)
+component LibraryPane inherits Rectangle {
+    property <length> title-width: Theme.phone ? 0px : title.preferred-width + 12px;
+    property <length> sort-width: Theme.phone ? 132px : 176px;
+    property <length> sort-title-width: Theme.phone ? 0px : sort-title.preferred-width + 12px;
+    shake := Shake {
+        seq: FolderView.refused-seq;
+    }
+
+    title := Label {
+        x: 0;
+        y: 0;
+        width: self.preferred-width;
+        height: 40px;
+        visible: !Theme.phone;
+        text: @tr("LIBRARY");
+        color: FolderView.in-library ? Theme.cursor : Theme.muted;
+    }
+
+    Field {
+        x: root.title-width;
+        y: 0;
+        width: parent.width - root.title-width - root.sort-title-width - root.sort-width - 12px - 40px - 12px;
+        nav: "lib.search";
+        text: FolderView.search;
+        placeholder: @tr("Search chips");
+    }
+
+    sort-title := Label {
+        x: parent.width - 40px - 12px - root.sort-width - 12px - self.width;
+        y: 0;
+        width: self.preferred-width;
+        height: 40px;
+        visible: !Theme.phone;
+        text: @tr("SORT");
+    }
+
+    Select {
+        x: parent.width - 40px - 12px - root.sort-width;
+        y: 0;
+        width: root.sort-width;
+        nav: "lib.sort";
+        value: FolderView.sorts[FolderView.sort];
+    }
+
+    DirectionButton {
+        x: parent.width - 40px;
+        y: 0;
+        descending: FolderView.descending;
+    }
+
+    list := ListView {
+        x: Theme.phone ? 0px : 4px;
+        y: 52px;
+        width: parent.width - self.x;
+        height: parent.height - 52px;
+        nav: "lib.rows";
+        count: FolderView.rows.length;
+        row-height: Theme.phone ? 40px : Theme.chip-row;
+        chosen: self.focused-row;
+        for slot in list.shown: LibraryRowView {
+            property <int> at: list.first + slot;
+            y: self.at * list.pitch;
+            width: list.row-width;
+            height: list.row-height;
+            line: FolderView.rows[self.at];
+            nav-index: self.at;
+            dx: self.at == FolderView.refused ? shake.dx : 0px;
+        }
+    }
+}
+
+export component FolderTab inherits Rectangle {
+    // (The folder's tab starts 4 nearer the tab bar than the others: the strip, the two panes and their gaps
+    // are the page's whole height.)
+    property <length> top: -4px;
+    property <length> pane-y: root.top + 104px + 12px;
+    property <length> pane-width: 528px;
+    property <length> slot-width: (root.pane-width - 24px - 12px) / 2;
+    // A phone: the counts' box, and the folder in one column under it.
+    property <length> counts-height: FolderView.counts.tags ? 90px : 68px;
+    // The folder's header: its title and its counts on one line where the language's words leave them the room,
+    // else the counts on a line of their own under the title. The header is 44 either way, and which it is
+    // depends on the language alone, never on what the folder holds.
+    property <length> counts-width: chips.width + mega.width + giga.width + regular.width + 3 * 12px + (FolderView.counts.tags ? tag.width + 12px : 0px);
+    property <bool> two-lines: folder-title.preferred-width + 12px + root.counts-width > root.pane-width - 24px;
+    property <length> counts-y: root.pane-y + (root.two-lines ? 24px : 14px);
+    // (The screenshot pass is told if the counts don't fit the pane even so.)
+    property <bool> counts-over: Theme.audit && !Theme.phone && root.counts-width > root.pane-width - 24px + 0.5px;
+    // ---- The strip: the chip under the cursor.
+    PanelBack {
+        x: 0;
+        y: root.top;
+        height: Theme.phone ? 0px : 104px;
+        visible: !Theme.phone;
+    }
+
+    Image {
+        x: 18px;
+        y: root.top + 16px;
+        width: 84px;
+        height: 72px;
+        visible: !Theme.phone;
+        source: FolderView.detail.art;
+        image-rendering: pixelated;
+    }
+
+    HorizontalLayout {
+        x: 120px;
+        y: root.top + 19px;
+        width: parent.width - 136px;
+        height: 20px;
+        visible: !Theme.phone;
+        spacing: 6px;
+        alignment: start;
+        Text {
+            text: FolderView.detail.name;
+            color: FolderView.detail.kind == ChipKind.mega ? Theme.mega : FolderView.detail.kind == ChipKind.giga ? Theme.giga : Theme.text;
+            font-family: Theme.body;
+            font-size: 16px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+
+        Text {
+            text: FolderView.detail.code;
+            color: Theme.code;
+            font-family: Theme.mono;
+            font-size: 16px;
+            font-weight: 700;
+            vertical-alignment: center;
+        }
+    }
+
+    // (What the folder's rules have against the entry under the cursor.)
+    Text {
+        x: parent.width / 2;
+        y: root.top + 19px;
+        width: parent.width / 2 - 16px;
+        height: 20px;
+        visible: !Theme.phone;
+        text: FolderView.detail.problem;
+        color: Theme.bad;
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: 500;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: 120px;
+        y: root.top + 43px;
+        width: parent.width - 136px;
+        height: 18px;
+        visible: !Theme.phone;
+        text: FolderView.detail.description;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    HorizontalLayout {
+        x: 120px;
+        y: root.top + 69px;
+        width: parent.width - 136px;
+        height: 16px;
+        visible: !Theme.phone;
+        spacing: 16px;
+        alignment: start;
+        Image {
+            width: FolderView.detail.there ? 16px : 0px;
+            height: 16px;
+            source: FolderView.detail.element;
+            image-rendering: pixelated;
+        }
+
+        for fact in FolderView.detail.facts: Text {
+            text: fact;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+    }
+
+    // ---- The folder, framed: its title and its counts, then its entries.
+    PanelBack {
+        x: 0;
+        y: Theme.phone ? 0px : root.pane-y;
+        width: Theme.phone ? parent.width : root.pane-width;
+        height: Theme.phone ? root.counts-height : 482px;
+        accent: !Theme.phone;
+        fill: Theme.phone ? Theme.inset : Theme.panel;
+    }
+
+    folder-title := Label {
+        x: 12px;
+        y: root.pane-y + (root.two-lines ? 5px : 0px);
+        width: root.pane-width - 24px;
+        height: root.two-lines ? 14px : 44px;
+        visible: !Theme.phone;
+        text: @tr("FOLDER");
+        color: FolderView.in-library ? Theme.muted : Theme.cursor;
+    }
+
+    // (On a phone the counts are two columns in their own box.)
+    chips := CountBox {
+        x: Theme.phone ? 12px : mega.x - 12px - self.width;
+        y: Theme.phone ? 12px : root.counts-y;
+        label: @tr("Chips");
+        value: FolderView.counts.chips;
+        suffix: "/\{FolderView.counts.size}";
+        value-width: 32px;
+        over: FolderView.counts.chips != FolderView.counts.size;
+    }
+
+    mega := CountBox {
+        x: Theme.phone ? parent.width / 2 : giga.x - 12px - self.width;
+        y: chips.y;
+        label: @tr("Mega");
+        value: FolderView.counts.mega;
+        suffix: "/\{FolderView.counts.mega-limit}";
+        value-width: 32px;
+        over: FolderView.counts.mega > FolderView.counts.mega-limit;
+    }
+
+    giga := CountBox {
+        x: Theme.phone ? 12px : regular.x - 12px - self.width;
+        y: Theme.phone ? 34px : chips.y;
+        label: @tr("Giga");
+        value: FolderView.counts.giga;
+        suffix: "/\{FolderView.counts.giga-limit}";
+        value-width: 32px;
+        over: FolderView.counts.giga > FolderView.counts.giga-limit;
+    }
+
+    regular := CountBox {
+        x: Theme.phone ? parent.width / 2 : (FolderView.counts.tags ? tag.x : root.pane-width) - 12px - self.width;
+        y: giga.y;
+        label: Theme.phone ? @tr("Regular") : @tr("Reg");
+        value: FolderView.counts.regular;
+        suffix: "/\{FolderView.counts.regular-limit} MB";
+        value-width: 52px;
+        over: FolderView.counts.regular > FolderView.counts.regular-limit;
+    }
+
+    tag := CountBox {
+        x: Theme.phone ? 12px : root.pane-width - 12px - self.width;
+        y: Theme.phone ? 56px : chips.y;
+        visible: FolderView.counts.tags;
+        label: @tr("Tag");
+        value: FolderView.counts.tag;
+        suffix: "/\{FolderView.counts.tag-limit} MB";
+        value-width: 52px;
+        over: FolderView.counts.tag > FolderView.counts.tag-limit;
+    }
+
+    changed counts-over => {
+        if root.counts-over {
+            Audit.clipped("the folder's counts");
+        }
+    }
+
+    if !Theme.phone: Rectangle {
+        for chip[i] in FolderView.slots: SlotView {
+            x: 12px + floor(i / 15) * (root.slot-width + 12px);
+            y: root.pane-y + 52px + mod(i, 15) * (Theme.chip-row + 2px);
+            width: root.slot-width;
+            chip: chip;
+            index: i;
+            chosen: FolderView.in-library && i == FolderView.slot;
+        }
+        // (The entry a chip landed in.)
+        Flash {
+            x: 12px + floor(FolderView.landed / 15) * (root.slot-width + 12px);
+            y: root.pane-y + 52px + mod(FolderView.landed, 15) * (Theme.chip-row + 2px);
+            width: root.slot-width;
+            height: Theme.chip-row;
+            seq: FolderView.landed-seq;
+        }
+
+        // ---- The library, open.
+        LibraryPane {
+            x: root.pane-width + 24px;
+            y: root.pane-y;
+            width: parent.width - self.x;
+            height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+        }
+    }
+
+    if Theme.phone: Rectangle {
+        folder := ListView {
+            x: 0;
+            y: root.counts-height + 12px;
+            height: parent.height - self.y;
+            nav: "slot";
+            count: FolderView.slots.length;
+            row-height: 40px;
+            for at in folder.shown: ChipRow {
+                property <int> index: folder.first + at;
+                y: self.index * folder.pitch;
+                width: folder.row-width;
+                big: true;
+                chip: FolderView.slots[self.index];
+                number: self.index + 1;
+                RowTouch {
+                    nav: "slot";
+                    nav-index: parent.index;
+                }
+            }
+        }
+    }
+}
+
+// What the Folder tab opens over the window: on a phone, the library as a sheet from the bottom, for the entry
+// tapped. Over the library's rows, what a slot's keys do on a desktop: the Regular chip, a tag, taking the chip
+// out. Its controls' names begin with `lib.`: while it is open the keys reach nothing else.
+export component FolderOverlay inherits Rectangle {
+    property <length> sheet-height: min(self.height - 72px, 660px);
+    property <length> buttons-height: FolderView.counts.tags ? 88px : 40px;
+    arrive := Tween { }
+
+    Rectangle {
+        background: Theme.shade;
+        opacity: arrive.t;
+        TouchArea {
+            clicked => {
+                Nav.activate("lib.close", 0);
+            }
+        }
+    }
+
+    Rectangle {
+        x: 0;
+        y: parent.height - root.sheet-height + (1 - arrive.t) * 24px;
+        height: root.sheet-height;
+        opacity: arrive.t;
+        background: Theme.panel;
+        TouchArea { }
+
+        Rectangle {
+            y: 0;
+            height: 1px;
+            background: Theme.line;
+        }
+
+        // The entry being filled, and what its keys do.
+        ChipRow {
+            x: 8px;
+            y: 8px;
+            width: parent.width - 16px;
+            big: true;
+            chip: FolderView.slots[FolderView.slot];
+            number: FolderView.slot + 1;
+        }
+
+        Button {
+            x: 16px;
+            y: 56px;
+            width: (parent.width - 44px) / 2;
+            nav: "lib.regular";
+            text: @tr("REGULAR");
+        }
+
+        Button {
+            x: 16px + (parent.width - 44px) / 2 + 12px;
+            y: 56px;
+            width: (parent.width - 44px) / 2;
+            visible: FolderView.counts.tags;
+            enabled: FolderView.counts.tags;
+            nav: FolderView.counts.tags ? "lib.tag" : "";
+            text: @tr("TAG");
+        }
+
+        Button {
+            x: FolderView.counts.tags ? 16px : 16px + (parent.width - 44px) / 2 + 12px;
+            y: FolderView.counts.tags ? 104px : 56px;
+            width: (parent.width - 44px) / 2;
+            nav: "lib.remove";
+            text: @tr("REMOVE");
+            kind: ButtonKind.ghost;
+            danger: true;
+        }
+
+        LibraryPane {
+            x: 16px;
+            y: 56px + root.buttons-height + 12px;
+            width: parent.width - 32px;
+            height: parent.height - self.y - 8px;
+        }
+    }
+}

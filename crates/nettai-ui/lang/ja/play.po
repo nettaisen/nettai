@@ -9,19 +9,6 @@ msgstr ""
 msgid "YOUR BUILD"
 msgstr "使うビルド"
 
-# How a build stands, after its navi's name: "MegaMan · ready".
-msgid "ready"
-msgstr "使用可"
-
-msgid "can't be read"
-msgstr "読み込めません"
-
-msgid "1 problem"
-msgstr "問題 1 件"
-
-msgid "{} problems"
-msgstr "問題 {} 件"
-
 msgid "CREATE A BUILD"
 msgstr "ビルドを作る"
 
@@ -45,7 +32,7 @@ msgid "Connecting…"
 msgstr "接続中…"
 
 msgid "Choose"
-msgstr "決定"
+msgstr "選ぶ"
 
 # ---- A direct connection ----
 
@@ -140,9 +127,6 @@ msgstr "{}本勝負"
 
 msgid "Patch cards"
 msgstr "改造カード"
-
-msgid "This build can't be used with these settings."
-msgstr "この設定ではこのビルドは使えません。"
 
 msgid "Closed builds"
 msgstr "ビルド非公開"

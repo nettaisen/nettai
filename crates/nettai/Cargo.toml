@@ -49,6 +49,10 @@ rfd = "0.15"
 # The picture's texture, kept and written in place in the window's OpenGL.
 glow = "0.16"
 
+# A terminate request's signals, taken back from SDL (`quit.rs`). (In the tree already.)
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 # Keeping the app's time while a battle runs in a covered window (`awake.rs`): Foundation's process activity.
 # (Both are in the tree already, for the window.)
 [target.'cfg(target_os = "macos")'.dependencies]

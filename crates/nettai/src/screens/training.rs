@@ -34,6 +34,7 @@ use nettai_ui::{BattleKind, TrainingBuild, TrainingOption, TrainingRow, Training
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::collections::HashMap;
+use std::rc::Rc;
 use std::time::{Duration, Instant};
 
 // ---- A training session, which any screen may start ----------------------------------------------------------
@@ -282,13 +283,13 @@ fn restart(shell: &mut Shell) -> bool {
 }
 
 /// A build as a card says it: its name, its version's tag and its navi's name in the language shown.
-fn shown(shell: &Shell, game: &str, ready: &Ready, build: &Build) -> TrainingBuild {
+fn shown(shell: &Shell, game: &str, ready: &Rc<Ready>, build: &Build) -> TrainingBuild {
     let content = ready.content();
     let graphics = ready.graphics(shell.lang);
     let names = Names::of(content, &graphics);
     TrainingBuild {
         name: build.name.as_str().into(),
-        version: crate::screens::menu::version_tag(content, game, &build.side).into(),
+        version: crate::builds::version_tag(shell, game, ready, &build.side),
         navi: names.navi(build.side.navi(content)).into(),
     }
 }
@@ -395,7 +396,7 @@ impl Training {
             store::list(game)
                 .into_iter()
                 .map(|b| {
-                    let side = store::read(content, game, &b.text).map_err(|why| crate::errors::log(&format!("reading {}", b.path.display()), &why)).ok().map(|(_, side)| side);
+                    let side = store::read(content, game, &b.text).map_err(|why| crate::errors::log(&format!("reading {}", b.path.display()), &why)).ok().map(|build| build.side);
                     let file = b.path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
                     Listed { file, name: b.name, text: b.text, side }
                 })
@@ -451,7 +452,7 @@ impl Training {
     }
 
     /// Tell the view the entry: the two builds chosen, why one can't be used, whether training can start.
-    fn tell(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
+    fn tell(&mut self, shell: &mut Shell, game: &str, ready: &Rc<Ready>) {
         let ui = shell.ui();
         let view = ui.global::<TrainingView>();
         view.set_none(self.builds.is_empty());
@@ -464,8 +465,8 @@ impl Training {
         view.set_dummys(card(self.build(1)));
         let wrong = [self.unusable(ready, 0), self.unusable(ready, 1)];
         let message = match &wrong {
-            [Some(why), _] => view.invoke_unusable(false, rule(why).into()),
-            [None, Some(why)] => view.invoke_unusable(true, rule(why).into()),
+            [Some(why), _] => view.invoke_unusable(false, rule(shell, game, ready, why).into()),
+            [None, Some(why)] => view.invoke_unusable(true, rule(shell, game, ready, why).into()),
             [None, None] => Default::default(),
         };
         view.set_message(message);
@@ -592,11 +593,10 @@ impl Training {
     }
 }
 
-/// The rule a build breaks, in the player's words, for the reserved line. The Builds screen words each kind of
-/// `Wrong` in its own catalog (docs/app.md §12): until that wording is here to call, the line says which build
-/// it is, and the rule is in the log.
-fn rule(_why: &Unusable) -> String {
-    String::new()
+/// The rule a build breaks, in the player's words, for the reserved line: its kind's sentence of the builds'
+/// catalog (`builds::words::wrong`; docs/app.md §8), with its numbers.
+fn rule(shell: &Shell, game: &str, ready: &Rc<Ready>, why: &Unusable) -> String {
+    crate::builds::words::wrong(shell, game, ready, &why.0)
 }
 
 impl Screen for Training {

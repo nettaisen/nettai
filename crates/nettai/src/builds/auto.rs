@@ -11,8 +11,8 @@
 //!
 //! A build in the app states only the places, each a chip (or a program
 //! advance), a 0 or empty: its records are the rules' default, nothing
-//! learned (`crate::builds::layout::at_defaults`), so no place points at
-//! one ([`drop_patterns`]).
+//! learned (the game's builds data's `at_defaults`: `nettai_match::build`),
+//! so no place points at one ([`drop_patterns`]).
 
 use nettai_battle::Content;
 use nettai_battle::content::ChipClass;
@@ -332,7 +332,7 @@ mod tests {
     #[test]
     fn exe5s_block_fits() {
         let content = nettai_match::testing::exe5_content();
-        let block = crate::builds::layout::modules(&content, "exe5", &[MODULE]).remove(0);
+        let block = crate::builds::module_data(&content, "exe5", MODULE);
         let layout = Layout::read(&content, block.as_ref()).expect("the block's layout");
         let names: Vec<(&str, usize, usize, Holds)> = layout.lists.iter().map(|l| (l.name.as_str(), l.start, l.len, l.holds)).collect();
         assert_eq!(
