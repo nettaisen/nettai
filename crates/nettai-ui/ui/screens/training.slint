@@ -1,8 +1,8 @@
 // Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Its Rust half
 // is src/screens/training.rs.
 //
-// Three things are here. The entry (`TrainingScreen`): two rows, Your build and Dummy's build, and START
-// TRAINING, with the two builds facing each other and the arena beside them. The training menu (`TrainingMenu`):
+// Three things are here. The entry (`TrainingScreen`): four rows, Your build, Dummy's build, Arena and
+// Background, and START TRAINING, with the two builds facing each other and the arena beside them. The training menu (`TrainingMenu`):
 // Start or Esc in training, the battle paused behind it; its rows are a model the Rust half makes, so a row is
 // added there and worded here (`TrainingView.label` and `value`). And the input display (`TrainingInputs`): both
 // sides' buttons, lit as they are held, in a corner of the picture.
@@ -34,6 +34,10 @@ export enum TrainingOption {
     // A label and a value between arrows.
     action,
     custom-screen,
+    // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen's
+    // name (none: Random).
+    arena,
+    background,
     // Its value is how long the dummy's recording is, in tenths of a second (0: none); it is never stepped,
     // and choosing it records one.
     recording,
@@ -66,6 +70,9 @@ export global TrainingView {
     in property <bool> ready;
     // The arena's picture is there.
     in property <bool> arena;
+    // The arena and the background chosen, by their names (none: Random).
+    in property <string> arena-name;
+    in property <string> background-name;
 
     // ---- A session.
     // The two builds' names, as the menu's line under its title says them.
@@ -85,6 +92,8 @@ export global TrainingView {
     // Who the two cards before a battle are.
     out property <string> you: @tr("YOU");
     out property <string> dummy: @tr("DUMMY");
+    // The first of the Arena and Background lists: each round's place picked from the seed, as a match's is.
+    out property <string> random: @tr("Random");
     // The line beside MENU on a phone.
     pure public function round-note(round: int) -> string {
         return @tr("Training · Round {}", round);
@@ -116,6 +125,12 @@ export global TrainingView {
         }
         if option == TrainingOption.recording {
             return @tr("Recording");
+        }
+        if option == TrainingOption.arena {
+            return @tr("Arena");
+        }
+        if option == TrainingOption.background {
+            return @tr("Background");
         }
         if option == TrainingOption.your-hp {
             return @tr("Your HP");
@@ -156,22 +171,26 @@ export global TrainingView {
         if option == TrainingOption.input-display {
             return value == 0 ? @tr("Off") : @tr("On");
         }
+        // (Any other of their values is the row's text: a name of the content's.)
+        if option == TrainingOption.arena || option == TrainingOption.background {
+            return TrainingView.random;
+        }
         return "";
     }
 }
 
 // ---- The entry ----------------------------------------------------------------------------------------------
 
-// One of the entry's two rows: a label, and the build chosen in a box that steps through the builds and opens
-// them as a list. The row is what is focused.
-component BuildOption inherits Rectangle {
+// One of the entry's rows: a label, and the choice in a box that steps through the choices and opens them as a
+// list. The row is what is focused. (On a phone it is lower, the four rows over the cards and the arena.)
+component EntryRow inherits Rectangle {
     in property <string> nav;
     in property <string> label;
     in property <string> value;
     in property <bool> enabled: true;
     property <length> box: Theme.phone ? 164px : 240px;
     property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
-    height: 56px;
+    height: Theme.phone ? 48px : 56px;
     Rectangle {
         background: hit.has-hover ? Theme.raised : Theme.panel;
         border-width: 1px;
@@ -198,8 +217,9 @@ component BuildOption inherits Rectangle {
 
     Select {
         x: parent.width - root.box - 8px;
-        y: 8px;
+        y: (parent.height - self.height) / 2;
         width: root.box;
+        height: Theme.phone ? 36px : 40px;
         nav: root.nav;
         value: root.value;
         focusable: false;
@@ -265,11 +285,15 @@ component BuildCard inherits Rectangle {
 export component TrainingScreen inherits Page {
     // The rows' column, and beside it (on a phone, under it) the cards over the arena's picture, which is the
     // battle's at three times; on a phone the arena's box is the window's width, past the page's gutters, as
-    // the battle's is, so the widest whole multiple fits.
+    // the battle's is, so the widest whole multiple fits. (On a phone the rows are lower and the line has one
+    // line's room, which the languages' fit, for the four rows to be over the cards and the arena.)
     property <length> column: Theme.phone ? self.body-width : 460px;
+    property <length> row-step: Theme.phone ? 56px : 68px;
+    property <length> note-y: Theme.phone ? 228px : 272px;
+    property <length> note-height: Theme.phone ? 20px : 40px;
     property <length> side-width: Theme.phone ? self.body-width : 720px;
     property <length> side-x: Theme.phone ? 0px : self.column + 24px + (self.body-width - self.column - 24px - self.side-width) / 2;
-    property <length> cards-y: Theme.phone ? 212px : 0px;
+    property <length> cards-y: Theme.phone ? self.note-y + self.note-height + 34px : 0px;
     property <length> card-width: Theme.phone ? (self.body-width - 12px) / 2 : (self.side-width - 56px) / 2;
     property <length> arena-x: Theme.phone ? -Theme.margin : self.side-x;
     property <length> arena-width: Theme.phone ? self.body-width + 2 * Theme.margin : self.side-width;
@@ -289,7 +313,7 @@ export component TrainingScreen inherits Page {
     ];
     // (Each part is there whether or not the game has a build, shown and reachable by which it is: an `if`
     // apiece would be a component apiece.)
-    // The column: with no build of the game the one button; else the two rows, the one line, the reserved
+    // The column: with no build of the game the one button; else the four rows, the one line, the reserved
     // line, and START TRAINING at its foot.
     Arrive {
         Button {
@@ -303,7 +327,7 @@ export component TrainingScreen inherits Page {
             enabled: TrainingView.none;
         }
 
-        BuildOption {
+        EntryRow {
             x: 0;
             y: 0;
             width: root.column;
@@ -314,9 +338,9 @@ export component TrainingScreen inherits Page {
             enabled: !TrainingView.none;
         }
 
-        BuildOption {
+        EntryRow {
             x: 0;
-            y: 68px;
+            y: root.row-step;
             width: root.column;
             visible: !TrainingView.none;
             nav: "dummys";
@@ -325,12 +349,34 @@ export component TrainingScreen inherits Page {
             enabled: !TrainingView.none;
         }
 
-        // (Room for two lines: a longer language's, and a phone's.)
+        EntryRow {
+            x: 0;
+            y: 2 * root.row-step;
+            width: root.column;
+            visible: !TrainingView.none;
+            nav: "arena";
+            label: @tr("Arena");
+            value: TrainingView.arena-name == "" ? TrainingView.random : TrainingView.arena-name;
+            enabled: !TrainingView.none;
+        }
+
+        EntryRow {
+            x: 0;
+            y: 3 * root.row-step;
+            width: root.column;
+            visible: !TrainingView.none;
+            nav: "background";
+            label: @tr("Background");
+            value: TrainingView.background-name == "" ? TrainingView.random : TrainingView.background-name;
+            enabled: !TrainingView.none;
+        }
+
+        // (Room for two lines on a desktop, a longer language's.)
         Note {
             x: 0;
-            y: 140px;
+            y: root.note-y;
             width: root.column;
-            height: 40px;
+            height: root.note-height;
             visible: !TrainingView.none;
             text: @tr("Set up the dummy from the menu once you're in.");
             vertical-alignment: top;
@@ -338,7 +384,7 @@ export component TrainingScreen inherits Page {
 
         Message {
             x: 0;
-            y: 186px;
+            y: root.note-y + root.note-height + 6px;
             width: root.column;
             text: TrainingView.message;
         }
@@ -447,7 +493,7 @@ component MenuRow inherits Rectangle {
     property <bool> title: root.entry.option == TrainingOption.dummy || root.entry.option == TrainingOption.battle || root.entry.option == TrainingOption.display;
     property <bool> option: !root.added && !root.title;
     property <string> label: TrainingView.label(root.entry.option);
-    property <string> value: TrainingView.value(root.entry.option, root.entry.value);
+    property <string> value: root.option && root.entry.text != "" ? root.entry.text : TrainingView.value(root.entry.option, root.entry.value);
     // The value's box: sized for the longest value in the longest language (the screenshot pass says when one
     // is cut: `fits`).
     property <length> value-width: Theme.phone ? root.width - 72px : 196px;
