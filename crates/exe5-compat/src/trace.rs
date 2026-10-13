@@ -1423,6 +1423,18 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             _ => format!("{p:?}"),
         }
     };
+    // The header-flag bits the other side's console reads off its open bus
+    // on the tick the round's actors are spawned (the intro's init done, its
+    // first step not yet: `round_start_open_bus_flags`), skipped on both
+    // sides.
+    let spawn_tick = [r.top, r.mode, r.sub, r.init] == [4, 0, 0, 4];
+    let flags_field = |i: usize, flags: u8, alliance: u8| -> String {
+        let skipped = match entries.get(i) {
+            Some(Some(k)) if spawn_tick && alliance & 1 != r.local_side & 1 => k.round_start_open_bus_flags,
+            _ => 0,
+        };
+        format!("{:#04x}", flags & !skipped)
+    };
     // The traced console's ROM: an object keeping a code address its
     // spawner left (the content's Team ProtoMan US's) has that ROM's
     // (games.toml).
@@ -1497,7 +1509,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             };
             vec![
                 ("kind", kind),
-                ("flags", format!("{:#04x}", x.flags)),
+                ("flags", flags_field(i, x.flags, x.alliance)),
                 ("state", format!("{:#04x}", x.state)),
                 ("action", action),
                 ("phase", format!("{:#04x}", x.phase)),
@@ -1522,7 +1534,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             let xy = order.get(i).is_some_and(|&r| nettai_battle::kinds::effect::xy_unknown(b, r));
             vec![
                 ("kind", format!("type {} #{:#04x}", o.kind, o.index)),
-                ("flags", format!("{:#04x}", o.flags)),
+                ("flags", flags_field(i, o.flags, o.alliance)),
                 ("state", format!("{:#04x}", o.state[0])),
                 ("action", format!("{:#04x}", o.state[1])),
                 ("phase", format!("{:#04x}", o.state[2])),
