@@ -644,7 +644,14 @@ Rust and Slint name no version, and hold no color of one.
 | The build overview | `BuildOverview { build: <BuildSheet>; }` | `builds::overview::sheet(shell, kit, label, name, side)` |
 | A game's builds for a list | `BuildRow { build: <BuildEntry>; }` under a `ListView` of 52-tall rows | `builds::shelf::load(shell, kit)` (`Shelved`: the file, the build, whether it is ready, its row) |
 | A chip's row | `ChipRow { chip: <ChipCell>; number: 1; }` | `builds::overview::chip_cell` |
-| A typed problem in the player's words | the catalog's `BuildWords` | `builds::words::Words` (`problem`, `refusal`, `status`), `words::first_problem(shell, kit, side)` for `UserError::BuildUnusable` |
+| What is wrong with a build, in the player's words | the catalog's `BuildWords` | `builds::words::wrong(shell, game, ready, &Wrong)`: the kind's sentence with its numbers and names. `words::first_problem(shell, kit, side)` checks a side and words its first problem, for `UserError::BuildUnusable`. `builds::words::Words` (`problem`, `refusal`, `status`) where many are worded at once |
+
+**A problem's sentence** has no full stop and is whole by itself: "2 Giga chips, limit 1", "Gregar is Gregar
+only", "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
+after a colon in another's sentence, which ends it (Training's reserved line: "Your build can't be used: 31
+chips, a folder has 30."; the shell's "This build can't be used: {}."). `wrong` words any `nettai_match::Wrong`,
+whichever screen is shown; `Words::wrong` matches the kinds with no catch-all, so a kind added to nettai-match
+doesn't compile until it has its sentence.
 
 **The overview on another screen.** A screen's view has a property of the model, its Slint places the
 component, and its module fills the model from a side:
@@ -661,9 +668,12 @@ component, and its module fills the model from a side:
 The component is framed and takes the size it is given. At 620 wide or more it is the wide sheet, 540 tall: the
 face the round starts with, the name over the navi, the version's tag; Stats, each with what the NaviCust and
 the patch cards added beside it in cyan; Abilities; Bugs, each by its full name and its level or amount, purple;
-and the folder's 30 chips in two columns of 26-tall rows. Narrower, it is the narrow sheet, 628 tall, which a
+and the folder's 30 chips in two columns of 26-tall rows. Narrower, it is the narrow sheet, 650 tall, which a
 player's panel in a match is (430 wide: `label` is YOU or OPPONENT, `name` the player's, `side` 1 or 2 for the
-player's color along its top) and a phone's. Every number is the compiled one (`Checked::overview`).
+player's color along its top): the stats in two columns, abilities and bugs a line each, the folder in two.
+Narrower than 400, a phone's, it is one column throughout, 1158 tall, for a page that scrolls: two columns
+leave a chip's name 39 wide there. `sheet-height` is the height of the one it is at its width; which it is
+depends on the width alone, never on the build. Every number is the compiled one (`Checked::overview`).
 
 **The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, version and
 "✓ Ready to play" (or how many problems), the tab bar, and the tab chosen. **A tab is one Slint file and one
@@ -693,7 +703,17 @@ A tab also says which of the build's facts are its own (`Tab::fields`, by their 
 alone the frame knows three things: a problem with one of them marks the tab's word in the bar; a tab none of
 whose facts the game's setup takes isn't in the bar (auto battle data: EXE4's and EXE5's); and the facts of a
 tab that is the game's own navi's alone (`Tab::own_navi_only`) are kept aside while the navi is another, the tab
-staying in its place, greyed.
+staying in its place, greyed. A tab names every fact its view can edit, and a game may take only some of them
+(EXE4's NaviCust has its programs and no board to expand): the tab is there for any, and what is kept aside is
+those the game takes. `editor`'s test names each game's tabs and facts.
+
+The tab bar is as wide as the page and the tabs may not be: five don't fit a phone in English, nor four in a
+longer language. `TabBar` is then a window on its tabs, moved to keep the chosen one in it, and an end with
+more tabs past it fades.
+
+**The Folder tab's header** has the folder's counts beside its title where the language's words leave them the
+room, and on a line of their own under it where they don't (the header keeps its height; which it is depends
+on the language alone, and the pass is told if the counts don't fit even so).
 
 NAVI and FOLDER are built. NAVICUST, PATCH CARDS and AUTO BATTLE are empty tabs behind this interface
 (`navicust`, `patch_cards`, `auto_battle`: each names its facts and nothing else). **Filling one in** touches
@@ -750,7 +770,7 @@ durations. A screen uses these and writes no color, size or duration of its own.
 | `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked`; `focusable` off where its row is what is focused |
 | `Seg` | One of two |
 | `Slider` | A level, with its number in a box of its own |
-| `TabBar` | A row of tabs, the chosen one's underline sliding |
+| `TabBar` | A row of tabs, the chosen one's underline sliding; a window on them where they are wider than it, an end with more past it fading |
 | `Row`, `RowBack`, `Marker`, `RowTouch`, `ListView` | A list row (44); a row's own back; the mark of the chosen row, which slides; a row's clicks; a list of any length, of which only the rows in view exist |
 | `MenuItem`, `OptionRow` | A menu's item; a label and a value between arrows |
 | `ScrollPage` | A page that scrolls its controls into view |
