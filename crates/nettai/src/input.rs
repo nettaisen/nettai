@@ -5,8 +5,11 @@
 //! on the keyboard, whatever its layout, and timestamped as they arrive. The battle's buttons are the player's
 //! bindings ([`Bindings`], kept in the settings); the menus' keys are fixed (the arrows, Enter, Esc, Tab), with
 //! the keys bound to L and R as their previous and next. A gamepad is read through gamepad-facade and polled
-//! each frame ([`Pad::poll`]): its bound buttons for the battle, its presses as the menus' actions.
+//! each frame ([`Pad::poll`]): its bound buttons for the battle, its presses as the menus' actions. On a phone
+//! the battle's buttons are drawn under the picture, and the window's touches are theirs ([`TouchPad`]): each
+//! finger by itself, so a direction and a button are held together.
 
+use crate::nav::Rect;
 use gamepad_facade::{Axis, Button, EventKind};
 use nettai_battle::input::keys;
 use slint::winit_030::winit::event::{ElementState, KeyEvent};
@@ -457,9 +460,199 @@ impl Pad {
     }
 }
 
+/// The on-screen pad (a phone, in battle): where its buttons are, and which finger holds which.
+///
+/// Slint's `TouchArea` follows one pointer, so the pad takes the window's touch events itself, before Slint
+/// (`main`'s winit hook): a finger that comes down on a button is the pad's until it lifts, holds the button
+/// under it, and holds another as it slides onto it (a thumb rolling from Left to Down). The four directions
+/// are read as one control: anywhere in their square, the direction is the one the finger is farthest toward
+/// from the middle, so a thumb needn't land on a key; in the very middle it holds none.
+#[derive(Default)]
+pub struct TouchPad {
+    /// Each button's place in the window, in units: a GBA button's bit number, and its rectangle (the UI says
+    /// them as it lays the pad out).
+    keys: Vec<(u8, Rect)>,
+    /// Each finger on the pad, by the system's number for it, and the button under it (none: between two).
+    fingers: Vec<(u64, Option<u8>)>,
+}
+
+impl TouchPad {
+    /// The mouse, as one more finger (the pad clicked on a desktop).
+    pub const MOUSE: u64 = u64::MAX;
+    /// How far outside a button a finger still holds it.
+    const REACH: f32 = 8.0;
+    /// The directions' bits: right, left, up, down.
+    const DIRECTIONS: [u8; 4] = [4, 5, 6, 7];
+
+    /// The UI laid a button out at `rect`.
+    pub fn place(&mut self, button: u8, rect: Rect) {
+        match self.keys.iter_mut().find(|(b, _)| *b == button) {
+            Some(key) => key.1 = rect,
+            None => self.keys.push((button, rect)),
+        }
+    }
+
+    /// Where a button is, if the UI has said.
+    pub fn rect(&self, button: u8) -> Option<Rect> {
+        self.keys.iter().find(|(b, _)| *b == button).map(|(_, r)| *r)
+    }
+
+    /// The square the four directions make, if all four are laid out.
+    fn directions(&self) -> Option<Rect> {
+        let rects: Vec<Rect> = TouchPad::DIRECTIONS.iter().filter_map(|b| self.rect(*b)).collect();
+        if rects.len() < 4 {
+            return None;
+        }
+        let (x, y) = (rects.iter().map(|r| r.x).fold(f32::MAX, f32::min), rects.iter().map(|r| r.y).fold(f32::MAX, f32::min));
+        let (right, bottom) = (rects.iter().map(Rect::right).fold(f32::MIN, f32::max), rects.iter().map(Rect::bottom).fold(f32::MIN, f32::max));
+        Some(Rect { x, y, w: right - x, h: bottom - y })
+    }
+
+    /// What is at a point: nothing of the pad's (`None`), or the pad's, with the button there if there is one.
+    fn at(&self, x: f32, y: f32) -> Option<Option<u8>> {
+        let within = |r: &Rect, reach: f32| x >= r.x - reach && x < r.right() + reach && y >= r.y - reach && y < r.bottom() + reach;
+        if let Some(square) = self.directions().filter(|r| within(r, TouchPad::REACH)) {
+            let (dx, dy) = (x - (square.x + square.w / 2.0), y - (square.y + square.h / 2.0));
+            // (The middle sixth holds none: a thumb at rest there isn't pressing a direction.)
+            if dx.abs().max(dy.abs()) < square.w.min(square.h) / 12.0 {
+                return Some(None);
+            }
+            return Some(Some(if dx.abs() > dy.abs() { if dx > 0.0 { 4 } else { 5 } } else if dy < 0.0 { 6 } else { 7 }));
+        }
+        let near = |r: &Rect| (x - (r.x + r.w / 2.0)).abs() + (y - (r.y + r.h / 2.0)).abs();
+        self.keys
+            .iter()
+            .filter(|(b, r)| !TouchPad::DIRECTIONS.contains(b) && within(r, TouchPad::REACH))
+            .min_by(|a, b| near(&a.1).total_cmp(&near(&b.1)))
+            .map(|(b, _)| Some(*b))
+    }
+
+    /// A finger came down. True if it is on the pad (and so the pad's until it lifts: nothing else gets it).
+    pub fn down(&mut self, finger: u64, x: f32, y: f32) -> bool {
+        let Some(button) = self.at(x, y) else { return false };
+        self.fingers.retain(|(f, _)| *f != finger);
+        self.fingers.push((finger, button));
+        true
+    }
+
+    /// A finger moved. True if it is one of the pad's: it holds what is under it now, or nothing.
+    pub fn moved(&mut self, finger: u64, x: f32, y: f32) -> bool {
+        let under = self.at(x, y).flatten();
+        match self.fingers.iter_mut().find(|(f, _)| *f == finger) {
+            Some(held) => {
+                held.1 = under;
+                true
+            }
+            None => false,
+        }
+    }
+
+    /// A finger lifted. True if it was one of the pad's.
+    pub fn up(&mut self, finger: u64) -> bool {
+        let before = self.fingers.len();
+        self.fingers.retain(|(f, _)| *f != finger);
+        self.fingers.len() != before
+    }
+
+    /// The mouse on a button, or off it (the UI's own word for it: one pointer).
+    pub fn press(&mut self, button: Option<u8>) {
+        self.fingers.retain(|(f, _)| *f != TouchPad::MOUSE);
+        if button.is_some() {
+            self.fingers.push((TouchPad::MOUSE, button));
+        }
+    }
+
+    /// Every finger off (the battle no longer has the buttons: its menu opened, the window lost them).
+    pub fn clear(&mut self) {
+        self.fingers.clear();
+    }
+
+    /// The buttons held, as the GBA's bits.
+    pub fn held(&self) -> u16 {
+        self.fingers.iter().filter_map(|(_, b)| *b).fold(0, |held, b| held | 1 << b.min(9))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The pad as the UI lays it out on a 390-wide phone (battle.slint): the directions in a plus at the left,
+    /// A and B at the right, L and R over them.
+    fn pad() -> TouchPad {
+        let mut pad = TouchPad::default();
+        let at = |x: f32, y: f32, w: f32, h: f32| Rect { x, y, w, h };
+        pad.place(6, at(72.0, 556.0, 56.0, 56.0));
+        pad.place(5, at(16.0, 612.0, 56.0, 56.0));
+        pad.place(4, at(128.0, 612.0, 56.0, 56.0));
+        pad.place(7, at(72.0, 668.0, 56.0, 56.0));
+        pad.place(0, at(298.0, 556.0, 76.0, 76.0));
+        pad.place(1, at(210.0, 630.0, 76.0, 76.0));
+        pad.place(9, at(16.0, 484.0, 120.0, 48.0));
+        pad.place(8, at(254.0, 484.0, 120.0, 48.0));
+        pad
+    }
+
+    /// Two fingers hold two buttons, and one lifting leaves the other's held: a direction and A together.
+    #[test]
+    fn two_fingers_hold_two_buttons() {
+        let mut pad = pad();
+        assert!(pad.down(1, 40.0, 640.0));
+        assert_eq!(pad.held(), keys::LEFT);
+        assert!(pad.down(2, 330.0, 590.0));
+        assert_eq!(pad.held(), keys::LEFT | keys::A);
+        assert!(pad.down(3, 250.0, 660.0));
+        assert_eq!(pad.held(), keys::LEFT | keys::A | keys::B);
+        assert!(pad.up(2));
+        assert_eq!(pad.held(), keys::LEFT | keys::B);
+        assert!(pad.up(1));
+        assert!(pad.up(3));
+        assert_eq!(pad.held(), 0);
+        assert!(!pad.up(3));
+    }
+
+    /// A thumb rolls from one direction to the next without lifting; in the square's very middle it holds none;
+    /// just off a key's edge it still holds it; and it stays the pad's when it slides off every button.
+    #[test]
+    fn a_thumb_slides_across_the_directions() {
+        let mut pad = pad();
+        assert!(pad.down(1, 40.0, 640.0));
+        assert_eq!(pad.held(), keys::LEFT);
+        assert!(pad.moved(1, 100.0, 700.0));
+        assert_eq!(pad.held(), keys::DOWN);
+        assert!(pad.moved(1, 100.0, 640.0));
+        assert_eq!(pad.held(), 0);
+        assert!(pad.moved(1, 160.0, 640.0));
+        assert_eq!(pad.held(), keys::RIGHT);
+        // (The corner between Up and Right, on neither key: the direction it is farther toward.)
+        assert!(pad.moved(1, 150.0, 600.0));
+        assert_eq!(pad.held(), keys::RIGHT);
+        assert!(pad.moved(1, 100.0, 552.0));
+        assert_eq!(pad.held(), keys::UP);
+        assert!(pad.moved(1, 200.0, 400.0));
+        assert_eq!(pad.held(), 0);
+        assert!(pad.moved(1, 330.0, 590.0));
+        assert_eq!(pad.held(), keys::A);
+    }
+
+    /// A finger that comes down off the pad isn't the pad's (the picture, MENU): it goes on to the UI, and
+    /// moving it over a button later presses nothing.
+    #[test]
+    fn a_finger_elsewhere_is_the_uis() {
+        let mut pad = pad();
+        assert!(!pad.down(1, 200.0, 100.0));
+        assert!(!pad.moved(1, 330.0, 590.0));
+        assert_eq!(pad.held(), 0);
+        assert!(!pad.up(1));
+        // (The mouse is one more finger: a pad clicked on a desktop, beside a finger's.)
+        pad.press(Some(3));
+        assert!(pad.down(1, 40.0, 640.0));
+        assert_eq!(pad.held(), keys::START | keys::LEFT);
+        pad.press(None);
+        assert_eq!(pad.held(), keys::LEFT);
+        pad.clear();
+        assert_eq!(pad.held(), 0);
+    }
 
     /// A key bound to another button's key swaps the two, so every button keeps a key of its own.
     #[test]

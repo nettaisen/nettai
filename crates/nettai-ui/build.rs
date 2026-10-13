@@ -118,6 +118,11 @@ fn main() {
     code.push_str("];\n");
     write(&out.join("languages.rs"), &code);
 
+    // (Cargo watches the tree for Slint, by its files' and folders' times: what this run wrote would look
+    // changed at the next build, and the UI be compiled once more. Its sources are watched themselves, above,
+    // so the tree is given a time before any run's.)
+    backdate(&bundle);
+
     let config = slint_build::CompilerConfiguration::new()
         .with_bundled_translations(bundle)
         .with_default_translation_context(slint_build::DefaultTranslationContext::None);
@@ -128,6 +133,18 @@ fn main() {
 fn list(strings: &[&str]) -> String {
     let shown: Vec<String> = strings.iter().take(6).map(|s| format!("{s:?}")).collect();
     format!("{}{}", shown.join(", "), if strings.len() > shown.len() { ", ..." } else { "" })
+}
+
+/// Give `path`, and everything in it, a time long past. (A folder's can't be set on every system: it is left
+/// then, and costs a build of the UI after a clean one.)
+fn backdate(path: &Path) {
+    for entry in std::fs::read_dir(path).into_iter().flatten().flatten() {
+        backdate(&entry.path());
+    }
+    let long_past = std::time::UNIX_EPOCH + std::time::Duration::from_secs(86_400 * 365 * 30);
+    if let Ok(file) = std::fs::File::open(path) {
+        let _ = file.set_modified(long_past);
+    }
 }
 
 /// Write `text` to `path`, unless it says that already (its time of change is what cargo goes by).
