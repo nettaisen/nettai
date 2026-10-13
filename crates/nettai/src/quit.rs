@@ -14,6 +14,7 @@
 
 /// Whether a terminate request from outside ended the app's window loop (the screenshot pass says so in its
 /// report, when one ends it before its walk is done).
+#[cfg_attr(not(feature = "tour"), allow(dead_code))]
 pub fn asked() -> bool {
     ASKED.load(std::sync::atomic::Ordering::Relaxed)
 }

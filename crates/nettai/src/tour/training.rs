@@ -2,9 +2,8 @@
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
 //! can't be used, the arena and the background stepped, the arena around its end), the two cards, the battle, the
 //! training menu (a value changed, the focus a row apart, the dummy that fights (its Action, and its Level under
-//! it), the arena and the background changed under it, each Battle row a value apart, the input display, a
-//! recording made and played, the rows another screen adds), and
-//! the motion probe's bursts of what Training moves.
+//! it), the arena and the background changed under it, each Battle row a value apart, the input display, the
+//! rows another screen adds), and the motion probe's bursts of what Training moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
 //! entry lists a new build of each of the game's versions and one that can't be used
@@ -141,7 +140,7 @@ fn state(app: &App, lang: &str, size: &str, when: &str) -> String {
         if battle.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0 { " (full)" } else { "" },
     );
     if let Some(live) = b.stage.player.live() {
-        out += &format!(", options {:?}, dummy {:?}, recorded {} ticks{}", live.training(), live.opponent().in_fight, live.recorded(), if live.recording_now() { " (recording)" } else { "" });
+        out += &format!(", options {:?}, dummy {:?}", live.training(), live.opponent().in_fight);
         for side in 0..2 {
             let s = &battle.custom.sides[side];
             if let Some(screen) = s.screen.as_ref().filter(|_| battle.round.mode == nettai_battle::battle::mode::CUSTOM) {
@@ -391,54 +390,6 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(150, hold(keys::A));
     add(150, hold(0));
     add(2000, tell(lang, size, "the fight again"));
-
-    // A recording: the dummy's Action Plays your recording (three on from Stands still, as the shots left it),
-    // and the Recording row come under it; the row, chosen (the menu closes, the player's buttons drive the dummy,
-    // RECORDING over the battle), Start (the dummy plays it), and the menu again (the recording's length). (The
-    // menu's rows are there a step after it opens.)
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            app.shell.keys.held = 0;
-            app.shell.open_menu();
-        }),
-    );
-    add(SETTLE, focus_row(TrainingOption::Action));
-    add(SETTLE, act(Action::Right));
-    add(SETTLE, act(Action::Right));
-    add(SETTLE, act(Action::Right));
-    add(SETTLE, focus_row(TrainingOption::Recording));
-    shot(add, "training-menu-recording", lang, size, Differs::Unheld, false);
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            app.act(Action::Confirm);
-            app.shell.keys.held = keys::UP | keys::B;
-        }),
-    );
-    add(1500, Box::new(|_, app, _| app.borrow_mut().shell.keys.held = keys::DOWN));
-    add(1000, tell(lang, size, "recording"));
-    shot(add, "training-recording", lang, size, Differs::Unheld, false);
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.keys.held = keys::START));
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.keys.held = 0));
-    // (The dummy's buttons, a quarter of a second apart, through two of its loops: what it plays.)
-    for _ in 0..16 {
-        add(
-            250,
-            Box::new(move |_, app, tour| {
-                let app = app.borrow();
-                let Some(b) = app.shell.battle.as_ref() else { return };
-                let battle = b.stage.player.battle();
-                let at = battle.player(1).map(|r| battle.objects.get(r).panel);
-                say(tour, &format!("{lang} {size} playing: tick {}, the dummy holds {:#05x}, on {at:?}\n", b.stage.player.ticks(), battle.custom.sides[1].joypad.held));
-            }),
-        );
-    }
-    shot(add, "training-recording-played", lang, size, Differs::Unheld, false);
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
-    shot(add, "training-menu-recorded", lang, size, Differs::Unheld, false);
 
     // CHANGE BUILDS: the entry again.
     add(
