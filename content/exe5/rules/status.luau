@@ -407,7 +407,10 @@ local status = {
         flash_hides_on_clear = true,
         -- A navi's status word read before its init made its collision data (through the null pointer, from the
         -- BIOS: a round's first tick, the other side's first barrier's visual asking whether the local navi is blind,
-        -- 0x0800CDF4): an interrupt's opcode (read on the console at 0x0800CE18), without EXE6's blind bit.
+        -- 0x0800CDF4): an interrupt's opcode (read on the console at 0x0800CE18), without EXE6's blind bit. That is
+        -- a stage with no objects in its actor list; with boulders or rocks the recorded consoles read a software
+        -- interrupt's (the bit: the visual hidden for that tick, on a black screen), which the comparison lets go
+        -- (compat's kinds.toml, `round_start_open_bus_flags`: the lab's patch-cards/barrier-side1-*).
         missing_collision_status = 0xE55EC002,
         -- Its status block (0x08017CC8 on) runs the flash's timer first, whatever the battle's flags (0x080173C4),
         -- then the slides, a drag and a flinch, which end a paralysis unless a counter just made it.
@@ -434,8 +437,9 @@ local status = {
         -- (one of none passes); AntiSwrd any sword's hit (the hit flags 0x2000).
         anti_traps = { damage_min = 1, armed_swallows_below = false, sword_spares = 0 },
         -- A chip-destroying hit (hit flag 0x10: 0x0801709A) takes a player's whole hand, the cursor back at its first
-        -- chip; the navi's chip requests stay.
-        chip_destruction = { takes = "hand", ends_chip_requests = false },
+        -- chip. (EXE5's leaves the navi's chip requests, and one pending uses chip 0xFFFF's record, past the chip table:
+        -- the engine ends it instead, docs/design/exe5-map.md §15.6.)
+        chip_destruction = "hand",
         -- EXE5's emotions (0x0801270C): in battle mode 1 Full Synchro or normal (0x080127C0); else (0x08012740) a navi
         -- in a soul reads as normal (the soul's own face), then anger is read before a mood of 0 (a dark MegaMan's,
         -- worn out), then Full Synchro, and a mood under 65 is worried; no held tired or exhausted state is read.
