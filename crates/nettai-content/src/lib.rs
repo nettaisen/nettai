@@ -23,6 +23,8 @@
 //! - The library order: a game's `library.toml`, the order its library
 //!   screens list its chips in by category, and its NaviCust programs' and
 //!   patch cards' orders, which menus list things in ([`library`]).
+//! - The look: a game's `look.toml`, the colors the app's menus are drawn
+//!   in while it is selected and the pattern of their backdrop ([`look`]).
 //!
 //! [`pack`] ties them together and loads each part straight from its
 //! files; [`timing`] reads the simulation's animation timing alone. Every import reports what
@@ -39,6 +41,7 @@ pub mod image;
 pub mod library;
 pub mod lint;
 pub mod locale;
+pub mod look;
 pub mod midi;
 pub mod names;
 pub mod pack;
