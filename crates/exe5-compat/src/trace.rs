@@ -780,7 +780,14 @@ impl Round {
             patch_cards(content, compat, d.versions[side], &list)
         };
         let players = [0u8, 1].map(|side| -> Result<PlayerSetup, String> {
-            let folder = battle_folder(content, compat, &unhex(&self.setup.folders[side as usize])?, side == local && bs[0x17] != 0)?;
+            // (BattleState+0x17 is the recording console's Regular chip's
+            // flag; the other console's is in `regular_flags` when the
+            // recording has it.)
+            let regular = match self.setup.regular_flags {
+                Some(r) => r[side as usize] != 0,
+                None => side == local && bs[0x17] != 0,
+            };
+            let folder = battle_folder(content, compat, &unhex(&self.setup.folders[side as usize])?, regular)?;
             // (The console's counter before the round's first tick: one
             // less than on the setup's frame.)
             let frames = (self.setup.frame_counter as u32).wrapping_sub(1) & 0xFFFF;

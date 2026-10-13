@@ -167,8 +167,9 @@ effects.copy_mark_12 = new.effect { sprite = asset.sprite("hit-sparks"), anim = 
 effects.sight = new.effect { sprite = asset.sprite("sight"), anim = 0, palette = 0 }
 -- Effect 0x4A.
 effects.explosion_4a = new.effect { sprite = asset.sprite("explosion"), anim = 0, palette = 2 }
--- Effect 0x4B.
-effects.dummy_look = new.effect { sprite = asset.sprite("wide-navi"), anim = 82, palette = 16 }
+-- Effect 0x4B (a look of Gregar the Cybeast's sheet, which the Falzar ROMs
+-- have a placeholder for).
+effects.gregar_cybeast_82 = new.effect { sprite = asset.sprite("gregar-cybeast"), anim = 82, palette = 16 }
 -- Effect 0x4C.
 effects.slash_man_effect_2 = new.effect { sprite = asset.sprite("slash-man-effect"), anim = 2, palette = 0 }
 -- Effect 0x4D.
