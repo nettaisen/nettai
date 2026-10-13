@@ -612,6 +612,13 @@ impl LivePlayer {
         &self.set
     }
 
+    /// Play `set` from its next start (`Driver::start`: the player's
+    /// `restart`) in place of the one it plays, which goes on until then:
+    /// a training session's set on another place.
+    pub fn play_set(&mut self, set: Set) {
+        self.set = set;
+    }
+
     /// The training session's options.
     pub fn training(&self) -> Training {
         self.training

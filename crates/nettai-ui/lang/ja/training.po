@@ -12,6 +12,17 @@ msgstr "あなたのビルド"
 msgid "Dummy's build"
 msgstr "ダミーのビルド"
 
+# The entry's rows (and the menu's Battle rows): where each round is fought. Their choices are the content's
+# arenas and backgrounds, after Random (each round's picked from the seed).
+msgid "Arena"
+msgstr "アリーナ"
+
+msgid "Background"
+msgstr "背景"
+
+msgid "Random"
+msgstr "ランダム"
+
 msgid "Set up the dummy from the menu once you're in."
 msgstr "ダミーの設定は、開始後にメニューからできます。"
 
