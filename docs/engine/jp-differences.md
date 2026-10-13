@@ -273,7 +273,7 @@ original's behavior (bn6-lmao "fixes" it, §9).
 
 The art (icon, image, palette) is `chips.py`'s list:
 
-- **Icons**: the same in all four ROMs, chip by chip; the pack has the US Falzar ROM's. (The Gregar ROMs' Falzar
+- **Icons**: the same in all four ROMs, chip by chip; the pack has a Falzar ROM's. (The Gregar ROMs' Falzar
   chip icon, JP's and US's alike, is a placeholder that reads "13A": a Gregar console draws it, which the frame
   comparison's table knows; `gregar-console/description-falzar-chip`, `jp/gregar-description-falzar-chip`.)
 - **Pictures**: the US ROMs have one placeholder picture (a purple block) for all eleven chips, the JP ROMs their
