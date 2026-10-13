@@ -124,7 +124,11 @@ impl Game {
     /// The packs' graphics, the game's own in `lang`: the pack's lettering
     /// in it (fonts, HUD lines, pictures with words) and the content's
     /// strings table, if the language isn't the content's own
-    /// (`nettai_content::locale::OWN`).
+    /// (`nettai_content::locale::OWN`). A pack that has no lettering in
+    /// `lang` (one made from the other release's ROMs alone) is drawn in
+    /// its own language: its pictures with words are the ones it has, and
+    /// the strings are still `lang`'s, which the renderer draws with the
+    /// vector font in either text mode (`Renderer::set_text`).
     pub fn graphics(&self, lang: &str) -> Result<Graphics, LoadError> {
         let mut report = Report::default();
         let mut bundles = Vec::new();
@@ -155,10 +159,7 @@ impl Game {
                     Err(e) => return Err(failed(e, report)),
                 };
             }
-            match bundle.in_language(lang) {
-                Ok(b) => bundles.push(Arc::new(b)),
-                Err(e) => return Err(failed(format!("{e} (extract the pack again with the Japanese ROMs)"), report)),
-            }
+            bundles.push(Arc::new(bundle.for_language(lang)));
         }
         Ok(Graphics { bundles, strings, own: self.own, report })
     }

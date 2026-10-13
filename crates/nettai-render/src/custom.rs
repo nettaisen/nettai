@@ -1454,7 +1454,10 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let variant = if v.b.looks[side].name_variant { text.strings.navi_variant_name(&v.b.content, other) } else { None };
     let name = variant.unwrap_or_else(|| text.strings.navi_name(&v.b.content, other));
     let glyphs = crate::lookups::navi_name(v.hud, other, variant.is_some(), name, problems);
-    let len = glyphs.len().min(ENEMY_NAME_CELLS);
+    // (On the text layer, a character a cell where the pack's font lacks
+    // the language's: the name still ends at column 30.)
+    let len = if text.takes(name) { fonts::box_cells(v.hud, name, glyphs.len(), ENEMY_NAME_CELLS) } else { glyphs.len() };
+    let len = len.min(ENEMY_NAME_CELLS);
     let col = 0x1E - len as i32;
     let palette = &w.palettes[13];
     fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * col, 0), Align::Left);

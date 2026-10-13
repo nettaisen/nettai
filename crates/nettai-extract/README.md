@@ -31,6 +31,12 @@ the way its own code reaches the block. A placeholder is left only for what no R
 holds: unavailable graphics become checkerboards (black/magenta for assets with their own
 palettes), and unavailable named songs become valid silent MIDI tracks.
 
+A pack has the words of the releases its ROMs are of: English with a US ROM, Japanese with
+a Japanese one, its own language the first of them (`hud.json`'s `language`, the other's
+under `languages`). A pack of one release's ROMs has no lettering of the other's, rather
+than placeholders for it; a frontend set to that language draws the pack's own pictures
+with words, and the strings in the language chosen (docs/frontend.md, "Languages").
+
 Placeholders preserve asset names and references but cannot reproduce missing animation
 timing or the original appearance. They keep the game's shape where a frontend looks for
 it: a banner is the kind its ROM record says (one with a number, one that holds until
@@ -42,25 +48,30 @@ sprite).
 
 Counted 2026-10-12 from packs of each set of ROMs against the pack of all four and the pack of none
 (bn6battle-verify's `tools/cross-rom/census.py`, which tells a placeholder by its picture). A cell is the
-placeholders of a kind's assets; `-` is none. "Recolored" is a picture read from a ROM and drawn with a palette
-that is a placeholder: the right shapes in magenta and black. The Japanese banners that a full pack has as the
-base's own words, and a sheet whose palette rows past its archive's own differ with the ROM, count as real; a
-placeholder picture in a real palette counts as a placeholder, and so does one with a placeholder part
-(EXE4's UNITE button without its label). `every_source_subset` holds each game's sixteen packs to the ROMs'
-own bytes: a placeholder stands only where no ROM given holds the picture.
+placeholders of a kind's assets; `-` is none. "Recolored" is a picture read from a ROM and drawn in the
+placeholder's colors: the right shapes in magenta and black. A placeholder picture in a real palette counts as a
+placeholder, and so does one with a placeholder part (EXE4's UNITE button without its label); a real picture in
+another real palette (another version's, another release's, a sheet's palette rows past its archive's own) doesn't.
+"Words in" is the languages a pack has words in: a pack of one release's ROMs has that release's alone, its
+pictures with words compared with the full pack's in that language, and no placeholders for the other's (a
+frontend set to it draws the pack's own). The HUD's navi box is "recolored" in a pack without the first link
+navi's version only in its file, which shows it in that navi's colors: its tiles are real, and it is drawn in
+each navi's own. `every_source_subset` holds each game's sixteen packs to the ROMs' own bytes: a placeholder
+stands only where no ROM given holds the picture, and a pack states the languages its ROMs are of.
 
 **EXE4**
 
 | | both JP | Red Sun JP | Blue Moon JP | both US | Red Sun US | Blue Moon US |
 |---|---|---|---|---|---|---|
-| HUD pieces | 1 of 13 | 1 of 13 | 1 of 13 | - | - | - |
-| custom screen pieces | 4 of 22 | 4 of 22 | 4 of 22 | - | - | - |
-| banners (the US words) | 41 of 41 | 41 of 41 | 41 of 41 | - | - | - |
-| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | - |
-| Japanese lettering | - | - | - | 48 of 50 | 48 of 50 | 48 of 50 |
+| words in | Japanese | Japanese | Japanese | English | English | English |
+| HUD pieces | - | - | - | - | - | - |
+| custom screen pieces | - | - | - | - | - | - |
+| banners | - | - | - | - | - | - |
+| fonts | - | - | - | - | - | - |
 | chip pictures | - | - | - | - | - | - |
 | chip icons | - | - | - | - | - | - |
-| sprites, portraits | - | - | - | - | - | - |
+| sprites | - | - | - | - | - | - |
+| portraits | - | - | - | - | - | - |
 | backgrounds | - | - | - | - | - | - |
 | field | - | - | - | - | - | - |
 | mugshots | - | 6 of 22 | 6 of 22 | - | 6 of 22 | 6 of 22 |
@@ -70,11 +81,11 @@ own bytes: a placeholder stands only where no ROM given holds the picture.
 
 | | both JP | Team of Blues JP | Team of Colonel JP | both US | Team ProtoMan US | Team Colonel US |
 |---|---|---|---|---|---|---|
-| HUD pieces | 1 of 12, 1 recolored | 1 of 12, 1 recolored | 1 of 12, 1 recolored | - | - | - |
-| custom screen pieces | 5 of 23 | 5 of 23 | 5 of 23 | - | - | - |
-| banners (the US words) | 47 of 47 | 47 of 47 | 47 of 47 | - | - | - |
-| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | - |
-| Japanese lettering | - | - | - | 55 of 57 | 55 of 57 | 55 of 57 |
+| words in | Japanese | Japanese | Japanese | English | English | English |
+| HUD pieces | - | - | 1 recolored | - | - | 1 recolored |
+| custom screen pieces | - | - | - | - | - | - |
+| banners | - | - | - | - | - | - |
+| fonts | - | - | - | - | - | - |
 | chip pictures | - | 12 of 396 | 12 of 396 | - | 12 of 396 | 12 of 396 |
 | chip icons | - | 6 of 396 | 6 of 396 | - | 6 of 396 | 6 of 396 |
 | sprites | - | - | - | - | - | - |
@@ -89,11 +100,11 @@ own bytes: a placeholder stands only where no ROM given holds the picture.
 
 | | both JP | Falzar JP | Gregar JP | both US | Falzar US | Gregar US |
 |---|---|---|---|---|---|---|
-| HUD pieces | 2 of 12, 1 recolored | 2 of 12, 1 recolored | 2 of 12, 1 recolored | - | - | - |
-| custom screen pieces | 7 of 25 | 9 of 25 | 9 of 25 | - | 3 of 25 | 3 of 25 |
-| banners (the US words) | 45 of 45 | 45 of 45 | 45 of 45 | - | - | - |
-| fonts (the US ones) | 2 of 2 | 2 of 2 | 2 of 2 | - | - | - |
-| Japanese lettering | - | 1 of 56 | 1 of 56 | 56 of 56 | 56 of 56 | 56 of 56 |
+| words in | Japanese | Japanese | Japanese | English | English | English |
+| HUD pieces | - | - | 1 recolored | - | - | 1 recolored |
+| custom screen pieces | - | 3 of 25 | 3 of 25 | - | 3 of 25 | 3 of 25 |
+| banners | - | - | - | - | - | - |
+| fonts | - | - | - | - | - | - |
 | chip pictures | - | 6 of 411 | 6 of 411 | 15 of 411 | 20 of 411 | 20 of 411 |
 | chip icons | - | 5 of 411 | 6 of 411 | - | 5 of 411 | 6 of 411 |
 | sprites | - | 1 of 298 | 1 of 298 | 6 of 298 | 7 of 298 | 7 of 298 |
@@ -108,46 +119,47 @@ What a player sees, and whether the ROMs they have hold what is missing.
 
 **EXE6**, where nothing a ROM given holds is missing:
 
-- **Only Japanese ROMs.** A whole battle in Japanese. What is missing is the English words, which no Japanese
-  ROM has: the 45 banners, the two fonts, the gauge's word, the notice of the other player customizing, the chip
-  window's five worded pictures and the Crosses' names. (The banners' digits take the banners' palette, so in
-  English they are their true shapes in magenta and black.) Three sheets, an icon and a picture are the Japanese
-  ROMs' own where the releases differ: HeatMan's flames, the Falzar feather and the flame, BassAnly's icon, and
-  Gregar's Beast Out picture.
+- **Only Japanese ROMs.** A whole battle in Japanese. The pack has no English words, which no Japanese ROM
+  has (the 45 banners, the two fonts, the gauge's word, the notice of the other player customizing, the chip
+  window's five worded pictures and the Crosses' names): set to English, its pictures with words are the
+  Japanese ones, and the strings (chip names, descriptions) English in the frontend's font. Three sheets, an
+  icon and a picture are the Japanese ROMs' own where the releases differ: HeatMan's flames, the Falzar
+  feather and the flame, BassAnly's icon, and Gregar's Beast Out picture.
 - **One version's ROM alone**, of either release. Everything but the other version's own: its five Giga chips'
   pictures and icons, its five link navis' portraits, faces and emblems, its Crosses' and its Beast's eighteen
-  faces, its Crosses' names, its Beast Out button and picture, and its Cybeast's sprite. A Japanese ROM also
-  lacks the other version's chip of the two the US release cut, Gregar or Falzar. A Gregar ROM has no icon
-  for the Falzar chip (its record's is a placeholder that reads "13A"), and gives the BeastOut chip's picture
-  as it has it, its own Beast's. And a Gregar ROM does have one of Falzar's navis' portraits, DustMan's: the
-  archive is in it with no entry of the portraits' table pointing at it, so the extractor states where.
-- **Only US ROMs.** The fifteen chip pictures and six sprites the US release cut, and the Japanese words.
+  faces, its Beast Out button and picture, and its Cybeast's sprite. Its Crosses' names are the release's words
+  of the version given. A Japanese ROM also lacks the other version's chip of the two the US release cut,
+  Gregar or Falzar. A Gregar ROM has no icon for the Falzar chip (its record's is a placeholder that reads
+  "13A"), and gives the BeastOut chip's picture as it has it, its own Beast's. And a Gregar ROM does have one
+  of Falzar's navis' portraits, DustMan's: the archive is in it with no entry of the portraits' table pointing
+  at it, so the extractor states where.
+- **Only US ROMs.** The fifteen chip pictures and six sprites the US release cut. No Japanese words: set to
+  Japanese, the pictures with words are the English ones and the strings Japanese.
 
 **EXE5**, likewise:
 
-- **Only Japanese ROMs.** A whole battle in Japanese. What is missing is the English words: the 47 banners, the
-  two fonts, the notice of the other player customizing, the chip window's four worded pictures (OK, OK picked,
-  the other, the re-deal button's) and the soul button's label. (The gauge and Arm Change's picture have no
-  words in EXE5: any ROM gives them. The banners' digits take the banners' palette, as in EXE6.) Yai's HP
-  background, the battle mode 1 label and the hit's loudness are the Japanese ROMs' own, where the releases
-  differ.
+- **Only Japanese ROMs.** A whole battle in Japanese. The pack has no English words (the 47 banners, the two
+  fonts, the notice of the other player customizing, the chip window's four worded pictures and the soul
+  button's label): set to English, the Japanese ones, the strings English. (The gauge and Arm Change's picture
+  have no words in EXE5: any ROM gives them.) Yai's HP background, the battle mode 1 label and the hit's
+  loudness are the Japanese ROMs' own, where the releases differ.
 - **One version's ROM alone**, of either release. Everything but the other team's own: its six version chips'
   pictures and icons and its six navis' chips' pictures, four or five of its navis' portraits, its souls' and
   its navis' eighteen faces, its six emblems, and its soul icons' outline color. A Team Colonel ROM gives
   MegaMan's five dark faces in its own colors (four differ from Team ProtoMan's in two or three colors) and
   Colonel's and NumberMan's portraits as it has them.
-- **Only US ROMs.** The Japanese words.
+- **Only US ROMs.** No Japanese words: set to Japanese, the English pictures with words, the strings Japanese.
 
 **EXE4**, likewise:
 
-- **Only Japanese ROMs.** A whole battle in Japanese. What is missing is the English words: the 41 banners, the
-  two fonts, "BUSY...", the chip window's three worded pictures (OK, OK picked, SHUFFLE's) and the UNITE button's
-  label. (The gauge with "CUSTOM", UNITE's picture and the banners' digits and palette are the same in every
-  ROM.)
+- **Only Japanese ROMs.** A whole battle in Japanese. The pack has no English words (the 41 banners, the two
+  fonts, "BUSY...", the chip window's three worded pictures and the UNITE button's label): set to English, the
+  Japanese ones, the strings English. (The gauge with "CUSTOM", UNITE's picture and the banners' digits and
+  palette are the same in every ROM.)
 - **One version's ROM alone**, of either release. Everything but the other version's six souls' faces. (Every
   ROM has every chip's picture and icon. Four chips' icons aren't the same in a Blue Moon ROM as in a Red Sun
   one: a pack of Blue Moon ROMs has Blue Moon's.)
-- **Only US ROMs.** The Japanese words.
+- **Only US ROMs.** No Japanese words: set to Japanese, the English pictures with words, the strings Japanese.
 - In no ROM: the two e-Reader cards' chips' pictures, which the extractor has of its own.
 
 Every pack includes `extraction.txt`. The library result exposes `missing_roms`, `warnings`
