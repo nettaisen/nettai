@@ -229,15 +229,7 @@ fn extract_inner(game: Game, roms: &RomSet) -> Result<Extraction, Error> {
             },
             &names,
         ),
-        Game::Exe6 => exe6::graphics::bundle(
-            &exe6::Roms {
-                falzar: sources[0],
-                gregar: sources[1],
-                falzar_jp: sources[2],
-                gregar_jp: sources[3],
-            },
-            &names,
-        ),
+        Game::Exe6 => exe6::graphics::bundle(&rom::Roms(sources), &names),
     };
     let panel_names = match game {
         Game::Exe4 => exe4::graphics::panel_names(),

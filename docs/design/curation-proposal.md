@@ -7,12 +7,12 @@ adds a few with numbers in them (`hit-6b`, `log-in-77`). This document proposes 
 evidence (where content and the engine use it, what the sprite shows, the docs, the disassembly) and a
 confidence, so the review is a matter of accepting groups. **Nothing is renamed yet.**
 
-It covers 1108 names: 219 proposed renames (42 high, 157 medium and
-20 low confidence), 636 names to keep as they are, and 253 numbered placeholders
-(`sprite-0c-26`, `sound-108`) to leave numbered. 28 names are flagged as wrong now: they say something
+It covers 1110 names: 222 proposed renames (44 high, 158 medium and
+20 low confidence), 636 names to keep as they are, and 252 numbered placeholders
+(`sprite-0c-26`, `sound-108`) to leave numbered. 30 names are flagged as wrong now: they say something
 their asset or definition isn't.
 
-**Applied so far: 64 renames**, marked *applied* below (accepted-1, accepted-2). accepted-1 is the user's
+**Applied so far: 67 renames**, marked *applied* below (accepted-1, accepted-2, accepted-3). accepted-1 is the user's
 "High + flagged": every high-confidence rename and every row flagged wrong then. accepted-2 is chip destruction,
 the user's name for collision row 0x08, its shot and its hit spark ("attack-90 is chip destruction and the
 sparks.shot is also the chip destruction hitspark"), in both games. The rest wait for review.
@@ -72,8 +72,10 @@ are garbage. Their renames are worth taking even where the proposed name is only
 | sprite | `rising-bubble` | `small-puff` *applied* | medium | Shows small gray puffs. lib/effects' splash, dust and ripple and Geddon's puffs use it; nothing rises as a bubble. |
 | sprite | `shot-impact` | `chip-destruction-spark` *applied* | high | 14-0c: the chip destruction hit spark (spark 0x09, lib/sparks). The user's name. |
 | sprite | `small-ring` | `wide-navi` *applied* | medium | The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide. |
+| sprite | `wide-navi` | `gregar-cybeast` *applied* | high | 08-14: Gregar the Cybeast's sheet (86 animations). Only the Gregar ROMs fill the slot; the Falzar ROMs, which the name before was given from, have the placeholder archive there (the 16x16 dot). SumnBlk asks whether an actor wears it to know it stands two panels wide. |
 | sound | `copy-mark` | `mark` *applied* | medium | A mark set: BurnSqr's fire, CircGun's and CopyDmg's marks. CopyDmg is one user of three. |
 | effect | `bat_impact` | `cut_in_flash` *applied* | high | The role effects.cut_in_flash: the flash where a side cut in (effect 0x1E). |
+| effect | `dummy_look` | `gregar_cybeast_82` *applied* | medium | Effect 0x4B is animation 82, palette 16 of Gregar the Cybeast's sheet (three frames of 2, 3 and 2 ticks): a real look in the Gregar ROMs, the placeholder archive's in the Falzar ROMs. No content spawns it. |
 | effect | `small_ring_82` | `dummy_look` *applied* | low | Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look. |
 | spark | `shot` | `chip_destruction` *applied* | high | Spark 0x09 is the chip destruction hit spark (the chip destruction shot's, and EXE5's SerchMan's shot's). The user's name. |
 | status | `collision-panel-65535` | `after-table-1-past-freeze` *applied* | medium | Status 0x5C: the freeze group's entry 12, past the bubble rows it also reads, reads row 1 after the table: its fields are whatever bytes follow the table, which the current name spells out as if they meant something. Named as the other overflow reads are (`<what it reads>-past-<group>`). |
@@ -103,11 +105,11 @@ Also found while reviewing (no rename needed):
   The registries differ, so it loads, but a reader or a search can't tell them apart: the rock variants table below
   proposes `rockcube/rock/cube` (and the other three variants alike).
 
-## High confidence: accept in bulk (42)
+## High confidence: accept in bulk (44)
 
 Each name follows from a single, clear use or from what the asset reads: a Cross's body overlay worn by that form alone, a banner's text, a sound's role, the disassembly's own name without its number.
 
-### Sprites (16)
+### Sprites (18)
 
 | current | proposed | evidence |
 |---|---|---|
@@ -127,6 +129,8 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 | `burner-2` | `heatcross-burner` *applied* | HeatCross's burner (lib/burner/burn.luau, attachment row 0x1E); `burner` is FireBrn's. |
 | `copy-mark` | `hit-sparks` (wrong now) *applied* | Shows the hit sparks (plain, breaking, and one per element: sparks by element use its animations 0, 2-5) and the TRAP! mark (animation 7); 30 uses, CopyDmg's mark only one of them. |
 | `shot-impact` | `chip-destruction-spark` (wrong now) *applied* | 14-0c: the chip destruction hit spark (spark 0x09, lib/sparks). The user's name. |
+| `sprite-08-15` | `falzar-cybeast` *applied* | 08-15: Falzar the Cybeast's sheet. Only the Falzar ROMs fill the slot; the Gregar ROMs have the placeholder archive there. No content uses it. |
+| `wide-navi` | `gregar-cybeast` (wrong now) *applied* | 08-14: Gregar the Cybeast's sheet (86 animations). Only the Gregar ROMs fill the slot; the Falzar ROMs, which the name before was given from, have the placeholder archive there (the 16x16 dot). SumnBlk asks whether an actor wears it to know it stands two panels wide. |
 
 ### Sounds (9)
 
@@ -189,7 +193,7 @@ Each name follows from a single, clear use or from what the asset reads: a Cross
 | `rockcube/hard` | `rockcube/rock/hard` *applied* | The rock's variant (a hard cube): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
 | `rockcube/ice` | `rockcube/rock/ice` *applied* | The rock's variant (the ice block): a record of the kind `rockcube/rock`. `rockcube/cube` is also the key of the kind RockCube's controller (chips/rockcube/cube.luau): legal, since the registries differ, but one key naming two things misleads a reader and a search. Naming the variants under the rock they vary keeps them owner-qualified and apart; the other three follow for consistency. |
 
-## Medium confidence (157)
+## Medium confidence (158)
 
 Named from several uses that agree, from the look (the effects named for sprite, animation and palette rather than the original's effect number), or from a definition's shape or flags (regions, collision types). Safe to accept; a better name may exist.
 
@@ -247,7 +251,7 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `winner-0` | `winner-special` | The disassembly's SONG_WINNER_0; the role music.winner_special. |
 | `winner-1` | `winner` | The disassembly's SONG_WINNER_1; the role music.winner. |
 
-### Effects (lib/effects.luau) (35)
+### Effects (lib/effects.luau) (36)
 
 | current | proposed | evidence |
 |---|---|---|
@@ -267,6 +271,7 @@ Named from several uses that agree, from the look (the effects named for sprite,
 | `copy_mark_4` | `elec_spark` | Effect 0x0A: the elec spark's look (animation 4). Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `copy_mark_5` | `wood_spark` | Effect 0x0B: the wood spark's look (animation 5). Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `copy_mark_8` | `hand_flash` | Effect 0x57: a shot's flash at the hand (Bass, chips/bass/navi.luau). |
+| `dummy_look` | `gregar_cybeast_82` (wrong now) *applied* | Effect 0x4B is animation 82, palette 16 of Gregar the Cybeast's sheet (three frames of 2, 3 and 2 ticks): a real look in the Gregar ROMs, the placeholder archive's in the Falzar ROMs. No content spawns it. |
 | `dust_2` | `crack_dust` | Effect 0x30: the dust CrakShot raises on its panel. |
 | `elmnt_ice` | `sparkle` | Effect 0x26: the sparkle sprite (proposed `sparkle`). Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
 | `explosion_24` | `explosion_p1` | Effect 0x24: explosion, palette 1. Unused by content; named for its look (sprite, animation, palette), the effect number dropped. |
@@ -560,18 +565,18 @@ proposal-worthy name for lack of a better one, are listed with their reason.
 |---|---|---|
 | `netbattle-*` | medium | The 192 settings records, deduplicated and numbered in order of first use; the ROM gives no names and the stages differ only by panels and placements. |
 
-## Placeholders left numbered (253)
+## Placeholders left numbered (252)
 
 Names the extractor gives what nobody named (`sprite-cc-ii`, `sound-nnn`). Content may not use them (a lint), so
 every one is something no netbattle shows or plays: overworld and menu sounds, virus sheets, and the ROM's dummy
 sprite (a 16x16 dot that many unused sprite slots share). Naming them waits for a use. Accepting them changes
 nothing.
 
-### Sprites (72)
+### Sprites (71)
 
 - the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it. `sprite-00-0d`, `sprite-04-1e`, `sprite-08-11`, `sprite-08-16`, `sprite-0c-26`, `sprite-0c-32`, `sprite-0c-39`, `sprite-0c-3a`, `sprite-0c-3e`, `sprite-0c-3f`, `sprite-0c-42`, `sprite-0c-46`, `sprite-0c-49`, `sprite-0c-4a`, `sprite-0c-4e`, `sprite-0c-56`, `sprite-0c-57`, `sprite-0c-5a`, `sprite-0c-5b`, `sprite-0c-65`, `sprite-0c-66`, `sprite-0c-68`, `sprite-10-04`, `sprite-10-14`, `sprite-10-15`, `sprite-10-18`, `sprite-10-1e`, `sprite-10-33`, `sprite-10-35`, `sprite-10-36`, `sprite-10-3a`, `sprite-10-3e`, `sprite-10-3f`, `sprite-10-49`, `sprite-10-58`, `sprite-10-5b`, `sprite-14-10`, `sprite-14-17`, `sprite-14-19`
 - a virus's sheet; no netbattle shows it. `sprite-04-01`, `sprite-04-02`, `sprite-04-04`, `sprite-04-06`, `sprite-04-07`, `sprite-04-08`, `sprite-04-0b`, `sprite-04-0c`, `sprite-04-0e`, `sprite-04-11`, `sprite-04-12`, `sprite-04-13`, `sprite-04-14`, `sprite-04-15`, `sprite-04-16`, `sprite-04-17`, `sprite-04-1c`, `sprite-04-1f`
-- a sheet no netbattle shows (content and the engine name only what they show). `sprite-08-15`, `sprite-0c-25`, `sprite-0c-67`, `sprite-10-0c`, `sprite-10-13`, `sprite-10-1a`, `sprite-10-1b`, `sprite-10-1c`, `sprite-10-25`, `sprite-10-29`, `sprite-10-2b`, `sprite-10-2d`, `sprite-10-4b`, `sprite-10-53`, `sprite-14-1d`
+- a sheet no netbattle shows (content and the engine name only what they show). `sprite-0c-25`, `sprite-0c-67`, `sprite-10-0c`, `sprite-10-13`, `sprite-10-1a`, `sprite-10-1b`, `sprite-10-1c`, `sprite-10-25`, `sprite-10-29`, `sprite-10-2b`, `sprite-10-2d`, `sprite-10-4b`, `sprite-10-53`, `sprite-14-1d`
 
 ### Sounds (181)
 

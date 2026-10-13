@@ -780,7 +780,14 @@ impl Round {
             patch_cards(content, compat, d.versions[side], &list)
         };
         let players = [0u8, 1].map(|side| -> Result<PlayerSetup, String> {
-            let folder = battle_folder(content, compat, &unhex(&self.setup.folders[side as usize])?, side == local && bs[0x17] != 0)?;
+            // (BattleState+0x17 is the recording console's Regular chip's
+            // flag; the other console's is in `regular_flags` when the
+            // recording has it.)
+            let regular = match self.setup.regular_flags {
+                Some(r) => r[side as usize] != 0,
+                None => side == local && bs[0x17] != 0,
+            };
+            let folder = battle_folder(content, compat, &unhex(&self.setup.folders[side as usize])?, regular)?;
             // (The console's counter before the round's first tick: one
             // less than on the setup's frame.)
             let frames = (self.setup.frame_counter as u32).wrapping_sub(1) & 0xFFFF;
@@ -1193,6 +1200,50 @@ pub fn compare_at(b: &Battle, round: &Round, frames: &[&Frame], i: usize, compat
     compare_with(b, f, banner, compat)
 }
 
+/// The engine's hand in a chip block's terms ([`codec::ChipHand`]): each
+/// chip by its key and the number compat's chips.toml gives it (0xFFFF for a
+/// chip it has none for, which no block holds).
+fn engine_hand(b: &Battle, compat: &Compat, h: &nettai_battle::hand::ChipHand) -> ChipHand {
+    let chip = |c: nettai_content_api::ChipHandle| {
+        let key = nettai_match::ids::local(&b.content.defs.chip(c).key).to_string();
+        codec::Chip { id: compat.chip_entry(&key).map_or(0xFFFF, |e| e.id), key: Some(key) }
+    };
+    ChipHand {
+        cursor: h.cursor,
+        ids: h.ids.map(|c| c.map(chip)),
+        damage: h.damage,
+        attack_bonus: h.attack_bonus,
+        charge_bonus: h.charge_bonus,
+        selection: h.selection.map(|c| c.map(|c| (chip(c.id), c.code.0))),
+        turn: h.turn,
+        modifiers: h.modifiers,
+    }
+}
+
+/// A hand's fields, each as the comparison says it: the cursor (the next
+/// chip's place: the chips before it are used), the six chips (`-`: none; a
+/// block keeps what lay past its first empty entry), their damage and their
+/// two bonuses, the six picks with their codes, the turn each was picked in
+/// and their modifier flags.
+fn hand_fields(h: &ChipHand) -> Vec<(&'static str, String)> {
+    let chip = |c: &codec::Chip| match &c.key {
+        Some(k) => format!("{k} ({:#05x})", c.id),
+        None => format!("{:#05x}", c.id),
+    };
+    let chips: Vec<String> = h.ids.iter().map(|c| c.as_ref().map_or("-".to_string(), chip)).collect();
+    let picks: Vec<String> = h.selection.iter().map(|c| c.as_ref().map_or("-".to_string(), |(c, code)| format!("{} code {code}", chip(c)))).collect();
+    vec![
+        ("cursor", h.cursor.to_string()),
+        ("chips", chips.join(", ")),
+        ("damage", format!("{:?}", h.damage)),
+        ("attack bonus", format!("{:?}", h.attack_bonus)),
+        ("charge bonus", format!("{:?}", h.charge_bonus)),
+        ("picks", picks.join(", ")),
+        ("turns", format!("{:?}", h.turn)),
+        ("modifiers", format!("{:?}", h.modifiers)),
+    ]
+}
+
 /// [`compare`], the banner compared with `banner`'s.
 fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<String> {
     let mut d = Vec::new();
@@ -1232,6 +1283,36 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, compat: &Compat) -> Vec<S
         .collect();
     let theirs: Vec<String> = f.panels.iter().map(|[t, a]| format!("[{t}, {a}]")).collect();
     check("panels", panels.join(", "), theirs.join(", "));
+    // Each side's hand, its whole chip block (0x50 bytes a side, EXE6's
+    // layout): the cursor, the chips in order, their damage and bonuses, the
+    // picks with their codes, their turns and their modifier flags; and the
+    // block's bytes no field covers (+1, +0x4A on), zero in every recording.
+    for (side, block) in f.chip_blocks.iter().enumerate() {
+        let decoded = unhex(block).and_then(|raw| codec::chip_hand(compat, &raw).map(|h| (h, raw)));
+        match decoded {
+            Ok((mut theirs, raw)) => {
+                // (A hand never built is the zeroed block: its picks read
+                // chip 0 in code A where a built hand's read none. EXE5's
+                // content names no zeroed chip, `roles.chips.zeroed`, so the
+                // engine's hand reads no pick there either way: a pick of
+                // chip 0 in code A is compared as none.)
+                if b.content.zeroed_chip().is_none() {
+                    for pick in &mut theirs.selection {
+                        if matches!(pick, Some((c, 0)) if c.id == 0) {
+                            *pick = None;
+                        }
+                    }
+                }
+                let ours = engine_hand(b, compat, &b.hands[side]);
+                for ((name, x), (_, y)) in hand_fields(&ours).into_iter().zip(hand_fields(&theirs)) {
+                    check(&format!("hand {side} {name}"), x, y);
+                }
+                let rest: Vec<u8> = std::iter::once(raw[1]).chain(raw[0x4A..].iter().copied()).collect();
+                check(&format!("hand {side}'s bytes no field covers"), format!("{:?}", [0u8; 7]), format!("{rest:?}"));
+            }
+            Err(e) => check(&format!("hand {side}"), "a chip block".to_string(), e),
+        }
+    }
     let pool_type = |p: Pool| match p {
         Pool::Actor => 1,
         Pool::Attack => 3,

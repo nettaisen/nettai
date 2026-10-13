@@ -1424,6 +1424,14 @@ no hit of the content brings a code for). Its intake has no step for EXE6's code
 `sub_801A720`: its battle code tests none of them), and its NaviCust hit bug (0x0801156E) takes whenever a hit asks a
 flinch or a drag, without EXE6's damage test and latch (`sub_8013F1E`).
 
+A chip-destroying hit (hit flag 0x10: the Roll patch card's charged shot, one shot in eight; Jealousy's hits;
+SearchMan's powered last shot) empties a player's whole hand (0x0801709A, from the four player intakes: the chip
+block's first two bytes zeroed, ten bytes of 0xFFFF from +0x02), where EXE6's `sub_801A2CC` takes the next chip
+alone; the navi's chip requests stay. The status section's `chip_destruction` (`takes = "hand"`; the engine had
+EXE6's until the EXE4 pass found it, docs/design/exe4-map.md §18 item 136). The lab's destruction/ (9 scenarios: a
+hand of three, one, none, one used before, a chip in use, an A the frame before and after the hit, the hit side the
+traced console's, Jealousy) replays, and the frames around the hit are pixel-exact on both consoles.
+
 Not shown by the labs: Static's bug levels 1 to 3; GunDelSol's held A; Katana's and MoonBld's charged step;
 Slasher's request 0x80000 (`actions.stun_strike`, EXE5's action 0x49: DarkInvs's drive's end, which only that drive's
 timer raises) and its other console's chip name (`sub_801EB18`); lib/arm's NaviStats +0x4C and AIData +0x12 (read as

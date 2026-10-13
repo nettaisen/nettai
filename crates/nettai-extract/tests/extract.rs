@@ -377,20 +377,15 @@ fn pictures(graphics: &nettai_assets::Bundle, held: &[Held]) -> std::collections
 /// - A banner is glyphs of the banner font, put together by the banner's
 ///   record: each release's ROMs have the other's glyphs too (the font
 ///   was kept whole) and only their own release's records.
-/// - EXE6's Gregar ROMs have DustMan's portrait archive, left where
-///   Falzar's five link navis' were, with no entry of the portraits' table
-///   pointing at it (theirs for DustMan is the black one).
 /// - EXE6's Japanese ROMs' sheet of the flames HeatMan wears has every
 ///   tile of the US ROMs' and a frame more: the US sheet, its throw of
 ///   three frames, isn't there.
 fn unreached(game: Game, name: &str) -> u8 {
     const US: u8 = 0b0011;
     const JP: u8 = 0b1100;
-    const GREGAR: u8 = 0b1010;
     match (game, name) {
         _ if name.starts_with("en:hud/banner/") => JP,
         _ if name.starts_with("ja:hud/banner/") => US,
-        (Game::Exe6, "sprite/20-4e") => GREGAR,
         (Game::Exe6, "sprite/10-19") => JP,
         _ => 0,
     }

@@ -727,7 +727,7 @@ obj.CurAction = 8; av.u16[0] = 0                // obj.CurPhase is NOT reset
 
 | Function | Effect |
 |---|---|
-| `sub_801A2CC` | When the owner takes a hit whose `CollisionData.FlagsFromCollision & 0x10`: `cur += 1` (the chip is lost) and `obj.Chip = 0xFFFF`. |
+| `sub_801A2CC` | When the owner takes a hit whose `CollisionData.FlagsFromCollision & 0x10`: `cur += 1` (the chip is lost) and `obj.Chip = 0xFFFF`. EXE5's (0x0801709A) and EXE4's (0x0801325A) counterparts empty the whole hand instead (`cur = 0`, the five ids 0xFFFF), and EXE4's ends the chip requests: each game's status section states it (`chip_destruction`). |
 | `sub_80C33CA`, `sub_80C35CE` | Support objects that advance the **opponent's** `cur` (Rush/Beat follow-ups). |
 | `sub_80108FC(p)` | Removes every remaining 0x190..0x19A entry by shifting all arrays. Called when a cross/beast form reverts (`sub_802D9B0`, `sub_802DB80`). |
 | `sub_800B090` | Called every fighting frame for the **local** player only. It replaces `id[cur]` with 0x185 if the anti-tamper mirror check fails. Its limit check is dead (it compares against the wrong register). **Port: no-op.** |
