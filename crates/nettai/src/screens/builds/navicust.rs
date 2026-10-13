@@ -9,10 +9,13 @@
 //! **The cursor goes over the board cell by cell.** Enter on a placed piece picks it up by that cell; Enter on a
 //! program of the list takes it in hand, its middle on the board's. While a piece is in hand it is where the cursor
 //! is on the board: the arrows move it (the cursor goes to the next cell), the keys bound to L and R (A and S) and
-//! the pad's shoulders turn it about the cell held, C (the pad's north button) compresses it, Enter puts it down
-//! where it fits (else it shakes and the line under the key says why, typed as the rules say it), and Esc puts it
-//! back where it was (one from the list goes back to it). Del takes the piece under the cursor off, or a program's
-//! last copy from the list, or drops the piece in hand.
+//! the pad's shoulders turn it about the cell held, C (the pad's north button) compresses it in place (its other
+//! shape turned as it is, about the same middle, held by the same cell where it still has it), Confirm (Enter, A)
+//! puts it down where it fits (else it shakes and the line under the key says why, typed as the rules say it), and
+//! Back (Esc, B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
+//! up and putting it away. Del takes the piece under the cursor off at once, or a program's last copy from the
+//! list, or puts the piece in hand away. The strip across the top describes the program under the cursor, in the
+//! game's words.
 
 use crate::builds::grid::{self, Edit, GridData, Held};
 use crate::builds::overview;
@@ -24,12 +27,12 @@ use nettai_battle::Content;
 use nettai_battle::input::keys;
 use nettai_content_api::EntryHandle;
 use nettai_match::build::{Checked, Overview, Stat};
-use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramRow, ProgramState};
+use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 /// The lines each of the effects' and the bugs' panels has room for under its title.
-const LINES: usize = 13;
+const LINES: usize = 10;
 
 #[derive(Default)]
 pub struct Navicust {
@@ -304,6 +307,7 @@ impl Navicust {
         self.show_board(shell, draft);
         self.show_list(shell, draft);
         self.show_effects(shell, draft);
+        self.show_strip(shell, draft);
     }
 
     /// Apply a grid edit to the build (and the piece in hand): whether the build changed.
@@ -394,31 +398,84 @@ impl Navicust {
         if !compresses {
             return shell.sound.play(Cue::Refused);
         }
+        // (Its other shape is turned as it is and about the same middle, so it doesn't move: the cursor goes to the
+        // cell it is held by, which is the one it was held by where the shape still has it.)
+        let before = self.held.as_ref().map(|h| h.grab).unwrap_or_default();
         self.edit(draft, Edit::Compress);
-        self.turned += 1;
+        let after = self.held.as_ref().map(|h| h.grab).unwrap_or_default();
+        self.at = (self.at.0 - before.0 + after.0, self.at.1 - before.1 + after.1);
+        self.glide = false;
         self.notice = None;
         shell.sound.play(Cue::Cursor);
         self.show_board(shell, draft);
+        if after != before {
+            shell.nav.focus("cell", self.index_of(self.at));
+        }
     }
 
-    /// The piece in hand back where it was: on the board where it was picked up, or in the list.
-    fn put_back(&mut self, shell: &mut Shell, draft: &mut Draft) {
-        let from_board = self.held.as_ref().is_some_and(|h| h.origin.is_some());
-        let changed = self.edit(draft, if from_board { Edit::PutBack } else { Edit::Drop });
+    /// The piece in hand put away into the list (as the game's NaviCust does with B): one picked up off the board
+    /// is taken off it.
+    fn put_away(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        self.edit(draft, Edit::Drop);
         self.held = None;
         self.notice = None;
         shell.sound.play(Cue::Back);
-        if changed {
-            self.changed(shell, draft);
-        } else {
-            self.show_board(shell, draft);
-            self.show_list(shell, draft);
-        }
+        self.show_board(shell, draft);
+        self.show_list(shell, draft);
+        self.show_strip(shell, draft);
     }
 
     /// The cell the cursor is on, if it is on one.
     fn focused_cell(&self, shell: &Shell) -> Option<(i32, i32)> {
         shell.nav.focused().filter(|k| k.id == "cell").map(|k| self.cell_at(k.index))
+    }
+
+    /// The program under the cursor, in its color (its place among the program's): the piece in hand, the piece
+    /// placed on the cell the cursor is on, or the list's row; and whether it is a placed piece the cursor is on
+    /// (Del takes it off).
+    fn under_cursor(&self, shell: &Shell, draft: &Draft) -> (Option<(u16, u8)>, bool) {
+        let Some(Some(d)) = &self.data else { return (None, false) };
+        if let Some(h) = &self.held {
+            return (Some((h.piece, h.color)), false);
+        }
+        let color_of = |piece: u16, name: &Option<String>| name.as_ref().and_then(|n| d.colors.get(&piece)?.iter().position(|c| c == n)).unwrap_or(0) as u8;
+        let parts = grid::placed(draft.content(), draft.side());
+        match shell.nav.focused() {
+            Some(k) if k.id == "cell" => match d.occupied(&parts).get(&self.cell_at(k.index)).and_then(|&i| parts.get(i)) {
+                Some(p) => (Some((p.piece, color_of(p.piece, &p.color))), true),
+                None => (None, false),
+            },
+            Some(k) if k.id == "programs" => {
+                let row = self.rows.get(k.index.max(0) as usize).copied();
+                let placed = row.is_some_and(|(piece, color)| {
+                    let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
+                    parts.iter().any(|p| p.piece == piece && p.color == name)
+                });
+                (row, placed)
+            }
+            _ => (None, false),
+        }
+    }
+
+    /// The strip across the top: the program under the cursor, by its name in its color, and the game's
+    /// description of it; and the footer's hints for a placed piece under the cursor.
+    fn show_strip(&self, shell: &Shell, draft: &Draft) {
+        let (program, on_piece) = self.under_cursor(shell, draft);
+        let ui = shell.ui();
+        let view = ui.global::<NavicustView>();
+        view.set_on_piece(on_piece);
+        let Some((Some(d), (piece, color))) = self.data.as_ref().zip(program) else { return view.set_detail(ProgramDetail::default()) };
+        let detail = draft.with_words(shell, |words| {
+            let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
+            ProgramDetail {
+                there: true,
+                name: words.names.entry(EntryHandle(piece)).into(),
+                tone: tone(name.as_deref()),
+                plus: d.plus.contains(&piece),
+                description: words.names.description(EntryHandle(piece)).map(|t| crate::games::one_line(&t)).unwrap_or_default().into(),
+            }
+        });
+        view.set_detail(detail);
     }
 }
 
@@ -470,7 +527,8 @@ impl Tab for Navicust {
         }
     }
 
-    /// The cursor on a cell: the piece in hand is there. In the list, its title is lit.
+    /// The cursor on a cell: the piece in hand is there. In the list, its title is lit. The strip describes the
+    /// program under the cursor.
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         let in_list = id == "programs";
         if in_list != self.in_list {
@@ -483,6 +541,7 @@ impl Tab for Navicust {
             self.notice = None;
             self.show_board(shell, draft);
         }
+        self.show_strip(shell, draft);
     }
 
     /// The piece in hand: A and S (the keys bound to L and R) turn it, C compresses it.
@@ -514,20 +573,13 @@ impl Tab for Navicust {
         true
     }
 
-    /// Delete: the piece in hand dropped, the piece under the cursor taken off, or a program's last copy.
+    /// Delete: the piece in hand put away, the piece under the cursor taken off, or a program's last copy.
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
         if action != Action::Delete {
             return false;
         }
         if self.held.is_some() {
-            let changed = self.edit(draft, Edit::Drop);
-            self.held = None;
-            shell.sound.play(Cue::Back);
-            if changed {
-                self.changed(shell, draft);
-            }
-            self.show_board(shell, draft);
-            self.show_list(shell, draft);
+            self.put_away(shell, draft);
             return true;
         }
         let Some(Some(d)) = &self.data else { return false };
@@ -544,18 +596,19 @@ impl Tab for Navicust {
             Some(i) if self.edit(draft, Edit::Remove(i)) => {
                 shell.sound.play(Cue::Back);
                 self.changed(shell, draft);
+                self.show_strip(shell, draft);
             }
             _ => shell.sound.play(Cue::Refused),
         }
         true
     }
 
-    /// Esc with a piece in hand puts it back.
+    /// Back (Esc, the pad's east button) with a piece in hand puts it away into the list.
     fn back(&mut self, shell: &mut Shell, draft: &mut Draft) -> bool {
         if self.held.is_none() {
             return false;
         }
-        self.put_back(shell, draft);
+        self.put_away(shell, draft);
         true
     }
 }
