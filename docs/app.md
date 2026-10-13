@@ -1086,8 +1086,15 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   one's last copy off the board); while the button is held the piece follows the pointer cell by cell, and the
   wheel turns it. Let go over the board, it is put down where it fits, else it shakes and then goes back where it
   came from; let go off the board, it is put away into the list. A press let go where it was pressed is a click,
-  Confirm there. A key or button pressed during a drag ends it, as a put-back. (The list doesn't scroll by a
-  mouse's drag, `ListView`'s `mouse-pan`, so a row's drag is its program's; the wheel scrolls it.)
+  Confirm there; so the mouse works by clicks too: a piece a click takes up follows the pointer over the board with
+  no button held (the board's pointer area tells its moves while a piece is in hand), cell by cell, and stays at
+  the last cell it was over when the pointer leaves the board; the next click on the board puts it down (or it
+  shakes and stays in hand), a click off the board (on the list too) puts it away. A right click puts the piece in
+  hand away into the list however it was taken, by a click, a drag or the keys: off the board, never back where it
+  was. A key or button pressed during a drag ends it, as a put-back; with a piece a click took, it moves the piece
+  from where it is, and the pointer's next move takes it back under the pointer. (The footer's hints are the keys'
+  and the pad's; the mouse has none. The list doesn't scroll by a mouse's drag, `ListView`'s `mouse-pan`, so a
+  row's drag is its program's; the wheel scrolls it.)
 - *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
   edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
   as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
