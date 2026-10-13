@@ -66,6 +66,12 @@ impl Version {
     pub fn text_key(&self) -> String {
         format!("version.{}", self.id)
     }
+
+    /// Whether the version sets fact `name` of a side (a problem with that
+    /// fact is the version's: EXE6's `version`, EXE4's and EXE5's souls).
+    pub fn sets(&self, name: &str) -> bool {
+        fields(&self.set).iter().any(|(n, _)| *n == name)
+    }
 }
 
 /// The game's strings' text table that names what a build is made of: each
