@@ -1066,11 +1066,21 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   other shape turned as it is, about the same middle, held by the same cell where it still has it, else by the
   nearest, the cursor going there: `Edit::Compress`), Confirm puts it down where it fits, and Back puts it away
   into the list, as the game's B does. So a placed program is taken off by picking it up and putting it away;
-  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand).
-  One that doesn't fit is refused with the rules' own kind (`GridData::misfit`: `Wrong::OffBoard` or
-  `Wrong::Overlap`) in the reserved line, and shakes. The footer's hints follow the cursor: the hand's while a
-  piece is held (Back: Put away), Del's Take off while the cursor is on a placed piece or a placed program's
-  row (`on-piece`). Leaving the tab with a piece picked up off the board puts it back where it was.
+  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand),
+  and so does Confirm on a placed program's row. One that doesn't fit is refused with the rules' own kind
+  (`GridData::misfit`: `Wrong::OffBoard` or `Wrong::Overlap`) in the reserved line, and shakes; the piece in hand
+  is outlined white where it would fit and red, its cells washed red, where it wouldn't (`held-fits`). The
+  footer's hints follow the cursor: the hand's while a piece is held (Back: Put away), Del's Take off while the
+  cursor is on a placed piece, Confirm's Take off on a placed program's row and Take on another (`on-piece`,
+  `in-list`). Leaving the tab with a piece picked up off the board puts it back where it was.
+- *The mouse.* The board and the list's rows tell the tab what the pointer does (`Nav.choose("drag", phase,
+  where)`: where is the window's point, which the tab turns into the cell under it from where the cells are
+  laid out). A press on a placed piece picks it up; a drag out of a program's row takes it in hand (a placed
+  one's last copy off the board); while the button is held the piece follows the pointer cell by cell, and the
+  wheel turns it. Let go over the board, it is put down where it fits, else it shakes and then goes back where it
+  came from; let go off the board, it is put away into the list. A press let go where it was pressed is a click,
+  Confirm there. A key or button pressed during a drag ends it, as a put-back. (The list doesn't scroll by a
+  mouse's drag, `ListView`'s `mouse-pan`, so a row's drag is its program's; the wheel scrolls it.)
 - *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
   edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
   as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
@@ -1096,22 +1106,27 @@ line's names put in as the screen shows them: `cards::named_by`, a slot by its n
   and MB used (or Slots filled) in the header, ticking as they change, and Together at the foot: what the cards
   add up to, the build's overview without its NaviCust (the numbers they change, what they give, their bugs).
 - *The library*, open: every card of the game with its lines, a search by name, and a sort (number, name, MB;
-  in a game with slots, number, name, slot). A card that can't go in is greyed with why: Installed, or in the
-  error red what it needs. No pictures (a card has none) and no on or off (nettai plays every card in).
+  in a game with slots, number, name, slot). A card that is in says Installed; one that can't go in is greyed
+  with why, in the error red what it needs. No pictures (a card has none) and no on or off (nettai plays every
+  card in).
 - *The keys.* Enter on one of the build's rows goes to the library (on a phone, its sheet); Enter on a card puts
   it in (at the list's end; in a game with slots, in the slot it belongs in, in place of what was there), and the
-  cursor stays in the library to put in another. Del takes the card under the cursor out; `[` and `]` (the pad's
-  north button: up) move it, as the order matters. A card put in flies from its row to the build's, which
-  flashes; one refused shakes.
+  cursor stays in the library to put in another; Enter, Del or a click on a card that is in takes it out again
+  (in a game with slots, empties its slot), its hint Remove (`on-installed`). Del takes the build's card under
+  the cursor out; `[` and `]` (the pad's north button: up) move it, as the order matters. A card put in flies
+  from its row to the build's, which flashes; one taken out flies back; one refused shakes.
 
 **The Auto battle tab** (`auto_battle`), in a game whose setup takes the places: the folder's shape again. The
 places and their lists are the game's (`builds::auto`: its rules/auto_battle/block's `LISTS`, each named in its
-strings' `auto_battle_lists`; a block that states no lists, EXE4's, has its 42 places as one, untitled). A
-build states the places alone (its pattern records are the rules' default), so a place holds a chip or nothing.
-The strip describes the chip under the cursor; the places are framed under their lists' titles in two columns,
-scrolled (a `ScrollPage`, `places.`); the library is a row a chip of those a folder of the build can hold, each
-saying in how many places it is. Enter on a place goes to the library, Enter on a chip puts it in and goes on to
-the next place (it flies there, the place flashes), Del empties a place. A chip the rules refuse in a place
+strings' `auto_battle_lists`: EXE4's and EXE5's alike, as their writers fill them; a block that states no lists
+would have its 42 places as one, untitled). A build states the places alone (its pattern records are the rules'
+default, nothing learned), so a place holds a chip or nothing, and the pattern list's places aren't shown (the
+game puts none there but a learned pattern's: a match is sent them empty, a valid block); the status counts the
+places shown. The strip describes the chip under the cursor; the places are framed under their lists' titles in
+two columns, scrolled (a `ScrollPage`, `places.`); the library is a row a chip of those a folder of the build
+can hold, each saying in how many places it is. Enter on a place goes to the library, Enter on a chip puts it in
+and goes on to the next place shown (it flies there, the place flashes), Enter, Del or a click on the chip the
+place holds takes it out again (it flies back; its hint Remove, `on-placed`), Del empties a place. A chip the rules refuse in a place
 (their `validate`: one its navi can't play) isn't put: its row shakes and the strip says why, worded for the
 part (`Words::problem`: "{chip} can't be played in auto battle").
 
@@ -1469,8 +1484,10 @@ made through the screen): the NaviCust's list a focus move apart (a pair), a pro
 turned, put down on the command line, a plus part beside it, another program put off the command line (its bug
 appears), one put over another (refused, and why), a plus part on EXE6's ring (out of bounds; in a game
 without a ring the shot is of the piece in hand), and a placed program under the cursor (Del's hint), picked up
-(In hand) and put away into the list with Back (no longer placed); the patch cards' library, its search and sort a focus move
-apart (a pair), three cards put in, the library by MB with a card the MB left can't take refused, one of the
+(In hand) and put away into the list with Back (no longer placed), and a placed program's row under the cursor
+(Confirm's Take off) and Confirm on it; the patch cards' library, its search and sort a focus move apart (a
+pair), three cards put in, the cursor on one that is in (Confirm's Remove) and Confirm taking it out, the library
+by MB with a card the MB left can't take refused, one of the
 build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
 filled from the library, one emptied, the places scrolled to the last list. Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
@@ -1478,7 +1495,9 @@ on the ring, or over another), so the walk is the same whatever the game's shape
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
 EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, compressed and
 decompressed (turned as it was, in place), the command line's arrows pulsing by themselves, a piece put down, put
-off the command line (a bug pulses), refused; a card put in and one refused; a chip put in a place.
+off the command line (a bug pulses), refused, a placed piece dragged two cells by the mouse (`drag_piece`: the
+window's pointer events, a press, moves and a release by timers, as Replays' bar is dragged); a card put in and
+one refused; a chip put in a place.
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
 Settings, a dialog, a battle; in the probe, a change of game too), `training`, `builds`, `build-tabs`, `play`
