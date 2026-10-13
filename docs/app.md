@@ -1033,8 +1033,9 @@ content's, no replay at all). The steps: the list; the actions beside it (a pair
 search; the Online filter; a file that doesn't read; the delete question, and then a delete carried out, of a
 file made for it; the export's dialog as it opens (a pair), as an export under way looks and as a failed one
 does (both set on the view: no export runs); the two cards; the viewer held a little way into the second round
-(a pair a focus move apart, and a pair a second of playback apart); five seconds on; the other console; the
-export from the viewer; and on a phone the selected replay's sheet (a pair). A shot that follows a change of
+(a pair a focus move apart, and a pair a second of playback apart); five seconds on; the other console; both
+builds over it; the export from the viewer; a closed-builds match's viewer (BUILDS unavailable); and on a phone
+the selected replay's sheet (a pair). A shot that follows a change of
 the selected replay waits for that replay's still. `replays.txt` in the pass's folder says whether the deleted
 file went and the list followed; that is said, not one of the pass's own checks. `NETTAI_TOUR_EXPORT=1` adds,
 once (in English at the desktop's size), a real export through `ffmpeg` (the first replay's last round, at
@@ -1249,7 +1250,8 @@ its own, started when it first asks something, and takes what the thread found a
   out is kept while the app runs.
 - *The still.* The selected replay's picture is a frame the thread draws a moment into its first fight, shown
   through the screen's `Picture` as any picture is (§1): a whole multiple of the frame, the text at the
-  window's resolution.
+  window's resolution. The box is empty until the selected replay's own still has come: a still is never shown
+  beside another replay than its own.
 
 **A replay that can't be played is a row, not a failure.** A file that doesn't read (`ReadError`), a replay
 whose head names another engine or other content, one the library refuses as it is played out (`Refused`) and
@@ -1287,10 +1289,31 @@ screen runs the ticks due, presents the picture into the window's texture if one
 - *The sound* goes to the shell in whole ticks' worth (`Shell::play_samples`), because the menus' sounds are
   ticked with what a screen plays: the viewer's own while it plays, at any speed, and while it doesn't,
   silence at the original's rate, so a move of the cursor is heard over a paused replay and the title music
-  isn't.
-- *The builds.* A replay of a closed-builds match shows none (`Info::closed_builds`, which the view has as
-  `builds-open`). Showing both for an open one waits for the Builds screen's overview: its place is marked in
-  the viewer's page.
+  isn't. It is at Settings' levels (`viewer.set_sound_levels(shell.sound.battle_levels())`): Music is the
+  replay's music too. Checked by the viewer's own samples (`NETTAI_PLAY_STATS` says their loudness for each two
+  seconds of the replay, by its ticks): 45 seconds of one replay at Music and Sound effects 100 and 100, 0 and
+  100, 100 and 0, 0 and 0. Both at 0 is silence, sample for sample; Music at 0 leaves the effects' sound in
+  every stretch (rms 0.04 to 0.16, by bursts), Sound effects at 0 the music's (0.14 to 0.19, steady); and in
+  each stretch the two together are within about 1% of what the two alone add up to (as squares). Nobody
+  listened to it.
+- *While the window isn't drawn* (minimized, hidden: §1's timer runs the frame), a replay stands still: it asks
+  for no time and plays no sound, and goes on where it was when the window shows again. Checked with
+  `NETTAI_WINDOW_PROBE=hide:20:12`: the timer ran one frame, then nothing for the 12 seconds, and the replay went
+  on from the tick it was at, its stretches as loud as without the hiding. The app is kept awake
+  (`Shell::stay_awake`) while a replay plays in a window that is drawn, and while a video is being made.
+- *The builds.* Where the match's builds weren't closed, BUILDS (the transport's sixth button, after the five;
+  B, or Select on a pad) shows both over the picture's sides, as a match shows them: each the narrow sheet of
+  `BuildOverview` (§8), the console shown's player's at the left in red, the other's at the right in blue (the
+  colors of their sides of the picture), YOU over the name of the side that recorded it and OPPONENT over the
+  other's, each name the player's (a replay holds no build's). They are a scope of their own: each sheet is a
+  control, and a press or a click on them, BUILDS, B, Select or Esc puts them away; the replay goes on under
+  them, and its keys still work. On a phone they are one under the other in a page that scrolls (each sheet is
+  then one column, 1158 tall). A closed-builds match's sides aren't kept at all (`Info::closed_builds`): its
+  BUILDS can't be pressed.
+- *On a phone* the picture has the window's whole width, as the battle's has (§9): a window 780 of the display's
+  pixels wide shows three times the frame, where the page's gutters left room for two. The transport is under
+  it, with its buttons across, then Speed and View as steppers and EXPORT VIDEO. One component is both shapes
+  (the other shape's parts hidden and passed by), since two under an `if` each cost more (§14).
 
 **The export** (`Export`) is a dialog of one size from its start to its end: Size (2, 4 and 6 times the frame,
 4 chosen), View, Part (the whole match, or a round), Save as, the bar and its line, CANCEL and EXPORT. EXPORT
@@ -1312,3 +1335,13 @@ found, the file not written, anything else with the log named). The app keeps aw
 **The main menu's reel** takes its replays from `crate::replays::Reel`: the selected game's latest five, found
 and read on a thread as the menu shows, then given one after another, around. One that doesn't play here is
 passed over and not given again; with none, the reel is the set made for it (§1).
+
+**What has run, and what hasn't.** The screenshot pass walks all of it but the export's real run (§13), in the
+three languages at both sizes; the real export, a stopped one and one with no ffmpeg ran once each through
+`NETTAI_TOUR_EXPORT` (on EXE6: the first replay's last round at twice the frame, 8,539 frames, 143 seconds of
+H.264 and AAC, 19.4 MB; the stopped one's `.part` file was there while it ran and gone after it; with
+`NETTAI_FFMPEG` naming no program the line said "Video export needs ffmpeg. Install it, then try again." and
+nothing was written). The viewer was watched playing by `NETTAI_REPLAY` with `NETTAI_PLAY_STATS` (§5), at 1 and
+4 times. Never run: a drag of the bar with a real pointer, a seek that waits for the index, ½ and 2 times, a
+pad, SHOW FILE, Save as's system dialog, the main menu's reel playing a replay (its order is a unit test), the
+levels across a seek, the builds with a real key, and anything on a real phone.
