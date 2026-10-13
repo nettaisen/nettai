@@ -90,12 +90,32 @@ msgstr "動き回る"
 msgid "Attacks at random"
 msgstr "ランダムに攻撃"
 
+# The dummy fights as a player would, as well as its Level lets it.
+msgid "Fights"
+msgstr "戦う"
+
 msgid "Plays your recording"
 msgstr "記録を再生"
 
 # The dummy is played on a second connected gamepad.
 msgid "A second pad"
 msgstr "2つ目のパッド"
+
+# How well the dummy fights when it does (Action Fights, Custom screen Picks all it can).
+msgid "Level"
+msgstr "強さ"
+
+msgctxt "level"
+msgid "Easy"
+msgstr "よわい"
+
+msgctxt "level"
+msgid "Normal"
+msgstr "ふつう"
+
+msgctxt "level"
+msgid "Hard"
+msgstr "つよい"
 
 msgid "Custom screen"
 msgstr "カスタム画面"
@@ -105,6 +125,10 @@ msgstr "チップを選ばない"
 
 msgid "Picks the first it can"
 msgstr "最初のチップを選ぶ"
+
+# Every chip it can, in the order the cursor reaches them.
+msgid "Picks all it can"
+msgstr "選べるだけ選ぶ"
 
 # The dummy's recording: none, or how long it is ({} is its seconds, to a tenth). Choosing the row records one.
 msgid "Recording"

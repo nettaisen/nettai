@@ -3299,6 +3299,7 @@ dependencies = [
  "nettai-render",
  "nettai-replay",
  "nettai-rtc",
+ "nettai-training",
  "nettai-ui",
  "nettai-video",
  "objc2 0.6.4",

@@ -1994,8 +1994,9 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 
 | Row | Values | What it sets |
 |---|---|---|
-| Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick |
-| Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
+| Dummy: Action | Stands still, Moves around, Attacks at random, Fights, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick; Fights is its AI's (`InFight::Ai`): below |
+| Dummy: Level | Easy, Normal, Hard | how well it fights (nettai-training's `Level`), when its Action or its custom screen is the AI's |
+| Dummy: Custom screen | Picks no chips, Picks the first it can, Picks all it can | `Opponent::on_custom_screen`; Picks all it can is the AI's (`OnCustomScreen::Ai`) |
 | Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
 | Battle: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Battle: Background | Random, then the game's by name, as on the entry | the battle goes on where it is, drawn on the new background: below |
@@ -2036,7 +2037,7 @@ there and the engine flags it full once the fight runs again, the folder is put 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
 MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
-display are remembered between runs (`training.action`, `training.custom-screen`, `training.your-hp`,
+display are remembered between runs (`training.action`, `training.level`, `training.custom-screen`, `training.your-hp`,
 `training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`), and the place by
 game as the entry's rows are; a session another screen started begins as that screen says, every
 battle option at its normal value and the place Random, and keeps nothing of the dummy's, the battle's or the
@@ -2061,6 +2062,15 @@ and on its custom screen (the library's `LivePlayer::set_second_pad`, each frame
 reaches the battle on the custom screen alone, the game's pause being the player's), and its
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen does as its row says. Any other Action gives the pads back to the player.
+
+**The dummy that fights** (Action Fights; its custom screen's Picks all it can). Its AI is nettai-training's
+`Fighter` (the crate's docs: how well each level plays, measured), plugged into the session's live play
+(`LivePlayer::set_ai`) while the Action or the Custom screen is the AI's, at the Level chosen, and taken out
+otherwise (`training::plug`); another Level plugs in a new one. It presses buttons as a player does: each few
+ticks it tries short plans in copies of the battle, on threads of its own (three at most, fewer on a machine
+with fewer cores to spare), and acts on its decision a reaction time later (Easy's half a second, Normal's about a
+quarter, Hard's a tenth); a decision not ready by then is waited for (measured at 60 ticks a second: none was
+late). On the web it thinks on the battle's own thread.
 
 *Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`; a row whose
 values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in

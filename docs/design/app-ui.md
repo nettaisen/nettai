@@ -334,9 +334,9 @@ Each is in the mockups under the same name.
 - **The training menu** (Start or Esc in training): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right:
-  - Dummy: Action (stands still, moves around, attacks at random, plays your recording, a second pad), Custom
-    screen (picks no chips, picks the first it can), Recording (Record: the player drives the dummy until Start;
-    it loops)
+  - Dummy: Action (stands still, moves around, attacks at random, fights, plays your recording, a second pad),
+    Level (easy, normal, hard: how well it fights), Custom screen (picks no chips, picks the first it can, picks
+    all it can), Recording (Record: the player drives the dummy until Start; it loops)
   - Battle: Arena and Background (as on the entry; an arena changed starts the set over on it, a background
     changed only redraws: "changing the background shouldn't change the entire arena either in trianing
     mode"), Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
