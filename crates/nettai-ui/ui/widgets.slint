@@ -352,9 +352,53 @@ export component Stepper inherits Rectangle {
     property <int> dir: 1;
     property <int> changes;
     property <string> family: root.numeric ? Theme.mono : (root.title ? Theme.display : Theme.body);
+    property <length> face: root.title ? 16px : 14px;
+    property <int> weight: root.title ? Theme.display-bold : 700;
+    property <length> spacing: root.title ? 0.6px : 0px;
+    // A value too long for its box is drawn smaller to fit (in half pixels, the width taken as going with the
+    // size), down to `smallest`; past that, at the floor on two lines if the box's height holds them; past that,
+    // cut with an ellipsis, which the screenshot pass is told of. Each is measured once a value (the texts'
+    // preferred sizes), not each frame.
+    property <length> smallest: 11px;
+    property <length> size: measured.preferred-width <= root.value-width + 0.5px ? root.face : max(root.smallest, floor(root.face * (root.value-width / measured.preferred-width) / 0.5px) * 0.5px);
+    property <bool> one-line: at-size.preferred-width <= root.value-width + 0.5px;
+    property <bool> two-lines: !root.one-line && wrapped.preferred-height <= root.height;
+    out property <bool> cut: !root.one-line && !root.two-lines;
+    // (The value before, as it was drawn: it slides out so.)
+    property <length> old-size: root.face;
+    property <bool> old-two-lines;
     height: 36px;
     width: root.value-width + 72px;
     horizontal-stretch: 0;
+    measured := Text {
+        visible: false;
+        text: root.value;
+        font-family: root.family;
+        font-size: root.face;
+        font-weight: root.weight;
+        letter-spacing: root.spacing;
+    }
+
+    at-size := Text {
+        visible: false;
+        text: root.value;
+        font-family: root.family;
+        font-size: root.size;
+        font-weight: root.weight;
+        letter-spacing: root.spacing;
+    }
+
+    wrapped := Text {
+        visible: false;
+        width: root.value-width;
+        text: root.value;
+        font-family: root.family;
+        font-size: root.smallest;
+        font-weight: root.weight;
+        letter-spacing: root.spacing;
+        wrap: word-wrap;
+    }
+
     slide := Tween {
         seq: root.changes;
         duration: Theme.brisk;
@@ -395,11 +439,12 @@ export component Stepper inherits Rectangle {
             text: root.value;
             color: root.enabled ? Theme.text : Theme.dim;
             font-family: root.family;
-            font-size: root.title ? 16px : 14px;
-            font-weight: root.title ? Theme.display-bold : 700;
-            letter-spacing: root.title ? 0.6px : 0px;
+            font-size: root.two-lines ? root.smallest : root.size;
+            font-weight: root.weight;
+            letter-spacing: root.spacing;
             horizontal-alignment: center;
             vertical-alignment: center;
+            wrap: root.two-lines ? word-wrap : no-wrap;
             overflow: elide;
             opacity: slide.t;
         }
@@ -410,11 +455,12 @@ export component Stepper inherits Rectangle {
             text: slide.linear < 1 ? root.old : "";
             color: root.enabled ? Theme.text : Theme.dim;
             font-family: root.family;
-            font-size: root.title ? 16px : 14px;
-            font-weight: root.title ? Theme.display-bold : 700;
-            letter-spacing: root.title ? 0.6px : 0px;
+            font-size: root.old-two-lines ? root.smallest : root.old-size;
+            font-weight: root.weight;
+            letter-spacing: root.spacing;
             horizontal-alignment: center;
             vertical-alignment: center;
+            wrap: root.old-two-lines ? word-wrap : no-wrap;
             overflow: elide;
             opacity: 1 - slide.t;
         }
@@ -438,14 +484,29 @@ export component Stepper inherits Rectangle {
         }
     }
 
+    property <length> last-size: root.face;
+    property <bool> last-two-lines;
+    // (The screenshot pass's check: a value cut even at the floor.)
+    property <bool> over: Theme.audit && root.cut;
     init => {
         root.last = root.value;
+        root.last-size = root.size;
+        root.last-two-lines = root.two-lines;
     }
     changed value => {
         root.old = root.last;
+        root.old-size = root.last-size;
+        root.old-two-lines = root.last-two-lines;
         root.last = root.value;
+        root.last-size = root.size;
+        root.last-two-lines = root.two-lines;
         root.dir = Nav.step-dir;
         root.changes += 1;
+    }
+    changed over => {
+        if over {
+            Audit.clipped(root.value);
+        }
     }
 }
 
