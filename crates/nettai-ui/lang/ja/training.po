@@ -4,14 +4,104 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
 
+# ---- The entry ----
+
+msgid "Your build"
+msgstr "あなたのビルド"
+
+msgid "Dummy's build"
+msgstr "ダミーのビルド"
+
+msgid "Set up the dummy from the menu once you're in."
+msgstr "ダミーの設定は、開始後にメニューからできます。"
+
+msgid "START TRAINING"
+msgstr "トレーニング開始"
+
+msgid "CREATE A BUILD"
+msgstr "ビルドを作る"
+
+msgid "ARENA PREVIEW"
+msgstr "アリーナ プレビュー"
+
+msgid "Change"
+msgstr "変更"
+
+msgid "Open list"
+msgstr "一覧を開く"
+
+# Why training can't start: the reserved line. {} is the rule the build breaks.
+msgid "Your build can't be used."
+msgstr "あなたのビルドは使えません。"
+
+msgid "The dummy's build can't be used."
+msgstr "ダミーのビルドは使えません。"
+
+msgid "Your build can't be used: {}."
+msgstr "あなたのビルドは使えません: {}。"
+
+msgid "The dummy's build can't be used: {}."
+msgstr "ダミーのビルドは使えません: {}。"
+
+# ---- Before the battle, and in it ----
+
 msgid "YOU"
 msgstr "あなた"
 
 msgid "DUMMY"
 msgstr "ダミー"
 
+# Beside MENU on a phone: {} is the round's number.
+msgid "Training · Round {}"
+msgstr "トレーニング · ラウンド{}"
+
+# ---- The training menu ----
+
+# Under the menu's title: the two builds' names.
+msgid "{} vs {}"
+msgstr "{} vs {}"
+
+msgid "DISPLAY"
+msgstr "表示"
+
+msgid "Action"
+msgstr "行動"
+
+msgid "Stands still"
+msgstr "動かない"
+
+msgid "Moves around"
+msgstr "動き回る"
+
+msgid "Attacks at random"
+msgstr "ランダムに攻撃"
+
+msgid "Custom screen"
+msgstr "カスタム画面"
+
+msgid "Picks no chips"
+msgstr "チップを選ばない"
+
+msgid "Picks the first it can"
+msgstr "最初のチップを選ぶ"
+
+msgid "Input display"
+msgstr "入力表示"
+
+msgid "Off"
+msgstr "オフ"
+
+msgid "On"
+msgstr "オン"
+
 msgid "RESUME"
 msgstr "再開"
+
+msgid "RESTART"
+msgstr "最初から"
+
+msgid "CHANGE BUILDS"
+msgstr "ビルドを変える"
 
 msgid "QUIT TO MENU"
 msgstr "メニューにもどる"
