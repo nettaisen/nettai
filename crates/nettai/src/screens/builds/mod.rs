@@ -81,14 +81,17 @@ impl Builds {
     }
 
     /// The list, the chosen build's overview, and the dialog open.
-    fn show_list(&self, shell: &Shell, kit: &Kit) {
+    fn show_list(&self, shell: &mut Shell, kit: &Kit) {
         let ui = shell.ui();
         let view = ui.global::<BuildsView>();
         let rows: Vec<BuildEntry> = self.shelf.iter().map(|e| e.row.clone()).collect();
         view.set_builds(ModelRc::new(VecModel::from(rows)));
         view.set_chosen(self.chosen.map_or(-1, |i| i as i32));
         view.set_message(self.message.as_str().into());
-        view.set_page(if self.sheet && shell.scale.phone && self.chosen.is_some() { BuildsPage::Sheet } else { BuildsPage::List });
+        let one = self.sheet && shell.scale.phone && self.chosen.is_some();
+        view.set_page(if one { BuildsPage::Sheet } else { BuildsPage::List });
+        // (A phone's page of one build is that build's game's: the game stays.)
+        shell.lock_game(one);
         self.show_chosen(shell, kit);
         // The game's versions, for a new build: each by its tag, and what a version sets in the game's words.
         let graphics = kit.ready.graphics(shell.lang);

@@ -8,7 +8,7 @@
 // On a phone the folder is one column under its counts, and the library opens as a sheet from the bottom
 // (`FolderOverlay`), with what a slot's keys do as buttons. Its Rust half is src/screens/builds/folder.rs.
 
-import { Theme } from "../../theme.slint";
+import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown } from "../../widgets.slint";
@@ -364,6 +364,14 @@ export component FolderTab inherits Rectangle {
     property <length> slot-width: (root.pane-width - 24px - 12px) / 2;
     // A phone: the counts' box, and the folder in one column under it.
     property <length> counts-height: FolderView.counts.tags ? 90px : 68px;
+    // The folder's header: its title and its counts on one line where the language's words leave them the room,
+    // else the counts on a line of their own under the title. The header is 44 either way, and which it is
+    // depends on the language alone, never on what the folder holds.
+    property <length> counts-width: chips.width + mega.width + giga.width + regular.width + 3 * 12px + (FolderView.counts.tags ? tag.width + 12px : 0px);
+    property <bool> two-lines: folder-title.preferred-width + 12px + root.counts-width > root.pane-width - 24px;
+    property <length> counts-y: root.pane-y + (root.two-lines ? 24px : 14px);
+    // (The screenshot pass is told if the counts don't fit the pane even so.)
+    property <bool> counts-over: Theme.audit && !Theme.phone && root.counts-width > root.pane-width - 24px + 0.5px;
     // ---- The strip: the chip under the cursor.
     PanelBack {
         x: 0;
@@ -474,11 +482,11 @@ export component FolderTab inherits Rectangle {
         fill: Theme.phone ? Theme.inset : Theme.panel;
     }
 
-    Label {
+    folder-title := Label {
         x: 12px;
-        y: root.pane-y;
-        width: 96px;
-        height: 44px;
+        y: root.pane-y + (root.two-lines ? 5px : 0px);
+        width: root.pane-width - 24px;
+        height: root.two-lines ? 14px : 44px;
         visible: !Theme.phone;
         text: @tr("FOLDER");
         color: FolderView.in-library ? Theme.muted : Theme.cursor;
@@ -487,7 +495,7 @@ export component FolderTab inherits Rectangle {
     // (On a phone the counts are two columns in their own box.)
     chips := CountBox {
         x: Theme.phone ? 12px : mega.x - 12px - self.width;
-        y: Theme.phone ? 12px : root.pane-y + 14px;
+        y: Theme.phone ? 12px : root.counts-y;
         label: @tr("Chips");
         value: FolderView.counts.chips;
         suffix: "/\{FolderView.counts.size}";
@@ -534,6 +542,12 @@ export component FolderTab inherits Rectangle {
         suffix: "/\{FolderView.counts.tag-limit} MB";
         value-width: 52px;
         over: FolderView.counts.tag > FolderView.counts.tag-limit;
+    }
+
+    changed counts-over => {
+        if root.counts-over {
+            Audit.clipped("the folder's counts");
+        }
     }
 
     if !Theme.phone: Rectangle {

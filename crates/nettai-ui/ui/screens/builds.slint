@@ -150,7 +150,7 @@ export component BuildsScreen inherits Page {
     // The tab bar's place, and the tab's under it (the bar is flush under the header).
     property <length> bar-y: Theme.phone ? -8px : -16px;
     property <length> tab-y: Theme.phone ? 44px : 40px;
-    property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 8px : 8px);
+    property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
     title: BuildsView.page == BuildsPage.list ? @tr("BUILDS") : BuildsView.name;
     back: BuildsView.page == BuildsPage.list ? @tr("MENU") : @tr("BUILDS");
     // (A phone's header has the build's tag where the game is.)
