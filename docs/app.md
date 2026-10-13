@@ -1220,6 +1220,13 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
   the colors fade on from where they were (four grounds at the most: a fifth drops the oldest). Nothing waits on
   it, nothing changes a size, and with motion off the new look is there at once. The motion probe watches it both
   ways and twice over (§13).
+- *Its clock starts at the frame after the press*, not at the press: the ground is pushed, and the colors' fade
+  started, in the app's frame (`Looks::frame`, before Slint draws it, with that frame's time). The press's own work
+  (the screen shown again for the new game, the menu's reel starting its demo) holds the window for about a tenth
+  of a second, and the probe's first run, with the ground pushed at the press, showed the sweep 90% across in the
+  first frame drawn after it; pushed at the next frame, it crosses in four frames (at 144, 203 and 261 ms after the
+  press, 45, 86 and 99% across; done by 316). The window's first frame after a change of game comes about 140 ms
+  after the press either way, which is the change's own work and was so before the looks.
 - *What it costs*: 0.14 MB of generated Rust (10.21 to 10.35 MB: the ground's component 0.08, under its `for`, and
   the rest the theme's colors read where they were constants), and the bundled faces 1.8 MB more (M PLUS 1 at 800,
   with its Japanese).
