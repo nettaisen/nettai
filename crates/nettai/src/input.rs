@@ -3,9 +3,12 @@
 //!
 //! The keys come from the window's events before Slint sees them (`main`'s winit hook), read by where they are
 //! on the keyboard, whatever its layout, and timestamped as they arrive. The battle's buttons are the player's
-//! bindings ([`Bindings`], kept in the settings); the menus' keys are fixed (the arrows, Enter, Esc, Tab), with
-//! the keys bound to L and R as their previous and next. A gamepad is read through gamepad-facade and polled
-//! each frame ([`Pad::poll`]): its bound buttons for the battle, its presses as the menus' actions. On a phone
+//! bindings ([`Bindings`], kept in the settings), and the menus follow them too (the user: "i feel like the GBA
+//! A and B buttons should be the universal confirm/cancel buttons everywhere, instead of enter+esc"): the keys
+//! and the pad's buttons bound to A confirm, those bound to B go back, those bound to L and R are previous and
+//! next ([`menu_action`], [`Bindings::pad_action`]). The arrows, Tab, Page Up and Down, Home and End are the
+//! menus' own whatever is bound. A gamepad is read through gamepad-facade and polled each frame
+//! ([`Pad::poll`]): its bound buttons for the battle, its presses as the menus' actions. On a phone
 //! the battle's buttons are drawn under the picture, and the window's touches are theirs ([`TouchPad`]): each
 //! finger by itself, so a direction and a button are held together.
 
@@ -42,21 +45,22 @@ pub enum Action {
     Down,
     Left,
     Right,
-    /// Enter; the pad's south button.
+    /// The key and the pad's button bound to A (Z and south at first).
     Confirm,
-    /// Esc; the pad's east button.
+    /// The key and the pad's button bound to B (X and west at first).
     Back,
     /// Tab and Shift+Tab.
     NextFocus,
     PreviousFocus,
-    /// The keys bound to L and R; the pad's shoulders: the game before and after, a tab before and after.
+    /// The keys and the pad's buttons bound to L and R: the game before and after, a tab before and after.
     Previous,
     Next,
-    /// Delete or Backspace; the pad's west button.
+    /// Delete or Backspace; the pad's face button left of A's and B's (east at first).
     Delete,
     /// The pad's north button (a screen's second action).
     Alternate,
-    /// The pad's Start: nettai's menu in a battle; Enter's in a menu.
+    /// The key and the pad's button bound to START (Enter and Start at first), and Esc: nettai's menu in a
+    /// battle, shut again by them; nothing in the app's own menus.
     Menu,
     PageUp,
     PageDown,
@@ -174,7 +178,11 @@ pub fn key_name(key: KeyCode) -> Option<&'static str> {
 
 /// A key's cap, as the UI shows it.
 pub fn key_cap(key: KeyCode) -> &'static str {
-    KEYS.iter().find(|(k, _, _)| *k == key).map_or("?", |(_, _, c)| *c)
+    match key {
+        // (Esc can't be bound: it is a menu's fallback for going back, and asks a binding to stop.)
+        KeyCode::Escape => "Esc",
+        _ => KEYS.iter().find(|(k, _, _)| *k == key).map_or("?", |(_, _, c)| *c),
+    }
 }
 
 pub fn pad_named(name: &str) -> Option<Button> {
@@ -245,6 +253,74 @@ impl Bindings {
         self.keys[button_index(bit)]
     }
 
+    /// The pad's button bound to a GBA button.
+    pub fn pad_button(&self, bit: u16) -> Button {
+        self.pad[button_index(bit)]
+    }
+
+    /// The key that confirms in the menus: the one bound to A, unless that is one of the menus' own keys (an
+    /// arrow, Tab, Page Up or Down, Home, End) or bound twice, which leaves A none of its own there: then Enter.
+    pub fn confirm_key(&self) -> KeyCode {
+        self.menu_key(keys::A).unwrap_or(KeyCode::Enter)
+    }
+
+    /// The key that goes back in the menus: the one bound to B, else (as [`Bindings::confirm_key`]) Esc.
+    pub fn back_key(&self) -> KeyCode {
+        self.menu_key(keys::B).unwrap_or(KeyCode::Escape)
+    }
+
+    /// The key bound to `bit`, if the menus can take it as that button's.
+    fn menu_key(&self, bit: u16) -> Option<KeyCode> {
+        let key = self.key(bit);
+        (fixed_action(key, false).is_none() && self.keys.iter().filter(|k| **k == key).count() == 1).then_some(key)
+    }
+
+    /// The pad's button that confirms in the menus: the one bound to A, unless that is a direction of the
+    /// D-pad (the menus' own) or bound twice: then the south button.
+    pub fn confirm_button(&self) -> Button {
+        self.menu_button(keys::A).unwrap_or(Button::South)
+    }
+
+    /// The pad's button that goes back in the menus: the one bound to B, else the east button.
+    pub fn back_button(&self) -> Button {
+        self.menu_button(keys::B).unwrap_or(Button::East)
+    }
+
+    /// The pad's button that deletes in the menus (a build, a chip from its slot): the west or the east face
+    /// button, whichever doesn't confirm or go back.
+    pub fn delete_button(&self) -> Button {
+        let taken = [self.confirm_button(), self.back_button()];
+        if taken.contains(&Button::East) { Button::West } else { Button::East }
+    }
+
+    fn menu_button(&self, bit: u16) -> Option<Button> {
+        let button = self.pad_button(bit);
+        let direction = matches!(button, Button::DPadUp | Button::DPadDown | Button::DPadLeft | Button::DPadRight);
+        (!direction && self.pad.iter().filter(|b| **b == button).count() == 1).then_some(button)
+    }
+
+    /// What a pad's button asks of the menus: the D-pad moves; the buttons bound to A, B, L, R and START are
+    /// confirm, back, previous, next and the menu (`Action::Menu`); of the rest, north is a screen's second
+    /// action and the face button left of A and B deletes.
+    pub fn pad_action(&self, button: Button) -> Option<Action> {
+        Some(match button {
+            Button::DPadUp => Action::Up,
+            Button::DPadDown => Action::Down,
+            Button::DPadLeft => Action::Left,
+            Button::DPadRight => Action::Right,
+            _ if button == self.confirm_button() => Action::Confirm,
+            _ if button == self.back_button() => Action::Back,
+            _ if button == self.delete_button() => Action::Delete,
+            _ => match self.of_pad(button) {
+                keys::L => Action::Previous,
+                keys::R => Action::Next,
+                keys::START => Action::Menu,
+                _ if button == Button::North => Action::Alternate,
+                _ => return None,
+            },
+        })
+    }
+
     /// Bind `key` to the GBA button at `index`; the button that had it takes the key this one had.
     pub fn bind_key(&mut self, index: usize, key: KeyCode) {
         if let Some(other) = self.keys.iter().position(|k| *k == key) {
@@ -271,22 +347,61 @@ pub struct KeyPress {
     pub shift: bool,
 }
 
-/// The menus' fixed keys.
-pub fn menu_action(code: KeyCode, shift: bool) -> Option<Action> {
+/// How the footer's hints draw a pad's button: a face button by its place, START and SELECT by their caps,
+/// a shoulder as the shoulders.
+pub fn pad_face(button: Button) -> nettai_ui::PadButton {
+    use nettai_ui::PadButton;
+    match button {
+        Button::South => PadButton::South,
+        Button::East => PadButton::East,
+        Button::West => PadButton::West,
+        Button::North => PadButton::North,
+        Button::Start => PadButton::Start,
+        Button::Back => PadButton::Select,
+        Button::LeftShoulder | Button::RightShoulder => PadButton::Shoulders,
+        Button::DPadUp | Button::DPadDown | Button::DPadLeft | Button::DPadRight => PadButton::Move,
+        _ => PadButton::None,
+    }
+}
+
+/// The menus' own keys, whatever is bound: the arrows, Tab, Page Up and Down, Home and End.
+fn fixed_action(code: KeyCode, shift: bool) -> Option<Action> {
     Some(match code {
         KeyCode::ArrowUp => Action::Up,
         KeyCode::ArrowDown => Action::Down,
         KeyCode::ArrowLeft => Action::Left,
         KeyCode::ArrowRight => Action::Right,
-        KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space => Action::Confirm,
-        KeyCode::Escape => Action::Back,
         KeyCode::Tab if shift => Action::PreviousFocus,
         KeyCode::Tab => Action::NextFocus,
-        KeyCode::Delete | KeyCode::Backspace => Action::Delete,
         KeyCode::PageUp => Action::PageUp,
         KeyCode::PageDown => Action::PageDown,
         KeyCode::Home => Action::Home,
         KeyCode::End => Action::End,
+        _ => return None,
+    })
+}
+
+/// What a key asks of the menus: their own keys first ([`fixed_action`]); then the key bound to A confirms and
+/// the one bound to B goes back (Enter and Esc where A or B has none the menus can take:
+/// [`Bindings::confirm_key`]), those bound to L and R are previous and next, the one bound to START is the menu
+/// (`Action::Menu`: it closes a battle's menu, and does nothing elsewhere); Esc is the menu too (it opened a
+/// battle's), and Delete and Backspace delete. A text field being typed in takes its keys before this
+/// (`App::key`).
+pub fn menu_action(code: KeyCode, shift: bool, bindings: &Bindings) -> Option<Action> {
+    if let Some(action) = fixed_action(code, shift) {
+        return Some(action);
+    }
+    if code == bindings.confirm_key() || (code == KeyCode::NumpadEnter && bindings.confirm_key() == KeyCode::Enter) {
+        return Some(Action::Confirm);
+    }
+    if code == bindings.back_key() {
+        return Some(Action::Back);
+    }
+    Some(match (bindings.of_key(code), code) {
+        (Some(keys::L), _) => Action::Previous,
+        (Some(keys::R), _) => Action::Next,
+        (Some(keys::START), _) | (_, KeyCode::Escape) => Action::Menu,
+        (_, KeyCode::Delete | KeyCode::Backspace) => Action::Delete,
         _ => return None,
     })
 }
@@ -306,15 +421,20 @@ impl Keys {
     /// whatever has the keys, so none sticks.) The button, if it was newly pressed.
     pub fn event(&mut self, bindings: &Bindings, event: &KeyEvent, at: Instant) -> Option<u16> {
         let PhysicalKey::Code(code) = event.physical_key else { return None };
+        self.key(bindings, code, event.state == ElementState::Pressed, event.repeat, at)
+    }
+
+    /// [`Keys::event`], of a key's parts.
+    pub fn key(&mut self, bindings: &Bindings, code: KeyCode, pressed: bool, repeat: bool, at: Instant) -> Option<u16> {
         if code == KeyCode::Tab {
-            self.tab = event.state == ElementState::Pressed;
+            self.tab = pressed;
         }
         let bit = bindings.of_key(code)?;
-        if event.state != ElementState::Pressed {
+        if !pressed {
             self.held &= !bit;
             return None;
         }
-        let fresh = !event.repeat && self.held & bit == 0;
+        let fresh = !repeat && self.held & bit == 0;
         if fresh {
             self.pressed.push(at);
         }
@@ -382,20 +502,7 @@ impl Pad {
                     }
                     out.buttons.push(button);
                     out.pressed |= bindings.of_pad(button);
-                    let action = match button {
-                        Button::DPadUp => Action::Up,
-                        Button::DPadDown => Action::Down,
-                        Button::DPadLeft => Action::Left,
-                        Button::DPadRight => Action::Right,
-                        Button::South => Action::Confirm,
-                        Button::East => Action::Back,
-                        Button::West => Action::Delete,
-                        Button::North => Action::Alternate,
-                        Button::LeftShoulder => Action::Previous,
-                        Button::RightShoulder => Action::Next,
-                        Button::Start => Action::Menu,
-                        _ => continue,
-                    };
+                    let Some(action) = bindings.pad_action(button) else { continue };
                     out.actions.push(action);
                     if matches!(action, Action::Up | Action::Down | Action::Left | Action::Right) {
                         self.repeat = Some((action, now, now));
@@ -652,6 +759,63 @@ mod tests {
         assert_eq!(pad.held(), keys::LEFT);
         pad.clear();
         assert_eq!(pad.held(), 0);
+    }
+
+    /// The menus' keys follow the bindings: A's confirms and B's goes back (Z and X at first), L's and R's are
+    /// previous and next, START's and Esc are the menu; Enter, Space and Esc confirm and go back no more. The
+    /// arrows are the menus' own whatever is bound, and where A or B has no key the menus can take (bound to an
+    /// arrow, or bound twice), Enter or Esc stands in.
+    #[test]
+    fn the_menus_keys_follow_the_bindings() {
+        let at = |b: &Bindings, code| menu_action(code, false, b);
+        let b = Bindings::default();
+        assert_eq!(at(&b, KeyCode::KeyZ), Some(Action::Confirm));
+        assert_eq!(at(&b, KeyCode::KeyX), Some(Action::Back));
+        assert_eq!(at(&b, KeyCode::KeyA), Some(Action::Previous));
+        assert_eq!(at(&b, KeyCode::KeyS), Some(Action::Next));
+        assert_eq!(at(&b, KeyCode::Enter), Some(Action::Menu));
+        assert_eq!(at(&b, KeyCode::Escape), Some(Action::Menu));
+        assert_eq!(at(&b, KeyCode::Space), None);
+        assert_eq!(at(&b, KeyCode::ArrowUp), Some(Action::Up));
+        assert_eq!(at(&b, KeyCode::Backspace), Some(Action::Delete));
+        // A rebound: its new key confirms, and the key it had is the other button's.
+        let mut j = Bindings::default();
+        j.bind_key(button_index(keys::A), KeyCode::KeyJ);
+        assert_eq!(at(&j, KeyCode::KeyJ), Some(Action::Confirm));
+        assert_eq!(at(&j, KeyCode::KeyZ), None);
+        // A on an arrow: the arrow moves, and Enter confirms.
+        let mut up = Bindings::default();
+        up.bind_key(button_index(keys::A), KeyCode::ArrowUp);
+        assert_eq!(at(&up, KeyCode::ArrowUp), Some(Action::Up));
+        assert_eq!(at(&up, KeyCode::Enter), Some(Action::Confirm));
+        assert_eq!(up.confirm_key(), KeyCode::Enter);
+        // A and B on one key (a settings file written by hand): Enter and Esc.
+        let mut one = Bindings::default();
+        one.keys[button_index(keys::B)] = KeyCode::KeyZ;
+        assert_eq!((at(&one, KeyCode::Enter), at(&one, KeyCode::Escape)), (Some(Action::Confirm), Some(Action::Back)));
+    }
+
+    /// The pad's buttons follow the bindings too: A's confirms (south at first), B's goes back (west), the face
+    /// button left of those two deletes (east), north is a screen's second action, the shoulders and Start are
+    /// previous, next and the menu.
+    #[test]
+    fn the_pads_buttons_follow_the_bindings() {
+        let b = Bindings::default();
+        let at = |b: &Bindings, button| b.pad_action(button);
+        assert_eq!(at(&b, Button::South), Some(Action::Confirm));
+        assert_eq!(at(&b, Button::West), Some(Action::Back));
+        assert_eq!(at(&b, Button::East), Some(Action::Delete));
+        assert_eq!(at(&b, Button::North), Some(Action::Alternate));
+        assert_eq!((at(&b, Button::LeftShoulder), at(&b, Button::RightShoulder)), (Some(Action::Previous), Some(Action::Next)));
+        assert_eq!(at(&b, Button::Start), Some(Action::Menu));
+        assert_eq!(at(&b, Button::DPadUp), Some(Action::Up));
+        let mut east = Bindings::default();
+        east.bind_pad(button_index(keys::B), Button::East);
+        assert_eq!((at(&east, Button::East), at(&east, Button::West)), (Some(Action::Back), Some(Action::Delete)));
+        // A on the D-pad: it moves, and south confirms.
+        let mut pad = Bindings::default();
+        pad.bind_pad(button_index(keys::A), Button::DPadUp);
+        assert_eq!((at(&pad, Button::DPadUp), pad.confirm_button()), (Some(Action::Up), Button::South));
     }
 
     /// A key bound to another button's key swaps the two, so every button keeps a key of its own.
