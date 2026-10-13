@@ -48,8 +48,7 @@ fn effect_line(kit: &Kit, names: &Names, entry: EntryHandle, index: usize) -> Op
     let d = c.defs.definitions.get(Registry::Entry, &c.defs.entry(entry).key)?;
     let Data::List(effects) = d.spec.field(cards::FIELD) else { return None };
     let effect = effects.get(index)?;
-    let collection = &c.defs.entry(entry).collection;
-    let named = cards::named_by(kit, collection);
+    let named = cards::named_by(kit);
     let text = |key: &str| names.text(cards::TABLE, key);
     let inner: Vec<String> = match effect {
         Data::Map(fields) => fields.iter().filter_map(|(_, v)| if let Data::List(e) = v.field(cards::FIELD) { Some(e) } else { None }).flatten().filter_map(|e| cards::line(e, text, &named)).map(|l| l.text).collect(),

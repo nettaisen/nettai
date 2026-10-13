@@ -306,12 +306,15 @@ Each is in the mockups under the same name.
   a note, MB, attack, element, code), 15 showing. Enter on a slot goes to the library; Enter on a row puts it in
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's.
-- **NaviCust** (§2.10): the board framed at the left with a key under it; PROGRAMS, an open list, in the middle
-  (each with its color, a cross if a plus part, and Placed, In hand or Out of bounds); Effects and Bugs at the
-  right. The command line is marked three ways: a line above and below its whole row that runs over placed pieces,
-  an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white outline at its
-  edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and S turn it, C
-  compresses it, Enter places it, Esc puts it back.
+- **NaviCust** (§2.10): a strip across the top describes the program under the cursor, in the game's words (the
+  user: "you should show ncp descriptions"); the board framed at the left with a key under it; PROGRAMS, an open
+  list, in the middle (each with its color, a cross if a plus part, and Placed, In hand or Out of bounds); Effects
+  and Bugs at the right. The command line is marked three ways: a line above and below its whole row that runs over
+  placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
+  outline at its edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and
+  S turn it, C compresses it (in place, turned as it is: "rotating the ncp on compression is so confusing"), confirm
+  places it, back puts it away into the list, as the game's B does: so a placed program is taken off by picking it
+  up and putting it away, or with Del ("there seems to be no way to remove the ncp from the board once placed").
 - **Patch cards** (§2.19, §2.20): the folder's shape. EXE5 and EXE6: the installed cards in order in the framed
   panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
