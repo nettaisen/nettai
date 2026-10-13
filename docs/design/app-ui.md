@@ -290,7 +290,8 @@ Each is in the mockups under the same name.
   them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
   keeps MegaMan's NaviCust, cards and auto battle data aside, outside the side it hands to a match (the rules
   refuse a NaviCust on a navi that compiles none), and puts them back when MegaMan is chosen again.
-- **Navi:** the game's navis as a grid of cards; the chosen one's HP, element and charge shot beside it; "NaviCust
+- **Navi:** the game's navis as a grid of cards; the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
+  user chose to leave it out); "NaviCust
   and patch cards are MegaMan only." In EXE4 and EXE5, MegaMan's panel also has Light or Dark, a stepper, with the face the
   round starts him with.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
