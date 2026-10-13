@@ -312,16 +312,18 @@ Each is in the mockups under the same name.
   breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
 ### Training
-- **Entry:** two rows, Your build and Dummy's build, both remembered, and START TRAINING; beside them the two
-  builds facing each other and the arena. One line: "Set up the dummy from the menu once you're in."
+- **Entry:** four rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
+  also add arena + background select?": the game's arenas and battle backgrounds, Random first), all
+  remembered, and START TRAINING; beside them the two builds facing each other and the arena. One line: "Set
+  up the dummy from the menu once you're in."
 - **The training menu** (Start or Esc in training): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right:
   - Dummy: Action (stands still, moves around, attacks at random, plays your recording, a second pad), Custom
     screen (picks no chips, picks the first it can), Recording (Record: the player drives the dummy until Start;
     it loops)
-  - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
-    folder order)
+  - Battle: Arena and Background (as on the entry; a change starts the set over on the new place), Your HP and
+    Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled, folder order)
   - Display: Input display
   - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
 

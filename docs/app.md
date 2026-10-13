@@ -1820,20 +1820,37 @@ the components used in one place (given the child, or measured copied in).
 docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
 `src/screens/training.rs` and `ui/screens/training.slint`.
 
-**The entry.** Two rows, Your build and Dummy's build, and START TRAINING at the column's foot; beside them (on a
-phone, under them) the two builds as cards over the arena.
+**The entry.** Four rows, Your build, Dummy's build, Arena and Background, and START TRAINING at the column's
+foot; beside them (on a phone, under them) the two builds as cards over the arena.
 
 - Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
   opened as a list with Enter. Both are remembered by game between runs (the settings' `remembered`:
   `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
   the first build that can be used.
+- Arena and Background (the user: "in training mode can you also add arena + background select?") are where
+  every round of the session is fought (`training::Places`, from the game's content alone): Random first, a
+  place picked from the seed each round as a match that names none has it (what training did before), then
+  the game's arenas, the link battle stages a match may name (`nettai_match::link_battle_stages`, the rules'
+  `link_pick.match_stages`: EXE6's 96, EXE5's 94, EXE4's 96), and its battle backgrounds
+  (`nettai_match::ids::backgrounds`, the pack's), in the content's order. Each is stepped and opened as a
+  list as a build row is, and remembered by game (`training.arena.<game>` by the stage's key,
+  `training.background.<game>` by the background's name in the pack; Random is nothing remembered).
+  - The two are apart in the games' own data: a link battle picks its stage and its background each on its
+    own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
+    own background is shown only where the rules list none to pick from. So either is chosen with any of the
+    other, and nothing ties them.
+  - Their words: a background is called what the language's strings call it (`[backgrounds]`, by the area it
+    comes from: `Names::background_named`); an arena has no name in the content's words (a stage is its key),
+    and the list says each by its key as a title ("Netbattle 12", in every language). No names were added to
+    the locales: they would only restate the keys.
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
   held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
   is. (The window has one texture: the entry's box shows it only once the arena is what is in it, from the
-  second frame the window draws of it.) It is made once the builds chosen have stayed 160 ms (making a round holds the window about 20 ms: a
-  step through the builds doesn't make one each time), and what the session will be picked from is drawn as the
-  entry lists a game's builds and after each session, so the arena shown is the one START TRAINING opens on.
+  second frame the window draws of it.) It is made once the builds and the place chosen have stayed 160 ms (making a round holds the window about 20 ms: a
+  step through them doesn't make one each time), on the place chosen, and what the session will be picked
+  from is drawn as the entry lists a game's builds and after each session, so the arena shown (a Random one
+  too) is the one START TRAINING opens on.
 - With no build of the game there is one button, CREATE A BUILD, which goes to Builds.
 - A build is checked as the lobby will check one (`nettai_match::build::Checked`), once for what its file
   says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
@@ -1909,12 +1926,20 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 | Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
 | Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
+| Battle: Arena, Background | Random, then the game's, as the entry lists them | the set starts over on the new place, as RESTART starts it, the menu staying open: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Display: Input display | Off, On | the app's own drawing, below |
 
-The Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
+Arena and Background change where the set is fought, which a round fixes as it starts, so a change starts the
+set over on the new place: the session's match is put on it, its set made again from the session's seed, and
+the live driver plays that set from its next start (the library's `LivePlayer::play_set`) as the battle starts
+over (`Battle::restart`, RESTART's). The menu stays open, and the battle behind it steps through the round's
+opening with no buttons and waits on its custom screen, as anywhere the game wouldn't pause (nettai's
+`under_the_menu_a_set_starts_over_on_another_place`). The dummy's setup, its recording and the options stay.
+
+The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
 (a navi's HP, the custom gauge, the battle folder the custom screen deals from) before each tick, never a rule
 of the simulation. With them at their normal values the battle is
@@ -1929,8 +1954,10 @@ A row is focused as a whole and changed at once by Left and Right (Enter steps i
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
 MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
 display are remembered between runs (`training.action`, `training.custom-screen`, `training.your-hp`,
-`training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`); a session another screen started begins as that screen says, every
-battle option at its normal value, and keeps nothing of the dummy's or the battle's.
+`training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`), and the place by
+game as the entry's rows are; a session another screen started begins as that screen says, every
+battle option at its normal value and the place Random, and keeps nothing of the dummy's, the battle's or the
+place.
 
 **The dummy's recording** (the library's `LivePlayer::record_opponent`, docs/frontend.md §2). Choosing the
 Recording row closes the menu, and from the battle as it stands the player's buttons drive the dummy, from
@@ -1951,8 +1978,9 @@ reaches the battle on the custom screen alone, the game's pause being the player
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen does as its row says. Any other Action gives the pads back to the player.
 
-*Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`), its place in
-`ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row too.
+*Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`; a row whose
+values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in
+`values`, `value` and `Training::step_option`. A group's title is a row too.
 
 **The input display** (`TrainingInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
@@ -1963,15 +1991,16 @@ and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms 
 nothing held: the battle takes no button then but the START that holds it in the game's pause, and the dummy's
 presses go nowhere.
 
-**On a phone** the entry is one column (the rows, the line, the cards side by side, the arena, START TRAINING at
-the foot), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
+**On a phone** the entry is one column (the four rows, lower than a desktop's, 48, the line, the cards side by
+side, the arena, START TRAINING at the foot; side by side, two rows would each step with Left and Right and
+the arrows couldn't go from one to the other), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
 a desktop holds them all) and its buttons are one over the other, and in
 battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, which a battle's owner sets).
 
 **What isn't there.**
 
 - The rule a build breaks, in the reserved line (above).
-- A choice of arena: it is picked from the seed, as a match's is.
+- A name for an arena in the content's words (the list says its key).
 - A real key press: the screenshot pass drives the screens through the same calls a key becomes (`App::act`)
   and holds the battle's buttons directly; the window's own key events were not sent to it.
 
