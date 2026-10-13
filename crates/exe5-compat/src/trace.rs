@@ -1521,6 +1521,11 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("timer", x.timer.to_string()),
                 ("anim", x.anim.to_string()),
                 ("status", status_field(i, format!("{status:#x}"))),
+                ("facing", x.flip.to_string()),
+                // (A navi's four parameter bytes, +4: the one kind whose
+                // object keeps the original's; the other kinds take their
+                // parameters as their own state.)
+                ("params", if pool_type(o.pool) == 1 && entries[i].is_some_and(|k| k.index == 0) { format!("{:#010x}", u32::from_le_bytes(x.params)) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1546,6 +1551,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("timer", o.timer.to_string()),
                 ("anim", o.anim.to_string()),
                 ("status", status_field(i, format!("{:#x}", o.status))),
+                ("facing", o.flip.to_string()),
+                ("params", if o.kind == 1 && o.index == 0 { format!("{:#010x}", o.params) } else { "-".to_string() }),
             ]
         })
         .collect();

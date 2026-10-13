@@ -1347,6 +1347,10 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("status", flags),
                 ("f1", f1),
                 ("palette", palette),
+                // (A navi's four parameter bytes, +4: the one kind whose
+                // object keeps the original's; the other kinds take their
+                // parameters as their own state.)
+                ("params", if type_of_pool(o.pool) == 1 && entries[i].is_some_and(|k| k.index == 0) { format!("{:#010x}", u32::from_le_bytes(x.params)) } else { "-".to_string() }),
             ]
         })
         .collect();
@@ -1375,6 +1379,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
                 ("status", format!("{:#x}", o.status)),
                 ("f1", format!("{:#x}", o.f1)),
                 ("palette", o.sprite[0].to_string()),
+                ("params", if o.kind == 1 && o.index == 0 { format!("{:#010x}", o.params) } else { "-".to_string() }),
             ]
         })
         .collect();
