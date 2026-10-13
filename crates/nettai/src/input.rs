@@ -3,12 +3,12 @@
 //!
 //! The keys come from the window's events before Slint sees them (`main`'s winit hook), read by where they are
 //! on the keyboard, whatever its layout, and timestamped as they arrive. The battle's buttons are the player's
-//! bindings ([`Bindings`], kept in the settings), and the menus follow them too (the user: "i feel like the GBA
-//! A and B buttons should be the universal confirm/cancel buttons everywhere, instead of enter+esc"): the keys
-//! and the pad's buttons bound to A confirm, those bound to B go back, those bound to L and R are previous and
-//! next ([`menu_action`], [`Bindings::pad_action`]). The arrows, Tab, Page Up and Down, Home and End are the
-//! menus' own whatever is bound. A gamepad is read through gamepad-facade and polled each frame
-//! ([`Pad::poll`]): its bound buttons for the battle, its presses as the menus' actions. On a phone
+//! bindings ([`Bindings`], kept in the settings). The menus' keys are fixed (the arrows, Enter, Esc, Tab: the
+//! user tried the keys bound to A and B and went back, "actually z and x for navigation is not very good,
+//! enter + esc was fine"), with the keys bound to L and R as their previous and next ([`menu_action`]). A
+//! gamepad is read through gamepad-facade and polled each frame ([`Pad::poll`]): its bound buttons for the
+//! battle, and its presses as the menus' actions by the same bindings, the buttons bound to A and B confirming
+//! and going back ([`Bindings::pad_action`]). On a phone
 //! the battle's buttons are drawn under the picture, and the window's touches are theirs ([`TouchPad`]): each
 //! finger by itself, so a direction and a button are held together.
 
@@ -45,9 +45,9 @@ pub enum Action {
     Down,
     Left,
     Right,
-    /// The key and the pad's button bound to A (Z and south at first).
+    /// Enter, Num Enter, Space; the pad's button bound to A (south at first).
     Confirm,
-    /// The key and the pad's button bound to B (X and west at first).
+    /// Esc; the pad's button bound to B (west at first).
     Back,
     /// Tab and Shift+Tab.
     NextFocus,
@@ -59,8 +59,8 @@ pub enum Action {
     Delete,
     /// The pad's north button (a screen's second action).
     Alternate,
-    /// The key and the pad's button bound to START (Enter and Start at first), and Esc: nettai's menu in a
-    /// battle, shut again by them; nothing in the app's own menus.
+    /// The pad's button bound to START (Start at first): it shuts the battle's menu it opened, and does nothing
+    /// in the app's own menus.
     Menu,
     PageUp,
     PageDown,
@@ -258,23 +258,6 @@ impl Bindings {
         self.pad[button_index(bit)]
     }
 
-    /// The key that confirms in the menus: the one bound to A, unless that is one of the menus' own keys (an
-    /// arrow, Tab, Page Up or Down, Home, End) or bound twice, which leaves A none of its own there: then Enter.
-    pub fn confirm_key(&self) -> KeyCode {
-        self.menu_key(keys::A).unwrap_or(KeyCode::Enter)
-    }
-
-    /// The key that goes back in the menus: the one bound to B, else (as [`Bindings::confirm_key`]) Esc.
-    pub fn back_key(&self) -> KeyCode {
-        self.menu_key(keys::B).unwrap_or(KeyCode::Escape)
-    }
-
-    /// The key bound to `bit`, if the menus can take it as that button's.
-    fn menu_key(&self, bit: u16) -> Option<KeyCode> {
-        let key = self.key(bit);
-        (fixed_action(key, false).is_none() && self.keys.iter().filter(|k| **k == key).count() == 1).then_some(key)
-    }
-
     /// The pad's button that confirms in the menus: the one bound to A, unless that is a direction of the
     /// D-pad (the menus' own) or bound twice: then the south button.
     pub fn confirm_button(&self) -> Button {
@@ -364,15 +347,19 @@ pub fn pad_face(button: Button) -> nettai_ui::PadButton {
     }
 }
 
-/// The menus' own keys, whatever is bound: the arrows, Tab, Page Up and Down, Home and End.
+/// The menus' fixed keys: the arrows, Enter, Num Enter and Space confirm, Esc goes back, Tab and Shift+Tab,
+/// Delete and Backspace, Page Up and Down, Home and End. Whatever is bound, a binding can't take them.
 fn fixed_action(code: KeyCode, shift: bool) -> Option<Action> {
     Some(match code {
         KeyCode::ArrowUp => Action::Up,
         KeyCode::ArrowDown => Action::Down,
         KeyCode::ArrowLeft => Action::Left,
         KeyCode::ArrowRight => Action::Right,
+        KeyCode::Enter | KeyCode::NumpadEnter | KeyCode::Space => Action::Confirm,
+        KeyCode::Escape => Action::Back,
         KeyCode::Tab if shift => Action::PreviousFocus,
         KeyCode::Tab => Action::NextFocus,
+        KeyCode::Delete | KeyCode::Backspace => Action::Delete,
         KeyCode::PageUp => Action::PageUp,
         KeyCode::PageDown => Action::PageDown,
         KeyCode::Home => Action::Home,
@@ -381,29 +368,19 @@ fn fixed_action(code: KeyCode, shift: bool) -> Option<Action> {
     })
 }
 
-/// What a key asks of the menus: their own keys first ([`fixed_action`]); then the key bound to A confirms and
-/// the one bound to B goes back (Enter and Esc where A or B has none the menus can take:
-/// [`Bindings::confirm_key`]), those bound to L and R are previous and next, the one bound to START is the menu
-/// (`Action::Menu`: it closes a battle's menu, and does nothing elsewhere); Esc is the menu too (it opened a
-/// battle's), and Delete and Backspace delete. A text field being typed in takes its keys before this
+/// What a key asks of the menus: their fixed keys first ([`fixed_action`]), then the keys bound to L and R
+/// as previous and next. (The keys bound to A and B are nothing to the menus: the user, "actually z and x for
+/// navigation is not very good, enter + esc was fine".) A text field being typed in takes its keys before this
 /// (`App::key`).
 pub fn menu_action(code: KeyCode, shift: bool, bindings: &Bindings) -> Option<Action> {
     if let Some(action) = fixed_action(code, shift) {
         return Some(action);
     }
-    if code == bindings.confirm_key() || (code == KeyCode::NumpadEnter && bindings.confirm_key() == KeyCode::Enter) {
-        return Some(Action::Confirm);
+    match bindings.of_key(code) {
+        Some(keys::L) => Some(Action::Previous),
+        Some(keys::R) => Some(Action::Next),
+        _ => None,
     }
-    if code == bindings.back_key() {
-        return Some(Action::Back);
-    }
-    Some(match (bindings.of_key(code), code) {
-        (Some(keys::L), _) => Action::Previous,
-        (Some(keys::R), _) => Action::Next,
-        (Some(keys::START), _) | (_, KeyCode::Escape) => Action::Menu,
-        (_, KeyCode::Delete | KeyCode::Backspace) => Action::Delete,
-        _ => return None,
-    })
 }
 
 /// The keys held, as GBA buttons, and when each press came (for the latency figures).
@@ -804,38 +781,29 @@ mod tests {
         assert_eq!(pad.held(), 0);
     }
 
-    /// The menus' keys follow the bindings: A's confirms and B's goes back (Z and X at first), L's and R's are
-    /// previous and next, START's and Esc are the menu; Enter, Space and Esc confirm and go back no more. The
-    /// arrows are the menus' own whatever is bound, and where A or B has no key the menus can take (bound to an
-    /// arrow, or bound twice), Enter or Esc stands in.
+    /// The menus' keys are fixed: Enter, Num Enter and Space confirm and Esc goes back whatever is bound; the
+    /// keys bound to A and B (Z and X at first) do nothing there; the keys bound to L and R are previous and
+    /// next.
     #[test]
-    fn the_menus_keys_follow_the_bindings() {
+    fn the_menus_keys_are_fixed() {
         let at = |b: &Bindings, code| menu_action(code, false, b);
         let b = Bindings::default();
-        assert_eq!(at(&b, KeyCode::KeyZ), Some(Action::Confirm));
-        assert_eq!(at(&b, KeyCode::KeyX), Some(Action::Back));
-        assert_eq!(at(&b, KeyCode::KeyA), Some(Action::Previous));
-        assert_eq!(at(&b, KeyCode::KeyS), Some(Action::Next));
-        assert_eq!(at(&b, KeyCode::Enter), Some(Action::Menu));
-        assert_eq!(at(&b, KeyCode::Escape), Some(Action::Menu));
-        assert_eq!(at(&b, KeyCode::Space), None);
+        for confirm in [KeyCode::Enter, KeyCode::NumpadEnter, KeyCode::Space] {
+            assert_eq!(at(&b, confirm), Some(Action::Confirm));
+        }
+        assert_eq!(at(&b, KeyCode::Escape), Some(Action::Back));
+        assert_eq!((at(&b, KeyCode::KeyZ), at(&b, KeyCode::KeyX)), (None, None));
+        assert_eq!((at(&b, KeyCode::KeyA), at(&b, KeyCode::KeyS)), (Some(Action::Previous), Some(Action::Next)));
         assert_eq!(at(&b, KeyCode::ArrowUp), Some(Action::Up));
         assert_eq!(at(&b, KeyCode::Backspace), Some(Action::Delete));
-        // A rebound: its new key confirms, and the key it had is the other button's.
-        let mut j = Bindings::default();
-        j.bind_key(button_index(keys::A), KeyCode::KeyJ);
-        assert_eq!(at(&j, KeyCode::KeyJ), Some(Action::Confirm));
-        assert_eq!(at(&j, KeyCode::KeyZ), None);
-        // A on an arrow: the arrow moves, and Enter confirms.
+        // A bound to Enter (START takes Z): Enter still confirms, and Z is nothing to the menus.
+        let mut enter = Bindings::default();
+        enter.bind_key(button_index(keys::A), KeyCode::Enter);
+        assert_eq!((at(&enter, KeyCode::Enter), at(&enter, KeyCode::KeyZ)), (Some(Action::Confirm), None));
+        // L on an arrow: the arrow moves.
         let mut up = Bindings::default();
-        up.bind_key(button_index(keys::A), KeyCode::ArrowUp);
+        up.bind_key(button_index(keys::L), KeyCode::ArrowUp);
         assert_eq!(at(&up, KeyCode::ArrowUp), Some(Action::Up));
-        assert_eq!(at(&up, KeyCode::Enter), Some(Action::Confirm));
-        assert_eq!(up.confirm_key(), KeyCode::Enter);
-        // A and B on one key (a settings file written by hand): Enter and Esc.
-        let mut one = Bindings::default();
-        one.keys[button_index(keys::B)] = KeyCode::KeyZ;
-        assert_eq!((at(&one, KeyCode::Enter), at(&one, KeyCode::Escape)), (Some(Action::Confirm), Some(Action::Back)));
     }
 
     /// The pad's buttons follow the bindings too: A's confirms (south at first), B's goes back (west), the face
