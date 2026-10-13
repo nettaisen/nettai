@@ -4,7 +4,9 @@
 -- go by the light/dark value (rules/light_dark). What EXE5 decides here:
 --
 -- - **Full Synchro on a counter** (0x08016FDC, EXE6's `sub_801A200`): the counterer's side, in no soul (NaviStats
---   +0x2C 0), to mood 0xFF through EXE5's setter, which leaves a mood of 0 (a dark MegaMan's) as it is.
+--   +0x2C 0), to mood 0xFF through EXE5's setter, which leaves a mood of 0 (a dark MegaMan's) as it is. In a soul the
+--   count, its counter's mark and all, goes the way of an unmarked hit's (the status rules' `hitter_gain`: 0x08012802,
+--   a recovery's raise), which the mark takes past the cap: to 0xFE, a mood of 0 or 0xFF staying.
 -- - **The emotion-swing bug** (0x080113F8, EXE6's `sub_8013DA0`, from the tick of every navi of the player's kind,
 --   0x080EAD6A; an auto-battling navi's tick, 0x080F224C, has none): while the side's NaviStats +0x24 is set, out of battle
 --   flag 0x40's mode and out of a soul, every 60 ticks the anger ends and the mood goes back to 0x80 (0x08011A94), then
@@ -89,6 +91,9 @@ end
 function emotion.countered(side: number, _victim: Object)
     if battle.navi(side).form.base then
         battle.set_mood(side, 0xFF)
+    else
+        -- (The count: 0x8000, the mark, and what the tick's other hits counted.)
+        battle.gain_mood(side, 0x8000)
     end
 end
 
