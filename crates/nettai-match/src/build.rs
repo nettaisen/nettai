@@ -1150,6 +1150,65 @@ mod tests {
         }
     }
 
+    /// A version's forms are its own: a new build of each has its version's
+    /// souls (EXE4's and EXE5's, which the version sets) or Crosses (EXE6's,
+    /// MegaMan's own forms of the version), and is told by them as that
+    /// version; made the other version, it has the other's. In EXE4 and
+    /// EXE5, whose rules take no version, a side with some souls of each, or
+    /// every soul (the rules' default, a fresh side's), is of no version; in
+    /// EXE6 the version is the rules' own fact, whatever the Crosses.
+    #[test]
+    fn each_version_has_its_own_forms() {
+        let red = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"];
+        let blue = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"];
+        let protoman = ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"];
+        let colonel = ["colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul"];
+        let gregar = ["heatcross", "eleccross", "slashcross", "erasecross", "chargecross"];
+        let falzar = ["spoutcross", "tomahawkcross", "tengucross", "groundcross", "dustcross"];
+        // (The game, the fact that lists the forms, the versions and each one's forms.)
+        let games: [(Arc<Content>, &str, &str, [&str; 2], [&[&str]; 2]); 3] = [
+            (exe4_content(), "exe4", "souls", ["redsun", "bluemoon"], [&red, &blue]),
+            (exe5_content(), "exe5", "souls", ["protoman", "colonel"], [&protoman, &colonel]),
+            (exe6_content(), "exe6", "crosses", ["gregar", "falzar"], [&gregar, &falzar]),
+        ];
+        for (content, game, fact, versions, forms) in games {
+            let builds = Builds::of(&content, game).unwrap();
+            let listed = |side: &Side| side.facts.get(&content, fact).map(|v| v.defs()).unwrap_or_default();
+            let names = |side: &Side| {
+                let mut names: Vec<String> = listed(side).iter().map(|&h| ids::local(&content.defs.form(FormHandle(h)).key).to_string()).collect();
+                names.sort();
+                names
+            };
+            let sorted = |list: &[&str]| {
+                let mut list: Vec<String> = list.iter().map(|s| s.to_string()).collect();
+                list.sort();
+                list
+            };
+            for (v, version) in versions.iter().enumerate() {
+                let mut side = builds.new_build(&content, version).unwrap();
+                assert_eq!(names(&side), sorted(forms[v]), "{game} {version}");
+                assert_eq!(builds.version_of(&content, &side), Some(*version), "{game}");
+                assert_eq!(side.version(&content), (game == "exe6").then_some(*version), "{game}: the rules' own version");
+                builds.take_version(&content, &mut side, versions[1 - v]).unwrap();
+                assert_eq!(names(&side), sorted(forms[1 - v]), "{game} {version} made {}", versions[1 - v]);
+                assert_eq!(builds.version_of(&content, &side), Some(versions[1 - v]), "{game}");
+            }
+            // Some of each version's: of neither.
+            let mut mixed = builds.new_build(&content, versions[0]).unwrap();
+            let mut list = listed(&mixed);
+            list[0] = ids::form(&content, game, forms[1][0]).unwrap().0;
+            let list: Vec<Fact> = list.iter().map(|&h| Fact::Value(Value::Def(Registry::Form, h))).collect();
+            mixed.set_fact(&content, fact, &list).unwrap();
+            if game == "exe6" {
+                // (EXE6's version is its rules' own fact, not its Crosses.)
+                assert_eq!(builds.version_of(&content, &mixed), Some(versions[0]), "{game}: a mix of Crosses");
+            } else {
+                assert_eq!(builds.version_of(&content, &mixed), None, "{game}: a mix of souls");
+                assert_eq!(builds.version_of(&content, &Side::fresh(&content, game).unwrap()), None, "{game}: every soul");
+            }
+        }
+    }
+
     /// EXE6's overview: what the NaviCust's programs and a patch card add to
     /// the navi's numbers, what gives it its abilities, its bugs by name and
     /// level, and the patch cards' MB.
