@@ -94,6 +94,7 @@ impl Screen for Menu {
             "builds" => shell.go(ScreenId::Builds),
             "replays" => shell.go(ScreenId::Replays),
             "settings" => shell.go(ScreenId::Settings),
+            "about" => shell.go(ScreenId::About),
             "exit" => shell.quit(),
             _ => {}
         }

@@ -1,0 +1,360 @@
+// About (docs/app.md §18): the app, its version and its license; Slint's "Made with Slint", as an app made with
+// Slint under its royalty-free license shows it (in an About screen reached from the top menu); and the software
+// the app is made of, a list with the chosen one's license beside it. On a phone the list is the page and the
+// chosen one's license opens as a sheet from the bottom. Its Rust half is src/screens/about.rs.
+
+import { AboutSlint, Palette } from "std-widgets.slint";
+import { Theme } from "../theme.slint";
+import { Nav, Focusable } from "../nav.slint";
+import { Shell, Page, PadButton } from "../shell.slint";
+import { Label, Note, Value, Mono, Heading, Button, ListView, RowBack, RowTouch, PanelBack, GroupTitle } from "../widgets.slint";
+import { Arrive, Tween } from "../motion.slint";
+
+// A package or a font in the list.
+export struct SoftwareRow {
+    name: string,
+    // A font has none.
+    version: string,
+    // Its license, as it states it (an SPDX expression: "MIT OR Apache-2.0").
+    license: string,
+}
+
+// A piece of the chosen one's license: a license file's name over its text, or a paragraph of that text.
+export struct LicensePart {
+    heading: bool,
+    text: string,
+}
+
+// What About shows: src/screens/about.rs sets these.
+export global AboutView {
+    in property <[SoftwareRow]> rows;
+    in property <int> fonts;
+    in property <int> chosen;
+    // The chosen one: its repository, and its license files, in pieces (none: its package has none).
+    in property <string> repository;
+    in property <[LicensePart]> parts;
+    // A phone: the chosen one's sheet is open.
+    in property <bool> sheet;
+    // Where its license is scrolled to (the flickable's own, so 0 or less), how far it can be, and how tall its
+    // view is: the keys scroll it from the app.
+    in-out property <length> text-y;
+    in-out property <length> text-span;
+    in-out property <length> text-view;
+}
+
+// A row of the list: the name and the version, and the license under them.
+component SoftwareRowView inherits Rectangle {
+    in property <SoftwareRow> software;
+    in property <string> nav;
+    in property <int> nav-index;
+    RowBack {
+        hover: touch.has-hover;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    HorizontalLayout {
+        x: 12px;
+        y: 4px;
+        width: parent.width - 24px;
+        height: 20px;
+        spacing: 8px;
+        alignment: start;
+        Value {
+            text: root.software.name;
+            horizontal-stretch: 0;
+        }
+
+        Mono {
+            text: root.software.version == "" ? @tr("font") : root.software.version;
+            color: Theme.muted;
+            font-size: 12px;
+            font-weight: 500;
+        }
+    }
+
+    Text {
+        x: 12px;
+        y: 24px;
+        width: parent.width - 24px;
+        height: 16px;
+        text: root.software.license == "" ? @tr("No license stated") : root.software.license;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    touch := RowTouch {
+        nav: root.nav;
+        nav-index: root.nav-index;
+    }
+}
+
+// The chosen one's license, scrolling: each file's name over its text, a paragraph a piece (so only those in
+// view are drawn). The wheel and a drag scroll it; so do the keys while it has the focus (`About::scroll`).
+component LicenseText inherits Rectangle {
+    in property <string> nav;
+    property <length> span: max(0px, text.preferred-height - flick.height);
+    flick := Flickable {
+        x: 0;
+        y: 0;
+        width: parent.width - 12px;
+        height: parent.height;
+        content-y <=> AboutView.text-y;
+        content-width: self.width;
+        content-height: max(self.height, text.preferred-height);
+        // (Kept over the view as the text scrolls under it: the cursor's box is the view.)
+        Focusable {
+            x: 0;
+            y: -flick.content-y;
+            width: flick.width;
+            height: flick.height;
+            nav: root.nav;
+        }
+
+        text := VerticalLayout {
+            x: 0;
+            y: 0;
+            width: flick.width;
+            height: self.preferred-height;
+            spacing: 10px;
+            for part in AboutView.parts: Text {
+                text: part.text;
+                color: part.heading ? Theme.muted : Theme.text;
+                font-family: part.heading ? Theme.display : Theme.mono;
+                font-size: part.heading ? 11px : 12px;
+                font-weight: part.heading ? Theme.display-semibold : 400;
+                letter-spacing: part.heading ? Theme.label-tracking : 0px;
+                wrap: word-wrap;
+            }
+        }
+    }
+
+    // Where the text is, as a thumb along its right edge.
+    Rectangle {
+        x: parent.width - 4px;
+        y: flick.height * (-flick.content-y) / max(1px, flick.content-height);
+        width: 4px;
+        height: flick.height * flick.height / max(1px, flick.content-height);
+        visible: root.span > 0.5px;
+        background: Theme.line;
+    }
+
+    Note {
+        x: 0;
+        y: 0;
+        width: flick.width;
+        height: 40px;
+        visible: AboutView.parts.length == 0;
+        text: @tr("Its package comes with no license file. Its license is the one named above.");
+    }
+
+    init => {
+        AboutView.text-view = flick.height;
+        AboutView.text-span = root.span;
+    }
+    changed span => {
+        AboutView.text-span = root.span;
+    }
+    changed height => {
+        AboutView.text-view = flick.height;
+    }
+}
+
+// The chosen one's head: its name, its version and license, its repository.
+component SoftwareHead inherits Rectangle {
+    property <SoftwareRow> software: AboutView.rows[AboutView.chosen];
+    height: 72px;
+    Heading {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: 28px;
+        text: root.software.name;
+    }
+
+    Note {
+        x: 0;
+        y: 30px;
+        width: parent.width;
+        height: 20px;
+        text: (root.software.version == "" ? @tr("Font") : root.software.version) + " · " + (root.software.license == "" ? @tr("No license stated") : root.software.license);
+        wrap: no-wrap;
+        overflow: elide;
+    }
+
+    Mono {
+        x: 0;
+        y: 50px;
+        width: parent.width;
+        height: 18px;
+        text: AboutView.repository;
+        color: Theme.muted;
+        font-size: 11px;
+        font-weight: 500;
+    }
+}
+
+export component AboutScreen inherits Page {
+    property <length> list-width: Theme.phone ? self.body-width : 440px;
+    property <length> list-top: 236px;
+    title: @tr("ABOUT");
+    back: @tr("MENU");
+    game: false;
+    status: @tr("{n} package" | "{n} packages" % (AboutView.rows.length - AboutView.fonts)) + " · " + @tr("{n} font" | "{n} fonts" % AboutView.fonts);
+    hints: [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Read") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+    ];
+    // (The logo in Slint's widget is drawn for the app's dark look.)
+    init => {
+        Palette.color-scheme = ColorScheme.dark;
+    }
+
+    Arrive {
+        order: 0;
+        Heading {
+            x: 0;
+            y: 0;
+            width: root.list-width;
+            height: 32px;
+            text: "nettai";
+            font-size: 28px;
+        }
+
+        Note {
+            x: 0;
+            y: 36px;
+            width: root.list-width;
+            height: 20px;
+            text: @tr("{} · MIT License", Shell.version);
+        }
+
+        // (Its own padding is 12 each way: its logo starts where the text does.)
+        AboutSlint {
+            x: -12px;
+            y: 64px;
+            width: 280px;
+            height: 120px;
+        }
+    }
+
+    Arrive {
+        order: 1;
+        GroupTitle {
+            x: 0;
+            y: root.list-top - 36px;
+            width: root.list-width;
+            text: @tr("MADE WITH");
+        }
+
+        list := ListView {
+            x: 0;
+            y: root.list-top;
+            width: root.list-width;
+            height: root.body-height - root.list-top;
+            nav: "list";
+            count: AboutView.rows.length;
+            chosen: Theme.phone ? -1 : AboutView.chosen;
+            for slot in list.shown: SoftwareRowView {
+                property <int> at: list.first + slot;
+                x: 0;
+                y: self.at * list.pitch;
+                width: list.row-width;
+                height: list.row-height;
+                software: AboutView.rows[self.at];
+                nav: list.nav;
+                nav-index: self.at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+    }
+
+    Arrive {
+        order: 2;
+        if !Theme.phone: Rectangle {
+            x: root.list-width + 24px;
+            y: 0;
+            width: root.body-width - root.list-width - 24px;
+            height: root.body-height;
+            PanelBack { }
+
+            SoftwareHead {
+                x: 16px;
+                y: 16px;
+                width: parent.width - 32px;
+            }
+
+            LicenseText {
+                x: 16px;
+                y: 96px;
+                width: parent.width - 20px;
+                height: parent.height - 112px;
+                nav: "text";
+            }
+        }
+    }
+}
+
+// The same on a phone: a sheet from the bottom, opened by a tap on a row. Its controls' names begin `sheet.`.
+component LicenseSheet inherits Rectangle {
+    arrive := Tween {
+        duration: Theme.quick;
+    }
+
+    TouchArea {
+        clicked => {
+            Nav.activate("sheet.close", 0);
+        }
+    }
+
+    Rectangle {
+        background: Theme.shade;
+        opacity: arrive.t;
+    }
+
+    Rectangle {
+        x: 0;
+        y: Theme.header + (1 - arrive.t) * 24px;
+        height: parent.height - Theme.header;
+        opacity: arrive.t;
+        background: Theme.panel;
+        border-width: 1px;
+        border-color: Theme.line;
+        TouchArea { }
+
+        SoftwareHead {
+            x: 16px;
+            y: 16px;
+            width: parent.width - 32px;
+        }
+
+        LicenseText {
+            x: 16px;
+            y: 96px;
+            width: parent.width - 20px;
+            height: parent.height - 96px - 72px;
+            nav: "sheet.text";
+        }
+
+        Button {
+            x: 16px;
+            y: parent.height - 56px;
+            width: parent.width - 32px;
+            nav: "sheet.close";
+            text: @tr("CLOSE");
+        }
+    }
+}
+
+// What opens over About: a phone's sheet of the chosen one's license. It covers the whole window, over the
+// screen and under the shell's own dialogs; empty, it takes no clicks.
+export component AboutOverlay inherits Rectangle {
+    if Theme.phone && AboutView.sheet: LicenseSheet {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+}

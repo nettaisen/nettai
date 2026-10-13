@@ -75,6 +75,10 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 # tests compile it whatever the features (the same two dependencies are the tests' below).
 tour = ["dep:png", "nettai-rtc/testing"]
 
+[build-dependencies]
+# What the app is built from, for its About screen (build.rs: `cargo metadata`'s JSON).
+serde_json = "1"
+
 [dev-dependencies]
 png = "0.17"
 nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
