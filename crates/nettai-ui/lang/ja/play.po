@@ -126,6 +126,9 @@ msgstr "1本勝負"
 msgid "Best of {}"
 msgstr "{}本勝負"
 
+msgid "Patch cards"
+msgstr "改造カード"
+
 msgid "Closed builds"
 msgstr "ビルド非公開"
 

@@ -485,55 +485,93 @@ component LobbyCard inherits Rectangle {
 // The match's settings and the connection: one row, or on a phone a row each. Rounds and Closed builds are the
 // match's (either player changes them, and both see it); the input delay is the player's own.
 component LobbyFacts inherits Rectangle {
-    // Where each thing starts in the one row (its words make it), and the row's width.
-    property <length> x1: 24px + rounds-label.width + 12px;
-    property <length> x2: self.x1 + rounds.width + 65px;
-    property <length> x3: self.x2 + closed-label.width + 12px;
-    property <length> x4: self.x3 + closed.width + 65px;
-    property <length> x5: self.x4 + delay-label.width + 12px;
-    property <length> x6: self.x5 + delay.width + 65px;
-    out property <length> natural-width: self.x6 + bars.width + 12px + ping-label.width + 8px + ping.width + 24px;
-    property <length> line: Theme.phone ? 44px : self.height;
-    height: Theme.phone ? 176px : 56px;
+    // The one row: each setting's name over its control, a cell as wide as the wider of the two, so five fit
+    // whatever the language. Where each cell starts, and the row's width.
+    property <length> gap: 41px;
+    property <length> x1: 24px;
+    property <length> x2: self.x1 + max(rounds-label.width, rounds.width) + self.gap;
+    property <length> x3: self.x2 + max(cards-label.width, cards.width) + self.gap;
+    property <length> x4: self.x3 + max(closed-label.width, closed.width) + self.gap;
+    property <length> x5: self.x4 + max(delay-label.width, delay.width) + self.gap;
+    out property <length> natural-width: self.x5 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
+    // On a phone, a line each: the name, and the control at the right.
+    property <length> line: 44px;
+    // A name's place and a control's, in the row.
+    property <length> name-y: 10px;
+    property <length> name-height: 18px;
+    property <length> control-y: 32px;
+    property <length> control-height: 36px;
+    property <brush> name-color: Theme.phone ? Theme.text : Theme.muted;
+    height: Theme.phone ? 5 * self.line : 78px;
     PanelBack {
         visible: !Theme.phone;
         accent: false;
     }
 
     rounds-label := Value {
-        x: Theme.phone ? 0px : 24px;
-        y: 0;
-        height: root.line;
+        x: Theme.phone ? 0px : root.x1;
+        y: Theme.phone ? 0px : root.name-y;
+        height: Theme.phone ? root.line : root.name-height;
         text: @tr("Rounds");
+        color: root.name-color;
     }
 
     rounds := Stepper {
         x: Theme.phone ? parent.width - self.width : root.x1;
-        y: (root.line - self.height) / 2;
+        y: Theme.phone ? (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
         nav: "lobby.rounds";
         value: PlayView.rounds == 1 ? @tr("Single battle") : @tr("Best of {}", PlayView.rounds);
         value-width: Theme.phone ? 136px : 148px;
     }
 
     Rectangle {
-        x: root.x2 - 33px;
-        y: 16px;
+        x: root.x2 - 21px;
+        y: 14px;
         width: 1px;
-        height: 24px;
+        height: 50px;
+        visible: !Theme.phone;
+        background: Theme.line;
+    }
+
+    // Patch cards: the match's, as Rounds and Closed builds are. The lobby has no such setting yet (a match
+    // is played with each build's cards): the control is in its place, on, and unavailable until it has.
+    cards-label := Value {
+        x: Theme.phone ? 0px : root.x2;
+        y: Theme.phone ? root.line : root.name-y;
+        height: Theme.phone ? root.line : root.name-height;
+        text: @tr("Patch cards");
+        color: root.name-color;
+    }
+
+    cards := Seg {
+        x: Theme.phone ? parent.width - self.width : root.x2;
+        y: Theme.phone ? root.line + (root.line - self.height) / 2 : root.control-y;
+        enabled: false;
+        first: @tr("ON");
+        second: @tr("OFF");
+        chosen: 0;
+    }
+
+    Rectangle {
+        x: root.x3 - 21px;
+        y: 14px;
+        width: 1px;
+        height: 50px;
         visible: !Theme.phone;
         background: Theme.line;
     }
 
     closed-label := Value {
-        x: Theme.phone ? 0px : root.x2;
-        y: Theme.phone ? root.line : 0px;
-        height: root.line;
+        x: Theme.phone ? 0px : root.x3;
+        y: Theme.phone ? 2 * root.line : root.name-y;
+        height: Theme.phone ? root.line : root.name-height;
         text: @tr("Closed builds");
+        color: root.name-color;
     }
 
     closed := Seg {
         x: Theme.phone ? parent.width - self.width : root.x3;
-        y: closed-label.y + (root.line - self.height) / 2;
+        y: Theme.phone ? 2 * root.line + (root.line - self.height) / 2 : root.control-y;
         nav: "lobby.closed";
         first: @tr("OFF");
         second: @tr("ON");
@@ -541,24 +579,25 @@ component LobbyFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: root.x4 - 33px;
-        y: 16px;
+        x: root.x4 - 21px;
+        y: 14px;
         width: 1px;
-        height: 24px;
+        height: 50px;
         visible: !Theme.phone;
         background: Theme.line;
     }
 
     delay-label := Value {
         x: Theme.phone ? 0px : root.x4;
-        y: Theme.phone ? 2 * root.line : 0px;
-        height: root.line;
+        y: Theme.phone ? 3 * root.line : root.name-y;
+        height: Theme.phone ? root.line : root.name-height;
         text: @tr("Input delay");
+        color: root.name-color;
     }
 
     delay := Stepper {
-        x: Theme.phone ? parent.width - self.width : root.x5;
-        y: delay-label.y + (root.line - self.height) / 2;
+        x: Theme.phone ? parent.width - self.width : root.x4;
+        y: Theme.phone ? 3 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
         nav: "lobby.delay";
         value: PlayView.input-delay;
         value-width: 48px;
@@ -566,34 +605,35 @@ component LobbyFacts inherits Rectangle {
     }
 
     Rectangle {
-        x: root.x6 - 33px;
-        y: 16px;
+        x: root.x5 - 21px;
+        y: 14px;
         width: 1px;
-        height: 24px;
+        height: 50px;
         visible: !Theme.phone;
         background: Theme.line;
     }
 
+    // The connection: its bars and the round trip, where a setting has its control.
+    ping-label := Value {
+        x: Theme.phone ? 0px : root.x5;
+        y: Theme.phone ? 4 * root.line : root.name-y;
+        height: Theme.phone ? root.line : root.name-height;
+        text: @tr("Ping");
+        color: root.name-color;
+    }
+
     bars := Bars {
-        x: Theme.phone ? 0px : root.x6;
-        y: (Theme.phone ? 3 * root.line : 0px) + (root.line - self.height) / 2;
+        x: Theme.phone ? parent.width - ping.width - 10px - self.width : root.x5;
+        y: (Theme.phone ? 4 * root.line + (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2);
         level: PlayView.bars;
     }
 
-    ping-label := Value {
-        x: bars.x + bars.width + 12px;
-        y: Theme.phone ? 3 * root.line : 0px;
-        height: root.line;
-        text: @tr("Ping");
-        color: Theme.muted;
-        font-weight: 400;
-    }
-
     ping := Mono {
-        x: ping-label.x + ping-label.width + 8px;
-        y: ping-label.y;
+        x: Theme.phone ? parent.width - self.width : root.x5 + bars.width + 10px;
+        y: Theme.phone ? 4 * root.line : root.control-y;
         width: 60px;
-        height: root.line;
+        height: Theme.phone ? root.line : root.control-height;
+        horizontal-alignment: Theme.phone ? right : left;
         text: PlayView.ping < 0 ? "" : @tr("{} ms", PlayView.ping);
     }
 }
@@ -631,10 +671,10 @@ export component PlayScreen inherits Page {
     // The lobby: the two cards, the row of settings, the buttons, the line.
     property <length> card-width: Theme.phone ? self.body-width : 440px;
     property <length> card-height: Theme.phone ? 126px : 220px;
-    property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 404px) / 2;
+    property <length> lobby-top: Theme.phone ? 0px : (self.body-height - 426px) / 2;
     property <length> lobby-left: (self.body-width - 960px) / 2;
     property <length> facts-top: Theme.phone ? 2 * self.card-height + 20px : self.lobby-top + 244px;
-    property <length> buttons-top: Theme.phone ? self.facts-top + 188px : self.lobby-top + 324px;
+    property <length> buttons-top: Theme.phone ? self.facts-top + 232px : self.lobby-top + 346px;
     title: PlayView.part == PlayPart.lobby ? @tr("LOBBY") : PlayView.part == PlayPart.builds ? @tr("PLAY") : Theme.phone ? @tr("WAITING") : @tr("WAITING FOR OPPONENT");
     back: PlayView.part == PlayPart.builds ? @tr("MENU") : @tr("PLAY");
     hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;
