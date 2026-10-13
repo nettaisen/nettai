@@ -459,7 +459,7 @@ host calls, in order:
     lobby.set_link_down(link.down_for().map(|elapsed| Reconnecting { elapsed, gives_up_in: link.gives_up_in() }));
     if let Some(player) = &mut player { player.advance(elapsed, buttons); }   // the match's player, if one is up
     match lobby.poll(now) {
-        Status::Pending => { /* show it: settings(), ready(), their_ready(), their_name(), ping() */ }
+        Status::Pending => { /* show it: settings(), ready(), their_ready(), their_name(), ping(), problems() */ }
         Status::Loading(agreement) => {
             // The match's preload (§9), made once of agreement.set, a step or a few a frame:
             // preload.step(); lobby.set_loading(preload.fraction()); and once preload.done(), lobby.set_loaded().
@@ -540,20 +540,53 @@ host calls, in order:
     no longer are, and the other sees nothing else.
   - **The settings are the match's**: its rounds (`Settings::rounds`: one
     is a single battle, three a best of three; each round's stage and
-    background stated, or left to the seed) and whether builds are closed
-    (`closed_builds`). Either player changes them (`Lobby::set_rounds`,
-    `set_closed_builds`, or `propose` for the whole), the other's lobby
-    takes the change, both show the same (`Lobby::settings`), and both
-    ready marks clear; a joiner coming into the lobby takes the host's.
-    They are agreed when both players are ready on the same.
+    background stated, or left to the seed), whether patch cards apply
+    (`patch_cards`, on unless a player turns them off) and whether builds
+    are closed (`closed_builds`). Either player changes them
+    (`Lobby::set_rounds`, `set_patch_cards`, `set_closed_builds`, or
+    `propose` for the whole), the other's lobby takes the change, both
+    show the same (`Lobby::settings`), and both ready marks clear; a
+    joiner coming into the lobby takes the host's. They are agreed when
+    both players are ready on the same.
+  - **Patch cards off**: neither player's cards apply in the match. Each
+    side plays as it is without them, on both peers alike (the match is
+    made of the sides so, and a recording holds them so:
+    `Agreement::sides` and `Agreement::m` are the sides as played, and
+    `Agreement::patch_cards()` says which way it was). A build is checked
+    as it will be played, so one that keeps a rule only by a card of its
+    own (a sixth Mega chip a card allowed) can't be played without cards:
+    - `lobby.problems()` is what is wrong with this player's build as the
+      settings stand, typed (`nettai_match::check::Problem`: its `what`
+      is a `nettai_match::Wrong`, the kind and its numbers, to word from
+      the catalogs as a build screen words them; its `text` is for a log).
+      It is checked again whenever the build or the settings change. Empty:
+      the build can be played.
+    - `lobby.set_ready(true)` says false while there are problems, and
+      the mark stays clear: the status line says why, from `problems()`.
+    - **To show a build as it will be played** (the player's own card in
+      the lobby, the overview with its numbers): `lobby.side_as_played()`
+      is the side, and `lobby.settings().checked(&content, &side)` a
+      build's check of any side as these settings play it
+      (`nettai_match::build::Checked`: its `overview`, `folder_view`,
+      `face` and `problems`, as the build screens use them; the same
+      check, so the lobby and a build screen never give two answers of
+      one build). `settings.as_played(&content, &side)` is the side alone.
+      In a match and after it, show `agreement.sides`: they are as
+      played already.
+    The cards themselves are nothing Rust names but for the list they are
+    kept in (the setup's `patch_cards`, in all three games; EXE4's holds a
+    card with its slot): `nettai_match::Side::without_patch_cards`.
   - **The handshake.** Each commits (a Hello: SHA-256 of the agreed
     settings' hash and what it will reveal) before either reveals its half
     of the seed and its side (in nettai-match's binary against the content
     both play, `nettai_match::binary`: the side's facts in the order of the
     game's rules' setup, each definition by its handle, which the content
-    hash pins), and each checks the other's Reveal against its commitment
-    and the other's side against the content as a match file's side is
-    (`nettai_match::check_side`, §6). The battle's RNG comes from both
+    hash pins; the side as the match will play it, so cards that are off
+    aren't sent), and each checks the other's Reveal against its commitment
+    and the other's side as it checks its own player's (a build's check
+    of the side as played, `Settings::checked`; a side that fails it ends
+    both lobbies, `Reason::TheirBuild { problems }` here and
+    `Reason::YourBuild { problems }` there). The battle's RNG comes from both
     halves, and each part the rounds leave is picked from it alike on both.
     A recording keeps every round's place.
   - **Closed builds** reach the host with the agreement
@@ -563,7 +596,10 @@ host calls, in order:
     shared simulation needs them. A recording keeps the setting: a host
     makes a netplay match's recorder of the agreement
     (`Recorder::of_agreement`, §8), so the replay's info says the builds
-    were closed and whoever shows it again hides both.
+    were closed and whoever shows it again hides both. (The recorder
+    records the agreement's match, whose sides are as played: a replay of
+    a match without patch cards holds the sides without them, and needs no
+    word of the setting to play back.)
   - **Loaded before the first tick.** Agreed, the lobby says
     `Status::Loading` with the agreement, and the host makes the match
     ready: a `preload::Preload` of the agreement's set for this player's
