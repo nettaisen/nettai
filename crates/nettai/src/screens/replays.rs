@@ -319,7 +319,8 @@ impl Replays {
         view.set_result(result.into());
         view.set_result_tone(tone);
         view.set_length(length.into());
-        // Its still: the one made, or asked for now. (The one before stays up meanwhile.)
+        // Its still: the one made, or asked for now. Until its own is there the box is empty: the still of the
+        // replay selected before is another replay's picture, however short the wait.
         let made = self.still.frame.as_ref().is_some_and(|(path, _)| *path == entry.path);
         match &entry.read {
             Ok(s) if reason.is_none() => {
@@ -329,7 +330,7 @@ impl Replays {
                     let look = Look { graphics: ready.graphics(shell.lang), text, font: ready.loaded.font.clone().filter(|_| text == TextMode::Font) };
                     self.library.still(&entry, s.info.side, content, look);
                 }
-                view.set_still(made || self.still.frame.is_some());
+                view.set_still(made);
             }
             _ => view.set_still(false),
         }
@@ -778,8 +779,10 @@ impl Screen for Replays {
         if let Some(e) = &mut self.export {
             e.frame(shell);
         }
-        // A video being made, or a replay playing, goes on whatever covers the window and with no key pressed.
-        let busy = self.export.as_ref().is_some_and(Export::running) || self.watching.as_ref().is_some_and(Watching::playing);
+        // A video being made goes on whatever covers the window, and a replay playing in a window that is drawn
+        // keeps the display on with no key pressed. A replay in a window that isn't drawn stands still (the
+        // frame is the shell's timer's then: `Shell::drawing`), and asks for nothing.
+        let busy = self.export.as_ref().is_some_and(Export::running) || (shell.drawing && self.watching.as_ref().is_some_and(Watching::playing));
         if busy != self.awake {
             self.awake = busy;
             shell.stay_awake = busy;
@@ -788,7 +791,7 @@ impl Screen for Replays {
             return;
         }
         if let Some(w) = &mut self.watching {
-            return w.frame(shell, now);
+            return if shell.drawing { w.frame(shell, now) } else { w.rest(shell) };
         }
         // The selected replay's still, where its box is on screen.
         let Still { surface, frame, text, .. } = &mut self.still;
