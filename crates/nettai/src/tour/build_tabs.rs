@@ -296,6 +296,12 @@ fn patch_cards(add: &mut dyn FnMut(u64, Step), shot: Shot) {
         add(SETTLE, act(Action::Confirm));
     }
     shot(add, "tabs-cards-put", Pair::None);
+    // The cursor on a card that is in (its hint: Remove), and Enter taking it out from there; put back in.
+    add(SETTLE, focus("lib.rows", 2));
+    shot(add, "tabs-cards-on-installed", Pair::First);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-cards-taken-out", Pair::Second);
+    add(SETTLE, act(Action::Confirm));
     // The library by MB (in a game with slots, by slot), the most first: a card the MB left can't take, refused
     // and why; in a game with slots, a card put in its slot in place of the one there.
     add(SETTLE, screen(|s, shell| s.choose(shell, "lib.sort", 0, 2)));
