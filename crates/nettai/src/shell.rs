@@ -1015,7 +1015,7 @@ impl App {
                 let hearer = self.hearer();
                 let taken = self.call(hearer, |s, shell| s.action(shell, action)).unwrap_or(false);
                 // The shoulders change the game where the header offers it.
-                if !taken && self.shell.battle.is_none() && self.shell.screen != ScreenId::Settings {
+                if !taken && self.shell.battle.is_none() && !matches!(self.shell.screen, ScreenId::Settings | ScreenId::About) {
                     match action {
                         Action::Previous => self.did(Did::Step(Key::new("game", 0), -1)),
                         Action::Next => self.did(Did::Step(Key::new("game", 0), 1)),

@@ -430,6 +430,21 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     add(SETTLE, focus("set.folder", 0));
     shot(&mut add, "settings-about", Pair::None);
 
+    // About: the list, the first font's license beside it; Slint's read with the keys (a phone: on its sheet),
+    // a page down.
+    add(SETTLE, go(ScreenId::About));
+    shot(&mut add, "about", Pair::None);
+    add(SETTLE, focus("list", crate::screens::about::place_of("slint")));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, act(Action::PageDown));
+    shot(&mut add, "about-license", Pair::None);
+    add(SETTLE, act(Action::Back));
+    // (Left and come back to: the focus on Slint's row, in view.)
+    add(SETTLE, go(ScreenId::Menu));
+    add(SETTLE, go(ScreenId::About));
+    shot(&mut add, "about-again", Pair::None);
+    add(SETTLE, focus("list", 0));
+
     // A failure that ends what the player was doing.
     add(SETTLE, go(ScreenId::Play));
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
