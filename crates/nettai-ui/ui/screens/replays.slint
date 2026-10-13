@@ -482,10 +482,10 @@ component ListPage inherits Page {
     status: !ReplaysView.listed ? "" : @tr("{n} replay" | "{n} replays" % ReplaysView.count);
     hints: [
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
-        { key: "Enter", pad: PadButton.south, text: @tr("Watch") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Watch") },
         { key: "E", pad: PadButton.north, text: @tr("Export") },
-        { key: "Del", pad: PadButton.west, text: @tr("Delete") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("Delete") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
     Arrive {
@@ -989,13 +989,13 @@ component ViewerPage inherits Page {
         { key: ",", key2: ".", text: @tr("Step a frame") },
         { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
         { key: "B", pad: PadButton.select, text: @tr("Builds") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ] : [
         { key: "Space", pad: PadButton.north, text: @tr("Play or pause") },
         { key: "←→", pad: PadButton.move, text: @tr("Seek 5 s") },
         { key: ",", key2: ".", text: @tr("Step a frame") },
         { key: "[", key2: "]", pad: PadButton.shoulders, text: @tr("Previous or next round") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
     Arrive {
         order: 0;
