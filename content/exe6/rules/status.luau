@@ -161,9 +161,11 @@ local status = {
             -- start.
             roles = { full_synchro = "full_synchro", angry = "angry", worn_out = "worn_out", tired = "tired" },
             -- A hit's counter byte wears the receiver's mood; a counter hit marks the counter (0x8000) and wears none,
-            -- and the counterer's rules hear it (`sub_801A200`: ./emotion). A chip's use leaves Full Synchro at 0x80,
-            -- and plays the boost's sound for anger's too (`sub_80127C0` after `sub_8012A38`).
+            -- and the counterer's rules hear it (`sub_801A200`: ./emotion); the hitter's mood gains nothing else. A
+            -- chip's use leaves Full Synchro at 0x80, and plays the boost's sound for anger's too (`sub_80127C0` after
+            -- `sub_8012A38`).
             hit_mood = "counter_mark",
+            hitter_gain = "none",
             full_synchro_spent = 0x80,
             anger_boost_sound = true,
             -- A tick's hits of 300 damage or more ask for anger, as 120 ticks stunned do (`sub_80142DC`).
