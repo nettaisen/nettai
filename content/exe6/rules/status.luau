@@ -134,6 +134,10 @@ local status = {
         -- Its defensive chips (`sub_802CEF4`): AntiDmg catches a hit of 10 or more, the trap the navi's status arms any
         -- hit (one of none swallowed all the same); AntiSwrd a sword's hit without the hit flags 0x20000.
         anti_traps = { damage_min = 10, armed_swallows_below = true, sword_spares = 0x20000 },
+        -- A chip-destroying hit (hit flag 0x10: `sub_801A2CC`) takes a player's next chip alone: the hand's cursor steps
+        -- past it. (A chip request pending then uses the chip after it; with none left EXE6's uses chip 0xFFFF's record,
+        -- past the chip table: the engine ends the request instead, docs/engine/chips.md §2.9.)
+        chip_destruction = "next",
         -- Its emotions (`sub_8015B54`): worn out (exhausted, or a mood of 0) is read before anger, then held tired,
         -- Full Synchro (a mood of 0xFF), else normal, the same in every battle mode and every form; no mood is
         -- worried. A navi held tired or exhausted holds its mood against the setter (`sub_8015BEC`), and anger's

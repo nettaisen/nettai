@@ -43,14 +43,19 @@ use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+// A screen's own steps (`<screen>::steps`, and `<screen>::motion` for the motion probe), each in a file of its
+// own, called from `walk` and `motion_walk` with one line.
+mod builds;
+mod training;
+
 /// How long a step is given to be drawn before the next: a few frames.
-pub(crate) const SETTLE: u64 = 260;
+const SETTLE: u64 = 260;
 
 /// The sizes walked, in points: the reference window, and a phone held upright.
 const SIZES: [(&str, u32, u32); 2] = [("desktop", 1280, 800), ("phone", 390, 800)];
 
 /// What the pass keeps as it goes.
-pub(crate) struct Tour {
+struct Tour {
     dir: PathBuf,
     /// The shot being arranged (`menu-en-desktop`): what a cut text is reported under.
     tag: RefCell<String>,
@@ -85,13 +90,13 @@ struct Burst {
 
 /// A step of the walk. (A screen's own steps are a function in its module, which [`walk`] calls: it is handed
 /// `add`, which adds a step after a wait, and `shot`, which takes a picture under a name.)
-pub(crate) type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
+type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
 type Until = Box<dyn Fn(&App) -> bool>;
 
 /// A shot's part in a pair: the pair's first is kept, and its second compared with it (the two may differ only
 /// inside the two cursors).
 #[derive(Clone, Copy, PartialEq)]
-pub(crate) enum Pair {
+enum Pair {
     None,
     First,
     Second,
@@ -259,9 +264,10 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
+    training::steps(&mut add, lang, size);
 
     // Builds: the list, its dialogs, and the editor's tabs.
-    crate::screens::builds::tour::walk(&mut add, &shot, lang, size);
+    builds::steps(&mut add, &shot, lang, size);
 
     // Settings: the focus a step down; a value changed under the focus; a field being edited; a select's list;
     // the groups down the page.
@@ -482,7 +488,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     burst(&mut add, "page-scrolls", &[0, 30, 60, 100, 200], focus("set.folder", 0));
     burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
     add(SETTLE, act(Action::Confirm));
-    crate::screens::builds::tour::motion(&mut add, &burst);
+    builds::motion(&mut add, &burst);
     add(SETTLE, go(ScreenId::Training));
     burst(
         &mut add,
@@ -500,6 +506,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             app.go_now(ScreenId::Menu);
         }),
     );
+    training::motion(&mut add);
 }
 
 /// Write a burst's shots (at half their size: they are many), and hold each to its last: every control the size

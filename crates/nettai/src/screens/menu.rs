@@ -179,7 +179,7 @@ fn caption(shell: &Shell, game: &str, ready: &Rc<Ready>, sides: [&nettai_match::
 }
 
 /// A silent player of `driver`, drawn as the settings say.
-fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
+pub fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
     let text = if shell.settings.sharp_text { TextMode::Font } else { TextMode::Original };
     let graphics = ready.graphics(shell.lang);
     let font = ready.loaded.font.clone().filter(|_| text == TextMode::Font);

@@ -14,7 +14,7 @@ import { SettingsScreen } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
 import { PlayScreen, PlayOverlay, MatchMenu } from "screens/play.slint";
-import { TrainingScreen, TrainingOverlay, TrainingMenu } from "screens/training.slint";
+import { TrainingScreen, TrainingMenu, TrainingInputs, TrainingView } from "screens/training.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
 
@@ -54,14 +54,19 @@ export component AppWindow inherits Window {
     if !root.covered && Shell.screen == Screen.builds: BuildsScreen { }
     if !root.covered && Shell.screen == Screen.replays: ReplaysScreen { }
     if !root.covered && Shell.screen == Screen.settings: SettingsScreen { }
-    // What a screen opens over itself.
+    // What a screen opens over itself (Training opens nothing).
     if !root.covered && Shell.screen == Screen.play: PlayOverlay { }
-    if !root.covered && Shell.screen == Screen.training: TrainingOverlay { }
     if !root.covered && Shell.screen == Screen.builds: BuildsOverlay { }
     if !root.covered && Shell.screen == Screen.replays: ReplaysOverlay { }
     if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
     if Shell.versus: VersusScreen { }
     if root.in-battle: BattleScreen { }
+    // (Training's input display: over its battle's picture, wherever that is shown. It is there throughout
+    // and shown when it is on: an `if` would be a component for it.)
+    TrainingInputs {
+        visible: Shell.battle == BattleKind.training && TrainingView.inputs;
+    }
+
     if Shell.battle == BattleKind.training && Shell.battle-menu: TrainingMenu { }
     if Shell.battle == BattleKind.online && Shell.battle-menu: MatchMenu { }
     if Shell.picker: PickerLayer { }

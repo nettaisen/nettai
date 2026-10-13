@@ -1,14 +1,13 @@
-//! The Builds screens' steps of the screenshot pass (`crate::tour`; docs/app.md §13): the list with none and
-//! with some, a new build's dialog, a file that is no save dropped on the list, a build's rename and its
-//! deletion's question, and the editor's Navi and
-//! Folder tabs (an entry marked the Regular chip, two tagged, a mark the rules refuse), with pairs a focus move
-//! apart. The builds are the pass's own (`paths::keep_builds_in`): made
-//! here through the screen, as a player makes them.
+//! The screenshot pass's steps for Builds (docs/app.md §13): the list with none and with some, a new build's
+//! dialog, a file that is no save dropped on the list, a build's rename and its deletion's question, and the
+//! editor's Navi and Folder tabs (an entry marked the Regular chip, two tagged, a mark the rules refuse), with
+//! pairs a focus move apart; and the motion probe's bursts of what Builds moves. The builds are the pass's own
+//! (`paths::keep_builds_in`): made here through the screen, as a player makes them.
 
 use crate::input::{Action, KeyPress};
 use crate::screens::ScreenId;
 use crate::shell::App;
-use crate::tour::{Pair, Step};
+use super::{Pair, SETTLE, Step};
 use nettai_ui::{BuildsPage, BuildsView, EditorTab};
 use slint::ComponentHandle;
 use slint::winit_030::winit::keyboard::KeyCode;
@@ -27,8 +26,6 @@ fn on_tab(tab: EditorTab, name: &'static str) -> Step {
 
 /// The names of the builds made: the second in another script, the third long.
 const NAMES: [&str; 3] = ["Falzar heat", "ジャッジ対策 v3", "Tournament build 10-18 with a long name"];
-
-const SETTLE: u64 = crate::tour::SETTLE;
 
 // What the walk does: an action, the focus put on a control, and a call of the screen's own module.
 fn act(action: Action) -> Step {
@@ -76,7 +73,7 @@ fn fresh() -> Step {
 /// trigger at which a shot is taken, and the trigger): the editor's body arriving as the tab changes, and the
 /// Folder tab's own pieces: a chip put in (it flies from its row to its entry, the entry flashes, and a count
 /// that changed ticks), and a chip the rules refuse (its row shakes).
-pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
+pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
     add(SETTLE, fresh());
     make(add, NAMES[0], 1);
     add(SETTLE, press("builds", 0));
@@ -105,7 +102,7 @@ pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64,
 
 /// The Builds screens' steps in language `lang` at size `size`. `shot` takes a picture under a name (and
 /// compares the two of a pair).
-pub fn walk(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), lang: &'static str, size: &'static str) {
+pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), lang: &'static str, size: &'static str) {
     let phone = size == "phone";
     // (A search finds chips by their names in the language shown.)
     let search = if lang == "ja" { "ソード" } else { "sword" };
