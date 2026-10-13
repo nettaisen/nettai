@@ -40,7 +40,16 @@ pub struct Menu {
     source: Option<(String, crate::replays::Reel)>,
     /// The reel's battles, counted for the UI.
     reels: i32,
+    /// After a change of game, the next reel isn't made until then: making it (its match, its battle, its player)
+    /// is 25 to 35 ms of the window's thread, which in the change's first frame held the sweep of the new game's
+    /// ground (docs/app.md §10). It fades in once the sweep has crossed.
+    hold: Option<Instant>,
+    /// The game the menu was last shown with, while it is shown.
+    shown_game: Option<String>,
 }
+
+/// How long after the sweep a change of game's reel is held for (the sweep is the theme's `settle`).
+const HOLD_PAST_SWEEP: std::time::Duration = std::time::Duration::from_millis(60);
 
 impl Screen for Menu {
     fn main(&self) -> &'static str {
@@ -48,10 +57,16 @@ impl Screen for Menu {
     }
 
     fn show(&mut self, shell: &mut Shell) {
-        // Another game: its reel.
+        // Another game: its reel, once its ground has swept in (with motion off, at once). A change while the menu
+        // is shown holds it from that change, the second of two from the second.
         if self.reel.as_ref().is_some_and(|r| Some(r.game.as_str()) != shell.game()) {
             self.reel = None;
         }
+        if self.shown_game.is_some() && self.shown_game.as_deref() != shell.game() {
+            let sweep = shell.ui().global::<nettai_ui::Theme>().get_settle();
+            self.hold = (sweep > 0).then(|| Instant::now() + std::time::Duration::from_millis(sweep as u64) + HOLD_PAST_SWEEP);
+        }
+        self.shown_game = shell.game().map(str::to_string);
         match (&mut self.reel, shell.ready()) {
             // The language may have changed under it: its own drawing.
             (Some(reel), Some((_, ready))) => {
@@ -65,6 +80,9 @@ impl Screen for Menu {
 
     fn hide(&mut self, _shell: &mut Shell) {
         self.reel = None;
+        // (Shown again, it makes its reel as it arrives, whatever game was chosen meanwhile.)
+        self.shown_game = None;
+        self.hold = None;
         // (The replays are found again when the menu next shows: a match played since is among them.)
         self.source = None;
     }
@@ -86,6 +104,10 @@ impl Screen for Menu {
             return;
         }
         let Some((game, ready)) = shell.ready() else { return };
+        if self.hold.is_some_and(|until| now < until) {
+            return;
+        }
+        self.hold = None;
         // The next battle, when there is none or the last one is over: it fades in.
         if self.reel.as_ref().is_none_or(|r| r.stage.player.stopped().is_some())
             && let Some(next) = self.next_reel(shell, &game, &ready)
