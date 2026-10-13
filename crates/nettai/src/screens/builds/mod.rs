@@ -31,7 +31,6 @@ pub mod folder;
 pub mod navi;
 pub mod navicust;
 pub mod patch_cards;
-pub mod tour;
 
 /// The save files a build is made of: what the emulators and Tango name them.
 const SAVES: [&str; 4] = ["sav", "sa1", "srm", "raw"];

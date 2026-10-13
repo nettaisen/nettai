@@ -31,8 +31,9 @@ local ARRIVE = new.effect { sprite = asset.sprite("puff"), anim = 3, palette = 0
 local CLAW = new.effect { sprite = asset.sprite("sword-slash"), anim = 0, palette = 0 }
 -- The claw drawn upside down (flip bit 1) and in palette +6.
 local CLAW_FLIP, CLAW_PALETTE = 2, 6
--- An actor whose look is this stands two panels wide.
-local WIDE_LOOK = asset.sprite("wide-navi")
+-- Gregar the Cybeast's sheet: an actor whose look is it stands two panels
+-- wide.
+local GREGAR_LOOK = asset.sprite("gregar-cybeast")
 -- Bodies (of either side) on a panel.
 local BODIES = 0x0F80_0000
 
@@ -46,9 +47,9 @@ local function puff(me: Object, x: number, y: number, arrive: boolean)
     battle.effect(Vec3.new(cx, cy, 0), if arrive then ARRIVE else PUFF, bit32.bxor(me.alliance, me.flip))
 end
 
--- The panel in front of `actor` (two ahead for a wide one).
+-- The panel in front of `actor` (two ahead for Gregar the Cybeast).
 local function in_front(actor: Object): (number, number)
-    local step = if actor:name_look_is(WIDE_LOOK) then 2 else 1
+    local step = if actor:name_look_is(GREGAR_LOOK) then 2 else 1
     return actor.panel_x + actor.facing * step, actor.panel_y
 end
 
