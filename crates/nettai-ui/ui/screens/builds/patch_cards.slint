@@ -15,6 +15,7 @@ import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
+import { LibraryHead } from "folder.slint";
 
 // One line a card writes, and what comes before it in a row of them: nothing, a dot between two of one group, a bar
 // between the groups.
@@ -343,81 +344,22 @@ component CardLibraryRowView inherits Rectangle {
     }
 }
 
-// The sort's direction: an arrow, down for descending. Enter turns it.
-component DirectionButton inherits Rectangle {
-    in property <bool> descending;
-    width: 40px;
-    height: 40px;
-    Cut {
-        cut: 7px;
-        background: hit.pressed ? Theme.line : (hit.has-hover ? Theme.raised-hover : Theme.raised);
-    }
-
-    Path {
-        width: 10px;
-        height: 12px;
-        stroke: Theme.text;
-        stroke-width: 1.5px;
-        commands: root.descending ? "M 5 0 L 5 11 M 1 7 L 5 11 L 9 7" : "M 5 12 L 5 1 M 1 5 L 5 1 L 9 5";
-    }
-
-    hit := Focusable {
-        nav: "lib.direction";
-    }
-}
-
 // The library: its title, the search field, the sort and its direction, and under them its rows. (A phone's sheet
 // has no room for the two titles.)
 component CardsLibraryPane inherits Rectangle {
-    property <length> title-width: Theme.phone ? 0px : title.preferred-width + 12px;
-    property <length> sort-width: Theme.phone ? 132px : 176px;
-    property <length> sort-title-width: Theme.phone ? 0px : sort-title.preferred-width + 12px;
     shake := Shake {
         seq: PatchCardsView.refused-seq;
     }
 
-    title := Label {
+    LibraryHead {
         x: 0;
         y: 0;
-        width: self.preferred-width;
-        height: 40px;
-        visible: !Theme.phone;
-        text: @tr("LIBRARY");
-        color: PatchCardsView.in-library ? Theme.cursor : Theme.muted;
-    }
-
-    Field {
-        x: root.title-width;
-        y: 0;
-        width: parent.width - root.title-width - root.sort-title-width - root.sort-width - 12px - 40px - 12px;
-        nav: "lib.search";
-        text: PatchCardsView.search;
+        width: parent.width;
+        in-library: PatchCardsView.in-library;
+        search: PatchCardsView.search;
         placeholder: @tr("Search cards");
-    }
-
-    sort-title := Label {
-        x: parent.width - 40px - 12px - root.sort-width - 12px - self.width;
-        y: 0;
-        width: self.preferred-width;
-        height: 40px;
-        visible: !Theme.phone;
-        text: @tr("SORT");
-    }
-
-    Select {
-        x: parent.width - 40px - 12px - root.sort-width;
-        y: 0;
-        width: root.sort-width;
-        nav: "lib.sort";
-        value: PatchCardsView.sorts[PatchCardsView.sort];
-    }
-
-    DirectionButton {
-        x: parent.width - 40px;
-        y: 0;
+        sort: PatchCardsView.sorts[PatchCardsView.sort];
         descending: PatchCardsView.descending;
-
-        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     list := ListView {
