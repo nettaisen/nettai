@@ -1031,6 +1031,24 @@ The generated module is 3.3 MB (28,204 lines, 102 components) from 4,316 lines o
 the same. One dependency is new and slow: gamepad-facade's SDL3 is built from its source with cmake, about three
 and a half minutes of a clean build on the loaded machine (gilrs, which it replaces, took 23 seconds), once.
 
+**With Play** (2026-10-12; one script before the screen was written and after, on the branch it was written
+on: dev profile, sccache off, the two crates cleaned with their dependencies built; the load average was 270
+to 330 before and 200 to 230 after, so the CPU times are the ones to compare):
+
+| | Before Play: wall, CPU | With Play: wall, CPU |
+|---|---|---|
+| a clean build of nettai-ui and nettai | 113 s, 28.2 s | 184 s, 45.5 s |
+| nothing changed | 23 s, 3.7 s | 3.2 s, 0.4 s |
+| after one line of Rust changed | 9.5 s, 1.7 s | 7.4 s, 1.8 s |
+| after one value of a .slint file changed | 43 to 48 s, 5.5 s | 33 to 52 s, 7.1 to 7.3 s |
+
+The generated module went from 3.32 MB (102 components) to 5.14 MB (131), which is what the clean build and
+the .slint edit pay for: Play is 1,500 of the UI's 5,800 lines of Slint, with 12 of its 31 conditional
+elements and 4 of its 10 `for`s. It is the screen with the most on it (three parts, three dialogs, a menu of
+five pages and the two builds over a match), and it was 5.35 MB before its conditionals were merged: one
+conditional a part, with what differs on a phone placed and shown by `visible` inside it, where the first
+draft had one for each thing that differs. An edit to the app's Rust costs what it did.
+
 **What trades against it.** Motion (§10) added 0.43 MB of generated Rust (2.76 to 3.19 MB: the clocks and the
 offsets they drive), which is in the figures above. The accessibility backend is off: a screen reader sees
 nothing of the app. And with one renderer, a machine without OpenGL can't run it.
