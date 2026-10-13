@@ -346,11 +346,12 @@ fn pictures(graphics: &nettai_assets::Bundle, held: &[Held]) -> std::collections
         for (version, own) in &versions {
             add(&format!("custom/{version}/form-names"), &[&own.form_names.pixels], NONE, &own.form_names);
         }
-        // A button's states (with its icons) and its picture in the chip
-        // window, which has the words.
+        // A button's states (which may have its label), the icons it gives
+        // and its picture in the chip window, which has the words.
         let mut button = |at: &str, name: &str, b: &nettai_assets::ButtonPictures, with: &dyn Debug| {
-            let states = (b.width, b.height, &b.tiles, &b.sets, b.hidden, &b.cursor, b.uses_digit, b.held_at, (&b.icons, &b.icon_palette, &b.icon_palettes, &b.place));
-            add(&format!("custom/{at}button/{name}"), &[&b.tiles.pixels, &b.icons.pixels], NONE, &(states, with));
+            let states = (b.width, b.height, &b.tiles, &b.sets, b.hidden, &b.cursor, b.uses_digit, b.held_at, &b.place);
+            add(&format!("custom/{at}button/{name}"), &[&b.tiles.pixels], NONE, &(states, with));
+            add(&format!("custom/{at}button/{name}/icons"), &[&b.icons.pixels], NONE, &(&b.icons, &b.icon_palette, &b.icon_palettes));
             // (The first of its palettes is its picture's own, in the
             // pack's own language.)
             add(&format!("custom/{at}button/{name}/picture"), &[&b.picture.tiles.pixels], &[b.picture.palette], &(&b.picture, b.palettes.get(1..)));
@@ -447,34 +448,41 @@ fn every_source_subset() {
             let problems = audit(game, out.path());
             assert!(problems.is_empty(), "{} {mask:04b}: {problems:#?}", game.id());
         }
-        // (EXE5's and EXE4's packs aren't held to their ROMs yet: their
-        // extraction reads most of a pack from the base ROM alone.)
-        if game != Game::Exe6 {
+        // (EXE4's packs aren't held to their ROMs yet: its extraction reads
+        // most of a pack from the base ROM alone.)
+        if game == Game::Exe4 {
             continue;
         }
         let full = &seen[15];
         let mut wrong = Vec::new();
         for (mask, pack) in seen.iter().enumerate() {
-            assert!(pack.keys().eq(full.keys()), "{} {mask:04b}: other pictures than the pack of all four has", game.id());
-            for (name, x) in pack {
+            wrong.extend(pack.keys().filter(|name| !full.contains_key(*name)).map(|name| format!("{mask:04b} {name}: no picture of the pack of all four")));
+            for (name, whole) in full {
                 // The ROMs given, and those of them the game reaches the
                 // picture's pixels in as that picture.
                 let given = mask as u8;
                 let reached = given & !unreached(game, name);
-                let whole = full[name];
-                if x.placeholder {
+                // (A pack of fewer ROMs has no placeholder for a sheet no
+                // name asks for: nothing there is held as a placeholder is.)
+                let x = pack.get(name);
+                if x.is_none_or(|x| x.placeholder) {
                     // No ROM given holds it, as any pack has it.
-                    if let Some(of) = (0..16).find(|&t| !seen[t][name].placeholder && !seen[t][name].empty && seen[t][name].held & reached != 0) {
-                        wrong.push(format!("{mask:04b} {name}: a placeholder, though a ROM given holds what the pack of {of:04b} has"));
+                    let real = |t: &usize| seen[*t].get(name).is_some_and(|v| !v.placeholder && !v.empty && v.held & reached != 0);
+                    if let Some(of) = (0..16).find(real) {
+                        let what = if x.is_some() { "a placeholder" } else { "not there" };
+                        wrong.push(format!("{mask:04b} {name}: {what}, though a ROM given holds what the pack of {of:04b} has"));
                     }
-                } else if !x.empty && x.held & given == 0 {
+                    continue;
+                }
+                let x = x.unwrap();
+                if !x.empty && x.held & given == 0 {
                     wrong.push(format!("{mask:04b} {name}: in no ROM given"));
                 } else if x.all != whole.all {
                     // The pack of all four's is another: no ROM given has
                     // its pixels, and none gives it alone.
                     if x.pixels != whole.pixels && !whole.empty && whole.held & reached != 0 {
                         wrong.push(format!("{mask:04b} {name}: not the pack of all four's, whose pixels a ROM given holds"));
-                    } else if let Some(rom) = (0..4).find(|&r| mask & (1 << r) != 0 && seen[1 << r][name].all == whole.all) {
+                    } else if let Some(rom) = (0..4).find(|&r| mask & (1 << r) != 0 && seen[1 << r].get(name).is_some_and(|v| v.all == whole.all)) {
                         wrong.push(format!("{mask:04b} {name}: not the pack of all four's, which ROM {rom} gives alone"));
                     }
                 }
