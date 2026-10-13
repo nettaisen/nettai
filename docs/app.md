@@ -330,7 +330,9 @@ screen may start one beside something of its own (Play, while an invite waits fo
   Choosing an added row tells the starter and leaves the menu as it is (the starter closes it with
   `shell.close_menu()` if it wants, or ends the session). It keeps nothing of the dummy's setup.
 - One shown in the starter's own `Picture` (`full` off) lasts while that screen is shown: it ends by itself if
-  another screen is gone to, and when another battle starts in its place.
+  another screen is gone to, and when another battle starts in its place. The keys and a gamepad are the
+  battle's there as anywhere; the phone's pad is drawn by the battle's own screen, which only a battle that
+  fills the window has, so on a phone such a session has no pad unless its screen fills the window with it.
 - A dialog asked while it runs (`Shell::ask`) is answered to the battle's owner, as ever: Training passes the
   answer on to the starter (`answered`, by the dialog's tag).
 

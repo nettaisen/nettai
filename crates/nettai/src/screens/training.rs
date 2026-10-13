@@ -101,8 +101,9 @@ struct Session {
     full: bool,
     /// The rows its starter added: the menu's first.
     added: usize,
-    /// What the dummy does.
+    /// What the dummy does, and whether the input display is on.
     opponent: Opponent,
+    inputs: bool,
     /// The menu is open, and the row the focus was last on in it (it opens there).
     menu_open: bool,
     menu_focus: Key,
@@ -197,18 +198,19 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         cards[1].name = std::mem::take(&mut cards[1].build);
         cards
     });
+    let inputs = inputs_on(&shell.settings);
     let session = Session {
         from: start.from,
         full: start.full,
         added: start.rows.len(),
         opponent: start.opponent,
+        inputs,
         menu_open: false,
         // (The menu opens on its first row: a row its starter added, else the first option.)
         menu_focus: if start.rows.is_empty() { Key::new("menu.option", ROWS.iter().position(|o| values(*o) > 0).unwrap_or(0) as i32) } else { Key::new("menu.added", 0) },
         round: None,
         held: [0; 2],
     };
-    let inputs = inputs_on(&shell.settings);
     let rows: Vec<TrainingRow> = start
         .rows
         .iter()
@@ -549,8 +551,7 @@ impl Training {
         let Some(mut session) = shell.training.session.take() else { return };
         let option = (index as usize).checked_sub(session.added).and_then(|at| ROWS.get(at)).copied();
         if let Some(option) = option.filter(|o| values(*o) > 0) {
-            let inputs = inputs_on(&shell.settings);
-            let next = (value(option, session.opponent, inputs) as i32 + by).rem_euclid(values(option) as i32) as usize;
+            let next = (value(option, session.opponent, session.inputs) as i32 + by).rem_euclid(values(option) as i32) as usize;
             // (A session another screen started keeps nothing of the dummy's setup.)
             let keep = session.from.is_none();
             match option {
@@ -569,6 +570,7 @@ impl Training {
                 TrainingOption::InputDisplay => {
                     shell.settings.remembered.insert(KEPT_INPUTS.into(), if next == 1 { "on" } else { "off" }.into());
                     // (What each side holds is told from the next frame.)
+                    session.inputs = next == 1;
                     session.held = [0; 2];
                     let ui = shell.ui();
                     let view = ui.global::<TrainingView>();
@@ -749,6 +751,11 @@ impl Screen for Training {
         // The entry's arena, once the builds chosen have stayed a moment (and the screen is the one on screen:
         // while the one before it leaves, the picture's room is still that one's).
         if !shown || shell.battle.is_some() || shell.loading_battle() || shell.ready().is_none() {
+            // (Something else has the window: when the entry shows again, the arena is shown anew.)
+            if self.arena_frames != 0 {
+                self.arena_frames = 0;
+                shell.ui().global::<TrainingView>().set_arena(false);
+            }
             return;
         }
         let ui = shell.ui();
@@ -781,7 +788,7 @@ impl Screen for Training {
         let battle = b.stage.player.battle();
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
-        let held = if inputs_on(&shell.settings) { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
+        let held = if session.inputs { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {
             return;
