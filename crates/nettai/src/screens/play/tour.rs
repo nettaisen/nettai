@@ -864,40 +864,26 @@ pub fn apart(add: &mut dyn FnMut(u64, Step), hosts: bool) {
 /// join and a ready mark stamping. `burst` adds a burst's steps (its name, the milliseconds its shots are
 /// taken at, what starts the animation).
 pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
-    const SETTLE: u64 = 260;
-    fn step(f: impl Fn(&mut App) + 'static) -> Step {
-        Box::new(move |_, app, _| f(&mut app.borrow_mut()))
-    }
-    fn press(app: &mut App, id: &str) {
-        app.shell.nav.focus(id, 0);
-        app.input(crate::shell::NavInput::Activate(id.into(), 0));
-    }
-    fn until(come: impl Fn(&AppWindow) -> bool + 'static) -> Step {
-        let come = Rc::new(come);
-        Box::new(move |_, _, tour: &Rc<Tour>| {
-            let come = come.clone();
-            tour.wait_until(move |app| come(&app.shell.ui()));
-        })
-    }
     add(
         SETTLE,
         step(|app| {
             RIG.with(|rig| *rig.borrow_mut() = Some(Rig::new()));
             app.go_now(ScreenId::Play);
-            press(app, "invite");
         }),
     );
-    add(SETTLE, until(|ui| ui.global::<PlayView>().get_part() == PlayPart::Waiting));
+    // (The screen arrives first: a press is for a control that is there.)
+    add(800, press("invite"));
+    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
-    add(SETTLE, until(|ui| ui.global::<PlayView>().get_part() == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
+    add(SETTLE, until(|_, ui| together(ui)));
     // (The other player has come by now: their card is taken away, and comes as it came.)
-    add(SETTLE, Box::new(|ui, _, _| ui.global::<PlayView>().set_their_present(false)));
+    add(800, Box::new(|ui, _, _| ui.global::<PlayView>().set_their_present(false)));
     burst(add, "lobby-opponent-joins", &[0, 40, 80, 130, 200, 320], Box::new(|ui, _, _| ui.global::<PlayView>().set_their_present(true)));
-    burst(add, "lobby-ready-stamps", &[0, 30, 60, 100, 160, 280], step(|app| press(app, "lobby.ready")));
+    burst(add, "lobby-ready-stamps", &[0, 30, 60, 100, 160, 280], press("lobby.ready"));
+    add(SETTLE, press("lobby.leave"));
     add(
         SETTLE,
         step(|app| {
-            press(app, "lobby.leave");
             RIG.with(|rig| *rig.borrow_mut() = None);
             app.go_now(ScreenId::Menu);
         }),
