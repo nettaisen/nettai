@@ -462,10 +462,20 @@ fn typed(text: &'static str) -> Step {
 
 /// A control of Play pressed, as a click presses it.
 fn press(id: &'static str) -> Step {
+    press_at(id, 0)
+}
+
+/// One of several controls of a name, pressed.
+fn press_at(id: &'static str, index: i32) -> Step {
     step(move |app| {
-        app.shell.nav.focus(id, 0);
-        app.input(crate::shell::NavInput::Activate(id.into(), 0));
+        app.shell.nav.focus(id, index);
+        app.input(crate::shell::NavInput::Activate(id.into(), index));
     })
+}
+
+/// The wait's training session is being played.
+fn training(app: &App) -> bool {
+    app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Training && b.playing())
 }
 
 /// The step after waits for `come` (or a minute).
@@ -495,9 +505,10 @@ fn in_match(app: &App) -> bool {
     app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Online)
 }
 
-/// Play's steps of the pass, in `lang` at `size`: `add` takes a step and the time it is given before it;
-/// `shot` adds a shot's steps (its name; whether it is the first or the second of a pair).
-pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
+/// Play's steps of the pass, in a language at a size (`phone`: an upright phone's): `add` takes a step and
+/// the time it is given before it; `shot` adds a shot's steps (its name; whether it is the first or the
+/// second of a pair).
+pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), phone: bool) {
     // The rig: the pass's own server. With no build of the game, one button.
     add(
         SETTLE,
@@ -574,14 +585,27 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-direct-bad-address", Pair::None);
     add(SETTLE, press("direct.cancel"));
 
-    // An invite: its code from the server, and a training battle beside it; the training menu over that.
+    // An invite: its code from the server, and a training session beside it (on a phone, asked for under
+    // it, and filling the window); the training menu over that, with Play's rows at its top. Copy invite
+    // code closes the menu; on a phone, Stop training is the way back to the invite.
     add(SETTLE, press("invite"));
     add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    if phone {
+        shot(add, "play-waiting", Pair::None);
+        add(SETTLE, press("wait.train"));
+    }
+    add(SETTLE, until(|app, _| training(app)));
     add(2500, step(|_| {}));
-    shot(add, "play-waiting", Pair::None);
+    shot(add, if phone { "play-waiting-training" } else { "play-waiting" }, Pair::None);
     add(SETTLE, step(|app| app.shell.open_menu()));
     shot(add, "play-waiting-menu", Pair::None);
-    add(SETTLE, step(|app| app.shell.close_menu()));
+    add(SETTLE, press_at("menu.added", 0));
+    add(SETTLE, until(|app, _| training(app)));
+    if phone {
+        add(SETTLE, step(|app| app.shell.open_menu()));
+        add(SETTLE, press_at("menu.added", 1));
+        add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting));
+    }
 
     // The second player joins by the code: the lobby. The focus a step along; a setting changed under it
     // (the match's, then the player's own).
@@ -721,6 +745,17 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, until(|_, ui| part(ui) == PlayPart::Lobby && ui.global::<PlayView>().get_their_present()));
     add(SETTLE, press("lobby.leave"));
     add(SETTLE, until(|_, ui| part(ui) == PlayPart::Builds));
+
+    // An invite cancelled from the training menu: the builds again.
+    add(SETTLE, press("invite"));
+    add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
+    if phone {
+        add(SETTLE, press("wait.train"));
+    }
+    add(SETTLE, until(|app, _| training(app)));
+    add(SETTLE, step(|app| app.shell.open_menu()));
+    add(SETTLE, press_at("menu.added", if phone { 2 } else { 1 }));
+    add(SETTLE, until(|app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Builds));
 
     // The other player comes with a build that breaks a rule: both ready, and the app's lobby refuses it and
     // ends, saying so.

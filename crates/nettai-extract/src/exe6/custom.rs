@@ -3,80 +3,96 @@
 //! palettes in place at the battle's start, and the screen copies the rest
 //! as it runs (`sub_80284E2` the chip window, `sub_8028250` the slots,
 //! `off_802A744` its sprites).
+//!
+//! Each block is stated by where the game's own pointer to it is (`Place`,
+//! as the HUD's are), so any of the four ROMs gives what it holds: the
+//! window and its parts are the same in the four, the chip window's worded
+//! pictures each release's own, and a version's own pictures its ROMs'.
 
 use crate::decode::patches;
-use crate::exe6::{Rom, u32at};
+use crate::exe6::hud::CHIPS;
+use crate::exe6::{Place, Rom, Roms, Source, Version, u32at};
 use nettai_assets::{
     ButtonPictures, ButtonSets, ChipArt, CursorPlace, CustomLayout, CustomScreen, Emblem, MapEntry,
     Palette, Picture, SlotPictures, Tiles, VersionPictures, Versioned, palettes_from_bytes,
 };
 use nettai_content::names::AssetNames;
 
-/// The window frame's tiles, loaded at tile 1 (0x87 tiles).
-const WINDOW_TILES: (u32, usize) = (0x086E_1D38, 0x10E0);
+/// The window frame's tiles, loaded at tile 1 (0x87 tiles; the battle's
+/// HUD load list's, `off_801ECB4`, as the three blocks after it are).
+const WINDOW_TILES: (Place, usize) = (Place::pointer(0x0801_ECF0, 0x0801_F114), 0x10E0);
 /// The picked-chip column's cells, at tile 0x89.
-const COLUMN_CELLS: (u32, usize) = (0x086E_2E18, 0x80);
+const COLUMN_CELLS: (Place, usize) = (Place::pointer(0x0801_ECFC, 0x0801_F120), 0x80);
 /// The late turns' block, at tile 0x8D (`sub_8029D34`).
-const TURN_LIMIT: (u32, usize) = (0x086F_2500, 0x1C0);
+const TURN_LIMIT: (Place, usize) = (Place::pointer(0x0801_ED38, 0x0801_F15C), 0x1C0);
 /// The enemy names' bar, at tile 0x1D6 (`sub_801E4F4`).
-const NAME_BAR: (u32, usize) = (0x086E_609C, 0x80);
+const NAME_BAR: (Place, usize) = (Place::pointer(0x0801_ED50, 0x0801_F174), 0x80);
 /// The window's 15x20 maps: without and with the Cross tab (`sub_8026840`),
 /// and the patch list laid over them from tile 0x9B.
-const WINDOW_MAPS: [u32; 2] = [0x086E_625C, 0x086E_64B4];
-const WINDOW_PATCHES: (u32, u16) = (0x0802_7B2C, 0x9B);
+const WINDOW_MAPS: [Place; 2] = [Place::pointer(0x0802_69A0, 0x0802_6DB0), Place::pointer(0x0802_69A4, 0x0802_6DB4)];
+const WINDOW_PATCHES: (Place, u16) = (Place::pointer(0x0802_69AC, 0x0802_6DBC), 0x9B);
 /// The Cross window's maps (`sub_8027834`: three opening steps, then one to
 /// five Crosses) and its patch list, from tile 0xE1.
-const CROSS_MAPS: (u32, u32) = (0x086E_670C, 8);
-const CROSS_PATCHES: (u32, u16) = (0x0802_7B4A, 0xE1);
+const CROSS_MAPS: (Place, u32) = (Place::pointer(0x0802_78E0, 0x0802_7CF4), 8);
+const CROSS_PATCHES: (Place, u16) = (Place::pointer(0x0802_7904, 0x0802_7D18), 0xE1);
 const MAP_CELLS: u32 = 15 * 20;
 /// Background palette 9 by the chip window's class (`byte_86E587C`), and
 /// palettes 11, 12 and 14 (the HUD load list).
-const FRAME_PALETTES: (u32, usize) = (0x086E_587C, 4);
-const ICON_PALETTE: u32 = 0x0872_CFF4;
-const GRAY_PALETTE: u32 = 0x0872_CFB4;
-const OTHER_PALETTE: u32 = 0x086E_58FC;
-/// ChipData: 0x2C bytes a chip; +0x24 its picture, +0x28 the picture's
-/// palette.
+const FRAME_PALETTES: (Place, usize) = (Place::pointer(0x0802_8818, 0x0802_8C2C), 4);
+const ICON_PALETTE: Place = Place::pointer(0x0801_ED08, 0x0801_F12C);
+const GRAY_PALETTE: Place = Place::pointer(0x0801_ED14, 0x0801_F138);
+const OTHER_PALETTE: Place = Place::pointer(0x0801_ED2C, 0x0801_F150);
+/// ChipData (`hud::CHIPS`): 0x2C bytes a chip; +0x24 its picture, +0x28
+/// the picture's palette.
 const CHIP_COUNT: u32 = 411;
 const PICTURE_BYTES: usize = 0x540;
-/// The chip window's other pictures and their palettes (`sub_80286D4`,
-/// `sub_802871C`, `sub_8028754`, `sub_80287A4`, `sub_802877C`).
-const OK: (u32, u32) = (0x0872_2AF4, 0x0872_5874);
-const OK_PICKED: (u32, u32) = (0x0872_25B4, 0x0872_57F4);
-const OTHER: (u32, u32) = (0x0872_25B4, 0x0872_57D4);
-const REDEAL: (u32, u32) = (0x0872_2AF4, 0x0872_5854);
-const SCRAP: (u32, u32) = (0x0873_3E74, 0x0873_43D4);
+/// The chip window's other pictures and their palettes (the literals of
+/// `sub_80286D4`, `sub_8028754`, `sub_80287A4`, `sub_802877C`): each
+/// release's own words.
+pub(crate) const OK: (Place, Place) = (Place::pointer(0x0802_8708, 0x0802_8B1C), Place::pointer(0x0802_8714, 0x0802_8B28));
+pub(crate) const OK_PICKED: (Place, Place) = (Place::pointer(0x0802_870C, 0x0802_8B20), Place::pointer(0x0802_8718, 0x0802_8B2C));
+pub(crate) const OTHER: (Place, Place) = (Place::pointer(0x0802_8774, 0x0802_8B88), Place::pointer(0x0802_8778, 0x0802_8B8C));
+pub(crate) const REDEAL: (Place, Place) = (Place::pointer(0x0802_87EC, 0x0802_8C00), Place::pointer(0x0802_87F8, 0x0802_8C0C));
+pub(crate) const SCRAP: (Place, Place) = (Place::pointer(0x0802_879C, 0x0802_8BB0), Place::pointer(0x0802_87A0, 0x0802_8BB4));
 /// Chip codes (8x16, `dword_86E2E98`), element icons and their colors
 /// (`dword_86E3598`, `dword_86E3B18`: six colors each), damage digits
 /// (`dword_86E411C`).
-const CODES: (u32, usize) = (0x086E_2E98, 28);
-const ELEMENTS: (u32, usize) = (0x086E_3598, 11);
-const ELEMENT_COLORS: u32 = 0x086E_3B18;
-const DIGITS: (u32, usize) = (0x086E_411C, 11);
+const CODES: (Place, usize) = (Place::pointer(0x0802_8640, 0x0802_8A54), 28);
+const ELEMENTS: (Place, usize) = (Place::pointer(0x0802_8648, 0x0802_8A5C), 11);
+const ELEMENT_COLORS: Place = Place::pointer(0x0802_8680, 0x0802_8A94);
+const DIGITS: (Place, usize) = (Place::pointer(0x0802_8650, 0x0802_8A64), 11);
 /// The slots' codes (16x8, `dword_86E591C`), the empty slot's icon, and the
 /// re-deal and scrap buttons (`dword_86E441C`, `dword_86E4D9C`; Beast
 /// Out's, `byte_86E79CC`, is the version's).
-const SLOT_CODES: (u32, usize) = (0x086E_591C, 28);
-const EMPTY_ICON: u32 = 0x086E_601C;
-const REDEAL_BUTTONS: (u32, usize) = (0x086E_441C, 0x480);
+const SLOT_CODES: (Place, usize) = (Place::pointer(0x0802_8230, 0x0802_8644), 28);
+const EMPTY_ICON: Place = Place::pointer(0x0802_81C0, 0x0802_85D4);
+const REDEAL_BUTTONS: (Place, usize) = (Place::pointer(0x0802_835C, 0x0802_8770), 0x480);
 /// DustCross's has a fourth state, pressed (`sub_8028340`: 0x180 bytes a
 /// state).
-const SCRAP_BUTTONS: (u32, usize) = (0x086E_4D9C, 0x600);
-/// Sprites: the cursor's corner (`off_802A744`), the navis' emblems and
-/// their palettes by navi (`sub_802812C`), the Regular chip's frame
-/// (`sub_802899C`).
-const CURSOR: (u32, usize) = (0x086E_55BC, 0x40);
+const SCRAP_BUTTONS: (Place, usize) = (Place::pointer(0x0802_8360, 0x0802_8774), 0x600);
+/// Sprites: the cursor's corner (`off_802A744`: the list is four bytes
+/// earlier in the Gregar ROMs), the navis' emblems and their palettes by
+/// navi (`sub_802812C`), the Regular chip's frame (`sub_802899C`).
+const CURSOR: (Place, usize) = (Place::pointer_in_each([0x0802_A744, 0x0802_A740, 0x0802_AB4C, 0x0802_AB48]), 0x40);
 /// The Cross window's cursor (`off_802A744`'s fourth block, to sprite tile
 /// 0x392).
-const CROSS_CURSOR: (u32, usize) = (0x086E_57FC, 0x80);
-/// Sprite palette 14, which the battle loads (`byte_86A5D40`).
-const CROSS_CURSOR_PALETTE: u32 = 0x086A_5D40;
-const EMBLEM_OF: u32 = 0x0802_819C;
-const EMBLEM_PALETTE_OF: u32 = 0x0802_818C;
+const CROSS_CURSOR: (Place, usize) = (Place::pointer_in_each([0x0802_A768, 0x0802_A764, 0x0802_AB70, 0x0802_AB6C]), 0x80);
+/// Sprite palette 14, which the battle loads (`byte_86A5D40`, by the load
+/// list `off_81271C8`).
+const CROSS_CURSOR_PALETTE: Place = Place::pointer_in_each([0x0812_7224, 0x0812_9000, 0x0812_F200, 0x0813_0FC8]);
+/// `sub_802812C`: which of its ROM's seven emblems a navi shows, and in
+/// which of the palettes (`byte_802819C`, `byte_802818C`); the pictures
+/// (`dword_86F5834`) and the palettes (`byte_86E56FC`).
+const EMBLEM_OF: Place = Place::pointer(0x0802_8198, 0x0802_85AC);
+const EMBLEM_PALETTE_OF: Place = Place::pointer(0x0802_8188, 0x0802_859C);
+const EMBLEMS: Place = Place::pointer(0x0802_8180, 0x0802_8594);
+const EMBLEM_PALETTES: Place = Place::pointer(0x0802_8184, 0x0802_8598);
 const LINK_NAVIS: u8 = 12;
-/// The link navis whose own emblems the Gregar ROM has (navis 1 to 5,
-/// HeatMan to ChargeMan: its version's); the others' are the Falzar ROM's.
+/// The link navis whose own emblems only a version's ROMs have (navis 1
+/// to 5, HeatMan to ChargeMan: Gregar's; 6 to 10, SpoutMan to GroundMan:
+/// Falzar's); MegaMan's and ProtoMan's are the same in every ROM.
 const GREGAR_NAVIS: std::ops::RangeInclusive<u8> = 1..=5;
+const FALZAR_NAVIS: std::ops::RangeInclusive<u8> = 6..=10;
 
 /// The names EXE6's rules give their buttons (content/exe6/rules/init.luau:
 /// ChpShufl's `redeal`, DustCross's `scrap`, Beast Out's `beast_out`),
@@ -163,65 +179,28 @@ const ROW_BUTTON_CURSOR: CursorPlace = CursorPlace {
         ],
     ],
 };
-const REGULAR: (u32, usize) = (0x086E_1238, 0x400);
+const REGULAR: (Place, usize) = (Place::pointer(0x0802_89D8, 0x0802_8DEC), 0x400);
 /// The Program Advance animation's names' colors (`byte_802BA48`: three
 /// sets of four).
-const ADVANCE_NAME_COLORS: (u32, u32) = (0x0802_BA48, 3);
+const ADVANCE_NAME_COLORS: (Place, u32) = (Place::pointer(0x0802_BA10, 0x0802_BE20), 3);
 
-/// What a version's own custom screen shows (`VersionPictures`), at its
-/// ROM's addresses (the code is at the same places in both US ROMs; the
-/// data it points at moved).
-struct VersionAddresses {
-    beast_out: u32,
-    beast_out_palettes: u32,
-    beast_buttons: u32,
-    /// `sub_802812C`: the seven emblems' pictures, and their palettes.
-    emblems: u32,
-    emblem_palettes: u32,
-    /// `sub_8029D94`'s `dword_86E7DCC`: ten names of 0x240 bytes.
-    form_names: u32,
-    /// `sub_8029EAC`'s `dword_86E944C`: ten palettes.
-    form_name_palettes: u32,
-}
+/// What a version's own custom screen shows (`VersionPictures`): the
+/// same code's literals in every ROM, each ROM holding its own version's.
+/// The Beast Out button's picture and its palettes (`sub_802871C`'s
+/// literals: the BeastOut chip's record's picture) and its states
+/// (`sub_8028250`'s `byte_86E79CC`); the forms' names (`sub_8029D94`'s
+/// `dword_86E7DCC`: ten names of 0x240 bytes, in the release's words) and
+/// their palettes (`sub_8029EAC`'s `dword_86E944C`: ten).
+const BEAST_OUT: (Place, Place) = (Place::pointer(0x0802_874C, 0x0802_8B60), Place::pointer(0x0802_8750, 0x0802_8B64));
+const BEAST_BUTTONS: (Place, usize) = (Place::pointer(0x0802_83A0, 0x0802_87B4), 0x400);
+pub(crate) const FORM_NAMES: (Place, usize) = (Place::pointer(0x0802_9DD8, 0x0802_A1EC), 10 * 0x240);
+const FORM_NAME_PALETTES: (Place, u32) = (Place::pointer(0x0802_9EC0, 0x0802_A2D4), 10);
 
-const FALZAR: VersionAddresses = VersionAddresses {
-    beast_out: 0x0872_3034,
-    beast_out_palettes: 0x0872_5814,
-    beast_buttons: 0x086E_79CC,
-    emblems: 0x086F_5834,
-    emblem_palettes: 0x086E_56FC,
-    form_names: 0x086E_7DCC,
-    form_name_palettes: 0x086E_944C,
-};
-
-/// The US Gregar ROM's (`MEGAMAN6_GXXBR5E`), read off the same code's
-/// literal pools.
-const GREGAR: VersionAddresses = VersionAddresses {
-    beast_out: 0x0872_0F70,
-    beast_out_palettes: 0x0872_3750,
-    beast_buttons: 0x086E_5950,
-    emblems: 0x086F_3770,
-    emblem_palettes: 0x086E_3680,
-    form_names: 0x086E_5D50,
-    form_name_palettes: 0x086E_73D0,
-};
-
-const BEAST_BUTTON_BYTES: usize = 0x400;
-pub(crate) const FORM_NAMES: (usize, usize) = (10, 0x240);
-const CROSS_PALETTE_COUNT: u32 = 10;
-
-/// The BeastOut chip, whose record's picture is the Beast Out button's.
-const BEAST_OUT_CHIP: u32 = 0x13F;
-
-/// A version's own pictures: its US ROM's (`rom`, at `a`); without it the
-/// Beast Out button's picture is its Japanese ROM's (`jp`: the BeastOut
-/// chip's record's there; the Gregar ROMs' differ in two pixels, `jp`).
-fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPictures {
-    let palettes = |at: u32, n: u32| {
-        (0..n)
-            .map(|i| palette(rom, at + 32 * i))
-            .collect::<Vec<_>>()
-    };
+/// A version's own pictures, from a ROM of that version (the Gregar ROMs'
+/// Beast Out pictures differ in two pixels, `jp`: the US ROM's where both
+/// are given); the forms' names in English are its US ROM's alone.
+fn version_pictures(roms: &Roms, version: Version) -> VersionPictures {
+    let (art, words) = (roms.of(version), roms.us_of(version));
     // The Beast Out button, the version's Beast's (`sub_8028250`: 4x2 a
     // set: selectable, unavailable, battle mode 1's, and the hidden
     // slot's), with its picture in the chip window. The picture's palette
@@ -229,21 +208,11 @@ fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPicture
     // +6 numbers, which EXE5's soul button sets for a Chaos Unison,
     // 0x08024540, and nothing in EXE6 sets): the pack leaves the second
     // out.
-    // (The picture's palettes are its own alone, whichever ROM it is of:
-    // a pack of the Japanese ROMs alone has the picture too.)
-    let picture = if !rom.is_present() && jp.is_present() {
-        let record = crate::exe6::jp::CHIP_DATA + 0x2C * BEAST_OUT_CHIP;
-        picture(jp, (u32at(jp, record + 0x24), u32at(jp, record + 0x28)))
-    } else {
-        Picture {
-            tiles: tiles(rom, (a.beast_out, PICTURE_BYTES)),
-            palette: palette(rom, a.beast_out_palettes),
-        }
-    };
+    let picture = picture(art, BEAST_OUT);
     let beast_out = ButtonPictures {
         width: 4,
         height: 2,
-        tiles: tiles(rom, (a.beast_buttons, BEAST_BUTTON_BYTES)),
+        tiles: tiles(art, BEAST_BUTTONS),
         sets: ButtonSets::Other,
         hidden: Some(3),
         cursor: SPECIAL_CURSOR,
@@ -253,20 +222,23 @@ fn version_pictures(rom: &Rom, jp: &Rom, a: &VersionAddresses) -> VersionPicture
     };
     VersionPictures {
         buttons: vec![(BEAST_OUT_BUTTON.into(), beast_out)],
-        form_names: tiles(rom, (a.form_names, FORM_NAMES.0 * FORM_NAMES.1)),
-        form_name_palettes: palettes(a.form_name_palettes, CROSS_PALETTE_COUNT),
+        form_names: tiles(words, FORM_NAMES),
+        form_name_palettes: palettes(art, FORM_NAME_PALETTES),
     }
 }
 
 /// A button two slots wide in the slots' row (`sub_8028250`: twelve tiles
 /// a state, the two slots' icons and codes), with its picture in the chip
-/// window.
-fn row_button(rom: &Rom, buttons: (u32, usize), details: (u32, u32)) -> ButtonPictures {
-    let picture = picture(rom, details);
+/// window: the states from `art`, the worded picture from `words`.
+fn row_button(art: Source, words: Source, buttons: (Place, usize), details: (Place, Place)) -> ButtonPictures {
+    if !art.is_present() {
+        return crate::placeholders::button(2, 3);
+    }
+    let picture = picture(words, details);
     ButtonPictures {
         width: 2,
         height: 3,
-        tiles: tiles(rom, buttons),
+        tiles: tiles(art, buttons),
         sets: ButtonSets::Each,
         cursor: ROW_BUTTON_CURSOR,
         palettes: vec![picture.palette],
@@ -277,51 +249,71 @@ fn row_button(rom: &Rom, buttons: (u32, usize), details: (u32, u32)) -> ButtonPi
 
 /// The navis' emblems (`sub_802812C`): navi n's picture is the ROM's
 /// `byte_802819C[n]`th and its palette the `byte_802818C[n]`th, the same
-/// tables and palettes in both ROMs. A ROM has pictures for MegaMan, its
+/// tables and palettes in every ROM. A ROM has pictures for MegaMan, its
 /// own version's five link navis and ProtoMan, and shows the other
 /// version's five with its own five's pictures (a Falzar console's HeatMan
 /// has SpoutMan's, in HeatMan's colors). The pack has each navi's own, from
-/// the ROM that has it, under the navi's key (`names`): a navi compat
+/// a ROM that has it, under the navi's key (`names`): a navi compat
 /// doesn't name has none.
-fn emblems(roms: &crate::exe6::Roms, names: &AssetNames) -> Vec<Emblem> {
+fn emblems(roms: &Roms, names: &AssetNames) -> Vec<Emblem> {
     (0..LINK_NAVIS)
         .filter_map(|n| {
-            let (rom, a) = if GREGAR_NAVIS.contains(&n) {
-                (roms.gregar, &GREGAR)
+            let src = if GREGAR_NAVIS.contains(&n) {
+                roms.of(Version::Gregar)
+            } else if FALZAR_NAVIS.contains(&n) {
+                roms.of(Version::Falzar)
             } else {
-                (roms.falzar, &FALZAR)
+                roms.any()
             };
-            if !rom.is_present() {
+            if !src.is_present() {
                 return None;
             }
-            let picture = rom.u8(EMBLEM_OF + n as u32) as u32;
-            let color = rom.u8(EMBLEM_PALETTE_OF + n as u32) as u32;
+            let rom = src.rom;
+            let picture = rom.u8(src.at(EMBLEM_OF) + n as u32) as u32;
+            let color = rom.u8(src.at(EMBLEM_PALETTE_OF) + n as u32) as u32;
             Some(Emblem {
                 navi: names.navis.get(&n)?.clone(),
-                tiles: tiles(rom, (a.emblems + 0x80 * picture, 0x80)),
-                palette: palette(rom, a.emblem_palettes + 32 * color),
+                tiles: crate::exe6::hud::tiles(rom, src.at(EMBLEMS) + 0x80 * picture, 0x80),
+                palette: palette_at(rom, src.at(EMBLEM_PALETTES) + 32 * color),
             })
         })
         .collect()
 }
 
-fn tiles(rom: &Rom, (a, len): (u32, usize)) -> Tiles {
-    crate::exe6::hud::tiles(rom, a, len)
+/// A block's tiles in a source: placeholders if the source isn't there.
+pub(crate) fn tiles(src: Source, (place, len): (Place, usize)) -> Tiles {
+    if !src.is_present() {
+        return crate::placeholders::tiles(len / 32);
+    }
+    crate::exe6::hud::tiles(src.rom, src.at(place), len)
 }
 
 /// A palette as the hardware shows it: bit 15 of a color is ignored
 /// (the pictures of the chips the US release cut hold 0xCCCC).
-fn palette(rom: &Rom, a: u32) -> Palette {
-    if !rom.is_present() {
-        return crate::placeholders::PALETTE;
-    }
+fn palette_at(rom: &Rom, a: u32) -> Palette {
     palettes_from_bytes(rom.bytes(a, 32))[0].map(|c| c & 0x7FFF)
 }
 
-pub(crate) fn picture(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
+/// The first `n` palettes of a block in a source.
+fn palettes(src: Source, (place, n): (Place, u32)) -> Vec<Palette> {
+    if !src.is_present() {
+        return vec![crate::placeholders::PALETTE; n as usize];
+    }
+    (0..n).map(|i| palette_at(src.rom, src.at(place) + 32 * i)).collect()
+}
+
+/// A picture of the chip window in a source, with its palette.
+pub(crate) fn picture(src: Source, (gfx, pal): (Place, Place)) -> Picture {
+    if !src.is_present() {
+        return crate::placeholders::picture();
+    }
+    picture_at(src.rom, (src.at(gfx), src.at(pal)))
+}
+
+fn picture_at(rom: &Rom, (gfx, pal): (u32, u32)) -> Picture {
     Picture {
-        tiles: tiles(rom, (gfx, PICTURE_BYTES)),
-        palette: palette(rom, pal),
+        tiles: crate::exe6::hud::tiles(rom, gfx, PICTURE_BYTES),
+        palette: palette_at(rom, pal),
     }
 }
 
@@ -336,93 +328,78 @@ fn rom_pointer(p: u32) -> bool {
 }
 
 /// The custom screen's graphics; `names` gives the chips' pictures their
-/// chips' keys. A Gregar console's own pictures are the US Gregar ROM's,
-/// where they differ; a chip's picture is its US ROM's where there is one
-/// (`gregar::chip_source`), and a Japanese ROM's for the chips the US ROMs
-/// have a placeholder for (`jp::CHIP_PICTURES`).
-pub fn custom(roms: &crate::exe6::Roms, names: &AssetNames) -> CustomScreen {
-    let (rom, gregar) = (&roms.falzar, &roms.gregar);
-    let mut versioned = Versioned::new("falzar", version_pictures(rom, roms.falzar_jp, &FALZAR));
-    let own = version_pictures(gregar, roms.gregar_jp, &GREGAR);
-    if own != versioned.base || !rom.is_present() || !gregar.is_present() {
-        versioned.versions.push(("gregar".into(), own));
-    }
-    if !rom.is_present() {
-        let mut c = crate::placeholders::custom();
-        c.layout = LAYOUT;
-        c.buttons = vec![
-            (REDEAL_BUTTON.into(), crate::placeholders::button(2, 3)),
-            (SCRAP_BUTTON.into(), crate::placeholders::button(2, 3)),
-        ];
-        c.versioned = versioned;
-        c.chip_art = (0..CHIP_COUNT)
-            .map(|id| chip_art(roms, names, id))
-            .collect();
-        c.emblems = emblems(roms, names);
-        return c;
-    }
-    let glyphs = |(a, n): (u32, usize)| tiles(rom, (a, 0x40 * n));
-    let palettes = |(a, n): (u32, usize)| {
-        (0..n as u32)
-            .map(|i| palette(rom, a + 32 * i))
-            .collect::<Vec<_>>()
-    };
-    CustomScreen {
+/// chips' keys. The window and its parts are whichever ROM's is there
+/// (`drawn`), the chip window's worded pictures a US ROM's, each version's
+/// own pictures a ROM's of that version (`version_pictures`); a chip's
+/// picture is its US ROM's where there is one (`gregar::chip_source`), and
+/// a Japanese ROM's for the chips the US ROMs have a placeholder for
+/// (`jp::CHIP_PICTURES`). What no ROM given holds is a placeholder.
+pub fn custom(roms: &Roms, names: &AssetNames) -> CustomScreen {
+    let (art, words) = (roms.any(), roms.us());
+    let mut versioned = Versioned::new(Version::Falzar.name(), version_pictures(roms, Version::Falzar));
+    versioned
+        .versions
+        .push((Version::Gregar.name().into(), version_pictures(roms, Version::Gregar)));
+    let c = CustomScreen {
         layout: LAYOUT,
         buttons: vec![
-            (
-                REDEAL_BUTTON.into(),
-                row_button(rom, REDEAL_BUTTONS, REDEAL),
-            ),
-            (SCRAP_BUTTON.into(), row_button(rom, SCRAP_BUTTONS, SCRAP)),
+            (REDEAL_BUTTON.into(), row_button(art, words, REDEAL_BUTTONS, REDEAL)),
+            (SCRAP_BUTTON.into(), row_button(art, words, SCRAP_BUTTONS, SCRAP)),
         ],
-        window_tiles: tiles(rom, WINDOW_TILES),
-        column_cells: tiles(rom, COLUMN_CELLS),
-        turn_limit: tiles(rom, TURN_LIMIT),
-        name_bar: tiles(rom, NAME_BAR),
-        window_maps: WINDOW_MAPS.iter().map(|&a| map(rom, a)).collect(),
-        window_patches: patches(rom, WINDOW_PATCHES),
-        form_list_maps: (0..CROSS_MAPS.1)
-            .map(|i| map(rom, CROSS_MAPS.0 + 2 * MAP_CELLS * i))
-            .collect(),
-        form_list_patches: patches(rom, CROSS_PATCHES),
-        frame_palettes: palettes(FRAME_PALETTES),
-        icon_palette: palette(rom, ICON_PALETTE),
-        gray_palette: palette(rom, GRAY_PALETTE),
-        other_palette: palette(rom, OTHER_PALETTE),
+        versioned,
         chip_art: (0..CHIP_COUNT)
             .map(|id| chip_art(roms, names, id))
             .collect(),
         pictures: SlotPictures {
-            ok: picture(rom, OK),
-            ok_picked: picture(rom, OK_PICKED),
-            other: picture(rom, OTHER),
+            ok: picture(words, OK),
+            ok_picked: picture(words, OK_PICKED),
+            other: picture(words, OTHER),
         },
+        emblems: emblems(roms, names),
+        ..crate::placeholders::custom()
+    };
+    if art.is_present() { drawn(art, c) } else { c }
+}
+
+/// `c` with what the four ROMs have alike, read from `src`.
+fn drawn(src: Source, c: CustomScreen) -> CustomScreen {
+    let (rom, at) = (src.rom, |place: Place| src.at(place));
+    let glyphs = |(place, n): (Place, usize)| tiles(src, (place, 0x40 * n));
+    CustomScreen {
+        window_tiles: tiles(src, WINDOW_TILES),
+        column_cells: tiles(src, COLUMN_CELLS),
+        turn_limit: tiles(src, TURN_LIMIT),
+        name_bar: tiles(src, NAME_BAR),
+        window_maps: WINDOW_MAPS.iter().map(|&place| map(rom, at(place))).collect(),
+        window_patches: patches(rom, (at(WINDOW_PATCHES.0), WINDOW_PATCHES.1)),
+        form_list_maps: (0..CROSS_MAPS.1)
+            .map(|i| map(rom, at(CROSS_MAPS.0) + 2 * MAP_CELLS * i))
+            .collect(),
+        form_list_patches: patches(rom, (at(CROSS_PATCHES.0), CROSS_PATCHES.1)),
+        frame_palettes: palettes(src, (FRAME_PALETTES.0, FRAME_PALETTES.1 as u32)),
+        icon_palette: palette_at(rom, at(ICON_PALETTE)),
+        gray_palette: palette_at(rom, at(GRAY_PALETTE)),
+        other_palette: palette_at(rom, at(OTHER_PALETTE)),
         codes: glyphs(CODES),
-        elements: tiles(rom, (ELEMENTS.0, 0x80 * ELEMENTS.1)),
+        elements: tiles(src, (ELEMENTS.0, 0x80 * ELEMENTS.1)),
         element_colors: (0..ELEMENTS.1 as u32)
-            .map(|e| std::array::from_fn(|i| rom.u16(ELEMENT_COLORS + 12 * e + 2 * i as u32)))
+            .map(|e| std::array::from_fn(|i| rom.u16(at(ELEMENT_COLORS) + 12 * e + 2 * i as u32)))
             .collect(),
         digits: glyphs(DIGITS),
         slot_codes: glyphs(SLOT_CODES),
-        empty_icon: tiles(rom, (EMPTY_ICON, 0x80)),
-        versioned,
-        cursor: tiles(rom, CURSOR),
-        form_list_cursor: tiles(rom, CROSS_CURSOR),
-        form_list_cursor_palette: palette(rom, CROSS_CURSOR_PALETTE),
-        emblems: emblems(roms, names),
-        regular: tiles(rom, REGULAR),
+        empty_icon: tiles(src, (EMPTY_ICON, 0x80)),
+        cursor: tiles(src, CURSOR),
+        form_list_cursor: tiles(src, CROSS_CURSOR),
+        form_list_cursor_palette: palette_at(rom, at(CROSS_CURSOR_PALETTE)),
+        regular: tiles(src, REGULAR),
         advance_name_colors: (0..ADVANCE_NAME_COLORS.1)
             .map(|i| {
                 std::array::from_fn(|k| {
-                    rom.u16(ADVANCE_NAME_COLORS.0 + 8 * i + 2 * k as u32) & 0x7FFF
+                    rom.u16(at(ADVANCE_NAME_COLORS.0) + 8 * i + 2 * k as u32) & 0x7FFF
                 })
             })
             .collect(),
-        languages: Vec::new(),
-        element_sprite: None,
-        cursor_palette: None,
-        window_emblem: None,
+        ..c
     }
 }
 
@@ -440,9 +417,9 @@ fn chip_art(roms: &crate::exe6::Roms, names: &AssetNames, id: u32) -> ChipArt {
     // (A cut chip's picture is the Japanese ROMs': each Japanese ROM has its
     // own beast in the Gregar and Falzar chips, the pack each chip's own.
     // What a console shows otherwise there is the verification's to know.)
-    if let Some((rom, gfx, pal, _)) = crate::exe6::jp::chip_picture(roms, id) {
-        let tiles = tiles(rom, (gfx, PICTURE_BYTES));
-        let palette = pal.map_or([0; 16], |p| palette(rom, p));
+    if let Some((rom, gfx, pal)) = crate::exe6::jp::chip_picture(roms, id) {
+        let tiles = crate::exe6::hud::tiles(rom, gfx, PICTURE_BYTES);
+        let palette = pal.map_or([0; 16], |p| palette_at(rom, p));
         return ChipArt {
             key,
             picture: Picture { tiles, palette },
@@ -450,33 +427,28 @@ fn chip_art(roms: &crate::exe6::Roms, names: &AssetNames, id: u32) -> ChipArt {
         };
     }
     // A cut chip with no Japanese source must not reuse the US purple block.
-    if crate::exe6::jp::CHIP_PICTURES
-        .iter()
-        .any(|(chip, _)| *chip == id)
-    {
+    if crate::exe6::jp::CHIP_PICTURES.contains(&id) {
         return ChipArt {
             key,
             ..Default::default()
         };
     }
-    let (rom, table) = crate::exe6::gregar::chip_source(roms, id);
-    if !rom.is_present() {
+    let version = crate::exe6::gregar::chip_version(id).map(|v| v.name().to_string());
+    let src = crate::exe6::gregar::chip_source(roms, id);
+    if !src.is_present() {
         return ChipArt {
             key,
-            version: crate::exe6::gregar::chip_version(id).map(String::from),
+            version,
             ..Default::default()
         };
     }
-    let record = table + 0x2C * id;
+    let rom = src.rom;
+    let record = src.at(CHIPS) + 0x2C * id;
     let (gfx, pal) = (u32at(rom, record + 0x24), u32at(rom, record + 0x28));
     let picture = if rom_pointer(gfx) && rom_pointer(pal) {
-        picture(rom, (gfx, pal))
+        picture_at(rom, (gfx, pal))
     } else {
         Picture::default()
     };
-    ChipArt {
-        key,
-        picture,
-        version: crate::exe6::gregar::chip_version(id).map(String::from),
-    }
+    ChipArt { key, picture, version }
 }

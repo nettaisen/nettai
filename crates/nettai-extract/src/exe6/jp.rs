@@ -1,9 +1,9 @@
 //! What the pack takes from the Japanese ROMs (`ROCKEXE6_RXXBR6J`, JP
 //! Falzar, and `ROCKEXE6_GXXBR5J`, JP Gregar): what the US release cut
 //! and left a placeholder in (docs/engine/jp-differences.md §4.4, §4.5).
-//! Its code and data moved against the US ROMs', so the addresses here
-//! are the Japanese ROMs' own (both have these tables at the same
-//! places).
+//! The same code reaches it as in the US ROMs (the sprite list, the chip
+//! records: the other modules' places); here is which of it the pack
+//! takes from a Japanese ROM, either of them unless stated.
 //!
 //! - **Sprites**: six slots of the sprite list hold the US ROMs' shared
 //!   placeholder archive and the Japanese ROMs' own (the same archive in
@@ -27,15 +27,12 @@
 //! the US ROMs' where the releases differ, and the Japanese ROMs' in a pack
 //! of no US ROM.
 
-use crate::exe6::{Rom, u32at};
-
-/// The Japanese ROMs' sprite list (`SpritePointersList`; the US ROMs' is
-/// at 0x08031CC4).
-pub const SPRITE_LIST: u32 = 0x0803_2C80;
+use crate::exe6::hud::CHIPS;
+use crate::exe6::{Rom, Roms, Version, u32at};
 
 /// The sprite slots (category's byte offset, index) the US ROMs fill with
 /// a placeholder archive and the Japanese ROMs with their own, which the
-/// pack takes from the Japanese Falzar ROM.
+/// pack takes from a Japanese ROM.
 pub const SPRITES: [(u8, u8); 6] = [
     // Count (HackJack's navi, and his lances).
     (0x08, 0x16),
@@ -53,90 +50,52 @@ pub const SPRITES: [(u8, u8); 6] = [
     (0x14, 0x17),
 ];
 
-/// The Japanese ROMs' chip records (the table of the chip accessor at 0x08021EB8; the US ROMs'
-/// is at 0x08021DA8): 0x2C bytes a chip, +0x24 its picture, +0x28 the
-/// picture's palette.
-pub const CHIP_DATA: u32 = 0x0802_21BC;
-
-/// Which ROM a cut chip's picture comes from.
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum Source {
-    Falzar,
-    Gregar,
-}
-
 /// The chips whose picture each Japanese ROM has its own of: the Gregar
 /// and Falzar chips, which show the console's own beast.
-pub const VERSIONED: [u32; 2] = [0x138, 0x139];
+pub const VERSIONED: [(u32, Version); 2] = [(0x138, Version::Gregar), (0x139, Version::Falzar)];
 
-/// The chips whose picture is a placeholder in the US ROMs, and the
-/// Japanese ROM each picture comes from: GunDelEX, Otenko, HackJack (Count)
-/// ×3, Django ×3, DblBeast, the Gregar and Falzar chips, and BatCan1 to
-/// BatCan4 (each the same in both Japanese ROMs). A Japanese
-/// console shows its own beast in both the Gregar and the Falzar chip
-/// (its ROM has one picture for both); the pack has each chip's own,
-/// Gregar's from the Japanese Gregar ROM, Falzar's from the Japanese
-/// Falzar ROM, on either console.
-pub const CHIP_PICTURES: [(u32, Source); 15] = [
-    (0x012, Source::Falzar),
-    (0x099, Source::Falzar),
-    (0x113, Source::Falzar),
-    (0x114, Source::Falzar),
-    (0x115, Source::Falzar),
-    (0x116, Source::Falzar),
-    (0x117, Source::Falzar),
-    (0x118, Source::Falzar),
-    (0x137, Source::Falzar),
-    (0x138, Source::Gregar),
-    (0x139, Source::Falzar),
-    (0x13B, Source::Falzar),
-    (0x13C, Source::Falzar),
-    (0x13D, Source::Falzar),
-    (0x13E, Source::Falzar),
-];
+/// The chips whose picture is a placeholder in the US ROMs: GunDelEX,
+/// Otenko, HackJack (Count) ×3, Django ×3, DblBeast, the Gregar and Falzar
+/// chips, and BatCan1 to BatCan4 (each the same in both Japanese ROMs but
+/// `VERSIONED`'s). A Japanese console shows its own beast in both the
+/// Gregar and the Falzar chip (its ROM has one picture for both); the
+/// pack has each chip's own, Gregar's from the Japanese Gregar ROM,
+/// Falzar's from the Japanese Falzar ROM, on either console.
+pub const CHIP_PICTURES: [u32; 15] =
+    [0x012, 0x099, 0x113, 0x114, 0x115, 0x116, 0x117, 0x118, 0x137, 0x138, 0x139, 0x13B, 0x13C, 0x13D, 0x13E];
 
-/// DblBeast's palette. Its record points at EWRAM (0x02000AF0), which a
-/// gift received over the link fills (an e-Reader card's, Card e+:
-/// `0x0813006C` copies the card's palette to 0x02000AF0 + 32 × slot, which
-/// the save keeps); this palette, the card's, sits orphaned in the
-/// Japanese Falzar ROM among the chip palettes, in DblBeast's place. The
-/// Gregar and Falzar chips' palettes (slot 1, 0x02000B10) are in no ROM:
-/// their definitions give them (`art_palette`), and the pack's pictures
-/// have a black one.
-pub const DBLBEAST_PALETTE: u32 = 0x0874_9C78;
+/// Where DblBeast's record says its palette is: EWRAM, which a gift
+/// received over the link fills (an e-Reader card's, Card e+: `0x0813006C`
+/// copies the card's palette to 0x02000AF0 + 32 × slot, which the save
+/// keeps). That palette, the card's, sits orphaned in the Japanese ROMs
+/// among the chip palettes, in DblBeast's place: after the palette of the
+/// chip before it. The Gregar and Falzar chips' palettes (slot 1,
+/// 0x02000B10) are in no ROM: their definitions give them (`art_palette`),
+/// and the pack's pictures have a black one.
+const GIFT_PALETTE: u32 = 0x0200_0AF0;
 
-/// A cut chip's picture: the Japanese ROM `CHIP_PICTURES` names, the
-/// picture's address there, its palette's (`None`: in no ROM), and the
-/// game version it is of (`VERSIONED`'s); `None` for a chip that isn't
-/// cut.
-pub fn chip_picture<'a>(
-    roms: &'a crate::exe6::Roms,
-    id: u32,
-) -> Option<(&'a Rom, u32, Option<u32>, Option<&'static str>)> {
-    let &(_, source) = CHIP_PICTURES.iter().find(|(c, _)| *c == id)?;
-    let (mut rom, version) = match source {
-        Source::Falzar => (&roms.falzar_jp, "falzar"),
-        Source::Gregar => (&roms.gregar_jp, "gregar"),
-    };
-    if !rom.is_present() && !VERSIONED.contains(&id) {
-        rom = [&roms.falzar_jp, &roms.gregar_jp]
-            .into_iter()
-            .find(|r| r.is_present())?;
-    }
-    if !rom.is_present() {
+/// A cut chip's picture: the Japanese ROM it is read from (the chip's own
+/// version's for `VERSIONED`'s, either for the rest), the picture's
+/// address there and its palette's (`None`: in no ROM). `None` for a chip
+/// that isn't cut, and for one no ROM given has.
+pub fn chip_picture<'a>(roms: &Roms<'a>, id: u32) -> Option<(&'a Rom, u32, Option<u32>)> {
+    if !CHIP_PICTURES.contains(&id) {
         return None;
     }
-    let record = CHIP_DATA + 0x2C * id;
-    let (picture, palette) = (u32at(rom, record + 0x24), u32at(rom, record + 0x28));
+    let src = match VERSIONED.iter().find(|(chip, _)| *chip == id) {
+        Some(&(_, version)) => roms.jp_of(version),
+        None => roms.jp(),
+    };
+    if !src.is_present() {
+        return None;
+    }
+    let rom = src.rom;
+    let record = |chip: u32| src.at(CHIPS) + 0x2C * chip;
+    let (picture, palette) = (u32at(rom, record(id) + 0x24), u32at(rom, record(id) + 0x28));
     let palette = match palette {
-        0x0200_0AF0 if std::ptr::eq(*rom, roms.falzar_jp) => Some(DBLBEAST_PALETTE),
+        GIFT_PALETTE => Some(u32at(rom, record(id - 1) + 0x28) + 0x20),
         p if (0x0800_0000..0x0A00_0000).contains(&p) => Some(p),
         _ => None,
     };
-    Some((
-        rom,
-        picture,
-        palette,
-        VERSIONED.contains(&id).then_some(version),
-    ))
+    Some((rom, picture, palette))
 }
