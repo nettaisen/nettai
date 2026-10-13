@@ -26,7 +26,7 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
 ## Options
 
 - `--pack <dir>` names a content pack elsewhere and `--content <dir>` the battle content (default
-  `$NETTAI_CONTENT`, else this repository's `content/`).
+  `$NETTAI_CONTENT`, else a `content/` beside the program, else this repository's `content/`).
 - `--mute` turns the audits' sound off (headless rendering never plays any), and leaves a video without sound.
 - `--round N` starts a trace at round N (later rounds follow when a round's input runs out); of a replay's video
   it is the round shown alone.

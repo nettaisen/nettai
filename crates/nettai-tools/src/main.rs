@@ -82,8 +82,8 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   the packs directory, $NETTAI_PACKS, else data, each pack by the game it
   says. Nothing opens a window: a battle is played in a window by nettai.
   --pack DIR       a pack's directory, in place of the found pack of its game
-  --content DIR    the content directory (default: $NETTAI_CONTENT, else
-                   this repository's content/)
+  --content DIR    the content directory (default: $NETTAI_CONTENT, else a
+                   content/ beside the program, else this repository's)
   --mute           no sound in the audits (headless rendering plays none), and
                    none in a video
   --round N        the trace round to start with (default 1; later rounds
