@@ -398,8 +398,12 @@ impl Side {
                     _ => screen.chip_in(slot, folder)?,
                 };
                 let regular = matches!(kind, SlotKind::Chip { regular: true, .. });
-                let listed = !matches!(kind, SlotKind::Button { .. });
-                Some(Pick { chip: screen::checked(chip, &view), regular, marks: screen.slots[slot as usize].marks, listed })
+                // (What the rules' offer says of its pick: its marks, and
+                // whether it is listed.)
+                let offer = screen.offers[slot as usize].filter(|_| matches!(kind, SlotKind::Offered(_)));
+                let marks = screen.slots[slot as usize].marks | offer.map_or(0, |o| o.marks);
+                let listed = !matches!(kind, SlotKind::Button { .. }) && offer.is_none_or(|o| o.listed);
+                Some(Pick { chip: screen::checked(chip, &view), regular, marks, listed })
             })
             .collect();
         let mut pa_used = self.program_advances;

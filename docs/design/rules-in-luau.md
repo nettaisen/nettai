@@ -2349,10 +2349,11 @@ for them is generic:
   before anything else; at OK the chip leaves the folder.
 - **A button's chip** (`ButtonSpec.chip`, the hook `button.chip`): the chip a button shows (`Slot::face`), which R
   describes and the frontend draws as a chip's slot.
-- **The hand's modifier bits at a chip's use**: beside EXE6's two (0x02, 0x04: the damage word's 0x4000 and 0x2000),
-  0x08 and 0x20 (its 0x1000 and 0x0800) and 0x10 (a tenth of the user's HP healed), where the game's chip-use rules
-  say so (`mixed_modifiers`: a navi no hand feeds passes its request bits there, as the original's register does, so
-  EXE6 must not read them).
+- **A hand entry's marks at a chip's use**: what each adds to the damage word, by its bit, and which heal the user
+  a tenth of its HP, are the game's chip-use rules' (`mark_damage`, `mark_heals`): EXE6's 0x02 and 0x04 (the word's
+  0x4000 and 0x2000); EXE5's those, 0x08 and 0x20 (its 0x1000 and 0x0800) and 0x10's heal; EXE4's none, whose marks
+  are its rules' own (a chip offered again, an installed entry). (A navi no hand feeds passes its request bits
+  there, as the original's register does, so a game reads only the bits it states.)
 - **`turn_opened(side)`**, a system hook: the turn-start sequencer's check begins, each side in turn, before either
   side's `turn_check` or change.
 - **`custom.draw_held(side)`**, for a window: the icon of the chip a button holds, over that button (the choosing
