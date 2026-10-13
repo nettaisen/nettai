@@ -79,10 +79,28 @@ export struct EffectLine {
     fresh: bool,
 }
 
+// The program under the cursor, for the strip: its name in its color (a plus part's crossed), and the game's
+// description of it.
+export struct ProgramDetail {
+    there: bool,
+    name: string,
+    tone: color,
+    plus: bool,
+    description: string,
+}
+
 // What the tab shows: src/screens/builds/navicust.rs sets these.
 export global NavicustView {
-    out property <[Hint]> hints: self.holding ? self.holding-hints : self.hints-at-rest;
+    // (The footer says what the keys do where the cursor is: on a placed piece, Del takes it off; with a piece in
+    // hand, Back puts it away into the list.)
+    out property <[Hint]> hints: self.holding ? self.holding-hints : self.on-piece ? self.piece-hints : self.hints-at-rest;
     property <[Hint]> hints-at-rest: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: "Enter", pad: PadButton.south, text: @tr("Pick up") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+    ];
+    property <[Hint]> piece-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: "Enter", pad: PadButton.south, text: @tr("Pick up") },
         { key: "Del", pad: PadButton.west, text: @tr("Take off") },
@@ -94,8 +112,12 @@ export global NavicustView {
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Turn") },
         { key: "C", pad: PadButton.north, text: @tr("Compress") },
         { key: "Enter", pad: PadButton.south, text: @tr("Place") },
-        { key: "Esc", pad: PadButton.east, text: @tr("Put back") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Put away") },
     ];
+    // The cursor is on a placed piece (or a placed program's row).
+    in property <bool> on-piece;
+    // The strip: the program under the cursor.
+    in property <ProgramDetail> detail;
     out property <string> status: @tr("{n} program placed" | "{n} programs placed" % self.placed);
     in property <int> placed;
     // The game's data draw a board (else the list alone: a game whose board isn't one the tab reads).
@@ -489,7 +511,10 @@ export component NavicustTab inherits Rectangle {
     property <length> grid-x: (root.board-width - root.grid-width) / 2;
     property <length> grid-y: root.pad-y;
     property <length> board-height: NavicustView.board ? root.grid-width + 2 * root.pad-y : 0px;
-    property <length> key-y: root.board-height + 12px;
+    // (Under the strip, as the folder's panes are; a phone has no strip.)
+    property <length> top: -4px;
+    property <length> body-y: Theme.phone ? 0px : root.top + 104px + 12px;
+    property <length> key-y: root.body-y + root.board-height + 12px;
     property <length> key-width: 4 * 20px + 3 * 16px + board-key-word.preferred-width + line-key-word.preferred-width + plus-key-word.preferred-width + (NavicustView.ring ? ring-key-word.preferred-width : -36px);
     property <int> key-lines: root.key-width > root.board-width ? 2 : 1;
     property <length> key-height: root.key-lines == 2 ? 36px : 14px;
@@ -529,16 +554,66 @@ export component NavicustTab inherits Rectangle {
     property <length> list-x: Theme.phone ? 0px : 436px + 24px;
     property <length> list-width: Theme.phone ? self.width : 320px;
     property <length> lines-y: root.key-y + root.key-height + 10px + 16px + 8px;
-    property <length> list-y: Theme.phone ? root.lines-y + 2 * 22px + 8px : 0px;
+    property <length> list-y: Theme.phone ? root.lines-y + 2 * 22px + 8px : root.body-y;
     property <length> side-x: root.list-x + root.list-width + 24px;
     property <length> side-width: self.width - root.side-x;
-    property <length> effects-height: (self.height - 12px) * 0.5;
+    property <length> effects-height: (self.height - root.body-y - 12px) * 0.5;
     // The command line's arrows pulse.
     property <float> breath: Theme.motion ? 0.6 + 0.4 * sin(animation-tick() / 900ms * 360deg) : 1;
+    // ---- The strip: the program under the cursor, its name in its color and the game's description of it.
+    PanelBack {
+        x: 0;
+        y: root.top;
+        height: Theme.phone ? 0px : 104px;
+        visible: !Theme.phone;
+    }
+
+    Rectangle {
+        x: 18px;
+        y: root.top + 21px;
+        width: 16px;
+        height: 16px;
+        visible: !Theme.phone && NavicustView.detail.there;
+        background: NavicustView.detail.tone;
+        Cross {
+            visible: NavicustView.detail.plus;
+            bar: 1.5px;
+        }
+    }
+
+    Text {
+        x: 44px;
+        y: root.top + 19px;
+        width: parent.width - 60px;
+        height: 20px;
+        visible: !Theme.phone;
+        text: NavicustView.detail.name;
+        color: Theme.text;
+        font-family: Theme.body;
+        font-size: 16px;
+        font-weight: 700;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    Text {
+        x: 18px;
+        y: root.top + 47px;
+        width: parent.width - 36px;
+        height: 18px;
+        visible: !Theme.phone;
+        text: NavicustView.detail.description;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
     // ---- The board, framed.
     PanelBack {
         x: 0;
-        y: 0;
+        y: root.body-y;
         width: root.board-width;
         height: root.board-height;
         visible: NavicustView.board;
@@ -546,7 +621,7 @@ export component NavicustTab inherits Rectangle {
 
     if NavicustView.board: Rectangle {
         x: 0;
-        y: 0;
+        y: root.body-y;
         width: root.board-width;
         height: root.board-height;
         // (EXE6's board, outlined in white within its ring.)
@@ -738,7 +813,7 @@ export component NavicustTab inherits Rectangle {
     if !Theme.phone: Rectangle {
         PanelBack {
             x: root.side-x;
-            y: 0;
+            y: root.body-y;
             width: root.side-width;
             height: root.effects-height;
             accent: false;
@@ -746,14 +821,14 @@ export component NavicustTab inherits Rectangle {
 
         for line[i] in NavicustView.effects: EffectRow {
             x: root.side-x + 16px;
-            y: 10px + i * 20px;
+            y: root.body-y + 10px + i * 20px;
             width: root.side-width - 32px;
             line: line;
         }
 
         PanelBack {
             x: root.side-x;
-            y: root.effects-height + 12px;
+            y: root.body-y + root.effects-height + 12px;
             width: root.side-width;
             height: root.effects-height;
             accent: false;
@@ -761,7 +836,7 @@ export component NavicustTab inherits Rectangle {
 
         for line[i] in NavicustView.bugs: EffectRow {
             x: root.side-x + 16px;
-            y: root.effects-height + 12px + 10px + i * 20px;
+            y: root.body-y + root.effects-height + 12px + 10px + i * 20px;
             width: root.side-width - 32px;
             line: line;
         }
