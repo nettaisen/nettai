@@ -1605,7 +1605,7 @@ them.
     (0x0802373A: the window `capsule`, the soul's choice's steps with the capsule's icon), whose white step marks
     the pick (`custom.attach_to_last_pick`: the slot's +4 and +5, by 0x08023824) and uses the capsule; B on the
     chip frees it (0x08024D78). The mark goes into the hand's flag byte (+68, `ChipHand::modifiers`), and the
-    chip's use reads it (0x08010368, 0x0800FFF6; the chip-use rule `mixed_modifiers`): 0x04 the damage word's
+    chip's use reads it (0x08010368, 0x0800FFF6; the chip-use rules' `mark_damage` and `mark_heals`): 0x04 the damage word's
     0x2000 (YelCapsl: confusion), 0x08 its 0x1000 (BlkCapsl: blindness), 0x02 its 0x4000 (WhiCapsl: paralysis),
     0x20 its 0x0800 (PrpCapsl: the HP bug), 0x10 a tenth of the user's maximum HP healed, rounded up (PnkCapsl).
     The capsule chips never reach a hand; a slot shows its capsule as a chip (icon, and in the chip window the name
