@@ -10,6 +10,10 @@
 
 language = "en"
 
+[game]
+# The game's name as a player sees it: the English games' title, Mega Man Battle Network 6.
+"name" = "BN6"
+
 [chips]
 "airhocky" = { name = "AirHocky", description = "Bounce \nthe puck\noff walls" }
 "airraid1" = { name = "AirRaid1", description = "Attk enmy\nw/flying\nFgtrPlne." }
