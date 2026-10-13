@@ -30,6 +30,12 @@ impl Order {
         }
     }
 
+    /// A chip's place in the library's order, by its key in its game (a library's section and the place in
+    /// it: `nettai_match::build::LibraryRank`); none: no library lists it.
+    pub fn chip_rank(&self, key: &str) -> Option<Rank> {
+        self.chips.get(key).copied()
+    }
+
     /// Sort chips (each with what is shown of it).
     pub fn chips<T>(&self, c: &Content, list: &mut [(T, ChipHandle)]) {
         library::sort_by_rank(list, |(_, h)| nettai_match::ids::local(&c.defs.chip(*h).key), |k| self.chips.get(k).copied());

@@ -1,0 +1,131 @@
+//! The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as cards, the build's
+//! navi beside them (the face its round starts with, its HP then, its element), and the build's other choices
+//! as steppers (the game's builds data's: Light or Dark, of the game's own navi alone).
+//!
+//! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
+//! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
+
+use crate::screens::builds::editor::{Draft, Tab};
+use crate::shell::Shell;
+use nettai_battle::Content;
+use nettai_battle::content::{Element, PlayerFact};
+use nettai_content_api::NaviHandle;
+use nettai_match::build::TEXT_TABLE;
+use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviView};
+use slint::{ComponentHandle, ModelRc, VecModel};
+
+#[derive(Default)]
+pub struct Navi {
+    /// The game's navis, as the grid has them.
+    navis: Vec<NaviHandle>,
+}
+
+/// The chip family whose icon the game shows for `element`: the family of the element's name, a navi of no
+/// element's the family of the chips of none.
+fn family(content: &Content, element: Element) -> nettai_battle::content::ChipFamily {
+    let families = &content.rules().chip_families;
+    let named = match element {
+        Element::Null => None,
+        Element::Fire => families.by_name("fire"),
+        Element::Aqua => families.by_name("aqua"),
+        Element::Elec => families.by_name("elec"),
+        Element::Wood => families.by_name("wood"),
+    };
+    named.unwrap_or(families.non_elemental)
+}
+
+impl Tab for Navi {
+    fn id(&self) -> EditorTab {
+        EditorTab::Navi
+    }
+
+    /// The navi, and what the build's choices set.
+    fn fields(&self, content: &Content) -> Vec<String> {
+        content.defs.fact_name(PlayerFact::Navi).map(str::to_string).into_iter().collect()
+    }
+
+    fn main(&self) -> &'static str {
+        "navi"
+    }
+
+    fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        let content = draft.content().clone();
+        let kit = draft.kit.clone();
+        // (The game's own navi first: the content states no order of the others, which are by their keys.)
+        self.navis = nettai_match::navis(&content, &kit.game);
+        self.navis.sort_by_key(|&n| !content.navi(n).changes_form());
+        let chosen = draft.side().navi(&content);
+        let ui = shell.ui();
+        let view = ui.global::<NaviView>();
+        let face = draft.checked.face().map(|f| kit.pictures.shown(&f)).unwrap_or_else(|| kit.pictures.navi(chosen));
+        let hp = draft.checked.stats().map(|s| s.max_hp.to_string()).unwrap_or_default();
+        let offered = kit.builds.choices_of(&content, draft.side());
+        draft.with_words(shell, |words| {
+            let names = words.names;
+            let cards: Vec<NaviCard> = self.navis.iter().map(|&n| NaviCard { name: names.navi(n).into(), face: kit.pictures.navi(n), chosen: n == chosen }).collect();
+            view.set_navis(ModelRc::new(VecModel::from(cards)));
+            view.set_name(names.navi(chosen).into());
+            // Each of the game's choices: the preset the build is on, by its name in the game's strings.
+            let choices: Vec<NaviChoice> = kit
+                .builds
+                .choices
+                .iter()
+                .map(|c| {
+                    let preset = offered.iter().any(|o| o.id == c.id).then(|| kit.builds.preset_of(&content, draft.side(), &c.id)).flatten();
+                    let value = preset.map(|p| names.text(TEXT_TABLE, &c.text_key(p)).unwrap_or_else(|| p.id.clone()));
+                    NaviChoice { offered: value.is_some(), value: value.unwrap_or_default().into() }
+                })
+                .collect();
+            view.set_choices(ModelRc::new(VecModel::from(choices)));
+            let own = nettai_match::first_navi(&content, &kit.game).map(|n| names.navi(n)).unwrap_or_default();
+            view.set_own(own.into());
+        });
+        view.set_face(face);
+        view.set_hp(hp.into());
+        view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
+        // (The focus starts on the build's navi's card.)
+        if shell.nav.focused().is_none_or(|k| k.id != "navi" && k.id != "choice" && k.id != "tab")
+            && let Some(at) = self.navis.iter().position(|&n| n == chosen)
+        {
+            shell.nav.focus("navi", at as i32);
+        }
+    }
+
+    fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        match id {
+            "navi" => {
+                let Some(&navi) = self.navis.get(index.max(0) as usize) else { return };
+                if draft.choose_navi(navi) {
+                    self.show(shell, draft);
+                }
+            }
+            // (Enter on a choice takes its next preset, as Right does.)
+            "choice" => self.step(shell, draft, id, index, 1),
+            _ => {}
+        }
+    }
+
+    fn step(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, by: i32) {
+        if id != "choice" {
+            return;
+        }
+        let kit = draft.kit.clone();
+        let Some(choice) = kit.builds.choices.get(index.max(0) as usize) else { return };
+        let Some(now) = kit.builds.preset_of(draft.content(), draft.side(), &choice.id) else { return };
+        let at = choice.presets.iter().position(|p| p.id == now.id).unwrap_or(0) as i32;
+        let next = &choice.presets[(at + by).rem_euclid(choice.presets.len() as i32) as usize];
+        let changed = draft.edit(|content, side| {
+            let before = side.clone();
+            match kit.builds.take_preset(content, side, &choice.id, &next.id) {
+                Ok(()) => *side != before,
+                Err(why) => {
+                    crate::errors::log("taking a build's preset", &why);
+                    false
+                }
+            }
+        });
+        if changed {
+            self.show(shell, draft);
+        }
+    }
+}

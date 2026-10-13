@@ -550,6 +550,12 @@ impl Nav {
         self.pad
     }
 
+    /// Whether the pointer was the last thing used (the cursor is hidden): a click on a list's row may choose it
+    /// where Enter acts on it.
+    pub fn pointing(&self) -> bool {
+        !self.shown
+    }
+
     fn row_of(&self) -> impl Fn(&str) -> i32 + '_ {
         |id| self.rows.get(id).copied().unwrap_or(0)
     }

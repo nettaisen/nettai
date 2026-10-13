@@ -1,0 +1,17 @@
+// The patch cards tab of a build's editor (docs/design/app-ui.md §6, "Patch cards"). Not built yet: the tab is
+// here, empty. Its Rust half is src/screens/builds/patch_cards.rs; docs/app.md §8 says what a tab is given.
+
+import { Shell, Hint, PadButton } from "../../shell.slint";
+
+// What the tab shows: src/screens/builds/patch_cards.rs sets these. Every tab's view has the footer's key hints
+// while the tab shows, and its one short status at the footer's right.
+export global PatchCardsView {
+    out property <[Hint]> hints: [
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: "Esc", pad: PadButton.east, text: @tr("Back") },
+    ];
+    in property <string> status;
+}
+
+// The tab: the editor gives it its place under the tab bar, the page's body wide.
+export component PatchCardsTab inherits Rectangle { }

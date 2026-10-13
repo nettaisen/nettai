@@ -45,6 +45,7 @@ use std::time::{Duration, Instant};
 
 // A screen's own steps (`<screen>::steps`, and `<screen>::motion` for the motion probe), each in a file of its
 // own, called from `walk` and `motion_walk` with one line.
+mod builds;
 mod training;
 
 /// How long a step is given to be drawn before the next: a few frames.
@@ -98,6 +99,8 @@ struct Burst {
     shots: Vec<BurstShot>,
 }
 
+/// A step of the walk. (A screen's own steps are a function in its module, which [`walk`] calls: it is handed
+/// `add`, which adds a step after a wait, and `shot`, which takes a picture under a name.)
 pub(crate) type Step = Box<dyn Fn(&AppWindow, &Rc<RefCell<App>>, &Rc<Tour>)>;
 type Until = Box<dyn Fn(&App) -> bool>;
 
@@ -127,6 +130,9 @@ thread_local! {
 /// Walk the screens, writing each to `dir`, then quit.
 pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     let _ = std::fs::create_dir_all(&dir);
+    // (The builds the pass makes and lists are its own, never the player's.)
+    let _ = std::fs::remove_dir_all(dir.join("builds"));
+    crate::paths::keep_builds_in(dir.join("builds"));
     let tour = Rc::new(Tour {
         dir,
         tag: Default::default(),
@@ -187,7 +193,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     let mut add = |wait: u64, step: Step| steps.push((wait, step));
     // A shot: the texts' check started again, the picture written (and kept, if `first` of a pair; compared
     // with the pair's first, if `second`, which may differ only inside `also` and the two cursors).
-    let shot =|add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair| {
+    let shot = |add: &mut dyn FnMut(u64, Step), name: &'static str, pair: Pair| {
         let tag = format!("{name}-{lang}-{size}");
         let t = tag.clone();
         add(
@@ -284,6 +290,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         shot(&mut add, name, Pair::None);
     }
     training::steps(&mut add, lang, size);
+
+    // Builds: the list, its dialogs, and the editor's tabs.
+    builds::steps(&mut add, &shot, lang, size);
 
     // Play, with a second player (its own steps: `screens/play/tour.rs`).
     crate::screens::play::tour::steps(&mut add, &shot, size == "phone");
@@ -507,6 +516,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     burst(&mut add, "page-scrolls", &[0, 30, 60, 100, 200], focus("set.folder", 0));
     burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
     add(SETTLE, act(Action::Confirm));
+    builds::motion(&mut add, &burst);
     // The lobby's set pieces, with a second player (`screens/play/tour.rs`).
     crate::screens::play::tour::motion(&mut add, &burst);
     add(SETTLE, go(ScreenId::Training));

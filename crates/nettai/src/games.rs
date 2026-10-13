@@ -76,6 +76,9 @@ pub struct Entry {
 /// The games there are, and how far each is loaded.
 pub struct Games {
     pub list: Vec<Entry>,
+    /// The games whose pack is there and couldn't be loaded, each until the player is told
+    /// ([`Games::take_failed`]).
+    failed: Vec<String>,
 }
 
 impl Games {
@@ -85,7 +88,7 @@ impl Games {
             Ok(f) => f,
             Err(e) => {
                 crate::errors::log("finding the packs", &format_args!("{e}: {}", e.report));
-                return Games { list: Vec::new() };
+                return Games { list: Vec::new(), failed: Vec::new() };
             }
         };
         match nettai_content::pack::games(None, &found.packs) {
@@ -99,10 +102,11 @@ impl Games {
                         Entry { state: if c.pack.is_some() { State::NotLoaded } else { State::NoPack }, id: c.game }
                     })
                     .collect(),
+                failed: Vec::new(),
             },
             Err(report) => {
                 crate::errors::log("listing the games", &report);
-                Games { list: Vec::new() }
+                Games { list: Vec::new(), failed: Vec::new() }
             }
         }
     }
@@ -187,6 +191,7 @@ impl Games {
             }
             Step::Done(Err(why)) => {
                 crate::errors::log(&format!("loading {id}"), &why);
+                self.failed.push(id.to_string());
                 State::Failed
             }
         };
@@ -206,9 +211,16 @@ impl Games {
                 if let Some(entry) = self.list.iter_mut().find(|e| e.id == id) {
                     entry.state = State::Failed;
                 }
+                self.failed.push(id.to_string());
             }
         }
         ready.runtime.get()
+    }
+
+    /// A game whose pack is there and couldn't be loaded, that the player hasn't been told of: each is given
+    /// once. (Why is in the log.)
+    pub fn take_failed(&mut self) -> Option<String> {
+        (!self.failed.is_empty()).then(|| self.failed.remove(0))
     }
 
     /// Load every read game's graphics in `lang`, each on a thread, where they aren't loaded: `told` gets
@@ -343,4 +355,24 @@ pub fn one_line(d: &str) -> String {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A game whose load fails is no longer one to play, and is given once for the player to be told of; the
+    /// others stay.
+    #[test]
+    fn a_game_that_fails_to_load_is_told_once() {
+        let entry = |id: &str| Entry { id: id.to_string(), state: State::Loading(0.5) };
+        let mut games = Games { list: vec![entry("first"), entry("second")], failed: Vec::new() };
+        assert_eq!(games.take_failed(), None);
+        games.step("second", Step::Done(Err("its pack names no such sprite".into())));
+        assert_eq!(games.playable(), ["first"]);
+        assert_eq!(games.take_failed().as_deref(), Some("second"));
+        assert_eq!(games.take_failed(), None);
+        games.step("first", Step::Progress(0.7));
+        assert_eq!((games.playable(), games.take_failed()), (vec!["first".to_string()], None));
+    }
 }

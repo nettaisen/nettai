@@ -64,6 +64,9 @@ pub enum UserError {
     ExportFailed,
     /// A save is another game's: `game` is the game it was to be of, as shown (EXE6).
     WrongGameSave { game: String },
+    /// A game's pack is there and can't be loaded (it was extracted for another version of the game's
+    /// content): `game` is the game, as shown. The other games play.
+    GameOutdated { game: String },
     /// Anything else: the details are in the log.
     Other,
 }
@@ -94,6 +97,7 @@ impl UserError {
             UserError::CantWriteVideo => (ErrorKind::CantWriteVideo, ""),
             UserError::ExportFailed => (ErrorKind::ExportFailed, ""),
             UserError::WrongGameSave { game } => (ErrorKind::WrongGameSave, game),
+            UserError::GameOutdated { game } => (ErrorKind::GameOutdated, game),
             UserError::Other => (ErrorKind::Other, ""),
         }
     }
