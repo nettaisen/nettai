@@ -1760,8 +1760,13 @@ Back, and its title and hints are the screen's bindings); Settings' column as po
 `Mono`, `Note`) copied in by an `opacity` on their root (a Label so is 0.13 MB more, a Value 0.01 less); the
 accessibility Slint writes though its backend is off (its functions are 0.83 MB, nearly all of it each item
 tree's own share whatever is in it: every text, field and image given no role is 0.03 MB less); the whole UI
-copied in (Slint's `SLINT_INLINING`: 22.9 MB). The held-back files (training.slint, battle.slint) keep
-their components used in one place shared until the branches changing them are merged.
+copied in (Slint's `SLINT_INLINING`: 22.9 MB).
+
+Training's and the battle's files were left to last while other branches changed them. With those merged (main
+at 6a72049ad, 10.29 MB: Training's options had added 0.05 MB) their three components used in one place were
+copied in (the menu's row, the connection's mark, the touch pad): 10.26 MB, 83,075 lines. Their components used
+in a few places are smaller shared: copied in, the pad's keys would be 0.22 MB more, the input display's keys
+0.06, a build's card and option 0.02 and 0.01, an input row 0.02.
 
 The tools that measured it are bn6battle-verify's tools/slint-size: the module's size from the build script
 alone, its breakdown by kind of code and by component, what one component's code is, a construct's cost, and
