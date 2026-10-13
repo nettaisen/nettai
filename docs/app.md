@@ -1576,18 +1576,24 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 |---|---|---|
 | Dummy: Action | Stands still, Moves around, Attacks at random | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
+| Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Display: Input display | Off, On | the app's own drawing, below |
+
+The Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
+the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
+(a navi's HP) before each tick, never a rule of the simulation. With them at their normal values the battle is
+the set's as it was before they existed, tick for tick by digest (the library's test of it, docs/frontend.md
+§2), and every online match and replay is untouched: only live play has them.
 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
 value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
-MENU. The menu opens where the focus last was in it. The dummy's setup and the input display are remembered
-between runs (`training.action`, `training.custom-screen`, `training.inputs`); a session another screen started
-begins as that screen says and keeps nothing of the dummy's.
+MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
+display are remembered between runs (`training.action`, `training.custom-screen`, `training.your-hp`,
+`training.dummys-hp`, `training.inputs`); a session another screen started begins as that screen says, every
+battle option at its normal value, and keeps nothing of the dummy's or the battle's.
 
-*Adding a row* (the design's Your HP, Dummy's HP, Custom gauge, Chip draw, Recording and a second pad wait for
-the engine, and aren't shown): a value of `TrainingOption` and its words in training.slint (`label`, `value`),
-its place in `ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row
-too.
+*Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`), its place in
+`ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row too.
 
 **The input display** (`TrainingInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what

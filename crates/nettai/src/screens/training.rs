@@ -27,7 +27,7 @@ use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use crate::stage::Stage;
-use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent};
+use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, Training as Options};
 use nettai_match::build::{Builds, Checked};
 use nettai_match::{Match, Set, Side, Wrong};
 use nettai_ui::{BattleKind, TrainingBuild, TrainingOption, TrainingRow, TrainingView, VersusCard};
@@ -53,8 +53,9 @@ pub struct Start {
     /// The player's build, and the dummy's. Both can be played (`nettai_match::build::Checked::ready`).
     pub you: Build,
     pub dummy: Build,
-    /// What the dummy does at first; the training menu changes it.
+    /// What the dummy does at first, and what the battle's options are; the training menu changes them.
     pub opponent: Opponent,
+    pub options: Options,
     /// What the arenas, each folder's order and the dummy's random presses are picked from.
     pub seed: u32,
     /// The screen that starts it, if not Training itself, and the tag it hears of it by: a row it added was
@@ -74,12 +75,13 @@ impl Start {
     /// A session of `game` as Training starts one: the dummy stands still and picks the first chips it can,
     /// the picture fills the window after the two cards.
     pub fn new(game: &str, you: Build, dummy: Build) -> Start {
-        Start { game: game.to_string(), you, dummy, opponent: Opponent::default(), seed: clock_seed(), from: None, rows: Vec::new(), full: true, cards: true }
+        Start { game: game.to_string(), you, dummy, opponent: Opponent::default(), options: Options::default(), seed: clock_seed(), from: None, rows: Vec::new(), full: true, cards: true }
     }
 
     /// A session screen `from` shows beside something of its own while the player waits (Play, by an invite's
-    /// code): the dummy a copy of the player's own build, standing still; the picture in the screen's own
-    /// `Picture`, with no cards before it; `rows` at the top of the training menu, each heard by `tag`.
+    /// code): the dummy a copy of the player's own build, standing still, every option at its normal value; the
+    /// picture in the screen's own `Picture`, with no cards before it; `rows` at the top of the training menu,
+    /// each heard by `tag`.
     pub fn beside(game: &str, build: Build, from: ScreenId, tag: &'static str, rows: Vec<String>) -> Start {
         Start { from: Some((from, tag)), rows, full: false, cards: false, ..Start::new(game, build.clone(), build) }
     }
@@ -102,8 +104,9 @@ struct Session {
     full: bool,
     /// The rows its starter added: the menu's first.
     added: usize,
-    /// What the dummy does, and whether the input display is on.
+    /// What the dummy does, the battle's options, and whether the input display is on.
     opponent: Opponent,
+    options: Options,
     inputs: bool,
     /// The menu is open, and the row the focus was last on in it (it opens there).
     menu_open: bool,
@@ -115,34 +118,45 @@ struct Session {
 
 /// The training menu's rows, in order, under whatever rows another screen added: each group's title, then its
 /// options. A row is added here, worded in training.slint (`TrainingView.label` and `value`), and given what it
-/// does in [`values`], [`value`] and [`set`]. (The design's other rows, Your HP, Dummy's HP, Custom gauge, Chip
-/// draw, Recording and a second pad, wait for the engine.)
-const ROWS: [TrainingOption; 5] = [TrainingOption::Dummy, TrainingOption::Action, TrainingOption::CustomScreen, TrainingOption::Display, TrainingOption::InputDisplay];
+/// does in [`values`], [`value`] and `Training::step_option`.
+const ROWS: [TrainingOption; 8] = [
+    TrainingOption::Dummy,
+    TrainingOption::Action,
+    TrainingOption::CustomScreen,
+    TrainingOption::Battle,
+    TrainingOption::YourHp,
+    TrainingOption::DummysHp,
+    TrainingOption::Display,
+    TrainingOption::InputDisplay,
+];
 
 /// How many values a row steps through (none: a group's title).
 fn values(option: TrainingOption) -> usize {
     match option {
         TrainingOption::Action => InFight::ALL.len(),
         TrainingOption::CustomScreen => OnCustomScreen::ALL.len(),
-        TrainingOption::InputDisplay => 2,
-        TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Display => 0,
+        TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::InputDisplay => 2,
+        TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
     }
 }
 
 /// The value a row has: its place among its values.
-fn value(option: TrainingOption, opponent: Opponent, inputs: bool) -> usize {
+fn value(option: TrainingOption, opponent: Opponent, options: Options, inputs: bool) -> usize {
     match option {
         TrainingOption::Action => InFight::ALL.iter().position(|a| *a == opponent.in_fight).unwrap_or(0),
         TrainingOption::CustomScreen => OnCustomScreen::ALL.iter().position(|c| *c == opponent.on_custom_screen).unwrap_or(0),
+        TrainingOption::YourHp => options.refills[0] as usize,
+        TrainingOption::DummysHp => options.refills[1] as usize,
         TrainingOption::InputDisplay => inputs as usize,
-        TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Display => 0,
+        TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
     }
 }
 
-/// What is remembered between runs, by these keys of the settings' `remembered`: the dummy's setup and the
-/// input display (the builds chosen are by game: [`kept_build`]).
+/// What is remembered between runs, by these keys of the settings' `remembered`: the dummy's setup, the battle's
+/// options and the input display (the builds chosen are by game: [`kept_build`]).
 const KEPT_ACTION: &str = "training.action";
 const KEPT_CUSTOM_SCREEN: &str = "training.custom-screen";
+const KEPT_HP: [&str; 2] = ["training.your-hp", "training.dummys-hp"];
 const KEPT_INPUTS: &str = "training.inputs";
 
 /// The dummy's choices by their names in the settings, in `InFight::ALL`'s and `OnCustomScreen::ALL`'s order.
@@ -160,6 +174,12 @@ fn kept_opponent(shell: &Shell) -> Opponent {
         opponent.on_custom_screen = OnCustomScreen::ALL[at];
     }
     opponent
+}
+
+/// The battle's options as they were last left in one of Training's own sessions.
+fn kept_options(shell: &Shell) -> Options {
+    let kept = |key: &str, on: &str| shell.settings.remembered.get(key).is_some_and(|v| v == on);
+    Options { refills: KEPT_HP.map(|key| kept(key, "refills")) }
 }
 
 /// Whether the input display is on.
@@ -205,6 +225,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         full: start.full,
         added: start.rows.len(),
         opponent: start.opponent,
+        options: start.options,
         inputs,
         menu_open: false,
         // (The menu opens on its first row: a row its starter added, else the first option.)
@@ -216,7 +237,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         .rows
         .iter()
         .map(|text| TrainingRow { option: TrainingOption::Added, value: 0, text: text.into() })
-        .chain(ROWS.iter().map(|o| TrainingRow { option: *o, value: value(*o, session.opponent, inputs) as i32, text: Default::default() }))
+        .chain(ROWS.iter().map(|o| TrainingRow { option: *o, value: value(*o, session.opponent, session.options, inputs) as i32, text: Default::default() }))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
     view.set_leave(start.from.is_none());
@@ -225,7 +246,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     view.set_inputs(inputs);
     view.set_held_yours(0);
     view.set_held_dummys(0);
-    let driver = LivePlayer::against(Set::of(content, &m, start.seed), start.opponent, start.seed as u64);
+    let driver = LivePlayer::against(Set::of(content, &m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
     shell.start_battle(BattleStart {
         owner: ScreenId::Training,
         kind: BattleKind::Training,
@@ -535,7 +556,7 @@ impl Training {
     fn start_training(&mut self, shell: &mut Shell) {
         let Some((game, ready)) = shell.ready() else { return };
         let Some([you, dummy]) = self.pair(&ready) else { return shell.sound.play(Cue::Refused) };
-        let start = Start { opponent: kept_opponent(shell), seed: self.seed, ..Start::new(&game, you, dummy) };
+        let start = Start { opponent: kept_opponent(shell), options: kept_options(shell), seed: self.seed, ..Start::new(&game, you, dummy) };
         self.drop_arena(shell);
         if let Err(error) = self::start(shell, start) {
             shell.fail(error);
@@ -555,7 +576,7 @@ impl Training {
         let Some(mut session) = shell.training.session.take() else { return };
         let option = (index as usize).checked_sub(session.added).and_then(|at| ROWS.get(at)).copied();
         if let Some(option) = option.filter(|o| values(*o) > 0) {
-            let next = (value(option, session.opponent, session.inputs) as i32 + by).rem_euclid(values(option) as i32) as usize;
+            let next = (value(option, session.opponent, session.options, session.inputs) as i32 + by).rem_euclid(values(option) as i32) as usize;
             // (A session another screen started keeps nothing of the dummy's setup.)
             let keep = session.from.is_none();
             match option {
@@ -571,6 +592,13 @@ impl Training {
                         shell.settings.remembered.insert(KEPT_CUSTOM_SCREEN.into(), CUSTOM_SCREENS[next].into());
                     }
                 }
+                TrainingOption::YourHp | TrainingOption::DummysHp => {
+                    let side = (option == TrainingOption::DummysHp) as usize;
+                    session.options.refills[side] = next == 1;
+                    if keep {
+                        shell.settings.remembered.insert(KEPT_HP[side].into(), if next == 1 { "refills" } else { "normal" }.into());
+                    }
+                }
                 TrainingOption::InputDisplay => {
                     shell.settings.remembered.insert(KEPT_INPUTS.into(), if next == 1 { "on" } else { "off" }.into());
                     // (What each side holds is told from the next frame.)
@@ -582,11 +610,13 @@ impl Training {
                     view.set_held_yours(0);
                     view.set_held_dummys(0);
                 }
-                TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Display => {}
+                TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => {}
             }
             shell.save_settings();
+            // (At once, on the battle as it stands behind the menu.)
             if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training) {
                 b.stage.player.set_opponent(session.opponent);
+                b.stage.player.set_training(session.options);
             }
             // (The row's own value: its stepper slides to it.)
             let rows = shell.ui().global::<TrainingView>().get_rows();
@@ -817,18 +847,23 @@ mod tests {
     /// name of its own.
     #[test]
     fn the_menus_rows_have_their_values() {
-        let (opponent, mut seen) = (Opponent::default(), 0);
+        let (opponent, options, mut seen) = (Opponent::default(), Options::default(), 0);
         for option in ROWS {
             if values(option) > 0 {
                 seen += 1;
-                assert!(value(option, opponent, false) < values(option), "{option:?}");
+                assert!(value(option, opponent, options, false) < values(option), "{option:?}");
+            }
+            // (A session another screen starts has the battle's options at their normal values: the first.)
+            if matches!(option, TrainingOption::YourHp | TrainingOption::DummysHp) {
+                assert_eq!(value(option, opponent, options, false), 0, "{option:?}");
             }
         }
-        assert_eq!(seen, 3, "Action, Custom screen, Input display");
+        assert_eq!(seen, 5, "Action, Custom screen, Your HP, Dummy's HP, Input display");
         assert_eq!((ACTIONS.len(), CUSTOM_SCREENS.len()), (InFight::ALL.len(), OnCustomScreen::ALL.len()));
-        assert_eq!(value(TrainingOption::Action, Opponent { in_fight: InFight::AttacksAtRandom, ..opponent }, false), 2);
-        assert_eq!(value(TrainingOption::CustomScreen, Opponent { on_custom_screen: OnCustomScreen::PicksNothing, ..opponent }, false), 0);
-        assert_eq!(value(TrainingOption::InputDisplay, opponent, true), 1);
+        assert_eq!(value(TrainingOption::Action, Opponent { in_fight: InFight::AttacksAtRandom, ..opponent }, options, false), 2);
+        assert_eq!(value(TrainingOption::CustomScreen, Opponent { on_custom_screen: OnCustomScreen::PicksNothing, ..opponent }, options, false), 0);
+        assert_eq!(value(TrainingOption::DummysHp, opponent, Options { refills: [false, true] }, false), 1);
+        assert_eq!(value(TrainingOption::InputDisplay, opponent, options, true), 1);
     }
 
     /// The builds chosen are remembered by game, the player's and the dummy's apart.

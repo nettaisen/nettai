@@ -33,7 +33,7 @@
 //! }
 //! ```
 
-use crate::driver::{Driver, NetStatus, Opponent, StopReason};
+use crate::driver::{Driver, LivePlayer, NetStatus, Opponent, StopReason, Training};
 use crate::game::{Graphics, Loaded};
 use crate::preload::Late;
 use crate::session::Session;
@@ -362,6 +362,34 @@ impl Player {
     /// that plays no opponent.
     pub fn set_opponent(&mut self, opponent: Opponent) -> bool {
         self.session.driver.set_opponent(opponent)
+    }
+
+    /// A training session's options on live play (none for a battle that
+    /// isn't live play).
+    pub fn training(&self) -> Option<Training> {
+        self.session.driver.live().map(LivePlayer::training)
+    }
+
+    /// Have a training session's options change the battle, at once and
+    /// before every tick after (`LivePlayer::set_training`). False (and
+    /// nothing changes) for a battle that isn't live play, and while a
+    /// replay of it is written: what the options change isn't a match's.
+    pub fn set_training(&mut self, training: Training) -> bool {
+        let session = &mut self.session;
+        let Some(live) = session.driver.live_mut().filter(|_| session.recorder.is_none()) else { return false };
+        live.set_training(training, &mut session.battle);
+        true
+    }
+
+    /// Live play's driver, for the rest a training session sets on it (the
+    /// opponent's recording, its second pad); none for a battle that isn't
+    /// live play.
+    pub fn live(&self) -> Option<&LivePlayer> {
+        self.session.driver.live()
+    }
+
+    pub fn live_mut(&mut self) -> Option<&mut LivePlayer> {
+        self.session.driver.live_mut()
     }
 
     /// Start over: what the driver plays from its beginning (a recording's

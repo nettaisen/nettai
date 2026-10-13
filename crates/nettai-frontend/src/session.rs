@@ -155,6 +155,8 @@ impl Session {
         self.fresh = true;
         self.new_round = false;
         self.sound = None;
+        // (A training session's options, on the battle the last tick left: nothing from a driver without any.)
+        self.driver.prepare(&mut self.battle);
         let Some(step) = self.driver.next(&self.battle, keys) else {
             self.stop(StopReason::Finished, format!("end of input at {}", self.driver.position()));
             self.finished = true;
