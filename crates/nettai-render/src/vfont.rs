@@ -92,13 +92,21 @@ struct Style {
     /// the space the original's glyphs keep before what follows them (a
     /// name's damage digits).
     margin: f32,
+    /// Nothing is drawn below or above the box's rows, as the original's
+    /// glyphs never leave their cells: a font's descenders (Murecho's
+    /// reach 3.3 pixels under the 8x16 font's baseline, where the
+    /// original's reach 1) would cover what is under the cells, the chip
+    /// window's picture, the enemy name's bar's edge.
+    in_rows: bool,
 }
 
 impl Role {
     fn style(self) -> Style {
         match self {
-            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0 },
-            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0 },
+            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, in_rows: true },
+            // (The chatbox's lines are cut where its sprites end, a third
+            // line's descenders kept: `chatbox::draw`.)
+            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0, in_rows: false },
         }
     }
 }
@@ -581,15 +589,15 @@ impl TextRenderer {
                 Align::Right => item.rect.w as f32 - layout.width,
             };
         let baseline = item.rect.y as f32 + st.baseline;
+        let rows = Rect::new(-(WIDTH as i32), item.rect.y, 3 * WIDTH as i32, item.rect.h);
         // The squash: about the box's middle, cut by its rows.
         let (k, baseline, clip) = match item.vscale {
             Some(n) if n > 0 => {
                 let k = 256.0 / n as f32;
                 let mid = item.rect.y as f32 + item.rect.h as f32 / 2.0;
-                let rows = Rect::new(-(WIDTH as i32), item.rect.y, 3 * WIDTH as i32, item.rect.h);
                 (k, mid + (baseline - mid) * k, item.clip.intersect(rows))
             }
-            _ => (1.0, baseline, item.clip),
+            _ => (1.0, baseline, if st.in_rows { item.clip.intersect(rows) } else { item.clip }),
         };
         let clip = clip.intersect(Rect::SCREEN);
         if clip.is_empty() {
@@ -794,6 +802,23 @@ mod tests {
         let mut out = vec![0u32; w * h];
         crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
         (0..w).map(|x| (0..32).any(|y| out[y * w + x] != 0)).collect()
+    }
+
+    /// A cell string's descenders stop at its box's last row, as the
+    /// original's glyphs stay in their cells; a chatbox line's don't.
+    #[test]
+    fn a_cell_strings_descenders_stay_in_its_cells() {
+        let lit_rows = |role: Role| {
+            let item = TextItem::new("gjpqy", role, Rect::new(8, 8, 64, 16), 0x7FFF, Some(0x2108));
+            let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item] };
+            let (w, h) = (WIDTH * 2, HEIGHT * 2);
+            let mut out = vec![0u32; w * h];
+            crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
+            (0..h).filter(|&y| out[y * w..(y + 1) * w].iter().any(|&p| p != 0)).collect::<Vec<_>>()
+        };
+        let cell = lit_rows(Role::Cell);
+        assert_eq!(cell.last(), Some(&(2 * 24 - 1)), "cut at the box's last row");
+        assert!(*lit_rows(Role::Dialogue).last().unwrap() > 2 * 20, "the dialogue font's descenders below its 12 rows");
     }
 
     #[test]
