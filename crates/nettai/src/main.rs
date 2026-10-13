@@ -13,6 +13,7 @@
 
 mod awake;
 mod battle;
+mod bnlc;
 mod builds;
 mod errors;
 mod games;
@@ -21,6 +22,7 @@ mod input;
 mod lang;
 mod look;
 mod nav;
+mod packs;
 mod paths;
 mod quit;
 mod replays;

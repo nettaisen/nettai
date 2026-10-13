@@ -112,6 +112,13 @@ Each is settled unless the user changes it.
       new game's ground comes in from the side of the arrow pressed, behind a moving edge (§4, "Motion").
     - Each game's look is stated in its own content, beside its versions' colors and its name; the app names no
       game, and a game whose content states no look is drawn in the app's own (BN6's).
+24. **The packs come from the player's Legacy Collection** (2026-10-13): "you should detect bnlc vol2 and extract
+    all assets from there on startup if they are not extracted yet (and if nettai version changes, reextract
+    assets). there is bnlc detection code in tango you can steal". The app finds Battle Network Legacy Collection
+    Vol. 2 through Steam, as Tango does, or in a folder the player chose, and extracts each game's pack from it into
+    its own data folder as it starts: when the pack is missing, or another version of nettai made it. A game is
+    playable as its pack lands. Without the collection, a game with no pack says so, with a way to choose the
+    collection's folder. (docs/app.md §17.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -279,6 +286,12 @@ Each is in the mockups under the same name.
 ### Loading
 - **Starting up:** the logo, one bar 480 wide, "Loading BN6" and a percentage. The game last used loads before the
   menu appears; the others load behind it, and switching to one not ready shows the bar again.
+- **A pack being extracted** (§2.24): the same bar, "Extracting BN6" and a percentage, before "Loading BN6". The
+  game last used is extracted first; the others behind the menu, one after the other, and switching to one not
+  extracted yet shows its bar.
+- **No game, and no Legacy Collection:** the logo, the error's line ("nettai needs Battle Network Legacy Collection
+  Vol. 2. Install it from Steam, or choose its folder.") and CHOOSE FOLDER, which opens the system's folder
+  dialog. Where a game can be played, the same error is a dialog with CHOOSE FOLDER and OK.
 - **Before a battle** (online, training, a replay): the two players' cards facing each other, each with its own bar.
   Everything the match can use is loaded before its first frame: both navis and their forms, every chip in both
   folders, the arena, the music and the sounds. Online the match starts when both bars are full. The opponent's card
@@ -312,16 +325,18 @@ Each is in the mockups under the same name.
   breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
 ### Training
-- **Entry:** two rows, Your build and Dummy's build, both remembered, and START TRAINING; beside them the two
-  builds facing each other and the arena. One line: "Set up the dummy from the menu once you're in."
+- **Entry:** four rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
+  also add arena + background select?": the game's arenas and battle backgrounds, Random first), all
+  remembered, and START TRAINING; beside them the two builds facing each other and the arena. One line: "Set
+  up the dummy from the menu once you're in."
 - **The training menu** (Start or Esc in training): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right:
   - Dummy: Action (stands still, moves around, attacks at random, plays your recording, a second pad), Custom
     screen (picks no chips, picks the first it can), Recording (Record: the player drives the dummy until Start;
     it loops)
-  - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
-    folder order)
+  - Battle: Arena and Background (as on the entry; a change starts the set over on the new place), Your HP and
+    Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled, folder order)
   - Display: Input display
   - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
 
@@ -436,6 +451,8 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | the port to host on is taken | That port is already in use. |
 | a save is another game's | Not a BN6 save. |
 | a game's pack is there and can't be loaded | BN6's data is out of date. Extract it again. |
+| a game has no pack, and no Legacy Collection is found | nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or choose its folder. |
+| a game's pack couldn't be extracted | BN6's data couldn't be extracted. Details are in the log file. |
 | anything else | Something went wrong. Details are in the log file. |
 
 ## 8. Behind the screens

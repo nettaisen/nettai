@@ -65,7 +65,7 @@ pub struct Layout {
 impl Layout {
     /// The layout `block` (the game's module, as data) states, where it is
     /// the one this view draws: 42 places in lists (where it states none,
-    /// one list of them all: EXE4's, whose writer isn't mapped), and where
+    /// one list of them all), and where
     /// the game's setup takes pattern records, eight of five chips; and
     /// only where the game's setup takes the places.
     pub fn read(content: &Content, block: Option<&nettai_content_api::Data>) -> Option<Layout> {
@@ -360,11 +360,11 @@ mod tests {
         );
         let six = nettai_match::testing::exe6_content();
         assert!(Layout::read(&six, block.as_ref()).is_none(), "EXE6's setup takes no such data");
-        // EXE4's block states no lists: its 42 places are one.
+        // EXE4's block states EXE5's lists (its writer, 0x0800EFA8, writes them so).
         let four = nettai_match::testing::exe4_content();
-        let block = crate::builds::module_data(&four, "exe4", MODULE);
-        let layout = Layout::read(&four, block.as_ref()).expect("EXE4's block's layout");
-        assert_eq!(layout.lists, [List { name: String::new(), start: 0, len: PLACES, holds: Holds::Any }]);
+        let block4 = crate::builds::module_data(&four, "exe4", MODULE);
+        let layout4 = Layout::read(&four, block4.as_ref()).expect("EXE4's block's layout");
+        assert_eq!(layout4, layout);
         let mut m = nettai_match::pick::live(&four, "exe4", 3, None).unwrap();
         let cannon = ids::chip(&four, "exe4", "cannon").unwrap();
         assert!(update(&four, &mut m.sides[0], Edit::Put(5, cannon)));

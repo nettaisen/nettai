@@ -14,7 +14,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { PanelBack, Label, ListView, RowTouch, ArrowLeft, ArrowRight, Message } from "../../widgets.slint";
+import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message } from "../../widgets.slint";
 import { Tween, Pulse, Shake } from "../../motion.slint";
 
 // What the board has at a cell: nothing (EXE6's corners), a cell of the board, or one of its out-of-bounds ring.
@@ -91,12 +91,18 @@ export struct ProgramDetail {
 
 // What the tab shows: src/screens/builds/navicust.rs sets these.
 export global NavicustView {
-    // (The footer says what the keys do where the cursor is: on a placed piece, Del takes it off; with a piece in
-    // hand, Back puts it away into the list.)
-    out property <[Hint]> hints: self.holding ? self.holding-hints : self.on-piece ? self.piece-hints : self.hints-at-rest;
+    // (The footer says what the keys do where the cursor is: on a placed piece, Del takes it off; on a placed
+    // program's row, Enter does; with a piece in hand, Back puts it away into the list.)
+    out property <[Hint]> hints: self.holding ? self.holding-hints : self.on-piece ? (self.in-list ? self.row-hints : self.piece-hints) : self.hints-at-rest;
     property <[Hint]> hints-at-rest: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Pick up") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: self.in-list ? @tr("Take") : @tr("Pick up") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+    ];
+    property <[Hint]> row-hints: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take off") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -139,6 +145,8 @@ export global NavicustView {
     in property <[PieceCell]> held;
     in property <color> held-tone;
     in property <bool> held-plus;
+    // Where it is, it could be put down (its outline white), or not (red, the cells under it washed red).
+    in property <bool> held-fits: true;
     in property <int> grab-x;
     in property <int> grab-y;
     // The piece in hand is being moved (it glides to the next cell), not taken up.
@@ -274,11 +282,14 @@ component CellView inherits Rectangle {
 }
 
 // A cell of the piece in hand: its color (a plus part's crossed) with a shadow under it, and the piece's white
-// outline along its sides that are the piece's edge.
+// outline along its sides that are the piece's edge, in the gaps round the cells it would land on; red, and the cell
+// washed red, where it can't be put down (`fits`).
 component HeldCellView inherits Rectangle {
     in property <PieceCell> at;
     in property <color> tone;
     in property <bool> plus;
+    in property <bool> fits: true;
+    property <color> edge: root.fits ? Theme.piece-held : Theme.bad;
     Rectangle {
         background: root.tone;
         drop-shadow-blur: 10px;
@@ -293,12 +304,17 @@ component HeldCellView inherits Rectangle {
     }
 
     Rectangle {
+        visible: !root.fits;
+        background: Theme.bad.with-alpha(0.4);
+    }
+
+    Rectangle {
         x: -3px;
         y: -3px;
         width: parent.width + 6px;
         height: 2px;
         visible: root.at.top;
-        background: Theme.piece-held;
+        background: root.edge;
     }
 
     Rectangle {
@@ -307,7 +323,7 @@ component HeldCellView inherits Rectangle {
         width: parent.width + 6px;
         height: 2px;
         visible: root.at.bottom;
-        background: Theme.piece-held;
+        background: root.edge;
     }
 
     Rectangle {
@@ -316,7 +332,7 @@ component HeldCellView inherits Rectangle {
         width: 2px;
         height: parent.height + 6px;
         visible: root.at.left;
-        background: Theme.piece-held;
+        background: root.edge;
     }
 
     Rectangle {
@@ -325,7 +341,7 @@ component HeldCellView inherits Rectangle {
         width: 2px;
         height: parent.height + 6px;
         visible: root.at.right;
-        background: Theme.piece-held;
+        background: root.edge;
     }
 }
 
@@ -390,9 +406,40 @@ component ProgramRowView inherits Rectangle {
         overflow: elide;
     }
 
-    touch := RowTouch {
-        nav: "programs";
-        nav-index: root.nav-index;
+    // (A press, a drag out of the row and a release, told to the Rust half as the board's are: `Pointer`. A release
+    // that never left the row is a click.)
+    touch := TouchArea {
+        property <bool> inside: self.mouse-x >= 0 && self.mouse-x < self.width && self.mouse-y >= 0 && self.mouse-y < self.height;
+        pointer-event(e) => {
+            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                Nav.point("programs", root.nav-index);
+                Nav.choose("drag", 0, root.nav-index);
+            } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            } else if e.kind == PointerEventKind.cancel {
+                Nav.choose("drag", 5, 0);
+            }
+        }
+        moved => {
+            if self.pressed && !self.inside {
+                Nav.choose("drag", 2, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            }
+        }
+        scroll-event(e) => {
+            if self.pressed && NavicustView.holding {
+                Nav.choose("drag", 4, round(e.delta-y / 1px));
+                return accept;
+            }
+            return reject;
+        }
+    }
+}
+
+// Where the pointer is in the window, as one number for `Nav.choose` (x * 65536 + y, in logical pixels): the Rust
+// half finds the board's cell under it (navicust.rs, `Navicust::cell_under`).
+global Pointer {
+    public pure function at(origin: Point, x: length, y: length) -> int {
+        return max(0, round((origin.x + x) / 1px)) * 65536 + max(0, round((origin.y + y) / 1px));
     }
 }
 
@@ -738,9 +785,39 @@ export component NavicustTab inherits Rectangle {
                     at: c;
                     tone: NavicustView.held-tone;
                     plus: NavicustView.held-plus;
+                    fits: NavicustView.held-fits;
 
                     Rectangle { }  // (Copied in: docs/app.md §14.)
                 }
+            }
+        }
+
+        // The mouse over the board: a press picks a placed piece up (or brings the piece in hand to the cell), a
+        // drag takes it from cell to cell, a release puts it down (off the board, away into the list), the wheel
+        // turns it. Each is told to the Rust half with where the pointer is (`Pointer`), which finds the cell; a
+        // release that never left the cell pressed is a click, as Enter there.
+        TouchArea {
+            mouse-cursor: self.pressed && NavicustView.holding ? MouseCursor.grabbing : MouseCursor.default;
+            pointer-event(e) => {
+                if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+                    Nav.choose("drag", 1, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
+                    Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                } else if e.kind == PointerEventKind.cancel {
+                    Nav.choose("drag", 5, 0);
+                }
+            }
+            moved => {
+                if self.pressed {
+                    Nav.choose("drag", 2, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+                }
+            }
+            scroll-event(e) => {
+                if NavicustView.holding {
+                    Nav.choose("drag", 4, round(e.delta-y / 1px));
+                    return accept;
+                }
+                return reject;
             }
         }
     }
@@ -809,6 +886,8 @@ export component NavicustTab inherits Rectangle {
         width: root.list-width;
         height: root.height - self.y;
         nav: "programs";
+        // (A mouse's drag of a row takes its program to the board; the wheel scrolls the list.)
+        mouse-pan: false;
         count: NavicustView.programs.length;
         row-height: Theme.phone ? 40px : Theme.chip-row;
         chosen: self.focused-row;

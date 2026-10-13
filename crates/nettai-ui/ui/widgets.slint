@@ -1427,6 +1427,8 @@ export component ListView inherits Rectangle {
     in property <length> gap: 2px;
     // The row marked, or -1.
     in property <int> chosen: -1;
+    // A mouse's drag scrolls it (a touch's always does).
+    in property <bool> mouse-pan: true;
     out property <length> pitch: root.row-height + root.gap;
     out property <length> scroll: scroller.scroll;
     out property <int> first: scroller.first;
@@ -1454,6 +1456,7 @@ export component ListView inherits Rectangle {
         width: scroller.view-width;
         content-width: self.width;
         content-height: scroller.content-height;
+        mouse-drag-pan-enabled: root.mouse-pan;
         Rectangle {
             y: scroller.offset;
             @children

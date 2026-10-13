@@ -99,12 +99,16 @@ export global Shell {
     in property <string> player;
     in property <string> version;
 
-    // The selected game isn't loaded: the bar, in place of the screen.
+    // The selected game isn't loaded: the bar, in place of the screen. `extracting`: its pack is being extracted
+    // from the Legacy Collection first, and the bar is that.
     in property <bool> loading;
     in property <float> loading-progress;
-    // No game can be played, and where a pack is looked for.
+    in property <bool> extracting;
+    // No game can be played, and where a pack is looked for. `extracts`: the app extracts its packs itself (no
+    // `$NETTAI_PACKS`), so what is missing is the Legacy Collection, and its folder can be chosen.
     in property <bool> no-games;
     in property <string> packs-folder;
+    in property <bool> extracts;
 
     // The two cards before a battle.
     in property <bool> versus;
@@ -214,6 +218,9 @@ export enum ErrorKind {
     export-failed,
     wrong-game-save,
     game-outdated,
+    // No pack of a game, and no Legacy Collection to extract it from.
+    no-legacy-collection,
+    extract-failed,
     other,
 }
 
@@ -293,6 +300,12 @@ export global Errors {
         if kind == ErrorKind.game-outdated {
             return @tr("{}'s data is out of date. Extract it again.", detail);
         }
+        if kind == ErrorKind.no-legacy-collection {
+            return @tr("nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or choose its folder.");
+        }
+        if kind == ErrorKind.extract-failed {
+            return @tr("{}'s data couldn't be extracted. Details are in the log file.", detail);
+        }
         return @tr("Something went wrong. Details are in the log file.");
     }
     // A dialog's title for it, and its message under the title.
@@ -369,6 +382,12 @@ export global Errors {
         if kind == ErrorKind.game-outdated {
             return @tr("{}'s data is out of date", detail);
         }
+        if kind == ErrorKind.no-legacy-collection {
+            return @tr("nettai needs Battle Network Legacy Collection Vol. 2");
+        }
+        if kind == ErrorKind.extract-failed {
+            return @tr("{}'s data couldn't be extracted", detail);
+        }
         return @tr("Something went wrong");
     }
     public pure function body(kind: ErrorKind, detail: string) -> string {
@@ -444,11 +463,18 @@ export global Errors {
         if kind == ErrorKind.game-outdated {
             return @tr("Extract it again.");
         }
+        if kind == ErrorKind.no-legacy-collection {
+            return @tr("Install it from Steam, or choose its folder.");
+        }
         return @tr("Details are in the log file.");
     }
     // What closes a dialog that only says something.
     public pure function ok() -> string {
         return @tr("OK");
+    }
+    // What opens the system's folder dialog, to choose the Legacy Collection's folder.
+    public pure function choose-folder() -> string {
+        return @tr("CHOOSE FOLDER");
     }
 }
 

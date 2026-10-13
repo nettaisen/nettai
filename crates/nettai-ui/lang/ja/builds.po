@@ -253,6 +253,10 @@ msgstr "外す"
 msgid "Pick up"
 msgstr "持つ"
 
+# A program of the list taken in hand.
+msgid "Take"
+msgstr "取り出す"
+
 msgid "Take off"
 msgstr "外す"
 

@@ -145,6 +145,67 @@ fn rejects_unknown_truncated_and_duplicate_roms() {
     assert!(extract(Game::Exe6, &roms).is_err());
 }
 
+/// A ROM is told by its header alone, the first `HEADER_LEN` bytes: its game and its code, for each of the
+/// games' four; anything else is no game's. And a game is found by its id.
+#[test]
+fn a_rom_is_recognized_by_its_header() {
+    for game in Game::ALL {
+        assert_eq!(Game::named(game.id()), Some(game));
+        for code in game.codes() {
+            let mut header = vec![0; nettai_extract::HEADER_LEN];
+            header[0xac..0xb0].copy_from_slice(code.as_bytes());
+            assert_eq!(nettai_extract::recognize(&header), Some((game, code)));
+        }
+    }
+    let mut other = vec![0; nettai_extract::HEADER_LEN];
+    other[0xac..0xb0].copy_from_slice(b"A6BE");
+    assert_eq!(nettai_extract::recognize(&other), None);
+    assert_eq!(nettai_extract::recognize(&other[..0xae]), None, "a header cut short");
+    assert_eq!(Game::named("exe3"), None);
+}
+
+/// Each game's packs have a fingerprint of their own, the same each time it is asked for.
+#[test]
+fn each_game_has_its_own_fingerprint() {
+    let prints: Vec<String> = Game::ALL.into_iter().map(nettai_extract::fingerprint).collect();
+    assert!(prints.iter().all(|p| p.len() == 16 && p.chars().all(|c| c.is_ascii_hexdigit())), "{prints:?}");
+    assert_eq!(prints, Game::ALL.map(nettai_extract::fingerprint));
+    assert!(prints[0] != prints[1] && prints[1] != prints[2] && prints[0] != prints[2], "{prints:?}");
+}
+
+/// The extraction and the writing say how far they are, from 0 to 1 and never back; and what the writing that
+/// reports writes is `write`'s, byte for byte.
+#[test]
+fn an_extraction_reports_how_far_it_is() {
+    let mut said = Vec::new();
+    let assets = nettai_extract::extract_reporting(Game::Exe6, &RomSet::default(), &mut |f| said.push(f)).unwrap();
+    let (reported, plain) = (tempfile::tempdir().unwrap(), tempfile::tempdir().unwrap());
+    assets.write_reporting(reported.path(), &mut |f| said.push(f + 1.0)).unwrap();
+    assets.write(plain.path()).unwrap();
+    assert!(said.windows(2).all(|w| w[0] <= w[1]), "{said:?}");
+    assert!(said.iter().all(|f| (0.0..=2.0).contains(f)), "{said:?}");
+    assert!(said.contains(&1.0) && said.last() == Some(&2.0), "{said:?}");
+    fn files(root: &Path) -> Vec<(std::path::PathBuf, Vec<u8>)> {
+        let mut out = Vec::new();
+        let mut dirs = vec![root.to_path_buf()];
+        while let Some(dir) = dirs.pop() {
+            for entry in std::fs::read_dir(&dir).unwrap() {
+                let path = entry.unwrap().path();
+                if path.is_dir() {
+                    dirs.push(path);
+                } else {
+                    out.push((path.strip_prefix(root).unwrap().to_path_buf(), std::fs::read(&path).unwrap()));
+                }
+            }
+        }
+        out.sort();
+        out
+    }
+    let (a, b) = (files(reported.path()), files(plain.path()));
+    assert!(!a.is_empty());
+    assert!(a == b, "the two writings differ");
+}
+
 /// What a ROM holds, for telling whether a picture is in it: every 32
 /// bytes at a word boundary (a tile, four bits a pixel; the dialogue font's
 /// rows pack alike; a palette's sixteen colors), of the image and of each
