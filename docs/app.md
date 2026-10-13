@@ -39,7 +39,7 @@ names the signaling server (§4). Some variables are for development:
 | `NETTAI_NO_TIMER_CLOCK` | Leaves the timer's clock out, to see what the window's frames do alone. |
 | `NETTAI_PHYSICAL_PIXELS` | Presents the picture at the display's density. |
 | `NETTAI_NO_TEXTURE` | Shows the picture as a new image each time, not in the texture (§1). |
-| `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe. |
+| `NETTAI_TOUR=<folder>` | The screenshot pass (§13); `NETTAI_TOUR_MOTION=1` its motion probe. A build with the `tour` feature's alone (`--features tour`): a player's has none of it. |
 
 ## 1. The battle in a Slint window
 
@@ -289,6 +289,7 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 | `focused(id, index)` | The focus moved to a control (a list's row: the overview beside it follows). |
 | `key`, `button` | A key or a pad's button the screen may want for itself, before the menus read it (a key being bound; R in training). |
 | `action` | Previous and next (the shoulders, the keys bound to L and R), delete, the pad's north button. The shell changes the game with the first two unless the screen takes them. |
+| `scroll` | Up, Down, Page Up, Page Down, Home, End (keys, D-pad, stick), before the focus moves: for a page of the screen's own that scrolls with no control in it to move to (Play's build sheets in the match's menu). |
 | `back` | Esc or Back: true if the screen went back within itself; false and the shell goes to the menu. |
 | `answered(tag, choice)` | A dialog the screen asked was answered; or something it asked of another screen was (`Shell::tell`: a row it added to the training menu was chosen). |
 | `dropped(path)` | A file was dropped on the window. |
@@ -479,8 +480,9 @@ Where a build is shown whole, it is the Builds screen's overview (`BuildOverview
 the build chosen or the language changes); a player's panel in a match, on its YOUR BUILD and THEIR BUILD
 pages and while Tab is held, the narrow sheet of the agreement's side, which is the build as the match plays
 it (without its patch cards where those were off), under the player's name. The menu's page is shorter than
-the sheet at the reference size, so it scrolls (a `ScrollPage`: the wheel, a drag; no control in it to move
-to). On a phone a sheet is a column taller than the window: the menu's page scrolls it, and with Tab held each
+the sheet at the reference size, so it scrolls: by the wheel and a drag, and by Up and Down (a step of two
+chips' rows), Page Up and Down, Home and End, the pad's too, which the screen takes before the focus would
+move (`Screen::scroll`: the page has no control in it to move to, Back is under it). On a phone a sheet is a column taller than the window: the menu's page scrolls it, and with Tab held each
 of the two is half the window, its top (the navi, its stats, abilities and bugs). This player's card in the
 lobby says the build's name, navi and version as the settings would play it (`Lobby::side_as_played`).
 
@@ -495,7 +497,13 @@ lobby says the build's name, navi and version as the settings would play it (`Lo
 
 A link is made by `Session::open`: an invite (`Link::create_room`: the server picks the code, and the wait
 begins when it has said it), a code typed (`Link::join_room`), a direct host (`Link::host`, UDP port 47474) or
-a direct host's address (`Link::join`). The lobby is made the moment the link is open, in the link's role, with
+a direct host's address (`Link::join`). Making a room's link resolves the STUN server's name, and joining an
+address resolves the host's: either may wait on the system's resolver, so the link is made on a thread of its
+own (`Session::open` says at once only what needs no lookup: no server named, a code that can't be one, a port
+that can't be listened on). Meanwhile the space beside JOIN, or the dialog's under CONNECT, says the link is
+being made, and the loop goes on; a host's name that doesn't resolve is that address's error, and a
+signaling server that can't be reached is the server's. A STUN server whose name doesn't resolve is left out,
+as the link library has it (a link on one network needs none), not a failure. The lobby is made the moment the link is open, in the link's role, with
 a timeout of 45 seconds (longer than the link's 30 of making a dropped connection again), and the training
 battle ends. From the moment a link is asked for until it is dropped (the wait, the lobby, the loading, a
 match and its result) the screen holds `Shell::stay_awake`: the app is kept awake, and the timer runs its
@@ -523,8 +531,9 @@ drops the match's player, then `Lobby::reopen`), nobody ready, the settings as t
 - *LEAVE MATCH*, or the other player leaving it (`StopReason::OpponentLeft`, or the other's lobby heard again
   while this player's set isn't over, `Lobby::their_reopened`), or the other's player going silent
   (`ConnectionLost`), or something internal: the lobby's line says which, as its kind's sentence.
-- The lobby's LEAVE, Esc or Back in the lobby, and another screen all leave the other player
-  (`Lobby::leave`, then the link is dropped): their lobby ends, told.
+- The lobby's LEAVE and another screen leave the other player (`Lobby::leave`, then the link is dropped): their
+  lobby ends, told. Esc or Back in the lobby asks first ("Leave the lobby?", CANCEL focused, as a deletion
+  asks): a key pressed by mistake shouldn't end the link for both.
 
 **What a player is told** when it goes wrong is the typed kind's sentence (§12), where it belongs:
 
@@ -551,8 +560,7 @@ its line (it sat in the line's middle whatever its alignment).
 before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), and in the lobby's line
 (`words::problem` of the first of `Lobby::problems`, which names the part of the build it is about): "This build can't be used: 28 chips, a folder has 30."
 
-**Not done.** CONTROLS in the match menu shows the bindings and doesn't change them. Making a link resolves the STUN server's name on the window's thread
-(`Link::create_room`, `join_room`), before any lobby exists.
+**Not done.** CONTROLS in the match menu shows the bindings and doesn't change them.
 
 **What has run, and what was only written** (2026-10-12). Between two players in one process over real links
 (the screenshot pass's second player, §13), in English, Japanese and the pseudo-locale at both sizes:
@@ -1154,7 +1162,9 @@ its own catalog and hands to `UserError::BuildUnusable` as the reason. A game's 
 
 ## 13. The screenshot pass
 
-`NETTAI_TOUR=<folder>` (`tour.rs`): the app walks its own screens, in each language bundled (English, Japanese,
+`NETTAI_TOUR=<folder>` (`tour.rs`), in a build with the `tour` feature (`cargo run -p nettai --features tour`;
+a player's build has none of the pass, nor the link library's signaling server Play's second player meets the
+first through, and says so if asked for it; the tests compile it all the same): the app walks its own screens, in each language bundled (English, Japanese,
 the pseudo-locale) and at a desktop's size (1280 by 800) and an upright phone's (390 by 800), and writes the
 window as each shows to a PNG. `NETTAI_TOUR_LANGS`, `NETTAI_TOUR_SIZES` and `NETTAI_TOUR_GAME` pick the
 languages, the sizes and the game. The app is held still for it: nothing moves, there is no sound device, the
