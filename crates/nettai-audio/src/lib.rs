@@ -323,6 +323,22 @@ impl BattleAudio {
         }
     }
 
+    /// The host's levels, each 0 to 1 (1: as the game plays it): the
+    /// music's, which is the music player's notes, and the effects', which
+    /// is every other player's ([`m4a::Driver::set_level`]: what sounds is
+    /// the same, only how loud each is mixed). A host's "Music" and "Sound
+    /// effects". They are the drivers' state: a copy kept before a change
+    /// has the levels it was kept with.
+    pub fn set_levels(&mut self, music: f32, effects: f32) {
+        let level = |l: f32| (l.clamp(0.0, 1.0) * 256.0).round() as u16;
+        for p in &mut self.packs {
+            for player in 0..p.driver.players().len() {
+                let id = PlayerId(player as u8);
+                p.driver.set_level(id, level(if id == MUSIC_PLAYER { music } else { effects }));
+            }
+        }
+    }
+
     /// One frame: each driver's VBlank (sequencers and mix), then its
     /// queued calls (the game's main loop runs them next). Appends the
     /// frame's samples (about 549 at 32768 Hz, stereo, +-1.0; every
