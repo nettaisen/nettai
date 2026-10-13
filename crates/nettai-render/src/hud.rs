@@ -1065,12 +1065,15 @@ fn draw_chip_name(
 ) -> i32 {
     let words = text.strings.chip_name(&b.content, chip);
     let name = name_glyphs(b, hud, words, chip, problems);
-    fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, name.len(), pal, (0, 18 * 8), Align::Left);
+    // (The text layer's box: the cells its glyphs take, or a character a
+    // cell, eight at most, where the pack's font lacks the language's.)
+    let cells = if text.takes(words) { fonts::box_cells(hud, words, name.len(), name.len().max(8)) } else { name.len() };
+    fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), Align::Left);
     // The damage follows the name: after the cells its glyphs take, or in
     // the font mode a pixel after the name as the text layer draws it.
-    let mut x = 8 * name.len() as i32;
+    let mut x = 8 * cells as i32;
     if text.takes(words)
-        && let Some(w) = text.fitted_width(words, Role::Cell, 8 * name.len() as i32)
+        && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
     {
         x = w.ceil() as i32 + 1;
     }

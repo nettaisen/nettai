@@ -198,9 +198,12 @@ const FORM_NAME_PALETTES: (Place, u32) = (Place::pointer(0x0802_9EC0, 0x0802_A2D
 
 /// A version's own pictures, from a ROM of that version (the Gregar ROMs'
 /// Beast Out pictures differ in two pixels, `jp`: the US ROM's where both
-/// are given); the forms' names in English are its US ROM's alone.
+/// are given). The forms' names are in its release's words: its US ROM's
+/// English ones, and its Japanese ROM's where that is the only one of the
+/// version given (the names in the language the pack has them in; with
+/// both, the Japanese ones are `lettering`'s).
 fn version_pictures(roms: &Roms, version: Version) -> VersionPictures {
-    let (art, words) = (roms.of(version), roms.us_of(version));
+    let src = roms.of(version);
     // The Beast Out button, the version's Beast's (`sub_8028250`: 4x2 a
     // set: selectable, unavailable, battle mode 1's, and the hidden
     // slot's), with its picture in the chip window. The picture's palette
@@ -208,11 +211,11 @@ fn version_pictures(roms: &Roms, version: Version) -> VersionPictures {
     // +6 numbers, which EXE5's soul button sets for a Chaos Unison,
     // 0x08024540, and nothing in EXE6 sets): the pack leaves the second
     // out.
-    let picture = picture(art, BEAST_OUT);
+    let picture = picture(src, BEAST_OUT);
     let beast_out = ButtonPictures {
         width: 4,
         height: 2,
-        tiles: tiles(art, BEAST_BUTTONS),
+        tiles: tiles(src, BEAST_BUTTONS),
         sets: ButtonSets::Other,
         hidden: Some(3),
         cursor: SPECIAL_CURSOR,
@@ -222,8 +225,8 @@ fn version_pictures(roms: &Roms, version: Version) -> VersionPictures {
     };
     VersionPictures {
         buttons: vec![(BEAST_OUT_BUTTON.into(), beast_out)],
-        form_names: tiles(words, FORM_NAMES),
-        form_name_palettes: palettes(art, FORM_NAME_PALETTES),
+        form_names: tiles(src, FORM_NAMES),
+        form_name_palettes: palettes(src, FORM_NAME_PALETTES),
     }
 }
 
