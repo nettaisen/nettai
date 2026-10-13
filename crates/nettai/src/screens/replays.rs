@@ -1,4 +1,4 @@
-//! Replays (docs/design/app-ui.md §6; docs/app.md §15): the selected game's replays, newest first, with the
+//! Replays (docs/design/app-ui.md §6; docs/app.md §16): the selected game's replays, newest first, with the
 //! selected one beside them; the viewer; and the export.
 //!
 //! The list is read off the window's thread (`crate::replays`): the folder is listed again each time the screen

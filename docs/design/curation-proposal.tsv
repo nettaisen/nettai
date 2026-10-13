@@ -168,6 +168,8 @@ sprite	sight	sight	high		10-45: used by chips/circgun/gun, chips/circgun/shot, c
 sprite	slash-man-effect	claw-slash	medium		Shows cyan claw slashes: SlashMan's slash and DblBeast's Gregar claw and slam.	
 sprite	slash-wave	slash-wave	high		10-39: used by chips/slashman/wave.	
 sprite	small-ring	wide-navi	medium	wrong	The ROM's dummy sprite (a 16x16 dot, like 40 unused slots): it shows no ring. SumnBlk asks whether an actor wears it to know it stands two panels wide.	applied: accepted-1
+sprite	wide-navi	gregar-cybeast	high	wrong	08-14: Gregar the Cybeast's sheet (86 animations). Only the Gregar ROMs fill the slot; the Falzar ROMs, which the name before was given from, have the placeholder archive there (the 16x16 dot). SumnBlk asks whether an actor wears it to know it stands two panels wide.	applied: accepted-3
+sprite	sprite-08-15	falzar-cybeast	high	number	08-15: Falzar the Cybeast's sheet. Only the Falzar ROMs fill the slot; the Gregar ROMs have the placeholder archive there. No content uses it.	applied: accepted-3
 sprite	snake	snake	high		0c-2c: used by chips/snake/snake.	
 sprite	spark-0e	uninstall-spark	medium	number	Its spark (0x0E) is the role sparks.uninstall: a navi's programs uninstalled.	
 sprite	spout-geyser	spout-geyser	high		10-20: used by chips/spoutman/geyser, chips/spoutman/mark.	
@@ -196,7 +198,6 @@ sprite	sprite-04-1c	sprite-04-1c	high	number	04-1c: a virus's sheet; no netbattl
 sprite	sprite-04-1e	sprite-04-1e	high	number	04-1e: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.	
 sprite	sprite-04-1f	sprite-04-1f	high	number	04-1f: a virus's sheet; no netbattle shows it.	
 sprite	sprite-08-11	sprite-08-11	high	number	08-11: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.	
-sprite	sprite-08-15	sprite-08-15	high	number	08-15: a sheet no netbattle shows (content and the engine name only what they show).	
 sprite	sprite-08-16	sprite-08-16	high	number	08-16: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.	
 sprite	sprite-0c-25	sprite-0c-25	high	number	0c-25: a sheet no netbattle shows (content and the engine name only what they show).	
 sprite	sprite-0c-26	sprite-0c-26	high	number	0c-26: the ROM's dummy sprite (a 16x16 dot many unused slots share); nothing shows it.	
@@ -720,6 +721,7 @@ effect	slash_man_effect_1	claw_slash_1	medium		Effect 0x3A: claw-slash animation
 effect	slash_man_effect_2	claw_slash_2	medium		Effect 0x4C: claw-slash animation 2. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	
 effect	slash_man_effect_3	claw_slash_3	medium		Effect 0x4D: claw-slash animation 3. Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	
 effect	small_ring_82	dummy_look	low	wrong	Effect 0x4B reads animation 82, palette 16 of the dummy sprite: a row of the original's table that names no real look.	applied: accepted-1
+effect	dummy_look	gregar_cybeast_82	medium	wrong	Effect 0x4B is animation 82, palette 16 of Gregar the Cybeast's sheet (three frames of 2, 3 and 2 ticks): a real look in the Gregar ROMs, the placeholder archive's in the Falzar ROMs. No content spawns it.	applied: accepted-3
 effect	spout_man_effect	water_ring	low		Effect 0x2A: the water-ring sprite (SpoutMan's throw). Unused by content; named for its look (sprite, animation, palette), the effect number dropped.	
 effect	spout_splash	spout_splash	high		effect 0x1F: Effect 0x1F.	
 effect	sun_beam	sun_beam	high		effect 0x5D: Effect 0x5D.	

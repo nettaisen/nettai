@@ -51,6 +51,10 @@ pub struct Pick {
     /// The modifier bits a button mixed into the pick (the slot's `marks`:
     /// EXE5's capsules).
     pub marks: u8,
+    /// Whether the hand's selection lists it: a chip dealt or offered, not
+    /// one a picked button puts in the hand (EXE4's soul's, which
+    /// 0x0801F11C leaves out, its chip of family 15).
+    pub listed: bool,
 }
 
 /// One entry of the hand being built (the work area `dword_2033000`).
@@ -97,9 +101,12 @@ pub fn build(
     damage: impl Fn(ChipHandle) -> u16,
 ) -> Built {
     let mut entries = [EMPTY; 6];
+    // (The selection: the picks it lists, closed up, 0x0801F110.)
     let mut raw = [None; 6];
+    for (at, p) in raw.iter_mut().zip(picks.iter().filter(|p| p.listed)) {
+        *at = Some(p.chip);
+    }
     for (i, p) in picks.iter().enumerate() {
-        raw[i] = Some(p.chip);
         entries[i] = Entry {
             id: Some(p.chip.id),
             damage: damage(p.chip.id),
@@ -349,7 +356,7 @@ mod tests {
     }
 
     fn pick(id: ChipId, code: u8) -> Pick {
-        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false, marks: 0 }
+        Pick { chip: FolderChip::new(ChipHandle(id), ChipCode(code)), regular: false, marks: 0, listed: true }
     }
 
     fn built(picks: &[Pick]) -> Built {
@@ -428,6 +435,18 @@ mod tests {
         // Uninstll doesn't fold into a dimming.
         let b = built(&[pick(DIMMING, 0), pick(0xB9, 6)]);
         assert_eq!(b.hand.ids[..3], ids([DIMMING, 0xB9, NONE]));
+    }
+
+    /// A pick a button gave is in the hand and not in its selection, which
+    /// closes up over it.
+    #[test]
+    fn a_buttons_chip_is_not_in_the_selection() {
+        let mut picks = [pick(QUIET, 0), pick(CANNON, 3), pick(CANNON, 4)];
+        picks[1].listed = false;
+        let b = built(&picks);
+        assert_eq!(b.hand.ids[..4], ids([QUIET, CANNON, CANNON, NONE]));
+        let picked = |id: ChipId, code: u8| Some(FolderChip::new(ChipHandle(id), ChipCode(code)));
+        assert_eq!(b.hand.selection[..3], [picked(QUIET, 0), picked(CANNON, 4), None]);
     }
 
     #[test]

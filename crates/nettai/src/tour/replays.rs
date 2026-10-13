@@ -182,7 +182,7 @@ fn playback(ui: &AppWindow, app: &App) -> Vec<Option<Rect>> {
 }
 
 /// The replays' steps of one language at one size. `add` takes each step with the time it waits first.
-pub fn walk(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
+pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
     let phone = size == "phone";
     // A shot, as `super::walk` takes them: the texts' check started again, the picture written, a pair
     // compared.
