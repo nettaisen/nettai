@@ -140,3 +140,20 @@ the lookups a frame makes, through the same functions:
   make.
 
 `NETTAI_LOAD_TIMES` prints how long each part of the game took to load.
+
+## The extractor, from a program
+
+`nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]` is the command; the crate is its library, which nettai uses
+to extract its packs from the player's Legacy Collection as it starts (docs/app.md §17). It takes ROMs as bytes,
+from wherever the program has them (`RomSet::insert`: nettai reads them out of the collection's archives into
+memory, and writes none to disk), and writes a pack only into a new or empty folder. What a program needs besides
+`extract` and `Extraction::write`:
+
+- `recognize(header)`: the game and the game code a ROM is of, from its first `HEADER_LEN` (176) bytes alone, so a
+  program can sort the ROMs it finds by game before it reads one whole. `Game::ALL` and `Game::named(id)` (a
+  content's game id, `exe6`) are the games.
+- `extract_reporting` and `Extraction::write_reporting`: the same, telling a callback how far each is (0 to 1),
+  for a bar. What `write_reporting` writes is `write`'s, byte for byte (`an_extraction_reports_how_far_it_is`).
+- `fingerprint(game)`: 16 hex digits that tell apart the packs two builds write: a digest of the pack format's
+  version and of the names the pack's assets are written under (the content's compat tables). nettai stamps its
+  packs with it and the app's version, and extracts a pack again when either differs.

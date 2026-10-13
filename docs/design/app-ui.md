@@ -94,6 +94,13 @@ Each is settled unless the user changes it.
     BN4/BN5/BN6"): BN4, BN5 and BN6 in English, EXE4, EXE5 and EXE6 in Japanese, in the header's selector and in
     every message that names a game. Each game states its name in its locales (the text table `game`, `name`);
     the app reads it from the content, so a game without its pack is named too.
+23. **The packs come from the player's Legacy Collection** (2026-10-13): "you should detect bnlc vol2 and extract
+    all assets from there on startup if they are not extracted yet (and if nettai version changes, reextract
+    assets). there is bnlc detection code in tango you can steal". The app finds Battle Network Legacy Collection
+    Vol. 2 through Steam, as Tango does, or in a folder the player chose, and extracts each game's pack from it into
+    its own data folder as it starts: when the pack is missing, or another version of nettai made it. A game is
+    playable as its pack lands. Without the collection, a game with no pack says so, with a way to choose the
+    collection's folder. (docs/app.md §17.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -243,6 +250,12 @@ Each is in the mockups under the same name.
 ### Loading
 - **Starting up:** the logo, one bar 480 wide, "Loading BN6" and a percentage. The game last used loads before the
   menu appears; the others load behind it, and switching to one not ready shows the bar again.
+- **A pack being extracted** (§2.23): the same bar, "Extracting BN6" and a percentage, before "Loading BN6". The
+  game last used is extracted first; the others behind the menu, one after the other, and switching to one not
+  extracted yet shows its bar.
+- **No game, and no Legacy Collection:** the logo, the error's line ("nettai needs Battle Network Legacy Collection
+  Vol. 2. Install it from Steam, or choose its folder.") and CHOOSE FOLDER, which opens the system's folder
+  dialog. Where a game can be played, the same error is a dialog with CHOOSE FOLDER and OK.
 - **Before a battle** (online, training, a replay): the two players' cards facing each other, each with its own bar.
   Everything the match can use is loaded before its first frame: both navis and their forms, every chip in both
   folders, the arena, the music and the sounds. Online the match starts when both bars are full. The opponent's card
@@ -400,6 +413,8 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | the port to host on is taken | That port is already in use. |
 | a save is another game's | Not a BN6 save. |
 | a game's pack is there and can't be loaded | BN6's data is out of date. Extract it again. |
+| a game has no pack, and no Legacy Collection is found | nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or choose its folder. |
+| a game's pack couldn't be extracted | BN6's data couldn't be extracted. Details are in the log file. |
 | anything else | Something went wrong. Details are in the log file. |
 
 ## 8. Behind the screens
