@@ -1,5 +1,6 @@
 //! The screenshot pass's steps for Training (docs/app.md §13): the entry (with no build, with builds, the focus a
-//! control apart, a build changed, the builds' list, a build that can't be used), the two cards, the battle, the
+//! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
+//! can't be used), the two cards, the battle, the
 //! training menu (a value changed, the focus a row apart, the input display, the rows another screen adds), and
 //! the motion probe's bursts of what Training moves.
 //!
@@ -121,6 +122,16 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-entry-dummy", lang, size, Differs::Builds, false);
     add(SETTLE, act(Action::Confirm));
     shot(add, "training-entry-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
+    // A list of more choices than it shows at once (the shell's, for any select: twenty-four names where the
+    // builds' three were): it opens with the chosen one in view, the focus moves a row without the list
+    // moving, and its last row is scrolled to in a list of the same height.
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.pick("dummys", 0, (1..=24).map(|n| format!("Build {n:02}")).collect(), 17)));
+    shot(add, "training-entry-long-list", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Up));
+    shot(add, "training-entry-long-list-focus", lang, size, Differs::Cursors, false);
+    add(SETTLE, act(Action::End));
+    shot(add, "training-entry-long-list-end", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Back));
     add(SETTLE, act(Action::Right));
     shot(add, "training-entry-unusable", lang, size, Differs::Unheld, false);
@@ -251,6 +262,15 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step)) {
     burst(add, "training-arrives", &[0, 40, 80, 130, 170, 220, 300, 450], Box::new(|_, app, _| app.borrow_mut().go_now(ScreenId::Training)));
     add(SETTLE, focus("dummys", 0));
     burst(add, "training-build-steps", &[0, 40, 90, 150, 200, 260, 400], act(Action::Right));
+    // (A long list: opening on a row far down it, then scrolled to its last.)
+    burst(
+        add,
+        "training-list-opens",
+        &[0, 40, 90, 150, 220, 320],
+        Box::new(|_, app, _| app.borrow_mut().shell.pick("dummys", 0, (1..=24).map(|n| format!("Build {n:02}")).collect(), 17)),
+    );
+    burst(add, "training-list-scrolls", &[0, 40, 90, 150, 220], act(Action::End));
+    add(SETTLE, act(Action::Back));
     add(SETTLE, focus("start", 0));
     burst(add, "training-entered", &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100], act(Action::Confirm));
     add(1500, Box::new(|_, _, _| {}));
