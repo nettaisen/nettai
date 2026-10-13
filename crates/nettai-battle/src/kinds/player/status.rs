@@ -1373,6 +1373,15 @@ fn cut_in(b: &mut Battle, r: ObjectRef) {
     crate::dimming::cut_in_flash(b, side);
     // sub_800FC7C
     b.hands[side as usize].advance();
+    // A chip asked for before the dimming with none left to use after the
+    // cut-in: the request ends. EXE4's cut-in leaves the requests (its
+    // `request_clears` clear none), and once the dimming is over the navi's
+    // idle uses chip 0xFFFF, a record past the chip table; EXE5's and EXE6's
+    // clear them. The engine doesn't port that read: the deliberate
+    // departure the chip destruction makes (docs/engine/chips.md §2.9).
+    if super::next_chip(b, r).is_none() {
+        ai_mut(b, r).requests &= !(request::CHIP | request::CHARGED_CHIP);
+    }
 }
 
 /// `sub_8017AB4`: while dimmed the navi only shakes while hit (one RNG
@@ -1423,6 +1432,37 @@ mod tests {
     use super::*;
     use crate::content::{Content, WeaknessMark, testing};
     use std::sync::Arc;
+
+    /// A counter cut-in on the other side's dimming chip, with a chip
+    /// asked for before the field dimmed: under EXE4's rule (the cut-in
+    /// clears no request) the request outlives the dimming, but with no
+    /// chip left at the cursor after the cut-in it ends (`cut_in`: the
+    /// empty hand's chip is a read past the chip table). The cursor, and
+    /// the chip request left.
+    #[test]
+    fn a_cut_in_that_takes_the_last_chip_ends_the_chip_request() {
+        let cut_in_with = |hand: &[&str]| {
+            let mut c: Content = testing::build();
+            c.define().unwrap_or_else(|e| panic!("{e}"));
+            c.rules_mut().request_clears.cut_in = crate::content::RequestSet(0);
+            let c = Arc::new(c);
+            let mut setup = testing::round_setup(testing::LINK_BATTLE, testing::megaman_on(&c));
+            testing::on(&mut setup, &c);
+            let mut b = Battle::new(setup, c);
+            b.spawn_actors();
+            b.run_objects();
+            let r = b.player(0).unwrap();
+            b.hands[0].ids = std::array::from_fn(|i| hand.get(i).map(|key| testing::chip_handle(key)));
+            b.hands[0].cursor = 0;
+            // (The other side's chip shows its name: it can be cut in on.)
+            b.dimming[1].state = crate::dimming::DimmingState::ShowingName;
+            ai_mut(&mut b, r).requests |= request::CHIP | request::CUT_IN;
+            while_dimmed(&mut b, r);
+            (b.hands[0].cursor, ai(&b, r).requests & (request::CHIP | request::CUT_IN))
+        };
+        assert_eq!(cut_in_with(&[testing::VEIL]), (1, 0), "the last chip cut in: the chip request ends");
+        assert_eq!(cut_in_with(&[testing::VEIL, testing::SUN_GUN_3]), (1, request::CHIP), "a chip left: the request stays");
+    }
 
     /// The status timers hold while the battle is paused (the test
     /// content's, EXE6's), or count on (`status_timers_while_paused`:

@@ -1,8 +1,9 @@
 //! The screenshot pass's steps for Training (docs/app.md §13): the entry (with no build, with builds, the focus a
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
 //! can't be used, the arena and the background stepped, the arena around its end), the two cards, the battle, the
-//! training menu (a value changed, the focus a row apart, the arena and the background changed under it, each
-//! Battle row a value apart, the input display, a recording made and played, the rows another screen adds), and
+//! training menu (a value changed, the focus a row apart, the dummy that fights (its Action, and its Level under
+//! it), the arena and the background changed under it, each Battle row a value apart, the input display, a
+//! recording made and played, the rows another screen adds), and
 //! the motion probe's bursts of what Training moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
@@ -166,9 +167,14 @@ fn focus(id: &'static str, index: i32) -> Step {
     Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index))
 }
 
-/// The training menu's row of `option`, by its place (`training::ROWS`'s, no row added above them).
-fn row(option: TrainingOption) -> i32 {
-    training::ROWS.iter().position(|o| *o == option).expect("a row of the menu") as i32
+/// The focus on the training menu's row of `option`, where the menu shows it as the step runs (the dummy's
+/// Action has rows under it for some of its values).
+fn focus_row(option: TrainingOption) -> Step {
+    Box::new(move |_, app, _| {
+        let mut app = app.borrow_mut();
+        let at = training::row_of(&app.shell, option).expect("a row the menu shows");
+        app.shell.nav.focus("menu.rows.option", at);
+    })
 }
 
 /// What the pass has changed of Training's remembered choices, forgotten: each walk starts from none.
@@ -265,16 +271,29 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "training-menu-value", lang, size, Differs::Picture, true);
     add(SETTLE, act(Action::Down));
     shot(add, "training-menu-focus", lang, size, Differs::Picture, false);
+    // The dummy that fights: its Action Fights (one on from Moves around), and the Level row come under it (the
+    // rows below it a row down: not compared); its Level Hard, the row a value apart. Then its Action back as it
+    // was, and the Level row gone with it.
+    add(SETTLE, focus_row(TrainingOption::Action));
+    add(SETTLE, act(Action::Right));
+    shot(add, "training-menu-fights", lang, size, Differs::Unheld, false);
+    add(SETTLE, focus_row(TrainingOption::Level));
+    shot(add, "training-menu-level", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Right));
+    shot(add, "training-menu-level-hard", lang, size, Differs::Picture, false);
+    add(SETTLE, focus_row(TrainingOption::Action));
+    add(SETTLE, act(Action::Left));
+    shot(add, "training-menu-moves-again", lang, size, Differs::Unheld, false);
     // The Arena row, and its value changed: the set starts over on the next arena behind the menu, which stays
     // open (the battle through the round's opening to its custom screen, where it waits).
-    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Arena)));
+    add(SETTLE, focus_row(TrainingOption::Arena));
     shot(add, "training-menu-arena", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Right));
     add(2500, Box::new(|_, _, _| {}));
     shot(add, "training-menu-arena-value", lang, size, Differs::Unheld, false);
     // The Background row, and its value changed: the battle goes on where it is, drawn on the next background
     // (the field, the HP and the round as they were).
-    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Background)));
+    add(SETTLE, focus_row(TrainingOption::Background));
     shot(add, "training-menu-background", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Right));
     shot(add, "training-menu-background-value", lang, size, Differs::Unheld, false);
@@ -286,7 +305,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         ("training-menu-gauge", "training-menu-gauge-value", TrainingOption::CustomGauge),
         ("training-menu-draw", "training-menu-draw-value", TrainingOption::ChipDraw),
     ] {
-        add(SETTLE, focus("menu.rows.option", row(option)));
+        add(SETTLE, focus_row(option));
         shot(add, name, lang, size, Differs::Unheld, true);
         add(SETTLE, act(Action::Right));
         shot(add, changed, lang, size, Differs::Picture, false);
@@ -296,7 +315,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
-            app.shell.nav.focus("menu.rows.option", row(TrainingOption::InputDisplay));
+            let at = training::row_of(&app.shell, TrainingOption::InputDisplay).expect("the input display's row");
+            app.shell.nav.focus("menu.rows.option", at);
             app.act(Action::Right);
         }),
     );
@@ -324,7 +344,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             app.shell.open_menu();
         }),
     );
-    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Action)));
+    add(SETTLE, focus_row(TrainingOption::Action));
     add(SETTLE, act(Action::Left));
     add(SETTLE, focus("menu.restart", 0));
     add(
@@ -372,10 +392,10 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(150, hold(0));
     add(2000, tell(lang, size, "the fight again"));
 
-    // A recording: the row, chosen (the menu closes, the player's buttons drive the dummy, RECORDING over the
-    // battle), Start (the dummy plays it), and the menu again (the recording's length, the dummy's Action).
-    // (The menu's rows are there a step after it opens: focused in the same step, the menu would open on the row it
-    // was left on.)
+    // A recording: the dummy's Action Plays your recording (three on from Stands still, as the shots left it),
+    // and the Recording row come under it; the row, chosen (the menu closes, the player's buttons drive the dummy,
+    // RECORDING over the battle), Start (the dummy plays it), and the menu again (the recording's length). (The
+    // menu's rows are there a step after it opens.)
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -384,7 +404,11 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             app.shell.open_menu();
         }),
     );
-    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Recording)));
+    add(SETTLE, focus_row(TrainingOption::Action));
+    add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Right));
+    add(SETTLE, act(Action::Right));
+    add(SETTLE, focus_row(TrainingOption::Recording));
     shot(add, "training-menu-recording", lang, size, Differs::Unheld, false);
     add(
         SETTLE,

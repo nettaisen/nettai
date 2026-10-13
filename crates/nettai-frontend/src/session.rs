@@ -236,7 +236,8 @@ pub fn heard(b: &Battle) -> &[nettai_battle::sound::SoundCue] {
     b.sound_cues_for(b.setup.local_side)
 }
 
-fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
+/// What a panic said (an engine's stop: [`in_engine`]).
+pub fn panic_message(e: &(dyn std::any::Any + Send)) -> String {
     e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string())).unwrap_or_else(|| "unknown panic".into())
 }
 
@@ -246,8 +247,10 @@ thread_local! {
 
 /// Run `f`, which may stop as the engine does (a panic), as the session
 /// runs a tick: the stop is the result, and the host's quiet hook
-/// ([`quiet_engine_panics`]) keeps it off stderr.
-pub(crate) fn in_engine<R>(f: impl FnOnce() -> R) -> std::thread::Result<R> {
+/// ([`quiet_engine_panics`]) keeps it off stderr. (For whoever steps a
+/// battle of their own besides the session's: an AI trying plans in
+/// copies of it.)
+pub fn in_engine<R>(f: impl FnOnce() -> R) -> std::thread::Result<R> {
     IN_ENGINE.with(|flag| flag.set(true));
     let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(f));
     IN_ENGINE.with(|flag| flag.set(false));

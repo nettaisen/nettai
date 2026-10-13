@@ -33,13 +33,14 @@ export enum TrainingOption {
     display,
     // A label and a value between arrows.
     action,
-    custom-screen,
+    // How well the dummy fights: under the Action while it is Fights.
+    level,
     // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen as
     // the entry's row says it (none: Random).
     arena,
     background,
     // Its value is how long the dummy's recording is, in tenths of a second (0: none); it is never stepped,
-    // and choosing it records one.
+    // and choosing it records one. Under the Action while it is Plays your recording.
     recording,
     your-hp,
     dummys-hp,
@@ -122,8 +123,8 @@ export global TrainingView {
         if option == TrainingOption.action {
             return @tr("Action");
         }
-        if option == TrainingOption.custom-screen {
-            return @tr("Custom screen");
+        if option == TrainingOption.level {
+            return @tr("Level");
         }
         if option == TrainingOption.recording {
             return @tr("Recording");
@@ -153,10 +154,10 @@ export global TrainingView {
     }
     pure public function value(option: TrainingOption, value: int) -> string {
         if option == TrainingOption.action {
-            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Attacks at random") : (value == 3 ? @tr("Plays your recording") : @tr("A second pad"))));
+            return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Fights") : (value == 3 ? @tr("Plays your recording") : @tr("A second pad"))));
         }
-        if option == TrainingOption.custom-screen {
-            return value == 0 ? @tr("Picks no chips") : @tr("Picks the first it can");
+        if option == TrainingOption.level {
+            return value == 0 ? @tr("level" => "Easy") : (value == 1 ? @tr("level" => "Normal") : @tr("level" => "Hard"));
         }
         if option == TrainingOption.recording {
             return value == 0 ? @tr("None") : @tr("{} s", "\{floor(value / 10)}.\{mod(value, 10)}");
