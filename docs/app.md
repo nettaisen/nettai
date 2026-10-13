@@ -1283,7 +1283,8 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
 | `Backdrop`, `Cursor` | The ground, in the selected game's look, with its pattern (the grounds of a change of game sweeping in over it); the bracket cursor |
 
 **The rules** (docs/design/app-ui.md §5) are built into them: a value has a box of a set width and is cut with an
-ellipsis; a line for a message is there when empty; digits are M PLUS 1 Code's, one width; the cursor is drawn
+ellipsis (a stepper's is drawn smaller to fit first, down to 11 px, then on two lines at 11 px, and only past
+that cut, which the screenshot pass reports: the `Stepper`'s own check); a line for a message is there when empty; digits are M PLUS 1 Code's, one width; the cursor is drawn
 over the layout; a field's text is clipped at its padding.
 
 **Motion** (docs/design/app-ui.md §4, "Motion"). The theme has the one table of durations (`quick` 110 ms and
