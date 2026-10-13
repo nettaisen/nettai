@@ -7,15 +7,16 @@ import { Nav, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture } from "../shell.slint";
 import { MenuItem, Value, Pill, Rule } from "../widgets.slint";
 import { Arrive, Tween } from "../motion.slint";
+import { VersionTag } from "../build.slint";
 
 // What the main menu shows: src/screens/menu.rs sets these.
 export global MenuView {
     // Who the reel shows, left and right: each side's navi and its version's tag.
     in property <bool> playing;
     in property <string> left-navi;
-    in property <string> left-version;
+    in property <VersionTag> left-version;
     in property <string> right-navi;
-    in property <string> right-version;
+    in property <VersionTag> right-version;
     // It counts the reel's battles: each fades in.
     in property <int> reel-seq;
 }
@@ -182,8 +183,8 @@ export component MenuScreen inherits Page {
             }
 
             Pill {
-                text: MenuView.left-version;
-                tone: Theme.p1;
+                text: MenuView.left-version.text;
+                tone: MenuView.left-version.tone;
             }
 
             Value {
@@ -198,8 +199,8 @@ export component MenuScreen inherits Page {
             }
 
             Pill {
-                text: MenuView.right-version;
-                tone: Theme.p2;
+                text: MenuView.right-version.text;
+                tone: MenuView.right-version.tone;
             }
         }
     }

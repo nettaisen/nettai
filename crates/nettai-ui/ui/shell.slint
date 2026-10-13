@@ -4,8 +4,9 @@
 
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Heading, Button, ButtonKind, Stepper, Chevron, RowBack } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Heading, Button, ButtonKind, Stepper, Chevron, RowBack, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
+import { VersionTag } from "build.slint";
 
 // The screens a player goes between. Loading, the two cards before a battle and the battle are states of the
 // shell over them (`Shell.loading`, `Shell.versus`, `Shell.battle`).
@@ -54,13 +55,14 @@ export struct DialogButton {
     danger: bool,
 }
 
-// A side's card on the screen before a battle: who (YOU, OPPONENT, DUMMY), their name, and what they bring. An
-// opponent's online says their name alone.
+// A side's card on the screen before a battle: who (YOU, OPPONENT, DUMMY), their name, and what they bring (their
+// build's name, its version's tag in the version's own color: the app's `builds::version_tag`). An opponent's
+// online says their name alone.
 export struct VersusCard {
     role: string,
     name: string,
     build: string,
-    version: string,
+    version: VersionTag,
     navi: string,
     progress: float,
 }
@@ -543,9 +545,20 @@ export component Header inherits Rectangle {
     in property <string> back;
     in property <bool> logo;
     in property <bool> game: true;
+    // A tag after the title (a build's version), and a short state before the game ("✓ Ready to play", in green,
+    // or what is wrong, in the error red). On a phone the tag is at the header's right and the state is left out.
+    in property <VersionTag> tag;
+    in property <string> state;
+    in property <bool> state-good;
     property <length> pad: Theme.margin;
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
-    property <bool> over: Theme.audit && (title-text.preferred-width > title-text.width + 0.5px);
+    property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
+    property <length> state-width: root.state == "" || Theme.phone ? 0px : 166px;
+    property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 16px;
+    // The title's room: what the tag, the state and the game leave of the header.
+    property <length> title-room: self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.state-width - root.tag-width;
+    property <length> title-width: min(title-text.preferred-width, root.title-room);
+    property <bool> over: Theme.audit && (title-text.preferred-width > root.title-room + 0.5px);
     height: Theme.header;
     // As the screen arrives its title wipes in behind the cyan bar.
     arrive := Tween { }
@@ -614,13 +627,13 @@ export component Header inherits Rectangle {
     }
 
     Rectangle {
-        x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
-        width: (parent.width - self.x - root.pad - (root.game ? game.width + 16px : 0px)) * arrive.t;
+        x: root.title-x;
+        width: root.title-width * arrive.t;
         visible: !root.logo;
         clip: true;
         title-text := Text {
             x: 0;
-            width: parent.width / max(0.01, arrive.t);
+            width: root.title-width;
             text: root.title;
             color: Theme.text;
             font-family: Theme.display;
@@ -630,6 +643,27 @@ export component Header inherits Rectangle {
             vertical-alignment: center;
             overflow: elide;
         }
+    }
+
+    tag-pill := Pill {
+        x: Theme.phone ? parent.width - root.pad - self.width - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
+        text: root.logo ? "" : root.tag.text;
+        tone: root.tag.tone;
+        opacity: arrive.t;
+    }
+
+    Text {
+        x: parent.width - root.pad - (root.game ? game.width + 16px : 0px) - 150px;
+        width: 150px;
+        visible: root.state-width > 0;
+        text: root.state;
+        color: root.state-good ? Theme.good : Theme.bad;
+        font-family: Theme.body;
+        font-size: 13px;
+        font-weight: 600;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
     }
 
     // The game.
@@ -847,6 +881,11 @@ export component Page inherits Rectangle {
     in property <string> back;
     in property <bool> logo;
     in property <bool> game: true;
+    // The header's tag after the title, and its state before the game (a build's version, and whether it is
+    // ready to play).
+    in property <VersionTag> tag;
+    in property <string> state;
+    in property <bool> state-good;
     in property <[Hint]> hints;
     in property <string> status: Shell.player;
     out property <length> body-width: body.width;
@@ -857,6 +896,9 @@ export component Page inherits Rectangle {
         back: root.back;
         logo: root.logo;
         game: root.game;
+        tag: root.tag;
+        state: root.state;
+        state-good: root.state-good;
     }
 
     // (As the screen leaves, its body slides 16 and fades: to the left, or after Back to the right. What

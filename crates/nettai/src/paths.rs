@@ -36,9 +36,23 @@ fn folder(var: &str, name: &str) -> PathBuf {
     std::env::var_os(var).map(PathBuf::from).unwrap_or_else(|| data().join(name))
 }
 
+/// Where the builds are kept instead, once [`keep_builds_in`] says.
+static BUILDS: std::sync::Mutex<Option<PathBuf>> = std::sync::Mutex::new(None);
+
 /// The builds, a folder per game: `$NETTAI_BUILDS`, else `builds`.
 pub fn builds() -> PathBuf {
+    if let Some(dir) = BUILDS.lock().ok().and_then(|kept| kept.clone()) {
+        return dir;
+    }
     folder("NETTAI_BUILDS", "builds")
+}
+
+/// Keep the builds in `dir` from here on, whatever the environment says: the screenshot pass makes and edits
+/// builds of its own, and never the player's.
+pub fn keep_builds_in(dir: PathBuf) {
+    if let Ok(mut kept) = BUILDS.lock() {
+        *kept = Some(dir);
+    }
 }
 
 /// The replays recorded and listed: `$NETTAI_REPLAYS`, else `replays`.
