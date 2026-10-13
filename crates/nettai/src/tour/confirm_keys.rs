@@ -1,13 +1,16 @@
-//! The keys in the screenshot pass, pressed as the window presses them (`App::key_of`, the window's hook with
-//! the event's parts; what it lets through goes on to Slint, as the hook lets it): the GBA's A and B confirm
-//! and go back by the keys bound to them (the user: "i feel like the GBA A and B buttons should be the
-//! universal confirm/cancel buttons everywhere, instead of enter+esc"), a text field takes its letters and
-//! finishes with Enter, leaves with Esc, and A rebound confirms by its new key. Each step checks what the key
-//! did ([`Tour::key_wrong`]). (A module of its own name: the pass's `keys` is the GBA's.)
+//! The menus' keys in the screenshot pass, pressed as the window presses them (`App::key_of`, the window's
+//! hook with the event's parts; what it lets through goes on to Slint, as the hook lets it): Enter confirms
+//! and Esc goes back, and the keys bound to the GBA's A and B (Z and X) do neither (the user, after trying
+//! them: "actually z and x for navigation is not very good, enter + esc was fine"); a text field takes its
+//! letters, finishes with Enter and is left with Esc. A pad's buttons can't be pressed so (they come from the
+//! system's gamepad events): its bound A and B are asked of the bindings and acted, as `App::read_pad` acts
+//! them, rebound too. Each step checks what was done ([`Tour::key_wrong`]). (A module of its own name: the
+//! pass's `keys` is the GBA's.)
 
 use super::{Pair, SETTLE, Step, Tour};
 use crate::errors::UserError;
 use crate::input::{Bindings, button_index};
+use gamepad_facade::Button;
 use crate::screens::ScreenId;
 use crate::shell::App;
 use nettai_battle::input::keys;
@@ -49,6 +52,16 @@ fn step(f: impl Fn(&mut App) + 'static) -> Step {
     Box::new(move |_, app, _| f(&mut app.borrow_mut()))
 }
 
+/// A pad's button, acted as `App::read_pad` acts it: what the bindings make of it in the menus.
+fn pad(button: Button) -> Step {
+    Box::new(move |_, app, _| {
+        let action = app.borrow().shell.bindings.pad_action(button);
+        if let Some(action) = action {
+            app.borrow_mut().act(action);
+        }
+    })
+}
+
 /// The steps, after the shell's dialog: `add` takes a step and the time it is given first; `shot` a shot's
 /// steps.
 pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
@@ -66,17 +79,26 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
             app.go_now(ScreenId::Menu);
         }),
     );
-    // Z (A) answers a dialog.
+    // A dialog: Z (A's key) doesn't answer it; Enter does.
     add(SETTLE, step(|app| app.shell.fail(UserError::Other)));
     add(SETTLE, press(KeyCode::KeyZ, "z"));
-    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "Z (A) didn't answer the dialog".into())));
-    // X (B) goes back from a screen: Settings, the focus off its name's field.
+    add(SETTLE, check(|app| app.shell.dialog.is_none().then(|| "Z (A's key) answered the dialog".into())));
+    add(SETTLE, press(KeyCode::Enter, ""));
+    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "Enter didn't answer the dialog".into())));
+    // A screen: X (B's key) doesn't go back from Settings, the focus off its name's field; Esc does.
     add(SETTLE, step(|app| app.go_now(ScreenId::Settings)));
     add(SETTLE, step(|app| app.shell.nav.focus("set.picture", 0)));
+    shot(add, "keys-hints", Pair::None);
+    // (The Controls, whose A and B say they are the pad's confirm and back.)
+    add(SETTLE, step(|app| app.shell.nav.focus("set.key", 4)));
+    shot(add, "keys-controls", Pair::None);
+    add(SETTLE, step(|app| app.shell.nav.focus("set.picture", 0)));
     add(SETTLE, press(KeyCode::KeyX, "x"));
-    add(SETTLE, check(|app| (app.shell.screen() != ScreenId::Menu).then(|| format!("X (B) didn't go back from Settings: {:?}", app.shell.screen()))));
-    // A text field: a letter starts editing it, X types (it doesn't go back), Enter finishes it; Esc leaves
-    // another edit as it was. The field's own hints show while it is typed in.
+    add(SETTLE, check(|app| (app.shell.screen() != ScreenId::Settings).then(|| "X (B's key) went back from Settings".into())));
+    add(SETTLE, press(KeyCode::Escape, ""));
+    add(SETTLE, check(|app| (app.shell.screen() != ScreenId::Menu).then(|| format!("Esc didn't go back from Settings: {:?}", app.shell.screen()))));
+    // A text field: a letter starts editing it, X types, Enter finishes it; Esc leaves another edit as it was.
+    // The field's own hints show while it is typed in.
     let name: Rc<RefCell<String>> = Default::default();
     let kept = name.clone();
     add(
@@ -94,11 +116,9 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press(KeyCode::Enter, ""));
     add(
         SETTLE,
-        check(move |app| {
-            let wanted = "qx";
-            (app.shell.nav.editing() || app.shell.settings.name != wanted)
+        check(|app| {
+            (app.shell.nav.editing() || app.shell.settings.name != "qx")
                 .then(|| format!("Enter didn't finish the name as typed: editing {}, {:?}", app.shell.nav.editing(), app.shell.settings.name))
-                .or_else(|| (app.shell.screen() != ScreenId::Settings).then(|| "X in the field went back".into()))
         }),
     );
     add(SETTLE, press(KeyCode::KeyW, "w"));
@@ -106,21 +126,26 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, check(|app| (app.shell.nav.editing() || app.shell.settings.name != "qx").then(|| format!("Esc didn't leave the name as it was: {:?}", app.shell.settings.name))));
     let back = name.clone();
     add(SETTLE, step(move |app| app.shell.set_name(&back.borrow())));
-    // A rebound to J: J answers a dialog, Z no longer does, and the hints say J.
+    // The pad: its A (south) answers a dialog and its B (west) goes back; A rebound to east, east answers and
+    // south doesn't.
+    add(SETTLE, step(|app| app.shell.nav.focus("set.picture", 0)));
+    add(SETTLE, step(|app| app.shell.fail(UserError::Other)));
+    add(SETTLE, pad(Button::South));
+    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "the pad's A (south) didn't answer the dialog".into())));
+    add(SETTLE, pad(Button::West));
+    add(SETTLE, check(|app| (app.shell.screen() != ScreenId::Menu).then(|| format!("the pad's B (west) didn't go back from Settings: {:?}", app.shell.screen()))));
     add(
         SETTLE,
         step(|app| {
             let mut bindings = Bindings::default();
-            bindings.bind_key(button_index(keys::A), KeyCode::KeyJ);
+            bindings.bind_pad(button_index(keys::A), Button::East);
             app.shell.set_bindings(bindings);
-            app.shell.nav.focus("set.picture", 0);
         }),
     );
-    shot(add, "keys-rebound", Pair::None);
     add(SETTLE, step(|app| app.shell.fail(UserError::Other)));
-    add(SETTLE, press(KeyCode::KeyZ, "z"));
-    add(SETTLE, check(|app| app.shell.dialog.is_none().then(|| "Z answered the dialog with A on J".into())));
-    add(SETTLE, press(KeyCode::KeyJ, "j"));
-    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "J (A, rebound) didn't answer the dialog".into())));
+    add(SETTLE, pad(Button::South));
+    add(SETTLE, check(|app| app.shell.dialog.is_none().then(|| "south answered the dialog with the pad's A on east".into())));
+    add(SETTLE, pad(Button::East));
+    add(SETTLE, check(|app| app.shell.dialog.is_some().then(|| "east (the pad's A, rebound) didn't answer the dialog".into())));
     add(SETTLE, step(|app| app.shell.set_bindings(Bindings::default())));
 }
