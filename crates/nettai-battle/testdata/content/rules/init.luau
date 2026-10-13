@@ -39,9 +39,7 @@ local rules_: Rules = {
         controller_started = "bool",
         check_delay = "u8",
         beast_out_used = "bool",
-        -- EXE6's form changes', emotions' and dark chips'.
-        went_beast_out = "bool",
-        crossed = "bool",
+        -- EXE6's emotions' and dark chips'.
         swing_ticks = "u16",
         swung = "u8",
         bug_frags = "u32",
