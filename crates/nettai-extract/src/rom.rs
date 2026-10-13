@@ -30,6 +30,124 @@ pub(crate) enum ReadKind {
     Open,
 }
 
+/// Where each of a game's four ROMs has a block: the address, in each, of
+/// the game's own pointer to it (a routine's literal, a load list's entry),
+/// in the order of the game's ROMs (`Game::codes`: its two US ROMs, then
+/// their Japanese ones). The block is where that word says, so every ROM
+/// is read the way its own code reaches the block, whatever moved in it.
+/// A block no pointer of the game's reaches has its own address stated
+/// (`stated`).
+#[derive(Clone, Copy)]
+pub(crate) struct Place {
+    at: [u32; 4],
+    pointer: bool,
+}
+
+impl Place {
+    /// A pointer the two versions' code has at the same address: at `us`
+    /// in both US ROMs and at `jp` in both Japanese ones.
+    pub const fn pointer(us: u32, jp: u32) -> Place {
+        Place { at: [us, us, jp, jp], pointer: true }
+    }
+
+    /// A pointer at an address of its own in each ROM (code past the first
+    /// of what the two versions have otherwise).
+    pub const fn pointer_in_each(at: [u32; 4]) -> Place {
+        Place { at, pointer: true }
+    }
+
+    /// The block's own address in each ROM, for data a ROM holds and
+    /// nothing of its points at; 0 where a ROM doesn't have it so.
+    pub const fn stated(at: [u32; 4]) -> Place {
+        Place { at, pointer: false }
+    }
+}
+
+/// One of a game's four ROMs to read from: the image, and which of the
+/// four it is (a `Place`'s pointer there). An image that isn't there is a
+/// source too (`is_present`): what is read of it is a placeholder.
+#[derive(Clone, Copy)]
+pub(crate) struct Source<'a> {
+    pub rom: &'a Rom,
+    which: usize,
+}
+
+impl<'a> Source<'a> {
+    pub fn is_present(&self) -> bool {
+        self.rom.is_present()
+    }
+
+    /// Where this ROM has the block at `place`.
+    pub fn at(&self, place: Place) -> u32 {
+        let at = place.at[self.which];
+        if place.pointer { self.rom.u32(at) } else { at }
+    }
+}
+
+/// One of a game's two versions, which some of what a ROM holds is its
+/// own (each game's module has its own two).
+pub(crate) trait Version: Copy {
+    /// Whether it is the game's other version than its base (the second
+    /// of each release's two ROMs in `Game::codes`' order).
+    fn is_other(self) -> bool;
+}
+
+/// A game's four ROMs in `Game::codes`' order (its base version's US ROM,
+/// the other version's, then their Japanese ones), any of which may not be
+/// there. A pack has whatever one of those given holds: what the four have
+/// alike is read from whichever is there, a version's own from a ROM of
+/// that version, a language's words from a ROM of that release, the US
+/// ROM's before the Japanese one's wherever both have it.
+pub(crate) struct Roms<'a>(pub [&'a Rom; 4]);
+
+impl<'a> Roms<'a> {
+    /// The first of the ROMs `order` numbers that is there; the first of
+    /// `order` if none is.
+    fn first(&self, order: &[usize]) -> Source<'a> {
+        let which = order.iter().copied().find(|&k| self.0[k].is_present()).unwrap_or(order[0]);
+        Source { rom: self.0[which], which }
+    }
+
+    /// A ROM for what the four have alike.
+    pub fn any(&self) -> Source<'a> {
+        self.first(&[0, 1, 2, 3])
+    }
+
+    /// A US ROM: the English words.
+    pub fn us(&self) -> Source<'a> {
+        self.first(&[0, 1])
+    }
+
+    /// A Japanese ROM: the Japanese words, and what the US release cut.
+    pub fn jp(&self) -> Source<'a> {
+        self.first(&[2, 3])
+    }
+
+    /// A ROM of `version`, for what is the version's own in both releases.
+    pub fn of(&self, version: impl Version) -> Source<'a> {
+        let k = version.is_other() as usize;
+        self.first(&[k, k + 2])
+    }
+
+    /// A ROM of `version` if one is there, any otherwise: for what the two
+    /// versions' ROMs have otherwise at the same place and the pack has one
+    /// of.
+    pub fn preferring(&self, version: impl Version) -> Source<'a> {
+        let own = self.of(version);
+        if own.is_present() { own } else { self.any() }
+    }
+
+    /// The US ROM of `version`: the version's own English words.
+    pub fn us_of(&self, version: impl Version) -> Source<'a> {
+        self.first(&[version.is_other() as usize])
+    }
+
+    /// The Japanese ROM of `version`.
+    pub fn jp_of(&self, version: impl Version) -> Source<'a> {
+        self.first(&[version.is_other() as usize + 2])
+    }
+}
+
 static RECORDING: AtomicBool = AtomicBool::new(false);
 static READS: Mutex<Vec<Read>> = Mutex::new(Vec::new());
 

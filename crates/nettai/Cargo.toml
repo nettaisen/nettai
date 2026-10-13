@@ -58,3 +58,5 @@ objc2-foundation = { version = "0.3", default-features = false, features = ["std
 # The tests: a signaling server in process, the content of the repository.
 nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
 nettai-match = { path = "../nettai-match", features = ["testing"] }
+# A short set and graphics with no pack, for a battle played to its end.
+nettai-frontend = { path = "../nettai-frontend", features = ["testing"] }
