@@ -405,7 +405,7 @@ mod tests {
     use super::*;
 
     pub fn read_game(content: &Arc<Content>, game: &str) -> Option<GridData> {
-        read(content, crate::builds::layout::modules(content, game, &[MODULE]).remove(0).as_ref())
+        read(content, crate::builds::module_data(content, game, MODULE).as_ref())
     }
 
     /// Both games' grids read: three boards, the command line row 3, every
