@@ -1143,10 +1143,6 @@ fn sent_auto_battle_differences(b: &Battle, compat: &Compat, lists: &[String; 2]
     d
 }
 
-/// The mark EXE4's install leaves in each hand entry's modifier flags
-/// (0x0801EA1E: its dark chips' costs, once an entry).
-const INSTALL_MARK: u8 = 0x04;
-
 /// The engine's hand in a chip block's terms ([`codec::ChipHand`]): each
 /// chip by its key and the number compat's chips.toml gives it (0xFFFF for a
 /// chip it has none for, which no block holds).
@@ -1333,13 +1329,7 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
     for (side, block) in f.chip_blocks.iter().enumerate() {
         let decoded = unhex(block).and_then(|raw| codec::chip_hand(compat, &raw).map(|h| (h, raw)));
         match decoded {
-            Ok((mut theirs, raw)) => {
-                // (Not compared: the install's mark, the modifier flags'
-                // 0x04, which 0x0801EA1E sets on each entry of a hand as it
-                // is installed so that a dark chip costs its user once. The
-                // engine's rules keep that as their own state, rules/
-                // dark_chips' `hand_sent`, and the hand has no such bit.)
-                theirs.modifiers = theirs.modifiers.map(|m| m & !INSTALL_MARK);
+            Ok((theirs, raw)) => {
                 let ours = engine_hand(b, compat, &b.hands[side]);
                 for ((name, x), (_, y)) in hand_fields(&ours).into_iter().zip(hand_fields(&theirs)) {
                     check(&format!("hand {side} {name}"), x, y);
