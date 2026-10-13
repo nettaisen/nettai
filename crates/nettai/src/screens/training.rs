@@ -364,8 +364,8 @@ pub struct Training {
     seed: u32,
     /// The arena: the round as it opens, held there. None until it is made, and while a build can't be used.
     arena: Option<Stage>,
-    /// The frames the arena's picture has been shown, to two: the view shows it from the second (the first may
-    /// have gone to the room of what was on screen before).
+    /// The frames the arena's picture has been shown (of those the window drew), to two: the view shows it from
+    /// the second (the first may have gone to the room of what was on screen before).
     arena_frames: u8,
     /// The builds chosen changed, and when: the arena is made again once they have stayed a moment.
     changed: Option<Instant>,
@@ -377,7 +377,8 @@ fn kept_build(game: &str, dummys: bool) -> String {
 }
 
 impl Training {
-    /// List the selected game's builds, and choose the two remembered (else the first).
+    /// List the selected game's builds, and choose the two remembered: with none remembered, the first that can
+    /// be used (else the first), for both.
     fn list(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
         let content = ready.content();
         self.builds = if shell.still {
@@ -404,8 +405,9 @@ impl Training {
             self.seed = if shell.still { 7 } else { clock_seed() };
         }
         let kept = |dummys: bool| shell.settings.remembered.get(&kept_build(game, dummys)).and_then(|file| self.builds.iter().position(|b| b.file == *file));
-        let yours = kept(false).unwrap_or(0);
-        self.chosen = [yours, kept(true).unwrap_or(yours)];
+        let (yours, dummys) = (kept(false), kept(true));
+        let yours = yours.or_else(|| (0..self.builds.len()).find(|&at| self.unusable_at(ready, at).is_none())).unwrap_or(0);
+        self.chosen = [yours, dummys.unwrap_or(yours)];
         // (The arena is made as soon as the screen is on screen: what is in its place until then isn't its own.)
         self.changed = Instant::now().checked_sub(ARENA_AFTER);
         self.drop_arena(shell);
@@ -422,10 +424,15 @@ impl Training {
         self.builds.get(self.chosen[which])
     }
 
-    /// Why the build chosen can't be used, if it can't: checked once for what its file says.
+    /// Why the build chosen can't be used, if it can't: the player's (0) or the dummy's (1).
     fn unusable(&mut self, ready: &Ready, which: usize) -> Option<Unusable> {
+        self.unusable_at(ready, self.chosen[which])
+    }
+
+    /// Why the build at `at` of the list can't be used, if it can't: checked once for what its file says.
+    fn unusable_at(&mut self, ready: &Ready, at: usize) -> Option<Unusable> {
         let game = self.game.clone()?;
-        let build = self.builds.get(self.chosen[which])?;
+        let build = self.builds.get(at)?;
         let Some(side) = &build.side else { return Some(Unusable(Wrong::Foreign)) };
         // (A build of the screenshot pass has no file: it is told by its name.)
         let key = (build.file.clone(), build.text.clone());
@@ -461,11 +468,13 @@ impl Training {
         };
         view.set_message(message);
         view.set_ready(!self.builds.is_empty() && wrong.iter().all(Option::is_none));
-        // The focus is never left on a control that went with the builds, or came with them.
+        // The focus is never left on a control that went with the builds, or came with them; and where START
+        // TRAINING can't be pressed, the screen opens on the row to change.
         let on = shell.nav.focused().map(|k| k.id.clone());
-        match (self.builds.is_empty(), on.as_deref()) {
-            (true, None | Some("start" | "yours" | "dummys")) => shell.nav.focus("create", 0),
-            (false, Some("create")) => shell.nav.focus("start", 0),
+        match (self.builds.is_empty(), on.as_deref(), wrong.iter().position(Option::is_some)) {
+            (true, None | Some("start" | "yours" | "dummys"), _) => shell.nav.focus("create", 0),
+            (false, Some("create"), None) => shell.nav.focus("start", 0),
+            (false, None | Some("start" | "create"), Some(which)) => shell.nav.focus(if which == 1 { "dummys" } else { "yours" }, 0),
             _ => {}
         }
     }
@@ -754,7 +763,8 @@ impl Screen for Training {
         }
         if let Some(arena) = &mut self.arena {
             shell.show(arena);
-            if self.arena_frames < 2 {
+            // (A frame the window doesn't draw shows nothing, and places no picture's room.)
+            if self.arena_frames < 2 && shell.drawing {
                 self.arena_frames += 1;
                 if self.arena_frames == 2 {
                     ui.global::<TrainingView>().set_arena(true);
