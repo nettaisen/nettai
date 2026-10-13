@@ -613,6 +613,8 @@ their own; the extractor's README has what each set of ROMs lacks):
     `backgrounds/0x05` and `jp/backgrounds/0x05` frame-compared, 2026-10-12).
   - "Interval..." and "Strat Change..." (インターバル中…, サクセンヘンコウ中…), which a Team Battle shows where a
     netbattle shows "Cstmzing...": the pack has neither language's.
+- **The Japanese battle code:** where it does otherwise than the US releases' (every place, sorted, and the ones a
+  netbattle reaches recorded as listed deviations) is docs/design/exe5-regions.md.
 - **Names:** placeholders (`sprite-0c-2d`, `sound-10e`, `chip-12d`; a glyph's number in brackets) until an EXE5 content
   root names them in its compat, as EXE6's does.
 - **Shared decoding:** `nettai-extract` now owns one ROM/LZ77 reader, sprite and portrait decoder, field/background
@@ -2010,6 +2012,8 @@ which the engine runs for a side whose rules say so (the status section's `emoti
 - **Full Synchro on a counter** (0x08016FDC, EXE6's `sub_801A200`): the counterer, in no soul, to 0xFF through the
   setter (rules/emotion, `exe5:emotion`). The aura (0x0801100C, 0x080C45E0) is EXE6's, for an AI index up to 12 in
   EXE5's emotion 2.
+- **The busting level** (0x08009716, into BattleState +0x1E with a win or a loss, 0x08007FDA, 0x08008030): its results
+  screen's. Nothing in a battle reads it; nettai, with no results screen, keeps none.
 - **What a hit's count does to the moods** (0x08016FDC, after the tick's hits, unless the battle is over, 0x08008B6E:
   a side with no navi alive or time up; and not in battle flag 0x40's mode, 0x0802D50C, which no netbattle sets): the
   count the receiver's collision gathered (+0x88: each hit's counter byte, a counter hit's mark 0x8000) goes to the

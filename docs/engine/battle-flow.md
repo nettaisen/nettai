@@ -586,7 +586,7 @@ Measured: [0]=0xC set at 994 / 2402, init at 995 / 2403, [4]=1 at **1096 / 2504*
 During the result states the battle is not paused: objects, panels and timers keep running, but `sub_8012DFC` is not called.
 
 **Mode handler reaction** (`sub_800938A`):
-- r0 = 1: `setTwoStructs_800A840(1)` (BS+0x1F and 0x0200A009); BS+0x1E = `sub_800AF84()` (busting level 1..11, 0x0B in both rounds; also stored to 0x0200A008); `sub_800B6F2`.
+- r0 = 1: `setTwoStructs_800A840(1)` (BS+0x1F and 0x0200A009); BS+0x1E = `sub_800AF84()` (busting level 1..11, 0x0B in both rounds; also stored to 0x0200A008); `sub_800B6F2`. The busting level is the results screen's: nothing in a battle reads it, and nettai, which has no results screen, keeps none (nor `byte_203EAE0` +0xB, the navi crossed, which only it reads).
 - r0 = 2: `setTwoStructs(2)`, BS+0x1E.
 - r0 = 3: nothing extra.
 
@@ -668,6 +668,7 @@ return 0                        // another round
 
 **Engine model.** `Battle::round_end()` is `None` until the tick that runs `sub_8007CA0`, then:
 - `RoundEnd::NextRound { settings, score }` when the set goes on: the top state goes back to 0 (init), which the engine does not simulate. The host runs its init (link sync, the navi stats and RNG exchange, the folder) and starts the next round from a `RoundSetup` with these settings and score.
+- What the original's round end writes to the PET's navi for the next battle, which nettai keeps none of (nettai-match's `next_round` starts each round from the first's stats): the mood (NaviStats +0x0E, written at 0x08007D94), and the Beast Out counter (+0x21): the navi's as it stands, a turn back (to 3 at most) when it didn't go Beast Out this battle (`byte_203EAE0` +2, set by `sub_800AB2E` as a change goes Beast Out, read at 0x08007DB4: its one reader), or 3 under a battle effect (0x0802D246). A second Beast Out in one battle is refused by the counter and the screen's record (`sub_802A57E`, rules/beast), which nettai has (forms/falzar/beast-over replays every frame).
 - `RoundEnd::Over(BattleResult)` when it ends: BS+0x1F holds the result code, BS+0x34 the local navi's HP (read from the freed object, `sub_800FAE0`), the pause byte is cleared and BS+0x0A = 0. Machgun round 2 ends this way at 2554 (1331/1331 frames).
 
 **Error paths (not in the trace):**
@@ -1110,7 +1111,7 @@ Zeroed at every battle start except where noted.
 | 0x1A | u8 | round number (**persists**) | `sub_80091F0` |
 | 0x1B | u8 | max combo (init 1, **persists**) | `sub_800AE0C` |
 | 0x1C / 0x1D | u8 | combo count / window | `sub_800AE44`, `sub_800AE0C` |
-| 0x1E | u8 | busting level | `sub_800AF84` |
+| 0x1E | u8 | busting level (the results screen's; nettai keeps none) | `sub_800AF84` |
 | 0x1F | u8 | result code (low nibble) | `setTwoStructs_800A840` |
 | 0x20 | u16 | init stall counter; later the low-HP music latch | `sub_8007850`; `sub_8009158` |
 | 0x28 | u16 | small timer (banner delays, top-8 delay) | `sub_80092C0`, `sub_8009314`, `sub_8007BD0` |

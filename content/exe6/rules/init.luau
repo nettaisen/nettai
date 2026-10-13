@@ -54,10 +54,7 @@ local rules: Rules = {
         window_cursor = schema.role("form_list.cursor", "u8"),
         cross_chosen = schema.role("form_list.chosen", "bool"),
         chosen = schema.role("form_list.chosen_place", "u8"),
-        -- What a form change notes of the round (./forms, `byte_203EAE0`): the navi went Beast Out (+2), crossed
-        -- (+0xB).
-        went_beast_out = "bool",
-        crossed = "bool",
+        -- (What a form change notes of the round, `byte_203EAE0`, nettai keeps none of: ./forms.)
         -- The NaviCust's emotion-swing bug (./emotion): AIData+0x3A, ticks toward the next swing, and AIData+0x0B,
         -- the emotion it last rolled.
         swing_ticks = "u16",
