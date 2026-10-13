@@ -312,6 +312,29 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
     shot(add, "training-inputs", lang, size, Differs::Unheld, false);
 
+    // (The dummy stands still for the shots at it below, across from the player: its Action stepped back to the
+    // first, and the set restarted from the menu, which puts both where a round starts them; then the round's
+    // opening, to its custom screen. Moving around, it could be out of the shots' row. The menu's rows are there
+    // a step after it opens.)
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.shell.keys.held = 0;
+            app.shell.open_menu();
+        }),
+    );
+    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Action)));
+    add(SETTLE, act(Action::Left));
+    add(SETTLE, focus("menu.restart", 0));
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            app.borrow_mut().act(Action::Confirm);
+            tour.wait_until(|app| app.shell.battle.as_ref().is_some_and(|b| b.stage.player.battle().round.mode == nettai_battle::battle::mode::CUSTOM));
+        }),
+    );
+
     // Through the custom screen to the fight (START to OK, A on it), and the menu opened there: the battle in
     // the game's own pause behind it, its pause display left out, and a moment later still in it.
     for n in 0..16 {
@@ -351,15 +374,17 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
 
     // A recording: the row, chosen (the menu closes, the player's buttons drive the dummy, RECORDING over the
     // battle), Start (the dummy plays it), and the menu again (the recording's length, the dummy's Action).
+    // (The menu's rows are there a step after it opens: focused in the same step, the menu would open on the row it
+    // was left on.)
     add(
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             app.shell.keys.held = 0;
             app.shell.open_menu();
-            app.shell.nav.focus("menu.rows.option", row(TrainingOption::Recording));
         }),
     );
+    add(SETTLE, focus("menu.rows.option", row(TrainingOption::Recording)));
     shot(add, "training-menu-recording", lang, size, Differs::Unheld, false);
     add(
         SETTLE,
