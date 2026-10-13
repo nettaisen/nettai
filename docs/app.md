@@ -733,6 +733,31 @@ Measuring found one thing: **the input display, drawn each frame,** cost 0.3 ms 
 that. (The spread of the key's time between the columns is where the probe's presses fell between ticks, four
 or five a window; a frame that shows a press does draw the display anew.)
 
+**Watching a replay** (§16; 2026-10-12, the same Mac and 1280 by 800 window, `NETTAI_REPLAY=<file>` with
+`NETTAI_PLAY_STATS`, the build at 7bebca494: an eight-minute set of EXE6's, 28,718 ticks in three rounds, its
+picture 720 by 480; load average 243 to 278). The viewer indexes the replay ahead from the moment it shows, so
+each speed has two columns, while it does and once it is done:
+
+| nettai, `dev`, a replay's viewer | 1x, indexing | 1x, indexed | 4x, indexing | 4x, indexed |
+|---|---|---|---|---|
+| frames a second | 115.0 to 120.0 | 120.0 | 117.5 to 120.0 | 118.8 to 120.0 |
+| frame time p95 / p99 | 8.52 to 10.07 / 8.95 to 19.62 ms | 8.37 to 8.59 / 8.50 to 12.43 ms | 8.46 to 10.11 / 9.23 to 12.91 ms | 8.51 to 9.12 / 9.12 to 12.92 ms |
+| long frames in 2 s | 0 to 8 | 0 to 2 | 0 to 4 | 0 to 3 |
+| ticks a second | 59.4 to 60.0 | 59.5 to 60.0 | 238.5 to 239.1 | 238.5 to 239.0 |
+| the ticks of a frame that ran some | 0.08 to 0.18 ms | 0.20 to 0.32 ms | 0.19 to 0.34 ms | 0.25 to 0.37 ms |
+| pictures a second, and each one (presented, written) | 60; 1.68 to 2.13 ms | 60; 1.66 to 1.80 ms | 116 to 120; 1.73 to 1.91 ms | 116 to 120; 1.72 to 1.94 ms |
+| a slice of the index, and the worst | 1.40 to 1.46 ms (3.3 to 7.1) | | 1.37 to 1.45 ms (1.8 to 7.4) | |
+
+Each is the range over eleven to sixteen 2-second windows of one run, about 50 seconds each. What the viewer
+holds: the window's 120 frames a second at both speeds, and the replay's own speed (59.75 ticks a second, and
+four times that). At 1x a picture is presented in every other frame, at 4x in every frame (two ticks to each);
+a frame that does all of it, while the replay is being indexed, spends about 3.5 ms of its 8.3 (the ticks, the
+picture, a slice). The whole set was indexed in 21 to 22 seconds at either speed, after which a seek anywhere
+plays under 240 ticks. The one run whose windows went wrong (from 120 to 96 frames, pictures of 1200 by 800) was
+someone using the window as it was measured: its replay jumped from tick 840 to 8,640, 3,120, 13,200 and 23,520
+(clicks on the bar) and the window was made larger; it was run again. With both builds shown over the picture
+(§16) the viewer wasn't measured.
+
 ## 6. The web
 
 What was tried with the first app, on `wasm32-unknown-unknown` (installed). nettai-luau needs WASI SDK 34
@@ -1432,6 +1457,35 @@ one clock, where an `Arrive` around each tab was copied into each tab's `if` (27
 What stays large: a `ListView` and a `ScrollPage` are containers, copied into each use (40 to 50 KB each, five
 in Builds), and each `if` page holds the parts it lays out.
 
+**What a screen costs: Replays** (§16; measured 2026-10-12 with one script, back to back: the tree before it,
+nettai-ui at a8087d1d4, and with it, ui-replays at 7bebca494; sccache off; CPU is user and system time together,
+the one to compare: load average 198 to 352 throughout):
+
+| | Before Replays | With Replays |
+|---|---|---|
+| a clean build of nettai-ui and nettai | 170 s, 56.7 s of CPU | 316 s, 71.4 s of CPU |
+| nothing changed | 2.3 to 3.1 s, 0.5 to 0.8 s of CPU | 3.3 to 4.6 s, 0.5 to 0.7 s of CPU |
+| after one line of Rust changed (a line added to main.rs, and taken away) | 8.5 to 11.0 s, 2.9 to 3.1 s of CPU | 10.3 to 13.1 s, 3.0 to 3.2 s of CPU |
+| after one line of menu.slint changed (a value, and put back) | 37 to 51 s, 10.9 to 11.4 s of CPU | 64 to 73 s, 12.5 to 12.9 s of CPU |
+| after one line of replays.slint changed (a value, and put back) | | 43 to 92 s, 12.3 to 12.9 s of CPU |
+| the generated module | 6.19 MB, 51,366 lines | 7.62 MB, 61,733 lines |
+| the Slint | 6,211 lines, 29 `if`s, 12 `for`s | 7,462 lines, 35 `if`s, 14 `for`s |
+
+Replays' 1,246 lines of Slint (the stub was 22) are 1.42 MB of generated Rust: the viewer 0.50 (its transport
+0.16 and its page's `if` 0.14, the page 0.06, the transport's buttons, choices and bar 0.14), the list and the panel
+beside it 0.44 (the page 0.11 and its `if` 0.06, a row 0.07 and its `for` 0.02, the panel 0.05 and its `if` 0.05,
+the facts 0.08), the export's dialog 0.2 (its `if` 0.05), both builds over the viewer 0.12 (half of it their
+`if`), a phone's sheet 0.11, the view 0.05. A .slint edit costs 1.6 s more CPU than before, about 14%. Measured
+before the builds over the viewer and the merge of Builds (against nettai-ui at aeaad46ce, load average 176 to
+320), Replays was 1.33 MB (3.88 to 5.21) and a .slint edit 7.1 to 7.5 s of CPU before it, 8.9 to 9.1 with it.
+One thing was made smaller after measuring: the desktop's transport and the phone's were two components under an
+`if` each, and are one whose other shape's parts are hidden (`visible`, and passed by the focus). That was only
+62 KB less, not the 0.21 MB the two `if`s seemed to be: most of a conditional is the item tree of what it holds,
+and the viewer's page's `if` describes the transport's items now (44 KB before, 133 after). What stays: each `if`
+here is a part that is truly there or not (the list's page and the viewer's, each with a `Picture`, which two of
+can't be at once; the panel beside the list, whose `Picture` a phone's sheet has instead; the sheet, the dialog,
+the builds over the viewer), and each costs about as much as its own component again.
+
 ## 15. Training
 
 docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
@@ -1618,6 +1672,10 @@ three languages at both sizes; the real export, a stopped one and one with no ff
 H.264 and AAC, 19.4 MB; the stopped one's `.part` file was there while it ran and gone after it; with
 `NETTAI_FFMPEG` naming no program the line said "Video export needs ffmpeg. Install it, then try again." and
 nothing was written). The viewer was watched playing by `NETTAI_REPLAY` with `NETTAI_PLAY_STATS` (§5), at 1 and
-4 times. Never run: a drag of the bar with a real pointer, a seek that waits for the index, ½ and 2 times, a
-pad, SHOW FILE, Save as's system dialog, the main menu's reel playing a replay (its order is a unit test), the
-levels across a seek, the builds with a real key, and anything on a real phone.
+4 times. What Play's code records was listed and watched too: Play's steps alone with `$NETTAI_REPLAYS` set
+recorded three matches (one to its result, W 1–0 in 18 seconds; one with closed builds; one left), and Replays'
+steps with them in the folder listed them first, watched the newest, showed both builds of it (its recorder
+played as P2, whose console is shown, so YOU was at the left) and none of the closed-builds one's. Never run: a
+drag of the bar with a real pointer, a seek that waits for the index, ½ and 2 times, a pad, SHOW FILE, Save as's
+system dialog, the main menu's reel playing a replay (its order is a unit test), the levels across a seek, the
+builds with a real key, and anything on a real phone.
