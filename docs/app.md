@@ -1730,15 +1730,26 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
   - The menu closes (RESUME, Esc, the pad's Start): the battle is given START again and leaves the pause as
     the game does at its player's START, the fight going on where it was. RESTART, CHANGE BUILDS and QUIT TO
     MENU work from the pause as from anywhere.
-  - Where START wouldn't pause the game (its custom screen, a dimming, a round being decided), the menu holds
-    the battle still and silent, as any battle under a menu.
+  - Where START wouldn't pause the game, the battle steps on under the menu with no buttons: neither the
+    player's (the menu has them) nor the dummy's (`Player::hold_opponent`: its presses are made as ever, and
+    reach nothing), so its music and what the game moves go on there too.
+    - On its custom screen, which waits for the player, nothing changes but time: the cursor and the chips
+      chosen stay as they were on both sides, and it waits there until the menu closes (no pause is entered).
+    - Through a dimming, or a round's start or end, it steps on until START would pause the fight
+      (`Battle::pausable`), and then into the game's pause; a round's end goes on to the next round's custom
+      screen and waits there. How long: in sets of random play on each game's content (four sets of 40,000
+      ticks each), a dimming lasted 11.1 s at most in EXE6, 15.7 in EXE5 and 8.8 in EXE4, and a stretch of the
+      fight that was neither (a round's start banner, a round's end to the next custom screen) 9.1 s. In that
+      time the player could do nothing but answer a dimming with a counter cut-in, where their chips have one:
+      the fight is held for both sides, and a round's end and start take no buttons.
   - **The game's pause display is not drawn:** the HUD's "PAUSE" (what the HUD draws while the fight is in its
     pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a training battle's
     renderer alone. The game's pause state is simulated as the game has it; only that drawing is left out.
   - Nothing else changes: a battle never paused, every online match and every replay steps, sounds and draws
     as before (the engine's two calls are output only; the same hash over 2,194,500 samples and the same
     digest after 4,000 ticks of each game before and after; nettai-frontend's
-    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause`).
+    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause` and
+    `opened_where_the_game_wouldnt_pause_it_steps_on`).
   - Checked on each game's packs by stepping a battle as the menu holds it (a scratch program, not kept):
     ten seconds in the pause, samples came at 32,972 a second, the music's level steady (EXE6 0.15 to 0.22 RMS,
     EXE5 0.17 to 0.18, EXE4 0.20 to 0.22); 390, 320 and 173 of the 600 frames differed from the one before

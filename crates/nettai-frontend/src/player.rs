@@ -364,6 +364,15 @@ impl Player {
         self.session.driver.set_opponent(opponent)
     }
 
+    /// Have the navi the local player fights press nothing from the next
+    /// tick on (a host's menu over a battle that steps on), or press as it
+    /// chose again: its choices and random presses go on as they would,
+    /// only what reaches the battle is held. False for a battle that plays
+    /// no opponent.
+    pub fn hold_opponent(&mut self, held: bool) -> bool {
+        self.session.driver.hold_opponent(held)
+    }
+
     /// Start over: what the driver plays from its beginning (a recording's
     /// round, live play's set from its first round). False in real time.
     pub fn restart(&mut self) -> bool {
