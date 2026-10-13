@@ -6,7 +6,7 @@
 //! (`nettai_match::build`: each with the folder a new save starts with), each side pressing by itself. It is
 //! silent (the title music plays over the menu) and takes no keys.
 
-use crate::games::{Names, Ready};
+use crate::games::Ready;
 use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
 use crate::stage::Stage;
@@ -31,8 +31,6 @@ struct Reel {
     ticks: u32,
     /// Its left side is pressed by the reel (a set made for it); a replay's sides are its recording's.
     pressed: bool,
-    /// Who is fighting, left and right: what the caption under it names.
-    sides: [nettai_match::Side; 2],
 }
 
 #[derive(Default)]
@@ -55,11 +53,11 @@ impl Screen for Menu {
             self.reel = None;
         }
         match (&mut self.reel, shell.ready()) {
-            // The language may have changed under it: its caption's names, and its own drawing.
-            (Some(reel), Some((game, ready))) => {
+            // The language may have changed under it: its own drawing.
+            (Some(reel), Some((_, ready))) => {
                 reel.stage.player.set_language(&ready.graphics(shell.lang));
                 reel.stage.surface.stale = true;
-                caption(shell, &game, &ready, [&reel.sides[0], &reel.sides[1]]);
+                shell.ui().global::<MenuView>().set_playing(true);
             }
             _ => shell.ui().global::<MenuView>().set_playing(false),
         }
@@ -137,25 +135,22 @@ impl Menu {
                 Next::Replay(replay) => replay,
             };
             // (One that isn't played here is passed over, and not given again.)
-            let (Ok(driver), Ok(m)) = (ReplayPlayer::new(content, &replay, Some(replay.info.side)), nettai_match::binary::read_match(content, &replay.match_bytes)) else {
+            let Ok(driver) = ReplayPlayer::new(content, &replay, Some(replay.info.side)) else {
                 source.skip();
                 continue;
             };
             // (The console shown has its side at the left.)
-            let sides = if replay.info.side == 0 { [&m.sides[0], &m.sides[1]] } else { [&m.sides[1], &m.sides[0]] };
-            caption(shell, game, ready, sides);
-            let sides = [sides[0].clone(), sides[1].clone()];
-            return Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: false, sides });
+            shell.ui().global::<MenuView>().set_playing(true);
+            return Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: false });
         }
         // No replay: a new build of each of the game's first two versions, on a picked match's arenas.
         let seed = if shell.still { 7 } else { clock_seed() };
         let m = starter_match(content, game, seed).map_err(|why| crate::errors::log("making the reel's match", &why)).ok()?;
-        caption(shell, game, ready, [&m.sides[0], &m.sides[1]]);
+        shell.ui().global::<MenuView>().set_playing(true);
         let set = nettai_match::Set::of(content, &m, seed);
         let opponent = Opponent { in_fight: InFight::AttacksAtRandom, on_custom_screen: OnCustomScreen::PicksFirst };
         let driver = LivePlayer::against(set, opponent, seed as u64);
-        let [left, right] = m.sides;
-        Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: true, sides: [left, right] })
+        Some(Reel { stage: Stage::new(player(shell, ready, Box::new(driver))), game: game.to_string(), ticks: 0, pressed: true })
     }
 }
 
@@ -168,21 +163,6 @@ pub fn starter_match(content: &std::sync::Arc<nettai_battle::Content>, game: &st
         *side = builds.new_build(content, &builds.versions[i % builds.versions.len()].id)?;
     }
     Ok(m)
-}
-
-/// Who is fighting, under the reel: each side's navi and its version's tag (`crate::builds::version_tag`: the
-/// version's name and color, as the game's builds data states them).
-fn caption(shell: &Shell, game: &str, ready: &Rc<Ready>, sides: [&nettai_match::Side; 2]) {
-    let content = ready.content();
-    let graphics = ready.graphics(shell.lang);
-    let names = Names::of(content, &graphics);
-    let ui = shell.ui();
-    let view = ui.global::<MenuView>();
-    view.set_left_navi(names.navi(sides[0].navi(content)).into());
-    view.set_left_version(crate::builds::version_tag(shell, game, ready, sides[0]));
-    view.set_right_navi(names.navi(sides[1].navi(content)).into());
-    view.set_right_version(crate::builds::version_tag(shell, game, ready, sides[1]));
-    view.set_playing(true);
 }
 
 /// A silent player of `driver`, drawn as the settings say.
