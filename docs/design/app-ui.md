@@ -198,7 +198,11 @@ accent in the cursor's color (cyan in BN6), 72 by 2, at its top left. Nothing is
 
 **The cursor** is four corner brackets (each arm 10 long, 2 thick, in the cursor's color with a soft glow) drawn
 over the layout, 5 outside the focused control. It is one object that slides from control to control; it takes no
-space, and nothing under it changes size. It shows only when a keyboard or a pad is the last thing used.
+space, and nothing under it changes size. It shows only when a keyboard or a pad is the last thing used. A row
+a list marks keeps its mark, the chosen row's bar and tint, when the pointer hides the cursor: a library's
+focused row, and in the build editor the build's row being filled (a folder's entry, a patch card or slot, an
+auto battle place) while the focus is on it or in the library beside it, so a row clicked shows as chosen (the
+user: "it is impossible to tell now what is selected with the mouse on the left hand side").
 
 **Motion.** The user: "you should have way more ui animations so it feels like an actual game". Everything
 moves, briefly, and nothing waits on it.

@@ -41,10 +41,13 @@ export global AutoBattleView {
     in property <int> places;
     // The strip.
     in property <ChipDetail> detail;
-    // The places under their lists, how many rows they take, and the place being filled.
+    // The places under their lists, how many rows they take, and the place being filled. That one has the chosen
+    // row's mark while the focus is on it or in the library, the cursor shown or not (after a click the cursor is
+    // hidden, and the focus stays on the place clicked: the mark is what shows it); -1, no place marked.
     in property <[PlaceLine]> lines;
     in property <int> rows;
     in property <int> place;
+    out property <int> marked: (self.in-library || Nav.id == "places.place") ? self.place : -1;
     // Where the place a chip just went into is (its column and row), counted: it flashes.
     in property <int> landed-column;
     in property <int> landed-row;
@@ -356,7 +359,7 @@ export component AutoBattleTab inherits Rectangle {
             width: line.title ? page.view-width - 12px : root.place-width;
             height: root.pitch - 2px;
             line: line;
-            chosen: !line.title && AutoBattleView.in-library && line.place == AutoBattleView.place;
+            chosen: !line.title && line.place == AutoBattleView.marked;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }

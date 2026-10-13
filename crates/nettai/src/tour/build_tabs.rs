@@ -691,6 +691,20 @@ fn click(id: &'static str, index: i32) -> Step {
     })
 }
 
+/// The pointer moved onto control `id`'s `index`, no button held, as the window has it (the control is lit under it).
+fn hover(id: &'static str, index: i32) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(position) = locate(ui, app, Point::Control(id, index)) else {
+            tour.key_wrong(format!("the pointer moved onto {id} {index}: it isn't on the screen"));
+            return;
+        };
+        ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
+    })
+}
+
 /// A key pressed and let go as the window has it (`App::key_of`, the window's hook).
 fn press_key(code: KeyCode, text: &'static str) -> Step {
     Box::new(move |_, app, tour| {
@@ -725,12 +739,16 @@ fn focus_on(app: &App, id: &str, index: i32) -> Option<String> {
 /// A click on one of the build's rows takes the focus there, so the keys after it act on what was clicked: in the
 /// folder, R makes the clicked entry the Regular chip, T tags another clicked one, Down goes on from it, and Del
 /// empties the entry the cursor came to; a patch card clicked and Del (it is taken out), and Down from one; an
-/// auto battle place clicked and Del (it is emptied). (A desktop's: a phone's click opens the library's sheet.)
-fn clicks(add: &mut dyn FnMut(u64, Step)) {
+/// auto battle place clicked and Del (it is emptied). Each tab's first click is shot with the pointer gone on to
+/// another row: the cursor is hidden (the pointer was the last thing used), and the row clicked has the chosen
+/// row's mark, the row under the pointer its hover. (A desktop's: a phone's click opens the library's sheet.)
+fn clicks(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     use nettai_ui::{AutoBattleView, ChipMark, FolderView, PatchCardsView};
     add(SETTLE, to_tab(EditorTab::Folder));
     add(SETTLE, focus("slot", 0));
     add(SETTLE, click("slot", 3));
+    add(SETTLE, hover("slot", 7));
+    shot(add, "tabs-folder-clicked", Pair::None);
     add(SETTLE, press_key(KeyCode::KeyR, "r"));
     add(SETTLE, expect(|ui, app| {
         let mark = ui.global::<FolderView>().get_slots().row_data(3).map(|s| s.mark);
@@ -762,6 +780,8 @@ fn clicks(add: &mut dyn FnMut(u64, Step)) {
     }
     add(SETTLE, click("card", 1));
     add(SETTLE, expect(|_, app| focus_on(app, "card", 1).map(|s| format!("a click on the build's second card: {s}"))));
+    add(SETTLE, hover("lib.rows", 1));
+    shot(add, "tabs-cards-clicked", Pair::None);
     add(SETTLE, press_key(KeyCode::ArrowUp, ""));
     add(SETTLE, expect(|_, app| focus_on(app, "card", 0).map(|s| format!("Up after a click on the second card: {s}"))));
     let before = Rc::new(std::cell::Cell::new(0usize));
@@ -776,6 +796,8 @@ fn clicks(add: &mut dyn FnMut(u64, Step)) {
     add(SETTLE, to_tab(EditorTab::AutoBattle));
     add(SETTLE, focus("places.place", 2));
     add(SETTLE, click("places.place", 0));
+    add(SETTLE, hover("places.place", 3));
+    shot(add, "tabs-auto-clicked", Pair::None);
     add(SETTLE, press_key(KeyCode::Delete, ""));
     add(SETTLE, expect(|ui, app| {
         let there = ui.global::<AutoBattleView>().get_lines().iter().find(|l| !l.title && l.place == 0).map(|l| l.chip.there);
@@ -791,7 +813,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     patch_cards(add, shot);
     auto_battle(add, shot);
     if size == "desktop" {
-        clicks(add);
+        clicks(add, shot);
     }
     add(SETTLE, end());
 }
