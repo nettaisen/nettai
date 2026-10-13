@@ -9,11 +9,17 @@
 //! language the bundle is in. Strings that content defines (chip names,
 //! descriptions) aren't assets: their translations are the content root's
 //! (docs/design/text-rendering.md §10).
+//!
+//! A pack has a language's lettering only if it was made from a ROM that
+//! has those words: `Hud::languages` says which it has, its own first. A
+//! frontend set to a language the pack lacks draws the pack's own
+//! ([`Bundle::for_language`]): every picture with words in a language the
+//! pack has them in, none a placeholder for want of the other.
 
 use crate::{BannerLayout, Bundle, CustomScreen, DialogueFont, Hud, Palette, Picture, SlotPictures, Tiles};
 
 /// The language of a pack that doesn't say (one extracted from the US
-/// ROMs).
+/// ROMs, or from none).
 pub const BASE_LANGUAGE: &str = "en";
 
 /// The HUD's lettering in a language other than the pack's own.
@@ -110,6 +116,11 @@ impl Hud {
     pub fn languages(&self) -> Vec<&str> {
         std::iter::once(self.language()).chain(self.languages.iter().map(|(l, _)| l.as_str())).collect()
     }
+
+    /// Whether the HUD has lettering in `lang` (its fonts among it).
+    pub fn has_language(&self, lang: &str) -> bool {
+        self.languages().contains(&lang)
+    }
 }
 
 impl CustomScreen {
@@ -137,6 +148,10 @@ impl CustomScreen {
             }
             if let Some(picture) = &mut own.picture {
                 std::mem::swap(&mut b.picture, picture);
+                // (Its palettes start with its picture's own.)
+                if let Some(first) = b.palettes.first_mut() {
+                    *first = b.picture.palette;
+                }
             }
         }
         self.languages.push((from.to_string(), l));
@@ -162,6 +177,21 @@ impl Bundle {
             return Err(format!("the pack has the HUD in {lang:?} but not the custom screen (extract it again)"));
         }
         Ok(self)
+    }
+
+    /// The bundle as a frontend set to `lang` draws it: in `lang` if the
+    /// pack has its lettering, else in the pack's own language, so that a
+    /// picture with words is one the pack has.
+    pub fn for_language(self, lang: &str) -> Bundle {
+        if self.hud.has_language(lang) { self.in_language(lang).expect("a language the HUD has") } else { self }
+    }
+
+    /// The bundle without `lang`'s lettering beside its own (a pack made
+    /// from no ROM that has those words has none of it).
+    pub fn without_language(mut self, lang: &str) -> Bundle {
+        self.hud.languages.retain(|(l, _)| l != lang);
+        self.custom.languages.retain(|(l, _)| l != lang);
+        self
     }
 }
 
@@ -226,6 +256,7 @@ mod tests {
                         height: 3,
                         tiles: tiles(6, 36),
                         picture: Picture { tiles: tiles(1, 42), palette: [1; 16] },
+                        palettes: vec![[1; 16], [9; 16]],
                         ..Default::default()
                     },
                 ),
@@ -247,6 +278,7 @@ mod tests {
         assert_eq!((&ja.custom.buttons[0].1.tiles, &ja.custom.buttons[1].1.tiles), (&tiles(2, 18), &tiles(5, 18)), "a button's own label, the others as they are");
         let redeal = &ja.custom.buttons[2].1;
         assert_eq!((&redeal.tiles, &redeal.picture), (&tiles(6, 36), &Picture { tiles: tiles(2, 42), palette: [3; 16] }), "a button's own picture, its tiles as they are");
+        assert_eq!(redeal.palettes, [[3; 16], [9; 16]], "its palettes start with its picture's own (as a pack writes them)");
         assert_eq!(ja.hud.languages(), ["ja", "en"]);
         // And back: the pack as it was, but for which language is its own.
         let back = ja.in_language("en").unwrap();
@@ -255,6 +287,21 @@ mod tests {
         assert_eq!(back.custom.buttons, en.custom.buttons);
         assert_eq!(back.hud.layout.chatbox_text, (0x3F, 0x6D));
         assert!(en.clone().in_language("en").is_ok());
-        assert!(en.in_language("fr").unwrap_err().contains("en, ja"));
+        assert!(en.clone().in_language("fr").unwrap_err().contains("en, ja"));
+        // A frontend set to a language the pack lacks draws the pack's own.
+        assert_eq!(en.clone().for_language("fr"), en);
+        assert_eq!(en.clone().for_language("ja").hud.language(), "ja");
+        // A pack of the Japanese words alone: Japanese is its own language,
+        // and a frontend set to English draws it.
+        let ja_only = en.clone().in_language("ja").unwrap().without_language("en");
+        assert_eq!(ja_only.hud.languages(), ["ja"]);
+        assert!(ja_only.custom.languages.is_empty());
+        assert!(ja_only.clone().in_language("en").is_err());
+        let drawn = ja_only.clone().for_language("en");
+        assert_eq!((drawn.hud.language(), &drawn.hud.font, &drawn.custom.pictures.ok.tiles), ("ja", &tiles(2, 2), &tiles(2, 42)));
+        // And one of the English words alone.
+        let en_only = en.without_language("ja");
+        assert_eq!(en_only.hud.languages(), ["en"]);
+        assert_eq!(en_only.clone().for_language("ja"), en_only);
     }
 }
