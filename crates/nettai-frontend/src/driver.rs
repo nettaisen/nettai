@@ -432,8 +432,9 @@ pub enum ChipDraw {
 
 /// How long a navi with refills goes with no HP lost before its HP is full
 /// again: a second and a half. The HUD's HP number rolls down to what a hit
-/// left in at most about half a second, so a combo's damage is read before
-/// the refill rolls it back up, and the refill doesn't land in the combo.
+/// left in under a second (an eighth of the way and 2 more a tick), so a
+/// combo's damage is read before the refill rolls it back up, and the
+/// refill doesn't land in the combo.
 pub const REFILL_REST: u32 = 90;
 
 /// What live play follows of a navi's HP for its refills.
@@ -466,8 +467,8 @@ pub struct LivePlayer {
     arranged: [ChipDraw; 2],
     /// The opponent's recording: its buttons, a tick of the fight running
     /// at a time; whether the local player is driving it to record them
-    /// (`record`), the local player's buttons the tick before (for START's
-    /// press), and where its playing is.
+    /// (`record_opponent`), the local player's buttons the tick before (for
+    /// START's press), and where its playing is.
     recording: Vec<u16>,
     recording_now: bool,
     held: u16,
@@ -592,6 +593,11 @@ impl LivePlayer {
     pub fn with_training(mut self, training: Training) -> LivePlayer {
         self.training = training;
         self
+    }
+
+    /// The set it plays.
+    pub fn set(&self) -> &Set {
+        &self.set
     }
 
     /// The training session's options.
