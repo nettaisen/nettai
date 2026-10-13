@@ -1218,6 +1218,8 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
             check("winner", r.winner.to_string(), bs[0x10].to_string());
             check("alive", format!("{:?}", r.alive), format!("{:?}", [bs[0x12], bs[0x13]]));
             check("score", format!("{:?}", [r.wins, r.losses]), format!("{:?}", [bs[0x18], bs[0x19]]));
+            // (And the round, +0x1A, as the round's start sets it.)
+            check("round", r.round.to_string(), bs[0x1A].to_string());
             check("delay", r.delay.to_string(), i16::from_le_bytes([bs[0x28], bs[0x29]]).to_string());
             let flags = u16::from_le_bytes([bs[0x32], bs[0x33]]);
             check("battle flags", format!("{:#x}", r.flags & !gauge_full), format!("{:#x}", flags & !(gauge_full | FLAG_BROKEN)));
@@ -1303,8 +1305,16 @@ fn compare_with(b: &Battle, f: &Frame, banner: &Frame, screen: &Frame, compat: &
         let Ok(raw) = unhex(hex) else { continue };
         let Ok(raw) = <[u8; crate::codec::NAVI_STATS]>::try_from(raw.as_slice()) else { continue };
         check(&format!("side {side}'s compiled stats"), compiled(b, &b.stats[side]), compiled_of(&crate::codec::navi_stats(&raw)));
-        // (And its mood, +0x00, which the fight changes.)
+        // (And its mood, +0x00, which the fight changes, and its weapons:
+        // the B button's, the charged shot's and B+Left's routines, +0x09,
+        // +0x0A and +0x0C, by compat's names of them, which a chip's
+        // effect may change, BugChain's taunt.)
         check(&format!("side {side}'s mood"), format!("{:#04x}", b.stats[side].mood), format!("{:#04x}", raw[0x00]));
+        let w = &b.stats[side].weapons;
+        let ours = [w.buster, w.charge_shot, w.back_special]
+            .map(|h| h.map(|h| nettai_match::ids::local(&b.content.defs.weapon(h).key).to_string()));
+        let theirs = [Some(raw[0x09]), Some(raw[0x0A]), (raw[0x0C] != 0xFF).then_some(raw[0x0C])].map(|n| n.map(|n| compat.weapon(n).unwrap_or_else(|e| e)));
+        check(&format!("side {side}'s weapons"), format!("{ours:?}"), format!("{theirs:?}"));
     }
     // (A panel type is the game's number of it.)
     let panels: Vec<String> = (1..=3)
