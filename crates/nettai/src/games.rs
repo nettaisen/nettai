@@ -303,8 +303,12 @@ impl<'a> Names<'a> {
     /// A background's name (its area's, as the game's menus name it), else
     /// its asset name.
     pub fn background(&self, background: nettai_battle::content::BackgroundId) -> String {
-        let key = nettai_match::ids::background_name(self.content, background).unwrap_or_default();
-        self.pick(key, |s, k| s.background(k).and_then(|b| b.name.clone()))
+        self.background_named(nettai_match::ids::background_name(self.content, background).unwrap_or_default())
+    }
+
+    /// A background by its name in the game's pack (`acdc-area`).
+    pub fn background_named(&self, name: &str) -> String {
+        self.pick(name, |s, k| s.background(k).and_then(|b| b.name.clone()))
     }
 
     /// An entry of one of the game's collections (a card, a program).
