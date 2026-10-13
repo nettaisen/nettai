@@ -327,7 +327,10 @@ from the ROM and its code, read routine by routine):
 - **Picks** (0x0801F73C): a chip that counts as the invalid chip is refused (`invalid_picks`), the dark chips' code 27
   is one `*` doesn't stand for (`special_codes`). **OK's hand** (0x0801F034): no Program Advance record, no Regular
   mark on it, the entries past the selection cleared, a modifier's mark kept (`program_advances`,
-  `modifier_passes_regular`). The hand is the custom level, uncapped (rules/custom: `hand_size`, 0x0801DC8E).
+  `modifier_passes_regular`). Its list of picks (the block's +0x32, written at 0x0801F110) leaves out a soul's chip,
+  whose family is 15 (the builder's `Pick::listed`: a chip a picked button gives is in the hand and not among its
+  picks), and a chip offered again from the sent list (the pick's flags from 2: item 68, open). The hand is the
+  custom level, uncapped (rules/custom: `hand_size`, 0x0801DC8E).
 - **Program Advances** (0x0801F390): the recipe table is the pointer list at 0x080212B0, 37 recipes, each a count, a
   kind (0: a code run of one chip, else a sequence of chips whatever their codes), the result (chips 0x140 to 0x15D)
   and its chips; each start in the selection in turn, the recipes in the table's order. The content states each in
@@ -2777,6 +2780,38 @@ is a rule field every game states, EXE6's and EXE5's unchanged.
     0x0800D596, has one reader, an enemy's AI at 0x080B5226 (a story battle's), and EXE6's none: exe5-map.md §6.1.
     Nothing a netbattle shows depends on it, so the engine doesn't keep it: the original adds one to it at every
     navi chip's use, and the engine's use adds to no count.)
+68. **The hands against the recordings** (group B). The replays held nothing of the chip blocks to the recordings in
+    EXE4 and EXE5 (EXE6's compared the whole block): each frame's two hands are now compared field by field (the
+    cursor, the chips, their damage and two bonuses, the picks, the turns, the modifier flags; verify
+    docs/replay-coverage.md says what is left out and why). What that found in EXE4:
+    - **Done: a soul's chip is no pick.** The block's picks (+0x32, 0x0801F110) leave out a chip of family 15, the
+      souls' chips (0x160 on, class 3), which a unison's hand holds first; the engine listed it (115 recordings
+      stopped as that hand was installed: frame 409 of souls/fire/hit). The builder's `Pick::listed`.
+    - **Open (the custom screen's): a chip offered again is no pick either, and is marked.** 0x0801EF4C answers a
+      slot flagged 0x10 (JunkSoul's offer from the sent list) with Z clear, so the pick's flags gain 2 (0x0801F0B8):
+      0x0801F118 leaves it out of the picks, and its hand entry's modifier flags hold 0x02. The engine lists it and
+      marks nothing: souls/junk/recycle, -dark, -hurt, -keep, -mega, -one, -side1 and -theirs stop as the offered
+      chip's hand is installed (frames 1206, 980, 1227, 1221, 1227, 1191, 1196 and 1194), on the picks and the
+      modifier flags alone (with the picks, the turns and the modifier flags left out each replays to its end). The
+      mark's readers in the fight: the use's 0x0800D59A (a dark chip so marked isn't counted in the side's count 2,
+      and outside a netbattle doesn't set the mood), and the local console's check of its next chip, 0x0800865C (at
+      0x08008692 and 0x080086D4: to read). The engine's chip use reads a hand entry's 0x02 and 0x04 as EXE6's
+      WhiCapsl and Uninstll whatever the game (`modifier_bits`), so EXE4's marks can't go in the hand as they are:
+      what a mark means is each game's to state.
+    - **Open: the install's mark.** 0x0801EA1E marks each entry of an installed hand 0x04 as it charges a dark chip's
+      cost, once an entry; the engine's rules keep `hand_sent` instead, and the comparison leaves that bit out.
+      WoodSoul's fold on the hand (0x0800E302, 0x0800E308) moves the turn and the modifier bytes at twice the index,
+      so the mark turns up in a turn byte: souls/wood/merge stops at frame 594 (turns 0, 0, 0, 0, 4, 0; the engine
+      moves each entry's own, and holds no mark to move).
+    - **Open, not recorded: the dark chips sent.** The picks list a dark chip (dark/drklance, frame 331: 0x36BF, its
+      slot's flag 0x20 answered with Z set), 0x08007E92 puts every pick of an installed hand in the console's sent
+      list unfiltered, and a dark chip's class is 0, a standard chip's: JunkSoul's screen can offer a dark chip
+      either side sent (which is what 0x0800D59A's test of the mark is for). The engine's `sent_chips.confirmed`
+      lists the folder's picks alone. No recording has a dark chip sent beside a JunkSoul.
+    - **Item 136's: a destroyed hand.** With the hands compared and before that item's rule,
+      chips/0x0d4-jealousy/holding stopped at frame 467 (EXE5's at 524): the original empties the whole hand (every
+      chip gone, the cursor left at 0), the engine moved the cursor on one chip. A recording of both labs had the
+      case all along; no comparison held it.
 70. **The souls' parts of the chip families.** ProtoSoul (soul 7) swings blade 13 and takes the swords' hit modifiers
     from 0x080EB7FE (lib/swords) *done* (item 74's ProtoSoul); a GigaCan's afterimages add the soul's part by soul
     (0x080EB92A reads 0x08018068: FireSoul's flames and NumberSoul's overlay, the form's `wears`; lib/cannon) *done*:
@@ -3315,6 +3350,22 @@ The fight HUD as read and ported is §14's "The fight HUD as ported". What it st
     debris on row 158, frame 843), stages/rocks-07-drilarm-side1 (on row 159, frame 397) and
     pa/0x146-flmhook1/recipe1 (the hook on row 158) and the EXE5 lab's navis/knightman/charge-corner (rows 158 and
     159, frames 605 to 608) are pixel-exact around them (81, 71, 61 and 71 frames).
+136. **Done: a chip-destroying hit empties the hand** (found reading the releases' code, not by a replay: no replay
+    compares the hands). A hit with hit flag 0x10 (the hitter's type's bit: RollAro's arrow, RollSoul's charged shot,
+    Jealousy's hits, SearchMan's powered last shot; a guard strips it) clears the chip the navi's object names and,
+    in the player's intake (0x0801325A, called at 0x08013910), the side's whole hand: the chip block's first two
+    bytes zeroed (the cursor back at its first place) and ten bytes of 0xFFFF from +0x02 (its five chips), then the
+    navi's chip requests ended (0x08013280 clears requests 0x0C; the Japanese releases lack that call, §11). EXE5's
+    (0x0801709A) empties the hand the same way and leaves the requests; EXE6's `sub_801A2CC` takes the next chip
+    alone, the cursor stepping past it. The engine had EXE6's for all three. The status section's
+    `chip_destruction` (`takes`: "hand", EXE6's "next"; `ends_chip_requests`: EXE4's alone), read by the shared
+    intake. Recorded in the three labs (EXE4 destruction/, 12; EXE5 destruction/, 9; EXE6 jp/destruction/, 7): a hand
+    of three, one and none, one used before, the hit during a chip's use and on the frame it is asked for (the
+    request ended: `asked`, which stops at the empty hand's use without the rule's second part), on the hitter's
+    console and the hit side's; the hit side presses A afterwards, which is what shows a wrong hand. All replay,
+    states and sounds, and the frames around the hit and the A are pixel-exact on both consoles (EXE4 hand,
+    hand-bluemoon, used-first, rollaro, rollaro-bluemoon, jealousy; EXE5 hand, traced; EXE6 hand, traced): the chip
+    icons over the navi and the chip window going. Not recorded: SearchMan's powered last shot (the same hit flag).
 
 ### 18.8 The chips (group F)
 
