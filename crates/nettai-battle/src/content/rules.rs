@@ -1178,24 +1178,13 @@ pub struct IntakeRules {
     pub chip_destruction: ChipDestruction,
 }
 
-/// What a chip-destroying hit (hit flag 0x10) takes from a player
+/// What a chip-destroying hit (hit flag 0x10) takes from a player's hand
 /// (`IntakeRules::chip_destruction`: EXE6's `sub_801A2CC`, EXE5's
 /// 0x0801709A, EXE4's 0x0801325A). Each clears the chip the navi's object
 /// names.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(deny_unknown_fields)]
-pub struct ChipDestruction {
-    pub takes: ChipsTaken,
-    /// The navi's chip requests end with it (EXE4's 0x08013280 clears
-    /// requests 0x0C, so an A pressed on the hit's tick uses nothing);
-    /// EXE6's and EXE5's leave them.
-    pub ends_chip_requests: bool,
-}
-
-/// The chips a chip-destroying hit takes (`ChipDestruction::takes`).
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
-pub enum ChipsTaken {
+pub enum ChipDestruction {
     /// The hand's next chip: the cursor steps past it, if there is one
     /// (EXE6's).
     Next,
