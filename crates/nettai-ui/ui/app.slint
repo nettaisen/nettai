@@ -48,16 +48,24 @@ export component AppWindow inherits Window {
         visible: !root.in-battle || Theme.phone;
     }
 
+    // Each screen, and what it opens over itself (Training and Settings open nothing): one conditional each, as
+    // each conditional is a component of its own in what Slint generates. (A screen's overlay is over it; only
+    // one screen is shown at a time, so it is over every screen.)
     if !root.covered && Shell.screen == Screen.menu: MenuScreen { }
-    if !root.covered && Shell.screen == Screen.play: PlayScreen { }
+    if !root.covered && Shell.screen == Screen.play: Rectangle {
+        PlayScreen { }
+        PlayOverlay { }
+    }
     if !root.covered && Shell.screen == Screen.training: TrainingScreen { }
-    if !root.covered && Shell.screen == Screen.builds: BuildsScreen { }
-    if !root.covered && Shell.screen == Screen.replays: ReplaysScreen { }
+    if !root.covered && Shell.screen == Screen.builds: Rectangle {
+        BuildsScreen { }
+        BuildsOverlay { }
+    }
+    if !root.covered && Shell.screen == Screen.replays: Rectangle {
+        ReplaysScreen { }
+        ReplaysOverlay { }
+    }
     if !root.covered && Shell.screen == Screen.settings: SettingsScreen { }
-    // What a screen opens over itself (Training opens nothing).
-    if !root.covered && Shell.screen == Screen.play: PlayOverlay { }
-    if !root.covered && Shell.screen == Screen.builds: BuildsOverlay { }
-    if !root.covered && Shell.screen == Screen.replays: ReplaysOverlay { }
     if Shell.loading && !Shell.versus && !root.in-battle: LoadingScreen { }
     if Shell.versus: VersusScreen { }
     if root.in-battle: BattleScreen { }
