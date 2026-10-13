@@ -175,7 +175,7 @@ What moves:
 | Where | What |
 |---|---|
 | the field | the hexagons drift slowly and a soft pulse crosses them now and then; they rush as a battle is entered |
-| the cursor | it glides between controls, its brackets breathe 2 in and out while idle, and they snap inward on Enter |
+| the cursor | it glides between controls, its brackets breathe 2 in and out while idle, and they snap inward on A (a press) |
 | a screen | leaving, the body slides 16 and fades (120); arriving, the title wipes in behind its cyan bar and the panels come one after another, 30 apart, each rising 12 as it fades in (200); Back runs the other way |
 | the main menu | at start the logo, the four words and the reel assemble in turn; the chosen word's bar grows from the left and its tint sweeps in; changing the game slides the name out and in the arrow's way and crossfades the reel and the music |
 | a panel | its cyan accent draws from the left as it arrives |
@@ -215,14 +215,25 @@ These answer the user's first paragraph (§1), and a screenshot pass checks them
    English runs through every screen in the screenshot pass, which fails on clipped or overlapping text.
 5. **The cursor takes no space** (§4).
 6. **One focus, always.** Arrows move to the neighbor in that direction; Tab and Shift+Tab move in reading order;
-   Enter activates; Esc goes back. A screen opens with focus on its main control and remembers where it was.
-7. **Text fields don't trap.** The arrows walk past a field without changing it. Enter or a typed letter starts
-   editing. While editing, Left and Right move the caret, Enter confirms, Esc restores the old text, and Up or Down
-   confirm and move on. The field's border and caret light while it is edited.
+   the GBA's **A confirms and B goes back**, by the keys and pad buttons the player bound to them (Z and X, the
+   pad's south and west, until rebound): "i feel like the GBA A and B buttons should be the universal
+   confirm/cancel buttons everywhere, instead of enter+esc". Enter and Esc are not confirm and back. The keys
+   bound to L and R are the game (or a screen's tabs) before and after; START's key and Esc open nettai's menu in
+   a battle and close it, and do nothing in the app's own menus. Where A or B is bound to a key the menus keep
+   for themselves (an arrow, Tab, Page Up or Down, Home, End) or shares a key, Enter or Esc stands in for it. A
+   screen opens with focus on its main control and remembers where it was.
+7. **Text fields don't trap.** The arrows walk past a field without changing it. A typed letter starts editing (A's
+   and B's keys are letters too, so on a field they type), as do Enter and the pad's A. While editing, the keys are
+   the field's: Left and Right move the caret, Enter finishes, Esc restores the old text, and Up, Down or Tab
+   finish and move on; the pad's A finishes and its B restores. These are the only places Enter and Esc confirm
+   and go back, and the footer says so while a field is edited. The field's border and caret light while it is
+   edited.
 8. **Text never touches a border.** A field clips its text at its inner padding (12) and scrolls to keep the caret
    in view.
 9. **Lists.** Rows have one height; the focused row is scrolled into view; the scrollbar's space is reserved.
-10. **Pads work the same way**, through gamepad-facade, with the hints switching to the pad's buttons.
+10. **Pads work the same way**, through gamepad-facade, by the pad's own bindings (A confirms, B goes back), with
+    the hints switching to the pad's buttons, and every hint naming the key or button bound, never Enter or Esc
+    by name but in a field's own hints.
 11. **One frame for what the build holds.** The folder, the patch cards, the NaviCust board and the build overview
     sit in a blue-bordered panel; the list to pick from beside it has no frame; the side the cursor is in has its
     title lit.
@@ -303,15 +314,18 @@ Each is in the mockups under the same name.
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header holding Chips 30/30, Mega, Giga, Reg and Tag memory, then the overview's own 2 by
   15 block. Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
-  a note, MB, attack, element, code), 15 showing. Enter on a slot goes to the library; Enter on a row puts it in
+  a note, MB, attack, element, code), 15 showing. A on a slot goes to the library; A on a row puts it in
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's.
-- **NaviCust** (§2.10): the board framed at the left with a key under it; PROGRAMS, an open list, in the middle
-  (each with its color, a cross if a plus part, and Placed, In hand or Out of bounds); Effects and Bugs at the
-  right. The command line is marked three ways: a line above and below its whole row that runs over placed pieces,
-  an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white outline at its
-  edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and S turn it, C
-  compresses it, Enter places it, Esc puts it back.
+- **NaviCust** (§2.10): a strip across the top describes the program under the cursor, in the game's words (the
+  user: "you should show ncp descriptions"); the board framed at the left with a key under it; PROGRAMS, an open
+  list, in the middle (each with its color, a cross if a plus part, and Placed, In hand or Out of bounds); Effects
+  and Bugs at the right. The command line is marked three ways: a line above and below its whole row that runs over
+  placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
+  outline at its edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and
+  S turn it, C compresses it (in place, turned as it is: "rotating the ncp on compression is so confusing"), A (confirm)
+  places it, B (back) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
+  up and putting it away, or with Del ("there seems to be no way to remove the ncp from the board once placed").
 - **Patch cards** (§2.19, §2.20): the folder's shape. EXE5 and EXE6: the installed cards in order in the framed
   panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the

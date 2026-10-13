@@ -545,6 +545,13 @@ fn parse_sprite(id: &str) -> Option<(u8, u8)> {
 }
 
 impl Compat {
+    /// The number patch card `key` is printed with and a save holds (patch-cards.toml: card 111 each team's own,
+    /// both 111).
+    pub fn patch_card_number(&self, key: &str) -> Option<u8> {
+        let p = &self.patch_cards;
+        p.cards.get(key).or_else(|| p.protoman.get(key)).or_else(|| p.colonel.get(key)).copied()
+    }
+
     /// EXE5's compat, as this repository's content/exe5/compat has it.
     pub fn exe5() -> &'static Compat {
         static EXE5_COMPAT: std::sync::OnceLock<Compat> = std::sync::OnceLock::new();
