@@ -104,7 +104,35 @@ mod tests {
     use super::*;
     use nettai_match::build::Checked;
     use nettai_match::facts::Stated;
-    use nettai_match::testing::{exe5_content, exe6_content};
+    use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
+
+    /// A build of each version of EXE4 and EXE5 has the six souls that version's save can have (its compat
+    /// crate's soul flags, by its numbers of the forms): what the version sets is what an import of its save
+    /// gives.
+    #[test]
+    fn each_versions_souls_are_its_saves() {
+        let souls = |content: &Content, game: &str, version: &str, number: &dyn Fn(&str) -> Option<u8>| {
+            let side = Builds::of(content, game).unwrap().new_build(content, version).unwrap();
+            let mut numbers: Vec<u8> = side.facts.get(content, "souls").unwrap().defs().iter().map(|&h| {
+                let key = nettai_match::ids::local(&content.defs.form(nettai_content_api::FormHandle(h)).key);
+                number(key).unwrap_or_else(|| panic!("{game}: compat has no soul {key}"))
+            }).collect();
+            numbers.sort();
+            numbers
+        };
+        let four = exe4_content();
+        let compat = exe4_compat::Compat::exe4();
+        for version in [exe4_compat::Version::RedSun, exe4_compat::Version::BlueMoon] {
+            let theirs: Vec<u8> = (1..=12).filter(|&n| version.soul_flag(n).is_some()).collect();
+            assert_eq!(souls(&four, "exe4", version.name(), &|k| compat.form_number(k)), theirs, "{}", version.name());
+        }
+        let five = exe5_content();
+        let compat = exe5_compat::Compat::exe5();
+        for version in [exe5_compat::Version::Protoman, exe5_compat::Version::Colonel] {
+            let theirs: Vec<u8> = (1..=12).filter(|&n| version.soul_flag(n).is_some()).collect();
+            assert_eq!(souls(&five, "exe5", version.name(), &|k| compat.form_number(k)), theirs, "{}", version.name());
+        }
+    }
 
     /// A save of the build's game gives a build of its version, with all the version sets; one of another
     /// game is refused. Its light/dark value takes the preset on its side of the game's line (100: dark), and
