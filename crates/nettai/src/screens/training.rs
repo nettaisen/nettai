@@ -27,7 +27,7 @@ use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use crate::stage::Stage;
-use nettai_frontend::driver::{InFight, LivePlayer, OnCustomScreen, Opponent, Training as Options};
+use nettai_frontend::driver::{ChipDraw, InFight, LivePlayer, OnCustomScreen, Opponent, Training as Options};
 use nettai_frontend::player::FRAME_RATE;
 use nettai_match::build::{Builds, Checked};
 use nettai_match::{Match, Set, Side, Wrong};
@@ -124,7 +124,7 @@ struct Session {
 /// The training menu's rows, in order, under whatever rows another screen added: each group's title, then its
 /// options. A row is added here, worded in training.slint (`TrainingView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Training::step_option`.
-const ROWS: [TrainingOption; 10] = [
+const ROWS: [TrainingOption; 11] = [
     TrainingOption::Dummy,
     TrainingOption::Action,
     TrainingOption::CustomScreen,
@@ -133,6 +133,7 @@ const ROWS: [TrainingOption; 10] = [
     TrainingOption::YourHp,
     TrainingOption::DummysHp,
     TrainingOption::CustomGauge,
+    TrainingOption::ChipDraw,
     TrainingOption::Display,
     TrainingOption::InputDisplay,
 ];
@@ -144,7 +145,7 @@ fn values(option: TrainingOption) -> usize {
         TrainingOption::Recording => 1,
         TrainingOption::Action => InFight::ALL.len(),
         TrainingOption::CustomScreen => OnCustomScreen::ALL.len(),
-        TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::InputDisplay => 2,
+        TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::ChipDraw | TrainingOption::InputDisplay => 2,
         TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
     }
 }
@@ -158,6 +159,7 @@ fn value(option: TrainingOption, opponent: Opponent, options: Options, inputs: b
         TrainingOption::YourHp => options.refills[0] as usize,
         TrainingOption::DummysHp => options.refills[1] as usize,
         TrainingOption::CustomGauge => options.full_gauge as usize,
+        TrainingOption::ChipDraw => (options.chip_draw == ChipDraw::FolderOrder) as usize,
         TrainingOption::InputDisplay => inputs as usize,
         TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
     }
@@ -189,6 +191,7 @@ const KEPT_ACTION: &str = "training.action";
 const KEPT_CUSTOM_SCREEN: &str = "training.custom-screen";
 const KEPT_HP: [&str; 2] = ["training.your-hp", "training.dummys-hp"];
 const KEPT_GAUGE: &str = "training.custom-gauge";
+const KEPT_DRAW: &str = "training.chip-draw";
 const KEPT_INPUTS: &str = "training.inputs";
 
 /// The dummy's choices by their names in the settings, in `InFight::ALL`'s and `OnCustomScreen::ALL`'s order.
@@ -212,7 +215,8 @@ fn kept_opponent(shell: &Shell) -> Opponent {
 /// The battle's options as they were last left in one of Training's own sessions.
 fn kept_options(shell: &Shell) -> Options {
     let kept = |key: &str, on: &str| shell.settings.remembered.get(key).is_some_and(|v| v == on);
-    Options { refills: KEPT_HP.map(|key| kept(key, "refills")), full_gauge: kept(KEPT_GAUGE, "full") }
+    let chip_draw = if kept(KEPT_DRAW, "folder-order") { ChipDraw::FolderOrder } else { ChipDraw::Shuffled };
+    Options { refills: KEPT_HP.map(|key| kept(key, "refills")), full_gauge: kept(KEPT_GAUGE, "full"), chip_draw }
 }
 
 /// Whether the input display is on.
@@ -656,6 +660,12 @@ impl Training {
                         shell.settings.remembered.insert(KEPT_GAUGE.into(), if next == 1 { "full" } else { "normal" }.into());
                     }
                 }
+                TrainingOption::ChipDraw => {
+                    session.options.chip_draw = if next == 1 { ChipDraw::FolderOrder } else { ChipDraw::Shuffled };
+                    if keep {
+                        shell.settings.remembered.insert(KEPT_DRAW.into(), if next == 1 { "folder-order" } else { "shuffled" }.into());
+                    }
+                }
                 TrainingOption::InputDisplay => {
                     shell.settings.remembered.insert(KEPT_INPUTS.into(), if next == 1 { "on" } else { "off" }.into());
                     // (What each side holds is told from the next frame.)
@@ -926,11 +936,11 @@ mod tests {
                 assert!(value(option, opponent, options, false) < values(option), "{option:?}");
             }
             // (A session another screen starts has the battle's options at their normal values: the first.)
-            if matches!(option, TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge) {
+            if matches!(option, TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::ChipDraw) {
                 assert_eq!(value(option, opponent, options, false), 0, "{option:?}");
             }
         }
-        assert_eq!(seen, 7, "Action, Custom screen, Recording, Your HP, Dummy's HP, Custom gauge, Input display");
+        assert_eq!(seen, 8, "Action, Custom screen, Recording, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
         assert_eq!((ACTIONS.len(), CUSTOM_SCREENS.len()), (InFight::ALL.len(), OnCustomScreen::ALL.len()));
         assert_eq!(value(TrainingOption::Action, Opponent { in_fight: InFight::AttacksAtRandom, ..opponent }, options, false), 2);
         assert_eq!(value(TrainingOption::CustomScreen, Opponent { on_custom_screen: OnCustomScreen::PicksNothing, ..opponent }, options, false), 0);
