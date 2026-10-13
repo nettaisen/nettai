@@ -829,6 +829,8 @@ component HintView inherits Rectangle {
     Dpad {
         x: 1px;
         visible: root.shown && Nav.pad && root.hint.pad == PadButton.move;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     first := KeyCap {
@@ -876,6 +878,8 @@ export component Footer inherits Rectangle {
             alignment: start;
             for hint in root.hints: HintView {
                 hint: hint;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
         }
 
