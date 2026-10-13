@@ -16,6 +16,11 @@
 //! itself knows by role (`PlayerFact`: the version, Beast Out, the form
 //! list), and where this crate needs one of those (the version's place in a
 //! navi's stats, the forms a navi's list may hold) it asks by the role.
+//! One field it names by the field's own name, `patch_cards`
+//! ([`PATCH_CARDS`]): the list a game with patch cards keeps a side's in,
+//! which a match played with patch cards off leaves empty
+//! ([`Side::without_patch_cards`]). What a card is, and what it does, are
+//! the game's.
 //!
 //! The games' own (EXE6's `version`, `crosses`, `beast_out`,
 //! `bug_frags`; EXE5's `karma`, `souls`, `chaos_unison`) are
@@ -49,6 +54,12 @@ pub fn fields(content: &Content) -> Vec<Field<'_>> {
     let Some(rules) = content.defs.rules() else { return Vec::new() };
     content.defs.schema(rules.setup).fields().iter().map(|f| Field { name: &f.name, ty: &f.ty }).collect()
 }
+
+/// The field of a game's rules' setup that holds a side's patch cards: a
+/// list, in the order they apply (EXE6's and EXE5's of cards, EXE4's of a
+/// card and its slot). A game with patch cards names it so; a game whose
+/// setup has no such field has none.
+pub const PATCH_CARDS: &str = "patch_cards";
 
 /// The fact named `name`, if the game's rules take it.
 pub fn field<'c>(content: &'c Content, name: &str) -> Option<Field<'c>> {
@@ -602,6 +613,19 @@ impl Side {
     /// Write one of the side's facts (`Facts::set`).
     pub fn set_fact(&mut self, content: &Content, field: &str, values: &[Fact]) -> Result<(), String> {
         self.facts.set(content, field, values)
+    }
+
+    /// The side without its patch cards: the list of them its rules' setup
+    /// takes ([`PATCH_CARDS`]) empty, everything else as it is. A match
+    /// played with patch cards off plays each side so. A side of a game
+    /// whose rules take no patch cards is as it is.
+    pub fn without_patch_cards(&self, content: &Content) -> Side {
+        let mut bare = self.clone();
+        if field(content, PATCH_CARDS).is_some_and(|f| matches!(f.ty, FieldType::List(..) | FieldType::Array(..))) {
+            // (A list takes any number of values: none is the empty list.)
+            let _ = bare.set_fact(content, PATCH_CARDS, &[]);
+        }
+        bare
     }
 
     /// The side's navi's level (the engine's level fact: EXE6's navi
