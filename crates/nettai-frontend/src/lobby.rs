@@ -1922,6 +1922,12 @@ mod tests {
         assert_eq!((&played.sides, &played.m.sides, &joiner.sides, &joiner.m), (&bare, &bare, &bare, &played.m));
         assert_eq!((&by_hand.sides, &as_they_are.sides, &as_they_are.m.sides), (&bare, &with, &with));
         assert_eq!(played.m.sides, by_hand.m.sides);
+        // A recording of it (a recorder made of the agreement) holds them
+        // so: the sides as they were played, no card among them.
+        let sink = crate::testing::Shared::default();
+        drop(crate::replay::Recorder::of_agreement(Box::new(sink.clone()), &content, &played, 0).unwrap());
+        let replay = nettai_replay::Replay::read(&sink.bytes()).unwrap();
+        assert_eq!(nettai_match::binary::read_match(&content, &replay.match_bytes).unwrap().sides, bare);
         // The first round, by its digest: the one both peers say as they
         // load.
         let digest = |a: &Agreement| a.set.start().digest();
