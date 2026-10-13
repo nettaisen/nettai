@@ -1174,6 +1174,24 @@ pub struct IntakeRules {
     pub barrier: BarrierTick,
     /// What a side's defensive chip catches (`sub_802CEF4`).
     pub anti_traps: AntiTraps,
+    /// What a chip-destroying hit takes from a player (`sub_801A2CC`).
+    pub chip_destruction: ChipDestruction,
+}
+
+/// What a chip-destroying hit (hit flag 0x10) takes from a player's hand
+/// (`IntakeRules::chip_destruction`: EXE6's `sub_801A2CC`, EXE5's
+/// 0x0801709A, EXE4's 0x0801325A). Each clears the chip the navi's object
+/// names.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ChipDestruction {
+    /// The hand's next chip: the cursor steps past it, if there is one
+    /// (EXE6's).
+    Next,
+    /// The whole hand: its five chips cleared and the cursor back at the
+    /// first (EXE5's 0x080170C2 and EXE4's 0x08013270: the block's first
+    /// two bytes zeroed, ten bytes of 0xFFFF from +0x02).
+    Hand,
 }
 
 /// What a side's defensive chip catches (`IntakeRules::anti_traps`: EXE6's

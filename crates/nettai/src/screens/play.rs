@@ -2,7 +2,8 @@
 //!
 //! The player picks one of their builds of the selected game and makes a link with it: an invite (a room of
 //! the signaling server, whose code the server picks), a code typed, or a direct connection. While they wait
-//! for the other player a training battle runs beside the invite's code. Once the link is open the two are in
+//! for the other player a training session runs beside the invite's code (`crate::screens::training`'s, with
+//! this screen's rows in its menu). Once the link is open the two are in
 //! the lobby (`session`: one `Lobby` a link, for as long as they stay together): the match's shared settings,
 //! each one's ready mark, the connection's quality. Both ready, the match is agreed and made ready behind the
 //! shell's two cards, each side saying how far it is; both loaded, it starts. When it ends, or one of them
@@ -21,14 +22,14 @@ use crate::errors::UserError;
 use crate::games::{Names, Ready};
 use crate::input::{Action, KeyPress, key_cap, pad_cap};
 use crate::nav::Key;
-use crate::screens::menu::{clock_seed, version_tag};
-use crate::screens::{Screen, ScreenId};
+use crate::screens::menu::version_tag;
+use crate::screens::{Screen, ScreenId, training};
 use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::Shell;
 use crate::sound::Cue;
 use gamepad_facade::Button;
 use nettai_battle::input::keys;
-use nettai_frontend::driver::{Driver, LivePlayer, Opponent, StopReason};
+use nettai_frontend::driver::{Driver, StopReason};
 use nettai_frontend::lobby::{Agreement, Settings};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
 use nettai_frontend::replay::Recorder;
@@ -48,6 +49,21 @@ const RESULT_SHOWN: Duration = Duration::from_millis(500);
 
 /// The rounds a match may be: a single battle, or best of three.
 const ROUNDS: [usize; 2] = [1, 3];
+
+/// The tag this screen hears of its rows in the training menu by (`Screen::answered`).
+const WAIT_ROWS: &str = "play.wait";
+
+/// A row this screen adds at the top of the training menu while the other player is waited for. (Its number is
+/// what the UI words it by: `PlayView.wait-row`.)
+#[derive(Clone, Copy, PartialEq)]
+enum WaitRow {
+    /// Copy the invite's code (a direct host's address).
+    Copy = 0,
+    /// Stop training, for the invite again: where the session fills the window (a phone).
+    Stop = 1,
+    /// Cancel the invite.
+    Cancel = 2,
+}
 
 /// What the settings remember for Play: the rounds last played, and the build last chosen, by game.
 const REMEMBERED_ROUNDS: &str = "play.rounds";
@@ -150,6 +166,8 @@ pub struct Play {
     ready_seq: i32,
     their_ready_seq: i32,
     copied_seq: i32,
+    /// The rows this screen added to the training menu of the session on, in their order.
+    wait_rows: Vec<WaitRow>,
     /// The screen is shown anew (from another): the focus starts on the chosen build.
     fresh: bool,
 }
@@ -175,6 +193,7 @@ impl Default for Play {
             ready_seq: 0,
             their_ready_seq: 0,
             copied_seq: 0,
+            wait_rows: Vec::new(),
             fresh: true,
         }
     }
@@ -322,6 +341,9 @@ impl Play {
     /// The link and everything over it are given up, unsaid (the other player is told by [`Play::leave`]).
     fn drop_session(&mut self, shell: &mut Shell) {
         if self.session.take().is_some() || !matches!(self.stage, Stage::Idle) {
+            if matches!(self.stage, Stage::Waiting) {
+                training::end(shell);
+            }
             shell.cancel_loading();
             if shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Play) {
                 shell.end_battle();
@@ -378,39 +400,40 @@ impl Play {
     // ---- Waiting -----------------------------------------------------------------------------------------
 
     /// The other player is waited for: the invite's code (or this machine's address) shows, and a training
-    /// battle starts beside it.
+    /// session starts beside it. (On a phone it starts when the player asks: there it fills the window.)
     fn wait(&mut self, shell: &mut Shell) {
         self.stage = Stage::Waiting;
         self.direct = None;
         shell.nav.close("direct.");
         self.show(shell);
-        self.train(shell);
+        if !shell.scale.phone {
+            self.train(shell);
+        }
     }
 
-    /// A training battle beside the invite: this player's build against a copy of it that stands still.
+    /// A training session for the wait (Training's own: `training::start`): this player's build against a copy
+    /// of it that stands still, with this screen's rows at the top of the training menu. It is beside the
+    /// invite, in the screen's `Picture`. On a phone a battle has its pad only where it fills the window, so
+    /// there it does, and a row of the menu stops it for the invite again.
     fn train(&mut self, shell: &mut Shell) {
-        let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side()) else { return };
-        let content = ready.content();
-        let seed = if shell.still { 7 } else { clock_seed() };
-        // (A new match's rounds, each place picked from the seed, with the build on both sides.)
-        let m = match nettai_match::Match::empty(content, &game) {
-            Ok(m) => nettai_match::Match { sides: [side.clone(), side], ..m },
-            Err(why) => return crate::errors::log("making the training match beside an invite", &why),
+        let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side()) else { return };
+        let name = self.builds.get(self.chosen).map(|b| b.name.clone()).unwrap_or_default();
+        let full = shell.scale.phone;
+        self.wait_rows = match full {
+            true => vec![WaitRow::Copy, WaitRow::Stop, WaitRow::Cancel],
+            false => vec![WaitRow::Copy, WaitRow::Cancel],
         };
-        let set = nettai_match::Set::of(content, &m, seed);
-        let driver = LivePlayer::against(set.clone(), Opponent::default(), seed as u64);
-        shell.start_battle(BattleStart {
-            owner: ScreenId::Play,
-            kind: BattleKind::Training,
-            game,
-            set,
-            play: Played::Drive(Box::new(driver)),
-            viewer: 0,
-            recorder: None,
-            cards: None,
-            full: false,
-            gate: None,
-        });
+        let direct = self.session.as_ref().is_some_and(|s| s.way == Way::Host);
+        let view = shell.ui();
+        let view = view.global::<PlayView>();
+        let rows = self.wait_rows.iter().map(|row| view.invoke_wait_row(*row as i32, direct).to_string()).collect();
+        let mut start = training::Start::beside(&game, training::Build { name, side }, ScreenId::Play, WAIT_ROWS, rows);
+        start.full = full;
+        if shell.still {
+            start.seed = 7;
+        }
+        // (Why it can't start is in the log: the wait goes on without it.)
+        let _ = training::start(shell, start);
     }
 
     // ---- The lobby ---------------------------------------------------------------------------------------
@@ -425,12 +448,10 @@ impl Play {
         if !made {
             return;
         }
-        shell.cancel_loading();
-        if shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Play) {
-            shell.end_battle();
-        }
-        // (The keys were the training battle's, and the cursor on nothing: it is the lobby's again.)
+        // (The wait is over: its training session ends. The keys were its battle's, and the cursor on nothing:
+        // it is the lobby's again.)
         if matches!(self.stage, Stage::Waiting) {
+            training::end(shell);
             let pad = shell.nav.pad();
             shell.nav.used_keys(pad);
         }
@@ -849,7 +870,7 @@ impl Screen for Play {
         let part = self.part();
         let of_its_part = match id {
             "builds" | "build" | "create" | "invite" | "join" | "direct" => part == PlayPart::Builds,
-            "wait.copy" | "wait.cancel" => part == PlayPart::Waiting,
+            "wait.copy" | "wait.cancel" | "wait.train" => part == PlayPart::Waiting,
             _ if id.starts_with("direct.") => self.direct.is_some(),
             _ if id.starts_with("boxes.") => self.boxes.is_some(),
             _ if id.starts_with("lobby.") || id.starts_with("change.") => matches!(self.stage, Stage::Lobby),
@@ -929,6 +950,7 @@ impl Screen for Play {
                 self.copy(shell, &invite);
             }
             "wait.cancel" => self.leave(shell),
+            "wait.train" => self.train(shell),
             // ---- The lobby.
             "lobby.ready" => {
                 if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
@@ -963,7 +985,7 @@ impl Screen for Play {
             }
             "change.cancel" => self.close_change(shell),
             "lobby.leave" => self.leave(shell),
-            // ---- The menus over a battle: the match's, and the training battle's beside an invite.
+            // ---- The match's menu. (The training session's beside an invite is Training's to hear.)
             "menu.resume" => shell.close_menu(),
             "menu.yours" => self.set_page(shell, MatchPage::Yours),
             "menu.theirs" => self.set_page(shell, MatchPage::Theirs),
@@ -972,7 +994,6 @@ impl Screen for Play {
             "menu.back" => self.set_page(shell, MatchPage::Menu),
             "menu.delay" => {}
             "menu.leave" if matches!(self.stage, Stage::Match { .. }) => self.reopen(shell, None),
-            "menu.quit" | "menu.leave" => self.leave(shell),
             _ => {}
         }
     }
@@ -1094,6 +1115,23 @@ impl Screen for Play {
         true
     }
 
+    /// A row this screen added to the training menu was chosen.
+    fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
+        if tag != WAIT_ROWS || !matches!(self.stage, Stage::Waiting) {
+            return;
+        }
+        match self.wait_rows.get(choice) {
+            Some(WaitRow::Copy) => {
+                let invite = self.invite();
+                self.copy(shell, &invite);
+                shell.close_menu();
+            }
+            Some(WaitRow::Stop) => training::end(shell),
+            Some(WaitRow::Cancel) => self.leave(shell),
+            None => {}
+        }
+    }
+
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match (event, &self.stage) {
             // The match begins: it is recorded from its first tick, by its agreement.
@@ -1107,11 +1145,6 @@ impl Screen for Play {
                 {
                     crate::errors::log("recording the match", &why);
                 }
-            }
-            // The training battle beside an invite has no end: its set over, another starts.
-            (BattleEvent::Finished(_) | BattleEvent::Stopped(_), Stage::Waiting) => {
-                shell.end_battle();
-                self.train(shell);
             }
             // The match stopped with the link still up (the other player left it, or went silent): both are
             // back in the lobby, which says why.

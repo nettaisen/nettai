@@ -152,6 +152,17 @@ export global PlayView {
         }
         return problems == 1 ? @tr("1 problem") : @tr("{} problems", problems);
     }
+    // A row Play adds to the training menu while the other player is waited for (src/screens/play.rs's
+    // `WaitRow`, by its number), with an invite out or this machine hosting directly.
+    public pure function wait-row(row: int, direct: bool) -> string {
+        if row == 0 {
+            return direct ? @tr("COPY ADDRESS") : @tr("COPY INVITE CODE");
+        }
+        if row == 1 {
+            return @tr("STOP TRAINING");
+        }
+        return direct ? @tr("STOP HOSTING") : @tr("CANCEL INVITE");
+    }
 }
 
 // ---- The builds ------------------------------------------------------------------------------------------
@@ -833,7 +844,9 @@ export component PlayScreen inherits Page {
         }
     }
 
-    // ---- Waiting for the other player: the invite's code, and a training battle beside it ----
+    // ---- Waiting for the other player: the invite's code, and a training session beside it ----
+    // (On a phone a battle has its pad only where it fills the window: there the session is asked for, under
+    // the invite, and fills it.)
     if PlayView.part == PlayPart.waiting: Rectangle {
         x: 0;
         y: 0;
@@ -843,17 +856,19 @@ export component PlayScreen inherits Page {
             order: 0;
             Picture {
                 x: 0;
-                y: Theme.phone ? root.wait-height + 12px : root.wait-top;
+                y: root.wait-top;
                 width: root.picture-width;
                 height: root.picture-height;
+                visible: !Theme.phone;
                 ground: Theme.inset;
             }
 
             Rectangle {
                 x: 12px;
-                y: (Theme.phone ? root.wait-height + 12px : root.wait-top) + root.picture-height - 34px;
+                y: root.wait-top + root.picture-height - 34px;
                 width: training.preferred-width + 16px;
                 height: 22px;
+                visible: !Theme.phone;
                 background: Theme.shade;
                 training := Text {
                     text: @tr("TRAINING");
@@ -950,6 +965,16 @@ export component PlayScreen inherits Page {
                     text: @tr("CANCEL");
                     kind: ButtonKind.ghost;
                 }
+            }
+
+            Button {
+                x: 0;
+                y: root.wait-height + 12px;
+                width: root.body-width;
+                visible: Theme.phone;
+                enabled: Theme.phone;
+                nav: "wait.train";
+                text: @tr("TRAINING");
             }
         }
     }
