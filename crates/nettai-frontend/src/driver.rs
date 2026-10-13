@@ -1488,8 +1488,9 @@ mod tests {
         assert_eq!((live.recorded(), live.opponent().in_fight), (6, InFight::PlaysRecording));
         let r = b.player(1).unwrap();
         b.objects.get_mut(r).hp -= 100;
-        // The game's pause: START, and no buttons.
-        keys_in_turn(&mut live, &mut b, &[keys::START, 0]);
+        // The game's pause: START, and no buttons. (A press of its own: the START that ended the recording is let
+        // go first.)
+        keys_in_turn(&mut live, &mut b, &[0, keys::START, 0]);
         assert_eq!(b.paused_by(), Some(0));
         let options = Training { refills: [true, true], full_gauge: true, chip_draw: ChipDraw::FolderOrder };
         live.set_training(options, &mut b);
