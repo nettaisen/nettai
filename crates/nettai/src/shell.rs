@@ -22,8 +22,16 @@ use slint::winit_030::WinitWindowAccessor;
 use slint::winit_030::winit::event::{ElementState, KeyEvent, TouchPhase};
 use slint::winit_030::winit::keyboard::{KeyCode, PhysicalKey};
 use slint::{ComponentHandle, ModelRc, VecModel};
+use std::cell::RefCell;
+use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
+
+thread_local! {
+    /// Each game's name in the language shown, by the game's id (`Shell::game_name`; `Shell::name_games` reads
+    /// them).
+    static GAME_NAMES: RefCell<HashMap<String, String>> = RefCell::new(HashMap::new());
+}
 
 /// A dialog a screen asks: its title, its message, its buttons. The screen hears the answer by `tag`
 /// (`Screen::answered`).
@@ -221,9 +229,24 @@ impl Shell {
         Some((id, ready))
     }
 
-    /// A game's name as shown, from its id (`exe6`: EXE6).
+    /// A game's name as shown, in the language shown: the game's own, from its locales (`exe6`: BN6 in English,
+    /// EXE6 in Japanese; `nettai_content::locale::game_name`), as [`Shell::name_games`] read them. A game whose
+    /// locales can't be read is shown by its id, in capitals.
     pub fn game_name(id: &str) -> String {
-        id.to_ascii_uppercase()
+        GAME_NAMES.with(|names| names.borrow().get(id).cloned()).unwrap_or_else(|| id.to_ascii_uppercase())
+    }
+
+    /// Read each game's name in the language shown, for [`Shell::game_name`]: at start-up and when the language
+    /// changes. From the content's locales alone (a game without its pack has its name too); the header's name
+    /// is told again.
+    fn name_games(&self) {
+        let dir = nettai_content::index::content();
+        let names: HashMap<String, String> =
+            self.games.list.iter().filter_map(|g| nettai_content::locale::game_name(&dir, &g.id, self.lang).map(|name| (g.id.clone(), name))).collect();
+        GAME_NAMES.with(|n| *n.borrow_mut() = names);
+        if let Some(id) = &self.game {
+            self.ui().global::<nettai_ui::Shell>().set_game(Shell::game_name(id).into());
+        }
     }
 
     /// Where the game can't change (inside a build, a lobby, a replay), its name stays in the header without
@@ -290,6 +313,7 @@ impl Shell {
     pub fn set_language(&mut self, code: &'static str) {
         self.lang = code;
         crate::lang::select(code);
+        self.name_games();
         self.ui().global::<Theme>().set_cjk(crate::lang::cjk(code));
         self.games.load_language(code, |id, lang, graphics| {
             crate::with_app(move |app| {
@@ -687,6 +711,7 @@ impl App {
         }
         self.shell.apply_motion();
         self.shell.show_bindings();
+        self.shell.name_games();
         let games = self.shell.games.playable();
         let first = self.shell.settings.game.clone().filter(|g| games.contains(g)).or_else(|| games.first().cloned());
         match first {
