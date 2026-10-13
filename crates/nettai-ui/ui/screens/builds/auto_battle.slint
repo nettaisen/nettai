@@ -258,6 +258,8 @@ component ChipsPane inherits Rectangle {
         x: parent.width - 40px;
         y: 0;
         descending: AutoBattleView.descending;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     list := ListView {
@@ -422,6 +424,8 @@ export component AutoBattleTab inherits Rectangle {
             width: root.place-width;
             height: root.pitch - 2px;
             seq: AutoBattleView.landed-seq;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 

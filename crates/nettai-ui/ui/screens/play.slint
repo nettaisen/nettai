@@ -371,6 +371,8 @@ component LobbyCard inherits Rectangle {
         Flash {
             seq: root.ready-seq;
             tone: Theme.good;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         Label {
@@ -809,6 +811,8 @@ export component PlayScreen inherits Page {
                     width: copy.width;
                     height: copy.height;
                     seq: PlayView.copied-seq;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
                 }
 
                 Rule {
@@ -816,6 +820,8 @@ export component PlayScreen inherits Page {
                     y: 170px;
                     width: parent.width - 32px;
                     visible: !Theme.phone;
+
+                    Rectangle { }  // (Copied in: docs/app.md §14.)
                 }
 
                 Rectangle {
@@ -1312,6 +1318,8 @@ export component PlayOverlay inherits Rectangle {
 
             Flash {
                 seq: PlayView.copied-seq;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
             }
 
             copy := Focusable {
@@ -1344,6 +1352,8 @@ export component PlayOverlay inherits Rectangle {
             x: 0;
             y: 100px + direct.under;
             width: direct.inner-width;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         Label {

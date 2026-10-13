@@ -167,6 +167,8 @@ component ReplayRowView inherits Rectangle {
     property <bool> plays: root.replay.reason == "";
     RowBack {
         hover: touch.has-hover;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Text {

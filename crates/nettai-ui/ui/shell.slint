@@ -525,18 +525,24 @@ export component Cursor inherits Rectangle {
     Corner {
         x: root.inset;
         y: root.inset;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Corner {
         x: parent.width - 10px - root.inset;
         y: root.inset;
         right: true;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Corner {
         x: root.inset;
         y: parent.height - 10px - root.inset;
         bottom: true;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Corner {
@@ -544,6 +550,8 @@ export component Cursor inherits Rectangle {
         y: parent.height - 10px - root.inset;
         right: true;
         bottom: true;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
 
@@ -1100,6 +1108,8 @@ component PickRow inherits Rectangle {
     height: Theme.row;
     RowBack {
         hover: touch.has-hover;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Value {

@@ -350,6 +350,8 @@ component LibraryPane inherits Rectangle {
         x: parent.width - 40px;
         y: 0;
         descending: FolderView.descending;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     list := ListView {
@@ -588,6 +590,8 @@ export component FolderTab inherits Rectangle {
             width: root.slot-width;
             height: Theme.chip-row;
             seq: FolderView.landed-seq;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         // ---- The library, open.

@@ -235,6 +235,8 @@ component CellView inherits Rectangle {
 
     Cross {
         visible: root.cell.filled && root.cell.plus;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Hatch {
@@ -264,6 +266,8 @@ component HeldCellView inherits Rectangle {
 
     Cross {
         visible: root.plus;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Rectangle {
@@ -335,6 +339,8 @@ component ProgramRowView inherits Rectangle {
         Cross {
             visible: root.program.plus;
             bar: 1.5px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 
@@ -455,6 +461,8 @@ component KeyEntry inherits Rectangle {
         background: Theme.giga;
         Cross {
             bar: 1.5px;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 
