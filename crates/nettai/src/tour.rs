@@ -482,6 +482,7 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     burst(&mut add, "page-scrolls", &[0, 30, 60, 100, 200], focus("set.folder", 0));
     burst(&mut add, "dialog", &[0, 30, 60, 100, 160, 300], Box::new(|_, app, _| app.borrow_mut().shell.fail(UserError::ConnectionLost)));
     add(SETTLE, act(Action::Confirm));
+    crate::screens::builds::tour::motion(&mut add, &burst);
     add(SETTLE, go(ScreenId::Training));
     burst(
         &mut add,
