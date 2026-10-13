@@ -157,6 +157,7 @@ player:
 
 - the buttons are bound as the keys are; the defaults are the south button A, the west button B, the shoulders L
   and R, Start and Back;
+- in training, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
 - the left stick moves whatever is bound;
 - the Guide button opens nettai's menu, and in training the north button starts over.
 
@@ -1672,7 +1673,7 @@ rows are a model (`TrainingView.rows`: one row component under one `for`), made 
 
 | Row | Values | What it sets |
 |---|---|---|
-| Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording | the library's `Opponent::in_fight`, from the next tick |
+| Dummy: Action | Stands still, Moves around, Attacks at random, Plays your recording, A second pad | the library's `Opponent::in_fight`, from the next tick |
 | Dummy: Custom screen | Picks no chips, Picks the first it can | `Opponent::on_custom_screen` |
 | Dummy: Recording | None, or how long it is ("2.4 s") | chosen (Enter, Left or Right), it records one: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
@@ -1704,6 +1705,12 @@ ends it (or the menu opening, or starting over, or the minute): the dummy's Acti
 recording, and it plays the buttons over and over from wherever it stands, while the player has their navi
 back. A new recording replaces it. Nothing of it is kept between sessions, and Plays your recording isn't
 remembered as the Action (with nothing recorded the dummy stands still).
+
+**A second pad.** With the dummy's Action "A second pad", the second gamepad used (the pads are known in the
+order each was first pressed, `input::Pad`) is the dummy's: what it holds is the dummy's buttons, in the fight
+and on its custom screen (the library's `LivePlayer::set_second_pad`, each frame before the ticks), and its
+presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
+its custom screen does as its row says. Any other Action gives the pads back to the player.
 
 *Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`), its place in
 `ROWS`, and what it does in `values`, `value` and `Training::step_option`. A group's title is a row too.

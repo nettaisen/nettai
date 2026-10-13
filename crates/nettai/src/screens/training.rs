@@ -196,7 +196,7 @@ const KEPT_INPUTS: &str = "training.inputs";
 
 /// The dummy's choices by their names in the settings, in `InFight::ALL`'s and `OnCustomScreen::ALL`'s order.
 /// (Playing its recording is never kept: the recording isn't.)
-const ACTIONS: [&str; 4] = ["stands-still", "moves-around", "attacks-at-random", "plays-recording"];
+const ACTIONS: [&str; 5] = ["stands-still", "moves-around", "attacks-at-random", "plays-recording", "second-pad"];
 const CUSTOM_SCREENS: [&str; 2] = ["picks-nothing", "picks-first"];
 
 /// The dummy's setup as it was last left in one of Training's own sessions.
@@ -835,6 +835,17 @@ impl Screen for Training {
         if shell.training.session.is_some() && (!live || left) {
             // (A battle of another's is left alone: `end` ends a training session's.)
             end(shell);
+        }
+        // With its Action "a second pad", the second pad used is the dummy's (none of the player's or the menus'):
+        // what it holds is the dummy's buttons this frame, none while the battle hasn't the keys.
+        let apart = shell.training.session.as_ref().is_some_and(|s| s.opponent.in_fight == InFight::SecondPad);
+        shell.pad.apart = apart;
+        let held = shell.pad.second(&shell.bindings);
+        if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training && (apart || b.stage.player.live().is_some_and(|l| l.opponent().in_fight == InFight::SecondPad))) {
+            let playing = b.playing();
+            if let Some(live) = b.stage.player.live_mut() {
+                live.set_second_pad(held.map(|h| if playing { h } else { 0 }));
+            }
         }
         // Its menu opens where the focus last was in it.
         let open = shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Training && b.menu_open());

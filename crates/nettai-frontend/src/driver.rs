@@ -365,11 +365,15 @@ pub enum InFight {
     /// over and over: the buttons recorded, one a tick of the fight running,
     /// from wherever it stands. With nothing recorded it stands still.
     PlaysRecording,
+    /// A second pad the host has drives it (`LivePlayer::set_second_pad`),
+    /// in the fight and on its custom screen, as a second player. With
+    /// none, it stands still, and its custom screen does as its choice says.
+    SecondPad,
 }
 
 impl InFight {
     /// Every choice, in the order a host offers them.
-    pub const ALL: [InFight; 4] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::PlaysRecording];
+    pub const ALL: [InFight; 5] = [InFight::StandsStill, InFight::MovesAround, InFight::AttacksAtRandom, InFight::PlaysRecording, InFight::SecondPad];
 }
 
 /// What an opponent does on its custom screen.
@@ -468,6 +472,8 @@ pub struct LivePlayer {
     recording_now: bool,
     held: u16,
     played: usize,
+    /// What the host's second pad holds this tick, while it has one.
+    second_pad: Option<u16>,
 }
 
 /// The longest recording: a minute of the fight. One that reaches it ends
@@ -533,7 +539,15 @@ impl LivePlayer {
             recording_now: false,
             held: 0,
             played: 0,
+            second_pad: None,
         }
+    }
+
+    /// What a second pad of the host's holds from the next tick, while it
+    /// has one (none: it has no second pad): the opponent's buttons, when
+    /// that is its choice ([`InFight::SecondPad`]).
+    pub fn set_second_pad(&mut self, held: Option<u16>) {
+        self.second_pad = held;
     }
 
     /// Record the opponent from the next tick: the local player drives it
@@ -645,6 +659,9 @@ impl LivePlayer {
     fn opponent_buttons(&mut self, b: &Battle, side: usize, keys: u16) -> u16 {
         const MOVES: u16 = keys::UP | keys::DOWN | keys::LEFT | keys::RIGHT;
         let mashed = self.masher.buttons();
+        if let Some(held) = self.second_pad.filter(|_| self.opponent.in_fight == InFight::SecondPad && !self.recording_now) {
+            return held;
+        }
         if b.round.mode == mode::CUSTOM {
             return custom_buttons(b, side, self.ticks, self.opponent.on_custom_screen == OnCustomScreen::PicksFirst);
         }
@@ -664,7 +681,7 @@ impl LivePlayer {
                 self.played = at + 1;
                 self.recording[at]
             }
-            InFight::PlaysRecording => 0,
+            InFight::PlaysRecording | InFight::SecondPad => 0,
         }
     }
 
@@ -985,7 +1002,7 @@ mod tests {
             };
             let (hand, moved, attacked, presses) = run();
             assert_eq!(hand, Some(if opponent.on_custom_screen == OnCustomScreen::PicksNothing { 0 } else { 1 }), "{opponent:?}");
-            assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded, it stands still");
+            assert_eq!(moved, matches!(opponent.in_fight, InFight::MovesAround | InFight::AttacksAtRandom), "{opponent:?}: nothing recorded and no second pad, it stands still");
             assert_eq!(attacked, opponent.in_fight == InFight::AttacksAtRandom, "{opponent:?}");
             assert_eq!(run().3, presses, "{opponent:?}: the same presses again");
         }
@@ -1047,7 +1064,7 @@ mod tests {
                         assert_eq!(pressed, mashed & 0x3FF, "tick {tick}");
                         attacked += (pressed & !MOVES != 0) as u32;
                     }
-                    InFight::PlaysRecording => unreachable!("not chosen here"),
+                    InFight::PlaysRecording | InFight::SecondPad => unreachable!("not chosen here"),
                 }
             }
             let turn = b.round.turn;
@@ -1085,8 +1102,8 @@ mod tests {
                 InFight::StandsStill => 0,
                 InFight::MovesAround => mashed & MOVES,
                 InFight::AttacksAtRandom => mashed,
-                // (Nothing recorded: it stands still.)
-                InFight::PlaysRecording => 0,
+                // (Nothing recorded, no second pad: it stands still.)
+                InFight::PlaysRecording | InFight::SecondPad => 0,
             }
         }
     }
@@ -1325,6 +1342,47 @@ mod tests {
         let mut b = live.start();
         play_until(&mut live, &mut b, 3000, screen, fight_runs);
         assert_eq!(live.next(&b, 0).unwrap().input[1].held, recorded[0]);
+    }
+
+    /// A second pad drives the opponent while that is its choice: what it
+    /// holds is the opponent's buttons, in the fight and on its custom
+    /// screen (the pad picking its chips); with no pad the opponent stands
+    /// still and its screen does as its choice says; with another choice
+    /// the pad is nobody's.
+    #[test]
+    fn a_second_pad_drives_the_opponent() {
+        let content = nettai_match::testing::exe6_content();
+        let m = long_match(&content);
+        let mut live = LivePlayer::against(Set::of(&content, &m, 5), Opponent { in_fight: InFight::SecondPad, ..Opponent::default() }, 9);
+        let mut b = live.start();
+        let mut custom_ticks = 0;
+        for tick in 0..3000u32 {
+            // The second pad: on the custom screen as the player's own is pressed, in the fight up and down, and
+            // L once the gauge is full.
+            let full = b.round.flags & nettai_battle::battle::battle_flags::GAUGE_FULL != 0;
+            let pad = if b.round.mode == mode::CUSTOM {
+                bot_buttons(&b, 1, tick)
+            } else if full && tick % 2 == 1 {
+                keys::L
+            } else {
+                [keys::UP, keys::UP, 0, 0, keys::DOWN, keys::DOWN, 0, 0][tick as usize % 8]
+            };
+            let mine = if b.round.mode == mode::CUSTOM { bot_buttons(&b, 0, tick) } else { 0 };
+            let with_pad = tick < 2000;
+            live.set_second_pad(with_pad.then_some(pad));
+            custom_ticks += (b.round.mode == mode::CUSTOM) as u32;
+            let step = live.next(&b, mine).unwrap();
+            if with_pad {
+                assert_eq!(step.input[1].held, pad, "tick {tick}");
+            } else if b.round.mode != mode::CUSTOM {
+                assert_eq!(step.input[1].held, 0, "tick {tick}: no pad");
+            }
+            b.tick(&step.input, step.events);
+        }
+        assert!(custom_ticks > 0 && b.round.turn >= 2, "the pad's custom screens went on: turn {}", b.round.turn);
+        live.set_opponent(Opponent::default());
+        live.set_second_pad(Some(keys::B));
+        assert_eq!(live.next(&b, 0).unwrap().input[1].held, 0, "standing still: the pad is nobody's");
     }
 
     /// What is left of each side's battle folder as each custom screen
