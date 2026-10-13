@@ -802,7 +802,7 @@ cost what they did in the others, and the windows around it ran 115 to 119: the 
   0.18456).
 
 **With the training menu open** (2026-10-13, the same Mac, window and variables, the menu opened 22 seconds in
-with the battle in its fight; two runs each, back to back, load average 180 to 340): before, the battle held
+with the battle in its fight; two runs each, back to back, load average 109 to 161): before, the battle held
 still under the menu; now, in the game's own pause (§15).
 
 | nettai, `dev`, a training battle | Menu closed | Menu open, before | Menu open, in the game's pause |
