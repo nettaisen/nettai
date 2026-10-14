@@ -226,9 +226,12 @@ fn row(option: PracticeOption, session: &Session) -> PracticeRow {
     PracticeRow { option, value, text }
 }
 
-/// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone).
-fn shown_rows(in_fight: InFight) -> Vec<PracticeOption> {
-    ROWS.into_iter().filter(|o| *o != PracticeOption::Level || in_fight == InFight::Ai).collect()
+/// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone),
+/// and for the Music where the session plays none of its own (`beside`: the practice beside a waiting invite,
+/// whose music is the menus': the user, "in the waiting for opponent screen, it really shouldn't let you change
+/// the music because it does nothing").
+fn shown_rows(in_fight: InFight, beside: bool) -> Vec<PracticeOption> {
+    ROWS.into_iter().filter(|o| (*o != PracticeOption::Level || in_fight == InFight::Ai) && (*o != PracticeOption::Music || !beside)).collect()
 }
 
 /// Show `options`' rows as `session` has them now (those shown).
@@ -245,7 +248,7 @@ fn tell_rows(shell: &Shell, session: &Session, options: &[PracticeOption]) {
 /// now put in under it (the rows above them, the Action's among them, staying where they are, and the focus
 /// with them).
 fn lay_out_rows(shell: &Shell, session: &mut Session) {
-    let wanted = shown_rows(session.opponent.in_fight);
+    let wanted = shown_rows(session.opponent.in_fight, session.from.is_some());
     if wanted == session.rows {
         return;
     }
@@ -384,7 +387,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         music: crate::music::shown(shell),
         full: start.full,
         added: start.rows.len(),
-        rows: shown_rows(start.opponent.in_fight),
+        rows: shown_rows(start.opponent.in_fight, start.from.is_some()),
         opponent: start.opponent,
         level: start.level,
         options: start.options,
@@ -392,7 +395,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         ai: None,
         menu_open: false,
         // (The menu opens on its first row: a row its starter added, else the first option.)
-        menu_focus: if start.rows.is_empty() { Key::new("menu.rows.option", shown_rows(start.opponent.in_fight).iter().position(|o| values(*o, &Places::default()) > 0).unwrap_or(0) as i32) } else { Key::new("menu.rows.added", 0) },
+        menu_focus: if start.rows.is_empty() { Key::new("menu.rows.option", shown_rows(start.opponent.in_fight, start.from.is_some()).iter().position(|o| values(*o, &Places::default()) > 0).unwrap_or(0) as i32) } else { Key::new("menu.rows.added", 0) },
         round: None,
         held: [0; 2],
     };
@@ -1487,12 +1490,13 @@ mod tests {
     fn the_dummys_action_brings_its_own_row() {
         // (How many rows it shows, and the one under the Action.)
         let under = |in_fight| {
-            let rows = shown_rows(in_fight);
+            let rows = shown_rows(in_fight, false);
             let at = rows.iter().position(|o| *o == PracticeOption::Action).unwrap();
             (rows.len(), rows.get(at + 1).copied())
         };
         let (none, one) = (ROWS.len() - 1, ROWS.len());
         assert_eq!(under(InFight::StandsStill), (none, Some(PracticeOption::Battle)));
+        assert!(!shown_rows(InFight::StandsStill, true).contains(&PracticeOption::Music), "beside a waiting invite");
         assert_eq!(under(InFight::MovesAround), (none, Some(PracticeOption::Battle)));
         assert_eq!(under(InFight::Ai), (one, Some(PracticeOption::Level)));
         assert_eq!(under(InFight::SecondPad), (none, Some(PracticeOption::Battle)));

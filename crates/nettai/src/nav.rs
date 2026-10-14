@@ -240,6 +240,20 @@ impl Registry {
         self.pages.iter().filter(|(name, _)| id.starts_with(name.as_str())).max_by_key(|(name, _)| name.len()).map(|(name, p)| (name.as_str(), p.view))
     }
 
+    /// The control a direction moves the focus to from `key` (not a list's next row), under `scope`. Up and Down
+    /// in a scrolling page go through its controls, those scrolled out of view too, before they leave it for what
+    /// is beside it (the user: "it should scroll the entire length before moving to buttons underneath").
+    fn next(&self, key: &Key, dir: Direction, scope: &str, row_of: &dyn Fn(&str) -> i32) -> Option<Key> {
+        let from = self.rect(key)?;
+        let candidates = self.candidates(scope, Some(key), row_of);
+        let page = self.page_of(&key.id).map(|(name, _)| name.to_string());
+        let within = page.filter(|_| matches!(dir, Direction::Up | Direction::Down)).and_then(|page| {
+            let inside: Vec<(Key, Rect)> = candidates.iter().filter(|(k, _)| self.page_of(&k.id).is_some_and(|(name, _)| name == page)).cloned().collect();
+            neighbor(from, dir, &inside)
+        });
+        within.or_else(|| neighbor(from, dir, &candidates))
+    }
+
     /// What the focus can go to under `scope` from `from`: every control that holds it, and each list with
     /// rows, as its view (it is entered at the row `row_of` says). A page's controls scrolled out of its view
     /// are passed by, unless the focus is in that page already.
@@ -755,10 +769,7 @@ impl Nav {
                 };
                 (0..l.rows).contains(&to).then(|| Key::new(&key.id, to))
             });
-            row.or_else(|| {
-                let from = registry.rect(&key)?;
-                neighbor(from, dir, &registry.candidates(self.scope(), Some(&key), &self.row_of()))
-            })
+            row.or_else(|| registry.next(&key, dir, self.scope(), &self.row_of()))
         };
         if let Some(next) = next {
             self.take(next);
@@ -1014,5 +1025,30 @@ mod tests {
         let ids = |from: &str| -> Vec<String> { r.candidates("", Some(&Key::new(from, 0)), &|_| 0).into_iter().map(|(k, _)| k.id).collect() };
         assert_eq!(ids("group"), ["set.name"]);
         assert_eq!(ids("set.name"), ["group", "set.about"]);
+    }
+
+    /// Down in a page goes to its next control, scrolled out of view under the page, before the button under
+    /// the page that is nearer on screen; past the page's last control, to the button.
+    #[test]
+    fn a_page_is_gone_through_before_what_is_under_it() {
+        let registry = Rc::new(RefCell::new(Registry::default()));
+        let _tokens = [
+            Registry::register(&registry, "menu.rows", 0, NavKind::Page),
+            Registry::register(&registry, "menu.rows.a", 0, NavKind::Button),
+            Registry::register(&registry, "menu.rows.b", 0, NavKind::Button),
+            Registry::register(&registry, "menu.resume", 0, NavKind::Button),
+        ];
+        {
+            let mut r = registry.borrow_mut();
+            r.page("menu.rows", rect(40.0, 100.0, 400.0, 200.0));
+            r.place("menu.rows.a", 0, rect(40.0, 250.0, 400.0, 44.0), true);
+            r.place("menu.rows.b", 0, rect(40.0, 340.0, 400.0, 44.0), true);
+            r.place("menu.resume", 0, rect(40.0, 310.0, 200.0, 40.0), true);
+        }
+        let r = registry.borrow();
+        let next = |from: &str| r.next(&Key::new(from, 0), Direction::Down, "", &|_| 0).map(|k| k.id);
+        assert_eq!(next("menu.rows.a").as_deref(), Some("menu.rows.b"));
+        assert_eq!(next("menu.rows.b").as_deref(), None, "nothing under the page's last control here");
+        assert_eq!(r.next(&Key::new("menu.rows.b", 0), Direction::Up, "", &|_| 0).map(|k| k.id).as_deref(), Some("menu.rows.a"));
     }
 }
