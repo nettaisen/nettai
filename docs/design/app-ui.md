@@ -193,6 +193,13 @@ Each is settled unless the user changes it.
     original decides its triple battle (a drawn round is one of them). Ten is the top: the longest set fighting
     games' players commonly play ("10先"), and its 19 rounds are each numbered by the games' own BATTLE n START!
     banner in its two digits. (§6, docs/app.md §4.)
+35. **Practice's arena preview moves** (2026-10-13): "you should also animate the background in the practice setup
+    screen", then "you should also run the field a little so it shows stuff like wind fields and panel animations"
+    and "you should disable the custom gauge in the arena preview". The preview on Practice's entry is the
+    session's first round run into its fight with nobody pressing anything: its background animates and scrolls,
+    its panels animate and its field does what it does (wind blows, roads and volcanoes run), the navis stand,
+    and it never shows the custom screen, a banner or a round's end. The HUD has no custom gauge. (§6, docs/app.md
+    §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -415,6 +422,11 @@ Each is in the mockups under the same name.
   opening its list; a theme plays here in place of the title music once
   the row rests on it a moment), all remembered, and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
+- **The arena preview moves** (§2.35): the round the session opens on, run into its fight with nothing pressed
+  while the entry shows it, its background animating and scrolling and its field doing what it does (wind, roads,
+  volcanoes, panels animating), the navis standing, with no custom gauge; never a custom screen, a banner or a
+  round's end. A change of arena or background shows the new one from its start. The screenshot pass holds it
+  as the round's opening ends.
 - **EDIT** (§2.28) beside each build's select, a button of its own (Tab and Shift+Tab reach it, Up and Down go
   from one to the other), opens that build in Builds' editor; so do E and the pad's north button, on the dummy's
   row or EDIT the dummy's build and anywhere else the player's (the footer's "Edit build"). Back from the editor

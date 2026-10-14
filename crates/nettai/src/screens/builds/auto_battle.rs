@@ -17,7 +17,7 @@
 
 use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds};
 use crate::builds::words::kind;
-use crate::input::{Action, KeyPress};
+use crate::input::Action;
 use crate::screens::builds::editor::{Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
@@ -477,21 +477,6 @@ impl Tab for AutoBattle {
             }
             _ => {}
         }
-    }
-
-    /// In the library, a letter typed starts a search.
-    fn key(&mut self, shell: &mut Shell, _draft: &mut Draft, key: &KeyPress) -> bool {
-        let in_rows = shell.nav.focused().is_some_and(|k| k.id == "lib.rows");
-        let typed = key.text.as_deref().filter(|t| t.chars().count() == 1 && t.chars().all(|c| c.is_alphanumeric()));
-        if in_rows
-            && let Some(typed) = typed
-            && !matches!(shell.bindings.of_key(key.code), Some(nettai_battle::input::keys::L | nettai_battle::input::keys::R))
-        {
-            shell.nav.focus("lib.search", 0);
-            shell.nav.begin_edit(&shell.ui(), typed);
-            return true;
-        }
-        false
     }
 
     /// Delete empties the place.

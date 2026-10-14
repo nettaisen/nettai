@@ -76,6 +76,11 @@ pub struct Renderer {
     /// left out, and nothing else of the frame changes: a host that shows
     /// a menu of its own over the game's pause.
     pub pause_display: bool,
+    /// The HUD draws the custom gauge where the game does (the default);
+    /// off, it is left out, full or filling, and nothing else of the frame
+    /// changes: a host's picture of a fight no one plays (Practice's
+    /// arena preview).
+    pub custom_gauge: bool,
 }
 
 impl Renderer {
@@ -106,6 +111,7 @@ impl Renderer {
             strings: None,
             lookups_only: false,
             pause_display: true,
+            custom_gauge: true,
         }
     }
 
@@ -286,7 +292,7 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();
