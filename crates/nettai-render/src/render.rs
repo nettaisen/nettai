@@ -2,8 +2,8 @@
 //! and the pack's graphics.
 
 use crate::audit::Problems;
-use crate::compose::{self, Fade, Fades, Layer, Palettes};
-use crate::smooth::{Nudge, Smooth};
+use crate::compose::{self, Fade, Fades, Layer, Palettes, SpritePart};
+use crate::smooth::{Nudge, Overlay, Smooth};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
@@ -61,6 +61,9 @@ pub struct Frame {
     /// The frame drawn again with the custom gauge's fill a pixel longer
     /// (the enhanced mode's motion), for `present` to show between the two.
     pub nudge: Option<crate::smooth::Nudge>,
+    /// The squashed and turned sprites the enhanced mode's motion draws at
+    /// the output's resolution (left out of `pixels`), front first.
+    pub overlays: Vec<crate::smooth::Overlay>,
 }
 
 /// A background between two of the frame's pixels: `present` draws the
@@ -139,7 +142,8 @@ pub struct Renderer {
     pub custom_gauge: bool,
     /// The enhanced mode without its motion (the app's Reduce motion): the
     /// background's glide (`present`) and the smooth motion (`smooth`: the
-    /// gauge's fill) are left out, the text stays. The original mode has
+    /// gauge's fill, the squashed and turned sprites at the output's
+    /// resolution) are left out, the text stays. The original mode has
     /// none of them, whatever this says.
     pub reduce_motion: bool,
 }
@@ -441,7 +445,23 @@ impl Renderer {
         let dialogue = if transform != Fade::None { transform } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, hud_past_ranged, dialogue, sprites, screen: screen_fade(b) };
         let layers = [&self.dialogue, &self.names, &self.hud, &self.field, &self.background];
-        let (pixels, depth) = compose::compose_with_depth(backdrop, &layers, &parts, fades);
+        // (The squashed and turned sprites at the output's resolution, in
+        // the enhanced mode's motion: left out of the frame, their places
+        // in the order kept.)
+        let overlays: Vec<(usize, Overlay)> = match smooth.on {
+            true => parts.iter().enumerate().filter_map(|(i, p)| Some((i, Overlay::of(p, compose::sprite_depth(p.priority, i), [fades.sprites, fades.screen])?))).collect(),
+            false => Vec::new(),
+        };
+        let (pixels, depth) = if overlays.is_empty() {
+            compose::compose_with_depth(backdrop, &layers, &parts, fades)
+        } else {
+            let mut kept = parts.clone();
+            for &(i, _) in &overlays {
+                kept[i] = SpritePart { height: 0, ..kept[i].clone() };
+            }
+            compose::compose_with_depth(backdrop, &layers, &kept, fades)
+        };
+        let overlays = overlays.into_iter().map(|(_, o)| o).collect();
         // Each item's depth and fades: its layer's (the HUD layer's moved
         // with its shake), or its sprite parts' (an item whose parts the
         // sprite limit dropped isn't drawn).
@@ -475,7 +495,7 @@ impl Renderer {
             let pixels = scene.draw_background_wide(Glide::WIDTH, Glide::HEIGHT, backdrop, color);
             Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
         });
-        let mut frame = Frame { pixels, depth, text, glide, nudge: None };
+        let mut frame = Frame { pixels, depth, text, glide, nudge: None, overlays };
         if let Some((_, renderer)) = self.stand_in.as_ref().filter(|_| stand_in) {
             crate::present::draw_text(&mut frame, &mut renderer.borrow_mut());
         }

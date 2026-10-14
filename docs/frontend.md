@@ -1233,6 +1233,22 @@ tried and taken out, the user: "you should keep the original motion").
   flashing and "L or R" stay the game's; a full gauge, a hidden one and a
   gauge at a whole pixel have no nudge, and one a pixel short of full shows
   its cells filled, not full, on the nudged pixels.
+- *The squashed and turned sprites* (`smooth::Overlay`). The banners'
+  and the telops' glyphs are squashed and stretched by the hardware's
+  affine scale (`SpritePart::vscale`), and the custom screen's emblem is
+  turned and scaled by its matrix as it spins; the frame reads them at its
+  own pixels, so a banner a third of its height shows five or six of its
+  glyphs' sixteen rows, whole rows picked, and a turned emblem its texels
+  re-picked on the frame's grid. Enhanced draws these parts at the output's
+  resolution instead: left out of the frame's pixels (their places in the
+  sprite order kept), each output pixel reads the part's texture through
+  the same scale or matrix the original uses on that tick, colored with
+  the same palette and fades, wherever nothing in front of the part won
+  the frame pixel (the frame's depth keys, as the text layer's items are
+  hidden). The scale and the matrix on every tick are the original's: the
+  curves and the timing don't change. (A part that is blended or in
+  mosaic stays in the frame: none of these is.) Drawn at the frame's own
+  size, an overlay is the frame's part, pixel for pixel (its test).
 - *The background's glide* (`Frame::glide`, `present`). A background that
   scrolls by sixteenths of a pixel a frame (its `scroll`: the game's scroll
   counters) shows on the screen at the counter's whole pixels, a step every
@@ -1255,15 +1271,42 @@ tried and taken out, the user: "you should keep the original motion").
   across; the undernets and a few more hold still. A speeding scroll (EXE5's
   nebulagray, EXE4's duo) moves whole pixels every frame: no glide.
 
+**What moves in the battle's picture** (every game's, surveyed 2026-10-14
+for "what about banners and telops and stuff? can they be animated more
+smoothly?"). Enhanced changes only what the original draws coarser than
+its own motion (a counter's part of a pixel, a scale or a turn the frame
+rounds to its rows or texels); what already moves in whole pixels or
+whole steps along its own path, and what steps through pictures or
+colors, it leaves as the game draws it.
+
+| What | How the original moves it | Its steps | Enhanced |
+|---|---|---|---|
+| Banners: the battle's number and START, TURN n START, FINAL TURN, ENEMY DELETED, YOU WIN, YOU LOSE, DRAW, HIT DAMAGE JUDGE, PROGRAM ADVANCE | five 32x16 sprites squashed and stretched about their middle: in from a third of their height to whole, held, out back to a third (`sub_801CE28`; EXE4's 0x08014994). EXE5's and EXE6's 5 ticks in (heights a third, 0.4, a half, two thirds, whole), a bounce to 1.23 and 1.14 times at the hold's first two ticks and its last two, 0x30 ticks held, 5 out; EXE4's 9 in (by 0x40 in the texture's step), 30 held, 9 out, no bounce | the hardware's affine scale is exact; the frame shows it as whole texture rows picked a screen row each (at a third of the height, five or six of sixteen rows) | the same scale on the same ticks, drawn at the window's resolution (`Overlay`) |
+| A telop: a dimming chip's name, damage, "+bonus" and "x2" (EXE5's and EXE6's own banners; EXE4's own look on the banner block, 0x0801650C) | as the banners, on the banner block or the other player's | as the banners | the name is the text layer's at the window's resolution already (its squash too); the numbers and signs as the banners |
+| The other player's chip (`used_chip_parts`; EXE4's second block shown without sliding) | appears and goes | none | the game's |
+| The custom screen's slide | the window 12 pixels a tick over 10 ticks, in and out, the HP box and emotion window with it, the field 1.5 pixels a tick down | whole pixels every frame along its own line (the field's 16.16 camera at whole pixels) | the game's ("you should keep the original motion") |
+| The custom screen's emblem as a chip is picked (`sub_8029C08`) | a 32x32 sprite turned and scaled by a matrix for each of its 19 steps (`SPIN`), nudged a pixel or two | the matrix is exact; the frame re-picks its texels on its own grid | the same matrix on the same ticks at the window's resolution (`Overlay`) |
+| The custom gauge's fill | its counter, 128 a pixel, 0x10 to 0x40 a tick | whole pixels: a pixel every 2, 4 or 8 ticks | its end where the counter is, at the window's resolution (a nudge) |
+| The full gauge's flashing, "L or R", "Cstmzing..." | tile frames (the full cells' four, every 7 ticks; "L or R"'s two, every 8; the text's blink every 32) | pictures | the game's |
+| The Program Advance's names | a name every 8 ticks, the recipe's colors cycling | pictures, palettes | the game's |
+| The Cross window's opening, the chatbox's (a description, a message) | three and four steps of their maps; the text printed a character at a time, the portrait's animation, the arrow's frames | pictures | the game's |
+| HP numbers, the judge's damage, the turn timer, "TIME UP!", "COUNTER HIT!", "PAUSE", the next chip's name, the chip icons, the warning markers | numbers roll by value, lines appear and go, the markers' two frames | none on the screen | the game's |
+| The emotion window's flicker and blink | its palette black two ticks of four, left out on two | palettes | the game's |
+| The camera's shake | whole pixels a tick | whole pixels | the game's |
+| The fades: the intro's, a dimming's, a transformation's, the custom screen's, a palette flash | palettes toward black or white | sixteenths of the way, as the hardware's palette fade | the game's (a fade, no motion) |
+| The background's scroll | its counters, sixteenths of a pixel a frame | whole pixels every second or fourth frame | the glide, at the window's resolution |
+
 The motion is presentation alone and deterministic. The glide's sixteenths
 are the background's clock's (the round's frames, as its whole pixels
-are) times its rate; the gauge's fill is its counter's. It reads no clock
+are) times its rate; the gauge's fill is its counter's; a banner's scale
+its step and timer, the emblem's matrix its spin's step. It reads no clock
 and nothing of it is in the simulation, its snapshot or its digest: a
 rollback that draws a frame again, a seek, a replay and a video draw it the
 same (nettai-frontend's
 `the_smooth_motion_is_the_battles_alone_and_moves_nothing_the_original_doesnt`
 draws every tick again from a copy of the battle, and finds the frame's own
-pixels the original mode's on every tick).
+pixels the original mode's on every tick, with no banner in its pictures;
+where one is, its parts are left out of them for the output to draw).
 
 Where it is on: the app's battles (live, online, Practice, a replay
 watched) and its main menu's reel, with "Battle graphics: Enhanced" (the
