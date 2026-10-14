@@ -2,7 +2,8 @@
 //! that makes a link. NEW BUILD makes one of the game's own (`nettai_match::build::Builds::new_build`: its own
 //! navi, the version chosen, the folder a new save starts with; there are no random builds); IMPORT SAVE… makes
 //! one of a save file chosen, or dropped on the window (`crate::builds::import`); EDIT opens the chosen build in
-//! Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen; DUPLICATE,
+//! Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen; PRACTICE
+//! opens Practice's entry on it (`crate::screens::practice::open`), whose Back comes back here too; DUPLICATE,
 //! RENAME and DELETE (which asks once, Cancel focused) are the chosen build's.
 
 use super::{Play, remembered_build};
@@ -246,8 +247,28 @@ impl Play {
             return shell.sound.play(Cue::Refused);
         }
         self.notice.clear();
-        self.to_editor = true;
         crate::screens::builds::open(shell, ScreenId::Play, self.chosen);
+    }
+
+    /// PRACTICE: Practice's entry, Your build the chosen one (`practice::open`), whose Back comes back here. With no
+    /// build, or one whose file doesn't read, the space beside JOIN says why, as CREATE INVITE's does.
+    pub(super) fn practice(&mut self, shell: &mut Shell) {
+        let file = match self.build() {
+            None => Err(UserError::NoBuild),
+            Some(entry) if entry.build.is_none() => Err(UserError::BuildUnusable { reason: None }),
+            Some(entry) => Ok(entry.listed.path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()),
+        };
+        match (file, self.builds_of.clone()) {
+            (Ok(file), Some(game)) => {
+                self.notice.clear();
+                crate::screens::practice::open(shell, &game, &file);
+            }
+            (Ok(_), None) => {}
+            (Err(problem), _) => {
+                self.problem = Some(problem);
+                self.refuse_or_show(shell);
+            }
+        }
     }
 
     /// DUPLICATE: a copy of the chosen build, named for it.

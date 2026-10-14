@@ -140,6 +140,10 @@ export global Theme {
     out property <length> label-tracking: cjk ? 0.4px : 2px;
     out property <length> button-tracking: cjk ? 0.3px : 1.3px;
     out property <length> title-tracking: cjk ? 0.6px : 2.8px;
+    // The main menu's words, the type's largest step, as a fighting game's title screen has them (48, a phone's 32:
+    // the longest, the pseudo-locale's REPLAYS, fits the 416 column's 384 with 15 to spare), tracked 0.075em.
+    out property <length> menu-word: phone ? 32px : 48px;
+    out property <length> menu-tracking: cjk ? 1px : phone ? 2.4px : 3.6px;
 
     // Metrics. `phone` is the upright-phone layout (the app sets it when the window is taller than wide): one
     // column, no footer, everything tapped at least 44 tall.

@@ -1,10 +1,10 @@
-//! The screenshot pass's steps for Practice (docs/app.md §13): the entry (with no build, with builds, the focus a
-//! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
+//! The screenshot pass's steps for Practice (docs/app.md §13): the entry (with no build it goes back to Play; with
+//! builds, the focus a control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
 //! can't be used, the arena and the background stepped, the arena around its end, the music stepped and its
 //! list), the two cards, the battle, the practice menu (a value changed, the focus a row apart, the dummy that
 //! fights (its Action, and its Level under it), the arena, the background and the music changed under it, each
-//! Battle row a value apart, the input display, the rows another screen adds), the way to Builds and back (CREATE
-//! A BUILD's list, EDIT's editor, a build edited there), and the motion probe's bursts of what Practice moves.
+//! Battle row a value apart, the input display, the rows another screen adds), the way to Builds' editor and back
+//! (EDIT's editor, a build edited there), and the motion probe's bursts of what Practice moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
 //! entry lists a new build of each of the game's versions and one that can't be used
@@ -205,7 +205,7 @@ pub(super) fn forget(app: &mut App) {
 
 /// Practice's steps of one language at one size.
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
-    // The entry with no build of the game: the one button.
+    // The entry with no build of the game: it goes back to Play at once.
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -216,22 +216,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             app.shell.nav.show_cursor(true, false);
         }),
     );
-    shot(add, "practice-none", lang, size, Differs::Unheld, false);
-    // CREATE A BUILD: Play's builds (the pass's own folder, emptied), its header's Back saying PRACTICE; and Back,
-    // Practice again.
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            clear_builds(&app);
-            app.shell.nav.focus("create", 0);
-            app.act(Action::Confirm);
-        }),
-    );
-    add(SETTLE, expect(|app, ui| app.shell.screen() == ScreenId::Play && ui.global::<nettai_ui::PlayView>().get_to_practice(), "Play's builds, Back going to Practice"));
-    shot(add, "practice-create-builds", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Practice, "Practice, back from Play"));
+    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Play, "Play, the entry having no build"));
 
     // The entry: the focus a control up from START PRACTICE; the dummy's build stepped to the next; the builds'
     // list; a build that can't be used; the arena stepped to the next, and around from Random to the last; the
@@ -241,7 +226,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             app.shell.practice.tour_no_builds = false;
-            app.with_screen(ScreenId::Practice, |screen, shell| screen.show(shell));
+            app.go_now(ScreenId::Practice);
             app.shell.nav.focus("start", 0);
         }),
     );

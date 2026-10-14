@@ -62,8 +62,8 @@ impl ScreenId {
 }
 
 /// What a screen that opens another for something tells it by (`Shell::tell`): this, and its own name
-/// (`ScreenId::name`). Play is opened so by Practice's CREATE A BUILD (`play::open`), Builds' editor by Play's EDIT
-/// and Practice's (`builds::open`); each Back goes back to the screen that opened it.
+/// (`ScreenId::name`). Builds' editor is opened so by Play's EDIT and Practice's (`builds::open`), and its Back goes
+/// back to the screen that opened it.
 const OPENED_BY: &str = "opened-by.";
 
 /// The tag screen `from` opens another by.

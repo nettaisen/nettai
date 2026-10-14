@@ -29,9 +29,6 @@ msgstr "ダミーの設定は、開始後にメニューからできます。"
 msgid "START PRACTICE"
 msgstr "練習開始"
 
-msgid "CREATE A BUILD"
-msgstr "構築を作る"
-
 msgid "ARENA PREVIEW"
 msgstr "アリーナ プレビュー"
 

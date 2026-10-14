@@ -931,8 +931,8 @@ export component Row inherits Rectangle {
     }
 }
 
-// An item of a menu: the main menu's (`big`: 72 tall, 36) and a menu overlay's (48 tall). The one the cursor or
-// the pointer is on is lit: its bar grows and its tint sweeps in from the left.
+// An item of a menu: the main menu's (`big`: 96 tall, a phone's 68, in `Theme.menu-word`) and a menu overlay's (48
+// tall). The one the cursor or the pointer is on is lit: its bar grows and its tint sweeps in from the left.
 export component MenuItem inherits Rectangle {
     in property <string> text;
     in property <string> nav;
@@ -941,7 +941,7 @@ export component MenuItem inherits Rectangle {
     in property <bool> danger;
     out property <bool> on: Nav.shown ? hit.focused : hit.has-hover;
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
-    height: !root.big ? 48px : (Theme.phone ? 68px : 72px);
+    height: !root.big ? 48px : (Theme.phone ? 68px : 96px);
     Rectangle {
         x: 0;
         width: root.on ? parent.width : 0px;
@@ -970,9 +970,9 @@ export component MenuItem inherits Rectangle {
         text: root.text;
         color: root.danger ? Theme.bad : (root.on || !root.big ? Theme.text : Theme.muted);
         font-family: Theme.display;
-        font-size: !root.big ? 14px : (Theme.phone ? 26px : 36px);
+        font-size: !root.big ? 14px : Theme.menu-word;
         font-weight: Theme.display-bold;
-        letter-spacing: !root.big ? 0.9px : (Theme.cjk ? 1px : 2.9px);
+        letter-spacing: !root.big ? 0.9px : Theme.menu-tracking;
         vertical-alignment: center;
         overflow: elide;
         animate color {
