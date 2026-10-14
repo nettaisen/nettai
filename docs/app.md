@@ -1750,12 +1750,13 @@ themselves, so a screen built from them moves without its author writing an anim
 - a battle that had its cards jacks in as it begins (`JackIn` in shell.slint, `Shell::jack_in`; online,
   practice and a replay's viewer alike): over its first frames, for the set piece's time, the ground covers it
   while 28 streaks in the cursor's color rush in toward the middle and the field rushes again, a flash, and the
-  battle shows; "BATTLE ROUTINE, SET!" stamps in on a band across the middle and "EXECUTE!" beside it 0.4 s
-  later (in Japanese "バトルオペレーション、セット！" and "イン！"; on a phone one over the other), on the telop's
-  own clock (`Theme.telop`, 1000 ms, past the set piece's end), and the band fades; the game's encounter sound plays (§1). The battle starts when it
+  battle shows; two telops (`Telop`) follow each other across the middle, each its own band drawing out as its
+  call stamps in and back as it fades: "BATTLE ROUTINE, SET!", then "EXECUTE!" (in Japanese
+  "バトルオペレーション、セット！" and "イン！"), on their own clock (`Theme.telop`, 1200 ms, past the set piece's
+  end); the game's encounter sound plays (§1). The battle starts when it
   would have and runs under it: it is drawn over the battle and takes no input, and nothing of it reaches the
-  simulation, so an online match's two sides start in lockstep as before. With Reduce motion the ground and the
-  telop fade over `calm-fade` (a `Pulse` that is `calm` runs with motion off); in the screenshot pass
+  simulation, so an online match's two sides start in lockstep as before. With Reduce motion the ground fades over
+  `calm-fade` (a `Pulse` that is `calm` runs with motion off) and the telops fade in and out in turn; in the screenshot pass
   (`Theme.still`) there is nothing of it;
 - an online match's result (§4): the winner's half floods in from its edge (`settle`), WIN or LOSE stamps in
   (`brisk`, `quick` after), then the score and the time count up (`Count`), ending with the set piece;
