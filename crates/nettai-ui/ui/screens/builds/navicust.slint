@@ -96,7 +96,7 @@ export global NavicustView {
     // (The footer says what the keys do where the cursor is: on a placed piece, Del takes it off; on a placed
     // program's row, Enter takes another copy and Del takes the last one off; with a piece in hand, Back puts it
     // away into the list.)
-    out property <[Hint]> hints: self.holding ? self.holding-hints : self.on-piece ? (self.in-list ? self.row-hints : self.piece-hints) : self.hints-at-rest;
+    out property <[Hint]> hints: self.holding ? (NavicustView.held-compresses ? self.holding-hints : self.holding-hints-one) : self.on-piece ? (self.in-list ? self.row-hints : self.piece-hints) : self.hints-at-rest;
     property <[Hint]> hints-at-rest: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: self.in-list ? @tr("Take") : @tr("Pick up") },
@@ -120,7 +120,14 @@ export global NavicustView {
     property <[Hint]> holding-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move piece") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Turn") },
-        { key: "C", pad: PadButton.north, text: @tr("Compress") },
+        { key: "C", pad: PadButton.north, text: NavicustView.held-compressed ? @tr("Uncompress") : @tr("Compress") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Place") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Put away") },
+    ];
+    // (A piece with one shape alone: no C.)
+    property <[Hint]> holding-hints-one: [
+        { key: "↑↓←→", pad: PadButton.move, text: @tr("Move piece") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Turn") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Place") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Put away") },
     ];
@@ -149,6 +156,11 @@ export global NavicustView {
     in property <[PieceCell]> held;
     in property <color> held-tone;
     in property <bool> held-plus;
+    // Its program has two shapes (else C does nothing, and has no hint: the user, "if the piece is the same
+    // compressed and uncompresse then it can't compress/uncompress, there's only one form of it"), and it is
+    // compressed: C uncompresses it, the hint says so.
+    in property <bool> held-compresses;
+    in property <bool> held-compressed;
     // Where it is, it could be put down (its outline white), or not (red, the cells under it washed red).
     in property <bool> held-fits: true;
     in property <int> grab-x;
