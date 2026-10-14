@@ -49,10 +49,10 @@ mod build_tabs;
 mod builds;
 mod confirm_keys;
 mod replays;
-mod training;
+mod practice;
 
 /// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`,
-/// `packs`, the screens' own: `training`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen
+/// `packs`, the screens' own: `practice`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen
 /// without the whole walk. (`play`, `replays` and Play's two apps apart, named alone, walk those alone, in `walk`.)
 fn walks(part: &str) -> bool {
     std::env::var("NETTAI_TOUR_ONLY").ok().is_none_or(|only| only.split(',').any(|p| p == part))
@@ -380,12 +380,12 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "menu-pointer", Pair::None);
 
     // The screens to be built.
-    for (name, to) in [("training", ScreenId::Training), ("builds", ScreenId::Builds)] {
+    for (name, to) in [("practice", ScreenId::Practice), ("builds", ScreenId::Builds)] {
         add(SETTLE, go(to));
         shot(&mut add, name, Pair::None);
     }
-    taking.set(walks("training"));
-    training::steps(&mut add, lang, size);
+    taking.set(walks("practice"));
+    practice::steps(&mut add, lang, size);
 
     // Builds: the list, its dialogs, and the editor's tabs.
     taking.set(walks("builds"));
@@ -460,9 +460,9 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
-            app.go_now(ScreenId::Training);
+            app.go_now(ScreenId::Practice);
             app.shell.hold_cards = true;
-            crate::screens::training::start_development_battle(&mut app.shell, 7, Default::default());
+            crate::screens::practice::start_development_battle(&mut app.shell, 7, Default::default());
         }),
     );
     shot(&mut add, "versus", Pair::None);
@@ -504,7 +504,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         );
     }
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
-    shot(&mut add, "battle-training-menu", Pair::None);
+    shot(&mut add, "battle-practice-menu", Pair::None);
     // (An online match's corner and menu, shown over the training battle: there is no link here.)
     add(
         SETTLE,
@@ -698,12 +698,12 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     taking.set(walks("play"));
     crate::screens::play::tour::motion(&mut add, &burst);
     taking.set(walks("shell"));
-    add(SETTLE, go(ScreenId::Training));
+    add(SETTLE, go(ScreenId::Practice));
     burst(
         &mut add,
         "battle-entered",
         &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100],
-        Box::new(|_, app, _| crate::screens::training::start_development_battle(&mut app.borrow_mut().shell, 7, Default::default())),
+        Box::new(|_, app, _| crate::screens::practice::start_development_battle(&mut app.borrow_mut().shell, 7, Default::default())),
     );
     add(1500, Box::new(|_, _, _| {}));
     burst(&mut add, "menu-over-battle", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
@@ -715,8 +715,8 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
             app.go_now(ScreenId::Menu);
         }),
     );
-    taking.set(walks("training"));
-    training::motion(&mut add);
+    taking.set(walks("practice"));
+    practice::motion(&mut add);
 }
 
 /// Write a burst's shots (at half their size: they are many), and hold each to its last: every control the size

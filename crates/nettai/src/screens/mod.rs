@@ -17,14 +17,14 @@ pub mod menu;
 pub mod play;
 pub mod replays;
 pub mod settings;
-pub mod training;
+pub mod practice;
 
 /// The screens a player goes between.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ScreenId {
     Menu,
     Play,
-    Training,
+    Practice,
     Builds,
     Replays,
     Settings,
@@ -32,14 +32,14 @@ pub enum ScreenId {
 }
 
 impl ScreenId {
-    pub const ALL: [ScreenId; 7] = [ScreenId::Menu, ScreenId::Play, ScreenId::Training, ScreenId::Builds, ScreenId::Replays, ScreenId::Settings, ScreenId::About];
+    pub const ALL: [ScreenId; 7] = [ScreenId::Menu, ScreenId::Play, ScreenId::Practice, ScreenId::Builds, ScreenId::Replays, ScreenId::Settings, ScreenId::About];
 
     /// The UI's name for it.
     pub fn view(self) -> nettai_ui::Screen {
         match self {
             ScreenId::Menu => nettai_ui::Screen::Menu,
             ScreenId::Play => nettai_ui::Screen::Play,
-            ScreenId::Training => nettai_ui::Screen::Training,
+            ScreenId::Practice => nettai_ui::Screen::Practice,
             ScreenId::Builds => nettai_ui::Screen::Builds,
             ScreenId::Replays => nettai_ui::Screen::Replays,
             ScreenId::Settings => nettai_ui::Screen::Settings,
@@ -52,7 +52,7 @@ impl ScreenId {
         match self {
             ScreenId::Menu => "menu",
             ScreenId::Play => "play",
-            ScreenId::Training => "training",
+            ScreenId::Practice => "practice",
             ScreenId::Builds => "builds",
             ScreenId::Replays => "replays",
             ScreenId::Settings => "settings",
@@ -66,7 +66,7 @@ pub fn all() -> Vec<Box<dyn Screen>> {
     vec![
         Box::new(menu::Menu::default()),
         Box::new(play::Play::default()),
-        Box::new(training::Training::default()),
+        Box::new(practice::Practice::default()),
         Box::new(builds::Builds::default()),
         Box::new(replays::Replays::default()),
         Box::new(settings::Settings::default()),

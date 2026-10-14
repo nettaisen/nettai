@@ -1,10 +1,10 @@
 // Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Its Rust half
-// is src/screens/training.rs.
+// is src/screens/practice.rs.
 //
-// Three things are here. The entry (`TrainingScreen`): four rows, Your build, Dummy's build, Arena and
-// Background, and START TRAINING, with the two builds facing each other and the arena beside them. The training menu (`TrainingMenu`):
+// Three things are here. The entry (`PracticeScreen`): four rows, Your build, Dummy's build, Arena and
+// Background, and START TRAINING, with the two builds facing each other and the arena beside them. The training menu (`PracticeMenu`):
 // Start or Esc in training, the battle paused behind it; its rows are a model the Rust half makes, so a row is
-// added there and worded here (`TrainingView.label` and `value`). And the input display (`TrainingInputs`): both
+// added there and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both
 // sides' buttons, lit as they are held, in a corner of the picture.
 
 import { Theme, Audit } from "../theme.slint";
@@ -17,14 +17,14 @@ import { VersionTag } from "../build.slint";
 
 // A build as its card says it: its name, its version's tag (in the version's own color: the app's
 // `builds::version_tag`) and its navi.
-export struct TrainingBuild {
+export struct PracticeBuild {
     name: string,
     version: VersionTag,
     navi: string,
 }
 
 // What a row of the training menu is.
-export enum TrainingOption {
+export enum PracticeOption {
     // A row another screen added (Copy invite code): its text is the row's own.
     added,
     // The groups' titles.
@@ -48,21 +48,21 @@ export enum TrainingOption {
 
 // A row of the training menu: what it is, the value it has (its place among the row's values), and for a row
 // another screen added, its text.
-export struct TrainingRow {
-    option: TrainingOption,
+export struct PracticeRow {
+    option: PracticeOption,
     value: int,
     text: string,
 }
 
-// What Training shows: src/screens/training.rs sets these. (A struct or an enum a property here uses reaches
+// What Training shows: src/screens/practice.rs sets these. (A struct or an enum a property here uses reaches
 // Rust by that use: nothing is added to app.slint for it.)
-export global TrainingView {
+export global PracticeView {
     // ---- The entry.
     // The game has no build: the one button, Create a build.
     in property <bool> none;
     // The two builds chosen.
-    in property <TrainingBuild> yours;
-    in property <TrainingBuild> dummys;
+    in property <PracticeBuild> yours;
+    in property <PracticeBuild> dummys;
     // Why a build can't be used (the reserved line), and whether training can start.
     in property <string> message;
     in property <bool> ready;
@@ -78,7 +78,7 @@ export global TrainingView {
     in property <string> session-yours;
     in property <string> session-dummys;
     // The menu's rows, and whether it has CHANGE BUILDS and QUIT TO MENU (a session Training started itself).
-    in property <[TrainingRow]> rows;
+    in property <[PracticeRow]> rows;
     in property <bool> leave;
     // The input display: shown, and the buttons each side holds (the GBA's bits).
     in property <bool> inputs;
@@ -105,67 +105,67 @@ export global TrainingView {
     }
 
     // ---- The menu's words: a row's label (a group's title, in capitals), and what its value says.
-    pure public function label(option: TrainingOption) -> string {
-        if option == TrainingOption.dummy {
+    pure public function label(option: PracticeOption) -> string {
+        if option == PracticeOption.dummy {
             return @tr("DUMMY");
         }
-        if option == TrainingOption.battle {
+        if option == PracticeOption.battle {
             return @tr("BATTLE");
         }
-        if option == TrainingOption.display {
+        if option == PracticeOption.display {
             return @tr("DISPLAY");
         }
-        if option == TrainingOption.action {
+        if option == PracticeOption.action {
             return @tr("Action");
         }
-        if option == TrainingOption.level {
+        if option == PracticeOption.level {
             return @tr("Level");
         }
-        if option == TrainingOption.arena {
+        if option == PracticeOption.arena {
             return @tr("Arena");
         }
-        if option == TrainingOption.background {
+        if option == PracticeOption.background {
             return @tr("Background");
         }
-        if option == TrainingOption.your-hp {
+        if option == PracticeOption.your-hp {
             return @tr("Your HP");
         }
-        if option == TrainingOption.dummys-hp {
+        if option == PracticeOption.dummys-hp {
             return @tr("Dummy's HP");
         }
-        if option == TrainingOption.custom-gauge {
+        if option == PracticeOption.custom-gauge {
             return @tr("Custom gauge");
         }
-        if option == TrainingOption.chip-draw {
+        if option == PracticeOption.chip-draw {
             return @tr("Chip draw");
         }
-        if option == TrainingOption.input-display {
+        if option == PracticeOption.input-display {
             return @tr("Input display");
         }
         return "";
     }
-    pure public function value(option: TrainingOption, value: int) -> string {
-        if option == TrainingOption.action {
+    pure public function value(option: PracticeOption, value: int) -> string {
+        if option == PracticeOption.action {
             return value == 0 ? @tr("Stands still") : (value == 1 ? @tr("Moves around") : (value == 2 ? @tr("Fights") : @tr("A second pad")));
         }
-        if option == TrainingOption.level {
+        if option == PracticeOption.level {
             return value == 0 ? @tr("level" => "Easy") : (value == 1 ? @tr("level" => "Normal") : @tr("level" => "Hard"));
         }
-        if option == TrainingOption.your-hp || option == TrainingOption.dummys-hp {
+        if option == PracticeOption.your-hp || option == PracticeOption.dummys-hp {
             return value == 0 ? @tr("Normal") : @tr("Refills");
         }
-        if option == TrainingOption.custom-gauge {
+        if option == PracticeOption.custom-gauge {
             return value == 0 ? @tr("Normal") : @tr("Always full");
         }
-        if option == TrainingOption.chip-draw {
+        if option == PracticeOption.chip-draw {
             return value == 0 ? @tr("Shuffled") : @tr("Folder order");
         }
-        if option == TrainingOption.input-display {
+        if option == PracticeOption.input-display {
             return value == 0 ? @tr("Off") : @tr("On");
         }
         // (Any other of their values is the row's text: a name of the content's.)
-        if option == TrainingOption.arena || option == TrainingOption.background {
-            return TrainingView.random;
+        if option == PracticeOption.arena || option == PracticeOption.background {
+            return PracticeView.random;
         }
         return "";
     }
@@ -281,7 +281,7 @@ component PagerRow inherits Rectangle {
 // line, the card being half as wide.
 component BuildCard inherits Rectangle {
     in property <string> role;
-    in property <TrainingBuild> build;
+    in property <PracticeBuild> build;
     // 1 or 2: the side's color.
     in property <int> side;
     property <length> pad: Theme.phone ? 12px : 16px;
@@ -327,7 +327,7 @@ component BuildCard inherits Rectangle {
     }
 }
 
-export component TrainingScreen inherits Page {
+export component PracticeScreen inherits Page {
     // The rows' column, and beside it (on a phone, under it) the cards over the arena's picture, which is the
     // battle's at three times; on a phone the arena's box is the window's width, past the page's gutters, as
     // the battle's is, so the widest whole multiple fits. (On a phone the rows are lower and the line has one
@@ -345,7 +345,7 @@ export component TrainingScreen inherits Page {
     property <length> arena-height: self.arena-width * 2 / 3;
     title: @tr("TRAINING");
     back: @tr("MENU");
-    hints: TrainingView.none ? [
+    hints: PracticeView.none ? [
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
@@ -365,55 +365,55 @@ export component TrainingScreen inherits Page {
             x: 0;
             y: 0;
             width: Theme.phone ? root.body-width : max(240px, self.preferred-width);
-            visible: TrainingView.none;
+            visible: PracticeView.none;
             nav: "create";
             text: @tr("CREATE A BUILD");
             kind: ButtonKind.main;
-            enabled: TrainingView.none;
+            enabled: PracticeView.none;
         }
 
         EntryRow {
             x: 0;
             y: 0;
             width: root.column;
-            visible: !TrainingView.none;
+            visible: !PracticeView.none;
             nav: "yours";
             label: @tr("Your build");
-            value: TrainingView.yours.name;
-            enabled: !TrainingView.none;
+            value: PracticeView.yours.name;
+            enabled: !PracticeView.none;
         }
 
         EntryRow {
             x: 0;
             y: root.row-step;
             width: root.column;
-            visible: !TrainingView.none;
+            visible: !PracticeView.none;
             nav: "dummys";
             label: @tr("Dummy's build");
-            value: TrainingView.dummys.name;
-            enabled: !TrainingView.none;
+            value: PracticeView.dummys.name;
+            enabled: !PracticeView.none;
         }
 
         PagerRow {
             x: 0;
             y: 2 * root.row-step;
             width: root.column;
-            visible: !TrainingView.none;
+            visible: !PracticeView.none;
             nav: "arena";
             label: @tr("Arena");
-            value: TrainingView.arena-shown == "" ? TrainingView.random : TrainingView.arena-shown;
-            enabled: !TrainingView.none;
+            value: PracticeView.arena-shown == "" ? PracticeView.random : PracticeView.arena-shown;
+            enabled: !PracticeView.none;
         }
 
         PagerRow {
             x: 0;
             y: 3 * root.row-step;
             width: root.column;
-            visible: !TrainingView.none;
+            visible: !PracticeView.none;
             nav: "background";
             label: @tr("Background");
-            value: TrainingView.background-shown == "" ? TrainingView.random : TrainingView.background-shown;
-            enabled: !TrainingView.none;
+            value: PracticeView.background-shown == "" ? PracticeView.random : PracticeView.background-shown;
+            enabled: !PracticeView.none;
         }
 
         // (Room for two lines on a desktop, a longer language's.)
@@ -422,7 +422,7 @@ export component TrainingScreen inherits Page {
             y: root.note-y;
             width: root.column;
             height: root.note-height;
-            visible: !TrainingView.none;
+            visible: !PracticeView.none;
             text: @tr("Set up the dummy from the menu once you're in.");
             vertical-alignment: top;
         }
@@ -431,32 +431,32 @@ export component TrainingScreen inherits Page {
             x: 0;
             y: root.note-y + root.note-height + 6px;
             width: root.column;
-            text: TrainingView.message;
+            text: PracticeView.message;
         }
 
         Button {
             x: 0;
             y: root.body-height - 52px;
             width: root.column;
-            visible: !TrainingView.none;
+            visible: !PracticeView.none;
             nav: "start";
             text: @tr("START TRAINING");
             kind: ButtonKind.main;
             big: true;
-            enabled: TrainingView.ready && !TrainingView.none;
+            enabled: PracticeView.ready && !PracticeView.none;
         }
     }
 
     // The two builds facing each other.
     Arrive {
         order: 1;
-        visible: !TrainingView.none;
+        visible: !PracticeView.none;
         BuildCard {
             x: root.side-x;
             y: root.cards-y;
             width: root.card-width;
-            role: TrainingView.you;
-            build: TrainingView.yours;
+            role: PracticeView.you;
+            build: PracticeView.yours;
             side: 1;
         }
 
@@ -479,8 +479,8 @@ export component TrainingScreen inherits Page {
             x: root.side-x + root.side-width - root.card-width;
             y: root.cards-y;
             width: root.card-width;
-            role: TrainingView.dummy;
-            build: TrainingView.dummys;
+            role: PracticeView.dummy;
+            build: PracticeView.dummys;
             side: 2;
         }
     }
@@ -489,7 +489,7 @@ export component TrainingScreen inherits Page {
     Arrive {
         order: 2;
         from-x: Theme.phone ? 0px : 24px;
-        visible: !TrainingView.none;
+        visible: !PracticeView.none;
         // (Its box is there whether or not the picture is: the picture shows once it is the arena's own, and
         // never past its box.)
         Rectangle {
@@ -500,7 +500,7 @@ export component TrainingScreen inherits Page {
             background: Theme.inset;
             clip: true;
             Picture {
-                visible: TrainingView.arena && !Shell.leaving;
+                visible: PracticeView.arena && !Shell.leaving;
                 ground: Theme.inset;
             }
         }
@@ -510,7 +510,7 @@ export component TrainingScreen inherits Page {
             y: root.cards-y + 104px + root.arena-height - 12px - self.height;
             width: tag.preferred-width + 16px;
             height: 22px;
-            visible: TrainingView.arena && !Shell.leaving;
+            visible: PracticeView.arena && !Shell.leaving;
             background: Theme.shade;
             tag := Text {
                 text: @tr("ARENA PREVIEW");
@@ -532,13 +532,13 @@ export component TrainingScreen inherits Page {
 // focused as a whole (on a phone the label is over the arrows); or a row another screen added. (One component
 // under the menu's one `for`: its parts are all there, and those the row isn't don't show.)
 component MenuRow inherits Rectangle {
-    in property <TrainingRow> entry;
+    in property <PracticeRow> entry;
     in property <int> index;
-    property <bool> added: root.entry.option == TrainingOption.added;
-    property <bool> title: root.entry.option == TrainingOption.dummy || root.entry.option == TrainingOption.battle || root.entry.option == TrainingOption.display;
+    property <bool> added: root.entry.option == PracticeOption.added;
+    property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.battle || root.entry.option == PracticeOption.display;
     property <bool> option: !root.added && !root.title;
-    property <string> label: TrainingView.label(root.entry.option);
-    property <string> value: root.option && root.entry.text != "" ? root.entry.text : TrainingView.value(root.entry.option, root.entry.value);
+    property <string> label: PracticeView.label(root.entry.option);
+    property <string> value: root.option && root.entry.text != "" ? root.entry.text : PracticeView.value(root.entry.option, root.entry.value);
     // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
     // and tells the pass if it can't).
     property <length> value-width: Theme.phone ? root.width - 72px : 196px;
@@ -605,14 +605,14 @@ component MenuRow inherits Rectangle {
 }
 
 // The training menu: Start or Esc in training. The battle is paused behind it, the dummy in view at the right.
-export component TrainingMenu inherits MenuOverlay {
+export component PracticeMenu inherits MenuOverlay {
     // RESUME and RESTART, and under them the ways out of a session Training started itself; on a phone one
     // over the other.
     property <length> button-width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
-    property <length> buttons-height: Theme.phone ? (TrainingView.leave ? 184px : 88px) : (TrainingView.leave ? 88px : 40px);
+    property <length> buttons-height: Theme.phone ? (PracticeView.leave ? 184px : 88px) : (PracticeView.leave ? 88px : 40px);
     property <length> buttons-y: root.inner-height - root.buttons-height;
     title: @tr("TRAINING");
-    note: @tr("{} vs {}", TrainingView.session-yours, TrainingView.session-dummys);
+    note: @tr("{} vs {}", PracticeView.session-yours, PracticeView.session-dummys);
     side: true;
     // (The rows scroll where they don't all fit, as on a phone: the page's bar is in the panel's margin, so the
     // rows are the panel's width either way.)
@@ -627,7 +627,7 @@ export component TrainingMenu inherits MenuOverlay {
             width: rows.view-width;
             alignment: start;
             spacing: 4px;
-            for row[i] in TrainingView.rows: MenuRow {
+            for row[i] in PracticeView.rows: MenuRow {
                 entry: row;
                 index: i;
 
@@ -657,8 +657,8 @@ export component TrainingMenu inherits MenuOverlay {
         x: 0;
         y: root.buttons-y + (Theme.phone ? 96px : 48px);
         width: root.button-width;
-        visible: TrainingView.leave;
-        enabled: TrainingView.leave;
+        visible: PracticeView.leave;
+        enabled: PracticeView.leave;
         nav: "menu.change";
         text: @tr("CHANGE BUILDS");
     }
@@ -667,8 +667,8 @@ export component TrainingMenu inherits MenuOverlay {
         x: Theme.phone ? 0px : root.button-width + 8px;
         y: root.buttons-y + (Theme.phone ? 144px : 48px);
         width: root.button-width;
-        visible: TrainingView.leave;
-        enabled: TrainingView.leave;
+        visible: PracticeView.leave;
+        enabled: PracticeView.leave;
         nav: "menu.quit";
         text: @tr("QUIT TO MENU");
         kind: ButtonKind.ghost;
@@ -795,9 +795,9 @@ component InputRow inherits Rectangle {
 // The input display: the player's buttons over the dummy's, in the picture's top right corner, under the line
 // the battle's own text takes there (its top eighth); on a phone, where the picture is small, under MENU. It is
 // over the battle and under the menu, and takes no clicks.
-export component TrainingInputs inherits Rectangle {
+export component PracticeInputs inherits Rectangle {
     Rectangle {
-        visible: TrainingView.inputs;
+        visible: PracticeView.inputs;
         x: Theme.phone ? Theme.margin : Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
         y: Theme.phone ? Shell.picture-room-y + Shell.picture-room-height + 68px : Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
         width: 259px;
@@ -811,14 +811,14 @@ export component TrainingInputs inherits Rectangle {
         InputRow {
             x: 8px;
             y: 8px;
-            held: TrainingView.held-yours;
+            held: PracticeView.held-yours;
             tone: Theme.p1;
         }
 
         InputRow {
             x: 8px;
             y: 28px;
-            held: TrainingView.held-dummys;
+            held: PracticeView.held-dummys;
             tone: Theme.p2;
         }
     }
