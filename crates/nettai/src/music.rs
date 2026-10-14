@@ -107,12 +107,12 @@ pub fn shown(shell: &Shell) -> String {
     name(&offered[at], &own_words(shell))
 }
 
-/// Open the select's list under its control `id` (the screen hears the choice as `choose`).
-pub fn open(shell: &mut Shell, id: &str) {
+/// Open the select's list under its control `id`, `index` (the screen hears the choice as `choose`).
+pub fn open(shell: &mut Shell, id: &str, index: i32) {
     let (offered, at) = list(shell);
     let own = own_words(shell);
     let names = offered.iter().map(|m| name(m, &own)).collect();
-    shell.pick(id, 0, names, at);
+    shell.pick(id, index, names, at);
 }
 
 /// Step the pick through the list by `by`, around from its end.
