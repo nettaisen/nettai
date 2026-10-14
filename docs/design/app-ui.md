@@ -105,7 +105,8 @@ Each is settled unless the user changes it.
       everywhere instead of changing them up per game". Latin display text is Chakra Petch in every game.
     - *Japanese in a calm gothic:* "you should find fonts that work in japanese as well, since there needs to be
       japanese support"; of the first candidates, "these japanese fonts look horrible. they should be a little less
-      playful"; and of the six in the mockup, M PLUS 1. Japanese display text is M PLUS 1 at 800 in every game;
+      playful"; and of the six in the mockup, M PLUS 1. Japanese display text was M PLUS 1 at 800 in every game
+      (Corporate Logo since §2.51);
       body text stays Murecho.
     - *The wordmark is one color:* "don't color nettai separately like that, same color for the whole word".
     - *The backdrop's pattern as strong as the mockup:* "backdrop pattern looks fine".
@@ -408,6 +409,14 @@ Each is settled unless the user changes it.
       48 on rows 96 (36 and 72 before), the type's largest step, in the same 416 column, the four as tall as the
       reel beside them; on a phone 32 on rows 68.
     (§4, §6, docs/app.md §2, §4, §8 and §15.)
+51. **Japanese display text in Corporate Logo** (2026-10-14). The user: "the japanese font should also be a
+    little more stylistically like the english font". A sheet of the app's own strings (the menu's words, the
+    telop's two calls, the labels at 11, a button) set in Chakra Petch, M PLUS 1 at 800 and five candidates under
+    licenses that let it be bundled, and the user chose Corporate Logo ver3 Bold (LOGOTYPE.JP; SIL Open Font
+    License 1.1): its kana are squared and cut straight, as Chakra Petch's letters are, its kanji are Source Han
+    Sans's, and it covers both JIS levels. It replaces M PLUS 1 for every Japanese title, button, tab, label and
+    the telop, in every game, at 700 (the one weight bundled, for the bold and the semibold alike); the tracking
+    stays nearly none. Body text stays Murecho; codes and numbers M PLUS 1 Code.
 
 ## 3. Chosen where the user gave no answer
 
@@ -476,7 +485,7 @@ stays readable on all three grounds:
 (Version tags are each version's own color, which the game's content states.)
 
 **Type**, the same in every game. Chakra Petch 500/600/700 for titles, buttons, tabs, labels (labels are 11,
-uppercase, tracked 0.18em); in Japanese these are M PLUS 1 at 800, tracked nearly not; Murecho 400 to 900 for text,
+uppercase, tracked 0.18em); in Japanese these are Corporate Logo at 700 (§2.51), tracked nearly not; Murecho 400 to 900 for text,
 in either language; M PLUS 1 Code 500/700 for codes, numbers and times. All four are under the SIL Open Font License
 and are bundled. Sizes: 11, 12, 13, 14 (the base), 16, 20, 28; the main menu's words 48 (§2.50). The wordmark "nettai" is
 Chakra Petch 700 in the text's color, one color for the whole word.
