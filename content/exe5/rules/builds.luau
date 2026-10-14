@@ -4,11 +4,12 @@
 -- its setup field's name (../init.luau's `setup`).
 
 return {
-    -- The versions a build is one of, in the order every list shows them: Team ProtoMan, then Team Colonel. EXE5's
-    -- rules have no version (its two play alike), so a version is what its saves can have, which a build's version
-    -- sets as it is made: its six souls (0x08024BF0, the soul button's table: Team ProtoMan's souls 1 to 6, Team
-    -- Colonel's 7 to 12, by compat's numbers; exe5-compat's `Version::soul_flag`), and its Giga chips (./folder: the
-    -- six its ROM's chip records give the library flag, and ChaosLrd, which both versions' Japanese games gave out).
+    -- The versions a build is one of, in the order every list shows them: Team ProtoMan, then Team Colonel. A build's
+    -- version sets, as it is made: the game's version (the setup's `version`: the two play alike but for card 111,
+    -- Bass-Cross MegaMan, whose effects are each team's own, ./patch_cards), and what its saves can have, its six
+    -- souls (0x08024BF0, the soul button's table: Team ProtoMan's souls 1 to 6, Team Colonel's 7 to 12, by compat's
+    -- numbers; exe5-compat's `Version::soul_flag`), and its Giga chips (./folder: the six its ROM's chip records give
+    -- the library flag, and ChaosLrd, which both versions' Japanese games gave out).
     -- A version's `color` (0xRRGGBB) is the color a tool draws its tag in: Team ProtoMan's red, Team Colonel's green
     -- (the user: "team colonel should be green instead of blue").
     -- Its name is the locales' ([builds], `version.<id>`).
@@ -17,6 +18,7 @@ return {
             id = "protoman",
             color = 0xFF5D50,
             set = {
+                version = "protoman",
                 souls = { "protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul" },
                 giga_chips = { "bass", "deltaray", "bugcurse", "holydrem", "bighook", "dethphnx", "chaoslrd" },
             },
@@ -25,6 +27,7 @@ return {
             id = "colonel",
             color = 0x45E0A0,
             set = {
+                version = "colonel",
                 souls = { "colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul" },
                 giga_chips = { "metrknuk", "omegarkt", "bassanly", "crossdiv", "bugcharg", "phoenix", "chaoslrd" },
             },

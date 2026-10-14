@@ -7,8 +7,9 @@
 -- form overlay stepped at once as it restarts. See docs/engine/shot-chips.md §11.
 --
 -- Weapon routine 0x39 is named by no form, navi or NaviStats byte; its
--- twin 0x92 (the same routine, its own charge row) is the patch card Bass
--- BX's charged shot (patch_cards/bassbx/charge), which composes `rapid_buster.setup`.
+-- twin 0x92 (the same routine, its own charge row) is the patch cards' (Bass
+-- BX's charged shot, and Gregar's Bass-Cross MegaMan card's:
+-- lib/patch_cards/rapid_buster), which composes `rapid_buster.setup`.
 
 local attachment = require("../objects/attachment")
 local buster = require("./buster")

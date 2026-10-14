@@ -105,6 +105,7 @@ patch_cards.HIT_STATUS = { blind = 1, confuse = 2, hp_bug = 3, none = 0 } :: { [
 -- ---- The effects (@exelib/patch_cards/effects, EXE5's too) ----------------
 
 patch_cards.bug = effects.bug
+patch_cards.version = effects.version
 patch_cards.hp = effects.hp
 patch_cards.hp_percent = effects.hp_percent
 patch_cards.body = effects.body

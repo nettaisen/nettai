@@ -7,7 +7,10 @@ reference for how the Japanese games do it (§1, §2), what the cards reach in a
 docs/design/patch-cards.md has the plan and the decisions.
 
 Addresses are JP Falzar's. JP Gregar has the same code 0x1DC8 bytes later (the apply routine at 0x08143FF8),
-and the same card table, byte for byte. US routine names are the disassembly's (bn6f).
+and the same card table, byte for byte, but for card 117, Bass-Cross MegaMan: the same name and MB, and each
+version its own effects (Gregar's HP+200, SprArmr and the rapid buster, routine 0x92, BassBX's; Falzar's HP+20%,
+FlotShoe and the seeking whirlwind, routine 0x93; both NormBody, TriBustr and a MegFldr-2 bug). US routine names
+are the disassembly's (bn6f).
 
 ## 1. How the Japanese games do it
 
@@ -179,8 +182,8 @@ an instant effect. The content has each as a definition with the original's numb
 | The invisibility (Shadow, Momogra) | 0x71, `sub_8012464`, instant effect 2 | lib/patch_cards/invisible_charge.luau |
 | The bubble spread (Puffy) | 0x5F, action 0x25 | patch_cards/puffy/charge.luau |
 | Count's rain (a dust storm over the opponent's middle) | 0x6D, `sub_801244A`, action 0x5E (`sub_80F020E`) | patch_cards/count/charge.luau |
-| Bass BX's nine-shot buster | 0x92, `sub_8012124`, action 0x5D | patch_cards/bassbx/charge.luau, lib/rapid_buster.luau |
-| The Bass Cross card's seeking whirlwind (AirSpin's action, variant 1) | 0x93, `sub_8012144`, action 0x38 | patch_cards/bass-cross-megaman/charge.luau |
+| Bass BX's nine-shot buster, and Gregar's Bass Cross card's | 0x92, `sub_8012124`, action 0x5D | lib/patch_cards/rapid_buster.luau, lib/rapid_buster.luau |
+| Falzar's Bass Cross card's seeking whirlwind (AirSpin's action, variant 1) | 0x93, `sub_8012144`, action 0x38 | patch_cards/bass-cross-megaman/charge.luau |
 | The B button: Sword, a meteor, MiniBomb, CrakShot, the triple buster; RflectR (no card) | 0x8E, 0x52, 0x7D, 0x81, 0x8F; 0x76 | lib/patch_cards/b_sword.luau, patch_cards/mettfire/b_button.luau, patch_cards/beetle/b_button.luau, patch_cards/planetmn/b_button.luau, lib/patch_cards/triple_buster.luau; none (lib/patch_cards/b_reflect.luau went 2026-10-06: no card reaches it) |
 | B+Back: three meteors, the immobilizer, the fan, RskyHny, MchnSwrd | 0x53, 0x83, 0x86, 0x88, 0x89 | patch_cards/\<card\>/back_special.luau (metrid, magntman, dustman, honybomr, darkmech) |
 | The meteors (a shower of instant effect 16's meteors) | action 0x5C | lib/patch_cards/meteors.luau |
@@ -207,6 +210,11 @@ rule, EXE6's patch cards module (content/exe6/rules/patch_cards/init.luau, in co
   and whether the card shows it as a `bug`, with the kind's own fields: data, which the game's rules read (EXE6's: rules/patch_cards/cards.luau's constructors,
   `cards.hp(-40)`, `cards.charged_shot(require("./charge"))`, `cards.bug(...)`, ...). Weapons, programs
   (projectile variants), barriers and gauges are named by definition, never by number. The name is the locales'.
+  An effect only one version's card has says its `version` (`cards.version("gregar", cards.hp(200))`), as a chip
+  says its own: card 117, Bass-Cross MegaMan, is one card whose effects each version's ROM gives its own, and a
+  side has those of its setup's `version` and those of none (@exelib/patch_cards/apply's `effects`; EXE5's card
+  111 likewise, by its team). The card's list keeps both versions' in the card screen's order, each version's
+  alone in it.
 - **A player's installed cards** are a fact of their game's rules' setup (`patch_cards`: a list of cards in the
   list's order, at most 32, EXE6's save list's room; its 80 MB allow 16), which the setup exchange and the digest
   cover as the rest of the setup. Each card in it applies: a card the save has switched off does nothing in battle
@@ -274,6 +282,9 @@ EXE5's cards (its Modification Cards, Team ProtoMan's and Team Colonel's, US and
 card definitions' shape; EXE5's own system, cards, weapons and Hub Style are docs/design/exe5-map.md §15.14's.
 
 ## 7. Unverified
+
+Gregar's card 117 (Bass-Cross MegaMan's Gregar effects, 2026-10-14) is in the content from the JP Gregar ROM's
+card table and no chip lab scenario plays it yet: the lab's card 117 scenarios run on JP Falzar.
 
 Ported, and reached by no card (docs/engine/unverified.md):
 
