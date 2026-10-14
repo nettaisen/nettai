@@ -241,6 +241,7 @@ mod tests {
                 dir: nettai_content::index::content(),
                 packs: Vec::new(),
                 own: Default::default(),
+                others: Vec::new(),
                 report: Default::default(),
             },
             graphics: nettai_frontend::testing::graphics(&content, 0x7FFF),

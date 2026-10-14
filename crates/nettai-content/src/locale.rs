@@ -139,6 +139,49 @@ pub fn game_name(dir: &Path, game: &str, lang: &str) -> Option<String> {
     read(lang).or_else(|| read(OWN))
 }
 
+/// Game `game`'s `[backgrounds]` in `lang` (none: the table can't be read),
+/// from the locales of content `dir` alone: each background's name there,
+/// by its name in the game's pack.
+fn backgrounds_in(dir: &Path, game: &str, lang: &str) -> Option<std::collections::BTreeMap<String, BackgroundStrings>> {
+    // (Only the backgrounds: the rest of the table isn't read into anything.)
+    #[derive(serde::Deserialize)]
+    struct Backgrounds {
+        #[serde(default)]
+        backgrounds: std::collections::BTreeMap<String, BackgroundStrings>,
+    }
+    let text = std::fs::read_to_string(path(&dir.join(game), lang)).ok()?;
+    toml::from_str::<Backgrounds>(&text).ok().map(|b| b.backgrounds)
+}
+
+/// The background pool of content `dir` (docs/app.md §1, "The battle's
+/// background"): every background of each of its games, each by its game
+/// and its name in its game's pack, as the game's own language's
+/// `[backgrounds]` names them (that table names every background the
+/// game's pack has, and none it hasn't: [`check_backgrounds`]). Read from
+/// the content alone, so it is the same whatever packs are installed; a
+/// game whose table can't be read has none in it.
+pub fn background_pool(dir: &Path) -> nettai_battle::content::BackgroundPool {
+    let games = crate::index::games(dir).unwrap_or_default();
+    nettai_battle::content::BackgroundPool::new(
+        games.iter().flat_map(|game| backgrounds_in(dir, game, OWN).unwrap_or_default().into_keys().map(move |name| (game.clone(), name))),
+    )
+}
+
+/// Game `game`'s backgrounds' names as a player sees them in `lang` (each
+/// the area it comes from, as the game's menus name it), by their names in
+/// the game's pack: `lang`'s, else the content's own language's. From the
+/// locales of content `dir` alone (a game without its pack has them too).
+pub fn background_names(dir: &Path, game: &str, lang: &str) -> std::collections::BTreeMap<String, String> {
+    let read = |lang: &str| -> std::collections::BTreeMap<String, String> {
+        backgrounds_in(dir, game, lang).unwrap_or_default().into_iter().filter_map(|(k, b)| Some((k, b.name?))).collect()
+    };
+    let mut out = read(OWN);
+    if lang != OWN {
+        out.extend(read(lang));
+    }
+    out
+}
+
 /// Game `game`'s text table `table` (a manifest's `text`: the battle themes'
 /// names, [`BATTLE_THEMES`]) in `lang`, from the locales of content `dir`
 /// alone (a game without its pack has it too): each key's text in `lang`,

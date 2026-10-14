@@ -440,6 +440,7 @@ fn make() -> Content {
         assets,
         defs: Default::default(),
         strings: strings(),
+        background_pool: Default::default(),
     }
 }
 

@@ -19,7 +19,7 @@ use nettai_content::locale::{self, Strings};
 use nettai_content::pack;
 pub use nettai_content::report::Report;
 use nettai_render::Renderer;
-use nettai_render::packs::PackGraphics;
+use nettai_render::packs::{OtherBackgrounds, PackGraphics};
 pub use nettai_render::textlayer::TextMode;
 pub use nettai_render::vfont::VectorFont;
 use std::fmt;
@@ -104,6 +104,9 @@ pub struct Game {
     pub packs: Vec<PathBuf>,
     /// The game's own pack among them.
     pub own: PackId,
+    /// The other games' packs found beside its own, which the background
+    /// pool's other backgrounds are drawn from ([`Game::graphics`]).
+    pub others: Vec<pack::Found>,
     pub report: Report,
 }
 
@@ -118,7 +121,8 @@ impl Game {
         let Some(own) = content.assets.pack(name) else {
             return Err(LoadError { what: Failed::NoPack { game: name.to_string() }, report: loaded.report });
         };
-        Ok(Game { name: loaded.game, content, dir: loaded.dir, packs: vec![loaded.pack], own, report: loaded.report })
+        let others = found.packs.iter().filter(|f| f.game != name).cloned().collect();
+        Ok(Game { name: loaded.game, content, dir: loaded.dir, packs: vec![loaded.pack], own, others, report: loaded.report })
     }
 
     /// The packs' graphics, the game's own in `lang`: the pack's lettering
@@ -128,7 +132,9 @@ impl Game {
     /// `lang` (one made from the other release's ROMs alone) is drawn in
     /// its own language: its pictures with words are the ones it has, and
     /// the strings are still `lang`'s, which the renderer draws with the
-    /// vector font in either text mode (`Renderer::set_text`).
+    /// vector font in either text mode (`Renderer::set_text`). With them, the
+    /// background pool's others (another game's backgrounds a round may be
+    /// drawn on: [`Game::other_backgrounds`]).
     pub fn graphics(&self, lang: &str) -> Result<Graphics, LoadError> {
         let mut report = Report::default();
         let mut bundles = Vec::new();
@@ -161,7 +167,26 @@ impl Game {
             }
             bundles.push(Arc::new(bundle.for_language(lang)));
         }
-        Ok(Graphics { bundles, strings, own: self.own, report })
+        let others = Arc::new(self.other_backgrounds(&mut report));
+        Ok(Graphics { bundles, strings, own: self.own, others, report })
+    }
+
+    /// The background pool's backgrounds of other games (docs/app.md §1,
+    /// "The battle's background": `Content::background_pool`), each from its
+    /// game's pack among [`Game::others`], read alone (its folder,
+    /// `graphics/backgrounds/<name>`: a few kilobytes each). A game whose
+    /// pack isn't there has none, and a round on one of its backgrounds is
+    /// drawn on its stage's own (`Packs::round_background`); what reading
+    /// one said is in `report`.
+    pub fn other_backgrounds(&self, report: &mut Report) -> OtherBackgrounds {
+        let mut out = OtherBackgrounds::default();
+        for found in &self.others {
+            let names = self.content.background_pool.iter().filter(|(game, _)| *game == found.game).map(|(_, name)| name);
+            let (backgrounds, r) = pack::load_backgrounds(&found.dir, names);
+            report.issues.extend(r.issues);
+            out.insert(&found.game, backgrounds);
+        }
+        out
     }
 
     /// The packs' sound: each pack's bank, and the content's songs.
@@ -190,6 +215,8 @@ impl Game {
 pub struct Graphics {
     /// Each loaded pack's, by `PackId`.
     pub bundles: Vec<Arc<Bundle>>,
+    /// The background pool's backgrounds of other games, from their packs.
+    pub others: Arc<OtherBackgrounds>,
     /// The content's strings in the language (none: the content's own).
     pub strings: Option<Arc<Strings>>,
     /// The game's own pack.
@@ -200,7 +227,7 @@ pub struct Graphics {
 impl Graphics {
     /// The packs' graphics, as a renderer holds them.
     pub fn packs(&self) -> PackGraphics {
-        PackGraphics::new(self.bundles.clone(), self.own)
+        PackGraphics::new(self.bundles.clone(), self.own).with_others(self.others.clone())
     }
 
     /// A renderer of these graphics, its text drawn in `text` mode

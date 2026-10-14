@@ -196,7 +196,16 @@ The tables are the verification workspace's (tools/backgrounds): `areas.py` read
 `names.tsv` holds the names, and `rename.py` puts a changed name into the content, the generators and these
 tables.
 
-**The names a player sees** (the app's arenas: `Names::background`) are each game's locales' `[backgrounds]`,
+**The background pool.** The backgrounds of every game form one pool a battle of any game may be drawn on
+(docs/app.md §1, "The battle's background"): `Content::background_pool`, each game's own language's
+`[backgrounds]` keys (below), read with any game's content. A round's background (`BackgroundId`) is a handle
+over the game's own, at their handles, then the pool's others; the renderer draws another game's from that
+game's pack (`nettai_render::packs::OtherBackgrounds`, which `Game::graphics` reads from the other packs found),
+and a round on one whose pack isn't there on its stage's own (`Packs::round_background`). Every background of
+the three games draws from tile 1 below the field's tiles (163 on) in background palette 0 alone, so any draws
+in any game's battle.
+
+**The names a player sees** (the app's arenas: `Names::background`, the game's name before) are each game's locales' `[backgrounds]`,
 by asset name, in English and Japanese: the area's name as the game's menu shows it, from the US ROM and from the
 Japanese ROM (its first map's, the part number dropped where the key drops it: ACDC Area, 秋原エリア; EXE4's
 ToyRoboComp4 keeps it), as the menu writes it, a word its twelve characters cut short too (RobCtrlComp,
@@ -435,7 +444,10 @@ over, and the frames go on being numbered from the set's first tick.
   them; a part it leaves (or a round left empty) picked from the seed as a
   link battle picks them, from the game's rule section `link_pick` (`sub_81209DC`: its
   `stages`, the stage for each index of the original's pick, EXE6's 96 link
-  battle stages each once; its `backgrounds`, EXE6's `byte_8120A20`). Each
+  battle stages each once; its `backgrounds`, EXE6's `byte_8120A20`), or a
+  background from the background pool, every game's, each as likely, where the
+  match says so (`Match::backgrounds`, `BackgroundPick::Pool`: nettai's
+  Practice and Play; the original's pick, `Game`, is a match's otherwise). Each
   round's stage and background are drawn whether stated or not, so a part a
   match states moves no other's pick, and a random match states the three
   rounds a match that states nothing would be picked; the first round's stage is one
@@ -585,9 +597,11 @@ host calls, in order:
   internal). rollback.md §4.9 lists every one, with when.
 - **The lobby and the handshake** (`nettai_frontend::lobby`, rollback.md
   §4.7) check that both players run the same netplay protocol, the same
-  engine, the same game (a match is of one) and the same content
+  engine, the same game (a match is of one), the same content
   (`Content::hash`: the definitions, scripts and rule tables, and what the
-  battle reads of the pack, the asset names and the animations' timing), and
+  battle reads of the pack, the asset names and the animations' timing) and
+  the same background pool (`Compat::backgrounds`, its identity: the hash
+  leaves it out, and a round's background may be any of it), and
   refuse a mismatch on both sides, each with a reason its host can say
   (`Reason::DifferentVersion`, `DifferentGame`, `DifferentContent`). Both
   play by the game's rules (a game has one ruleset). The language is each
@@ -600,7 +614,9 @@ host calls, in order:
     no longer are, and the other sees nothing else.
   - **The settings are the match's**: its rounds (`Settings::rounds`: one
     is a single battle, three a best of three; each round's stage and
-    background stated, or left to the seed), whether patch cards apply
+    background stated, or left to the seed; `backgrounds`, whether a
+    background left to the seed is the game's link pick's or the
+    background pool's, nettai's Play the pool), whether patch cards apply
     (`patch_cards`, on unless a player turns them off) and whether builds
     are closed (`closed_builds`). Either player changes them
     (`Lobby::set_rounds`, `set_patch_cards`, `set_closed_builds`, or
@@ -1485,8 +1501,9 @@ seed = 42                                  # optional: the setup's and battle's 
 stage = "netbattle-43"                     # (1 to 99; three: the original's triple battle). A round's stage (a
 background = "lans-hp"                     # link battle stage of the game's) and background (of its pack); a part
                                            # left out is picked from the seed, as the game picks a link battle's
-[[round]]
-stage = "netbattle-12"
+[[round]]                                  # (or with `backgrounds = "pool"` at the top, a background from every
+stage = "netbattle-12"                     # game's: the background pool)
+background = "exe4:acdc-area"              # another game's background, the pool's, named with its game
 
 [[round]]                                  # (picked from the seed: stage and background)
 
@@ -2421,13 +2438,14 @@ on.
 
 **The match** (nettai-match's `binary`, which the netplay offer uses too) is
 read against the content the head names: definitions by their handles (the
-pack's index, the same on every load of content of that hash), a background by
-its number in the pack, nothing by name:
+pack's index, the same on every load of content of that hash), and nothing by
+name but a round's background, which may be any game's (the background pool),
+by its game and its name in its game's pack:
 
 ```text
-place := stage (u16: its handle), background (u16: its number in the pack)
+place := stage (u16: its handle), background (string: `<game>:<name>`)
 round := what the round states (a byte: 1 its stage, 2 its background, 3 both, 0 neither),
-         then its stage's handle (u16) if stated, its background's number (u16) if stated
+         then its stage's handle (u16) if stated, its background (string) if stated
 side  := the side's setup of the game's rules in its compact form (each fact in the
          setup's order at its width; a record's fields in order; a list as its
          count and only the entries it holds)
@@ -2441,7 +2459,7 @@ a place's the engine's. A replay keeps every round's place, whatever the match
 left to its seed. A random EXE6 side's offer with three stated rounds is
 about 210 bytes, EXE5's about 540 (its auto battle data included); a whole
 match 410 and 1,060. A reader refuses bytes that end early or run on, a handle
-past the content's, a background the pack hasn't and a value no fact may hold,
+past the content's, a background neither the game's pack nor the pool has and a value no fact may hold,
 saying where; the match's checks then judge what it read, as for a match file.
 
 ### Video

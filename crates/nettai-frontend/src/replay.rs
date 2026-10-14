@@ -451,6 +451,35 @@ mod tests {
         }
     }
 
+    /// A set drawn on other games' backgrounds (the background pool's: one
+    /// round's stated, the rest picked from the pool) is recorded with them,
+    /// by their games and names, and plays back to the same end, every
+    /// digest the recording's, each round on the background it was played
+    /// on.
+    #[test]
+    fn a_set_on_other_games_backgrounds_plays_back() {
+        let content = nettai_match::testing::exe6_content();
+        let mut m = short_set::of(&content, "exe6", 7);
+        m.backgrounds = nettai_match::BackgroundPick::Pool;
+        m.rounds[0].background = Some("exe5:nebula-area".into());
+        let played: Vec<_> = m.places(&content, 7).unwrap().iter().map(|p| p.background).collect();
+        assert_eq!(content.background_of(played[0]), Some(("exe5", "nebula-area")));
+        let sink = Shared::default();
+        let mut s = Session::new(Box::new(LivePlayer::new(Set::of(&content, &m, 7))));
+        s.record(Recorder::new(Box::new(sink.clone()), &content, &m, &Info::of(MatchKind::Offline, 0)).unwrap()).unwrap();
+        while s.step(short_set::shooter(&s.battle, 0, s.ticks as u32)) {}
+        let replay = Replay::read(&sink.bytes()).unwrap();
+        let kept = nettai_match::binary::read_match(&content, &replay.match_bytes).unwrap();
+        assert_eq!(kept.rounds[0].background.as_deref(), Some("exe5:nebula-area"));
+        assert_eq!(kept.places(&content, 7).unwrap().iter().map(|p| p.background).collect::<Vec<_>>(), played);
+        let out = play_out(&content, &replay).unwrap();
+        assert_eq!((out.diverged, out.end, out.ticks, out.result), (None, End::Set, s.ticks, s.result));
+        let mut p = Session::new(Box::new(ReplayPlayer::new(&content, &replay, Some(0)).unwrap()));
+        assert_eq!(p.battle.setup.settings.background, played[0], "the first round on its background");
+        while p.step(0) {}
+        assert_eq!((p.diverged, p.result), (None, s.result));
+    }
+
     /// A short set played live and recorded (the shooter wins it 2-0): the
     /// replay, and the session's ticks.
     fn recorded(content: &Arc<Content>, game: &str) -> (Replay, u64) {

@@ -173,6 +173,14 @@ Each is settled unless the user changes it.
     battle's music at once.
 30. **A build is 構築 in Japanese** (2026-10-13): "build should be called "構築" in japanese". Every Japanese string
     that said ビルド says 構築 (構築, 新規構築, 構築を編集, 相手の構築, この構築は使えません, and the rest).
+31. **The backgrounds are one pool** (2026-10-13): "is it possible to use e.g. exe4 backgrounds in exe5? as in if
+    they all came from the same pool of backgrounds?", then "sure do that". Every game's backgrounds are one pool,
+    any of which a battle of any game is drawn on, each named by its game and its own name ("BN4 ACDC Area",
+    "EXE4 秋原エリア"). Practice's Background row offers the whole pool after Random, and a round's random
+    background (Practice's Random, every round of Play) is drawn from it. Asked whether the background stays the
+    match's, both players seeing the round's and a replay keeping it, or becomes each player's own as the music
+    is, they chose **"Shared, as now"**: the lobby agrees it with the round and a replay records it. The rules,
+    the chips and the field stay the arena game's. (§6, docs/app.md §1, "The battle's background".)
 
 ## 3. Chosen where the user gave no answer
 
@@ -386,10 +394,11 @@ Each is in the mockups under the same name.
 
 ### Practice
 - **Entry:** five rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
-  also add arena + background select?": the game's arenas and battle backgrounds, Random first; "the arena
-  names are meaningless so you should just have like a pager widget that goes through them. background should
-  also be a arrow button pager thing": each an arrow pager, the arena by its place, "12 / 96", the background
-  by its name), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
+  also add arena + background select?": the game's arenas and the background pool, every game's battle
+  backgrounds (§2.31), Random first, a Random background drawn from the pool; "the arena names are meaningless
+  so you should just have like a pager widget that goes through them. background should also be a arrow button
+  pager thing": each an arrow pager, the arena by its place, "12 / 96", the background by its game and its
+  name, "BN4 ACDC Area"), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
   opening its list; a theme plays here in place of the title music once
   the row rests on it a moment), all remembered, and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."

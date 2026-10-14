@@ -199,13 +199,15 @@ impl Renderer {
         let mut packs = self.graphics.packs();
         packs.set_version(self.console_version);
         let view = Self::view(b);
-        // (The background is its own pack's; the field, the game's pack's:
-        // `FieldArt`.)
-        let background = crate::lookups::background(&packs, &b.content, b.setup.settings.background, &mut self.problems);
+        // (The background is its own pack's, another game's too (the
+        // background pool's), or where that pack isn't here, the stage's own;
+        // the field, the game's pack's: `FieldArt`.)
+        let shown = packs.round_background(&b.content, &b.setup.settings);
+        let background = crate::lookups::background(&packs, &b.content, shown, &mut self.problems);
         // (The background, behind everything, where the caller asks.)
         if background.is_some()
             && !self.problems.marking.is_empty()
-            && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Background, b.setup.settings.background.0)
+            && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Background, shown.0)
         {
             let what = format!("background:{name}");
             if self.problems.wants(&what) {
