@@ -11,8 +11,8 @@
 //! backgrounds = "pool"               # optional: a background a round leaves is any game's (the pool's),
 //!                                    # else "game" (as the game picks a link battle's)
 //!
-//! [[round]]                          # the set's rounds, one table each, in order: as many as it has
-//! stage = "netbattle-43"             # (1 to 99; three: the original's triple battle, best of three).
+//! [[round]]                          # the set's rounds, one table each, in order: 2n - 1 for a set first to n
+//! stage = "netbattle-43"             # round wins (n 1 to 10; one: a single battle; three: the original's triple battle).
 //! background = "lans-hp"             # A part a round leaves out, or a round left empty, is picked
 //!                                    # from the seed (as `backgrounds` says)
 //! [[round]]
@@ -203,7 +203,7 @@ fn resolve_round(content: &Content, game: &str, r: &RoundFile, at: &str, problem
 }
 
 /// What a file that lists no round is told.
-pub const NO_ROUNDS: &str = "no [[round]]: a match file lists one [[round]] per round of its set (one left empty is picked from the seed; three for the original's triple battle)";
+pub const NO_ROUNDS: &str = "no [[round]]: a match file lists one [[round]] per round its set may take, 2n - 1 for a set first to n round wins (one left empty is picked from the seed; one for a single battle, three for the original's triple battle)";
 
 /// A file's rounds, of `game`.
 pub fn resolve_rounds(content: &Content, game: &str, rounds: &[RoundFile], problems: &mut Vec<String>) -> Option<Vec<RoundSettings>> {
@@ -543,10 +543,11 @@ mod tests {
     }
 
     /// A match file lists its rounds, a `[[round]]` table each, as many as
-    /// the set has: each part it states is that round's, each it leaves out
-    /// (or a round left empty) is picked from the seed, and a file that
-    /// lists none is refused. Five rounds, some stated, write and read back
-    /// and start the same round.
+    /// the set may take: each part it states is that round's, each it leaves
+    /// out (or a round left empty) is picked from the seed, and a file that
+    /// lists none, or a count no set first to some wins takes (an even one,
+    /// more than first to ten's), is refused. Five rounds (first to 3),
+    /// some stated, write and read back and start the same round.
     #[test]
     fn a_match_file_lists_its_rounds() {
         let content = exe6_content();
@@ -558,7 +559,7 @@ mod tests {
         let rounds = "[[round]]\n\n[[round]]\nstage = \"netbattle-12\"\n\n[[round]]\nbackground = \"undernet\"\n\n[[round]]\n\n[[round]]\n\n";
         let five = format!("{}{rounds}{}", &text[..start], &text[end..]);
         let m = parse(&content, &five).unwrap_or_else(|e| panic!("{e:?}\n{five}"));
-        assert_eq!(m.rounds.len(), 5);
+        assert_eq!((m.rounds.len(), m.first_to()), (5, 3));
         assert_eq!(m.rounds[1].stage, Some(crate::link_stage(&content, "exe6", "netbattle-12").unwrap()));
         assert_eq!((m.rounds[2].stage, m.rounds[2].background.as_deref()), (None, Some("undernet")));
         assert_eq!(m.rounds[0], RoundSettings::default());
@@ -570,8 +571,10 @@ mod tests {
         assert_eq!(setup.settings, live.round(&content, 4).settings);
         let none = format!("{}{}", &text[..start], &text[end..]);
         assert_eq!(parse(&content, &none).unwrap_err(), [NO_ROUNDS]);
-        let many = format!("{}{}{}", &text[..start], "[[round]]\n".repeat(crate::MAX_ROUNDS + 1), &text[end..]);
-        assert_eq!(parse(&content, &many).unwrap_err(), ["100 rounds: a match has 1 to 99"]);
+        for count in [2, 4, crate::rounds_for(crate::MAX_FIRST_TO) + 2] {
+            let many = format!("{}{}{}", &text[..start], "[[round]]\n".repeat(count), &text[end..]);
+            assert_eq!(parse(&content, &many).unwrap_err(), [format!("{count} rounds: a set is first to 1 to 10 round wins, of 2 × wins − 1 rounds (1, 3, 5 ... 19)")]);
+        }
     }
 
     /// A round may be drawn on another game's background, the pool's, named with its game; `backgrounds =

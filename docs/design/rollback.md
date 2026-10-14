@@ -558,11 +558,12 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
      engine, since the digest covers the state's layout and the simulation must be the same code), the game (a
      match is of one), the content's hash (`Content::hash`) and the role. A peer that can't play with the other
      refuses at once (below).
-   - **The match's settings** (`lobby::Settings`): the game, the rounds (each round's stage and background by name
-     or left to the seed; one round is a single battle, three a best of three, and a set takes 1 to 99),
+   - **The match's settings** (`lobby::Settings`): the game, the round wins the set is first to (a byte, 1 to 10:
+     1 a single battle, 2 the original's triple battle) and its `2n − 1` rounds (each round's stage and background
+     by name or left to the seed),
      `patch_cards` (whether the players' patch cards apply: on unless a player turns them off) and
      `closed_builds`. They are **the match's, not a player's**. Either player changes them (`Lobby::propose`, or
-     `set_rounds`, `set_patch_cards` and `set_closed_builds`), the other peer adopts the change, so both lobbies
+     `set_first_to`, `set_patch_cards` and `set_closed_builds`), the other peer adopts the change, so both lobbies
      show the same
      (`Lobby::settings`), and both players' ready marks clear. It sits on the proposal model the lobby had: each
      peer still says the settings it holds, and they are agreed when both are ready on the same. What is new is
@@ -617,8 +618,8 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
    is all the other sees, and the other's own ready mark stays. A build's name is sent in no message at all: what
    the Reveal carries is the side, which is its facts and has no name.
 2. **Hello.** A peer that sees the settings agreed (both ready, on the same settings of the same stamp) commits:
-   its Hello carries the compatibility fields, the lobby revisions it agrees to and the rounds' count, in the
-   clear, and SHA-256 of the agreed settings' hash and the bytes of the Reveal it will send. The settings' hash
+   its Hello carries the compatibility fields, the lobby revisions it agrees to and the round wins the set is
+   first to, in the clear, and SHA-256 of the agreed settings' hash and the bytes of the Reveal it will send. The settings' hash
    covers `patch_cards` and `closed_builds`, so both commit to them. A peer reveals nothing before it has the other's Hello; a change
    in the lobby takes the commitment back (and a Reveal already sent is spent: the next one has a fresh nonce).
 3. **Reveal.** The lobby revisions it is of (as its Hello said them), a peer's half of the seed (a 64-bit nonce

@@ -114,9 +114,9 @@ export global PlayView {
     // They count the times each turned ready: the mark stamps.
     in property <int> ready-seq;
     in property <int> their-ready-seq;
-    // The match's settings, both players': the rounds (1: a single battle; 3: best of 3), whether the patch
-    // cards apply, and closed builds.
-    in property <int> rounds: 3;
+    // The match's settings, both players': the round wins its set is first to (1: a single battle; 2: the
+    // original's triple battle, best of 3), whether the patch cards apply, and closed builds.
+    in property <int> first-to: 2;
     in property <bool> patch-cards: true;
     in property <bool> closed;
     // The player's own.
@@ -387,14 +387,14 @@ component LobbyCard inherits Rectangle {
     }
 }
 
-// The match's settings and the connection: one row, or on a phone a row each. Rounds and Closed builds are the
-// match's (either player changes them, and both see it); the input delay is the player's own.
+// The match's settings and the connection: one row, or on a phone a row each. First to, Patch cards and Closed
+// builds are the match's (either player changes them, and both see it); the input delay is the player's own.
 component LobbyFacts inherits Rectangle {
     // The one row: each setting's name over its control, a cell as wide as the wider of the two, so five fit
     // whatever the language. Where each cell starts, and the row's width.
     property <length> gap: 41px;
     property <length> x1: 24px;
-    property <length> x2: self.x1 + max(rounds-label.width, rounds.width) + self.gap;
+    property <length> x2: self.x1 + max(first-to-label.width, first-to.width) + self.gap;
     property <length> x3: self.x2 + max(cards-label.width, cards.width) + self.gap;
     property <length> x4: self.x3 + max(closed-label.width, closed.width) + self.gap;
     property <length> x5: self.x4 + max(delay-label.width, delay.width) + self.gap;
@@ -413,20 +413,22 @@ component LobbyFacts inherits Rectangle {
         accent: false;
     }
 
-    rounds-label := Value {
+    first-to-label := Value {
         x: Theme.phone ? 0px : root.x1;
         y: Theme.phone ? 0px : root.name-y;
         height: Theme.phone ? root.line : root.name-height;
-        text: @tr("Rounds");
+        text: @tr("First to");
         color: root.name-color;
     }
 
-    rounds := Stepper {
+    // (The round wins that take the set: "2" under First to; in Japanese, 2本先取.)
+    first-to := Stepper {
         x: Theme.phone ? parent.width - self.width : root.x1;
         y: Theme.phone ? (root.line - self.height) / 2 : root.control-y + (root.control-height - self.height) / 2;
-        nav: "lobby.rounds";
-        value: PlayView.rounds == 1 ? @tr("Single battle") : @tr("Best of {}", PlayView.rounds);
-        value-width: Theme.phone ? 136px : 148px;
+        nav: "lobby.first-to";
+        value: @tr("first to" => "{}", PlayView.first-to);
+        value-width: 84px;
+        numeric: true;
     }
 
     Rectangle {
@@ -438,7 +440,7 @@ component LobbyFacts inherits Rectangle {
         background: Theme.line;
     }
 
-    // Patch cards: the match's, as Rounds and Closed builds are. Off, neither player's cards apply.
+    // Patch cards: the match's, as First to and Closed builds are. Off, neither player's cards apply.
     cards-label := Value {
         x: Theme.phone ? 0px : root.x2;
         y: Theme.phone ? root.line : root.name-y;
