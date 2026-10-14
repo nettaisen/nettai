@@ -1825,7 +1825,7 @@ first of `auto_battle_records` is 1); `{ zero = true }`, a place holding 0
 are named for what the game writes there. Any entry may stand in a place of
 the first, standard and patterns lists, as in the save (a save made by hand
 can have a giga chip among the patterns' places); a chip in the mega, giga
-or program advance list must be of that class (the list's `class` in
+or program advance list must be of that class (the list's `own_class` in
 @exelib/auto_battle/places' `LISTS`: nettai's rule, docs/design/app-ui.md
 §2.27), and a pattern, a 0 or an empty place may stand there too.
 
