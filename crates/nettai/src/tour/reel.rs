@@ -22,7 +22,8 @@
 //! the practice menu setting the dummy to fight at Hard, a fight in which the player's side presses by itself);
 //! the builds (Play's; the editor's Folder, NaviCust and Patch cards tabs in EXE6, the Auto battle tab in EXE5);
 //! Play (an invite, a second player joining, the lobby, a few seconds of their match); Replays (the list, a
-//! replay watched, a seek and a speed change); About. `reel.txt` in the pass's folder says what was written.
+//! replay watched, a seek and a speed change); About, from Settings. `reel.txt` in the pass's folder says what
+//! was written.
 
 use super::{SETTLE, Step, Tour};
 use crate::input::Action;
@@ -669,7 +670,8 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(400, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.activate(shell, "speed", 2))));
     add(3000, act(Action::Back));
 
-    // 6. About, a moment.
-    add(700, go(ScreenId::About));
+    // 6. About (Settings' SHOW LICENSES), a moment.
+    add(700, go(ScreenId::Settings));
+    add(0, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Settings, |s, shell| s.activate(shell, "set.about", 0))));
     add(2800, air(false));
 }
