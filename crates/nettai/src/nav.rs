@@ -705,6 +705,21 @@ impl Nav {
         nav.set_reveal_seq(self.reveal_seq);
     }
 
+    /// The list `id` back at its top, as its rows changed under it (a search typed): scrolled to its first row,
+    /// slid there as a reveal is, and entered at it next. The focus doesn't move.
+    pub fn list_to_top(&mut self, ui: &AppWindow, id: &str) {
+        self.rows.insert(id.to_string(), 0);
+        let scroll = self.registry.borrow().lists.get(id).map_or(0.0, |l| l.scroll);
+        if scroll <= 0.0 {
+            return;
+        }
+        let nav = ui.global::<nettai_ui::Nav>();
+        self.reveal_seq += 1;
+        nav.set_reveal_id(id.into());
+        nav.set_reveal_dy(-scroll);
+        nav.set_reveal_seq(self.reveal_seq);
+    }
+
     /// Scroll the page `id`'s control into view at its top (a settings group jumped to), without moving the
     /// focus.
     pub fn reveal_at_top(&mut self, ui: &AppWindow, id: &str, index: i32, room: f32) {
