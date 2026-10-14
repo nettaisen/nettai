@@ -1404,7 +1404,7 @@ impl Window {
         let x = last_x - 8 * (last - col) as i32;
         let along: Vec<i32> = shown.iter().filter(|&&(c, px)| px == x + 8 * (c - col) as i32).map(|&(_, px)| px).collect();
         let (Some(&x0), Some(&x1)) = (along.first(), along.last()) else { return };
-        let item = TextItem::new(name.as_str(), Role::Cell, Rect::new(x, 8 * row as i32, 8 * *cells as i32, 16), palette[1 + shift], Some(palette[2 + shift]));
+        let item = TextItem::new(name.as_str(), Role::FittedCell, Rect::new(x, 8 * row as i32, 8 * *cells as i32, 16), palette[1 + shift], Some(palette[2 + shift]));
         let clip = Rect::new(x0, 0, x1 + 8 - x0, crate::compose::HEIGHT as i32);
         let past_ranged = self.map[i].palette & 15 >= 14;
         text.push(Plane::Hud, TextItem { clip, past_ranged, ..item });
@@ -1460,7 +1460,7 @@ fn draw_names(v: &View, w: &Window, hud_layer: &mut Layer, names_layer: &mut Lay
     let len = len.min(ENEMY_NAME_CELLS);
     let col = 0x1E - len as i32;
     let palette = &w.palettes[13];
-    fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * col, 0), Align::Left);
+    fonts::layer_text(text, Plane::Bg0, names_layer, v.hud, name, &glyphs, ENEMY_NAME_CELLS, palette, (8 * col, 0), (Role::FittedCell, Align::Left));
     // The bar: the slanted end, then one cell a glyph (eight at most; a
     // ninth glyph has bar cells from column 21 on, no end).
     let bar = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 13 };

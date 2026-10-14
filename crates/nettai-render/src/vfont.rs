@@ -64,13 +64,25 @@ const CACHE_GLYPHS: usize = 4096;
 /// What a string is drawn as: which of the original's fonts it stands in
 /// for, which sets its size, its place in its box and its weight. A role's
 /// size is fixed: every string of it is drawn at it, and one too wide for
-/// its box is narrowed, never made smaller.
+/// its box is narrowed, never made smaller. No glyph is cut at its box's
+/// rows: a role whose cells something follows right under them is drawn
+/// so that its descenders end in them (docs/design/text-rendering.md
+/// §9.9).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Role {
-    /// The 8x16 font's strings (names, the telop, the HUD's lines): a cell
-    /// 16 rows high whose capitals, digits and kana take rows 4 to 13;
-    /// bold, with a shadow.
+    /// The 8x16 font's strings with nothing of the original's under their
+    /// cells (the telop, the Program Advance's names, the HUD's lines): a
+    /// cell 16 rows high whose capitals, digits and kana take rows 4 to
+    /// 13; bold, with a shadow. A descender (Murecho's reach 3.2 pixels
+    /// under the baseline, the original's 1) is drawn past the cells.
     Cell,
+    /// The 8x16 font's strings whose cells end where something else starts
+    /// (the chip window's name over the chip's picture, the hand window's
+    /// on the screen's last rows, the enemy names on their bar): drawn at
+    /// 90% of [`Role::Cell`]'s size, 1.6 pixels higher, so that the deepest
+    /// descender and its shadow end in the cells' 16 rows at every scale,
+    /// as the original's do.
+    FittedCell,
     /// The dialogue font's (the chatbox): lines 12 rows high whose
     /// capitals, digits and kana take rows 1 to 10 (the Japanese font's;
     /// the US font's capitals rows 0 to 10).
@@ -92,21 +104,21 @@ struct Style {
     /// the space the original's glyphs keep before what follows them (a
     /// name's damage digits).
     margin: f32,
-    /// Nothing is drawn below or above the box's rows, as the original's
-    /// glyphs never leave their cells: a font's descenders (Murecho's
-    /// reach 3.3 pixels under the 8x16 font's baseline, where the
-    /// original's reach 1) would cover what is under the cells, the chip
-    /// window's picture, the enemy name's bar's edge.
-    in_rows: bool,
 }
 
 impl Role {
     fn style(self) -> Style {
         match self {
-            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, in_rows: true },
-            // (The chatbox's lines are cut where its sprites end, a third
-            // line's descenders kept: `chatbox::draw`.)
-            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0, in_rows: false },
+            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0 },
+            // Murecho's deepest descender (g) is 0.323 of its capitals'
+            // height under the baseline: 2.9 pixels at 9, so with the
+            // shadow (at most 1 pixel, at 1x; 2/3 at 3x) and the output
+            // pixels' rounding it ends above row 16 at 1x to 6x (the test
+            // `a_fitted_cells_descenders_end_in_its_cells`).
+            Role::FittedCell => Style { cap: 9.0, baseline: 12.4, weight: 700.0, margin: 1.0 },
+            // (The chatbox's lines are cut where its sprites end, which
+            // leaves a third line's descenders room: `chatbox::draw`.)
+            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0 },
         }
     }
 }
@@ -589,17 +601,17 @@ impl TextRenderer {
                 Align::Right => item.rect.w as f32 - layout.width,
             };
         let baseline = item.rect.y as f32 + st.baseline;
-        let rows = Rect::new(-(WIDTH as i32), item.rect.y, 3 * WIDTH as i32, item.rect.h);
-        // The squash: about the box's middle, cut by its rows.
-        let (k, baseline, clip) = match item.vscale {
+        // The squash: about the box's middle. (The original's stretch cuts
+        // its glyphs at the sprite's rows; the text isn't cut.)
+        let (k, baseline) = match item.vscale {
             Some(n) if n > 0 => {
                 let k = 256.0 / n as f32;
                 let mid = item.rect.y as f32 + item.rect.h as f32 / 2.0;
-                (k, mid + (baseline - mid) * k, item.clip.intersect(rows))
+                (k, mid + (baseline - mid) * k)
             }
-            _ => (1.0, baseline, if st.in_rows { item.clip.intersect(rows) } else { item.clip }),
+            _ => (1.0, baseline),
         };
-        let clip = clip.intersect(Rect::SCREEN);
+        let clip = item.clip.intersect(Rect::SCREEN);
         if clip.is_empty() {
             return;
         }
@@ -804,21 +816,49 @@ mod tests {
         (0..w).map(|x| (0..32).any(|y| out[y * w + x] != 0)).collect()
     }
 
-    /// A cell string's descenders stop at its box's last row, as the
-    /// original's glyphs stay in their cells; a chatbox line's don't.
+    /// The first and last output rows an item lights, white with a shadow
+    /// over a black frame, at `scale` times the frame.
+    fn lit_rows(item: TextItem, scale: usize) -> (usize, usize) {
+        let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item] };
+        let (w, h) = (WIDTH * scale, HEIGHT * scale);
+        let mut out = vec![0u32; w * h];
+        crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
+        let rows: Vec<usize> = (0..h).filter(|&y| out[y * w..(y + 1) * w].iter().any(|&p| p != 0)).collect();
+        (rows[0], *rows.last().expect("something drawn"))
+    }
+
+    /// No glyph is cut at its box's rows: a cell string's descenders and
+    /// a chatbox line's are drawn past them, a telop's through its squash
+    /// and stretch too.
     #[test]
-    fn a_cell_strings_descenders_stay_in_its_cells() {
-        let lit_rows = |role: Role| {
-            let item = TextItem::new("gjpqy", role, Rect::new(8, 8, 64, 16), 0x7FFF, Some(0x2108));
-            let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item] };
-            let (w, h) = (WIDTH * 2, HEIGHT * 2);
-            let mut out = vec![0u32; w * h];
-            crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
-            (0..h).filter(|&y| out[y * w..(y + 1) * w].iter().any(|&p| p != 0)).collect::<Vec<_>>()
-        };
-        let cell = lit_rows(Role::Cell);
-        assert_eq!(cell.last(), Some(&(2 * 24 - 1)), "cut at the box's last row");
-        assert!(*lit_rows(Role::Dialogue).last().unwrap() > 2 * 20, "the dialogue font's descenders below its 12 rows");
+    fn descenders_are_drawn_past_the_cells() {
+        let item = |role: Role, h: i32| TextItem::new("gjpqy", role, Rect::new(8, 8, 64, h), 0x7FFF, Some(0x2108));
+        assert!(lit_rows(item(Role::Cell, 16), 2).1 > 2 * 24 + 1, "past the cells' 16 rows");
+        assert!(lit_rows(item(Role::Dialogue, 12), 2).1 > 2 * 20, "past the dialogue font's 12 rows");
+        // The banner's bounce stretches the telop 1.23 times about its
+        // box's middle: its descenders go further still.
+        let stretched = TextItem { vscale: Some(0xD0), ..item(Role::Cell, 16) };
+        assert!(lit_rows(stretched, 2).1 > lit_rows(item(Role::Cell, 16), 2).1);
+    }
+
+    /// A fitted cell string, whatever its letters, stays in its cells at
+    /// every scale, its shadow included: its deepest descenders end on the
+    /// cells' last row, where the original's do, and its ascenders, kana
+    /// and kanji start under their first.
+    #[test]
+    fn a_fitted_cells_descenders_end_in_its_cells() {
+        let at = Rect::new(16, 8, 64, 16);
+        for scale in 1..=6 {
+            let mut deepest = 0;
+            for text in ["gjpqy", "Spreadr1", "BigBomb", "(Ⓐ),;", "攻撃熱斗", "ガンデルソル3", "バッドメディスン", "Éfl"] {
+                let (first, last) = lit_rows(TextItem::new(text, Role::FittedCell, at, 0x7FFF, Some(0x2108)), scale);
+                assert!(first >= at.y as usize * scale, "{text} at {scale}x: from output row {first}");
+                assert!(last < (at.y + at.h) as usize * scale, "{text} at {scale}x: to output row {last}");
+                deepest = deepest.max(last);
+            }
+            // (Not fitted further than it needs: the last row is reached.)
+            assert!(deepest + 2 * scale > (at.y + at.h) as usize * scale, "{scale}x: to output row {deepest}");
+        }
     }
 
     #[test]
@@ -884,7 +924,7 @@ mod tests {
     #[test]
     fn kana_stand_on_the_capitals_at_one_size() {
         let mut r = renderer();
-        for role in [Role::Cell, Role::Dialogue] {
+        for role in [Role::Cell, Role::FittedCell, Role::Dialogue] {
             let st = role.style();
             let face = r.face(Some(st.weight)).expect("Murecho has kana");
             assert!(face.bottom < 0.0 && face.top > r.font.cap, "{face:?}: lower and taller than the capitals");
