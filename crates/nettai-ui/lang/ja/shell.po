@@ -298,10 +298,3 @@ msgstr "詳しくはログファイルをご覧ください。"
 msgid "Game's own"
 msgstr "ゲーム本来のBGM"
 
-# The jack-in's telop, as a battle begins: the operator's call, then the navi's answer, as the Japanese games say
-# them.
-msgid "BATTLE ROUTINE, SET!"
-msgstr "バトルオペレーション、セット！"
-
-msgid "EXECUTE!"
-msgstr "イン！"
