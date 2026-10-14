@@ -8,8 +8,9 @@
 use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
+use crate::intro::{Intro, Pop};
 use crate::objects::{SpriteList, View, project_hud};
-use crate::textlayer::{Align, Plane, Rect, TextItem, TextMode, TextSink};
+use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
 use nettai_battle::Battle;
@@ -232,7 +233,7 @@ pub fn shared_glyphs<'a>(
     let banner_palette = matches!(s.palette, Load::Banner(_)) || s.palette == Load::Pause && t.pause_loads_banner_palette;
     out.telop_palette = banner_palette.then_some(hud.banner_palette);
     out.banner_palette = matches!(s.palette, Load::Telop(_)).then_some(look.palette);
-    // A telop's name glyphs, as its start renders them (none in the font
+    // A telop's name glyphs, as its start renders them (none in the enhanced
     // mode, whose name is the text layer's).
     let name_tiles = |name: TelopName, problems: &mut Problems| -> Option<Vec<(&'a Tiles, usize)>> {
         let codes = match name {
@@ -267,11 +268,11 @@ pub fn shared_glyphs<'a>(
     }
     // A telop's '×' and '2' (either place's: one 16x16 sprite at `signs`,
     // the '×' its left column, 0x08015522) where a banner loaded over them.
-    // (The font mode's telops keep their glyphs: their names are the text
+    // (The enhanced mode's telops keep their glyphs: their names are the text
     // layer's.)
     let telop_shown = b.used_chip_for(local).is_some() || telops.iter().any(Option::is_some);
     if telop_shown
-        && text.mode == TextMode::Original
+        && text.mode == GraphicsMode::Original
         && let Load::Banner(id) = s.signs
         && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
     {
@@ -406,6 +407,9 @@ struct RollingHp {
 struct HpNumberShown {
     /// What its place numbers (a new one starts over).
     number: HpNumber,
+    /// The round's tick it first showed on, where that was before the
+    /// round's first custom screen (`intro::Intro::number_pop`).
+    shown_at: Option<u32>,
     shown: u16,
     /// 0 normal, 1 dropping, 2 rising.
     color: u8,
@@ -497,7 +501,7 @@ impl HudState {
             };
             let e = match shown {
                 Some(e) if e.number == number => e,
-                _ => shown.insert(HpNumberShown { number, shown: number.hp, color: 0, timer: 0 }),
+                _ => shown.insert(HpNumberShown { number, shown_at: (b.round.turn == 0).then_some(b.round.ticks), shown: number.hp, color: 0, timer: 0 }),
             };
             let o = b.objects.get(number.object);
             let poisoned = o.collision.is_some_and(|c| b.collision.get(c).standing_count != 0);
@@ -603,7 +607,9 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
 /// the pack or the content doesn't have (a chip's icon, a character of its
 /// name, a banner's glyphs) goes to `problems`. Without `pause_display`
 /// the pause display is left out (`Renderer::pause_display`); without
-/// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`).
+/// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `intro`
+/// says where the pieces are as they come in at a round's start (at rest
+/// but in the enhanced mode's motion: `crate::intro`).
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
@@ -613,6 +619,7 @@ pub fn draw<'a>(
     shared: &'a SharedGlyphs,
     pause_display: bool,
     custom_gauge: bool,
+    intro: &Intro,
     layer: &mut Layer,
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
@@ -634,28 +641,34 @@ pub fn draw<'a>(
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
+        let x = shift + intro.hp_box_dx();
         for (i, &e) in hud.hp_box.iter().enumerate() {
-            put_px(layer, hud, pal, e, shift + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
+            put_px(layer, hud, pal, e, x + 8 * (i as i32 % 6), 8 * (i as i32 / 6));
         }
         for (k, d) in digits4(shown).into_iter().enumerate() {
             let top = MapEntry { tile: hud.first_tile + 2 * d as u16, hflip: false, vflip: false, palette: 13 };
-            put_px(layer, hud, pal, top, shift + 8 + 8 * k as i32, 0);
-            put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, shift + 8 + 8 * k as i32, 8);
+            put_px(layer, hud, pal, top, x + 8 + 8 * k as i32, 0);
+            put_px(layer, hud, pal, MapEntry { tile: top.tile + 1, ..top }, x + 8 + 8 * k as i32, 8);
         }
     }
 
     // Custom gauge, top center.
     if custom_gauge && gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
+        let dy = intro.gauge_dy();
+        let put = |layer: &mut Layer, e: MapEntry, column: i32, row: i32| put_px(layer, hud, pal, e, 8 * column, 8 * row + dy);
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
-            put(layer, hud, pal, e, GAUGE_COLUMN + (i as i32 % GAUGE_COLUMNS), i as i32 / GAUGE_COLUMNS);
+            put(layer, e, GAUGE_COLUMN + (i as i32 % GAUGE_COLUMNS), i as i32 / GAUGE_COLUMNS);
         }
         // (The local console's: EXE4's keeps it full until its own send.)
         let g = b.gauge_for(b.setup.local_side);
         let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
+        let sweep = intro.gauge_sweep();
         for i in 0..16u16 {
-            let tile = if g >= FULL {
+            let tile = if sweep.contains(&(i as i32)) && g < FULL {
+                g0 + GAUGE_FILLED
+            } else if g >= FULL {
                 g0 + GAUGE_FULL + ((state.frame as u16 / 7) & 3)
             } else if i < g >> 10 {
                 g0 + GAUGE_FILLED
@@ -664,12 +677,12 @@ pub fn draw<'a>(
             } else {
                 g0
             };
-            put(layer, hud, pal, cell(tile), 7 + i as i32, 1);
+            put(layer, cell(tile), 7 + i as i32, 1);
         }
         if g >= FULL {
             let first = if state.frame & 8 == 0 { g0 + GAUGE_L_OR_R } else { g0 + GAUGE_L_OR_R + 4 };
             for i in 0..4 {
-                put(layer, hud, pal, cell(first + i), 13 + i as i32, 1);
+                put(layer, cell(first + i), 13 + i as i32, 1);
             }
         }
     }
@@ -769,10 +782,10 @@ pub fn draw<'a>(
     // message's first frame the timer's row reads the message's first
     // eight glyphs, and from the next the message's row starts with the
     // timer's ("    1    HIT!", "TIME UP! HIT!"). (The original's tiles:
-    // the font mode's lines stay whole.)
+    // the enhanced mode's lines stay whole.)
     let timer_line = TEXT_TIME_UP + (b.fight.turn_timer / 60) as usize;
     let late = b.late_turns() && b.round.mode == mode::FIGHTING;
-    let one_line = late && text.mode == TextMode::Original;
+    let one_line = late && text.mode == GraphicsMode::Original;
     let message = b.message.map(|m| {
         let line = match m.message {
             nettai_battle::hud::Message::CounterHit => TEXT_COUNTER_HIT,
@@ -805,7 +818,8 @@ pub fn draw<'a>(
         {
             let bonus = nettai_battle::kinds::player::next_chip_bonus(b, r);
             let doubled = nettai_battle::kinds::player::next_chip_doubles(b, r);
-            let end = draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), problems);
+            let x = intro.chip_name_dx();
+            let end = draw_chip_name(b, layer, text, hud, &hud.hp_palettes[color.min(2)], hand, chip, (bonus, doubled), x, problems);
             // (Shown by the screen's close, before the navi's first
             // decision, where the caller asks.)
             const AT_CLOSE: &str = "chip-window-at-close";
@@ -830,7 +844,7 @@ pub fn draw<'a>(
         let shows_opponent = b.chip_hud_for(local).opponent;
         for side in 0..2u8 {
             if let Some(r) = b.player(side).filter(|_| side == local || !link || shows_opponent) {
-                icon_parts(b, packs, r, &view, list, problems);
+                icon_parts(b, packs, r, &view, intro.icons_pop(), list, problems);
             }
         }
     }
@@ -844,7 +858,7 @@ pub fn draw<'a>(
         .player(local)
         .and_then(|p| b.objects.get(p).collision)
         .is_some_and(|c| b.collision.get(c).f1 & nettai_battle::collision::f1::BLIND != 0);
-    for e in state.hp_numbers.iter().flatten().filter(|_| !blind) {
+    for (place, e) in state.hp_numbers.iter().enumerate().filter_map(|(k, e)| Some((k, e.as_ref()?))).filter(|_| !blind) {
         // Under the object wherever its position is on the screen, seen or
         // not (`sub_800362C`): a navi that blinks after a hit or is
         // invisible keeps its number.
@@ -868,6 +882,7 @@ pub fn draw<'a>(
             }
             group.push(glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, hud.layout.hp_number_priority, None));
         }
+        intro.number_pop(place, e.shown_at).apply(&mut group);
         list.insert_at(FIELD_LAYER, HP_BUCKET, group);
     }
     // A flickering emotion window is black two ticks of every four
@@ -881,7 +896,7 @@ pub fn draw<'a>(
     let hidden = b.hud_hidden.emotion_window;
     if let Some(r) = player.filter(|_| !over && !hidden && !hide_mugshot && !matches!(flicker, 5 | 6)) {
         let mut group = Vec::new();
-        mugshot_parts(b, hud, packs, state, r, shift, &mut group, problems);
+        mugshot_parts(b, hud, packs, state, r, shift + intro.window_dx(), &mut group, problems);
         if window.flickers != 0 && (flicker + 1) & 2 != 0 {
             for part in &mut group {
                 part.palette = [0; 16];
@@ -1065,6 +1080,7 @@ fn draw_chip_name(
     hand: &nettai_battle::hand::ChipHand,
     chip: ChipHandle,
     (bonus, doubled): (u16, bool),
+    x0: i32,
     problems: &mut Problems,
 ) -> i32 {
     let words = text.strings.chip_name(&b.content, chip);
@@ -1072,14 +1088,14 @@ fn draw_chip_name(
     // (The text layer's box: the cells its glyphs take, or a character a
     // cell, eight at most, where the pack's font lacks the language's.)
     let cells = if text.takes(words) { fonts::box_cells(hud, words, name.len(), name.len().max(8)) } else { name.len() };
-    fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
+    fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (x0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
-    // the font mode a pixel after the name as the text layer draws it.
-    let mut x = 8 * cells as i32;
+    // the enhanced mode a pixel after the name as the text layer draws it.
+    let mut x = x0 + 8 * cells as i32;
     if text.takes(words)
         && let Some(w) = text.fitted_width(words, Role::FittedCell, 8 * cells as i32)
     {
-        x = w.ceil() as i32 + 1;
+        x = x0 + w.ceil() as i32 + 1;
     }
     if !shows_damage(b, chip) {
         return x;
@@ -1304,12 +1320,13 @@ fn icon_parts<'a>(
     packs: &crate::packs::Packs<'a>,
     r: ObjectRef,
     view: &View,
+    pop: Pop,
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
 ) {
     let o = b.objects.get(r);
     if b.game_rules().effects.chip_icons == ChipIcons::NaviOffset {
-        return own_icon_parts(b, packs, r, view, list, problems);
+        return own_icon_parts(b, packs, r, view, pop, list, problems);
     }
     let vanished = o.actor.is_some_and(|a| b.actors.get(a).status & status::VANISHED != 0);
     if o.chips_held == 0 || vanished || !b.chip_hud_for(o.alliance).icons {
@@ -1368,8 +1385,9 @@ fn icon_parts<'a>(
         }
     }
     for k in 0..count {
-        let icon = block(tiles, 16, 16, *icon_palette, x0 - 2 * k * a * f, y0 - 2 * k);
-        list.insert_at(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, vec![icon]);
+        let mut icon = vec![block(tiles, 16, 16, *icon_palette, x0 - 2 * k * a * f, y0 - 2 * k)];
+        pop.apply(&mut icon);
+        list.insert_at(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, icon);
     }
 }
 
@@ -1387,6 +1405,7 @@ fn own_icon_parts<'a>(
     packs: &crate::packs::Packs<'a>,
     r: ObjectRef,
     view: &View,
+    pop: Pop,
     list: &mut SpriteList<'a>,
     problems: &mut Problems,
 ) {
@@ -1423,8 +1442,9 @@ fn own_icon_parts<'a>(
                 problems.mark([x, y, x + 16, y + 16], what);
             }
         }
-        let icon = SpritePart { priority: OWN_ICON_PRIORITY, ..block(tiles, 16, 16, *palette, x, y) };
-        list.insert_at(FIELD_LAYER, count - k, vec![icon]);
+        let mut icon = vec![SpritePart { priority: OWN_ICON_PRIORITY, ..block(tiles, 16, 16, *palette, x, y) }];
+        pop.apply(&mut icon);
+        list.insert_at(FIELD_LAYER, count - k, icon);
     }
 }
 
@@ -1578,7 +1598,7 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 /// A chip's name (its words and the font's glyphs for them) with its
 /// numbers (damage, bonus, doubled) as `sub_801E95C` lays them out from a
 /// telop's place (`style`): centered as fifteen glyphs are; the other
-/// player's (`remote`) moves over for the "x2". In the font mode the name
+/// player's (`remote`) moves over for the "x2". In the enhanced mode the name
 /// is a text item in the cells its glyphs take, returned (`Laid`), and
 /// blank parts stand in for the glyphs.
 #[allow(clippy::too_many_arguments)]
@@ -1632,8 +1652,8 @@ fn name_parts<'a>(
 }
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
-/// (the font mode's), how many of its parts, from the first, are the
-/// name's glyphs (none in the font mode), and where among them the '×' of
+/// (the enhanced mode's), how many of its parts, from the first, are the
+/// name's glyphs (none in the enhanced mode), and where among them the '×' of
 /// a doubled chip is (the '2' after it).
 #[derive(Default)]
 struct Laid {
@@ -1803,7 +1823,7 @@ mod tests {
             Some(Telop { side: 0, chip: Some(chip), damage: 120, doubled: true, bonus: 10, hidden: TelopHidden::No });
         let hud = hud();
         let font = crate::vfont::VectorFont::bundled();
-        let text = TextSink::new(crate::textlayer::TextMode::Font, Some(&font));
+        let text = TextSink::new(crate::textlayer::GraphicsMode::Enhanced, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
         let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems).name.unwrap();

@@ -1,5 +1,5 @@
 //! A battle being played, for a host to show and hear: [`Player`] owns the
-//! session, the renderer, the text renderer (the font mode's) and the
+//! session, the renderer, the text renderer (the enhanced mode's) and the
 //! battle's audio, and the host drives it.
 //!
 //! The host gives it the GBA buttons held (its own keys' business) and
@@ -173,7 +173,7 @@ impl Player {
     }
 
     /// A player of what `driver` plays, from its parts: the renderer, the
-    /// font mode's text renderer (none: the frames carry their own text)
+    /// enhanced mode's text renderer (none: the frames carry their own text)
     /// and the audio (none: silent).
     pub fn with(renderer: Renderer, text: Option<TextRenderer>, audio: Option<BattleAudio>, driver: Box<dyn Driver>) -> Player {
         // (Counted from before the driver makes its first battle: a thread
@@ -447,7 +447,7 @@ impl Player {
 
     /// The picture into the host's pixels: `buffer` holds `width` x
     /// `height` of them, 0x00RRGGBB each, row by row. The frame is scaled
-    /// up by the largest whole factor that fits and centered, and the font
+    /// up by the largest whole factor that fits and centered, and the enhanced
     /// mode's text (the game's own) is drawn at the buffer's resolution.
     /// Nothing else is drawn.
     pub fn present(&mut self, buffer: &mut [u32], width: usize, height: usize) {
@@ -602,12 +602,12 @@ impl Player {
         &self.session
     }
 
-    /// The renderer (what it looked up and didn't find, its text mode).
+    /// The renderer (what it looked up and didn't find, its graphics mode).
     pub fn renderer(&mut self) -> &mut Renderer {
         &mut self.renderer
     }
 
-    /// The font mode's text renderer, for drawing a frame's text items
+    /// The enhanced mode's text renderer, for drawing a frame's text items
     /// oneself (`nettai_render::present`).
     pub fn text(&mut self) -> Option<&mut TextRenderer> {
         self.text.as_mut()
@@ -618,7 +618,7 @@ impl Player {
 mod tests {
     use super::*;
     use crate::driver::{LivePlayer, Step, folder_of, live_setup};
-    use crate::game::TextMode;
+    use crate::game::GraphicsMode;
     use nettai_battle::content::testing;
     use std::sync::Arc;
 
@@ -840,7 +840,7 @@ mod tests {
     #[test]
     fn the_language_changes_mid_battle() {
         let (red, green) = (graphics_of(0x001F), graphics_of(0x03E0));
-        let player = |g: &Graphics| Player::with(g.renderer(TextMode::Original, None), None, None, live());
+        let player = |g: &Graphics| Player::with(g.renderer(GraphicsMode::Original, None), None, None, live());
         let (mut first, mut second, mut swapped) = (player(&red), player(&green), player(&red));
         let mut differed = 0;
         for tick in 1..=240u32 {
@@ -900,6 +900,65 @@ mod tests {
         samples.clear();
         silent.take_samples(&mut samples);
         assert!(samples.is_empty());
+    }
+
+    /// The enhanced mode's HUD intro (`nettai_render::intro`): the HP box and the custom gauge come in at the
+    /// round's start, the frames differing from the motion reduced's only then; once in, the HUD rests where
+    /// the game puts it. Every frame is the battle's alone: a renderer that draws a copy of the battle as it
+    /// was at that tick, with the HUD's rolling state as it was, draws the same pixels (as a rollback or a
+    /// seek draws a frame again).
+    #[test]
+    fn the_hud_comes_in_from_the_battle_alone_and_rests_where_the_game_puts_it() {
+        use crate::driver::bot_buttons;
+        use nettai_battle::battle::{fight, mode};
+        let content = testing::content();
+        let mut graphics = crate::testing::graphics(&content, 0x001F);
+        // (A HUD with tiles: the HP box and the gauge's frame drawn, solid.)
+        let mut bundle = (*graphics.bundles[0]).clone();
+        let hud = &mut bundle.hud;
+        hud.tiles = nettai_assets::Tiles { pixels: vec![1; 0x40 * nettai_assets::Tiles::TILE] };
+        hud.first_tile = 0x100;
+        hud.gauge_tiles = nettai_assets::Tiles { pixels: vec![2; 0x20 * nettai_assets::Tiles::TILE] };
+        hud.gauge_first_tile = 0x200;
+        hud.hp_palettes = [[0x7FFF; 16]; 3];
+        hud.gauge_palette = [0x03E0; 16];
+        let entry = |tile| nettai_assets::MapEntry { tile, hflip: false, vflip: false, palette: 13 };
+        hud.hp_box = vec![entry(0x120); 12];
+        hud.gauge_frame = vec![entry(0x200); 36];
+        graphics.bundles[0] = Arc::new(bundle);
+        let player = |reduce: bool| {
+            let mut renderer = Renderer::with_packs(graphics.packs());
+            renderer.set_mode(GraphicsMode::Enhanced, None);
+            renderer.reduce_motion = reduce;
+            Player::with(renderer, None, None, live())
+        };
+        let (mut on, mut off) = (player(false), player(true));
+        let (mut differ, mut fought) = (Vec::new(), 0);
+        for tick in 0..3000u32 {
+            let k = bot_buttons(on.battle(), 0, tick);
+            assert!(on.tick(k) && off.tick(k));
+            let frame = on.frame();
+            if frame.pixels != off.frame().pixels {
+                differ.push(on.battle().round.ticks);
+            }
+            // Drawn again from a copy of the battle at this tick.
+            let mut again = Renderer::with_packs(graphics.packs());
+            again.set_mode(GraphicsMode::Enhanced, None);
+            again.hud_state = on.renderer().hud_state.clone();
+            let copy = on.battle().clone();
+            assert_eq!(again.render(&copy).pixels, frame.pixels, "tick {}: drawn again", on.battle().round.ticks);
+            fought += (on.battle().round.mode == mode::FIGHTING && on.battle().fight.state == fight::FIGHTING) as u32;
+            if fought > 60 {
+                break;
+            }
+        }
+        assert!(fought > 60, "the fight runs");
+        // The HP box out until the intro's fade has cleared, then its slide; the gauge from the first
+        // result's send, for its drop (its sweep lights cells as solid as the rest here). Never after.
+        let sent = on.battle().custom.sides[0].sent.as_ref().unwrap().sent_at + 1;
+        let (arrival, rest): (Vec<u32>, Vec<u32>) = differ.iter().partition(|&&t| t < sent);
+        assert!(arrival.contains(&17) && arrival.contains(&18) && arrival.iter().all(|&t| t <= 30), "the HP box comes in: {differ:?}");
+        assert!(rest.first() == Some(&sent) && rest.iter().all(|&t| t < sent + 36), "the gauge drops in as the result goes out ({sent}) and rests within 600 ms: {differ:?}");
     }
 
     /// The renderer's pause display: drawn while a player holds the fight in the game's own pause, as the

@@ -12,7 +12,7 @@ use crate::errors::UserError;
 use crate::nav::Key;
 use crate::replays::Summary;
 use crate::shell::Shell;
-use nettai_frontend::game::{Loaded, Sound, TextMode};
+use nettai_frontend::game::{Loaded, Sound, GraphicsMode};
 use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
 use nettai_video::{Options, Part, Progress, mp4};
@@ -324,14 +324,15 @@ impl Export {
             crate::errors::log(&doing, &format_args!("{}: {why}", folder.display()));
             return self.fail(shell, UserError::CantWriteVideo);
         }
-        // What the thread plays from: the game as the window shows it (the language, the text), shared.
-        let text = if shell.settings.sharp_text { TextMode::Font } else { TextMode::Original };
+        // What the thread plays from: the game as the window shows it (the language, the graphics mode), shared.
+        let mode = shell.settings.graphics();
         let game = Loaded {
             found: ready.loaded.found.clone(),
             game: ready.loaded.game.clone(),
             graphics: ready.graphics(shell.lang),
-            text,
-            font: ready.loaded.font.clone().filter(|_| text == TextMode::Font),
+            mode,
+            reduce_motion: shell.reduces_motion(),
+            font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced),
             // (With the game's own music, as the replay plays in the viewer: the pick is Practice's alone.)
             sound: crate::music::sound(&shell.games, &ready, &crate::music::Music::GameOwn).map(|(banks, songs)| Sound { banks, songs, report: Default::default() }),
         };

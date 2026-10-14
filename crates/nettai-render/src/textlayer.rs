@@ -4,47 +4,23 @@
 //! output's resolution over the scaled frame (docs/design/text-rendering.md,
 //! "As built").
 //!
-//! In the original mode ([`TextMode::Original`]) nothing changes: every
+//! In the original mode ([`GraphicsMode::Original`]) nothing changes: every
 //! string is drawn into the 240x160 frame in the game's fonts, as the
 //! comparison with the original needs. (With a pack that has no lettering
 //! in the language shown, whose fonts are another language's, the original
 //! mode draws the strings with the vector font into the frame, at the
-//! frame's resolution: `Renderer::render`.) In the font mode the places that
-//! draw text ask a [`TextSink`] first: for a string the font can draw they
-//! leave the glyphs out of the frame and hand the sink a [`TextItem`] in
-//! the original's box instead; the renderer works out each item's depth
-//! and fades, and the window or the PNG writer draws the items after
-//! scaling (`present`, `vfont`). Pictures (numbers, banners, chip codes,
-//! the Crosses' names) stay pixel art.
+//! frame's resolution: `Renderer::render`.) In the enhanced mode
+//! ([`GraphicsMode::Enhanced`]) the places that draw text ask a
+//! [`TextSink`] first: for a string the font can draw they leave the glyphs
+//! out of the frame and hand the sink a [`TextItem`] in the original's box
+//! instead; the renderer works out each item's depth and fades, and the
+//! window or the PNG writer draws the items after scaling (`present`,
+//! `vfont`). Pictures (numbers, banners, chip codes, the Crosses' names)
+//! stay pixel art.
 
 use crate::compose::{Fade, HEIGHT, WIDTH};
+pub use crate::render::GraphicsMode;
 use crate::vfont::{Role, VectorFont};
-
-/// How the frontend draws text.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum TextMode {
-    /// The game's own fonts into the frame, exactly as the original draws
-    /// them: the reference the frame comparison and the tests use. Where
-    /// the pack has no fonts of the language shown, the vector font into
-    /// the frame.
-    #[default]
-    Original,
-    /// A vector font at the output's resolution, on a layer above the
-    /// scaled frame.
-    Font,
-}
-
-impl std::str::FromStr for TextMode {
-    type Err = String;
-
-    fn from_str(s: &str) -> Result<TextMode, String> {
-        match s {
-            "original" => Ok(TextMode::Original),
-            "font" => Ok(TextMode::Font),
-            _ => Err(format!("no text mode {s:?} (font or original)")),
-        }
-    }
-}
 
 /// A rectangle in frame pixels.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -161,7 +137,7 @@ pub enum Plane {
 /// Collects the frame's text items while it is drawn, and gives the
 /// display text for content in the player's language (`strings`).
 pub struct TextSink<'f> {
-    pub mode: TextMode,
+    pub mode: GraphicsMode,
     font: Option<&'f VectorFont>,
     measure: Option<&'f std::cell::RefCell<crate::vfont::TextRenderer>>,
     items: Vec<(Plane, TextItem)>,
@@ -172,7 +148,7 @@ pub struct TextSink<'f> {
 }
 
 impl<'f> TextSink<'f> {
-    pub fn new(mode: TextMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
+    pub fn new(mode: GraphicsMode, font: Option<&'f VectorFont>) -> TextSink<'f> {
         TextSink { mode, font, measure: None, items: Vec::new(), next_tag: 0, strings: Default::default() }
     }
 
@@ -195,15 +171,15 @@ impl<'f> TextSink<'f> {
 
     /// The original mode's: takes nothing.
     pub fn original() -> TextSink<'static> {
-        TextSink::new(TextMode::Original, None)
+        TextSink::new(GraphicsMode::Original, None)
     }
 
-    /// Whether `text` goes to the text layer: in the font mode, when the
+    /// Whether `text` goes to the text layer: in the enhanced mode, when the
     /// font has every character of it (else the whole string is drawn in
     /// the game's font, as in the original mode: a string never mixes two
     /// fonts).
     pub fn takes(&self, text: &str) -> bool {
-        self.mode == TextMode::Font && self.font.is_some_and(|f| f.covers(text))
+        self.mode == GraphicsMode::Enhanced && self.font.is_some_and(|f| f.covers(text))
     }
 
     /// A new tag for the sprite parts an item stands in for.
@@ -265,15 +241,15 @@ mod tests {
         let a = Rect::new(0, 0, 10, 10);
         assert_eq!(a.intersect(Rect::new(5, 5, 10, 10)), Rect::new(5, 5, 5, 5));
         assert!(a.intersect(Rect::new(20, 0, 5, 5)).is_empty());
-        assert_eq!("font".parse::<TextMode>(), Ok(TextMode::Font));
-        assert!("pixel".parse::<TextMode>().is_err());
+        assert_eq!("font".parse::<GraphicsMode>(), Ok(GraphicsMode::Enhanced));
+        assert!("pixel".parse::<GraphicsMode>().is_err());
     }
 
     #[test]
     fn the_original_mode_takes_nothing() {
         let font = VectorFont::bundled();
         assert!(!TextSink::original().takes("Cannon"));
-        assert!(TextSink::new(TextMode::Font, Some(&font)).takes("Cannon"));
-        assert!(TextSink::new(TextMode::Font, Some(&font)).takes("ElecMan\u{E002}"));
+        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("Cannon"));
+        assert!(TextSink::new(GraphicsMode::Enhanced, Some(&font)).takes("ElecMan\u{E002}"));
     }
 }
