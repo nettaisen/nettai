@@ -467,7 +467,7 @@ export component ChipRow inherits Rectangle {
     }
 }
 
-// A build's row in a list, 52 tall: its name over its status, and its version's tag. The list is a `ListView`
+// A build's row in a list, 52 tall: its name, its version's tag 8 after it, over its status. The list is a `ListView`
 // (`row-height: 52px`), which marks the chosen row; a click on the row is the list's row `nav-index` of `nav`.
 // (Its touch is its own. It is in three lists, and smaller shared than copied into each: docs/app.md §14.)
 export component BuildRow inherits Rectangle {
@@ -481,10 +481,10 @@ export component BuildRow inherits Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
 
-    Text {
+    name := Text {
         x: 12px;
         y: 8px;
-        width: parent.width - 24px - tag.width - (tag.width > 0 ? 12px : 0px);
+        width: min(self.preferred-width, parent.width - 24px - tag.width - (tag.width > 0 ? 8px : 0px));
         height: 20px;
         text: root.build.name;
         color: Theme.text;
@@ -498,7 +498,7 @@ export component BuildRow inherits Rectangle {
     Text {
         x: 12px;
         y: 28px;
-        width: parent.width - 24px - tag.width - (tag.width > 0 ? 12px : 0px);
+        width: parent.width - 24px;
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;
@@ -509,7 +509,8 @@ export component BuildRow inherits Rectangle {
     }
 
     tag := Pill {
-        x: parent.width - 12px - self.width;
+        x: name.x + name.width + 8px;
+        y: name.y + (name.height - self.height) / 2;
         text: root.build.version.text;
         tone: root.build.version.tone;
     }
