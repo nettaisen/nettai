@@ -22,7 +22,7 @@
 //!   knows none of those: it reports what the rules say, with the setup
 //!   field and entry they tie each problem to ([`problems`]).
 
-use crate::{Folder, Match, RoundSettings, Side, Wrong, ids};
+use crate::{Match, RoundSettings, Side, Wrong, ids};
 use nettai_battle::Battle;
 use nettai_battle::content::Content;
 use nettai_battle::setup::NaviStats;
@@ -110,30 +110,27 @@ pub fn side_alone(content: &Content, game: &str, s: &Side) -> Vec<Problem> {
     of_facts(s)
 }
 
-/// The round `m` starts, set up (each side's rules have set its stats:
-/// the NaviCust, the patch cards), or why it doesn't start.
+/// The round `m` starts, set up and its folders dealt (each side's rules
+/// have set its stats: the NaviCust, the patch cards), or why it doesn't
+/// start: a round to play. A side's folder still being made is no round's.
 pub fn start(content: &Arc<Content>, m: &Match) -> Result<Battle, String> {
-    // A folder being made has empty entries, and a round is set up with
-    // whole ones: here they hold a stand-in, a Standard chip (the folder's
-    // first, else the content's first with a code): a Mega or a Giga
-    // copied into every empty entry would make a folder the round can't
-    // deal (the user hit the Giga shuffle's divide by 0 in the folder
-    // builder). Its rules see its own entries (`validate`), and say it
-    // isn't whole.
-    let mut m = m.clone();
-    for s in &mut m.sides {
-        let folder = s.folder(content);
-        if folder.saved().is_none() {
-            let standard = |id: nettai_content_api::ChipHandle| content.chip(id).class == nettai_battle::content::ChipClass::Standard;
-            let any = (0..content.defs.chips.len() as u16)
-                .map(nettai_content_api::ChipHandle)
-                .filter(|&id| standard(id))
-                .find_map(|id| content.chip(id).codes.first().map(|&code| nettai_battle::custom::FolderChip::new(id, code)));
-            let filler = folder.chips().find(|c| standard(c.id)).or(any).ok_or("the content has no Standard chip with a code")?;
-            s.set_folder(content, &Folder::from(folder.filled_with(filler)))?;
-        }
+    if let Some(side) = m.sides.iter().position(|s| s.folder(content).saved().is_none()) {
+        return Err(format!("the round doesn't start: the {} side's folder isn't whole", ["left", "right"][side]));
     }
-    let setup = m.round(content, m.seed.unwrap_or(0));
+    new_battle(content, m.round(content, m.seed.unwrap_or(0)))
+}
+
+/// The round `m` starts, set up for the checks (each side's rules have set
+/// its stats: the NaviCust, the patch cards), its folders not dealt
+/// ([`Match::undealt_round`]), or why it isn't set up. What the checks and
+/// a build's stats ask the rules of; no round to play. A folder still being
+/// made is set up as it is: its rules read its own entries (`validate`) and
+/// say it isn't whole.
+pub fn set_up(content: &Arc<Content>, m: &Match) -> Result<Battle, String> {
+    new_battle(content, m.undealt_round(content, m.seed.unwrap_or(0)))
+}
+
+fn new_battle(content: &Arc<Content>, setup: nettai_battle::setup::RoundSetup) -> Result<Battle, String> {
     let started = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| Battle::new(setup, content.clone())));
     started.map_err(|e| {
         let why = e.downcast_ref::<String>().cloned().or_else(|| e.downcast_ref::<&str>().map(|s| s.to_string()));
@@ -162,7 +159,7 @@ pub(crate) fn built(b: &mut Battle, side: usize) -> Vec<Problem> {
 /// have set the round up (each side's NaviCust and patch cards), or why the
 /// round doesn't start.
 pub fn round_stats(content: &Arc<Content>, m: &Match) -> Result<[NaviStats; 2], String> {
-    start(content, m).map(|b| b.stats)
+    set_up(content, m).map(|b| b.stats)
 }
 
 /// A problem with a match, with where it is: its side (none: the match's
@@ -202,10 +199,9 @@ impl Problem {
 }
 
 /// What side `side`'s rules say is wrong with its setup in `b`, the
-/// round's battle (their `validate`): of the side's own setup, its folder as
-/// it stands (the round was set up with a whole one: `start`).
-pub(crate) fn validated(b: &mut Battle, side: usize, s: &Side) -> Vec<Problem> {
-    b.setup.players[side].rules = s.facts.block().cloned();
+/// round's battle set up for the checks ([`set_up`]: its folders not dealt)
+/// (their `validate`): of the side's own setup, its folder as it stands.
+pub(crate) fn validated(b: &mut Battle, side: usize) -> Vec<Problem> {
     let checked = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| b.validate(side as u8)));
     match checked {
         Ok(problems) => {
@@ -236,8 +232,8 @@ pub fn side_problems(content: &Arc<Content>, game: &str, rounds: &[RoundSettings
         return alone;
     }
     let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [s.clone(), s.clone()], backgrounds: crate::BackgroundPick::Game };
-    match start(content, &m) {
-        Ok(mut b) => validated(&mut b, 0, s),
+    match set_up(content, &m) {
+        Ok(mut b) => validated(&mut b, 0),
         Err(e) => vec![Problem::of(Some(0), Wrong::Internal, e)],
     }
 }
@@ -260,10 +256,10 @@ pub fn problems(content: &Arc<Content>, m: &Match) -> Vec<Problem> {
     if !out.is_empty() {
         return out;
     }
-    match start(content, m) {
+    match set_up(content, m) {
         Ok(mut b) => {
-            for (side, s) in m.sides.iter().enumerate() {
-                out.extend(validated(&mut b, side, s));
+            for side in 0..m.sides.len() {
+                out.extend(validated(&mut b, side));
             }
         }
         Err(e) => out.push(Problem::of(None, Wrong::Internal, e)),
@@ -307,11 +303,12 @@ mod tests {
         (b.stats[0], b.consoles[0].emotion_window_glitch, problems)
     }
 
-    /// A folder being made whose first chip is a Giga: 13 chips, the empty entries filled with a Standard chip
-    /// for the round, not with the Giga (18 Gigas, which the shuffle couldn't deal: the user's crash in the folder
-    /// builder).
+    /// A folder being made whose first chip is a Giga, 13 chips, is checked as it is: its round is set up
+    /// with no folder dealt and no stand-in in its gaps (a stand-in Giga made 18 Gigas, which the shuffle
+    /// couldn't deal: the user's crash in the folder builder). Its rules say it isn't whole, and its stats are
+    /// read; it starts no round to play.
     #[test]
-    fn a_folder_being_made_starts_its_round() {
+    fn a_folder_being_made_is_checked_as_it_is() {
         use nettai_battle::content::ChipClass;
         use nettai_battle::custom::FolderChip;
         let content = crate::testing::exe6_content();
@@ -330,7 +327,38 @@ mod tests {
         });
         (folder.regular, folder.tags) = (None, None);
         m.sides[0].set_folder(&content, &folder).unwrap();
-        assert!(start(&content, &m).is_ok());
+        let problems = problems(&content, &m);
+        assert!(problems.iter().any(|p| p.side == Some(0) && matches!(p.what, Wrong::FolderSize(c) if c.used == 13)), "{problems:?}");
+        assert!(!problems.iter().any(|p| p.what == Wrong::Internal), "{problems:?}");
+        let b = set_up(&content, &m).unwrap();
+        assert!(b.custom.sides.iter().all(|s| s.folder.count() == 0), "no folder dealt");
+        assert_eq!(round_stats(&content, &m).unwrap(), b.stats);
+        let checked = crate::build::Checked::of(&content, "exe6", &m.sides[0]);
+        assert_eq!(checked.stats(), Some(&b.stats[0]));
+        assert!(checked.problems.iter().any(|p| matches!(p.what, Wrong::FolderSize(c) if c.used == 13)), "{:?}", checked.problems);
+        assert!(start(&content, &m).is_err(), "a folder being made starts no round to play");
+    }
+
+    /// The round the checks set up (no folder dealt) has the stats, what the content gives each side, and
+    /// the rules' state a dealt round starts with, and its rules say the same of each side: in every game.
+    #[test]
+    fn the_checks_round_is_a_dealt_rounds_setup() {
+        for (game, content) in [("exe4", crate::testing::exe4_content()), ("exe5", crate::testing::exe5_content()), ("exe6", crate::testing::exe6_content())] {
+            for seed in [1, 3] {
+                let m = crate::pick::live(&content, game, seed, None).unwrap();
+                let (mut dealt, mut checks) = (start(&content, &m).unwrap(), set_up(&content, &m).unwrap());
+                assert!(dealt.custom.sides.iter().all(|s| s.folder.count() == 30), "{game}");
+                assert!(checks.custom.sides.iter().all(|s| s.folder.count() == 0), "{game}");
+                assert_eq!(dealt.stats, checks.stats, "{game} {seed}");
+                assert_eq!(dealt.reserves, checks.reserves, "{game} {seed}");
+                assert_eq!(dealt.given, checks.given, "{game} {seed}");
+                assert_eq!(dealt.rules, checks.rules, "{game} {seed}");
+                for side in 0..2 {
+                    assert_eq!(validated(&mut dealt, side), validated(&mut checks, side), "{game} {seed} side {side}");
+                    assert_eq!(built(&mut dealt, side), built(&mut checks, side), "{game} {seed} side {side}");
+                }
+            }
+        }
     }
 
     #[test]

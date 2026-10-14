@@ -230,7 +230,7 @@ fn plain_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], pick
     // navi's level is every side's, its highest: `set_navi`.)
     side.state_own_forms(content);
     let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side.clone(), side.clone()], backgrounds: BackgroundPick::Game };
-    if let Ok(mut b) = crate::check::start(content, &m)
+    if let Ok(mut b) = crate::check::set_up(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
     {
         side.set_folder(content, &folders::random_folder(content, game, &mut b, 0, picks).into())?;
@@ -256,7 +256,7 @@ fn rules_battle(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], st
     let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
     let side = |stated| Side::live(content, game, anything, &[], stated);
     let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side(stated[0])?, side(stated[1])?], backgrounds: BackgroundPick::Game };
-    crate::check::start(content, &m)
+    crate::check::set_up(content, &m)
 }
 
 /// Live play's match of `game`, picked from `seed`.
