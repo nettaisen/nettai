@@ -7,10 +7,10 @@ msgstr ""
 # ---- The builds, and the row that makes a link ----
 
 msgid "YOUR BUILD"
-msgstr "使うビルド"
+msgstr "使う構築"
 
 msgid "CREATE A BUILD"
-msgstr "ビルドを作る"
+msgstr "構築を作る"
 
 msgid "CREATE INVITE"
 msgstr "招待を作る"
@@ -132,16 +132,16 @@ msgid "Leave the lobby?"
 msgstr "ロビーから退出しますか？"
 
 msgid "Closed builds"
-msgstr "ビルド非公開"
+msgstr "構築非公開"
 
 msgid "Ping"
 msgstr "Ping"
 
 msgid "CHANGE BUILD"
-msgstr "ビルド変更"
+msgstr "構築変更"
 
 msgid "Change build"
-msgstr "ビルド変更"
+msgstr "構築変更"
 
 msgid "LEAVE"
 msgstr "退出"
@@ -168,7 +168,7 @@ msgid "BACK TO MATCH"
 msgstr "対戦にもどる"
 
 msgid "THEIR BUILD"
-msgstr "相手のビルド"
+msgstr "相手の構築"
 
 msgid "LEAVE MATCH"
 msgstr "対戦をやめる"
