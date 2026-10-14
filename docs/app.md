@@ -2718,7 +2718,8 @@ entry's もどる. Esc and the pad's Start and back button close the menu as RES
 button restart. A session another screen started (Play's, beside a waiting invite) has no EXIT: its own rows,
 COPY INVITE CODE and CANCEL INVITE (hosting directly, COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE
 between them), are its ways out, over RESUME and RESTART. The
-menu opens where the focus last was in it. The dummy's setup, the battle's options and the input display are
+menu opens on RESUME every time (the user: "when opening the pause menu in training, focus should always default
+to the resume button"). The dummy's setup, the battle's options and the input display are
 the visit's (`practice::Visit`), as the place and the dummy's build are: each visit starts on their defaults
 (Stands still, Normal, every option normal, the input display off, the dummy on the player's own build; the
 user: "yes for the practice options, they should all reset to default", "you should also not remember the last
