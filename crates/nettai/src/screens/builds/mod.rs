@@ -1,6 +1,6 @@
-//! Builds (docs/design/app-ui.md §6): a build's editor. The builds themselves (NEW BUILD, IMPORT SAVE…, the
-//! chosen one's overview, DUPLICATE, RENAME, DELETE) are Play's (`crate::screens::play`); Play's EDIT and
-//! Practice's open a build here.
+//! Builds (docs/design/app-ui.md §6): a build's editor. The builds themselves (+ NEW BUILD and its FROM A SAVE
+//! FILE…, the chosen one's overview, its menu of DUPLICATE, RENAME and DELETE) are Play's
+//! (`crate::screens::play`); Play's EDIT and Practice's open a build here.
 //!
 //! **The editor** (`editor`): the header's name, version and "✓ Ready to play", the tab bar, and the tab
 //! shown. Each tab is a module here and a file in the UI's `screens/builds/`: [`navi`], [`folder`],

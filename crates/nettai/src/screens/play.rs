@@ -1,11 +1,11 @@
 //! Play (docs/design/app-ui.md §6: "Play", "In an online match", "After a match"): the player's builds, and
 //! online play.
 //!
-//! The player's builds of the selected game are here (`list`: NEW BUILD and IMPORT SAVE… over them, the chosen
-//! one's overview beside them with EDIT, which opens it in Builds' editor, DUPLICATE, RENAME and DELETE). The
-//! player picks one and makes a link with it: an invite (a room of the signaling server, whose code the server
-//! picks), a code typed, or a direct connection. While they wait
-//! for the other player a practice session runs beside the invite's code (`crate::screens::practice`'s, with
+//! The player's builds of the selected game are here (`list`: + NEW BUILD over them, whose dialog also starts one
+//! from a save file; the chosen one's overview beside them with EDIT, which opens it in Builds' editor, and ⋯, its
+//! menu of DUPLICATE, RENAME and DELETE). The player picks one and practices with it, or makes a link with it:
+//! an invite (a room of the signaling server, whose code the server picks), a code typed, or a direct
+//! connection. While they wait for the other player a practice session runs beside the invite's code (`crate::screens::practice`'s, with
 //! this screen's rows in its menu). Once the link is open the two are in
 //! the lobby (`session`: one `Lobby` a link, for as long as they stay together): the match's shared settings,
 //! each one's ready mark, the connection's quality. Both ready, the match is agreed and made ready behind the
@@ -1103,7 +1103,7 @@ impl Screen for Play {
         // (A control of a part that isn't shown any more does nothing: a press may come as the part changes.)
         let part = self.part();
         let of_its_part = match id {
-            "builds" | "build" | "new" | "import" | "edit" | "duplicate" | "rename" | "delete" | "invite" | "practice" | "join" | "direct" => part == PlayPart::Builds,
+            "builds" | "build" | "new" | "edit" | "more" | "invite" | "practice" | "join" | "direct" => part == PlayPart::Builds,
             "wait.copy" | "wait.cancel" | "wait.train" => part == PlayPart::Waiting,
             _ if id.starts_with("name.") => self.naming.is_some(),
             _ if id.starts_with("direct.") => self.direct.is_some(),
@@ -1126,14 +1126,16 @@ impl Screen for Play {
                 shell.nav.focus("invite", 0);
             }
             "new" => self.ask_new(shell),
-            "import" => self.import_chosen_file(shell),
             "edit" => self.edit_chosen(shell),
-            "duplicate" => self.duplicate(shell),
-            "rename" => self.ask_rename(shell),
-            "delete" => self.ask_delete(shell),
+            "more" => self.open_menu(shell, &Key::new("more", 0)),
             "practice" => self.practice(shell),
             "name.confirm" => self.confirm(shell),
             "name.cancel" => self.close_dialog(shell),
+            // (A new build of a save: the system's file dialog, as the dialog closes.)
+            "name.save" => {
+                self.close_dialog(shell);
+                self.import_chosen_file(shell);
+            }
             // (Enter on the versions takes the other one.)
             "name.version" => self.step(shell, id, index, 1),
             "invite" => {
@@ -1280,9 +1282,12 @@ impl Screen for Play {
         }
     }
 
-    fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
+    fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         match id {
             "build" => self.choose_build(shell, choice.max(0) as usize),
+            // The build's menu: from ⋯, or a right click on a row of the list (the press chose that build).
+            "more" if self.part() == PlayPart::Builds => self.menu_chosen(shell, choice),
+            "row-menu" if self.part() == PlayPart::Builds && self.naming.is_none() => self.open_menu(shell, &Key::new("builds", index)),
             "name.version" => self.choose_version(shell, choice.max(0) as usize),
             "lobby.closed" => self.set_closed(choice == 1),
             "lobby.cards" => self.set_patch_cards(choice == 0),
@@ -1348,6 +1353,25 @@ impl Screen for Play {
         shell.nav.tab(&shell.ui(), action == Action::Previous);
         shell.sound.play(Cue::Cursor);
         true
+    }
+
+    /// The builds' part on a desktop: Right from the list goes past the overview (no control) to EDIT, or ⋯ where
+    /// EDIT can't be used; Tab goes through the zones in their order, the builds (+ NEW BUILD, the list), the
+    /// chosen build (EDIT, ⋯), then what is done with it (PRACTICE, CREATE INVITE, the code, JOIN, DIRECT
+    /// CONNECT). (On a phone the one column is that order already.)
+    fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
+        if self.part() != PlayPart::Builds || shell.scale.phone || self.naming.is_some() || self.direct.is_some() || self.boxes.is_some() {
+            return false;
+        }
+        let ui = shell.ui();
+        match action {
+            Action::Right if shell.nav.focused().is_some_and(|k| k.id == "builds") => shell.nav.focus_first(&ui, &["edit", "more"]),
+            Action::NextFocus | Action::PreviousFocus => {
+                shell.nav.tab_in(&ui, action == Action::PreviousFocus, &["new", "builds", "edit", "more", "practice", "invite", "code", "join", "direct"]);
+                true
+            }
+            _ => false,
+        }
     }
 
     /// In the code's boxes, a character typed goes into the box the focus is on, and the focus to the next.
