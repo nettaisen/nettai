@@ -329,6 +329,10 @@ Each is settled unless the user changes it.
     session's battle of the new game takes it over at START as before. Where it differs (Game's own: BN6's own,
     then BN5's), it crossfades as before. The pick stays what the player set across the change (§2.40: it is the
     visit's). (docs/app.md §1, "The battle's music", and §15.)
+47. **Practice's Arena lists each arena once** (2026-10-14): "don't show duplicate arenas in the practice mode
+    selector, just show the first of any duplicates". The link battle stages that differ only in the order their
+    actor lists place in (which side is updated first) are one arena, shown as the first of them; the grouping is
+    read from the content, and Random still picks among all of them. (docs/app.md §15.)
 
 ## 3. Chosen where the user gave no answer
 
