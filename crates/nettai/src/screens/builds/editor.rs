@@ -317,10 +317,7 @@ pub fn tab_of(content: &Content, field: &str) -> Option<EditorTab> {
     all().iter().find(|t| t.fields(content).iter().any(|f| f == field)).map(|t| t.id())
 }
 
-/// The key the last tab used is remembered under, in the settings.
-const REMEMBERED: &str = "builds.tab";
-
-/// A tab's name: the focus's memory's, and the settings'.
+/// A tab's name: the focus's memory's.
 fn name(tab: EditorTab) -> &'static str {
     match tab {
         EditorTab::Navi => "builds.navi",
@@ -340,7 +337,8 @@ pub struct Editor {
 
 
 impl Editor {
-    /// Open `build` (kept at `path`) in the editor: settled as every build is, on the tab last used.
+    /// Open `build` (kept at `path`) in the editor: settled as every build is, on its first tab, the Navi's,
+    /// every time (the user: "don't remember the tab").
     pub fn open(shell: &mut Shell, kit: Rc<Kit>, path: PathBuf, mut build: Build) -> Editor {
         let content = kit.content().clone();
         let navi_only = navi_only_fields(&content);
@@ -348,9 +346,7 @@ impl Editor {
         let checked = Checked::of(&content, &kit.game, &build.side);
         let tabs: Vec<Box<dyn Tab>> = all().into_iter().filter(|t| has(&content, t.as_ref())).collect();
         let draft = Draft { kit, build, checked, path, navi_only, changed: settled };
-        let last = shell.settings.remembered.get(REMEMBERED).cloned();
         let mut editor = Editor { draft, tabs, at: 0 };
-        editor.at = editor.tabs.iter().position(|t| Some(name(t.id())) == last.as_deref()).filter(|&i| editor.enabled(i)).unwrap_or(0);
         editor.save(shell);
         editor
     }
@@ -449,8 +445,6 @@ impl Editor {
         let (tab, draft) = self.tab();
         tab.hide(shell, draft);
         self.at = to;
-        shell.settings.remembered.insert(REMEMBERED.into(), name(self.tabs[to].id()).into());
-        shell.save_settings();
         shell.ui().global::<BuildsView>().set_tab_way(way);
         self.show(shell);
     }
