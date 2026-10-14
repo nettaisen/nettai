@@ -649,7 +649,8 @@ the builds, the chosen build, what is done with it. In the body's units (1216 by
   menu's DELETE does; a right click on a row opens the build's menu there.
 - **The chosen build**, the right column, from 424, 792 wide: its overview (Builds, below; the wide sheet, 540
   tall), framed, with EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24 down,
-  8 apart, the version's tag before them. ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
+  8 apart; the version's tag follows the build's name, 12 after it (the user: "the version indiactor should be
+  next to the build name in the play screen i think"). ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
   under it, its right edge at the button's (over it where there is no room under; a phone's sheet): DUPLICATE,
   RENAME and DELETE, in the buttons' type, DELETE under a line in the error color. The cursor starts on the
   first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
