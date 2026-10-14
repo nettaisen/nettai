@@ -27,8 +27,9 @@ pub struct Settings {
     pub full_screen: bool,
     /// Motion turned down: everything is a cut. None: as the system asks.
     pub reduce_motion: Option<bool>,
-    /// The battle's text redrawn at the window's resolution (else the game's own).
-    pub sharp_text: bool,
+    /// The battle drawn enhanced (its text at the window's resolution, the HUD's intro and the background's glide), else as
+    /// the game draws it: `GraphicsMode`.
+    pub enhanced: bool,
     /// 0 to 100.
     pub music: u32,
     pub effects: u32,
@@ -54,7 +55,7 @@ impl Default for Settings {
             picture_size: 0,
             full_screen: false,
             reduce_motion: None,
-            sharp_text: true,
+            enhanced: true,
             music: 80,
             effects: 100,
             input_delay: nettai_frontend::netplay::DEFAULT_INPUT_DELAY,
@@ -63,6 +64,14 @@ impl Default for Settings {
             pad: BTreeMap::new(),
             remembered: BTreeMap::new(),
         }
+    }
+}
+
+impl Settings {
+    /// How battles are drawn: enhanced, or as the game draws them.
+    pub fn graphics(&self) -> nettai_frontend::game::GraphicsMode {
+        use nettai_frontend::game::GraphicsMode;
+        if self.enhanced { GraphicsMode::Enhanced } else { GraphicsMode::Original }
     }
 }
 

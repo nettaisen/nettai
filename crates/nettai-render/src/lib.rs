@@ -5,7 +5,7 @@
 //! content packs' graphics (`nettai-extract exe6`); nothing emulates the
 //! original's hardware. The frame is the original's 240x160, composed with
 //! its layer and sprite ordering rules ([`Renderer::render`]), with the
-//! font mode's text items to draw over it at the output's resolution
+//! enhanced mode's text items to draw over it at the output's resolution
 //! ([`present`], which also writes a frame as a PNG). A chip's pictures
 //! on their own are [`pictures`]. docs/frontend.md §3.
 //!
@@ -18,6 +18,7 @@ pub mod compose;
 pub mod custom;
 pub mod fonts;
 pub mod hud;
+pub mod intro;
 pub mod lookups;
 pub mod objects;
 pub mod packs;
@@ -29,4 +30,4 @@ pub mod strings;
 pub mod textlayer;
 pub mod vfont;
 
-pub use render::{Frame, Renderer};
+pub use render::{Frame, Glide, GraphicsMode, Renderer};

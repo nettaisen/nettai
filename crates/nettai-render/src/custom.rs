@@ -662,7 +662,7 @@ struct Window {
     /// frame's colors by class (palette 9), the picture's (10) and the
     /// element's (11), and the damage's digits.
     record_mark: Option<String>,
-    /// In the font text mode, the strings whose tiles were left blank for
+    /// In the enhanced mode, the strings whose tiles were left blank for
     /// the text layer: the chip window's name, and the Program Advance
     /// animation's names by their place (each with the cells it has, and
     /// the pick's code).
@@ -875,7 +875,7 @@ impl Window {
     }
 
     /// A name (chip `chip`'s, and a pick's code in its last cell) into name
-    /// `k`'s tiles; in the font mode blank tiles, and the words for the
+    /// `k`'s tiles; in the enhanced mode blank tiles, and the words for the
     /// text layer.
     #[allow(clippy::too_many_arguments)]
     fn put_advance_text(
@@ -1385,7 +1385,7 @@ impl Window {
         }
     }
 
-    /// The chip window's name on the text layer (the font mode): over the
+    /// The chip window's name on the text layer (the enhanced mode): over the
     /// name's cells where the window's map puts them, in their palette's
     /// colors from 8 (`NAME_SHIFT`), cut to the window's columns on the
     /// layer.
@@ -1711,7 +1711,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 /// Draw the local player's custom screen: the window on the HUD layer, the
 /// enemy names on `names_layer` (BG0), the sprites into `list`.
 /// `emblem` holds the emblem sprite's tiles (`emblem_sprite`) and
-/// `emblem_palette` the emblem's palette (`lookups::emblem`); the font mode's
+/// `emblem_palette` the emblem's palette (`lookups::emblem`); the enhanced mode's
 /// strings go to `text`.
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
@@ -1780,7 +1780,7 @@ pub fn draw<'a>(
             let e = MapEntry { tile: first + i, hflip: false, vflip: false, palette };
             w.cell(hud_layer, e, col + (i / 2) as i32, row + (i % 2) as i32, place.scroll);
         }
-        // In the font mode, the name and the code on the text layer.
+        // In the enhanced mode, the name and the code on the text layer.
         if let Some(Some((name, cells, code))) = w.advance_names.get(k) {
             let colors = &w.palettes[palette as usize & 15];
             let at = |c: i32, n: usize| Rect::new(layer_x(col + c, place.scroll), 8 * row, 8 * n as i32, 16);

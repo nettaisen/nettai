@@ -319,7 +319,7 @@ font but the extracted one differs wherever it draws.
   prefers one consistent font chooses.
 - **Comparing in `font` mode stays possible with text masked.** The text layer knows every rectangle it drew.
   With an option to write those rectangles beside each headless frame, the comparison script can mask them and
-  check that everything else is still identical: that catches a font mode that disturbed the sprite limit, the
+  check that everything else is still identical: that catches a enhanced mode that disturbed the sprite limit, the
   layer order or a fade. This is optional; the reference mode is the real check.
 - **Tests in this repository** use a small hand-made bitmap font, as the frontend's tests use synthetic assets
   now: layout (centering, overflow, ellipsis, wrap), fallback choice, and exact bitmaps. The bundled font is
@@ -601,7 +601,7 @@ the frontend's own status text (`text.rs`).
 
 ### 9.3 How it works
 
-- **Collecting** (`textlayer.rs`): the places that draw text ask a `TextSink`. In the font mode, for a string the
+- **Collecting** (`textlayer.rs`): the places that draw text ask a `TextSink`. In the enhanced mode, for a string the
   font has every character of, they leave its glyphs out of the frame and hand the sink a `TextItem` (the words,
   the role, the box, the alignment, a clip, the face and shadow colors of the palette the original draws it with,
   the squash, how many units are printed). A string the font lacks a character of is drawn whole in the game's
@@ -817,7 +817,7 @@ columns in each text box against the original mode's):
   vertical strokes against horizontal ones (Murecho's bold kana at 62%: 0.10 em against 0.145); looked at, it reads
   as the original's narrow kana do, so the strokes aren't thickened to make up for it.
 
-**Looked at**: headless frames at 2x, 3x and 4x, in the font mode before and after and in the original mode, of
+**Looked at**: headless frames at 2x, 3x and 4x, in the enhanced mode before and after and in the original mode, of
 each game in each language: the custom screen with a full hand (the chip window's name for two chips of the hand,
 the enemy name), the hand window with its damage, a telop (EXE6's; the EXE5 and EXE4 matches' other side used no
 chip), a chip's description and the no-running message (the chip lab's recordings: custom/description-keys and
@@ -847,7 +847,7 @@ weight, from 45 outlines.
 
 The user (2026-10-14): "also letters like lowercase g get cut off when rendered in sharp text mode in the game".
 
-**The rule since**: no glyph is cut in the font mode, anywhere. Where a role's descenders, drawn whole, would cover
+**The rule since**: no glyph is cut in the enhanced mode, anywhere. Where a role's descenders, drawn whole, would cover
 something the original draws under its cells, the role's text is fitted so they end in the room it has: its
 baseline a little higher and its whole text a little smaller, the same for every string of the role, so the names
 of a role stay alike. Where nothing of the original's is under them, they are drawn past the cells. Kana and kanji
@@ -916,7 +916,7 @@ text should be stored via the locales file"; "why does ChipSpec even have descri
 the locale string?"; and to call it strings or display text, not "words".
 
 The frontend's `--lang en|ja` (default `en`) shows a battle's text in English, as the US games do, or in Japanese,
-as the Japanese games (JP Falzar and Gregar) do, in either text mode. No definition holds display text: every
+as the Japanese games (JP Falzar and Gregar) do, in either mode. No definition holds display text: every
 string is a content root's `locales/<lang>.toml`.
 
 ### 10.1 What a battle shows as text, and where each comes from
@@ -995,7 +995,7 @@ the US's (the user's choice).
   chosen one: its pictures with words (the banners, the gauge's word, the chip window's pictures, the Crosses' names,
   the waiting words) are the language it has them in, never placeholders. Its fonts are that language's too, without
   most of the chosen language's characters (the US font has no kana; the Japanese fonts have 36 and 26 of the 62
-  Latin letters and digits), so the strings are drawn with the vector font in either text mode: the font mode as
+  Latin letters and digits), so the strings are drawn with the vector font in either mode: the enhanced mode as
   always, and the original mode into the 240x160 frame at its resolution (`Renderer::render`, `present::draw_text`),
   rather than in the other language's glyphs. The frame comparison has nothing to compare there: no console draws a
   language its ROM has no font for.
@@ -1004,7 +1004,7 @@ the US's (the user's choice).
   the language's table lacks. The frontend's own text (live play's status line, folder listings) is the content's own
   strings.
 - **`--text original --lang ja`** draws the Japanese text in the Japanese fonts as the Japanese games do: a string is
-  encoded with the Japanese font's characters, as the English is with the US font's. **The font mode** draws it with
+  encoded with the Japanese font's characters, as the English is with the US font's. **The enhanced mode** draws it with
   Murecho, which has the kana and kanji, and the dialogue font's symbols (✕, ○: the Japanese descriptions'
   "攻撃力✕2"); the marks it lacks the text layer draws (§10.5).
 - **Timing stays the content's own.** A translated description shows its own lines, whole, in the proportion of the
@@ -1069,7 +1069,7 @@ character, so a string encodes and decodes the same way and a mark is one charac
   U+E002 and U+E003; the others are in the encoding only.
 - **The original mode** draws the same pixels as before: the charmaps (`font_chars` and the dialogue font's `chars`
   in `hud.json`, written from compat/text.toml by the extractor) map the characters to the same glyph numbers.
-- **The font mode**: a mark the font has is drawn by the font (Ⓡ, ✕, ○ with Murecho). One it lacks the text layer
+- **The enhanced mode**: a mark the font has is drawn by the font (Ⓡ, ✕, ○ with Murecho). One it lacks the text layer
   draws (`vfont::mark`): a button as its letter at 68% of the size, centered in an antialiased ring 1.15 times the
   capitals' height with a stroke a tenth of it; a stacked mark as its two letters in one cell, each as high as half
   the capitals less a gap (10%), the first on top, so the pair spans the capitals' height as the game's glyph does,

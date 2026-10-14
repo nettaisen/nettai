@@ -86,6 +86,11 @@ pub struct Stage<'a> {
     tile_anims: Vec<(u16, &'a nettai_assets::Tiles)>,
     /// Background scroll in pixels.
     scroll: (i32, i32),
+    /// The part of a pixel past `scroll`, in sixteenths, of a scroll by
+    /// sixteenths of a pixel a frame (the game's scroll counters keep it:
+    /// the screen shows the whole pixels; the enhanced mode's glide shows
+    /// it, `Stage::draw_background_wide`).
+    sub: (u8, u8),
     /// Which pack's field draws each panel type and highlight.
     art: FieldArt,
 }
@@ -162,6 +167,7 @@ impl<'a> Stage<'a> {
         let mut palettes = field_palettes(&assets.field, clock);
         let mut tile_anims = Vec::new();
         let mut scroll = (0, 0);
+        let mut sub = (0, 0);
         let mut shifts = Vec::new();
         if let Some(bg) = background {
             if let Some(p) = bg.palette {
@@ -176,6 +182,12 @@ impl<'a> Stage<'a> {
                 Some(s) => s.offset(if s.from_battle { clock.field } else { n }),
                 None => (counter(bg.scroll.0), counter(bg.scroll.1)),
             };
+            // (The counter's low four bits, below the pixel it shows. A
+            // speeding scroll moves by whole pixels a frame: none.)
+            let part = |step: i32| (step.wrapping_mul(n as i32) & 15) as u8;
+            if bg.speeding.is_none() {
+                sub = (part(bg.scroll.0), part(bg.scroll.1));
+            }
             for anim in &bg.anims {
                 let Some(frame) = anim_frame(anim, n) else { continue };
                 let fr = &anim.frames[frame];
@@ -205,7 +217,7 @@ impl<'a> Stage<'a> {
                 *slot = slot.map(|c| nettai_assets::shift_color(c, by, darken));
             }
         }
-        Stage { assets, background, palettes, tile_anims, scroll, art }
+        Stage { assets, background, palettes, tile_anims, scroll, sub, art }
     }
 
     /// A tile of the shared tile block by number.
@@ -271,6 +283,55 @@ impl<'a> Stage<'a> {
                 self.put(layer, e, px, py);
             }
         }
+    }
+
+    /// The part of a pixel the background has scrolled past what the
+    /// screen shows, in sixteenths of a pixel on each axis.
+    pub fn background_sub(&self) -> (u8, u8) {
+        self.sub
+    }
+
+    /// The background as [`Stage::draw_background`] draws it, `w` by `h`
+    /// pixels from the screen's top left (wider and taller than the screen:
+    /// the pixels a glide shows past its edges), its colors through
+    /// `color`, `backdrop` where it is clear.
+    pub fn draw_background_wide(&self, w: usize, h: usize, backdrop: u16, color: impl Fn(u16) -> u16) -> Vec<u16> {
+        let mut out = vec![color(backdrop); w * h];
+        let Some(bg) = self.background else { return out };
+        let (mw, mh) = (bg.map_width as i32 * 8, bg.map_height as i32 * 8);
+        if mw == 0 || mh == 0 {
+            return out;
+        }
+        let (sx, sy) = (self.scroll.0.rem_euclid(mw), self.scroll.1.rem_euclid(mh));
+        for ty in 0..=(h as i32 / 8 + 1) {
+            for tx in 0..=(w as i32 / 8 + 1) {
+                let (px, py) = (tx * 8 - sx % 8, ty * 8 - sy % 8);
+                let mx = ((sx / 8 + tx) % bg.map_width as i32) as usize;
+                let my = ((sy / 8 + ty) % bg.map_height as i32) as usize;
+                let e = bg.map[my * bg.map_width as usize + mx];
+                let Some(tile) = self.tile(e.tile) else { continue };
+                let palette = &self.palettes[e.palette as usize & 15];
+                for row in 0..8 {
+                    let y = py + row;
+                    if !(0..h as i32).contains(&y) {
+                        continue;
+                    }
+                    let r = if e.vflip { 7 - row } else { row } as usize;
+                    for col in 0..8 {
+                        let x = px + col;
+                        if !(0..w as i32).contains(&x) {
+                            continue;
+                        }
+                        let c = if e.hflip { 7 - col } else { col } as usize;
+                        let i = tile[r * 8 + c];
+                        if i != 0 {
+                            out[y as usize * w + x as usize] = color(palette[i as usize] & 0x7FFF);
+                        }
+                    }
+                }
+            }
+        }
+        out
     }
 
     /// The field layer, as `sub_800C5E0` draws it every frame: each
@@ -609,6 +670,48 @@ mod tests {
         let plain = Stage::new(&packs, c, Some(&bg), StageClock::default(), false);
         assert_eq!(plain.palettes[0][0], nettai_assets::shift_color(0x1234, shift, true));
         assert_eq!(plain.palettes[1][1], RED);
+    }
+
+    /// A scroll by sixteenths of a pixel a frame: the screen shows its whole
+    /// pixels, and the stage keeps the part of a pixel past them (the
+    /// counter's low bits, rounding down: left and up too). The wide
+    /// background is the layer's where the two overlap, and goes on past it.
+    #[test]
+    fn a_scroll_by_sixteenths_keeps_the_part_of_a_pixel_past_the_screens() {
+        let b = battle(["normal", "normal", "normal"]);
+        let c = &b.content;
+        let a = Bundle { field: field(&["normal"], 0, [RED, 0]), ..Bundle::default() };
+        let packs = Packs::one(&a);
+        // (Two tiles of 8x8, columns colored by their x: a picture that
+        // shows where it is.)
+        let tiles = Tiles { pixels: (0..2 * Tiles::TILE).map(|i| (1 + (i / 64) * 7 + i % 8) as u8).collect() };
+        let entry = |tile| MapEntry { tile, hflip: false, vflip: false, palette: 0 };
+        let palette: [u16; 16] = std::array::from_fn(|i| i as u16 * 0x421);
+        let bg = Background {
+            tiles,
+            first_tile: 0x200,
+            map: (0..32 * 32).map(|i| entry(0x200 + (i % 2) as u16)).collect(),
+            map_width: 32,
+            map_height: 32,
+            palette: Some(palette),
+            scroll: (-8, -4),
+            ..Background::default()
+        };
+        let at = |frames: u32| Stage::new(&packs, c, Some(&bg), StageClock { background: frames, field: 0 }, false);
+        // Half a pixel left and a quarter up a frame.
+        assert_eq!(at(0).background_sub(), (0, 0));
+        assert_eq!((at(1).scroll, at(1).background_sub()), ((0xFFFF, 0xFFFF), (8, 12)));
+        assert_eq!((at(2).scroll, at(2).background_sub()), ((0xFFFF, 0xFFFF), (0, 8)));
+        assert_eq!((at(4).scroll, at(4).background_sub()), ((0xFFFE, 0xFFFF), (0, 0)));
+        let stage = at(3);
+        let mut layer = Layer::new(3, 1);
+        stage.draw_background(&mut layer);
+        let wide = stage.draw_background_wide(WIDTH + 1, HEIGHT + 1, 0x7C00, |c| c);
+        for y in 0..HEIGHT {
+            assert_eq!(&wide[y * (WIDTH + 1)..y * (WIDTH + 1) + WIDTH], &layer.pixels[y * WIDTH..(y + 1) * WIDTH], "row {y}");
+        }
+        // The column past the screen's edge goes on with the picture.
+        assert_eq!(wide[WIDTH], wide[WIDTH - 16]);
     }
 
     #[test]

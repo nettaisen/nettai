@@ -18,7 +18,7 @@ use nettai_audio::{BattleAudio, MUSIC_PLAYER, Theme};
 use nettai_battle::content::PackId;
 use nettai_frontend::Player;
 use nettai_frontend::driver::LivePlayer;
-use nettai_frontend::game::{Loaded, Options, TextMode};
+use nettai_frontend::game::{Loaded, Options, GraphicsMode};
 
 /// Ticks of each battle played: five seconds, or a change in the middle of them.
 const TICKS: u32 = 300;
@@ -32,7 +32,7 @@ fn play(game: &Loaded, parts: &[(u32, Option<&Theme>)]) -> Result<(Vec<Option<So
     let (banks, songs) = sound.parts(&content, parts.first().and_then(|p| p.1));
     let m = nettai_match::pick::live(&content, &game.game.name, 11, None)?;
     let set = nettai_match::Set::of(&content, &m, 11);
-    let renderer = game.graphics.renderer(TextMode::Original, None);
+    let renderer = game.graphics.renderer(GraphicsMode::Original, None);
     let mut player = Player::with(renderer, None, Some(BattleAudio::with_banks(banks, songs)), Box::new(LivePlayer::new(set)));
     let mut samples = Vec::new();
     for (at, &(ticks, theme)) in parts.iter().enumerate() {
