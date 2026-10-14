@@ -16,8 +16,8 @@ msgstr "日本語"
 msgid "PLAY"
 msgstr "対戦"
 
-msgid "TRAINING"
-msgstr "トレーニング"
+msgid "PRACTICE"
+msgstr "練習"
 
 msgid "BUILDS"
 msgstr "ビルド"

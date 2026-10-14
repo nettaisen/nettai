@@ -1,9 +1,9 @@
-//! The screenshot pass's steps for Training (docs/app.md §13): the entry (with no build, with builds, the focus a
+//! The screenshot pass's steps for Practice (docs/app.md §13): the entry (with no build, with builds, the focus a
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
 //! can't be used, the arena and the background stepped, the arena around its end), the two cards, the battle, the
-//! training menu (a value changed, the focus a row apart, the dummy that fights (its Action, and its Level under
+//! practice menu (a value changed, the focus a row apart, the dummy that fights (its Action, and its Level under
 //! it), the arena and the background changed under it, each Battle row a value apart, the input display, the
-//! rows another screen adds), and the motion probe's bursts of what Training moves.
+//! rows another screen adds), and the motion probe's bursts of what Practice moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
 //! entry lists a new build of each of the game's versions and one that can't be used
@@ -29,12 +29,12 @@ enum Differs {
     Cursors,
     /// That, and what shows the builds and the place chosen: the cards and the arena.
     Builds,
-    /// The cursors, and the game's own picture where the training menu leaves it in view: the battle is in the
+    /// The cursors, and the game's own picture where the practice menu leaves it in view: the battle is in the
     /// game's pause behind the menu, and the game moves its backgrounds through its pause.
     Picture,
 }
 
-/// Where the game's picture is in view beside the training menu's panel, each box given exactly (`compare` lets a
+/// Where the game's picture is in view beside the practice menu's panel, each box given exactly (`compare` lets a
 /// pair differ 12 around each box it is given: these are 12 inside), in the UI's units. The panel is the menu's
 /// (`MenuOverlay`, at the side: the theme's margin from the left, 24 from the top and bottom, at most 500 wide),
 /// over everything under it: none of the picture under the panel is let differ.
@@ -64,7 +64,7 @@ fn picture_beside_menu(ui: &AppWindow) -> Vec<Option<Rect>> {
 }
 
 /// Where the entry shows the builds and the place chosen, apart from its rows: beside the rows' column, or on a
-/// phone between the rows and START TRAINING (in the UI's units, from where those controls are).
+/// phone between the rows and START PRACTICE (in the UI's units, from where those controls are).
 fn builds_shown(app: &App) -> Option<Rect> {
     let registry = app.shell.nav.registry();
     let registry = registry.borrow();
@@ -124,7 +124,7 @@ fn say(tour: &Tour, said: &str) {
     }
 }
 
-/// The training battle's state for `practice.txt`: each navi's HP, the custom gauge, and what the custom screens
+/// The practice battle's state for `practice.txt`: each navi's HP, the custom gauge, and what the custom screens
 /// dealt (each side's first chips, by key) beside the top of its folder as saved.
 fn state(app: &App, lang: &str, size: &str, when: &str) -> String {
     let Some(b) = app.shell.battle.as_ref() else { return format!("{lang} {size} {when}: no battle\n") };
@@ -166,7 +166,7 @@ fn focus(id: &'static str, index: i32) -> Step {
     Box::new(move |_, app, _| app.borrow_mut().shell.nav.focus(id, index))
 }
 
-/// The focus on the training menu's row of `option`, where the menu shows it as the step runs (the dummy's
+/// The focus on the practice menu's row of `option`, where the menu shows it as the step runs (the dummy's
 /// Action has rows under it for some of its values).
 fn focus_row(option: PracticeOption) -> Step {
     Box::new(move |_, app, _| {
@@ -176,12 +176,12 @@ fn focus_row(option: PracticeOption) -> Step {
     })
 }
 
-/// What the pass has changed of Training's remembered choices, forgotten: each walk starts from none.
+/// What the pass has changed of Practice's remembered choices, forgotten: each walk starts from none.
 fn forget(app: &mut App) {
     app.shell.settings.remembered.retain(|key, _| !key.starts_with("training."));
 }
 
-/// Training's steps of one language at one size.
+/// Practice's steps of one language at one size.
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
     // The entry with no build of the game: the one button.
     add(
@@ -196,7 +196,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
     shot(add, "practice-none", lang, size, Differs::Unheld, false);
 
-    // The entry: the focus a control up from START TRAINING; the dummy's build stepped to the next; the builds'
+    // The entry: the focus a control up from START PRACTICE; the dummy's build stepped to the next; the builds'
     // list; a build that can't be used; the arena stepped to the next, and around from Random to the last; the
     // background stepped.
     add(
@@ -246,7 +246,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, act(Action::Right));
     shot(add, "practice-entry-background", lang, size, Differs::Builds, false);
 
-    // START TRAINING: the two cards, then the battle.
+    // START PRACTICE: the two cards, then the battle.
     add(SETTLE, focus("start", 0));
     add(
         SETTLE,
@@ -261,7 +261,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(4000, Box::new(|_, _, _| {}));
     shot(add, "practice-battle", lang, size, Differs::Unheld, false);
 
-    // The training menu: a value changed under the focus, the focus a row down, the input display turned on. (The
+    // The practice menu: a value changed under the focus, the focus a row down, the input display turned on. (The
     // game's picture beside the menu may differ in each pair: it is in the game's pause, which moves its
     // backgrounds.)
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
@@ -433,8 +433,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
 }
 
-/// The motion probe's bursts of what Training moves: the entry arriving, a build stepped (the arena follows a
-/// moment after), the battle entered from START TRAINING, the training menu sliding in, a row's value sliding.
+/// The motion probe's bursts of what Practice moves: the entry arriving, a build stepped (the arena follows a
+/// moment after), the battle entered from START PRACTICE, the practice menu sliding in, a row's value sliding.
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step)) {
     // (A burst, as `tour::motion_walk`'s: `trigger` starts something moving, and a shot is taken at each of
     // `at`, milliseconds after it.)

@@ -1,9 +1,9 @@
-// Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Its Rust half
+// Practice (docs/design/app-ui.md §6): you against a dummy set up from a menu while practicing. Its Rust half
 // is src/screens/practice.rs.
 //
 // Three things are here. The entry (`PracticeScreen`): four rows, Your build, Dummy's build, Arena and
-// Background, and START TRAINING, with the two builds facing each other and the arena beside them. The training menu (`PracticeMenu`):
-// Start or Esc in training, the battle paused behind it; its rows are a model the Rust half makes, so a row is
+// Background, and START PRACTICE, with the two builds facing each other and the arena beside them. The practice menu (`PracticeMenu`):
+// Start or Esc in a practice battle, the battle paused behind it; its rows are a model the Rust half makes, so a row is
 // added there and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both
 // sides' buttons, lit as they are held, in a corner of the picture.
 
@@ -23,7 +23,7 @@ export struct PracticeBuild {
     navi: string,
 }
 
-// What a row of the training menu is.
+// What a row of the practice menu is.
 export enum PracticeOption {
     // A row another screen added (Copy invite code): its text is the row's own.
     added,
@@ -46,7 +46,7 @@ export enum PracticeOption {
     input-display,
 }
 
-// A row of the training menu: what it is, the value it has (its place among the row's values), and for a row
+// A row of the practice menu: what it is, the value it has (its place among the row's values), and for a row
 // another screen added, its text.
 export struct PracticeRow {
     option: PracticeOption,
@@ -54,7 +54,7 @@ export struct PracticeRow {
     text: string,
 }
 
-// What Training shows: src/screens/practice.rs sets these. (A struct or an enum a property here uses reaches
+// What Practice shows: src/screens/practice.rs sets these. (A struct or an enum a property here uses reaches
 // Rust by that use: nothing is added to app.slint for it.)
 export global PracticeView {
     // ---- The entry.
@@ -63,7 +63,7 @@ export global PracticeView {
     // The two builds chosen.
     in property <PracticeBuild> yours;
     in property <PracticeBuild> dummys;
-    // Why a build can't be used (the reserved line), and whether training can start.
+    // Why a build can't be used (the reserved line), and whether practice can start.
     in property <string> message;
     in property <bool> ready;
     // The arena's picture is there.
@@ -77,7 +77,7 @@ export global PracticeView {
     // The two builds' names, as the menu's line under its title says them.
     in property <string> session-yours;
     in property <string> session-dummys;
-    // The menu's rows, and whether it has CHANGE BUILDS and QUIT TO MENU (a session Training started itself).
+    // The menu's rows, and whether it has CHANGE BUILDS and QUIT TO MENU (a session Practice started itself).
     in property <[PracticeRow]> rows;
     in property <bool> leave;
     // The input display: shown, and the buttons each side holds (the GBA's bits).
@@ -94,7 +94,7 @@ export global PracticeView {
     out property <string> random: @tr("Random");
     // The line beside MENU on a phone.
     pure public function round-note(round: int) -> string {
-        return @tr("Training · Round {}", round);
+        return @tr("Practice · Round {}", round);
     }
     // The reserved line: which build can't be used, and the rule it breaks where that is said.
     pure public function unusable(dummys: bool, reason: string) -> string {
@@ -225,7 +225,7 @@ component EntryRow inherits Rectangle {
 }
 
 // One of the entry's place rows (Arena, Background): a label, and the value between arrows (the app's stepper,
-// as the training menu's rows have it), stepped by Left and Right or the arrows, around from the last to Random
+// as the practice menu's rows have it), stepped by Left and Right or the arrows, around from the last to Random
 // (the user: "just have like a pager widget that goes through them"). The row is what is focused.
 component PagerRow inherits Rectangle {
     in property <string> nav;
@@ -343,7 +343,7 @@ export component PracticeScreen inherits Page {
     property <length> arena-x: Theme.phone ? -Theme.margin : self.side-x;
     property <length> arena-width: Theme.phone ? self.body-width + 2 * Theme.margin : self.side-width;
     property <length> arena-height: self.arena-width * 2 / 3;
-    title: @tr("TRAINING");
+    title: @tr("PRACTICE");
     back: @tr("MENU");
     hints: PracticeView.none ? [
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open") },
@@ -359,7 +359,7 @@ export component PracticeScreen inherits Page {
     // (Each part is there whether or not the game has a build, shown and reachable by which it is: an `if`
     // apiece would be a component apiece.)
     // The column: with no build of the game the one button; else the four rows, the one line, the reserved
-    // line, and START TRAINING at its foot.
+    // line, and START PRACTICE at its foot.
     Arrive {
         Button {
             x: 0;
@@ -440,7 +440,7 @@ export component PracticeScreen inherits Page {
             width: root.column;
             visible: !PracticeView.none;
             nav: "start";
-            text: @tr("START TRAINING");
+            text: @tr("START PRACTICE");
             kind: ButtonKind.main;
             big: true;
             enabled: PracticeView.ready && !PracticeView.none;
@@ -526,9 +526,9 @@ export component PracticeScreen inherits Page {
     }
 }
 
-// ---- The training menu ------------------------------------------------------------------------------------
+// ---- The practice menu ------------------------------------------------------------------------------------
 
-// A row of the training menu, whatever it is: a group's title; a label and a value between arrows, the row
+// A row of the practice menu, whatever it is: a group's title; a label and a value between arrows, the row
 // focused as a whole (on a phone the label is over the arrows); or a row another screen added. (One component
 // under the menu's one `for`: its parts are all there, and those the row isn't don't show.)
 component MenuRow inherits Rectangle {
@@ -604,14 +604,14 @@ component MenuRow inherits Rectangle {
     }
 }
 
-// The training menu: Start or Esc in training. The battle is paused behind it, the dummy in view at the right.
+// The practice menu: Start or Esc in a practice battle. The battle is paused behind it, the dummy in view at the right.
 export component PracticeMenu inherits MenuOverlay {
-    // RESUME and RESTART, and under them the ways out of a session Training started itself; on a phone one
+    // RESUME and RESTART, and under them the ways out of a session Practice started itself; on a phone one
     // over the other.
     property <length> button-width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
     property <length> buttons-height: Theme.phone ? (PracticeView.leave ? 184px : 88px) : (PracticeView.leave ? 88px : 40px);
     property <length> buttons-y: root.inner-height - root.buttons-height;
-    title: @tr("TRAINING");
+    title: @tr("PRACTICE");
     note: @tr("{} vs {}", PracticeView.session-yours, PracticeView.session-dummys);
     side: true;
     // (The rows scroll where they don't all fit, as on a phone: the page's bar is in the panel's margin, so the

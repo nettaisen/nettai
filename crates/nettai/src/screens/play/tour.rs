@@ -484,7 +484,7 @@ fn press_at(id: &'static str, index: i32) -> Step {
     })
 }
 
-/// The wait's training session is being played.
+/// The wait's practice session is being played.
 fn practicing(app: &App) -> bool {
     app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Practice && b.playing())
 }
@@ -628,9 +628,9 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-direct-bad-address", Pair::None);
     add(SETTLE, press("direct.cancel"));
 
-    // An invite: its code from the server, and a training session beside it (on a phone, asked for under
-    // it, and filling the window); the training menu over that, with Play's rows at its top. Copy invite
-    // code closes the menu; on a phone, Stop training is the way back to the invite.
+    // An invite: its code from the server, and a practice session beside it (on a phone, asked for under
+    // it, and filling the window); the practice menu over that, with Play's rows at its top. Copy invite
+    // code closes the menu; on a phone, Stop practice is the way back to the invite.
     add(SETTLE, press("invite"));
     reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     if phone {
@@ -838,7 +838,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press("lobby.leave"));
     reach(add, |_, ui| part(ui) == PlayPart::Builds);
 
-    // An invite cancelled from the training menu: the builds again.
+    // An invite cancelled from the practice menu: the builds again.
     add(SETTLE, press("invite"));
     reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     if phone {

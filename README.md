@@ -43,7 +43,7 @@ netplay needs.
 - `nettai-video`: a replay as video: a NUT stream of raw frames and PCM sound on any writer, and `ffmpeg` run as a
   child for an MP4 of one; no encoder is linked ([docs/frontend.md](docs/frontend.md) §8, "Video").
 - `nettai`: the app (Slint), being rebuilt to a new design ([docs/design/app-ui.md](docs/design/app-ui.md)): a main
-  menu (Play, Training, Builds, Replays, Settings) around the battle, navigated by keys, a gamepad, the mouse or
+  menu (Play, Practice, Builds, Replays, Settings) around the battle, navigated by keys, a gamepad, the mouse or
   touch, in each language its catalogs have. Its foundation is built: the design system, focus and navigation,
   Settings, and the battle's host; the other four screens are their headers, to be filled in
   ([docs/app.md](docs/app.md)).
@@ -94,11 +94,11 @@ game), and the battle is that game's content on its pack. Then run the app:
 
 nettai ([docs/app.md](docs/app.md)) is the player's program, navigated by the keyboard, a gamepad, the mouse or
 touch. It opens on a main menu, the selected game's battles playing beside it: PLAY, online against another
-player; TRAINING, offline against a dummy; BUILDS; REPLAYS; and Settings, kept between runs. The app is being
+player; PRACTICE, offline against a dummy; BUILDS; REPLAYS; and Settings, kept between runs. The app is being
 rebuilt to a new design: the menu, Settings and the battle's host are built, and the other four screens aren't yet
-(`NETTAI_PRACTICE=<game>` starts a training battle meanwhile). In the battle the arrows move, Z is A, X is B, A is
+(`NETTAI_PRACTICE=<game>` starts a practice battle meanwhile). In the battle the arrows move, Z is A, X is B, A is
 L, S is R, Enter is START and Backspace is SELECT (Settings binds others, and a pad's buttons), and Esc opens the
-app's menu; in training, R starts over. A match file sets the game, its rounds (one `[[round]]` each: the set is as
+app's menu; in a practice battle, R starts over. A match file sets the game, its rounds (one `[[round]]` each: the set is as
 many rounds, three for the original's best of three), each side's navi, folder, version, forms, patch cards,
 NaviCust and what its save brings to the stats (the rules build the rest); its optional `seed` sets the battle's
 RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/frontend.md) §6).
