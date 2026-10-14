@@ -19,7 +19,9 @@ export component Tween {
     in property <duration> duration: Theme.settle;
     // Hold at 0 until it is let go (a part that waits for something besides its delay).
     in property <bool> held;
-    out property <float> linear: !Theme.motion ? 1 : (root.held ? 0 : (root.running ? clamp((animation-tick() - root.at - root.delay) / max(1ms, root.duration), 0, 1) : 1));
+    // At its end at once, wherever it was (a set piece a press settles: the result).
+    in property <bool> settled;
+    out property <float> linear: !Theme.motion || root.settled ? 1 : (root.held ? 0 : (root.running ? clamp((animation-tick() - root.at - root.delay) / max(1ms, root.duration), 0, 1) : 1));
     out property <float> t: 1 - pow(1 - root.linear, 3);
     property <duration> at;
     property <bool> running: true;
@@ -47,12 +49,14 @@ export component Tween {
 }
 
 // A clock that falls from 1 to 0 each time `seq` changes: a flash, a press. Not as it is made, unless
-// `at-start` says so.
+// `at-start` says so. `calm`: it runs with motion turned down too, for the `duration` it is given there (what
+// Reduce motion keeps of the jack-in: a short fade).
 export component Pulse {
     in property <int> seq;
     in property <duration> duration: Theme.brisk;
     in property <bool> at-start;
-    out property <float> v: Theme.motion && root.running ? 1 - clamp((animation-tick() - root.at) / max(1ms, root.duration), 0, 1) : 0;
+    in property <bool> calm;
+    out property <float> v: (Theme.motion || root.calm) && root.running ? 1 - clamp((animation-tick() - root.at) / max(1ms, root.duration), 0, 1) : 0;
     property <duration> at;
     property <bool> running;
     x: 0;
@@ -132,14 +136,27 @@ export component Shake {
 }
 
 // A number that ticks to its value when it changes (a count in a header): fixed-width digits, so it keeps its
-// box. `suffix` follows it ("/30").
+// box. `suffix` follows it ("/30"). `from-zero`: it counts up from 0 as it is made too, `delay` after it, over
+// `duration` (a result's stats, one after another); `settled` puts it at its value at once. `clock`: the value is
+// hundredths of a second, shown as a time (1:05.30). `ticked` is called as the number shown changes, and `done`
+// says it has come to its value.
 export component Count inherits Text {
     in property <int> value;
     in property <string> suffix;
+    in property <bool> from-zero;
+    in property <duration> delay;
+    in property <duration> duration: Theme.settle;
+    in property <bool> settled;
+    in property <bool> clock;
+    out property <bool> done: tw.linear >= 1;
+    callback ticked();
     property <int> from;
     property <int> last;
     property <int> seq;
-    text: round(root.from + (root.value - root.from) * tw.t) + root.suffix;
+    property <int> shown: round(root.from + (root.value - root.from) * tw.t);
+    property <int> seconds: mod(floor(root.shown / 100), 60);
+    property <int> hundredths: mod(root.shown, 100);
+    text: (root.clock ? floor(root.shown / 6000) + ":" + (root.seconds < 10 ? "0" : "") + root.seconds + "." + (root.hundredths < 10 ? "0" : "") + root.hundredths : root.shown) + root.suffix;
     color: Theme.text;
     font-family: Theme.mono;
     font-size: 12px;
@@ -147,12 +164,17 @@ export component Count inherits Text {
     vertical-alignment: center;
     tw := Tween {
         seq: root.seq;
-        duration: Theme.settle;
+        delay: root.delay;
+        duration: root.duration;
+        settled: root.settled;
     }
 
     init => {
-        root.from = root.value;
+        root.from = root.from-zero ? 0 : root.value;
         root.last = root.value;
+    }
+    changed shown => {
+        root.ticked();
     }
     changed value => {
         root.from = root.last;

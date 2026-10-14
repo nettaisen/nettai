@@ -6,14 +6,14 @@
 
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind } from "nav.slint";
-import { Shell, Screen, BattleKind, Backdrop, Cursor, DialogLayer, PickerLayer, Fx } from "shell.slint";
+import { Shell, Screen, BattleKind, Backdrop, Cursor, DialogLayer, PickerLayer, Fx, JackIn } from "shell.slint";
 import { Pulse } from "motion.slint";
 import { LoadingScreen } from "screens/loading.slint";
 import { MenuScreen } from "screens/menu.slint";
 import { SettingsScreen } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
-import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek } from "screens/play.slint";
+import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek, MatchResult, PlayView } from "screens/play.slint";
 import { PracticeScreen, PracticeMenu, PracticeInputs, PracticeView } from "screens/practice.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
@@ -124,6 +124,10 @@ export component AppWindow inherits Window {
     if root.in-battle && Shell.battle == BattleKind.online && !Shell.battle-menu: MatchPeek {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
+    // (How the match went, once its set is over.)
+    if Shell.battle == BattleKind.online && PlayView.result-shown: MatchResult {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
     if Shell.picker: PickerLayer {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -175,23 +179,8 @@ export component AppWindow inherits Window {
         }
     }
 
-    // The wipe into a battle: the ground draws back across the window, a lit edge leading it.
-    wipe := Pulse {
-        seq: Shell.wipe-seq;
-        duration: Theme.set-piece;
-    }
-
-    Rectangle {
-        property <float> gone: 1 - wipe.v * wipe.v * (3 - 2 * wipe.v);
-        x: self.gone * parent.width;
-        visible: wipe.v > 0;
-        background: Theme.ground-bottom;
-        Rectangle {
-            x: 0;
-            width: 3px;
-            background: Theme.cursor;
-            drop-shadow-blur: 14px;
-            drop-shadow-color: Theme.glow;
-        }
+    // The jack-in, over the battle's first frames as it begins.
+    JackIn {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }

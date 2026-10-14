@@ -294,3 +294,7 @@ msgstr "詳しくはログファイルをご覧ください。"
 # The battle music list's first choice (Play's lobby, Practice): the battle's game's own music.
 msgid "Game's own"
 msgstr "ゲーム本来のBGM"
+
+# The jack-in's telop, as a battle begins: the operator's call and the navi's answer, as the Japanese games say them.
+msgid "BATTLE ROUTINE, SET! EXECUTE!"
+msgstr "バトルオペレーション、セット！イン！"

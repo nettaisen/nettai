@@ -348,6 +348,40 @@ Each is settled unless the user changes it.
     first said it (a card's effects as a list or a table of lists by version): "i don't like this typing, it's
     weird and confusing. can you make it more consistent?", so a card's effects are always one list, a version's
     own effect marked by its `version`. (docs/app.md §8.)
+49. **A battle jacks in, and an online match ends on a result** (2026-10-14). The user: "can you make the ui more
+    fun?". Of four ideas put to them they chose two: a jack-in set piece going into a battle, and a big result
+    screen after a match.
+    - *The jack-in* replaces the wipe from the two cards into the battle, for every way into one (online,
+      practice, a replay), and is a set piece of the theme's (480 ms). It never delays the battle: the battle
+      starts when it would have, and the set piece is drawn over its first frames; online both sides start in
+      lockstep as before, and nothing of it touches the simulation. Streaks in the selected game's cursor color
+      rush in toward the middle over the ground (the backdrop's rush, which runs again), a bright flash, and the
+      battle shows; a telop stamps over it. Its first wording named the player's navi; the user changed it:
+      "instead of JACK IN! {navi}, EXECUTE! it should be BATTLE ROUTINE, SET! EXECUTE!". So it is
+      "BATTLE ROUTINE, SET! EXECUTE!" in English; in Japanese "バトルオペレーション、セット！イン！", the Japanese
+      games' own call for the moment (the operator's "バトルオペレーション、セット！" and the navi's "イン！"),
+      which was chosen here: the user gave the English alone. Its sound: "it shouldn't be the transmission sound,
+      it should be the encounter sound". It is the game's own encounter sound, the one every battle's start plays
+      in the original as the screen breaks into it (song 0x78 in all three games: EXE6's `SOUND_BATTLE_START` of
+      `gameState_8005BC8`, EXE5's 0x080054F6, EXE4's 0x08005490 and its two siblings), a sound effect of 0.7 s on
+      an effects player, so it plays over the battle's music, which starts at once. The packs name it
+      `encounter`, and each game's content names it as the role `sounds.encounter`; Rust names no sound. With
+      Reduce motion on it is a short fade (the theme's `calm-fade`, 160 ms) of the ground and the telop, with no
+      streaks and no stamp.
+    - *The result*: when an online match's set is over, the game's own end plays as before, and then nettai's
+      result shows over the picture before the lobby. The winner's half of the window floods with their side's
+      color, sweeping in from its edge (the player's own half, on the left, in player one's `#ff5d50` as
+      everywhere else; the other's in player two's `#4a93ff`; on a phone the halves are the top and the bottom); a
+      big WIN or LOSE (DRAW for a drawn set), from this player's side, stamps in, centered on their half, in the
+      display face; then the rounds' score (2–1) and the match's total time (1:23.45) count up one after another
+      (`Count`), in M PLUS 1 Code, each number in a box of one width. Each tick has the game's own menu cursor
+      sound and the last number its confirm sound. Its facts are the frontend's: the round wins each side has
+      (the battle's count, by side) and the frames the match's player ran; no state or content field is added for
+      it. Nothing waits on it: CONTINUE, Enter or the pad's A (and Esc or B) settles it at once if it still moves,
+      and pressed again goes on to the lobby; it goes on by itself after six seconds. Each player goes to the
+      lobby when they go on, and neither waits on the other's result. Practice has no end and a replay stops at
+      its end with its transport, so neither has a result: it is the online match's alone. With Reduce motion on
+      it is a cut, everything at its end. (§4, §6, docs/app.md §1, §4 and §10.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -443,7 +477,8 @@ moves, briefly, and nothing waits on it.
   (entering a battle, a result). Things arriving ease out; things leaving ease in. One table of durations and
   curves in the theme; no screen invents its own.
 - *It can be turned down.* Video has "Reduce motion" (on by default where the system asks for it): everything
-  becomes a cut or a short fade. The screenshot pass runs with motion settled.
+  becomes a cut or a short fade (the jack-in is the one fade: §2.49). The screenshot pass runs with motion
+  settled.
 
 What moves:
 
@@ -462,12 +497,14 @@ What moves:
 | a build's row dragged | it lifts under the pointer (to 1.03, raised, with a shadow and a line in the cursor's color), the rows between slide a row over to leave a gap where it would land, outlined (`quick`), and let go it lands with the flash of a chip put in; refused, it shakes; over the library (where let go it is taken out), its line turns `#ff9272` and it fades to 0.6, and the library fades in under a wash of the ground at 0.7, an edge and a faint wash of `#ff9272`, and DROP TO REMOVE on a band across its middle (`quick`); the NaviCust's list does the same under a piece carried over it (CLICK TO PUT AWAY), the piece fading to 0.45 |
 | the NaviCust | a piece picked up lifts (to 1.06, with a shadow), turns as a quarter turn, and drops with a pulse along its cells; the command line's arrows pulse; a bug that appears pulses purple once |
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
-| loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps, and when both are full the screen wipes into the battle |
+| loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps |
+| entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it while streaks in the cursor's color rush in toward the middle and the field rushes, a bright flash, and the battle shows; BATTLE ROUTINE, SET! EXECUTE! stamps in on a band across the middle and fades; the game's own encounter sound plays. With Reduce motion the ground and the telop fade (160) |
+| a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |
 
 Every move of the cursor, confirm, back and refusal also has the selected game's own menu sound, as the old app
-had.
+had; entering a battle has the game's own encounter sound.
 
 **Metrics.** Page margins 32. The header is 64 tall and the footer 44, the same on every menu screen. A control is
 40 tall. A list row is 44, or 26 with a 2 gap where chips or cards are listed (the build overview's spacing, which
@@ -529,7 +566,8 @@ Each is in the mockups under the same name.
 - **Before a battle** (online, practice, a replay): the two players' cards facing each other, each with its own bar.
   Everything the match can use is loaded before its first frame: both navis and their forms, every chip in both
   folders, the arena, the music and the sounds. Online the match starts when both bars are full. The opponent's card
-  carries their name alone (§2.16).
+  carries their name alone (§2.16). The battle then begins under the jack-in (§2.49): the set piece is drawn over
+  its first frames, and nothing waits on it.
 
 ### Main menu
 - Left: PLAY, PRACTICE, BUILDS, REPLAYS, each the word alone, 36, in a column 416 wide, rows 72 tall. Below a line:
@@ -715,9 +753,12 @@ Each is in the mockups under the same name.
 
 ### After a match
 The mockups show no screen for this; it is decided here.
-- **Online:** the result stays on the picture (who won and the rounds' score, in the game's own way), then both
-  players are back in the lobby on the same link, neither ready, with the same settings. Either can change build,
-  play again or leave. Another match with the same opponent needs no new invite code.
+- **Online:** the game's own end plays on the picture (who won, in the game's own way), then nettai's result
+  over it (§2.49): the winner's half flooded with their color, WIN or LOSE on the player's half, the rounds'
+  score and the match's time. CONTINUE (Enter, the pad's A) settles it where it still moves and goes on; it goes
+  on by itself after six seconds. Each player is then back in the lobby on the same link, neither ready, with
+  the same settings, whether or not the other is still looking at their result. Either can change build, play
+  again or leave. Another match with the same opponent needs no new invite code.
 - **LEAVE MATCH** in the match menu ends the match for both players and puts both back in the lobby, as a
   match's end does. Leaving the opponent altogether is the lobby's LEAVE.
 - **Practice** has no end: the practice menu's RESTART and EXIT are the ways out of a set.

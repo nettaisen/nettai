@@ -1,7 +1,8 @@
 //! The sound: the audio device, the battle's samples to it, the menus' sounds and the title music.
 //!
-//! The menus' sounds are the selected game's own: its custom screen's cursor, pick and taking back, and its
-//! refusal, as its rules' sound roles name them (the app names no sound of a pack). The title music is the
+//! The menus' sounds are the selected game's own: its custom screen's cursor, pick and taking back, its
+//! refusal, and the sound its battles start with as the screen breaks into one (the jack-in's), as its rules'
+//! sound roles name them (the app names no sound of a pack). The title music is the
 //! game's too: the sound its pack names `title-screen`, played across the menu screens, faded out as a battle
 //! starts, and crossfaded with the next game's as the game changes (docs/design/app-ui.md §6).
 //!
@@ -43,6 +44,8 @@ pub enum Cue {
     Back,
     /// It can't be done.
     Refused,
+    /// A battle is entered (the jack-in): the game's own encounter sound, where its content names one.
+    JackIn,
 }
 
 /// The selected game's sound for the menus: its effects (the cues of its roles) and its title music, each on a
@@ -53,6 +56,7 @@ struct Menu {
     pick: Option<SoundCue>,
     back: Option<SoundCue>,
     refused: Option<SoundCue>,
+    jack_in: Option<SoundCue>,
     music: BattleAudio,
     title: Option<SoundCue>,
     /// The title music is playing (or fading out).
@@ -164,6 +168,7 @@ impl Sound {
             pick: cue(SoundRole::CustomPick),
             back: cue(SoundRole::CustomBack),
             refused: cue(SoundRole::Refused),
+            jack_in: cue(SoundRole::Encounter),
             music: BattleAudio::with_banks(sound.banks.clone(), sound.songs.clone()),
             title: content.assets.handle(AssetKind::Sound, TITLE_MUSIC).map(|h| SoundCue::Music(SoundId(h))),
             playing: false,
@@ -178,6 +183,7 @@ impl Sound {
             Cue::Pick => m.pick,
             Cue::Back => m.back,
             Cue::Refused => m.refused,
+            Cue::JackIn => m.jack_in,
         };
         if let Some(cue) = cue {
             m.effects.handle(&[cue]);

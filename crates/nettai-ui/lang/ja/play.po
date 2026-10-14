@@ -176,3 +176,23 @@ msgstr "対戦は止まりません"
 
 msgid "BACK"
 msgstr "もどる"
+
+# ---- After a match ----
+
+msgid "WIN"
+msgstr "勝利"
+
+msgid "LOSE"
+msgstr "敗北"
+
+msgid "DRAW"
+msgstr "引き分け"
+
+msgid "ROUNDS"
+msgstr "ラウンド"
+
+msgid "TIME"
+msgstr "タイム"
+
+msgid "CONTINUE"
+msgstr "つづける"
