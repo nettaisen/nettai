@@ -82,7 +82,8 @@ function block.turn(side: number)
 end
 
 -- `validate`'s part: the places' (each one thing, a pattern one of the eight records, no chip the AI can't play:
--- its positioning class past the table at 0x0800F3C8), and no place holding 0: where EXE5's AI takes a first place
+-- its positioning class past the table at 0x0800F3C8; only mega chips in the mega list, giga chips in the giga list
+-- and program advances in the program advance list), and no place holding 0: where EXE5's AI takes a first place
 -- of 0 for nothing to play, EXE4's has no test of it (0x0800E5AA) and plays its chip table's record 0, which is no
 -- chip (the game's own writer puts none there).
 function block.validate(side: number, problem: (p: SetupProblem) -> ())

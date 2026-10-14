@@ -4,21 +4,25 @@
 //! The places and their lists are the game's data (`crate::builds::auto`: its rules/auto_battle/block's `LISTS`, each
 //! named in its strings' `auto_battle_lists`; a game whose block states none has its places as one). A build states
 //! the places alone (its pattern records are the rules' default, nothing learned), so a place holds a chip or nothing.
-//! What a place may hold is the rules' (`validate`: a chip its navi can play): a chip they refuse isn't put, its row
-//! shakes and the strip says why. The library is the chips a folder of the build can hold, a row a chip.
+//! What a place may hold is the rules' (`validate`: a chip its navi can play, and in a list they hold to one class of
+//! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. The library offers
+//! what the place being filled can hold, a row a chip: in a list held to one class (the list's `class`: EXE4's and
+//! EXE5's mega, giga and program advance lists), the game's chips of that class, the Program Advances among them,
+//! which no folder holds; in another, the chips a folder of the build can hold.
 //!
 //! **Enter on a place goes to the library** (on a phone, its sheet); **Enter on a chip puts it in the place and goes
 //! on to the next;** Enter (or Del, or a click) on the chip the place holds already takes it out again. Del empties
 //! the place. A pattern's places aren't shown: a build states no pattern records, so none of its places can point at
 //! one (the game's own writer puts none there but a learned pattern's), and a match is sent them empty, a valid block.
 
-use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds, Layout};
+use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds};
 use crate::builds::words::kind;
 use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
+use nettai_battle::content::ChipCode;
 use nettai_content_api::ChipHandle;
 use nettai_match::build::{self, ChipInfo, Sort};
 use nettai_ui::{AutoBattleView, BuildWords, ChipCell, ChipDetail, EditorTab, LibraryRow, PlaceLine};
@@ -26,9 +30,6 @@ use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
 /// The sorts, in the order the library's select lists them (`AutoBattleView.sorts`).
 const SORTS: [Sort; 5] = [Sort::Library, Sort::Name, Sort::Mb, Sort::Element, Sort::Attack];
-
-/// The strings' text table of the lists' names.
-const LISTS_TABLE: &str = "auto_battle_lists";
 
 /// The most letters a search has.
 const SEARCH_LENGTH: usize = 24;
@@ -41,8 +42,6 @@ enum Described {
 
 #[derive(Default)]
 pub struct AutoBattle {
-    /// The data's lists, read once (`Some(None)`: the game's block isn't one this tab reads).
-    layout: Option<Option<Layout>>,
     /// The place being filled (from 0), and where each place is in the panel (its column and row).
     place: usize,
     at: Vec<(i32, i32)>,
@@ -53,8 +52,10 @@ pub struct AutoBattle {
     search: String,
     sort: usize,
     descending: bool,
-    /// The library's chips, and its rows as sorted and searched (a row a chip).
+    /// The library's chips, what the places they are offered for hold, and its rows as sorted and searched (a row a
+    /// chip).
     chips: Vec<ChipInfo>,
+    chips_for: Option<Holds>,
     rows: Vec<ChipHandle>,
     described: Option<Described>,
     landed: i32,
@@ -64,18 +65,15 @@ pub struct AutoBattle {
 }
 
 impl AutoBattle {
-    fn layout(&mut self, draft: &Draft) -> Option<&Layout> {
-        if self.layout.is_none() {
-            let content = draft.content();
-            let block = crate::builds::module_data(content, &draft.kit.game, auto::MODULE);
-            self.layout = Some(Layout::read(content, block.as_ref()));
-        }
-        self.layout.as_ref().and_then(Option::as_ref)
+    /// What the place being filled holds: its list's (any chip where the game lays out no lists).
+    fn holds(&self, draft: &Draft) -> Holds {
+        draft.kit.auto_layout().and_then(|l| l.list_of(self.place)).map_or(Holds::Any, |l| l.holds)
     }
 
-    /// A chip as a row of the folder shows it, without a code (a place holds a chip in none).
-    fn cell(draft: &Draft, words: &crate::builds::words::Words, entry: Entry) -> ChipCell {
-        let Entry::Chip(chip) = entry else { return ChipCell::default() };
+    /// A chip as a row of the folder shows it, without a code (a place holds a chip in none); `flagged`: the rules
+    /// have something against the place.
+    fn cell(draft: &Draft, words: &crate::builds::words::Words, entry: Entry, flagged: bool) -> ChipCell {
+        let Entry::Chip(chip) = entry else { return ChipCell { flagged, ..Default::default() } };
         let record = draft.content().chip(chip);
         ChipCell {
             there: true,
@@ -83,14 +81,21 @@ impl AutoBattle {
             name: words.names.chip(chip).into(),
             kind: kind(record.class),
             element: draft.kit.pictures.element(record.family),
+            flagged,
             ..Default::default()
         }
+    }
+
+    /// Whether the rules have something against place `place` (from 0).
+    fn flagged(draft: &Draft, place: usize) -> bool {
+        draft.checked.problems.iter().any(|p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(place))
     }
 
     /// The places under their lists' titles, two columns of them (on a phone one), each place where it is.
     fn show_places(&mut self, shell: &Shell, draft: &Draft) {
         let columns = if shell.scale.phone { 1 } else { 2 };
-        let Some(layout) = self.layout.clone().flatten() else { return };
+        let kit = draft.kit.clone();
+        let Some(layout) = kit.auto_layout() else { return };
         let data = Data::of_side(draft.content(), draft.side());
         self.at = vec![(0, 0); auto::PLACES];
         self.editable.clear();
@@ -102,7 +107,7 @@ impl AutoBattle {
             for list in layout.lists.iter().filter(|l| l.holds != Holds::Patterns) {
                 // (A list with no name in a game of one list has no title.)
                 if !list.name.is_empty() {
-                    let title = words.names.text(LISTS_TABLE, &list.name).unwrap_or_else(|| list.name.clone());
+                    let title = words.names.text(auto::LISTS_TABLE, &list.name).unwrap_or_else(|| list.name.clone());
                     lines.push(PlaceLine { title: true, text: title.to_uppercase().into(), row, ..Default::default() });
                     row += 1;
                 }
@@ -110,7 +115,8 @@ impl AutoBattle {
                     let (column, r) = ((k % columns) as i32, row + (k / columns) as i32);
                     self.at[place] = (column, r);
                     self.editable.push(place);
-                    lines.push(PlaceLine { chip: AutoBattle::cell(draft, words, data.places[place]), number: k as i32 + 1, place: place as i32, column, row: r, ..Default::default() });
+                    let chip = AutoBattle::cell(draft, words, data.places[place], AutoBattle::flagged(draft, place));
+                    lines.push(PlaceLine { chip, number: k as i32 + 1, place: place as i32, column, row: r, ..Default::default() });
                 }
                 row += list.len.div_ceil(columns) as i32;
             }
@@ -125,19 +131,36 @@ impl AutoBattle {
         view.set_places(self.editable.len() as i32);
     }
 
-    /// The library's rows, as sorted and searched.
+    /// The library's rows, as sorted and searched: of the chips the place being filled can hold.
     fn list(&mut self, shell: &Shell, draft: &mut Draft) {
         let content = draft.content().clone();
-        if self.chips.is_empty() {
-            let folder = draft.side().folder(&content);
+        let holds = self.holds(draft);
+        if self.chips_for != Some(holds) {
             let kit = draft.kit.clone();
-            if let Some(view) = draft.checked.folder_view(&content, &folder) {
-                // (A row a chip: in its first code alone.)
-                self.chips = build::library(&content, &kit.game, &view, &|key| kit.order.chip_rank(key)).into_iter().map(|mut c| {
+            let rank = |key: &str| kit.order.chip_rank(key);
+            let chips = match holds {
+                // (A list the rules hold to one class: the game's chips of it, whether a folder holds them or not.)
+                Holds::Chips(class) => Some(auto::of_class(&content, &kit.game, class).into_iter().map(|c| build::chip_info(&content, c, &rank)).collect()),
+                _ => {
+                    let folder = draft.side().folder(&content);
+                    draft.checked.folder_view(&content, &folder).map(|view| build::library(&content, &kit.game, &view, &rank))
+                }
+            };
+            // (A row a chip: in its first code alone, and a chip of no code, some Program Advances, in one. No
+            // folder's view, the round not starting: no chips, asked again next time.)
+            self.chips = chips
+                .unwrap_or_default()
+                .into_iter()
+                .map(|mut c: ChipInfo| {
                     c.codes.truncate(1);
+                    if c.codes.is_empty() {
+                        c.codes.push(ChipCode::ASTERISK);
+                    }
                     c
-                }).filter(|c| !c.codes.is_empty()).collect();
-            }
+                })
+                .collect();
+            self.chips_for = (!self.chips.is_empty()).then_some(holds);
+            self.row = 0;
         }
         let wanted = self.search.to_lowercase();
         self.rows = draft.with_words(shell, |words| {
@@ -202,7 +225,7 @@ impl AutoBattle {
         let ui = shell.ui();
         let say = ui.global::<BuildWords>();
         let detail = draft.with_words(shell, |words| {
-            let problem = place.and_then(|i| draft.checked.problems.iter().find(|p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(i + 1)).map(|p| words.problem(p)));
+            let problem = place.and_then(|i| draft.checked.problems.iter().find(|p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(i)).map(|p| words.problem(p)));
             let problem = self.notice.clone().or(problem).unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), ..Default::default() } };
             let record = content.chip(chip);
@@ -236,8 +259,9 @@ impl AutoBattle {
         self.show_detail(shell, draft);
     }
 
-    /// The cursor is on place `i`: it is the one being filled.
-    fn on_place(&mut self, shell: &Shell, draft: &Draft, i: usize) {
+    /// The cursor is on place `i`: it is the one being filled. A place of a list that holds other chips than the last
+    /// one's has its library of them, from its first row.
+    fn on_place(&mut self, shell: &Shell, draft: &mut Draft, i: usize) {
         self.place = i.min(auto::PLACES - 1);
         self.in_library = false;
         self.described = Some(Described::Place(self.place));
@@ -246,6 +270,12 @@ impl AutoBattle {
         let view = ui.global::<AutoBattleView>();
         view.set_place(self.place as i32);
         view.set_in_library(false);
+        // (Confirm on a place goes to the library, whatever it holds.)
+        view.set_on_placed(false);
+        if self.chips_for != Some(self.holds(draft)) {
+            self.list(shell, draft);
+            self.show_library(shell, draft);
+        }
         self.show_detail(shell, draft);
     }
 
@@ -256,7 +286,7 @@ impl AutoBattle {
         let place = self.place;
         let before = draft.side().clone();
         let field = Some(auto::PLACES_FIELD);
-        let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field && p.entry == Some(place + 1)).map(|p| p.text.clone()).collect();
+        let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field && p.entry == Some(place)).map(|p| p.text.clone()).collect();
         // (The chip the place holds already: taken out again, from where the cursor is; it flies back to its row.)
         if Data::of_side(draft.content(), draft.side()).places.get(place) == Some(&Entry::Chip(chip)) {
             let (icon, name) = draft.with_words(shell, |w| (draft.kit.pictures.icon(chip), w.names.chip(chip)));
@@ -269,7 +299,7 @@ impl AutoBattle {
         }
         let ui = shell.ui();
         let view = ui.global::<AutoBattleView>();
-        let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && p.entry == Some(place + 1) && !had.contains(&p.text)).cloned();
+        let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && p.entry == Some(place) && !had.contains(&p.text)).cloned();
         if let Some(problem) = against {
             draft.edit(|_, side| {
                 *side = before;
@@ -314,6 +344,7 @@ impl AutoBattle {
         self.in_library = false;
         self.described = Some(Described::Place(self.place));
         view.set_in_library(false);
+        view.set_on_placed(false);
         shell.nav.focus("places.place", self.place as i32);
     }
 
@@ -351,7 +382,6 @@ impl Tab for AutoBattle {
     }
 
     fn show(&mut self, shell: &mut Shell, draft: &mut Draft) {
-        self.layout(draft);
         if self.described.is_none() {
             self.described = Some(Described::Place(self.place));
         }

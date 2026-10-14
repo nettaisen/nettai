@@ -6,8 +6,9 @@
 //! `auto_battle_records` (eight records, `{ dx, dy, chips, score }`), and
 //! the game's module `rules/auto_battle/block` as it loaded: its `PLACES`,
 //! `RECORDS`, `RECORD_CHIPS` and `LISTS` (each `{ name, start, len }`, its
-//! start from 1). A list named for a chip class holds what the game writes
-//! there. Any chip may stand in any place, as in a save.
+//! start from 1, and `class` where the rules hold the list to chips of one
+//! class: their `validate` refuses a chip of another there, and the editor
+//! offers that class's chips for it).
 //!
 //! A build in the app states only the places, each a chip (or a program
 //! advance), a 0 or empty: its records are the rules' default, nothing
@@ -26,22 +27,29 @@ use serde::de::IntoDeserializer;
 /// The game's module that states the block's layout.
 pub const MODULE: &str = "rules/auto_battle/block";
 
+/// The game's strings' text table of the lists' names.
+pub const LISTS_TABLE: &str = "auto_battle_lists";
+
 pub const PLACES: usize = 42;
 pub const RECORDS: usize = 8;
 pub const RECORD_CHIPS: usize = 5;
 pub const PLACES_FIELD: &str = "auto_battle_places";
 pub const RECORDS_FIELD: &str = "auto_battle_records";
 
-/// What the game writes into a list of the data.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+/// What a list of the data holds.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Holds {
+    /// Chips of one class alone (the list's `class`: the rules refuse
+    /// another there).
     Chips(ChipClass),
+    /// Pattern entries (the game writes nothing else there).
     Patterns,
+    /// A chip of any class.
     Any,
 }
 
 /// A list of the data: its name, its places (from `start`, from 0), and
-/// what the game writes there.
+/// what it holds.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct List {
     pub name: String,
@@ -89,12 +97,13 @@ impl Layout {
         for l in items {
             let name = l.field("name").str()?.to_string();
             let (start, len) = (l.field("start").int()? as usize, l.field("len").int()? as usize);
-            let holds = match name.as_str() {
-                "patterns" => Holds::Patterns,
-                n => {
-                    let class: Result<ChipClass, serde::de::value::Error> = ChipClass::deserialize(n.into_deserializer());
-                    class.map_or(Holds::Any, Holds::Chips)
+            let holds = match (name.as_str(), l.field("class").str()) {
+                ("patterns", _) => Holds::Patterns,
+                (_, Some(class)) => {
+                    let class: Result<ChipClass, serde::de::value::Error> = ChipClass::deserialize(class.into_deserializer());
+                    Holds::Chips(class.ok()?)
                 }
+                (_, None) => Holds::Any,
             };
             lists.push(List { name, start: start.checked_sub(1)?, len, holds });
         }
@@ -323,15 +332,14 @@ pub fn drop_patterns(content: &Content, side: &mut Side) -> bool {
     dropped && data.write(content, side).is_ok()
 }
 
-/// Whether the game would write `entry` in `list` (a quiet note where it
-/// wouldn't: a save may hold it).
-pub fn like_the_game(content: &Content, list: &List, entry: Entry) -> bool {
-    match (list.holds, entry) {
-        (_, Entry::Empty) | (Holds::Any, _) => true,
-        (Holds::Chips(class), Entry::Chip(chip)) => content.chip(chip).class == class,
-        (Holds::Patterns, Entry::Pattern(_)) => true,
-        _ => false,
-    }
+/// The chips a list held to chips of `class` is offered: every chip of
+/// game `game` of that class (whether a folder holds it or not: a list of
+/// Program Advances holds those no folder does).
+pub fn of_class(content: &Content, game: &str, class: ChipClass) -> Vec<ChipHandle> {
+    (0..content.defs.chips.len() as u16)
+        .map(ChipHandle)
+        .filter(|&id| nettai_match::ids::in_game(content, game, &content.defs.chip(id).key) && content.chip(id).class == class)
+        .collect()
 }
 
 
@@ -351,7 +359,7 @@ mod tests {
             names,
             [
                 ("first", 0, 3, Holds::Any),
-                ("standard", 3, 24, Holds::Chips(ChipClass::Standard)),
+                ("standard", 3, 24, Holds::Any),
                 ("mega", 27, 5, Holds::Chips(ChipClass::Mega)),
                 ("giga", 32, 1, Holds::Chips(ChipClass::Giga)),
                 ("patterns", 33, 8, Holds::Patterns),
@@ -393,5 +401,55 @@ mod tests {
         assert_eq!(AutoBattle::of_side(&content, side).places[33], Entry::Empty);
         assert!(update(&content, side, Edit::Clear));
         assert_eq!(AutoBattle::of_side(&content, side), AutoBattle::nothing_learned());
+    }
+
+    /// The rules hold the mega, giga and program advance lists to chips of their class, each list's `class`: a chip
+    /// of another class there is refused as one the place can't hold. Every chip the editor offers such a list
+    /// ([`of_class`]: the game's chips of the class, the Program Advances among them, which no folder holds) the
+    /// rules let stand there. The first and standard lists take a chip of any class. In EXE4 and EXE5 alike.
+    #[test]
+    fn a_list_held_to_a_class_takes_its_class_alone() {
+        use nettai_match::Wrong;
+        for (content, game) in [(nettai_match::testing::exe5_content(), "exe5"), (nettai_match::testing::exe4_content(), "exe4")] {
+            let block = crate::builds::module_data(&content, game, MODULE);
+            let layout = Layout::read(&content, block.as_ref()).expect("the block's layout");
+            let mut m = nettai_match::pick::live(&content, game, 3, None).unwrap();
+            let side = &mut m.sides[0];
+            let problems = |side: &Side| -> Vec<(Wrong, Option<usize>)> {
+                let checked = nettai_match::build::Checked::of(&content, game, side);
+                checked.problems.into_iter().filter(|p| p.field.as_deref() == Some(PLACES_FIELD)).map(|p| (p.what, p.entry)).collect()
+            };
+            let held: Vec<(&List, ChipClass)> = layout
+                .lists
+                .iter()
+                .filter_map(|l| match l.holds {
+                    Holds::Chips(class) => Some((l, class)),
+                    _ => None,
+                })
+                .collect();
+            let names: Vec<(&str, ChipClass)> = held.iter().map(|(l, class)| (l.name.as_str(), *class)).collect();
+            assert_eq!(names, [("mega", ChipClass::Mega), ("giga", ChipClass::Giga), ("program_advance", ChipClass::ProgramAdvance)], "{game}");
+            let cannon = ids::chip(&content, game, "cannon").unwrap();
+            for (list, class) in held {
+                let offered = of_class(&content, game, class);
+                assert!(offered.len() > 10, "{game} {}: {offered:?}", list.name);
+                for batch in offered.chunks(list.len) {
+                    for (place, &chip) in list.places().zip(batch) {
+                        update(&content, side, Edit::Put(place, chip));
+                    }
+                    assert_eq!(problems(side), [], "{game} {}: {batch:?}", list.name);
+                }
+                // A standard chip there: refused.
+                update(&content, side, Edit::Put(list.start, cannon));
+                assert_eq!(problems(side), [(Wrong::ChipNotAllowed { chip: cannon }, Some(list.start))], "{game} {}", list.name);
+                update(&content, side, Edit::Clear);
+            }
+            // The first and standard lists: a mega chip and a program advance.
+            let (mega, advance) = (of_class(&content, game, ChipClass::Mega)[0], of_class(&content, game, ChipClass::ProgramAdvance)[0]);
+            for (place, chip) in [(0, mega), (1, advance), (3, mega), (4, advance)] {
+                update(&content, side, Edit::Put(place, chip));
+            }
+            assert_eq!(problems(side), [], "{game}");
+        }
     }
 }

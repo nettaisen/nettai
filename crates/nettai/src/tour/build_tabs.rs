@@ -7,7 +7,10 @@
 //! The walk makes a build of its own (the pass's builds folder, `paths::keep_builds_in`), as a player makes one.
 
 use super::{Pair, SETTLE, Step};
+use crate::builds::auto::{self, Holds};
+use crate::builds::store;
 use crate::input::{Action, KeyPress};
+use nettai_battle::content::ChipClass;
 use crate::screens::ScreenId;
 use crate::shell::App;
 use nettai_ui::{BuildsPage, BuildsView, EditorTab, NavicustView};
@@ -673,6 +676,94 @@ fn auto_battle(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     // The places further down: the page scrolled to the last list.
     add(SETTLE, focus("places.place", 41));
     shot(add, "tabs-auto-last", Pair::None);
+    // The library of a place in each list the rules hold to one class of chip: the Mega chips, the Giga chips, the
+    // Program Advances (which no folder holds); a Program Advance put in its place.
+    add(SETTLE, out_of_library());
+    add(SETTLE, to_held(ChipClass::Mega));
+    shot(add, "tabs-auto-mega", Pair::None);
+    add(SETTLE, out_of_library());
+    add(SETTLE, to_held(ChipClass::Giga));
+    shot(add, "tabs-auto-giga", Pair::None);
+    add(SETTLE, out_of_library());
+    add(SETTLE, to_held(ChipClass::ProgramAdvance));
+    shot(add, "tabs-auto-advance", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-auto-advance-put", Pair::None);
+}
+
+/// The first place of the auto battle data's list that the rules hold to chips of `class`, from 0 (none: the game
+/// has no such list).
+fn held(app: &App, class: ChipClass) -> Option<usize> {
+    let kit = crate::builds::kit(&app.shell)?;
+    kit.auto_layout()?.lists.iter().find(|l| l.holds == Holds::Chips(class)).map(|l| l.start)
+}
+
+/// Enter on the first place of the list held to chips of `class`: its library (on a phone, its sheet). A game with
+/// no such list: the report says so.
+fn to_held(class: ChipClass) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let mut app = app.borrow_mut();
+        let Some(place) = held(&app, class) else {
+            ui.global::<nettai_ui::Audit>().invoke_clipped(format!("(the game's auto battle data has no list of {class:?} chips: this picture is of something else)").into());
+            return;
+        };
+        app.shell.nav.focus("places.place", place as i32);
+        app.act(Action::Confirm);
+    })
+}
+
+/// A build whose auto battle data holds, in each list the rules hold to one class of chip, a chip of another (as a
+/// build file or a save made by hand may): the Builds list counts its problems, and in the editor its tab is
+/// flagged, the places are marked, and the strip says on one why. (A new build of the game's first version, beside
+/// the walk's.)
+fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
+    const NAME: &str = "Wrong places";
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            if tour.passing.get() {
+                return;
+            }
+            let mut app = app.borrow_mut();
+            let Some(kit) = crate::builds::kit(&app.shell) else { return };
+            let content = kit.content().clone();
+            let Some(side) = kit.builds.versions.first().and_then(|v| kit.builds.new_build(&content, &v.id).ok()) else { return };
+            let mut build = store::Build::new(&content, NAME, side);
+            let folder = build.side.folder(&content);
+            for list in kit.auto_layout().map(|l| l.lists.clone()).unwrap_or_default() {
+                let Holds::Chips(class) = list.holds else { continue };
+                let Some(chip) = folder.chips().map(|c| c.id).find(|&c| content.chip(c).class != class) else { continue };
+                auto::update(&content, &mut build.side, auto::Edit::Put(list.start, chip));
+            }
+            let _ = store::write(&store::new_path(&kit.game, NAME), &content, &kit.game, &build);
+            leave(&mut app);
+            app.go_now(ScreenId::Builds);
+            let at = store::list(&kit.game).iter().position(|l| l.name == NAME).unwrap_or_default();
+            app.shell.nav.focus("builds", at as i32);
+        }),
+    );
+    shot(add, "tabs-auto-wrong-list", Pair::None);
+    add(SETTLE, act(Action::Confirm));
+    if phone {
+        add(SETTLE, press("one.edit", 0));
+    }
+    add(SETTLE, to_tab(EditorTab::AutoBattle));
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            if tour.passing.get() {
+                return;
+            }
+            let mut app = app.borrow_mut();
+            if let Some(place) = held(&app, ChipClass::Mega) {
+                app.shell.nav.focus("places.place", place as i32);
+            }
+        }),
+    );
+    shot(add, "tabs-auto-wrong", Pair::None);
 }
 
 /// A left click on control `id`'s `index`, as the window has one (pressed and let go there).
@@ -815,6 +906,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     if size == "desktop" {
         clicks(add, shot);
     }
+    wrong_classes(add, shot, size == "phone");
     add(SETTLE, end());
 }
 
