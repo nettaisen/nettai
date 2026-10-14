@@ -386,6 +386,8 @@ pub struct Nav {
     drawn: Option<(Rect, std::time::Instant)>,
     /// The focus was put somewhere by the app: it is scrolled into view once it is there.
     reveal_due: bool,
+    /// A dialog opened on its text field ([`Nav::open_editing`]): the field's edit begins once the focus is on it.
+    edit_due: bool,
     /// The screen shown is leaving: the focus waits for the next one's controls, on nothing meanwhile.
     held: bool,
     /// The presses of Enter on a control, counted for the UI (the control flashes, the cursor snaps in).
@@ -417,6 +419,7 @@ impl Nav {
             told: None,
             drawn: None,
             reveal_due: false,
+            edit_due: false,
             held: false,
             presses: 0,
         }
@@ -470,6 +473,14 @@ impl Nav {
         self.wanted = Some(main);
     }
 
+    /// A dialog opens on its text field `main` (a build's name, an address): as [`Nav::open`], and the field is
+    /// edited as soon as the focus is on it, its text all selected, so what is typed replaces it (the user:
+    /// "you should auto focus the primary text field on dialogs that pop up").
+    pub fn open_editing(&mut self, prefix: &str, main: Key) {
+        self.open(prefix, main);
+        self.edit_due = true;
+    }
+
     /// The scope closes: the focus goes back where it was under it.
     pub fn close(&mut self, prefix: &str) {
         let Some(at) = self.scopes.iter().position(|s| s.prefix == prefix) else { return };
@@ -478,6 +489,7 @@ impl Nav {
         self.scopes.truncate(at);
         self.focus = None;
         self.wanted = under;
+        self.edit_due = false;
     }
 
     /// Whether the scope `prefix` is open.
@@ -601,6 +613,9 @@ impl Nav {
                 self.take(key);
                 if std::mem::take(&mut self.reveal_due) {
                     self.reveal(ui);
+                }
+                if std::mem::take(&mut self.edit_due) && self.on_field() {
+                    self.begin_edit(ui, "");
                 }
             }
             Next::Stay => {}
