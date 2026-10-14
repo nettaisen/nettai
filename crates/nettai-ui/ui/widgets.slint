@@ -233,6 +233,8 @@ export enum ButtonKind {
     main,
     // A quieter one: no fill.
     ghost,
+    // A minor one, as text: no fill and no line, its words muted (Play's DIRECT CONNECT).
+    text,
 }
 
 // A button, 40 tall, as wide as its text and at least 120 (give it a `width` where it should be another: its
@@ -255,6 +257,7 @@ export component Button inherits Rectangle {
     property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
     property <brush> fill-main: hit.has-hover ? Theme.action.brighter(12%) : Theme.action;
     property <brush> fill-ghost: hit.has-hover && root.enabled ? Theme.tint : transparent;
+    property <bool> bare: !root.enabled || root.kind == ButtonKind.ghost || root.kind == ButtonKind.text;
     property <brush> fill-normal: hit.has-hover ? Theme.raised-hover : Theme.raised;
     // A press: the pointer going down on it, or Enter while the cursor is on it.
     property <int> presses;
@@ -272,8 +275,8 @@ export component Button inherits Rectangle {
     Cut {
         y: root.dip;
         cut: 9px;
-        background: !root.enabled || root.kind == ButtonKind.ghost ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
-        line: !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
+        background: root.bare ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
+        line: root.kind == ButtonKind.text ? transparent : !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
     }
 
     // (The sheen is kept off the cut corner, where it fades to nothing anyway.)
@@ -305,7 +308,7 @@ export component Button inherits Rectangle {
         width: parent.width - 32px;
         height: parent.height;
         text: root.text;
-        color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : Theme.text;
+        color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : root.kind == ButtonKind.text && !hit.has-hover && !hit.focused ? Theme.muted : Theme.text;
         font-family: Theme.display;
         font-size: root.big ? 16px : 13px;
         font-weight: root.kind == ButtonKind.main ? Theme.display-bold : Theme.display-semibold;
@@ -888,12 +891,18 @@ export component RowTouch inherits TouchArea {
     in property <string> drag;
     // It holds something of the build: a right click on it removes that, as Del does.
     in property <bool> removable;
+    // A right click on it opens its menu (Play's builds: `Nav.choose("row-menu", row, 0)`, once the press has
+    // brought the focus to it).
+    in property <bool> menu;
     clicked => {
         Drag.clicked(root.drag, nav, nav-index);
     }
     pointer-event(e) => {
         if e.kind == PointerEventKind.down {
             Nav.point(nav, nav-index);
+        }
+        if root.menu && e.kind == PointerEventKind.down && e.button == PointerEventButton.right {
+            Nav.choose("row-menu", nav-index, 0);
         }
         Drag.pointer(root.drag, nav-index, e, self.absolute-position, self.mouse-x, self.mouse-y, root.removable);
     }

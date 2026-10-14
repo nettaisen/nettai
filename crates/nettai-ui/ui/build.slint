@@ -474,6 +474,8 @@ export component BuildRow inherits Rectangle {
     in property <BuildEntry> build;
     in property <string> nav;
     in property <int> nav-index;
+    // A right click on it opens the build's menu (Play's list).
+    in property <bool> menu;
     height: 52px;
     Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
@@ -515,6 +517,7 @@ export component BuildRow inherits Rectangle {
     touch := RowTouch {
         nav: root.nav;
         nav-index: root.nav-index;
+        menu: root.menu;
     }
 }
 
@@ -617,6 +620,10 @@ component SheetLineRow inherits Rectangle {
 export component BuildOverview inherits Rectangle {
     in property <BuildSheet> build;
     in property <int> side;
+    // Room the wide sheet's header leaves at its right for the buttons a screen puts there (Play's EDIT and ⋯),
+    // the version's tag before it.
+    in property <length> tools;
+    property <length> room: root.tools > 0 ? root.tools + 12px : 0px;
     out property <bool> narrow: self.width < 620px;
     // (A phone's sheet is too narrow for two columns of chips with their names whole, or of stats with their
     // labels whole.)
@@ -665,7 +672,7 @@ export component BuildOverview inherits Rectangle {
     Text {
         x: root.narrow ? root.pad : root.pad + 80px;
         y: root.narrow ? root.pad + (root.build.label == "" ? 8px : 16px) : root.pad + 6px;
-        width: root.inner - (root.narrow ? 0px : 80px) - tag.width - 12px - (root.narrow ? navi.width + 12px : 0px);
+        width: root.inner - (root.narrow ? 0px : 80px) - tag.width - 12px - root.room - (root.narrow ? navi.width + 12px : 0px);
         height: 26px;
         text: root.build.name;
         color: Theme.text;
@@ -679,7 +686,7 @@ export component BuildOverview inherits Rectangle {
     navi := Text {
         x: root.narrow ? root.width - root.pad - tag.width - 12px - self.width : root.pad + 80px;
         y: root.narrow ? root.pad + 11px : root.pad + 34px;
-        width: root.narrow ? min(self.preferred-width, 120px) : root.inner - 80px - tag.width - 12px;
+        width: root.narrow ? min(self.preferred-width, 120px) : root.inner - 80px - tag.width - 12px - root.room;
         height: root.narrow ? 22px : 16px;
         text: root.build.navi;
         color: Theme.muted;
@@ -690,7 +697,7 @@ export component BuildOverview inherits Rectangle {
     }
 
     tag := Pill {
-        x: parent.width - root.pad - self.width;
+        x: parent.width - root.pad - root.room - self.width;
         y: root.narrow ? root.pad + 11px : root.pad + 17px;
         text: root.build.version.text;
         tone: root.build.version.tone;

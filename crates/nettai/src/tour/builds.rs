@@ -1,5 +1,6 @@
 //! The screenshot pass's steps for the builds (docs/app.md §13): Play's builds with none and with some, a new
-//! build's dialog, a file that is no save dropped on them, a build's rename and its deletion's question, and the
+//! build's dialog, a file that is no save dropped on them, the build's menu, a build's rename and its deletion's
+//! question (each from the menu), and the
 //! editor's Navi and Folder tabs (an entry marked the Regular chip, two tagged, a mark the rules refuse), with
 //! pairs a focus move apart; and the motion probe's bursts of what Builds' editor moves. The builds are the pass's
 //! own (`paths::keep_builds_in`): made here through Play, as a player makes them.
@@ -175,12 +176,19 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     shot(add, "builds-buttons", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "builds-buttons-focus", Pair::Second);
-    add(SETTLE, press("rename", 0));
+    // The build's menu (⋯): DUPLICATE, RENAME and, apart, DELETE; RENAME and DELETE chosen from it.
+    add(SETTLE, press("more", 0));
+    shot(add, "builds-menu", Pair::None);
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
     shot(add, "builds-rename", Pair::None);
     // (The first Back ends the name's edit, the second shuts the dialog: §2.32's field ready to type in.)
     add(SETTLE, act(Action::Back));
     add(SETTLE, act(Action::Back));
-    add(SETTLE, press("delete", 0));
+    add(SETTLE, press("more", 0));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
     shot(add, "builds-delete", Pair::None);
     // (Cancel is focused: the build stays.)
     add(SETTLE, act(Action::Confirm));

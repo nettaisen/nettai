@@ -4,13 +4,13 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
 
-# ---- The builds, what is done with them, and the row that makes a link ----
+# ---- The builds, the chosen build, and what is done with it ----
+
+msgid "+ NEW BUILD"
+msgstr "+ 新規構築"
 
 msgid "NEW BUILD"
 msgstr "新規構築"
-
-msgid "IMPORT SAVE…"
-msgstr "セーブを読み込む…"
 
 msgid "EDIT"
 msgstr "編集"
@@ -51,7 +51,14 @@ msgstr "{} あとから編集画面で切り替えられます。"
 msgid "CREATE BUILD"
 msgstr "構築を作成"
 
-# The row.
+# The NEW BUILD dialog's other way to start one: a save file chosen in the system's dialog.
+msgid "FROM A SAVE FILE…"
+msgstr "セーブファイルから…"
+
+# The band under the builds: PRACTICE, and the online group under its label.
+
+msgid "ONLINE"
+msgstr "オンライン"
 
 msgid "CREATE INVITE"
 msgstr "招待を作る"
