@@ -51,10 +51,12 @@ pub use wrong::{Count, Wrong};
 
 /// A round of a match as the match states it: where it is fought, its
 /// stage (one of the game's link battle stages) and the background shown
-/// (by its name in the game's pack), each part none where the match leaves
-/// it to be picked from its seed (`Match::places`: as the game picks a link
-/// battle's, `pick::places`). The original's battle settings of a round
-/// follow from its stage (`RoundSetup::next_settings`).
+/// (by its name in the game's pack, or one of the background pool's by its
+/// game and its name in that game's pack, `exe4:acdc-area`: `ids::background`),
+/// each part none where the match leaves it to be picked from its seed
+/// (`Match::places`: as the match's [`BackgroundPick`] says, `pick::places`).
+/// The original's battle settings of a round follow from its stage
+/// (`RoundSetup::next_settings`).
 #[derive(Clone, Debug, Default, PartialEq, Eq, Hash)]
 pub struct RoundSettings {
     pub stage: Option<StageHandle>,
@@ -62,8 +64,8 @@ pub struct RoundSettings {
 }
 
 impl RoundSettings {
-    /// A round on `place`, both parts stated (`background` named by the
-    /// game's pack).
+    /// A round on `place`, both parts stated (`background` by the name a
+    /// match writes: `ids::background_name`).
     pub fn at(content: &Content, place: Stage) -> RoundSettings {
         RoundSettings { stage: Some(place.stage), background: ids::background_name(content, place.background).map(str::to_string) }
     }
@@ -76,6 +78,37 @@ pub const MAX_ROUNDS: usize = 99;
 /// The rounds of the original's triple battle, best of three: a random
 /// match's (`pick::live`), and a new match's (`Match::empty`).
 pub const TRIPLE_BATTLE: usize = 3;
+
+/// What a round that leaves its background is drawn on, picked from the
+/// match's seed (`pick::places`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum BackgroundPick {
+    /// As the game picks a link battle's: one of its rules' `link_pick`
+    /// `backgrounds` (EXE6's `byte_8120A20`), a background there twice
+    /// twice as likely; where they list none, the stage's own. The
+    /// original's, and a match's unless it says otherwise.
+    #[default]
+    Game,
+    /// One of the background pool's, every game's, each as likely
+    /// (`Content::pool_backgrounds`; docs/app.md §1, "The battle's
+    /// background"): nettai's own matches, Practice's and Play's.
+    Pool,
+}
+
+impl BackgroundPick {
+    /// The pick's name in a match file (`backgrounds = "pool"`).
+    pub fn name(self) -> &'static str {
+        match self {
+            BackgroundPick::Game => "game",
+            BackgroundPick::Pool => "pool",
+        }
+    }
+
+    /// The pick a match file names.
+    pub fn named(name: &str) -> Option<BackgroundPick> {
+        [BackgroundPick::Game, BackgroundPick::Pool].into_iter().find(|p| p.name() == name)
+    }
+}
 
 /// That `content` is `game`'s (a content holds one game), with rules to
 /// play by: or why a match of `game` can't be made on it.
@@ -151,14 +184,16 @@ pub fn play_level(content: &Content, navi: NaviHandle) -> Option<u8> {
 /// everything else a match names is that game's, and its rules are the
 /// game's: a game has one rules definition), each of its rounds (a set of
 /// as many: best of three for the original's three, and on: `rounds`),
-/// both sides (the left, side 0, then the right), and the seed its setup
-/// and battle are picked from, if it names one.
+/// both sides (the left, side 0, then the right), the seed its setup
+/// and battle are picked from, if it names one, and what a round that
+/// leaves its background is drawn on (`backgrounds`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Match {
     pub game: String,
     pub seed: Option<u32>,
     pub rounds: Vec<RoundSettings>,
     pub sides: [Side; 2],
+    pub backgrounds: BackgroundPick,
 }
 
 /// The effects a link battle's match type adds to its stage's
@@ -175,15 +210,19 @@ pub const MATCH_EFFECTS: u32 = 0x600;
 pub const HOST_KEYS: HostKeys = HostKeys { pause: true, run: true };
 
 /// The background a match of `game` names `name`: its handle, if the
-/// game's pack has it.
+/// game's pack has it, or the background pool (`exe4:acdc-area`:
+/// `ids::background`).
 pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_battle::content::BackgroundId> {
     ids::background(content, game, name)
 }
 
-/// What is wrong with a background a match names that its game's pack
-/// hasn't.
+/// What is wrong with a background a match names that neither its game's
+/// pack nor the background pool has.
 pub(crate) fn no_background(at: &str, game: &str, name: &str) -> String {
-    format!("{at}: no background {name:?} in {game}")
+    match name.contains(':') {
+        true => format!("{at}: no background {name:?} in the background pool"),
+        false => format!("{at}: no background {name:?} in {game}"),
+    }
 }
 
 impl Match {
@@ -203,7 +242,13 @@ impl Match {
         playable(content, game)?;
         link_battle_stages(content, game).first().ok_or_else(|| format!("{game} has no link battle stage"))?;
         let side = Side::fresh(content, game)?;
-        Ok(Match { game: game.to_string(), seed: None, rounds: vec![RoundSettings::default(); TRIPLE_BATTLE], sides: [side.clone(), side] })
+        Ok(Match {
+            game: game.to_string(),
+            seed: None,
+            rounds: vec![RoundSettings::default(); TRIPLE_BATTLE],
+            sides: [side.clone(), side],
+            backgrounds: BackgroundPick::Game,
+        })
     }
 
     /// The match's game.
@@ -212,11 +257,12 @@ impl Match {
     }
 
     /// Every round's place, in order, picked from `seed` where the match
-    /// leaves a part of one unstated (`pick::places`). Refused: a match
-    /// that leaves a stage to a game whose rules pick none, or names a
-    /// background its game's pack hasn't (the checks refuse both).
+    /// leaves a part of one unstated (`pick::places`, a background as
+    /// `backgrounds` says). Refused: a match that leaves a stage to a game
+    /// whose rules pick none, or names a background neither its game's pack
+    /// nor the background pool has (the checks refuse both).
     pub fn places(&self, content: &Content, seed: u32) -> Result<Vec<Stage>, String> {
-        pick::places(content, &self.game, &self.rounds, &mut Picks::new(seed))
+        pick::places_from(content, &self.game, &self.rounds, self.backgrounds, &mut Picks::new(seed))
     }
 
     /// The match with every round's place stated: as `seed` picks those it

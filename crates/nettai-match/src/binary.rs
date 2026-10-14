@@ -3,33 +3,38 @@
 //! players agree by name: nettai-frontend's `lobby`). It is read against the content it was written
 //! on, which whoever carries the bytes names beside them (a replay's head,
 //! the netplay handshake: the game and the content's hash), and nothing in
-//! it is a name: a definition is its handle in the content (the pack's
-//! index, the same on every load of the content the hash names), a
-//! background its number in the pack.
+//! it is a name but a round's background: a definition is its handle in the
+//! content (the pack's index, the same on every load of the content the
+//! hash names), and a background, which may be any game's (the background
+//! pool's, docs/app.md §1, "The battle's background"), is its game and its
+//! name in its game's pack, which name the same background whatever the
+//! pool beside the content (no player's words: a match holds no other
+//! text).
 //!
 //! ```text
-//! place := stage (u16: its handle), background (u16: its number in the pack)
-//! side  := the side's setup of the game's rules in its compact form (`Block::write_compact`:
-//!          each fact in the setup's order, a list as its count and its entries)
-//! match := seed (u32), the rounds' count (u8), every round's place (as the seed picks those
-//!          the match leaves: `Match::places`), side 0, side 1
+//! place  := stage (u16: its handle), background (string: `<game>:<name>`, its game and its
+//!           name in its game's pack)
+//! side   := the side's setup of the game's rules in its compact form (`Block::write_compact`:
+//!           each fact in the setup's order, a list as its count and its entries)
+//! match  := seed (u32), the rounds' count (u8), every round's place (as the seed picks those
+//!           the match leaves: `Match::places`), side 0, side 1
+//! string := length (LEB128), UTF-8
 //! ```
 //!
 //! Numbers are little-endian. A place's layout is the engine's (a round is
 //! fought on a stage and a background, whatever the game); a side's
 //! is its game's rules' setup, so a game's facts change no other game's
 //! bytes. A reader refuses bytes that end early or run on, a handle past
-//! the content's definitions, a background the pack hasn't, and a value no
-//! fact may hold, each with where; whether what it read is a match the
-//! game's rules allow is the checks' (`check`), as for a match file.
+//! the content's definitions, a background neither the game's pack nor the
+//! pool has, and a value no fact may hold, each with where; whether what it
+//! read is a match the game's rules allow is the checks' (`check`), as for
+//! a match file.
 
 use crate::facts::Facts;
 use crate::{Match, RoundSettings, Side, ids};
 use nettai_battle::content::{BackgroundId, Content};
 use nettai_content_api::{Block, FieldType, FieldValue, StageHandle};
 
-/// The bytes of a stage and its background.
-const PLACE: usize = 4;
 
 /// A side, appended to `out`: its facts' block, compact.
 pub fn put_side(content: &Content, side: &Side, out: &mut Vec<u8>) {
@@ -103,13 +108,54 @@ fn take_stage(content: &Content, bytes: &[u8], at: &str) -> Result<StageHandle, 
     Ok(StageHandle(stage))
 }
 
-/// A background's number from the start of `bytes`: its name in the
-/// content's game's pack.
-fn take_background(content: &Content, bytes: &[u8], at: &str) -> Result<String, String> {
-    let b = bytes.get(..2).ok_or_else(|| format!("{at}: the bytes end inside it"))?;
-    let n = u16::from_le_bytes([b[0], b[1]]);
-    let name = ids::background_name(content, BackgroundId(n)).ok_or_else(|| format!("{at}: no background {n} in {}'s pack", content.game()))?;
-    Ok(name.to_string())
+/// A string, appended to `out`: its length (LEB128), then its UTF-8.
+fn put_string(s: &str, out: &mut Vec<u8>) {
+    let mut n = s.len();
+    loop {
+        let byte = (n & 0x7F) as u8;
+        n >>= 7;
+        if n == 0 {
+            out.push(byte);
+            break;
+        }
+        out.push(byte | 0x80);
+    }
+    out.extend_from_slice(s.as_bytes());
+}
+
+/// A string from the start of `bytes`, and how many bytes it took.
+fn take_string<'b>(bytes: &'b [u8], at: &str) -> Result<(&'b str, usize), String> {
+    let ended = || format!("{at}: the bytes end inside it");
+    let (mut n, mut used) = (0usize, 0usize);
+    loop {
+        let b = *bytes.get(used).ok_or_else(ended)?;
+        if used >= 4 {
+            return Err(format!("{at}: a string's length past any"));
+        }
+        n |= ((b & 0x7F) as usize) << (7 * used);
+        used += 1;
+        if b & 0x80 == 0 {
+            break;
+        }
+    }
+    let text = bytes.get(used..used + n).ok_or_else(ended)?;
+    let text = std::str::from_utf8(text).map_err(|_| format!("{at}: a string that isn't UTF-8"))?;
+    Ok((text, used + n))
+}
+
+/// Background `id` as a place holds it: its game and its name in its
+/// game's pack (`<game>:<name>`).
+fn background_key(content: &Content, id: BackgroundId) -> Result<String, String> {
+    content.background_of(id).map(|(game, name)| nettai_battle::content::pool_key(game, name)).ok_or_else(|| format!("no background {} in the content", id.0))
+}
+
+/// A place's background from the start of `bytes`: the name a match
+/// writes for it (`ids::background_name`), and how many bytes it took.
+fn take_background(content: &Content, bytes: &[u8], at: &str) -> Result<(String, usize), String> {
+    let (key, used) = take_string(bytes, at)?;
+    let id = key.split_once(':').and_then(|(game, name)| content.background_handle(game, name));
+    let name = id.and_then(|id| ids::background_name(content, id)).ok_or_else(|| format!("{at}: no background {key:?} in the background pool"))?;
+    Ok((name.to_string(), used))
 }
 
 /// A match in binary: its seed (refused: a match that states none), every
@@ -120,9 +166,9 @@ pub fn match_bytes(content: &Content, m: &Match) -> Result<Vec<u8>, String> {
     let mut out = seed.to_le_bytes().to_vec();
     let places = m.places(content, seed)?;
     put_count(places.len(), &mut out)?;
-    for p in &places {
+    for (i, p) in places.iter().enumerate() {
         out.extend_from_slice(&p.stage.0.to_le_bytes());
-        out.extend_from_slice(&p.background.0.to_le_bytes());
+        put_string(&background_key(content, p.background).map_err(|e| format!("round {}: {e}", i + 1))?, &mut out);
     }
     for side in &m.sides {
         put_side(content, side, &mut out);
@@ -141,8 +187,8 @@ pub fn read_match(content: &Content, bytes: &[u8]) -> Result<Match, String> {
     for i in 0..count {
         let round = format!("round {}", i + 1);
         let stage = take_stage(content, &bytes[at..], &round)?;
-        let background = take_background(content, &bytes[at + 2..], &round)?;
-        at += PLACE;
+        let (background, used) = take_background(content, &bytes[at + 2..], &round)?;
+        at += 2 + used;
         rounds.push(RoundSettings { stage: Some(stage), background: Some(background) });
     }
     let mut side = |name: &str| -> Result<Side, String> {
@@ -152,7 +198,7 @@ pub fn read_match(content: &Content, bytes: &[u8]) -> Result<Match, String> {
     };
     let sides = [side("left")?, side("right")?];
     finished(bytes, at)?;
-    Ok(Match { game: content.game().to_string(), seed: Some(seed), rounds, sides })
+    Ok(Match { game: content.game().to_string(), seed: Some(seed), rounds, sides, backgrounds: crate::BackgroundPick::Game })
 }
 
 
@@ -266,16 +312,44 @@ mod tests {
         assert_eq!(bytes[4], 5);
     }
 
+    /// A match whose rounds are drawn on other games' backgrounds (the pool's: one stated, the rest picked from
+    /// the pool) keeps each by its game and its name, and reads back as the match with them stated, which starts
+    /// the same round: on another load of the content too.
+    #[test]
+    fn a_match_keeps_another_games_background() {
+        let content = crate::testing::exe5_content();
+        let mut m = crate::pick::live(&content, "exe5", 9, None).unwrap();
+        m.backgrounds = crate::BackgroundPick::Pool;
+        m.rounds = vec![RoundSettings { stage: None, background: Some("exe4:acdc-area".into()) }, RoundSettings::default(), RoundSettings::default()];
+        let bytes = match_bytes(&content, &m).unwrap();
+        let back = read_match(&content, &bytes).unwrap();
+        assert_eq!(back.rounds[0].background.as_deref(), Some("exe4:acdc-area"));
+        assert_eq!(back, Match { backgrounds: crate::BackgroundPick::Game, ..m.stated(&content, 9).unwrap() });
+        assert_eq!(format!("{:?}", back.round(&content, 9)), format!("{:?}", m.round(&content, 9)));
+        let key = |at: usize| String::from_utf8(bytes[at + 3..at + 3 + bytes[at + 2] as usize].to_vec()).unwrap();
+        assert_eq!(key(5), "exe4:acdc-area", "by its game and its name");
+        let again = std::sync::Arc::new(crate::testing::defined(&["exe5"]).unwrap());
+        assert_eq!(read_match(&again, &bytes).unwrap(), back, "another load");
+        // (A pool that hasn't it refuses it, saying which.)
+        let mut alone = (*content).clone();
+        alone.background_pool = nettai_battle::content::BackgroundPool::default();
+        assert_eq!(read_match(&alone, &bytes).unwrap_err(), "round 1: no background \"exe4:acdc-area\" in the background pool");
+    }
+
     /// What isn't a match is refused, saying where.
     #[test]
     fn bytes_that_arent_a_match_are_refused() {
         let content = exe6_content();
         let m = crate::pick::live(&content, "exe6", 5, None).unwrap();
         let bytes = match_bytes(&content, &m).unwrap();
+        // (Each place: its stage, then its background's key's length and the key.)
+        let places: Vec<usize> = m.places(&content, 5).unwrap().iter().map(|p| 2 + 1 + background_key(&content, p.background).unwrap().len()).collect();
+        let place_at = |i: usize| 5 + places[..i].iter().sum::<usize>();
         let read = |b: &[u8]| read_match(&content, b).unwrap_err();
         assert_eq!(read(&bytes[..3]), "seed: the bytes end inside it");
         assert_eq!(read(&bytes[..4]), "rounds: the bytes end inside it");
-        assert_eq!(read(&bytes[..10]), "round 2: the bytes end inside it");
+        assert_eq!(read(&bytes[..place_at(1) + 1]), "round 2: the bytes end inside it");
+        assert_eq!(read(&bytes[..place_at(1) + 3]), "round 2: the bytes end inside it", "inside its background");
         let cut = read(&bytes[..bytes.len() - 1]);
         assert!(cut.starts_with("right: ") && cut.ends_with("the bytes end inside it"), "{cut}");
         let mut more = bytes.clone();
@@ -285,10 +359,11 @@ mod tests {
         stage[5..7].copy_from_slice(&u16::MAX.to_le_bytes());
         assert_eq!(read(&stage), "round 1: no stage 65535 in the content");
         let mut background = bytes.clone();
-        background[15..17].copy_from_slice(&u16::MAX.to_le_bytes());
-        assert_eq!(read(&background), "round 3: no background 65535 in exe6's pack");
+        background[place_at(2) + 3..place_at(2) + 7].copy_from_slice(b"exe9");
+        let named = std::str::from_utf8(&background[place_at(2) + 3..place_at(3)]).unwrap().to_string();
+        assert_eq!(read(&background), format!("round 3: no background {named:?} in the background pool"));
         // The left side's navi, a handle past the content's navis.
-        let at = 5 + 3 * PLACE + before(&content, &m.sides[0], "navi");
+        let at = place_at(3) + before(&content, &m.sides[0], "navi");
         let mut navi = bytes.clone();
         navi[at..at + 2].copy_from_slice(&0x7FFFu16.to_le_bytes());
         assert_eq!(read(&navi), "left: navi: no navi 32766 in the content");

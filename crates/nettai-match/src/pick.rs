@@ -11,11 +11,11 @@
 //! again or edited.
 
 use crate::folders;
-use crate::{Match, RoundSettings, Side, TRIPLE_BATTLE, ids};
+use crate::{BackgroundPick, Match, RoundSettings, Side, TRIPLE_BATTLE, ids};
 use nettai_battle::Battle;
 use nettai_battle::setup::Stage;
 use std::sync::Arc;
-use nettai_battle::content::{Content, PlayerFact};
+use nettai_battle::content::{BackgroundId, Content, PlayerFact};
 use nettai_battle::custom::{FolderChip, SavedFolder};
 use nettai_battle::rules::Fact;
 use nettai_content_api::{FormHandle, Registry, StageHandle, Value};
@@ -52,12 +52,16 @@ impl Picks {
 }
 
 
-/// The backgrounds a link battle of the game picks from at random, by
-/// name: its rules' (`link_pick.backgrounds`: EXE6's table, some there
-/// twice and so twice as likely). None: a link battle shows its stage's
-/// own.
-fn link_backgrounds(content: &Content) -> Vec<&str> {
-    content.rules().link_pick.backgrounds.iter().filter_map(|&b| ids::background_name(content, b)).collect()
+/// The backgrounds a round of the game picks from at random as `pick`
+/// says: a link battle's, its rules' (`link_pick.backgrounds`: EXE6's
+/// table, some there twice and so twice as likely; none, a link battle
+/// shows its stage's own), or the background pool's, every game's, each
+/// once.
+fn random_backgrounds(content: &Content, pick: BackgroundPick) -> Vec<BackgroundId> {
+    match pick {
+        BackgroundPick::Game => content.rules().link_pick.backgrounds.clone(),
+        BackgroundPick::Pool => content.pool_backgrounds(),
+    }
 }
 
 /// Whether live play picks the game's match with a form list each side:
@@ -83,9 +87,20 @@ fn picks_live(content: &Content) -> bool {
 /// state none, the stage's own). Refused: a stage left to rules that pick
 /// none, a background named that the game's pack hasn't.
 pub fn places(content: &Content, game: &str, rounds: &[RoundSettings], picks: &mut Picks) -> Result<Vec<Stage>, String> {
+    places_from(content, game, rounds, BackgroundPick::Game, picks)
+}
+
+/// [`places`], a background a round leaves picked as `backgrounds` says:
+/// as the game picks a link battle's ([`places`]'), or one of the
+/// background pool's, every game's, each as likely (nettai's; docs/app.md
+/// §1, "The battle's background"). Either draws one number for each
+/// round's background, after its stage's, so the stages are the same
+/// whichever it is. Refused besides: a background named that the pool
+/// hasn't.
+pub fn places_from(content: &Content, game: &str, rounds: &[RoundSettings], backgrounds: BackgroundPick, picks: &mut Picks) -> Result<Vec<Stage>, String> {
     crate::playable(content, game)?;
     let pick = &content.rules().link_pick;
-    let backgrounds = link_backgrounds(content);
+    let backgrounds = random_backgrounds(content, backgrounds);
     let mut out = Vec::with_capacity(rounds.len());
     for (i, round) in rounds.iter().enumerate() {
         // (The first round among the first `first_round_stages`, the rounds
@@ -95,10 +110,9 @@ pub fn places(content: &Content, game: &str, rounds: &[RoundSettings], picks: &m
         let drawn_background = (!backgrounds.is_empty()).then(|| backgrounds[picks.below(backgrounds.len())]);
         let at = format!("round {}", i + 1);
         let stage = round.stage.or(drawn).ok_or_else(|| format!("{at}: {game}'s rules state no stage a link battle picks (link_pick.stages)"))?;
-        let named = |name: &str| crate::background(content, game, name).ok_or_else(|| crate::no_background(&at, game, name));
         let background = match (&round.background, drawn_background) {
-            (Some(name), _) => named(name)?,
-            (None, Some(name)) => named(name)?,
+            (Some(name), _) => crate::background(content, game, name).ok_or_else(|| crate::no_background(&at, game, name))?,
+            (None, Some(drawn)) => drawn,
             (None, None) => content.stage(stage).background,
         };
         out.push(Stage { stage, background });
@@ -215,7 +229,7 @@ fn plain_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], pick
     // (Its form list, where the rules take one: its version's own. Its
     // navi's level is every side's, its highest: `set_navi`.)
     side.state_own_forms(content);
-    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side.clone(), side.clone()] };
+    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side.clone(), side.clone()], backgrounds: BackgroundPick::Game };
     if let Ok(mut b) = crate::check::start(content, &m)
         && !folders::pool(content, game, &mut b, 0).is_empty()
     {
@@ -232,7 +246,7 @@ pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageH
     let mut picks = Picks::new(seed);
     let rounds = random_rounds(content, game, &mut picks, stage)?;
     let sides = [plain_side(content, game, &rounds, &mut picks)?, plain_side(content, game, &rounds, &mut picks)?];
-    Ok(Match { game: game.to_string(), seed: Some(seed), rounds, sides })
+    Ok(Match { game: game.to_string(), seed: Some(seed), rounds, sides, backgrounds: BackgroundPick::Game })
 }
 
 /// The battle live players' folders are picked against: two live players
@@ -241,7 +255,7 @@ pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageH
 fn rules_battle(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], stated: [&[(String, String)]; 2]) -> Result<Battle, String> {
     let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
     let side = |stated| Side::live(content, game, anything, &[], stated);
-    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side(stated[0])?, side(stated[1])?] };
+    let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side(stated[0])?, side(stated[1])?], backgrounds: BackgroundPick::Game };
     crate::check::start(content, &m)
 }
 
@@ -270,12 +284,42 @@ pub fn live(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageHa
     let forms = [form_list(content, game, &mut picks)?, form_list(content, game, &mut picks)?];
     let side = |side: usize| Side::live(content, game, folders[side], &forms[side], &stated[side]);
     let sides = [side(0)?, side(1)?];
-    Ok(Match { game: game.to_string(), seed: Some(seed), rounds, sides })
+    Ok(Match { game: game.to_string(), seed: Some(seed), rounds, sides, backgrounds: BackgroundPick::Game })
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    /// The backgrounds a link battle of the game picks from, by name (the
+    /// rules' `link_pick.backgrounds`).
+    fn link_backgrounds(content: &Content) -> Vec<&str> {
+        random_backgrounds(content, BackgroundPick::Game).into_iter().filter_map(|b| ids::background_name(content, b)).collect()
+    }
+
+    /// The pool pick draws each round's background from every game's, each as likely, and the stages as the
+    /// game's pick draws them (one number a round's background either way); the same seed, the same places, so
+    /// the two peers of a match agree.
+    #[test]
+    fn the_pool_pick_draws_from_every_game() {
+        for (content, game) in [(crate::testing::exe6_content(), "exe6"), (crate::testing::exe5_content(), "exe5"), (crate::testing::exe4_content(), "exe4")] {
+            let pool = content.pool_backgrounds();
+            assert_eq!(pool.len(), content.background_pool.len(), "{game}: every one has a handle");
+            let mut seen = std::collections::BTreeSet::new();
+            for seed in 0..400 {
+                let rounds = vec![RoundSettings::default(); 3];
+                let by_game = places_from(&content, game, &rounds, BackgroundPick::Game, &mut Picks::new(seed)).unwrap();
+                let by_pool = places_from(&content, game, &rounds, BackgroundPick::Pool, &mut Picks::new(seed)).unwrap();
+                assert_eq!(by_pool, places_from(&content, game, &rounds, BackgroundPick::Pool, &mut Picks::new(seed)).unwrap(), "{game} {seed}");
+                for (a, b) in by_game.iter().zip(&by_pool) {
+                    assert_eq!(a.stage, b.stage, "{game} {seed}: the same stages");
+                    assert!(pool.contains(&b.background), "{game} {seed}");
+                    seen.insert(content.background_of(b.background).unwrap().0.to_string());
+                }
+            }
+            assert_eq!(seen.into_iter().collect::<Vec<_>>(), ["exe4", "exe5", "exe6"], "{game}: every game's");
+        }
+    }
     use nettai_battle::setup::effects;
 
     /// A random match's arena is picked as the game picks a link battle's

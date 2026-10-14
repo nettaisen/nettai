@@ -2,7 +2,8 @@
 //! `ui/screens/practice.slint`.
 //!
 //! **The entry** ([`Practice`], the screen): four rows, Your build and Dummy's build (both the player's own
-//! builds of the selected game), Arena and Background (the game's, after Random: [`Places`]), all remembered
+//! builds of the selected game), Arena (the game's) and Background (every game's: the background pool), each
+//! after Random ([`Places`]), all remembered
 //! between runs by game, and START PRACTICE; beside them the two builds facing each other on the arena the
 //! session opens on. With no build of the game there is one button, Create a build. A build that can't be used
 //! says so in the reserved line, and practice doesn't start. Each build's EDIT (or E, or the pad's north button,
@@ -371,7 +372,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         cards
     });
     let inputs = inputs_on(&shell.settings);
-    let place_labels = places.labels(&Names::of(content, &ready.graphics(shell.lang)));
+    let place_labels = places.labels(content);
     let mut session = Session {
         from: start.from,
         game: start.game.clone(),
@@ -565,19 +566,22 @@ const BACKGROUND: usize = 1;
 
 /// The places a practice set may be fought on, as the entry and the menu step through them: the game's arenas
 /// (the link battle stages a match may name, `nettai_match::link_battle_stages`: the panel layouts and what
-/// stands on them that its netbattles are fought on) and its battle backgrounds, each in its keys' natural order
-/// (a run of digits by its number: `netbattle-2` before `netbattle-10`; a background by its name in the pack).
-/// Each list is stepped through after Random: the place picked from the seed each round, as a match that names
-/// none has it (what practice did before it had them). A choice is a list's place, 0 Random.
+/// stands on them that its netbattles are fought on) and the background pool, every game's battle backgrounds
+/// (`nettai_match::ids::pool_backgrounds`; docs/app.md §1, "The battle's background"), the games in their order
+/// and each list in its keys' natural order (a run of digits by its number: `netbattle-2` before
+/// `netbattle-10`; a background by its name in its game's pack). Each list is stepped through after Random: the
+/// place picked from the seed each round, as a match that names none has it (what practice did before it had
+/// them), a background from the whole pool (`BackgroundPick::Pool`). A choice is a list's place, 0 Random.
 ///
 /// The games keep the two apart: a link battle picks its stage and its background each on its own (the rules'
 /// `link_pick`), so either goes with any of the other. An arena is said by its place in the list ("12 / 96":
-/// the user, "the arena names are meaningless"); a background by what the language's strings call it (their
-/// `[backgrounds]`, by the area it comes from), or its place where they don't name it.
+/// the user, "the arena names are meaningless"); a background by its game's name and what that game's locales
+/// call it (`crate::backgrounds::name`: "BN4 ACDC Area").
 #[derive(Clone, Default)]
 pub struct Places {
     arenas: Vec<StageHandle>,
-    /// By their names in the game's pack.
+    /// By the names a match writes for them: the game's own by its name in its pack, another game's with its
+    /// game (`exe4:acdc-area`).
     backgrounds: Vec<String>,
 }
 
@@ -585,8 +589,8 @@ impl Places {
     pub fn of(content: &Content, game: &str) -> Places {
         let mut arenas = nettai_match::link_battle_stages(content, game);
         arenas.sort_by_cached_key(|&s| natural(nettai_match::ids::local(&content.defs.stage(s).key)));
-        let mut backgrounds: Vec<String> = nettai_match::ids::backgrounds(content, game).into_iter().map(str::to_string).collect();
-        backgrounds.sort_by_cached_key(|b| natural(b));
+        let mut backgrounds: Vec<String> = nettai_match::ids::pool_backgrounds(content).into_iter().map(str::to_string).collect();
+        backgrounds.sort_by_cached_key(|b| pool_background(content, game, b).map(|(of, name)| (of.to_string(), natural(name))));
         Places { arenas, backgrounds }
     }
 
@@ -603,10 +607,11 @@ impl Places {
         }
     }
 
-    /// Every round of `m` on the place `chosen`.
+    /// Every round of `m` on the place `chosen`, a Random background drawn from the background pool.
     fn put(&self, m: &mut Match, chosen: [usize; 2]) {
         let round = self.round(chosen);
         m.rounds.iter_mut().for_each(|r| *r = round.clone());
+        m.backgrounds = nettai_match::BackgroundPick::Pool;
     }
 
     /// The place `round` states, by the lists' places (what it names that they haven't: Random).
@@ -620,21 +625,22 @@ impl Places {
         key.and_then(|key| (1..self.len(part)).find(|&at| self.key(content, part, at) == Some(key))).unwrap_or(0)
     }
 
-    /// The key choice `at` of list `part` is remembered by: a stage's, a background's name in the pack (none:
-    /// Random).
+    /// The key choice `at` of list `part` is remembered by: a stage's, the name a match writes for a background
+    /// (none: Random).
     fn key<'c>(&'c self, content: &'c Content, part: usize, at: usize) -> Option<&'c str> {
         let at = at.checked_sub(1)?;
         if part == ARENA { self.arenas.get(at).map(|&s| nettai_match::ids::local(&content.defs.stage(s).key)) } else { self.backgrounds.get(at).map(String::as_str) }
     }
 
-    /// What each choice of the two lists but Random is shown as, in `names`' language: its place in the list
-    /// ("12 / 96"), a background its name where it has one.
-    fn labels(&self, names: &Names) -> [Vec<String>; 2] {
+    /// What each choice of the two lists but Random is shown as, in the language shown: an arena its place in
+    /// the list ("12 / 96"), a background its game's name and its own ("BN4 ACDC Area").
+    fn labels(&self, content: &Content) -> [Vec<String>; 2] {
         let place = |at: usize, of: usize| format!("{} / {of}", at + 1);
-        [
-            (0..self.arenas.len()).map(|at| place(at, self.arenas.len())).collect(),
-            self.backgrounds.iter().enumerate().map(|(at, b)| names.background_named(b).unwrap_or_else(|| place(at, self.backgrounds.len()))).collect(),
-        ]
+        let background = |b: &String| match pool_background(content, content.game(), b) {
+            Some((game, name)) => crate::backgrounds::name(game, name),
+            None => b.clone(),
+        };
+        [(0..self.arenas.len()).map(|at| place(at, self.arenas.len())).collect(), self.backgrounds.iter().map(background).collect()]
     }
 
     /// The place remembered for `game` (Random where nothing is, or the content no longer has it).
@@ -667,6 +673,11 @@ fn natural(key: &str) -> String {
         out.extend(c);
     }
     out
+}
+
+/// The game and the name in its pack of the background a match of `game` names `written` (one of the pool's).
+fn pool_background<'c>(content: &'c Content, game: &str, written: &str) -> Option<(&'c str, &'c str)> {
+    nettai_match::ids::background(content, game, written).and_then(|id| content.background_of(id))
 }
 
 /// The key the place chosen for `game` is remembered by: its arena's, or its background's.
@@ -744,7 +755,7 @@ impl Practice {
     fn list(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
         let content = ready.content();
         self.places = Places::of(content, game);
-        self.place_labels = self.places.labels(&Names::of(content, &ready.graphics(shell.lang)));
+        self.place_labels = self.places.labels(content);
         self.place = self.places.kept(content, &shell.settings.remembered, game);
         self.builds = if shell.still && !shell.practice.tour_files {
             // (The screenshot pass's pictures don't depend on what the player has made: a new build of each
@@ -1400,7 +1411,7 @@ mod tests {
         assert_eq!(value(PracticeOption::Background, opponent, NORMAL, options, false, [3, 2]), 2);
         // (The arenas and the backgrounds after Random.)
         assert_eq!(values(PracticeOption::Arena, &places), 1 + nettai_match::link_battle_stages(&content, "exe6").len());
-        assert_eq!(values(PracticeOption::Background, &places), 1 + nettai_match::ids::backgrounds(&content, "exe6").len());
+        assert_eq!(values(PracticeOption::Background, &places), 1 + nettai_match::ids::pool_backgrounds(&content).len(), "every game's");
     }
 
     /// The dummy's Level is under its Action while that is Fights alone; and its custom screen goes with its Action
@@ -1422,13 +1433,15 @@ mod tests {
         assert_eq!(dummy(InFight::StandsStill), Opponent::default());
     }
 
-    /// Each game's places are its link battle stages and its backgrounds, after Random: a place chosen is every
-    /// round's (and the set's places are those), is remembered by its keys and comes back from them, and Random
-    /// names nothing and is remembered as nothing. An arena is called by its key as a title, a background by the
-    /// language's strings (each of the game's has a name there).
+    /// Each game's places are its link battle stages and the background pool, every game's backgrounds, after
+    /// Random: a place chosen is every round's (and the set's places are those), is remembered by its keys and
+    /// comes back from them (a background remembered by its name in the game's pack, as before the pool, too),
+    /// and Random names nothing and is remembered as nothing, a Random background drawn from the pool. An arena
+    /// is called by its place, a background by its game's name and its own in the language (each has one).
     #[test]
     fn the_places_are_the_games_after_random() {
         use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
+        crate::shell::Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
         for (game, content) in [("exe6", exe6_content()), ("exe5", exe5_content()), ("exe4", exe4_content())] {
             let places = Places::of(&content, game);
             let (mut arenas, mut stages) = (places.arenas.clone(), nettai_match::link_battle_stages(&content, game));
@@ -1453,14 +1466,29 @@ mod tests {
             places.keep(&content, &mut remembered, game, ARENA, 0);
             assert_eq!(places.kept(&content, &remembered, game), [0, last[BACKGROUND]], "{game}: Random is remembered as nothing");
             assert_eq!(remembered.len(), 1);
-            let [arenas, backgrounds] = places.labels(&Names { content: &content, strings: None });
+            let [arenas, backgrounds] = places.labels(&content);
             let n = places.arenas.len();
             assert_eq!((arenas[0].clone(), arenas[n - 1].clone()), (format!("1 / {n}"), format!("{n} / {n}")), "{game}: each by its place");
             let key = |at: usize| nettai_match::ids::local(&content.defs.stage(places.arenas[at]).key);
             assert_eq!([key(0), key(1), key(9)], ["netbattle-1", "netbattle-2", "netbattle-10"], "{game}: in their numbers' order");
             for (name, key) in backgrounds.iter().zip(&places.backgrounds) {
-                assert!(!name.is_empty() && name != key && !name.contains(" / "), "{game}: {key} has a name");
+                assert!(!name.is_empty() && name != key && !name.contains(" / ") && !name.contains('-'), "{game}: {key} has a name");
             }
+            // The pool: BN4's first, BN6's last, every game's in any game's practice, named by its game.
+            assert_eq!(places.backgrounds.len(), 27 + 22 + 21, "{game}");
+            assert_eq!((backgrounds[0].as_str(), backgrounds[27 + 22 + 20].as_str()), ("BN4 ACDC Area", "BN6 Undernet"), "{game}");
+            assert!(backgrounds.contains(&"BN5 NebulaGray".to_string()) && backgrounds.contains(&"BN4 Duo".to_string()), "{game}");
+            let own = |b: &str| !b.contains(':');
+            assert_eq!(places.backgrounds.iter().filter(|b| own(b)).count(), nettai_match::ids::backgrounds(&content, game).len(), "{game}: its own by their names");
+            // (A background remembered before the pool, by its name in the game's pack, is found.)
+            let named = nettai_match::ids::backgrounds(&content, game)[0].to_string();
+            remembered.insert(format!("training.background.{game}"), named.clone());
+            let at = places.kept(&content, &remembered, game)[BACKGROUND];
+            assert_eq!(places.backgrounds[at - 1], named, "{game}");
+            // Random draws from the pool.
+            let mut m = nettai_match::pick::live(&content, game, 7, None).unwrap();
+            places.put(&mut m, [0, 0]);
+            assert_eq!(m.backgrounds, nettai_match::BackgroundPick::Pool, "{game}");
         }
     }
 

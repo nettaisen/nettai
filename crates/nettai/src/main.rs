@@ -16,6 +16,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod awake;
+mod backgrounds;
 mod battle;
 mod bnlc;
 mod builds;
