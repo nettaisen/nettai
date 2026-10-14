@@ -1667,9 +1667,7 @@ The user approved §7.4's proposal on 2026-10-02: "yes, borrow bn5 art then fall
     lava 8, holy 9, sea 10: content/exe5/compat/panels.toml).
   - A field may have one highlight or two. EXE5 draws its one highlight block for both, so its pack keeps that
     block twice.
-  - A field.json without the list comes from an older pack. With 78 blocks it draws EXE6's 13 types in the
-    engine's order, so the shared EXE6 pack loads as it is. With any other number of blocks it draws no type, and
-    the loader warns to extract it again (an older EXE5 pack).
+  - The list is required: a field.json without it doesn't load (docs/design/asset-formats.md).
 - **The stage draws the field from the arena's game's pack.** It was the content's own pack's before.
 - **`nettai_render::stage::FieldArt`** says which pack's field draws each panel type and each highlight:
   1. the arena's field, if it draws the type;
@@ -2323,7 +2321,7 @@ The last custom-screen piece in Rust that was one game's: EXE5's soul button and
 - **Matches and netplay.** A side says `soul_unison` and `chaos_unison` (match-file keys written only when off;
   `facts::write` puts them into the souls system's setup; a ruleset without them refuses one off); the EXE5 save
   import fills them from the save's flags (and the souls from their flags whatever Soul Unison says). The offer
-  carries them and NaviStats' new byte goes on the wire: protocol version 7. (Since 2026-10-06 Soul Unison is the
+  carries them and NaviStats' new byte goes on the wire. (Since 2026-10-06 Soul Unison is the
   souls': `soul_unison` is gone, the button is there when the side has souls, and a save without Soul Unison
   imports none.)
 - **The frontend.** nettai-render draws the soul button as the system's button named `soul` (the pack's look, its
@@ -3168,7 +3166,7 @@ file format alone, nettai-frontend what plays; no version beyond the content has
   (each fact in the setup's order, a list as its count and its entries), so a side's layout is its game's rules' and
   nothing in the encoding names a game; the arena the engine's fixed layout (a stage handle and a background number
   a place); a match its seed, arena and sides; an offer what the host brings and a side. The netplay offer is that
-  binary (protocol version 2), and nettai-frontend no longer depends on serde or toml.
+  binary, and nettai-frontend no longer depends on serde or toml.
 - **nettai-replay**: the file (head, match, info, a record per tick: buttons as they change, a digest, the two
   marks), written a flushed record at a time and read to its last whole tick.
 - **nettai-frontend**: `replay::Recorder` (`Player::record`; live play's ticks as they run, netplay's as they

@@ -314,10 +314,9 @@ a color is `#rrggbb`, or `0xNNNN` (raw BGR555) when it has bits RGB can't
 hold.
 
 The reader takes the format as the extractors write it today, and nothing older: every file's version is the
-format's own (a pack of another is refused, with a note to extract it again), `panel_types`, the custom screen
+format's own, 1 (a pack of another is refused, with a note to extract it again), `panel_types`, the custom screen
 (with its `layout`, its game's own: no pack leaves it to another game's), the warning marker, the chatbox and the
-dialogue font are required, and so are the manifest's `game` and the asset index. (`custom.json`'s version 2 named
-the form list window's pictures for it, where 1 named them for EXE6's Cross window: `cross_maps`, `cross-names-V`.)
+dialogue font are required, and so are the manifest's `game` and the asset index.
 
 **Backgrounds** (`graphics/backgrounds/NAME/`): `tiles.png`; `map.tmj`, a Tiled
 JSON map (orthogonal, 8x8 tiles, one tile layer, the tileset being
