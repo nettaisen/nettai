@@ -276,7 +276,7 @@ mod tests {
         assert_eq!(lobby(Reason::TheirBuild { problems: Vec::new() }), Some(UserError::TheirBuildUnusable));
         assert_eq!(lobby(Reason::Protocol), Some(UserError::Other));
         use nettai_frontend::replay::{ReadError, Refused};
-        assert_eq!(UserError::of_replay_read("testing", &ReadError::OtherLayout { layout: 1 }), UserError::ReplayVersion);
+        assert_eq!(UserError::of_replay_read("testing", &ReadError::OtherLayout { layout: 2 }), UserError::ReplayVersion);
         assert_eq!(UserError::of_replay_read("testing", &ReadError::NotAReplay), UserError::NotAReplay);
         assert_eq!(UserError::of_refusal("testing", &Refused::OtherGame { replay: "exe5".into(), here: "exe6".into() }), UserError::ReplayOtherGame { game: "EXE5".into() });
         assert_eq!(UserError::of_export(&nettai_video::Error::Canceled), None, "canceling is no failure");
