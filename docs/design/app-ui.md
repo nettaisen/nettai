@@ -160,9 +160,9 @@ Each is settled unless the user changes it.
     what the battle's game plays without one. A first draft put it in Settings' Audio group; the user: "settings
     is a weird place to put it". Asked where, between a shared setting of the match, each player's own beside the
     arena, and a row of the menu over the battle, they chose **"Beside the arena, each their own"**: a Music row
-    in Practice's entry beside Arena and Background, and Your music in Play's lobby beside the match's settings,
-    which is no setting of the match: each player picks and hears their own, nothing of it is sent, and the other
-    player's lobby doesn't show it. The two rows show and change one pick, remembered between runs; a replay
+    in Practice's entry beside Arena and Background (a Your music in Play's lobby too, until the user: "don't allow
+    bgm select in lobby"): each player picks and hears their own, nothing of it is sent. The pick is one,
+    remembered between runs, and every battle plays it, a match's too; a replay
     watched, and its video, play with it. The themes and their names are the games' content (each game's rules'
     `battle_themes`, named in its locales), shown after the game's name as the language says it ("BN4 Tournament
     Battle", "EXE4 トーナメントバトル"). (§6, docs/app.md §1, "The battle's music".) Then: "in the practice
@@ -374,11 +374,11 @@ Each is in the mockups under the same name.
   with Copy invite code and Cancel invite added.
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: Rounds (a stepper: Single battle, Best of 3), Patch cards
-  (on, off), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), Your music
-  (a select, yours alone: Game's own, then every game's battle themes; §2.29), the connection's bars and ping;
-  then READY, CHANGE BUILD, LEAVE; then a reserved status line. Rounds, Patch cards and Closed builds are shared:
-  either player changes them, both see it, and both ready marks clear; the opponent never sees Input delay or
-  Your music. With Patch
+  (on, off), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), the
+  connection's bars and ping (no music: "don't allow bgm select in lobby"; the battle's music is picked in
+  Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. Rounds, Patch cards and Closed
+  builds are shared: either player changes them, both see it, and both ready marks clear; the opponent never sees
+  Input delay. With Patch
   cards off, neither player's cards apply in the match: each build plays as it is without them, and a build that
   breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
@@ -388,7 +388,7 @@ Each is in the mockups under the same name.
   names are meaningless so you should just have like a pager widget that goes through them. background should
   also be a arrow button pager thing": each an arrow pager, the arena by its place, "12 / 96", the background
   by its name), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
-  opening its list; the same pick as the lobby's Your music; a theme plays here in place of the title music once
+  opening its list; a theme plays here in place of the title music once
   the row rests on it a moment), all remembered, and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
 - **EDIT** (§2.28) beside each build's select, a button of its own (Tab and Shift+Tab reach it, Up and Down go
