@@ -12,9 +12,10 @@ music, Settings, the two cards before a battle, and the battle's host with its m
 (§15), and so are Play, the netplay UI (§4), Builds (§8) and Replays (§16: the list, the viewer with its
 transport, the export): each is one Slint file and one Rust module (§2).
 
-Builds is filled in (§8): the list with a build's overview, a new build, a save's import, and the editor with
-its five tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
-it, Auto battle. The overview, a build's row and a version's tag are components any screen uses.
+Builds is filled in (§8): the editor with its five tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
+it, Auto battle. The builds themselves (a new build, a save's import, the chosen one's overview, DUPLICATE, RENAME,
+DELETE) are Play's (§4), and so is the way into Practice (docs/design/app-ui.md §2.50). The overview, a build's row
+and a version's tag are components any screen uses.
 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
 the command line with no window, for frames, audits and checks (docs/tools.md).
@@ -462,6 +463,7 @@ again, and so that the UI can be built without optimization (§14).
                       builds/                                           what any screen shows of a build (§8)
                       screens/<name>.rs
                       screens/play/session.rs tour.rs                 Play's link and lobby; its part of §13
+                      screens/play/list.rs                           what Play does with the builds (§4)
 
 **A screen is one Slint file and one Rust module** (which may have modules of its own under it:
 `screens/replays/`). Menu, Settings, Practice, Play, Builds, Replays and About are built. `ui/screens/play.slint`
@@ -529,7 +531,8 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 - *Another screen:* `tell(screen, tag, choice)` has that screen hear `answered(tag, choice)` once the caller
   has returned (how Practice tells the screen that added a row to its menu). With `go`, it asks another screen
   for something: `screens::builds::open(shell, from, at)` goes to Builds and tells it which screen opened it and
-  which build to open in its editor (§8).
+  which build to open in its editor (§8); `screens::practice::open(shell, game, file)` has Practice's entry
+  open on a build (§15).
 - *A replay:* `start_battle` with `Play::Watch(replay, side)` makes its viewer ready behind the same cards and
   hands it over (`BattleEvent::Watching`); the screen shows it in a `Picture` of its own with
   `show_surface(surface, present)` and plays its sound with `play_samples`, having given the viewer the Music
@@ -634,13 +637,23 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 
 **The screen has three parts**, one shown at a time (`PlayView.part`), and two things over a match:
 
-- **The builds.** The player's builds of the selected game as a list, as the Builds screen lists them
-  (`builds::shelf::load`, its `BuildRow`s: each read from its file and checked by the game's rules; one that
-  can't be played says how many problems it has, in the error red), the chosen one's overview beside it (the
-  wide sheet, §8), and one row under them: CREATE INVITE, the code's field with JOIN
-  and a space for a message, DIRECT CONNECT. The chosen build is the one under the list's cursor, remembered by
-  game. With no build of the game there is one button in the list's place, which goes to Builds, and the row
-  is unavailable. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
+- **The builds** (docs/design/app-ui.md §2.50: Play and the Builds list made one). NEW BUILD and IMPORT SAVE…
+  over the player's builds of the selected game as a list (`builds::shelf::load`, its `BuildRow`s: each read
+  from its file and checked by the game's rules; one that can't be played says how many problems it has, in the
+  error red), the chosen one's overview beside it (the wide sheet, §8) with EDIT, DUPLICATE, RENAME and DELETE
+  under it, and one row under them all: CREATE INVITE, PRACTICE, the code's field with JOIN and a space for a
+  message, DIRECT CONNECT. The chosen build is the one under the list's cursor, remembered by game; the overview
+  follows it. What is done with the builds is `screens/play/list.rs`: NEW BUILD and RENAME open the name's
+  dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
+  (`Builds::new_build`); IMPORT SAVE… (or a save dropped on the window) makes a build of a save
+  (`builds::import`), saying quietly in the space beside JOIN what it was put on where that changed it
+  ("Imported as Dark MegaMan"); DELETE (and Delete on the list) asks once, Cancel focused; EDIT opens the build in
+  Builds' editor (`screens::builds::open(shell, ScreenId::Play, at)`), whose Back comes back here with it still
+  chosen; PRACTICE opens Practice's entry on it (`screens::practice::open`, Your build the chosen one's file),
+  whose Back comes back here too (§15). With no build of the game NEW BUILD is the main action, the focus is on
+  it, and each of the row's controls says "Make a build first." when pressed (`UserError::NoBuild`). On a phone
+  the list is one box of the chosen build, which opens the builds as a sheet, its buttons two by two under it,
+  and no overview. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
   whatever it was typed with (`code_typed`, `code_shown`). A pad can't type: its confirm on the field opens the
   code as six boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through
   a box's characters (the alphabet codes are written in), and a character typed goes into the box and on to
@@ -698,7 +711,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   the pad's button bound to SELECT, the player's build on their side and the other player's on theirs; with
   closed builds the player's own alone. The match takes its keys meanwhile.
 
-Where a build is shown whole, it is the Builds screen's overview (`BuildOverview`, filled by
+Where a build is shown whole, it is the build overview (`BuildOverview`, filled by
 `builds::overview::sheet`, §8): beside the list, the wide sheet of the build as it is (made again only when
 the build chosen or the language changes); a player's panel in a match, on its YOUR BUILD and THEIR BUILD
 pages and while Tab is held, the narrow sheet of the agreement's side, which is the build as the match plays
@@ -791,7 +804,7 @@ failure's title is a sentence, and the pass found "Your opponent left" cut on a 
 on the desktop "Your opponent's build can't be used" just fits its one line); `Message`'s text is as wide as
 its line (it sat in the line's middle whatever its alignment).
 
-**What is wrong with a build** is said in the Builds screen's words for its kind (`builds::words`): beside JOIN
+**What is wrong with a build** is said in the builds' words for its kind (`builds::words`): beside JOIN
 before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), and in the lobby's line
 (`words::problem` of the first of `Lobby::problems`, which names the part of the build it is about): "This build can't be used: 28 chips, a folder has 30."
 
@@ -1136,12 +1149,14 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
 
 - **The name is the file's alone.** `[side]` is what a match, a lobby and a replay are given, and it holds no
   name (docs/design/app-ui.md §2.16).
+- **The Builds screen is the editor alone** (docs/design/app-ui.md §2.50): the builds themselves, NEW BUILD,
+  IMPORT SAVE…, the overview, DUPLICATE, RENAME and DELETE, are Play's (§4), and the main menu has no BUILDS.
 - **Opened by another screen** (`screens::builds::open(shell, from, at)`; docs/design/app-ui.md §2.28): Builds is
-  shown and told by `Shell::tell` which screen opened it (its tag is `opened-by.` and the screen's name) and,
-  with `at`, the build to open (its place in `store::list`'s order, which the list has). Back goes back to that
-  screen: from the list, or straight from the editor it asked for, which leaving the screen closes, the build
-  kept; the header's Back says where (`BuildsView.to-practice`). Practice's EDIT and CREATE A BUILD open it so
-  (§15); from the main menu Back goes to the menu as ever.
+  shown and told by `Shell::tell` which screen opened it (its tag is `opened-by.` and the screen's name,
+  `screens::opened_tag`) and the build to open (its place in `store::list`'s order, which every list of them has).
+  Back goes straight back to that screen, which leaving the editor closes, the build kept; the header's Back says
+  where (‹ PLAY, or ‹ PRACTICE: `BuildsView.to-practice`). Play's EDIT and Practice's open it so (§4, §15). A build
+  that no longer reads as one is refused, and the screen goes straight back.
 - **A build made new** is `Builds::new_build(content, version)`: the game's own navi, that version, the folder a
   new save of the game starts with. There are no random builds.
 - **A build's version is switched** by the editor's header's tag (docs/design/app-ui.md §2.41, §2.42; the user:
@@ -1442,7 +1457,7 @@ place. A chip the rules refuse in a place (their `validate`: one its navi can't 
 a list held to one) isn't put: its row shakes and the strip says why, worded for the part (`Words::problem`:
 "{chip} can't be played in auto battle"; in a list held to another class, "{chip} can't be in the {list} list",
 the list's name as the game's strings have it). A build that holds such a chip already (a build file or a save
-made by hand) has the problem as any other: the Builds list counts it, the tab is flagged, the place's row is in
+made by hand) has the problem as any other: Play's list counts it, the tab is flagged, the place's row is in
 the error red (`flagged`, as a folder's entry), and the strip says why on it.
 
 **A click chooses** one of the build's rows (a folder's entry, a patch card or an EXE4 slot, an auto battle place)
@@ -1805,7 +1820,7 @@ tells the app where it is in the window and takes its clicks. From those rectang
 
 - **The arrows** go to the neighbor in their direction: a control straight ahead (one that overlaps the focused
   one across the direction) before a nearer one off to the side, and of two equally near the one that starts
-  where the focused one does (Settings, not Exit, under REPLAYS). On a stepper, a select, a switch or a slider,
+  where the focused one does (in Play's row, CREATE INVITE, not PRACTICE, under the list). On a stepper, a select, a switch or a slider,
   Left and Right change the value instead.
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
 - **Enter** (and Num Enter, Space) activates; **Esc** goes back: out of a list, a dialog or a menu (a battle's
@@ -1900,7 +1915,7 @@ isn't played here) and `of_export` (nettai-video's) each write the detail and gi
 holds every kind to one. Replays shows the first two at the end of a replay's row and beside the list, and the
 last in its export dialog's reserved line (§16); a replay that fails as it is opened or as it plays is a dialog
 over the list (§16), with the replay's own still or nothing in its box (§1). What breaks a build's rules is
-nettai-match's `Wrong`, which the Builds screen words in its own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
+nettai-match's `Wrong`, which the builds' words (`builds::words`) say in their own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
 can't be loaded is `UserError::GameOutdated`, with the game's name as shown (§1). With the app's own packs (§17),
 no Legacy Collection to extract a missing pack from is `UserError::NoLegacyCollection`, whose dialog has the way
 to the collection's folder, and a pack that couldn't be extracted is `UserError::ExtractFailed`, by the game's
@@ -1962,17 +1977,17 @@ pass fails on: Play's `reach`), so that a picture of the wrong thing isn't taken
 `NETTAI_TOUR_ONLY=replays` walks Replays' steps alone (it has none for the motion probe).
 
 The pass has nothing of the player's to go by: its settings are the defaults, and Practice and Play list a new
-build of each of the game's versions (and one that can't be used) in place of the player's builds. The builds the Builds
-screen lists are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through the
-screen as a player makes them, and Replays lists replays of the pass's own.
+build of each of the game's versions (and one that can't be used) in place of the player's builds. The builds Play lists
+outside its own walk are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through
+Play as a player makes them, and Replays lists replays of the pass's own.
 
 **Practice's steps** (`tour/practice.rs`) walk the entry, the two cards, the battle and the practice menu
 (each Battle row with its value changed, a pair apart; Background's and Music's lists open on the entry and in
 the menu, and a background chosen from the menu's, a step checking the list closed and the place moved on one), and drive the options in the battle as a player would,
 the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
 the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
-dummy's Action Fights with its Level under it. Then the way to Builds and back: CREATE A BUILD's list (the
-pass's own folder emptied), its header saying ‹ PRACTICE, and Back; and with the pass's new builds kept as files
+dummy's Action Fights with its Level under it. (Before them, the entry with no build of the game, which goes back
+to Play at once: a step checks Play is shown.) Then the way to Builds' editor and back: with the pass's new builds kept as files
 in its own folder (the entry lists them as a player's: `Shared::tour_files`), Your build's EDIT focused, the
 editor it opens on that build's Folder tab, an entry taken out there, and Back, the entry with the build as it
 was left (it can't be used now); a step before each picture checks the walk is where the picture says, and the
@@ -1981,10 +1996,11 @@ each: both navis' HP, the gauge, the options, and each side's deal beside the to
 is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
 locked screen draws no frames, and the practice battle never starts (`practice.txt` says "no battle").
 
-**Builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`): the list
-with none and with three builds (one named in Japanese, one with a name too long for its row), a new build's
+**The builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`):
+Play's builds with none and with three (one named in Japanese, one with a name too long for its row), a new build's
 dialog with the focus a control on, a file that is no save dropped on the list, a build's rename and the
-question before it is deleted, the Navi tab with the focus a card on, with another navi chosen and with the
+question before it is deleted (EDIT's row a focus move apart: the same steps on a phone, whose page has the same
+buttons), the editor opened by EDIT: the Navi tab with the focus a card on, with another navi chosen and with the
 other preset of the game's choice, and the Folder tab (an entry, the library, its controls a focus move apart,
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,
 the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out, the
@@ -2019,7 +2035,7 @@ list, the library of a place in each list held to one class (`tabs-auto-mega`, `
 on to another row (`tabs-folder-clicked`,
 `tabs-cards-clicked`, `tabs-auto-clicked`: the cursor hidden, the row clicked marked, the other lit by the
 pointer), and the keys after the clicks (`clicks`); last, a new build made beside the walk's with a chip of
-another class in each list held to one (`wrong_classes`: `tabs-auto-wrong-list`, the Builds list counting its
+another class in each list held to one (`wrong_classes`: `tabs-auto-wrong-list`, Play's list counting its
 problems; `tabs-auto-wrong`, its tab flagged, the places red, the strip saying why). Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
 on the ring, over another, or anywhere on the board itself), so the walk is the same whatever the game's shapes. A tab the game hasn't is
@@ -2113,7 +2129,7 @@ EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle
 facing each other, the arena's preview, the arena stepped), its Music stepped to a battle theme, which plays,
 START, the cards, the practice menu setting the dummy to Fights at Hard, and a fight in which the player's side
 presses by itself (the custom screen picked through as the bots pick, chips used, a move, a charged shot, the
-custom screen opened once the gauge is full); Builds' list, the editor's Folder tab (a chip put in from the
+custom screen opened once the gauge is full); Play's builds, the editor's Folder tab (a chip put in from the
 library), the NaviCust (two programs taken and put down) and the patch cards (three put in), then EXE5's builds
 and the Auto battle tab (three places filled); Play, an invite with a practice session beside it, the second
 player joining by its code (`screens/play/tour.rs`'s `reel`), both ready, the cards and a few seconds of their
@@ -2427,9 +2443,9 @@ docs/design/app-ui.md §6, "Practice": you against a dummy set up from a menu wh
 **The entry.** Five rows, Your build, Dummy's build, Arena, Background and Music, and START PRACTICE at the
 column's foot; beside them (on a phone, under them) the two builds as cards over the arena.
 
-**A visit** (`practice::Visit`, in `Shell::practice`): from the entry being shown from elsewhere (the main menu,
-Play) until a screen other than Practice and Builds is shown. Builds is part of it: EDIT and CREATE A BUILD go
-there and its Back comes back (`Practice::to_builds` keeps the visit through the entry's leaving for it; any
+**A visit** (`practice::Visit`, in `Shell::practice`): from the entry being shown from elsewhere (Play's
+PRACTICE) until a screen other than Practice and Builds is shown. Builds is part of it: EDIT goes there and its
+Back comes back (`Practice::away` keeps the visit through the entry's leaving for it; any
 other screen shown ends it, `Visit::shown`, as Practice leaving for one does). Arena, Background and Music are
 the visit's: each visit starts on Random, Random and "Game's own" (the user: "going into practice should reset
 all the arena settings, there's no reason for it to remember the last settings": docs/design/app-ui.md §2.40),
@@ -2532,8 +2548,11 @@ again after them and the entry back from Builds keep what the player set. None o
   §5's figures for it: on a 120 Hz display, 117 to 120 frames a second, 59.3 to 60 ticks a second at 35 to 230
   µs a frame that ran them, each picture (720x480) presented in about 1.5 ms (a dev build; EXE4's wind stage,
   EXE6's road and volcano stages, EXE5's NebulaGray).
-- With no build of the game there is one button, CREATE A BUILD, which goes to Builds' list, whose Back comes
-  back here (`screens::builds::open`, §8).
+- **Reached from Play** (docs/design/app-ui.md §2.50): Play's PRACTICE opens the entry with Your build the build
+  chosen there (`practice::open(shell, game, file)`: it remembers that file as the game's Your build, and the entry
+  chooses it as it chooses any remembered one), and the entry's Back (‹ PLAY) goes back to Play, the build still
+  chosen there. The main menu has no PRACTICE. An entry that finds no build of the game (another game chosen in
+  its header, the files gone) goes back to Play at once (`Practice::show`); there is no CREATE A BUILD.
 - **EDIT** beside each build's select (docs/design/app-ui.md §2.28: "you should be able to go to builds screen
   from the practice screen somehow while having the relevant build displayed") opens it in Builds' editor; so do
   E and the pad's north button (the dummy's build on its row or its EDIT, else the player's). The build is found
@@ -2546,7 +2565,7 @@ again after them and the entry back from Builds keep what the player set. None o
   says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
   can't be used."), START PRACTICE is unavailable, no arena is drawn, and the screen opens with the focus on
   the row to change. *The rule it breaks isn't said yet:*
-  `Wrong`'s kinds are the Builds screen's to word (§12), and `practice::rule` is where that wording goes, as
+  `Wrong`'s kinds are the builds' words to say (§12), and `practice::rule` is where that wording goes, as
   the line's own `{}`; meanwhile each problem is in the log.
 
 **A session** (its interface is §2's "A practice session, from any screen"). `practice::start` checks the
@@ -2675,7 +2694,7 @@ Background's and Music's), around from its last value to its first. Under them R
 phone, the three one over the other): the entry again, with another arena (`menu.exit`; `practice::MENU_BUTTONS`).
 The user (docs/design/app-ui.md §2.40): "you should also get rid of "quit to menu" and "change builds" should
 just be "exit"": CHANGE BUILDS became EXIT, doing what it did, and QUIT TO MENU went (the entry's Back goes to
-the menu). In Japanese EXIT is 終了, as a fighting game's training ends ("トレーニング終了"), apart from the
+Play, §2.50). In Japanese EXIT is 終了, as a fighting game's training ends ("トレーニング終了"), apart from the
 entry's もどる. Esc and the pad's Start and back button close the menu as RESUME does, as before; R, F5 and the pad's north
 button restart. A session another screen started (Play's, beside a waiting invite) has no EXIT: its own rows,
 COPY INVITE CODE and CANCEL INVITE (hosting directly, COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE
@@ -3008,8 +3027,8 @@ folders is taken).
 
 The user: "add an about screen with license and dependency info etc like for slint".
 
-**What it shows.** About is reached from the main menu (Settings, About, Exit). At its left: the app's name, its
-version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
+**What it shows.** About is reached from the main menu (the small item under PLAY, REPLAYS, SETTINGS and
+EXIT). At its left: the app's name, its version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
 repository's root); Slint's own `AboutSlint` widget, the "Made with Slint" logo with Slint's version and address;
 and under MADE WITH, a list of the software the app is made of: the four fonts it bundles, then every package built into it, by name, each row its name, its version and its
 license as it states it (an SPDX expression). Beside the list, in a panel, the chosen one's name, version, license
