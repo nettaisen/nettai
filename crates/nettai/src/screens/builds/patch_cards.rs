@@ -635,7 +635,7 @@ impl Tab for PatchCards {
         }
     }
 
-    /// `[` and `]` on one of the build's cards move it; in the library, a letter typed starts a search.
+    /// `[` and `]` on one of the build's cards move it.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
         if let Some(i) = PatchCards::focused_card(shell) {
             match key.code {
@@ -644,16 +644,6 @@ impl Tab for PatchCards {
                 KeyCode::BracketLeft | KeyCode::BracketRight => {}
                 _ => return false,
             }
-            return true;
-        }
-        let in_rows = shell.nav.focused().is_some_and(|k| k.id == "lib.rows");
-        let typed = key.text.as_deref().filter(|t| t.chars().count() == 1 && t.chars().all(|c| c.is_alphanumeric()));
-        if in_rows
-            && let Some(typed) = typed
-            && !matches!(shell.bindings.of_key(key.code), Some(nettai_battle::input::keys::L | nettai_battle::input::keys::R))
-        {
-            shell.nav.focus("lib.search", 0);
-            shell.nav.begin_edit(&shell.ui(), typed);
             return true;
         }
         false
