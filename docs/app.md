@@ -1616,7 +1616,7 @@ the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits 
 **The settings** are `settings.toml` in the data folder (`settings.rs`), written as each changes and read as the
 app starts: the player's name (their account's on this machine until they choose one), the language, the game
 last used, the picture's size (the largest that fits, or at most 1 to 8 times), full screen, Reduce motion (as
-the system asks until the player says), the battle's graphics (enhanced or original), the levels of the music and the
+the system asks until the player says), the battle's graphics (`enhanced`, else original: docs/frontend.md §3), the levels of the music and the
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
 and what screens remember by their own keys (`remembered`: what a screen chose last, such as Practice's builds and
@@ -1789,7 +1789,10 @@ Four rules hold for all of it:
    Settings' Reduce motion (as the system asks, until the player says: macOS's and GNOME's settings are read),
    and the screenshot pass. The one thing Reduce motion keeps is the jack-in's short fade (a `Pulse` given
    `calm`), which the screenshot pass doesn't (`Theme.still`). A set piece a press settles (the result) is put at
-   its end by its clocks' `settled`.
+   its end by its clocks' `settled`. In the battle, with Battle graphics Enhanced, it also takes off the HUD's
+   intro and the background's glide (the renderer's `reduce_motion`, set as a battle, the menu's reel or a
+   video starts; a replay's still never has them), and keeps the sharp text (docs/frontend.md §3, "Enhanced and
+   original").
 
 **A row that is focused as a whole** (the design's rows are: the cursor is around the label and its control
 together) has a `Focusable` of its own under its control, named as the control is, and the control's own is
