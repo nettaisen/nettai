@@ -551,7 +551,7 @@ fn battle_sound(shell: &mut Shell) -> Option<nettai_audio::BattleAudio> {
 }
 
 /// The place the practice session on is fought on (its lists' places, 0 Random).
-#[cfg(feature = "tour")]
+#[cfg_attr(not(feature = "tour"), allow(dead_code))] // (The screenshot pass asks.)
 pub(crate) fn session_place(shell: &Shell) -> Option<[usize; 2]> {
     shell.practice.session.as_ref().map(|s| s.place)
 }
