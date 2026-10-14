@@ -139,7 +139,7 @@ Each is settled unless the user changes it.
     in EXE4 a program in one color works once there; plus parts add up.
 27. **The auto battle data's mega, giga and program advance lists hold their class alone** (2026-10-13): "also fix
     the abd editor to only allow mega chips in mega, giga chips in giga, and PA in program advance". It is a rule
-    of the games' content (each such list's `class` in @exelib/auto_battle/places, which the rules' `validate`
+    of the games' content (each such list's `own_class` in @exelib/auto_battle/places, which the rules' `validate`
     holds a place to), and the editor reads it: a place of one of those lists is offered that class's chips, the
     Program Advances among them. The first and standard lists are as they were, a chip of any class (the user named
     three lists). (§6, docs/app.md §8.)

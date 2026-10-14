@@ -1150,7 +1150,7 @@ places shown. The strip describes the chip under the cursor; the places are fram
 two columns, scrolled (a `ScrollPage`, `places.`); the library is a row a chip, each saying in how many places it
 is, of what the place being filled can hold. **The mega, giga and program advance lists hold their class alone**
 (the user, 2026-10-13: "only allow mega chips in mega, giga chips in giga, and PA in program advance"): the rules
-say so, each such list's `class` in @exelib/auto_battle/places' `LISTS`, which their `validate` holds a place to
+say so, each such list's `own_class` in @exelib/auto_battle/places' `LISTS`, which their `validate` holds a place to
 and the tab reads (`Holds::Chips`). For a place of such a list the library is the game's chips of that class
 (`auto::of_class`: the Mega chips, the Giga chips, the Program Advances, which no folder holds); for a place of
 another, the chips a folder of the build can hold. The library changes with the place the cursor is on, from its
