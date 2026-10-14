@@ -9,6 +9,7 @@ use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud};
+use crate::smooth::Smooth;
 use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
@@ -603,7 +604,9 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
 /// the pack or the content doesn't have (a chip's icon, a character of its
 /// name, a banner's glyphs) goes to `problems`. Without `pause_display`
 /// the pause display is left out (`Renderer::pause_display`); without
-/// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`).
+/// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
+/// is the enhanced mode's motion: the custom screen's slide (what moves with
+/// its window).
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
@@ -613,6 +616,7 @@ pub fn draw<'a>(
     shared: &'a SharedGlyphs,
     pause_display: bool,
     custom_gauge: bool,
+    smooth: Smooth,
     layer: &mut Layer,
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
@@ -622,7 +626,7 @@ pub fn draw<'a>(
     if hud.tiles.is_empty() {
         return;
     }
-    let view = crate::render::Renderer::view(b);
+    let view = crate::render::Renderer::view_with(b, smooth.slide());
     let local = b.setup.local_side;
     let player = b.player(local);
     let open = custom_open(b);
@@ -630,7 +634,7 @@ pub fn draw<'a>(
 
     let (hide_mugshot, hide_boxes) = transform_hides(b, state);
     // HP box, top left (moved right with the custom screen's window).
-    let shift = crate::custom::hud_shift(b);
+    let shift = crate::custom::hud_shift(b, smooth.slide());
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];

@@ -54,15 +54,27 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
     let place = Placement::fit(w, h);
     out[..w * h].fill(0);
     let columns: Vec<usize> = (0..place.width).map(|dx| (dx * WIDTH as i32 / place.width) as usize).collect();
+    // (The output columns that show the nudged frame: `smooth::Nudge`.)
+    let nudged: Vec<bool> = match &frame.nudge {
+        Some(n) => (0..place.width).map(|dx| crate::smooth::nudged_column(n, dx, &place)).collect(),
+        None => Vec::new(),
+    };
     for dy in 0..place.height {
         let fy = (dy * HEIGHT as i32 / place.height) as usize;
         let row = &frame.pixels[fy * WIDTH..(fy + 1) * WIDTH];
         let at = (place.y + dy) as usize * w + place.x as usize;
-        for (o, &fx) in out[at..at + place.width as usize].iter_mut().zip(&columns) {
+        let line = &mut out[at..at + place.width as usize];
+        for (o, &fx) in line.iter_mut().zip(&columns) {
             *o = to_rgb(row[fx]);
         }
+        if let Some(n) = &frame.nudge {
+            let moved = &n.pixels[fy * WIDTH..(fy + 1) * WIDTH];
+            for ((o, &fx), _) in line.iter_mut().zip(&columns).zip(&nudged).filter(|(_, n)| **n) {
+                *o = to_rgb(moved[fx]);
+            }
+        }
         if let Some(g) = &frame.glide {
-            glide_row(frame, g, &place, dy, fy, &mut out[at..at + place.width as usize]);
+            glide_row(frame, g, &place, &nudged, dy, fy, line);
         }
     }
     if let Some(t) = text
@@ -77,16 +89,22 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
 /// output pixel is the background's (or the backdrop's), the background a
 /// part of a pixel on, at the output's resolution: each output pixel takes
 /// the background pixel its place, in sixteenths of a frame pixel, plus the
-/// glide's falls in.
-fn glide_row(frame: &Frame, g: &crate::render::Glide, place: &Placement, dy: i32, fy: usize, out: &mut [u32]) {
+/// glide's falls in. (Where the output shows the nudged frame, `nudged`,
+/// that frame's pixel's.)
+fn glide_row(frame: &Frame, g: &crate::render::Glide, place: &Placement, nudged: &[bool], dy: i32, fy: usize, out: &mut [u32]) {
     use crate::compose::BACKDROP_DEPTH;
     use crate::render::Glide;
     let sixteenths = |d: i32, size: usize, span: i32, sub: u8| ((d as i64 * 16 * size as i64 / span as i64) as usize + sub as usize) / 16;
     let gy = sixteenths(dy, HEIGHT, place.height, g.sub.1).min(Glide::HEIGHT - 1);
     let depth = &frame.depth[fy * WIDTH..(fy + 1) * WIDTH];
+    let moved = frame.nudge.as_ref().map(|n| &n.depth[fy * WIDTH..(fy + 1) * WIDTH]);
     let source = &g.pixels[gy * Glide::WIDTH..(gy + 1) * Glide::WIDTH];
     for (dx, o) in out.iter_mut().enumerate() {
         let fx = (dx as i32 * WIDTH as i32 / place.width) as usize;
+        let depth = match moved {
+            Some(m) if nudged[dx] => m,
+            _ => depth,
+        };
         if depth[fx] == g.depth || depth[fx] == BACKDROP_DEPTH {
             let gx = sixteenths(dx as i32, WIDTH, place.width, g.sub.0).min(Glide::WIDTH - 1);
             *o = to_rgb(source[gx]);
@@ -162,7 +180,7 @@ mod tests {
         let mut pixels = vec![0u16; WIDTH * HEIGHT];
         pixels[0] = 0x001F;
         pixels[WIDTH + 1] = 0x7C00;
-        let frame = Frame { pixels, depth: vec![0; WIDTH * HEIGHT], text: Vec::new(), glide: None };
+        let frame = Frame { pixels, depth: vec![0; WIDTH * HEIGHT], text: Vec::new(), glide: None, ..Frame::default() };
         let (w, h) = (2 * WIDTH + 10, 2 * HEIGHT);
         let mut out = vec![0xABCDEF; w * h];
         present(&frame, None, &mut out, w, h);
@@ -189,7 +207,7 @@ mod tests {
         depth[3] = depth_key(0, 0, 1);
         depth[4] = BACKDROP_DEPTH;
         let glide = Glide { pixels: (0..Glide::WIDTH * Glide::HEIGHT).map(|i| (i % Glide::WIDTH) as u16).collect(), sub: (8, 0), depth: bg_depth };
-        let mut frame = Frame { pixels, depth, text: Vec::new(), glide: None };
+        let mut frame = Frame { pixels, depth, text: Vec::new(), glide: None, ..Frame::default() };
         let (w, h) = (2 * WIDTH, 2 * HEIGHT);
         let mut still = vec![0; w * h];
         present(&frame, None, &mut still, w, h);
@@ -203,6 +221,28 @@ mod tests {
         assert_eq!(row(&moved), [0, 1, 1, 2, 2, 3, 0x7FFF, 0x7FFF, 4, 5].map(to_rgb));
     }
 
+    /// A nudge shows on the output pixels left of its part of a pixel, and
+    /// the frame's own on the rest: a half pixel at twice the frame's size,
+    /// the left output pixel of each; a quarter at four times, the first of
+    /// four.
+    #[test]
+    fn a_nudge_shows_left_of_its_part_of_a_pixel() {
+        use crate::smooth::Nudge;
+        let (here, moved) = (0x001F, 0x7C00);
+        let frame = |sub| Frame {
+            pixels: vec![here; WIDTH * HEIGHT],
+            depth: vec![0; WIDTH * HEIGHT],
+            nudge: Some(Nudge { pixels: vec![moved; WIDTH * HEIGHT], depth: vec![0; WIDTH * HEIGHT], sub }),
+            ..Frame::default()
+        };
+        for (scale, sub, row) in [(2, 8, vec![moved, here, moved, here]), (4, 4, vec![moved, here, here, here, moved])] {
+            let (w, h) = (scale * WIDTH, scale * HEIGHT);
+            let mut out = vec![0; w * h];
+            present(&frame(sub), None, &mut out, w, h);
+            assert_eq!(out[w..w + row.len()].to_vec(), row.iter().map(|&c| to_rgb(c)).collect::<Vec<_>>(), "at {scale} times");
+        }
+    }
+
     /// The original mode's strings in a language the pack has no fonts for
     /// are drawn into the frame itself: its pixels take the text in the
     /// item's colors within the item's box, nothing else changes, and the
@@ -213,7 +253,7 @@ mod tests {
         use crate::vfont::{Role, VectorFont};
         let (face, shadow) = (0x7FFF, 0x2108);
         let item = TextItem::new("Cannon", Role::Cell, Rect::new(16, 8, 64, 16), face, Some(shadow));
-        let mut frame = Frame { pixels: vec![0x1234; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None };
+        let mut frame = Frame { pixels: vec![0x1234; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None, ..Frame::default() };
         draw_text(&mut frame, &mut TextRenderer::new(std::sync::Arc::new(VectorFont::bundled())));
         assert!(frame.text.is_empty());
         let changed: Vec<usize> = (0..WIDTH * HEIGHT).filter(|&i| frame.pixels[i] != 0x1234).collect();
