@@ -12,12 +12,14 @@ web-time = "1"
 
 # Native: WebRTC sans I/O (the sockets and timers this crate's), the
 # signaling server's WebSocket (on a thread of its own), and the machine's
-# addresses (its host candidates).
+# addresses (its host candidates), and the system's randomness (reconnect
+# codes).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rtc = "0.21"
 tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
 if-addrs = "0.14"
 bytes = "1"
+getrandom = "0.3"
 
 # The web: the browser's RTCPeerConnection and WebSocket.
 [target.'cfg(target_arch = "wasm32")'.dependencies]
@@ -26,6 +28,7 @@ wasm-bindgen-futures = "0.4"
 js-sys = "0.3"
 web-sys = { version = "0.3", features = [
     "CloseEvent",
+    "Crypto",
     "MessageEvent",
     "RtcConfiguration",
     "RtcDataChannel",

@@ -4,26 +4,39 @@
 //! in process); this module is what the clients say and hear, as JSON
 //! text messages on a WebSocket. This is version [`VERSION`] of it.
 //!
-//! **A room's code is the server's to pick**, never a client's:
-//! [`CODE_LENGTH`] characters of [`ALPHABET`], capitals and digits none of
-//! which reads as another. A player gives it to the other (an invite), who
-//! types it: [`normalize_code`] takes what was typed.
+//! The two are in a room only while they need the server: until their first
+//! connection is through, and while a dropped one is made again. Between
+//! those times neither has a socket to the server. There are two kinds of
+//! room:
 //!
-//! - To make a room a client opens `<server>/rooms?peer=<ID>&v=1`
-//!   ([`new_room_url`]): ID is the client's own, random, the same on every
-//!   reconnection. The server makes a room under a code no room has; the
-//!   client is its host, and the welcome says the code.
-//! - To join a room, or to come back to one after its socket dropped, a
-//!   client opens `<server>/rooms/<CODE>?peer=<ID>&v=1` ([`room_url`]). A
-//!   code no room has is refused: nothing is made of it.
+//! - **An invite room** is where two players first meet. Its code is the
+//!   server's to pick, never a client's: [`CODE_LENGTH`] characters of
+//!   [`ALPHABET`], capitals and digits none of which reads as another. A
+//!   player gives it to the other (an invite), who types it:
+//!   [`normalize_code`] takes what was typed. To make one a client opens
+//!   `<server>/rooms?peer=<ID>&v=1` ([`new_room_url`]): ID is the client's
+//!   own, random, the same on every reconnection. The server makes a room
+//!   under a code no room has; the client is its host, and the welcome says
+//!   the code. To join one, or to come back to one after its socket
+//!   dropped, a client opens `<server>/rooms/<CODE>?peer=<ID>&v=1`
+//!   ([`room_url`]). A code no room has is refused: nothing is made of it.
+//! - **A reconnect room** is where the two meet again after their
+//!   connection dropped. Its code is one the two agreed on over that
+//!   connection while it was up ([`RECONNECT_CODE_BYTES`] random bytes in
+//!   lowercase hex, [`valid_reconnect_code`]), so the server first sees it
+//!   when it is used. Both open `<server>/reconnect/<CODE>?peer=<ID>&v=1`
+//!   ([`reconnect_url`]): the first to come makes the room, and the second
+//!   joins it. A code not of that form is refused.
 //!
-//! The room has two places: its maker is its host, the next ID to come its
-//! joiner; an ID that comes again gets its place back (that is how a
-//! reconnecting player keeps its side), and a third is refused. The server
-//! says:
+//! A room has two places. In an invite room its maker is the host and the
+//! next ID to come the joiner; in a reconnect room the places are only the
+//! first and the second to come (the clients keep the roles they had). An
+//! ID that comes again gets its place back (that is how a client whose
+//! socket dropped keeps its side), and a third is refused. The server says:
 //!
-//! - `{"type":"welcome","role":"host"|"join","peer":BOOL,"code":CODE}`:
-//!   this client's place, whether the other is there, and the room's code;
+//! - `{"type":"welcome","role":"host"|"join","peer":BOOL,"code":CODE}` in an
+//!   invite room and `{"type":"welcome","peer":BOOL}` in a reconnect room:
+//!   this client's place, whether the other is there, and the invite's code;
 //! - `{"type":"peer","present":BOOL}`: the other came, or its socket went;
 //! - `{"type":"signal","data":...}`: what the other sent;
 //! - `{"type":"error","reason":REASON,"message":"..."}`: refused, and the
@@ -32,19 +45,21 @@
 //!
 //! A client says `{"type":"signal","data":...}` (to the other, if it is
 //! there; dropped if not) and `{"type":"leave"}` (it gives its place up; a
-//! room both have left is over, and its code names no room). A text message
-//! `ping` is answered `pong`, the keepalive. The server reads none of the
-//! data, which is [`Signal`]: the offer, the answer, trickled candidates and
-//! the host's call to dial again, each of a generation (each new connection
-//! is one more), so that what a dropped one still had on its way is told
-//! from the next one's.
+//! room both have left is over at once, and its code names no room). A text
+//! message `ping` is answered `pong`, the keepalive. The server reads none
+//! of the data, which is [`Signal`]: the offer, the answer, trickled
+//! candidates and the host's call to dial again, each of a generation (each
+//! new connection is one more), so that what a dropped one still had on its
+//! way is told from the next one's.
 //!
-//! A room is kept while a socket of it is open and ten minutes after the
-//! last one goes; then it is forgotten, and its code with it.
+//! An invite room is kept while a socket of it is open and ten minutes after
+//! the last one goes; a reconnect room, while a socket of it is open and
+//! [`RECONNECT_ROOM_KEPT`] after the last one goes. Then it is forgotten,
+//! and its code with it.
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Candidate, Role};
+use crate::{Candidate, Duration, Role};
 
 /// The protocol's version, which a client says as it connects (`v=`): a
 /// server of another refuses it ([`Refusal::Version`]).
@@ -58,6 +73,15 @@ pub const ALPHABET: &str = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 /// How many characters a room's code has.
 pub const CODE_LENGTH: usize = 6;
 
+/// How many random bytes a reconnect room's code has (128 bits), said as
+/// twice as many lowercase hex digits.
+pub const RECONNECT_CODE_BYTES: usize = 16;
+
+/// How long a reconnect room with no socket is kept: a link's time to
+/// reconnect ([`crate::Config::reconnect_timeout`]'s default), after which
+/// neither side comes back to it.
+pub const RECONNECT_ROOM_KEPT: Duration = Duration::from_secs(30);
+
 /// What a client says to the server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -70,10 +94,14 @@ pub enum ToServer {
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum FromServer {
+    /// (The place and the code in an invite room; neither in a reconnect
+    /// room.)
     Welcome {
-        role: Role,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        role: Option<Role>,
         peer: bool,
-        code: String,
+        #[serde(default, skip_serializing_if = "Option::is_none")]
+        code: Option<String>,
     },
     Peer {
         present: bool,
@@ -98,7 +126,8 @@ pub enum Refusal {
     Full,
     /// The client speaks another version of this protocol.
     Version,
-    /// The request isn't one: no peer ID, or a bad one.
+    /// The request isn't one: no peer ID or a bad one, or a reconnect code
+    /// not of the clients' form.
     BadRequest,
     /// The server found no free code for a new room.
     Busy,
@@ -145,6 +174,12 @@ pub fn normalize_code(typed: &str) -> Option<String> {
     valid_code(&code).then_some(code)
 }
 
+/// Whether `code` is a reconnect room's code as the clients write one:
+/// [`RECONNECT_CODE_BYTES`] bytes in lowercase hex.
+pub fn valid_reconnect_code(code: &str) -> bool {
+    code.len() == 2 * RECONNECT_CODE_BYTES && code.bytes().all(|c| matches!(c, b'0'..=b'9' | b'a'..=b'f'))
+}
+
 /// The server at `server` as a WebSocket URL's start (`ws://`, `wss://`,
 /// or `http(s)://` for the same; no scheme: `wss://`).
 fn websocket(server: &str) -> String {
@@ -169,6 +204,12 @@ pub fn room_url(server: &str, code: &str, peer: &str) -> String {
     format!("{}/rooms/{code}?peer={peer}&v={VERSION}", websocket(server))
 }
 
+/// The WebSocket URL of the reconnect room `code` on the server at
+/// `server`, for the client `peer`.
+pub fn reconnect_url(server: &str, code: &str, peer: &str) -> String {
+    format!("{}/reconnect/{code}?peer={peer}&v={VERSION}", websocket(server))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -177,7 +218,9 @@ mod tests {
     #[test]
     fn messages_are_the_workers_json() {
         let said = |m: &FromServer| serde_json::to_string(m).unwrap();
-        assert_eq!(said(&FromServer::Welcome { role: Role::Join, peer: true, code: "ABC234".into() }), r#"{"type":"welcome","role":"join","peer":true,"code":"ABC234"}"#);
+        assert_eq!(said(&FromServer::Welcome { role: Some(Role::Join), peer: true, code: Some("ABC234".into()) }), r#"{"type":"welcome","role":"join","peer":true,"code":"ABC234"}"#);
+        assert_eq!(said(&FromServer::Welcome { role: None, peer: false, code: None }), r#"{"type":"welcome","peer":false}"#);
+        assert_eq!(serde_json::from_str::<FromServer>(r#"{"type":"welcome","peer":true}"#).unwrap(), FromServer::Welcome { role: None, peer: true, code: None });
         assert_eq!(said(&FromServer::Peer { present: false }), r#"{"type":"peer","present":false}"#);
         let candidate = Signal::Candidate { generation: 2, candidate: Candidate { candidate: "candidate:1 1 udp 1 192.0.2.1 9 typ host".into(), mid: Some("0".into()), mline: Some(0) } };
         let text = serde_json::to_string(&ToServer::Signal { data: candidate.clone() }).unwrap();
@@ -214,5 +257,14 @@ mod tests {
         assert_eq!(room_url("ws://127.0.0.1:8787", "ABC234", "p1"), "ws://127.0.0.1:8787/rooms/ABC234?peer=p1&v=1");
         assert_eq!(new_room_url("signal.example", "p1"), "wss://signal.example/rooms?peer=p1&v=1");
         assert_eq!(new_room_url("http://127.0.0.1:8787/", "p1"), "ws://127.0.0.1:8787/rooms?peer=p1&v=1");
+    }
+
+    #[test]
+    fn reconnect_rooms_by_code() {
+        let code = "0123456789abcdef0123456789abcdef";
+        assert!(valid_reconnect_code(code));
+        assert!(!valid_reconnect_code(&code.to_uppercase()) && !valid_reconnect_code(&code[1..]) && !valid_reconnect_code(&format!("{code}0")));
+        assert!(!valid_reconnect_code("0123456789abcdef0123456789abcdeg") && !valid_reconnect_code("ABC234"));
+        assert_eq!(reconnect_url("https://signal.example", code, "p1"), format!("wss://signal.example/reconnect/{code}?peer=p1&v=1"));
     }
 }
