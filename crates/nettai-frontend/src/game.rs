@@ -20,7 +20,7 @@ use nettai_content::pack;
 pub use nettai_content::report::Report;
 use nettai_render::Renderer;
 use nettai_render::packs::{OtherBackgrounds, PackGraphics};
-pub use nettai_render::textlayer::TextMode;
+pub use nettai_render::textlayer::GraphicsMode;
 pub use nettai_render::vfont::VectorFont;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -132,7 +132,7 @@ impl Game {
     /// `lang` (one made from the other release's ROMs alone) is drawn in
     /// its own language: its pictures with words are the ones it has, and
     /// the strings are still `lang`'s, which the renderer draws with the
-    /// vector font in either text mode (`Renderer::set_text`). With them, the
+    /// vector font in either mode (`Renderer::set_mode`). With them, the
     /// background pool's others (another game's backgrounds a round may be
     /// drawn on: [`Game::other_backgrounds`]).
     pub fn graphics(&self, lang: &str) -> Result<Graphics, LoadError> {
@@ -231,11 +231,11 @@ impl Graphics {
     }
 
     /// A renderer of these graphics, its text drawn in `text` mode
-    /// (`font`: the font mode's, [`font`]).
-    pub fn renderer(&self, text: TextMode, font: Option<Arc<VectorFont>>) -> Renderer {
+    /// (`font`: the enhanced mode's, [`font`]).
+    pub fn renderer(&self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) -> Renderer {
         let mut renderer = Renderer::with_packs(self.packs());
         renderer.set_strings(self.strings.clone());
-        renderer.set_text(text, font);
+        renderer.set_mode(mode, font);
         renderer
     }
 }
@@ -263,10 +263,10 @@ impl Sound {
 }
 
 /// The font the `text` mode draws with: the file at `path`, else the one
-/// the library comes with; none in the original's text mode, which draws
+/// the library comes with; none in the original mode, which draws
 /// the pack's own fonts.
-pub fn font(text: TextMode, path: Option<&Path>) -> Result<Option<Arc<VectorFont>>, LoadError> {
-    if text != TextMode::Font {
+pub fn font(mode: GraphicsMode, path: Option<&Path>) -> Result<Option<Arc<VectorFont>>, LoadError> {
+    if mode != GraphicsMode::Enhanced {
         return Ok(None);
     }
     match path {
@@ -289,9 +289,9 @@ pub struct Options {
     pub content: Option<PathBuf>,
     /// The language shown.
     pub lang: String,
-    /// How the text is drawn, and the font mode's font file (none: the
+    /// How the battle is drawn, and the enhanced mode's font file (none: the
     /// library's own).
-    pub text: TextMode,
+    pub mode: GraphicsMode,
     pub font: Option<PathBuf>,
     /// Load the sound too (a host that plays none needn't).
     pub sound: bool,
@@ -300,9 +300,9 @@ pub struct Options {
 impl Default for Options {
     /// The packs directory the desktop program looks in
     /// (`nettai_content::pack::packs_dir`), the content's own language,
-    /// the font mode with the library's font, with sound.
+    /// the enhanced mode with the library's font, with sound.
     fn default() -> Options {
-        Options { packs_dir: pack::packs_dir(), packs: Vec::new(), content: None, lang: locale::OWN.to_string(), text: TextMode::Font, font: None, sound: true }
+        Options { packs_dir: pack::packs_dir(), packs: Vec::new(), content: None, lang: locale::OWN.to_string(), mode: GraphicsMode::Enhanced, font: None, sound: true }
     }
 }
 
@@ -311,7 +311,7 @@ pub struct Loaded {
     pub found: Found,
     pub game: Game,
     pub graphics: Graphics,
-    pub text: TextMode,
+    pub mode: GraphicsMode,
     pub font: Option<Arc<VectorFont>>,
     pub sound: Option<Sound>,
 }
@@ -319,7 +319,7 @@ pub struct Loaded {
 impl Loaded {
     /// A renderer of the game's graphics, the text as it was asked for.
     pub fn renderer(&self) -> Renderer {
-        self.graphics.renderer(self.text, self.font.clone())
+        self.graphics.renderer(self.mode, self.font.clone())
     }
 
     /// The game's battle themes (its rules' `battle_themes`), by their songs'
@@ -476,7 +476,7 @@ impl Loading {
                 let graphics = game.graphics(&self.options.lang).map_err(|e| after(&reports, e))?;
                 self.graphics = Some(graphics);
             }
-            Part::Font => self.font = font(self.options.text, self.options.font.as_deref()).map_err(|e| after(&reports, e))?,
+            Part::Font => self.font = font(self.options.mode, self.options.font.as_deref()).map_err(|e| after(&reports, e))?,
             Part::Sound => {
                 let Some(game) = &self.game else { loaded("content") };
                 let sound = game.sound().map_err(|e| after(&reports, e))?;
@@ -492,7 +492,7 @@ impl Loading {
         if self.next().is_some() {
             return None;
         }
-        Some(Loaded { found: self.found?, game: self.game?, graphics: self.graphics?, text: self.options.text, font: self.font, sound: self.sound })
+        Some(Loaded { found: self.found?, game: self.game?, graphics: self.graphics?, mode: self.options.mode, font: self.font, sound: self.sound })
     }
 }
 
@@ -544,9 +544,9 @@ mod tests {
         let Err(e) = load("exe6", &options) else { panic!("read a pack that isn't there") };
         assert_eq!(e.what, Failed::Packs);
         // A font file that isn't there.
-        let Err(e) = font(TextMode::Font, Some(&dir.join("no.ttf"))) else { panic!("read a font that isn't there") };
+        let Err(e) = font(GraphicsMode::Enhanced, Some(&dir.join("no.ttf"))) else { panic!("read a font that isn't there") };
         assert!(matches!(&e.what, Failed::Font(why) if why.starts_with("can't read the font")), "{e}");
-        assert!(font(TextMode::Original, Some(&dir.join("no.ttf"))).unwrap().is_none());
+        assert!(font(GraphicsMode::Original, Some(&dir.join("no.ttf"))).unwrap().is_none());
         let _ = std::fs::remove_dir_all(dir);
     }
 }

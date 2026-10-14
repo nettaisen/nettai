@@ -23,7 +23,7 @@ use nettai_battle::rules::Fact;
 use nettai_content_api::Value;
 use nettai_frontend::connection::Reconnecting;
 use nettai_frontend::driver::bot_buttons;
-use nettai_frontend::game::{Graphics, TextMode};
+use nettai_frontend::game::{Graphics, GraphicsMode};
 use nettai_frontend::lobby::{Lobby, Role, Status};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
 use nettai_frontend::player::Player;
@@ -330,7 +330,7 @@ impl Peer {
             }
             Polled::Loading(agreed) => {
                 if let Some((set, side)) = agreed {
-                    self.preload = Some(Preload::with(self.graphics.renderer(TextMode::Original, None), None, None, &set, side as u8, (240, 160)));
+                    self.preload = Some(Preload::with(self.graphics.renderer(GraphicsMode::Original, None), None, None, &set, side as u8, (240, 160)));
                 }
                 if let Some(preload) = &mut self.preload {
                     match self.wishes.hold_loading {
@@ -350,7 +350,7 @@ impl Peer {
                     let driver = Box::new(NetPlayer::new(channel, side, set, NetOptions::default()));
                     self.player = Some(match self.preload.take() {
                         Some(preload) => preload.player(driver),
-                        None => Player::with(self.graphics.renderer(TextMode::Original, None), None, None, driver),
+                        None => Player::with(self.graphics.renderer(GraphicsMode::Original, None), None, None, driver),
                     });
                     // (Its ready mark was for this match.)
                     self.wishes.ready = false;

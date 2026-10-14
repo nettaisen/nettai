@@ -71,7 +71,7 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
 }
 
 /// Draw a frame's text items into its own picture, at the frame's
-/// resolution, and leave it none: the original text mode's strings in a
+/// resolution, and leave it none: the original mode's strings in a
 /// language its pack has no fonts for (`Renderer::render`). A pixel no
 /// item covers keeps its color.
 pub fn draw_text(frame: &mut Frame, text: &mut TextRenderer) {

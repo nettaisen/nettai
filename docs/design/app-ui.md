@@ -900,7 +900,7 @@ The mockups show no screen for this; it is decided here.
 
 ### Settings
 One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
-Video (Picture size, Full screen, Battle text: sharp or original, Reduce motion), Audio (Music, Sound effects), Online (Input
+Video (Picture size, Full screen, Battle graphics: enhanced or original, Reduce motion), Audio (Music, Sound effects), Online (Input
 delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
 button, each rebindable), About (Version; Your files, SHOW FOLDER; Made with, SHOW LICENSES, which opens About).
 
