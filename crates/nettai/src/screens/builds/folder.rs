@@ -13,13 +13,17 @@
 //! **R** makes the entry under the cursor the Regular chip (or no longer), **T** tags it: the first T marks
 //! one entry and the second its pair, and the two are the build's tag chips once the rules take them. **Del**
 //! takes the entry's chip out. A mark the rules refuse isn't made, and the strip says why.
+//!
+//! **The mouse:** a click on an entry marks it (the focus stays on it); a click on the marked one takes its chip out,
+//! as Del does. An entry dragged to another place moves there, those between shifting toward where it was, its
+//! Regular and tag marks with it (`FolderEdit::Move`).
 
 use crate::builds::edit::{self, FolderEdit};
 use crate::builds::overview::chip_cell;
 use crate::builds::words::{Words, kind};
 use crate::games::one_line;
 use crate::input::{Action, KeyPress};
-use crate::screens::builds::editor::{Draft, Tab};
+use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
@@ -413,6 +417,37 @@ impl Folder {
         }
     }
 
+    /// Where entry `from` dragged to `at` (the window's point) would land: the entry under the pointer; none off the
+    /// folder.
+    fn drop_at(shell: &Shell, at: i32) -> Option<usize> {
+        let point = editor::pointer_at(at);
+        let size = nettai_battle::custom::folder::FOLDER_SIZE;
+        if shell.scale.phone { editor::list_row(shell, "slot", point, size) } else { editor::nearest(shell, "slot", 0..size, point, None) }
+    }
+
+    /// Move entry `from` to `to`, those between shifting toward where it was; its marks go with it (and the entry
+    /// tagged first, waiting for its pair). It lands with a flash, and is the one marked.
+    fn reorder(&mut self, shell: &mut Shell, draft: &mut Draft, from: usize, to: usize) {
+        let content = draft.content().clone();
+        let before = draft.side().folder(&content);
+        let Some(after) = edit::folder_after(&content, &before, FolderEdit::Move(from, to)) else { return };
+        if !draft.edit(|content, side| side.set_folder(content, &after).is_ok()) {
+            return shell.sound.play(Cue::Refused);
+        }
+        self.tagging = self.tagging.map(|t| edit::moved(t, from, to));
+        shell.sound.play(Cue::Pick);
+        self.landed += 1;
+        let ui = shell.ui();
+        let view = ui.global::<FolderView>();
+        view.set_landed(to as i32);
+        view.set_landed_seq(self.landed);
+        self.slot = to;
+        self.described = Some(Described::Slot(to));
+        self.notice = None;
+        self.changed(shell, draft);
+        shell.nav.focus("slot", to as i32);
+    }
+
     /// The entry the cursor is on, if it is on one.
     fn focused_slot(shell: &Shell) -> Option<usize> {
         shell.nav.focused().filter(|k| k.id == "slot").map(|k| k.index.max(0) as usize)
@@ -509,9 +544,18 @@ impl Tab for Folder {
         }
     }
 
-    fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, _index: i32, choice: i32) {
-        if id == "lib.sort" {
-            self.sort_by(shell, draft, choice.max(0) as usize);
+    fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
+        match id {
+            "lib.sort" => self.sort_by(shell, draft, choice.max(0) as usize),
+            // An entry dragged: where it would land; let go there, it moves (off the folder, it goes back).
+            "drag-over" => editor::show_drop(shell, Folder::drop_at(shell, choice), false),
+            "drag-drop" => {
+                editor::show_drop(shell, None, false);
+                if let Some(to) = Folder::drop_at(shell, choice).filter(|&to| to as i32 != index && index >= 0) {
+                    self.reorder(shell, draft, index as usize, to);
+                }
+            }
+            _ => {}
         }
     }
 

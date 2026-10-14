@@ -9,7 +9,7 @@
 // (`FolderOverlay`), with what a slot's keys do as buttons. Its Rust half is src/screens/builds/folder.rs.
 
 import { Theme, Audit } from "../../theme.slint";
-import { Nav, Focusable } from "../../nav.slint";
+import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
@@ -136,42 +136,111 @@ component CountBox inherits Rectangle {
     }
 }
 
-// One of the folder's entries: the overview's row, as a control.
+// Where entry `i` would be while one is dragged: at the place it shifts to (the dragged one where it would land).
+export global FolderDrag {
+    out property <bool> on: Drag.on && Drag.list == "slot";
+    out property <int> to: self.on ? Drag.to : -1;
+    public pure function shown(i: int) -> int {
+        return self.to < 0 ? i : i == Drag.from ? self.to : (Drag.from < i && i <= self.to) ? i - 1 : (self.to <= i && i < Drag.from) ? i + 1 : i;
+    }
+}
+
 // A folder's entry as a phone's list row, 40 tall: the chip's row, and a click on it the entry's. (Its touch is
-// its own; it is in one list, and copied into it: docs/app.md §14.)
+// its own; it is in one list, and copied into it: docs/app.md §14.) `dy` is where it is shifted to while another
+// is dragged (the one dragged is drawn under the pointer, `gone` here).
 component SlotRow inherits Rectangle {
     in property <int> index;
+    in property <length> dy;
+    in property <bool> gone;
     height: 40px;
     ChipRow {
+        x: 0;
+        y: root.dy;
         big: true;
         chip: FolderView.slots[root.index];
-        number: root.index + 1;
+        number: FolderDrag.shown(root.index) + 1;
         hover: touch.has-hover;
+        opacity: root.gone ? 0 : 1;
+        animate y {
+            duration: FolderDrag.on ? Theme.quick : 0ms;
+            easing: ease-out;
+        }
     }
 
     touch := RowTouch {
         nav: "slot";
         nav-index: root.index;
-        removable: true;
+        drag: "slot";
     }
 }
 
+// One of the folder's entries: the overview's row, as a control. A click on it while it is marked takes its chip
+// out; a drag takes it to another place (`dx`, `dy`: where it is shifted to while another is dragged; the one
+// dragged is drawn under the pointer, `gone` here).
 component SlotView inherits Rectangle {
     in property <ChipCell> chip;
     in property <int> index;
     in property <bool> chosen;
+    in property <length> dx;
+    in property <length> dy;
+    in property <bool> gone;
     height: Theme.chip-row;
     ChipRow {
+        x: root.dx;
+        y: root.dy;
+        width: root.width;
         chip: root.chip;
-        number: root.index + 1;
+        number: FolderDrag.shown(root.index) + 1;
         chosen: root.chosen;
-        hover: hit.has-hover;
+        hover: hit.has-hover && !FolderDrag.on;
+        opacity: root.gone ? 0 : 1;
+        animate x, y {
+            duration: FolderDrag.on ? Theme.quick : 0ms;
+            easing: ease-out;
+        }
     }
 
     hit := Focusable {
         nav: "slot";
         nav-index: root.index;
-        removable: true;
+        marked: root.chosen;
+        drag: "slot";
+    }
+}
+
+// The row being dragged, under the pointer: lifted (a little larger, raised, with a shadow and a line in the
+// cursor's color), with the number it would have where it would land.
+export component LiftedRow inherits Rectangle {
+    in property <ChipCell> chip;
+    in property <int> number;
+    in property <bool> big;
+    Rectangle {
+        transform-scale: 1.03;
+        background: Theme.raised;
+        border-width: 1px;
+        border-color: Theme.cursor;
+        drop-shadow-blur: 10px;
+        drop-shadow-offset-y: 4px;
+        drop-shadow-color: #00000090;
+        ChipRow {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            chip: root.chip;
+            number: root.number;
+            big: root.big;
+            chosen: true;
+        }
+    }
+}
+
+// Where the row being dragged would land: a gap, outlined in the cursor's color.
+export component DropGap inherits Rectangle {
+    Rectangle {
+        background: Theme.tint;
+        border-width: 1px;
+        border-color: Theme.cursor.with-alpha(0.6);
     }
 }
 
@@ -422,6 +491,13 @@ export component FolderTab inherits Rectangle {
     property <length> counts-y: root.pane-y + (root.two-lines ? 24px : 14px);
     // (The screenshot pass is told if the counts don't fit the pane even so.)
     property <bool> counts-over: Theme.audit && !Theme.phone && root.counts-width > root.pane-width - 24px + 0.5px;
+    // Where entry `i` is in the framed folder's two columns.
+    pure function slot-x(i: int) -> length {
+        return 12px + floor(i / 15) * (root.slot-width + 12px);
+    }
+    pure function slot-y(i: int) -> length {
+        return root.pane-y + 52px + mod(i, 15) * (Theme.chip-row + 2px);
+    }
     // ---- The strip: the chip under the cursor.
     PanelBack {
         x: 0;
@@ -601,13 +677,27 @@ export component FolderTab inherits Rectangle {
     }
 
     if !Theme.phone: Rectangle {
+        // (Where an entry would land while one is dragged.)
+        DropGap {
+            x: root.slot-x(max(0, FolderDrag.to));
+            y: root.slot-y(max(0, FolderDrag.to));
+            width: root.slot-width;
+            height: Theme.chip-row;
+            visible: FolderDrag.to >= 0;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
         for chip[i] in FolderView.slots: SlotView {
-            x: 12px + floor(i / 15) * (root.slot-width + 12px);
-            y: root.pane-y + 52px + mod(i, 15) * (Theme.chip-row + 2px);
+            x: root.slot-x(i);
+            y: root.slot-y(i);
             width: root.slot-width;
             chip: chip;
             index: i;
             chosen: i == FolderView.marked;
+            dx: root.slot-x(FolderDrag.shown(i)) - self.x;
+            dy: root.slot-y(FolderDrag.shown(i)) - self.y;
+            gone: FolderDrag.on && i == Drag.from;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -629,6 +719,17 @@ export component FolderTab inherits Rectangle {
             width: parent.width - self.x;
             height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
         }
+
+        // (The entry being dragged, under the pointer, over everything.)
+        LiftedRow {
+            x: Drag.x - root.absolute-position.x - Drag.grab-x;
+            y: Drag.y - root.absolute-position.y - Drag.grab-y;
+            width: root.slot-width;
+            height: Theme.chip-row;
+            visible: FolderDrag.on;
+            chip: FolderView.slots[max(0, Drag.from)];
+            number: FolderDrag.shown(max(0, Drag.from)) + 1;
+        }
     }
 
     if Theme.phone: Rectangle {
@@ -639,14 +740,48 @@ export component FolderTab inherits Rectangle {
             nav: "slot";
             count: FolderView.slots.length;
             row-height: 40px;
-            chosen: FolderView.marked;
+            // (While an entry is dragged, the gap is where it is: no row is marked.)
+            chosen: FolderDrag.on ? -1 : FolderView.marked;
+            // (A mouse's drag on an entry moves it: the wheel scrolls.)
+            mouse-pan: false;
             for at in folder.shown: SlotRow {
                 y: self.index * folder.pitch;
                 width: folder.row-width;
                 index: folder.first + at;
+                dy: (FolderDrag.shown(self.index) - self.index) * folder.pitch;
+                gone: FolderDrag.on && self.index == Drag.from;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
             }
+        }
+
+        // (Where the entry dragged would land, over the list where it is scrolled to.)
+        Rectangle {
+            x: folder.x;
+            y: folder.y;
+            width: folder.row-width;
+            height: folder.height;
+            visible: FolderDrag.to >= 0;
+            clip: true;
+            DropGap {
+                x: 0;
+                y: max(0, FolderDrag.to) * folder.pitch - folder.scroll;
+                width: parent.width;
+                height: 40px;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        LiftedRow {
+            x: Drag.x - root.absolute-position.x - Drag.grab-x;
+            y: Drag.y - root.absolute-position.y - Drag.grab-y;
+            width: folder.row-width;
+            height: 40px;
+            visible: FolderDrag.on;
+            big: true;
+            chip: FolderView.slots[max(0, Drag.from)];
+            number: FolderDrag.shown(max(0, Drag.from)) + 1;
         }
     }
 }

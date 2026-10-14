@@ -13,13 +13,18 @@
 //! so a card is put in and taken out from where the cursor is. Del takes the build's card under the cursor out;
 //! `[` and `]` (the pad's north button: up) move it in the list's order, which matters (a later card can undo an
 //! earlier one's work).
+//!
+//! **The mouse:** a click on one of the build's cards marks it (the focus stays on it); a click on the marked one
+//! takes it out, as Del does. A card dragged to another place in the list moves there, those between shifting toward
+//! where it was (the keys' edit, `ListEdit::Move`). In a game whose cards go in slots each card's slot is its own: a
+//! slot isn't dragged.
 
 use crate::builds::cards::{self, Line};
 use crate::builds::edit::{self, ListEdit};
 use crate::builds::grid;
 use crate::builds::overview;
 use crate::input::{Action, KeyPress};
-use crate::screens::builds::editor::{Draft, Tab};
+use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
@@ -464,20 +469,34 @@ impl PatchCards {
 
     /// Move the build's card in row `i` up or down the list.
     fn shift(&mut self, shell: &mut Shell, draft: &mut Draft, i: usize, up: bool) {
-        if PatchCards::slotted(draft) || PatchCards::installed(draft).get(i).copied().flatten().is_none() {
-            return shell.sound.play(Cue::Refused);
+        let Some(to) = (if up { i.checked_sub(1) } else { Some(i + 1) }) else { return shell.sound.play(Cue::Refused) };
+        if self.move_card(shell, draft, i, to) {
+            shell.sound.play(Cue::Cursor);
         }
-        if !draft.edit(|content, side| edit::list(content, side, FIELD, ListEdit::Move(i, up))) {
-            return shell.sound.play(Cue::Refused);
+    }
+
+    /// Move the build's card in row `i` to row `to`, those between shifting toward where it was: whether it moved
+    /// (if not, the refusal's sound is played).
+    fn move_card(&mut self, shell: &mut Shell, draft: &mut Draft, i: usize, to: usize) -> bool {
+        let cards = PatchCards::installed(draft).iter().flatten().count();
+        if PatchCards::slotted(draft) || i >= cards || to >= cards || !draft.edit(|content, side| edit::list(content, side, FIELD, ListEdit::Move(i, to))) {
+            shell.sound.play(Cue::Refused);
+            return false;
         }
-        let to = if up { i - 1 } else { i + 1 };
         self.slot = to;
         self.described = Some(Described::Installed(to));
-        shell.sound.play(Cue::Cursor);
+        self.notice = None;
         self.changed(shell, draft);
         if !shell.ui().global::<PatchCardsView>().get_sheet() {
             shell.nav.focus("card", to as i32);
         }
+        true
+    }
+
+    /// Where a card dragged to `at` (the window's point) would land: the card under the pointer (past the last, the
+    /// last); none off the list.
+    fn drop_at(shell: &Shell, draft: &Draft, at: i32) -> Option<usize> {
+        editor::list_row(shell, "card", editor::pointer_at(at), PatchCards::installed(draft).iter().flatten().count())
     }
 
     /// The cursor is on the build's row `i`.
@@ -593,10 +612,28 @@ impl Tab for PatchCards {
         }
     }
 
-    fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, _index: i32, choice: i32) {
-        if id == "lib.sort" {
-            self.sort = (choice.max(0) as usize).min(SORTS.len() - 1);
-            self.changed(shell, draft);
+    fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
+        match id {
+            "lib.sort" => {
+                self.sort = (choice.max(0) as usize).min(SORTS.len() - 1);
+                self.changed(shell, draft);
+            }
+            // A card dragged: where it would land; let go there, it moves (off the list, it goes back).
+            "drag-over" => editor::show_drop(shell, PatchCards::drop_at(shell, draft, choice), false),
+            "drag-drop" => {
+                editor::show_drop(shell, None, false);
+                if let Some(to) = PatchCards::drop_at(shell, draft, choice).filter(|&to| to as i32 != index && index >= 0)
+                    && self.move_card(shell, draft, index as usize, to)
+                {
+                    shell.sound.play(Cue::Pick);
+                    self.landed += 1;
+                    let ui = shell.ui();
+                    let view = ui.global::<PatchCardsView>();
+                    view.set_landed(to as i32);
+                    view.set_landed_seq(self.landed);
+                }
+            }
+            _ => {}
         }
     }
 
