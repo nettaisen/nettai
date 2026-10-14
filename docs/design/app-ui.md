@@ -202,6 +202,11 @@ Each is settled unless the user changes it.
     its panels animate and its field does what it does (wind blows, roads and volcanoes run), the navis stand,
     and it never shows the custom screen, a banner or a round's end. The HUD has no custom gauge. (§6, docs/app.md
     §15.)
+36. **A scrolling page is gone through before what is under it** (2026-10-13): "it's impossible to scroll the
+    practice menu without selecting the button on the bottom first, it should scroll the entire length before
+    moving to buttons underneath". And the practice beside a waiting invite has no Music row: "in the waiting for
+    opponent screen, it really shouldn't let you change the music because it does nothing" (its music is the
+    menus', §2.29).
 
 ## 3. Chosen where the user gave no answer
 
