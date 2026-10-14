@@ -613,6 +613,8 @@ impl Screen for Replays {
                         shell.ui().global::<ReplaysView>().set_detail(true);
                         shell.nav.open("sheet.", crate::nav::Key::new("sheet.watch", 0));
                     }
+                } else if shell.nav.pointing() {
+                    // (A click chooses the replay; WATCH, Enter or the pad's A starts it.)
                 } else if self.playable(shell) {
                     self.act(shell, "watch");
                 } else {
