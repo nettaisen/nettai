@@ -810,6 +810,7 @@ impl Practice {
         let name = |part: usize| self.place[part].checked_sub(1).and_then(|at| self.place_labels[part].get(at)).map(|n| n.as_str().into()).unwrap_or_default();
         view.set_arena_shown(name(ARENA));
         view.set_background_shown(name(BACKGROUND));
+        view.set_music_shown(crate::music::shown(shell).into());
         let card = |build: Option<&Listed>| match build {
             Some(Listed { name, side: Some(side), .. }) => shown(shell, game, ready, &Build { name: name.clone(), side: side.clone() }),
             Some(Listed { name, .. }) => PracticeBuild { name: name.as_str().into(), ..Default::default() },
@@ -829,11 +830,17 @@ impl Practice {
         // PRACTICE can't be pressed, the screen opens on the row to change.
         let on = shell.nav.focused().map(|k| k.id.clone());
         match (self.builds.is_empty(), on.as_deref(), wrong.iter().position(Option::is_some)) {
-            (true, None | Some("start" | "yours" | "dummys" | "edit" | "arena" | "background"), _) => shell.nav.focus("create", 0),
+            (true, None | Some("start" | "yours" | "dummys" | "edit" | "arena" | "background" | "music"), _) => shell.nav.focus("create", 0),
             (false, Some("create"), None) => shell.nav.focus("start", 0),
             (false, None | Some("start" | "create"), Some(which)) => shell.nav.focus(if which == 1 { "dummys" } else { "yours" }, 0),
             _ => {}
         }
+    }
+
+    /// The battle's music the player picked, as its row shows it (one pick with Play's lobby's: `crate::music`).
+    /// Nothing else changes: the arena's picture is silent, and the next battle plays it.
+    fn tell_music(&self, shell: &Shell) {
+        shell.ui().global::<PracticeView>().set_music_shown(crate::music::shown(shell).into());
     }
 
     /// Choose a build, the player's (0) or the dummy's (1): remembered for the game, and shown.
@@ -1082,6 +1089,8 @@ impl Screen for Practice {
             // (A place row steps on, as the menu's rows do.)
             "arena" => self.step_place(shell, ARENA, 1),
             "background" => self.step_place(shell, BACKGROUND, 1),
+            // (The music's list opens: its names say more than a place's number.)
+            "music" if !self.builds.is_empty() => crate::music::open(shell, id),
             "start" => self.start_practice(shell),
             "menu.resume" => shell.close_menu(),
             "menu.restart" => {
@@ -1114,6 +1123,10 @@ impl Screen for Practice {
             }
             "arena" => self.step_place(shell, ARENA, by),
             "background" => self.step_place(shell, BACKGROUND, by),
+            "music" if !self.builds.is_empty() => {
+                crate::music::step(shell, by);
+                self.tell_music(shell);
+            }
             "menu.rows.option" => self.step_option(shell, index, by),
             _ => {}
         }
@@ -1122,6 +1135,10 @@ impl Screen for Practice {
     fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
         if matches!(id, "yours" | "dummys") {
             self.choose_build(shell, (id == "dummys") as usize, choice.max(0) as usize);
+        }
+        if id == "music" {
+            crate::music::choose(shell, choice);
+            self.tell_music(shell);
         }
     }
 
