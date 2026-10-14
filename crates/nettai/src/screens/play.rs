@@ -842,7 +842,7 @@ impl Play {
     fn open_direct(&mut self, shell: &mut Shell) {
         self.direct = Some(Direct { host_address: session::host_address(session::DIRECT_PORT), ..Direct::default() });
         self.problem = None;
-        shell.nav.open("direct.", Key::new("direct.address", 0));
+        shell.nav.open_editing("direct.", Key::new("direct.address", 0));
         self.show(shell);
     }
 
