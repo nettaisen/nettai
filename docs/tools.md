@@ -154,6 +154,7 @@ memory, and writes none to disk), and writes a pack only into a new or empty fol
   content's game id, `exe6`) are the games.
 - `extract_reporting` and `Extraction::write_reporting`: the same, telling a callback how far each is (0 to 1),
   for a bar. What `write_reporting` writes is `write`'s, byte for byte (`an_extraction_reports_how_far_it_is`).
-- `fingerprint(game)`: 16 hex digits that tell apart the packs two builds write: a digest of the pack format's
-  version and of the names the pack's assets are written under (the content's compat tables). nettai stamps its
+- `fingerprint(game)`: 16 hex digits that tell apart the packs two builds write: a digest of the versions of the
+  pack's formats (`nettai_content::pack::FORMATS`) and of the names the pack's assets are written under (the
+  content's compat tables). nettai stamps its
   packs with it and the app's version, and extracts a pack again when either differs.

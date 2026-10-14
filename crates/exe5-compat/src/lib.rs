@@ -630,15 +630,9 @@ impl Compat {
                 return Err(format!("navicust.toml: program {k} ({n}) has no variants"));
             }
         }
-        // (A compat folder from before the patch cards has none.)
-        let patch_cards = PatchCardNumbers::parse(&text("patch-cards.toml").unwrap_or_default()).map_err(|e| format!("patch-cards.toml: {e}"))?;
-        // (A compat folder from before the action numbers has none.)
-        let actions_file = text("actions.toml").unwrap_or_default();
-        let actions: BTreeMap<String, u8> =
-            if actions_file.is_empty() { BTreeMap::new() } else { toml::from_str(&actions_file).map_err(|e| format!("actions.toml: {e}"))? };
-        // (A compat folder from before the encodings has none.)
-        let text_file = text("text.toml").unwrap_or_default();
-        let text: Text = if text_file.is_empty() { Text::default() } else { toml::from_str(&text_file).map_err(|e| format!("text.toml: {e}"))? };
+        let patch_cards = PatchCardNumbers::parse(&text("patch-cards.toml")?).map_err(|e| format!("patch-cards.toml: {e}"))?;
+        let actions: BTreeMap<String, u8> = toml::from_str(&text("actions.toml")?).map_err(|e| format!("actions.toml: {e}"))?;
+        let text: Text = toml::from_str(&text("text.toml")?).map_err(|e| format!("text.toml: {e}"))?;
         Ok(Compat { chips, panels: by_number, chip_keys, assets, rules, stages, games, records, kinds, text, navicust, patch_cards, actions })
     }
 

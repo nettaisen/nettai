@@ -2335,13 +2335,6 @@ mod tests {
         let [h, j] = cant(&|l| l[1].compat.role = Role::Host);
         assert_eq!((j.reason, j.detail.as_str()), (Reason::Protocol, "can't play: both sides host: one hosts and the other joins"));
         assert_eq!(h.reason, Reason::Protocol);
-        // A peer of the protocol before this one refuses in words alone:
-        // that it is another version is all that is read of it.
-        let mut lobby = Lobby::new(Role::Host, &content, s.clone(), side(&content, 3), 7, Duration::from_secs(10));
-        let mut old = vec![Kind::Refuse as u8];
-        old.extend_from_slice(b"the other side speaks netplay protocol 8, this one 5");
-        lobby.receive(now, &old);
-        assert_eq!(failed(&mut lobby, now).reason, Reason::DifferentVersion);
         // A build that breaks a rule (a side nothing was chosen for: its
         // folder is empty): its player can't be ready, and its peer says
         // what is wrong.
@@ -2632,64 +2625,34 @@ mod tests {
         assert!(matches!(early.poll(now), Status::Pending) && !early.their_loaded());
     }
 
-    /// A program of the protocol before this one (which set a match up
-    /// without the host's keys, so every digest of it differs) is refused on
-    /// its first word, as another version: its lobby message, laid out as
-    /// that protocol laid it, and its Hello. Nothing is agreed with it.
+    /// A peer of another protocol version (whose datagrams may be laid out
+    /// another way) is refused on its first field, whatever follows it: its
+    /// lobby message and its Hello alike. Nothing is agreed with it.
     #[test]
-    fn a_program_of_the_protocol_before_is_refused_at_once() {
+    fn a_peer_of_another_protocol_is_refused_at_once() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        // Version 5's compatibility fields (no game among them), and its
-        // lobby message: the revision, ready, the settings (the game and
-        // the rounds), the name, the navi, the build's name and version.
-        let compat = |w: &mut Writer| {
-            w.put(&5u16);
-            w.put(&ENGINE.to_string());
-            w.put(&content.hash());
-            w.put(&true);
-        };
-        let mut lobby_5 = vec![Kind::Lobby as u8];
-        let mut w = Writer(&mut lobby_5);
-        compat(&mut w);
-        w.put(&1u32);
-        w.put(&true);
-        let mut settings_5 = Vec::new();
-        let mut s = Writer(&mut settings_5);
-        s.put(&"exe6".to_string());
-        s.put(&3u16);
-        for _ in 0..3 {
-            s.put(&String::new());
-            s.put(&String::new());
-        }
-        w.bytes(&settings_5);
-        for text in ["Chaud", "megaman", "My build", "gregar"] {
-            w.put(&text.to_string());
-        }
-        let mut hello_5 = vec![Kind::Hello as u8];
-        let mut w = Writer(&mut hello_5);
-        compat(&mut w);
-        w.put(&1u32);
-        w.put(&1u32);
-        w.put(&3u16);
-        w.bytes(&[0; 32]);
-        for said in [lobby_5, hello_5] {
+        let other = protocol::VERSION + 1;
+        for kind in [Kind::Lobby, Kind::Hello] {
+            let mut said = vec![kind as u8];
+            Writer(&mut said).put(&other);
+            said.extend_from_slice(b"laid out as that version lays it");
             let mut lobby = Lobby::new(Role::Host, &content, settings(TRIPLE_BATTLE), side(&content, 3), 7, Duration::from_secs(10));
             lobby.set_ready(true);
             lobby.receive(now, &said);
             let failure = failed(&mut lobby, now);
-            assert_eq!((failure.reason, failure.detail.as_str()), (Reason::DifferentVersion, "can't play: the other side speaks netplay protocol 5, this one 8"));
+            let detail = format!("can't play: the other side speaks netplay protocol {other}, this one {}", protocol::VERSION);
+            assert_eq!((failure.reason, failure.detail), (Reason::DifferentVersion, detail));
             assert!(!lobby.their_present());
             // (It is told so, three times.)
             let refusals = lobby.outgoing();
             assert!(refusals.len() == 3 && refusals.iter().all(|d| d[0] == Kind::Refuse as u8));
         }
-        assert_eq!(protocol::VERSION, 8);
     }
 
     /// Two programs of one protocol whose engines set the agreed match up
-    /// differently would differ from the first tick (one from before the
-    /// host's keys, say, which are in the setup and so in every digest).
+    /// differently would differ from the first tick (one without the host's
+    /// keys, say, which are in the setup and so in every digest).
     /// Each says its start's digest as it loads: they are told apart before
     /// any tick, as programs of different versions.
     #[test]

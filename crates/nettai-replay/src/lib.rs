@@ -16,7 +16,7 @@
 //! player refuses another's ([`Head::require`]).
 //!
 //! ```text
-//! file   := "NTRP", layout (a byte: 2), head, info, match, input
+//! file   := "NTRP", layout (a byte: 1), head, info, match, input
 //! head   := "HEAD", length (u32), engine version (string), game (string),
 //!           content hash (u64), the first battle's digest before any tick (u64)
 //! info   := "INFO", length (u32), when (u64: unix seconds), the side that
@@ -48,11 +48,10 @@
 //! and a match in binary holds no text at all. A viewer that should not
 //! show the setups either is told so by the info ([`Info::closed_builds`]).
 //!
-//! **Layouts.** Layout 2 added the kind of match and closed builds to the
-//! info. A file of another layout is refused as one from another version
-//! of nettai ([`ReadError::OtherLayout`]): a replay plays only on the
-//! engine and content it was made with, so an older file would not play
-//! here whatever its layout.
+//! **The layout.** This is layout 1. A file of another layout is refused
+//! as one from another version of nettai ([`ReadError::OtherLayout`]): a
+//! replay plays only on the engine and content it was made with, so such a
+//! file would not play here whatever its layout.
 
 use std::fmt;
 use std::io::{self, Write};
@@ -61,7 +60,7 @@ use std::io::{self, Write};
 pub const MAGIC: &[u8; 4] = b"NTRP";
 
 /// The layout this crate writes and reads.
-pub const LAYOUT: u8 = 2;
+pub const LAYOUT: u8 = 1;
 
 /// What a replay is played on: the engine, the game and its content, and
 /// the battle they make before any tick.
@@ -82,10 +81,10 @@ pub struct Head {
 impl Head {
     /// The head of a replay's file, whether or not the rest of it reads:
     /// what a list of replays goes by to tell which game a file it can't
-    /// play is of. Layouts 1 and 2 have the same head; none if the bytes
-    /// aren't a replay, are of another layout, or end inside the head.
+    /// play is of. None if the bytes aren't a replay, are of another
+    /// layout, or end inside the head.
     pub fn read(bytes: &[u8]) -> Option<Head> {
-        if bytes.get(..4) != Some(MAGIC.as_slice()) || !matches!(bytes.get(4), Some(1 | 2)) {
+        if bytes.get(..4) != Some(MAGIC.as_slice()) || bytes.get(4) != Some(&LAYOUT) {
             return None;
         }
         let mut b = Bytes { rest: &bytes[5..], what: "start" };
