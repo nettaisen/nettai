@@ -620,8 +620,7 @@ component SheetLineRow inherits Rectangle {
 export component BuildOverview inherits Rectangle {
     in property <BuildSheet> build;
     in property <int> side;
-    // Room the wide sheet's header leaves at its right for the buttons a screen puts there (Play's EDIT and ⋯),
-    // the version's tag before it.
+    // Room the wide sheet's header leaves at its right for the buttons a screen puts there (Play's EDIT and ⋯).
     in property <length> tools;
     property <length> room: root.tools > 0 ? root.tools + 12px : 0px;
     out property <bool> narrow: self.width < 620px;
@@ -669,10 +668,11 @@ export component BuildOverview inherits Rectangle {
         text: root.narrow ? root.build.label : "";
     }
 
-    Text {
+    // (On the wide sheet the version's tag follows the name, 12 after it; the narrow sheet has it at its right.)
+    name := Text {
         x: root.narrow ? root.pad : root.pad + 80px;
         y: root.narrow ? root.pad + (root.build.label == "" ? 8px : 16px) : root.pad + 6px;
-        width: root.inner - (root.narrow ? 0px : 80px) - tag.width - 12px - root.room - (root.narrow ? navi.width + 12px : 0px);
+        width: root.narrow ? root.inner - tag.width - 12px - root.room - navi.width - 12px : min(self.preferred-width, root.inner - 80px - tag.width - 12px - root.room);
         height: 26px;
         text: root.build.name;
         color: Theme.text;
@@ -686,7 +686,7 @@ export component BuildOverview inherits Rectangle {
     navi := Text {
         x: root.narrow ? root.width - root.pad - tag.width - 12px - self.width : root.pad + 80px;
         y: root.narrow ? root.pad + 11px : root.pad + 34px;
-        width: root.narrow ? min(self.preferred-width, 120px) : root.inner - 80px - tag.width - 12px - root.room;
+        width: root.narrow ? min(self.preferred-width, 120px) : root.inner - 80px - root.room;
         height: root.narrow ? 22px : 16px;
         text: root.build.navi;
         color: Theme.muted;
@@ -697,8 +697,8 @@ export component BuildOverview inherits Rectangle {
     }
 
     tag := Pill {
-        x: parent.width - root.pad - root.room - self.width;
-        y: root.narrow ? root.pad + 11px : root.pad + 17px;
+        x: root.narrow ? parent.width - root.pad - root.room - self.width : name.x + name.width + 12px;
+        y: root.narrow ? root.pad + 11px : name.y + (name.height - self.height) / 2;
         text: root.build.version.text;
         tone: root.build.version.tone;
     }
