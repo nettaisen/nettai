@@ -773,7 +773,7 @@ DUPLICATE, RENAME and DELETE.
   switch keeps the rest of the build; what no longer fits (the other version's Giga chips in the folder) is a
   problem as any other. Elsewhere (Play, Practice) a version's tag is plain. Its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
-  them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
+  them); the editor opens on NAVI every time, whichever tab was last used (the user: "don't remember the tab"). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
   keeps MegaMan's NaviCust, cards and auto battle data aside, outside the side it hands to a match (the rules
   refuse a NaviCust on a navi that compiles none), and puts them back when MegaMan is chosen again.
 - **Navi:** the game's navis as a grid of cards; the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
