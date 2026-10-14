@@ -1,10 +1,12 @@
-//! Play's builds (docs/design/app-ui.md §6, "Play"): what is done with the selected game's builds beside the row
-//! that makes a link. NEW BUILD makes one of the game's own (`nettai_match::build::Builds::new_build`: its own
-//! navi, the version chosen, the folder a new save starts with; there are no random builds); IMPORT SAVE… makes
-//! one of a save file chosen, or dropped on the window (`crate::builds::import`); EDIT opens the chosen build in
-//! Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen; PRACTICE
-//! opens Practice's entry on it (`crate::screens::practice::open`), whose Back comes back here too; DUPLICATE,
-//! RENAME and DELETE (which asks once, Cancel focused) are the chosen build's.
+//! Play's builds (docs/design/app-ui.md §6, "Play"): what is done with the selected game's builds beside the band
+//! that practices with one or makes a link. + NEW BUILD makes one of the game's own
+//! (`nettai_match::build::Builds::new_build`: its own navi, the version chosen, the folder a new save starts
+//! with; there are no random builds), or, by its dialog's FROM A SAVE FILE…, one of a save file chosen in the
+//! system's dialog (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens the chosen
+//! build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen;
+//! PRACTICE opens Practice's entry on it (`crate::screens::practice::open`), whose Back comes back here too; the
+//! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE, RENAME and, apart, DELETE
+//! (which asks once, Cancel focused).
 
 use super::{Play, remembered_build};
 use crate::builds::store::{self, Build};
@@ -25,6 +27,14 @@ const SAVES: [&str; 4] = ["sav", "sa1", "srm", "raw"];
 /// The tag of the question DELETE asks (`Screen::answered`: 1 is DELETE).
 pub(super) const DELETE: &str = "play.delete";
 
+/// What the build's menu does, in its order: DELETE last, set apart.
+#[derive(Clone, Copy, PartialEq)]
+enum MenuAction {
+    Duplicate,
+    Rename,
+    Delete,
+}
+
 /// The dialog open: a new build's name and version, or the chosen build's new name.
 pub(super) enum Naming {
     New { name: String, version: usize },
@@ -36,6 +46,48 @@ impl Play {
     fn chosen_build(&self) -> Option<(&Path, &Build)> {
         let entry = self.build()?;
         Some((entry.listed.path.as_path(), entry.build.as_ref()?))
+    }
+
+    /// What the build's menu offers: for a build that reads, DUPLICATE, RENAME and DELETE; for one whose file
+    /// doesn't, DELETE alone; with none, nothing.
+    fn menu_actions(&self) -> &'static [MenuAction] {
+        match (self.build(), self.chosen_build()) {
+            (_, Some(_)) => &[MenuAction::Duplicate, MenuAction::Rename, MenuAction::Delete],
+            (Some(_), None) => &[MenuAction::Delete],
+            (None, None) => &[],
+        }
+    }
+
+    /// The build's menu, by the control `at` (⋯, or the row a right click was on): its choice is heard as
+    /// `more`'s (`menu_chosen`).
+    pub(super) fn open_menu(&mut self, shell: &mut Shell, at: &Key) {
+        let actions = self.menu_actions();
+        if actions.is_empty() {
+            return shell.sound.play(Cue::Refused);
+        }
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        let words = actions
+            .iter()
+            .map(|a| match a {
+                MenuAction::Duplicate => view.get_duplicate_word(),
+                MenuAction::Rename => view.get_rename_word(),
+                MenuAction::Delete => view.get_delete_word(),
+            })
+            .map(|w| w.to_string())
+            .collect();
+        let apart = actions.iter().position(|a| *a == MenuAction::Delete);
+        shell.pick_menu("more", 0, at, words, apart);
+    }
+
+    /// A choice of the build's menu, by its place in it.
+    pub(super) fn menu_chosen(&mut self, shell: &mut Shell, choice: i32) {
+        match usize::try_from(choice).ok().and_then(|at| self.menu_actions().get(at)) {
+            Some(MenuAction::Duplicate) => self.duplicate(shell),
+            Some(MenuAction::Rename) => self.ask_rename(shell),
+            Some(MenuAction::Delete) => self.ask_delete(shell),
+            None => {}
+        }
     }
 
     /// The names the game's builds have.
@@ -201,7 +253,7 @@ impl Play {
         }
     }
 
-    /// IMPORT SAVE…: a save file chosen in the system's dialog.
+    /// The NEW BUILD dialog's FROM A SAVE FILE…: a save file chosen in the system's dialog.
     pub(super) fn import_chosen_file(&mut self, shell: &mut Shell) {
         let kind = shell.ui().global::<PlayView>().get_save_files().to_string();
         if let Some(path) = shell.choose_file(&kind, &SAVES) {
