@@ -328,3 +328,48 @@ fn a_volume_is_every_packs() {
     assert_eq!(a.packs[0].queue, a.packs[1].queue[1..], "the same volumes on both, after the theme's start");
     assert_eq!(a.packs[0].queue.len(), 2);
 }
+
+/// The battle's music changed while it plays (a theme picked in a practice
+/// battle's menu): the new song starts at once on its own pack's driver, from
+/// its beginning, the low-HP switch kept on, and the battle's effects play
+/// on; the game's own again moves it back. A result's music playing stays,
+/// and the next round's start plays the new song.
+#[test]
+fn a_change_of_songs_restarts_the_music() {
+    let own = (vec![bank()], Songs::numbers(0x200));
+    let theme = Theme { bank: other_bank(), song: 0x16 };
+    let mut a = BattleAudio::with_banks(own.0.clone(), own.1.clone());
+    a.set_levels(0.5, 1.0);
+    let mut out = Vec::new();
+    a.handle(&[SoundCue::Music(VIRUS_BATTLE), SoundCue::Effect(SoundId(0x94)), SoundCue::Pinch(true)]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (Some(SongId(0x15)), None));
+    let (banks, songs) = with_theme(own.0.clone(), &own.1, &[VIRUS_BATTLE], &theme);
+    a.set_songs(banks, songs);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "the theme at once, on its own driver");
+    let theirs = a.driver_of(nettai_battle::content::PackId(1)).unwrap();
+    assert_eq!(theirs.player(MUSIC_PLAYER).unwrap().tempo_step(), 150 * 0x11A / 0x100, "the low-HP switch kept on");
+    assert_eq!((theirs.level(MUSIC_PLAYER), theirs.level(PlayerId(16))), (128, 256), "at the host's levels");
+    assert!(a.driver().player(PlayerId(16)).unwrap().is_playing(), "the battle's effect plays on");
+    // The game's own again: back on the battle's driver, the theme's pack silent.
+    a.set_songs(own.0.clone(), own.1.clone());
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (Some(SongId(0x15)), None));
+    // The result's music: a change leaves it, and the next round's start plays the new song.
+    a.handle(&[SoundCue::Music(WINNER)]);
+    a.tick(&mut out);
+    let (banks, songs) = with_theme(own.0.clone(), &own.1, &[VIRUS_BATTLE], &theme);
+    a.set_songs(banks, songs);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (Some(SongId(0x1F)), None), "the winner's music stays");
+    a.handle(&[SoundCue::StopMusic, SoundCue::Music(VIRUS_BATTLE)]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "the next round's start");
+    assert_eq!(a.packs.len(), 2, "a pack playing already is that pack");
+}

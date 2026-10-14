@@ -169,11 +169,12 @@ impl Request {
 /// EXE6's sound functions: each cue as the driver calls the game queues.
 #[derive(Clone, Debug)]
 pub struct SoundCalls {
-    /// The music `PlayMusic` last started (GameState's BGMusicIndicator;
-    /// 0xFF: none).
-    music: u8,
+    /// The music `PlayMusic` last started (GameState's BGMusicIndicator, a
+    /// byte there: every game's music is a song under 0x100; held whole
+    /// here, so a bank of more songs is no other; 0xFFFF: none).
+    music: u16,
     /// What it was before the last change (to undo a canceled change).
-    previous_music: u8,
+    previous_music: u16,
 }
 
 impl Default for SoundCalls {
@@ -182,7 +183,7 @@ impl Default for SoundCalls {
     }
 }
 
-const NO_INDICATOR: u8 = 0xFF;
+const NO_INDICATOR: u16 = 0xFFFF;
 
 impl SoundCalls {
     pub fn new() -> SoundCalls {
@@ -197,11 +198,11 @@ impl SoundCalls {
             SoundCue::Effect(id) => out.push(Request::Start(SongId(id.0))),
             // PlayMusic: nothing if it's the music already.
             SoundCue::Music(id) => {
-                if id.0 == self.music as u16 {
+                if id.0 == self.music {
                     return;
                 }
                 self.previous_music = self.music;
-                self.music = id.0 as u8;
+                self.music = id.0;
                 out.push(if id == NO_MUSIC { Request::StopAll } else { Request::Start(SongId(id.0)) });
             }
             // musicGameState_8000784.
@@ -230,12 +231,22 @@ impl SoundCalls {
     pub fn cancel(&mut self, cue: SoundCue, out: &mut Vec<Request>) {
         match cue {
             SoundCue::Effect(id) => out.push(Request::Stop(SongId(id.0))),
-            SoundCue::Music(id) if id.0 == self.music as u16 => self.restore_previous_music(out),
+            SoundCue::Music(id) if id.0 == self.music => self.restore_previous_music(out),
             SoundCue::StopMusic if self.music == NO_INDICATOR => self.restore_previous_music(out),
             SoundCue::Pinch(on) => self.requests(SoundCue::Pinch(!on), out),
             // A later change replaced it already; the custom screen's
             // volume can't be taken back.
             SoundCue::Music(_) | SoundCue::StopMusic | SoundCue::Volume { .. } => {}
+        }
+    }
+
+    /// The music moved to another pack's player: this one's song stops
+    /// (that alone: m4aSongNumStop, the pack's effects playing on), and is
+    /// what a taken-back move starts again (`cancel` of a `StopMusic`).
+    fn stop_moved(&mut self, out: &mut Vec<Request>) {
+        self.previous_music = std::mem::replace(&mut self.music, NO_INDICATOR);
+        if self.previous_music != NO_INDICATOR && self.previous_music != NO_MUSIC.0 {
+            out.push(Request::Stop(SongId(self.previous_music)));
         }
     }
 
@@ -252,8 +263,8 @@ impl SoundCalls {
         self.previous_music = music;
         out.push(match self.music {
             NO_INDICATOR => Request::StopAll,
-            m if m as u16 == NO_MUSIC.0 => Request::StopAll,
-            m => Request::Start(SongId(m as u16)),
+            m if m == NO_MUSIC.0 => Request::StopAll,
+            m => Request::Start(SongId(m)),
         });
     }
 }
@@ -278,7 +289,27 @@ pub struct BattleAudio {
     /// The pack the last music change moved the music from (it stopped
     /// that pack's), to move it back there if the change is taken back.
     moved_from: Option<usize>,
+    /// The battle's music as its cues name it (a sound's handle; none:
+    /// stopped), and what it was before the last change: what a change of
+    /// the songs ([`BattleAudio::set_songs`]) starts again as its new song.
+    heard: Option<SoundId>,
+    heard_before: Option<SoundId>,
+    /// The low-HP music's switch is on (`Pinch`).
+    pinch: bool,
+    /// The host's levels ([`BattleAudio::set_levels`]), for a pack added
+    /// later.
+    levels: (f32, f32),
     mix: Vec<[f32; 2]>,
+}
+
+/// `driver` at the host's levels, the music's and the effects'
+/// ([`BattleAudio::set_levels`]).
+fn leveled(driver: &mut Driver, (music, effects): (f32, f32)) {
+    let level = |l: f32| (l.clamp(0.0, 1.0) * 256.0).round() as u16;
+    for player in 0..driver.players().len() {
+        let id = PlayerId(player as u8);
+        driver.set_level(id, level(if id == MUSIC_PLAYER { music } else { effects }));
+    }
 }
 
 /// One pack's driver and the calls queued for it.
@@ -300,7 +331,7 @@ impl BattleAudio {
     pub fn with_banks(banks: Vec<Arc<SoundBank>>, songs: Songs) -> BattleAudio {
         assert!(!banks.is_empty(), "a pack's sound");
         let packs = banks.into_iter().map(|b| PackSound { driver: Driver::new(b), calls: SoundCalls::new(), queue: Vec::new() }).collect();
-        BattleAudio { packs, songs, music: None, moved_from: None, mix: Vec::new() }
+        BattleAudio { packs, songs, music: None, moved_from: None, heard: None, heard_before: None, pinch: false, levels: (1.0, 1.0), mix: Vec::new() }
     }
 
     /// The pack a cue plays on, and the cue in its songs: a sound's own
@@ -332,6 +363,11 @@ impl BattleAudio {
     /// player's volume is set in every pack (as one driver's would be: the
     /// music's pack has the music player's to set, the effects' the others').
     fn play(&mut self, cue: SoundCue) {
+        match cue {
+            SoundCue::StopMusic => self.heard_before = std::mem::take(&mut self.heard),
+            SoundCue::Pinch(on) => self.pinch = on,
+            _ => {}
+        }
         if let SoundCue::StopMusic | SoundCue::Volume { .. } = cue {
             for p in 0..self.packs.len() {
                 let mut r = Vec::new();
@@ -340,14 +376,18 @@ impl BattleAudio {
             }
             return;
         }
+        let handle = cue;
         let (pack, cue) = self.route(cue);
-        if let SoundCue::Music(id) = cue {
+        if let (SoundCue::Music(id), SoundCue::Music(handle)) = (cue, handle) {
             // (PlayMusic of the music already playing changes nothing.)
-            if id.0 != self.packs[pack].calls.music as u16 {
+            if id.0 != self.packs[pack].calls.music {
+                self.heard_before = self.heard.replace(handle);
+                // Another pack's music player stops its song (that alone: the
+                // pack's effects play on).
                 self.moved_from = self.music.filter(|&m| m != pack);
                 if let Some(old) = self.moved_from {
                     let mut r = Vec::new();
-                    self.packs[old].calls.requests(SoundCue::StopMusic, &mut r);
+                    self.packs[old].calls.stop_moved(&mut r);
                     self.queue(old, r);
                 }
             }
@@ -376,13 +416,27 @@ impl BattleAudio {
                 CueAction::Cancel(cue) => {
                     let (pack, cue) = self.route(cue);
                     let mut r = Vec::new();
+                    // (What the music was, as the cues name it, is again what it
+                    // was where the change is taken back; the low-HP switch, the
+                    // other way.)
+                    let taken_back = match cue {
+                        SoundCue::Music(id) => self.packs[pack].calls.music == id.0,
+                        SoundCue::StopMusic => self.packs[pack].calls.music == NO_INDICATOR,
+                        _ => false,
+                    };
+                    if taken_back {
+                        std::mem::swap(&mut self.heard, &mut self.heard_before);
+                    }
+                    if let SoundCue::Pinch(on) = cue {
+                        self.pinch = !on;
+                    }
                     // A music change that moved the music here from another
                     // pack's player moves it back: this pack's song stops,
                     // and the other's starts again from its start (as a
                     // change taken back on one player does).
                     if let (SoundCue::Music(id), Some(from)) = (cue, self.moved_from)
                         && self.music == Some(pack)
-                        && self.packs[pack].calls.music as u16 == id.0
+                        && self.packs[pack].calls.music == id.0
                     {
                         self.packs[pack].calls.take_back_moved(id, &mut r);
                         self.queue(pack, r);
@@ -407,13 +461,57 @@ impl BattleAudio {
     /// effects". They are the drivers' state: a copy kept before a change
     /// has the levels it was kept with.
     pub fn set_levels(&mut self, music: f32, effects: f32) {
-        let level = |l: f32| (l.clamp(0.0, 1.0) * 256.0).round() as u16;
+        self.levels = (music, effects);
         for p in &mut self.packs {
-            for player in 0..p.driver.players().len() {
-                let id = PlayerId(player as u8);
-                p.driver.set_level(id, level(if id == MUSIC_PLAYER { music } else { effects }));
+            leveled(&mut p.driver, self.levels);
+        }
+    }
+
+    /// Play the battle's sounds as `songs` says from now on, with `banks`
+    /// (by the `PackId`s `songs` names): a host's change of the battle's
+    /// music while it runs (a battle theme picked, or the game's own again:
+    /// [`with_theme`]'s parts, or the game's own parts). A bank playing
+    /// already is that pack (found by its bank); another is one pack more, at
+    /// the host's levels. Where the battle's music playing now is another
+    /// song by them, that one starts in its place, from its beginning, on its
+    /// own pack's player (the song before stopped, and the low-HP switch kept
+    /// on where it is); the result's music, or music stopped, stays as it is,
+    /// and the next round's start plays the new song.
+    pub fn set_songs(&mut self, banks: Vec<Arc<SoundBank>>, songs: Songs) {
+        let packs: Vec<usize> = banks.iter().map(|bank| self.pack_of(bank)).collect();
+        let place = |s: nettai_battle::content::InPack<u16>| nettai_battle::content::InPack {
+            pack: nettai_battle::content::PackId(packs.get(s.pack.index()).copied().unwrap_or(0) as u8),
+            id: s.id,
+        };
+        let songs = Songs(songs.0.into_iter().map(place).collect());
+        let playing = self.heard.map(|h| (h, self.songs.0.get(h.0 as usize).copied()));
+        self.songs = songs;
+        if let Some((h, was)) = playing
+            && self.songs.0.get(h.0 as usize).copied() != was
+        {
+            self.play(SoundCue::Music(h));
+            if self.pinch {
+                self.play(SoundCue::Pinch(true));
             }
         }
+    }
+
+    /// The pack whose bank is `bank`: one playing already, else one more,
+    /// at the host's levels.
+    fn pack_of(&mut self, bank: &Arc<SoundBank>) -> usize {
+        if let Some(p) = self.packs.iter().position(|p| Arc::ptr_eq(p.driver.bank(), bank)) {
+            return p;
+        }
+        let mut driver = Driver::new(bank.clone());
+        leveled(&mut driver, self.levels);
+        self.packs.push(PackSound { driver, calls: SoundCalls::new(), queue: Vec::new() });
+        self.packs.len() - 1
+    }
+
+    /// The battle's music as its cues name it now (a sound's handle; none:
+    /// stopped).
+    pub fn music_heard(&self) -> Option<SoundId> {
+        self.heard
     }
 
     /// One frame: each driver's VBlank (sequencers and mix), then its

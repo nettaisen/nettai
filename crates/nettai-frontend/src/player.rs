@@ -465,6 +465,18 @@ impl Player {
         }
     }
 
+    /// Play the battle's sounds by `parts` from now on (`Sound::parts`: the
+    /// game's own, or a battle theme in place of its music), as a host
+    /// changes the battle's music while it runs: the music playing now, if it
+    /// is the battle's own, starts again as the new song at once
+    /// (`BattleAudio::set_songs`). Presentation alone: the battle and its
+    /// cues are the same. Nothing for a player without audio.
+    pub fn set_sound_parts(&mut self, (banks, songs): crate::preload::SoundParts) {
+        if let Some(audio) = &mut self.audio {
+            audio.set_songs(banks, songs);
+        }
+    }
+
     /// The battle's sound as it stands (none: silent): what each pack's
     /// driver plays (a host's check of the music it was given).
     pub fn audio(&self) -> Option<&BattleAudio> {

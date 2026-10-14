@@ -136,6 +136,8 @@ struct Session {
     places: Places,
     place_labels: [Vec<String>; 2],
     place: [usize; 2],
+    /// The battle's music, as its row says it (`crate::music::shown`: the player's one pick).
+    music: String,
     /// Its picture fills the window.
     full: bool,
     /// The rows its starter added: the menu's first; and the menu's own shown under them ([`shown_rows`]).
@@ -161,13 +163,14 @@ struct Session {
 /// options. A row is added here, worded in practice.slint (`PracticeView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Practice::step_option`. The dummy's Level is shown under its Action while
 /// that is Fights alone ([`shown_rows`]).
-pub(crate) const ROWS: [PracticeOption; 12] = [
+pub(crate) const ROWS: [PracticeOption; 13] = [
     PracticeOption::Dummy,
     PracticeOption::Action,
     PracticeOption::Level,
     PracticeOption::Battle,
     PracticeOption::Arena,
     PracticeOption::Background,
+    PracticeOption::Music,
     PracticeOption::YourHp,
     PracticeOption::DummysHp,
     PracticeOption::CustomGauge,
@@ -182,6 +185,8 @@ fn values(option: PracticeOption, places: &Places) -> usize {
     match option {
         PracticeOption::Arena => places.len(ARENA),
         PracticeOption::Background => places.len(BACKGROUND),
+        // (The battle's music steps through what `crate::music` offers: `Practice::step_option`.)
+        PracticeOption::Music => 1,
         PracticeOption::Action => ACTIONS.len(),
         PracticeOption::Level => LEVELS.len(),
         PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
@@ -195,6 +200,7 @@ fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Opti
         PracticeOption::Level => level,
         PracticeOption::Arena => place[ARENA],
         PracticeOption::Background => place[BACKGROUND],
+        PracticeOption::Music => 0,
         PracticeOption::Action => ACTIONS.iter().position(|(_, a)| *a == opponent.in_fight).unwrap_or(0),
         PracticeOption::YourHp => options.refills[0] as usize,
         PracticeOption::DummysHp => options.refills[1] as usize,
@@ -206,7 +212,7 @@ fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Opti
 }
 
 /// A row as the menu shows it: its value's place; for Arena and Background, the name of the one chosen (none:
-/// Random).
+/// Random); for Music, the battle's music's name.
 fn row(option: PracticeOption, session: &Session) -> PracticeRow {
     let value = value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32;
     let part = match option {
@@ -215,6 +221,7 @@ fn row(option: PracticeOption, session: &Session) -> PracticeRow {
         _ => None,
     };
     let text = part.and_then(|part| session.place[part].checked_sub(1).and_then(|at| session.place_labels[part].get(at))).map(|name| name.as_str().into()).unwrap_or_default();
+    let text = if option == PracticeOption::Music { session.music.as_str().into() } else { text };
     PracticeRow { option, value, text }
 }
 
@@ -373,6 +380,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         places,
         place_labels,
         place,
+        music: crate::music::shown(shell),
         full: start.full,
         added: start.rows.len(),
         rows: shown_rows(start.opponent.in_fight),
@@ -677,6 +685,11 @@ const OPENING: u32 = 300;
 /// to make one.
 const ARENA_AFTER: Duration = Duration::from_millis(160);
 
+/// How long the Music row stays on a pick before the entry plays it in place of the music playing: a run of
+/// steps through the list starts one song, the one it stops on (each would start from its beginning, fading in
+/// over the one before).
+const MUSIC_AFTER: Duration = Duration::from_millis(400);
+
 /// A build of the selected game, as the entry lists it.
 struct Listed {
     /// What it is remembered by: its file's name.
@@ -716,6 +729,8 @@ pub struct Practice {
     arena_frames: u8,
     /// The builds chosen changed, and when: the arena is made again once they have stayed a moment.
     changed: Option<Instant>,
+    /// The Music row changed, and when: the entry plays it once it has stayed a moment ([`MUSIC_AFTER`]).
+    music_changed: Option<Instant>,
 }
 
 /// The key the build chosen for `game` is remembered by: the player's, or the dummy's.
@@ -837,9 +852,11 @@ impl Practice {
         }
     }
 
-    /// The battle's music the player picked, as its row shows it (one pick with Play's lobby's: `crate::music`).
-    /// Nothing else changes: the arena's picture is silent, and the next battle plays it.
-    fn tell_music(&self, shell: &Shell) {
+    /// The battle's music the player picked changed: as its row shows it (one pick with Play's lobby's:
+    /// `crate::music`), and played in place of the music playing once it has stayed a moment (`frame`). The
+    /// arena's picture is silent, and the next battle plays it.
+    fn tell_music(&mut self, shell: &Shell) {
+        self.music_changed = Some(Instant::now());
         shell.ui().global::<PracticeView>().set_music_shown(crate::music::shown(shell).into());
     }
 
@@ -960,6 +977,16 @@ impl Practice {
     fn step_option(&mut self, shell: &mut Shell, index: i32, by: i32) {
         let Some(mut session) = shell.practice.session.take() else { return };
         let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
+        // Music: the player's one pick, stepped as the entry's row steps it, and the battle's music switched to it
+        // at once (the user: "also you should be able to change the bgm in the practice menu").
+        if option == Some(PracticeOption::Music) {
+            crate::music::step(shell, by);
+            crate::music::retheme(shell);
+            session.music = crate::music::shown(shell);
+            tell_rows(shell, &session, &[PracticeOption::Music]);
+            shell.practice.session = Some(session);
+            return;
+        }
         if let Some(option) = option.filter(|o| values(*o, &session.places) > 0) {
             let next = (value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32 + by).rem_euclid(values(option, &session.places) as i32) as usize;
             // (A session another screen started keeps nothing of the dummy's setup, or of the place.)
@@ -1022,6 +1049,8 @@ impl Practice {
                     view.set_held_yours(0);
                     view.set_held_dummys(0);
                 }
+                // (Above.)
+                PracticeOption::Music => {}
                 PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Battle | PracticeOption::Display => {}
             }
             shell.save_settings();
@@ -1070,10 +1099,16 @@ impl Screen for Practice {
         let Some((game, ready)) = shell.ready() else { return };
         self.list(shell, &game, &ready);
         self.tell(shell, &game, &ready);
+        // The battle's music the player picked plays here in place of the title music, from the start.
+        self.music_changed = None;
+        crate::music::preview(shell, true);
     }
 
     fn hide(&mut self, shell: &mut Shell) {
         self.drop_arena(shell);
+        // (Elsewhere the menus play the title music.)
+        self.music_changed = None;
+        crate::music::preview(shell, false);
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
@@ -1249,6 +1284,14 @@ impl Screen for Practice {
                 shell.nav.focus(&at.id, at.index);
             }
         }
+        // The entry's Music row's pick, once it has stayed a moment, in place of the music playing. (The screenshot
+        // pass doesn't wait.)
+        if self.music_changed.is_some_and(|at| (shell.still && !shell.probe_motion) || now.saturating_duration_since(at) >= MUSIC_AFTER)
+            && shell.screen() == ScreenId::Practice
+        {
+            self.music_changed = None;
+            crate::music::preview(shell, true);
+        }
         // The entry's arena, once the builds chosen have stayed a moment (and the screen is the one on screen:
         // while the one before it leaves, the picture's room is still that one's).
         if !shown || shell.battle.is_some() || shell.loading_battle() || shell.ready().is_none() {
@@ -1347,7 +1390,7 @@ mod tests {
                 assert_eq!(value(option, opponent, NORMAL, options, false, [0; 2]), 0, "{option:?}");
             }
         }
-        assert_eq!(seen, 9, "Action, Level, Arena, Background, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
+        assert_eq!(seen, 10, "Action, Level, Arena, Background, Music, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
         assert_eq!(ACTIONS.map(|(_, a)| a), [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
         assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), 2);
         assert_eq!(value(PracticeOption::Level, opponent, NORMAL, options, false, [0; 2]), 1, "Normal at first");
