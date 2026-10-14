@@ -31,6 +31,20 @@ pub const MANIFEST: &str = "content.toml";
 pub const FORMAT: &str = "nettai-content";
 pub const VERSION: u32 = 1;
 
+/// Every format a pack's files are written in, with its version: the
+/// manifest's, then its parts'. Each file says its own, and a reader refuses
+/// another (a note to extract the pack again).
+pub const FORMATS: [(&str, u32); 8] = [
+    (FORMAT, VERSION),
+    (sprite::FORMAT, sprite::VERSION),
+    (sprite::ANIMATIONS_FORMAT, sprite::VERSION),
+    (sound::FORMAT, sound::VERSION),
+    (custom::FORMAT, custom::VERSION),
+    (hud::FORMAT, hud::VERSION),
+    (stage::FIELD_FORMAT, stage::VERSION),
+    (stage::BACKGROUND_FORMAT, stage::VERSION),
+];
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct Manifest {
     pub format: String,

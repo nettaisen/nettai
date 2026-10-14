@@ -31,10 +31,7 @@ use std::collections::BTreeMap;
 use std::path::Path;
 
 pub const FORMAT: &str = "nettai-content/custom";
-/// 2: the form list window's pictures are named for it (`form_list_maps`,
-/// `form_list_patches`, `form-list-cursor.png`, `form-names*.png`, the
-/// layout's `form_names`), where 1 named them for EXE6's Cross window.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 const GLYPHS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 1, height: 2, columns };
 const ICONS: fn(u32) -> Layout = |columns| Layout::Blocks { width: 2, height: 2, columns };

@@ -168,11 +168,11 @@ Each with what it was and what it is now.
   `lookups::form_name`, `Lookup::{FormName, FormDescription}`. The offered forms are the view's
   (`FormList::forms`: the player's form list's entries at the places offered), so `cross_at` and the renderer's
   read of the fact are gone. The pack's pictures keep their names until C8.
-- **C8.** The pack names the form list window's pictures for it (`custom.json` version 2): `form_list_maps`,
+- **C8.** The pack names the form list window's pictures for it (`custom.json`): `form_list_maps`,
   `form_list_patches`, `form-list-cursor.png`, `form-names[-V][-L].png` and the layout's `form_names`; nettai-assets'
   `CustomScreen::{form_list_maps, form_list_patches, form_list_cursor, form_list_cursor_palette}`,
   `VersionPictures::{form_names, form_name_palettes}`, `CustomLayout::form_names` and `CustomLettering::form_names`.
-  The pictures are the same bytes under the new names; a version 1 pack is refused until extracted again.
+  The pictures are the same bytes under the new names.
 - **C9.** `PlayerFact::CrossList` is `PlayerFact::FormList`, which a setup field takes by declaring the role
   (`schema.role("form_list", T)`): EXE6's `crosses`, whose name stays its own, so its match files keep
   `crosses = [...]`. `Defs::fact_name` gives the field that holds a role.
