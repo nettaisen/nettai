@@ -3,7 +3,10 @@
 //! chips, Crosses, souls, patch cards, NaviCust programs, weapons and
 //! records) is a local name in that game's namespace (`cannon`), looked up
 //! only there. There is no way to write another game's name: a name the
-//! game hasn't is the ordinary "no chip `x` in exe6".
+//! game hasn't is the ordinary "no chip `x` in exe6". The one exception is
+//! a background, which may be any of the background pool's, every game's
+//! (docs/app.md §1, "The battle's background"): another game's is written
+//! with its game, `exe4:acdc-area` ([`background`]).
 //!
 //! Every lookup goes through [`key`] (a game and a local name to the
 //! content's key: the name itself, when the content is that game's), and
@@ -133,20 +136,41 @@ pub fn shown(content: &Content, registry: Registry, h: u16) -> String {
     }
 }
 
-/// A background of `game`'s pack by name.
+/// A background a match of `game` names `name`: one of `game`'s pack by its
+/// name there (`acdc-area`), or one of the background pool's by its game and
+/// its name in that game's pack (`exe4:acdc-area`: the one name a match
+/// writes of another game's, docs/app.md §1, "The battle's background").
+/// None: neither has it, or `content` isn't `game`'s.
 pub fn background(content: &Content, game: &str, name: &str) -> Option<nettai_battle::content::BackgroundId> {
-    key(content, game, name).and_then(|k| content.assets.handle(AssetKind::Background, k)).map(nettai_battle::content::BackgroundId)
+    if content.game() != game {
+        return None;
+    }
+    match name.split_once(':') {
+        Some((of, name)) => content.background_handle(of, name),
+        None => content.assets.handle(AssetKind::Background, name).map(nettai_battle::content::BackgroundId),
+    }
 }
 
-/// The name of background `id` in its game's pack (a match names a
-/// background by it); none: no background of the content's game.
+/// The name a match writes for background `id` ([`background`]): one of the
+/// game's own by its name in the game's pack, one of the pool's others by its
+/// game and its name in that game's pack (`exe4:acdc-area`); none: no such
+/// background.
 pub fn background_name(content: &Content, id: nettai_battle::content::BackgroundId) -> Option<&str> {
-    content.assets.backgrounds.keys().find(|k| content.assets.handle(AssetKind::Background, k) == Some(id.0)).map(|k| local(k))
+    if !content.is_own_background(id) {
+        return content.other_background(id);
+    }
+    content.assets.backgrounds.keys().nth(id.0 as usize).map(|k| local(k))
 }
 
 /// The names of `game`'s backgrounds, in order.
 pub fn backgrounds<'c>(content: &'c Content, game: &str) -> Vec<&'c str> {
     (content.game() == game).then(|| content.assets.backgrounds.keys().map(|k| local(k)).collect()).unwrap_or_default()
+}
+
+/// The names a match of the content's game writes for the background pool's
+/// backgrounds ([`background_name`]), in the pool's order: every game's.
+pub fn pool_backgrounds(content: &Content) -> Vec<&str> {
+    content.pool_backgrounds().into_iter().filter_map(|id| background_name(content, id)).collect()
 }
 
 /// The games a match on `content` can be of: its game, when it has a

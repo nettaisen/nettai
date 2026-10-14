@@ -473,16 +473,10 @@ impl<'a> Names<'a> {
         self.pick(&self.content.defs.form(form).key, |s, k| s.form(k).and_then(|n| n.name.clone()))
     }
 
-    /// A background's name (its area's, as the game's menus name it), else
-    /// its asset name.
+    /// A background's name as a list shows it, any game's (the background pool's): its game's name and its own,
+    /// its area's as that game's menus name it ("BN4 ACDC Area": `crate::backgrounds::name`).
     pub fn background(&self, background: nettai_battle::content::BackgroundId) -> String {
-        let key = nettai_match::ids::background_name(self.content, background).unwrap_or_default();
-        self.background_named(key).unwrap_or_else(|| nettai_match::ids::local(key).to_string())
-    }
-
-    /// What the strings call a background, by its name in the game's pack (`acdc-area`), if they name it.
-    pub fn background_named(&self, name: &str) -> Option<String> {
-        self.found(name, |s, k| s.background(k).and_then(|b| b.name.clone()))
+        self.content.background_of(background).map(|(game, name)| crate::backgrounds::name(game, name)).unwrap_or_default()
     }
 
     /// An entry of one of the game's collections (a card, a program).

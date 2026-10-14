@@ -24,7 +24,7 @@ use nettai_content_api::Value;
 use nettai_frontend::connection::Reconnecting;
 use nettai_frontend::driver::bot_buttons;
 use nettai_frontend::game::{Graphics, TextMode};
-use nettai_frontend::lobby::{Lobby, Role, Settings, Status};
+use nettai_frontend::lobby::{Lobby, Role, Status};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
 use nettai_frontend::player::Player;
 use nettai_frontend::preload::Preload;
@@ -287,7 +287,7 @@ impl Peer {
                 Some(nettai_rtc::Role::Host) => Role::Host,
                 _ => Role::Join,
             };
-            let mut lobby = Lobby::new(role, &self.content, Settings::new(&self.game, 1), self.side.clone(), ENTROPY[1], Duration::from_secs(45));
+            let mut lobby = Lobby::new(role, &self.content, super::settings(&self.game, 1), self.side.clone(), ENTROPY[1], Duration::from_secs(45));
             lobby.set_name(PEER);
             self.lobby = Some(lobby);
         }

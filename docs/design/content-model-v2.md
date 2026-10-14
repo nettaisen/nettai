@@ -719,7 +719,10 @@ of one entry that is none unless stated (a panel type's `burn`). One section is 
 `battle_themes` (rules/battle_themes.luau), the game's songs a player may pick as a battle's music, in this game's
 battles or another's, as a list of songs (`asset.sound`) in the order a list shows them; each is named in the
 locales' text table `battle_themes` by its song's asset name, and the app shows it after the game's name
-(docs/app.md §1, "The battle's music"). A rule that picks
+(docs/app.md §1, "The battle's music"). The backgrounds need no section: every game's are one pool any battle
+may be drawn on (docs/app.md §1, "The battle's background"), which the loader reads from each game's own
+language's `[backgrounds]` (which names every background the game's pack has: the content check holds it to that)
+into `Content::background_pool`, presentation left out of the content's hash. A rule that picks
 between behaviors is named for what it does, not for a game (`shake = "console_rng"`, `retype = "is_alone"`,
 `obstacle_actions = "own_from_8"`). **A game has one ruleset** (the user: "there should only be
 one ruleset per game", then "collapse systems into one rules definition"): `define.rules` takes no `id`, a second
