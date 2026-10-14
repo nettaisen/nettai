@@ -77,7 +77,9 @@ export global Nav {
 // a drag (`on`), and each move (and each step of a list scrolling under it) asks the app where the row would land
 // (`Nav.choose("drag-over", from, at)`, `at` the pointer's place in the window as x * 65536 + y). The app says so in
 // `to` (-1: nowhere, the pointer is off the list: let go there, the row goes back) and `swap` (it trades places with
-// what is there, where otherwise the rows between shift). Let go, `Nav.choose("drag-drop", from, at)`.
+// what is there, where otherwise the rows between shift). Let go, `Nav.choose("drag-drop", from, at)`. A library's
+// row is dragged so too (its `drag` the library's list, `lib.rows`), into the build's list beside it, which the app
+// names in `into` (the list that scrolls near its edges: a row of the build's, its own).
 export global Drag {
     // The list a row is pressed in ("" while none is), the row, and whether it has gone far enough to be a drag.
     out property <string> list;
@@ -93,6 +95,7 @@ export global Drag {
     in-out property <int> to: -1;
     in-out property <bool> swap;
     in-out property <bool> removing;
+    in-out property <string> into;
     out property <length> threshold: 6px;
     property <length> start-x;
     property <length> start-y;
@@ -119,6 +122,7 @@ export global Drag {
         }
         if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
             root.list = list;
+            root.into = list;
             root.from = row;
             root.on = false;
             root.to = -1;
@@ -159,6 +163,7 @@ export global Drag {
     }
     public function end() {
         root.list = "";
+        root.into = "";
         root.from = -1;
         root.on = false;
         root.to = -1;

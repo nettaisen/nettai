@@ -1357,10 +1357,10 @@ component Scroller inherits Rectangle {
     property <length> ay: self.absolute-position.y;
     property <length> slid;
     property <int> slides;
-    // A row of it being dragged (`Drag`, its list named as it is) near its top or bottom edge, or a little past
-    // it: it scrolls that way, and where the row would land is asked again. -1 up, 1 down, 0 neither.
+    // A row being dragged into it (`Drag.into`: one of its own, or a library's) near its top or bottom edge, or a
+    // little past it: it scrolls that way, and where the row would land is asked again. -1 up, 1 down, 0 neither.
     property <length> edge: 32px;
-    property <int> edging: !Drag.on || Drag.list != root.nav || Drag.x < root.ax || Drag.x > root.ax + self.width ? 0 : (Drag.y < root.ay + root.edge && Drag.y > root.ay - 3 * root.edge) ? -1 : (Drag.y > root.ay + self.height - root.edge && Drag.y < root.ay + self.height + 3 * root.edge) ? 1 : 0;
+    property <int> edging: !Drag.on || Drag.into != root.nav || Drag.x < root.ax || Drag.x > root.ax + self.width ? 0 : (Drag.y < root.ay + root.edge && Drag.y > root.ay - 3 * root.edge) ? -1 : (Drag.y > root.ay + self.height - root.edge && Drag.y < root.ay + self.height + 3 * root.edge) ? 1 : 0;
     function place() {
         if root.list {
             Nav.page(root.nav, root.ax, root.ay, root.view-width, self.height, root.content-height, root.scroll);

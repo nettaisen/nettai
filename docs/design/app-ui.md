@@ -243,6 +243,17 @@ Each is settled unless the user changes it.
     the sheet's REMOVE stays the way. Keys, the pad and the libraries' clicks are as they were.
     Later: "remove double clicking to remove", and of a click on the marked row removing, "remove that too": a
     click only marks a row; a right click, Del or a drag onto the library takes its thing out. (§4, §6, docs/app.md §8.)
+39. **From the library into the list, by a drag; EXE4's patch cards too** (2026-10-14): "you should allow drag and
+    dropping from the library into a slot", and "you should also allow drag and dropping for exe4 patch cards". A
+    library's row (a chip of a code, a patch card, an auto battle chip) pressed and moved is dragged: it stays where it
+    is, a ghost of it follows the pointer, and over the build's list the row it would go in shows so, in the look of
+    a row dragged within the list; let go there, it goes in, as a click or Enter would put it, refused as they are (the
+    row shakes and the strip says why); anywhere else, nothing. A folder's chip takes the place of the entry's, a patch
+    card goes in at that place (the others shifting on), an auto battle chip takes the place of the place's. A press
+    that doesn't move is a click, as ever. EXE4's cards each belong in one slot, so a slot's card can't move to
+    another: dragged onto the library it is taken out (its slot emptied), and a library's card let go anywhere over the
+    slots goes in its own. On a phone the library is a sheet over the list, and its rows aren't dragged. (§6, docs/app.md
+    §8.)
 
 40. **Practice starts fresh, plays the battle's music through, and leaves by EXIT** (2026-10-14). The user: "going
     into practice should reset all the arena settings, there's no reason for it to remember the last settings";
@@ -561,15 +572,19 @@ Each is in the mockups under the same name.
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
   same lines, and the strip across the top lays the card under the cursor out in its two groups. EXE4: six slots
   named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
-  puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
+  puts it there, in place of the card that slot held; so does a drag of it onto the slots, and a slot's card dragged
+  onto the library is taken out (it can move to no other slot). A two-part card says where its other half must be; a card
   shows its effect and the bugs it adds to or clears.
 - **The mouse on the build's lists** (§2.37, §2.38): a click marks a row (a folder's entry, a patch card or slot, an
   auto battle place) and removes nothing; a right click takes out what it holds; a row
   is dragged to another place (a folder's entry with its marks, a patch card in the list's order, a place's chip in
   its list or traded with another list's); dragged back onto the library and let go there, what it holds is taken
   out (the library shows DROP TO REMOVE while it is over it); let go anywhere else off the list it goes back. A right
-  click on a library row that is in the build takes it out. On a phone, a tap opens the library's sheet (its REMOVE
-  takes out) and a held touch drags, to reorder only.
+  click on a library row that is in the build takes it out. A library's row dragged onto the list goes in where it is
+  let go (§2.39): a chip in that entry or place in place of what it held, a card at that place, the others shifting
+  on (EXE4: in its own slot, wherever over the slots), refused as a click is; elsewhere, nothing. On a phone, a tap
+  opens the library's sheet (its REMOVE takes out) and a held touch drags, to reorder only; the sheet's rows aren't
+  dragged.
 - **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
   library offers what the place being filled can hold (§2.27): a Mega place the Mega chips, the Giga place the Giga
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
