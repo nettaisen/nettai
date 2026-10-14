@@ -165,7 +165,12 @@ Each is settled unless the user changes it.
     player's lobby doesn't show it. The two rows show and change one pick, remembered between runs; a replay
     watched, and its video, play with it. The themes and their names are the games' content (each game's rules'
     `battle_themes`, named in its locales), shown after the game's name as the language says it ("BN4 Tournament
-    Battle", "EXE4 トーナメントバトル"). (§6, docs/app.md §1, "The battle's music".)
+    Battle", "EXE4 トーナメントバトル"). (§6, docs/app.md §1, "The battle's music".) Then: "in the practice
+    screen, if the bgm choice changes from game default you should start playing the bgm": Practice's entry plays
+    the pick in place of the title music while it shows (once the row has stayed on it a moment, so a run of steps
+    starts one song), the title music again for "Game's own" and elsewhere; and "also you should be able to change
+    the bgm in the practice menu": the practice menu's Battle rows have Music, the same pick, which switches the
+    battle's music at once.
 
 ## 3. Chosen where the user gave no answer
 
@@ -383,8 +388,9 @@ Each is in the mockups under the same name.
   names are meaningless so you should just have like a pager widget that goes through them. background should
   also be a arrow button pager thing": each an arrow pager, the arena by its place, "12 / 96", the background
   by its name), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
-  opening its list; the same pick as the lobby's Your music), all remembered, and START PRACTICE; beside them the
-  two builds facing each other and the arena. One line: "Set up the dummy from the menu once you're in."
+  opening its list; the same pick as the lobby's Your music; a theme plays here in place of the title music once
+  the row rests on it a moment), all remembered, and START PRACTICE; beside them the two builds facing each other
+  and the arena. One line: "Set up the dummy from the menu once you're in."
 - **EDIT** (§2.28) beside each build's select, a button of its own (Tab and Shift+Tab reach it, Up and Down go
   from one to the other), opens that build in Builds' editor; so do E and the pad's north button, on the dummy's
   row or EDIT the dummy's build and anywhere else the player's (the footer's "Edit build"). Back from the editor
@@ -400,8 +406,8 @@ Each is in the mockups under the same name.
     it's confusing to navigate. you should make it clearer and less redundant".
   - Battle: Arena and Background (as on the entry; an arena changed starts the set over on it, a background
     changed only redraws: "changing the background shouldn't change the entire arena either in trianing
-    mode"), Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
-    folder order)
+    mode"), Music (the entry's pick, §2.29: the battle's music switched at once), Your HP and Dummy's HP
+    (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled, folder order)
   - Display: Input display
   - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
 
