@@ -82,7 +82,7 @@ says (`nettai_content::pack::find`); `nettai-extract exe5` writes EXE5's into
 `data/exe5` beside it. `--pack <dir>` names a pack elsewhere, in
 place of the found one of its game, and can be given again for another
 game's. Two packs of one game in the directory are an error. A pack is of
-the format's one version (each file says it): an older one is refused, with
+the format's one version, 1 (each file says it): another is refused, with
 a note to extract it again. Each pack loads straight from its files: its asset
 index into the engine's `Content`, the graphics through nettai-content's
 importer, and, when a window opens, the sound. `NETTAI_LOAD_TIMES=1` prints
@@ -2423,7 +2423,7 @@ memory in proportion.
 nettai-replay holds the format alone and runs no engine:
 
 ```text
-file   := "NTRP", layout (a byte: 2), head, info, match, input
+file   := "NTRP", layout (a byte: 1), head, info, match, input
 head   := "HEAD", length (u32), engine version (string), game (string),
           content hash (u64), the first battle's digest before any tick (u64)
 info   := "INFO", length (u32), when (u64: unix seconds), the side that
@@ -2445,13 +2445,10 @@ Numbers are little-endian; a side's buttons are written when they change
 (nothing held before the first tick, carried across a round's end); a digest
 is kept every 60 ticks of the set and at each round's end (the reader takes
 any). A tick that changes nothing is one byte: a three-minute round is about
-15 KB. The layout byte is the container's; what a match holds is pinned by the
-content hash, nothing else. Layout 2 added the kind of match and closed
-builds to the info; a file of another layout, layout 1's included, is refused
-as another version's (`ReadError::OtherLayout`). No layout 1 file would play
-here whatever was done for its layout: every battle's digest changed when a
-round's setup gained the host's keys (`RoundSetup::host_keys`, §2), so a
-replay from before is refused as one whose match makes another first battle
+15 KB. The layout byte is the container's (this is layout 1); what a match
+holds is pinned by the content hash, nothing else. A file of another layout
+is refused as another version's (`ReadError::OtherLayout`). A replay whose
+match makes another first battle than it recorded is refused
 (`Refused::OtherVersion`), as any is once the engine or the content has moved
 on.
 

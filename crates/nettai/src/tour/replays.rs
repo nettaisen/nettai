@@ -148,7 +148,7 @@ fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
         save(&format!("{i:02}.ntrp"), &written(replay, &info, ticks), when)?;
     }
     // Three that aren't played: of another layout, of other content, and no replay at all.
-    save("old.ntrp", b"NTRP\x01an older nettai's", october(9, 23, 40))?;
+    save("old.ntrp", b"NTRP\x02another nettai's", october(9, 23, 40))?;
     let mut other = sets[0].clone();
     other.head.content ^= 1;
     let when = october(9, 12, 0);
@@ -639,7 +639,7 @@ mod tests {
         std::fs::write(dir.join("first.ntrp"), written(&replay, &info(100, 0), None)).unwrap();
         std::fs::write(dir.join("second.ntrp"), written(&replay, &info(300, 1), Some(600))).unwrap();
         std::fs::write(dir.join("other.ntrp"), written(&other, &info(200, 0), None)).unwrap();
-        std::fs::write(dir.join("old.ntrp"), b"NTRP\x01an older nettai's").unwrap();
+        std::fs::write(dir.join("old.ntrp"), b"NTRP\x02another nettai's").unwrap();
         std::fs::write(dir.join("notes.txt"), b"not a replay, and not named as one").unwrap();
         let cache = dir.join("kept/replays-played.toml");
 
@@ -650,7 +650,7 @@ mod tests {
         let entries = library.entries.clone();
         let names: Vec<&str> = entries.iter().map(|e| e.path.file_name().unwrap().to_str().unwrap()).collect();
         assert_eq!(names, ["old.ntrp", "second.ntrp", "other.ntrp", "first.ntrp"]);
-        assert!(matches!(entries[0].read, Err(ReadError::OtherLayout { layout: 1 })));
+        assert!(matches!(entries[0].read, Err(ReadError::OtherLayout { layout: 2 })));
         let second = entries[1].read.as_ref().unwrap();
         assert_eq!((second.ticks, second.rounds.as_slice(), second.info.side, second.head.game.as_str()), (600, &[0][..], 1, "exe6"));
 
@@ -709,7 +709,7 @@ mod tests {
         other_damaged.push(0xE0);
         std::fs::write(dir.join("damaged.ntrp"), &damaged).unwrap();
         std::fs::write(dir.join("other.ntrp"), &other_damaged).unwrap();
-        std::fs::write(dir.join("old.ntrp"), b"NTRP\x01an older nettai's").unwrap();
+        std::fs::write(dir.join("old.ntrp"), b"NTRP\x02another nettai's").unwrap();
         let mut library = Library::default();
         library.list(&dir);
         wait(&mut library, |found| found.iter().any(|f| matches!(f, Found::Listed)));

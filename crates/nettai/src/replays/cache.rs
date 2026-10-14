@@ -219,7 +219,7 @@ mod tests {
     /// A file's hash changes with any byte of it.
     #[test]
     fn a_files_hash_is_of_all_its_bytes() {
-        let bytes = b"NTRP\x02a replay's bytes".to_vec();
+        let bytes = b"NTRP\x01a replay's bytes".to_vec();
         let mut other = bytes.clone();
         other[9] ^= 1;
         assert_ne!(digest(&bytes), digest(&other));
