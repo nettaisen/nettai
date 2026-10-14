@@ -2432,15 +2432,16 @@ again after them and the entry back from Builds keep what the player set. None o
     and 2 to the byte), one record placing side 0's navi first and the other side 1's, EXE5's and EXE4's
     alike. `Places::of` groups them from the content as it reads it (`practice::same_arena`, no list kept):
     two records are one arena when everything their `StageData` holds is the same, the layout, the panel
-    pattern, the music and background they state, the mode, the battle number and the effects, and their actor
-    lists hold the same entries, in any order. Each group shows as its first record in the list's natural
-    order, so EXE6's 96 are 48 arenas, EXE5's 94 are 48 and EXE4's 96 are 48 (the pager's "n / 48"); EXE6's
-    netbattle-95 and 96, and EXE5's 93 and 94, stay two, the second's effects lacking the first's 0x800. A
+    pattern, the music and background they state, the mode and the battle number, and their actor lists hold
+    the same entries, in any order; the effects aren't compared (EXE6's netbattle-95 and 96, and EXE5's 93 and
+    94, differ only in them, the second lacking the first's 0x800, a bit nothing reads, and the user: "they
+    should count as duplicates too"). Each group shows as its first record in the list's natural order, so
+    EXE6's 96 are 47 arenas, EXE5's 94 are 47 and EXE4's 96 are 48 (the pager's "n / 47" in EXE6). A
     round that names a later record (a session another screen starts on it) shows as its arena, which plays
     its first (nettai's `each_arena_is_listed_once`).
   - The actor list's order is the order the round's setup places the navis and objects in, so the order they
     are updated in: an arena chosen always plays its first record, so it always has the same side first (side
-    0's navi in the three games, but for EXE6's netbattle-96 and EXE5's 94, each alone, which place side 1's first). Random is the rules' pick over every record, as a match's, so a Random round
+    0's navi in the three games). Random is the rules' pick over every record, as a match's, so a Random round
     keeps the original's coin flip of which side goes first. Play's matches and their random pick are as
     they were.
   - Their words: an arena is said by its place in the list, "12 / 48" (a stage is its key in the content,
@@ -2574,7 +2575,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 |---|---|---|
 | Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
-| Arena: Arena | Random, then "1 / 48" and on, each arena once, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
+| Arena: Arena | Random, then "1 / 47" and on, each arena once, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Arena: Background (a dropdown) | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
 | Arena: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
