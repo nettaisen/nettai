@@ -1154,7 +1154,10 @@ say so, each such list's `own_class` in @exelib/auto_battle/places' `LISTS`, whi
 and the tab reads (`Holds::Chips`). For a place of such a list the library is the game's chips of that class
 (`auto::of_class`: the Mega chips, the Giga chips, the Program Advances, which no folder holds); for a place of
 another, the chips a folder of the build can hold. The library changes with the place the cursor is on, from its
-first row; a Program Advance's class in the strip is Program Advance. Enter on a place goes to the library, Enter
+first row; a Program Advance's class in the strip is Program Advance, and it shows no picture and no element
+(it has neither, the user: "program advances don't have elements or chip art, so don't show those": the
+pictures' `art` and `chip_element` give a Program Advance none; the strip's facts come up to where its element
+would be). Enter on a place goes to the library, Enter
 on a chip puts it in and goes on to the next place shown (it flies there, the place flashes), Enter, Del or a
 click on the chip the place holds takes it out again (it flies back; its hint Remove, `on-placed`), Del empties a
 place. A chip the rules refuse in a place (their `validate`: one its navi can't play, or one of another class in
