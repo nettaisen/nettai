@@ -100,8 +100,8 @@ pub enum Shown {
 }
 
 /// A picture on the window: the buffer something presents itself into (a battle's player, a replay's viewer),
-/// how it fits its room, and whether it is out of date. The window has one texture: what is shown is the
-/// surface last presented (`Shell::show_surface`).
+/// how it fits its room, and whether it is out of date. The window has one texture: what it holds is the
+/// surface last presented (`Shell::show_surface`), shown only while some surface is ([`Showing`]).
 pub struct Surface {
     /// Which surface this is, of those made: another one shown after it presents its own picture whether or
     /// not anything changed.
@@ -165,6 +165,45 @@ impl Surface {
             Some(image) => Shown::New(image),
             None => Shown::Written,
         }
+    }
+}
+
+/// The window's one picture, which every `Picture` shows: which surface's picture its texture holds, and whether
+/// it is shown. It is shown only in a frame in which some surface was (a battle, the menu's reel, a replay's
+/// still or its viewer), and not past a change of what the window shows (another screen, a battle ended): a
+/// screen with nothing of its own to present (a replay that can't be played, a still not made yet, a screen
+/// just arrived) shows its `Picture`'s ground, never what another presented last.
+#[derive(Default)]
+pub struct Showing {
+    /// The surface whose picture the texture holds (0: none).
+    holds: u64,
+    /// A surface was shown since the frame began and since what the window shows last changed.
+    used: bool,
+    /// Whether the UI was last told the picture is shown.
+    told: Option<bool>,
+}
+
+impl Showing {
+    /// Nothing is shown (yet): a frame begins, or what the window shows changed under the picture.
+    pub fn reset(&mut self) {
+        self.used = false;
+    }
+
+    /// `surface` is shown this frame: presented anew where the texture holds another's picture.
+    pub fn show(&mut self, surface: &mut Surface) {
+        if self.holds != surface.id {
+            self.holds = surface.id;
+            surface.refresh();
+        }
+        self.used = true;
+    }
+
+    /// Whether the picture is shown, where that changed since the UI was last told.
+    pub fn tell(&mut self) -> Option<bool> {
+        (self.told != Some(self.used)).then(|| {
+            self.told = Some(self.used);
+            self.used
+        })
     }
 }
 
@@ -328,6 +367,51 @@ mod tests {
         assert_eq!(fit(2880.0, 1920.0, 3.0, false), Fit { scale: 12, density: 4 });
         // Smaller than the frame: the frame, cropped by the window.
         assert_eq!(fit(100.0, 100.0, 1.0, false), Fit { scale: 1, density: 1 });
+    }
+
+    /// The window's picture is shown only in a frame in which some surface was: after the menu's reel, a screen
+    /// with nothing of its own (Replays with a replay that can't be played selected) shows none of the reel. A
+    /// surface shown after another's is presented anew; one shown again after frames with none isn't (the
+    /// texture still holds its own). A change of what the window shows (another screen, a battle ended) takes the
+    /// picture away in the frame it comes, whatever was shown before it in that frame. The UI is told only of a
+    /// change.
+    #[test]
+    fn the_picture_is_shown_only_in_a_frame_something_was_shown_in() {
+        let (mut showing, mut reel, mut still) = (Showing::default(), Surface::new(), Surface::new());
+        // (A surface presented: as `Surface::picture` leaves it.)
+        let presented = |s: &mut Surface| s.stale = false;
+        // The menu, its reel shown.
+        showing.reset();
+        showing.show(&mut reel);
+        presented(&mut reel);
+        assert_eq!(showing.tell(), Some(true));
+        showing.reset();
+        showing.show(&mut reel);
+        assert_eq!((reel.stale, showing.tell()), (false, None), "the same picture, nothing to tell");
+        // Replays shows, in the frame the reel was shown in: the reel's picture is taken away at once.
+        showing.reset();
+        assert_eq!(showing.tell(), Some(false));
+        // Frames of the list with a replay that can't be played selected: nothing is shown.
+        for _ in 0..3 {
+            showing.reset();
+            assert_eq!(showing.tell(), None);
+        }
+        // Another is selected and its still comes: presented anew (the texture held the reel's), and shown.
+        showing.reset();
+        showing.show(&mut still);
+        assert!(still.stale);
+        presented(&mut still);
+        assert_eq!(showing.tell(), Some(true));
+        // A frame without it, then it again: shown again as it is, the texture still its own.
+        showing.reset();
+        assert_eq!(showing.tell(), Some(false));
+        showing.reset();
+        showing.show(&mut still);
+        assert_eq!((still.stale, showing.tell()), (false, Some(true)));
+        // The reel shown after it is presented anew.
+        showing.reset();
+        showing.show(&mut reel);
+        assert!(reel.stale);
     }
 
     /// Drawn with the nearest pixel, a picture of any density at least the
