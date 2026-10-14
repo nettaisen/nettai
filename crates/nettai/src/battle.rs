@@ -53,6 +53,19 @@ pub enum Play {
     Watch(Box<Replay>, Option<u8>),
 }
 
+/// The music a battle plays (docs/app.md §1, "The battle's music").
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum BattleMusic {
+    /// The player's pick: Practice's own sessions (the pick is Practice's alone: the user, "why does the music
+    /// setting carry over from practice mode into pvp mode?").
+    Picked,
+    /// The battle's game's own: a match ("for pvp it should use the game's default for now"), a replay.
+    GameOwn,
+    /// None of its own: the menus' music goes on under it (the practice battle beside a waiting invite: the user,
+    /// "in the practice mode while the lobby is waiting, don't switch the music").
+    None,
+}
+
 /// A battle to start.
 pub struct BattleStart {
     /// The screen that starts it: its menu's controls and its events are that screen's.
@@ -73,6 +86,8 @@ pub struct BattleStart {
     pub cards: Option<[VersusCard; 2]>,
     /// The picture fills the window. Else the owner's screen shows it in a `Picture` of its own.
     pub full: bool,
+    /// Its music.
+    pub music: BattleMusic,
     /// Online: called each frame with how far this side is (0 to 1), it tells the other side and says how far
     /// that one is. The battle starts when both are 1. None: nobody to wait for.
     pub gate: Option<Box<dyn FnMut(f32) -> f32>>,
@@ -98,6 +113,8 @@ pub struct Battle {
     pub kind: BattleKind,
     pub game: String,
     pub full: bool,
+    /// Its music: with none, the menus' music goes on under it.
+    pub music: BattleMusic,
     /// The side whose console is shown.
     pub viewer: u8,
     /// nettai's menu is over it.
@@ -149,7 +166,7 @@ impl Battle {
 
 /// A battle being made ready.
 pub struct Loading {
-    start: BattleStart,
+    pub(crate) start: BattleStart,
     began: Instant,
     /// Made on the first frame after the cards are up.
     preload: Option<Preload>,
@@ -198,8 +215,10 @@ impl Shell {
                 let graphics = ready.graphics(self.lang);
                 let font = ready.loaded.font.clone().filter(|_| text == TextMode::Font);
                 let renderer = graphics.renderer(text, font.clone());
-                // (The music the player picked, the battle's game's own or a theme: `crate::music`.)
-                let sound = crate::music::sound(&self.games, &ready, &self.battle_music());
+                // (The music the player picked, the battle's game's own or a theme, where the battle plays the pick:
+                // `crate::music`.)
+                let music = if loading.start.music == BattleMusic::Picked { self.battle_music() } else { crate::music::Music::GameOwn };
+                let sound = crate::music::sound(&self.games, &ready, &music);
                 loading.preload = Some(Preload::with(renderer, font.map(TextRenderer::new), sound, &loading.start.set, loading.start.viewer, size));
             }
             Some(preload) => {
@@ -276,7 +295,7 @@ impl Shell {
         }
         let mut stage = Stage::new(player);
         let (music, effects) = self.sound.battle_levels();
-        stage.player.set_sound_levels(music, effects);
+        stage.player.set_sound_levels(if start.music == BattleMusic::None { 0.0 } else { music }, effects);
         stage.hold();
         shell.set_versus(false);
         if start.full {
@@ -288,7 +307,7 @@ impl Shell {
         shell.set_battle_menu(false);
         shell.set_connection_shown(false);
         self.keys.pressed.clear();
-        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, viewer: start.viewer, menu: false, over: false, game_pause: None });
+        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, over: false, game_pause: None });
         Some((start.owner, BattleEvent::Started))
     }
 
@@ -542,7 +561,7 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
         let player = Player::with(graphics(&content, 0x7FFF).renderer(TextMode::Original, None), None, None, Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, over: false, game_pause: None };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
                 assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
@@ -592,7 +611,7 @@ mod tests {
         let driver = LivePlayer::against(set, opponent, 11);
         let audio = nettai_frontend::testing::audio(&content);
         let player = Player::with(graphics(&content, 0x7FFF).renderer(TextMode::Original, None), None, Some(audio), Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, over: false, game_pause: None };
         b.pause_in_game();
         // Onto the custom screen, a chip picked; the menu opened there: the battle steps on with no buttons, its
         // sound going on, both screens' cursors and choices as they were (the dummy's presses held too).
@@ -798,7 +817,7 @@ mod tests {
         let driver = LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64);
         let audio = nettai_frontend::testing::audio(content);
         let player = Player::with(graphics(content, 0x7FFF).renderer(TextMode::Original, None), None, Some(audio), Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, over: false, game_pause: None };
         b.pause_in_game();
         b
     }

@@ -264,13 +264,16 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the packs' contents state.
 - *The pick* is the player's own and one: Practice's entry and its menu over the battle (§15) show and change the
-  same one (Play's lobby has none: the user, "don't allow bgm select in lobby"; a match plays the pick all the
-  same), remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
+  same one (Play's lobby has none: the user, "don't allow bgm select in lobby"), remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
   asset name; none, the game's own). The list is "Game's own", then the themes of every game whose parts are read
   (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose pack
   isn't there offers none, and a pick of one is played as the game's own until its game is read.
-- *How it plays.* Every battle the shell makes ready plays the pick (`Shell::battle_music`, `music::sound`): a
-  practice battle, an online match, a replay watched; and a replay's video (§16) is made with it. The song plays in
+- *Which battles play it* (`BattleStart::music`, `BattleMusic`): Practice's own sessions play the pick (the
+  user: "why does the music setting carry over from practice mode into pvp mode? huh?"); an online match, a replay
+  watched and a replay's video (§16) play the game's own ("for pvp it should use the game's default for now");
+  and the practice battle beside a waiting invite plays none of its own: the menus' music goes on under it, its
+  battle music silent ("in the practice mode while the lobby is waiting, don't switch the music").
+- *How it plays.* A battle that plays the pick has it from `Shell::battle_music` through `music::sound`. The song plays in
   place of the battle's own music (the content's `battle_music`: the link battle's music roles and the stages'
   own), with its own game's bank on a driver of its own (`nettai_audio::with_theme`: its own voice groups and
   samples, its own mixer; one of the battle's own game is played on the game's own driver, as its music is). The
@@ -1359,7 +1362,7 @@ the system asks until the player says), the battle's text (sharp or original), t
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
 and what screens remember by their own keys (`remembered`; among them the battle's music the player picked,
-`battle.music`, which Practice's rows change and every battle plays: §1, "The battle's music"). A setting the file leaves out is
+`battle.music`, which Practice's rows change and its sessions play: §1, "The battle's music"). A setting the file leaves out is
 the app's default. The battle's music isn't one of Settings' rows (the user: "settings is a weird place to put
 it"): it is picked beside the arena.
 
@@ -2145,7 +2148,7 @@ column's foot; beside them (on a phone, under them) the two builds as cards over
     round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
-- **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick every battle plays:
+- **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions play:
   a row laid out as Arena's and Background's, stepped by Left and Right around from the last theme to
   "Game's own", and Enter opens its list (its names say more than a place's number). It changes nothing drawn
   (the arena's picture is silent), the session plays it, and while the entry shows it plays in place of the title

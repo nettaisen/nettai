@@ -421,6 +421,8 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         recorder: None,
         cards,
         full: start.full,
+        // (Practice's own plays the pick; the session beside a waiting invite leaves the menus' music on.)
+        music: if start.from.is_none() { crate::battle::BattleMusic::Picked } else { crate::battle::BattleMusic::None },
         gate: None,
     });
     shell.practice.session = Some(session);
