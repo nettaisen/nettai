@@ -128,8 +128,8 @@ Each is settled unless the user changes it.
     shouldn't display patch card bugs. also you should allow a navicust part to be placed multiple times". The
     NaviCust tab's Bugs (on a phone, its Bugs line) list the bugs the NaviCust brings, the build's without its
     patch cards, as its Effects already were; a card's bugs stay on the Patch cards tab (its lines, Together) and
-    in the build overview, which lists every bug. Taking a program from the list, by Enter, a click or a drag out
-    of its row, always takes a new copy in hand, however many copies are placed (before, it took a placed
+    in the build overview, which lists every bug. Taking a program from the list, by Enter or a click on its row
+    (since §2.38 no drag), always takes a new copy in hand, however many copies are placed (before, it took a placed
     program's last copy off); Del (or a right click) on its row takes the last copy off, and a placed piece is
     taken off as before. A row with more than one copy placed says how many ("Placed ×2"). No game's rules limit
     copies: the checks (EXE5's and EXE6's `@exelib/navicust/compile`'s `check`, EXE4's rules/navicust `validate`)
@@ -211,7 +211,7 @@ Each is settled unless the user changes it.
     an already selected chip or patch card or whatever should remove it, instead of right clicking. also you should
     be able to drag and drop to reorder". In the editor's own lists (the folder's entries, the patch cards and
     EXE4's slots, the auto battle places), a click on the row that is marked takes out what it holds, as Del does;
-    a click on another marks it, as before; a right click does nothing there now. A double click removes, on a
+    a click on another marks it, as before; a right click did nothing there then (since §2.38 it removes). A double click removes, on a
     row marked or not ("fast double click should remove"), and takes out one thing only. A row pressed and moved is dragged: it lifts under the pointer, the rows between slide to leave a gap
     where it would land, the list scrolls near its edges, and let go it moves there (off the list, it goes back). A
     folder's entry takes its Regular and tag marks with it; a patch card moves as `[` and `]` move it (EXE4's slots,
@@ -219,6 +219,28 @@ Each is settled unless the user changes it.
     list's place, refused with a shake where the rules hold that list to another class. The NaviCust keeps its right
     click, and a phone's tap still opens the library's sheet; on a phone a touch held still a moment drags a row, and
     one that moves at once scrolls. (§4, §6, docs/app.md §8.)
+38. **Removing with the mouse: back where it came from, by a right click, and the NaviCust by clicks** (2026-10-13).
+    Asked how to make removing with the mouse alike across the tabs, the user chose the option "drag it back to where
+    it came from": "ok do 1". Things come out of the library (chips, patch cards, auto battle chips) or the NaviCust's
+    program list, so taken back there they are removed. A row of the build's (a folder's entry, a patch card, an auto
+    battle place's chip) dragged onto the library beside its list and let go there is taken out, as Del takes it;
+    let go anywhere else off its list it goes back, nothing removed. While it is over the library it shows so,
+    plainly and with no new button or badge (an on-strip REMOVE button was found ugly): its line turns the error
+    color and it fades back, and the library fades under a wash and an edge in the error color with DROP TO REMOVE
+    across its middle; off the library it looks as a drag does again. Then of the NaviCust: "dragging navicust piece
+    is confusing because usually it's click to drop". Its board carries a piece by clicks alone: a click on a placed
+    piece or a program's row takes it up, it follows the pointer with no button held, and a click puts it down; a
+    press that moves before its release is the same click, and nothing follows the held button. A click on the
+    program list with a piece in hand puts it away (the list shows the same quiet look while the pointer is over
+    it, CLICK TO PUT AWAY, and the piece fades); a click anywhere else off the board puts it back where it was (a new
+    copy goes away, having had no place). Where letting go off the board put a piece away before, only the list does
+    now. And of the right click: "sure right click should remove everywhere". On the folder's entries, the patch
+    cards (and EXE4's slots) and the auto battle places a right click takes out what the row holds, marked or not,
+    the focus coming to it; on a library row that is in the build (a patch card that is in, the chip the place
+    holds) it takes that out; the NaviCust's is as it was (it puts the piece in hand away, or takes off the piece
+    under the pointer). On a phone the library is a sheet, not beside the list, so dragging onto it doesn't arise:
+    the sheet's REMOVE stays the way. Keys, the pad, a click on the marked row, a double click and the libraries'
+    clicks are as they were. (§4, §6, docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -330,7 +352,7 @@ What moves:
 | a stepper, a tab | the value slides out and in within its box, the way pressed; a tab's underline slides and the body follows that way |
 | a list | the chosen row's bar and tint slide to the next row; scrolling is smooth, never a jump |
 | the folder | a chip put in flies from its library row to its slot, which flashes; a count that changes ticks to its number; a refusal shakes the row 4, twice, and flashes its reason |
-| a build's row dragged | it lifts under the pointer (to 1.03, raised, with a shadow and a line in the cursor's color), the rows between slide a row over to leave a gap where it would land, outlined (`quick`), and let go it lands with the flash of a chip put in; refused, it shakes |
+| a build's row dragged | it lifts under the pointer (to 1.03, raised, with a shadow and a line in the cursor's color), the rows between slide a row over to leave a gap where it would land, outlined (`quick`), and let go it lands with the flash of a chip put in; refused, it shakes; over the library (where let go it is taken out), its line turns `#ff9272` and it fades to 0.6, and the library fades in under a wash of the ground at 0.7, an edge and a faint wash of `#ff9272`, and DROP TO REMOVE on a band across its middle (`quick`); the NaviCust's list does the same under a piece carried over it (CLICK TO PUT AWAY), the piece fading to 0.45 |
 | the NaviCust | a piece picked up lifts (to 1.06, with a shadow), turns as a quarter turn, and drops with a pulse along its cells; the command line's arrows pulse; a bug that appears pulses purple once |
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps, and when both are full the screen wipes into the battle |
@@ -512,7 +534,10 @@ Each is in the mockups under the same name.
   pad's A) places it, Esc (the pad's B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
   up and putting it away, or with Del ("there seems to be no way to remove the ncp from the board once placed").
   Enter on a program's row takes a new copy in hand whether or not copies are placed, and Del there takes the
-  last copy off (§2.26).
+  last copy off (§2.26). The mouse carries a piece by clicks (§2.38): a click takes up a placed piece or a new copy
+  from a program's row, the piece follows the pointer with no button held, and a click puts it down; a click on the
+  list puts it away (the list shows CLICK TO PUT AWAY while the pointer is over it), a click anywhere else off the
+  board puts it back where it was; a right click puts it away, or takes off the piece under the pointer.
 - **Patch cards** (§2.19, §2.20): the folder's shape. EXE5 and EXE6: the installed cards in order in the framed
   panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
@@ -520,11 +545,13 @@ Each is in the mockups under the same name.
   named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
   puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
   shows its effect and the bugs it adds to or clears.
-- **The mouse on the build's lists** (§2.37): a click marks a row (a folder's entry, a patch card or slot, an auto
-  battle place), and a click on the marked one takes out what it holds; a row is dragged to another place (a
-  folder's entry with its marks, a patch card in the list's order, a place's chip in its list or traded with another
-  list's), and let go off the list it goes back. No right click; on a phone, a tap opens the library's sheet and a
-  held touch drags.
+- **The mouse on the build's lists** (§2.37, §2.38): a click marks a row (a folder's entry, a patch card or slot, an
+  auto battle place), and a click on the marked one, a double click or a right click takes out what it holds; a row
+  is dragged to another place (a folder's entry with its marks, a patch card in the list's order, a place's chip in
+  its list or traded with another list's); dragged back onto the library and let go there, what it holds is taken
+  out (the library shows DROP TO REMOVE while it is over it); let go anywhere else off the list it goes back. A right
+  click on a library row that is in the build takes it out. On a phone, a tap opens the library's sheet (its REMOVE
+  takes out) and a held touch drags, to reorder only.
 - **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
   library offers what the place being filled can hold (§2.27): a Mega place the Mega chips, the Giga place the Giga
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a

@@ -15,7 +15,7 @@ import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
-import { LibraryHead, DropGap } from "folder.slint";
+import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
 
 // One line a card writes, and what comes before it in a row of them: nothing, a dot between two of one group, a bar
 // between the groups.
@@ -206,6 +206,8 @@ component InstalledRowView inherits Rectangle {
     in property <length> dy;
     in property <bool> gone;
     in property <bool> lifted;
+    // (Lifted over the library: let go, it is taken out. Its line is in the error color.)
+    in property <bool> removing;
     property <length> lead: root.slotted ? 8px + 34px + 8px : 8px;
     // (Lifted: raised, a little larger, with a shadow and a line in the cursor's color.)
     Rectangle {
@@ -213,7 +215,11 @@ component InstalledRowView inherits Rectangle {
         transform-scale: 1.03;
         background: Theme.raised;
         border-width: 1px;
-        border-color: Theme.cursor;
+        border-color: root.removing ? Theme.bad : Theme.cursor;
+        animate border-color {
+            duration: Theme.quick;
+            easing: ease-out;
+        }
         drop-shadow-blur: 10px;
         drop-shadow-offset-y: 4px;
         drop-shadow-color: #00000090;
@@ -304,6 +310,7 @@ component InstalledRowView inherits Rectangle {
         nav-index: root.nav-index;
         marked: root.chosen && !Theme.phone;
         drag: root.slotted || !root.card.there || root.nav-index < 0 ? "" : "card";
+        removable: root.nav-index >= 0;
     }
 }
 
@@ -384,6 +391,7 @@ component CardLibraryRowView inherits Rectangle {
     touch := RowTouch {
         nav: "lib.rows";
         nav-index: root.nav-index;
+        removable: true;
     }
 }
 
@@ -699,19 +707,6 @@ export component PatchCardsTab inherits Rectangle {
         }
     }
 
-    // (The card being dragged, under the pointer.)
-    InstalledRowView {
-        x: Drag.x - root.absolute-position.x - Drag.grab-x;
-        y: Drag.y - root.absolute-position.y - Drag.grab-y;
-        width: cards.row-width;
-        height: cards.row-height;
-        visible: CardDrag.on;
-        card: PatchCardsView.installed[max(0, Drag.from)];
-        nav-index: -1;
-        lifted: true;
-        chosen: true;
-    }
-
     // (The row a card went into, and where a card dragged would land, over the list where it is scrolled to.)
     Rectangle {
         x: cards.x;
@@ -747,12 +742,44 @@ export component PatchCardsTab inherits Rectangle {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // ---- The library, open.
-    if !Theme.phone: CardsLibraryPane {
-        x: root.pane-width + 24px;
-        y: root.pane-y;
-        width: parent.width - self.x;
-        height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+    // ---- The library, open; a card dragged over it is taken out, let go there.
+    if !Theme.phone: Rectangle {
+        library := CardsLibraryPane {
+            x: root.pane-width + 24px;
+            y: root.pane-y;
+            width: parent.width - self.x;
+            height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+        }
+
+        RemoveTarget {
+            x: library.x - 8px;
+            y: library.y - 8px;
+            width: library.width + 8px;
+            height: library.height + 16px;
+            shown: CardDrag.on && Drag.removing;
+            text: @tr("DROP TO REMOVE");
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+    }
+
+    // (The card being dragged, under the pointer, over everything.)
+    InstalledRowView {
+        x: Drag.x - root.absolute-position.x - Drag.grab-x;
+        y: Drag.y - root.absolute-position.y - Drag.grab-y;
+        width: cards.row-width;
+        height: cards.row-height;
+        visible: CardDrag.on;
+        card: PatchCardsView.installed[max(0, Drag.from)];
+        nav-index: -1;
+        lifted: true;
+        chosen: !Drag.removing;
+        removing: Drag.removing;
+        opacity: Drag.removing ? 0.6 : 1;
+        animate opacity {
+            duration: Theme.quick;
+            easing: ease-out;
+        }
     }
 }
 

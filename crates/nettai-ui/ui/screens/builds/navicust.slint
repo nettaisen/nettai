@@ -17,6 +17,7 @@ import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message } from "../../widgets.slint";
 import { Tween, Pulse, Shake } from "../../motion.slint";
+import { RemoveTarget } from "folder.slint";
 
 // What the board has at a cell: nothing (EXE6's corners), a cell of the board, or one of its out-of-bounds ring.
 export enum CellKind {
@@ -167,6 +168,8 @@ export global NavicustView {
     in property <int> grab-y;
     // The piece in hand is being moved (it glides to the next cell), not taken up.
     in property <bool> glide;
+    // The pointer is over the list with a piece in hand: a click there puts it away (the remove look).
+    in property <bool> over-list;
     in property <int> lifted;
     in property <int> turned;
     in property <int> turn-way: 1;
@@ -423,12 +426,14 @@ component ProgramRowView inherits Rectangle {
         overflow: elide;
     }
 
-    // (A press, a drag out of the row and a release, told to the Rust half as the board's are: `Pointer`. A release
-    // that never left the row is a click.)
+    // (A click, as the button goes down: it takes a new copy of the program, or puts the piece in hand away. The
+    // pointer's moves with a piece in hand and its release are told too, where it is (`Pointer`): over the list, the
+    // list shows that a click puts the piece away.)
     touch := TouchArea {
-        property <bool> inside: self.mouse-x >= 0 && self.mouse-x < self.width && self.mouse-y >= 0 && self.mouse-y < self.height;
         pointer-event(e) => {
-            if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
+            if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
+                Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
                 Nav.point("programs", root.nav-index);
                 Nav.choose("drag", 0, root.nav-index);
             } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
@@ -439,21 +444,7 @@ component ProgramRowView inherits Rectangle {
                 // (With nothing in hand, a right click takes the program's last copy off, as Del does.)
                 Nav.point("programs", root.nav-index);
                 Nav.choose("remove", root.nav-index, 0);
-            } else if e.kind == PointerEventKind.cancel {
-                Nav.choose("drag", 5, 0);
             }
-        }
-        moved => {
-            if self.pressed && !self.inside {
-                Nav.choose("drag", 2, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-            }
-        }
-        scroll-event(e) => {
-            if self.pressed && NavicustView.holding {
-                Nav.choose("drag", 4, round(e.delta-y / 1px));
-                return accept;
-            }
-            return reject;
         }
     }
 }
@@ -638,12 +629,15 @@ export component NavicustTab inherits Rectangle {
     property <length> effects-height: (self.height - root.body-y - 12px) * 0.5;
     // The command line's arrows pulse.
     property <float> breath: Theme.motion ? 0.6 + 0.4 * sin(animation-tick() / 900ms * 360deg) : 1;
-    // (Under everything: with a piece in hand, a click where nothing else takes it, off the board and the list,
-    // puts it away, and so does a right click; a row's drag let go here ends.)
+    // (Under everything: with a piece in hand, a click where nothing else takes it, off the board and the list's
+    // rows, puts it back where it was (under the rows, away into the list), and a right click puts it away; the
+    // pointer's moves are told, where it is, as the board's and the rows' are.)
     TouchArea {
         pointer-event(e) => {
-            if NavicustView.holding && e.kind == PointerEventKind.down {
-                Nav.choose("drag", e.button == PointerEventButton.right ? 8 : 9, 0);
+            if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
+                Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            } else if NavicustView.holding && e.kind == PointerEventKind.down {
+                Nav.choose("drag", e.button == PointerEventButton.right ? 8 : 9, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
             } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.up {
                 Nav.choose("drag", 3, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
             }
@@ -807,8 +801,14 @@ export component NavicustTab inherits Rectangle {
                 seq: NavicustView.refused-seq;
             }
 
+            // (With the pointer over the list, where a click puts it away, it fades back.)
             Rectangle {
                 x: shake.dx;
+                opacity: NavicustView.over-list ? 0.45 : 1;
+                animate opacity {
+                    duration: Theme.quick;
+                    easing: ease-out;
+                }
                 transform-origin: { x: root.cell / 2, y: root.cell / 2 };
                 transform-scale: 1 + 0.06 * lift.t;
                 transform-rotation: (1 - turn.t) * -90deg * NavicustView.turn-way;
@@ -827,10 +827,9 @@ export component NavicustTab inherits Rectangle {
             }
         }
 
-        // The mouse over the board: a press picks a placed piece up (or brings the piece in hand to the cell), a
-        // drag takes it from cell to cell, a release puts it down (off the board, away into the list), the wheel
-        // turns it. Each is told to the Rust half with where the pointer is (`Pointer`), which finds the cell; a
-        // release that never left the cell pressed is a click, as Enter there.
+        // The mouse over the board, by clicks: a click (as the button goes down) picks a placed piece up, or puts the
+        // piece in hand down; the piece in hand follows the pointer with no button held, and the wheel turns it.
+        // Each is told to the Rust half with where the pointer is (`Pointer`), which finds the cell.
         TouchArea {
             mouse-cursor: NavicustView.holding ? MouseCursor.grabbing : MouseCursor.default;
             pointer-event(e) => {
@@ -844,13 +843,6 @@ export component NavicustTab inherits Rectangle {
                 } else if e.button == PointerEventButton.right && e.kind == PointerEventKind.down {
                     // (A right click puts the piece in hand away, else takes off the piece under it.)
                     Nav.choose("drag", 8, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
-                } else if e.kind == PointerEventKind.cancel {
-                    Nav.choose("drag", 5, 0);
-                }
-            }
-            moved => {
-                if self.pressed {
-                    Nav.choose("drag", 2, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
                 }
             }
             scroll-event(e) => {
@@ -943,6 +935,18 @@ export component NavicustTab inherits Rectangle {
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
+    }
+
+    // (With a piece in hand and the pointer over the list, a click there puts it away into the list.)
+    RemoveTarget {
+        x: root.list-x - 8px;
+        y: root.list-y - 8px;
+        width: root.list-width + 16px;
+        height: root.height - self.y;
+        shown: NavicustView.over-list;
+        text: @tr("CLICK TO PUT AWAY");
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     // ---- What the NaviCust does, and its bugs: two panels beside the list, or on a phone a line each.

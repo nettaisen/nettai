@@ -14,9 +14,10 @@
 //! one entry and the second its pair, and the two are the build's tag chips once the rules take them. **Del**
 //! takes the entry's chip out. A mark the rules refuse isn't made, and the strip says why.
 //!
-//! **The mouse:** a click on an entry marks it (the focus stays on it); a click on the marked one takes its chip out,
-//! as Del does. An entry dragged to another place moves there, those between shifting toward where it was, its
-//! Regular and tag marks with it (`FolderEdit::Move`).
+//! **The mouse:** a click on an entry marks it (the focus stays on it); a click on the marked one, a double click or a
+//! right click takes its chip out, as Del does. An entry dragged to another place moves there, those between shifting
+//! toward where it was, its Regular and tag marks with it (`FolderEdit::Move`); dragged onto the library, its chip is
+//! taken out.
 
 use crate::builds::edit::{self, FolderEdit};
 use crate::builds::overview::chip_cell;
@@ -547,11 +548,15 @@ impl Tab for Folder {
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
         match id {
             "lib.sort" => self.sort_by(shell, draft, choice.max(0) as usize),
-            // An entry dragged: where it would land; let go there, it moves (off the folder, it goes back).
+            // An entry dragged: where it would land; let go there, it moves (over the library, its chip is taken
+            // out; elsewhere off the folder, it goes back).
+            "drag-over" if editor::over_library(shell, choice) => editor::show_remove(shell),
             "drag-over" => editor::show_drop(shell, Folder::drop_at(shell, choice), false),
             "drag-drop" => {
                 editor::show_drop(shell, None, false);
-                if let Some(to) = Folder::drop_at(shell, choice).filter(|&to| to as i32 != index && index >= 0) {
+                if index >= 0 && editor::over_library(shell, choice) {
+                    self.remove(shell, draft, index as usize);
+                } else if let Some(to) = Folder::drop_at(shell, choice).filter(|&to| to as i32 != index && index >= 0) {
                     self.reorder(shell, draft, index as usize, to);
                 }
             }
