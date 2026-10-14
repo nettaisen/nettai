@@ -27,7 +27,7 @@ pub struct Settings {
     pub full_screen: bool,
     /// Motion turned down: everything is a cut. None: as the system asks.
     pub reduce_motion: Option<bool>,
-    /// The battle drawn enhanced (its text at the window's resolution and the background's glide), else as
+    /// The battle drawn enhanced (its text at the window's resolution, the background's glide and the custom screen's eased slide), else as
     /// the game draws it: `GraphicsMode`.
     pub enhanced: bool,
     /// 0 to 100.

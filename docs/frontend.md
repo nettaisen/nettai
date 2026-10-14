@@ -1214,6 +1214,33 @@ and adds none: nothing comes in with an animation the game doesn't have.
 is gone: the user, "don't animate extra slide ins that weren't present in
 the original".)
 
+- *The custom screen's slide* (`custom::Slide`, `smooth.rs`). Every game's
+  window slides in and out alike (`sub_8026B04`, `sub_8026BF4`): 12 pixels
+  a tick, linear, over 10 ticks, from 120 pixels off the left edge (the
+  HUD layer's BG3HOFS from 120 to 0, the window's 15 columns copied onto the
+  layer one or two a tick from the right, as they come on the screen, and
+  cleared from the left on the way out); the HP box and the emotion window
+  move right with it (`hud_shift`), the emblem sprite is at its place (shown
+  from 0x67 pixels out; EXE4's emblem is on the window's map) and so is
+  EXE4's element icon sprite (from 40 out), and the field and every sprite
+  on it move down 1.5 pixels a tick (the camera's Y, 15 pixels in all).
+  Enhanced eases it over the same ticks, from the same place on the slide's
+  first tick to the same place after its last: in, the distance left falls
+  as the square of the ticks left (in at 22.8, 43.2, 61.2, 76.8, 90, 100.8,
+  109.2, 115.2 and 118.8 pixels on the ticks 1 to 9, where the original is
+  in 12, 24 and so on); out, the distance gone grows as the square of the
+  ticks gone (1.2, 4.8, 10.8, 19.2, 30, 43.2, 58.8, 76.8, 97.2). The window,
+  the HP box and the emotion window, the emblem and the element icon, and
+  the camera all follow the one curve. The window and what moves with it are
+  at the output's resolution: where the curve is between two whole pixels
+  the frame is drawn again with them a pixel right (`Frame::nudge`, a
+  `smooth::Nudge`), and `present` shows that drawing on the output pixels
+  left of the part of a pixel the window is past its whole pixels (at three
+  times the frame, a third or two of each frame pixel). The field and the
+  navis are at the curve's whole pixels (the camera's 16.16 Y, as the
+  original's). The phases' other pictures don't slide and stay the game's:
+  the Cross window's three opening steps, Beast Out's window, the
+  description's chatbox opening in four steps of its map.
 - *The background's glide* (`Frame::glide`, `present`). A background that
   scrolls by sixteenths of a pixel a frame (its `scroll`: the game's scroll
   counters) shows on the screen at the counter's whole pixels, a step every
@@ -1238,9 +1265,13 @@ the original".)
 
 The motion is presentation alone and deterministic. The glide's sixteenths
 are the background's clock's (the round's frames, as its whole pixels
-are) times its rate. It reads no clock and nothing of it is in the
-simulation, its snapshot or its digest: a rollback that draws a frame
-again, a seek, a replay and a video draw it the same.
+are) times its rate; the slide's place is the custom screen's phase and
+its tick. It reads no clock and nothing of it is in the simulation, its
+snapshot or its digest: a rollback that draws a frame again, a seek, a
+replay and a video draw it the same (nettai-frontend's
+`the_smooth_motion_is_the_battles_alone_and_only_where_the_original_moves`
+draws every tick again from a copy of the battle, and finds the frames
+differing from Reduce motion's only on the slide's ticks).
 
 Where it is on: the app's battles (live, online, Practice, a replay
 watched) and its main menu's reel, with "Battle graphics: Enhanced" (the
