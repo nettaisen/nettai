@@ -814,7 +814,7 @@ impl Practice {
         let yours = yours.or_else(|| (0..self.builds.len()).find(|&at| self.unusable_at(ready, at).is_none())).unwrap_or(0);
         self.chosen = [yours, dummys.unwrap_or(yours)];
         // (The arena is made as soon as the screen is on screen: what is in its place until then isn't its own.)
-        self.changed = Instant::now().checked_sub(ARENA_AFTER);
+        self.changed = crate::clock::now().checked_sub(ARENA_AFTER);
         self.drop_arena(shell);
     }
 
@@ -896,7 +896,7 @@ impl Practice {
     /// `crate::music`), and played in place of the music playing once it has stayed a moment (`frame`). The
     /// arena's picture is silent, and the next battle plays it.
     fn tell_music(&mut self, shell: &Shell) {
-        self.music_changed = Some(Instant::now());
+        self.music_changed = Some(crate::clock::now());
         shell.ui().global::<PracticeView>().set_music_shown(crate::music::shown(shell).into());
     }
 
@@ -909,7 +909,7 @@ impl Practice {
         self.chosen[which] = at;
         shell.settings.remembered.insert(kept_build(&game, which == 1), self.builds[at].file.clone());
         shell.save_settings();
-        self.changed = Some(Instant::now());
+        self.changed = Some(crate::clock::now());
         self.tell(shell, &game, &ready);
     }
 
@@ -943,7 +943,7 @@ impl Practice {
         self.place[part] = at;
         self.places.keep(ready.content(), &mut shell.settings.remembered, &game, part, at);
         shell.save_settings();
-        self.changed = Some(Instant::now());
+        self.changed = Some(crate::clock::now());
         self.tell(shell, &game, &ready);
     }
 
@@ -1024,7 +1024,7 @@ impl Practice {
     fn back_to_entry(&mut self, shell: &mut Shell) {
         end(shell);
         self.seed = if shell.still { 7 } else { clock_seed() };
-        self.changed = Instant::now().checked_sub(ARENA_AFTER);
+        self.changed = crate::clock::now().checked_sub(ARENA_AFTER);
     }
 
     /// Step the menu's option at row `index` by `by`, around from its last value to its first: it changes at
