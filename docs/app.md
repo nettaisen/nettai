@@ -1343,17 +1343,10 @@ a `ListView` of its own, marks it with the list's `chosen`. The pass checks it a
 that holds a card and Del (in EXE4, whose slots may be empty, the second slot that holds one), Del on a place;
 and a shot of each tab's first click with the pointer gone on to another row, §13).
 
-**A click on the marked row removes** what it holds, as Del does (the user: "clicking on an already selected chip or
-patch card or whatever should remove it, instead of right clicking"): a folder's entry (its Regular mark and tags
-with it), a patch card or an EXE4 slot (emptied), an auto battle place. A click on another row marks it, as above;
-so the first click on a row marks it and the next takes out what it holds. The row's touch (`Focusable` or
-`RowTouch`, given `marked`) notes whether it was the marked row as the button went down (the press marks the row it
-is on), and if it was, its click asks `Nav.choose("click-remove", ...)` (`Drag.clicked`, nav.slint), which the
-editor hands the tab as `Action::Delete`. **A double click removes** (the user: "fast double click should remove"): on a
-row that isn't marked, its first click marks it and its second takes out what it holds; on the marked row it takes
-out one thing, a click within a double click's time (500 ms, Slint's own) of one that took something out of that
-row being passed over (`Editor::clicked`, `DOUBLE_CLICK`) (a patch card's list closes up under it, and a second removal would
-take the next card). A click on a library row is as before (a patch card that is in, or the chip a place holds, is
+**A click removes nothing**: it marks the row, as above, however often it comes. (For a while a click on the marked
+row removed what it held, then a double click did too; the user then: "remove double clicking to remove", and of the
+click on the marked row, "remove that too".) What takes a row's thing out with the mouse is a right click, below, or
+dragging it back onto the library. A click on a library row is as before (a patch card that is in, or the chip a place holds, is
 taken out by it). **A right click removes everywhere** (the user: "sure right click should remove everywhere"): on
 one of the build's rows it takes out what the row holds, as Del does, whether or not the row is marked, the focus
 coming to it (it doesn't mark it first: the press brings the focus, then `Nav.choose("remove", ...)`, which the
@@ -1409,8 +1402,8 @@ the way to take something out (`over_library` is false on a phone).
   `Flickable` takes a touch that moves in its first half second; one held still for that half second is the row's,
   and drags it (the Folder's, the Patch cards' and the Auto battle's lists on a phone alike; a list with nothing to
   scroll gives a touch's drag to the row at once).
-- *The pass* (`build_tabs::drags`, §13): a double click on an unmarked folder entry (taken out), and one on the
-  marked entry (one thing taken out, the next entry untouched); an entry dragged three rows down, shot held there and after; an entry dragged onto the
+- *The pass* (`build_tabs::drags`, §13): a double click on a folder entry and one more click on it, marked (its
+  chip left in, `tabs-folder-clicked-twice`); an entry dragged three rows down, shot held there and after; an entry dragged onto the
   library, shot held there (`tabs-folder-drag-remove`, the remove look) and after (`tabs-folder-drag-removed`: emptied,
   the next entry untouched); a right click on an entry not marked (taken out, the focus on it); a patch card dragged
   above the one before it, and the first card onto the card library (`tabs-cards-drag-remove`: taken out, the others
