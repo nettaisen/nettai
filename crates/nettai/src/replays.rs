@@ -349,7 +349,7 @@ fn play(path: &Path, content: &Arc<Content>) -> Played {
 fn still_of(path: &Path, side: u8, content: &Arc<Content>, look: &Look) -> Option<Frame> {
     let replay = read(path).ok()?;
     let mut renderer = look.graphics.renderer(look.mode, look.font.clone());
-    // (A still is a picture at rest: no HUD coming in, the background where the game puts it.)
+    // (A still is a picture at rest: the background where the game puts it.)
     renderer.reduce_motion = true;
     let mut viewer = Viewer::with(content, &replay, Some(side), renderer, None, None).ok()?;
     let mut fought = 0;
