@@ -20,7 +20,7 @@ use crate::shell::Shell;
 use nettai_battle::Content;
 use nettai_content_api::ChipHandle;
 use nettai_match::Side;
-use nettai_match::build::{Builds, TEXT_TABLE};
+use nettai_match::build::{Builds, TEXT_TABLE, Version};
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -90,6 +90,15 @@ impl Kit {
     /// color (the game's builds data states both). A side of no version has no tag.
     pub fn version_tag(&self, names: &Names, side: &Side) -> nettai_ui::VersionTag {
         let Some(version) = self.builds.version_of(self.content(), side).and_then(|id| self.builds.version(id)) else { return Default::default() };
+        self.tag_of(names, version)
+    }
+
+    /// Every version's tag, in the game's order (the editor's list of them).
+    pub fn version_tags(&self, names: &Names) -> Vec<nettai_ui::VersionTag> {
+        self.builds.versions.iter().map(|version| self.tag_of(names, version)).collect()
+    }
+
+    fn tag_of(&self, names: &Names, version: &Version) -> nettai_ui::VersionTag {
         let [_, r, g, b] = version.color.to_be_bytes();
         nettai_ui::VersionTag { text: self.version_name(names, &version.id).to_uppercase().into(), tone: slint::Color::from_rgb_u8(r, g, b) }
     }

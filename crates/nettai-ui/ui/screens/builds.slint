@@ -194,12 +194,12 @@ export component BuildsScreen inherits Page {
     game: !(Theme.phone && root.editing);
     property <VersionTag> no-tag;
     tag: root.editing ? BuildsView.version : root.no-tag;
-    // (The editor's tag is the build's version's switch: docs/design/app-ui.md §2.42.)
+    // (The editor's tag is the build's version's select: docs/design/app-ui.md §2.42, §2.44.)
     tag-nav: "version";
     property <[Hint]> version-hints: [
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
         { key: "←→", text: @tr("Switch version") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Next version") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Choose version") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
