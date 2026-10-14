@@ -153,6 +153,19 @@ Each is settled unless the user changes it.
     build in Builds' editor; Back there (Esc, the pad's B, the header's ‹ PRACTICE) comes straight back to
     Practice, which shows the build as the edit left it. CREATE A BUILD opens Builds' list the same way, Back
     going back to Practice. (§6, docs/app.md §8 and §15.)
+29. **The battle's music is the player's pick** (2026-10-13): "you should also allow for selectable battle themes
+    (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle, bn5 boss battle, bn5
+    vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)". Any theme plays in
+    any game's battle (a BN6 battle can play BN4's tournament battle theme); the first choice, "Game's own", is
+    what the battle's game plays without one. A first draft put it in Settings' Audio group; the user: "settings
+    is a weird place to put it". Asked where, between a shared setting of the match, each player's own beside the
+    arena, and a row of the menu over the battle, they chose **"Beside the arena, each their own"**: a Music row
+    in Practice's entry beside Arena and Background, and Your music in Play's lobby beside the match's settings,
+    which is no setting of the match: each player picks and hears their own, nothing of it is sent, and the other
+    player's lobby doesn't show it. The two rows show and change one pick, remembered between runs; a replay
+    watched, and its video, play with it. The themes and their names are the games' content (each game's rules'
+    `battle_themes`, named in its locales), shown after the game's name as the language says it ("BN4 Tournament
+    Battle", "EXE4 トーナメントバトル"). (§6, docs/app.md §1, "The battle's music".)
 
 ## 3. Chosen where the user gave no answer
 
@@ -356,19 +369,22 @@ Each is in the mockups under the same name.
   with Copy invite code and Cancel invite added.
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: Rounds (a stepper: Single battle, Best of 3), Patch cards
-  (on, off), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), the
-  connection's bars and ping; then READY, CHANGE BUILD, LEAVE; then a reserved status line. Rounds, Patch cards
-  and Closed builds are shared: either player changes them, both see it, and both ready marks clear. With Patch
+  (on, off), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), Your music
+  (a select, yours alone: Game's own, then every game's battle themes; §2.29), the connection's bars and ping;
+  then READY, CHANGE BUILD, LEAVE; then a reserved status line. Rounds, Patch cards and Closed builds are shared:
+  either player changes them, both see it, and both ready marks clear; the opponent never sees Input delay or
+  Your music. With Patch
   cards off, neither player's cards apply in the match: each build plays as it is without them, and a build that
   breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
 ### Practice
-- **Entry:** four rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
+- **Entry:** five rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
   also add arena + background select?": the game's arenas and battle backgrounds, Random first; "the arena
   names are meaningless so you should just have like a pager widget that goes through them. background should
   also be a arrow button pager thing": each an arrow pager, the arena by its place, "12 / 96", the background
-  by its name), all remembered, and START PRACTICE; beside them the two builds facing each other and the arena. One line: "Set
-  up the dummy from the menu once you're in."
+  by its name), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
+  opening its list; the same pick as the lobby's Your music), all remembered, and START PRACTICE; beside them the
+  two builds facing each other and the arena. One line: "Set up the dummy from the menu once you're in."
 - **EDIT** (§2.28) beside each build's select, a button of its own (Tab and Shift+Tab reach it, Up and Down go
   from one to the other), opens that build in Builds' editor; so do E and the pad's north button, on the dummy's
   row or EDIT the dummy's build and anywhere else the player's (the footer's "Edit build"). Back from the editor

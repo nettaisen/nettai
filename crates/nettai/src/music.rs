@@ -77,7 +77,7 @@ thread_local! {
 }
 
 /// Read the battle themes' names of `games` in `lang`, for [`name`]: from the content's locales alone, at
-/// start-up and when the language changes (`Shell::name_games`).
+/// start-up and when the language changes (`Shell::read_game_names`).
 pub fn name_themes<'a>(games: impl IntoIterator<Item = &'a str>, lang: &str) {
     let dir = nettai_content::index::content();
     let mut names = HashMap::new();
@@ -102,7 +102,7 @@ pub fn name(music: &Music, own: &str) -> String {
     }
 }
 
-// ---- A screen's Music select (Play's lobby; Practice's battle options) -------------------------------------
+// ---- A screen's Music row (Play's lobby, Practice's entry) ---------------------------------------------------
 
 /// What the select's list offers, and the place of the pick in it.
 fn list(shell: &Shell) -> (Vec<Music>, usize) {
@@ -265,6 +265,19 @@ mod tests {
         let some = games(&["exe6"]);
         assert_eq!(offered(&some).len(), 1 + 4, "BN4's and BN5's aren't read");
         crate::shell::Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
+    }
+
+    /// What a theme plays in place of: the songs each game's round starts, a link battle's (EXE4's a single
+    /// battle's and a set's) and its stages' own.
+    #[test]
+    fn the_battles_own_music() {
+        let names = |content: Arc<Content>| {
+            let sounds = content.assets.names(nettai_content_api::AssetKind::Sound).into_iter().map(String::from).collect::<Vec<_>>();
+            content.battle_music().iter().map(|m| sounds[m.0 as usize].clone()).collect::<Vec<_>>()
+        };
+        assert_eq!(names(nettai_match::testing::exe4_content()), ["boss-battle", "virus-battle"]);
+        assert_eq!(names(nettai_match::testing::exe5_content()), ["virus-battle"]);
+        assert_eq!(names(nettai_match::testing::exe6_content()), ["virus-battle"]);
     }
 
     /// A battle plays the picked theme in place of its game's own music: a BN4 theme in a BN6 battle on a
