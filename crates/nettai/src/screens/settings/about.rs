@@ -1,14 +1,15 @@
-//! About (docs/app.md §18): the app's version and license; Slint's "Made with Slint", which Slint's royalty-free
-//! license asks of an app made with it (an About screen reached from the top menu); and the software the app is
-//! made of, the fonts it bundles and every package built into it, each with its license's texts as its package
-//! ships them (`build.rs` finds them). A phone reads a license on a sheet over the list.
+//! About, Settings' subscreen (docs/app.md §18): the app's version and license; Slint's "Made with Slint", which
+//! Slint's royalty-free license asks of an app made with it (an About screen reached from the top menu: SETTINGS,
+//! then the About group's SHOW LICENSES); and the software the app is made of, the fonts it bundles and every
+//! package built into it, each with its license's texts as its package ships them (`build.rs` finds them). It is
+//! shown in the settings' place, a view of its own to the focus; Back from its list goes back to them. A phone
+//! reads a license on a sheet over the list.
 
 use crate::input::Action;
 use crate::nav::Key;
-use crate::screens::Screen;
 use crate::shell::Shell;
 use crate::sound::Cue;
-use nettai_ui::{AboutView, LicensePart, SoftwareRow};
+use nettai_ui::{AboutView, LicensePart, SettingsView, SoftwareRow};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 /// What the app is made of, as `build.rs` wrote it.
@@ -30,6 +31,9 @@ use licenses::{FONTS, PACKAGES, Software, TEXTS};
 
 /// How far Up and Down scroll a license.
 const STEP: f32 = 56.0;
+
+/// Its view's name, where the focus is remembered apart from the settings'.
+const VIEW: &str = "settings.about";
 
 /// The list: the fonts, then the packages by name.
 fn software(at: usize) -> Option<&'static Software> {
@@ -69,11 +73,33 @@ pub struct About {
     chosen: usize,
     /// A phone: its sheet is open.
     sheet: bool,
-    /// It is on screen (shown, and not hidden since).
-    shown: bool,
+    /// It is shown in the settings' place.
+    open: bool,
 }
 
 impl About {
+    pub fn is_open(&self) -> bool {
+        self.open
+    }
+
+    /// Shown in the settings' place: the focus on the chosen one's row, the list scrolled to it (the row it
+    /// was on, the last time; a list made anew starts at its top, and a remembered focus alone doesn't scroll
+    /// it).
+    pub fn open(&mut self, shell: &mut Shell) {
+        self.open = true;
+        shell.ui().global::<SettingsView>().set_about(true);
+        shell.nav.enter(VIEW, "list");
+        self.show(shell);
+        shell.nav.focus("list", self.chosen as i32);
+    }
+
+    /// The settings shown again. (Their focus, where it was, is the settings' to bring back.)
+    pub fn close(&mut self, shell: &mut Shell) {
+        self.close_sheet(shell);
+        self.open = false;
+        shell.ui().global::<SettingsView>().set_about(false);
+    }
+
     fn show_chosen(&self, shell: &Shell) {
         let ui = shell.ui();
         let view = ui.global::<AboutView>();
@@ -103,14 +129,11 @@ impl About {
     fn reading(shell: &Shell) -> bool {
         shell.nav.focused().is_some_and(|k| k.id == "text" || k.id == "sheet.text")
     }
-}
 
-impl Screen for About {
-    fn main(&self) -> &'static str {
-        "list"
-    }
+    // What Settings passes on to it while it is open, as a screen's own.
 
-    fn show(&mut self, shell: &mut Shell) {
+    /// Set the view from the state (opened, or the language changed under it).
+    pub fn show(&mut self, shell: &mut Shell) {
         if !shell.scale.phone {
             self.close_sheet(shell);
         }
@@ -124,21 +147,11 @@ impl Screen for About {
         view.set_rows(ModelRc::new(VecModel::from(rows)));
         view.set_fonts(FONTS.len() as i32);
         self.show_chosen(shell);
-        // (Come to from another screen: the focus on the chosen one's row, the list scrolled to it. The focus
-        // the screen had is remembered, but a list made anew starts at its top.)
-        if !std::mem::replace(&mut self.shown, true) {
-            shell.nav.focus("list", self.chosen as i32);
-        }
-    }
-
-    fn hide(&mut self, shell: &mut Shell) {
-        self.close_sheet(shell);
-        self.shown = false;
     }
 
     /// A row: Enter goes to its license, to scroll it with the keys (a phone opens its sheet). A click
     /// chooses it alone.
-    fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
+    pub fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         match id {
             "list" => {
                 if let Some(at) = usize::try_from(index).ok().filter(|&at| software(at).is_some())
@@ -158,7 +171,7 @@ impl Screen for About {
         }
     }
 
-    fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
+    pub fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
         if id != "list" || shell.scale.phone {
             return;
         }
@@ -172,7 +185,7 @@ impl Screen for About {
 
     /// The license with the focus on it: Up and Down scroll it a step, Page Up and Down a page less a step,
     /// Home and End to its ends. It takes them all, at an end too (its view is the one control there).
-    fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
+    pub fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
         if !Self::reading(shell) {
             return false;
         }
@@ -196,8 +209,9 @@ impl Screen for About {
         true
     }
 
-    /// Back from the license beside the list goes to the list; from the sheet, shuts it.
-    fn back(&mut self, shell: &mut Shell) -> bool {
+    /// Back from the license beside the list goes to the list; from the sheet, shuts it. False from the list:
+    /// Settings closes it.
+    pub fn back(&mut self, shell: &mut Shell) -> bool {
         if self.sheet {
             self.close_sheet(shell);
             return true;
