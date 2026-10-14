@@ -2,18 +2,22 @@
 //! game once, at the top; everything else is a name in that game's
 //! namespace (`cannon`, `megaman`: `crate::ids`), and a name the game
 //! hasn't is said as such ("no chip "x" in exe6"). There is no way to name
-//! another game's.
+//! another game's, but a background of the background pool's
+//! (`exe4:acdc-area`: `crate::ids::background`).
 //!
 //! ```toml
 //! game = "exe6"                       # the match's game: everything below is its
 //! seed = 42                          # optional: the setup's and battle's seed
+//! backgrounds = "pool"               # optional: a background a round leaves is any game's (the pool's),
+//!                                    # else "game" (as the game picks a link battle's)
 //!
 //! [[round]]                          # the set's rounds, one table each, in order: as many as it has
 //! stage = "netbattle-43"             # (1 to 99; three: the original's triple battle, best of three).
 //! background = "lans-hp"             # A part a round leaves out, or a round left empty, is picked
-//!                                    # from the seed (as the game picks a link battle's)
+//!                                    # from the seed (as `backgrounds` says)
 //! [[round]]
 //! stage = "netbattle-12"
+//! background = "exe4:acdc-area"      # another game's background: the pool's, by its game
 //!
 //! [[round]]
 //!
@@ -70,6 +74,10 @@ pub struct MatchFile {
     pub game: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub seed: Option<u32>,
+    /// What a round that leaves its background is drawn on
+    /// (`BackgroundPick::name`: "game", the default, or "pool").
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub backgrounds: Option<String>,
     /// The rounds, a `[[round]]` table each (a file that lists none is
     /// refused when it is resolved).
     #[serde(default, rename = "round")]
@@ -156,12 +164,21 @@ pub fn resolve(content: &Content, f: &MatchFile) -> Result<Match, Vec<String>> {
     if !games.contains(&f.game) {
         return Err(vec![format!("no game {:?} (the content's are {})", f.game, games.join(", "))]);
     }
+    let backgrounds = match f.backgrounds.as_deref() {
+        None => Some(crate::BackgroundPick::Game),
+        Some(name) => crate::BackgroundPick::named(name).or_else(|| {
+            problems.push(format!("backgrounds: no {name:?} (game or pool)"));
+            None
+        }),
+    };
     let rounds = resolve_rounds(content, &f.game, &f.rounds, &mut problems);
     let Some(rounds) = rounds else { return Err(problems) };
     let left = resolve_side(content, &f.game, &f.left, "left", &mut problems);
     let right = resolve_side(content, &f.game, &f.right, "right", &mut problems);
-    match (left, right) {
-        (Some(left), Some(right)) if problems.is_empty() => Ok(Match { game: f.game.clone(), seed: f.seed, rounds, sides: [left, right] }),
+    match (left, right, backgrounds) {
+        (Some(left), Some(right), Some(backgrounds)) if problems.is_empty() => {
+            Ok(Match { game: f.game.clone(), seed: f.seed, rounds, sides: [left, right], backgrounds })
+        }
         _ => Err(problems),
     }
 }
@@ -379,6 +396,7 @@ pub fn to_file(content: &Content, m: &Match) -> MatchFile {
     MatchFile {
         game: m.game.clone(),
         seed: m.seed,
+        backgrounds: (m.backgrounds != crate::BackgroundPick::Game).then(|| m.backgrounds.name().to_string()),
         rounds: rounds_file(content, &m.rounds),
         left: side_file(content, &m.sides[0]),
         right: side_file(content, &m.sides[1]),
@@ -554,6 +572,32 @@ mod tests {
         assert_eq!(parse(&content, &none).unwrap_err(), [NO_ROUNDS]);
         let many = format!("{}{}{}", &text[..start], "[[round]]\n".repeat(crate::MAX_ROUNDS + 1), &text[end..]);
         assert_eq!(parse(&content, &many).unwrap_err(), ["100 rounds: a match has 1 to 99"]);
+    }
+
+    /// A round may be drawn on another game's background, the pool's, named with its game; `backgrounds =
+    /// "pool"` picks those a round leaves from every game's. Both write and read back; a pool background that
+    /// isn't, and a pick that isn't, are said.
+    #[test]
+    fn a_match_file_names_another_games_background() {
+        let content = exe6_content();
+        let live = crate::pick::live(&content, "exe6", 4, None).unwrap();
+        let text = write(&content, &live);
+        let (start, end) = (text.find("[[round]]").unwrap(), text.find("[left]").unwrap());
+        let rounds = "[[round]]\nbackground = \"exe4:acdc-area\"\n\n[[round]]\nbackground = \"exe6:undernet\"\n\n[[round]]\n\n";
+        let file = format!("backgrounds = \"pool\"\n{}{rounds}{}", &text[..start], &text[end..]);
+        let m = parse(&content, &file).unwrap_or_else(|e| panic!("{e:?}\n{file}"));
+        assert_eq!(m.backgrounds, crate::BackgroundPick::Pool);
+        assert_eq!(parse(&content, &write(&content, &m)).unwrap(), m);
+        assert!(write(&content, &m).contains("backgrounds = \"pool\""));
+        let places = m.places(&content, 4).unwrap();
+        assert_eq!(content.background_of(places[0].background), Some(("exe4", "acdc-area")));
+        assert_eq!(places[1].background, crate::background(&content, "exe6", "undernet").unwrap(), "its own, written with its game");
+        assert!(content.pool_backgrounds().contains(&places[2].background));
+        let bad = file.replace("exe4:acdc-area", "exe4:nowhere").replace("backgrounds = \"pool\"", "backgrounds = \"every\"");
+        assert_eq!(
+            parse(&content, &bad).unwrap_err(),
+            ["backgrounds: no \"every\" (game or pool)", "round 1: no background \"exe4:nowhere\" in the background pool"]
+        );
     }
 
     /// A side's auto battle data (EXE5's facts) writes and reads back: its

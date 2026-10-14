@@ -302,7 +302,10 @@ fn battle_content_of(
     let assets = nettai_content_api::AssetNames::of_packs(vec![(game.to_string(), index)]);
     let animations = animations(&assets, vec![(game.to_string(), timing)]);
     let scripts = read.scripts();
-    let c = nettai_battle::Content { assets, animations, scripts, strings: read.strings, ..Default::default() };
+    // (Every game's backgrounds, from the content: the pool a round may be
+    // drawn on, past the game's own.)
+    let background_pool = crate::locale::background_pool(&read.dir);
+    let c = nettai_battle::Content { assets, animations, scripts, strings: read.strings, background_pool, ..Default::default() };
     Ok((c, report))
 }
 
@@ -491,6 +494,30 @@ pub fn load_graphics(root: &Path) -> Result<(Bundle, Report), Report> {
         Some(b) => Ok((b, report)),
         None => Err(report),
     }
+}
+
+/// Backgrounds `names` of the pack at `root` alone (another game's, which a
+/// round of the background pool draws: docs/app.md §1, "The battle's
+/// background"), each by its name, read from its folder
+/// (`graphics/backgrounds/<name>`). One the pack hasn't, or that doesn't
+/// read, is left out, and what its reading said is in the report.
+pub fn load_backgrounds<'n>(root: &Path, names: impl IntoIterator<Item = &'n str>) -> (std::collections::BTreeMap<String, nettai_assets::Background>, Report) {
+    let mut report = Report::default();
+    let mut out = std::collections::BTreeMap::new();
+    for name in names {
+        let dir = root.join("graphics/backgrounds").join(name);
+        if !dir.join("background.json").is_file() {
+            continue;
+        }
+        let mut r = Report::default();
+        if let Some((_, bg)) = stage::import_background(&dir, &format!("graphics/backgrounds/{name}"), &mut r)
+            && !r.has_errors()
+        {
+            out.insert(name.to_string(), bg);
+        }
+        report.issues.extend(r.issues);
+    }
+    (out, report)
 }
 
 /// A pack's sound, for the audio.

@@ -304,6 +304,46 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   (A volume the custom screen's hover over a dark chip set before the change isn't carried to a pack the change
   adds; the next one the screen sets is every pack's.)
 
+**The battle's background** (`backgrounds.rs`; docs/design/app-ui.md §2.31). The user: "is it possible to use
+e.g. exe4 backgrounds in exe5? as in if they all came from the same pool of backgrounds?", then "sure do that";
+and of whether it stays the match's or becomes each player's own, "Shared, as now".
+
+- *The pool* is every background of every game the content has, each by its game and its name in its game's
+  pack (`Content::background_pool`: EXE4's 27, EXE5's 22, EXE6's 21, the games in their order and each game's
+  by name). It is read from the content alone, each game's own language's `[backgrounds]` (which names every
+  background its pack has, and none it hasn't: the content check holds it to that), so it is the same for every
+  player whatever packs they have. No tick reads a background, so it is left out of the content's hash (as the
+  strings are) and a game's content is the same whatever other games stand beside it; two peers compare their
+  pools on their own (below).
+- *Its names*: the game's name in the language shown, then the background's from that game's locales ("BN4 ACDC
+  Area", "EXE4 秋原エリア"), read from the content alone at start-up and when the language changes.
+- *A round's background* is a handle over the round's backgrounds, the game's own first at the handles they
+  always had, then the pool's others (`BackgroundId`); a match names another game's with its game,
+  `exe4:acdc-area` (nettai-match's `ids::background`), and its own by its name, as before. Practice's Background
+  row offers the whole pool (§15), and a background left to the seed is drawn from the pool, each as likely
+  (`BackgroundPick::Pool`): Practice's Random and every round of Play's matches (`screens::play::settings`).
+  Where the original's own pick is asked for, it stays the game's rule (`BackgroundPick::Game`: its rules'
+  `link_pick.backgrounds`, EXE6's `byte_8120A20`): the library's lobby and match files unless they say
+  otherwise, `pick::live`'s random matches, the lab's replays and traces (their backgrounds stated) and the
+  engine's tests. Either draws one number for each round's background, so the arenas are the same whichever.
+- *Shared*: the lobby's settings carry what a background left to the seed is drawn from and a round's
+  background by name; the seed (from both nonces) picks it alike on both peers; the lobby's compatibility
+  fields carry the pool's identity beside the content's hash, and two peers whose pools differ are refused as
+  other content are (`Reason::DifferentContent`). A replay keeps each round's background by its game and its
+  name (docs/frontend.md §8).
+- *Drawing it*: the renderer draws another game's background from that game's own pack (`OtherBackgrounds`,
+  read with the game's graphics from the other packs found: a few kilobytes each). In all three games a
+  background's tiles start at tile 1 and end below the field's (163 on), and its map, its palette and every
+  palette animation and shift use background palette 0 alone (the field's are 1 to 8): so another game's
+  draws in any battle as in its own, its scroll and its animations its own data's, and the battle's dimming
+  (palettes 0 to 8 a quarter down) and palette flash (the stage's nine palettes white, before or after the fades
+  as the arena game's rules order it) take it as they take the game's own. A round on another game's
+  background whose pack the player hasn't is drawn on its stage's own background, the one the arena game
+  itself would draw (`Packs::round_background`). Looked at: an EXE5 battle on EXE4's ACDC Area (its tile
+  animation over frames, EXE4's own battle beside it, the same picture and colors) through Colonel's dimming
+  and flash, and with EXE4's pack taken away (EXE5's own `comp`); an EXE6 battle on EXE5's
+  NebulaGray (its speeding scroll and palette animation) through EXE6's Colonel.
+
 **A game is ready in two stretches**, and the loading screen's bar covers both (`games.rs`; docs/frontend.md §9):
 
 1. Everything read from disk (the content, the pack's graphics and sound, the text's font, and the strings and
@@ -569,7 +609,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
   nothing of a build), one row of settings (Rounds, Patch cards and Closed builds are the match's: either
   player changes them, both see it, and both ready marks clear; Input delay is the player's own, and is the
-  Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1) with the
+  Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1; no
+  background either: every round's is drawn from the background pool by the match's seed, alike for both
+  players, §1, "The battle's background") with the
   connection's bars and round trip at its end, READY, CHANGE
   BUILD (a list of the builds, in a dialog; nothing of the new one is said to the other player) and LEAVE, and
   a line that is there whether or not it says anything: who is waited for, "Reconnecting N s" while the link is
@@ -2060,26 +2102,28 @@ column's foot; beside them (on a phone, under them) the two builds as cards over
   `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
   the first build that can be used.
 - Arena and Background (the user: "in training mode can you also add arena + background select?") are where
-  every round of the session is fought (`practice::Places`, from the game's content alone): Random first, a
-  place picked from the seed each round as a match that names none has it (what practice did before), then
-  the game's arenas, the link battle stages a match may name (`nettai_match::link_battle_stages`, the rules'
-  `link_pick.match_stages`: EXE6's 96, EXE5's 94, EXE4's 96), and its battle backgrounds
-  (`nettai_match::ids::backgrounds`, the pack's), each in its keys' natural order (a run of digits by its
-  number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the practice
+  every round of the session is fought (`practice::Places`, from the content alone): Random first, a
+  place picked from the seed each round as a match that names none has it (what practice did before; a
+  background from the whole background pool, §1, "The battle's background"), then the game's arenas, the link
+  battle stages a match may name (`nettai_match::link_battle_stages`, the rules' `link_pick.match_stages`:
+  EXE6's 96, EXE5's 94, EXE4's 96), and the background pool, every game's battle backgrounds
+  (`nettai_match::ids::pool_backgrounds`: 70, BN4's, then BN5's, then BN6's, in any game's practice), each in
+  its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the practice
   menu's rows have it (the user: "the arena names are meaningless so you should just have like a pager widget
   that goes through them. background should also be a arrow button pager thing"): Left and Right or its arrows
   step it, around from the last to Random, a held key repeating; Enter steps it on; it opens no list. It is
-  remembered by game (`training.arena.<game>` by the stage's key, `training.background.<game>` by the
-  background's name in the pack; Random is nothing remembered). Each step draws the arena again after the same
+  remembered by game (`training.arena.<game>` by the stage's key, `training.background.<game>` by the name a
+  match writes for the background: the game's own by its name in the pack, as before the pool, another game's
+  with its game, `exe4:acdc-area`; Random is nothing remembered). Each step draws the arena again after the same
   160 ms as a build's, so a run of steps draws once.
   - The two are apart in the games' own data: a link battle picks its stage and its background each on its
     own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
     own background is shown only where the rules list none to pick from. So either is chosen with any of the
     other, and nothing ties them.
   - Their words: an arena is said by its place in the list, "12 / 96" (a stage is its key in the content,
-    and the user found the keys' names meaningless); a background by what the language's strings call it
-    (`[backgrounds]`, by the area it comes from: `Names::background_named`), or by its place, "7 / 21", where
-    they don't name it. No names were added to the locales.
+    and the user found the keys' names meaningless); a background by its game's name and what that game's
+    locales call it in the language (`[backgrounds]`, by the area it comes from: `backgrounds::name`), "BN4
+    ACDC Area". Every background of the three games had its name in English and in Japanese already.
   - A background stepped keeps the arena: with Arena Random the seed picks each round's arena whether the
     round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
@@ -2182,7 +2226,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
 | Battle: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
-| Battle: Background | Random, then the game's by name, as on the entry | the battle goes on where it is, drawn on the new background: below |
+| Battle: Background | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
@@ -2202,8 +2246,8 @@ renderer alone does. So the battle goes on where it is, the arena, the HP, the d
 were: the set made again on the new background (its arenas the same, above) is put in the playing one's place,
 and the battle's setup says its backgrounds (the library's `Player::set_backgrounds`), drawn from the next
 frame, the rounds after and a RESTART on them too. Stepped on from there, the battle is the one without the
-change tick for tick, its digest the same but for the background its setup says (nettai's
-`on_another_background_the_battle_goes_on`); practice is neither online nor recorded, so no digest of it is
+change tick for tick, its digest the same but for the background its setup says, another game's as one of the
+game's own (nettai's `on_another_background_the_battle_goes_on`); practice is neither online nor recorded, so no digest of it is
 compared with another's.
 
 Music changes the battle's music the player picked, the entry's row's one pick (§1, "The
@@ -2286,7 +2330,11 @@ battle the line beside MENU says "Practice · Round 1" (`Shell.battle-note`, whi
 
 docs/design/app-ui.md §6, "Replays". The screen is `ui/screens/replays.slint` and `src/screens/replays.rs` (with
 `replays/viewer.rs` and `replays/export.rs`); the folder's reading is `src/replays.rs`. The library under all of
-it is docs/frontend.md §8: the file, the viewer and its seeking, the video.
+it is docs/frontend.md §8: the file, the viewer and its seeking, the video. A replay keeps each round's
+background by its game and its name (any game's: §1, "The battle's background"), and a viewer draws it as the
+match did, or its stage's own where the player hasn't that game's pack; the file's layout number stayed as it
+was for the change (the user: "you can reset all the version/layout/whatever numbers since none of this is in
+production yet"), so a replay written before it no longer reads its match.
 
 **Nothing of the folder is read on the window's thread** (`crate::replays::Library`). The screen has a thread of
 its own, started when it first asks something, and takes what the thread found at its next frame:

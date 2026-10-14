@@ -32,6 +32,7 @@
 //! content by the original's numbers (docs/design/content-model-v2.md
 //! §3.2, §12): compat's numbers are exe6-compat's.
 
+mod background_pool;
 mod chips;
 mod custom;
 mod defs;
@@ -50,6 +51,7 @@ mod views;
 #[cfg(any(test, feature = "test-content"))]
 pub mod testing;
 
+pub use background_pool::{BackgroundPool, pool_key};
 pub use chips::*;
 pub use custom::*;
 pub use defs::*;
@@ -140,8 +142,10 @@ pub enum Region {
 #[serde(transparent)]
 pub struct BannerId(pub u16);
 
-/// A background asset: its handle over the loaded packs' backgrounds (a
-/// stage's, a round's settings').
+/// A background: its handle over the round's backgrounds, the game's own
+/// (its asset table's: a stage's, the rules' link pick's) and then the
+/// background pool's others ([`BackgroundPool`]: another game's). A round's
+/// settings hold one; no tick reads it.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(transparent)]
 pub struct BackgroundId(pub u16);
@@ -196,6 +200,11 @@ pub struct Content {
     /// `locales/`), which the define phase counts the chatbox's timing
     /// from; presentation besides, left out of the hash.
     pub strings: strings::Strings,
+    /// Every background of the content's games, which a round may be drawn
+    /// on whatever its game (the loader reads it from the content's
+    /// locales): the handles past the game's own ([`BackgroundId`]).
+    /// Presentation, left out of the hash (`background_pool`).
+    pub background_pool: BackgroundPool,
 }
 
 /// docs/design/content-model-v2.md §4.0: a support pack defines nothing a
