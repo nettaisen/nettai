@@ -145,6 +145,31 @@ pub fn choose(shell: &mut Shell, choice: i32) {
     }
 }
 
+/// Have the menus play the pick in place of the title music where it is a theme (`on`: Practice's entry shows;
+/// the user: "in the practice screen, if the bgm choice changes from game default you should start playing the
+/// bgm"), else the title music: with its own pack's bank, at the music's level, crossfading as it changes
+/// (`Sound::set_preview`). A theme whose game isn't read is the title music.
+pub fn preview(shell: &mut Shell, on: bool) {
+    let theme = match (on, shell.battle_music()) {
+        (true, Music::Theme { game, song }) => shell.games.read(&game).and_then(|g| g.loaded.theme(&song)).map(|t| (format!("{game}:{song}"), t)),
+        _ => None,
+    };
+    shell.sound.set_preview(theme);
+}
+
+/// Play the pick in the battle the shell runs from now on, in place of the music it had (the user: "also you
+/// should be able to change the bgm in the practice menu"): its music, if the battle's own is playing, starts
+/// again at once as the new song (`Player::set_sound_parts`); the result's music, or a round's end, stays, and
+/// the next round starts with it. Presentation alone, as the pick is.
+pub fn retheme(shell: &mut Shell) {
+    let Some(game) = shell.battle.as_ref().map(|b| b.game.clone()) else { return };
+    let Some(ready) = shell.games.read(&game) else { return };
+    let Some(parts) = sound(&shell.games, &ready, &shell.battle_music()) else { return };
+    if let Some(b) = &mut shell.battle {
+        b.stage.player.set_sound_parts(parts);
+    }
+}
+
 /// The sound of a battle of game `ready` with `music` (as the battle's preload takes it): its theme's song,
 /// with its own game's bank, in place of the game's own music where the theme's game is read and has it; else
 /// the game's own. None: the game has no sound loaded.
@@ -329,5 +354,96 @@ mod tests {
         let six = some.read("exe6").unwrap();
         let (banks, songs) = sound(&some, &six, &theme("exe4", "tournament-battle")).unwrap();
         assert_eq!((banks.len(), songs), (1, six.loaded.sound.as_ref().unwrap().songs.clone()), "BN4 not read: the game's own");
+    }
+
+    /// The practice menu's Music changes the battle's music as it runs (`retheme`'s `Player::set_sound_parts`):
+    /// the new song at once, on its own pack's driver; the game's own again on the battle's; the battle the same.
+    #[test]
+    fn a_battle_changes_its_music_as_it_runs() {
+        use nettai_audio::{MUSIC_PLAYER, m4a::SongId};
+        use nettai_battle::content::PackId;
+        let all = games(&["exe4", "exe5", "exe6"]);
+        let six = all.read("exe6").unwrap();
+        let content = six.content().clone();
+        let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
+        let player = |music: &Music| {
+            let (banks, songs) = sound(&all, &six, music).unwrap();
+            let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+            let set = nettai_match::Set::new(content.clone(), m.round(&content, 11), folders);
+            let driver = nettai_frontend::driver::LivePlayer::against(set, Default::default(), 11);
+            let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(TextMode::Original, None);
+            nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver))
+        };
+        let playing = |p: &nettai_frontend::Player| -> Vec<Option<SongId>> {
+            let audio = p.audio().unwrap();
+            (0..3).map_while(|n| audio.driver_of(PackId(n))).map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| m.song())).collect()
+        };
+        let number = |game: &str, song: &str| {
+            let c = all.read(game).unwrap().content().clone();
+            SongId(c.assets.sound(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap()).unwrap().id)
+        };
+        let own = number("exe6", "virus-battle");
+        let theme = Music::Theme { game: "exe5".into(), song: "final-battle".into() };
+        let (mut changed, mut straight) = (player(&Music::GameOwn), player(&Music::GameOwn));
+        for _ in 0..30 {
+            changed.tick(0);
+            straight.tick(0);
+        }
+        assert_eq!(playing(&changed), [Some(own)]);
+        changed.set_sound_parts(sound(&all, &six, &theme).unwrap());
+        for _ in 0..2 {
+            changed.tick(0);
+            straight.tick(0);
+        }
+        assert_eq!(playing(&changed), [None, Some(number("exe5", "final-battle"))], "BN5's, at once");
+        changed.set_sound_parts(sound(&all, &six, &Music::GameOwn).unwrap());
+        for _ in 0..2 {
+            changed.tick(0);
+            straight.tick(0);
+        }
+        assert_eq!(playing(&changed), [Some(own), None], "the game's own again, from its start");
+        assert_eq!(changed.battle().digest(), straight.battle().digest(), "the battle the same");
+    }
+
+    /// Practice's entry plays the pick in place of the title music (`preview`'s `Sound::set_preview`): a theme on
+    /// its own pack's bank; another theme in its place; none, the title music; and it fades out where the menus'
+    /// music isn't wanted (a battle).
+    #[test]
+    fn the_entry_previews_the_pick() {
+        use nettai_audio::m4a::SongId;
+        let all = games(&["exe4", "exe6"]);
+        let mut sound = crate::sound::Sound::silent();
+        sound.use_game("exe6", &all.read("exe6").unwrap().loaded);
+        sound.want_music(true);
+        let start = std::time::Instant::now();
+        let mut at = 0;
+        let mut frames = |sound: &mut crate::sound::Sound, n: u64| {
+            for _ in 0..n {
+                at += 17;
+                sound.frame(start + std::time::Duration::from_millis(at), None, &mut Vec::new());
+            }
+        };
+        let theme = |song: &str| {
+            let t = all.read("exe4").unwrap().loaded.theme(song).unwrap();
+            (format!("exe4:{song}"), t)
+        };
+        let number = |song: &str| SongId(all.read("exe4").unwrap().loaded.theme(song).unwrap().song);
+        sound.set_preview(Some(theme("tournament-battle")));
+        frames(&mut sound, 3);
+        assert_eq!(sound.music_song(), Some((true, number("tournament-battle"))));
+        sound.set_preview(Some(theme("tournament-battle")));
+        sound.set_preview(Some(theme("final-battle")));
+        frames(&mut sound, 3);
+        assert_eq!(sound.music_song(), Some((true, number("final-battle"))), "another in its place");
+        sound.want_music(false);
+        frames(&mut sound, 90);
+        assert_eq!(sound.music_song(), None, "faded out and stopped under a battle");
+        sound.want_music(true);
+        frames(&mut sound, 3);
+        assert_eq!(sound.music_song(), Some((true, number("final-battle"))), "again from its start");
+        sound.set_preview(None);
+        frames(&mut sound, 3);
+        // (content/'s EXE6 with its assets made up names no title music: the title music is none here.)
+        assert_eq!(sound.music_song(), None, "the title music again");
     }
 }

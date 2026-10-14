@@ -768,7 +768,11 @@ player picked (docs/app.md §1, "The battle's music"): `Sound::parts(content,
 theme)` gives the parts a player's audio is made of with the theme's song in
 place of the songs the round starts (`Content::battle_music`), and
 `Loaded::theme` gives a game's theme with its own pack's bank, which plays on
-a driver of its own (`nettai_audio::with_theme`). Only the sound changes: the
+a driver of its own (`nettai_audio::with_theme`); `Player::set_sound_parts`
+changes it while the battle runs (`BattleAudio::set_songs`: the battle's own
+music playing starts again as the new song at once, the low-HP switch kept;
+the result's music stays, and the next round starts with the new song).
+Only the sound changes: the
 battle, its cues, a replay and the wire are the same, and the cues' rollback
 moves the music back to the theme where a result's music played on a wrong
 prediction is taken back.
