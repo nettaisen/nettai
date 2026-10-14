@@ -1234,8 +1234,10 @@ impl Battle {
     }
 
     /// `sub_800AF50`: a set of `n` rounds (the original's three: a triple
-    /// battle, best of three) is decided once one side can no longer be
-    /// caught, or after its last round, drawn if the sides are level.
+    /// battle, best of three, first to 2; a match's set first to `k` round
+    /// wins has `2k − 1`) is decided once one side can no longer be caught,
+    /// or after its last round, drawn if the sides are level. A drawn round
+    /// is one of the `n`.
     fn set_standing(&self) -> SetStanding {
         let r = &self.round;
         let rounds = self.setup.rounds() as i32;
@@ -2807,6 +2809,79 @@ mod tests {
         assert_eq!(after(1, 0, 1), Some(RoundEnd::Over(BattleResult::Lost)));
         // (The rounds' count is the setup's: one more than it lists.)
         assert_eq!(ending(0, 0, 0).setup.rounds(), 3);
+    }
+
+    /// A set first to `n` round wins, its `2n − 1` rounds (a match's:
+    /// nettai-match's `rounds_for`), goes by the original's triple battle's
+    /// rule over them: it ends once its result can no longer change whatever
+    /// the rounds left bring (each won, lost or drawn), and not before; with
+    /// no round drawn, that is when a side has `n` wins. Every score of every
+    /// set first to 1 to 6, drawn rounds among them. First to 2 is the
+    /// original's code itself (`sub_800AF50`, `rem = 3 − r`), and first to 1
+    /// ends with its one round, whatever it was.
+    #[test]
+    fn a_set_first_to_n_ends_once_its_result_cant_change() {
+        // (Where the set stands after `wins`, `losses` and `drawn` rounds.)
+        let after = |first_to: u8, wins: u8, losses: u8, drawn: u8| {
+            let mut b = ending(wins, losses, wins + losses + drawn);
+            let stage = b.setup.later_stages[0];
+            b.setup.later_stages = vec![stage; 2 * first_to as usize - 2];
+            tick(&mut b);
+            match b.round_end() {
+                Some(RoundEnd::NextRound { .. }) => None,
+                Some(RoundEnd::Over(result)) => Some(*result),
+                other => panic!("{other:?}"),
+            }
+        };
+        let by_count = |wins: u8, losses: u8| match wins.cmp(&losses) {
+            std::cmp::Ordering::Greater => BattleResult::Won,
+            std::cmp::Ordering::Less => BattleResult::Lost,
+            std::cmp::Ordering::Equal => BattleResult::Drawn,
+        };
+        // Every result the rounds left can still bring.
+        fn results(wins: u8, losses: u8, left: u8, by_count: &dyn Fn(u8, u8) -> BattleResult, out: &mut Vec<BattleResult>) {
+            if left == 0 {
+                out.push(by_count(wins, losses));
+                return;
+            }
+            for (w, l) in [(1, 0), (0, 1), (0, 0)] {
+                results(wins + w, losses + l, left - 1, by_count, out);
+            }
+        }
+        for first_to in 1..=6u8 {
+            let rounds = 2 * first_to - 1;
+            for played in 1..=rounds {
+                for wins in 0..=played {
+                    for losses in 0..=played - wins {
+                        let drawn = played - wins - losses;
+                        let mut can = Vec::new();
+                        results(wins, losses, rounds - played, &by_count, &mut can);
+                        let only = can.iter().all(|&r| r == can[0]).then_some(can[0]);
+                        let case = format!("first to {first_to}: {wins}-{losses} with {drawn} drawn");
+                        assert_eq!(after(first_to, wins, losses, drawn), only, "{case}");
+                        if drawn == 0 && wins <= first_to && losses <= first_to {
+                            assert_eq!(only.is_some(), wins == first_to || losses == first_to, "{case}");
+                        }
+                        if first_to == 2 {
+                            // (`sub_800AF50` as the original has it.)
+                            let rem = 3 - played as i32;
+                            let (w, l) = (wins as i32, losses as i32);
+                            let original = if w > l + rem {
+                                Some(BattleResult::Won)
+                            } else if l > w + rem {
+                                Some(BattleResult::Lost)
+                            } else if played >= 3 {
+                                Some(BattleResult::Drawn)
+                            } else {
+                                None
+                            };
+                            assert_eq!(after(first_to, wins, losses, drawn), original, "{case}");
+                        }
+                    }
+                }
+            }
+        }
+        assert_eq!(after(1, 0, 0, 1), Some(BattleResult::Drawn));
     }
 
     #[test]

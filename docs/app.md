@@ -607,7 +607,7 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
-  nothing of a build), one row of settings (Rounds, Patch cards and Closed builds are the match's: either
+  nothing of a build), one row of settings (First to, Patch cards and Closed builds are the match's: either
   player changes them, both see it, and both ready marks clear; Input delay is the player's own, and is the
   Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1; no
   background either: every round's is drawn from the background pool by the match's seed, alike for both
@@ -624,7 +624,17 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   player's build as the settings would play it whenever either changes (`Lobby::problems`, typed); while it
   has a problem READY is refused (`Lobby::set_ready` says so, and the mark is the lobby's answer) and the line
   says what is wrong with it, in the error red. So CHANGE BUILD takes any build whose
-  file reads, and the lobby is what says one can't be played.
+  file reads, and the lobby is what says one can't be played. **First to** (the user: "instead of "rounds" you
+  should have "first to" then you should be able to select 1, 2, 3, 4 etc") is a stepper of the round wins that
+  take the set, 1 to 10 (`nettai_match::MAX_FIRST_TO`), around from 10 to 1 and back, Enter a step on: 1 is the
+  original's single battle, 2 its triple battle (the first lobby's, until a match is played: then the last
+  match's, remembered as `play.first-to`). The number alone in English; in Japanese 先取, each value "2本先取". A
+  set first to `n` is `2n − 1` rounds at most, decided as the original decides its triple battle: once a side
+  can no longer be caught, else after its last round by the wins (drawn if level), a drawn round being one of
+  the rounds (docs/frontend.md §2). Ten is the top: the longest set fighting games' players commonly play (the
+  FGC's "first to ten", "10先"), 19 rounds at most, each numbered by the round's banner in its two digits
+  ("BATTLE 10 START!": the games' own banner, digits and all, in every game). The lobby carries the number
+  (`Settings`, its byte in the lobby's message and in the Hello).
 - **The match menu** (`MatchMenu`: Start or Esc in a match, which goes on behind it): BACK TO MATCH, YOUR BUILD,
   THEIR BUILD (not with closed builds), CONTROLS (what is bound to each button, to read), SETTINGS (the input
   delay, which changes at once, `Player::set_input_delay`; the two levels of the sound), LEAVE MATCH.
@@ -727,7 +737,8 @@ before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), 
 - the wait's practice session: started beside the invite (on a phone, by its button, filling the window), its
   menu's COPY INVITE CODE, STOP PRACTICE (a phone) and CANCEL INVITE each chosen, and the session ended by the
   other player coming;
-- the lobby's rounds, patch cards and closed builds changed by one player and taken by the other; the input
+- the lobby's First to (stepped from 2 to 3, `play-lobby-first-to` and `-3`, a pair, then back to 1 for the
+  match played), patch cards and closed builds changed by one player and taken by the other; the input
   delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
   saying why), and the first again;
 - the link dropped for six seconds in the lobby and in a match, and made again;
@@ -2374,12 +2385,17 @@ A file that doesn't read is listed with the replays of the game its head names, 
 only where even that doesn't.
 
 **The list** is the selected game's replays, newest first: the date, the opponent (the other player's name;
-`P1` or `P2` where the replay has none), the score as the recorder's (`W 2–1`; the rounds alone where the set
-wasn't finished) and the length, each in a column of its own width. The search is by opponent. The filter
+`P1` or `P2` where the replay has none), the score as the recorder's (`W 2–1`, `W 10–9` in a set first to ten,
+which the score's column holds; the rounds alone where the set wasn't finished) and the length, each in a column of its own width. The search is by opponent. The filter
 between All and Online is there only while the game has replays of both kinds. Enter on a row watches it, E
 exports it, Delete asks once (Cancel focused) and removes the file. On a phone a tap on a row opens the
 selected replay as a sheet from the bottom, with the four actions one under the other. No build's name is
 anywhere: a replay has none.
+
+**A set of any length.** A replay keeps the match it was played from, and with it the round wins its set was first
+to (the match in nettai-match's binary: a byte, then every round's place: docs/frontend.md §8); its rounds are as
+many as were played, one to nineteen, each with its mark. The score, the bar's marks, a round's part to export and
+the viewer's round steps go by the rounds the file marks, whatever their number.
 
 **The viewer** (`Watching`) is the library's `Viewer`, which the shell makes ready behind the two cards
 (`Play::Watch`: §2) and hands over. The cards say who played and nothing of what they brought. Each frame the
