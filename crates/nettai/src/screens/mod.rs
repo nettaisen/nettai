@@ -144,6 +144,13 @@ pub trait Screen {
         false
     }
 
+    /// An arrow or Tab (Shift+Tab), before the nav finds where it goes by the controls' places (docs/app.md
+    /// §11): true if the screen moved the focus itself, where those places don't say it (Play's: Right from its
+    /// list goes past the overview, which takes no focus, to EDIT; Tab goes through its zones in their order).
+    fn route(&mut self, _shell: &mut Shell, _action: Action) -> bool {
+        false
+    }
+
     /// Up, Down, Page Up, Page Down, Home or End (the keys, the pad's D-pad and stick), before the focus
     /// moves by it: for a page of the screen's own that scrolls with no control in it to move to (a build's
     /// sheet in the match's menu). True if the screen took it.
