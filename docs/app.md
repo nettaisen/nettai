@@ -2349,9 +2349,8 @@ docs/design/app-ui.md §6, "Replays". The screen is `ui/screens/replays.slint` a
 `replays/viewer.rs` and `replays/export.rs`); the folder's reading is `src/replays.rs`. The library under all of
 it is docs/frontend.md §8: the file, the viewer and its seeking, the video. A replay keeps each round's
 background by its game and its name (any game's: §1, "The battle's background"), and a viewer draws it as the
-match did, or its stage's own where the player hasn't that game's pack; the file's layout number stayed as it
-was for the change (the user: "you can reset all the version/layout/whatever numbers since none of this is in
-production yet"), so a replay written before it no longer reads its match.
+match did, or its stage's own where the player hasn't that game's pack. The file is of layout 1
+(`nettai_replay::LAYOUT`); one of another layout is refused as another version's.
 
 **Nothing of the folder is read on the window's thread** (`crate::replays::Library`). The screen has a thread of
 its own, started when it first asks something, and takes what the thread found at its next frame:
@@ -2381,7 +2380,7 @@ one that plays another battle than it recorded each show their sentence in the r
 place of the opponent, the score and the length (`UserError::of_replay_read`, `of_refusal`: §12), and beside
 the list with WATCH and EXPORT VIDEO unavailable; SHOW FILE and DELETE stay. Each is written to the log once.
 A file that doesn't read is listed with the replays of the game its head names, where the head reads
-(`nettai_replay::Head::read`: a damaged file, or one of layout 1, whose head is the same), and with every game's
+(`nettai_replay::Head::read`: a damaged file), and with every game's
 only where even that doesn't.
 
 **The list** is the selected game's replays, newest first: the date, the opponent (the other player's name;
@@ -2528,9 +2527,10 @@ made by another build: each pack is stamped (`stamp.toml` in it) with what made 
     assets = "1f3eed2364479361"
 
 the app's version, and the extractor's fingerprint of the game's asset names (`nettai_extract::fingerprint`: a
-digest of the pack format's version and of the names the pack's assets are written under, from the content's
-compat tables: `assets.toml`, a chip's icon by its id, a navi's emblem by its key, the fonts' glyphs). A pack
-whose stamp isn't this build's, or that has none (one `nettai-extract` wrote), is extracted again. The version is
+digest of the versions of the pack's formats, `nettai_content::pack::FORMATS`, each 1, and of the names the
+pack's assets are written under, from the content's compat tables: `assets.toml`, a chip's icon by its id, a
+navi's emblem by its key, the fonts' glyphs). A pack whose stamp isn't this build's, or that has none (one
+`nettai-extract` wrote), is extracted again. The version is
 the user's word; it doesn't change between builds while it stays 0.1.0, and two builds of it differ in their
 packs above all where the content names an asset the other's pack hasn't (a sprite added, a song named): the pack
 loads and the content can't find it, which is what `UserError::GameOutdated` told before. The fingerprint is

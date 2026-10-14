@@ -80,7 +80,7 @@ Each is settled unless the user changes it.
 15. **A loading screen** loads assets before a battle starts, "to avoid stuttering".
 16. **Builds are private.** "the lobby shouldn't show build name or which game, since that's private information to
     the player"; "the build name should not really be visible across the wire or in replays or anything". (The
-    lobby's protocol version 5 sent each build's name, version and navi label: that goes.)
+    lobby's protocol sends none of a build's name, version or navi label.)
 17. **During a match both builds can be viewed**, as in Tango; and **the lobby has a "closed builds" setting**.
     The lobby's match settings also have **a toggle for patch cards, on or off** ("for netbattle settings you should
     also have a toggle for patch cards on/off").

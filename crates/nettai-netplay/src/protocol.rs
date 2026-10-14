@@ -52,33 +52,16 @@ use rennet::{read_svarint, read_uvarint, write_svarint, write_uvarint};
 ///   nonces (the seed), which both peers must do alike: what a round's
 ///   setup holds is in every digest of the round.
 ///
-/// A change to any of them is a new version. Version 4 added the player's
-/// name; version 5 each build's label and navi, which version 6 took out
-/// again (a build is its player's own until the Reveal, and its name is
-/// never sent). Version 6 also made the settings the match's (either player
-/// changes them and the other adopts them: the rounds, and whether builds
-/// are closed), put the game among the compatibility fields, gave a
-/// refusal a reason beside its words, tied a Reveal to the revisions it is
-/// of, and added the loading before the first tick. It is also the first
-/// version whose rounds are set up with the keys their host answers
-/// (`RoundSetup::host_keys`, which every match has): a program of version 5
-/// sets the same match up without them, so the two would differ from the
-/// first digest, and are refused as different versions before anything is
-/// agreed. (The engine's own version, which the lobby compares too, is the
-/// crates' and doesn't change with the engine: this number is what tells
-/// two engines apart. Where it wasn't raised and should have been, the
-/// loading's digest of the match's start tells two setups apart before the
-/// first tick.) Version 7 has a match's frames say which match they are of
-/// (its seed, after the frame's kind), since the two players of a match
-/// play another on the same link, and lets a lobby go on after a match.
-/// Version 8 adds a setting of the match, whether patch cards apply: with
-/// them off the match is set up from each side without its cards, which a
-/// program of version 7 wouldn't do.
+/// A change to any of them is a new version. (The engine's own version,
+/// which the lobby compares too, is the crates' and doesn't change with the
+/// engine: this number is what tells two engines apart. Where it wasn't
+/// raised and should have been, the loading's digest of the match's start
+/// tells two setups apart before the first tick.)
 ///
 /// A peer of another version is told from its first field, which every
 /// version's lobby messages and refusals start with, and nothing after it
 /// is read of such a peer.
-pub const VERSION: u16 = 8;
+pub const VERSION: u16 = 1;
 
 /// The rollback horizon, in elements (ticks, besides the rare marker):
 /// the widest gap a player's stream may have at the other peer

@@ -3,17 +3,17 @@
 // before it is up and whenever it is made again. A Cloudflare Worker, one
 // Durable Object a room; it reads none of what the players trade. The
 // protocol is nettai-rtc's `signal` module (and docs/design/rollback.md
-// §4.8), version 2:
+// §4.8), version 1:
 //
 // - A room's code is the server's to pick, never a client's: six characters
 //   of ABCDEFGHJKMNPQRSTUVWXYZ23456789 (no 0 or O, no 1, I or L: none reads
 //   as another).
-// - To make a room, a client opens a WebSocket to /rooms?peer=ID&v=2: ID the
+// - To make a room, a client opens a WebSocket to /rooms?peer=ID&v=1: ID the
 //   client's own (1 to 64 of A-Z a-z 0-9 _ -), the same on every
 //   reconnection. The server makes a room under a code no room has, the
 //   client hosts it, and the welcome says the code.
 // - To join a room, or to come back to one, a client opens a WebSocket to
-//   /rooms/CODE?peer=ID&v=2 (the code in either case). A code no room has is
+//   /rooms/CODE?peer=ID&v=1 (the code in either case). A code no room has is
 //   refused, and no room is made of it.
 // - The room has two places: its maker hosts, the next ID to come joins; an
 //   ID that comes again gets its place back, and a third is refused.
@@ -55,7 +55,7 @@ interface Attachment {
 }
 
 /** The protocol's version: a client that says another is refused. */
-const VERSION = "2";
+const VERSION = "1";
 /** A code's characters: capitals and digits, without 0, O, 1, I and L. */
 const ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const CODE_LENGTH = 6;
@@ -102,7 +102,7 @@ export default {
 		const url = new URL(request.url);
 		const path = url.pathname.match(/^\/rooms(?:\/([^/]*))?\/?$/);
 		if (!path) {
-			return new Response("a new room is /rooms?peer=ID&v=2, a room /rooms/CODE?peer=ID&v=2\n", { status: 404 });
+			return new Response("a new room is /rooms?peer=ID&v=1, a room /rooms/CODE?peer=ID&v=1\n", { status: 404 });
 		}
 		if (request.headers.get("Upgrade") !== "websocket") {
 			return new Response("a room is a WebSocket\n", { status: 426 });
