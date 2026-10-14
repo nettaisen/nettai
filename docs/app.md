@@ -352,7 +352,7 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   starts from its beginning, fading in, as before (nettai's `the_entry_starts_its_music_where_the_battles_stopped`).
   Nothing of the battle changes: it is over, and only its sound, presentation, goes on.
 - *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
-  the practice menu"): its Battle rows have Music, the same pick. A change switches the battle's music at once
+  the practice menu"): its Stage rows (Battle rows until docs/design/app-ui.md §2.56) have Music, the same pick. A change switches the battle's music at once
   (`music::retheme`, `Player::set_sound_parts`, nettai-audio's `BattleAudio::set_songs`): where the battle's own
   music is playing, the new song starts from its beginning on its own pack's driver (the one before stops, that
   song alone: the effects play on), with BN6's low-HP speed-up kept on where it is on; where the result's music is
@@ -2482,16 +2482,15 @@ again after them and the entry back from Builds keep what the player set. None o
   battle stages a match may name (`nettai_match::link_battle_stages`, the rules' `link_pick.match_stages`:
   EXE6's 96, EXE5's 94, EXE4's 96) each arena once (48 in each game: below), and the background pool, every game's battle backgrounds
   (`nettai_match::ids::pool_backgrounds`: 70, BN4's, then BN5's, then BN6's, in any game's practice), each in
-  its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Arena is an arrow
-  pager, the app's `Stepper` as the practice menu's rows have it (the user: "the arena names are meaningless so
-  you should just have like a pager widget that goes through them"), 40 tall as the selects (36 on a phone): Left and Right or its arrows step it, around
-  from the last to Random, a held key repeating; Enter steps it on; it opens no list. Background was one too
-  ("background should also be a arrow button pager thing") until the user asked for lists: "background and music
-  selectors should both be dropdowns like they are in the practice screen" (docs/design/app-ui.md §2.43).
-  Background is now a dropdown, the same `Select` as the build rows': Enter, a click or a tap opens its list
-  (Random, then the pool's by game and name, as the row says them; a long one scrolls, open at the one chosen;
-  on a phone a sheet from the bottom, as the build rows'), and choosing closes it; Left and Right still step it,
-  as they step the build rows. It is the
+  its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Arena was an arrow
+  pager (the user: "the arena names are meaningless so you should just have like a pager widget that goes through
+  them") and Background a dropdown (docs/design/app-ui.md §2.43); since §2.56 ("arena selector should be like a
+  dropdown that shows previews of all arenas. background dropdown should be similar and show preview of all
+  backgrounds. the practice menu and the practice start screen should use the same widgets") both are the same
+  pictured `Select` on the entry and in the menu (`pictured`: the chosen one's picture, two and a half times the
+  box's height less 12 wide, before its name; Random a question mark), and Enter, a click or a tap opens the grid
+  of every choice's picture (`Shell::pick_grid`, below); Left and Right still step it, around from the last to
+  Random. Each is the
   visit's (above): Random as a visit starts, kept through it, a choice of another game's entry Random (a match
   names a background by the name it writes, the game's own by its name in the pack, another game's with its
   game, `exe4:acdc-area`). Each step draws the arena again after the same 160 ms as a build's, so a run of steps
@@ -2511,7 +2510,7 @@ again after them and the entry back from Builds keep what the player set. None o
     the same entries, in any order; the effects aren't compared (EXE6's netbattle-95 and 96, and EXE5's 93 and
     94, differ only in them, the second lacking the first's 0x800, a bit nothing reads, and the user: "they
     should count as duplicates too"). Each group shows as its first record in the list's natural order, so
-    EXE6's 96 are 47 arenas, EXE5's 94 are 47 and EXE4's 96 are 48 (the pager's "n / 47" in EXE6). A
+    EXE6's 96 are 47 arenas, EXE5's 94 are 47 and EXE4's 96 are 48 (the select's "n / 47" in EXE6). A
     round that names a later record (a session another screen starts on it) shows as its arena, which plays
     its first (nettai's `each_arena_is_listed_once`).
   - The actor list's order is the order the round's setup places the navis and objects in, so the order they
@@ -2520,13 +2519,39 @@ again after them and the entry back from Builds keep what the player set. None o
     keeps the original's coin flip of which side goes first. Play's matches and their random pick are as
     they were.
   - Their words: an arena is said by its place in the list, "12 / 48" (a stage is its key in the content,
-    and the user found the keys' names meaningless); a background by its game's name and what that game's
+    and the user found the keys' names meaningless; its cell in the grid says the same, under its picture); a background by its game's name and what that game's
     locales call it in the language (`[backgrounds]`, by the area it comes from: `backgrounds::name`), "BN4
     ACDC Area". Every background of the three games had its name in English and in Japanese already.
   - A background stepped keeps the arena: with Arena Random the seed picks each round's arena whether the
     round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
+- **The grid** (`Shell::pick_grid`, the shell's `PickerLayer` with `picker-grid`; `Look::Grid`): every choice
+  as a cell, its picture 120 by 48 (two fifths of the cell's width: the field's band, which a display of two
+  pixels a unit shows pixel for pixel) over its name on two lines at most, Random first with a question mark. It
+  opens under the select (over it where there is more room), five cells to a row, 8 apart, in 8 of padding with
+  the scrollbar's 12 at the right (656 wide), showing as many rows as there are up to five and as fit
+  (`Grid::rows`); on a phone a sheet from the bottom, three to a row sharing its width, three fifths of the window
+  at most. It is a page (`pick.grid`) of cells each focused (`pick.grid.cell`, by the choice's place): the arrows
+  go to the cell beside, Up and Down through the rows scrolled out of view too, the cell scrolled into view; the
+  cursor brackets the cell; Enter, A or a click chooses (the screen hears `choose` as from a list), Esc or B
+  closes. The chosen cell is outlined in the cursor's color over its tint. It drops in as the lists do, and
+  with Reduce motion is there at once. Its sizes are `GRID_*` in shell.rs, which `PickerLayer` lays out by.
+- **The places' pictures** (`screens/practice/thumbs.rs`, `Thumbs`, in `Shared`): an arena's is a round on its
+  first record between two MegaMen (a new build of the game's first version, on both sides: never the player's
+  builds, a save or the dummy; the user: "you should just render the arena and megaman only without his hp",
+  "you should show the opponent too as megaman on the other side. it should always be megaman as well, don't use
+  the training dummy or saves"), played to its opening's end as the entry's preview is, and drawn by
+  nettai-render's `still::field`: the field's panels and the two navis, each with its own shadow, from the local
+  side, and nothing else (no background, no HUD, no other object; clear where nothing is, the cell's inset
+  showing). A background's is its first frame (`still::background`). Each is the battle picture's rows 56 to 152,
+  240 by 96. A game's are made on a thread of their own (`Thumbs::want`) when the entry shows it or a session of
+  it starts: the backgrounds first (they need no runtime), then the content's runtime loaded on that thread, then
+  each arena; in a dev build about 20 ms, 0.25 s and 0.3 s for EXE6's 47, so they are all there some 0.6 s
+  after the entry first shows, and opening a grid never waits (a cell not made yet is empty and fills in as its
+  picture comes, `Thumbs::poll` each frame, which tells the selects their pictures too). They are the same
+  whatever the player's builds, and kept for the session by game (the pool's backgrounds once for all three):
+  nothing is written to disk. The screenshot pass makes them on the window's thread at once.
 - **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions play,
   the visit's ("Game's own" as a visit starts): a dropdown as Background's, its list "Game's own" then the
   themes, stepped by Left and Right around from the last theme to "Game's own", and Enter, a click or a tap opens
@@ -2653,13 +2678,13 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 |---|---|---|
 | Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
-| Arena: Arena | Random, then "1 / 47" and on, each arena once, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
-| Arena: Background (a dropdown) | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
-| Arena: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
-| Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
-| Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
-| Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
-| Display: Input display | Off, On | the app's own drawing, below |
+| Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
+| Stage: Background (a pictured select) | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
+| Stage: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
+| Options: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
+| Options: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
+| Options: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
+| Options: Input display | Off, On | the app's own drawing, below |
 
 **Its rows' look** (`MenuRow`): bare, a group's title over each group, the hover tint on a row. Its controls are
 the entry's size (docs/design/app-ui.md §2.44, the user's "option 1"): the steppers and the two selects 40 tall
@@ -2690,14 +2715,18 @@ Music changes the battle's music the player picked, the entry's row's one pick (
 battle's music"): Left and Right step it, Enter opens its list, and the battle's music switches at once, nothing
 else of it changing (nettai's `a_battle_changes_its_music_as_it_runs`).
 
-Background and Music are dropdowns in the menu as on the entry (docs/design/app-ui.md §2.43): the row's value is
-the `Select` box, and Enter, a click or a tap opens its list (the shell's, by the row; open at the value chosen,
-a long one scrolling; on a phone the sheet); a choice from it changes the row as a step to it would, at once.
-Left and Right still step them. The list is the battle's owner's, as the menu is (`Shell::pick`: a menu's list
-over a battle is heard by the battle's owner, Practice, whatever screen started the session). Arena stays a
-pager.
+Arena, Background and Music are dropdowns in the menu as on the entry (docs/design/app-ui.md §2.43, §2.56): the
+row's value is the `Select` box (Arena's and Background's with the chosen one's picture), and Enter, a click or a
+tap opens its list (Arena's and Background's the grid of pictures; the shell's, by the row; open at the value
+chosen, a long one scrolling; on a phone the sheet); a choice from it changes the row as a step to it would, at
+once. Left and Right still step them. The list is the battle's owner's, as the menu is (`Shell::pick`: a menu's
+list over a battle is heard by the battle's owner, Practice, whatever screen started the session).
 
-The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
+The groups are DUMMY, STAGE and OPTIONS (ダミー, ステージ, オプション; docs/design/app-ui.md §2.56: "having an
+"arena" field under "arena" is so weird"): no group is named for one of its rows and none has one row; the input
+display, a group of its own before, is the last of OPTIONS.
+
+The Options rows but the input display are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a practice session sets between ticks, applied to the battle's own typed state
 (a navi's HP, the custom gauge, the battle folder the custom screen deals from) before each tick, never a rule
 of the simulation. With them at their normal values the battle is

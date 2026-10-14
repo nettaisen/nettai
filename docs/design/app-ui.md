@@ -306,7 +306,7 @@ Each is settled unless the user changes it.
     are in the practice screen": on the entry and in the practice menu, Background and Music are the build rows'
     select (Enter, a click or a tap opens the list, open at the value chosen and scrolling where it is long, a
     sheet on a phone; choosing closes it; Left and Right still step it); Arena stays a pager, as asked before
-    (its places are numbers). (§6, docs/app.md §1, "The battle's music", and §15.)
+    (its places are numbers). (Arena became a dropdown of pictures, and Background with it: §2.56.) (§6, docs/app.md §1, "The battle's music", and §15.)
 
 44. **The practice menu's controls are the entry's size; the version tag opens a list** (2026-10-14). Asked why
     the dropdowns differ (the entry's 40 tall in 56-tall framed rows, the practice menu's 32 tall in 44-tall bare
@@ -521,6 +521,35 @@ Each is settled unless the user changes it.
       simulation keeps: a rollback, a replay and a video draw it alike. Original draws every frame exactly as
       before; every verification path draws Original (docs/frontend.md §3, "Enhanced and original").
     (§4 "Motion", §6 Settings, docs/app.md §9.)
+56. **Arena and Background open as grids of pictures; the practice menu's groups are renamed** (2026-10-14). The
+    user: "arena selector should be like a dropdown that shows previews of all arenas. background dropdown should
+    be similar and show preview of all backgrounds. the practice menu and the practice start screen should use the
+    same widgets".
+    - *One widget.* Arena and Background, on Practice's entry and in the practice menu, are the same select (the
+      pager of §6 is gone): collapsed, the chosen one's picture small before its name (Random a question mark),
+      the dropdown's caret; Left and Right still step it without opening. Enter, the pad's A, a click or a tap
+      opens every choice as a grid, Random first: each cell its picture (120 by 48) over its name on two lines at
+      most, five to a row under the select (over it where there is more room), up to five rows shown, the rest
+      scrolling; arrows go a cell, the cursor brackets the cell, Enter or a click chooses, Esc or B closes. The
+      chosen cell is outlined in the cursor's color over its tint. On a phone the grid is a sheet from the bottom,
+      three to a row, the cells sharing its width. It opens as the other lists do (Reduce motion: at once).
+      Music stays the plain dropdown it was, in both places.
+    - *The pictures.* An arena's is its field, the panels alone with MegaMan on each side's starting panel (the
+      user: "for arena thumbnails, you shouldn't render with the background, you should just render the arena and
+      megaman only without his hp", then "you should show the opponent too as megaman on the other side. it should
+      always be megaman as well, don't use the training dummy or saves"): no background, no HUD, nothing else. A
+      background's is its first frame. Both are the battle picture's band that holds the field, 240 by 96. The
+      arenas have no names in the content, so a cell says its place, "12 / 47", as the select does; a background
+      is named by its game and its area.
+    - *Made as Practice opens.* The renderer draws them from the packs, a game's on a thread of its own as the
+      entry shows (or a session starts), kept for the session; nothing is written to disk. A grid opened before
+      they are all there shows each as it comes.
+    - *The menu's groups.* Then the user: "the practice menu groupings are weird. you should rethink them. having
+      an "arena" field under "arena" is so weird". The groups are DUMMY (Action, Level), STAGE (Arena, Background,
+      Music) and OPTIONS (Your HP, Dummy's HP, Custom gauge, Chip draw, Input display); in Japanese ダミー,
+      ステージ, オプション. No group is named for one of its rows, and none has one row (the input display's
+      DISPLAY group is folded into OPTIONS). The entry has no groups.
+    (§6 Practice, docs/app.md §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -789,10 +818,10 @@ the builds, the chosen build, what is done with it. In the body's units (1216 by
   also add arena + background select?": the game's arenas and the background pool, every game's battle
   backgrounds (§2.31), Random first, a Random background drawn from the pool; "the arena names are meaningless
   so you should just have like a pager widget that goes through them. background should also be a arrow button
-  pager thing": the arena an arrow pager, by its place, "12 / 96"; the background by its game and its name, "BN4
-  ACDC Area", a dropdown since §2.43, "background and music selectors should both be dropdowns like they are in
-  the practice screen": the build rows' select, Enter, a click or a tap opening its list, Left and Right still
-  stepping it), and Music (the battle's music, §2.29: a dropdown as Background's, §2.43), Your build remembered (PLAY's) and the Dummy's build, Arena, Background and Music for one visit (§2.40: each visit
+  pager thing": the arena by its place, "12 / 47"; the background by its game and its name, "BN4
+  ACDC Area". Both were pagers, then Background a dropdown (§2.43), and since §2.56 both are the same pictured
+  select as the practice menu's: the chosen one's picture before its name, Enter, a click or a tap opening a grid
+  of every choice's picture, Left and Right still stepping it), and Music (the battle's music, §2.29: a dropdown as Background's, §2.43), Your build remembered (PLAY's) and the Dummy's build, Arena, Background and Music for one visit (§2.40: each visit
   starts on your own build, Random, Random and the game's own; the practice menu's rows too, §2.54), and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
 - **The entry plays the battle's music** (§2.29, §2.40): the music its session will start, the game's own battle
@@ -821,13 +850,13 @@ the builds, the chosen build, what is done with it. In the body's units (1216 by
     it fights) under it while it is Fights. Its custom screen goes with its Action. No recording: "get rid of
     recording support, it's so complicated". The user: "the dummy menu is so confusing and has so many redundant options and
     it's confusing to navigate. you should make it clearer and less redundant".
-  - Arena: Arena and Background (as on the entry: Arena a pager, Background a dropdown, §2.43; an arena changed starts the set over on it, a background
+  - Stage: Arena and Background (as on the entry: the pictured select and its grid, §2.56; an arena changed starts the set over on it, a background
     changed only redraws: "changing the background shouldn't change the entire arena either in trianing
     mode"), Music (the entry's pick, §2.29, a dropdown as on the entry: the battle's music switched at once). A group of their own: "you
-    should split the practice menu settings into arena and battle so the arena settings aren't mixed together".
-  - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
-    folder order)
-  - Display: Input display
+    should split the practice menu settings into arena and battle so the arena settings aren't mixed together";
+    named STAGE since §2.56, "having an "arena" field under "arena" is so weird".
+  - Options: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
+    folder order), Input display (a group of its own, Display, until §2.56)
   - RESUME, RESTART, EXIT (§2.40: the entry again; no QUIT TO MENU). Restart is also R or the pad's top button.
 
 ### Builds
