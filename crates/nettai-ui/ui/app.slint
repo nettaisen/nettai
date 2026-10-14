@@ -47,10 +47,9 @@ export component AppWindow inherits Window {
     default-font-family: Theme.body;
     default-font-size: 14px;
     default-font-weight: 400;
-    // (Not drawn under a battle that fills the window: its pattern cost a millisecond a frame.)
+    // (Behind everything, a battle that fills the window too: the user, "the backdrop should be behind the game at all
+    // times". Its pattern costs about a millisecond a frame there.)
     Backdrop {
-        visible: !root.in-battle || Theme.phone;
-
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
