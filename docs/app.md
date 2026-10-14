@@ -2405,7 +2405,7 @@ again after them and the entry back from Builds keep what the player set. None o
   place picked from the seed each round as a match that names none has it (what practice did before; a
   background from the whole background pool, §1, "The battle's background"), then the game's arenas, the link
   battle stages a match may name (`nettai_match::link_battle_stages`, the rules' `link_pick.match_stages`:
-  EXE6's 96, EXE5's 94, EXE4's 96), and the background pool, every game's battle backgrounds
+  EXE6's 96, EXE5's 94, EXE4's 96) each arena once (48 in each game: below), and the background pool, every game's battle backgrounds
   (`nettai_match::ids::pool_backgrounds`: 70, BN4's, then BN5's, then BN6's, in any game's practice), each in
   its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Arena is an arrow
   pager, the app's `Stepper` as the practice menu's rows have it (the user: "the arena names are meaningless so
@@ -2425,7 +2425,25 @@ again after them and the entry back from Builds keep what the player set. None o
     own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
     own background is shown only where the rules list none to pick from. So either is chosen with any of the
     other, and nothing ties them.
-  - Their words: an arena is said by its place in the list, "12 / 96" (a stage is its key in the content,
+  - Each arena is listed once (the user: "don't show duplicate arenas in the practice mode selector, just
+    show the first of any duplicates", docs/design/app-ui.md §2.47). The games' link battle stages hold an
+    arena more than once, as records that differ in nothing but the order their actor lists place in: EXE6's
+    each arena twice (netbattle-1 and 2, 3 and 4, ...) or four times (1, 2, 89 and 90; 89 and 90 the same as 1
+    and 2 to the byte), one record placing side 0's navi first and the other side 1's, EXE5's and EXE4's
+    alike. `Places::of` groups them from the content as it reads it (`practice::same_arena`, no list kept):
+    two records are one arena when everything their `StageData` holds is the same, the layout, the panel
+    pattern, the music and background they state, the mode, the battle number and the effects, and their actor
+    lists hold the same entries, in any order. Each group shows as its first record in the list's natural
+    order, so EXE6's 96 are 48 arenas, EXE5's 94 are 48 and EXE4's 96 are 48 (the pager's "n / 48"); EXE6's
+    netbattle-95 and 96, and EXE5's 93 and 94, stay two, the second's effects lacking the first's 0x800. A
+    round that names a later record (a session another screen starts on it) shows as its arena, which plays
+    its first (nettai's `each_arena_is_listed_once`).
+  - The actor list's order is the order the round's setup places the navis and objects in, so the order they
+    are updated in: an arena chosen always plays its first record, so it always has the same side first (side
+    0's navi in the three games, but for EXE6's netbattle-96 and EXE5's 94, each alone, which place side 1's first). Random is the rules' pick over every record, as a match's, so a Random round
+    keeps the original's coin flip of which side goes first. Play's matches and their random pick are as
+    they were.
+  - Their words: an arena is said by its place in the list, "12 / 48" (a stage is its key in the content,
     and the user found the keys' names meaningless); a background by its game's name and what that game's
     locales call it in the language (`[backgrounds]`, by the area it comes from: `backgrounds::name`), "BN4
     ACDC Area". Every background of the three games had its name in English and in Japanese already.
@@ -2556,7 +2574,7 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 |---|---|---|
 | Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
-| Arena: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
+| Arena: Arena | Random, then "1 / 48" and on, each arena once, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
 | Arena: Background (a dropdown) | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
 | Arena: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
