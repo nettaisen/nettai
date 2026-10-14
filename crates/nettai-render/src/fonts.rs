@@ -75,8 +75,8 @@ pub fn box_cells(hud: &Hud, text: &str, glyphs: usize, room: usize) -> usize {
 
 /// A string of the 8x16 font on a tile layer: as [`draw_cell_text`] draws
 /// its glyphs (`cells` cells from (x, y)); in the font mode, when the
-/// font has the string, a text item in the glyphs' box instead, in the
-/// palette's face and shadow colors.
+/// font has the string, a text item of `role` (one of the 8x16 font's) in
+/// the glyphs' box instead, in the palette's face and shadow colors.
 #[allow(clippy::too_many_arguments)]
 pub fn layer_text(
     sink: &mut TextSink,
@@ -88,11 +88,11 @@ pub fn layer_text(
     cells: usize,
     palette: &Palette,
     (x, y): (i32, i32),
-    align: Align,
+    (role, align): (Role, Align),
 ) {
     if sink.takes(text) {
         let n = box_cells(hud, text, glyphs.len().min(cells), cells) as i32;
-        let item = TextItem::new(text, Role::Cell, Rect::new(x, y, 8 * n, 16), palette[1], Some(palette[2]));
+        let item = TextItem::new(text, role, Rect::new(x, y, 8 * n, 16), palette[1], Some(palette[2]));
         sink.push(plane, TextItem { align, ..item });
     } else {
         draw_cell_text(layer, hud, glyphs, cells, palette, x, y);
