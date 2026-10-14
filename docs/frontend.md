@@ -1970,7 +1970,12 @@ is said with where it is:
   `link_battle_stages`);
 - what the game's rules say of the side (their `validate` hook,
   `Battle::validate`, once the round is set up; nettai-match reports what it
-  says and knows none of it). EXE6's and EXE5's say:
+  says and knows none of it). The checks set the round up without dealing
+  the folders (`check::set_up`, of `Match::undealt_round`: each player's
+  battle folder empty, all else a dealt round's, its stats the same), so a
+  folder being made is checked as it is, its gaps unfilled; a round to play
+  (`check::start`, `Match::round`) is dealt, and takes a whole folder alone.
+  EXE6's and EXE5's say:
 - the folder keeps the game's rules (EXE6's are rules/folder/init.luau:
   30 chips, so a folder being made, with empty entries, is no folder yet;
   copies by MB, each chip in one of its codes, the chips a save of the

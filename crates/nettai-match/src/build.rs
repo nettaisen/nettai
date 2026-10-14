@@ -590,9 +590,10 @@ impl Builds {
     }
 }
 
-/// A build checked: what is wrong with it, and its round set up (the side on
-/// both sides of a match of its game), which the folder's view and the
-/// overview are asked of. Made again after each edit. A build is held to
+/// A build checked: what is wrong with it, and its round set up for the
+/// checks (the side on both sides of a match of its game; `check::set_up`:
+/// no folder dealt, so a folder being made is set up as it is), which the
+/// folder's view and the overview are asked of. Made again after each edit. A build is held to
 /// more than a match's side is: what a match's checks say of any side
 /// (`check::problems`: the facts, the rules' `validate`), and what the rules
 /// hold a player's build to besides (their `build_check`: what the game
@@ -619,9 +620,9 @@ impl Checked {
         if !alone.is_empty() {
             return none(alone);
         }
-        match check::start(content, &m) {
+        match check::set_up(content, &m) {
             Ok(mut b) => {
-                let mut problems = check::validated(&mut b, 0, side);
+                let mut problems = check::validated(&mut b, 0);
                 problems.extend(check::built(&mut b, 0));
                 Checked { game: game.to_string(), problems, battle: Some(b) }
             }
@@ -682,7 +683,7 @@ impl Checked {
         // The navi alone: the side with nothing installed.
         let alone = Match::empty(content, &self.game).ok().and_then(|m| {
             let bare = without_entries(content, side);
-            check::start(content, &Match { sides: [bare.clone(), bare], ..m }).ok().map(|b| b.stats[0])
+            check::set_up(content, &Match { sides: [bare.clone(), bare], ..m }).ok().map(|b| b.stats[0])
         });
         let alone = alone.unwrap_or(with);
         let stat = |of: fn(&NaviStats) -> i32| Stat { base: of(&alone), value: of(&with) };

@@ -326,6 +326,20 @@ impl Match {
     /// rounds' places (every place picked from `seed` where the match
     /// leaves it: `places`). The match is a checked one.
     pub fn round(&self, content: &Content, seed: u32) -> RoundSetup {
+        self.round_dealt(content, seed, true)
+    }
+
+    /// [`Match::round`] with no folder dealt: each player's battle folder
+    /// empty, their console's RNG as the seed gives it. What the checks set
+    /// up to ask the rules of a side (`check::set_up`): all the rules set up
+    /// and read is there (the stats, the NaviCust, the patch cards, the
+    /// side's own folder as its setup states it), so a folder still being
+    /// made, gaps and all, is checked as it is. No round to play.
+    pub fn undealt_round(&self, content: &Content, seed: u32) -> RoundSetup {
+        self.round_dealt(content, seed, false)
+    }
+
+    fn round_dealt(&self, content: &Content, seed: u32, deal: bool) -> RoundSetup {
         let mut places = self.places(content, seed).expect("a checked match's places").into_iter();
         let first = places.next().expect("a checked match has a round");
         let settings = BattleSettings { stage: first.stage, background: first.background, effects: content.stage(first.stage).effects | MATCH_EFFECTS };
@@ -334,8 +348,12 @@ impl Match {
             // Each console shuffles its folder with its own RNG (RNG1),
             // which goes on from there.
             let mut rng = Rng::new(seed ^ (side as u32).wrapping_mul(0x9E37_79B9));
-            let saved = s.folder(content).saved().expect("a whole folder (the match's checks refuse one being made; `check::start` fills one in)");
-            let (folder, tag_pair) = BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content);
+            let (folder, tag_pair) = if deal {
+                let saved = s.folder(content).saved().expect("a whole folder (the match's checks refuse one being made, and set up `undealt_round`)");
+                BattleFolder::shuffled_with_tag_pair(&saved, 0, &mut rng, content)
+            } else {
+                (BattleFolder::empty(), None)
+            };
             let player = PlayerSetup {
                 folder,
                 joypad_phase: 0,
