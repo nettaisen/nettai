@@ -450,6 +450,9 @@ impl Tab for AutoBattle {
         if id == "lib.search" {
             self.search = text.chars().filter(|c| !c.is_control()).take(SEARCH_LENGTH).collect();
             self.changed(shell, draft);
+            // (What the search finds is shown from its top.)
+            let ui = shell.ui();
+            shell.nav.list_to_top(&ui, "lib.rows");
         }
     }
 

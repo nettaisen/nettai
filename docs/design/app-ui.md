@@ -181,7 +181,12 @@ Each is settled unless the user changes it.
     match's, both players seeing the round's and a replay keeping it, or becomes each player's own as the music
     is, they chose **"Shared, as now"**: the lobby agrees it with the round and a replay records it. The rules,
     the chips and the field stay the arena game's. (§6, docs/app.md §1, "The battle's background".)
-32. **First to, not rounds** (2026-10-13): "instead of "rounds" you should have "first to" then you should be able
+32. **A dialog's text field is ready to type in** (2026-10-13): "you should auto focus the primary text field on
+    dialogs that pop up". A dialog that asks for text (a build's name, new or renamed; a direct connection's
+    address) opens with the field edited and its text selected.
+33. **A search starts its list from the top** (2026-10-13): "when a search box is changed, it should reset
+    scroll". Each change to a search field shows its list from its first row.
+34. **First to, not rounds** (2026-10-13): "instead of "rounds" you should have "first to" then you should be able
     to select 1, 2, 3, 4 etc". The lobby's setting is First to (先取), a stepper of the round wins that take the
     set, 1 to 10, the number alone (in Japanese "2本先取"). First to 1 is the original's single battle and first to
     2 its triple battle, played exactly as before; a set first to `n` is `2n − 1` rounds at most, decided as the
@@ -199,7 +204,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | Typefaces | Headings, buttons and labels in Chakra Petch; all other text in Murecho; codes and numbers in M PLUS 1 Code. (Japanese headings were Murecho's until the user chose M PLUS 1 for them: §2.23) |
 | A game's look, where the user said nothing (§2.23) | On a change of game the panels' and the text's colors cross-fade over the sweep's time (they don't change at the moving edge, which would mean drawing every screen twice); no art from the packs in the header |
 | A build's version | Fixed when the build is made, as a save's is ("It can't be changed later") |
-| Netplay rounds | A single battle or best of 3, a shared setting either player can change (since §2.32: First to, 1 to 10) |
+| Netplay rounds | A single battle or best of 3, a shared setting either player can change (since §2.34: First to, 1 to 10) |
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
 | What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
 | The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
@@ -391,7 +396,7 @@ Each is in the mockups under the same name.
   with Copy invite code and Cancel invite added.
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
-  10, 2 at first: §2.32), Patch cards
+  10, 2 at first: §2.34), Patch cards
   (on, off), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), the
   connection's bars and ping (no music: "don't allow bgm select in lobby"; the battle's music is picked in
   Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, Patch cards and Closed
