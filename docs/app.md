@@ -1790,9 +1790,9 @@ Four rules hold for all of it:
    and the screenshot pass. The one thing Reduce motion keeps is the jack-in's short fade (a `Pulse` given
    `calm`), which the screenshot pass doesn't (`Theme.still`). A set piece a press settles (the result) is put at
    its end by its clocks' `settled`. In the battle, with Battle graphics Enhanced, it also takes off the
-   background's glide and the gauge's smooth fill (the renderer's `reduce_motion`, set as a battle, the menu's
-   reel or a video starts; a replay's still never has them), and keeps the sharp text (docs/frontend.md §3,
-   "Enhanced and original").
+   background's glide, the gauge's smooth fill and the banners' squash at the window's resolution (the
+   renderer's `reduce_motion`, set as a battle, the menu's reel or a video starts; a replay's still never has
+   them), and keeps the sharp text (docs/frontend.md §3, "Enhanced and original").
 
 **A row that is focused as a whole** (the design's rows are: the cursor is around the label and its control
 together) has a `Focusable` of its own under its control, named as the control is, and the control's own is
