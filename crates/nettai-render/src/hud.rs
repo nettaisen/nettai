@@ -566,6 +566,24 @@ fn gauge_shown(b: &Battle, state: &HudState) -> bool {
         && !transform_hides(b, state).1
 }
 
+/// The gauge counter's units a pixel of its bar: its 0x4000 over the
+/// bar's 16 cells of 8 pixels (a cell's tile fills by eighths: `draw`).
+const GAUGE_UNITS_A_PIXEL: u32 = (FULL as u32) / (16 * 8);
+
+/// Where the custom gauge's fill ends past its whole pixels, in sixteenths
+/// of a pixel (0: on a whole pixel, full, or not drawn). The original draws
+/// the fill to the counter's whole pixels, a cell's tile by eighths, so it
+/// grows a pixel every 2, 4 or 8 ticks (the counter's 0x40, 0x20 or 0x10 a
+/// tick: 128 a pixel); the enhanced mode's motion shows the counter's part
+/// of a pixel at the output's resolution (`Frame::nudge`).
+pub fn gauge_sub(b: &Battle, state: &HudState, custom_gauge: bool) -> u8 {
+    let g = b.gauge_for(b.setup.local_side) as u32;
+    if !custom_gauge || !gauge_shown(b, state) || g >= FULL as u32 {
+        return 0;
+    }
+    (g % GAUGE_UNITS_A_PIXEL * 16 / GAUGE_UNITS_A_PIXEL) as u8
+}
+
 /// The round's result has started: the fight's win, loss or draw past its
 /// first tick, which hides the HUD's parts (`sub_80081A4`, `sub_800825A`
 /// and `sub_80082DC`: `sub_801DACC(0xE4C53)`; EXE4's 0x080071A6, 0x0800725C
@@ -605,8 +623,8 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
 /// name, a banner's glyphs) goes to `problems`. Without `pause_display`
 /// the pause display is left out (`Renderer::pause_display`); without
 /// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
-/// is the enhanced mode's motion: the custom screen's slide (what moves with
-/// its window).
+/// is the enhanced mode's motion: the gauge's fill drawn between whole
+/// pixels.
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
@@ -626,7 +644,7 @@ pub fn draw<'a>(
     if hud.tiles.is_empty() {
         return;
     }
-    let view = crate::render::Renderer::view_with(b, smooth.slide());
+    let view = crate::render::Renderer::view(b);
     let local = b.setup.local_side;
     let player = b.player(local);
     let open = custom_open(b);
@@ -634,7 +652,7 @@ pub fn draw<'a>(
 
     let (hide_mugshot, hide_boxes) = transform_hides(b, state);
     // HP box, top left (moved right with the custom screen's window).
-    let shift = crate::custom::hud_shift(b, smooth.slide());
+    let shift = crate::custom::hud_shift(b);
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
@@ -658,13 +676,17 @@ pub fn draw<'a>(
         let g = b.gauge_for(b.setup.local_side);
         let g0 = hud.gauge_first_tile;
         let cell = |tile: u16| MapEntry { tile, hflip: false, vflip: false, palette: 9 };
-        for i in 0..16u16 {
+        // (Its fill a pixel longer, for the output to show the part of a
+        // pixel the counter is past its whole pixels: `gauge_sub`. A gauge
+        // a pixel short of full shows its cells all filled, not full.)
+        let fill = if smooth.nudged && g < FULL { g as u32 + GAUGE_UNITS_A_PIXEL } else { g as u32 };
+        for i in 0..16u32 {
             let tile = if g >= FULL {
                 g0 + GAUGE_FULL + ((state.frame as u16 / 7) & 3)
-            } else if i < g >> 10 {
+            } else if i < fill >> 10 {
                 g0 + GAUGE_FILLED
-            } else if i == g >> 10 {
-                g0 + ((g >> 7) & 7)
+            } else if i == fill >> 10 {
+                g0 + ((fill >> 7) & 7) as u16
             } else {
                 g0
             };
