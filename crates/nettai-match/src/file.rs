@@ -708,11 +708,11 @@ mod tests {
         assert!(problems.iter().any(|p| p.starts_with("left: no field \"auto_battle_places\"")), "{problems:?}");
     }
 
-    /// A version is stated where the game's rules take one, and nowhere
-    /// else: a new EXE6 match's sides have none until each is given its own
-    /// (the checks refuse the match: none is assumed), a random one's are
-    /// picked and written; an EXE5 match has none, and its file takes no
-    /// `version`: its rules declare no such fact. EXE6's Crosses are a list
+    /// A version is stated where the game's rules take one: a new EXE6
+    /// match's sides have none until each is given its own (the checks
+    /// refuse the match: none is assumed), a random one's are picked and
+    /// written; an EXE5 match's likewise (its version its team, whose patch
+    /// card Bass-Cross MegaMan is its own). EXE6's Crosses are a list
     /// a side states, none when it states none.
     #[test]
     fn a_version_is_stated_where_the_game_takes_one() {
@@ -765,25 +765,26 @@ mod tests {
         let own: Vec<&str> = none.sides[0].facts.form_list(&six).iter().map(|&f| ids::local(&six.defs.form(f).key)).collect();
         assert_eq!(own, ["spoutcross", "tomahawkcross", "tengucross", "groundcross", "dustcross"]);
         assert!(!new.sides[0].clone().state_own_forms(&six), "no version yet: nothing to go by");
-        // EXE5.
+        // EXE5: its version is its team (the patch card Bass-Cross MegaMan's
+        // effects are each team's own), stated as EXE6's is.
         let five = crate::testing::exe5_content();
-        assert!(crate::facts::versions(&five).is_empty());
+        assert_eq!(crate::facts::versions(&five), ["protoman", "colonel"]);
+        assert_eq!(crate::facts::required(&five).iter().map(|f| f.name).collect::<Vec<_>>(), ["version"]);
+        let new = Match::empty(&five, "exe5").unwrap();
+        has(crate::check_match(&five, &new), "left: no version: a side of exe5 states its own (protoman or colonel); none is assumed");
         let m = crate::pick::live(&five, "exe5", 1, None).unwrap();
         let text = write(&five, &m);
-        assert!(!text.contains("version"), "{text}");
-        assert!(crate::facts::required(&five).is_empty());
-        let e = parse(&five, &text.replacen("navi = \"megaman\"", "navi = \"megaman\"\nversion = \"falzar\"", 1)).unwrap_err();
-        assert_eq!(e, [format!("left: no field \"version\" (a side of exe5 takes {})", crate::facts::names_phrase(&five))]);
+        assert_eq!(text.matches("\nversion = \"protoman\"\n").count() + text.matches("\nversion = \"colonel\"\n").count(), 2, "{text}");
         let mut odd = m.clone();
         let refused = odd.sides[1].set_fact(&five, "version", &[Fact::Name("gregar")]).unwrap_err();
-        assert_eq!(refused, format!("no field \"version\" (a side of exe5 takes {})", crate::facts::names_phrase(&five)));
+        assert_eq!(refused, "setup field `version` has no variant \"gregar\"");
         // (Nor are another game's facts a side's: an EXE6 side in an EXE5
         // match is said.)
         odd.sides[1].facts = live.sides[1].facts.clone();
         has(crate::check_match(&five, &odd), "right: the side's facts aren't exe5's rules'");
-        // (The round an EXE5 match starts brings its players no version.)
+        // (The round an EXE5 match starts brings its players their versions.)
         let b = crate::check::start(&five, &m).unwrap();
-        assert!(b.fact(0, nettai_battle::content::PlayerFact::Version).is_none());
+        assert_eq!(b.fact(0, nettai_battle::content::PlayerFact::Version).and_then(|f| f.name()), m.sides[0].version(&five));
     }
 
     /// What a file can get wrong is said, with where it is.

@@ -213,7 +213,7 @@ impl PatchCards {
         let Some(h) = card else { return CardRow { slot: slot.map(slot_name).unwrap_or_default().into(), ..Default::default() } };
         draft.with_words(shell, |words| {
             let named = cards::named_by(words.kit);
-            let lines = cards::lines(words.names, h, &named).unwrap_or_default();
+            let lines = cards::lines(words.names, h, draft.version(), &named).unwrap_or_default();
             let own = slots.and_then(|s| s.own(content, h));
             CardRow {
                 there: true,
@@ -343,7 +343,7 @@ impl PatchCards {
             let problem = self.notice.clone().or(problem).unwrap_or_default();
             let Some(h) = card else { return CardDetail { problem: problem.into(), ..Default::default() } };
             let named = cards::named_by(words.kit);
-            let lines = cards::lines(words.names, h, &named).unwrap_or_default();
+            let lines = cards::lines(words.names, h, draft.version(), &named).unwrap_or_default();
             // The two groups: the card screen's, by the lines' groups in their order; a game whose cards have none,
             // what it does and the bugs it adds to or clears.
             let groups: Vec<Option<String>> = lines.iter().map(|l| l.group.clone()).fold(Vec::new(), |mut g, x| {
@@ -798,13 +798,12 @@ impl Tab for PatchCards {
 mod tests {
     use super::*;
 
-    /// Every card of each game has its own number (the game's compat tables'), each number one card's but EXE5's 111,
-    /// each team's own; the library lists them in that order (its place is the number but for the second 111, which
-    /// is why the number isn't taken from it).
+    /// Every card of each game has its own number (the game's compat tables'), each number one card's; the library
+    /// lists them in that order.
     #[test]
     fn every_card_has_its_own_number() {
         let dir = std::path::Path::new(concat!(env!("CARGO_MANIFEST_DIR"), "/../../content"));
-        for (content, game, count) in [(nettai_match::testing::exe6_content(), "exe6", 117), (nettai_match::testing::exe5_content(), "exe5", 112), (nettai_match::testing::exe4_content(), "exe4", 133)] {
+        for (content, game, count) in [(nettai_match::testing::exe6_content(), "exe6", 117), (nettai_match::testing::exe5_content(), "exe5", 111), (nettai_match::testing::exe4_content(), "exe4", 133)] {
             let order = crate::builds::order::Order::load(dir, game);
             let collection = collection_of(&content, FIELD).unwrap();
             let mut cards: Vec<((), EntryHandle)> = edit::of_game(&content, game, Registry::Entry, Some(&collection)).into_iter().map(|h| ((), EntryHandle(h))).collect();
@@ -814,7 +813,7 @@ mod tests {
             assert!(numbers.windows(2).all(|w| w[0] <= w[1]), "{game}: the library's order is the numbers'");
             let mut distinct = numbers.clone();
             distinct.dedup();
-            assert_eq!(numbers.len() - distinct.len(), usize::from(game == "exe5"), "{game}: numbers twice");
+            assert_eq!(numbers.len(), distinct.len(), "{game}: numbers twice");
         }
     }
 
@@ -829,14 +828,35 @@ mod tests {
             assert!(cards.len() > 100, "{game}: {} cards", cards.len());
             let none: cards::Named = &|_, _| None;
             // (A card whose every effect is outside a battle (EXE4's PET menu colors) writes none.)
-            let written = cards.iter().filter(|&&h| !cards::lines(&names, EntryHandle(h), none).unwrap_or_default().is_empty()).count();
+            let written = cards.iter().filter(|&&h| !cards::lines(&names, EntryHandle(h), None, none).unwrap_or_default().is_empty()).count();
             assert!(written * 10 > cards.len() * 9, "{game}: {written} of {} cards write lines", cards.len());
             if game == "exe4" {
                 let pair = nettai_match::ids::entry(&content, game, &collection, "074-triple-supporter-1-2").unwrap();
-                let lines = cards::lines(&names, pair, none).unwrap();
+                let lines = cards::lines(&names, pair, None, none).unwrap();
                 let texts: Vec<&str> = lines.iter().map(|l| l.text.as_str()).collect();
                 assert_eq!(texts, ["With {pair.card} in 2", "Rush, Beat and Tango", "Clears Support Bug"]);
                 assert_eq!(lines.iter().map(|l| l.bug).collect::<Vec<_>>(), [false, false, true]);
+            }
+        }
+    }
+
+    /// The Bass-Cross MegaMan card is one card of each game whose lines are the build's version's (the user: "it's
+    /// actually just the same card, but with different effects depending on version of the game"): the effects of no
+    /// version's, and those of the build's.
+    #[test]
+    fn bass_cross_megamans_lines_are_the_versions() {
+        for (content, game, versions) in [
+            (nettai_match::testing::exe6_content(), "exe6", [("gregar", ["HP+200", "NormBody", "MegFld-2", "SprArmr", "TriBustr", "B↓Sbustr"]), ("falzar", ["HP+20%", "NormBody", "MegFld-2", "FlotShoe", "TriBustr", "B↓HelzR"])]),
+            (nettai_match::testing::exe5_content(), "exe5", [("protoman", ["HP+200", "NormBody", "MegFld-2", "SprArmr", "TriBustr", "B↓Sbustr"]), ("colonel", ["HP+20%", "NormBody", "MegFld-2", "FlotShoe", "TriBustr", "B↓HelzR"])]),
+        ] {
+            let collection = collection_of(&content, FIELD).unwrap();
+            let card = nettai_match::ids::entry(&content, game, &collection, "bass-cross-megaman").unwrap_or_else(|| panic!("{game}: one Bass-Cross MegaMan"));
+            let names = crate::games::Names { content: &content, strings: None };
+            let none: cards::Named = &|_, _| None;
+            for (version, want) in versions {
+                let lines = cards::lines(&names, card, Some(version), none).unwrap();
+                let texts: Vec<&str> = lines.iter().map(|l| l.text.as_str()).collect();
+                assert_eq!(texts, want, "{game} {version}");
             }
         }
     }
