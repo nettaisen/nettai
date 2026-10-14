@@ -157,7 +157,8 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   --text MODE      how the battle is drawn: enhanced (default; `font` says
                    the same) draws the names, the telop, the chatbox and the
                    HUD's lines with a vector font over the scaled frame,
-                   glides the background and fills the gauge smoothly
+                   glides the background, fills the gauge smoothly and
+                   draws the banners' squash at the output's resolution
                    (docs/frontend.md §3); original
                    draws it all as the original does, the text in the game's
                    own fonts into the frame (what the frame comparison uses)
