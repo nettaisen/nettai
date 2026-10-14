@@ -763,6 +763,15 @@ host calls, in order:
 (nettai's through the audio device, `nettai_audio::Output`; headless
 rendering never plays sound). In netplay the player renders the cue actions
 of each frame (plays, and cancels of cues played on a wrong prediction).
+A host may play another song as the battle's music, a battle theme the
+player picked (docs/app.md §1, "The battle's music"): `Sound::parts(content,
+theme)` gives the parts a player's audio is made of with the theme's song in
+place of the songs the round starts (`Content::battle_music`), and
+`Loaded::theme` gives a game's theme with its own pack's bank, which plays on
+a driver of its own (`nettai_audio::with_theme`). Only the sound changes: the
+battle, its cues, a replay and the wire are the same, and the cues' rollback
+moves the music back to the theme where a result's music played on a wrong
+prediction is taken back.
 `Output` takes the samples into a lock-free ring (the device's callback
 never waits on the window) and keeps about three ticks queued (50 ms): the
 ticks come on the display's frames, a frame's together, and the window's
