@@ -262,14 +262,18 @@ component EntryRow inherits Rectangle {
     }
 }
 
-// One of the entry's place rows (Arena, Background): a label, and the value between arrows (the app's stepper,
-// as the practice menu's rows have it), stepped by Left and Right or the arrows, around from the last to Random
-// (the user: "just have like a pager widget that goes through them"). The row is what is focused.
+// One of the entry's rows of a value among many (Arena, Background, Music): a label, and the value between arrows
+// (the app's stepper, as the practice menu's rows have it), stepped by Left and Right or the arrows, around from
+// the last to Random (the user: "just have like a pager widget that goes through them"); or, `select`, the value
+// in a box that opens the values as a list (Enter, a click or a tap) and still steps by Left and Right, as the
+// build rows' (Background and Music: the user, "background and music selectors should both be dropdowns like
+// they are in the practice screen"). The row is what is focused.
 component PagerRow inherits Rectangle {
     in property <string> nav;
     in property <string> label;
     in property <string> value;
     in property <bool> enabled: true;
+    in property <bool> select;
     property <length> box: Theme.phone ? 200px : 280px;
     // (Its value fits itself to the stepper's box, which tells the pass if it can't: docs/app.md §13.)
     property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
@@ -301,9 +305,22 @@ component PagerRow inherits Rectangle {
     Stepper {
         x: parent.width - self.width - 8px;
         y: (parent.height - self.height) / 2;
-        nav: root.nav;
+        visible: !root.select;
+        nav: root.select ? "" : root.nav;
         value: root.value;
         value-width: root.box - 72px;
+        enabled: root.enabled;
+        focusable: false;
+    }
+
+    Select {
+        x: parent.width - root.box - 8px;
+        y: (parent.height - self.height) / 2;
+        width: root.box;
+        height: Theme.phone ? 36px : 40px;
+        visible: root.select;
+        nav: root.select ? root.nav : "";
+        value: root.value;
         enabled: root.enabled;
         focusable: false;
     }
@@ -458,9 +475,10 @@ export component PracticeScreen inherits Page {
             label: @tr("Background");
             value: PracticeView.background-shown == "" ? PracticeView.random : PracticeView.background-shown;
             enabled: !PracticeView.none;
+            select: true;
         }
 
-        // The battle's music: stepped as the places are, and Enter opens its list.
+        // The battle's music: a list, as the background's.
         PagerRow {
             x: 0;
             y: 4 * root.row-step;
@@ -470,6 +488,7 @@ export component PracticeScreen inherits Page {
             label: @tr("Music");
             value: PracticeView.music-shown;
             enabled: !PracticeView.none;
+            select: true;
         }
 
         // (Room for two lines on a desktop, a longer language's.)
@@ -585,7 +604,8 @@ export component PracticeScreen inherits Page {
 // ---- The practice menu ------------------------------------------------------------------------------------
 
 // A row of the practice menu, whatever it is: a group's title; a label and a value between arrows, the row
-// focused as a whole (on a phone the label is over the arrows); or a row another screen added. (One component
+// focused as a whole (on a phone the label is over the arrows), or for Background and Music the value in a box
+// that opens the values as a list, as the entry's rows of them; or a row another screen added. (One component
 // under the menu's one `for`: its parts are all there, and those the row isn't don't show.)
 component MenuRow inherits Rectangle {
     in property <PracticeRow> entry;
@@ -593,6 +613,7 @@ component MenuRow inherits Rectangle {
     property <bool> added: root.entry.option == PracticeOption.added;
     property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.place || root.entry.option == PracticeOption.battle || root.entry.option == PracticeOption.display;
     property <bool> option: !root.added && !root.title;
+    property <bool> select: root.entry.option == PracticeOption.background || root.entry.option == PracticeOption.music;
     property <string> label: PracticeView.label(root.entry.option);
     property <string> value: root.option && root.entry.text != "" ? root.entry.text : PracticeView.value(root.entry.option, root.entry.value);
     // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
@@ -644,10 +665,23 @@ component MenuRow inherits Rectangle {
         Stepper {
             x: Theme.phone ? 0px : parent.width - self.width - 8px;
             y: Theme.phone ? 24px : (parent.height - self.height) / 2;
-            nav: "menu.rows.option";
+            visible: !root.select;
+            nav: root.select ? "" : "menu.rows.option";
             nav-index: root.index;
             value: root.value;
             value-width: root.value-width;
+            focusable: false;
+        }
+
+        Select {
+            x: Theme.phone ? 0px : parent.width - self.width - 8px;
+            y: Theme.phone ? 26px : (parent.height - self.height) / 2;
+            width: root.value-width + 72px;
+            height: Theme.phone ? 36px : 32px;
+            visible: root.select;
+            nav: root.select ? "menu.rows.option" : "";
+            nav-index: root.index;
+            value: root.value;
             focusable: false;
         }
 
