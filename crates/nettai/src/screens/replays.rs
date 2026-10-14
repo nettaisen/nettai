@@ -151,8 +151,9 @@ pub struct Replays {
     export: Option<Export>,
     /// A phone: the selected replay's sheet is open.
     sheet: bool,
-    /// `NETTAI_REPLAY` was answered.
+    /// `NETTAI_REPLAY` was answered; its game was selected for it.
     started: bool,
+    env_game_asked: bool,
     /// The app is kept awake for this screen (`Shell::stay_awake`): a replay plays, or a video is being made.
     awake: bool,
 }
@@ -398,9 +399,14 @@ impl Replays {
             Ok(replay) => replay,
             Err(why) => return shell.fail(UserError::of_replay_read(&doing, &why)),
         };
-        let set = match nettai_frontend::replay::set_of(ready.content(), &replay) {
-            Ok(set) => set,
-            Err(refused) => return shell.fail(UserError::of_refusal(&doing, &refused)),
+        // (Its set is started to be checked: an engine that stops there is a failure, not a crash.)
+        let set = match nettai_frontend::session::in_engine(|| nettai_frontend::replay::set_of(ready.content(), &replay)) {
+            Ok(Ok(set)) => set,
+            Ok(Err(refused)) => return shell.fail(UserError::of_refusal(&doing, &refused)),
+            Err(panic) => {
+                crate::errors::log(&doing, &format_args!("the engine stopped starting its set: {}", nettai_frontend::session::panic_message(panic.as_ref())));
+                return shell.fail(UserError::Other);
+            }
         };
         let side = side.unwrap_or(replay.info.side).min(1);
         // (A closed-builds match's sides aren't kept at all.)
@@ -507,6 +513,11 @@ impl Replays {
             }
         };
         if shell.game() != Some(game.as_str()) {
+            // (Its game is selected once: one that can't be played here, the shell says why and selects another.)
+            if std::mem::replace(&mut self.env_game_asked, true) {
+                crate::errors::log(&format!("opening {}", path.display()), &format_args!("its game, {game}, can't be played here"));
+                return self.started = true;
+            }
             shell.select_game(&game);
         } else if shell.ready().is_some() {
             self.started = true;
@@ -818,7 +829,18 @@ impl Screen for Replays {
             return;
         }
         if let Some(w) = &mut self.watching {
-            return if shell.drawing { w.frame(shell, now) } else { w.rest(shell) };
+            if shell.drawing { w.frame(shell, now) } else { w.rest(shell) }
+            // The engine stopped short of the replay's end (as it played, or at a frame stepped or sought to):
+            // the replay ends there, and the player is told so over the list.
+            if let Some(why) = w.stopped() {
+                crate::errors::log(&format!("watching {}", w.path().display()), &why);
+                if let Some(e) = self.export.take() {
+                    e.close(shell);
+                }
+                self.stop_watching(shell);
+                shell.fail(UserError::Other);
+            }
+            return;
         }
         // The selected replay's still, where its box is on screen.
         let Still { surface, frame, text, .. } = &mut self.still;
