@@ -33,6 +33,8 @@ fn room(ty: &FieldType) -> usize {
 pub enum ListEdit {
     /// One added at its end.
     Add(u16),
+    /// One added at a place, those from there on shifting one on (past the end: at the end).
+    Insert(usize, u16),
     Remove(usize),
     /// An entry moved to another place, those between shifting one toward where it was.
     Move(usize, usize),
@@ -56,6 +58,7 @@ pub fn list(content: &Content, side: &mut Side, name: &str, edit: ListEdit) -> b
     let FieldType::Ref(registry, _) = *element(field.ty) else { return false };
     match edit {
         ListEdit::Add(h) if items.len() < room(field.ty) && !items.iter().any(|x| x.defs() == [h]) => items.push(Stated::Def(registry, Some(h))),
+        ListEdit::Insert(at, h) if items.len() < room(field.ty) && !items.iter().any(|x| x.defs() == [h]) => items.insert(at.min(items.len()), Stated::Def(registry, Some(h))),
         ListEdit::Remove(i) if i < items.len() => {
             items.remove(i);
         }
@@ -185,5 +188,9 @@ mod tests {
         assert!(!list(&six, side, "patch_cards", ListEdit::Move(0, 2)) && !list(&six, side, "patch_cards", ListEdit::Move(1, 1)));
         assert!(list(&six, side, "patch_cards", ListEdit::Remove(0)));
         assert_eq!(side.facts.get(&six, "patch_cards").unwrap().defs(), [cards[0]]);
+        // (Put in at a place, those after it shifting on; past the end, at the end; once.)
+        assert!(list(&six, side, "patch_cards", ListEdit::Insert(0, cards[2])) && list(&six, side, "patch_cards", ListEdit::Insert(9, cards[3])));
+        assert!(list(&six, side, "patch_cards", ListEdit::Insert(1, cards[4])) && !list(&six, side, "patch_cards", ListEdit::Insert(0, cards[0])));
+        assert_eq!(side.facts.get(&six, "patch_cards").unwrap().defs(), [cards[2], cards[4], cards[0], cards[3]]);
     }
 }

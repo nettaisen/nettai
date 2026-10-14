@@ -14,11 +14,13 @@
 //! `[` and `]` (the pad's north button: up) move it in the list's order, which matters (a later card can undo an
 //! earlier one's work).
 //!
-//! **The mouse:** a click on one of the build's cards marks it (the focus stays on it); a click on the marked one, a
-//! double click or a right click takes it out, as Del does (a right click on a library card that is in, too). A card
-//! dragged to another place in the list moves there, those between shifting toward where it was (the keys' edit,
-//! `ListEdit::Move`); dragged onto the library, it is taken out. In a game whose cards go in slots each card's slot is
-//! its own: a slot isn't dragged.
+//! **The mouse:** a click on one of the build's cards marks it (the focus stays on it); a right click takes it out, as
+//! Del does (a right click on a library card that is in, too). A card dragged to another place in the list moves
+//! there, those between shifting toward where it was (the keys' edit, `ListEdit::Move`); dragged onto the library, it
+//! is taken out. A library's card dragged onto the list goes in at that place, those from there on shifting on
+//! (`ListEdit::Insert`; one that is in already moves there), refused as a click's is. In a game whose cards go in
+//! slots each card's slot is its own: a slot's card dragged goes back to its slot anywhere but onto the library, which
+//! empties the slot, and a library's card let go anywhere over the slots goes in its own, as a click puts it.
 
 use crate::builds::cards::{self, Line};
 use crate::builds::edit::{self, ListEdit};
@@ -408,18 +410,8 @@ impl PatchCards {
             shell.fly(("card", i as i32), ("lib.rows", row as i32), slint::Image::default(), &name);
             return self.remove(shell, draft, i);
         }
-        let budget = PatchCards::budget(draft);
-        let ui = shell.ui();
-        let view = ui.global::<PatchCardsView>();
-        let refusal = (!PatchCards::slotted(draft)).then(|| budget.as_ref().and_then(|b| b.refusal(draft.content(), draft.side(), h))).flatten();
-        let room = PatchCards::slotted(draft) || PatchCards::installed(draft).iter().flatten().count() < room_of(draft.content(), FIELD);
-        if refusal.is_some() || !room {
-            self.refused += 1;
-            view.set_refused(row as i32);
-            view.set_refused_seq(self.refused);
-            shell.sound.play(Cue::Refused);
-            self.notice = refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r)));
-            return self.show_detail(shell, draft, budget.as_ref());
+        if self.refuse(shell, draft, row, h) {
+            return;
         }
         let slots = draft.kit.builds.slots.clone().filter(|s| s.field == FIELD);
         let mut into = None;
@@ -440,15 +432,73 @@ impl PatchCards {
             return shell.sound.play(Cue::Refused);
         }
         let landed = into.unwrap_or_else(|| PatchCards::installed(draft).iter().position(|c| *c == Some(h)).unwrap_or(0));
+        self.land(shell, draft, row, h, landed);
+    }
+
+    /// Whether the list can't take row `row`'s card `h` (its MB, or no room): if so its row shakes, and the strip says
+    /// why. (In a game with slots a card goes in its own slot, whatever it holds: none is refused.)
+    fn refuse(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, h: EntryHandle) -> bool {
+        let budget = PatchCards::budget(draft);
+        let refusal = (!PatchCards::slotted(draft)).then(|| budget.as_ref().and_then(|b| b.refusal(draft.content(), draft.side(), h))).flatten();
+        let room = PatchCards::slotted(draft) || PatchCards::installed(draft).iter().flatten().count() < room_of(draft.content(), FIELD);
+        if refusal.is_none() && room {
+            return false;
+        }
+        let ui = shell.ui();
+        let view = ui.global::<PatchCardsView>();
+        self.refused += 1;
+        view.set_refused(row as i32);
+        view.set_refused_seq(self.refused);
+        shell.sound.play(Cue::Refused);
+        self.notice = refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r)));
+        self.show_detail(shell, draft, budget.as_ref());
+        true
+    }
+
+    /// Row `row`'s card `h` went in at the build's row `landed`: it flies there from its row, and that row flashes and
+    /// is the one marked.
+    fn land(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, h: EntryHandle, landed: usize) {
         let name = draft.with_words(shell, |w| w.names.entry(h));
         shell.fly(("lib.rows", row as i32), ("card", landed as i32), slint::Image::default(), &name);
         self.landed += 1;
+        let ui = shell.ui();
+        let view = ui.global::<PatchCardsView>();
         view.set_landed(landed as i32);
         view.set_landed_seq(self.landed);
         shell.sound.play(Cue::Pick);
         self.slot = landed;
         self.notice = None;
         self.changed(shell, draft);
+    }
+
+    /// Row `row`'s card dragged onto the build's: in at place `at` of the list, those from there on shifting on (one
+    /// that is in already moves there), refused as a click's is; in a game with slots, in its own slot, as a click puts
+    /// it (one that is in already stays).
+    fn insert(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, at: usize) {
+        let Some(&h) = self.rows.get(row) else { return };
+        let installed = PatchCards::installed(draft);
+        let held = installed.iter().position(|c| *c == Some(h));
+        if PatchCards::slotted(draft) {
+            if held.is_none() {
+                self.put(shell, draft, row);
+            }
+            return;
+        }
+        let at = at.min(installed.iter().flatten().count());
+        if let Some(i) = held {
+            let to = if at > i { at - 1 } else { at };
+            if to != i && self.move_card(shell, draft, i, to) {
+                self.land(shell, draft, row, h, to);
+            }
+            return;
+        }
+        if self.refuse(shell, draft, row, h) {
+            return;
+        }
+        if !draft.edit(|content, side| edit::list(content, side, FIELD, ListEdit::Insert(at, h.0))) {
+            return shell.sound.play(Cue::Refused);
+        }
+        self.land(shell, draft, row, h, at);
     }
 
     /// Take the build's card in row `i` out (in a game with slots, empty the slot).
@@ -494,10 +544,25 @@ impl PatchCards {
         true
     }
 
-    /// Where a card dragged to `at` (the window's point) would land: the card under the pointer (past the last, the
-    /// last); none off the list.
-    fn drop_at(shell: &Shell, draft: &Draft, at: i32) -> Option<usize> {
-        editor::list_row(shell, "card", editor::pointer_at(at), PatchCards::installed(draft).iter().flatten().count())
+    /// Where card `from` dragged to `at` (the window's point) would land: the card under the pointer (past the last,
+    /// the last); none off the list. In a game with slots, its own slot (it can be in no other) while over the list.
+    fn drop_at(shell: &Shell, draft: &Draft, from: usize, at: i32) -> Option<usize> {
+        let slotted = PatchCards::slotted(draft);
+        let rows = if slotted { PatchCards::installed(draft).len() } else { PatchCards::installed(draft).iter().flatten().count() };
+        editor::list_row(shell, "card", editor::pointer_at(at), rows).map(|to| if slotted { from } else { to })
+    }
+
+    /// Where library row `row`'s card dragged to `at` would go in: the place under the pointer (the empty row after
+    /// the cards, at their end), and whether it takes the place of what is there (a game with slots: over the list
+    /// anywhere, its own slot), else those from there on shift on; none off the list.
+    fn landing(&self, shell: &Shell, draft: &Draft, row: usize, at: i32) -> Option<(usize, bool)> {
+        let installed = PatchCards::installed(draft);
+        let to = editor::list_row(shell, "card", editor::pointer_at(at), installed.len())?;
+        let slots = draft.kit.builds.slots.as_ref().filter(|s| s.field == FIELD);
+        match slots {
+            Some(s) => s.own(draft.content(), *self.rows.get(row)?).map(|own| (own, true)),
+            None => Some((to.min(installed.iter().flatten().count()), false)),
+        }
     }
 
     /// The cursor is on the build's row `i`.
@@ -622,12 +687,12 @@ impl Tab for PatchCards {
             // A card dragged: where it would land; let go there, it moves (over the library, it is taken out;
             // elsewhere off the list, it goes back).
             "drag-over" if editor::over_library(shell, choice) => editor::show_remove(shell),
-            "drag-over" => editor::show_drop(shell, PatchCards::drop_at(shell, draft, choice), false),
+            "drag-over" => editor::show_drop(shell, PatchCards::drop_at(shell, draft, index.max(0) as usize, choice), false),
             "drag-drop" => {
                 editor::show_drop(shell, None, false);
                 if index >= 0 && editor::over_library(shell, choice) {
                     self.remove(shell, draft, index as usize);
-                } else if let Some(to) = PatchCards::drop_at(shell, draft, choice).filter(|&to| to as i32 != index && index >= 0)
+                } else if let Some(to) = PatchCards::drop_at(shell, draft, index.max(0) as usize, choice).filter(|&to| to as i32 != index && index >= 0)
                     && self.move_card(shell, draft, index as usize, to)
                 {
                     shell.sound.play(Cue::Pick);
@@ -636,6 +701,18 @@ impl Tab for PatchCards {
                     let view = ui.global::<PatchCardsView>();
                     view.set_landed(to as i32);
                     view.set_landed_seq(self.landed);
+                }
+            }
+            // A library's card dragged: where it would go in (a gap, those from there on shifting; a game with slots,
+            // its own slot outlined); let go there, it goes in; anywhere else, nothing.
+            "drag-in-over" if index >= 0 => {
+                let landing = self.landing(shell, draft, index as usize, choice);
+                editor::show_landing(shell, "card", landing.map(|l| l.0), landing.is_some_and(|l| l.1));
+            }
+            "drag-in-drop" => {
+                editor::show_drop(shell, None, false);
+                if let Some((at, _)) = self.landing(shell, draft, index.max(0) as usize, choice).filter(|_| index >= 0) {
+                    self.insert(shell, draft, index as usize, at);
                 }
             }
             _ => {}
