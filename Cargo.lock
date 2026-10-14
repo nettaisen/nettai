@@ -3287,6 +3287,8 @@ dependencies = [
  "exe6-compat",
  "gamepad-facade",
  "glow 0.16.0",
+ "i-slint-backend-winit",
+ "i-slint-core",
  "libc 0.2.190",
  "log",
  "nettai-audio",

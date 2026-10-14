@@ -102,7 +102,7 @@ fn october(day: u32, hour: u32, minute: u32) -> u64 {
 }
 
 /// Make the pass's replays in `dir`, if they aren't there.
-fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
+pub(super) fn make(shell: &Shell, dir: &Path) -> Result<(), String> {
     if dir.join("made").exists() {
         return Ok(());
     }

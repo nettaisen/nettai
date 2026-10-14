@@ -197,7 +197,7 @@ fn expect(is: impl Fn(&App, &AppWindow) -> bool + 'static, what: &'static str) -
 }
 
 /// What the pass has changed of Practice's remembered choices, forgotten: each walk starts from none.
-fn forget(app: &mut App) {
+pub(super) fn forget(app: &mut App) {
     app.shell.settings.remembered.retain(|key, _| !key.starts_with("training."));
 }
 
