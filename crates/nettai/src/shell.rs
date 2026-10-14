@@ -402,6 +402,7 @@ impl Shell {
         self.sound.set_levels(music, effects);
         let (music, effects) = self.sound.battle_levels();
         if let Some(b) = &mut self.battle {
+            let music = if b.music == crate::battle::BattleMusic::None { 0.0 } else { music };
             b.stage.player.set_sound_levels(music, effects);
         }
     }
@@ -1344,8 +1345,12 @@ impl App {
             self.call(id, |s, shell| s.frame_end(shell, now));
         }
         self.settle();
-        // The title music plays on the menu screens (not under a battle, or under what a screen plays itself).
-        let in_battle = self.shell.battle.is_some() || self.shell.loading.is_some() || ticks.is_some();
+        // The title music plays on the menu screens (not under a battle with music of its own, or under what a
+        // screen plays itself).
+        let silent = |m: crate::battle::BattleMusic| m == crate::battle::BattleMusic::None;
+        let in_battle = self.shell.battle.as_ref().is_some_and(|b| !silent(b.music))
+            || self.shell.loading.as_ref().is_some_and(|l| !silent(l.start.music))
+            || (ticks.is_some() && !self.shell.battle.as_ref().is_some_and(|b| silent(b.music)));
         self.shell.sound.want_music(!in_battle && self.shell.ready().is_some());
         self.shell.sound.frame(now, ticks, &mut samples);
         // The screen that was leaving has left.

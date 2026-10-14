@@ -429,6 +429,7 @@ impl Replays {
             recorder: None,
             cards: Some(cards),
             full: false,
+            music: crate::battle::BattleMusic::GameOwn,
             gate: None,
         });
     }
