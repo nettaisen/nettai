@@ -754,11 +754,11 @@ export component PlayScreen inherits Page {
             Rectangle {
                 x: 12px;
                 y: root.wait-top + root.picture-height - 34px;
-                width: training.preferred-width + 16px;
+                width: practice.preferred-width + 16px;
                 height: 22px;
                 visible: !Theme.phone;
                 background: Theme.shade;
-                training := Text {
+                practice := Text {
                     text: @tr("TRAINING");
                     color: Theme.text;
                     font-family: Theme.display;

@@ -2,7 +2,7 @@
 //!
 //! The player picks one of their builds of the selected game and makes a link with it: an invite (a room of
 //! the signaling server, whose code the server picks), a code typed, or a direct connection. While they wait
-//! for the other player a training session runs beside the invite's code (`crate::screens::training`'s, with
+//! for the other player a training session runs beside the invite's code (`crate::screens::practice`'s, with
 //! this screen's rows in its menu). Once the link is open the two are in
 //! the lobby (`session`: one `Lobby` a link, for as long as they stay together): the match's shared settings,
 //! each one's ready mark, the connection's quality. Both ready, the match is agreed and made ready behind the
@@ -55,7 +55,7 @@ use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress, key_cap, pad_cap};
 use crate::nav::Key;
-use crate::screens::{Screen, ScreenId, training};
+use crate::screens::{Screen, ScreenId, practice};
 use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
@@ -412,7 +412,7 @@ impl Play {
     fn drop_session(&mut self, shell: &mut Shell) {
         if self.session.take().is_some() || !matches!(self.stage, Stage::Idle) {
             if matches!(self.stage, Stage::Waiting) {
-                training::end(shell);
+                practice::end(shell);
             }
             shell.cancel_loading();
             if shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Play) {
@@ -481,7 +481,7 @@ impl Play {
         }
     }
 
-    /// A training session for the wait (Training's own: `training::start`): this player's build against a copy
+    /// A training session for the wait (Training's own: `practice::start`): this player's build against a copy
     /// of it that stands still, with this screen's rows at the top of the training menu. It is beside the
     /// invite, in the screen's `Picture`. On a phone a battle has its pad only where it fills the window, so
     /// there it does, and a row of the menu stops it for the invite again.
@@ -497,13 +497,13 @@ impl Play {
         let view = shell.ui();
         let view = view.global::<PlayView>();
         let rows = self.wait_rows.iter().map(|row| view.invoke_wait_row(*row as i32, direct).to_string()).collect();
-        let mut start = training::Start::beside(&game, training::Build { name, side }, ScreenId::Play, WAIT_ROWS, rows);
+        let mut start = practice::Start::beside(&game, practice::Build { name, side }, ScreenId::Play, WAIT_ROWS, rows);
         start.full = full;
         if shell.still {
             start.seed = 7;
         }
         // (Why it can't start is in the log: the wait goes on without it.)
-        let _ = training::start(shell, start);
+        let _ = practice::start(shell, start);
     }
 
     // ---- The lobby ---------------------------------------------------------------------------------------
@@ -523,7 +523,7 @@ impl Play {
         // (The wait is over: its training session ends. The keys were its battle's, and the cursor on nothing:
         // it is the lobby's again.)
         if matches!(self.stage, Stage::Waiting) {
-            training::end(shell);
+            practice::end(shell);
             let pad = shell.nav.pad();
             shell.nav.used_keys(pad);
         }
@@ -1265,7 +1265,7 @@ impl Screen for Play {
                 self.copy(shell, &invite);
                 shell.close_menu();
             }
-            Some(WaitRow::Stop) => training::end(shell),
+            Some(WaitRow::Stop) => practice::end(shell),
             Some(WaitRow::Cancel) => self.leave(shell),
             None => {}
         }

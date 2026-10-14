@@ -532,7 +532,7 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
         let player = Player::with(graphics(&content, 0x7FFF).renderer(TextMode::Original, None), None, None, Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Training, kind: BattleKind::Training, game: "exe6".into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
                 assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
@@ -582,7 +582,7 @@ mod tests {
         let driver = LivePlayer::against(set, opponent, 11);
         let audio = nettai_frontend::testing::audio(&content);
         let player = Player::with(graphics(&content, 0x7FFF).renderer(TextMode::Original, None), None, Some(audio), Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Training, kind: BattleKind::Training, game: "exe6".into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
         b.pause_in_game();
         // Onto the custom screen, a chip picked; the menu opened there: the battle steps on with no buttons, its
         // sound going on, both screens' cursors and choices as they were (the dummy's presses held too).
@@ -692,7 +692,7 @@ mod tests {
         use nettai_battle::battle::mode;
         let content = nettai_match::testing::exe6_content();
         let mut m = short_set::of(&content, "exe6", 7);
-        let mut b = training(&content, &m, 7, Default::default());
+        let mut b = practice(&content, &m, 7, Default::default());
         for _ in 0..400 {
             frame(&mut b, 0);
         }
@@ -736,7 +736,7 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
         let opponent = nettai_frontend::driver::Opponent { in_fight: nettai_frontend::driver::InFight::AttacksAtRandom, ..Default::default() };
-        let (mut a, mut b) = (training(&content, &m, 11, opponent), training(&content, &m, 11, opponent));
+        let (mut a, mut b) = (practice(&content, &m, 11, opponent), practice(&content, &m, 11, opponent));
         let keys = |tick: u64| if tick % 37 < 3 { nettai_battle::input::keys::A } else if tick % 11 == 0 { nettai_battle::input::keys::B } else { 0 };
         let step = |x: &mut Battle| {
             let t = x.stage.player.ticks();
@@ -772,14 +772,14 @@ mod tests {
     }
 
     /// A training battle of `m`'s (its rounds leaving the game its START), with sound, the dummy as given.
-    fn training(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, opponent: nettai_frontend::driver::Opponent) -> Battle {
+    fn practice(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, opponent: nettai_frontend::driver::Opponent) -> Battle {
         let mut first = m.round(content, seed);
         first.host_keys.pause = false;
         let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().unwrap());
         let driver = LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64);
         let audio = nettai_frontend::testing::audio(content);
         let player = Player::with(graphics(content, 0x7FFF).renderer(TextMode::Original, None), None, Some(audio), Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Training, kind: BattleKind::Training, game: content.game().into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, viewer: 0, menu: false, over: false, game_pause: None };
         b.pause_in_game();
         b
     }
@@ -794,9 +794,9 @@ mod tests {
         let content = nettai_match::testing::exe6_content();
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
         let opponent = Opponent { in_fight: InFight::Ai, on_custom_screen: OnCustomScreen::Ai };
-        let mut b = training(&content, &m, 11, opponent);
+        let mut b = practice(&content, &m, 11, opponent);
         let live = b.stage.player.live_mut().expect("live play");
-        assert_eq!(crate::screens::training::plug(live, opponent, 2, 11, None), Some(2));
+        assert_eq!(crate::screens::practice::plug(live, opponent, 2, 11, None), Some(2));
         let hp = |b: &Battle| {
             let battle = b.stage.player.battle();
             battle.player(0).map(|r| (battle.objects.get(r).hp, battle.objects.get(r).max_hp))
@@ -831,7 +831,7 @@ mod tests {
         // A dimming: play until one begins (the player shooting and using a chip now and then, the dummy at
         // random).
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
-        let mut b = training(&content, &m, 11, opponent);
+        let mut b = practice(&content, &m, 11, opponent);
         let pressed = |tick: u32| match tick % 41 {
             0 | 1 => nettai_battle::input::keys::A,
             n if n % 9 < 2 => nettai_battle::input::keys::B,
@@ -870,7 +870,7 @@ mod tests {
 
         // A round's end: a set a shot decides, the menu opened as the round is decided.
         let m = nettai_frontend::testing::short_set::of(&content, "exe6", 7);
-        let mut b = training(&content, &m, 7, Opponent::default());
+        let mut b = practice(&content, &m, 7, Opponent::default());
         let decided = |b: &Battle| {
             let battle = b.stage.player.battle();
             battle.round.mode == mode::FIGHTING && battle.is_battle_over() && !battle.pausable()
