@@ -1,14 +1,11 @@
 //! The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as cards, the build's
-//! navi beside them (the face its round starts with, its HP then, its element), the build's version as a stepper
-//! (any navi's: the version decides the folder's Giga chips whatever the navi), with the forms it brings the game's
-//! own navi under it while that navi is the build's (EXE6's Crosses, EXE4's and EXE5's souls: `Builds::forms_of`),
-//! and the build's other choices as steppers (the game's builds data's: Light or Dark, of the game's own navi
-//! alone).
+//! navi beside them (the face its round starts with, its HP then, its element), the forms the build's version
+//! brings the game's own navi under them while that navi is the build's (EXE6's Crosses, EXE4's and EXE5's souls:
+//! `Builds::forms_of`; the version is switched by the header's tag, the editor's: `Editor::step_version`), and the
+//! build's other choices as steppers (the game's builds data's: Light or Dark, of the game's own navi alone).
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
-//! navi's alone kept aside in the build's file); the version is `Draft::choose_version` (`Build::set_version`:
-//! what the version sets is the new one's, the rest kept, docs/app.md §8); a choice's preset is
-//! `Builds::take_preset`.
+//! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
 
 use crate::screens::builds::editor::{Draft, Tab};
 use crate::shell::Shell;
@@ -85,11 +82,8 @@ impl Tab for Navi {
             let own = nettai_match::first_navi(&content, &kit.game).map(|n| names.navi(n)).unwrap_or_default();
             view.set_own(own.into());
         });
-        // The version, any navi's; what it brings the game's own navi, while that is the build's.
-        let version = kit.builds.version_of(&content, draft.side()).map(str::to_string);
-        let name = version.as_deref().map(|v| draft.with_words(shell, |words| kit.version_name(words.names, v))).unwrap_or_default();
-        view.set_version(name.into());
-        let forms = match (&version, draft.build.own_navi(&content)) {
+        // What the build's version brings the game's own navi, while that is the build's.
+        let forms = match (kit.builds.version_of(&content, draft.side()), draft.build.own_navi(&content)) {
             (Some(v), true) => kit.builds.forms_of(&content, v).unwrap_or_default(),
             _ => Vec::new(),
         };
@@ -114,29 +108,17 @@ impl Tab for Navi {
                     self.show(shell, draft);
                 }
             }
-            // (Enter on the version or a choice takes the next, as Right does.)
-            "version" | "choice" => self.step(shell, draft, id, index, 1),
+            // (Enter on a choice takes its next preset, as Right does.)
+            "choice" => self.step(shell, draft, id, index, 1),
             _ => {}
         }
     }
 
     fn step(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, by: i32) {
-        let kit = draft.kit.clone();
-        if id == "version" {
-            // (The next version in the game's order; a build of none, the first.)
-            let versions = &kit.builds.versions;
-            let next = match kit.builds.version_of(draft.content(), draft.side()).and_then(|v| versions.iter().position(|x| x.id == v)) {
-                Some(at) => (at as i32 + by).rem_euclid(versions.len() as i32) as usize,
-                None => 0,
-            };
-            if draft.choose_version(&versions[next].id) {
-                self.show(shell, draft);
-            }
-            return;
-        }
         if id != "choice" {
             return;
         }
+        let kit = draft.kit.clone();
         let Some(choice) = kit.builds.choices.get(index.max(0) as usize) else { return };
         let Some(now) = kit.builds.preset_of(draft.content(), draft.side(), &choice.id) else { return };
         let at = choice.presets.iter().position(|p| p.id == now.id).unwrap_or(0) as i32;

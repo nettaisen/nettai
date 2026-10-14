@@ -1,8 +1,8 @@
 // The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as a grid of cards, and
-// beside it the build's navi: the face its round starts with, its HP and its element, the build's version (a
-// stepper, any navi's) with, for the game's own navi, the faces of the forms the version brings it (EXE6's Crosses,
-// EXE4's and EXE5's souls), and for the game's own navi the build's other choices, each a stepper (Light or Dark).
-// On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
+// beside it the build's navi: the face its round starts with, its HP and its element; for the game's own navi the
+// faces of the forms the build's version brings it (EXE6's Crosses, EXE4's and EXE5's souls: the version is
+// switched by the header's tag, docs/design/app-ui.md §2.42), and the build's other choices, each a stepper (Light
+// or Dark). On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Focusable } from "../../nav.slint";
@@ -38,9 +38,8 @@ export global NaviView {
     in property <image> face;
     in property <string> hp;
     in property <image> element;
-    // The build's version, by name (empty: of none), and the faces of the forms it brings the game's own navi
-    // while that is the build's (none for another navi).
-    in property <string> version;
+    // The faces of the forms the build's version brings the game's own navi while that is the build's (none for
+    // another navi, or a build of no version).
     in property <[image]> forms;
     // The game's choices (none in a game without).
     in property <[NaviChoice]> choices;
@@ -95,7 +94,7 @@ export component NaviTab inherits Rectangle {
     property <length> gap: Theme.phone ? 8px : 12px;
     // The build's navi's panel: beside the grid, or on a phone over it.
     property <length> panel-width: Theme.phone ? self.width : 360px;
-    property <length> panel-height: Theme.phone ? 132px + 44px + root.forms-height + NaviView.choices.length * 44px : self.height;
+    property <length> panel-height: Theme.phone ? 132px + root.forms-height + NaviView.choices.length * 44px : self.height;
     property <length> panel-x: Theme.phone ? 0px : self.width - 360px;
     property <length> grid-y: Theme.phone ? root.panel-height + 12px : 0px;
     property <length> grid-width: Theme.phone ? self.width : self.width - 360px - 24px;
@@ -104,7 +103,7 @@ export component NaviTab inherits Rectangle {
     // Where the panel's facts are: under the face, or on a phone beside it.
     property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 16px);
     property <length> facts-y: Theme.phone ? 16px : 80px;
-    property <length> version-y: Theme.phone ? 72px : root.facts-y + 84px;
+    property <length> forms-y: Theme.phone ? 72px : root.facts-y + 84px;
     // The version's forms: their faces twice their size, in as few rows as the panel's width needs, as even as
     // they go (EXE6's five Crosses 3 and 2, six souls 3 and 3 on a desktop).
     property <length> form-gap: 4px;
@@ -112,7 +111,7 @@ export component NaviTab inherits Rectangle {
     property <int> form-rows: ceil(NaviView.forms.length / root.form-fit);
     property <int> form-columns: root.form-rows == 0 ? 1 : ceil(NaviView.forms.length / root.form-rows);
     property <length> forms-height: root.form-rows == 0 ? 0px : root.form-rows * (32px + root.form-gap) + 8px;
-    property <length> choices-y: root.version-y + 44px + root.forms-height;
+    property <length> choices-y: root.forms-y + root.forms-height;
     for navi[i] in NaviView.navis: NaviCardView {
         x: mod(i, root.columns) * (root.card-width + root.gap);
         y: root.grid-y + floor(i / root.columns) * (root.card-height + root.gap);
@@ -200,18 +199,9 @@ export component NaviTab inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    Stepper {
-        x: root.panel-x + 16px;
-        y: root.version-y;
-        nav: "version";
-        nav-index: 0;
-        value: NaviView.version;
-        value-width: Theme.phone ? root.panel-width - 32px - 72px : 256px;
-    }
-
     for form[i] in NaviView.forms: Image {
         x: root.panel-x + 16px + mod(i, root.form-columns) * (64px + root.form-gap);
-        y: root.version-y + 44px + floor(i / root.form-columns) * (32px + root.form-gap);
+        y: root.forms-y + floor(i / root.form-columns) * (32px + root.form-gap);
         width: 64px;
         height: 32px;
         source: form;

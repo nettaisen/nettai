@@ -4,10 +4,10 @@
 // which other screens show too), with EDIT, DUPLICATE, RENAME and, apart, DELETE. On a phone the list is the
 // page, and a build's overview and its buttons are a page of their own behind it.
 //
-// The editor: the build's name, its version's tag and whether it is ready in the header; a tab bar; and under it
-// the tab chosen. Each tab is one file in builds/ (its view, the global its Rust module sets, and its
-// component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says how a
-// tab is added and what it is given. Its Rust half is src/screens/builds/mod.rs.
+// The editor: the build's name, its version's tag (the version's switch) and whether it is ready in the header; a
+// tab bar; and under it the tab chosen. Each tab is one file in builds/ (its view, the global its Rust module sets,
+// and its component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says
+// how a tab is added and what it is given. Its Rust half is src/screens/builds/mod.rs.
 
 import { Theme } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
@@ -194,9 +194,18 @@ export component BuildsScreen inherits Page {
     game: !(Theme.phone && root.editing);
     property <VersionTag> no-tag;
     tag: root.editing ? BuildsView.version : root.no-tag;
+    // (The editor's tag is the build's version's switch: docs/design/app-ui.md §2.42.)
+    tag-nav: "version";
+    property <[Hint]> version-hints: [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
+        { key: "←→", text: @tr("Switch version") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Next version") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+    ];
     state: root.editing ? BuildsView.state : "";
     state-good: BuildsView.state-good;
-    hints: !root.editing ? root.list-hints : (BuildsView.shown == EditorTab.navi ? NaviView.hints : BuildsView.shown == EditorTab.folder ? FolderView.hints : BuildsView.shown == EditorTab.navicust ? NavicustView.hints : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.hints : AutoBattleView.hints);
+    hints: !root.editing ? root.list-hints : Nav.id == "version" ? root.version-hints : (BuildsView.shown == EditorTab.navi ? NaviView.hints : BuildsView.shown == EditorTab.folder ? FolderView.hints : BuildsView.shown == EditorTab.navicust ? NavicustView.hints : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.hints : AutoBattleView.hints);
     status: !root.editing ? @tr("{n} build" | "{n} builds" % BuildsView.builds.length) : (BuildsView.shown == EditorTab.navi ? NaviView.status : BuildsView.shown == EditorTab.folder ? FolderView.status : BuildsView.shown == EditorTab.navicust ? NavicustView.status : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.status : AutoBattleView.status);
 
     // ---- The list.
@@ -428,7 +437,7 @@ component NameDialog inherits DialogFrame {
         width: root.inner-width;
         height: 38px;
         visible: root.versions;
-        text: @tr("{} It can be switched later on the Navi tab.", BuildsView.version-sets);
+        text: @tr("{} It can be switched later in the editor.", BuildsView.version-sets);
     }
 
     confirm := Button {
