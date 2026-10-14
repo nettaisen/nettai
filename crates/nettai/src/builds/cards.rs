@@ -9,8 +9,11 @@
 //! names are the text table `patch_card_groups`). An effect that holds
 //! effects of its own (a table with an `effects` list: EXE4's two-part
 //! card's half) has its line and then theirs. An effect without a line is
-//! one the screen doesn't show, and isn't shown here either. Read by the
-//! data's names alone, as a tool reads any collection's entries.
+//! one the screen doesn't show, and isn't shown here either. An effect that
+//! says its `version` (a card each version's ROM gives effects of its own:
+//! the Bass-Cross MegaMan cards) is that version's alone, shown for a build of
+//! it and not another's. Read by the data's names alone, as a tool reads any
+//! collection's entries.
 
 use crate::games::Names;
 use nettai_content_api::{Data, DataKey, EntryHandle, Registry};
@@ -21,6 +24,8 @@ pub const TABLE: &str = "patch_card_effects";
 pub const GROUPS: &str = "patch_card_groups";
 /// The entries' data field that lists their effects.
 pub const FIELD: &str = "effects";
+/// The effects' field that names the one version whose card has the effect.
+pub const VERSION: &str = "version";
 
 /// One effect as a line: its text, whether the card shows it as a bug,
 /// and the group the card screen lists it in.
@@ -37,15 +42,28 @@ pub struct Line {
 /// keeps the name.
 pub type Named<'a> = &'a dyn Fn(&str, &Data) -> Option<String>;
 
-/// The lines of entry `h`'s effects, in its order, or none when its data
-/// list no effects (an entry of another kind of collection).
-pub fn lines(names: &Names, h: EntryHandle, named: Named) -> Option<Vec<Line>> {
+/// The lines of entry `h`'s effects as a build of version `version` has
+/// them (those of no version's and of its: [`of_version`]), in its order, or
+/// none when its data list no effects (an entry of another kind of
+/// collection).
+pub fn lines(names: &Names, h: EntryHandle, version: Option<&str>, named: Named) -> Option<Vec<Line>> {
     let c = names.content;
     let d = c.defs.definitions.get(Registry::Entry, &c.defs.entry(h).key)?;
     let Data::List(effects) = d.spec.field(FIELD) else { return None };
+    let effects: Vec<Data> = effects.iter().filter(|e| of_version(e, version)).cloned().collect();
     let mut out = Vec::new();
-    of_effects(effects, &|key| names.text(TABLE, key), named, &mut out);
+    of_effects(&effects, &|key| names.text(TABLE, key), named, &mut out);
     Some(out)
+}
+
+/// Whether effect record `r` is one a build of version `version` has: it
+/// names no version, or that one (none: a build of no version, which has
+/// only the effects of none).
+pub fn of_version(r: &Data, version: Option<&str>) -> bool {
+    match r.field(VERSION) {
+        Data::Str(v) => Some(v.as_str()) == version,
+        _ => true,
+    }
 }
 
 /// The lines of `effects` into `out`: each one's, then those of the effects
@@ -84,11 +102,11 @@ pub fn number(names: &Names, h: EntryHandle, field: &str) -> Option<i64> {
     c.defs.definitions.get(Registry::Entry, &c.defs.entry(h).key).and_then(|d| d.spec.field(field).int())
 }
 
-/// The table's key of effect record `r` (`kind`, or `kind.choice`).
+/// The table's key of effect record `r` (`kind`, or `kind.choice`; its `group` and its `version` are no choice).
 pub fn key(r: &Data) -> Option<String> {
     let Data::Map(fields) = r else { return None };
     let Data::Str(kind) = r.field("kind") else { return None };
-    let choice = fields.iter().filter(|(k, _)| !matches!(k, DataKey::Str(s) if s == "kind" || s == "group")).find_map(|(_, v)| match v {
+    let choice = fields.iter().filter(|(k, _)| !matches!(k, DataKey::Str(s) if s == "kind" || s == "group" || s == VERSION)).find_map(|(_, v)| match v {
         Data::Str(s) => Some(s.clone()),
         Data::Ref(_, k) => Some(nettai_match::ids::local(k).to_string()),
         _ => None,

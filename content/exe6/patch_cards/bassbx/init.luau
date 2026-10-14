@@ -2,7 +2,7 @@
 -- The patch card BassBX (111, フォルテBX in the Japanese games), 70 MB.
 
 local cards = require("../rules/patch_cards/cards")
-local charge = require("@self/charge")
+local rapid_buster = require("../lib/patch_cards/rapid_buster")
 local triple_buster = require("../lib/patch_cards/triple_buster")
 
 local card: PatchCard = {
@@ -12,7 +12,7 @@ local card: PatchCard = {
         cards.float_shoes(true),
         cards.air_shoes(true),
         cards.b_button(triple_buster),
-        cards.charged_shot(charge),
+        cards.charged_shot(rapid_buster),
     },
 }
 

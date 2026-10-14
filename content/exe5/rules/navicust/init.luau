@@ -25,6 +25,7 @@
 --   program no room, and the editor refuses an overlap, 0x0813F2A4; docs/design/exe5-map.md §15.13). So a side
 --   states no such thing, and the rules have the one ending.
 
+local apply_cards = require("@exelib/patch_cards/apply")
 local board = require("@self/board")
 local compile = require("@exelib/navicust/compile")
 local programs = require("@self/programs")
@@ -141,8 +142,9 @@ local EXE5: NaviCustGame = {
     -- the bugs stop, else they stay; no card's, the NaviCust's own.
     bug_stop = function(side: number): boolean?
         local value: number? = nil
-        for _, c in rules.setup_of(side).patch_cards :: { PatchCard } do
-            for _, e in c.effects do
+        local setup = rules.setup_of(side)
+        for _, c in setup.patch_cards :: { PatchCard } do
+            for _, e in apply_cards.effects(c, setup.version) do
                 if e.kind == "bug_stopper" then
                     value = e.amount
                     break

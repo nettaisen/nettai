@@ -321,7 +321,6 @@ Each is settled unless the user changes it.
     instead of blue. you should also show the beast form as the first cross in bn6". EXE5's Team Colonel is drawn
     in green; under MegaMan, a BN6 version's faces start with its Beast Out (the builds rules' `shown_first`), then
     its Crosses.
-
 45. **A game changed on Practice's entry keeps the same song playing** (2026-10-14). The user: "switching game in
     practice mode shouldn't restart the music if it's the same music". Where the entry's song after the change of
     game (the header's arrows, or L and R) is the same one, the same pack's same song (a theme picked: BN4 Virus
@@ -335,6 +334,20 @@ Each is settled unless the user changes it.
     read from the content, and Random still picks among all of them. Of the two pairs that differ only in their
     effects, by a bit nothing reads (EXE6's netbattle-95 and 96, EXE5's 93 and 94): "they should count as
     duplicates too", so the effects aren't compared. (docs/app.md §15.)
+48. **Bass-Cross MegaMan is one card whose effects are the build's version's** (2026-10-14). The user: "you should
+    only allow the bass-cross megaman patch card for the given version and it should switch automatically depending
+    on game version, e.g. team protoman can't pick team colonel's. it looks like bn6 is also missing gregar's
+    variant of bass-cross megaman." Then: "well i guess it's actually just the same card, but with different effects
+    depending on version of the game". So it is: in each game one card, one number (EXE6's 117, EXE5's 111), one
+    name and MB, with each version's ROM giving its own effects (EXE6's Gregar ROMs HP+200, SprArmr and B↓Sbustr
+    where Falzar's have HP+20%, FlotShoe and B↓HelzR; EXE5's Team ProtoMan and Team Colonel the same pairs, and each
+    its Hub Style). An effect only one version's card has says its `version` in the content, as a chip says its
+    own; a build of either version holds the card with nothing wrong, and has the effects of its version. The
+    library, the build's list and the strip show the build's version's lines, which change with the header's tag,
+    the card staying where it is. EXE5's sides state their version (its team) as EXE6's do. And of how the content
+    first said it (a card's effects as a list or a table of lists by version): "i don't like this typing, it's
+    weird and confusing. can you make it more consistent?", so a card's effects are always one list, a version's
+    own effect marked by its `version`. (docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 

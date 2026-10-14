@@ -513,20 +513,18 @@ mod tests {
         let m = live(&content, "exe5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_eq!(m.game, "exe5");
-        // An EXE5 match has no version: its sides state none, and its file
-        // has no such key.
-        assert!(m.sides.iter().all(|s| s.version(&content).is_none()));
-        // (Nor anything else: EXE5's rules require no fact, and a random
+        // (Its sides' versions picked: EXE5's rules take one, its team.)
+        assert!(m.sides.iter().all(|s| s.version(&content).is_some()));
+        // (Nothing else: EXE5's rules require no other fact, and a random
         // side's are their defaults, but its navi and its folder: its auto
         // battle data the rules' default, nothing learned.)
         let defaults = crate::Facts::defaults(&content);
         for s in &m.sides {
-            let own = ["navi", "folder", "regular_chip", "tag_chips"];
+            let own = ["navi", "folder", "regular_chip", "tag_chips", "version"];
             for f in crate::facts::fields(&content).into_iter().filter(|f| !own.contains(&f.name)) {
                 assert_eq!(s.facts.get(&content, f.name), defaults.get(&content, f.name), "{}", f.name);
             }
         }
-        assert!(!crate::write(&content, &m).contains("version"));
         assert!(m.sides.iter().flat_map(|s| s.folder(&content).chips().collect::<Vec<_>>()).all(|c| ids::in_game(&content, "exe5", &content.defs.chip(c.id).key)));
         // (A random match states no auto battle data: its file has none.)
         assert!(!crate::write(&content, &m).contains("auto_battle"));

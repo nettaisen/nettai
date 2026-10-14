@@ -112,6 +112,7 @@ patch_cards.ENCOUNTER = { oil_body = 2, fish = 4, battery = 8, jungle = 0x10, se
 -- ---- The effects (@exelib/patch_cards/effects, EXE6's too) ----------------
 
 patch_cards.bug = effects.bug
+patch_cards.version = effects.version
 patch_cards.hp = effects.hp
 patch_cards.hp_percent = effects.hp_percent
 patch_cards.body = effects.body
