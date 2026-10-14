@@ -867,6 +867,10 @@ export type PatchCardEffect = {
     what: string?,
     -- The card shows it as a bug.
     bug: boolean?,
+    -- The version of the game whose card has it (the side's version fact's value, the builds rules' version id): an
+    -- effect of a card each version's ROM gives effects of its own (EXE6's and EXE5's Bass-Cross MegaMan, one number
+    -- and one name), which a side of another version's doesn't have. None: every version's card has it.
+    version: string?,
     -- The group its card screen lists it in, as the effect's constructor says: "parameter" (a stat's change) or
     -- "ability" (the rest, the bugs among them).
     group: ("parameter" | "ability")?,
@@ -1826,7 +1830,9 @@ export type SupportsLook = {
 -- locales' (locales/<lang>.toml's `[patch_cards]`), and so is each effect's
 -- line on its card screen (`[patch_card_effects]`, by the effect's kind and
 -- its one choice's name). Its effects are in its card screen's order (the
--- original's effect numbers'), which the content keeps.
+-- original's effect numbers'), which the content keeps; an effect only one
+-- version's card has says its `version`, and a side's card has those of the
+-- side's version and those of none (@exelib/patch_cards/apply's `effects`).
 export type PatchCardSpec = {
     -- Its id, its key in its collection (`patch_cards.canodumb`): the
     -- loader's to read, never written in the table.

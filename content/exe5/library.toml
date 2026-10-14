@@ -1,5 +1,5 @@
-# EXE5's library order: the NaviCust programs and patch cards by their numbers (card 111 Team ProtoMan's
-# first), and the chips by library category in the order the game's own library screen lists them (0x0812CE64 on:
+# EXE5's library order: the NaviCust programs and patch cards by their numbers, and the chips by library
+# category in the order the game's own library screen lists them (0x0812CE64 on:
 # Standard, Mega, Giga, Secret, Program Advance, Dark), Team ProtoMan's version chips before Team Colonel's where
 # the two teams list different chips at the same places (Mega #22-39, Giga #1-6). Written by the verification
 # workspace's tools/exe5/gen_content.py from the ROMs; its `check` compares it with them. Menus list in it
@@ -165,8 +165,7 @@ patch_cards = [
     "nebula-gray",
     "dads-repair-program",
     "hub-hikari",
-    "bass-cross-megaman-protoman",
-    "bass-cross-megaman-colonel",
+    "bass-cross-megaman",
 ]
 
 [chips]

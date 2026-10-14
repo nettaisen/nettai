@@ -14,6 +14,9 @@
 -- counted. A card that lists one effect twice applies the first only. The
 -- cards' run over the block is the one EXE5's shares
 -- (@exelib/patch_cards/apply); EXE6's are its seed, its copy and its count.
+-- A card's effects are those of the side's version (its setup's `version`):
+-- the one card the two versions' card tables differ in, Bass-Cross MegaMan
+-- (117), states each version's.
 
 local apply_cards = require("@exelib/patch_cards/apply")
 local cards = require("@self/cards")
@@ -56,7 +59,8 @@ end
 -- MegaMan's stats: with a link navi operated the original doesn't run the
 -- routine, and the flag is as the stats are.
 local function apply(side: number)
-    local installed: { PatchCard } = rules.setup_of(side).patch_cards
+    local setup = rules.setup_of(side)
+    local installed: { PatchCard } = setup.patch_cards
     if #installed == 0 then
         return
     end
@@ -78,7 +82,7 @@ local function apply(side: number)
         body = bit32.band(stats.element + 4, 0xFF),
     }
     local written: { [string]: boolean }
-    hp, written = apply_cards.run(installed, cards.GAME, hp, slot)
+    hp, written = apply_cards.run(installed, setup.version, cards.GAME, hp, slot)
 
     -- The copy (`sub_8142230`): the HP, then each slot a card wrote.
     stats.max_hp = hp
@@ -158,7 +162,8 @@ end
 -- the bug it is (`card_bug`, ../navicust's), and their MB against the list's.
 local function overview(side: number, card_bug: (e: PatchCardEffect) -> SetupBug, out: SetupOverview)
     local applies = battle.navi(side).navi.forms ~= nil
-    apply_cards.overview(rules.setup_of(side).patch_cards, LIST_MB, BUG_KINDS, applies, card_bug, out)
+    local setup = rules.setup_of(side)
+    apply_cards.overview(setup.patch_cards, setup.version, LIST_MB, BUG_KINDS, applies, card_bug, out)
 end
 
 return {

@@ -1624,13 +1624,13 @@ five flags and a save import writes as the list: `[]` for a save that
 owns none); `beast_out`; `bug_frags`. EXE5's: `karma` (the
 light/dark value; dark under 470), `souls` (up to sixteen, either
 version's; every soul unless said; none, no soul button, as a save without
-Soul Unison has) and `chaos_unison` (the save's event flag 0x236). An EXE5 match has no
-version: Team ProtoMan and Team Colonel play alike (its rules take none: a
-side may hold either version's souls and chips), so a `version` in an EXE5
-match is refused as any key its rules don't declare, and its sides bring
-none to a battle (their navis' version byte is 0, as an EXE5 recording's).
-A version is still read at the edges that have one: a save's, a recording's
-console's.
+Soul Unison has) and `chaos_unison` (the save's event flag 0x236). An EXE5 match's
+sides state their `version` (required: `protoman` or `colonel`, the team):
+Team ProtoMan and Team Colonel play alike but for the patch card Bass-Cross
+MegaMan (111), whose effects are each team's own (a side may hold either
+version's souls and chips all the same). Nothing else reads it in a battle
+(their navis' version byte is still 0, as an EXE5 recording's); a save's
+import and a recording state it from the save's and the console's team.
 
 An EXE5 match (`game = "exe5"`) names EXE5's navis, chips, patch cards and
 NaviCust programs, and its sides may say besides:

@@ -335,8 +335,8 @@ pub fn no_field(content: &Content, field: &str) -> String {
 /// The versions a side of the game states one of, by the names its rules
 /// declare, in their order: the names of the engine's version fact
 /// (`PlayerFact::Version`, an enum of the rules' setup: EXE6's cross
-/// part's "gregar" and "falzar", the original's order). None: the rules
-/// take no version. Tools go by the order: a version's place is its number
+/// part's "gregar" and "falzar", the original's order; EXE5's teams,
+/// "protoman" and "colonel"). None: the rules take no version (EXE4's). Tools go by the order: a version's place is its number
 /// in a navi's stats (`crate::version_byte`).
 pub fn versions(content: &Content) -> &[String] {
     content.defs.versions()
@@ -668,8 +668,9 @@ impl Side {
     }
 
     /// Whether a side takes a version (the engine's version fact: EXE6's
-    /// cross and rules/beast `version`, gregar or falzar). EXE5's rules
-    /// don't: its two versions play alike, and a match of it states none.
+    /// cross and rules/beast `version`, gregar or falzar; EXE5's team, whose
+    /// patch card Bass-Cross MegaMan is its own). EXE4's rules don't: its
+    /// two versions play alike, and a match of it states none.
     pub fn takes_version(content: &Content) -> bool {
         !versions(content).is_empty()
     }

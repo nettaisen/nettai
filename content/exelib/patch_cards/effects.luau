@@ -72,6 +72,14 @@ function effects.bug(e: PatchCardEffect): PatchCardEffect
     return effect(copy)
 end
 
+-- An effect only version `version`'s card has (the side's version fact's value, the builds rules' version id): of a
+-- card each version's ROM gives effects of its own (EXE6's and EXE5's Bass-Cross MegaMan, one number and one name).
+function effects.version(version: string, e: PatchCardEffect): PatchCardEffect
+    local copy = table.clone(e)
+    copy.version = version
+    return copy
+end
+
 -- Max HP: plus or minus `n` (a multiple of 10: the original's card table keeps it in tens, a byte, which its card
 -- screen shows times ten; the amount is the HP itself).
 function effects.hp(n: number): PatchCardEffect

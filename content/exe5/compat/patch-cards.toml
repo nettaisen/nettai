@@ -1,7 +1,7 @@
 # The patch cards (EXE5's Modification Cards, 改造カード; content/exe5/patch_cards/) by their number, which a save's
 # card list holds (0x79D0: a card a byte, bit 7 switched off). Written by the verification workspace's
-# tools/exe5/gen_content.py (gen_patch_cards.py) from the card tables of the four ROMs. Card 111 is each
-# team's own: its two definitions by version ([by-version.protoman], [by-version.colonel]).
+# tools/exe5/gen_content.py (gen_patch_cards.py) from the card tables of the four ROMs. Card 111 is one card
+# whose effects are each team's own (its definition's effects by version).
 
 "alpha" = 104
 "alphabug" = 71
@@ -11,6 +11,7 @@
 "aquaman" = 91
 "basher" = 68
 "bass" = 34
+"bass-cross-megaman" = 111
 "bassgs" = 105
 "bassxx" = 107
 "batty" = 79
@@ -113,9 +114,3 @@
 "yahoots-bug-repair" = 99
 "yort" = 14
 "zomon" = 26
-
-[by-version.protoman]
-"bass-cross-megaman-protoman" = 111
-
-[by-version.colonel]
-"bass-cross-megaman-colonel" = 111
