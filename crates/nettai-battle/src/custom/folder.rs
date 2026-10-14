@@ -127,10 +127,15 @@ impl BattleFolder {
             let n = gigas.len();
             shuffle(&mut gigas, 2 * n, || rng.next_positive().into());
             for g in gigas {
+                // (A folder the rules accept has at most a few Gigas, so more than 12 others. One they refuse, as a
+                // folder still being made can be, has its Gigas go last instead of dividing by 0.)
+                let span = (normal.len() as u32).saturating_sub(12);
                 let at = if battle_mode == 1 {
                     8 + rng.next_positive() % 11
+                } else if span == 0 {
+                    normal.len() as u32
                 } else {
-                    10 + rng.next_positive() % (normal.len() as u32 - 12)
+                    10 + rng.next_positive() % span
                 } as usize;
                 if at <= normal.len() {
                     normal.insert(at, g);
@@ -260,6 +265,15 @@ mod tests {
         ];
         let saved = SavedFolder { chips: chips(saved), regular: Some(1), tags: Some((3, 4)) };
         check(saved, 0x0B48_8EEC, recorded, expected, 0x40D3_D040);
+    }
+
+    /// A folder of 18 Gigas, which no rules accept, is dealt without stopping: its Gigas go last.
+    #[test]
+    fn a_folder_of_mostly_gigas_is_dealt() {
+        let mut saved = [0x0001u16; FOLDER_SIZE];
+        saved[12..].fill(0x0130);
+        let f = BattleFolder::shuffled(&SavedFolder { chips: chips(saved), regular: None, tags: None }, 0, &mut Rng::new(1), &library());
+        assert_eq!(f.chips.iter().flatten().count(), FOLDER_SIZE);
     }
 
     #[test]
