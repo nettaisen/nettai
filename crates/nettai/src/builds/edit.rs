@@ -34,8 +34,19 @@ pub enum ListEdit {
     /// One added at its end.
     Add(u16),
     Remove(usize),
-    /// An entry a place up (true) or down.
-    Move(usize, bool),
+    /// An entry moved to another place, those between shifting one toward where it was.
+    Move(usize, usize),
+}
+
+/// Where the entry at `i` is after the one at `from` is moved to `to`, those between shifting one toward where it
+/// was.
+pub fn moved(i: usize, from: usize, to: usize) -> usize {
+    match i {
+        _ if i == from => to,
+        _ if from < i && i <= to => i - 1,
+        _ if to <= i && i < from => i + 1,
+        _ => i,
+    }
 }
 
 /// Apply `edit` to the side's list `name`: whether it changed.
@@ -48,10 +59,9 @@ pub fn list(content: &Content, side: &mut Side, name: &str, edit: ListEdit) -> b
         ListEdit::Remove(i) if i < items.len() => {
             items.remove(i);
         }
-        ListEdit::Move(i, up) => {
-            let j = if up { i.checked_sub(1) } else { (i + 1 < items.len()).then_some(i + 1) };
-            let Some(j) = j.filter(|_| i < items.len()) else { return false };
-            items.swap(i, j);
+        ListEdit::Move(from, to) if from != to && from.max(to) < items.len() => {
+            let item = items.remove(from);
+            items.insert(to, item);
         }
         _ => return false,
     }
@@ -76,6 +86,9 @@ pub enum FolderEdit {
     Regular(usize),
     /// The entry made a tag chip (its pair the next one tagged), or no longer.
     Tag(usize),
+    /// The entry moved to another, those between shifting one toward where it was: the Regular and tag marks go
+    /// with their chips.
+    Move(usize, usize),
 }
 
 /// The folder `edit` makes of `f`; none: it changes nothing (an entry past the folder, a mark on an empty
@@ -107,6 +120,18 @@ pub fn folder_after(content: &Content, f: &nettai_match::Folder, edit: FolderEdi
                 Some((a, b)) if a == b => Some((a.min(i), a.max(i))),
                 _ => Some((i, i)),
             };
+        }
+        FolderEdit::Move(from, to) if from != to && from.max(to) < f.chips.len() => {
+            let chip = f.chips[from];
+            if from < to {
+                f.chips.copy_within(from + 1..=to, from);
+            } else {
+                f.chips.copy_within(to..from, to + 1);
+            }
+            f.chips[to] = chip;
+            let at = |i: u8| moved(i as usize, from, to) as u8;
+            f.regular = f.regular.map(at);
+            f.tags = f.tags.map(|(a, b)| (at(a).min(at(b)), at(a).max(at(b))));
         }
         _ => return None,
     }
@@ -144,14 +169,20 @@ mod tests {
         assert!(folder(&six, side, FolderEdit::Regular(1)));
         assert!(folder(&six, side, FolderEdit::Tag(0)) && folder(&six, side, FolderEdit::Tag(1)));
         assert_eq!((side.folder(&six).regular, side.folder(&six).tags), (Some(1), Some((0, 1))));
+        // (Moved, the marks go with their chips.)
+        assert!(folder(&six, side, FolderEdit::Move(0, 3)));
+        assert_eq!((side.folder(&six).chips[3].is_some(), side.folder(&six).chips[0].is_some()), (true, true));
+        assert_eq!((side.folder(&six).regular, side.folder(&six).tags), (Some(0), Some((0, 3))));
+        assert!(folder(&six, side, FolderEdit::Move(3, 0)) && !folder(&six, side, FolderEdit::Move(2, 2)));
+        assert_eq!((side.folder(&six).regular, side.folder(&six).tags), (Some(1), Some((0, 1))));
         assert!(folder(&six, side, FolderEdit::Clear(1)));
         assert_eq!((side.folder(&six).regular, side.folder(&six).tags), (None, None));
         let cards = of_game(&six, "exe6", Registry::Entry, Some("patch_cards"));
         assert!(list(&six, side, "patch_cards", ListEdit::Add(cards[0])) && list(&six, side, "patch_cards", ListEdit::Add(cards[1])));
         assert!(!list(&six, side, "patch_cards", ListEdit::Add(cards[0])), "once");
-        assert!(list(&six, side, "patch_cards", ListEdit::Move(1, true)));
+        assert!(list(&six, side, "patch_cards", ListEdit::Move(1, 0)));
         assert_eq!(side.facts.get(&six, "patch_cards").unwrap().defs(), [cards[1], cards[0]]);
-        assert!(!list(&six, side, "patch_cards", ListEdit::Move(0, true)));
+        assert!(!list(&six, side, "patch_cards", ListEdit::Move(0, 2)) && !list(&six, side, "patch_cards", ListEdit::Move(1, 1)));
         assert!(list(&six, side, "patch_cards", ListEdit::Remove(0)));
         assert_eq!(side.facts.get(&six, "patch_cards").unwrap().defs(), [cards[0]]);
     }

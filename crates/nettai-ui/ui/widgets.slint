@@ -16,7 +16,7 @@
 // row's bar slides to the next), with the theme's durations. A screen writes no animation to get that.
 
 import { Theme, Audit } from "theme.slint";
-import { Nav, NavKind, Focusable } from "nav.slint";
+import { Nav, NavKind, Focusable, Drag } from "nav.slint";
 import { Tween, Pulse } from "motion.slint";
 
 // ---- Shapes ---------------------------------------------------------------------------------------------
@@ -874,17 +874,25 @@ export component RowBack inherits Rectangle {
 export component RowTouch inherits TouchArea {
     in property <string> nav;
     in property <int> nav-index;
-    // A right click on it removes what it holds, as Del does (`Nav.choose("remove", ...)` after the focus comes).
-    in property <bool> removable;
+    // It is the marked row of a build's list: a click on it removes what it holds, as Del does (`Drag.clicked`).
+    in property <bool> marked;
+    // The list its row can be dragged in to another place (`Drag`), or none.
+    in property <string> drag;
+    // (It was marked as the button went down: the press marks the row it is on.)
+    property <bool> was-marked;
     clicked => {
-        Nav.activate(nav, nav-index);
+        Drag.clicked(root.drag, nav, nav-index, root.was-marked);
     }
     pointer-event(e) => {
         if e.kind == PointerEventKind.down {
+            root.was-marked = root.marked && e.button == PointerEventButton.left;
             Nav.point(nav, nav-index);
-            if root.removable && e.button == PointerEventButton.right {
-                Nav.choose("remove", nav-index, 0);
-            }
+        }
+        Drag.pointer(root.drag, nav-index, e, self.absolute-position, self.mouse-x, self.mouse-y);
+    }
+    moved => {
+        if self.pressed {
+            Drag.move(root.drag, self.absolute-position, self.mouse-x, self.mouse-y);
         }
     }
 }
@@ -1352,6 +1360,10 @@ component Scroller inherits Rectangle {
     property <length> ay: self.absolute-position.y;
     property <length> slid;
     property <int> slides;
+    // A row of it being dragged (`Drag`, its list named as it is) near its top or bottom edge, or a little past
+    // it: it scrolls that way, and where the row would land is asked again. -1 up, 1 down, 0 neither.
+    property <length> edge: 32px;
+    property <int> edging: !Drag.on || Drag.list != root.nav || Drag.x < root.ax || Drag.x > root.ax + self.width ? 0 : (Drag.y < root.ay + root.edge && Drag.y > root.ay - 3 * root.edge) ? -1 : (Drag.y > root.ay + self.height - root.edge && Drag.y < root.ay + self.height + 3 * root.edge) ? 1 : 0;
     function place() {
         if root.list {
             Nav.page(root.nav, root.ax, root.ay, root.view-width, self.height, root.content-height, root.scroll);
@@ -1363,6 +1375,15 @@ component Scroller inherits Rectangle {
     slide := Tween {
         seq: root.slides;
         duration: Theme.brisk;
+    }
+
+    Timer {
+        interval: 16ms;
+        running: root.edging != 0;
+        triggered => {
+            root.content-y = clamp(root.content-y - root.edging * 8px, min(0px, root.height - root.content-height), 0px);
+            Drag.over();
+        }
     }
 
     Rectangle {
@@ -1444,6 +1465,8 @@ component Scroller inherits Rectangle {
 export component ScrollPage inherits Rectangle {
     in property <string> nav;
     in property <length> content-height;
+    // A mouse's drag scrolls it (a touch's always does).
+    in property <bool> mouse-pan: true;
     out property <length> view-width: flick.width;
     out property <length> scroll: scroller.scroll;
     scroller := Scroller {
@@ -1462,6 +1485,7 @@ export component ScrollPage inherits Rectangle {
         width: scroller.view-width;
         content-width: self.width;
         content-height: scroller.content-height;
+        mouse-drag-pan-enabled: root.mouse-pan;
         Rectangle {
             y: scroller.offset;
             @children
