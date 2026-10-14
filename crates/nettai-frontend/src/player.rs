@@ -943,7 +943,7 @@ mod tests {
             let frame = on.frame();
             let t = on.battle().round.ticks;
             let plain = off.frame();
-            assert!(plain.nudge.is_none() && plain.pixels == frame.pixels, "tick {t}: reduced motion's");
+            assert!(plain.nudge.is_none() && plain.overlays.is_empty() && plain.pixels == frame.pixels, "tick {t}: reduced motion's");
             if let Some(n) = &frame.nudge {
                 assert!(n.sub > 0 && n.sub < 16);
                 nudged_gauge += 1;
@@ -953,9 +953,9 @@ mod tests {
             again.hud_state = on.renderer().hud_state.clone();
             let copy = on.battle().clone();
             let redrawn = again.render(&copy);
-            assert!(redrawn.pixels == frame.pixels && redrawn.nudge == frame.nudge, "tick {t}: drawn again");
+            assert!(redrawn.pixels == frame.pixels && redrawn.nudge == frame.nudge && redrawn.overlays == frame.overlays, "tick {t}: drawn again");
             let o = original.frame();
-            assert!(o.pixels == original_reduced.frame().pixels && o.nudge.is_none() && o.pixels == frame.pixels, "tick {t}: the original's");
+            assert!(o.pixels == original_reduced.frame().pixels && o.nudge.is_none() && o.overlays.is_empty() && o.pixels == frame.pixels, "tick {t}: the original's");
             fought += (on.battle().round.mode == mode::FIGHTING && on.battle().fight.state == fight::FIGHTING) as u32;
             if fought > 60 {
                 break;
