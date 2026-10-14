@@ -1192,8 +1192,8 @@ fn names(ui: &nettai_ui::AppWindow) -> (Vec<String>, Vec<String>, Vec<(i32, Stri
     (folder, cards, places)
 }
 
-/// The mouse on the build's lists (docs/app.md §8): a click on the marked folder entry takes its chip out (a double
-/// click on another only marks it); an entry dragged three rows down (shot as it is held there, the rows between
+/// The mouse on the build's lists (docs/app.md §8): clicks on a folder entry, a double click and one more, leave its
+/// chip in (a click removes nothing); an entry dragged three rows down (shot as it is held there, the rows between
 /// shifted up, and let go: it is there, those between one up); a patch card dragged above the one before it; an auto
 /// battle place's chip dragged two places back in its list (those between shift on), then into another list's place
 /// (the two trade), then into the Mega list, which the rules refuse it (it shakes, and nothing changes). On a phone,
@@ -1208,27 +1208,18 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     add(SETTLE, to_tab(EditorTab::Folder));
     add(SETTLE, out_of_library());
     if !phone {
-        // A double click on an entry not marked: marked, and its chip taken out ("fast double click should remove").
+        // Clicks remove nothing ("remove double clicking to remove", "remove that too"): a double click on an entry
+        // marks it, and a click on it marked leaves its chip in.
         add(SETTLE, focus("slot", 0));
         add(SETTLE, click("slot", 2));
         add(40, click("slot", 2));
+        add(600, click("slot", 2));
         add(SETTLE, expect(|ui, app| {
             let there = ui.global::<FolderView>().get_slots().row_data(2).map(|s| s.there);
-            focus_on(app, "slot", 2).or_else(|| (there != Some(false)).then(|| "a double click on entry 3, not marked: its chip isn't taken out".to_string()))
-        }));
-        // A double click on the marked entry 4: one thing taken out (its chip), entry 5 untouched.
-        add(SETTLE, keep(&kept));
-        add(SETTLE, click("slot", 3));
-        add(600, click("slot", 3));
-        add(40, click("slot", 3));
-        let was = kept.clone();
-        add(SETTLE, expect(move |ui, _| {
-            let slots = ui.global::<FolderView>().get_slots();
-            let (four, five) = (slots.row_data(3).map(|s| s.there), slots.row_data(4).map(|s| s.name.to_string()));
-            (four != Some(false) || five.as_ref() != was.borrow().0.get(4)).then(|| format!("a double click on the marked entry 4: it holds {four:?}, entry 5 {five:?}"))
+            focus_on(app, "slot", 2).or_else(|| (there != Some(true)).then(|| "clicks on entry 3 took its chip out".to_string()))
         }));
         add(SETTLE, hover("slot", 9));
-        shot(add, "tabs-folder-click-removed", Pair::None);
+        shot(add, "tabs-folder-clicked-twice", Pair::None);
     }
     // An entry dragged three rows down, held there: the rows between have shifted up, a gap where it would land.
     add(SETTLE, keep(&kept));
@@ -1421,10 +1412,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
     open_build(add, false);
     add(SETTLE, to_tab(EditorTab::Navicust));
-    // A click on the marked entry: it is emptied.
     add(SETTLE, to_tab(EditorTab::Folder));
-    add(SETTLE, focus("slot", 3));
-    burst(add, "folder-click-marked", &[0, 60, 120, 200, 320, 480], click("slot", 3));
     // An entry dragged three rows down: it lifts under the pointer, those between slide up to leave a gap where it
     // would land, and let go it lands there with a flash.
     burst(add, "folder-drag", &[0, 60, 120, 200, 280, 360, 440, 520, 640, 800], pointer(|_, _| Some(drag_rows("slot", 5, 3))));

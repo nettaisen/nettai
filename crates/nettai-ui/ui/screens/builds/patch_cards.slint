@@ -308,7 +308,6 @@ component InstalledRowView inherits Rectangle {
     touch := RowTouch {
         nav: "card";
         nav-index: root.nav-index;
-        marked: root.chosen && !Theme.phone;
         drag: root.slotted || !root.card.there || root.nav-index < 0 ? "" : "card";
         removable: root.nav-index >= 0;
     }
