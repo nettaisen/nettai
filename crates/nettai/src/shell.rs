@@ -66,12 +66,65 @@ const TAG_LIST: f32 = 168.0;
 /// room at each side.
 const MENU_WIDTH: f32 = 200.0;
 
-/// What a list of choices is: a select's, a list of tags, or a menu of actions whose rows from `apart` on (where
-/// some) are set apart in the error color.
+/// A grid of pictures' sizes (`Shell::pick_grid`; the UI's `PickerLayer` lays it out by the same): its columns, a
+/// cell's width (on a phone, the sheet's width shared by its three), the gap between cells, the room under a
+/// cell's picture for its name, the padding around the cells (the scrollbar's 12 besides at the right, and 4
+/// more), and the most rows it shows at once. A cell's picture is two fifths as tall as it is wide.
+const GRID_COLUMNS: usize = 5;
+const GRID_PHONE_COLUMNS: usize = 3;
+const GRID_CELL: f32 = 120.0;
+const GRID_GAP: f32 = 8.0;
+const GRID_PHONE_GAP: f32 = 6.0;
+const GRID_NAME: f32 = 34.0;
+const GRID_PAD: f32 = 8.0;
+const GRID_RIGHT: f32 = 16.0;
+const GRID_ROWS: usize = 5;
+/// A grid's cell's control (each cell is focused, where a list's rows are its list's).
+const GRID_CELL_KEY: &str = "pick.grid.cell";
+
+/// What a list of choices is: a select's, a list of tags, a menu of actions whose rows from `apart` on (where
+/// some) are set apart in the error color, or a grid of the choices' pictures.
 enum Look {
     Select,
     Tags(Vec<slint::Color>),
     Menu { apart: Option<usize> },
+    Grid(ModelRc<slint::Image>),
+}
+
+/// A grid's layout: its columns, a cell's width, and the gap between two cells.
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct Grid {
+    columns: usize,
+    cell: f32,
+    gap: f32,
+}
+
+impl Grid {
+    /// A grid on a phone's sheet `width` wide, or a desktop's.
+    fn of(phone: bool, width: f32) -> Grid {
+        let (columns, gap) = if phone { (GRID_PHONE_COLUMNS, GRID_PHONE_GAP) } else { (GRID_COLUMNS, GRID_GAP) };
+        let cell = if phone { (width - GRID_PAD - GRID_RIGHT - (columns - 1) as f32 * gap) / columns as f32 } else { GRID_CELL };
+        Grid { columns, cell, gap }
+    }
+
+    /// The width of its panel: its cells, their gaps and its padding.
+    fn width(&self) -> f32 {
+        self.columns as f32 * self.cell + (self.columns - 1) as f32 * self.gap + GRID_PAD + GRID_RIGHT
+    }
+
+    /// The height of its panel showing `rows` rows of cells.
+    fn height(&self, rows: usize) -> f32 {
+        rows as f32 * (self.cell * 0.4 + GRID_NAME + self.gap) - self.gap + 2.0 * GRID_PAD
+    }
+
+    /// The rows it shows at once of `count` choices, and whether it goes under its select: as many as it has, up
+    /// to [`GRID_ROWS`] and to the whole rows there is room for `under` the select or `over` it, as a list's
+    /// ([`picker_rows`]).
+    fn rows(&self, count: usize, under: f32, over: f32) -> (usize, bool) {
+        let fit = |room: f32| (1..=GRID_ROWS).rev().find(|&rows| self.height(rows) <= room).unwrap_or(1);
+        let wanted = count.div_ceil(self.columns).clamp(1, GRID_ROWS);
+        if wanted <= fit(under) || under >= over { (wanted.min(fit(under)), true) } else { (wanted.min(fit(over)), false) }
+    }
 }
 
 /// The rows a select's list of `options` choices shows at once, and whether it goes under its select: as many
@@ -585,20 +638,48 @@ impl Shell {
         self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Tags(tones), chosen as i32);
     }
 
+    /// Open a select's choices as a grid of their pictures by it (Practice's Arena and Background; on a phone, a
+    /// sheet from the bottom), as [`Shell::pick`] opens a list: each choice its picture (`pictures`, which may
+    /// fill in as they are drawn) over its name, five to a row (a phone's three), as many rows shown as there
+    /// are, up to [`GRID_ROWS`] and to what the window has room for; more scroll, the chosen one in view.
+    pub fn pick_grid(&mut self, id: &str, index: i32, options: Vec<String>, chosen: usize, pictures: ModelRc<slint::Image>) {
+        self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Grid(pictures), chosen as i32);
+    }
+
     /// Open the list of `key`'s choices by the control `at`, `chosen` marked (-1: none, the cursor on the first).
     fn open_picker(&mut self, key: Key, at: &Key, options: Vec<String>, look: Look, chosen: i32) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let by = self.nav.registry().borrow().rect(at).unwrap_or_default();
         let window = ui.window().size().to_logical(ui.window().scale_factor());
+        let grid = matches!(look, Look::Grid(_)).then(|| Grid::of(self.scale.phone, window.width));
         // (A phone's sheet is at the window's foot, three fifths of it at the most.)
-        let (rows, under) = if self.scale.phone { picker_rows(options.len(), window.height * 0.6, 0.0) } else { picker_rows(options.len(), window.height - by.bottom() - 8.0, by.y - 8.0) };
-        let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - (rows as f32 * PICKER_ROW + 2.0) };
+        let (under, over) = if self.scale.phone { (window.height * 0.6, 0.0) } else { (window.height - by.bottom() - 8.0, by.y - 8.0) };
+        let (rows, under, height) = match grid {
+            Some(grid) => {
+                let (rows, under) = grid.rows(options.len(), under, over);
+                (rows, under, grid.height(rows))
+            }
+            None => {
+                let (rows, under) = picker_rows(options.len(), under, over);
+                (rows, under, rows as f32 * PICKER_ROW + 2.0)
+            }
+        };
+        let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - height };
         let (width, x) = match &look {
             Look::Select => (by.w, by.x),
             Look::Tags(_) => (by.w.max(TAG_LIST), by.x),
             Look::Menu { .. } => (MENU_WIDTH, by.right() - MENU_WIDTH),
+            Look::Grid(_) => (grid.map_or(0.0, |g| g.width()), by.x),
         };
+        let (columns, cell) = grid.map_or((GRID_COLUMNS, GRID_CELL), |g| (g.columns, g.cell));
+        shell.set_picker_grid(grid.is_some());
+        shell.set_picker_columns(columns as i32);
+        shell.set_picker_cell(cell);
+        shell.set_picker_pictures(match &look {
+            Look::Grid(pictures) => pictures.clone(),
+            _ => ModelRc::default(),
+        });
         shell.set_picker_rows(rows as i32);
         shell.set_picker_options(ModelRc::new(VecModel::from(options.into_iter().map(Into::into).collect::<Vec<slint::SharedString>>())));
         shell.set_picker_menu(matches!(look, Look::Menu { .. }));
@@ -623,9 +704,10 @@ impl Shell {
         };
         self.picking = Some(Picking { owner, key });
         let row = chosen.max(0);
-        self.nav.open("pick.", Key::new("pick.option", row));
+        let focus = if grid.is_some() { GRID_CELL_KEY } else { "pick.option" };
+        self.nav.open("pick.", Key::new(focus, row));
         // (The chosen row, scrolled into view once the list is there.)
-        self.nav.focus("pick.option", row);
+        self.nav.focus(focus, row);
     }
 
     fn close_picker(&mut self) -> Option<Picking> {
@@ -944,7 +1026,7 @@ impl App {
                 self.shell.sound.play(Cue::Pick);
                 match key.id.as_str() {
                     "dialog.button" => self.answer(key.index as usize),
-                    "pick.option" => self.picked(Some(key.index)),
+                    "pick.option" | GRID_CELL_KEY => self.picked(Some(key.index)),
                     "pick.close" => self.picked(None),
                     "back" => self.back(),
                     "pad.menu" => self.shell.open_menu(),

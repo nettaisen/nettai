@@ -29,11 +29,11 @@ export struct PracticeBuild {
 export enum PracticeOption {
     // A row another screen added (Copy invite code): its text is the row's own.
     added,
-    // The groups' titles: the dummy's, the arena's (where the battle is, and its music), the battle's.
+    // The groups' titles (the user: "having an "arena" field under "arena" is so weird"): the dummy's, the
+    // stage's (where the battle is, and its music), the battle's options and the input display.
     dummy,
-    place,
-    battle,
-    display,
+    stage,
+    options,
     // A label and a value between arrows.
     action,
     // How well the dummy fights: under the Action while it is Fights.
@@ -52,11 +52,13 @@ export enum PracticeOption {
 }
 
 // A row of the practice menu: what it is, the value it has (its place among the row's values), and for a row
-// another screen added, its text.
+// another screen added, its text; for Arena and Background, the chosen one's picture (none: Random, or not drawn
+// yet).
 export struct PracticeRow {
     option: PracticeOption,
     value: int,
     text: string,
+    picture: image,
 }
 
 // What Practice shows: src/screens/practice.rs sets these. (A struct or an enum a property here uses reaches
@@ -71,10 +73,13 @@ export global PracticeView {
     in property <bool> ready;
     // The arena's picture is there.
     in property <bool> arena;
-    // The arena and the background chosen, as their rows say them: the arena's place in the list ("12 / 96"),
-    // the background's name (or its place, if it has none); none: Random.
+    // The arena and the background chosen, as their rows say them: the arena's place in the list ("12 / 47"),
+    // the background's name (or its place, if it has none); none: Random. And their pictures, as their grids
+    // show them (none: Random, or not drawn yet).
     in property <string> arena-shown;
     in property <string> background-shown;
+    in property <image> arena-picture;
+    in property <image> background-picture;
     // The battle's music the player picked, as its row says it (the game's own, or a battle theme): theirs, one
     // pick with Play's lobby's.
     in property <string> music-shown;
@@ -115,14 +120,11 @@ export global PracticeView {
         if option == PracticeOption.dummy {
             return @tr("DUMMY");
         }
-        if option == PracticeOption.place {
-            return @tr("ARENA");
+        if option == PracticeOption.stage {
+            return @tr("STAGE");
         }
-        if option == PracticeOption.battle {
-            return @tr("BATTLE");
-        }
-        if option == PracticeOption.display {
-            return @tr("DISPLAY");
+        if option == PracticeOption.options {
+            return @tr("OPTIONS");
         }
         if option == PracticeOption.action {
             return @tr("Action");
@@ -260,18 +262,20 @@ component EntryRow inherits Rectangle {
     }
 }
 
-// One of the entry's rows of a value among many (Arena, Background, Music): a label, and the value between arrows
-// (the app's stepper, as the practice menu's rows have it), stepped by Left and Right or the arrows, around from
-// the last to Random (the user: "just have like a pager widget that goes through them"); or, `select`, the value
-// in a box that opens the values as a list (Enter, a click or a tap) and still steps by Left and Right, as the
-// build rows' (Background and Music: the user, "background and music selectors should both be dropdowns like
-// they are in the practice screen"). The row is what is focused.
-component PagerRow inherits Rectangle {
+// One of the entry's rows of a value among many (Arena, Background, Music): a label, and the value in a box that
+// opens the values (Enter, a click or a tap) and still steps by Left and Right, as the build rows' (the user,
+// "background and music selectors should both be dropdowns like they are in the practice screen"). Arena and
+// Background are `pictured`: the chosen one's picture before its name, and its values open as a grid of their
+// pictures (the user: "arena selector should be like a dropdown that shows previews of all arenas"), the same
+// select as the practice menu's rows of them. The row is what is focused.
+component SelectRow inherits Rectangle {
     in property <string> nav;
     in property <string> label;
     in property <string> value;
     in property <bool> enabled: true;
-    in property <bool> select;
+    in property <bool> pictured;
+    in property <image> picture;
+    in property <bool> random;
     property <length> box: Theme.phone ? 200px : 280px;
     // (Its value fits itself to the stepper's box, which tells the pass if it can't: docs/app.md §13.)
     property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
@@ -300,28 +304,18 @@ component PagerRow inherits Rectangle {
         overflow: elide;
     }
 
-    Stepper {
-        x: parent.width - self.width - 8px;
-        y: (parent.height - self.height) / 2;
-        height: Theme.phone ? 36px : 40px;
-        visible: !root.select;
-        nav: root.select ? "" : root.nav;
-        value: root.value;
-        value-width: root.box - 72px;
-        enabled: root.enabled;
-        focusable: false;
-    }
-
     Select {
         x: parent.width - root.box - 8px;
         y: (parent.height - self.height) / 2;
         width: root.box;
         height: Theme.phone ? 36px : 40px;
-        visible: root.select;
-        nav: root.select ? root.nav : "";
+        nav: root.nav;
         value: root.value;
         enabled: root.enabled;
         focusable: false;
+        pictured: root.pictured;
+        picture: root.picture;
+        random: root.random;
     }
 
     changed over => {
@@ -432,34 +426,39 @@ export component PracticeScreen inherits Page {
             editable: PracticeView.dummys.editable;
         }
 
-        PagerRow {
+        // (The arena's and the background's choices open as grids of their pictures.)
+        SelectRow {
             x: 0;
             y: 2 * root.row-step;
             width: root.column;
             nav: "arena";
             label: @tr("Arena");
             value: PracticeView.arena-shown == "" ? PracticeView.random : PracticeView.arena-shown;
+            pictured: true;
+            picture: PracticeView.arena-picture;
+            random: PracticeView.arena-shown == "";
         }
 
-        PagerRow {
+        SelectRow {
             x: 0;
             y: 3 * root.row-step;
             width: root.column;
             nav: "background";
             label: @tr("Background");
             value: PracticeView.background-shown == "" ? PracticeView.random : PracticeView.background-shown;
-            select: true;
+            pictured: true;
+            picture: PracticeView.background-picture;
+            random: PracticeView.background-shown == "";
         }
 
-        // The battle's music: a list, as the background's.
-        PagerRow {
+        // The battle's music: a list, as the build rows'.
+        SelectRow {
             x: 0;
             y: 4 * root.row-step;
             width: root.column;
             nav: "music";
             label: @tr("Music");
             value: PracticeView.music-shown;
-            select: true;
         }
 
         // (Room for two lines on a desktop, a longer language's.)
@@ -571,8 +570,9 @@ export component PracticeScreen inherits Page {
 // ---- The practice menu ------------------------------------------------------------------------------------
 
 // A row of the practice menu, whatever it is: a group's title; a label and a value between arrows, the row
-// focused as a whole (on a phone the label is over the arrows), or for Background and Music the value in a box
-// that opens the values as a list, as the entry's rows of them; or a row another screen added. Its controls are
+// focused as a whole (on a phone the label is over the arrows), or for Arena, Background and Music the value in a
+// box that opens the values, as the entry's rows of them (Arena's and Background's a grid of their pictures, the
+// chosen one's before its name); or a row another screen added. Its controls are
 // the entry's height, 40 (36 on a phone), its steppers and selects one column's width so they line up (the
 // user's "option 1", docs/design/app-ui.md §2.44); the row is bare, 52 tall. (One component under the menu's one
 // `for`: its parts are all there, and those the row isn't don't show.)
@@ -580,9 +580,10 @@ component MenuRow inherits Rectangle {
     in property <PracticeRow> entry;
     in property <int> index;
     property <bool> added: root.entry.option == PracticeOption.added;
-    property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.place || root.entry.option == PracticeOption.battle || root.entry.option == PracticeOption.display;
+    property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.stage || root.entry.option == PracticeOption.options;
     property <bool> option: !root.added && !root.title;
-    property <bool> select: root.entry.option == PracticeOption.background || root.entry.option == PracticeOption.music;
+    property <bool> pictured: root.entry.option == PracticeOption.arena || root.entry.option == PracticeOption.background;
+    property <bool> select: root.pictured || root.entry.option == PracticeOption.music;
     property <string> label: PracticeView.label(root.entry.option);
     property <string> value: root.option && root.entry.text != "" ? root.entry.text : PracticeView.value(root.entry.option, root.entry.value);
     // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
@@ -656,6 +657,9 @@ component MenuRow inherits Rectangle {
             nav-index: root.index;
             value: root.value;
             focusable: false;
+            pictured: root.pictured;
+            picture: root.entry.picture;
+            random: root.pictured && root.entry.text == "";
         }
 
     }
