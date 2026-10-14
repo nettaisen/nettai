@@ -1079,6 +1079,29 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   (§15); from the main menu Back goes to the menu as ever.
 - **A build made new** is `Builds::new_build(content, version)`: the game's own navi, that version, the folder a
   new save of the game starts with. There are no random builds.
+- **A build's version is switched** on the Navi tab (docs/design/app-ui.md §2.41; the user: "you should allow
+  switching a save between game versions actually"), for any build, made new or from a save: `Draft::choose_version`,
+  `Build::set_version`, which is `Builds::take_version`. What the game's builds data says a version sets becomes
+  the new version's, and nothing else of the build changes:
+  - *EXE6:* the `version` fact, and with it the build's MegaMan's Crosses (the `crosses` form list, MegaMan's own
+    list of the version: the content's rules for a fresh build of it, as rules/builds says "the navi's own Crosses of
+    the version follow it"; none for another navi). Beast Out follows the version at play.
+  - *EXE5:* the six souls (`souls`) and the Giga chips a save can have (`giga_chips`) are the new team's.
+  - *EXE4:* the same, Red Sun's or Blue Moon's six souls and Giga chips.
+  - *Kept, in every game:* the navi, the folder with its Regular and tag chips, the NaviCust, the patch cards, the
+    auto battle data, Light or Dark, and what is kept aside. What no longer fits is the build's problem, shown as any
+    rule's break is, not changed: the other version's Giga chips in the folder (the rules' `ChipOfAnotherVersion`,
+    "Bass is Team ProtoMan only", the entry in the error red, the Folder tab marked and the header counting it). The
+    rest is held to no version by any game's rules (EXE5's two Bass-Cross MegaMan cards, each a team's, are both
+    any build's; the auto battle's Giga place takes any Giga chip), so it stays and is no problem. Switched back,
+    the build is as it was. A build file's format is unchanged: it states the version's facts as before.
+- **The Navi tab's version** is a stepper in the build's navi's panel, for every navi (the version decides the
+  folder's Giga chips whatever the navi), the header's tag following it. While the game's own navi is the build's,
+  the faces of the forms the version brings him are under it (`Builds::forms_of`: of a new build of the version,
+  its form list's and the forms of the facts the version sets: EXE6's five Crosses, EXE4's and EXE5's six souls),
+  twice their size, in rows as even as they go (three and two, three and three); for another navi none. The NEW
+  BUILD dialog's choice stays the two names alone, its note the game's words with "It can be switched later on the
+  Navi tab."
 - **What is kept aside.** A NaviCust, patch cards and auto battle data are the game's own navi's alone, the one
   that changes form. While a build's navi is another, the facts of the editor's tabs that are that navi's
   (`screens::builds::editor::navi_only_fields`) are kept under `[aside]`, outside the side (the rules refuse a
@@ -1809,7 +1832,11 @@ question before it is deleted, the Navi tab with the focus a card on, with anoth
 other preset of the game's choice, and the Folder tab (an entry, the library, its controls a focus move apart,
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,
 the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out, the
-sort's list), then the tab after it. A game may have one navi or thirteen, a choice or none, four tabs or five:
+sort's list), then the tab after it; last, a build's version switched (`switched`: a build of the game's first
+version made beside the walk's, a Giga chip of that version's alone in its first entry; `builds-navi-version`, the
+switch focused with the version's Crosses or souls under it; `builds-navi-switched`, the next version, its forms,
+the header's tag and its one problem, the Folder tab marked; `builds-folder-switched`, the entry in the error red
+and the strip saying why). A game may have one navi or thirteen, a choice or none, four tabs or five:
 a step names the control it is for and does nothing where the game has none. The probe's bursts are the
 editor's body arriving as the tab changes, a chip the rules refuse (its row shakes) and a chip put in (it flies
 to its entry, the entry flashes, a count that changed ticks).
