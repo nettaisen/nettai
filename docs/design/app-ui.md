@@ -292,6 +292,19 @@ Each is settled unless the user changes it.
     the editor's tag is a switch: Play's, the Builds list's and Practice's stay plain. The NEW BUILD dialog's note
     says "It can be switched later in the editor." (§6, docs/app.md §8.)
 
+43. **Practice's music plays on back at the entry; Background and Music are dropdowns** (2026-10-14). The user:
+    "also exiting practice mode back into the practice menu should continue the music" (the practice menu here is
+    Practice's entry, which EXIT returns to). The other way of §2.40's: EXIT, or the session's battle stopping,
+    hands the battle's song to the entry where it is, with no restart and no fade, at the music's level; the
+    battle's sound effects don't come with it, and the title music doesn't come in between. Where the battle's
+    music had stopped (a round's end) or the result's winner or loser music plays, the entry's starts from its
+    beginning as before. A Music changed in the practice menu during the battle is the entry's pick too, so the
+    entry plays what the battle plays. Then: "background and music selectors should both be dropdowns like they
+    are in the practice screen": on the entry and in the practice menu, Background and Music are the build rows'
+    select (Enter, a click or a tap opens the list, open at the value chosen and scrolling where it is long, a
+    sheet on a phone; choosing closes it; Left and Right still step it); Arena stays a pager, as asked before
+    (its places are numbers). (§6, docs/app.md §1, "The battle's music", and §15.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -509,14 +522,17 @@ Each is in the mockups under the same name.
   also add arena + background select?": the game's arenas and the background pool, every game's battle
   backgrounds (§2.31), Random first, a Random background drawn from the pool; "the arena names are meaningless
   so you should just have like a pager widget that goes through them. background should also be a arrow button
-  pager thing": each an arrow pager, the arena by its place, "12 / 96", the background by its game and its
-  name, "BN4 ACDC Area"), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
-  opening its list), the builds remembered and Arena, Background and Music for one visit (§2.40: each visit
+  pager thing": the arena an arrow pager, by its place, "12 / 96"; the background by its game and its name, "BN4
+  ACDC Area", a dropdown since §2.43, "background and music selectors should both be dropdowns like they are in
+  the practice screen": the build rows' select, Enter, a click or a tap opening its list, Left and Right still
+  stepping it), and Music (the battle's music, §2.29: a dropdown as Background's, §2.43), the builds remembered and Arena, Background and Music for one visit (§2.40: each visit
   starts on Random, Random and the game's own), and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
 - **The entry plays the battle's music** (§2.29, §2.40): the music its session will start, the game's own battle
   music or the theme picked (once the row rests on it a moment), in place of the title music; START PRACTICE
-  doesn't fade it, and it plays on through the cards into the battle with no restart.
+  doesn't fade it, and it plays on through the cards into the battle with no restart; and back at the entry
+  (EXIT) the battle's song plays on there the same way (§2.43), from its beginning only where the battle's had
+  stopped or the result's played.
 - **The arena preview moves** (§2.35): the round the session opens on, run into its fight with nothing pressed
   while the entry shows it, its background animating and scrolling and its field doing what it does (wind, roads,
   volcanoes, panels animating), the navis standing, with no custom gauge; never a custom screen, a banner or a
@@ -535,9 +551,9 @@ Each is in the mockups under the same name.
     it fights) under it while it is Fights. Its custom screen goes with its Action. No recording: "get rid of
     recording support, it's so complicated". The user: "the dummy menu is so confusing and has so many redundant options and
     it's confusing to navigate. you should make it clearer and less redundant".
-  - Arena: Arena and Background (as on the entry; an arena changed starts the set over on it, a background
+  - Arena: Arena and Background (as on the entry: Arena a pager, Background a dropdown, §2.43; an arena changed starts the set over on it, a background
     changed only redraws: "changing the background shouldn't change the entire arena either in trianing
-    mode"), Music (the entry's pick, §2.29: the battle's music switched at once). A group of their own: "you
+    mode"), Music (the entry's pick, §2.29, a dropdown as on the entry: the battle's music switched at once). A group of their own: "you
     should split the practice menu settings into arena and battle so the arena settings aren't mixed together".
   - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
     folder order)

@@ -282,6 +282,12 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Right));
     shot(add, "practice-entry-background", lang, size, Differs::Builds, false);
+    // Its list (a dropdown, as the build rows': the user, "background and music selectors should both be
+    // dropdowns"), open at the background chosen.
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the background's list"));
+    shot(add, "practice-entry-background-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
     // The battle's music: the row, a step along (the first theme), and its list open, every game's themes in it
     // once each game's parts are read; then the game's own again.
     add(SETTLE, Box::new(|_, _, tour| tour.wait_until(|app| app.shell.games.playable().iter().all(|id| app.shell.games.read(id).is_some()))));
@@ -344,6 +350,23 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-menu-background", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-background-value", lang, size, Differs::Unheld, false);
+    // Its list, open at the background chosen; the one under it chosen from it, the battle drawn on that one.
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the menu's background list"));
+    shot(add, "practice-menu-background-list", lang, size, Differs::Unheld, false);
+    let before = std::rc::Rc::new(std::cell::Cell::new(None));
+    let was = before.clone();
+    add(SETTLE, Box::new(move |_, app, _| was.set(practice::session_place(&app.borrow().shell))));
+    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Confirm));
+    add(
+        SETTLE,
+        expect(
+            move |app, ui| !ui.global::<nettai_ui::Shell>().get_picker() && practice::session_place(&app.shell).zip(before.get()).is_some_and(|(now, was)| now[1] == was[1] + 1),
+            "the background under it chosen from the menu's list",
+        ),
+    );
+    shot(add, "practice-menu-background-chosen", lang, size, Differs::Unheld, false);
     // The Music row, and its value changed: the battle's music switched at once (nothing drawn changes but the
     // row's value); then the game's own again.
     add(SETTLE, focus_row(PracticeOption::Music));
@@ -351,6 +374,11 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-music-value", lang, size, Differs::Picture, false);
     add(SETTLE, act(Action::Left));
+    // Its list, open at the game's own.
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the menu's music list"));
+    shot(add, "practice-menu-music-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
     // Each of the other Battle rows, and its value changed (at once, on the battle behind the menu: the HP
     // refilled, the gauge full, the folders put in their own order).
     for (name, changed, option) in [
