@@ -954,16 +954,15 @@ mod tests {
         (Key::new(id, 0), rect(x, y, w, h))
     }
 
-    /// The main menu, as it is laid out at 1280 by 800: the four words in a column, About under them, the game at
-    /// the header's right.
+    /// The main menu, as it is laid out at 1280 by 800: the four words in a column, the game at the header's
+    /// right.
     fn menu() -> Vec<(Key, Rect)> {
         vec![
             at("game", 1092.0, 14.0, 156.0, 36.0),
-            at("play", 32.0, 175.0, 416.0, 96.0),
-            at("replays", 32.0, 279.0, 416.0, 96.0),
-            at("settings", 32.0, 383.0, 416.0, 96.0),
-            at("exit", 32.0, 487.0, 416.0, 96.0),
-            at("about", 48.0, 618.0, 64.0, 32.0),
+            at("play", 32.0, 205.5, 416.0, 96.0),
+            at("replays", 32.0, 309.5, 416.0, 96.0),
+            at("settings", 32.0, 413.5, 416.0, 96.0),
+            at("exit", 32.0, 517.5, 416.0, 96.0),
         ]
     }
 
@@ -973,17 +972,16 @@ mod tests {
         neighbor(me, dir, &others).map(|k| k.id)
     }
 
-    /// The arrows go to the neighbor in their direction: down the column to the small item under it, and up from
-    /// it to the word above; nothing lies left of the column or below the last row.
+    /// The arrows go to the neighbor in their direction: down the column and up it; nothing lies left of the
+    /// column or below the last row.
     #[test]
     fn arrows_find_the_neighbor_in_their_direction() {
         let m = menu();
         assert_eq!(from(&m, "play", Direction::Down).as_deref(), Some("replays"));
         assert_eq!(from(&m, "settings", Direction::Down).as_deref(), Some("exit"));
-        assert_eq!(from(&m, "exit", Direction::Down).as_deref(), Some("about"));
-        assert_eq!(from(&m, "about", Direction::Up).as_deref(), Some("exit"));
+        assert_eq!(from(&m, "exit", Direction::Up).as_deref(), Some("settings"));
         assert_eq!(from(&m, "play", Direction::Left), None);
-        assert_eq!(from(&m, "about", Direction::Down), None);
+        assert_eq!(from(&m, "exit", Direction::Down), None);
         // (Nothing is right above PLAY: the nearest thing upward is the game, across the header.)
         assert_eq!(from(&m, "play", Direction::Up).as_deref(), Some("game"));
         assert_eq!(from(&m, "game", Direction::Down).as_deref(), Some("play"));
@@ -1002,7 +1000,7 @@ mod tests {
         let mut m = menu();
         m.reverse();
         let order: Vec<String> = reading_order(m).into_iter().map(|k| k.id).collect();
-        assert_eq!(order, ["game", "play", "replays", "settings", "exit", "about"]);
+        assert_eq!(order, ["game", "play", "replays", "settings", "exit"]);
     }
 
     /// Play's builds, as they are laid out at 1280 by 800: Tab goes zone by zone (the builds, the chosen build,

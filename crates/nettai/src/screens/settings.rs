@@ -1,8 +1,11 @@
 //! Settings (docs/design/app-ui.md §6): General, Video, Audio, Online, Controls, About, on one scrolling page.
-//! Every change is applied and kept at once (`crate::settings`).
+//! Every change is applied and kept at once (`crate::settings`). The About group's SHOW LICENSES opens About in
+//! the page's place (`about`), and Back there comes back to the page.
 
-use crate::input::{Bindings, KeyPress, key_cap, key_name, pad_cap, pad_name};
-use crate::screens::Screen;
+mod about;
+
+use crate::input::{Action, Bindings, KeyPress, key_cap, key_name, pad_cap, pad_name};
+use crate::screens::{Screen, ScreenId};
 use crate::settings::{MAX_INPUT_DELAY, clean_name};
 use crate::shell::Shell;
 use crate::sound::Cue;
@@ -10,6 +13,10 @@ use gamepad_facade::Button;
 use nettai_ui::{PadBinding, PadButton, SettingsView};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
+
+/// Where a font's or a package's row is in About's list (the screenshot pass reads Slint's license).
+#[cfg(any(test, feature = "tour"))]
+pub(crate) use about::place_of;
 
 /// Each group's first control, and the room over it for what the group has above it (its title; in Controls the
 /// columns' heads, in About the version's row): where the list at the left jumps to.
@@ -26,7 +33,7 @@ fn group_of(id: &str) -> Option<i32> {
         "set.music" | "set.effects" => 2,
         "set.delay" => 3,
         "set.key" | "set.button" | "set.reset" => 4,
-        "set.folder" => 5,
+        "set.folder" | "set.about" => 5,
         _ => return None,
     })
 }
@@ -35,6 +42,8 @@ fn group_of(id: &str) -> Option<i32> {
 pub struct Settings {
     /// The button whose key (false) or pad button (true) is being asked for.
     asking: Option<(usize, bool)>,
+    /// About, shown in the page's place while it is open.
+    about: about::About,
 }
 
 impl Settings {
@@ -130,13 +139,23 @@ impl Screen for Settings {
         view.set_input_delay(s.input_delay as i32);
         view.set_data_folder(crate::paths::data().display().to_string().into());
         self.show_bindings(shell);
+        if self.about.is_open() {
+            self.about.show(shell);
+        }
     }
 
-    fn hide(&mut self, _shell: &mut Shell) {
+    fn hide(&mut self, shell: &mut Shell) {
         self.asking = None;
+        // (Shown again, Settings show their page, the focus on SHOW LICENSES.)
+        if self.about.is_open() {
+            self.about.close(shell);
+        }
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        if self.about.is_open() {
+            return self.about.activate(shell, id, index);
+        }
         match id {
             "group" => shell.nav.focus(GROUPS[index.clamp(0, 5) as usize].0, 0),
             "set.language" => {
@@ -162,6 +181,7 @@ impl Screen for Settings {
                 self.show_bindings(shell);
             }
             "set.folder" => show_folder(&crate::paths::data()),
+            "set.about" => self.about.open(shell),
             _ => {}
         }
     }
@@ -218,6 +238,9 @@ impl Screen for Settings {
     }
 
     fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        if self.about.is_open() {
+            return self.about.focused(shell, id, index);
+        }
         let ui = shell.ui();
         let view = ui.global::<SettingsView>();
         if id == "group" {
@@ -251,6 +274,22 @@ impl Screen for Settings {
             shell.sound.play(Cue::Refused);
         }
         self.show_bindings(shell);
+        true
+    }
+
+    fn scroll(&mut self, shell: &mut Shell, action: Action) -> bool {
+        self.about.is_open() && self.about.scroll(shell, action)
+    }
+
+    /// Back in About: within it, else to the settings, the focus back on SHOW LICENSES.
+    fn back(&mut self, shell: &mut Shell) -> bool {
+        if !self.about.is_open() {
+            return false;
+        }
+        if !self.about.back(shell) {
+            self.about.close(shell);
+            shell.nav.enter(ScreenId::Settings.name(), self.main());
+        }
         true
     }
 

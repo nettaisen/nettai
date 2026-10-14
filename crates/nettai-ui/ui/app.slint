@@ -10,14 +10,13 @@ import { Shell, Screen, BattleKind, Backdrop, Cursor, DialogLayer, PickerLayer, 
 import { Pulse } from "motion.slint";
 import { LoadingScreen } from "screens/loading.slint";
 import { MenuScreen } from "screens/menu.slint";
-import { SettingsScreen } from "screens/settings.slint";
+import { SettingsScreen, SettingsOverlay } from "screens/settings.slint";
 import { VersusScreen } from "screens/versus.slint";
 import { BattleScreen } from "screens/battle.slint";
 import { PlayScreen, PlayOverlay, MatchMenu, MatchPeek, MatchResult, PlayView } from "screens/play.slint";
 import { PracticeScreen, PracticeMenu, PracticeInputs, PracticeView } from "screens/practice.slint";
 import { BuildsScreen, BuildsOverlay } from "screens/builds.slint";
 import { ReplaysScreen, ReplaysOverlay } from "screens/replays.slint";
-import { AboutScreen, AboutOverlay } from "screens/about.slint";
 
 export { Theme, Audit, Nav, NavKind }
 export { Drag } from "nav.slint";
@@ -33,7 +32,7 @@ export { PlayView } from "screens/play.slint";
 export { PracticeView } from "screens/practice.slint";
 export { BuildsView, NaviView, FolderView, NavicustView, PatchCardsView, AutoBattleView } from "screens/builds.slint";
 export { ReplaysView } from "screens/replays.slint";
-export { AboutView } from "screens/about.slint";
+export { AboutView } from "screens/settings/about.slint";
 
 export component AppWindow inherits Window {
     // What is shown in place of a menu screen: the bar while the game loads, the two cards before a battle,
@@ -53,7 +52,7 @@ export component AppWindow inherits Window {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // Each screen, and what it opens over itself (Practice and Settings open nothing): one conditional each, as
+    // Each screen, and what it opens over itself (Practice opens nothing): one conditional each, as
     // each conditional is a component of its own in what Slint generates. (A screen's overlay is over it; only
     // one screen is shown at a time, so it is over every screen.)
     if !root.covered && Shell.screen == Screen.menu: MenuScreen {
@@ -86,14 +85,11 @@ export component AppWindow inherits Window {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
-    if !root.covered && Shell.screen == Screen.settings: SettingsScreen {
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-    if !root.covered && Shell.screen == Screen.about: Rectangle {
-        AboutScreen {
+    if !root.covered && Shell.screen == Screen.settings: Rectangle {
+        SettingsScreen {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
-        AboutOverlay {
+        SettingsOverlay {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
