@@ -309,6 +309,12 @@ impl Content {
         self.rules.as_ref().expect("the content states its rules (rules, defined)")
     }
 
+    /// The game's battle themes ([`Rules::battle_themes`]; none where the
+    /// content states no rules).
+    pub fn battle_themes(&self) -> &[crate::sound::SoundId] {
+        self.rules.as_ref().map_or(&[], |r| &r.battle_themes)
+    }
+
     /// The game's tables, to change (tests, which play a rule another way).
     pub fn rules_mut(&mut self) -> &mut Rules {
         self.rules.as_mut().expect("the content states its rules (rules, defined)")
@@ -421,6 +427,26 @@ impl Content {
     /// A stage.
     pub fn stage(&self, h: StageHandle) -> &StageData {
         &self.defs.stage(h).record
+    }
+
+    /// The songs a battle of this content starts as its music, as a round
+    /// starts (`Battle::mode_intro`): a link battle's (the roles'
+    /// `link_battle`, and `link_battle_single` where the game has one) and
+    /// each stage's own, in that order, each once. Not the result's (the
+    /// winner's, the loser's), which stay the game's. A host that plays
+    /// another song as the battle's music (a battle theme the player picked,
+    /// [`Rules::battle_themes`]) plays it for these; the battle's cues are
+    /// the same whatever it plays.
+    pub fn battle_music(&self) -> Vec<crate::sound::SoundId> {
+        let roles = self.defs.roles();
+        let mut out = Vec::new();
+        let link = [MusicRole::LinkBattle, MusicRole::LinkBattleSingle].into_iter().filter_map(|r| roles.try_music(r));
+        for music in link.chain(self.defs.stages.iter().filter_map(|s| s.record.music)) {
+            if !out.contains(&music) {
+                out.push(music);
+            }
+        }
+        out
     }
 
     /// The stage with this key (setups by name, tools and tests).

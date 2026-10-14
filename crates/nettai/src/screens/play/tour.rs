@@ -668,6 +668,17 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, act(Action::Right));
     shot(add, "play-lobby-delay-5", Pair::Second);
     add(SETTLE, act(Action::Left));
+    // The player's own music: the select, a step along (the first theme), and its list open, every game's
+    // themes in it once each game's parts are read.
+    add(SETTLE, until(|app, _| app.shell.games.playable().iter().all(|id| app.shell.games.read(id).is_some())));
+    add(SETTLE, focus("lobby.music", 0));
+    shot(add, "play-lobby-music", Pair::First);
+    add(SETTLE, act(Action::Right));
+    shot(add, "play-lobby-music-next", Pair::Second);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "play-lobby-music-list", Pair::None);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, act(Action::Left));
     // Another build.
     add(SETTLE, press("lobby.change"));
     shot(add, "play-lobby-change", Pair::None);

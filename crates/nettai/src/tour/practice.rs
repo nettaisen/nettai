@@ -1,9 +1,9 @@
 //! The screenshot pass's steps for Practice (docs/app.md §13): the entry (with no build, with builds, the focus a
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
-//! can't be used, the arena and the background stepped, the arena around its end), the two cards, the battle, the
-//! practice menu (a value changed, the focus a row apart, the dummy that fights (its Action, and its Level under
-//! it), the arena and the background changed under it, each Battle row a value apart, the input display, the
-//! rows another screen adds), the way to Builds and back (CREATE A BUILD's list, EDIT's editor, a build edited
+//! can't be used, the arena and the background stepped, the arena around its end, the music stepped and its
+//! list), the two cards, the battle, the practice menu (a value changed, the focus a row apart, the dummy that
+//! fights (its Action, and its Level under it), the arena and the background changed under it, each Battle row a
+//! value apart, the input display, the rows another screen adds), the way to Builds and back (CREATE A BUILD's list, EDIT's editor, a build edited
 //! there), and the motion probe's bursts of what Practice moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
@@ -71,7 +71,7 @@ fn picture_beside_menu(ui: &AppWindow) -> Vec<Option<Rect>> {
 fn builds_shown(app: &App) -> Option<Rect> {
     let registry = app.shell.nav.registry();
     let registry = registry.borrow();
-    let (start, dummys, last) = (registry.rect(&Key::new("start", 0))?, registry.rect(&Key::new("dummys", 0))?, registry.rect(&Key::new("background", 0))?);
+    let (start, dummys, last) = (registry.rect(&Key::new("start", 0))?, registry.rect(&Key::new("dummys", 0))?, registry.rect(&Key::new("music", 0))?);
     // (`compare` lets a pair differ 12 around each: these stop 13 short of the controls.)
     Some(if app.shell.scale.phone {
         Rect { x: 0.0, y: last.bottom() + 13.0, w: 10_000.0, h: start.y - last.bottom() - 26.0 }
@@ -280,6 +280,17 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Right));
     shot(add, "practice-entry-background", lang, size, Differs::Builds, false);
+    // The battle's music: the row, a step along (the first theme), and its list open, every game's themes in it
+    // once each game's parts are read; then the game's own again.
+    add(SETTLE, Box::new(|_, _, tour| tour.wait_until(|app| app.shell.games.playable().iter().all(|id| app.shell.games.read(id).is_some()))));
+    add(SETTLE, focus("music", 0));
+    shot(add, "practice-entry-music", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Right));
+    shot(add, "practice-entry-music-next", lang, size, Differs::Cursors, false);
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "practice-entry-music-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, act(Action::Left));
 
     // START PRACTICE: the two cards, then the battle.
     add(SETTLE, focus("start", 0));

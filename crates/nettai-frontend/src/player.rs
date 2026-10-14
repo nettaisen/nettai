@@ -465,6 +465,12 @@ impl Player {
         }
     }
 
+    /// The battle's sound as it stands (none: silent): what each pack's
+    /// driver plays (a host's check of the music it was given).
+    pub fn audio(&self) -> Option<&BattleAudio> {
+        self.audio.as_ref()
+    }
+
     /// The sound of the ticks run since the last call, appended to `out`:
     /// stereo samples at `nettai_audio::SAMPLE_RATE`, about 549 a tick,
     /// for the host's own output. Nothing from a player without audio. (A

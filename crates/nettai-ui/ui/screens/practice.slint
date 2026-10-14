@@ -1,9 +1,9 @@
 // Practice (docs/design/app-ui.md §6): you against a dummy set up from a menu while practicing. Its Rust half
 // is src/screens/practice.rs.
 //
-// Three things are here. The entry (`PracticeScreen`): four rows, Your build and Dummy's build (each with EDIT
-// beside it, which opens the build in Builds' editor), Arena and Background, and START PRACTICE, with the two
-// builds facing each other and the arena beside them. The practice menu (`PracticeMenu`): Start or Esc in a
+// Three things are here. The entry (`PracticeScreen`): five rows, Your build and Dummy's build (each with EDIT
+// beside it, which opens the build in Builds' editor), Arena, Background and Music (the battle's, the player's
+// pick), and START PRACTICE, with the two builds facing each other and the arena beside them. The practice menu (`PracticeMenu`): Start or Esc in a
 // practice battle, the battle paused behind it; its rows are a model the Rust half makes, so a row is added there
 // and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both sides'
 // buttons, lit as they are held, in a corner of the picture.
@@ -74,6 +74,9 @@ export global PracticeView {
     // the background's name (or its place, if it has none); none: Random.
     in property <string> arena-shown;
     in property <string> background-shown;
+    // The battle's music the player picked, as its row says it (the game's own, or a battle theme): theirs, one
+    // pick with Play's lobby's.
+    in property <string> music-shown;
 
     // ---- A session.
     // The two builds' names, as the menu's line under its title says them.
@@ -180,7 +183,7 @@ export global PracticeView {
 // somehow while having the relevant build displayed"), which opens the build chosen in Builds' editor, as E or
 // the pad's north button does (on the dummy's row, its build). The row is focused, and EDIT apart (`edit`, the
 // row's `index`): Tab goes from one to the other, and Up and Down from EDIT to EDIT. (On a phone it is lower,
-// the four rows over the cards and the arena, and EDIT as tall as the row, for a finger.)
+// the five rows over the cards and the arena, and EDIT as tall as the row, for a finger.)
 component EntryRow inherits Rectangle {
     in property <string> nav;
     // The build's place in the pair: 0 the player's, 1 the dummy's.
@@ -193,7 +196,7 @@ component EntryRow inherits Rectangle {
     property <length> row-width: root.width - root.edit - 8px;
     property <length> box: Theme.phone ? 120px : 180px;
     property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
-    height: Theme.phone ? 48px : 56px;
+    height: Theme.phone ? 44px : 56px;
     Rectangle {
         x: 0;
         width: root.row-width;
@@ -261,7 +264,7 @@ component PagerRow inherits Rectangle {
     property <length> box: Theme.phone ? 200px : 280px;
     // (Its value fits itself to the stepper's box, which tells the pass if it can't: docs/app.md §13.)
     property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
-    height: Theme.phone ? 48px : 56px;
+    height: Theme.phone ? 44px : 56px;
     Rectangle {
         background: hit.has-hover ? Theme.raised : Theme.panel;
         border-width: 1px;
@@ -357,14 +360,14 @@ export component PracticeScreen inherits Page {
     // The rows' column, and beside it (on a phone, under it) the cards over the arena's picture, which is the
     // battle's at three times; on a phone the arena's box is the window's width, past the page's gutters, as
     // the battle's is, so the widest whole multiple fits. (On a phone the rows are lower and the line has one
-    // line's room, which the languages' fit, for the four rows to be over the cards and the arena.)
+    // line's room, which the languages' fit, for the five rows to be over the cards and the arena.)
     property <length> column: Theme.phone ? self.body-width : 460px;
-    property <length> row-step: Theme.phone ? 56px : 68px;
-    property <length> note-y: Theme.phone ? 228px : 272px;
+    property <length> row-step: Theme.phone ? 48px : 68px;
+    property <length> note-y: Theme.phone ? 246px : 340px;
     property <length> note-height: Theme.phone ? 20px : 40px;
     property <length> side-width: Theme.phone ? self.body-width : 720px;
     property <length> side-x: Theme.phone ? 0px : self.column + 24px + (self.body-width - self.column - 24px - self.side-width) / 2;
-    property <length> cards-y: Theme.phone ? self.note-y + self.note-height + 34px : 0px;
+    property <length> cards-y: Theme.phone ? self.note-y + self.note-height + 24px : 0px;
     property <length> card-width: Theme.phone ? (self.body-width - 12px) / 2 : (self.side-width - 56px) / 2;
     property <length> arena-x: Theme.phone ? -Theme.margin : self.side-x;
     property <length> arena-width: Theme.phone ? self.body-width + 2 * Theme.margin : self.side-width;
@@ -386,7 +389,7 @@ export component PracticeScreen inherits Page {
     ];
     // (Each part is there whether or not the game has a build, shown and reachable by which it is: an `if`
     // apiece would be a component apiece.)
-    // The column: with no build of the game the one button; else the four rows, the one line, the reserved
+    // The column: with no build of the game the one button; else the five rows, the one line, the reserved
     // line, and START PRACTICE at its foot.
     Arrive {
         Button {
@@ -445,6 +448,18 @@ export component PracticeScreen inherits Page {
             nav: "background";
             label: @tr("Background");
             value: PracticeView.background-shown == "" ? PracticeView.random : PracticeView.background-shown;
+            enabled: !PracticeView.none;
+        }
+
+        // The battle's music: stepped as the places are, and Enter opens its list.
+        PagerRow {
+            x: 0;
+            y: 4 * root.row-step;
+            width: root.column;
+            visible: !PracticeView.none;
+            nav: "music";
+            label: @tr("Music");
+            value: PracticeView.music-shown;
             enabled: !PracticeView.none;
         }
 
