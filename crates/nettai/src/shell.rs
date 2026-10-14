@@ -457,10 +457,14 @@ impl Shell {
         self.apply_motion();
     }
 
-    /// Tell the UI whether things move: not with motion turned down, and not in the screenshot pass.
+    /// Tell the UI whether things move: not with motion turned down, and not in the screenshot pass (where not
+    /// even what Reduce motion keeps does: the jack-in's fade).
     pub(crate) fn apply_motion(&mut self) {
         self.reduce_motion = self.settings.reduce_motion.unwrap_or_else(crate::settings::system_reduces_motion);
-        self.ui().global::<Theme>().set_motion(if self.still { self.probe_motion } else { !self.reduce_motion });
+        let ui = self.ui();
+        let theme = ui.global::<Theme>();
+        theme.set_motion(if self.still { self.probe_motion } else { !self.reduce_motion });
+        theme.set_still(self.still && !self.probe_motion);
     }
 
     /// Have something fly over the layout from one control to another (a chip from its library row to its

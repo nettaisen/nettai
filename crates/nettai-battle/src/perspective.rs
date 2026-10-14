@@ -249,6 +249,14 @@ impl Battle {
             RoundEnd::Error(message) => RoundEnd::Error(message),
         })
     }
+
+    /// The set's round wins so far, for `viewer`: theirs, then the other
+    /// side's (the round's count is the local side's; a round's own is in it
+    /// once the round is decided).
+    pub fn wins_for(&self, viewer: u8) -> (u8, u8) {
+        let r = &self.round;
+        if viewer & 1 == r.local_side & 1 { (r.wins, r.losses) } else { (r.losses, r.wins) }
+    }
 }
 
 #[cfg(test)]
@@ -399,5 +407,10 @@ mod tests {
         assert_eq!(BattleResult::Won.for_other_side(), BattleResult::Lost);
         let s = SetScore { wins: 2, losses: 1, round: 3, max_combo: 4 };
         assert_eq!(s.for_other_side(), SetScore { wins: 1, losses: 2, round: 3, max_combo: 4 });
+        // The round wins so far, each viewer's first.
+        let mut b = battle();
+        (b.round.wins, b.round.losses) = (2, 1);
+        let local = b.round.local_side;
+        assert_eq!((b.wins_for(local), b.wins_for(local ^ 1)), ((2, 1), (1, 2)));
     }
 }

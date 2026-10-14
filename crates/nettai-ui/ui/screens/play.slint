@@ -5,14 +5,15 @@
 // makes a link (an invite, a code typed, a direct connection); the wait for the other player, a practice
 // battle beside the invite's code; and the lobby, for as long as the two players stay together. The two cards
 // before a match and the match itself are the shell's (versus.slint, battle.slint); over the match are this
-// file's menu (`MatchMenu`) and the two builds shown while Tab is held (`MatchPeek`).
+// file's menu (`MatchMenu`), the two builds shown while Tab is held (`MatchPeek`), and how the match went once its
+// set is over (`MatchResult`).
 
-import { Theme } from "../theme.slint";
+import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
 import { Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
-import { Arrive, Tween, Pulse, Flash } from "../motion.slint";
+import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
 
 // The part of Play shown.
@@ -36,6 +37,13 @@ export enum LobbyNote {
     // This player's build can't be played as the match's settings stand (with Patch cards off, its cards
     // left out): READY is refused.
     unusable,
+}
+
+// How a match's set went for this player, for its result (`MatchResult`).
+export enum MatchOutcome {
+    won,
+    lost,
+    drawn,
 }
 
 // A page of the match menu.
@@ -152,6 +160,21 @@ export global PlayView {
     in property <[PlayControl]> controls;
     in property <int> music;
     in property <int> effects;
+
+    // ---- After a match -----------------------------------------------------------------------------------
+    // The set is over: how it went for this player, over the picture until they go on (`MatchResult`). Its
+    // facts: the round wins each side has, this player's first, and the match's time in hundredths of a second.
+    in property <bool> result-shown;
+    in property <MatchOutcome> outcome;
+    in property <int> result-wins;
+    in property <int> result-losses;
+    in property <int> result-time;
+    // A press settles it: everything at its end at once.
+    in property <bool> result-settled;
+    // For its sounds (the app's): it counts the numbers shown as they tick, and says when the last has come to
+    // its value. The app puts them back as it shows a result.
+    in-out property <int> result-ticks;
+    in-out property <bool> result-done;
 
     // ---- Words the app needs -----------------------------------------------------------------------------
     out property <string> you: @tr("YOU");
@@ -1271,6 +1294,208 @@ export component MatchPeek inherits Rectangle {
                 build: PlayView.theirs;
                 side: 2;
             }
+        }
+    }
+}
+
+// How the match went (docs/design/app-ui.md §6, "After a match"; §2.49), over the picture once its set is over:
+// the winner's half of the window floods with their side's color (the player's own, on the left, in player
+// one's red; the other's in player two's blue), sweeping in from its outer edge; WIN or LOSE stamps in, centered
+// on the player's own half; then the rounds' score and the match's time count up, one after another, each number
+// in a box of one width. CONTINUE (Enter, the pad's A) settles it where it still moves, and then goes on to the
+// lobby (the app's: `result.go`); it goes on by itself after a few seconds. With motion turned down it is there at
+// once. On a phone the halves are the window's top (the player's) and bottom.
+export component MatchResult inherits Rectangle {
+    property <bool> won: PlayView.outcome == MatchOutcome.won;
+    property <bool> lost: PlayView.outcome == MatchOutcome.lost;
+    property <color> tone: root.won ? Theme.p1 : Theme.p2;
+    property <length> half-width: Theme.phone ? self.width : self.width / 2;
+    property <length> half-height: Theme.phone ? self.height / 2 : self.height;
+    // The player's own half's middle: the word, and the numbers under it.
+    property <length> mid-x: root.half-width / 2;
+    property <length> mid-y: root.half-height / 2;
+    property <length> stats-width: Theme.phone ? 300px : 360px;
+    property <length> digits: Theme.phone ? 28px : 34px;
+    // One after another, by the theme's table: the flood, the word, the score, then the time to the set piece's
+    // end.
+    flood := Tween {
+        settled: PlayView.result-settled;
+    }
+
+    stamp := Tween {
+        delay: Theme.quick;
+        duration: Theme.brisk;
+        settled: PlayView.result-settled;
+    }
+
+    // (It takes the clicks meant for the battle under it.)
+    TouchArea { }
+
+    // The picture under it, dimmed.
+    Rectangle {
+        background: Theme.ground-bottom.with-alpha(0.8);
+    }
+
+    // The winner's half, flooding in from its outer edge (the window's) toward the middle, a lit edge leading.
+    Rectangle {
+        x: Theme.phone || root.won ? 0px : root.half-width;
+        y: !Theme.phone || root.won ? 0px : root.half-height;
+        width: root.half-width;
+        height: root.half-height;
+        visible: root.won || root.lost;
+        clip: true;
+        Rectangle {
+            property <float> way: root.won ? -1 : 1;
+            x: Theme.phone ? 0px : (1 - flood.t) * root.half-width * self.way;
+            y: !Theme.phone ? 0px : (1 - flood.t) * root.half-height * self.way;
+            background: Theme.phone ? @linear-gradient(root.won ? 180deg : 0deg, root.tone.with-alpha(0.62) 0%, root.tone.with-alpha(0.28) 100%) : @linear-gradient(root.won ? 90deg : 270deg, root.tone.with-alpha(0.62) 0%, root.tone.with-alpha(0.28) 100%);
+            Rectangle {
+                x: Theme.phone || !root.won ? 0px : parent.width - 2px;
+                y: !Theme.phone || !root.won ? 0px : parent.height - 2px;
+                width: Theme.phone ? parent.width : 2px;
+                height: Theme.phone ? 2px : parent.height;
+                background: root.tone.brighter(0.4);
+                drop-shadow-blur: 16px;
+                drop-shadow-color: root.tone;
+            }
+        }
+    }
+
+    // WIN, LOSE or DRAW, stamped in on the player's own half.
+    Text {
+        property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
+        x: Theme.margin;
+        y: root.mid-y - (Theme.phone ? 100px : 140px);
+        width: root.half-width - 2 * Theme.margin;
+        height: Theme.phone ? 92px : 150px;
+        text: root.won ? @tr("WIN") : root.lost ? @tr("LOSE") : @tr("DRAW");
+        color: root.lost ? Theme.muted : Theme.text;
+        font-family: Theme.display;
+        font-size: Theme.phone ? 60px : 104px;
+        font-weight: Theme.display-bold;
+        letter-spacing: Theme.title-tracking * 2;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+        overflow: elide;
+        opacity: stamp.linear;
+        transform-scale: 1 + (1 - stamp.t) * 0.8;
+        changed over => {
+            if over {
+                Audit.clipped(self.text);
+            }
+        }
+    }
+
+    // The rounds' score and the match's time, each label over its number.
+    Rectangle {
+        x: root.mid-x - root.stats-width / 2;
+        y: root.mid-y + (Theme.phone ? 4px : 30px);
+        width: root.stats-width;
+        height: 64px;
+        Label {
+            x: 0;
+            y: 0;
+            width: parent.width / 2 - 8px;
+            height: 14px;
+            text: @tr("ROUNDS");
+            horizontal-alignment: center;
+        }
+
+        // (Each side's wins in a box of two digits, the dash between them where it is.)
+        Count {
+            x: parent.width / 4 - 16px - self.width;
+            y: 22px;
+            width: 48px;
+            height: 40px;
+            value: PlayView.result-wins;
+            from-zero: true;
+            delay: Theme.quick + Theme.brisk;
+            duration: Theme.quick;
+            settled: PlayView.result-settled;
+            font-size: root.digits;
+            horizontal-alignment: right;
+            ticked => {
+                PlayView.result-ticks += 1;
+            }
+        }
+
+        Text {
+            x: parent.width / 4 - 16px;
+            y: 22px;
+            width: 32px;
+            height: 40px;
+            text: "–";
+            color: Theme.muted;
+            font-family: Theme.mono;
+            font-size: root.digits;
+            font-weight: 700;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        Count {
+            x: parent.width / 4 + 16px;
+            y: 22px;
+            width: 48px;
+            height: 40px;
+            value: PlayView.result-losses;
+            from-zero: true;
+            delay: Theme.quick + Theme.brisk;
+            duration: Theme.quick;
+            settled: PlayView.result-settled;
+            font-size: root.digits;
+            horizontal-alignment: left;
+            ticked => {
+                PlayView.result-ticks += 1;
+            }
+        }
+
+        Label {
+            x: parent.width / 2 + 8px;
+            y: 0;
+            width: parent.width / 2 - 8px;
+            height: 14px;
+            text: @tr("TIME");
+            horizontal-alignment: center;
+        }
+
+        time := Count {
+            x: parent.width / 2 + 8px;
+            y: 22px;
+            width: parent.width / 2 - 8px;
+            height: 40px;
+            value: PlayView.result-time;
+            clock: true;
+            from-zero: true;
+            delay: 2 * Theme.quick + Theme.brisk;
+            duration: Theme.set-piece - 2 * Theme.quick - Theme.brisk;
+            settled: PlayView.result-settled;
+            font-size: root.digits;
+            horizontal-alignment: center;
+            ticked => {
+                PlayView.result-ticks += 1;
+            }
+            changed done => {
+                if self.done {
+                    PlayView.result-done = true;
+                }
+            }
+        }
+    }
+
+    Button {
+        x: Theme.phone ? Theme.margin : root.mid-x - self.width / 2;
+        y: root.height - (Theme.phone ? Theme.margin : 48px) - self.height;
+        width: Theme.phone ? root.width - 2 * Theme.margin : max(200px, self.natural-width);
+        nav: "result.go";
+        text: @tr("CONTINUE");
+        kind: ButtonKind.main;
+    }
+
+    // (Where it is there at once, its last number is too.)
+    init => {
+        if time.done {
+            PlayView.result-done = true;
         }
     }
 }

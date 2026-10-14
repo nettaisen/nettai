@@ -210,7 +210,15 @@ under its menu, not stopped (§15).
 
 - The menus' sounds are the selected game's own custom screen sounds, through its rules' sound roles
   (`custom_cursor`, `custom_pick`, `custom_back`, `refused`): the app names no sound of a pack. Every move of the
-  cursor, confirm, back and refusal has one.
+  cursor, confirm, back and refusal has one. Entering a battle (the jack-in, §10) plays the game's own encounter
+  sound, the role `encounter`: what every battle's start plays in the original as the screen breaks into it, a
+  random encounter's too, song 0x78 in all three games (EXE6's `SOUND_BATTLE_START`, played by
+  `gameState_8005BC8`, the battle's game state's entry; EXE5's same routine, 0x080054F6, and its same song;
+  EXE4's 0x08005490, 0x080054EE and 0x08005520, which its walking encounter and its scripts enter by). It is a
+  sound effect of 0.7 s (one note) on an effects player of its own, so it plays over the battle's music, which
+  starts at once. No rule plays it; the packs name it `encounter` (`compat/assets.toml`). (EXE5's and EXE6's song
+  0x0F, `transmission`, was looked at first and isn't used: the user, "it shouldn't be the transmission sound, it
+  should be the encounter sound".)
 - The title music is the selected game's too: the sound its pack names `title-screen`, on a driver of its own. It
   plays across the menu screens, fades in, fades out as a battle starts, and crossfades with the next game's as
   the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
@@ -316,7 +324,7 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   sound is the battle's (`Sound::take_preview`, nettai-frontend's `Player::carry_sound`, before the first tick,
   the levels given after). The round's start then plays its music cue as ever, and the game's own `PlayMusic`
   finds that song playing already and does nothing (nettai-audio's `SoundCalls`: "nothing if it's the music
-  already"), so the song goes on from where the entry had it, through the cards, the wipe and the round's
+  already"), so the song goes on from where the entry had it, through the cards, the jack-in and the round's
   opening (nettai's `the_battle_goes_on_with_the_entrys_music`: the song's clock past the entry's, where a battle
   of its own starts it from 0, the battle the same by digest). Nothing of the battle changes: its cues are its
   own, the sound is presentation, and practice has no rollback (a live set's cues are played as they come;
@@ -742,7 +750,19 @@ replays folder.
 drops the match's player, then `Lobby::reopen`), nobody ready, the settings as they were:
 
 - *Its set is over.* The game shows the result itself, in its own way, before the set is over for the engine
-  (the winner's banner, then the picture fades out); half a second after that, the lobby.
+  (the winner's banner, then the picture fades out). Then nettai's result is over the picture (`MatchResult`,
+  docs/design/app-ui.md §2.49; `Play::show_result`): won, lost or drawn, the round wins each side has
+  (`Battle::wins_for`, the round's count by side: the same on both peers, as it is the shared simulation's) and
+  the match's time (the frames its player ran, `Player::ticks`, at the game's rate), which the frontend already
+  has: nothing is added to the battle or the content for it. While it shows it has the keys
+  (`Shell::cover_battle`, its controls' names beginning `result.`): CONTINUE (Enter, the pad's A; Esc and B too)
+  settles it where it still moves, and pressed again goes on; it goes on by itself after six seconds
+  (`RESULT_STAYS`). Its sounds are the app's: the UI counts the numbers' ticks (`PlayView.result-ticks`) and says
+  when the last is done (`result-done`), and Play plays the game's cursor sound for the ticks, at most one each
+  45 ms, and its confirm sound for the last. Each player goes on alone: the other's lobby hears this one back
+  (`Lobby::their_reopened`) and goes on showing its result, and nobody has left (a player dropped after its set
+  is over on the lobby's channel says nothing of leaving: `NetPlayer`'s `Drop`). A set that ended some other way
+  (no result nettai has words for) shows none, and the lobby comes half a second on, as before.
 - *LEAVE MATCH*, or the other player leaving it (`StopReason::OpponentLeft`, or the other's lobby heard again
   while this player's set isn't over, `Lobby::their_reopened`), or the other's player going silent
   (`ConnectionLost`), or something internal: the lobby's line says which, as its kind's sentence.
@@ -1693,9 +1713,9 @@ that cut, which the screenshot pass reports: the `Stepper`'s own check); a line 
 over the layout; a field's text is clipped at its padding.
 
 **Motion** (docs/design/app-ui.md §4, "Motion"). The theme has the one table of durations (`quick` 110 ms and
-`brisk` 150 for a control, `settle` 200 for a panel or a screen arriving, `leave` 120, `set-piece` 420, and the
-`stagger`, 30), and the components move by themselves, so a screen built from them moves without its author
-writing an animation:
+`brisk` 150 for a control, `settle` 200 for a panel or a screen arriving, `leave` 120, `set-piece` 480, the
+`stagger`, 30, and `calm-fade`, 160, what Reduce motion keeps of the jack-in), and the components move by
+themselves, so a screen built from them moves without its author writing an animation:
 
 - the cursor glides between controls, breathes while idle and snaps inward on Enter;
 - a button's press flashes its fill and dips it 1, and the main action has a slow sheen;
@@ -1704,8 +1724,19 @@ writing an animation:
 - a panel's accent draws in; a progress bar fills under a moving highlight; a message fades in;
 - a screen's body slides and fades as it leaves, and the next one's title wipes in; a dialog grows in as its
   shade fades in, and a failure's shakes once; a menu over the battle slides in from the left;
-- the two cards before a battle slide in from their sides, VS stamps, the ground's pattern rushes, and the screen
-  wipes into the battle; the pattern drifts otherwise, and a soft pulse crosses it now and then;
+- the two cards before a battle slide in from their sides, VS stamps, and the ground's pattern rushes; the
+  pattern drifts otherwise, and a soft pulse crosses it now and then;
+- a battle that had its cards jacks in as it begins (`JackIn` in shell.slint, `Shell::jack_in`; online,
+  practice and a replay's viewer alike): over its first frames, for the set piece's time, the ground covers it
+  while 28 streaks in the cursor's color rush in toward the middle and the field rushes again, a flash, and the
+  battle shows; "BATTLE ROUTINE, SET! EXECUTE!" stamps in on a band across the middle (in Japanese
+  "バトルオペレーション、セット！イン！") and fades; the game's encounter sound plays (§1). The battle starts when it
+  would have and runs under it: it is drawn over the battle and takes no input, and nothing of it reaches the
+  simulation, so an online match's two sides start in lockstep as before. With Reduce motion the ground and the
+  telop fade over `calm-fade` (a `Pulse` that is `calm` runs with motion off); in the screenshot pass
+  (`Theme.still`) there is nothing of it;
+- an online match's result (§4): the winner's half floods in from its edge (`settle`), WIN or LOSE stamps in
+  (`brisk`, `quick` after), then the score and the time count up (`Count`), ending with the set piece;
 - a change of game sweeps the new game's ground across the window from the side of the arrow pressed as the
   colors cross-fade (above).
 
@@ -1720,7 +1751,7 @@ ms after the one before. And its own set pieces, from the same pieces (motion.sl
 | `Arrive` | A part of a screen arriving: rising, or from a side (`from-x`: a tab's body following its underline) |
 | `Flash` | A flash over what it covers (a slot a chip landed in, READY stamping) |
 | `Shake` | `dx` swinging to each side twice and coming to rest (a refusal): added to the `x` of what shakes |
-| `Count` | A number that ticks to its value when it changes |
+| `Count` | A number that ticks to its value when it changes; or counts up from 0 as it is made (`from-zero`, after its `delay`, over its `duration`: a result's numbers, one after another), a time shown from hundredths (`clock`), saying each tick (`ticked`) and when it is at its value (`done`) |
 | `Shell::fly(from, to, image, text)` | Something flying over the layout from one control to another (a chip from its library row to its slot) |
 
 Four rules hold for all of it:
@@ -1733,7 +1764,9 @@ Four rules hold for all of it:
 3. *It is short:* the theme's durations, and no others.
 4. *It can be turned down.* With `Theme.motion` off every clock is at its end and nothing moves by itself:
    Settings' Reduce motion (as the system asks, until the player says: macOS's and GNOME's settings are read),
-   and the screenshot pass.
+   and the screenshot pass. The one thing Reduce motion keeps is the jack-in's short fade (a `Pulse` given
+   `calm`), which the screenshot pass doesn't (`Theme.still`). A set piece a press settles (the result) is put at
+   its end by its clocks' `settled`.
 
 **A row that is focused as a whole** (the design's rows are: the cursor is around the label and its control
 together) has a `Focusable` of its own under its control, named as the control is, and the control's own is
@@ -1903,7 +1936,7 @@ doesn't end as one that walked through (`tour::ended`).
 **The motion probe** (`NETTAI_TOUR_MOTION=1`) is the pass with things moving. A still picture can't show an
 animation, so it takes a burst of shots through each (a screen leaving and the next arriving, the cursor's
 glide, a change of game sweeping in from the right, from the left and twice over, a value sliding, a press, a
-list opening, a page scrolling, a dialog, the cards and the wipe into a battle, a menu over it), each named for
+list opening, a page scrolling, a dialog, the cards and the jack-in into a battle, a menu over it), each named for
 the milliseconds since it began. (Before the change of game's bursts it steps once around the games, waiting for
 each to be ready, so that no game's runtime loads, the window still, inside a burst.) It checks and fails on two
 things: that in every shot each control is the size it has at rest, and that a press acts at once (two moves
