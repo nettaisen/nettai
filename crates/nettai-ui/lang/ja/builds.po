@@ -16,10 +16,10 @@ msgstr "削除"
 
 msgid "{n} build"
 msgid_plural "{n} builds"
-msgstr[0] "ビルド {n}件"
+msgstr[0] "構築 {n}件"
 
 msgid "NEW BUILD"
-msgstr "新規ビルド"
+msgstr "新規構築"
 
 msgid "IMPORT SAVE…"
 msgstr "セーブを読み込む…"
@@ -64,7 +64,7 @@ msgstr "{}{}として読み込みました"
 # ---- A new build, and a build's new name.
 
 msgid "New build"
-msgstr "新しいビルド"
+msgstr "新しい構築"
 
 msgid "NAME"
 msgstr "名前"
@@ -77,7 +77,7 @@ msgid "{} It can't be changed later."
 msgstr "{} あとから変更できません。"
 
 msgid "CREATE BUILD"
-msgstr "ビルドを作成"
+msgstr "構築を作成"
 
 # ---- The build overview.
 
@@ -551,7 +551,7 @@ msgid "{} belongs in slot {}"
 msgstr "{}はスロット{}用です"
 
 msgid "Made for another game"
-msgstr "別のゲームのビルドです"
+msgstr "別のゲームの構築です"
 
 msgid "Something isn't chosen"
 msgstr "未選択の項目があります"
