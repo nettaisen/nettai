@@ -1304,7 +1304,14 @@ so it has no in-between places, and stays as the game draws it.
   that is not nothing, and is read a texel a pixel there. (A part that is
   blended or in mosaic stays in the frame at its whole pixels: the
   composition mixes it with what is behind.) Drawn at the frame's own
-  size, an overlay is the frame's part, pixel for pixel (its test).
+  size, an overlay is the frame's part, pixel for pixel (its test). A
+  squashed or turned part is read at each output pixel's top left corner,
+  as the frame reads it at its pixel's, so a whole one drawn larger is the
+  frame's part scaled, and on every tick the overlay draws every frame
+  pixel the part's sprite draws, its first output pixel in the frame's
+  texel (`hud`'s test of EXE4's BATTLE START, whose glyphs' outlines reach
+  their last row: read half a frame pixel up, as it once was, the banner
+  was drawn that much low and its last row cut by its box).
 - *The background's glide* (`Frame::glide`, `present`). A background that
   scrolls by sixteenths of a pixel a frame (its `scroll`: the game's scroll
   counters) shows on the screen at the counter's whole pixels, a step every
