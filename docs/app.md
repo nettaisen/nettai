@@ -1345,10 +1345,10 @@ with it), a patch card or an EXE4 slot (emptied), an auto battle place. A click 
 so the first click on a row marks it and the next takes out what it holds. The row's touch (`Focusable` or
 `RowTouch`, given `marked`) notes whether it was the marked row as the button went down (the press marks the row it
 is on), and if it was, its click asks `Nav.choose("click-remove", ...)` (`Drag.clicked`, nav.slint), which the
-editor hands the tab as `Action::Delete`. **A double click does nothing more than one click:** a click on the marked
-row within a double click's time (500 ms, Slint's own) of the click before on that row is passed over
-(`Editor::clicked`, `DOUBLE_CLICK`), so a double click on a row that isn't marked marks it and leaves what it holds,
-and one on the marked row takes out one thing (a patch card's list closes up under it, and a second removal would
+editor hands the tab as `Action::Delete`. **A double click removes** (the user: "fast double click should remove"): on a
+row that isn't marked, its first click marks it and its second takes out what it holds; on the marked row it takes
+out one thing, a click within a double click's time (500 ms, Slint's own) of one that took something out of that
+row being passed over (`Editor::clicked`, `DOUBLE_CLICK`) (a patch card's list closes up under it, and a second removal would
 take the next card). A click on a library row is as before (a patch card that is in, or the chip a place holds, is
 taken out by it). A right click does nothing on these rows now. The NaviCust is as it was: a click there takes a
 program or picks a piece up, so its right click still puts away the piece in hand or takes off the one under the
@@ -1388,8 +1388,8 @@ chip put in has; let go off the list (more than 16 past its rows), it goes back,
   `Flickable` takes a touch that moves in its first half second; one held still for that half second is the row's,
   and drags it (the Folder's, the Patch cards' and the Auto battle's lists on a phone alike; a list with nothing to
   scroll gives a touch's drag to the row at once).
-- *The pass* (`build_tabs::drags`, §13): a click on the marked folder entry (taken out) after a double click on it
-  unmarked (only marked); an entry dragged three rows down, shot held there and after; a patch card dragged above the
+- *The pass* (`build_tabs::drags`, §13): a double click on an unmarked folder entry (taken out), and one on the
+  marked entry (one thing taken out, the next entry untouched); an entry dragged three rows down, shot held there and after; a patch card dragged above the
   one before it; an auto battle place's chip dragged two places back in its list, then into another list (traded),
   then down past the page's foot into the Mega list (it scrolls there; refused). On a phone, the folder's drag, with
   the mouse (the pass has no touches to give).

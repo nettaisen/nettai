@@ -211,9 +211,8 @@ Each is settled unless the user changes it.
     an already selected chip or patch card or whatever should remove it, instead of right clicking. also you should
     be able to drag and drop to reorder". In the editor's own lists (the folder's entries, the patch cards and
     EXE4's slots, the auto battle places), a click on the row that is marked takes out what it holds, as Del does;
-    a click on another marks it, as before; a right click does nothing there now. A double click does no more than
-    one click (a click within a double click's time of the last on that row is passed over), so it never removes by
-    accident. A row pressed and moved is dragged: it lifts under the pointer, the rows between slide to leave a gap
+    a click on another marks it, as before; a right click does nothing there now. A double click removes, on a
+    row marked or not ("fast double click should remove"), and takes out one thing only. A row pressed and moved is dragged: it lifts under the pointer, the rows between slide to leave a gap
     where it would land, the list scrolls near its edges, and let go it moves there (off the list, it goes back). A
     folder's entry takes its Regular and tag marks with it; a patch card moves as `[` and `]` move it (EXE4's slots,
     each card's own, aren't dragged); an auto battle place's chip moves within its list, or trades with another
@@ -504,9 +503,12 @@ Each is in the mockups under the same name.
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
   outline at its edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and
-  S turn it, C compresses or decompresses it (in place, turned as it is: "rotating the ncp on compression is so
+  S turn it, C compresses or uncompresses it (in place, turned as it is: "rotating the ncp on compression is so
   confusing"; a program taken from the list comes compressed where it compresses: "navicust pieces should default
-  to compressed in the editor"), Enter (the
+  to compressed in the editor"; its hint says Uncompress while the piece is compressed: "compress key on the
+  navicust view should say uncompress if uncompress is possible"; a program of one shape has no C and no hint:
+  "if the piece is the same compressed and uncompresse then it can't compress/uncompress, there's only one form of
+  it"), Enter (the
   pad's A) places it, Esc (the pad's B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
   up and putting it away, or with Del ("there seems to be no way to remove the ncp from the board once placed").
   Enter on a program's row takes a new copy in hand whether or not copies are placed, and Del there takes the

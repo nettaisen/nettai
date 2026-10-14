@@ -1078,21 +1078,24 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     add(SETTLE, to_tab(EditorTab::Folder));
     add(SETTLE, out_of_library());
     if !phone {
-        // A double click on an entry not marked: marked, its chip left in.
+        // A double click on an entry not marked: marked, and its chip taken out ("fast double click should remove").
         add(SETTLE, focus("slot", 0));
-        add(SETTLE, keep(&kept));
         add(SETTLE, click("slot", 2));
         add(40, click("slot", 2));
-        let was = kept.clone();
-        add(SETTLE, expect(move |ui, app| {
-            let name = ui.global::<FolderView>().get_slots().row_data(2).map(|s| s.name.to_string());
-            focus_on(app, "slot", 2).or_else(|| (name.as_ref() != was.borrow().0.get(2)).then(|| format!("a double click on entry 3, not marked: it holds {name:?}, not {:?}", was.borrow().0.get(2))))
-        }));
-        // A click on it now, marked: its chip is taken out.
-        add(600, click("slot", 2));
-        add(SETTLE, expect(|ui, _| {
+        add(SETTLE, expect(|ui, app| {
             let there = ui.global::<FolderView>().get_slots().row_data(2).map(|s| s.there);
-            (there != Some(false)).then(|| "a click on the marked entry 3: its chip isn't taken out".to_string())
+            focus_on(app, "slot", 2).or_else(|| (there != Some(false)).then(|| "a double click on entry 3, not marked: its chip isn't taken out".to_string()))
+        }));
+        // A double click on the marked entry 4: one thing taken out (its chip), entry 5 untouched.
+        add(SETTLE, keep(&kept));
+        add(SETTLE, click("slot", 3));
+        add(600, click("slot", 3));
+        add(40, click("slot", 3));
+        let was = kept.clone();
+        add(SETTLE, expect(move |ui, _| {
+            let slots = ui.global::<FolderView>().get_slots();
+            let (four, five) = (slots.row_data(3).map(|s| s.there), slots.row_data(4).map(|s| s.name.to_string()));
+            (four != Some(false) || five.as_ref() != was.borrow().0.get(4)).then(|| format!("a double click on the marked entry 4: it holds {four:?}, entry 5 {five:?}"))
         }));
         add(SETTLE, hover("slot", 9));
         shot(add, "tabs-folder-click-removed", Pair::None);

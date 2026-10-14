@@ -269,6 +269,9 @@ msgstr "回す"
 msgid "Compress"
 msgstr "圧縮"
 
+msgid "Uncompress"
+msgstr "圧縮解除"
+
 msgid "Place"
 msgstr "置く"
 
