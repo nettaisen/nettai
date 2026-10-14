@@ -16,8 +16,9 @@
 //!           name in its game's pack)
 //! side   := the side's setup of the game's rules in its compact form (`Block::write_compact`:
 //!           each fact in the setup's order, a list as its count and its entries)
-//! match  := seed (u32), the rounds' count (u8), every round's place (as the seed picks those
-//!           the match leaves: `Match::places`), side 0, side 1
+//! match  := seed (u32), the round wins its set is first to (u8: `n`, 1 to `MAX_FIRST_TO`),
+//!           every one of its `2n − 1` rounds' places (as the seed picks those the match
+//!           leaves: `Match::places`), side 0, side 1
 //! string := length (LEB128), UTF-8
 //! ```
 //!
@@ -87,15 +88,20 @@ fn handles_held(content: &Content, block: &Block, place: nettai_content_api::Pla
     Ok(())
 }
 
-/// The rounds' count, appended to `out`: refused past a byte's.
-fn put_count(rounds: usize, out: &mut Vec<u8>) -> Result<(), String> {
-    out.push(u8::try_from(rounds).map_err(|_| format!("{rounds} rounds: a match in binary has at most 255"))?);
+/// What the set of `rounds` rounds is first to, appended to `out`: refused
+/// for a count no set has.
+fn put_first_to(rounds: usize, out: &mut Vec<u8>) -> Result<(), String> {
+    out.push(crate::first_to(rounds).ok_or_else(|| crate::check::no_set(rounds))?);
     Ok(())
 }
 
-/// The rounds' count from the start of `bytes`.
-fn take_count(bytes: &[u8]) -> Result<usize, String> {
-    bytes.first().map(|&n| n as usize).ok_or_else(|| "rounds: the bytes end inside it".to_string())
+/// The rounds of the set, from what it is first to at the start of `bytes`.
+fn take_rounds(bytes: &[u8]) -> Result<usize, String> {
+    match bytes.first() {
+        None => Err("first to: the bytes end inside it".to_string()),
+        Some(&n) if n == 0 || n > crate::MAX_FIRST_TO => Err(format!("first to {n}: a set is first to 1 to {}", crate::MAX_FIRST_TO)),
+        Some(&n) => Ok(crate::rounds_for(n)),
+    }
 }
 
 /// A stage's handle from the start of `bytes`, one of the content's.
@@ -158,14 +164,14 @@ fn take_background(content: &Content, bytes: &[u8], at: &str) -> Result<(String,
     Ok((name.to_string(), used))
 }
 
-/// A match in binary: its seed (refused: a match that states none), every
-/// round's place (each part the match leaves picked from the seed), its
-/// sides.
+/// A match in binary: its seed (refused: a match that states none), what
+/// its set is first to, every round's place (each part the match leaves
+/// picked from the seed), its sides.
 pub fn match_bytes(content: &Content, m: &Match) -> Result<Vec<u8>, String> {
     let seed = m.seed.ok_or("a match kept in binary states its seed")?;
     let mut out = seed.to_le_bytes().to_vec();
     let places = m.places(content, seed)?;
-    put_count(places.len(), &mut out)?;
+    put_first_to(places.len(), &mut out)?;
     for (i, p) in places.iter().enumerate() {
         out.extend_from_slice(&p.stage.0.to_le_bytes());
         put_string(&background_key(content, p.background).map_err(|e| format!("round {}: {e}", i + 1))?, &mut out);
@@ -181,7 +187,7 @@ pub fn read_match(content: &Content, bytes: &[u8]) -> Result<Match, String> {
     let seed = bytes.get(..4).ok_or("seed: the bytes end inside it")?;
     let seed = u32::from_le_bytes(seed.try_into().expect("four bytes"));
     let mut at = 4;
-    let count = take_count(&bytes[at..])?;
+    let count = take_rounds(&bytes[at..])?;
     at += 1;
     let mut rounds = Vec::with_capacity(count);
     for i in 0..count {
@@ -309,7 +315,7 @@ mod tests {
         assert_eq!(back.places(&content, 0).unwrap(), m.places(&content, 21).unwrap(), "stated: no seed picks them");
         assert_eq!(format!("{:?}", back.round(&content, 21)), format!("{:?}", m.round(&content, 21)));
         assert_eq!(match_bytes(&content, &back).unwrap(), bytes);
-        assert_eq!(bytes[4], 5);
+        assert_eq!(bytes[4], 3, "first to 3");
     }
 
     /// A match whose rounds are drawn on other games' backgrounds (the pool's: one stated, the rest picked from
@@ -347,7 +353,12 @@ mod tests {
         let place_at = |i: usize| 5 + places[..i].iter().sum::<usize>();
         let read = |b: &[u8]| read_match(&content, b).unwrap_err();
         assert_eq!(read(&bytes[..3]), "seed: the bytes end inside it");
-        assert_eq!(read(&bytes[..4]), "rounds: the bytes end inside it");
+        assert_eq!(read(&bytes[..4]), "first to: the bytes end inside it");
+        for n in [0, crate::MAX_FIRST_TO + 1] {
+            let mut first_to = bytes.clone();
+            first_to[4] = n;
+            assert_eq!(read(&first_to), format!("first to {n}: a set is first to 1 to 10"));
+        }
         assert_eq!(read(&bytes[..place_at(1) + 1]), "round 2: the bytes end inside it");
         assert_eq!(read(&bytes[..place_at(1) + 3]), "round 2: the bytes end inside it", "inside its background");
         let cut = read(&bytes[..bytes.len() - 1]);

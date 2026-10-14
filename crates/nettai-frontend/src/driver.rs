@@ -833,12 +833,12 @@ pub mod short_set {
         }
     }
 
-    /// A match of `game` of `rounds` rounds (each left to `seed`), picked
-    /// as [`of`] picks one, both navis with 1 HP: a round is over when the
-    /// shooter's buster hits.
-    pub fn duel(content: &Arc<Content>, game: &str, seed: u32, rounds: usize) -> nettai_match::Match {
+    /// A match of `game` whose set is first to `wins` round wins (each
+    /// round's place left to `seed`), picked as [`of`] picks one, both navis
+    /// with 1 HP: a round is over when the shooter's buster hits.
+    pub fn duel(content: &Arc<Content>, game: &str, seed: u32, wins: u8) -> nettai_match::Match {
         let mut m = of(content, game, seed);
-        m.rounds = vec![nettai_match::RoundSettings::default(); rounds];
+        m.rounds = vec![nettai_match::RoundSettings::default(); nettai_match::rounds_for(wins)];
         let base_hp = nettai_battle::content::PlayerFact::BaseHp.name();
         m.sides[0].set_fact(content, base_hp, &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Int(1))]).unwrap();
         assert_eq!(nettai_match::check_match(content, &m), Vec::<String>::new());
@@ -1146,7 +1146,7 @@ mod tests {
             for opponent in every_opponent() {
                 folds.push(same_as_before(&content, &long, 5, opponent, 1500).0);
             }
-            let short = short_set::duel(&content, game, 7, 3);
+            let short = short_set::duel(&content, game, 7, nettai_match::TRIPLE_BATTLE);
             let (fold, rounds, ended) = same_as_before(&content, &short, 7, Opponent { in_fight: InFight::MovesAround, on_custom_screen: OnCustomScreen::PicksFirst }, 30_000);
             assert!(ended && rounds >= 2, "{game}: the short set played {rounds} rounds and ended: {ended}");
             folds.push(fold);
@@ -1413,7 +1413,7 @@ mod tests {
     #[test]
     fn folder_order_deals_from_the_top() {
         let content = nettai_match::testing::exe6_content();
-        let m = short_set::duel(&content, "exe6", 7, 3);
+        let m = short_set::duel(&content, "exe6", 7, nettai_match::TRIPLE_BATTLE);
         let saved = Set::of(&content, &m, 5).folders().map(|f| f.chips.to_vec());
         let folder_order = Training { chip_draw: ChipDraw::FolderOrder, ..Training::default() };
         // (Three screens of the first round, then the second round's first: two rounds won end the set.)

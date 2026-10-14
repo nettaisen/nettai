@@ -71,13 +71,34 @@ impl RoundSettings {
     }
 }
 
-/// The most rounds a set has: its round's number is shown in two digits
-/// (the ROUND banner's).
-pub const MAX_ROUNDS: usize = 99;
+/// The most round wins a set is first to: ten, the longest set fighting
+/// games' players commonly play ("10先"), of 19 rounds at most, whose numbers
+/// the round's banner shows in its two digits.
+pub const MAX_FIRST_TO: u8 = 10;
 
-/// The rounds of the original's triple battle, best of three: a random
-/// match's (`pick::live`), and a new match's (`Match::empty`).
-pub const TRIPLE_BATTLE: usize = 3;
+/// The original's triple battle: first to 2 round wins, of three rounds at
+/// most (best of three): a random match's (`pick::live`), and a new match's
+/// (`Match::empty`). A single battle is first to 1.
+pub const TRIPLE_BATTLE: u8 = 2;
+
+/// The rounds of a set first to `wins` round wins: `2 × wins − 1`, the most
+/// it can take (a single battle's one, a triple battle's three). The set is
+/// decided as the original decides its triple battle (`sub_800AF50`, which
+/// the engine takes with the set's rounds for its three): once one side can
+/// no longer be caught, else after its last round by the wins, drawn if
+/// they are level. With no round drawn, that is when a side has `wins`; a
+/// drawn round is one of the rounds, as in the original, so a set with one
+/// may end on fewer wins (first to 2 after a won round and two drawn: 1–0).
+pub fn rounds_for(wins: u8) -> usize {
+    2 * wins as usize - 1
+}
+
+/// What a set of `rounds` rounds is first to ([`rounds_for`]'s inverse):
+/// none for a count no set has (none, an even number, more than
+/// [`MAX_FIRST_TO`]'s).
+pub fn first_to(rounds: usize) -> Option<u8> {
+    (rounds % 2 == 1 && rounds <= rounds_for(MAX_FIRST_TO)).then(|| (rounds / 2 + 1) as u8)
+}
 
 /// What a round that leaves its background is drawn on, picked from the
 /// match's seed (`pick::places`).
@@ -182,10 +203,11 @@ pub fn play_level(content: &Content, navi: NaviHandle) -> Option<u8> {
 
 /// A whole match: what is set for the match (its game: `exe6`, `exe5`;
 /// everything else a match names is that game's, and its rules are the
-/// game's: a game has one rules definition), each of its rounds (a set of
-/// as many: best of three for the original's three, and on: `rounds`),
-/// both sides (the left, side 0, then the right), the seed its setup
-/// and battle are picked from, if it names one, and what a round that
+/// game's: a game has one rules definition), each round its set may take
+/// (`rounds`: a set first to `n` round wins takes `2n − 1` at most,
+/// [`rounds_for`]; the original's single battle one, its triple battle
+/// three), both sides (the left, side 0, then the right), the seed its
+/// setup and battle are picked from, if it names one, and what a round that
 /// leaves its background is drawn on (`backgrounds`).
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Match {
@@ -226,8 +248,8 @@ pub(crate) fn no_background(at: &str, game: &str, name: &str) -> String {
 }
 
 impl Match {
-    /// A new match of `game`, nothing chosen yet: a triple battle's three
-    /// rounds, each picked from the seed, and on each
+    /// A new match of `game`, nothing chosen yet: a triple battle (first to
+    /// 2), its three rounds each picked from the seed, and on each
     /// side its navi (MegaMan, the navi that changes form, else the first
     /// with fresh stats) at its fresh stats; of the facts its rules take
     /// what a side that says nothing has (their defaults: an empty folder,
@@ -245,7 +267,7 @@ impl Match {
         Ok(Match {
             game: game.to_string(),
             seed: None,
-            rounds: vec![RoundSettings::default(); TRIPLE_BATTLE],
+            rounds: vec![RoundSettings::default(); rounds_for(TRIPLE_BATTLE)],
             sides: [side.clone(), side],
             backgrounds: BackgroundPick::Game,
         })
@@ -254,6 +276,12 @@ impl Match {
     /// The match's game.
     pub fn game(&self) -> &str {
         &self.game
+    }
+
+    /// The round wins its set is first to (a checked match's: [`first_to`]
+    /// of its rounds).
+    pub fn first_to(&self) -> u8 {
+        first_to(self.rounds.len()).expect("a checked match's rounds are a set's")
     }
 
     /// Every round's place, in order, picked from `seed` where the match
@@ -386,8 +414,9 @@ pub fn navi_forms(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_cont
     Some(facts::versions(content).iter().flat_map(|version| forms.listed(version).iter().copied()).collect())
 }
 
-/// What a match is, for the terminal: its game, the seed, its rounds'
-/// places (as the seed picks those it leaves), each
+/// What a match is, for the terminal: its game, the seed, the round wins
+/// its set is first to, its rounds' places (as the seed picks those it
+/// leaves), each
 /// side's navi and the facts it states (those that aren't its rules'
 /// defaults, each as its field's name and its value: `version: falzar`),
 /// with `folders` the folders; `you` is the side the player plays.
@@ -404,7 +433,12 @@ pub fn describe(content: &Content, m: &Match, seed: u32, folders: bool, you: usi
         Err(e) => e,
     };
     let rounds = m.rounds.len();
-    let mut out = format!("match of {}: seed {seed}, {rounds} round{}: {places}", m.game, if rounds == 1 { "" } else { "s" });
+    let set = match first_to(rounds) {
+        Some(1) => "a single battle".to_string(),
+        Some(wins) => format!("first to {wins}, {rounds} rounds at most"),
+        None => format!("{rounds} rounds"),
+    };
+    let mut out = format!("match of {}: seed {seed}, {set}: {places}", m.game);
     for (side, s) in m.sides.iter().enumerate() {
         let who = match (side == you, side) {
             (true, _) => "you",

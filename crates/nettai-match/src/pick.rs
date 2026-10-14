@@ -124,7 +124,7 @@ pub fn places_from(content: &Content, game: &str, rounds: &[RoundSettings], back
 /// each place picked (`places`) and stated; `stage` forces the first
 /// round's stage.
 fn random_rounds(content: &Content, game: &str, picks: &mut Picks, stage: Option<StageHandle>) -> Result<Vec<RoundSettings>, String> {
-    let mut places = places(content, game, &vec![RoundSettings::default(); TRIPLE_BATTLE], picks)?;
+    let mut places = places(content, game, &vec![RoundSettings::default(); crate::rounds_for(TRIPLE_BATTLE)], picks)?;
     if let Some(s) = stage {
         places[0].stage = s;
     }
@@ -412,7 +412,7 @@ mod tests {
             assert_eq!(*b, want, "round {}", i + 1);
         }
         let live = live(&content, "exe6", 9, None).unwrap();
-        assert_eq!(live.rounds.len(), crate::TRIPLE_BATTLE);
+        assert_eq!(live.first_to(), crate::TRIPLE_BATTLE);
         assert_eq!(live.places(&content, 9).unwrap(), picked[..3], "a random match's places, stated");
         let bad = [RoundSettings { stage: None, background: Some("nowhere".into()) }];
         assert_eq!(places(&content, "exe6", &bad, &mut Picks::new(9)), Err("round 1: no background \"nowhere\" in exe6".to_string()));

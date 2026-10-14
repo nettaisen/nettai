@@ -658,11 +658,15 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-lobby", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "play-lobby-focus", Pair::Second);
-    add(SETTLE, focus("lobby.rounds", 0));
-    shot(add, "play-lobby-rounds", Pair::First);
+    add(SETTLE, focus("lobby.first-to", 0));
+    shot(add, "play-lobby-first-to", Pair::First);
     add(SETTLE, act(Action::Right));
-    reach(add, |_, ui| ui.global::<PlayView>().get_rounds() == 1);
-    shot(add, "play-lobby-rounds-single", Pair::Second);
+    reach(add, |_, ui| ui.global::<PlayView>().get_first_to() == 3);
+    shot(add, "play-lobby-first-to-3", Pair::Second);
+    // (The match the walk plays is a single battle: first to 1.)
+    add(SETTLE, act(Action::Left));
+    add(SETTLE, act(Action::Left));
+    reach(add, |_, ui| ui.global::<PlayView>().get_first_to() == 1);
     add(SETTLE, focus("lobby.delay", 0));
     shot(add, "play-lobby-delay", Pair::First);
     add(SETTLE, act(Action::Right));
