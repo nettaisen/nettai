@@ -1,19 +1,21 @@
-//! Training (docs/design/app-ui.md §6): you against a dummy set up from a menu while in training. Its UI is
-//! `ui/screens/training.slint`.
+//! Practice (docs/design/app-ui.md §6): you against a dummy set up from a menu while practicing. Its UI is
+//! `ui/screens/practice.slint`.
 //!
-//! **The entry** ([`Training`], the screen): four rows, Your build and Dummy's build (both the player's own
+//! **The entry** ([`Practice`], the screen): four rows, Your build and Dummy's build (both the player's own
 //! builds of the selected game), Arena and Background (the game's, after Random: [`Places`]), all remembered
-//! between runs by game, and START TRAINING; beside them the two builds facing each other on the arena the
+//! between runs by game, and START PRACTICE; beside them the two builds facing each other on the arena the
 //! session opens on. With no build of the game there is one button, Create a build. A build that can't be used
-//! says so in the reserved line, and training doesn't start.
+//! says so in the reserved line, and practice doesn't start. Each build's EDIT (or E, or the pad's north button,
+//! on its row) opens it in Builds' editor (`crate::screens::builds::open`), and Back from there comes back here,
+//! which lists the builds again as they were left.
 //!
-//! **A training session** is a battle against a dummy with the training menu over it, and any screen may start
-//! one ([`start`]): Training does from its entry, and Play does beside a waiting invite, with rows of its own at
+//! **A practice session** is a battle against a dummy with the practice menu over it, and any screen may start
+//! one ([`start`]): Practice does from its entry, and Play does beside a waiting invite, with rows of its own at
 //! the top of the menu. It has no end and is not recorded: a set that ends starts over. The session is held by
-//! the shell (`Shell::training`) and its battle is always this screen's (`ScreenId::Training` owns it), so this
+//! the shell (`Shell::practice`) and its battle is always this screen's (`ScreenId::Practice` owns it), so this
 //! module hears its menu and its events whatever screen is shown.
 //!
-//! **The training menu** (Start or Esc; the game's own pause never runs) has the battle paused behind it. Its
+//! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle paused behind it. Its
 //! rows are a label and a value between arrows, changed at once by Left and Right: [`ROWS`] lists them, and a
 //! row is added there.
 
@@ -34,23 +36,23 @@ use nettai_match::build::{Builds, Checked};
 use nettai_battle::Content;
 use nettai_content_api::StageHandle;
 use nettai_match::{Match, RoundSettings, Set, Side, Wrong};
-use nettai_ui::{BattleKind, TrainingBuild, TrainingOption, TrainingRow, TrainingView, VersusCard};
+use nettai_ui::{BattleKind, PracticeBuild, PracticeOption, PracticeRow, PracticeView, VersusCard};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-// ---- A training session, which any screen may start ----------------------------------------------------------
+// ---- A practice session, which any screen may start ----------------------------------------------------------
 
-/// A build in a training session: its name, as the cards and the menu say it, and the side it brings.
+/// A build in a practice session: its name, as the cards and the menu say it, and the side it brings.
 #[derive(Clone, Debug)]
 pub struct Build {
     pub name: String,
     pub side: Side,
 }
 
-/// A training session to start ([`start`]).
+/// A practice session to start ([`start`]).
 pub struct Start {
     /// The game it is of (ready).
     pub game: String,
@@ -58,7 +60,7 @@ pub struct Start {
     pub you: Build,
     pub dummy: Build,
     /// What the dummy does at first, how well it fights (its place in [`LEVELS`]), and what the battle's
-    /// options are; the training menu changes them.
+    /// options are; the practice menu changes them.
     pub opponent: Opponent,
     pub level: usize,
     pub options: Options,
@@ -67,11 +69,11 @@ pub struct Start {
     pub round: RoundSettings,
     /// What the places left to Random, each folder's order and the dummy's random presses are picked from.
     pub seed: u32,
-    /// The screen that starts it, if not Training itself, and the tag it hears of it by: a row it added was
+    /// The screen that starts it, if not Practice itself, and the tag it hears of it by: a row it added was
     /// chosen (`Screen::answered(tag, row)`, the row's place in `rows`). Its session has no CHANGE BUILDS and
     /// no QUIT TO MENU (the screen's own rows are the ways out), and keeps nothing of the dummy's setup.
     pub from: Option<(ScreenId, &'static str)>,
-    /// The rows that screen adds at the top of the training menu: their texts, in the language shown.
+    /// The rows that screen adds at the top of the practice menu: their texts, in the language shown.
     pub rows: Vec<String>,
     /// The picture fills the window. Else the screen shown has a `Picture` of its own for it, and the session
     /// lasts while that screen is shown.
@@ -81,7 +83,7 @@ pub struct Start {
 }
 
 impl Start {
-    /// A session of `game` as Training starts one: the dummy stands still and picks the first chips it can,
+    /// A session of `game` as Practice starts one: the dummy stands still and picks the first chips it can,
     /// the picture fills the window after the two cards.
     pub fn new(game: &str, you: Build, dummy: Build) -> Start {
         Start {
@@ -103,24 +105,26 @@ impl Start {
     /// A session screen `from` shows beside something of its own while the player waits (Play, by an invite's
     /// code): the dummy a copy of the player's own build, standing still, every option at its normal value and
     /// the places Random; the picture in the screen's own `Picture`, with no cards before it; `rows` at the top
-    /// of the training menu, each heard by `tag`.
+    /// of the practice menu, each heard by `tag`.
     pub fn beside(game: &str, build: Build, from: ScreenId, tag: &'static str, rows: Vec<String>) -> Start {
         Start { from: Some((from, tag)), rows, full: false, cards: false, ..Start::new(game, build.clone(), build) }
     }
 }
 
-/// What the shell holds of training (`Shell::training`).
+/// What the shell holds of practice (`Shell::practice`).
 #[derive(Default)]
 pub struct Shared {
     /// The session on, if one is.
     session: Option<Session>,
-    /// The screenshot pass: the entry is shown as with no build of the game.
+    /// The screenshot pass: the entry is shown as with no build of the game; or it lists the builds folder's
+    /// files, as a player's does (the pass's own folder: what it made there to open in Builds).
     pub tour_no_builds: bool,
+    pub tour_files: bool,
 }
 
-/// The training session on.
+/// The practice session on.
 struct Session {
-    /// The screen that started it, if not Training, and the tag it hears of it by.
+    /// The screen that started it, if not Practice, and the tag it hears of it by.
     from: Option<(ScreenId, &'static str)>,
     /// Its game, the match it plays (the two builds, every round on the place chosen) and the seed its set is
     /// picked from: an Arena or Background row changed plays the match's set again on the new place.
@@ -136,7 +140,7 @@ struct Session {
     full: bool,
     /// The rows its starter added: the menu's first; and the menu's own shown under them ([`shown_rows`]).
     added: usize,
-    rows: Vec<TrainingOption>,
+    rows: Vec<PracticeOption>,
     /// What the dummy does, how well it fights (its place in [`LEVELS`]), the battle's options, and whether the
     /// input display is on.
     opponent: Opponent,
@@ -153,75 +157,75 @@ struct Session {
     held: [u16; 2],
 }
 
-/// The training menu's rows, in order, under whatever rows another screen added: each group's title, then its
-/// options. A row is added here, worded in training.slint (`TrainingView.label` and `value`), and given what it
-/// does in [`values`], [`value`] and `Training::step_option`. The dummy's Level is shown under its Action while
+/// The practice menu's rows, in order, under whatever rows another screen added: each group's title, then its
+/// options. A row is added here, worded in practice.slint (`PracticeView.label` and `value`), and given what it
+/// does in [`values`], [`value`] and `Practice::step_option`. The dummy's Level is shown under its Action while
 /// that is Fights alone ([`shown_rows`]).
-pub(crate) const ROWS: [TrainingOption; 12] = [
-    TrainingOption::Dummy,
-    TrainingOption::Action,
-    TrainingOption::Level,
-    TrainingOption::Battle,
-    TrainingOption::Arena,
-    TrainingOption::Background,
-    TrainingOption::YourHp,
-    TrainingOption::DummysHp,
-    TrainingOption::CustomGauge,
-    TrainingOption::ChipDraw,
-    TrainingOption::Display,
-    TrainingOption::InputDisplay,
+pub(crate) const ROWS: [PracticeOption; 12] = [
+    PracticeOption::Dummy,
+    PracticeOption::Action,
+    PracticeOption::Level,
+    PracticeOption::Battle,
+    PracticeOption::Arena,
+    PracticeOption::Background,
+    PracticeOption::YourHp,
+    PracticeOption::DummysHp,
+    PracticeOption::CustomGauge,
+    PracticeOption::ChipDraw,
+    PracticeOption::Display,
+    PracticeOption::InputDisplay,
 ];
 
 /// How many values a row steps through (none: a group's title; Arena and Background the game's `places` and
 /// Random).
-fn values(option: TrainingOption, places: &Places) -> usize {
+fn values(option: PracticeOption, places: &Places) -> usize {
     match option {
-        TrainingOption::Arena => places.len(ARENA),
-        TrainingOption::Background => places.len(BACKGROUND),
-        TrainingOption::Action => ACTIONS.len(),
-        TrainingOption::Level => LEVELS.len(),
-        TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::ChipDraw | TrainingOption::InputDisplay => 2,
-        TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
+        PracticeOption::Arena => places.len(ARENA),
+        PracticeOption::Background => places.len(BACKGROUND),
+        PracticeOption::Action => ACTIONS.len(),
+        PracticeOption::Level => LEVELS.len(),
+        PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Battle | PracticeOption::Display => 0,
     }
 }
 
 /// The value a row has: its place among its values.
-fn value(option: TrainingOption, opponent: Opponent, level: usize, options: Options, inputs: bool, place: [usize; 2]) -> usize {
+fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Options, inputs: bool, place: [usize; 2]) -> usize {
     match option {
-        TrainingOption::Level => level,
-        TrainingOption::Arena => place[ARENA],
-        TrainingOption::Background => place[BACKGROUND],
-        TrainingOption::Action => ACTIONS.iter().position(|(_, a)| *a == opponent.in_fight).unwrap_or(0),
-        TrainingOption::YourHp => options.refills[0] as usize,
-        TrainingOption::DummysHp => options.refills[1] as usize,
-        TrainingOption::CustomGauge => options.full_gauge as usize,
-        TrainingOption::ChipDraw => (options.chip_draw == ChipDraw::FolderOrder) as usize,
-        TrainingOption::InputDisplay => inputs as usize,
-        TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => 0,
+        PracticeOption::Level => level,
+        PracticeOption::Arena => place[ARENA],
+        PracticeOption::Background => place[BACKGROUND],
+        PracticeOption::Action => ACTIONS.iter().position(|(_, a)| *a == opponent.in_fight).unwrap_or(0),
+        PracticeOption::YourHp => options.refills[0] as usize,
+        PracticeOption::DummysHp => options.refills[1] as usize,
+        PracticeOption::CustomGauge => options.full_gauge as usize,
+        PracticeOption::ChipDraw => (options.chip_draw == ChipDraw::FolderOrder) as usize,
+        PracticeOption::InputDisplay => inputs as usize,
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Battle | PracticeOption::Display => 0,
     }
 }
 
 /// A row as the menu shows it: its value's place; for Arena and Background, the name of the one chosen (none:
 /// Random).
-fn row(option: TrainingOption, session: &Session) -> TrainingRow {
+fn row(option: PracticeOption, session: &Session) -> PracticeRow {
     let value = value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32;
     let part = match option {
-        TrainingOption::Arena => Some(ARENA),
-        TrainingOption::Background => Some(BACKGROUND),
+        PracticeOption::Arena => Some(ARENA),
+        PracticeOption::Background => Some(BACKGROUND),
         _ => None,
     };
     let text = part.and_then(|part| session.place[part].checked_sub(1).and_then(|at| session.place_labels[part].get(at))).map(|name| name.as_str().into()).unwrap_or_default();
-    TrainingRow { option, value, text }
+    PracticeRow { option, value, text }
 }
 
 /// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone).
-fn shown_rows(in_fight: InFight) -> Vec<TrainingOption> {
-    ROWS.into_iter().filter(|o| *o != TrainingOption::Level || in_fight == InFight::Ai).collect()
+fn shown_rows(in_fight: InFight) -> Vec<PracticeOption> {
+    ROWS.into_iter().filter(|o| *o != PracticeOption::Level || in_fight == InFight::Ai).collect()
 }
 
 /// Show `options`' rows as `session` has them now (those shown).
-fn tell_rows(shell: &Shell, session: &Session, options: &[TrainingOption]) {
-    let rows = shell.ui().global::<TrainingView>().get_rows();
+fn tell_rows(shell: &Shell, session: &Session, options: &[PracticeOption]) {
+    let rows = shell.ui().global::<PracticeView>().get_rows();
     for option in options {
         if let Some(at) = session.rows.iter().position(|o| o == option) {
             rows.set_row_data(session.added + at, row(*option, session));
@@ -237,8 +241,8 @@ fn lay_out_rows(shell: &Shell, session: &mut Session) {
     if wanted == session.rows {
         return;
     }
-    let model = shell.ui().global::<TrainingView>().get_rows();
-    let Some(rows) = model.as_any().downcast_ref::<VecModel<TrainingRow>>() else { return };
+    let model = shell.ui().global::<PracticeView>().get_rows();
+    let Some(rows) = model.as_any().downcast_ref::<VecModel<PracticeRow>>() else { return };
     // (Gone from the last, then new from the first: each at its place in the list it is in.)
     for at in (0..session.rows.len()).rev() {
         if !wanted.contains(&session.rows[at]) {
@@ -263,8 +267,8 @@ fn dummy(in_fight: InFight) -> Opponent {
 /// Where the menu shows `option` now, among its rows (another screen's added first), if it shows it: for the
 /// screenshot pass.
 #[cfg(any(test, feature = "tour"))]
-pub(crate) fn row_of(shell: &Shell, option: TrainingOption) -> Option<i32> {
-    let session = shell.training.session.as_ref()?;
+pub(crate) fn row_of(shell: &Shell, option: PracticeOption) -> Option<i32> {
+    let session = shell.practice.session.as_ref()?;
     session.rows.iter().position(|o| *o == option).map(|at| (session.added + at) as i32)
 }
 
@@ -290,7 +294,7 @@ const ACTIONS: [(&str, InFight); 4] = [
 const LEVELS: [(&str, Level); 3] = [("easy", Level::EASY), ("normal", Level::NORMAL), ("hard", Level::HARD)];
 const NORMAL: usize = 1;
 
-/// The dummy's level as it was last left in one of Training's own sessions.
+/// The dummy's level as it was last left in one of Practice's own sessions.
 fn kept_level(shell: &Shell) -> usize {
     shell.settings.remembered.get(KEPT_LEVEL).and_then(|v| LEVELS.iter().position(|(name, _)| name == v)).unwrap_or(NORMAL)
 }
@@ -306,13 +310,13 @@ pub(crate) fn plug(live: &mut LivePlayer, opponent: Opponent, level: usize, seed
     wanted
 }
 
-/// The dummy's setup as it was last left in one of Training's own sessions.
+/// The dummy's setup as it was last left in one of Practice's own sessions.
 fn kept_opponent(shell: &Shell) -> Opponent {
     let kept = shell.settings.remembered.get(KEPT_ACTION).and_then(|v| ACTIONS.iter().find(|(name, _)| name == v));
     dummy(kept.map_or(InFight::StandsStill, |(_, in_fight)| *in_fight))
 }
 
-/// The battle's options as they were last left in one of Training's own sessions.
+/// The battle's options as they were last left in one of Practice's own sessions.
 fn kept_options(shell: &Shell) -> Options {
     let kept = |key: &str, on: &str| shell.settings.remembered.get(key).is_some_and(|v| v == on);
     let chip_draw = if kept(KEPT_DRAW, "folder-order") { ChipDraw::FolderOrder } else { ChipDraw::Shuffled };
@@ -324,17 +328,17 @@ fn inputs_on(settings: &crate::settings::Settings) -> bool {
     settings.remembered.get(KEPT_INPUTS).is_some_and(|v| v == "on")
 }
 
-/// Start a training session: the two cards while it is made ready (if it has them), then the battle, with the
-/// training menu behind Start and Esc. A session already on ends first. Err: why it can't start, as the player
+/// Start a practice session: the two cards while it is made ready (if it has them), then the battle, with the
+/// practice menu behind Start and Esc. A session already on ends first. Err: why it can't start, as the player
 /// reads it (what the code said is in the log).
 pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     let Some(ready) = shell.games.ready(&start.game) else {
-        crate::errors::log("starting training", &format_args!("{} isn't ready", start.game));
+        crate::errors::log("starting practice", &format_args!("{} isn't ready", start.game));
         return Err(UserError::Other);
     };
     let content = ready.content();
     let mut m = Match::empty(content, &start.game).map_err(|why| {
-        crate::errors::log("making a training match", &why);
+        crate::errors::log("making a practice match", &why);
         UserError::Other
     })?;
     m.sides = [start.you.side.clone(), start.dummy.side.clone()];
@@ -343,12 +347,12 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     places.put(&mut m, place);
     // (A set is made of a checked match: both folders whole.)
     if let Some(problem) = nettai_match::check::problems(content, &m).first() {
-        crate::errors::log("starting training", &problem.said());
+        crate::errors::log("starting practice", &problem.said());
         return Err(UserError::BuildUnusable { reason: None });
     }
     end(shell);
     let ui = shell.ui();
-    let view = ui.global::<TrainingView>();
+    let view = ui.global::<PracticeView>();
     let cards = start.cards.then(|| {
         let card = |role: slint::SharedString, name: &str, build: &Build| {
             let shown = shown(shell, &start.game, &ready, build);
@@ -383,10 +387,10 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         round: None,
         held: [0; 2],
     };
-    let rows: Vec<TrainingRow> = start
+    let rows: Vec<PracticeRow> = start
         .rows
         .iter()
-        .map(|text| TrainingRow { option: TrainingOption::Added, value: 0, text: text.into() })
+        .map(|text| PracticeRow { option: PracticeOption::Added, value: 0, text: text.into() })
         .chain(session.rows.iter().map(|o| row(*o, &session)))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
@@ -399,8 +403,8 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     let mut driver = LivePlayer::against(set_of(content, &session.m, start.seed), start.opponent, start.seed as u64).with_training(start.options);
     session.ai = plug(&mut driver, session.opponent, session.level, session.seed, None);
     shell.start_battle(BattleStart {
-        owner: ScreenId::Training,
-        kind: BattleKind::Training,
+        owner: ScreenId::Practice,
+        kind: BattleKind::Practice,
         game: start.game.clone(),
         set: set_of(content, &session.m, start.seed),
         play: Play::Drive(Box::new(driver)),
@@ -410,14 +414,14 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         full: start.full,
         gate: None,
     });
-    shell.training.session = Some(session);
+    shell.practice.session = Some(session);
     Ok(())
 }
 
-/// The set a training session plays: the match's, its rounds leaving the game its START (`HostKeys::pause`
-/// off), so the training menu holds the battle in the game's own pause (`Battle::pause_in_game`). The rest of
+/// The set a practice session plays: the match's, its rounds leaving the game its START (`HostKeys::pause`
+/// off), so the practice menu holds the battle in the game's own pause (`Battle::pause_in_game`). The rest of
 /// the round is as any match's. (A match's every round has the host answer START, for both players of an
-/// online one and its replay; training is neither online nor recorded.)
+/// online one and its replay; practice is neither online nor recorded.)
 fn set_of(content: &std::sync::Arc<nettai_battle::Content>, m: &Match, seed: u32) -> Set {
     let mut first = m.round(content, seed);
     first.host_keys.pause = false;
@@ -425,13 +429,13 @@ fn set_of(content: &std::sync::Arc<nettai_battle::Content>, m: &Match, seed: u32
     Set::new(content.clone(), first, folders)
 }
 
-/// End the training session on, if one is: its battle (or the cards before it) goes, and the screen shown is
+/// End the practice session on, if one is: its battle (or the cards before it) goes, and the screen shown is
 /// what shows. What starts a session from outside calls this when its wait is over (an opponent joined).
 pub fn end(shell: &mut Shell) {
-    if shell.training.session.take().is_none() {
+    if shell.practice.session.take().is_none() {
         return;
     }
-    if shell.loading_of(ScreenId::Training) {
+    if shell.loading_of(ScreenId::Practice) {
         shell.cancel_loading();
     }
     if ours(shell) {
@@ -440,29 +444,29 @@ pub fn end(shell: &mut Shell) {
     forget(shell);
 }
 
-/// Whether a training session is on (being made ready, or running).
+/// Whether a practice session is on (being made ready, or running).
 #[cfg_attr(not(feature = "tour"), allow(dead_code))] // (The screenshot pass asks.)
 pub fn running(shell: &Shell) -> bool {
-    shell.training.session.is_some()
+    shell.practice.session.is_some()
 }
 
-/// Whether the battle on is a training session's.
+/// Whether the battle on is a practice session's.
 fn ours(shell: &Shell) -> bool {
-    shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Training && b.kind == BattleKind::Training)
+    shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Practice && b.kind == BattleKind::Practice)
 }
 
 /// The UI no longer says anything of a session.
 fn forget(shell: &Shell) {
     let ui = shell.ui();
     ui.global::<nettai_ui::Shell>().set_battle_note(Default::default());
-    let view = ui.global::<TrainingView>();
+    let view = ui.global::<PracticeView>();
     view.set_held_yours(0);
     view.set_held_dummys(0);
 }
 
-/// The training battle's set again from its start, if one is being played (not under its menu).
+/// The practice battle's set again from its start, if one is being played (not under its menu).
 fn restart(shell: &mut Shell) -> bool {
-    let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training && b.playing()) else { return false };
+    let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice && b.playing()) else { return false };
     b.restart()
 }
 
@@ -474,7 +478,7 @@ fn restart_on_place(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
     session.places.put(&mut session.m, session.place);
     let set = set_of(ready.content(), &session.m, session.seed);
-    if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training)
+    if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice)
         && let Some(live) = b.stage.player.live_mut()
     {
         live.play_set(set);
@@ -491,32 +495,33 @@ fn redraw_on_background(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
     session.places.put(&mut session.m, session.place);
     let set = set_of(ready.content(), &session.m, session.seed);
-    if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training) {
+    if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
         b.stage.player.set_backgrounds(set);
     }
 }
 
 /// A build as a card says it: its name, its version's tag and its navi's name in the language shown.
-fn shown(shell: &Shell, game: &str, ready: &Rc<Ready>, build: &Build) -> TrainingBuild {
+fn shown(shell: &Shell, game: &str, ready: &Rc<Ready>, build: &Build) -> PracticeBuild {
     let content = ready.content();
     let graphics = ready.graphics(shell.lang);
     let names = Names::of(content, &graphics);
-    TrainingBuild {
+    PracticeBuild {
         name: build.name.as_str().into(),
         version: crate::builds::version_tag(shell, game, ready, &build.side),
         navi: names.navi(build.side.navi(content)).into(),
+        editable: true,
     }
 }
 
-/// Start a training session of the selected game between new builds of its first two versions, the dummy
-/// standing still, the battle's options `options`: for development (`NETTAI_TRAINING=<game>`, with the options
-/// as Training last left them) and the screenshot pass (with none), which have no builds of the player's to go
+/// Start a practice session of the selected game between new builds of its first two versions, the dummy
+/// standing still, the battle's options `options`: for development (`NETTAI_PRACTICE=<game>`, with the options
+/// as Practice last left them) and the screenshot pass (with none), which have no builds of the player's to go
 /// by.
 pub fn start_development_battle(shell: &mut Shell, seed: u32, options: Options) {
     let Some((game, ready)) = shell.ready() else { return };
     let builds = match new_builds(ready.content(), &game) {
         Ok(builds) => builds,
-        Err(why) => return crate::errors::log("making a training match", &why),
+        Err(why) => return crate::errors::log("making a practice match", &why),
     };
     let dummy = builds.get(1).unwrap_or(&builds[0]).clone();
     let start = Start { seed, options, level: kept_level(shell), ..Start::new(&game, builds[0].clone(), dummy) };
@@ -550,12 +555,12 @@ fn as_title(key: &str) -> String {
 const ARENA: usize = 0;
 const BACKGROUND: usize = 1;
 
-/// The places a training set may be fought on, as the entry and the menu step through them: the game's arenas
+/// The places a practice set may be fought on, as the entry and the menu step through them: the game's arenas
 /// (the link battle stages a match may name, `nettai_match::link_battle_stages`: the panel layouts and what
 /// stands on them that its netbattles are fought on) and its battle backgrounds, each in its keys' natural order
 /// (a run of digits by its number: `netbattle-2` before `netbattle-10`; a background by its name in the pack).
 /// Each list is stepped through after Random: the place picked from the seed each round, as a match that names
-/// none has it (what training did before it had them). A choice is a list's place, 0 Random.
+/// none has it (what practice did before it had them). A choice is a list's place, 0 Random.
 ///
 /// The games keep the two apart: a link battle picks its stage and its background each on its own (the rules'
 /// `link_pick`), so either goes with any of the other. An arena is said by its place in the list ("12 / 96":
@@ -687,8 +692,8 @@ struct Listed {
 struct Unusable(nettai_match::check::Problem);
 
 #[derive(Default)]
-pub struct Training {
-    /// `NETTAI_TRAINING` was answered.
+pub struct Practice {
+    /// `NETTAI_PRACTICE` was answered.
     started: bool,
     /// The game the entry lists the builds of, and they.
     game: Option<String>,
@@ -718,7 +723,7 @@ fn kept_build(game: &str, dummys: bool) -> String {
     format!("training.{}.{game}", if dummys { "dummy" } else { "build" })
 }
 
-impl Training {
+impl Practice {
     /// List the selected game's builds and places, and choose those remembered: with no build remembered, the
     /// first that can be used (else the first), for both; with no place, Random.
     fn list(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
@@ -726,14 +731,14 @@ impl Training {
         self.places = Places::of(content, game);
         self.place_labels = self.places.labels(&Names::of(content, &ready.graphics(shell.lang)));
         self.place = self.places.kept(content, &shell.settings.remembered, game);
-        self.builds = if shell.still {
+        self.builds = if shell.still && !shell.practice.tour_files {
             // (The screenshot pass's pictures don't depend on what the player has made: a new build of each
             // version, and one that can't be used, a side with nothing chosen.)
             let mut builds: Vec<Listed> = new_builds(content, game).unwrap_or_default().into_iter().map(|b| Listed { file: b.name.clone(), name: b.name, text: String::new(), side: Some(b.side) }).collect();
             if let Ok(side) = Side::fresh(content, game) {
                 builds.push(Listed { file: "Unfinished".into(), name: "Unfinished".into(), text: String::new(), side: Some(side) });
             }
-            if shell.training.tour_no_builds { Vec::new() } else { builds }
+            if shell.practice.tour_no_builds { Vec::new() } else { builds }
         } else {
             store::list(game)
                 .into_iter()
@@ -761,7 +766,7 @@ impl Training {
     /// The arena's picture is no longer the one in the window: nothing is shown in its place.
     fn drop_arena(&mut self, shell: &Shell) {
         (self.arena, self.arena_frames) = (None, 0);
-        shell.ui().global::<TrainingView>().set_arena(false);
+        shell.ui().global::<PracticeView>().set_arena(false);
     }
 
     /// The build chosen: the player's (0) or the dummy's (1).
@@ -796,19 +801,19 @@ impl Training {
         found
     }
 
-    /// Tell the view the entry: the two builds chosen and the place, why a build can't be used, whether training
+    /// Tell the view the entry: the two builds chosen and the place, why a build can't be used, whether practice
     /// can start.
     fn tell(&mut self, shell: &mut Shell, game: &str, ready: &Rc<Ready>) {
         let ui = shell.ui();
-        let view = ui.global::<TrainingView>();
+        let view = ui.global::<PracticeView>();
         view.set_none(self.builds.is_empty());
         let name = |part: usize| self.place[part].checked_sub(1).and_then(|at| self.place_labels[part].get(at)).map(|n| n.as_str().into()).unwrap_or_default();
         view.set_arena_shown(name(ARENA));
         view.set_background_shown(name(BACKGROUND));
         let card = |build: Option<&Listed>| match build {
             Some(Listed { name, side: Some(side), .. }) => shown(shell, game, ready, &Build { name: name.clone(), side: side.clone() }),
-            Some(Listed { name, .. }) => TrainingBuild { name: name.as_str().into(), ..Default::default() },
-            None => TrainingBuild::default(),
+            Some(Listed { name, .. }) => PracticeBuild { name: name.as_str().into(), ..Default::default() },
+            None => PracticeBuild::default(),
         };
         view.set_yours(card(self.build(0)));
         view.set_dummys(card(self.build(1)));
@@ -821,10 +826,10 @@ impl Training {
         view.set_message(message);
         view.set_ready(!self.builds.is_empty() && wrong.iter().all(Option::is_none));
         // The focus is never left on a control that went with the builds, or came with them; and where START
-        // TRAINING can't be pressed, the screen opens on the row to change.
+        // PRACTICE can't be pressed, the screen opens on the row to change.
         let on = shell.nav.focused().map(|k| k.id.clone());
         match (self.builds.is_empty(), on.as_deref(), wrong.iter().position(Option::is_some)) {
-            (true, None | Some("start" | "yours" | "dummys" | "arena" | "background"), _) => shell.nav.focus("create", 0),
+            (true, None | Some("start" | "yours" | "dummys" | "edit" | "arena" | "background"), _) => shell.nav.focus("create", 0),
             (false, Some("create"), None) => shell.nav.focus("start", 0),
             (false, None | Some("start" | "create"), Some(which)) => shell.nav.focus(if which == 1 { "dummys" } else { "yours" }, 0),
             _ => {}
@@ -842,6 +847,24 @@ impl Training {
         shell.save_settings();
         self.changed = Some(Instant::now());
         self.tell(shell, &game, &ready);
+    }
+
+    /// Open the build chosen, the player's (0) or the dummy's (1), in Builds' editor; Back from it comes back
+    /// here. It is found among the game's files as they are now, by its file (Builds lists them in that order);
+    /// one that isn't there, or doesn't read as a build, is refused. The two builds chosen are remembered for the
+    /// game first, so that the entry shows them again as they were left, whatever the edit did to them (one
+    /// that can't be used now stays chosen, the reserved line saying why).
+    fn edit_build(&mut self, shell: &mut Shell, which: usize) {
+        let Some(game) = self.game.clone() else { return };
+        let file = self.build(which).filter(|b| b.side.is_some()).map(|b| b.file.clone());
+        let Some(at) = file.and_then(|file| place_of(&store::list(&game), &file)) else { return shell.sound.play(Cue::Refused) };
+        for side in [0, 1] {
+            if let Some(b) = self.build(side) {
+                shell.settings.remembered.insert(kept_build(&game, side == 1), b.file.clone());
+            }
+        }
+        shell.save_settings();
+        crate::screens::builds::open(shell, ScreenId::Practice, Some(at));
     }
 
     /// Step the place of list `part` (the arenas or the backgrounds, 0 Random) by `by`, around from its last to
@@ -895,8 +918,8 @@ impl Training {
         }
     }
 
-    /// START TRAINING: a session between the two builds chosen, on the arena shown.
-    fn start_training(&mut self, shell: &mut Shell) {
+    /// START PRACTICE: a session between the two builds chosen, on the arena shown.
+    fn start_practice(&mut self, shell: &mut Shell) {
         let Some((game, ready)) = shell.ready() else { return };
         let Some([you, dummy]) = self.pair(&ready) else { return shell.sound.play(Cue::Refused) };
         let round = self.places.round(self.place);
@@ -905,6 +928,17 @@ impl Training {
         if let Err(error) = self::start(shell, start) {
             shell.fail(error);
         }
+    }
+
+    /// E or the pad's north button on the entry: a build opened in Builds' editor (`build_meant`). False with no
+    /// build, or a session on.
+    fn edit_focused(&mut self, shell: &mut Shell) -> bool {
+        if shell.battle.is_some() || shell.screen() != ScreenId::Practice || self.builds.is_empty() {
+            return false;
+        }
+        shell.sound.play(Cue::Pick);
+        self.edit_build(shell, build_meant(shell));
+        true
     }
 
     /// The entry again, after a session of its own: another arena, another deal.
@@ -917,7 +951,7 @@ impl Training {
     /// Step the menu's option at row `index` by `by`, around from its last value to its first: it changes at
     /// once.
     fn step_option(&mut self, shell: &mut Shell, index: i32, by: i32) {
-        let Some(mut session) = shell.training.session.take() else { return };
+        let Some(mut session) = shell.practice.session.take() else { return };
         let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
         if let Some(option) = option.filter(|o| values(*o, &session.places) > 0) {
             let next = (value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32 + by).rem_euclid(values(option, &session.places) as i32) as usize;
@@ -926,8 +960,8 @@ impl Training {
             match option {
                 // Arena: the set again from its start on the new arena, as RESTART starts it, the menu staying open.
                 // Background: the battle drawn on it from now, nothing else changing.
-                TrainingOption::Arena | TrainingOption::Background => {
-                    let part = if option == TrainingOption::Arena { ARENA } else { BACKGROUND };
+                PracticeOption::Arena | PracticeOption::Background => {
+                    let part = if option == PracticeOption::Arena { ARENA } else { BACKGROUND };
                     session.place[part] = next;
                     if keep && let Some(ready) = shell.games.ready(&session.game) {
                         session.places.keep(ready.content(), &mut shell.settings.remembered, &session.game, part, next);
@@ -938,54 +972,54 @@ impl Training {
                         redraw_on_background(shell, &mut session);
                     }
                 }
-                TrainingOption::Action => {
+                PracticeOption::Action => {
                     let (name, in_fight) = ACTIONS[next];
                     session.opponent = dummy(in_fight);
                     if keep {
                         shell.settings.remembered.insert(KEPT_ACTION.into(), name.into());
                     }
                 }
-                TrainingOption::Level => {
+                PracticeOption::Level => {
                     session.level = next;
                     if keep {
                         shell.settings.remembered.insert(KEPT_LEVEL.into(), LEVELS[next].0.into());
                     }
                 }
-                TrainingOption::YourHp | TrainingOption::DummysHp => {
-                    let side = (option == TrainingOption::DummysHp) as usize;
+                PracticeOption::YourHp | PracticeOption::DummysHp => {
+                    let side = (option == PracticeOption::DummysHp) as usize;
                     session.options.refills[side] = next == 1;
                     if keep {
                         shell.settings.remembered.insert(KEPT_HP[side].into(), if next == 1 { "refills" } else { "normal" }.into());
                     }
                 }
-                TrainingOption::CustomGauge => {
+                PracticeOption::CustomGauge => {
                     session.options.full_gauge = next == 1;
                     if keep {
                         shell.settings.remembered.insert(KEPT_GAUGE.into(), if next == 1 { "full" } else { "normal" }.into());
                     }
                 }
-                TrainingOption::ChipDraw => {
+                PracticeOption::ChipDraw => {
                     session.options.chip_draw = if next == 1 { ChipDraw::FolderOrder } else { ChipDraw::Shuffled };
                     if keep {
                         shell.settings.remembered.insert(KEPT_DRAW.into(), if next == 1 { "folder-order" } else { "shuffled" }.into());
                     }
                 }
-                TrainingOption::InputDisplay => {
+                PracticeOption::InputDisplay => {
                     shell.settings.remembered.insert(KEPT_INPUTS.into(), if next == 1 { "on" } else { "off" }.into());
                     // (What each side holds is told from the next frame.)
                     session.inputs = next == 1;
                     session.held = [0; 2];
                     let ui = shell.ui();
-                    let view = ui.global::<TrainingView>();
+                    let view = ui.global::<PracticeView>();
                     view.set_inputs(next == 1);
                     view.set_held_yours(0);
                     view.set_held_dummys(0);
                 }
-                TrainingOption::Added | TrainingOption::Dummy | TrainingOption::Battle | TrainingOption::Display => {}
+                PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Battle | PracticeOption::Display => {}
             }
             shell.save_settings();
             // (At once, on the battle as it stands behind the menu.)
-            if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training) {
+            if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
                 b.stage.player.set_opponent(session.opponent);
                 b.stage.player.set_training(session.options);
                 if let Some(live) = b.stage.player.live_mut() {
@@ -996,8 +1030,21 @@ impl Training {
             tell_rows(shell, &session, &[option]);
             lay_out_rows(shell, &mut session);
         }
-        shell.training.session = Some(session);
+        shell.practice.session = Some(session);
     }
+}
+
+/// Where the build kept in file `file` (its name without the extension) is among `files`, a game's builds as
+/// `store::list` has them.
+fn place_of(files: &[store::Listed], file: &str) -> Option<usize> {
+    files.iter().position(|b| b.path.file_stem().is_some_and(|stem| stem == file))
+}
+
+/// The build E and the pad's north button open: the dummy's (1) where the focus is on its row or its EDIT, else
+/// the player's (0).
+fn build_meant(shell: &Shell) -> usize {
+    let dummys = shell.nav.focused().is_some_and(|k| k.id == "dummys" || (k.id == "edit" && k.index == 1));
+    dummys as usize
 }
 
 /// The rule a build breaks, in the player's words, for the reserved line: its kind's sentence of the builds'
@@ -1006,7 +1053,7 @@ fn rule(shell: &Shell, game: &str, ready: &Rc<Ready>, why: &Unusable) -> String 
     crate::builds::words::problem(shell, game, ready, &why.0)
 }
 
-impl Screen for Training {
+impl Screen for Practice {
     fn main(&self) -> &'static str {
         "start"
     }
@@ -1024,7 +1071,9 @@ impl Screen for Training {
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         match id {
-            "create" => shell.go(ScreenId::Builds),
+            // (Back from Builds comes back here.)
+            "create" => crate::screens::builds::open(shell, ScreenId::Practice, None),
+            "edit" => self.edit_build(shell, index.clamp(0, 1) as usize),
             "yours" | "dummys" => {
                 let which = (id == "dummys") as usize;
                 let options = self.builds.iter().map(|b| b.name.clone()).collect();
@@ -1033,7 +1082,7 @@ impl Screen for Training {
             // (A place row steps on, as the menu's rows do.)
             "arena" => self.step_place(shell, ARENA, 1),
             "background" => self.step_place(shell, BACKGROUND, 1),
-            "start" => self.start_training(shell),
+            "start" => self.start_practice(shell),
             "menu.resume" => shell.close_menu(),
             "menu.restart" => {
                 shell.close_menu();
@@ -1047,7 +1096,7 @@ impl Screen for Training {
             "menu.rows.option" => self.step_option(shell, index, 1),
             // A row another screen added: it is told which.
             "menu.rows.added" => {
-                if let Some(Session { from: Some((to, tag)), .. }) = &shell.training.session {
+                if let Some(Session { from: Some((to, tag)), .. }) = &shell.practice.session {
                     let (to, tag) = (*to, *tag);
                     shell.tell(to, tag, index.max(0) as usize);
                 }
@@ -1078,22 +1127,24 @@ impl Screen for Training {
 
     /// The menu's row the focus is on is where the menu opens next.
     fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
-        if let Some(session) = shell.training.session.as_mut().filter(|_| id.starts_with("menu.")) {
+        if let Some(session) = shell.practice.session.as_mut().filter(|_| id.starts_with("menu.")) {
             session.menu_focus = Key::new(id, index);
         }
     }
 
-    /// R or F5 in a training battle: the set again from its start.
+    /// R or F5 in a practice battle: the set again from its start. E on the entry, on a build's row or its EDIT:
+    /// the build opened in Builds' editor.
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
-        if !matches!(key.code, KeyCode::KeyR | KeyCode::F5) {
-            return false;
+        match key.code {
+            KeyCode::KeyR | KeyCode::F5 => restart(shell),
+            KeyCode::KeyE => self.edit_focused(shell),
+            _ => false,
         }
-        restart(shell)
     }
 
-    /// The pad's north button, as R.
+    /// The pad's north button: as R in a practice battle, as E on the entry.
     fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
-        action == Action::Alternate && restart(shell)
+        action == Action::Alternate && (restart(shell) || self.edit_focused(shell))
     }
 
     fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
@@ -1102,7 +1153,7 @@ impl Screen for Training {
 
     /// A dialog asked while a session another screen started was on is that screen's: it hears the answer.
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
-        if let Some(Session { from: Some((to, _)), .. }) = &shell.training.session {
+        if let Some(Session { from: Some((to, _)), .. }) = &shell.practice.session {
             let to = *to;
             shell.tell(to, tag, choice);
         }
@@ -1110,17 +1161,17 @@ impl Screen for Training {
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match event {
-            // Under the training menu the battle is in the game's own pause (the user: "the training pause should
+            // Under the practice menu the battle is in the game's own pause (the user: "the training pause should
             // actually just use the game's pause behavior: music continues, stuff still animates. but don't
             // show the PAUSED banner in the middle of the screen"): its HUD's pause display is left out.
             BattleEvent::Started => {
-                if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training) {
+                if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
                     b.pause_in_game();
                     b.stage.player.renderer().pause_display = false;
                 }
             }
             BattleEvent::Watching(_) => {}
-            // Training has no end: a set that ends starts over.
+            // Practice has no end: a set that ends starts over.
             BattleEvent::Finished(_) => {
                 if let Some(b) = shell.battle.as_mut() {
                     b.restart();
@@ -1136,14 +1187,14 @@ impl Screen for Training {
     }
 
     fn frame(&mut self, shell: &mut Shell, now: Instant, shown: bool) {
-        // `NETTAI_TRAINING=<game>`: straight into a training battle of it, once it is ready. (Asked until it is
+        // `NETTAI_PRACTICE=<game>`: straight into a practice battle of it, once it is ready. (Asked until it is
         // answered, and not at all without the variable: this runs every frame.)
         if !self.started {
-            match std::env::var("NETTAI_TRAINING") {
+            match std::env::var("NETTAI_PRACTICE") {
                 Ok(game) if shell.game() != Some(game.as_str()) => shell.select_game(&game),
                 Ok(_) if shell.ready().is_some() => {
                     self.started = true;
-                    shell.go(ScreenId::Training);
+                    shell.go(ScreenId::Practice);
                     let options = kept_options(shell);
                     start_development_battle(shell, clock_seed(), options);
                 }
@@ -1153,26 +1204,26 @@ impl Screen for Training {
         }
         // The session on: gone with its battle, however that went (another battle started in its place); and
         // one shown in another screen's `Picture` lasts while that screen is shown.
-        let live = ours(shell) || shell.loading_of(ScreenId::Training);
-        let left = shell.training.session.as_ref().is_some_and(|s| !s.full && s.from.is_some_and(|(from, _)| from != shell.screen()));
-        if shell.training.session.is_some() && (!live || left) {
-            // (A battle of another's is left alone: `end` ends a training session's.)
+        let live = ours(shell) || shell.loading_of(ScreenId::Practice);
+        let left = shell.practice.session.as_ref().is_some_and(|s| !s.full && s.from.is_some_and(|(from, _)| from != shell.screen()));
+        if shell.practice.session.is_some() && (!live || left) {
+            // (A battle of another's is left alone: `end` ends a practice session's.)
             end(shell);
         }
         // With its Action "a second pad", the second pad used is the dummy's (none of the player's or the menus'):
         // what it holds is the dummy's buttons this frame, none while the battle hasn't the keys.
-        let apart = shell.training.session.as_ref().is_some_and(|s| s.opponent.in_fight == InFight::SecondPad);
+        let apart = shell.practice.session.as_ref().is_some_and(|s| s.opponent.in_fight == InFight::SecondPad);
         shell.pad.apart = apart;
         let held = shell.pad.second(&shell.bindings);
-        if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Training && (apart || b.stage.player.live().is_some_and(|l| l.opponent().in_fight == InFight::SecondPad))) {
+        if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice && (apart || b.stage.player.live().is_some_and(|l| l.opponent().in_fight == InFight::SecondPad))) {
             let playing = b.playing();
             if let Some(live) = b.stage.player.live_mut() {
                 live.set_second_pad(held.map(|h| if playing { h } else { 0 }));
             }
         }
         // Its menu opens where the focus last was in it.
-        let open = shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Training && b.menu_open());
-        if let Some(session) = &mut shell.training.session
+        let open = shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Practice && b.menu_open());
+        if let Some(session) = &mut shell.practice.session
             && session.menu_open != open
         {
             session.menu_open = open;
@@ -1187,13 +1238,13 @@ impl Screen for Training {
             // (Something else has the window: when the entry shows again, the arena is shown anew.)
             if self.arena_frames != 0 {
                 self.arena_frames = 0;
-                shell.ui().global::<TrainingView>().set_arena(false);
+                shell.ui().global::<PracticeView>().set_arena(false);
             }
             return;
         }
         let ui = shell.ui();
         let screen = ui.global::<nettai_ui::Shell>();
-        if screen.get_screen() != ScreenId::Training.view() || screen.get_leaving() {
+        if screen.get_screen() != ScreenId::Practice.view() || screen.get_leaving() {
             return;
         }
         // (The screenshot pass doesn't wait; its motion probe does, as a player's app.)
@@ -1207,7 +1258,7 @@ impl Screen for Training {
             if self.arena_frames < 2 && shell.drawing {
                 self.arena_frames += 1;
                 if self.arena_frames == 2 {
-                    ui.global::<TrainingView>().set_arena(true);
+                    ui.global::<PracticeView>().set_arena(true);
                 }
             }
         }
@@ -1216,8 +1267,8 @@ impl Screen for Training {
     /// After the battle's ticks: the round, for the line beside MENU on a phone, and with the input display on,
     /// the buttons each side holds.
     fn frame_end(&mut self, shell: &mut Shell, _now: Instant) {
-        let Some(b) = shell.battle.as_ref().filter(|b| b.owner == ScreenId::Training) else { return };
-        let Some(session) = shell.training.session.as_mut() else { return };
+        let Some(b) = shell.battle.as_ref().filter(|b| b.owner == ScreenId::Practice) else { return };
+        let Some(session) = shell.practice.session.as_mut() else { return };
         let battle = b.stage.player.battle();
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
@@ -1230,7 +1281,7 @@ impl Screen for Training {
         }
         (session.round, session.held) = (Some(round), held);
         let ui = shell.ui();
-        let view = ui.global::<TrainingView>();
+        let view = ui.global::<PracticeView>();
         if new_round {
             ui.global::<nettai_ui::Shell>().set_battle_note(view.invoke_round_note(round as i32));
         }
@@ -1275,21 +1326,21 @@ mod tests {
             }
             // (A session another screen starts has the battle's options at their normal values and the places
             // Random: the first.)
-            if matches!(option, TrainingOption::Arena | TrainingOption::Background | TrainingOption::YourHp | TrainingOption::DummysHp | TrainingOption::CustomGauge | TrainingOption::ChipDraw) {
+            if matches!(option, PracticeOption::Arena | PracticeOption::Background | PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::CustomGauge | PracticeOption::ChipDraw) {
                 assert_eq!(value(option, opponent, NORMAL, options, false, [0; 2]), 0, "{option:?}");
             }
         }
         assert_eq!(seen, 9, "Action, Level, Arena, Background, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
         assert_eq!(ACTIONS.map(|(_, a)| a), [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
-        assert_eq!(value(TrainingOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), 2);
-        assert_eq!(value(TrainingOption::Level, opponent, NORMAL, options, false, [0; 2]), 1, "Normal at first");
+        assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), 2);
+        assert_eq!(value(PracticeOption::Level, opponent, NORMAL, options, false, [0; 2]), 1, "Normal at first");
         assert_eq!(LEVELS.map(|(_, level)| level), [Level::EASY, Level::NORMAL, Level::HARD]);
-        assert_eq!(value(TrainingOption::DummysHp, opponent, NORMAL, Options { refills: [false, true], ..options }, false, [0; 2]), 1);
-        assert_eq!(value(TrainingOption::InputDisplay, opponent, NORMAL, options, true, [0; 2]), 1);
-        assert_eq!(value(TrainingOption::Background, opponent, NORMAL, options, false, [3, 2]), 2);
+        assert_eq!(value(PracticeOption::DummysHp, opponent, NORMAL, Options { refills: [false, true], ..options }, false, [0; 2]), 1);
+        assert_eq!(value(PracticeOption::InputDisplay, opponent, NORMAL, options, true, [0; 2]), 1);
+        assert_eq!(value(PracticeOption::Background, opponent, NORMAL, options, false, [3, 2]), 2);
         // (The arenas and the backgrounds after Random.)
-        assert_eq!(values(TrainingOption::Arena, &places), 1 + nettai_match::link_battle_stages(&content, "exe6").len());
-        assert_eq!(values(TrainingOption::Background, &places), 1 + nettai_match::ids::backgrounds(&content, "exe6").len());
+        assert_eq!(values(PracticeOption::Arena, &places), 1 + nettai_match::link_battle_stages(&content, "exe6").len());
+        assert_eq!(values(PracticeOption::Background, &places), 1 + nettai_match::ids::backgrounds(&content, "exe6").len());
     }
 
     /// The dummy's Level is under its Action while that is Fights alone; and its custom screen goes with its Action
@@ -1299,14 +1350,14 @@ mod tests {
         // (How many rows it shows, and the one under the Action.)
         let under = |in_fight| {
             let rows = shown_rows(in_fight);
-            let at = rows.iter().position(|o| *o == TrainingOption::Action).unwrap();
+            let at = rows.iter().position(|o| *o == PracticeOption::Action).unwrap();
             (rows.len(), rows.get(at + 1).copied())
         };
         let (none, one) = (ROWS.len() - 1, ROWS.len());
-        assert_eq!(under(InFight::StandsStill), (none, Some(TrainingOption::Battle)));
-        assert_eq!(under(InFight::MovesAround), (none, Some(TrainingOption::Battle)));
-        assert_eq!(under(InFight::Ai), (one, Some(TrainingOption::Level)));
-        assert_eq!(under(InFight::SecondPad), (none, Some(TrainingOption::Battle)));
+        assert_eq!(under(InFight::StandsStill), (none, Some(PracticeOption::Battle)));
+        assert_eq!(under(InFight::MovesAround), (none, Some(PracticeOption::Battle)));
+        assert_eq!(under(InFight::Ai), (one, Some(PracticeOption::Level)));
+        assert_eq!(under(InFight::SecondPad), (none, Some(PracticeOption::Battle)));
         assert_eq!(dummy(InFight::Ai).on_custom_screen, OnCustomScreen::Ai);
         assert_eq!(dummy(InFight::StandsStill), Opponent::default());
     }
@@ -1382,5 +1433,18 @@ mod tests {
     fn builds_are_remembered_by_game() {
         assert_eq!(kept_build("exe6", false), "training.build.exe6");
         assert_eq!(kept_build("exe5", true), "training.dummy.exe5");
+    }
+
+    /// EDIT finds its build among the game's files by its file alone (Builds lists them in that order): not by
+    /// its name, nor by a file whose name begins with its.
+    #[test]
+    fn a_build_is_found_among_the_files_by_its_file() {
+        let listed = |file: &str, name: &str| store::Listed { path: std::path::PathBuf::from(format!("/data/builds/exe6/{file}.toml")), name: name.into(), text: String::new() };
+        let files = [listed("Falzar heat", "Falzar heat"), listed("Falzar", "Gregar"), listed("Gregar", "Falzar")];
+        assert_eq!(place_of(&files, "Falzar"), Some(1));
+        assert_eq!(place_of(&files, "Gregar"), Some(2));
+        assert_eq!(place_of(&files, "Falzar heat"), Some(0));
+        assert_eq!(place_of(&files, "Falz"), None);
+        assert_eq!(place_of(&[], "Falzar"), None);
     }
 }

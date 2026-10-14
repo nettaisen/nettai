@@ -78,8 +78,8 @@ msgstr "アドレスをコピー"
 msgid "COPY INVITE CODE"
 msgstr "招待コードをコピー"
 
-msgid "STOP TRAINING"
-msgstr "トレーニングをやめる"
+msgid "STOP PRACTICE"
+msgstr "練習をやめる"
 
 msgid "CANCEL INVITE"
 msgstr "招待を取り消す"
@@ -93,8 +93,8 @@ msgstr "対戦相手を待っています"
 msgid "The lobby opens when they join."
 msgstr "相手が参加するとロビーが開きます。"
 
-msgid "Training menu"
-msgstr "トレーニングメニュー"
+msgid "Practice menu"
+msgstr "練習メニュー"
 
 msgid "Fight"
 msgstr "バトル"

@@ -341,11 +341,11 @@ ends or the engine hits something it doesn't implement yet; the first
 difference from the trace's recorded state is reported (`Player::diverged`).
 Frame numbers are the trace's.
 
-**Live play** (a match, docs/app.md's Training or `nettai-tool --match FILE`):
+**Live play** (a match, docs/app.md's Practice or `nettai-tool --match FILE`):
 you are the left navi; the right one is an opponent's (`driver::Opponent`,
 its buttons alone, as a player's are). What it does is two choices, each
 made alone and changed at any tick of the set (`Player::set_opponent`,
-`LivePlayer::set_opponent`; a training menu's two rows):
+`LivePlayer::set_opponent`; a practice menu's two rows):
 
 - **in the fight** (`InFight`): it stands still (the default), moves around
   at random and never attacks, or attacks at random: it moves, shoots and
@@ -375,7 +375,7 @@ up the battle (§6), including its game, rounds, each side's navi, folder,
 forms, patch cards, NaviCust and stats.
 
 **A training session's options** (`driver::Training`, `Player::set_training`,
-`LivePlayer::set_training`; the training menu's Battle rows) change live
+`LivePlayer::set_training`; the practice menu's Battle rows) change live
 play's battle between its ticks, as a training mode does. They are a host's
 options, not rules of the simulation: the driver applies them to the
 battle's own typed state before each tick (`Driver::prepare`, which the
@@ -486,7 +486,7 @@ every match's setup: `RoundSetup::host_keys`):
   `Battle::pausable` says whether START would pause the game now,
   `Battle::paused_by` who holds it paused, both output only; and the
   renderer's `pause_display` off leaves the HUD's "PAUSE" out of the
-  picture. nettai's training does: docs/app.md §15.)
+  picture. nettai's Practice does: docs/app.md §15.)
 - **L on the custom screen** does nothing: nobody runs from a match, and
   the navi's message that says so isn't shown or heard
   (docs/engine/custom-screen.md §3.5). L and R in the fight ask for the
@@ -1453,7 +1453,7 @@ once at the file's top: everything else is a name in that game's namespace
 (`nettai_match::ids`), so a match can't name another game's chip, navi,
 soul, patch card or stage: a name the game hasn't is said as any unknown
 name is ("left: folder entry 3: no chip \"darkthnd\" in exe6"), whether
-another game has it or not. nettai's Training plays one from its matches folder
+another game has it or not. nettai's Practice plays one from its matches folder
 (you are its left side; docs/app.md §2), `nettai-tool --match FILE` renders
 one or says its setup and `--save-match FILE` writes the match with its seed
 (docs/tools.md), and a side of one is what nettai's build creator makes (a
@@ -1903,7 +1903,7 @@ the send writes, and the block's last eight bytes, which nothing reads.
 itself and through a match file, to the same places and records, over
 blocks of each awkward shape.
 
-A random match (`nettai_match::pick`, Training's Random) states none: its
+A random match (`nettai_match::pick`, Practice's Random) states none: its
 sides have the rules' default, what the game's battle end writes of a player
 it has learned nothing of (empty places, zeroed records). The user: "i don't
 think you need learning right? since the battles are one-off": the data
