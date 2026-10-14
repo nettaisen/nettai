@@ -189,8 +189,10 @@ megaman-portrait = "20-40"  # the no-running message's speaker, F4 00 40 (0x0804
 # Sounds: the song table's numbers (0x08155FF8), music and sound effects.
 [sounds]
 title-screen = 0x000  # the start screen's music, which its first state sets as the screen opens (`movs r0, #0` at 0x08025430, then the setter 0x08000586; Blue Moon 0x08025434, the Japanese ROMs 0x08025374 and 0x08025378): EXE4's song table has no silent entry at 0, as EXE5's and EXE6's have
-netbattle-single = 0x014  # a single battle's music, which the fight's setup starts by the battle's type (0x080074A4, the table 0x08007510: types 0x46 and 0x47; the lab's timer/win, frame 130)
-netbattle = 0x015  # a triple battle's music (the same table: types 0x48 and 0x49; the lab's flow/buster-duel, frame 130)
+virus-battle = 0x014  # the virus battles' music: 369 battle settings records state it (byte 3; the first at 0x080FA924), and a single battle's, which the fight's setup starts by the battle's type (0x080074A4, the table 0x08007510: types 0x46 and 0x47; the lab's timer/win, frame 130)
+boss-battle = 0x015  # the boss battles' music: 52 records state it, the navis' later versions met in the net (type 0x19, the map's background) and the DarkSoul's (0x080FA948 on); and a triple battle's (the same table: types 0x48 and 0x49; the lab's flow/buster-duel, frame 130)
+final-battle = 0x016  # Duo's two battles' music: their records state it (0x080FAD5C, 0x080FAD68: type 0x33, background 0x17, `duo`)
+tournament-battle = 0x017  # the tournaments' music: the 24 records of the battles at the three venues state it (type 0x1B or 0x1A, backgrounds 0x18 to 0x1A: `stadium`, `air-stadium`, `colosseum`; 0x080FA99C on); the table 0x08007510's types 0x4A to 0x4C too
 winner-special = 0x018  # the winner's music in a special battle, battle flag 2 (0x080071F8)
 loser = 0x019  # a netbattle's loser's music, battle type 0x46 and on (0x0800727C)
 winner = 0x01e  # the winner's music (0x080071F8)

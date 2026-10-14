@@ -248,13 +248,20 @@ impl Shell {
     /// changes. From the content's locales alone (a game without its pack has its name too); the header's name
     /// is told again.
     fn name_games(&self) {
-        let dir = nettai_content::index::content();
-        let names: HashMap<String, String> =
-            self.games.list.iter().filter_map(|g| nettai_content::locale::game_name(&dir, &g.id, self.lang).map(|name| (g.id.clone(), name))).collect();
-        GAME_NAMES.with(|n| *n.borrow_mut() = names);
+        let ids: Vec<&str> = self.games.list.iter().map(|g| g.id.as_str()).collect();
+        Shell::read_game_names(&ids, self.lang);
         if let Some(id) = &self.game {
             self.ui().global::<nettai_ui::Shell>().set_game(Shell::game_name(id).into());
         }
+    }
+
+    /// Read games `ids`' names in `lang` (for [`Shell::game_name`]), and their battle themes' (for
+    /// `crate::music::name`).
+    pub(crate) fn read_game_names(ids: &[&str], lang: &str) {
+        let dir = nettai_content::index::content();
+        let names: HashMap<String, String> = ids.iter().filter_map(|id| nettai_content::locale::game_name(&dir, id, lang).map(|name| (id.to_string(), name))).collect();
+        GAME_NAMES.with(|n| *n.borrow_mut() = names);
+        crate::music::name_themes(ids.iter().copied(), lang);
     }
 
     /// Where the game can't change (inside a build, a lobby, a replay), its name stays in the header without
@@ -332,6 +339,19 @@ impl Shell {
     pub fn set_name(&mut self, name: &str) {
         self.settings.name = crate::settings::clean_name(name);
         self.ui().global::<nettai_ui::Shell>().set_player(self.settings.name.as_str().into());
+        self.save_settings();
+    }
+
+    /// The battle's music the player picked (`crate::music`): every battle the shell runs plays with it, a
+    /// replay watched too.
+    pub fn battle_music(&self) -> crate::music::Music {
+        crate::music::Music::remembered(&self.settings)
+    }
+
+    /// Pick the battle's music: remembered, for the next battle the shell makes ready (a battle running goes on
+    /// with what it has).
+    pub fn set_battle_music(&mut self, music: &crate::music::Music) {
+        music.remember(&mut self.settings);
         self.save_settings();
     }
 

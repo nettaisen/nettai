@@ -771,3 +771,9 @@ language = "ja"
 "mega" = "メガクラス"
 "giga" = "ギガクラス"
 "program_advance" = "プログラムアドバンス"
+
+# The battle themes' names (en.toml's `[battle_themes]` says what they are). Ours.
+[battle_themes]
+"virus-battle" = "ウイルスバトル"
+"boss-battle" = "ボスバトル"
+"final-battle" = "VS ネビュラグレイ"

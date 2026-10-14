@@ -290,3 +290,7 @@ msgstr "問題が発生しました"
 
 msgid "Details are in the log file."
 msgstr "詳しくはログファイルをご覧ください。"
+
+# The battle music list's first choice (Play's lobby, Practice): the battle's game's own music.
+msgid "Game's own"
+msgstr "ゲーム本来のBGM"

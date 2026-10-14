@@ -232,6 +232,59 @@ under its menu, not stopped (§15).
   unchanged to the sample. Measured in a practice battle of each game: with Music at 0 the stream is silent
   once the opening effects end; at 50 the music's peak is half (0.30 to 0.39 against 0.6 to 0.7).
 
+**The battle's music** (`music.rs`; docs/design/app-ui.md §2.29). The user: "you should also allow for
+selectable battle themes (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle,
+bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)".
+
+- *What plays without a pick* (the game's own) is what the engine's round start asks for (`Battle::mode_intro`):
+  every match is a link battle, so the rules' `music.link_battle` (EXE6 and EXE5: `virus-battle`, song 0x15), and
+  in EXE4 a single battle's `link_battle_single` (`virus-battle`, 0x14) or a set's `link_battle` (`boss-battle`,
+  0x15), as its battle start picks by the battle's type. The stage's own music is a battle's outside a link (none
+  the app plays). The round's end stops it (`StopMusic`), and the result plays the winner's or the loser's music.
+- *The themes* are each game's content: its rules' `battle_themes`, songs of its pack in the order the list shows
+  them, named in its locales' text table `battle_themes` by the song's asset name (docs/design/content-model-v2.md
+  §3.8). Each is the music the original's battle settings records start for a kind of battle (their music byte,
+  found by the records' shape in each ROM, the same in every ROM of a game):
+
+  | Theme | Song | The records that start it |
+  |---|---|---|
+  | BN4 Virus Battle | EXE4 0x14 `virus-battle` | 369 (the virus battles; a single netbattle's too) |
+  | BN4 Boss Battle | EXE4 0x15 `boss-battle` | 52: the navis' later versions in the net, the DarkSoul's (a triple battle's too) |
+  | BN4 Tournament Battle | EXE4 0x17 `tournament-battle` | 24, every battle at the three venues (backgrounds 0x18 to 0x1A) |
+  | BN4 vs Duo | EXE4 0x16 `final-battle` | Duo's two (background 0x17, `duo`) |
+  | BN5 Virus Battle | EXE5 0x15 `virus-battle` | 957 |
+  | BN5 Boss Battle | EXE5 0x16 `boss-battle` | 141, the navis' |
+  | BN5 vs Nebula Gray | EXE5 0x17 `final-battle` | NebulaGray's two (0x081140E0, 0x08114270) |
+  | BN6 Virus Battle | EXE6 0x15 `virus-battle` | 201 of `BattleSettingsList0` |
+  | BN6 Boss Battle | EXE6 0x16 `boss-battle` | 65, the navis' |
+  | BN6 vs Cybeast | EXE6 0x17 `final-battle` | the two against a Cybeast (NameIDs 0x179 and 0x17B in Falzar) |
+  | BN6 Crossover Battle | EXE6 0x22 `crossover-battle` | one (record 0); the disassembly's name for the song |
+
+  The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
+  トーナメントバトル"). The app names no song and no game: it lists what the packs' contents state.
+- *The pick* is the player's own and one: Play's lobby (§4) and Practice's entry (§15) show and change the same
+  one, remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
+  asset name; none, the game's own). The list is "Game's own", then the themes of every game whose parts are read
+  (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose pack
+  isn't there offers none, and a pick of one is played as the game's own until its game is read.
+- *How it plays.* Every battle the shell makes ready plays the pick (`Shell::battle_music`, `music::sound`): a
+  practice battle, an online match, a replay watched; and a replay's video (§16) is made with it. The song plays in
+  place of the battle's own music (the content's `battle_music`: the link battle's music roles and the stages'
+  own), with its own game's bank on a driver of its own (`nettai_audio::with_theme`: its own voice groups and
+  samples, its own mixer; one of the battle's own game is played on the game's own driver, as its music is). The
+  battle stays its game's, one game a match: its effects and its result's music are its own pack's, and the
+  result's music stops the theme as it would the game's. The battle, its cues, a replay and the wire are the same
+  whatever plays: nothing of the pick is sent, and each player of an online match hears their own.
+- *What the engine does to the music applies to the theme*, being the music: the round's end stops it, a new
+  round starts it again, the result's music replaces it; BN6's low HP (`Pinch`: a semitone up and tempo 0x11A
+  while the console's navi is at a quarter of its HP or less) is the battle's rule, so a BN6 battle plays any
+  theme so and a BN4 or BN5 battle none (their rules have no low-HP music); the custom screen's hover over a dark
+  chip turns the music player down and back (`Volume`, set in every pack's driver as one driver's would be).
+  Rollback takes a theme's change back as the game's own: a result's music played on a wrong prediction stops,
+  and the theme starts again on its own driver.
+- *A difference from the original:* a theme of another game has a mixer of its own, so the battle's effects don't
+  take its channels as they take the game's own music's.
+
 **A game is ready in two stretches**, and the loading screen's bar covers both (`games.rs`; docs/frontend.md §9):
 
 1. Everything read from disk (the content, the pack's graphics and sound, the text's font, and the strings and
@@ -497,11 +550,13 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
   nothing of a build), one row of settings (Rounds, Patch cards and Closed builds are the match's: either
   player changes them, both see it, and both ready marks clear; Input delay is the player's own, and is the
-  Settings' value, kept as it is changed) with the connection's bars and round trip at its end, READY, CHANGE
+  Settings' value, kept as it is changed; Your music is the player's own too, the battle's music they hear, a
+  select whose list Enter opens: §1, "The battle's music", nothing of it sent and the other's lobby not showing
+  it) with the connection's bars and round trip at its end, READY, CHANGE
   BUILD (a list of the builds, in a dialog; nothing of the new one is said to the other player) and LEAVE, and
   a line that is there whether or not it says anything: who is waited for, "Reconnecting N s" while the link is
   down, or why the match before ended. In the row each setting's name is over its control (`LobbyFacts`): with
-  the names beside them, as the mockup has three, five cells don't fit the window in a language a third longer
+  the names beside them, as the mockup has three, six cells don't fit the window in a language a third longer
   than English. On a phone each is a line, its name at the left. Left and Right change a setting, so the row
   can't be walked with them: Tab does, and in the lobby so do the shoulders and the keys bound to L and R
   (`Screen::action`). Patch cards is the lobby's own setting (`Lobby::set_patch_cards`, on at first; off,
@@ -1232,7 +1287,10 @@ last used, the picture's size (the largest that fits, or at most 1 to 8 times), 
 the system asks until the player says), the battle's text (sharp or original), the levels of the music and the
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
-and what screens remember by their own keys (`remembered`). A setting the file leaves out is the app's default.
+and what screens remember by their own keys (`remembered`; among them the battle's music the player picked,
+`battle.music`, which Play's lobby and Practice share: §1, "The battle's music"). A setting the file leaves out is
+the app's default. The battle's music isn't one of Settings' rows (the user: "settings is a weird place to put
+it"): it is picked beside the arena.
 
 The Settings screen is one scrolling page with a list at its left that jumps to a group: General, Video, Audio,
 Online, Controls, About. In Controls, Enter on a key's or a pad button's box asks for the next key or button; one
@@ -1976,8 +2034,8 @@ the components used in one place (given the child, or measured copied in).
 docs/design/app-ui.md §6, "Practice": you against a dummy set up from a menu while practicing. It is
 `src/screens/practice.rs` and `ui/screens/practice.slint`.
 
-**The entry.** Four rows, Your build, Dummy's build, Arena and Background, and START PRACTICE at the column's
-foot; beside them (on a phone, under them) the two builds as cards over the arena.
+**The entry.** Five rows, Your build, Dummy's build, Arena, Background and Music, and START PRACTICE at the
+column's foot; beside them (on a phone, under them) the two builds as cards over the arena.
 
 - Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
   opened as a list with Enter. Both are remembered by game between runs (the settings' `remembered`:
@@ -2008,6 +2066,11 @@ foot; beside them (on a phone, under them) the two builds as cards over the aren
     round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
+- **Music** is the battle's music the player picked (§1, "The battle's music"), the same one pick as Play's
+  lobby's: a row laid out as Arena's and Background's, stepped by Left and Right around from the last theme to
+  "Game's own", and Enter opens its list (its names say more than a place's number). It changes nothing drawn:
+  the arena's picture is silent, and the session plays it. (On a phone the five rows are 44 tall and 48 apart,
+  where the four were 48 and 56, so that the cards and the arena still end over START PRACTICE.)
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
   held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
@@ -2381,6 +2444,14 @@ loads and the content can't find it, which is what `UserError::GameOutdated` tol
 that. A change to how an asset is decoded that names nothing new doesn't change it: that is the version's to say.
 (A digest of the extractor's own source would catch that too, and would extract every pack again at nearly every
 commit.)
+
+The battle themes (§1, "The battle's music") were such a change: every pack held every song already, the
+unnamed ones under their numbers (`sound-016`), which content may not use; naming EXE4's 0x16 and 0x17 and EXE5's
+0x16 and 0x17, and EXE4's 0x14 and 0x15 by their use (`virus-battle`, `boss-battle`, were `netbattle-single` and
+`netbattle`), changed BN4's and BN5's fingerprints, so the app extracts those two again (BN6's names were all
+there). A packs folder of `nettai-extract`'s (`$NETTAI_PACKS`) is the developer's to write again:
+`nettai-extract exe4 <dir> <exe4 ROMs>` and `nettai-extract exe5 <dir> <exe5 ROMs>`, into a new folder, then
+put in place.
 
 **How.** On one thread, the games one after the other, the one the app opens on first; stepping to one still
 waiting moves it to the front. For each, its ROMs are read out of their archives into memory (none is written to
