@@ -1948,7 +1948,9 @@ seven saves (Tango's templates and three played ones):
   the same. `[side.auto_battle]` is the 42
   places in the six lists the battle's end writes them in (`first` 1 to 3, `standard` 4 to 27, `mega` 28 to 32,
   `giga` 33, `patterns` 34 to 41, `program_advance` 42), each entry a chip by name, a pattern record's number (1 to
-  8), `0` or `{}` (an empty place), any entry in any place as in the block, and `records`, the eight pattern records in order
+  8), `0` or `{}` (an empty place), any entry in any place as in the block but a chip of another class in the `mega`,
+  `giga` and `program_advance` lists (the rules' `validate` refuses one there: nettai's rule, docs/design/app-ui.md
+  §2.27), and `records`, the eight pattern records in order
   (`dx`, `dy`, five chip places of a name, `0` or `{}`, and `score`). Every place and record is stated; a side
   without the section has a block nothing has written (0xFF throughout: a save that never finished a battle), and
   a new match's side what the battle's end writes of nothing learned (empty places, zeroed records: the rules'
