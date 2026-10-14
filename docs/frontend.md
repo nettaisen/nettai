@@ -1212,44 +1212,24 @@ either way. It smooths only motion the original has, over the same frames,
 and adds none: nothing comes in with an animation the game doesn't have.
 (The HUD's intro, which brought the HUD's pieces in at each round's start,
 is gone: the user, "don't animate extra slide ins that weren't present in
-the original".)
+the original".) A motion the original already makes in whole pixels a
+frame along its own path is left as it is: nothing smoother can be drawn at
+60 frames a second without changing its curve or its timing. The custom
+screen's slide is one: every game's window slides in and out 12 pixels a
+tick over 10 ticks (`sub_8026B04`, `sub_8026BF4`), the field 1.5 pixels a
+tick down with it, and Enhanced moves it exactly so (an eased curve was
+tried and taken out, the user: "you should keep the original motion").
 
-- *The custom screen's slide* (`custom::Slide`, `smooth.rs`). Every game's
-  window slides in and out alike (`sub_8026B04`, `sub_8026BF4`): 12 pixels
-  a tick, linear, over 10 ticks, from 120 pixels off the left edge (the
-  HUD layer's BG3HOFS from 120 to 0, the window's 15 columns copied onto the
-  layer one or two a tick from the right, as they come on the screen, and
-  cleared from the left on the way out); the HP box and the emotion window
-  move right with it (`hud_shift`), the emblem sprite is at its place (shown
-  from 0x67 pixels out; EXE4's emblem is on the window's map) and so is
-  EXE4's element icon sprite (from 40 out), and the field and every sprite
-  on it move down 1.5 pixels a tick (the camera's Y, 15 pixels in all).
-  Enhanced eases it over the same ticks, from the same place on the slide's
-  first tick to the same place after its last: in, the distance left falls
-  as the square of the ticks left (in at 22.8, 43.2, 61.2, 76.8, 90, 100.8,
-  109.2, 115.2 and 118.8 pixels on the ticks 1 to 9, where the original is
-  in 12, 24 and so on); out, the distance gone grows as the square of the
-  ticks gone (1.2, 4.8, 10.8, 19.2, 30, 43.2, 58.8, 76.8, 97.2). The window,
-  the HP box and the emotion window, the emblem and the element icon, and
-  the camera all follow the one curve. The window and what moves with it are
-  at the output's resolution: where the curve is between two whole pixels
-  the frame is drawn again with them a pixel right (`Frame::nudge`, a
-  `smooth::Nudge`), and `present` shows that drawing on the output pixels
-  left of the part of a pixel the window is past its whole pixels (at three
-  times the frame, a third or two of each frame pixel). The field and the
-  navis are at the curve's whole pixels (the camera's 16.16 Y, as the
-  original's). The phases' other pictures don't slide and stay the game's:
-  the Cross window's three opening steps, Beast Out's window, the
-  description's chatbox opening in four steps of its map.
 - *The custom gauge's fill* (`hud::gauge_sub`). The gauge's counter runs
   to 0x4000 over a bar of 16 cells of 8 pixels, 128 a pixel; it gains 0x20
   a tick (0x40 or 0x10 with a side's gauge speed), and the original draws
   the fill to its whole pixels, a cell's tile filling by eighths (tiles 0
   to 7 of the gauge's, then the filled one): a pixel every 4 ticks (2, 8).
   Enhanced shows the counter's part of a pixel: the frame drawn again with
-  the fill a pixel longer (a nudge, as the slide's), shown on the output
-  pixels left of that part (at three times, the fill grows an output pixel
-  a tick, three of every four ticks). The gauge's tiles, colors, its full
+  the fill a pixel longer (`Frame::nudge`, a `smooth::Nudge`), which
+  `present` shows on the output pixels left of that part of each frame
+  pixel (at three times, the fill grows an output pixel a tick, three of
+  every four ticks). The gauge's tiles, colors, its full
   flashing and "L or R" stay the game's; a full gauge, a hidden one and a
   gauge at a whole pixel have no nudge, and one a pixel short of full shows
   its cells filled, not full, on the nudged pixels.
@@ -1277,13 +1257,13 @@ the original".)
 
 The motion is presentation alone and deterministic. The glide's sixteenths
 are the background's clock's (the round's frames, as its whole pixels
-are) times its rate; the slide's place is the custom screen's phase and
-its tick; the gauge's, its counter. It reads no clock and nothing of it is in the simulation, its
-snapshot or its digest: a rollback that draws a frame again, a seek, a
-replay and a video draw it the same (nettai-frontend's
-`the_smooth_motion_is_the_battles_alone_and_only_where_the_original_moves`
-draws every tick again from a copy of the battle, and finds the frames
-differing from Reduce motion's only on the slide's ticks).
+are) times its rate; the gauge's fill is its counter's. It reads no clock
+and nothing of it is in the simulation, its snapshot or its digest: a
+rollback that draws a frame again, a seek, a replay and a video draw it the
+same (nettai-frontend's
+`the_smooth_motion_is_the_battles_alone_and_moves_nothing_the_original_doesnt`
+draws every tick again from a copy of the battle, and finds the frame's own
+pixels the original mode's on every tick).
 
 Where it is on: the app's battles (live, online, Practice, a replay
 watched) and its main menu's reel, with "Battle graphics: Enhanced" (the

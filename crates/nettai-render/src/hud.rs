@@ -9,7 +9,7 @@ use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud};
-use crate::smooth::{Nudged, Smooth};
+use crate::smooth::Smooth;
 use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
@@ -623,8 +623,8 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
 /// name, a banner's glyphs) goes to `problems`. Without `pause_display`
 /// the pause display is left out (`Renderer::pause_display`); without
 /// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
-/// is the enhanced mode's motion: the custom screen's slide (what moves with
-/// its window) and the gauge's fill drawn between whole pixels.
+/// is the enhanced mode's motion: the gauge's fill drawn between whole
+/// pixels.
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
@@ -644,7 +644,7 @@ pub fn draw<'a>(
     if hud.tiles.is_empty() {
         return;
     }
-    let view = crate::render::Renderer::view_with(b, smooth.slide());
+    let view = crate::render::Renderer::view(b);
     let local = b.setup.local_side;
     let player = b.player(local);
     let open = custom_open(b);
@@ -652,7 +652,7 @@ pub fn draw<'a>(
 
     let (hide_mugshot, hide_boxes) = transform_hides(b, state);
     // HP box, top left (moved right with the custom screen's window).
-    let shift = crate::custom::hud_shift(b, smooth.slide());
+    let shift = crate::custom::hud_shift(b);
     if let Some(r) = player.filter(|_| !hide_boxes && !b.hud_hidden.hp_box) {
         let shown = state.hp.map(|h| h.shown).unwrap_or(b.objects.get(r).hp);
         let pal = &hud.hp_palettes[color.min(2)];
@@ -679,7 +679,7 @@ pub fn draw<'a>(
         // (Its fill a pixel longer, for the output to show the part of a
         // pixel the counter is past its whole pixels: `gauge_sub`. A gauge
         // a pixel short of full shows its cells all filled, not full.)
-        let fill = if smooth.nudged == Some(Nudged::Gauge) && g < FULL { g as u32 + GAUGE_UNITS_A_PIXEL } else { g as u32 };
+        let fill = if smooth.nudged && g < FULL { g as u32 + GAUGE_UNITS_A_PIXEL } else { g as u32 };
         for i in 0..16u32 {
             let tile = if g >= FULL {
                 g0 + GAUGE_FULL + ((state.frame as u16 / 7) & 3)
