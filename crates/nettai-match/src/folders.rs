@@ -59,13 +59,6 @@ impl Folder {
     pub fn has(&self, i: u8) -> bool {
         self.chips.get(i as usize).is_some_and(|c| c.is_some())
     }
-
-    /// The folder with each empty entry holding `filler`: a whole folder
-    /// for a round its checks set up (the folder's own problems are its
-    /// own entries').
-    pub fn filled_with(&self, filler: FolderChip) -> SavedFolder {
-        SavedFolder { chips: self.chips.map(|c| c.unwrap_or(filler)), regular: self.regular, tags: self.tags }
-    }
 }
 
 impl From<SavedFolder> for Folder {
@@ -324,7 +317,7 @@ mod tests {
 
     /// A battle of the live navi on both sides, to ask EXE6's rules.
     fn rules(content: &std::sync::Arc<Content>) -> Battle {
-        crate::check::start(content, &crate::pick::live(content, "exe6", 1, None).unwrap()).unwrap()
+        crate::check::set_up(content, &crate::pick::live(content, "exe6", 1, None).unwrap()).unwrap()
     }
 
     /// Random folders keep EXE6's folder rules, with a Regular chip that
