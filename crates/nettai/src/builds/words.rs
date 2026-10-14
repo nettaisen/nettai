@@ -11,6 +11,7 @@
 //! alone ([`Words::wrong`], [`wrong`]) has the general sentence.
 
 use crate::builds::Kit;
+use crate::builds::auto::{Holds, LISTS_TABLE};
 use crate::games::Names;
 use nettai_battle::content::{ChipClass, PlayerFact};
 use nettai_content_api::ChipHandle;
@@ -20,11 +21,13 @@ use nettai_match::check::Problem;
 use nettai_ui::{AppWindow, BuildPart, BuildWords, ChipKind, EditorTab};
 use slint::ComponentHandle;
 
-/// A chip's class as a row colors its name: a class with no color of its own is a Standard chip's.
+/// A chip's class as a row colors its name and the strip words it: a class with no color of its own is colored as
+/// a Standard chip's.
 pub fn kind(class: ChipClass) -> ChipKind {
     match class {
         ChipClass::Mega => ChipKind::Mega,
         ChipClass::Giga => ChipKind::Giga,
+        ChipClass::ProgramAdvance => ChipKind::ProgramAdvance,
         _ => ChipKind::Standard,
     }
 }
@@ -77,7 +80,17 @@ impl Words<'_> {
     /// What is wrong, as a build's problem: its kind's sentence with its numbers, about the part of the build
     /// the fact it names is ([`part_of`]).
     pub fn problem(&self, problem: &Problem) -> String {
-        self.said(&problem.what, part_of(self.kit.content(), &self.kit.builds, problem.field.as_deref()))
+        let part = part_of(self.kit.content(), &self.kit.builds, problem.field.as_deref());
+        // (A chip in a place of the auto battle data whose list the rules hold to another class: the list says why.)
+        if let (Wrong::ChipNotAllowed { chip }, BuildPart::AutoBattle) = (&problem.what, part)
+            && let Some(list) = problem.entry.and_then(|e| self.kit.auto_layout()?.list_of(e))
+            && let Holds::Chips(class) = list.holds
+            && self.kit.content().chip(*chip).class != class
+        {
+            let title = self.names.text(LISTS_TABLE, &list.name).unwrap_or_else(|| list.name.clone());
+            return self.say().invoke_chip_not_in_list(self.names.chip(*chip).into(), title.into()).into();
+        }
+        self.said(&problem.what, part)
     }
 
     /// The sentence of what is wrong, by its kind alone, with its numbers ("2 Giga chips, limit 1": no full

@@ -640,6 +640,17 @@ mod tests {
         has(bad(first, "{ pattern = 9 }"), "left: place 1 of the auto battle data names pattern 9; it has 8 pattern records");
         has(bad(first, "{ chip = \"areagrab\", pattern = 1 }"), "left: place 1 of the auto battle data (`first`, entry 1) is a chip, a pattern or a 0, not more");
         has(bad(first, "{ chip = \"stepswrd\" }"), "left: place 1 of the auto battle data (`first`, entry 1) holds");
+        // The mega, giga and program advance lists hold chips of their class alone; the first and standard lists
+        // take any (a giga chip first, a program advance among the standard chips).
+        for (from, to, said) in [
+            ("{ chip = \"protoman\" }", "{ chip = \"cannon\" }", "left: place 29 of the auto battle data (`mega`, entry 2) holds Cannon, a chip of class `standard`: the list holds `mega` chips alone"),
+            ("{ chip = \"crossdiv\" }", "{ chip = \"protoman\" }", "left: place 33 of the auto battle data (`giga`, entry 1) holds ProtoMan, a chip of class `mega`: the list holds `giga` chips alone"),
+            ("{ chip = \"csmopris\" }", "{ chip = \"crossdiv\" }", "left: place 42 of the auto battle data (`program_advance`, entry 1) holds CrossDiv, a chip of class `giga`: the list holds `program_advance` chips alone"),
+        ] {
+            has(bad(from, to), said);
+        }
+        let anywhere = text.replacen(first, "{ chip = \"crossdiv\" }", 1).replacen("{ chip = \"cannon\" }", "{ chip = \"csmopris\" }", 1);
+        assert_eq!(parse(&content, &anywhere).map(|_| ()), Ok(()), "{anywhere}");
         has(bad("dx = -2, dy = 1", "dx = -2, dy = 1, dz = 0"), "no field `dz` (chips, dx, dy, score)");
         has(bad("dx = -2, dy = 1", "dx = -200, dy = 1"), "-200 is past");
         // EXE6 has no auto battle: its sides take no such fact.

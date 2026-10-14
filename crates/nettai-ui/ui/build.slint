@@ -15,11 +15,13 @@ export struct VersionTag {
     tone: color,
 }
 
-// What colors a chip's name: its class, which has no column of its own.
+// What colors a chip's name: its class, which has no column of its own (a Program Advance's colors it as a Standard
+// chip's: its class is the strip's word for it, in the auto battle data's).
 export enum ChipKind {
     standard,
     mega,
     giga,
+    program-advance,
 }
 
 // A folder's entry marked: its Regular chip, or one of its two tag chips.
@@ -157,6 +159,9 @@ export global BuildWords {
         if kind == ChipKind.giga {
             return @tr("Giga");
         }
+        if kind == ChipKind.program-advance {
+            return @tr("Program Advance");
+        }
         return @tr("Standard");
     }
     public pure function attack(n: int) -> string {
@@ -206,6 +211,11 @@ export global BuildWords {
     }
     public pure function chip-not-playable(chip: string) -> string {
         return @tr("{} can't be played in auto battle", chip);
+    }
+    // A chip in a list of the auto battle data that holds another class of chip: the list's name, as the game's
+    // strings have it ("Cannon can't be in the Mega list").
+    public pure function chip-not-in-list(chip: string, list: string) -> string {
+        return @tr("{} can't be in the {} list", chip, list);
     }
     public pure function chip-only(chip: string, version: string) -> string {
         return @tr("{} is {} only", chip, version);
