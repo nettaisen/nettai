@@ -1,8 +1,9 @@
 //! The screenshot pass's steps for Practice (docs/app.md §13): the entry (with no build it goes back to Play; with
 //! builds, the focus a control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
-//! can't be used, the arena and the background stepped, the arena around its end, the music stepped and its
-//! list), the two cards, the battle, the practice menu (a value changed, the focus a row apart, the dummy that
-//! fights (its Action, and its Level under it), the arena, the background and the music changed under it, each
+//! can't be used, the arena and the background stepped, the arena around its end, the arena's and the background's
+//! grids of pictures, the music stepped and its list), the two cards, the battle, the practice menu (a value
+//! changed, the focus a row apart, the dummy that fights (its Action, and its Level under it), the arena's grid,
+//! the arena, the background and the music changed under it, each
 //! Battle row a value apart, the input display, the rows another screen adds), the way to Builds' editor and back
 //! (EDIT's editor, a build edited there), and the motion probe's bursts of what Practice moves.
 //!
@@ -262,16 +263,24 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-entry-arena-around", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Right));
+    // Its grid (the user: "arena selector should be like a dropdown that shows previews of all arenas"), open at
+    // the arena chosen; and the cursor a cell on.
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker_grid(), "the arena's grid"));
+    shot(add, "practice-entry-arena-grid", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Right));
+    shot(add, "practice-entry-arena-grid-focus", lang, size, Differs::Cursors, false);
+    add(SETTLE, act(Action::Back));
     // (Two on: one other than the round's own pick from the pass's seed, whatever that is.)
     add(SETTLE, focus("background", 0));
     add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Right));
     shot(add, "practice-entry-background", lang, size, Differs::Builds, false);
-    // Its list (a dropdown, as the build rows': the user, "background and music selectors should both be
-    // dropdowns"), open at the background chosen.
+    // Its grid (a dropdown of the backgrounds' pictures, as the arena's: the user, "background dropdown should be
+    // similar and show preview of all backgrounds"), open at the background chosen.
     add(SETTLE, act(Action::Confirm));
-    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the background's list"));
-    shot(add, "practice-entry-background-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker_grid(), "the background's grid"));
+    shot(add, "practice-entry-background-grid", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Back));
     // The battle's music: the row, a step along (the first theme), and its list open, every game's themes in it
     // once each game's parts are read; then the game's own again.
@@ -304,6 +313,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     // game's picture beside the menu may differ in each pair: it is in the game's pause, which moves its
     // backgrounds.)
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
+    // (It opens on RESUME: the focus is put on its first row.)
+    add(SETTLE, focus_row(PracticeOption::Action));
     shot(add, "practice-menu", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-value", lang, size, Differs::Picture, true);
@@ -326,6 +337,11 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     // open (the battle through the round's opening to its custom screen, where it waits).
     add(SETTLE, focus_row(PracticeOption::Arena));
     shot(add, "practice-menu-arena", lang, size, Differs::Unheld, false);
+    // Its grid, as the entry's.
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker_grid(), "the menu's arena grid"));
+    shot(add, "practice-menu-arena-grid", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
     add(SETTLE, act(Action::Right));
     add(2500, Box::new(|_, _, _| {}));
     shot(add, "practice-menu-arena-value", lang, size, Differs::Unheld, false);
@@ -335,20 +351,20 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-menu-background", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-background-value", lang, size, Differs::Unheld, false);
-    // Its list, open at the background chosen; the one under it chosen from it, the battle drawn on that one.
+    // Its grid, open at the background chosen; the one beside it chosen from it, the battle drawn on that one.
     add(SETTLE, act(Action::Confirm));
-    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the menu's background list"));
-    shot(add, "practice-menu-background-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker_grid(), "the menu's background grid"));
+    shot(add, "practice-menu-background-grid", lang, size, Differs::Unheld, false);
     let before = std::rc::Rc::new(std::cell::Cell::new(None));
     let was = before.clone();
     add(SETTLE, Box::new(move |_, app, _| was.set(practice::session_place(&app.borrow().shell))));
-    add(SETTLE, act(Action::Down));
+    add(SETTLE, act(Action::Right));
     add(SETTLE, act(Action::Confirm));
     add(
         SETTLE,
         expect(
             move |app, ui| !ui.global::<nettai_ui::Shell>().get_picker() && practice::session_place(&app.shell).zip(before.get()).is_some_and(|(now, was)| now[1] == was[1] + 1),
-            "the background under it chosen from the menu's list",
+            "the background beside it chosen from the menu's grid",
         ),
     );
     shot(add, "practice-menu-background-chosen", lang, size, Differs::Unheld, false);

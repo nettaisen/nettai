@@ -12,7 +12,7 @@ msgstr "あなたの構築"
 msgid "Dummy's build"
 msgstr "ダミーの構築"
 
-# The entry's rows (and the menu's Battle rows): where each round is fought. Their choices are the content's
+# The entry's rows (and the menu's Stage rows): where each round is fought. Their choices are the content's
 # arenas and backgrounds, after Random (each round's picked from the seed).
 msgid "Arena"
 msgstr "アリーナ"
@@ -73,14 +73,12 @@ msgstr "練習 · ラウンド{}"
 msgid "{} vs {}"
 msgstr "{} vs {}"
 
-msgid "ARENA"
-msgstr "アリーナ"
+# The menu's groups: where the battle is fought (the arena, the background, the music), and the battle's options.
+msgid "STAGE"
+msgstr "ステージ"
 
-msgid "BATTLE"
-msgstr "バトル"
-
-msgid "DISPLAY"
-msgstr "表示"
+msgid "OPTIONS"
+msgstr "オプション"
 
 msgid "Action"
 msgstr "行動"

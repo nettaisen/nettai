@@ -699,14 +699,22 @@ export component Slider inherits Rectangle {
 }
 
 // A box with its value and an arrow: Left and Right step through its choices, Enter opens them as a list. Where
-// the row it is in is what is focused (a `Focusable` of the row's own), `focusable` is off.
+// the row it is in is what is focused (a `Focusable` of the row's own), `focusable` is off. One whose choices are
+// pictures (`pictured`: Practice's Arena and Background, which open as a grid of them) shows the chosen one's
+// picture small before its value, the box's height less 6 at each side and two and a half times as wide (the
+// field's band of the battle's picture); `random`, the first choice, which has none, a question mark in its place.
 export component Select inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
     in property <string> value;
     in property <bool> enabled: true;
     in property <bool> focusable: true;
+    in property <bool> pictured;
+    in property <image> picture;
+    in property <bool> random;
     out property <bool> focused: hit.focused;
+    property <length> thumb-height: root.height - 12px;
+    property <length> thumb-width: root.pictured ? root.thumb-height * 2.5 : 0px;
     height: 40px;
     Rectangle {
         background: Theme.inset;
@@ -714,9 +722,42 @@ export component Select inherits Rectangle {
         border-color: hit.has-hover ? Theme.muted : Theme.line;
     }
 
+    Rectangle {
+        x: 6px;
+        y: 6px;
+        width: root.thumb-width;
+        height: root.thumb-height;
+        visible: root.pictured;
+        background: Theme.panel;
+        Image {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            source: root.picture;
+            image-fit: fill;
+        }
+
+        Text {
+            visible: root.random;
+            text: "?";
+            color: Theme.dim;
+            font-family: Theme.display;
+            font-size: 16px;
+            font-weight: Theme.display-bold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            border-width: 1px;
+            border-color: Theme.line;
+        }
+    }
+
     Value {
-        x: 12px;
-        width: parent.width - 44px;
+        x: root.pictured ? root.thumb-width + 14px : 12px;
+        width: parent.width - self.x - 32px;
         text: root.value;
         color: root.enabled ? Theme.text : Theme.dim;
         font-weight: 400;
