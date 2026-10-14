@@ -260,6 +260,16 @@ fn fields(d: &Data) -> Vec<(&str, &Data)> {
     }
 }
 
+/// The forms a fact's value names, in order (none of a value of another
+/// registry's definitions).
+fn form_defs(value: &Stated) -> Vec<FormHandle> {
+    match value {
+        Stated::Def(Registry::Form, Some(h)) => vec![FormHandle(*h)],
+        Stated::List(items) => items.iter().flat_map(form_defs).collect(),
+        _ => Vec::new(),
+    }
+}
+
 /// A list's items (none of another kind of value).
 fn items(d: &Data) -> &[Data] {
     match d {
@@ -400,6 +410,29 @@ impl Builds {
         made.state_own_forms(content);
         *side = made;
         Ok(())
+    }
+
+    /// The forms version `version` brings the game's own navi, in order: of
+    /// a new build of it, those of its form list (EXE6's five Crosses, its
+    /// MegaMan's own of the version) and those of the facts the version sets
+    /// (EXE4's and EXE5's six souls), each once. What a screen shows of a
+    /// version beside its choice. An error: no such version.
+    pub fn forms_of(&self, content: &Content, version: &str) -> Result<Vec<FormHandle>, String> {
+        let side = self.new_build(content, version)?;
+        let mut forms = side.facts.form_list(content);
+        let v = self.version(version).expect("a new build's version is one");
+        for (name, _) in fields(&v.set) {
+            if let Some(value) = side.facts.get(content, name) {
+                forms.extend(form_defs(&value));
+            }
+        }
+        let mut once = Vec::new();
+        for f in forms {
+            if !once.contains(&f) {
+                once.push(f);
+            }
+        }
+        Ok(once)
     }
 
     /// The version `side` is a build of: the first whose facts are all the
@@ -1201,6 +1234,9 @@ mod tests {
             for (v, version) in versions.iter().enumerate() {
                 let mut side = builds.new_build(&content, version).unwrap();
                 assert_eq!(names(&side), sorted(forms[v]), "{game} {version}");
+                // (What a screen shows of the version: the same forms, in the list's order.)
+                let shown: Vec<&str> = builds.forms_of(&content, version).unwrap().iter().map(|&f| ids::local(&content.defs.form(f).key)).collect();
+                assert_eq!(shown, forms[v], "{game} {version}");
                 assert_eq!(builds.version_of(&content, &side), Some(*version), "{game}");
                 assert_eq!(side.version(&content), (game == "exe6").then_some(*version), "{game}: the rules' own version");
                 builds.take_version(&content, &mut side, versions[1 - v]).unwrap();
