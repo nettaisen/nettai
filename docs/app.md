@@ -263,8 +263,9 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
 
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the packs' contents state.
-- *The pick* is the player's own and one: Play's lobby (§4), Practice's entry and its menu over the battle (§15)
-  show and change the same one, remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
+- *The pick* is the player's own and one: Practice's entry and its menu over the battle (§15) show and change the
+  same one (Play's lobby has none: the user, "don't allow bgm select in lobby"; a match plays the pick all the
+  same), remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
   asset name; none, the game's own). The list is "Game's own", then the themes of every game whose parts are read
   (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose pack
   isn't there offers none, and a pick of one is played as the game's own until its game is read.
@@ -292,8 +293,7 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   the one it stops on, as the arena waits 160 ms before it is drawn); "Game's own" brings the title music back,
   from its beginning. Leaving the entry (to the menu, to Builds through EDIT) brings the title music back as the
   other menus have it; starting the battle fades it out as the title music fades, and the entry after the battle
-  plays it again from its beginning. Play's lobby doesn't: its Music is heard in the match (whether it should be is
-  the user's to say).
+  plays it again from its beginning.
 - *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
   the practice menu"): its Battle rows have Music, the same pick. A change switches the battle's music at once
   (`music::retheme`, `Player::set_sound_parts`, nettai-audio's `BattleAudio::set_songs`): where the battle's own
@@ -569,9 +569,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
   nothing of a build), one row of settings (Rounds, Patch cards and Closed builds are the match's: either
   player changes them, both see it, and both ready marks clear; Input delay is the player's own, and is the
-  Settings' value, kept as it is changed; Your music is the player's own too, the battle's music they hear, a
-  select whose list Enter opens: §1, "The battle's music", nothing of it sent and the other's lobby not showing
-  it) with the connection's bars and round trip at its end, READY, CHANGE
+  Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1) with the
+  connection's bars and round trip at its end, READY, CHANGE
   BUILD (a list of the builds, in a dialog; nothing of the new one is said to the other player) and LEAVE, and
   a line that is there whether or not it says anything: who is waited for, "Reconnecting N s" while the link is
   down, or why the match before ended. In the row each setting's name is over its control (`LobbyFacts`): with
@@ -1307,7 +1306,7 @@ the system asks until the player says), the battle's text (sharp or original), t
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
 and what screens remember by their own keys (`remembered`; among them the battle's music the player picked,
-`battle.music`, which Play's lobby and Practice share: §1, "The battle's music"). A setting the file leaves out is
+`battle.music`, which Practice's rows change and every battle plays: §1, "The battle's music"). A setting the file leaves out is
 the app's default. The battle's music isn't one of Settings' rows (the user: "settings is a weird place to put
 it"): it is picked beside the arena.
 
@@ -2085,8 +2084,8 @@ column's foot; beside them (on a phone, under them) the two builds as cards over
     round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
-- **Music** is the battle's music the player picked (§1, "The battle's music"), the same one pick as Play's
-  lobby's: a row laid out as Arena's and Background's, stepped by Left and Right around from the last theme to
+- **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick every battle plays:
+  a row laid out as Arena's and Background's, stepped by Left and Right around from the last theme to
   "Game's own", and Enter opens its list (its names say more than a place's number). It changes nothing drawn
   (the arena's picture is silent), the session plays it, and while the entry shows it plays in place of the title
   music once the row has stayed on it 400 ms (§1, "The battle's music"). (On a phone the five rows are 44 tall and 48 apart,
@@ -2207,7 +2206,7 @@ change tick for tick, its digest the same but for the background its setup says 
 `on_another_background_the_battle_goes_on`); practice is neither online nor recorded, so no digest of it is
 compared with another's.
 
-Music changes the battle's music the player picked, the entry's row's and the lobby's one pick (§1, "The
+Music changes the battle's music the player picked, the entry's row's one pick (§1, "The
 battle's music"): Left and Right step it (Enter steps it on, as the menu's other rows), and the battle's music
 switches at once, nothing else of it changing (nettai's `a_battle_changes_its_music_as_it_runs`).
 
