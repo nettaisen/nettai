@@ -653,7 +653,9 @@ export component Backdrop inherits Rectangle {
 // One of the telop's calls, stamping in as `stamp` goes from 0 to 1.
 component TelopCall inherits Text {
     in property <float> stamp;
-    property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
+    // (On a phone a call too long for the band's width breaks onto a second line; the band holds three.)
+    property <bool> over: Theme.audit && (Theme.phone ? self.preferred-height > self.height + 0.5px : self.preferred-width > self.width + 0.5px);
+    wrap: Theme.phone ? word-wrap : no-wrap;
     color: Theme.text;
     font-family: Theme.display;
     font-size: Theme.phone ? 20px : 34px;
