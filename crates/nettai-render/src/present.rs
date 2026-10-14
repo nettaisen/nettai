@@ -61,24 +61,33 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
     };
     for dy in 0..place.height {
         let fy = (dy * HEIGHT as i32 / place.height) as usize;
-        let row = &frame.pixels[fy * WIDTH..(fy + 1) * WIDTH];
+        // (The output rows that show the lifted frame: `smooth::Lift`. The
+        // gauge's nudge is on the others.)
+        let lifted = frame.lift.as_ref().filter(|l| crate::smooth::lifted_row(l, dy, &place));
+        let (pixels, depth) = match lifted {
+            Some(l) => (&l.pixels, &l.depth),
+            None => (&frame.pixels, &frame.depth),
+        };
+        let nudge = frame.nudge.as_ref().filter(|_| lifted.is_none());
+        let row = &pixels[fy * WIDTH..(fy + 1) * WIDTH];
         let at = (place.y + dy) as usize * w + place.x as usize;
         let line = &mut out[at..at + place.width as usize];
         for (o, &fx) in line.iter_mut().zip(&columns) {
             *o = to_rgb(row[fx]);
         }
-        if let Some(n) = &frame.nudge {
+        if let Some(n) = nudge {
             let moved = &n.pixels[fy * WIDTH..(fy + 1) * WIDTH];
             for ((o, &fx), _) in line.iter_mut().zip(&columns).zip(&nudged).filter(|(_, n)| **n) {
                 *o = to_rgb(moved[fx]);
             }
         }
         if let Some(g) = &frame.glide {
-            glide_row(frame, g, &place, &nudged, dy, fy, line);
+            let depth = &depth[fy * WIDTH..(fy + 1) * WIDTH];
+            glide_row(g, depth, nudge, &place, &nudged, dy, fy, line);
         }
     }
     if !frame.overlays.is_empty() {
-        crate::smooth::draw_overlays(&frame.overlays, &frame.depth, frame.nudge.as_ref(), &place, out, w);
+        crate::smooth::draw_overlays(&frame.overlays, &frame.depth, frame.nudge.as_ref(), frame.lift.as_ref(), &place, out, w);
     }
     if let Some(t) = text
         && !frame.text.is_empty()
@@ -92,15 +101,16 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
 /// output pixel is the background's (or the backdrop's), the background a
 /// part of a pixel on, at the output's resolution: each output pixel takes
 /// the background pixel its place, in sixteenths of a frame pixel, plus the
-/// glide's falls in. (Where the output shows the nudged frame, `nudged`,
-/// that frame's pixel's.)
-fn glide_row(frame: &Frame, g: &crate::render::Glide, place: &Placement, nudged: &[bool], dy: i32, fy: usize, out: &mut [u32]) {
+/// glide's falls in. `depth` is the row's depth keys (the lifted frame's on
+/// a lifted row); where the output shows the nudged frame, `nudged`, that
+/// frame's pixel's.
+#[allow(clippy::too_many_arguments)]
+fn glide_row(g: &crate::render::Glide, depth: &[u32], nudge: Option<&crate::smooth::Nudge>, place: &Placement, nudged: &[bool], dy: i32, fy: usize, out: &mut [u32]) {
     use crate::compose::BACKDROP_DEPTH;
     use crate::render::Glide;
     let sixteenths = |d: i32, size: usize, span: i32, sub: u8| ((d as i64 * 16 * size as i64 / span as i64) as usize + sub as usize) / 16;
     let gy = sixteenths(dy, HEIGHT, place.height, g.sub.1).min(Glide::HEIGHT - 1);
-    let depth = &frame.depth[fy * WIDTH..(fy + 1) * WIDTH];
-    let moved = frame.nudge.as_ref().map(|n| &n.depth[fy * WIDTH..(fy + 1) * WIDTH]);
+    let moved = nudge.map(|n| &n.depth[fy * WIDTH..(fy + 1) * WIDTH]);
     let source = &g.pixels[gy * Glide::WIDTH..(gy + 1) * Glide::WIDTH];
     for (dx, o) in out.iter_mut().enumerate() {
         let fx = (dx as i32 * WIDTH as i32 / place.width) as usize;
@@ -222,6 +232,39 @@ mod tests {
         // Half a pixel on: each output pixel a column further, half the time;
         // the sprite's stays; the backdrop's glides.
         assert_eq!(row(&moved), [0, 1, 1, 2, 2, 3, 0x7FFF, 0x7FFF, 4, 5].map(to_rgb));
+    }
+
+    /// A lift shows the lifted frame on the output rows whose middle, its
+    /// part of a pixel further down, is in the next frame row: half a pixel
+    /// at twice the frame's size, every second row; at three times, two of
+    /// three; at four, two of four. A field whose top is at row 50 in the
+    /// frame and 49 lifted shows from the output row a sprite's part half a
+    /// pixel up from row 50 starts on.
+    #[test]
+    fn a_lift_steps_the_field_with_the_sprites_on_it() {
+        use crate::smooth::{Lift, lifted_row};
+        let lift = Lift { pixels: Vec::new(), depth: Vec::new(), sub: 0x8000 };
+        for (scale, rows) in [(2, vec![false, true]), (3, vec![false, true, true]), (4, vec![false, false, true, true])] {
+            let place = Placement::fit(scale * WIDTH, scale * HEIGHT);
+            let seen: Vec<bool> = (0..scale as i32).map(|dy| lifted_row(&lift, 30 * scale as i32 + dy, &place)).collect();
+            assert_eq!(seen, rows, "at {scale} times");
+        }
+        let (field, sky) = (0x03E0, 0x001F);
+        let picture = |top: usize| (0..WIDTH * HEIGHT).map(|i| if i / WIDTH >= top { field } else { sky }).collect::<Vec<u16>>();
+        let frame = Frame {
+            pixels: picture(50),
+            depth: vec![0; WIDTH * HEIGHT],
+            lift: Some(Lift { pixels: picture(49), depth: vec![0; WIDTH * HEIGHT], sub: 0x8000 }),
+            ..Frame::default()
+        };
+        let (w, h) = (3 * WIDTH, 3 * HEIGHT);
+        let mut out = vec![0; w * h];
+        present(&frame, None, &mut out, w, h);
+        let first = (0..h).find(|&y| out[y * w] == to_rgb(field)).unwrap();
+        // (The overlay's first row: its texel row 0 from the output row whose
+        // middle is past 49.5 frame rows.)
+        let part = (0..h).find(|&y| (y as f64 + 0.5) / 3.0 - 49.5 >= 0.0).unwrap();
+        assert_eq!((first, part), (148, 148));
     }
 
     /// A nudge shows on the output pixels left of its part of a pixel, and

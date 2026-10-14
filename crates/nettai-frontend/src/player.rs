@@ -936,26 +936,45 @@ mod tests {
         let player = |mode, reduce| Player::with(renderer(mode, reduce), None, None, live());
         let (mut on, mut off) = (player(GraphicsMode::Enhanced, false), player(GraphicsMode::Enhanced, true));
         let (mut original, mut original_reduced) = (player(GraphicsMode::Original, false), player(GraphicsMode::Original, true));
-        let (mut nudged_gauge, mut fought) = (0, 0);
+        let (mut nudged_gauge, mut lifted, mut overlaid, mut fought) = (0, 0, 0, 0);
         for tick in 0..3000u32 {
             let k = bot_buttons(on.battle(), 0, tick);
             assert!(on.tick(k) && off.tick(k) && original.tick(k) && original_reduced.tick(k));
             let frame = on.frame();
             let t = on.battle().round.ticks;
             let plain = off.frame();
-            assert!(plain.nudge.is_none() && plain.overlays.is_empty() && plain.pixels == frame.pixels, "tick {t}: reduced motion's");
+            assert!(plain.nudge.is_none() && plain.lift.is_none() && plain.overlays.is_empty() && plain.pixels == frame.pixels, "tick {t}: reduced motion's");
             if let Some(n) = &frame.nudge {
                 assert!(n.sub > 0 && n.sub < 16);
                 nudged_gauge += 1;
+            }
+            // The custom screen's slide: the camera half a pixel past its whole pixels on its odd ticks.
+            if let Some(l) = &frame.lift {
+                assert!(l.sub == 0x8000 && l.pixels != frame.pixels, "tick {t}: the field a pixel up");
+                lifted += 1;
             }
             // Drawn again from a copy of the battle at this tick.
             let mut again = renderer(GraphicsMode::Enhanced, false);
             again.hud_state = on.renderer().hud_state.clone();
             let copy = on.battle().clone();
             let redrawn = again.render(&copy);
-            assert!(redrawn.pixels == frame.pixels && redrawn.nudge == frame.nudge && redrawn.overlays == frame.overlays, "tick {t}: drawn again");
+            assert!(
+                redrawn.pixels == frame.pixels && redrawn.nudge == frame.nudge && redrawn.lift == frame.lift && redrawn.overlays == frame.overlays,
+                "tick {t}: drawn again"
+            );
             let o = original.frame();
-            assert!(o.pixels == original_reduced.frame().pixels && o.nudge.is_none() && o.overlays.is_empty() && o.pixels == frame.pixels, "tick {t}: the original's");
+            assert!(
+                o.pixels == original_reduced.frame().pixels && o.nudge.is_none() && o.lift.is_none() && o.overlays.is_empty(),
+                "tick {t}: the original's"
+            );
+            // The enhanced frame's own pixels are the original's but where the sprites it leaves to the output are
+            // (squashed, turned, or between whole pixels: overlays).
+            for i in (0..o.pixels.len()).filter(|&i| o.pixels[i] != frame.pixels[i]) {
+                let (x, y) = ((i % 240) as i32, (i / 240) as i32);
+                let under = |v: &nettai_render::smooth::Overlay| (v.x..v.x + v.width).contains(&x) && (v.y..v.y + v.height).contains(&y);
+                assert!(frame.overlays.iter().any(under), "tick {t}: ({x}, {y}) is the original's");
+            }
+            overlaid += !frame.overlays.is_empty() as u32;
             fought += (on.battle().round.mode == mode::FIGHTING && on.battle().fight.state == fight::FIGHTING) as u32;
             if fought > 60 {
                 break;
@@ -963,6 +982,8 @@ mod tests {
         }
         assert!(fought > 60, "the fight runs");
         assert!(nudged_gauge > 10, "the gauge fills between its whole pixels ({nudged_gauge} frames)");
+        assert!(lifted >= 10, "the field slides between its whole pixels ({lifted} frames)");
+        assert!(overlaid >= lifted, "the sprites on the field slide with it ({overlaid} frames)");
     }
 
     /// The renderer's pause display: drawn while a player holds the fight in the game's own pause, as the

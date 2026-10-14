@@ -1215,10 +1215,62 @@ is gone: the user, "don't animate extra slide ins that weren't present in
 the original".) A motion the original already makes in whole pixels a
 frame along its own path is left as it is: nothing smoother can be drawn at
 60 frames a second without changing its curve or its timing. The custom
-screen's slide is one: every game's window slides in and out 12 pixels a
-tick over 10 ticks (`sub_8026B04`, `sub_8026BF4`), the field 1.5 pixels a
-tick down with it, and Enhanced moves it exactly so (an eased curve was
-tried and taken out, the user: "you should keep the original motion").
+screen's window is one: every game's slides in and out 12 pixels a tick
+over 10 ticks (`sub_8026B04`, `sub_8026BF4`), and Enhanced moves it exactly
+so (an eased curve was tried and taken out, the user: "you should keep the
+original motion"). What moves with it a part of a pixel a tick, the field,
+is drawn where it truly is (the user: "custom screen slide should be
+smoothed. shaking should also be smoothed if possible. smooth in-between
+positions to whole pixels"); the camera's shake is whole pixels by design,
+so it has no in-between places, and stays as the game draws it.
+
+- *The custom screen's slide* (`smooth::Lift`, `objects::project_fine`).
+  While the window slides, the camera's Y moves 1.5 pixels a tick (0x18000,
+  16.16: 15 pixels over the 10 ticks), and the projection takes its whole
+  pixels: the field and every sprite on it step 2, 1, 2, 1 pixels down
+  (and up again as it closes), half a pixel low on the odd ticks. The
+  window's scroll, the HP box, the emotion window, the emblem and EXE4's
+  element icon move 12 pixels a tick: whole pixels, no part. On a tick
+  whose camera is between whole pixels Enhanced draws the frame again
+  with the field layer a pixel up (the same tiles; the sprites, the HUD
+  and the background unchanged) and `present` shows it on the output rows
+  whose middle, the camera's half pixel down, falls in the next frame row:
+  the field half a pixel up at the output's resolution. Each sprite the
+  camera moves (the objects', and the HUD's pieces placed over them: the
+  HP numbers, the chip icons, the warning markers on the field) is drawn
+  at its true place, the part of a pixel the projection rounds off
+  (`project_fine`, `project_hud_fine`) added, as an overlay (below) read
+  at the output pixels' middles too, so the navis stand on their panels
+  through the slide. The path (15 pixels, linear) and the ticks are the
+  game's; at three times the field moves 4 or 5 output pixels a tick, at
+  two and four times exactly 3 and 6.
+- *The sprites between whole pixels* (`objects::project_fine`,
+  `Overlay::fine`). An object's place is 16.16 and the projection takes
+  its whole pixels too, so what moves by parts of a pixel a tick steps
+  unevenly on the screen; then the user: "you should also do" the navis and
+  attacks. Enhanced draws every part of an object's sprite (its shadow
+  among them, at the ground's part) and the HUD's pieces placed over it at
+  its true place, an overlay as above, the same path and ticks; a part at
+  a whole pixel stays in the frame. A part blended or in mosaic stays at
+  its whole pixels (the composition mixes it with what is behind), and
+  under a blended sprite in front an overlay doesn't show through; nor is
+  the hardware's quirk of a transparent sprite pixel raising the priority
+  of the one under it followed for overlays. What moves so (measured
+  2026-10-14 on a seeded match of each game, 6,000 ticks, the left player
+  throwing bombs and using TankCan, Magnum and BigHammer): the thrown
+  bombs alone (MiniBomb, BlkBomb, BugBomb: 2.75 to 2.9 pixels a tick
+  across, the height a parabola), 121, 137 and 156 sprite-ticks in about
+  21,000, 23,000 and 16,000 drawn, and an EXE5 effect at rest a part of a
+  pixel off; by the code, anything aimed by a division (`trajectory.in_ticks`,
+  `bios_div`: a rock thrown, CannBall, CrakBom, CactBall, CacDanc, Meddy,
+  NapalmMan, Django, FlshBom, RlngLog, VDoll, the heal supports, ChargeMan,
+  HeatMan, EXE4's Binder and SeekBom), the velocities the content divides
+  (RedSun, SunMoon and its meteors, SandWorm, EXE6's MegaMan code), and a
+  few speeds (JudgeMan 2.25 pixels a tick, KendoMan's dash 6.67, EXE4's
+  gear 0.5). The navis move a panel at a time (40 or 24 pixels), slide 10
+  across and 6 or 8 in depth, or warp; the buster, Cannon and AirShot hit
+  at once; most shots move 2 to 20 whole pixels a tick; sparks, effects
+  and attachments are placed at whole pixels: none of them changes.
 
 - *The custom gauge's fill* (`hud::gauge_sub`). The gauge's counter runs
   to 0x4000 over a bar of 16 cells of 8 pixels, 128 a pixel; it gains 0x20
@@ -1246,8 +1298,12 @@ tried and taken out, the user: "you should keep the original motion").
   the same palette and fades, wherever nothing in front of the part won
   the frame pixel (the frame's depth keys, as the text layer's items are
   hidden). The scale and the matrix on every tick are the original's: the
-  curves and the timing don't change. (A part that is blended or in
-  mosaic stays in the frame: none of these is.) Drawn at the frame's own
+  curves and the timing don't change. An overlay also carries its part's
+  true place, the part of a pixel the projection rounds off
+  (`Overlay::fine`): a part neither squashed nor turned is one only where
+  that is not nothing, and is read a texel a pixel there. (A part that is
+  blended or in mosaic stays in the frame at its whole pixels: the
+  composition mixes it with what is behind.) Drawn at the frame's own
   size, an overlay is the frame's part, pixel for pixel (its test).
 - *The background's glide* (`Frame::glide`, `present`). A background that
   scrolls by sixteenths of a pixel a frame (its `scroll`: the game's scroll
@@ -1274,8 +1330,8 @@ tried and taken out, the user: "you should keep the original motion").
 **What moves in the battle's picture** (every game's, surveyed 2026-10-14
 for "what about banners and telops and stuff? can they be animated more
 smoothly?"). Enhanced changes only what the original draws coarser than
-its own motion (a counter's part of a pixel, a scale or a turn the frame
-rounds to its rows or texels); what already moves in whole pixels or
+its own motion (a counter's or a position's part of a pixel, a scale or a
+turn the frame rounds to its rows or texels); what already moves in whole pixels or
 whole steps along its own path, and what steps through pictures or
 colors, it leaves as the game draws it.
 
@@ -1284,7 +1340,8 @@ colors, it leaves as the game draws it.
 | Banners: the battle's number and START, TURN n START, FINAL TURN, ENEMY DELETED, YOU WIN, YOU LOSE, DRAW, HIT DAMAGE JUDGE, PROGRAM ADVANCE | five 32x16 sprites squashed and stretched about their middle: in from a third of their height to whole, held, out back to a third (`sub_801CE28`; EXE4's 0x08014994). EXE5's and EXE6's 5 ticks in (heights a third, 0.4, a half, two thirds, whole), a bounce to 1.23 and 1.14 times at the hold's first two ticks and its last two, 0x30 ticks held, 5 out; EXE4's 9 in (by 0x40 in the texture's step), 30 held, 9 out, no bounce | the hardware's affine scale is exact; the frame shows it as whole texture rows picked a screen row each (at a third of the height, five or six of sixteen rows) | the same scale on the same ticks, drawn at the window's resolution (`Overlay`) |
 | A telop: a dimming chip's name, damage, "+bonus" and "x2" (EXE5's and EXE6's own banners; EXE4's own look on the banner block, 0x0801650C) | as the banners, on the banner block or the other player's | as the banners | the name is the text layer's at the window's resolution already (its squash too); the numbers and signs as the banners |
 | The other player's chip (`used_chip_parts`; EXE4's second block shown without sliding) | appears and goes | none | the game's |
-| The custom screen's slide | the window 12 pixels a tick over 10 ticks, in and out, the HP box and emotion window with it, the field 1.5 pixels a tick down | whole pixels every frame along its own line (the field's 16.16 camera at whole pixels) | the game's ("you should keep the original motion") |
+| The custom screen's slide: the window | 12 pixels a tick over 10 ticks, in and out, the HP box, the emotion window, the emblem and EXE4's element icon with it | whole pixels every frame along its own line | the game's ("you should keep the original motion") |
+| The custom screen's slide: the field and every sprite on it | the camera 1.5 pixels a tick down (0x18000), 15 in all, linear, and back | the camera's whole pixels: steps of 2, 1, 2, 1, half a pixel low on odd ticks | where it truly is, at the window's resolution: the field a lift, the sprites overlays ("smooth in-between positions to whole pixels") |
 | The custom screen's emblem as a chip is picked (`sub_8029C08`) | a 32x32 sprite turned and scaled by a matrix for each of its 19 steps (`SPIN`), nudged a pixel or two | the matrix is exact; the frame re-picks its texels on its own grid | the same matrix on the same ticks at the window's resolution (`Overlay`) |
 | The custom gauge's fill | its counter, 128 a pixel, 0x10 to 0x40 a tick | whole pixels: a pixel every 2, 4 or 8 ticks | its end where the counter is, at the window's resolution (a nudge) |
 | The full gauge's flashing, "L or R", "Cstmzing..." | tile frames (the full cells' four, every 7 ticks; "L or R"'s two, every 8; the text's blink every 32) | pictures | the game's |
@@ -1292,21 +1349,26 @@ colors, it leaves as the game draws it.
 | The Cross window's opening, the chatbox's (a description, a message) | three and four steps of their maps; the text printed a character at a time, the portrait's animation, the arrow's frames | pictures | the game's |
 | HP numbers, the judge's damage, the turn timer, "TIME UP!", "COUNTER HIT!", "PAUSE", the next chip's name, the chip icons, the warning markers | numbers roll by value, lines appear and go, the markers' two frames | none on the screen | the game's |
 | The emotion window's flicker and blink | its palette black two ticks of four, left out on two | palettes | the game's |
-| The camera's shake | whole pixels a tick | whole pixels | the game's |
+| What moves on the field by parts of a pixel (thrown bombs and rocks, arcs, a few shots and dashes) | its 16.16 place and velocity | the place's whole pixels: uneven steps (a bomb's 2.9 pixels a tick across in steps of 3 and now and then 2) | where it truly is, at the window's resolution (overlays), but a blended or mosaic part |
+| Navis, shots, sparks and effects otherwise | a panel at a time, whole-pixel speeds, placed at whole pixels | whole pixels | the game's |
+| The camera's shake (hits, bombs, chips that strike the ground, a soul's or a Cross's change) | a jitter drawn each tick it shakes, by magnitude 0 to 3: -1 to 0, -2 to 1, -4 to 3, -8 to 7 pixels each way (EXE6's `byte_8030284`, EXE5's 0x08030DF4, the same in EXE4's 0x08025FE0: the RNG's bits less a whole-pixel bias) | whole pixels by design: no in-between place | the game's (nothing to smooth: no motion is made up between its frames) |
+| An object's shake (a dimmed navi hit, a rock before it is thrown) | a jitter around its whole-pixel origin each tick (`AddRandomVarianceToTwoCoords`) | whole pixels | the game's |
 | The fades: the intro's, a dimming's, a transformation's, the custom screen's, a palette flash | palettes toward black or white | sixteenths of the way, as the hardware's palette fade | the game's (a fade, no motion) |
 | The background's scroll | its counters, sixteenths of a pixel a frame | whole pixels every second or fourth frame | the glide, at the window's resolution |
 
 The motion is presentation alone and deterministic. The glide's sixteenths
 are the background's clock's (the round's frames, as its whole pixels
 are) times its rate; the gauge's fill is its counter's; a banner's scale
-its step and timer, the emblem's matrix its spin's step. It reads no clock
+its step and timer, the emblem's matrix its spin's step, the slide's lift
+and the sprites' true places the camera's and the objects' 16.16 places. It reads no clock
 and nothing of it is in the simulation, its snapshot or its digest: a
 rollback that draws a frame again, a seek, a replay and a video draw it the
 same (nettai-frontend's
 `the_smooth_motion_is_the_battles_alone_and_moves_nothing_the_original_doesnt`
 draws every tick again from a copy of the battle, and finds the frame's own
-pixels the original mode's on every tick, with no banner in its pictures;
-where one is, its parts are left out of them for the output to draw).
+pixels the original mode's on every tick but under the overlays, which are
+left out of them for the output to draw, and the custom screen's slide
+lifted on its odd ticks).
 
 Where it is on: the app's battles (live, online, Practice, a replay
 watched) and its main menu's reel, with "Battle graphics: Enhanced" (the
