@@ -170,6 +170,8 @@ export global Theme {
     out property <duration> leave: motion ? 120ms : 0ms;
     // The two set pieces: entering a battle (the jack-in), a result.
     out property <duration> set-piece: motion ? 480ms : 0ms;
+    // The jack-in's telop, longer than its set piece: its two calls stamp one after the other and outlast it.
+    out property <duration> telop: motion ? 1000ms : 0ms;
     // What Reduce motion keeps of the jack-in: a short fade (`Pulse`'s `calm`). The screenshot pass (`still`)
     // keeps nothing of it: there every clock is at its end.
     in property <bool> still;
