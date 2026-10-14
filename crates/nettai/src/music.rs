@@ -15,7 +15,9 @@
 //! Practice's entry plays the music its session will start ([`preview`]: the user, "the practice mode menu
 //! should also play the battle music and when it transitions it should play through the transition and not
 //! restart"), on the battle's own sound, which the session's battle then takes over (`Sound::take_preview`,
-//! `Player::carry_sound`): the song goes on through the cards into the battle.
+//! `Player::carry_sound`): the song goes on through the cards into the battle. Back at the entry (EXIT, or the
+//! battle stopped), the entry takes the battle's sound over the other way ([`preview_after`]: the user, "also
+//! exiting practice mode back into the practice menu should continue the music"), its song going on where it is.
 
 use crate::games::{Games, Ready};
 use crate::shell::Shell;
@@ -134,13 +136,23 @@ pub fn choose(shell: &mut Shell, choice: i32) {
 /// menu should also play the battle music".) Crossfading as it changes (`Sound::set_preview`); the battle that
 /// starts with the same music takes it over (`Shell::carried_music`).
 pub fn preview(shell: &mut Shell, song: Option<SoundId>) {
+    preview_after(shell, song, None);
+}
+
+/// [`preview`], as a session's battle ends back at the entry (EXIT, or the battle stopped): `battle` is its sound
+/// (`Player::take_sound`), and where its music is the song the entry plays, still playing, the entry plays on
+/// from there with no restart and no fade (`Sound::set_preview_after`: the user, "also exiting practice mode
+/// back into the practice menu should continue the music"). The battle plays the pick, as the entry does (the
+/// practice menu's Music changes the battle's: `retheme`). Its music stopped (a round's end) or another (the
+/// result's), the entry's starts from its beginning.
+pub fn preview_after(shell: &mut Shell, song: Option<SoundId>, battle: Option<nettai_audio::BattleAudio>) {
     let preview = song.and_then(|song| {
         let (game, ready) = shell.ready()?;
         let music = shell.battle_music();
         let parts = sound(&shell.games, &ready, &music)?;
         Some(PreviewSong { key: key(&game, &music, song), parts, music: song })
     });
-    shell.sound.set_preview(preview);
+    shell.sound.set_preview_after(preview, battle);
 }
 
 /// What a battle's music is told by, a preview's and the battle's that takes it over: the battle's game, the
@@ -496,6 +508,104 @@ mod tests {
             assert_eq!((carried_song, own_song), (song, song), "{picked:?}: the same song");
             assert!(carried_at > at && carried_at > own_at + at / 2, "{picked:?}: it went on ({carried_at} past the entry's {at}; a battle's own is at {own_at})");
             assert_eq!(carried.battle().digest(), own.battle().digest(), "{picked:?}: the battle the same");
+        }
+    }
+
+    /// A practice battle of `set` on the sound of `music`'s parts, its levels the menus' `music` and `effects`.
+    fn battle_on(all: &Games, set: &nettai_match::Set, music: &Music, levels: (f32, f32)) -> nettai_frontend::Player {
+        let content = set.content().clone();
+        let ready = all.read(content.game()).unwrap();
+        let (banks, songs) = sound(all, &ready, music).unwrap();
+        let driver = nettai_frontend::driver::LivePlayer::against(set.clone(), Default::default(), 11);
+        let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(TextMode::Original, None);
+        let mut player = nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(banks, songs)), Box::new(driver));
+        player.set_sound_levels(levels.0, levels.1);
+        player
+    }
+
+    /// What `audio`'s music player plays, and how far into it, on whichever pack's driver plays it; and whether a
+    /// player of another than the music's plays (a sound effect).
+    fn heard(audio: &nettai_audio::BattleAudio) -> (Option<(nettai_audio::m4a::SongId, u32)>, bool) {
+        use nettai_audio::MUSIC_PLAYER;
+        let drivers = || (0..=u8::MAX).map_while(|n| audio.driver_of(nettai_battle::content::PackId(n)));
+        let music = drivers().find_map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| Some((m.song()?, m.clock()))));
+        let effects = drivers().any(|d| d.players().iter().enumerate().any(|(p, m)| p != MUSIC_PLAYER.0 as usize && m.is_playing()));
+        (music, effects)
+    }
+
+    /// The entry the session's battle ends back at (EXIT, or the battle stopped) takes over the battle's music the
+    /// other way (`Player::take_sound`, `Sound::set_preview_after`): the song goes on from where the battle had it
+    /// (its clock past the battle's, not from 0), at once at the music's level with no fade-in; the battle's sound
+    /// effects stop, and its levels are the menus'. The game's own and a theme alike, and a theme the practice
+    /// menu changed the battle's music to (`retheme`), the entry's pick being that one.
+    #[test]
+    fn the_entry_goes_on_with_the_battles_music() {
+        use nettai_audio::{MUSIC_PLAYER, SoundCue};
+        use nettai_battle::content::{PackId, SoundRole};
+        let all = games(&["exe4", "exe6"]);
+        let set = practice_set(&all, "exe6", 11);
+        let effect = SoundCue::Effect(set.content().defs.roles().sounds[&SoundRole::CustomCursor]);
+        let theme = Music::Theme { game: "exe4".into(), song: "tournament-battle".into() };
+        // (The music the battle started with, and the pick as it ends.)
+        for (started, picked) in [(Music::GameOwn, Music::GameOwn), (theme.clone(), theme.clone()), (Music::GameOwn, theme.clone())] {
+            let mut player = battle_on(&all, &set, &started, (0.5, 1.0));
+            for _ in 0..240 {
+                player.tick(0);
+            }
+            if started != picked {
+                player.set_sound_parts(sound(&all, &all.read("exe6").unwrap(), &picked).unwrap());
+                for _ in 0..60 {
+                    player.tick(0);
+                }
+            }
+            let mut audio = player.take_sound().expect("the battle's sound");
+            // (A sound effect playing as it ends, and another queued.)
+            audio.handle(&[effect]);
+            audio.tick(&mut Vec::new());
+            audio.handle(&[effect]);
+            let (Some((song, at)), effects) = heard(&audio) else { panic!("{picked:?}: the battle's music plays") };
+            assert!(at > 0 && effects, "{picked:?}: the battle's music has played, and an effect plays");
+            let (mut sound, mut frames) = menus(&all, "exe6");
+            let entry = entry_music(&all, &set, &picked);
+            sound.set_preview_after(Some(entry), Some(audio));
+            frames(&mut sound, 3);
+            let (preview, now, later) = sound.music_at().expect("the entry's music");
+            assert_eq!((preview, now), (true, song), "{picked:?}: the entry plays the battle's song");
+            assert!(later > at, "{picked:?}: it went on ({later} past the battle's {at})");
+            let (audio, fade) = sound.preview_sound().unwrap();
+            assert_eq!(fade, 1.0, "{picked:?}: at the music's level at once");
+            assert!(!heard(audio).1, "{picked:?}: the battle's effects stopped");
+            assert!((0..3).map_while(|n| audio.driver_of(PackId(n))).all(|d| d.level(MUSIC_PLAYER) == 256), "{picked:?}: the menus' levels");
+        }
+    }
+
+    /// Where the battle's music had stopped as the session ends (a round's end), or another plays (the result's),
+    /// the entry's starts from its beginning, fading in.
+    #[test]
+    fn the_entry_starts_its_music_where_the_battles_stopped() {
+        use nettai_audio::SoundCue;
+        use nettai_battle::content::MusicRole;
+        let all = games(&["exe6"]);
+        let set = practice_set(&all, "exe6", 11);
+        let winner = set.content().defs.roles().music[&MusicRole::Winner];
+        for end in [SoundCue::StopMusic, SoundCue::Music(winner)] {
+            let mut player = battle_on(&all, &set, &Music::GameOwn, (1.0, 1.0));
+            for _ in 0..240 {
+                player.tick(0);
+            }
+            let mut audio = player.take_sound().unwrap();
+            audio.handle(&[end]);
+            audio.tick(&mut Vec::new());
+            let (mut sound, mut frames) = menus(&all, "exe6");
+            let entry = entry_music(&all, &set, &Music::GameOwn);
+            let song = entry.music;
+            sound.set_preview_after(Some(entry), Some(audio));
+            frames(&mut sound, 3);
+            let (preview, _, at) = sound.music_at().expect("the entry's music");
+            assert!(preview && at < 10, "{end:?}: from its beginning ({at})");
+            let (audio, fade) = sound.preview_sound().unwrap();
+            assert!(fade < 1.0, "{end:?}: fading in");
+            assert_eq!(audio.music_heard(), Some(song), "{end:?}: the entry's own song");
         }
     }
 }

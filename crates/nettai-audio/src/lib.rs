@@ -514,6 +514,34 @@ impl BattleAudio {
         self.heard
     }
 
+    /// Its music alone from now on, as the battle left it, for a host's
+    /// menus to play on after the battle (the battle's music taken over
+    /// where it is): every player but the music's stops at once, a sound
+    /// effect queued is let go, and the music is as the game plays it with
+    /// no battle around it (the low-HP switch off, its player at full
+    /// volume, the host's levels at 1). The music's song goes on where it
+    /// is.
+    pub fn keep_music_alone(&mut self) {
+        for p in &mut self.packs {
+            let bank = p.driver.bank().clone();
+            p.queue.retain(|r| match *r {
+                Request::Start(id) => bank.song(id).is_some_and(|s| s.player == MUSIC_PLAYER),
+                Request::Stop(_) | Request::StopAll => true,
+                Request::Tempo { player, .. } | Request::Pitch { player, .. } | Request::Volume { player, .. } => player == MUSIC_PLAYER,
+            });
+            for player in 0..p.driver.players().len() {
+                if PlayerId(player as u8) != MUSIC_PLAYER {
+                    p.driver.stop(PlayerId(player as u8));
+                }
+            }
+        }
+        if self.pinch {
+            self.play(SoundCue::Pinch(false));
+        }
+        self.play(SoundCue::Volume { player: MUSIC_PLAYER.0, volume: 0x100 });
+        self.set_levels(1.0, 1.0);
+    }
+
     /// One frame: each driver's VBlank (sequencers and mix), then its
     /// queued calls (the game's main loop runs them next). Appends the
     /// frame's samples (about 549 at 32768 Hz, stereo, +-1.0; every

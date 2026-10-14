@@ -493,6 +493,14 @@ impl Player {
         }
     }
 
+    /// The battle's sound, taken away as the battle ends, for a host's menus
+    /// to play its music on where it is (the other way of
+    /// [`Player::carry_sound`]): the player is silent from now on. None for
+    /// a player without audio. Presentation alone: the battle is the same.
+    pub fn take_sound(&mut self) -> Option<BattleAudio> {
+        self.audio.take()
+    }
+
     /// The battle's sound as it stands (none: silent): what each pack's
     /// driver plays (a host's check of the music it was given).
     pub fn audio(&self) -> Option<&BattleAudio> {
