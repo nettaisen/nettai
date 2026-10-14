@@ -59,7 +59,8 @@ pub struct Frame {
     /// it where the frame shows the background.
     pub glide: Option<Glide>,
     /// The frame drawn again with what moves between whole pixels a pixel
-    /// right (the enhanced mode's motion: the custom screen's slide),
+    /// right (the enhanced mode's motion: the custom screen's slide, the
+    /// custom gauge's fill),
     /// for `present` to show between the two.
     pub nudge: Option<crate::smooth::Nudge>,
 }
@@ -140,7 +141,7 @@ pub struct Renderer {
     pub custom_gauge: bool,
     /// The enhanced mode without its motion (the app's Reduce motion): the
     /// background's glide (`present`) and the smooth motion (`smooth`: the
-    /// custom screen's slide) are left out, the text stays. The original
+    /// custom screen's slide, the gauge's fill) are left out, the text stays. The original
     /// mode has none of them, whatever this says.
     pub reduce_motion: bool,
 }
@@ -281,7 +282,10 @@ impl Renderer {
         if !on || frame.pixels.is_empty() {
             return frame;
         }
-        let (nudged, sub) = (Nudged::Slide, crate::custom::slide_sub(b));
+        let (nudged, sub) = match crate::custom::slide_sub(b) {
+            0 => (Nudged::Gauge, crate::hud::gauge_sub(b, &self.hud_state, self.custom_gauge)),
+            sub => (Nudged::Slide, sub),
+        };
         if sub != 0 {
             let (problems, drawn) = (self.problems.clone(), self.sprite_drawn.clone());
             let again = self.draw(b, Smooth { on, nudged: Some(nudged) });

@@ -1241,6 +1241,18 @@ the original".)
   original's). The phases' other pictures don't slide and stay the game's:
   the Cross window's three opening steps, Beast Out's window, the
   description's chatbox opening in four steps of its map.
+- *The custom gauge's fill* (`hud::gauge_sub`). The gauge's counter runs
+  to 0x4000 over a bar of 16 cells of 8 pixels, 128 a pixel; it gains 0x20
+  a tick (0x40 or 0x10 with a side's gauge speed), and the original draws
+  the fill to its whole pixels, a cell's tile filling by eighths (tiles 0
+  to 7 of the gauge's, then the filled one): a pixel every 4 ticks (2, 8).
+  Enhanced shows the counter's part of a pixel: the frame drawn again with
+  the fill a pixel longer (a nudge, as the slide's), shown on the output
+  pixels left of that part (at three times, the fill grows an output pixel
+  a tick, three of every four ticks). The gauge's tiles, colors, its full
+  flashing and "L or R" stay the game's; a full gauge, a hidden one and a
+  gauge at a whole pixel have no nudge, and one a pixel short of full shows
+  its cells filled, not full, on the nudged pixels.
 - *The background's glide* (`Frame::glide`, `present`). A background that
   scrolls by sixteenths of a pixel a frame (its `scroll`: the game's scroll
   counters) shows on the screen at the counter's whole pixels, a step every
@@ -1266,7 +1278,7 @@ the original".)
 The motion is presentation alone and deterministic. The glide's sixteenths
 are the background's clock's (the round's frames, as its whole pixels
 are) times its rate; the slide's place is the custom screen's phase and
-its tick. It reads no clock and nothing of it is in the simulation, its
+its tick; the gauge's, its counter. It reads no clock and nothing of it is in the simulation, its
 snapshot or its digest: a rollback that draws a frame again, a seek, a
 replay and a video draw it the same (nettai-frontend's
 `the_smooth_motion_is_the_battles_alone_and_only_where_the_original_moves`
