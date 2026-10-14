@@ -389,13 +389,16 @@ impl Navicust {
     }
 
     /// Take a new copy of row `row`'s program in hand, its middle on the board's, whether or not copies of it are
-    /// placed (one already placed in its color says whether it is compressed: a save compresses every copy of a
-    /// program in one color alike).
+    /// placed: compressed where it compresses, unless a copy already placed in its color says otherwise (a save
+    /// compresses every copy of a program in one color alike).
     fn take(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
         let Some(&(piece, color)) = self.rows.get(row) else { return };
         let Some(Some(d)) = &self.data else { return };
         let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
-        let compressed = grid::placed(draft.content(), draft.side()).iter().any(|p| p.piece == piece && p.color == name && p.compressed);
+        // (Compressed, where it compresses (the user: "navicust pieces should default to compressed in the
+        // editor"), unless a copy in its color is placed uncompressed: a save compresses every copy alike.)
+        let copies: Vec<bool> = grid::placed(draft.content(), draft.side()).iter().filter(|p| p.piece == piece && p.color == name).map(|p| p.compressed).collect();
+        let compressed = copies.first().copied().unwrap_or_else(|| d.compresses(piece));
         // (A piece already in hand from the board goes back where it was.)
         let changed = self.edit(draft, Edit::Hold(piece, color, compressed));
         let Some(board) = self.data.as_ref().and_then(Option::as_ref).and_then(|d| Navicust::board(d, draft)) else { return };
