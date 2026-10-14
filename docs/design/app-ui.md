@@ -121,7 +121,7 @@ Each is settled unless the user changes it.
     playable as its pack lands. Without the collection, a game with no pack says so, with a way to choose the
     collection's folder. (docs/app.md §17.)
 25. **An About screen** (2026-10-13): "add an about screen with license and dependency info etc like for slint".
-    About is a minor item of the main menu, beside Settings: the app's version and license, Slint's "Made with
+    About is a minor item of the main menu, beside Settings (alone under the line since §2.50): the app's version and license, Slint's "Made with
     Slint" widget (which Slint's royalty-free license asks for in an About screen reached from the top menu), and
     every font and package the app is built from with its license's texts (§6, docs/app.md §18).
 26. **The NaviCust's bugs are its own, and a program is placed as often as wanted** (2026-10-13): "navicust
@@ -152,7 +152,8 @@ Each is settled unless the user changes it.
     beside each build's select on Practice's entry is EDIT (or E, or the pad's north button), which opens that
     build in Builds' editor; Back there (Esc, the pad's B, the header's ‹ PRACTICE) comes straight back to
     Practice, which shows the build as the edit left it. CREATE A BUILD opens Builds' list the same way, Back
-    going back to Practice. (§6, docs/app.md §8 and §15.)
+    going back to Practice. (§6, docs/app.md §8 and §15.) (Since §2.50 Practice is entered from PLAY with a
+    build, and CREATE A BUILD is gone.)
 29. **The battle's music is the player's pick** (2026-10-13): "you should also allow for selectable battle themes
     (bn4 virus battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle, bn5 boss battle, bn5
     vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)". Any theme plays in
@@ -260,8 +261,8 @@ Each is settled unless the user changes it.
     "the practice mode menu should also play the battle music and when it transitions it should play through the
     transition and not restart"; and "you should also get rid of "quit to menu" and "change builds" should just
     be "exit"". Arena, Background and Music are no longer remembered: each visit to Practice (from its entry being
-    shown from elsewhere until a screen other than Practice and Builds is shown; Builds through EDIT or CREATE A
-    BUILD is part of it) starts on Random, Random and the game's own, and keeps what the player sets through the
+    shown from elsewhere until a screen other than Practice and Builds is shown; Builds through EDIT, and CREATE A
+    BUILD until §2.50, is part of it) starts on Random, Random and the game's own, and keeps what the player sets through the
     entry, its sessions and back. The entry plays the music its session will start (the game's own battle music,
     not the title music, or the theme picked), and the battle takes that song over where it is: no fade, no
     restart through the cards and the battle's start. The practice menu's buttons are RESUME, RESTART and EXIT
@@ -289,8 +290,8 @@ Each is settled unless the user changes it.
     on a phone a touch 44 tall. While it is focused the footer says Switch version and Next version. The Navi tab's
     stepper is gone; its panel keeps the faces of the version's Crosses or souls under MegaMan, changing as the tag
     does. A switch is §2.41's, its problems shown as they were (the Folder tab marked, the header's count). Only
-    the editor's tag is a switch: Play's, the Builds list's and Practice's stay plain. The NEW BUILD dialog's note
-    says "It can be switched later in the editor." (§6, docs/app.md §8.) Its look went to §2.44.
+    the editor's tag is a switch: Play's (and the Builds list's, until §2.50) and Practice's stay plain. The NEW
+    BUILD dialog's note says "It can be switched later in the editor." (§6, docs/app.md §8.) Its look went to §2.44.
 
 43. **Practice's music plays on back at the entry; Background and Music are dropdowns** (2026-10-14). The user:
     "also exiting practice mode back into the practice menu should continue the music" (the practice menu here is
@@ -382,6 +383,27 @@ Each is settled unless the user changes it.
       lobby when they go on, and neither waits on the other's result. Practice has no end and a replay stops at
       its end with its transport, so neither has a result: it is the online match's alone. With Reduce motion on
       it is a cut, everything at its end. (§4, §6, docs/app.md §1, §4 and §10.)
+50. **PLAY holds the builds and Practice; the main menu is four big words** (2026-10-14). The user: "merge play
+    and builds together". Then: "i feel like practice could also move into play, but then the main menu feels
+    really sparse :(", and of the options put to them they chose PRACTICE in PLAY's row and a menu of fewer,
+    larger words; then "maybe EXIT should be a large menu item as well".
+    - *PLAY is one screen* of what Play and the Builds list were: NEW BUILD and IMPORT SAVE… over the player's
+      builds of the game (Play's open list), the chosen build's overview beside them with EDIT, DUPLICATE, RENAME
+      and, apart, DELETE (as the list had them), and under them Play's row. With no build NEW BUILD (the main action
+      then) and IMPORT SAVE… are the way in, and the row's controls say in its reserved line why they can't be used
+      ("Make a build first."). The editor opened from PLAY has ‹ PLAY as its Back, which comes back with the build
+      still chosen. There is no Builds list any more, and BUILDS left the main menu.
+    - *PRACTICE is in PLAY's row,* beside CREATE INVITE (which stays the main action): it opens Practice's entry
+      with Your build the build chosen in PLAY, the entry otherwise as it was (Dummy's build, Arena, Background,
+      Music, START PRACTICE, EDIT); the entry's Back is ‹ PLAY, coming back with the same build chosen. With no
+      build it says why in the reserved line, as CREATE INVITE does. The practice menu, EXIT back to the entry and
+      the music carried over are as they were. Practice's CREATE A BUILD (§2.28) is gone: the entry is entered with
+      a build, and one that finds no build of the game goes back to PLAY.
+    - *The main menu* is PLAY, REPLAYS, SETTINGS and EXIT, large, as a fighting game's title screen has them
+      (SETTINGS came up from the small row, and EXIT with it), and About alone small under the line. The words are
+      48 on rows 96 (36 and 72 before), the type's largest step, in the same 416 column, the four as tall as the
+      reel beside them; on a phone 32 on rows 68.
+    (§4, §6, docs/app.md §2, §4, §8 and §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -452,7 +474,7 @@ stays readable on all three grounds:
 **Type**, the same in every game. Chakra Petch 500/600/700 for titles, buttons, tabs, labels (labels are 11,
 uppercase, tracked 0.18em); in Japanese these are M PLUS 1 at 800, tracked nearly not; Murecho 400 to 900 for text,
 in either language; M PLUS 1 Code 500/700 for codes, numbers and times. All four are under the SIL Open Font License
-and are bundled. Sizes: 11, 12, 13, 14 (the base), 16, 20, 28; the main menu's items 36. The wordmark "nettai" is
+and are bundled. Sizes: 11, 12, 13, 14 (the base), 16, 20, 28; the main menu's words 48 (§2.50). The wordmark "nettai" is
 Chakra Petch 700 in the text's color, one color for the whole word.
 
 **Shapes.** Panels, dialogs and buttons are rectangles with a 1 unit line and the bottom right corner cut at 45
@@ -510,7 +532,7 @@ had; entering a battle has the game's own encounter sound.
 40 tall. A list row is 44, or 26 with a 2 gap where chips or cards are listed (the build overview's spacing, which
 the editors share). Gaps are 8, 12, 16, 24.
 
-**The header** holds, from the left: a Back button naming where it goes (`‹ MENU`, `‹ BUILDS`), the screen's title
+**The header** holds, from the left: a Back button naming where it goes (`‹ MENU`, `‹ PLAY`), the screen's title
 with a cyan bar before it, then at the right the game selector (§2.1). Where the game can't change (inside a
 build, the lobby, a replay), the game's name stays in the same place without its arrows.
 
@@ -570,18 +592,38 @@ Each is in the mockups under the same name.
   its first frames, and nothing waits on it.
 
 ### Main menu
-- Left: PLAY, PRACTICE, BUILDS, REPLAYS, each the word alone, 36, in a column 416 wide, rows 72 tall. Below a line:
-  Settings, About and Exit, 16, muted.
+- Left: PLAY, REPLAYS, SETTINGS and EXIT (§2.50), each the word alone, 48 (`Theme.menu-word`, tracked 0.075em), in
+  a column 416 wide, rows 96 tall 8 apart, centered with what is under them in the body's height, as tall as the
+  reel beside them. Below a line: About, 16, muted. The longest word the languages have (the pseudo-locale's
+  REPLAYS) fits the column's 384 for text. On a phone the words are 32 on rows 68, under the reel. Practice is in
+  Play's row and the builds are Play's (§2.50).
 - Right: the demo reel, the battle picture at three times (720 by 480), with no caption under it ("don't show the
   caption text").
 - The selected game's title music plays across the menu screens and fades out as a battle starts.
 
 ### Play
-- Left: the player's builds of the game, an open list (rows 52: the name, then "MegaMan · ready" or what is wrong,
-  and the version's tag). With none: one button, Create a build.
-- Right: the build overview (below), framed.
-- Below, one row: CREATE INVITE (the main action) | the code field and JOIN, with a reserved space beside for a
-  message | DIRECT CONNECT at the far right.
+The builds and the way into a match or practice, on one screen (§2.50).
+- Left: NEW BUILD and IMPORT SAVE… over the player's builds of the game, an open list 400 wide (rows 52: the name,
+  then "MegaMan · ready" or what is wrong, and the version's tag). The row the cursor is on is the build chosen,
+  remembered by game. A save dropped on the window is made a build, as IMPORT SAVE… makes one ("Imported as Dark
+  MegaMan" quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as
+  DELETE does. With no build of the game NEW BUILD is the main action, and with IMPORT SAVE… the way in.
+- Right: the chosen build's overview (Builds, below), framed; under it EDIT, DUPLICATE, RENAME and, apart at the
+  right, DELETE (asks once, Cancel focused). A build whose file doesn't read can only be deleted.
+- Below, one row: CREATE INVITE (the main action), PRACTICE | the code field and JOIN, with a reserved space beside
+  for a message | DIRECT CONNECT at the far right. Pressed with no build, each says in the reserved line "Make a
+  build first." (§7). With a build that can't be used, CREATE INVITE, JOIN and DIRECT CONNECT say why there, and
+  PRACTICE opens the entry, which says it in its own line.
+- **EDIT** opens the chosen build in Builds' editor, whose Back (‹ PLAY) comes back with the build still chosen.
+- **PRACTICE** opens Practice's entry with Your build the build chosen here; its Back (‹ PLAY) comes back with it
+  still chosen.
+- The focus opens on the chosen build in the list (with none, on NEW BUILD), and Enter there goes to CREATE
+  INVITE. The arrows walk the list, the overview's buttons and the row by where they are; Tab is reading order:
+  NEW BUILD, IMPORT SAVE…, the list, EDIT to DELETE, then the row.
+- **On a phone** one column: NEW BUILD and IMPORT SAVE… side by side; the chosen build in a box (Left and Right
+  step it, Enter opens the builds as a sheet); EDIT and DUPLICATE, RENAME and DELETE two by two; then CREATE INVITE,
+  PRACTICE, the code and JOIN, the reserved line and DIRECT CONNECT one under the other. The overview isn't shown
+  there (the editor shows the build whole).
 - **Direct connection** is a dialog: Host (this machine's address with Copy, and HOST; "Send this address to your
   opponent.") and Join (an address field and CONNECT).
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
@@ -600,6 +642,9 @@ Each is in the mockups under the same name.
   breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
 ### Practice
+- **Reached from Play** (§2.50): its PRACTICE opens the entry with Your build the build chosen there; the entry's
+  Back (‹ PLAY) goes back to Play with that build still chosen. An entry that finds no build of the game (another
+  game chosen in its header, say) goes back to Play.
 - **Entry:** five rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
   also add arena + background select?": the game's arenas and the background pool, every game's battle
   backgrounds (§2.31), Random first, a Random background drawn from the pool; "the arena names are meaningless
@@ -624,8 +669,8 @@ Each is in the mockups under the same name.
   from one to the other), opens that build in Builds' editor; so do E and the pad's north button, on the dummy's
   row or EDIT the dummy's build and anywhere else the player's (the footer's "Edit build"). Back from the editor
   comes straight back to the entry, the two builds still chosen and shown as the edit left them (one that can't
-  be used now says why in the reserved line). A build gone from Builds is missed as any is: the first that can
-  be used is chosen. With no build, CREATE A BUILD opens Builds' list, whose Back goes back to Practice.
+  be used now says why in the reserved line). A build gone from the files is missed as any is: the first that can
+  be used is chosen.
 - **The practice menu** (Start or Esc in a practice battle): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right; bare rows under group
@@ -645,15 +690,15 @@ Each is in the mockups under the same name.
   - RESUME, RESTART, EXIT (§2.40: the entry again; no QUIT TO MENU). Restart is also R or the pad's top button.
 
 ### Builds
-- **The list:** NEW BUILD and IMPORT SAVE… over the builds; the selected build's overview beside it, with EDIT,
-  DUPLICATE, RENAME and, apart, DELETE (asks once, Cancel focused).
-- **Opened from Practice** (§2.28): its EDIT opens the build in the editor, whose Back (‹ PRACTICE in the header)
-  goes straight back to Practice; its CREATE A BUILD opens the list, whose Back goes back to Practice too.
+A build's editor, and what any screen shows of a build. The builds themselves are Play's (§2.50): NEW BUILD,
+IMPORT SAVE…, the chosen build's overview with EDIT, DUPLICATE, RENAME and DELETE.
+- **Opened by Play or Practice:** their EDIT opens the build in the editor, whose Back (‹ PLAY or ‹ PRACTICE in the
+  header) goes straight back to the screen that opened it (§2.28).
 - **The build overview** (also Play's, and each player's panel in a match): the build's name, navi and version;
   Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
   patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips
   in two columns of 26-tall rows: number, icon, name, REG or TAG1 or TAG2, element, code.
-- **New build:** a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
+- **New build** (Play's NEW BUILD; RENAME is the same dialog with the name alone): a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
   Giga chips. It can be switched later in the editor." (§2.41, §2.42.) The folder starts as a new save's of that game.
   There are no random builds anywhere.
 - **The editor's** header has the build's name, its version's tag, and "✓ Ready to play" or how many problems. The
@@ -664,7 +709,7 @@ Each is in the mockups under the same name.
   phone's sheet), each its own colored tag, open at the build's; choosing one switches; Left and Right step it
   without opening (the footer: ←→ Switch version, Enter Choose version). A
   switch keeps the rest of the build; what no longer fits (the other version's Giga chips in the folder) is a
-  problem as any other. Elsewhere (Play, the Builds list, Practice) a version's tag is plain. Its tabs
+  problem as any other. Elsewhere (Play, Practice) a version's tag is plain. Its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
   them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
   keeps MegaMan's NaviCust, cards and auto battle data aside, outside the side it hands to a match (the rules
@@ -792,6 +837,7 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | the match already has two players | That match is full. |
 | the two apps differ | Your opponent has a different version of nettai. You both need the latest. |
 | a build breaks a rule | This build can't be used: 2 Giga chips, limit 1. |
+| there is no build to play with | Make a build first. |
 | the link dropped for good | Connection lost. The match has ended. |
 | a replay is from another version | This replay is from a different version and can't be played. |
 | the server needs a newer app | This version of nettai is too old for the server. Get the latest. |
