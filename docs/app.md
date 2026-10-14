@@ -1373,9 +1373,48 @@ folder's entry emptied, the patch card taken out, the place emptied. While it is
 line turns the error color and it fades to 0.6, and the library fades back under a wash and an edge in the error
 color with DROP TO REMOVE on a band across its middle (`RemoveTarget`, folder.slint; each fades in and out over
 `Theme.quick`); back off the library, the row looks as a drag does again. Anywhere else off the list it still goes
-back. A library's own rows aren't dragged (a click or Enter puts one in, as before). On a phone the library is a
+back. On a phone the library is a
 sheet, shut while a row is dragged, so nothing is over it: a drag there only reorders, and the sheet's REMOVE stays
 the way to take something out (`over_library` is false on a phone).
+
+**A library's row dragged into the list goes in there** (the user: "you should allow drag and dropping from the
+library into a slot", and "you should also allow drag and dropping for exe4 patch cards"). A press on a library's row
+that moves 6 is a drag, as a row of the build's is; a press that doesn't move is still a click, which puts what the
+row holds in the marked row, as before. The library's row stays where it is, and a ghost of it follows the pointer
+(the lifted row's look in the shape of the build's rows, at 0.7 until it is over a row it would go in; held no
+farther in than its middle, as a library's row is wider). Over the build's list the row it would go in shows so, in
+the look of a row dragged within it; let go there, it goes in, by the rules a click or Enter goes by: a chip the
+rules refuse there, or a card the MB or the list's room can't take, isn't put in, its library row shakes and the
+strip says why ("Falzar only", "Needs 24 MB", "MrkCan1 can't be in the Mega list"), and nothing else changes. Let go
+anywhere else (the library among it), nothing happens. Put in, it flies from its row as a click's does, and the row it
+went in flashes and is the marked one (the folder's entry and the auto battle place with the focus on them, as after
+a move; a patch card with the focus left in the library, as after a click).
+
+- *The folder:* the chip goes in the entry under the pointer, in place of what it held, none shifting (`DropGap`
+  under that entry). Its reason is asked of the folder without that entry, as a click's is of the folder without the
+  marked one (`Folder::fill`); refused, the marked entry stays as it was. A refused click's row now says why in the
+  strip too (it said so in the row's note alone).
+- *The patch cards:* the card goes in at the place under the pointer, those from there on shifting down to leave it
+  a gap (`ListEdit::Insert`); over the Empty row after them, at their end. One that is in already moves there, as a
+  drag of it in the list would.
+- *EXE4's slots.* A card is the game's for one slot (its definition's `slot`, which `build_check` holds a build to:
+  content/exe4/rules/patch_cards), so it can be in no other, and a slot's card has nowhere to move to within the
+  list. What a drag can mean there is coming in and going out: a slot's card dragged onto the library empties its
+  slot, as the list's cards are taken out; over the slots it goes back to its own (its slot is outlined), and let go
+  there nothing changes. A library's card let go anywhere over the slots goes in its own slot, in place of what it
+  held, as a click puts it (its slot outlined while it is held there: `Drag.swap`, none shifting); one that is in
+  already stays.
+- *The auto battle places:* the chip goes in the place under the pointer, in place of what it held, none shifting,
+  held to what that place may hold (`AutoBattle::fill`). The library is still the one for the place being filled, so
+  a chip of another class dragged into a Mega, Giga or Program Advance place is refused there.
+- *How it is told.* The library's rows are given its list's name (`drag: "lib.rows"`), so `Drag.list` says a drag
+  is one of them; the editor tells the tab it as `drag-in-over` and `drag-in-drop` (`editor::from_library`), `index`
+  the library's row. The tab answers with `editor::show_landing`, which also names the list it lands in
+  (`Drag.into`, the list that scrolls near its edges: a row of the build's, its own); the views' drag globals
+  (`FolderDrag`, `CardDrag`, `PlaceDrag`) show it as `filling`. The ghost is the tab's: the folder's
+  `FolderView.ghost`, the auto battle's `lifted`, the patch cards' the library's own row.
+- *On a phone* the library is a sheet over the list, shut once something is put in, so a drag from it has nowhere to
+  land in view: its rows aren't dragged there, and a tap puts in as before.
 
 - *How it is told.* The UI's `Drag` global (nav.slint) holds the drag (the list, the row, the pointer, where in the
   row it went down); the row's touch, given its list's name (`drag`), feeds it. Each move asks the app where the row
@@ -1386,8 +1425,8 @@ the way to take something out (`over_library` is false on a phone).
 - *The folder:* an entry to another entry, those between shifting toward where it was, its Regular and tag marks
   going with their chips (`FolderEdit::Move`, `edit::moved`); it is then the marked entry.
 - *The patch cards:* a card to another place in the list, by the edit `[` and `]` make (`ListEdit::Move(from, to)`,
-  which the keys make a place up or down); past the last card, it is the last. EXE4's slots aren't dragged: each card
-  goes in its own slot, which the editor already holds to.
+  which the keys make a place up or down); past the last card, it is the last. An EXE4 slot's card goes back to its
+  own slot (each card's, which the editor already holds to), or onto the library, below.
 - *The auto battle places:* a place's chip to another place of its list, those between shifting (`Edit::Move`); to a
   place of another list, the two places trade what they hold (`Edit::Swap`), the target outlined and nothing
   shifting (`Drag.swap`). A chip the rules refuse where it would go isn't moved, as one from the library isn't: the
@@ -1396,21 +1435,30 @@ the way to take something out (`over_library` is false on a phone).
   the rules have against the result is the row's problem, as ever); only the auto battle's, as above, where the
   editor already refuses that chip in that place.
 - *Scrolling.* The lists the build's rows are in don't scroll by a mouse's drag (`ListView`'s and `ScrollPage`'s
-  `mouse-pan` off, as the NaviCust's programs), so a drag on a row is the row's; the wheel scrolls them. While a row is
-  dragged near a list's top or bottom edge (within 32, or up to 96 past it), the list scrolls that way (`Scroller`'s
-  timer, 8 a frame) and asks again where the row would land. A touch's drag still scrolls a phone's list, as Slint's
+  `mouse-pan` off, as the NaviCust's programs), so a drag on a row is the row's; the wheel scrolls them. The libraries
+  beside them are alike on a desktop: their rows are dragged into the list, so a mouse's drag doesn't pan them
+  (`mouse-pan: Theme.phone`; a phone's sheet keeps it, its rows not dragged). While a row is dragged near the top or
+  bottom edge of the list it lands in (`Drag.into`: within 32, or up to 96 past it), the list scrolls that way
+  (`Scroller`'s timer, 8 a frame) and asks again where the row would land; the library a row is dragged from doesn't. A touch's drag still scrolls a phone's list, as Slint's
   `Flickable` takes a touch that moves in its first half second; one held still for that half second is the row's,
   and drags it (the Folder's, the Patch cards' and the Auto battle's lists on a phone alike; a list with nothing to
   scroll gives a touch's drag to the row at once).
 - *The pass* (`build_tabs::drags`, §13): a double click on a folder entry and one more click on it, marked (its
   chip left in, `tabs-folder-clicked-twice`); an entry dragged three rows down, shot held there and after; an entry dragged onto the
   library, shot held there (`tabs-folder-drag-remove`, the remove look) and after (`tabs-folder-drag-removed`: emptied,
-  the next entry untouched); a right click on an entry not marked (taken out, the focus on it); a patch card dragged
-  above the one before it, and the first card onto the card library (`tabs-cards-drag-remove`: taken out, the others
-  closing up; EXE4's slots aren't dragged, and nothing changes); an auto battle place's chip dragged two places back
+  the next entry untouched); a right click on an entry not marked (taken out, the focus on it); the library's first
+  chip that can go in dragged onto the emptied entry, shot held there (`tabs-folder-drag-in`: its ghost, the entry
+  outlined) and after (`tabs-folder-dragged-in`: in that entry, the others as they were, the focus on it), and one
+  the rules refuse dragged there too (`tabs-folder-drag-in-refused`: nothing changed, the strip says why); a patch
+  card dragged above the one before it, and the first card onto the card library (`tabs-cards-drag-remove`: taken
+  out, the others closing up; in EXE4 the first slot that holds a card emptied, `-removed`); a library's card that
+  isn't in dragged onto the first card (`tabs-cards-drag-in`: a gap there, the cards from there on shifted down;
+  `tabs-cards-dragged-in`: it is the first, the others after it; in EXE4 its own slot outlined, and then holding it);
+  an auto battle place's chip dragged two places back
   in its list, then into another list (traded), then down past the page's foot into the Mega list (it scrolls there;
   refused), then the first place holding a chip onto the library (`tabs-auto-drag-remove`, `-removed`: that place
-  emptied, the others as they were). On a desktop the NaviCust's clicks (`build_tabs::carries`): a placed piece clicked
+  emptied, the others as they were), and a library's chip dragged onto the second place (`tabs-auto-drag-in`,
+  `tabs-auto-dragged-in`: it holds it, the others as they were, the focus on it). On a desktop the NaviCust's clicks (`build_tabs::carries`): a placed piece clicked
   up and carried over the list (`tabs-navicust-over-list`, the remove look), a click there (`tabs-navicust-clicked-away`:
   a program fewer placed); another clicked up and carried off the board onto the effects (`tabs-navicust-carried-off`),
   a click there (`tabs-navicust-put-back`: back where it was, the board as it was). On a phone, the folder's drag, with

@@ -12,13 +12,15 @@
 //!
 //! **Enter on a place goes to the library** (on a phone, its sheet); **Enter on a chip puts it in the place and goes
 //! on to the next;** Enter (or Del, or a click) on the chip the place holds already takes it out again. Del empties
-//! the place. **The mouse:** a click on a place marks it (the focus stays on it); a click on the marked one, a double
-//! click or a right click empties it, as Del does (a right click on the library's chip the place holds, too). A place's
-//! chip dragged to another place of its list moves there, the places between shifting toward where it was
-//! (`Edit::Move`); to a place of another list, the two trade what they hold (`Edit::Swap`), unless the rules refuse
-//! either there: then nothing changes, the place dragged shakes, and the strip says why, as a chip put from the
-//! library is refused; dragged onto the library, the place is emptied. A pattern's places aren't shown: a build states no pattern records, so none of its places can point at
-//! one (the game's own writer puts none there but a learned pattern's), and a match is sent them empty, a valid block.
+//! the place. **The mouse:** a click on a place marks it (the focus stays on it); a right click empties it, as Del does
+//! (a right click on the library's chip the place holds, too). A place's chip dragged to another place of its list
+//! moves there, the places between shifting toward where it was (`Edit::Move`); to a place of another list, the two
+//! trade what they hold (`Edit::Swap`), unless the rules refuse either there: then nothing changes, the place dragged
+//! shakes, and the strip says why, as a chip put from the library is refused; dragged onto the library, the place is
+//! emptied. A library's chip dragged onto a place goes in it, in place of what it held, refused as a click's is; the
+//! place is then the one marked. A pattern's places aren't shown: a build states no pattern records, so none of its
+//! places can point at one (the game's own writer puts none there but a learned pattern's), and a match is sent them
+//! empty, a valid block.
 
 use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds};
 use crate::builds::words::kind;
@@ -67,6 +69,8 @@ pub struct AutoBattle {
     refused: i32,
     /// Why the last chip wasn't put in, until the cursor moves.
     notice: Option<String>,
+    /// The library's chip being dragged into a place, as the lifted row shows it.
+    ghost: Option<ChipHandle>,
 }
 
 impl AutoBattle {
@@ -289,9 +293,6 @@ impl AutoBattle {
     fn put(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
         let Some(&chip) = self.rows.get(row) else { return };
         let place = self.place;
-        let before = draft.side().clone();
-        let field = Some(auto::PLACES_FIELD);
-        let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field && p.entry == Some(place)).map(|p| p.text.clone()).collect();
         // (The chip the place holds already: taken out again, from where the cursor is; it flies back to its row.)
         if Data::of_side(draft.content(), draft.side()).places.get(place) == Some(&Entry::Chip(chip)) {
             let (icon, name) = draft.with_words(shell, |w| (draft.kit.pictures.icon(chip), w.names.chip(chip)));
@@ -299,8 +300,35 @@ impl AutoBattle {
             self.remove(shell, draft, place);
             return self.leave_library(shell);
         }
+        if self.put_in(shell, draft, row, place) {
+            self.next(shell, draft);
+        }
+    }
+
+    /// Row `row`'s chip dragged onto place `to`: put in it, in place of what it held, as a click puts one in the place
+    /// being filled, and the place is then the one marked. A chip the rules refuse there isn't put (its row shakes, the
+    /// strip says why), and the place being filled stays as it was.
+    fn fill(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, to: usize) {
+        let Some(&chip) = self.rows.get(row) else { return };
+        if Data::of_side(draft.content(), draft.side()).places.get(to) == Some(&Entry::Chip(chip)) || !self.put_in(shell, draft, row, to) {
+            return;
+        }
+        self.place = to;
+        self.notice = None;
+        self.changed(shell, draft);
+        self.leave_library(shell);
+    }
+
+    /// Put row `row`'s chip in place `place`: whether it went in. A chip the rules refuse there isn't put: its row
+    /// shakes, and the strip says why.
+    fn put_in(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, place: usize) -> bool {
+        let Some(&chip) = self.rows.get(row) else { return false };
+        let before = draft.side().clone();
+        let field = Some(auto::PLACES_FIELD);
+        let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field && p.entry == Some(place)).map(|p| p.text.clone()).collect();
         if !draft.edit(|content, side| auto::update(content, side, Edit::Put(place, chip))) {
-            return shell.sound.play(Cue::Refused);
+            shell.sound.play(Cue::Refused);
+            return false;
         }
         let ui = shell.ui();
         let view = ui.global::<AutoBattleView>();
@@ -316,7 +344,8 @@ impl AutoBattle {
             view.set_refused_seq(self.refused);
             shell.sound.play(Cue::Refused);
             self.notice = Some(draft.with_words(shell, |w| w.problem(&problem)));
-            return self.show_detail(shell, draft);
+            self.show_detail(shell, draft);
+            return false;
         }
         let (icon, name) = draft.with_words(shell, |w| (draft.kit.pictures.icon(chip), w.names.chip(chip)));
         shell.fly(("lib.rows", row as i32), ("places.place", place as i32), icon, &name);
@@ -326,7 +355,21 @@ impl AutoBattle {
         view.set_landed_row(r);
         view.set_landed_seq(self.landed);
         shell.sound.play(Cue::Pick);
-        self.next(shell, draft);
+        true
+    }
+
+    /// Library row `row`'s chip dragged to `at` (the window's point): its ghost under the pointer, and the place it
+    /// would go in outlined (none shift); none off the places.
+    fn drag_in(&mut self, shell: &Shell, draft: &Draft, row: usize, at: i32) {
+        if let Some(&chip) = self.rows.get(row)
+            && self.ghost != Some(chip)
+        {
+            self.ghost = Some(chip);
+            let cell = draft.with_words(shell, |words| AutoBattle::cell(draft, words, Entry::Chip(chip), false));
+            shell.ui().global::<AutoBattleView>().set_lifted(PlaceLine { chip: cell, place: -1, ..Default::default() });
+        }
+        let to = editor::nearest(shell, "places.place", self.editable.iter().copied(), editor::pointer_at(at), Some("places."));
+        editor::show_landing(shell, "places.", to, true);
     }
 
     /// On to the next place, back from the library (a phone's sheet shuts).
@@ -378,7 +421,8 @@ impl AutoBattle {
 
     /// A drag of place `from` begun or moved on: the place, as the row under the pointer shows it (with the number of
     /// the place it would land in), and where it would land.
-    fn drag_over(&self, shell: &Shell, draft: &Draft, from: usize, at: i32) {
+    fn drag_over(&mut self, shell: &Shell, draft: &Draft, from: usize, at: i32) {
+        self.ghost = None;
         let ui = shell.ui();
         let view = ui.global::<AutoBattleView>();
         let drop = self.drop_at(shell, draft, from, at);
@@ -531,6 +575,17 @@ impl Tab for AutoBattle {
                     self.remove(shell, draft, index as usize);
                 } else if let Some((to, swap)) = self.drop_at(shell, draft, index as usize, choice).filter(|d| d.0 != index as usize) {
                     self.reorder(shell, draft, index as usize, to, swap);
+                }
+            }
+            // A library's chip dragged: the place it would go in, in place of what it holds; let go there, it goes in,
+            // as a click puts it in the place being filled; anywhere else, nothing.
+            "drag-in-over" if index >= 0 => self.drag_in(shell, draft, index as usize, choice),
+            "drag-in-drop" if index >= 0 => {
+                editor::show_drop(shell, None, false);
+                self.ghost = None;
+                let to = editor::nearest(shell, "places.place", self.editable.iter().copied(), editor::pointer_at(choice), Some("places."));
+                if let Some(to) = to {
+                    self.fill(shell, draft, index as usize, to);
                 }
             }
             _ => {}

@@ -14,10 +14,11 @@
 //! one entry and the second its pair, and the two are the build's tag chips once the rules take them. **Del**
 //! takes the entry's chip out. A mark the rules refuse isn't made, and the strip says why.
 //!
-//! **The mouse:** a click on an entry marks it (the focus stays on it); a click on the marked one, a double click or a
-//! right click takes its chip out, as Del does. An entry dragged to another place moves there, those between shifting
-//! toward where it was, its Regular and tag marks with it (`FolderEdit::Move`); dragged onto the library, its chip is
-//! taken out.
+//! **The mouse:** a click on an entry marks it (the focus stays on it); a right click takes its chip out, as Del does.
+//! An entry dragged to another place moves there, those between shifting toward where it was, its Regular and tag
+//! marks with it (`FolderEdit::Move`); dragged onto the library, its chip is taken out. A library's row dragged onto an
+//! entry puts its chip in that entry, in place of what it held, as a click would put it in the marked one (refused as
+//! a click's is); the entry is then the one marked.
 
 use crate::builds::edit::{self, FolderEdit};
 use crate::builds::overview::chip_cell;
@@ -71,6 +72,8 @@ pub struct Folder {
     described: Option<Described>,
     landed: i32,
     refused: i32,
+    /// The library's chip being dragged into the folder, as its ghost shows it.
+    ghost: Option<FolderChip>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -297,7 +300,36 @@ impl Folder {
     /// Put row `row`'s chip in the entry being filled, and go on to the next entry. A chip the rules keep out
     /// isn't put: its row shakes.
     fn put(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
-        let Some(&chip) = self.rows.get(row) else { return };
+        if !self.put_in(shell, draft, row) {
+            return;
+        }
+        let next = (self.slot + 1).min(nettai_battle::custom::folder::FOLDER_SIZE - 1);
+        self.slot = next;
+        self.changed(shell, draft);
+        self.leave_library(shell, next);
+    }
+
+    /// Row `row`'s chip dragged onto entry `to`: put in it, in place of what it held, as a click puts one in the
+    /// marked entry, and the entry is then the one marked. A chip the rules keep out there isn't put (its row shakes,
+    /// the strip says why), and the marked entry stays as it was.
+    fn fill(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, to: usize) {
+        let was = self.slot;
+        // (A row's reason is asked of the folder without the entry it would go in.)
+        self.slot = to;
+        self.ask(draft);
+        if !self.put_in(shell, draft, row) {
+            self.slot = was;
+            self.ask(draft);
+            return;
+        }
+        self.changed(shell, draft);
+        self.leave_library(shell, to);
+    }
+
+    /// Put row `row`'s chip in the entry being filled: whether it went in. A chip the rules keep out isn't put: its row
+    /// shakes, and the strip says why.
+    fn put_in(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) -> bool {
+        let Some(&chip) = self.rows.get(row) else { return false };
         let ui = shell.ui();
         let view = ui.global::<FolderView>();
         if self.offered.as_ref().is_none_or(|v| v.refusal(chip.id).is_some()) {
@@ -305,7 +337,10 @@ impl Folder {
             self.refused += 1;
             view.set_refused(row as i32);
             view.set_refused_seq(self.refused);
-            return;
+            let wrong = self.offered.as_ref().and_then(|v| v.refusal(chip.id));
+            self.notice = wrong.map(|wrong| draft.with_words(shell, |words| words.refusal(chip.id, wrong)));
+            self.show_detail(shell, draft);
+            return false;
         }
         let slot = self.slot;
         let content = draft.content().clone();
@@ -324,7 +359,7 @@ impl Folder {
             }
         }
         if after != before && !draft.edit(|content, side| side.set_folder(content, &after).is_ok()) {
-            return;
+            return false;
         }
         // The chip flies from its row to its entry, which flashes.
         let (icon, name) = draft.with_words(shell, |words| (words.kit.pictures.icon(chip.id), words.names.chip(chip.id)));
@@ -332,10 +367,28 @@ impl Folder {
         self.landed += 1;
         view.set_landed(slot as i32);
         view.set_landed_seq(self.landed);
-        let next = (slot + 1).min(after.chips.len() - 1);
-        self.slot = next;
-        self.changed(shell, draft);
-        self.leave_library(shell, next);
+        self.notice = None;
+        true
+    }
+
+    /// The ghost of row `row`'s chip, dragged into the folder: as an entry would show it.
+    fn show_ghost(&mut self, shell: &Shell, draft: &Draft, row: usize) {
+        let Some(&chip) = self.rows.get(row) else { return };
+        if self.ghost == Some(chip) {
+            return;
+        }
+        self.ghost = Some(chip);
+        let content = draft.content();
+        let cell = draft.with_words(shell, |words| ChipCell {
+            there: true,
+            icon: words.kit.pictures.icon(chip.id),
+            name: words.names.chip(chip.id).into(),
+            kind: kind(content.chip(chip.id).class),
+            element: words.kit.pictures.chip_element(chip.id),
+            code: chip.code.letter().to_string().into(),
+            ..Default::default()
+        });
+        shell.ui().global::<FolderView>().set_ghost(cell);
     }
 
     /// Back from the library to entry `to` (a phone's sheet shuts).
@@ -558,6 +611,19 @@ impl Tab for Folder {
                     self.remove(shell, draft, index as usize);
                 } else if let Some(to) = Folder::drop_at(shell, choice).filter(|&to| to as i32 != index && index >= 0) {
                     self.reorder(shell, draft, index as usize, to);
+                }
+            }
+            // A library's row dragged: the entry it would go in, in place of its chip (none shift); let go there, it
+            // goes in, as a click puts it in the marked one; anywhere else, nothing.
+            "drag-in-over" if index >= 0 => {
+                self.show_ghost(shell, draft, index as usize);
+                editor::show_landing(shell, "slot", Folder::drop_at(shell, choice), true);
+            }
+            "drag-in-drop" => {
+                editor::show_drop(shell, None, false);
+                self.ghost = None;
+                if let Some(to) = Folder::drop_at(shell, choice).filter(|_| index >= 0) {
+                    self.fill(shell, draft, index as usize, to);
                 }
             }
             _ => {}
