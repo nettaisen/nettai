@@ -624,9 +624,9 @@ each_game_is_named_in_its_languages` holds the three games to their names in bot
 build; the build lists what is left. `msgfmt --check -o /dev/null` validates a file.
 
 **Typography.** Headings, buttons and labels are Chakra Petch, which has Latin alone; a language set in another
-script (`lang::cjk`: Chinese, Japanese, Korean) has them in M PLUS 1 at 800 (the user's choice: docs/design/app-ui.md
-§2.23), with the labels' tracking nearly none, in every game. Body text is Murecho in either. M PLUS 1 and Murecho
-cover Latin and Japanese. For a script they lack, Slint falls back to the system's fonts on the desktop; the web has
+script (`lang::cjk`: Chinese, Japanese, Korean) has them in Corporate Logo at 700 (the user's choice: docs/design/app-ui.md
+§2.51), with the labels' tracking nearly none, in every game. Body text is Murecho in either. Corporate Logo and
+Murecho cover Latin and Japanese. For a script they lack, Slint falls back to the system's fonts on the desktop; the web has
 none and a phone's may lack one, so such a language needs its font bundled (imported in theme.slint beside the
 others).
 
@@ -1643,11 +1643,11 @@ difference between one multiple and the next (a window 780 of the display's pixe
 
 docs/design/app-ui.md §4 is the look; this is where it lives.
 
-**The theme** (theme.slint): every color, the four faces (Chakra Petch 500, 600 and 700, M PLUS 1 800 for
-Japanese display text, M PLUS 1 Code and Murecho, all under the SIL Open Font License, each with its license
+**The theme** (theme.slint): every color, the four faces (Chakra Petch 500, 600 and 700, Corporate Logo 700
+for Japanese display text, M PLUS 1 Code and Murecho, all under the SIL Open Font License, each with its license
 beside it in `fonts/`), the metrics, and the durations. A screen uses these and writes no color, size or duration
 of its own: a display text's weight is the theme's too (`display-bold`, `display-semibold`: 700 and 600 in Chakra
-Petch, 800 in M PLUS 1, which is bundled at that weight alone).
+Petch, 700 for both in Corporate Logo, which is bundled at that weight alone).
 
 **A game's look** (docs/design/app-ui.md §2.23, §4). Each game states its own in its content, beside its versions'
 colors (rules/builds) and its name (its locales): `content/<game>/look.toml`, which `nettai_content::look` reads.
@@ -1698,7 +1698,7 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
   reel, after the sweep; the battle's own frames are untouched.
 - *What it costs*: 0.14 MB of generated Rust (10.21 to 10.35 MB: the ground's component 0.08, under its `for`, and
   the rest the theme's colors read where they were constants), and the bundled faces 1.8 MB more (M PLUS 1 at 800,
-  with its Japanese).
+  with its Japanese; since replaced by Corporate Logo at 700, 2.8 MB).
 
 **The components** (widgets.slint, shell.slint):
 
