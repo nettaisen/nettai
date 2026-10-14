@@ -740,10 +740,20 @@ mod tests {
     /// A practice set put on another background (Practice's Background row changed: `Player::set_backgrounds`)
     /// goes on where it is: no start over, the arena the same, the battle drawn on the new background; and
     /// since no tick reads a round's background, it steps as the battle without the change does, its digest
-    /// the same but for the background its setup says (and the rounds after on it too).
+    /// the same but for the background its setup says (and the rounds after on it too). The same with another
+    /// game's background (the background pool's).
     #[test]
     fn on_another_background_the_battle_goes_on() {
         let content = nettai_match::testing::exe6_content();
+        // (The last of the game's, and one of another game's.)
+        let own = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
+        for background in [own, "exe4:acdc-area".to_string()] {
+            on_another_background(&content, &background);
+        }
+    }
+
+    fn on_another_background(content: &std::sync::Arc<nettai_battle::Content>, background: &str) {
+        let content = content.clone();
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
         let opponent = nettai_frontend::driver::Opponent { in_fight: nettai_frontend::driver::InFight::AttacksAtRandom, ..Default::default() };
         let (mut a, mut b) = (practice(&content, &m, 11, opponent), practice(&content, &m, 11, opponent));
@@ -757,15 +767,14 @@ mod tests {
             step(&mut b);
         }
         let (was, ticks) = (b.stage.player.battle().setup.clone(), b.stage.player.ticks());
-        // The set on another background: the last of the game's, named by every round.
-        let background = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
+        // The set on another background, named by every round.
         let mut other = m.clone();
-        other.rounds.iter_mut().for_each(|r| r.background = Some(background.clone()));
+        other.rounds.iter_mut().for_each(|r| r.background = Some(background.to_string()));
         let mut first = other.round(&content, 11);
         first.host_keys.pause = false;
         let folders = [0, 1].map(|side| other.sides[side].folder(&content).saved().unwrap());
         assert!(b.stage.player.set_backgrounds(Set::new(content.clone(), first, folders)));
-        let id = nettai_match::ids::background(&content, "exe6", &background).unwrap();
+        let id = nettai_match::ids::background(&content, "exe6", background).unwrap();
         let now = &b.stage.player.battle().setup;
         assert_ne!(was.settings.background, id, "(another background before)");
         assert_eq!((now.settings.stage, now.settings.background, b.stage.player.ticks()), (was.settings.stage, id, ticks), "no start over, the arena the same");

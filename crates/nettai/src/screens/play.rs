@@ -110,6 +110,13 @@ fn remembered_build(game: &str) -> String {
     format!("play.build.{game}")
 }
 
+/// The settings a lobby of `game` opens with: `rounds` rounds, each place picked from the match's seed, its
+/// background from the background pool, every game's (docs/app.md §1, "The battle's background"), shared by both
+/// players as the round's settings are.
+pub(crate) fn settings(game: &str, rounds: usize) -> Settings {
+    Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, rounds) }
+}
+
 /// A build of the selected game, as the list has it (the Builds screen's row: `builds::shelf`).
 struct Build {
     name: String,
@@ -516,7 +523,7 @@ impl Play {
         let rounds = shell.settings.remembered.get(REMEMBERED_ROUNDS).and_then(|r| r.parse().ok()).filter(|r| ROUNDS.contains(r)).unwrap_or(ROUNDS[1]);
         // (The screenshot pass's matches are the same from run to run.)
         let entropy = tour::entropy().unwrap_or_else(nettai_frontend::lobby::entropy);
-        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), Settings::new(&game, rounds), side, &shell.settings.name, entropy));
+        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), settings(&game, rounds), side, &shell.settings.name, entropy));
         if !made {
             return;
         }

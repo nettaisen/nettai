@@ -102,7 +102,7 @@ pub fn palette(
 
 /// A background, from its pack.
 pub fn background<'a>(packs: &Packs<'a>, c: &Content, id: BackgroundId, problems: &mut Problems) -> Option<&'a nettai_assets::Background> {
-    let found = packs.background(c, id).and_then(|(pack, n)| pack.background(n));
+    let found = packs.background(c, id);
     if problems.lookup(Lookup::Background(id)) && found.is_none() {
         let name = crate::packs::name(c, AssetKind::Background, id.0).map_or(format!("handle {}", id.0), |n| format!("{n:?}"));
         problems.note(format!("background {name} is not in the pack's graphics"));
