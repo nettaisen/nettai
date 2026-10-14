@@ -7,7 +7,8 @@
 //!
 //! A screen may have the menus play a battle's music in place of the title music ([`Sound::set_preview`]:
 //! Practice's entry, the music its session will start), on the battle's own sound (its packs' drivers, a theme's
-//! pack among them); the music crossfades as it changes, as it does between two games' title music. The battle
+//! pack among them); the music crossfades as it changes, as it does between two games' title music, unless the
+//! song is the same (a theme picked, with the game changed), which goes on where it is. The battle
 //! that starts then takes that sound over ([`Sound::take_preview`]), so its music goes on where it is.
 //!
 //! The device gets one stream at the battle's rate. While a battle runs, the menus' sounds are ticked with
@@ -186,11 +187,34 @@ impl Sound {
     /// Play `preview` in place of the title music (a screen's preview of a battle's music: Practice's entry), or
     /// the title music again (none). Where it is another than the one playing (by its key), that one fades out
     /// under it, and it starts from its beginning, fading in (as the title music does), while the menus' music is
-    /// wanted.
+    /// wanted. Where it is another by its key but the same song playing (the same pack's, by its bank, and the same
+    /// song: a theme picked, with the selected game changed), that song goes on where it is, on the new one's
+    /// sound, with no restart and no crossfade ([`BattleAudio::go_on_with`]: the user, "switching game in practice
+    /// mode shouldn't restart the music if it's the same music").
     pub fn set_preview(&mut self, preview: Option<PreviewSong>) {
         if self.preview.as_ref().map(|p| p.key.as_str()) == preview.as_ref().map(|p| p.key.as_str()) {
             return;
         }
+        let preview = match (preview, self.preview.take()) {
+            (Some(new), Some(old)) if old.playing => {
+                let PreviewSong { key, parts: (banks, songs), music } = new;
+                let mut audio = BattleAudio::with_banks(banks.clone(), songs.clone());
+                match audio.go_on_with(music, old.music) {
+                    Ok(()) => {
+                        self.preview = Some(Preview { key, music: audio, cue: SoundCue::Music(music), playing: true });
+                        return;
+                    }
+                    Err(back) => {
+                        self.preview = Some(Preview { music: back, ..old });
+                        Some(PreviewSong { key, parts: (banks, songs), music })
+                    }
+                }
+            }
+            (new, old) => {
+                self.preview = old;
+                new
+            }
+        };
         let old = match self.preview.take() {
             Some(p) => p.playing.then_some(p.music),
             None => self.menu.as_mut().filter(|m| m.playing).map(|m| {
@@ -231,6 +255,11 @@ impl Sound {
         self.leaving = None;
         self.fade = 1.0;
         self.preview = Some(Preview { key: preview.key, music: audio, cue: SoundCue::Music(preview.music), playing: true });
+    }
+
+    /// Whether a battle's music plays in place of the title music (or is to play).
+    pub fn previews(&self) -> bool {
+        self.preview.is_some()
     }
 
     /// Whether the preview is `key`'s, playing or to play (a battle about to start that takes it over keeps the
