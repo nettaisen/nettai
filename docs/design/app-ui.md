@@ -317,6 +317,10 @@ Each is settled unless the user changes it.
     selects' list under it, each its own colored tag, open at the build's; choosing one closes it and switches.
     Left and Right still step it without opening, as any select's; the footer says Choose version for Enter. Only
     the editor's tag has it. (§6, docs/app.md §8 and §15.)
+46. **Team Colonel's tag is green, and BN6 shows its Beast Out first** (2026-10-14): "team colonel should be green
+    instead of blue. you should also show the beast form as the first cross in bn6". EXE5's Team Colonel is drawn
+    in green; under MegaMan, a BN6 version's faces start with its Beast Out (the builds rules' `shown_first`), then
+    its Crosses.
 
 ## 3. Chosen where the user gave no answer
 
