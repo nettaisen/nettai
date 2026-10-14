@@ -272,14 +272,15 @@ pub struct Editor {
     pub draft: Draft,
     tabs: Vec<Box<dyn Tab>>,
     at: usize,
-    /// The row last clicked, and when: a click on the marked row within a double click's time of the click before on
-    /// it does nothing more (`DOUBLE_CLICK`).
+    /// The row a click last took something out of, and when: a click on it again within a double click's time does
+    /// nothing more (`DOUBLE_CLICK`).
     clicked: Option<(String, i32, Instant)>,
 }
 
-/// A double click's time (Slint's own): a click on the marked row within it of the click before on that row does
-/// nothing, so a double click on a row that isn't marked marks it and leaves what it holds, and one on the marked
-/// row removes one thing.
+/// A double click's time (Slint's own). A double click on a row that isn't marked marks it and takes out what it
+/// holds (the user: "fast double click should remove"); one on the marked row takes out one thing: a click within
+/// it of a click that took something out of that row does nothing (a patch card's list closes up under the first,
+/// and the second would take the next card).
 const DOUBLE_CLICK: Duration = Duration::from_millis(500);
 
 impl Editor {
@@ -421,9 +422,6 @@ impl Editor {
             let way = if index as usize >= self.at { 1 } else { -1 };
             return self.go(shell, index.max(0) as usize, way);
         }
-        if shell.nav.pointing() {
-            self.clicked = Some((id.to_string(), index, Instant::now()));
-        }
         let (tab, draft) = self.tab();
         tab.activate(shell, draft, id, index);
         // (A click on one of the build's own rows, an entry, a card, a slot or a place, chooses it as Enter does,
@@ -457,11 +455,11 @@ impl Editor {
             let key = shell.nav.focused().map(|k| (k.id.clone(), k.index));
             let now = Instant::now();
             let again = matches!((&self.clicked, &key), (Some((i, n, at)), Some((id, index))) if i == id && n == index && now.duration_since(*at) < DOUBLE_CLICK);
-            if let Some((id, index)) = key {
-                self.clicked = Some((id, index, now));
-            }
             if again {
                 return;
+            }
+            if let Some((id, index)) = key {
+                self.clicked = Some((id, index, now));
             }
             let (tab, draft) = self.tab();
             tab.action(shell, draft, Action::Delete);
