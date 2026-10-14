@@ -1652,7 +1652,7 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
 | `Page`, `Header`, `Footer`, `Hint` | A menu screen; its header (Back, the title, the game) and footer (key hints, one status) |
 | `Picture` | Where the battle's picture goes (§1) |
 | `DialogFrame`, `MenuOverlay` | A dialog of a screen's own; a menu over the battle |
-| `Backdrop`, `Cursor` | The ground, in the selected game's look, with its pattern (the grounds of a change of game sweeping in over it); the bracket cursor |
+| `Backdrop`, `Cursor` | The ground, in the selected game's look, with its pattern (the grounds of a change of game sweeping in over it), behind everything, a battle that fills the window too (the user: "the backdrop should be behind the game at all times"); the bracket cursor |
 
 **The rules** (docs/design/app-ui.md §5) are built into them: a value has a box of a set width and is cut with an
 ellipsis (a stepper's is drawn smaller to fit first, down to 11 px, then on two lines at 11 px, and only past
