@@ -168,21 +168,29 @@ impl Overlay {
         Some(Overlay { x, y, width: bw, height: bh, texture_width: w, texels, reading, depth, fine })
     }
 
-    /// The texel at a point of the box (in frame pixels from its top left,
+    /// The texel an output pixel shows, by its top left corner and its
+    /// middle in the box (frame pixels from the box's top left,
     /// continuous), as the frame reads the texel at a whole pixel's.
-    fn texel(&self, lx: f64, ly: f64) -> Option<u16> {
+    fn texel(&self, (cx, cy): (f64, f64), (mx, my): (f64, f64)) -> Option<u16> {
         let (w, h) = (self.texture_width, self.texels.len() as i32 / self.texture_width);
-        // (The frame reads at a pixel's top left; a point's pixel's, here
-        // the point less half a pixel, so a frame drawn at its own size
-        // reads the same texels.)
-        let (px, py) = (lx - 0.5, ly - 0.5);
+        // (The frame reads a squashed or turned part at its pixel's top
+        // left; so does this, at the output pixel's: drawn at the frame's
+        // own size it reads the same texels, and larger, a whole scale's
+        // rows and texels on the frame pixels they are on. Read half a frame
+        // pixel above and left of the output pixel's middle, as it once
+        // was, the part was drawn up to that much down and right of the
+        // frame's, its last row past its box and cut: EXE4's banners, whose
+        // glyphs' outlines reach their last row.) A corner is a whole output
+        // pixel over the scale, which a float holds only near: what it
+        // reads is taken a hair up, as the hardware's whole steps are exact.
+        let floor = |v: f64| (v + 1e-9).floor() as i32;
         let (tx, ty) = match self.reading {
-            Reading::Plain => (lx.floor() as i32, ly.floor() as i32),
-            Reading::Squashed(n) => (lx.floor() as i32, (n as f64 * (py - (h / 2) as f64) / 256.0).floor() as i32 + h / 2),
+            Reading::Plain => (mx.floor() as i32, my.floor() as i32),
+            Reading::Squashed(n) => (mx.floor() as i32, floor(n as f64 * (cy - (h / 2) as f64) / 256.0) + h / 2),
             Reading::Turned(m) => {
-                let (dx, dy) = (px - (self.width / 2) as f64, py - (self.height / 2) as f64);
-                let tx = ((m.pa as f64 * dx + m.pb as f64 * dy) / 256.0).floor() as i32 + w / 2;
-                let ty = ((m.pc as f64 * dx + m.pd as f64 * dy) / 256.0).floor() as i32 + h / 2;
+                let (dx, dy) = (cx - (self.width / 2) as f64, cy - (self.height / 2) as f64);
+                let tx = floor((m.pa as f64 * dx + m.pb as f64 * dy) / 256.0) + w / 2;
+                let ty = floor((m.pc as f64 * dx + m.pd as f64 * dy) / 256.0) + h / 2;
                 (tx, ty)
             }
         };
@@ -209,10 +217,10 @@ pub(crate) fn draw_overlays(overlays: &[Overlay], depth: &[u32], nudge: Option<&
         let y1 = (((top + o.height as f64) * s).ceil() as i32).min(place.height);
         for dy in y0..y1 {
             let fy = (dy * HEIGHT as i32 / place.height) as usize;
-            let ly = (dy as f64 + 0.5) / s - top;
+            let (cy, my) = (dy as f64 / s - top, (dy as f64 + 0.5) / s - top);
             let lifted = lift.filter(|l| lifted_row(l, dy, place));
             for dx in x0..x1 {
-                let Some(color) = o.texel((dx as f64 + 0.5) / s - left, ly) else { continue };
+                let Some(color) = o.texel((dx as f64 / s - left, cy), ((dx as f64 + 0.5) / s - left, my)) else { continue };
                 let fx = (dx * WIDTH as i32 / place.width) as usize;
                 let front = match (lifted, nudge) {
                     (Some(l), _) => l.depth[fy * WIDTH + fx],
