@@ -1,5 +1,5 @@
-// The main menu (docs/design/app-ui.md §6): PLAY, PRACTICE, BUILDS and REPLAYS, each the word alone; below a
-// line, Settings and Exit, smaller; beside them the demo reel, a battle of the selected game playing itself in a
+// The main menu (docs/design/app-ui.md §6): PLAY, PRACTICE and REPLAYS, each the word alone; below a line,
+// Settings, About and Exit, smaller; beside them the demo reel, a battle of the selected game playing itself in a
 // box that keeps its size. On a phone the reel is above the items.
 
 import { Theme } from "../theme.slint";
@@ -16,7 +16,7 @@ export global MenuView {
     in property <int> reel-seq;
 }
 
-// Settings and Exit: less than the four above them.
+// Settings, About and Exit: less than the three above them.
 component MinorItem inherits Rectangle {
     in property <string> text;
     in property <string> nav;
@@ -43,7 +43,10 @@ export component MenuScreen inherits Page {
     property <length> reel-width: Theme.phone ? self.body-width : 720px;
     property <length> reel-height: self.reel-width * 2 / 3;
     property <length> item: Theme.phone ? 68px : 72px;
-    property <length> items-top: Theme.phone ? self.reel-height + 12px : (self.body-height - 4 * self.item - 85px) / 2;
+    // The three words, 8 apart, and under them the line (16 below) and the smaller items (35 below, 32 tall), all
+    // centered together.
+    property <length> items-height: 3 * self.item + 2 * 8px;
+    property <length> items-top: Theme.phone ? self.reel-height + 12px : (self.body-height - self.items-height - 61px) / 2;
     property <length> reel-top: Theme.phone ? 0px : (self.body-height - self.reel-height) / 2;
     logo: true;
     hints: [
@@ -51,7 +54,7 @@ export component MenuScreen inherits Page {
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
-    // (The parts assemble in turn as the menu arrives: the four words, what is under them, the reel.)
+    // (The parts assemble in turn as the menu arrives: the three words, what is under them, the reel.)
     Arrive {
         order: 0;
         MenuItem {
@@ -82,18 +85,6 @@ export component MenuScreen inherits Page {
             x: 0;
             y: root.items-top + 2 * (root.item + 8px);
             width: root.column;
-            nav: "builds";
-            text: @tr("BUILDS");
-            big: true;
-        }
-    }
-
-    Arrive {
-        order: 3;
-        MenuItem {
-            x: 0;
-            y: root.items-top + 3 * (root.item + 8px);
-            width: root.column;
             nav: "replays";
             text: @tr("REPLAYS");
             big: true;
@@ -101,10 +92,10 @@ export component MenuScreen inherits Page {
     }
 
     Arrive {
-        order: 4;
+        order: 3;
         Rule {
             x: 0;
-            y: root.items-top + 4 * root.item + 40px;
+            y: root.items-top + root.items-height + 16px;
             width: root.column;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
@@ -112,7 +103,7 @@ export component MenuScreen inherits Page {
 
         settings := MinorItem {
             x: Theme.phone ? 8px : 16px;
-            y: root.items-top + 4 * root.item + 59px;
+            y: root.items-top + root.items-height + 35px;
             nav: "settings";
             text: @tr("Settings");
         }

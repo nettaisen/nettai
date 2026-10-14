@@ -7,7 +7,8 @@
 //! for one visit ([`Visit`]), and START PRACTICE; beside them the two builds facing each other on the arena the
 //! session opens on (Arena a pager, Background and Music dropdowns as the build rows are). While it shows it plays
 //! the music the session will start, which the session's battle takes over, and back from a session it plays on
-//! the battle's song where it is. With no build of the game there is one button, Create a build. A build that can't be used
+//! the battle's song where it is. With no build of the game there is one button, Create a build, which opens Play
+//! (`crate::screens::play::open`), where builds are made, its Back coming back here. A build that can't be used
 //! says so in the reserved line, and practice doesn't start. Each build's EDIT (or E, or the pad's north button,
 //! on its row) opens it in Builds' editor (`crate::screens::builds::open`), and Back from there comes back here,
 //! which lists the builds again as they were left.
@@ -129,10 +130,11 @@ pub struct Shared {
 }
 
 /// A visit to Practice: from its entry being shown from elsewhere (the main menu, Play) until a screen other than
-/// Practice and Builds is shown. Builds is part of it: EDIT and CREATE A BUILD go there, and its Back comes
-/// back. Through it the entry, its sessions and the entry again after them keep the Arena, Background and Music
-/// the player set; each visit starts on their defaults, Random, Random and the game's own (the user: "going into
-/// practice should reset all the arena settings, there's no reason for it to remember the last settings").
+/// Practice and Builds' editor is shown, or than Play where CREATE A BUILD opened it. The editor (EDIT) and Play
+/// (CREATE A BUILD, and the editor from its EDIT) are part of it, their Back coming back. Through it the entry, its
+/// sessions and the entry again after them keep the Arena, Background and Music the player set; each visit starts
+/// on their defaults, Random, Random and the game's own (the user: "going into practice should reset all the arena
+/// settings, there's no reason for it to remember the last settings").
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Visit {
     /// A visit is on.
@@ -141,6 +143,8 @@ pub struct Visit {
     place: Option<(String, [usize; 2])>,
     /// The battle's music picked (`Shell::battle_music`).
     pub music: crate::music::Music,
+    /// CREATE A BUILD opened Play: it is part of the visit until Practice is shown again.
+    by_play: bool,
 }
 
 impl Visit {
@@ -153,15 +157,19 @@ impl Visit {
         true
     }
 
-    /// Screen `screen` is the one shown: one other than Practice and Builds ends the visit.
+    /// Screen `screen` is the one shown: one other than Practice and Builds' editor ends the visit, and Play too
+    /// unless CREATE A BUILD opened it.
     pub fn shown(&mut self, screen: ScreenId) {
-        if !matches!(screen, ScreenId::Practice | ScreenId::Builds) {
-            self.leave();
+        match screen {
+            ScreenId::Practice => self.by_play = false,
+            ScreenId::Builds => {}
+            ScreenId::Play if self.by_play => {}
+            _ => self.leave(),
         }
     }
 
-    /// The visit is over (Practice left for another screen than Builds, or the screenshot pass starting a walk):
-    /// what it kept goes, and the next starts on the defaults.
+    /// The visit is over (Practice left for another screen than the one it opened, or the screenshot pass
+    /// starting a walk): what it kept goes, and the next starts on the defaults.
     pub fn leave(&mut self) {
         *self = Visit::default();
     }
@@ -899,8 +907,9 @@ pub struct Practice {
     changed: Option<Instant>,
     /// The Music row changed, and when: the entry plays it once it has stayed a moment ([`MUSIC_AFTER`]).
     music_changed: Option<Instant>,
-    /// Builds is being opened from here (EDIT, CREATE A BUILD): leaving for it goes on with the visit.
-    to_builds: bool,
+    /// Another screen is being opened from here (EDIT's editor, CREATE A BUILD's Play), whose Back comes back:
+    /// leaving for it goes on with the visit.
+    away: bool,
 }
 
 /// The key the build chosen for `game` is remembered by: the player's, or the dummy's.
@@ -1058,8 +1067,8 @@ impl Practice {
             }
         }
         shell.save_settings();
-        self.to_builds = true;
-        crate::screens::builds::open(shell, ScreenId::Practice, Some(at));
+        self.away = true;
+        crate::screens::builds::open(shell, ScreenId::Practice, at);
     }
 
     /// Step the place of list `part` (the arenas or the backgrounds, 0 Random) by `by`, around from its last to
@@ -1359,18 +1368,19 @@ impl Screen for Practice {
         // (Elsewhere the menus play the title music.)
         self.music_changed = None;
         crate::music::preview(shell, None);
-        // (Leaving for another screen than Builds, through EDIT or CREATE A BUILD, ends the visit.)
-        if !std::mem::take(&mut self.to_builds) {
+        // (Leaving for another screen than the one EDIT or CREATE A BUILD opens ends the visit.)
+        if !std::mem::take(&mut self.away) {
             shell.practice.visit.leave();
         }
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         match id {
-            // (Back from Builds comes back here.)
+            // (Play, whose builds' Back comes back here: the visit goes on there.)
             "create" => {
-                self.to_builds = true;
-                crate::screens::builds::open(shell, ScreenId::Practice, None);
+                self.away = true;
+                shell.practice.visit.by_play = true;
+                crate::screens::play::open(shell, ScreenId::Practice);
             }
             "edit" => self.edit_build(shell, index.clamp(0, 1) as usize),
             "yours" | "dummys" => {
@@ -1829,8 +1839,9 @@ mod tests {
     }
 
     /// A visit starts on the defaults (Random, Random, the game's own music) and keeps what the player sets
-    /// through the entry, its sessions and Builds through EDIT; another screen ends it, and the next visit starts
-    /// on the defaults again. A place is the game's: another game's entry is on Random.
+    /// through the entry, its sessions, Builds' editor through EDIT and Play through CREATE A BUILD; another screen
+    /// (Play shown otherwise among them) ends it, and the next visit starts on the defaults again. A place is the
+    /// game's: another game's entry is on Random.
     #[test]
     fn a_visit_starts_on_the_defaults() {
         use crate::music::Music;
@@ -1842,12 +1853,20 @@ mod tests {
         assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "Random, Random, the game's own");
         visit.set_place("exe6", [3, 5]);
         visit.music = theme.clone();
-        // (The entry, a session and the entry again; Builds through EDIT and back; the entry shown again.)
+        // (The entry, a session and the entry again; Builds through EDIT and back; the entry shown again; Play
+        // through CREATE A BUILD, Builds through its EDIT, Play again, and back.)
         for screen in [ScreenId::Practice, ScreenId::Builds, ScreenId::Practice] {
             visit.shown(screen);
             assert!(!visit.arrive(), "{screen:?}: the same visit");
             assert_eq!((visit.place("exe6", &places), &visit.music), ([3, 5], &theme), "{screen:?}");
         }
+        visit.by_play = true;
+        for screen in [ScreenId::Play, ScreenId::Builds, ScreenId::Play, ScreenId::Practice] {
+            visit.shown(screen);
+            assert!(!visit.arrive(), "{screen:?} through CREATE A BUILD: the same visit");
+            assert_eq!((visit.place("exe6", &places), &visit.music), ([3, 5], &theme), "{screen:?}");
+        }
+        assert!(!visit.by_play, "back at Practice, Play is no longer part of it");
         assert_eq!(visit.place("exe5", &places), [0, 0], "another game's: Random");
         assert_eq!(visit.place("exe6", &Places::default()), [0, 0], "a place the list hasn't: Random");
         for elsewhere in [ScreenId::Menu, ScreenId::Play] {

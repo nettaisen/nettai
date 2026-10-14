@@ -19,7 +19,7 @@ use crate::screens::practice;
 use crate::shell::App;
 use nettai_battle::input::keys;
 use crate::builds::store;
-use nettai_ui::{AppWindow, BuildsPage, BuildsView, PracticeOption, PracticeView, Theme};
+use nettai_ui::{AppWindow, BuildsView, PracticeOption, PracticeView, Theme};
 use slint::ComponentHandle;
 use std::time::Instant;
 
@@ -217,7 +217,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         }),
     );
     shot(add, "practice-none", lang, size, Differs::Unheld, false);
-    // CREATE A BUILD: Builds' list (the pass's own folder, emptied), its header's Back saying PRACTICE; and Back,
+    // CREATE A BUILD: Play's builds (the pass's own folder, emptied), its header's Back saying PRACTICE; and Back,
     // Practice again.
     add(
         SETTLE,
@@ -228,10 +228,10 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             app.act(Action::Confirm);
         }),
     );
-    add(SETTLE, expect(|app, ui| app.shell.screen() == ScreenId::Builds && ui.global::<BuildsView>().get_to_practice(), "Builds' list, Back going to Practice"));
+    add(SETTLE, expect(|app, ui| app.shell.screen() == ScreenId::Play && ui.global::<nettai_ui::PlayView>().get_to_practice(), "Play's builds, Back going to Practice"));
     shot(add, "practice-create-builds", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Back));
-    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Practice, "Practice, back from Builds"));
+    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Practice, "Practice, back from Play"));
 
     // The entry: the focus a control up from START PRACTICE; the dummy's build stepped to the next; the builds'
     // list; a build that can't be used; the arena stepped to the next, and around from Random to the last; the
@@ -518,7 +518,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         expect(
             |app, ui| {
                 let view = ui.global::<BuildsView>();
-                app.shell.screen() == ScreenId::Builds && view.get_page() == BuildsPage::Editor && view.get_to_practice() && view.get_name() == ui.global::<PracticeView>().get_yours().name
+                app.shell.screen() == ScreenId::Builds && view.get_to_practice() && view.get_name() == ui.global::<PracticeView>().get_yours().name
             },
             "Builds' editor on Your build, Back going to Practice",
         ),

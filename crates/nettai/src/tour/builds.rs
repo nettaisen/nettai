@@ -1,14 +1,14 @@
-//! The screenshot pass's steps for Builds (docs/app.md §13): the list with none and with some, a new build's
-//! dialog, a file that is no save dropped on the list, a build's rename and its deletion's question, and the
+//! The screenshot pass's steps for the builds (docs/app.md §13): Play's builds with none and with some, a new
+//! build's dialog, a file that is no save dropped on them, a build's rename and its deletion's question, and the
 //! editor's Navi and Folder tabs (an entry marked the Regular chip, two tagged, a mark the rules refuse), with
-//! pairs a focus move apart; and the motion probe's bursts of what Builds moves. The builds are the pass's own
-//! (`paths::keep_builds_in`): made here through the screen, as a player makes them.
+//! pairs a focus move apart; and the motion probe's bursts of what Builds' editor moves. The builds are the pass's
+//! own (`paths::keep_builds_in`): made here through Play, as a player makes them.
 
 use crate::input::{Action, KeyPress};
 use crate::screens::ScreenId;
 use crate::shell::App;
 use super::{Pair, SETTLE, Step};
-use nettai_ui::{BuildsPage, BuildsView, EditorTab};
+use nettai_ui::{BuildsView, EditorTab};
 use slint::ComponentHandle;
 use slint::winit_030::winit::keyboard::KeyCode;
 
@@ -16,9 +16,9 @@ use slint::winit_030::winit::keyboard::KeyCode;
 /// (as a text the pass counts against the picture, so the pass fails): a picture of another tab under this name
 /// would pass for it, the pass checking only what moves and what is cut.
 fn on_tab(tab: EditorTab, name: &'static str) -> Step {
-    Box::new(move |ui, _, _| {
+    Box::new(move |ui, app, _| {
         let view = ui.global::<BuildsView>();
-        if view.get_page() != BuildsPage::Editor || view.get_shown() != tab {
+        if app.borrow().shell.screen() != ScreenId::Builds || view.get_shown() != tab {
             ui.global::<nettai_ui::Audit>().invoke_clipped(format!("(the walk isn't on the editor's {name} tab: this picture is of something else)").into());
         }
     })
@@ -41,42 +41,68 @@ fn press(id: &'static str, index: i32) -> Step {
         app.act(Action::Confirm);
     })
 }
+/// A call of the editor's own module.
 fn screen(f: impl Fn(&mut dyn crate::screens::Screen, &mut crate::shell::Shell) + 'static) -> Step {
     Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Builds, &f))
+}
+/// A call of Play's own module.
+fn play(f: impl Fn(&mut dyn crate::screens::Screen, &mut crate::shell::Shell) + 'static) -> Step {
+    Box::new(move |_, app, _| app.borrow_mut().with_screen(ScreenId::Play, &f))
 }
 fn letter(code: KeyCode, text: &'static str) -> Step {
     screen(move |s, shell| {
         s.key(shell, &KeyPress { code, text: Some(text.into()), repeat: false, shift: false });
     })
 }
-/// Make a build named `name` of the game's version `version` (its place in the game's order).
-fn make(add: &mut dyn FnMut(u64, Step), name: &'static str, version: i32) {
+/// Make a build named `name` of the game's version `version` (its place in the game's order), through Play.
+pub(super) fn make(add: &mut dyn FnMut(u64, Step), name: &'static str, version: i32) {
     add(SETTLE, press("new", 0));
-    add(SETTLE, screen(move |s, shell| s.edit(shell, "name.name", 0, name, true)));
-    add(SETTLE, screen(move |s, shell| s.choose(shell, "name.version", 0, version)));
+    add(SETTLE, play(move |s, shell| s.edit(shell, "name.name", 0, name, true)));
+    add(SETTLE, play(move |s, shell| s.choose(shell, "name.version", 0, version)));
     add(SETTLE, press("name.confirm", 0));
 }
-/// The Builds screen with no builds (the pass's own folder, emptied).
-fn fresh() -> Step {
+/// Play with no builds (the pass's own folder, emptied).
+pub(super) fn fresh() -> Step {
     Box::new(|_, app, _| {
         let mut app = app.borrow_mut();
         if let Some(game) = app.shell.game().map(str::to_string) {
             let _ = std::fs::remove_dir_all(crate::builds::store::folder(&game));
         }
         leave(&mut app);
-        app.go_now(ScreenId::Builds);
+        app.go_now(ScreenId::Play);
         app.shell.nav.show_cursor(true, false);
     })
 }
+/// On Play, the build named `name` chosen (by its place among the game's files, which Play lists in their order),
+/// the cursor on it.
+pub(super) fn choose(app: &mut App, name: &str) {
+    let at = app.shell.game().and_then(|game| crate::builds::store::list(game).iter().position(|l| l.name == name)).unwrap_or_default();
+    app.with_screen(ScreenId::Play, |s, shell| s.choose(shell, "build", 0, at as i32));
+    match app.shell.scale.phone {
+        true => app.shell.nav.focus("build", 0),
+        false => app.shell.nav.focus("builds", at as i32),
+    }
+}
+/// On Play, the first build chosen, the cursor on it.
+fn choose_first() -> Step {
+    Box::new(|_, app, _| {
+        let mut app = app.borrow_mut();
+        app.with_screen(ScreenId::Play, |s, shell| s.choose(shell, "build", 0, 0));
+        match app.shell.scale.phone {
+            true => app.shell.nav.focus("build", 0),
+            false => app.shell.nav.focus("builds", 0),
+        }
+    })
+}
 
-/// The Builds screens' bursts of the motion probe (`burst` takes one: a name, the milliseconds after its
+/// The editor's bursts of the motion probe (`burst` takes one: a name, the milliseconds after its
 /// trigger at which a shot is taken, and the trigger): the editor's body arriving as the tab changes, and the
 /// Folder tab's own pieces: a chip put in (it flies from its row to its entry, the entry flashes, and a count
 /// that changed ticks), and a chip the rules refuse (its row shakes).
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
     add(SETTLE, fresh());
     make(add, NAMES[0], 1);
-    add(SETTLE, press("builds", 0));
+    add(SETTLE, press("edit", 0));
     add(SETTLE, press("tab", 0));
     burst(add, "builds-tab", &[0, 30, 60, 100, 160, 260], press("tab", 1));
     add(90, on_tab(EditorTab::Folder, "Folder"));
@@ -104,14 +130,13 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     );
 }
 
-/// The Builds screens' steps in language `lang` at size `size`. `shot` takes a picture under a name (and
+/// The builds' steps (Play's and the editor's) in language `lang` at size `size`. `shot` takes a picture under a name (and
 /// compares the two of a pair).
-pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), lang: &'static str, size: &'static str) {
-    let phone = size == "phone";
+pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), lang: &'static str, _size: &'static str) {
     // (A search finds chips by their names in the language shown.)
     let search = if lang == "ja" { "ソード" } else { "sword" };
 
-    // The list with no builds (the pass's own folder, emptied), and a new build's dialog.
+    // Play with no builds (the pass's own folder, emptied), and a new build's dialog.
     add(SETTLE, fresh());
     shot(add, "builds-empty", Pair::None);
     add(SETTLE, press("new", 0));
@@ -128,8 +153,9 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     make(add, NAMES[1], 0);
     make(add, NAMES[2], 1);
 
-    // The list: the chosen build's overview beside it; its buttons a focus move apart; its dialogs.
-    add(SETTLE, focus("builds", 0));
+    // The builds: the chosen build's overview beside them (not on a phone); its buttons a focus move apart; its
+    // dialogs.
+    add(SETTLE, choose_first());
     shot(add, "builds-list", Pair::None);
     // A file that is no save of the game, dropped on the list: the typed refusal's dialog.
     add(
@@ -144,37 +170,21 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     );
     shot(add, "builds-import-refused", Pair::None);
     add(SETTLE, act(Action::Confirm));
-    add(SETTLE, focus("builds", 0));
-    if phone {
-        add(SETTLE, act(Action::Confirm));
-        add(SETTLE, focus("one.edit", 0));
-        shot(add, "builds-one", Pair::First);
-        add(SETTLE, act(Action::Right));
-        shot(add, "builds-one-focus", Pair::Second);
-        add(SETTLE, press("one.rename", 0));
-        shot(add, "builds-rename", Pair::None);
-        // (The first Back ends the name's edit, the second shuts the dialog: §2.32's field ready to type in.)
-        add(SETTLE, act(Action::Back));
-        add(SETTLE, act(Action::Back));
-        add(SETTLE, press("one.delete", 0));
-        shot(add, "builds-delete", Pair::None);
-        add(SETTLE, act(Action::Confirm));
-        add(SETTLE, press("one.edit", 0));
-    } else {
-        add(SETTLE, focus("edit", 0));
-        shot(add, "builds-buttons", Pair::First);
-        add(SETTLE, act(Action::Right));
-        shot(add, "builds-buttons-focus", Pair::Second);
-        add(SETTLE, press("rename", 0));
-        shot(add, "builds-rename", Pair::None);
-        // (The first Back ends the name's edit, the second shuts the dialog: §2.32's field ready to type in.)
-        add(SETTLE, act(Action::Back));
-        add(SETTLE, act(Action::Back));
-        add(SETTLE, press("delete", 0));
-        shot(add, "builds-delete", Pair::None);
-        add(SETTLE, act(Action::Confirm));
-        add(SETTLE, press("builds", 0));
-    }
+    add(SETTLE, choose_first());
+    add(SETTLE, focus("edit", 0));
+    shot(add, "builds-buttons", Pair::First);
+    add(SETTLE, act(Action::Right));
+    shot(add, "builds-buttons-focus", Pair::Second);
+    add(SETTLE, press("rename", 0));
+    shot(add, "builds-rename", Pair::None);
+    // (The first Back ends the name's edit, the second shuts the dialog: §2.32's field ready to type in.)
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, press("delete", 0));
+    shot(add, "builds-delete", Pair::None);
+    // (Cancel is focused: the build stays.)
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, press("edit", 0));
 
     // The editor's Navi tab. A game may have one navi and no choice, or thirteen and one: each step names the
     // control it is for, and does nothing where the game has none (an arrow from a lone card goes to whatever is
@@ -293,7 +303,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     shot(add, "builds-navicust", Pair::None);
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
 
-    switched(add, shot, phone);
+    switched(add, shot);
 
     add(
         SETTLE,
@@ -314,7 +324,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
 /// (`builds-folder-switched`); and Enter on the tag there, the first version again with nothing wrong
 /// (`builds-folder-switched-back`). A step after each picture checks the focus and the build's state are as it
 /// says.
-fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), phone: bool) {
+fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
     const NAME: &str = "Switched";
     add(
         SETTLE,
@@ -335,15 +345,11 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
             let build = crate::builds::store::Build::new(&content, NAME, side);
             let _ = crate::builds::store::write(&crate::builds::store::new_path(&kit.game, NAME), &content, &kit.game, &build);
             leave(&mut app);
-            app.go_now(ScreenId::Builds);
-            let at = crate::builds::store::list(&kit.game).iter().position(|l| l.name == NAME).unwrap_or_default();
-            app.shell.nav.focus("builds", at as i32);
+            app.go_now(ScreenId::Play);
+            choose(&mut app, NAME);
         }),
     );
-    add(SETTLE, act(Action::Confirm));
-    if phone {
-        add(SETTLE, press("one.edit", 0));
-    }
+    add(SETTLE, press("edit", 0));
     add(SETTLE, press("tab", 0));
     add(SETTLE, focus("version", 0));
     shot(add, "builds-version-focus", Pair::None);
@@ -379,11 +385,13 @@ fn state(name: &'static str, on_tag: bool, ready: bool) -> Step {
     })
 }
 
-/// Out of whatever of the Builds screen is open (a dialog, the library, the editor), back to its list.
+/// Out of whatever of the builds is open (the editor and its library, Play's dialog for a name), back to Play's
+/// builds. (Play's Back with nothing open there does nothing: it was shown from the main menu.)
 pub(super) fn leave(app: &mut App) {
     for _ in 0..4 {
-        if app.shell.screen() == ScreenId::Builds {
-            app.with_screen(ScreenId::Builds, |s, shell| {
+        let shown = app.shell.screen();
+        if matches!(shown, ScreenId::Builds | ScreenId::Play) {
+            app.with_screen(shown, |s, shell| {
                 s.back(shell);
             });
         }
