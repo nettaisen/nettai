@@ -162,8 +162,10 @@ Each is settled unless the user changes it.
     arena, and a row of the menu over the battle, they chose **"Beside the arena, each their own"**: a Music row
     in Practice's entry beside Arena and Background (a Your music in Play's lobby too, until the user: "don't allow
     bgm select in lobby"): each player picks and hears their own, nothing of it is sent. The pick is one,
-    remembered between runs, and every battle plays it, a match's too; a replay
-    watched, and its video, play with it. The themes and their names are the games' content (each game's rules'
+    remembered between runs, and Practice's sessions play it; a match, a replay and its video play the game's own
+    ("why does the music setting carry over from practice mode into pvp mode? huh?", "for pvp it should use the
+    game's default for now"), and the practice battle beside a waiting invite leaves the menus' music on ("in the
+    practice mode while the lobby is waiting, don't switch the music"). The themes and their names are the games' content (each game's rules'
     `battle_themes`, named in its locales), shown after the game's name as the language says it ("BN4 Tournament
     Battle", "EXE4 トーナメントバトル"). (§6, docs/app.md §1, "The battle's music".) Then: "in the practice
     screen, if the bgm choice changes from game default you should start playing the bgm": Practice's entry plays
