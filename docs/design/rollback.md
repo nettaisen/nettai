@@ -548,10 +548,8 @@ twice is answered again, so a reliable channel of their own would add nothing.
 
 **The lobby, the handshake, the loading and the way back** are nettai-frontend's `lobby::Lobby`, without IO: the
 host feeds it every datagram that arrives (`receive`), polls it each frame (`poll`), and sends what it hands back
-(`outgoing`). This is version 8 of the protocol (`protocol::VERSION`; a peer of another version is told from the
-first field of its lobby messages and refusals, and nothing after that field is read of it). Version 6 was the
-lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby go on after one (item 5); version
-8 adds the setting for patch cards (item 1), which changes how a match is set up from its sides.
+(`outgoing`). This is version 1 of the protocol (`protocol::VERSION`; a peer of another version is told from the
+first field of its lobby messages and refusals, and nothing after that field is read of it).
 
 1. **Lobby.** Each peer says its lobby state when it changes and every 100 ms:
    - **The compatibility fields**: the protocol's version, the engine's (the crate version: peers must run the same
@@ -612,8 +610,8 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
 
    **Nothing of a player's build is in it** (the user's instruction: "the lobby shouldn't show build name or which
    game, since that's private information to the player"; "the build name should not really be visible across the
-   wire or in replays or anything"). Version 5's lobby said each build's name, its version and its navi; version 6
-   says none of them, and a test holds a peer's lobby messages to the same bytes whatever build its player brings.
+   wire or in replays or anything"). The lobby says none of a build's name, its version or its navi, and a test
+   holds a peer's lobby messages to the same bytes whatever build its player brings.
    A player who changes their build in the lobby says nothing by it: if they were ready they no longer are, which
    is all the other sees, and the other's own ready mark stays. A build's name is sent in no message at all: what
    the Reveal carries is the side, which is its facts and has no name.
@@ -691,11 +689,9 @@ lobby of items 1 to 4 below; version 7 has a frame say its match, and the lobby 
 **Two builds of the program** must not get as far as a tick. Three things keep them from it, each ending both
 lobbies with `Reason::DifferentVersion`:
 
-- The protocol's version (`protocol::VERSION`, 8) stands for the wire's layout and for how a match is set up. It is
+- The protocol's version (`protocol::VERSION`, 1) stands for the wire's layout and for how a match is set up. It is
   the first field of every lobby message, Hello and refusal, and a peer of another version is refused on its first
-  word. Version 6 is also the first whose rounds are set up with the keys their host answers
-  (`RoundSetup::host_keys`, §2.2): a program of version 5 sets the same match up without them, and every digest
-  of the round differs. A test gives a lobby version 5's messages, laid out as version 5 laid them, and it refuses
+  word. A test gives a lobby a peer's messages of another version, whatever follows that field, and it refuses
   each at once.
 - The engine's version (`lobby::ENGINE`) is compared too, but it is the crates' version, which doesn't change when
   the engine does: it tells nothing apart today.
@@ -772,8 +768,8 @@ soon as the network is back.)
 **The signaling server** is `signaling/`, a Cloudflare Worker in TypeScript with a Durable Object a room, on the
 WebSocket hibernation API (an idle room costs nothing; `ping` is answered `pong` without waking it). TypeScript
 because the Durable Object WebSocket API is the Workers runtime's own, with no build step under `wrangler dev`;
-workers-rs would add a wasm build for a relay of about 200 lines. This is version 2 of its protocol (nettai-rtc's
-`signal` module; a client says its version as it connects, `v=2`, and a server of another refuses it):
+workers-rs would add a wasm build for a relay of about 200 lines. This is version 1 of its protocol (nettai-rtc's
+`signal` module; a client says its version as it connects, `v=1`, and a server of another refuses it):
 
 - **A room's code is the server's to pick**, never a client's (the user's instruction: "signaling server should
   assign invite code instead of the client generating one"). It is six characters of
@@ -781,11 +777,11 @@ workers-rs would add a wasm build for a relay of about 200 lines. This is versio
   none reads as another; some 887 million codes. The server draws it evenly from its own randomness
   (`crypto.getRandomValues`), and draws again if a room has it. A code as a player types it has its letters made
   capitals and its spaces and hyphens dropped (`signal::normalize_code`): a host may show it in two groups of three.
-- **To make a room** a client opens a WebSocket to `/rooms?peer=ID&v=2` (ID the client's own, random, the same on
+- **To make a room** a client opens a WebSocket to `/rooms?peer=ID&v=1` (ID the client's own, random, the same on
   every reconnection). The server makes the room, the client is its host (side 0, the left navi), and the server's
   welcome says the code (`Link::code`).
 - **To join a room**, or to come back to one after the socket dropped, a client opens
-  `/rooms/CODE?peer=ID&v=2`. A code no room has is refused as that, and no room is made of it.
+  `/rooms/CODE?peer=ID&v=1`. A code no room has is refused as that, and no room is made of it.
 - The room has two places: its maker hosts and the next ID to come joins; an ID that comes again gets its place
   back, which is how a reconnecting player keeps its side, and a third is refused.
 - The server says `welcome` (the place, whether the other is there, and the room's code), `peer` (the other came or

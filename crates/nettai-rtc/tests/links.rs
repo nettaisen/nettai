@@ -255,7 +255,7 @@ fn a_server_that_cant_be_reached_says_so() {
 fn a_server_of_another_version_says_so() {
     let server = Server::speaking(signal::VERSION + 1);
     let e = refused(Link::create_room(&server.url(), config()));
-    assert_eq!((e.kind, e.detail.as_str()), (ErrorKind::ServerVersion, "the signaling server refused: this server speaks version 3 of the signaling protocol"));
+    assert_eq!((e.kind, e.detail.as_str()), (ErrorKind::ServerVersion, "the signaling server refused: this server speaks version 2 of the signaling protocol"));
     let e = refused(Link::join_room(&server.url(), "ABC234", config()).unwrap());
     assert_eq!(e.kind, ErrorKind::ServerVersion);
     assert!(server.codes().is_empty());

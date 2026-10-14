@@ -153,7 +153,7 @@ fn serve(stream: TcpStream, version: u32, rooms: &Mutex<Rooms>, relayed: &Atomic
     let asked = |name: &str| query.split('&').find_map(|kv| kv.strip_prefix(name)?.strip_prefix('=')).unwrap_or("").to_string();
     // A new room is /rooms; a room, /rooms/CODE.
     let Some(code) = path.strip_prefix("/rooms").map(|rest| rest.trim_matches('/').to_ascii_uppercase()) else {
-        return refuse(&mut ws, Refusal::BadRequest, "a new room is /rooms?peer=ID&v=2, a room /rooms/CODE?peer=ID&v=2");
+        return refuse(&mut ws, Refusal::BadRequest, "a new room is /rooms?peer=ID&v=1, a room /rooms/CODE?peer=ID&v=1");
     };
     if asked("v") != version.to_string() {
         return refuse(&mut ws, Refusal::Version, &format!("this server speaks version {version} of the signaling protocol"));
