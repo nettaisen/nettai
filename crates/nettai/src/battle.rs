@@ -216,7 +216,8 @@ impl Shell {
                 let mode = self.settings.graphics();
                 let graphics = ready.graphics(self.lang);
                 let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
-                let renderer = graphics.renderer(mode, font.clone());
+                let mut renderer = graphics.renderer(mode, font.clone());
+                renderer.reduce_motion = self.reduces_motion();
                 // (The music the player picked, the battle's game's own or a theme, where the battle plays the pick:
                 // `crate::music`.)
                 let music = if loading.start.music == BattleMusic::Picked { self.battle_music() } else { crate::music::Music::GameOwn };
