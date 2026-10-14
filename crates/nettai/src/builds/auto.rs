@@ -6,9 +6,9 @@
 //! `auto_battle_records` (eight records, `{ dx, dy, chips, score }`), and
 //! the game's module `rules/auto_battle/block` as it loaded: its `PLACES`,
 //! `RECORDS`, `RECORD_CHIPS` and `LISTS` (each `{ name, start, len }`, its
-//! start from 1, and `class` where the rules hold the list to chips of one
-//! class: their `validate` refuses a chip of another there, and the editor
-//! offers that class's chips for it).
+//! start from 1, and `own_class` where the rules hold the list to chips of
+//! the class it is named for: their `validate` refuses a chip of another
+//! there, and the editor offers that class's chips for it).
 //!
 //! A build in the app states only the places, each a chip (or a program
 //! advance), a 0 or empty: its records are the rules' default, nothing
@@ -39,8 +39,8 @@ pub const RECORDS_FIELD: &str = "auto_battle_records";
 /// What a list of the data holds.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Holds {
-    /// Chips of one class alone (the list's `class`: the rules refuse
-    /// another there).
+    /// Chips of one class alone (the list's `own_class`, the class its name
+    /// says: the rules refuse another there).
     Chips(ChipClass),
     /// Pattern entries (the game writes nothing else there).
     Patterns,
@@ -97,13 +97,13 @@ impl Layout {
         for l in items {
             let name = l.field("name").str()?.to_string();
             let (start, len) = (l.field("start").int()? as usize, l.field("len").int()? as usize);
-            let holds = match (name.as_str(), l.field("class").str()) {
+            let holds = match (name.as_str(), matches!(l.field("own_class"), nettai_content_api::Data::Bool(true))) {
                 ("patterns", _) => Holds::Patterns,
-                (_, Some(class)) => {
-                    let class: Result<ChipClass, serde::de::value::Error> = ChipClass::deserialize(class.into_deserializer());
+                (n, true) => {
+                    let class: Result<ChipClass, serde::de::value::Error> = ChipClass::deserialize(n.into_deserializer());
                     Holds::Chips(class.ok()?)
                 }
-                (_, None) => Holds::Any,
+                (_, false) => Holds::Any,
             };
             lists.push(List { name, start: start.checked_sub(1)?, len, holds });
         }
@@ -403,7 +403,7 @@ mod tests {
         assert_eq!(AutoBattle::of_side(&content, side), AutoBattle::nothing_learned());
     }
 
-    /// The rules hold the mega, giga and program advance lists to chips of their class, each list's `class`: a chip
+    /// The rules hold the mega, giga and program advance lists to chips of their class, each list's `own_class`: a chip
     /// of another class there is refused as one the place can't hold. Every chip the editor offers such a list
     /// ([`of_class`]: the game's chips of the class, the Program Advances among them, which no folder holds) the
     /// rules let stand there. The first and standard lists take a chip of any class. In EXE4 and EXE5 alike.
