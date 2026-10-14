@@ -58,6 +58,8 @@ pub struct Version {
     pub id: String,
     pub color: u32,
     set: Data,
+    /// The forms a tool shows ahead of the version's own ([`Builds::forms_of`]): the rules' `shown_first`, by id.
+    shown_first: Vec<String>,
 }
 
 impl Version {
@@ -325,7 +327,12 @@ impl Builds {
         let versions: Vec<Version> = items(data.field("versions"))
             .iter()
             .map(|v| match (v.field("id"), v.field("color").int().and_then(|c| u32::try_from(c).ok()).filter(|c| *c <= 0xFF_FFFF)) {
-                (Data::Str(id), Some(color)) => Ok(Version { id: id.clone(), color, set: v.field("set").clone() }),
+                (Data::Str(id), Some(color)) => Ok(Version {
+                    id: id.clone(),
+                    color,
+                    set: v.field("set").clone(),
+                    shown_first: items(v.field("shown_first")).iter().filter_map(|f| f.str().map(str::to_string)).collect(),
+                }),
                 _ => Err(format!("{module}: a version has its `id` and its `color` (0xRRGGBB)")),
             })
             .collect::<Result<_, _>>()?;
@@ -419,8 +426,12 @@ impl Builds {
     /// version beside its choice. An error: no such version.
     pub fn forms_of(&self, content: &Content, version: &str) -> Result<Vec<FormHandle>, String> {
         let side = self.new_build(content, version)?;
-        let mut forms = side.facts.form_list(content);
         let v = self.version(version).expect("a new build's version is one");
+        let mut forms: Vec<FormHandle> = Vec::new();
+        for id in &v.shown_first {
+            forms.push(crate::ids::form(content, &self.game, id).ok_or_else(|| format!("version {version}: `shown_first` names no form {id:?}"))?);
+        }
+        forms.extend(side.facts.form_list(content));
         for (name, _) in fields(&v.set) {
             if let Some(value) = side.facts.get(content, name) {
                 forms.extend(form_defs(&value));
@@ -1234,9 +1245,12 @@ mod tests {
             for (v, version) in versions.iter().enumerate() {
                 let mut side = builds.new_build(&content, version).unwrap();
                 assert_eq!(names(&side), sorted(forms[v]), "{game} {version}");
-                // (What a screen shows of the version: the same forms, in the list's order.)
+                // (What a screen shows of the version: the same forms, in the list's order, after those the rules show
+                // first: EXE6's Beast Out.)
                 let shown: Vec<&str> = builds.forms_of(&content, version).unwrap().iter().map(|&f| ids::local(&content.defs.form(f).key)).collect();
-                assert_eq!(shown, forms[v], "{game} {version}");
+                let first: Vec<String> = if game == "exe6" { vec![format!("{version}-beast")] } else { Vec::new() };
+                let expected: Vec<&str> = first.iter().map(String::as_str).chain(forms[v].iter().copied()).collect();
+                assert_eq!(shown, expected, "{game} {version}");
                 assert_eq!(builds.version_of(&content, &side), Some(*version), "{game}");
                 assert_eq!(side.version(&content), (game == "exe6").then_some(*version), "{game}: the rules' own version");
                 builds.take_version(&content, &mut side, versions[1 - v]).unwrap();
