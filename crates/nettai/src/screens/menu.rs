@@ -190,7 +190,9 @@ pub fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
     let mode = shell.settings.graphics();
     let graphics = ready.graphics(shell.lang);
     let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
-    Player::with(graphics.renderer(mode, font.clone()), font.map(TextRenderer::new), None, driver)
+    let mut renderer = graphics.renderer(mode, font.clone());
+    renderer.reduce_motion = shell.reduces_motion();
+    Player::with(renderer, font.map(TextRenderer::new), None, driver)
 }
 
 /// A seed from the clock.

@@ -234,6 +234,7 @@ mod tests {
             },
             graphics: nettai_frontend::testing::graphics(&content, 0x7FFF),
             mode: GraphicsMode::Original,
+            reduce_motion: false,
             font: None,
             sound: Some(Sound { banks: vec![Arc::new(bank)], songs, report: Default::default() }),
         }

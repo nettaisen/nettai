@@ -31,10 +31,11 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
 - `--round N` starts a trace at round N (later rounds follow when a round's input runs out); of a replay's video
   it is the round shown alone.
 - `--png-scale N` scales headless output (the text layer is drawn at that scale too).
-- `--text font|original` chooses how strings are drawn (default `font`: the names, the telop, the chatbox and
-  the HUD's lines in a vector font over the scaled frame; `original` in the game's own fonts into the frame, as
-  the original does, which the frame comparison uses), and `--font <file>` puts another TrueType or OpenType
-  font in the bundled one's place.
+- `--text enhanced|original` chooses how the battle is drawn (default `enhanced`, also spelled `font`: the
+  names, the telop, the chatbox and the HUD's lines in a vector font over the scaled frame, and the HUD's intro
+  at each round's start, docs/frontend.md §3, "Enhanced and original"; `original` as the original does, the
+  text in the game's own fonts into the frame, which the frame comparison uses), and `--font <file>` puts
+  another TrueType or OpenType font in the bundled one's place.
 - `--lang en|ja` the language of the battle's words (default `en`; docs/frontend.md §3, "Languages").
 - `--match FILE` is a match file (docs/frontend.md §6): its setup said on the terminal (the folders with
   `--show-folders`), its frames rendered with `--headless`, and with `--audit-content` the game whose content is

@@ -293,6 +293,8 @@ pub struct Options {
     /// library's own).
     pub mode: GraphicsMode,
     pub font: Option<PathBuf>,
+    /// The enhanced mode without its motion (`Renderer::reduce_motion`).
+    pub reduce_motion: bool,
     /// Load the sound too (a host that plays none needn't).
     pub sound: bool,
 }
@@ -302,7 +304,7 @@ impl Default for Options {
     /// (`nettai_content::pack::packs_dir`), the content's own language,
     /// the enhanced mode with the library's font, with sound.
     fn default() -> Options {
-        Options { packs_dir: pack::packs_dir(), packs: Vec::new(), content: None, lang: locale::OWN.to_string(), mode: GraphicsMode::Enhanced, font: None, sound: true }
+        Options { packs_dir: pack::packs_dir(), packs: Vec::new(), content: None, lang: locale::OWN.to_string(), mode: GraphicsMode::Enhanced, font: None, reduce_motion: false, sound: true }
     }
 }
 
@@ -312,6 +314,8 @@ pub struct Loaded {
     pub game: Game,
     pub graphics: Graphics,
     pub mode: GraphicsMode,
+    /// The enhanced mode without its motion (`Renderer::reduce_motion`).
+    pub reduce_motion: bool,
     pub font: Option<Arc<VectorFont>>,
     pub sound: Option<Sound>,
 }
@@ -319,7 +323,9 @@ pub struct Loaded {
 impl Loaded {
     /// A renderer of the game's graphics, the text as it was asked for.
     pub fn renderer(&self) -> Renderer {
-        self.graphics.renderer(self.mode, self.font.clone())
+        let mut renderer = self.graphics.renderer(self.mode, self.font.clone());
+        renderer.reduce_motion = self.reduce_motion;
+        renderer
     }
 
     /// The game's battle themes (its rules' `battle_themes`), by their songs'
@@ -492,7 +498,7 @@ impl Loading {
         if self.next().is_some() {
             return None;
         }
-        Some(Loaded { found: self.found?, game: self.game?, graphics: self.graphics?, mode: self.options.mode, font: self.font, sound: self.sound })
+        Some(Loaded { found: self.found?, game: self.game?, graphics: self.graphics?, mode: self.options.mode, reduce_motion: self.options.reduce_motion, font: self.font, sound: self.sound })
     }
 }
 

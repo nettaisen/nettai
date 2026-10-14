@@ -331,6 +331,7 @@ impl Export {
             game: ready.loaded.game.clone(),
             graphics: ready.graphics(shell.lang),
             mode,
+            reduce_motion: shell.reduces_motion(),
             font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced),
             // (With the game's own music, as the replay plays in the viewer: the pick is Practice's alone.)
             sound: crate::music::sound(&shell.games, &ready, &crate::music::Music::GameOwn).map(|(banks, songs)| Sound { banks, songs, report: Default::default() }),
