@@ -466,7 +466,8 @@ again, and so that the UI can be built without optimization (§14).
                       screens/play/list.rs                           what Play does with the builds (§4)
 
 **A screen is one Slint file and one Rust module** (which may have modules of its own under it:
-`screens/replays/`). Menu, Settings, Practice, Play, Builds, Replays and About are built. `ui/screens/play.slint`
+`screens/replays/`, `screens/settings/`). Menu, Settings (with About, its subscreen: §18), Practice, Play, Builds
+and Replays are built. `ui/screens/play.slint`
 holds:
 
 - `PlayView`, a global: the screen's data, which its Rust module sets (and may read back). A struct or an enum
@@ -1626,7 +1627,8 @@ Background (§15).
 
 The Settings screen is one scrolling page with a list at its left that jumps to a group: General, Video, Audio,
 Online, Controls, About. In Controls, Enter on a key's or a pad button's box asks for the next key or button; one
-bound to another action swaps with it, so every action keeps one.
+bound to another action swaps with it, so every action keeps one. In About, SHOW LICENSES opens About in the
+page's place (§18).
 
 **Scaling.** Every length in the UI is in units of the 1280 by 800 reference window, and the app sets the
 window's scale so that one of Slint's `px` is one unit (`Shell::fit_window`): a unit is a 1280th of the window's
@@ -1763,7 +1765,7 @@ themselves, so a screen built from them moves without its author writing an anim
   colors cross-fade (above).
 
 What a screen does write is *which of its parts arrive, in what order*: each part goes in an `Arrive` with its
-place in the order (the main menu's words, then what is under them, then the reel), and rises as it fades in, 30
+place in the order (the main menu's words, then the reel), and rises as it fades in, 30
 ms after the one before. And its own set pieces, from the same pieces (motion.slint):
 
 | Piece | What it is |
@@ -2148,7 +2150,7 @@ custom screen opened once the gauge is full); Play's builds, the editor's Folder
 library), the NaviCust (two programs taken and put down) and the patch cards (three put in), then EXE5's builds
 and the Auto battle tab (three places filled); Play, an invite with a practice session beside it, the second
 player joining by its code (`screens/play/tour.rs`'s `reel`), both ready, the cards and a few seconds of their
-match; Replays, the list, a replay watched, a seek further on and twice the speed; About.
+match; Replays, the list, a replay watched, a seek further on and twice the speed; About, from Settings.
 
 - **Time is the reel's.** The app runs a frame at a time: each frame captured moves its clock on by exactly
   1/60 s whatever the capture costs, so the video plays smoothly at 60 frames a second however slowly it was
@@ -3042,8 +3044,16 @@ folders is taken).
 
 The user: "add an about screen with license and dependency info etc like for slint".
 
-**What it shows.** About is reached from the main menu (the small item under PLAY, REPLAYS, SETTINGS and
-EXIT). At its left: the app's name, its version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
+**Where it is.** About is Settings' subscreen (docs/design/app-ui.md §2.53; it was the main menu's small item
+under the line until the user: "the about screen should be moved as a subscreen of the settings dialog and
+removed from the main menu"). Settings' About group, the last in its list, has a row, Made with, whose SHOW
+LICENSES (`set.about`) shows About in the page's place: `SettingsScreen` is the page or About's
+(`SettingsView.about`), as Replays is its list or its viewer, and the phone's sheet is Settings' overlay. To the
+focus it is a view of its own (`settings.about`, `Nav::enter`). Settings' module passes it what it hears while it
+is open (`screens/settings/about.rs`: `About::open`, `close`, and a screen's `show`, `activate`, `focused`,
+`scroll` and `back`). Its title is ABOUT and its Back ‹ SETTINGS.
+
+**What it shows.** At its left: the app's name, its version and its license (the workspace's `license = "MPL-2.0"`, the Mozilla Public License 2.0: LICENSE at the
 repository's root); Slint's own `AboutSlint` widget, the "Made with Slint" logo with Slint's version and address;
 and under MADE WITH, a list of the software the app is made of: the four fonts it bundles, then every package built into it, by name, each row its name, its version and its
 license as it states it (an SPDX expression). Beside the list, in a panel, the chosen one's name, version, license
@@ -3076,14 +3086,17 @@ package comes with none.
 **The keys.** Up and Down go through the list, and the license beside it follows the focus; Enter (A) goes to the
 license, where Up and Down scroll it a step, Page Up and Page Down a page, Home and End to its ends
 (`About::scroll`, as a build's page in the match's menu scrolls), and Back (or Left) returns to the list; Back
-from the list goes to the menu. A click on a row chooses it and leaves the focus there; the wheel or a drag
-scrolls the license wherever the focus is. L and R do nothing here: the header offers no game. Come back to from
-another screen, About has the focus on the row it was on, the list scrolled to it (a list made anew starts at
-its top, and a remembered focus alone doesn't scroll it).
+from the list goes back to the settings, the focus on SHOW LICENSES. A click on a row chooses it and leaves the
+focus there; the wheel or a drag scrolls the license wherever the focus is. L and R do nothing here: the header
+offers no game. Opened again, About has the focus on the row it was on, the list scrolled to it (a list made anew
+starts at its top, and a remembered focus alone doesn't scroll it). Settings left while it is open (the shell
+going elsewhere) closes it.
 
-**What has run.** The screen's tests (`screens/about.rs`): the fonts are listed with their OFL texts, Slint is
+**What has run.** Its tests (`screens/settings/about.rs`): the fonts are listed with their OFL texts, Slint is
 listed with its royalty-free license among its files, no workspace crate is and nothing only the workspace's
 other members build is (skia); a license's pieces are its files' names over their paragraphs. The screenshot pass
-has `about` (the list, the first font's license beside it) and `about-license` (Slint's license reached with the
-keys and paged down; on a phone its sheet) and `about-again` (the menu and back: Slint's row focused and in
-view): walked in English and Japanese at both sizes, nothing cut, and the pictures looked at.
+has `settings-about` (the About group, SHOW LICENSES focused), `about` (opened by it: the list, the first font's
+license beside it), `about-license` (Slint's license reached with the keys and paged down; on a phone its sheet),
+`about-back` (Back to the settings, on SHOW LICENSES) and `about-again` (opened again: Slint's row focused and in
+view). Before About moved into Settings they were walked in English and Japanese at both sizes, nothing cut, and
+the pictures looked at; since, the steps are type-checked and not yet walked.
