@@ -322,6 +322,14 @@ Each is settled unless the user changes it.
     in green; under MegaMan, a BN6 version's faces start with its Beast Out (the builds rules' `shown_first`), then
     its Crosses.
 
+45. **A game changed on Practice's entry keeps the same song playing** (2026-10-14). The user: "switching game in
+    practice mode shouldn't restart the music if it's the same music". Where the entry's song after the change of
+    game (the header's arrows, or L and R) is the same one, the same pack's same song (a theme picked: BN4 Virus
+    Battle plays the same song in every game), it goes on where it is, with no restart and no crossfade, and the
+    session's battle of the new game takes it over at START as before. Where it differs (Game's own: BN6's own,
+    then BN5's), it crossfades as before. The pick stays what the player set across the change (§2.40: it is the
+    visit's). (docs/app.md §1, "The battle's music", and §15.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
