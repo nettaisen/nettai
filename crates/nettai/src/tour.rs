@@ -440,23 +440,25 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "settings-controls", Pair::None);
     add(SETTLE, act(Action::Confirm));
     shot(&mut add, "settings-binding", Pair::None);
-    add(SETTLE, focus("set.folder", 0));
+    add(SETTLE, focus("set.about", 0));
     shot(&mut add, "settings-about", Pair::None);
 
-    // About: the list, the first font's license beside it; Slint's read with the keys (a phone: on its sheet),
-    // a page down.
-    add(SETTLE, go(ScreenId::About));
+    // About, from the About group's SHOW LICENSES: the list, the first font's license beside it; Slint's read
+    // with the keys (a phone: on its sheet), a page down.
+    add(SETTLE, act(Action::Confirm));
     shot(&mut add, "about", Pair::None);
-    add(SETTLE, focus("list", crate::screens::about::place_of("slint")));
+    add(SETTLE, focus("list", crate::screens::settings::place_of("slint")));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, act(Action::PageDown));
     shot(&mut add, "about-license", Pair::None);
     add(SETTLE, act(Action::Back));
-    // (Left and come back to: the focus on Slint's row, in view.)
-    add(SETTLE, go(ScreenId::Menu));
-    add(SETTLE, go(ScreenId::About));
+    // (Back to the settings, on SHOW LICENSES; opened again: the focus on Slint's row, in view.)
+    add(SETTLE, act(Action::Back));
+    shot(&mut add, "about-back", Pair::None);
+    add(SETTLE, act(Action::Confirm));
     shot(&mut add, "about-again", Pair::None);
     add(SETTLE, focus("list", 0));
+    add(SETTLE, act(Action::Back));
 
     // A failure that ends what the player was doing.
     add(SETTLE, go(ScreenId::Play));

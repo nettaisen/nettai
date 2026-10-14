@@ -1,11 +1,10 @@
 // The main menu (docs/design/app-ui.md §6): PLAY, REPLAYS, SETTINGS and EXIT, each the word alone and large, as a
-// fighting game's title screen has them; below a line, About, smaller; beside them the demo reel, a battle of the
-// selected game playing itself in a box that keeps its size. On a phone the reel is above the items.
+// fighting game's title screen has them; beside them the demo reel, a battle of the selected game playing itself
+// in a box that keeps its size. On a phone the reel is above the items.
 
 import { Theme } from "../theme.slint";
-import { Nav, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Picture } from "../shell.slint";
-import { MenuItem, Value, Rule } from "../widgets.slint";
+import { MenuItem } from "../widgets.slint";
 import { Arrive, Tween } from "../motion.slint";
 
 // What the main menu shows: src/screens/menu.rs sets these.
@@ -16,27 +15,6 @@ export global MenuView {
     in property <int> reel-seq;
 }
 
-// About: less than the four above it.
-component MinorItem inherits Rectangle {
-    in property <string> text;
-    in property <string> nav;
-    height: 32px;
-    width: label.preferred-width + 16px;
-    label := Text {
-        text: root.text;
-        color: (Nav.shown ? hit.focused : hit.has-hover) ? Theme.text : Theme.muted;
-        font-family: Theme.body;
-        font-size: 16px;
-        font-weight: 600;
-        horizontal-alignment: center;
-        vertical-alignment: center;
-    }
-
-    hit := Focusable {
-        nav: root.nav;
-    }
-}
-
 export component MenuScreen inherits Page {
     // (The items' column and the reel are each centered in the body's height.)
     property <length> column: Theme.phone ? self.body-width : 416px;
@@ -45,10 +23,9 @@ export component MenuScreen inherits Page {
     // A word's row (`MenuItem`'s, big), and the step from one to the next.
     property <length> item: Theme.phone ? 68px : 96px;
     property <length> step: self.item + 8px;
-    // The four words, 8 apart, and under them the line (16 below) and About (35 below, 32 tall), all centered
-    // together: on a desktop about as tall as the reel beside them.
+    // The four words, 8 apart, centered: on a desktop about as tall as the reel beside them.
     property <length> items-height: 4 * self.item + 3 * 8px;
-    property <length> items-top: Theme.phone ? self.reel-height + 12px : (self.body-height - self.items-height - 61px) / 2;
+    property <length> items-top: Theme.phone ? self.reel-height + 12px : (self.body-height - self.items-height) / 2;
     property <length> reel-top: Theme.phone ? 0px : (self.body-height - self.reel-height) / 2;
     logo: true;
     hints: [
@@ -56,7 +33,7 @@ export component MenuScreen inherits Page {
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
-    // (The parts assemble in turn as the menu arrives: the four words, what is under them, the reel.)
+    // (The parts assemble in turn as the menu arrives: the four words, the reel.)
     Arrive {
         order: 0;
         MenuItem {
@@ -102,26 +79,6 @@ export component MenuScreen inherits Page {
             nav: "exit";
             text: @tr("EXIT");
             big: true;
-        }
-    }
-
-    Arrive {
-        order: 4;
-        Rule {
-            x: 0;
-            y: root.items-top + root.items-height + 16px;
-            width: root.column;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-
-        MinorItem {
-            x: Theme.phone ? 8px : 16px;
-            y: root.items-top + root.items-height + 35px;
-            nav: "about";
-            text: @tr("About");
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 

@@ -1,12 +1,14 @@
 // Settings (docs/design/app-ui.md §6): one scrolling page, and a list at its left that jumps to a group. Each
 // row is a label, a control of one width, and a note only where the label can't say it. On a phone the list is
-// left out and the note goes under its control.
+// left out and the note goes under its control. The About group's SHOW LICENSES opens About in the page's place
+// (settings/about.slint), its Back coming back to the page.
 
 import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, FaceButton } from "../shell.slint";
 import { Label, Note, Mono, Button, ButtonKind, Field, Select, Seg, Slider, Stepper, Row, Marker, GroupTitle, ScrollPage } from "../widgets.slint";
 import { Arrive } from "../motion.slint";
+import { AboutPage, AboutOverlay } from "settings/about.slint";
 
 // A pad's button bound to an action: one of its four face buttons, drawn by its place, or a button with a cap.
 export struct PadBinding {
@@ -34,6 +36,8 @@ export global SettingsView {
     in property <int> asking-key: -1;
     in property <int> asking-button: -1;
     in property <string> data-folder;
+    // About is shown in the page's place.
+    in property <bool> about;
     // The picture size that isn't a number, as the list of sizes says it.
     out property <string> largest: @tr("Largest that fits");
 }
@@ -129,7 +133,7 @@ component BindBox inherits Rectangle {
     }
 }
 
-export component SettingsScreen inherits Page {
+component SettingsPage inherits Page {
     property <[string]> groups: [@tr("General"), @tr("Video"), @tr("Audio"), @tr("Online"), @tr("Controls"), @tr("About")];
     // (A pad's A and B are the menus' confirm and back too: they say so. The keyboard's are Enter and Esc.)
     property <[string]> actions: [@tr("Up"), @tr("Down"), @tr("Left"), @tr("Right"), @tr("A · Pad confirms"), @tr("B · Pad goes back"), "L", "R", "START", "SELECT"];
@@ -479,9 +483,42 @@ export component SettingsScreen inherits Page {
                 }
 
                 Rectangle {
+                    height: row15.height;
+                    row15 := SettingLabel {
+                        label: @tr("Made with");
+                        control-x: root.control-x;
+                        control-width: root.control-width;
+                    }
+
+                    Button {
+                        x: root.control-x;
+                        y: 4px;
+                        nav: "set.about";
+                        text: @tr("SHOW LICENSES");
+                    }
+                }
+
+                Rectangle {
                     height: 24px;
                 }
             }
         }
+    }
+}
+
+// Settings, or About in their place.
+export component SettingsScreen inherits Rectangle {
+    if !SettingsView.about: SettingsPage {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+    if SettingsView.about: AboutPage {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+}
+
+// What opens over Settings: About's sheet, on a phone.
+export component SettingsOverlay inherits Rectangle {
+    AboutOverlay {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 }
