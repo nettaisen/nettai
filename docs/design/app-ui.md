@@ -148,7 +148,11 @@ Each is settled unless the user changes it.
     word on screen is PRACTICE wherever the player meets it: the main menu, the screen and its title, its menu over
     the battle, START PRACTICE, the tag beside a waiting invite and STOP PRACTICE; in Japanese 練習, where
     トレーニング was. The code is named for it too ("training.rs and TrainingView should be renamed practice but
-    nettai-training can stay as it is"): the AI's crate keeps its name. (§6, docs/app.md §15.)
+    nettai-training can stay as it is"): the AI's crate keeps its name. **Practice opens a build in Builds:**
+    beside each build's select on Practice's entry is EDIT (or E, or the pad's north button), which opens that
+    build in Builds' editor; Back there (Esc, the pad's B, the header's ‹ PRACTICE) comes straight back to
+    Practice, which shows the build as the edit left it. CREATE A BUILD opens Builds' list the same way, Back
+    going back to Practice. (§6, docs/app.md §8 and §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -365,6 +369,12 @@ Each is in the mockups under the same name.
   also be a arrow button pager thing": each an arrow pager, the arena by its place, "12 / 96", the background
   by its name), all remembered, and START PRACTICE; beside them the two builds facing each other and the arena. One line: "Set
   up the dummy from the menu once you're in."
+- **EDIT** (§2.28) beside each build's select, a button of its own (Tab and Shift+Tab reach it, Up and Down go
+  from one to the other), opens that build in Builds' editor; so do E and the pad's north button, on the dummy's
+  row or EDIT the dummy's build and anywhere else the player's (the footer's "Edit build"). Back from the editor
+  comes straight back to the entry, the two builds still chosen and shown as the edit left them (one that can't
+  be used now says why in the reserved line). A build gone from Builds is missed as any is: the first that can
+  be used is chosen. With no build, CREATE A BUILD opens Builds' list, whose Back goes back to Practice.
 - **The practice menu** (Start or Esc in a practice battle): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right:
@@ -382,6 +392,8 @@ Each is in the mockups under the same name.
 ### Builds
 - **The list:** NEW BUILD and IMPORT SAVE… over the builds; the selected build's overview beside it, with EDIT,
   DUPLICATE, RENAME and, apart, DELETE (asks once, Cancel focused).
+- **Opened from Practice** (§2.28): its EDIT opens the build in the editor, whose Back (‹ PRACTICE in the header)
+  goes straight back to Practice; its CREATE A BUILD opens the list, whose Back goes back to Practice too.
 - **The build overview** (also Play's, and each player's panel in a match): the build's name, navi and version;
   Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
   patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips

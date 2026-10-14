@@ -340,7 +340,9 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
   making ready. The shell owns no link and no lobby, and decides nothing when a battle ends: the owner is told
   the result or the reason and says what is next.
 - *Another screen:* `tell(screen, tag, choice)` has that screen hear `answered(tag, choice)` once the caller
-  has returned (how Practice tells the screen that added a row to its menu).
+  has returned (how Practice tells the screen that added a row to its menu). With `go`, it asks another screen
+  for something: `screens::builds::open(shell, from, at)` goes to Builds and tells it which screen opened it and
+  which build to open in its editor (§8).
 - *A replay:* `start_battle` with `Play::Watch(replay, side)` makes its viewer ready behind the same cards and
   hands it over (`BattleEvent::Watching`); the screen shows it in a `Picture` of its own with
   `show_surface(surface, present)` and plays its sound with `play_samples`, having given the viewer the Music
@@ -921,6 +923,12 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
 
 - **The name is the file's alone.** `[side]` is what a match, a lobby and a replay are given, and it holds no
   name (docs/design/app-ui.md §2.16).
+- **Opened by another screen** (`screens::builds::open(shell, from, at)`; docs/design/app-ui.md §2.28): Builds is
+  shown and told by `Shell::tell` which screen opened it (its tag is `opened-by.` and the screen's name) and,
+  with `at`, the build to open (its place in `store::list`'s order, which the list has). Back goes back to that
+  screen: from the list, or straight from the editor it asked for, which leaving the screen closes, the build
+  kept; the header's Back says where (`BuildsView.to-practice`). Practice's EDIT and CREATE A BUILD open it so
+  (§15); from the main menu Back goes to the menu as ever.
 - **A build made new** is `Builds::new_build(content, version)`: the game's own navi, that version, the folder a
   new save of the game starts with. There are no random builds.
 - **What is kept aside.** A NaviCust, patch cards and auto battle data are the game's own navi's alone, the one
@@ -1550,7 +1558,12 @@ screen as a player makes them, and Replays lists replays of the pass's own.
 (each Battle row with its value changed, a pair apart), and drive the options in the battle as a player would,
 the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
 the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
-dummy's Action Fights with its Level under it. `practice.txt` in the pass's folder says what no picture does at
+dummy's Action Fights with its Level under it. Then the way to Builds and back: CREATE A BUILD's list (the
+pass's own folder emptied), its header saying ‹ PRACTICE, and Back; and with the pass's new builds kept as files
+in its own folder (the entry lists them as a player's: `Shared::tour_files`), Your build's EDIT focused, the
+editor it opens on that build's Folder tab, an entry taken out there, and Back, the entry with the build as it
+was left (it can't be used now); a step before each picture checks the walk is where the picture says, and the
+report says so if not. `practice.txt` in the pass's folder says what no picture does at
 each: both navis' HP, the gauge, the options, and each side's deal beside the top of its folder as saved; that
 is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
 locked screen draws no frames, and the practice battle never starts (`practice.txt` says "no battle").
@@ -1979,7 +1992,16 @@ foot; beside them (on a phone, under them) the two builds as cards over the aren
   step through them doesn't make one each time), on the place chosen, and what the session will be picked
   from is drawn as the entry lists a game's builds and after each session, so the arena shown (a Random one
   too) is the one START PRACTICE opens on.
-- With no build of the game there is one button, CREATE A BUILD, which goes to Builds.
+- With no build of the game there is one button, CREATE A BUILD, which goes to Builds' list, whose Back comes
+  back here (`screens::builds::open`, §8).
+- **EDIT** beside each build's select (docs/design/app-ui.md §2.28: "you should be able to go to builds screen
+  from the practice screen somehow while having the relevant build displayed") opens it in Builds' editor; so do
+  E and the pad's north button (the dummy's build on its row or its EDIT, else the player's). The build is found
+  among the game's files as they are then by its file (`practice::place_of`), and the two chosen are
+  remembered first, so the entry shows them again as the edit left them: changed, or now one that can't be
+  used, which stays chosen and says why. Back from the editor comes straight back here. A build that doesn't
+  read as one has its EDIT unavailable. (The rows are 180 wide in their box, 120 on a phone, for EDIT's 88 and
+  72 beside them; on a phone EDIT is as tall as its row.)
 - A build is checked as the lobby will check one (`nettai_match::build::Checked`), once for what its file
   says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
   can't be used."), START PRACTICE is unavailable, no arena is drawn, and the screen opens with the focus on

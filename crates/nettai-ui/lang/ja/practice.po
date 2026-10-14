@@ -41,6 +41,10 @@ msgstr "変更"
 msgid "Open list"
 msgstr "一覧を開く"
 
+# A hint: the build opened in Builds' editor (the dummy's, where the focus is on its row or its EDIT).
+msgid "Edit build"
+msgstr "ビルドを編集"
+
 # Why practice can't start: the reserved line. {} is the rule the build breaks.
 msgid "Your build can't be used."
 msgstr "あなたのビルドは使えません。"

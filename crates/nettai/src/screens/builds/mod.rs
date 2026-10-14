@@ -10,6 +10,9 @@
 //! **The editor** (`editor`): the header's name, version and "✓ Ready to play", the tab bar, and the tab
 //! shown. Each tab is a module here and a file in the UI's `screens/builds/`: [`navi`], [`folder`], and the
 //! three to come ([`navicust`], [`patch_cards`], [`auto_battle`]).
+//!
+//! **Opened by another screen** ([`open`]: Practice's EDIT and CREATE A BUILD): Back goes back to that screen,
+//! from the list, or straight from the editor where it asked for a build to be opened in it.
 
 use crate::builds::store::{self, Build};
 use crate::builds::{self, Kit, import, overview, shelf};
@@ -17,7 +20,7 @@ use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress};
 use crate::nav::Key;
-use crate::screens::Screen;
+use crate::screens::{Screen, ScreenId};
 use crate::shell::{Dialog, Shell};
 use editor::Editor;
 use nettai_ui::{BuildEntry, BuildsDialog, BuildsPage, BuildsView, ButtonKind, DialogButton, VersionTag};
@@ -56,6 +59,27 @@ pub struct Builds {
     editor: Option<Editor>,
     /// What the last import made, where that is worth saying.
     message: String,
+    /// The screen that opened this one ([`open`]), which Back goes back to; and whether it asked for the editor,
+    /// which Back then leaves for it straight (not for the list).
+    back_to: Option<ScreenId>,
+    straight: bool,
+}
+
+/// What a screen that opens Builds tells it by (`Shell::tell`): this, and its own name (`ScreenId::name`).
+const OPENED_BY: &str = "opened-by.";
+
+/// Show Builds for screen `from`, Back going back to it: its list, or with the build at `at` of the selected
+/// game's list (`store::list`'s order, which the list has) open in the editor, which Back leaves straight for
+/// `from`. The screen `from` is shown again as ever (`Screen::show`): it reads the builds as they were left.
+pub fn open(shell: &mut Shell, from: ScreenId, at: Option<usize>) {
+    shell.go(ScreenId::Builds);
+    shell.tell(ScreenId::Builds, &format!("{OPENED_BY}{}", from.name()), at.unwrap_or(usize::MAX));
+}
+
+/// The screen a tag of [`open`]'s names, if it is one.
+fn opened_by(tag: &str) -> Option<ScreenId> {
+    let name = tag.strip_prefix(OPENED_BY)?;
+    ScreenId::ALL.into_iter().find(|s| s.name() == name)
 }
 
 impl Builds {
@@ -107,6 +131,35 @@ impl Builds {
         view.set_versions(ModelRc::new(VecModel::from(versions)));
         view.set_version_sets(names.text(nettai_match::build::TEXT_TABLE, "versions").unwrap_or_default().into());
         self.show_dialog(shell);
+        self.show_back(shell);
+    }
+
+    /// Where Back goes, as the header says it: to the screen that opened this one, from the list (not a phone's
+    /// page of one build), or from the editor it asked for.
+    fn show_back(&self, shell: &Shell) {
+        let here = if self.editor.is_some() { self.straight } else { !(self.sheet && shell.scale.phone && self.chosen.is_some()) };
+        let to = self.back_to.filter(|_| here);
+        shell.ui().global::<BuildsView>().set_to_practice(to == Some(ScreenId::Practice));
+    }
+
+    /// The screen `from` opened this one ([`open`]): Back goes back to it; and with `at`, the build at `at` of the
+    /// list is opened in the editor, which Back leaves straight for it. (A build that doesn't read as one stays
+    /// chosen on the list.)
+    fn opened(&mut self, shell: &mut Shell, from: ScreenId, at: Option<usize>) {
+        self.back_to = Some(from);
+        self.straight = false;
+        if let Some(at) = at.filter(|&at| at < self.shelf.len())
+            && let Some(kit) = builds::kit(shell)
+        {
+            self.chosen = Some(at);
+            self.edit_chosen(shell, kit.clone());
+            self.straight = self.editor.is_some();
+            if !self.straight {
+                self.show_list(shell, &kit);
+                shell.nav.focus("builds", at as i32);
+            }
+        }
+        self.show_back(shell);
     }
 
     /// The chosen build's overview.
@@ -219,6 +272,7 @@ impl Builds {
         shell.ui().global::<BuildsView>().set_page(BuildsPage::Editor);
         editor.show(shell);
         self.editor = Some(editor);
+        self.show_back(shell);
     }
 
     /// Leave the editor for the list, the build it edited chosen there.
@@ -316,7 +370,8 @@ impl Screen for Builds {
         // (The editor's build is its game's: the game can't change under it.)
         if let Some(editor) = &mut self.editor {
             shell.ui().global::<BuildsView>().set_page(BuildsPage::Editor);
-            return editor.show(shell);
+            editor.show(shell);
+            return self.show_back(shell);
         }
         if self.game.as_deref() != Some(kit.game.as_str()) {
             self.chosen = None;
@@ -340,8 +395,10 @@ impl Screen for Builds {
         }
         self.sheet = false;
         self.message.clear();
+        (self.back_to, self.straight) = (None, false);
         shell.ui().global::<BuildsView>().set_dialog(BuildsDialog::None);
         shell.ui().global::<BuildsView>().set_page(BuildsPage::List);
+        shell.ui().global::<BuildsView>().set_to_practice(false);
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
@@ -474,7 +531,12 @@ impl Screen for Builds {
         }
         if let Some(editor) = &mut self.editor {
             if !editor.back(shell) {
-                self.close_editor(shell);
+                // (Straight back to the screen that asked for the editor: leaving this one closes it, the build
+                // kept.)
+                match self.back_to.filter(|_| self.straight) {
+                    Some(to) => shell.go(to),
+                    None => self.close_editor(shell),
+                }
             }
             return true;
         }
@@ -486,10 +548,17 @@ impl Screen for Builds {
             }
             return true;
         }
+        if let Some(to) = self.back_to {
+            shell.go(to);
+            return true;
+        }
         false
     }
 
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
+        if let Some(from) = opened_by(tag) {
+            return self.opened(shell, from, (choice != usize::MAX).then_some(choice));
+        }
         if let Some(editor) = &mut self.editor {
             return editor.answered(shell, tag, choice);
         }
@@ -509,5 +578,23 @@ impl Screen for Builds {
         if let Some(kit) = builds::kit(shell) {
             self.import(shell, &kit, path);
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A screen that opens Builds is heard by its own name, and Back goes back to it; Builds' own dialogs' tags
+    /// are none of these.
+    #[test]
+    fn the_screen_that_opened_builds_is_heard_by_its_name() {
+        for screen in ScreenId::ALL {
+            assert_eq!(opened_by(&format!("{OPENED_BY}{}", screen.name())), Some(screen));
+        }
+        assert_eq!(opened_by("opened-by.practice"), Some(ScreenId::Practice));
+        assert_eq!(opened_by("delete"), None);
+        assert_eq!(opened_by("practice"), None);
+        assert_eq!(opened_by("opened-by.nowhere"), None);
     }
 }
