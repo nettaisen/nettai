@@ -9,12 +9,12 @@
 //! which reads as another. A player gives it to the other (an invite), who
 //! types it: [`normalize_code`] takes what was typed.
 //!
-//! - To make a room a client opens `<server>/rooms?peer=<ID>&v=2`
+//! - To make a room a client opens `<server>/rooms?peer=<ID>&v=1`
 //!   ([`new_room_url`]): ID is the client's own, random, the same on every
 //!   reconnection. The server makes a room under a code no room has; the
 //!   client is its host, and the welcome says the code.
 //! - To join a room, or to come back to one after its socket dropped, a
-//!   client opens `<server>/rooms/<CODE>?peer=<ID>&v=2` ([`room_url`]). A
+//!   client opens `<server>/rooms/<CODE>?peer=<ID>&v=1` ([`room_url`]). A
 //!   code no room has is refused: nothing is made of it.
 //!
 //! The room has two places: its maker is its host, the next ID to come its
@@ -48,7 +48,7 @@ use crate::{Candidate, Role};
 
 /// The protocol's version, which a client says as it connects (`v=`): a
 /// server of another refuses it ([`Refusal::Version`]).
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 1;
 
 /// The characters of a room's code: capitals and digits, without `0` and
 /// `O`, and without `1`, `I` and `L`, so that none reads as another on a
@@ -210,9 +210,9 @@ mod tests {
         assert_eq!(normalize_code(" abc-234\n").as_deref(), Some("ABC234"));
         assert_eq!(normalize_code("ABC 234").as_deref(), Some("ABC234"));
         assert_eq!((normalize_code("ABC-23"), normalize_code("ABC-230"), normalize_code("")), (None, None, None));
-        assert_eq!(room_url("https://signal.example/", "ABC234", "p1"), "wss://signal.example/rooms/ABC234?peer=p1&v=2");
-        assert_eq!(room_url("ws://127.0.0.1:8787", "ABC234", "p1"), "ws://127.0.0.1:8787/rooms/ABC234?peer=p1&v=2");
-        assert_eq!(new_room_url("signal.example", "p1"), "wss://signal.example/rooms?peer=p1&v=2");
-        assert_eq!(new_room_url("http://127.0.0.1:8787/", "p1"), "ws://127.0.0.1:8787/rooms?peer=p1&v=2");
+        assert_eq!(room_url("https://signal.example/", "ABC234", "p1"), "wss://signal.example/rooms/ABC234?peer=p1&v=1");
+        assert_eq!(room_url("ws://127.0.0.1:8787", "ABC234", "p1"), "ws://127.0.0.1:8787/rooms/ABC234?peer=p1&v=1");
+        assert_eq!(new_room_url("signal.example", "p1"), "wss://signal.example/rooms?peer=p1&v=1");
+        assert_eq!(new_room_url("http://127.0.0.1:8787/", "p1"), "ws://127.0.0.1:8787/rooms?peer=p1&v=1");
     }
 }

@@ -82,13 +82,14 @@ pub fn recognize(header: &[u8]) -> Option<(Game, &'static str)> {
 }
 
 /// What tells apart the packs of `game` that two builds of the extractor write: a digest, as 16 hex digits, of
-/// the pack format's version and of the names the pack's assets are written under, which a frontend finds them
-/// by: the content's `compat/assets.toml`, and the names given by the content's other tables (a chip's icon by
-/// its id, a navi's emblem by its key, what each of the fonts' glyphs draws). Two builds whose digests are the
-/// same write packs that the same content loads; a build whose content names an asset under another name, or
-/// one more, has another. (A change to how an asset is decoded that names nothing new doesn't change it.)
+/// the versions of the pack's formats (`pack::FORMATS`) and of the names the pack's assets are written under,
+/// which a frontend finds them by: the content's `compat/assets.toml`, and the names given by the content's
+/// other tables (a chip's icon by its id, a navi's emblem by its key, what each of the fonts' glyphs draws). Two
+/// builds whose digests are the same write packs that the same content loads; a build whose content names an
+/// asset under another name, or one more, or writes a format of another version, has another. (A change to how
+/// an asset is decoded that names nothing new doesn't change it.)
 pub fn fingerprint(game: Game) -> String {
-    let said = format!("{} {} {:?}", pack::FORMAT, pack::VERSION, asset_names(game));
+    let said = format!("{:?} {:?}", pack::FORMATS, asset_names(game));
     // (FNV-1a, 64 bits: the same digest from every build and toolchain, which the standard library's hasher
     // doesn't promise.)
     let digest = said.bytes().fold(0xcbf2_9ce4_8422_2325u64, |h, b| (h ^ b as u64).wrapping_mul(0x0100_0000_01b3));

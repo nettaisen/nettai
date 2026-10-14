@@ -144,8 +144,8 @@ fn a_cut_file_reads_to_its_cut() {
 }
 
 /// What isn't a replay, a replay of another layout (another version of
-/// nettai's: the layout before this one, and one after) and what no writer
-/// writes are each refused as what they are, saying what.
+/// nettai's) and what no writer writes are each refused as what they are,
+/// saying what.
 #[test]
 fn a_file_that_doesnt_read_is_refused_as_what_it_is() {
     let bytes = written(&ticks());
@@ -153,17 +153,12 @@ fn a_file_that_doesnt_read_is_refused_as_what_it_is() {
     assert_eq!(Replay::read(b"PK\x03\x04").unwrap_err(), ReadError::NotAReplay);
     assert_eq!(refused(b"PK\x03\x04"), "not a replay (no \"NTRP\" at its start)");
     assert_eq!(Replay::read(b"").unwrap_err(), ReadError::NotAReplay);
-    for other in [1, 3] {
+    for other in [0, 2] {
         let mut layout = bytes.clone();
         layout[4] = other;
         assert_eq!(Replay::read(&layout).unwrap_err(), ReadError::OtherLayout { layout: other });
-        assert_eq!(refused(&layout), format!("a replay of layout {other}; this reads layout 2"));
+        assert_eq!(refused(&layout), format!("a replay of layout {other}; this reads layout 1"));
     }
-    // A layout 1 file as it was written (its info: when, the side, the
-    // names) is another version's, whatever follows its layout byte.
-    let mut old = b"NTRP\x01HEAD".to_vec();
-    old.extend_from_slice(&[0; 40]);
-    assert_eq!(Replay::read(&old).unwrap_err(), ReadError::OtherLayout { layout: 1 });
     let mut bits = bytes.clone();
     bits[start] |= 0x20;
     assert_eq!(Replay::read(&bits).unwrap_err(), ReadError::Damaged("tick 0: its record's bits 0x23 are none a writer writes".into()));
@@ -226,11 +221,9 @@ fn a_head_reads_whatever_follows_it() {
     wrong.push(0xE0);
     assert!(Replay::read(&wrong).is_err());
     assert_eq!(Head::read(&wrong), Some(head()));
-    let mut older = bytes.clone();
-    older[4] = 1;
-    assert_eq!(Head::read(&older), Some(head()));
-    older[4] = 3;
-    assert_eq!(Head::read(&older), None);
+    let mut other = bytes.clone();
+    other[4] = 2;
+    assert_eq!(Head::read(&other), None);
     assert_eq!(Head::read(b"not a replay"), None);
     assert_eq!(Head::read(&bytes[..info_at - 3]), None);
 }
