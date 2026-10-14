@@ -2,7 +2,7 @@
 //! nettai's menu over it when Start or Esc asks.
 //!
 //! A screen starts one with [`Shell::start_battle`] and stays its owner: the menu's controls are the owner's
-//! (the training menu is Training's, the match menu Play's: their names begin `menu.`), and the owner hears
+//! (the practice menu is Practice's, the match menu Play's: their names begin `menu.`), and the owner hears
 //! when the battle begins and ends ([`BattleEvent`]). The shell does the rest: it makes the match ready before
 //! its first tick (the library's `preload`: docs/frontend.md §9), runs the ticks due each frame with the buttons
 //! held, presents the picture, and takes the keys for the battle while nothing is over it.
@@ -68,7 +68,7 @@ pub struct BattleStart {
     pub viewer: u8,
     /// What it is recorded with, if it is.
     pub recorder: Option<Recorder>,
-    /// The two cards shown while it is made ready, left and right; none: it starts with no cards (the training
+    /// The two cards shown while it is made ready, left and right; none: it starts with no cards (the practice
     /// battle beside a waiting invite).
     pub cards: Option<[VersusCard; 2]>,
     /// The picture fills the window. Else the owner's screen shows it in a `Picture` of its own.
@@ -119,7 +119,7 @@ impl Battle {
     }
 
     /// Start what it plays over from its beginning (a set from its first round), if it can stop (not an online
-    /// match): it runs again, and its owner will hear of its end again (a training set that ended starts over).
+    /// match): it runs again, and its owner will hear of its end again (a practice set that ended starts over).
     /// False, and nothing changes, in real time.
     pub fn restart(&mut self) -> bool {
         if !self.stage.player.restart() {
@@ -134,7 +134,7 @@ impl Battle {
         true
     }
 
-    /// Hold it in the game's own pause under the menu, from now on (Training's: docs/app.md §15): the menu
+    /// Hold it in the game's own pause under the menu, from now on (Practice's: docs/app.md §15): the menu
     /// opening gives the game the START its player would, and the battle steps on in the game's pause, its
     /// sound and what the game moves while paused going on; the menu closing gives it START again. The player's
     /// own START in the fight is the game's, and the menu opens over the pause it makes. Its round must leave
@@ -313,7 +313,7 @@ impl Shell {
         self.battle.as_ref().is_some_and(Battle::playing) && self.dialog.is_none()
     }
 
-    /// Open nettai's menu over the battle. A battle that can stop (training, a replay) is paused under it; an
+    /// Open nettai's menu over the battle. A battle that can stop (practice, a replay) is paused under it; an
     /// online match keeps running.
     pub fn open_menu(&mut self) {
         let Some(b) = &mut self.battle else { return };
@@ -523,7 +523,7 @@ mod tests {
     use nettai_frontend::player::Player;
     use nettai_frontend::testing::{graphics, short_set};
 
-    /// A battle whose set was played to its end starts over (training has no end): it has the keys again,
+    /// A battle whose set was played to its end starts over (practice has no end): it has the keys again,
     /// from the set's first tick, and plays on; its owner will hear of its next end.
     #[test]
     fn a_set_that_ended_starts_over() {
@@ -563,7 +563,7 @@ mod tests {
         b.game_pause.as_mut().expect("held").after(ran, &b.stage.player, viewer, menu)
     }
 
-    /// The training menu holds its battle in the game's own pause: the menu opening gives the game its START,
+    /// The practice menu holds its battle in the game's own pause: the menu opening gives the game its START,
     /// and the battle steps on in its pause, its sound going on, nothing of the fight moving and none of the
     /// player's buttons reaching it; closing gives START again and the fight goes on where it was. The player's
     /// own START is the game's, and asks for the menu. On the custom screen, where the game wouldn't pause, the
@@ -683,7 +683,7 @@ mod tests {
         assert!(!frame(&mut b, 0) && b.game_pause.as_ref().unwrap().buttons() == 0);
     }
 
-    /// A training set put in place of the one playing (Training's Arena or Background row changed:
+    /// A practice set put in place of the one playing (Practice's Arena or Background row changed:
     /// `LivePlayer::play_set`) starts over on its place under the open menu, as RESTART starts a set: the
     /// battle steps through the round's opening with no buttons, its sound going on, and waits on the custom
     /// screen; every round of it is on that place.
@@ -727,7 +727,7 @@ mod tests {
         }
     }
 
-    /// A training set put on another background (Training's Background row changed: `Player::set_backgrounds`)
+    /// A practice set put on another background (Practice's Background row changed: `Player::set_backgrounds`)
     /// goes on where it is: no start over, the arena the same, the battle drawn on the new background; and
     /// since no tick reads a round's background, it steps as the battle without the change does, its digest
     /// the same but for the background its setup says (and the rounds after on it too).
@@ -771,7 +771,7 @@ mod tests {
         assert_eq!(seen.digest(), a.stage.player.battle().digest(), "stepped as the battle without the change");
     }
 
-    /// A training battle of `m`'s (its rounds leaving the game its START), with sound, the dummy as given.
+    /// A practice battle of `m`'s (its rounds leaving the game its START), with sound, the dummy as given.
     fn practice(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, opponent: nettai_frontend::driver::Opponent) -> Battle {
         let mut first = m.round(content, seed);
         first.host_keys.pause = false;
@@ -784,9 +784,9 @@ mod tests {
         b
     }
 
-    /// The dummy that fights, plugged in as Training plugs it (its Action Fights, its custom screen the AI's):
+    /// The dummy that fights, plugged in as Practice plugs it (its Action Fights, its custom screen the AI's):
     /// against a player who only gets through their custom screen, it takes HP away, the battle stepped as the
-    /// shell steps a training battle.
+    /// shell steps a practice battle.
     #[test]
     fn the_dummy_that_fights_takes_hp_away() {
         use nettai_battle::battle::mode;

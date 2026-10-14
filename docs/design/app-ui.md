@@ -4,7 +4,7 @@
 redesigned entirely ("throw away everything you have right now because it's so janky and not great. do keep using
 slint though"), reviewed mockups over a day, and then said "throw out the old nettai and start implementing". This
 document is that design. docs/app.md is the app as it is built: its foundation is (the design system, navigation,
-input, Settings, the battle's host), and Play, Training, Builds and Replays are to be filled in on it.
+input, Settings, the battle's host), and Play, Practice, Builds and Replays are to be filled in on it.
 
 The mockups are the picture of every screen: https://claude.ai/artifact/5Kg4TfQhZeMXB5C45rXM2Z, a copy of which is
 `bn6battle-verify/docs/nettai-ui/mockups.html` (not in this repository: it embeds chip icons and art taken from a
@@ -46,7 +46,7 @@ Each is settled unless the user changes it.
 2. **Versions are listed in this order everywhere:** Red Sun, Blue Moon; Team ProtoMan, Team Colonel; Gregar, Falzar.
 3. **Rounds in netplay are chosen in the lobby.**
 4. **Training is like Street Fighter's:** a dummy configured from a menu while in training. The word on screen is
-   TRAINING, never "sparring".
+   TRAINING, never "sparring". (It is PRACTICE since item 28.)
 5. **Direct connect stays** (host and port, no server).
 6. **Input delay is configurable, 4 by default.**
 7. **The look is modern and techy**, not retro. A first, pixel-and-bevel "Battle Network" skin was rejected as "too
@@ -143,6 +143,12 @@ Each is settled unless the user changes it.
     holds a place to), and the editor reads it: a place of one of those lists is offered that class's chips, the
     Program Advances among them. The first and standard lists are as they were, a chip of any class (the user named
     three lists). (§6, docs/app.md §8.)
+28. **Training is called Practice** (2026-10-13): "Training should be called Practice actually, and you should be
+    able to go to builds screen from the practice screen somehow while having the relevant build displayed". The
+    word on screen is PRACTICE wherever the player meets it: the main menu, the screen and its title, its menu over
+    the battle, START PRACTICE, the tag beside a waiting invite and STOP PRACTICE; in Japanese 練習, where
+    トレーニング was. The code is named for it too ("training.rs and TrainingView should be renamed practice but
+    nettai-training can stay as it is"): the AI's crate keeps its name. (§6, docs/app.md §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -158,9 +164,9 @@ are the defaults; each is easy to reverse and is listed for review.
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
 | What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
 | The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
-| The dummy while waiting online | A copy of the player's own build, standing still, with the training menu there to change it |
-| Training's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last. (Recording went later: "get rid of recording support, it's so complicated".) |
-| Training and replays | Training is not recorded |
+| The dummy while waiting online | A copy of the player's own build, standing still, with the practice menu there to change it |
+| Practice's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last. (Recording went later: "get rid of recording support, it's so complicated".) |
+| Practice and replays | Practice is not recorded |
 | Text entry on a pad | The invite code has a six-box picker a pad can use; names, addresses and searches need a keyboard |
 | Closed builds and replays | A replay of a closed-builds match hides the builds in the viewer too |
 | Smaller NaviCust boards | Not offered: every build has the full board |
@@ -255,7 +261,7 @@ What moves:
 | a list | the chosen row's bar and tint slide to the next row; scrolling is smooth, never a jump |
 | the folder | a chip put in flies from its library row to its slot, which flashes; a count that changes ticks to its number; a refusal shakes the row 4, twice, and flashes its reason |
 | the NaviCust | a piece picked up lifts (to 1.06, with a shadow), turns as a quarter turn, and drops with a pulse along its cells; the command line's arrows pulse; a bug that appears pulses purple once |
-| a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the training and match menus slide in from the left |
+| a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps, and when both are full the screen wipes into the battle |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |
@@ -320,13 +326,13 @@ Each is in the mockups under the same name.
 - **No game, and no Legacy Collection:** the logo, the error's line ("nettai needs Battle Network Legacy Collection
   Vol. 2. Install it from Steam, or choose its folder.") and CHOOSE FOLDER, which opens the system's folder
   dialog. Where a game can be played, the same error is a dialog with CHOOSE FOLDER and OK.
-- **Before a battle** (online, training, a replay): the two players' cards facing each other, each with its own bar.
+- **Before a battle** (online, practice, a replay): the two players' cards facing each other, each with its own bar.
   Everything the match can use is loaded before its first frame: both navis and their forms, every chip in both
   folders, the arena, the music and the sounds. Online the match starts when both bars are full. The opponent's card
   carries their name alone (§2.16).
 
 ### Main menu
-- Left: PLAY, TRAINING, BUILDS, REPLAYS, each the word alone, 36, in a column 416 wide, rows 72 tall. Below a line:
+- Left: PLAY, PRACTICE, BUILDS, REPLAYS, each the word alone, 36, in a column 416 wide, rows 72 tall. Below a line:
   Settings, About and Exit, 16, muted.
 - Right: the demo reel, the battle picture at three times (720 by 480), with no caption under it ("don't show the
   caption text").
@@ -340,9 +346,9 @@ Each is in the mockups under the same name.
   message | DIRECT CONNECT at the far right.
 - **Direct connection** is a dialog: Host (this machine's address with Copy, and HOST; "Send this address to your
   opponent.") and Join (an address field and CONNECT).
-- **Waiting for an opponent:** a training battle starts at once (the picture at three times, tagged TRAINING), with
+- **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
   a panel beside it: the invite code, large, in fixed-width type, grouped in threes; COPY CODE; "Waiting for
-  opponent"; "The lobby opens when they join."; CANCEL. Keys go to the battle; Esc or Start opens the training menu
+  opponent"; "The lobby opens when they join."; CANCEL. Keys go to the battle; Esc or Start opens the practice menu
   with Copy invite code and Cancel invite added.
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: Rounds (a stepper: Single battle, Best of 3), Patch cards
@@ -352,14 +358,14 @@ Each is in the mockups under the same name.
   cards off, neither player's cards apply in the match: each build plays as it is without them, and a build that
   breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
 
-### Training
+### Practice
 - **Entry:** four rows, Your build, Dummy's build, Arena and Background (the user: "in training mode can you
   also add arena + background select?": the game's arenas and battle backgrounds, Random first; "the arena
   names are meaningless so you should just have like a pager widget that goes through them. background should
   also be a arrow button pager thing": each an arrow pager, the arena by its place, "12 / 96", the background
-  by its name), all remembered, and START TRAINING; beside them the two builds facing each other and the arena. One line: "Set
+  by its name), all remembered, and START PRACTICE; beside them the two builds facing each other and the arena. One line: "Set
   up the dummy from the menu once you're in."
-- **The training menu** (Start or Esc in training): a panel on the left, the battle behind it in the game's own pause
+- **The practice menu** (Start or Esc in a practice battle): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right:
   - Dummy: Action (stands still, moves around, fights, a second pad), with its Level (easy, normal, hard: how well
@@ -456,7 +462,7 @@ The mockups show no screen for this; it is decided here.
   play again or leave. Another match with the same opponent needs no new invite code.
 - **LEAVE MATCH** in the match menu ends the match for both players and puts both back in the lobby, as a
   match's end does. Leaving the opponent altogether is the lobby's LEAVE.
-- **Training** has no end: the training menu's RESTART and QUIT TO MENU are the ways out of a set.
+- **Practice** has no end: the practice menu's RESTART and QUIT TO MENU are the ways out of a set.
 - **A replay** stops at its end with the transport still there.
 
 ### Settings
@@ -529,8 +535,8 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 8. **Replays:** seeking, by keeping snapshots; export through `nettai-video` and ffmpeg; no build names in the file.
 9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds and Closed builds as
    shared settings; and holds the start until both sides have loaded.
-10. **Random builds** are removed from Play, Training and the lobby.
-11. **Training's** new options (§3) need new support in the battle engine.
+10. **Random builds** are removed from Play, Practice and the lobby.
+11. **Practice's** new options (§3) need new support in the battle engine.
 12. **The screenshot pass** (the old `NETTAI_TOUR`) walks every screen in each language and size and is compared
     with the mockups.
 13. **The build stays cheap.** "try not make the slint build really expensive, because the current nettai binary

@@ -53,7 +53,7 @@ export component AppWindow inherits Window {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // Each screen, and what it opens over itself (Training and Settings open nothing): one conditional each, as
+    // Each screen, and what it opens over itself (Practice and Settings open nothing): one conditional each, as
     // each conditional is a component of its own in what Slint generates. (A screen's overlay is over it; only
     // one screen is shown at a time, so it is over every screen.)
     if !root.covered && Shell.screen == Screen.menu: MenuScreen {
@@ -106,7 +106,7 @@ export component AppWindow inherits Window {
     if root.in-battle: BattleScreen {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
-    // (Training's input display: over its battle's picture, wherever that is shown. It is there throughout and
+    // (Practice's input display: over its battle's picture, wherever that is shown. It is there throughout and
     // shown when it is on: an `if` would be a component for it.)
     PracticeInputs {
         visible: Shell.battle == BattleKind.practice && PracticeView.inputs;
