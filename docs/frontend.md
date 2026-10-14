@@ -1202,6 +1202,63 @@ baseline. A string too wide for its box is narrowed to it, never made
 smaller (text-rendering.md §9.4); it never leaves its box, and its layout
 never reaches the simulation.
 
+**Enhanced and original** (`GraphicsMode`, `Renderer::set_mode`). A
+renderer draws a battle in one of two modes. **Original** draws it exactly
+as the original does: the text in the game's own fonts into the frame and
+nothing moved that the game holds still. **Enhanced** draws the text with
+the vector font (above) and, unless `Renderer::reduce_motion` says
+otherwise, moves what follows; its text stays either way.
+
+- *The HUD's intro* (`intro.rs`), each round: each piece of the HUD comes in
+  on its own, one after another, by whole frame pixels (the HUD is drawn
+  into the 240x160 frame), within 600 ms of its first showing:
+  - the HP box slides in from the left edge (12 ticks, a few pixels past
+    its place and back) as the intro's fade has cleared (the round's 18th
+    tick; out until then), and the emotion window 5 ticks after it;
+  - each HP number under an object that shows before the round's first
+    custom screen (the opponent navi's) pops in as it shows: squashed flat
+    and stretched back to its height about its middle over 6 ticks (the
+    banners' vertical scale), then a 2-pixel hop; one place 3 ticks after
+    another;
+  - the custom gauge drops in from 20 pixels above (10 ticks) from the
+    tick after the local console sends its first result of the round, then
+    a light (three cells in the filled cell's tile) sweeps along its bar
+    (12 ticks); a full gauge has no sweep;
+  - from the tick after both first results are in, the next chip's name
+    (and its damage) slides in from the left at the bottom, and the chip
+    icons over the navis pop in 3 ticks later.
+
+  The custom screen, the banners, the telops and every other piece are the
+  game's own, and so are the HUD's later turns: a number that shows later,
+  the chips of a later turn. Which pieces there are and where they rest is
+  the pack's and the HUD's as ever: the intro moves what the HUD draws, in
+  every game (EXE4's chip icons are its own stack, `own_icon_parts`).
+
+The motion is presentation alone and deterministic. Where each piece is
+comes from the battle: the round's ticks (`round.ticks`, which a new round
+starts over), the custom screen's `Sent` records of the round's first
+screen (the tick the local result went out, the tick the later one's last
+word arrives; they stay until the next screen opens), and for an HP number
+the round's tick it first showed, which `HudState` follows (before the
+first custom screen no input reaches the battle, so that tick is the same
+on every timeline). It reads no clock and nothing of it is in the
+simulation, its snapshot or its digest: a rollback that draws a frame
+again, a seek, a replay and a video draw it the same
+(nettai-frontend's `the_hud_comes_in_from_the_battle_alone_and_rests_where_the_game_puts_it`
+draws every tick again from a copy of the battle).
+
+Where it is on: the app's battles (live, online, Practice, a replay
+watched) and its main menu's reel, with "Battle graphics: Enhanced" (the
+app's default; Reduce motion takes the motion off and keeps the text), and
+a replay's video the app exports (as its settings say; a replay's still in
+the list is drawn at rest); nettai-tools in its default mode (`--text
+enhanced`, or `font`: headless frames, `--nut`, `--mp4`); and a host that
+loads with the frontend's `Options::default()`. Off: `Renderer::new` and
+`Renderer::with_packs` (Original until told otherwise), so the tests;
+`--text original`, which the frame comparisons against mGBA, the lab and
+trace replays and the identity checks use; and every frame in the original
+mode, byte for byte as before the mode had motion.
+
 ### What the engine gives the frontend
 
 Presentation outputs: the simulation reads none of them (`digest.rs` lists

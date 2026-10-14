@@ -110,6 +110,11 @@ pub struct Renderer {
     /// changes: a host's picture of a fight no one plays (Practice's
     /// arena preview).
     pub custom_gauge: bool,
+    /// The enhanced mode without its motion (the app's Reduce motion): the
+    /// HUD's entrance at a round's start (`intro`) and the background's
+    /// glide (`present`) are left out, the text stays. The original mode
+    /// has neither, whatever this says.
+    pub reduce_motion: bool,
 }
 
 impl Renderer {
@@ -141,6 +146,7 @@ impl Renderer {
             lookups_only: false,
             pause_display: true,
             custom_gauge: true,
+            reduce_motion: false,
         }
     }
 
@@ -180,6 +186,12 @@ impl Renderer {
 
     pub fn mode(&self) -> GraphicsMode {
         self.mode
+    }
+
+    /// Whether the frames move what the original holds still: the enhanced
+    /// mode's motion, unless reduced (`reduce_motion`).
+    pub fn motion(&self) -> bool {
+        self.mode == GraphicsMode::Enhanced && !self.reduce_motion
     }
 
     /// The strings the frames drawn so far had to lay out to place what
@@ -321,7 +333,8 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        let intro = crate::intro::Intro::of(b, self.motion());
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, &intro, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();

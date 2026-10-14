@@ -469,6 +469,24 @@ Each is settled unless the user changes it.
     Music are (§2.40), and each visit starts on their defaults: Stands still, Normal, every option normal, the
     input display off, the dummy on the player's own build. Your build stays PLAY's chosen one. In the same
     exchange the build editor stopped reopening the tab last used: "don't remember the tab" (§6, Builds).
+55. **The battle's HUD comes in, in the enhanced graphics** (2026-10-14). After the jack-in, the user: "can you do
+    more exciting things when a battle starts like animate all the game ui in?"
+    - *The game's own HUD*, drawn by the renderer, not the app: at each round's start its pieces come in one
+      after another, each within 600 ms of its first showing: the HP box slides in from the left edge as the
+      intro's fade clears, the emotion window after it; the HP numbers over the opponents pop in (a squash and
+      stretch, then a hop); as the round's first chips are sent the custom gauge drops in from the top and a
+      light sweeps its bar; as they arrive the chip's name slides in at the bottom left and the chip icons pop
+      in. Motion only, in whole frame pixels, nothing of new color or art; the custom screen is the game's own.
+      Every game, each with the pieces it has.
+    - *One mode.* Then the user: "you should only enable the ui improvements if sharp rendering is enabled. you
+      should call it something other than sharp font rendering as well since it does more than that now".
+      Settings' Video row is **Battle graphics: Enhanced / Original** (it was Battle text: Sharp / Original):
+      Enhanced is the sharp text and the HUD's intro; Reduce motion takes the motion off and keeps the text.
+      There is no row of its own for the motion.
+    - *Presentation alone.* The motion goes by the battle's own ticks, never the clock, and is in no state the
+      simulation keeps: a rollback, a replay and a video draw it alike. Original draws every frame exactly as
+      before; every verification path draws Original (docs/frontend.md §3, "Enhanced and original").
+    (§4 "Motion", §6 Settings, docs/app.md §9.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -586,6 +604,7 @@ What moves:
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps |
 | entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it while streaks in the cursor's color rush in toward the middle and the field rushes, a bright flash; the ground splits along the middle, its halves thrown apart with lit edges, and a diamond shockwave bursts out from the middle as the battle shows; the game's own encounter sound plays. With Reduce motion the ground fades (160) |
+| a round's start, in the battle (§2.55) | with Battle graphics Enhanced, the game's HUD comes in piece by piece, each within 600 ms of its first showing, by the battle's ticks: the HP box slides in from the left as the intro's fade clears (12 ticks, a little past and back), the emotion window 5 ticks after; the opponents' HP numbers pop in (squash and stretch, a hop); with the first chips sent the custom gauge drops in from the top and a light sweeps its bar; as they arrive the chip's name slides in and the icons pop in. With Reduce motion, or Original, the HUD is where the game puts it from the first frame |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |
