@@ -27,7 +27,8 @@ pub fn background(graphics: &PackGraphics, c: &Content, id: BackgroundId, w: usi
 }
 
 /// Battle `b`'s field as it is, its panels and the objects `keep` on them
-/// (the two navis standing, each with its own shadow under it), and
+/// (an arena's picture's: the two navis standing, each with its own shadow
+/// under it, and the objects the arena placed as the round started), and
 /// nothing else: no background, no other object, no HUD, no fade. The screen's 240 by 160,
 /// each pixel `0xAARRGGBB`, clear (0) where nothing is drawn. The field's
 /// panels as [`crate::Renderer::render`] draws them, from the game's pack,
