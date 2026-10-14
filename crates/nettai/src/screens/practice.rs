@@ -47,6 +47,8 @@ use std::collections::HashMap;
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
+mod thumbs;
+
 // ---- A practice session, which any screen may start ----------------------------------------------------------
 
 /// A build in a practice session: its name, as the cards and the menu say it, and the side it brings.
@@ -126,6 +128,8 @@ pub struct Shared {
     pub tour_files: bool,
     /// The visit to Practice on, and what it keeps.
     pub visit: Visit,
+    /// The places' pictures, for the Arena and Background grids: made as they are needed, kept for the session.
+    thumbs: thumbs::Thumbs,
 }
 
 /// A visit to Practice: from its entry being shown from elsewhere (Play's PRACTICE) until a screen other than
@@ -238,22 +242,22 @@ struct Session {
 /// options. A row is added here, worded in practice.slint (`PracticeView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Practice::change_option`. The dummy's Level is shown under its Action while
 /// that is Fights alone ([`shown_rows`]).
-pub(crate) const ROWS: [PracticeOption; 14] = [
+pub(crate) const ROWS: [PracticeOption; 13] = [
     PracticeOption::Dummy,
     PracticeOption::Action,
     PracticeOption::Level,
-    // (The arena's apart from the battle's numbers: the user, "you should split the practice menu settings into
-    // arena and battle so the arena settings aren't mixed together".)
-    PracticeOption::Place,
+    // (Where the battle is apart from the battle's options: the user, "you should split the practice menu settings
+    // into arena and battle so the arena settings aren't mixed together"; and the groups named for neither of their
+    // rows, none of one row: "having an "arena" field under "arena" is so weird".)
+    PracticeOption::Stage,
     PracticeOption::Arena,
     PracticeOption::Background,
     PracticeOption::Music,
-    PracticeOption::Battle,
+    PracticeOption::Options,
     PracticeOption::YourHp,
     PracticeOption::DummysHp,
     PracticeOption::CustomGauge,
     PracticeOption::ChipDraw,
-    PracticeOption::Display,
     PracticeOption::InputDisplay,
 ];
 
@@ -286,7 +290,7 @@ fn values(option: PracticeOption, places: &Places) -> usize {
         PracticeOption::Action => ACTIONS.len(),
         PracticeOption::Level => LEVELS.len(),
         PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
-        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Place | PracticeOption::Battle | PracticeOption::Display => 0,
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options => 0,
     }
 }
 
@@ -303,13 +307,13 @@ fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Opti
         PracticeOption::CustomGauge => options.full_gauge as usize,
         PracticeOption::ChipDraw => (options.chip_draw == ChipDraw::FolderOrder) as usize,
         PracticeOption::InputDisplay => inputs as usize,
-        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Place | PracticeOption::Battle | PracticeOption::Display => 0,
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options => 0,
     }
 }
 
 /// A row as the menu shows it: its value's place; for Arena and Background, the name of the one chosen (none:
-/// Random); for Music, the battle's music's name.
-fn row(option: PracticeOption, session: &Session) -> PracticeRow {
+/// Random) and its picture (`thumbs`'); for Music, the battle's music's name.
+fn row(option: PracticeOption, session: &Session, thumbs: &thumbs::Thumbs) -> PracticeRow {
     let value = value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32;
     let part = match option {
         PracticeOption::Arena => Some(ARENA),
@@ -318,7 +322,8 @@ fn row(option: PracticeOption, session: &Session) -> PracticeRow {
     };
     let text = part.and_then(|part| session.place[part].checked_sub(1).and_then(|at| session.place_labels[part].get(at))).map(|name| name.as_str().into()).unwrap_or_default();
     let text = if option == PracticeOption::Music { session.music.as_str().into() } else { text };
-    PracticeRow { option, value, text }
+    let picture = part.map(|part| thumbs.picture(&session.game, part, session.place[part])).unwrap_or_default();
+    PracticeRow { option, value, text, picture }
 }
 
 /// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone),
@@ -334,7 +339,7 @@ fn tell_rows(shell: &Shell, session: &Session, options: &[PracticeOption]) {
     let rows = shell.ui().global::<PracticeView>().get_rows();
     for option in options {
         if let Some(at) = session.rows.iter().position(|o| o == option) {
-            rows.set_row_data(session.added + at, row(*option, session));
+            rows.set_row_data(session.added + at, row(*option, session, &shell.practice.thumbs));
         }
     }
 }
@@ -359,7 +364,7 @@ fn lay_out_rows(shell: &Shell, session: &mut Session) {
     for (at, option) in wanted.iter().enumerate() {
         if session.rows.get(at) != Some(option) {
             session.rows.insert(at, *option);
-            rows.insert(session.added + at, row(*option, session));
+            rows.insert(session.added + at, row(*option, session, &shell.practice.thumbs));
         }
     }
 }
@@ -429,6 +434,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     m.sides = [start.you.side.clone(), start.dummy.side.clone()];
     let places = Places::of(content, &start.game);
     let place = places.chosen(content, &start.round);
+    want_pictures(shell, &start.game);
     places.put(&mut m, place);
     // (A set is made of a checked match: both folders whole.)
     if let Some(problem) = nettai_match::check::problems(content, &m).first() {
@@ -474,8 +480,8 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     let rows: Vec<PracticeRow> = start
         .rows
         .iter()
-        .map(|text| PracticeRow { option: PracticeOption::Added, value: 0, text: text.into() })
-        .chain(session.rows.iter().map(|o| row(*o, &session)))
+        .map(|text| PracticeRow { option: PracticeOption::Added, value: 0, text: text.into(), picture: Default::default() })
+        .chain(session.rows.iter().map(|o| row(*o, &session, &shell.practice.thumbs)))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
     view.set_leave(start.from.is_none());
@@ -608,12 +614,23 @@ enum Change {
     To(usize),
 }
 
-/// Open the backgrounds as the list of the select `id`, `index` (the entry's Background row, or the menu's): Random,
-/// then `labels`, the background pool's as the rows say them; place `at` chosen.
-fn open_places(shell: &mut Shell, id: &str, index: i32, labels: &[String], at: usize) {
+/// Open the arenas or the backgrounds (`part`) of `game` as the grid of the select `id`, `index` (the entry's row,
+/// or the menu's): Random, then `labels`, the list's as the rows say them, each over its picture (the user:
+/// "arena selector should be like a dropdown that shows previews of all arenas. background dropdown should be
+/// similar"); place `at` chosen.
+fn open_places(shell: &mut Shell, id: &str, index: i32, game: &str, part: usize, labels: &[String], at: usize) {
     let random = shell.ui().global::<PracticeView>().get_random().to_string();
-    let names = std::iter::once(random).chain(labels.iter().cloned()).collect();
-    shell.pick(id, index, names, at);
+    let names: Vec<String> = std::iter::once(random).chain(labels.iter().cloned()).collect();
+    let pictures = shell.practice.thumbs.open(game, part, names.len());
+    shell.pick_grid(id, index, names, at, ModelRc::from(pictures));
+}
+
+/// Make the pictures of `game`'s places for its grids, if they aren't (on a thread of their own; the screenshot
+/// pass's at once).
+fn want_pictures(shell: &mut Shell, game: &str) {
+    let Some(ready) = shell.games.ready(game) else { return };
+    let now = shell.still;
+    shell.practice.thumbs.want(game, ready.content(), &ready.loaded.graphics, now);
 }
 
 /// A build as a card says it: its name, its version's tag and its navi's name in the language shown.
@@ -1007,6 +1024,7 @@ impl Practice {
         let name = |part: usize| self.place[part].checked_sub(1).and_then(|at| self.place_labels[part].get(at)).map(|n| n.as_str().into()).unwrap_or_default();
         view.set_arena_shown(name(ARENA));
         view.set_background_shown(name(BACKGROUND));
+        self.tell_pictures(shell, game);
         view.set_music_shown(crate::music::shown(shell).into());
         let card = |build: Option<&Listed>| match build {
             Some(Listed { name, side: Some(side), .. }) => shown(shell, game, ready, &Build { name: name.clone(), side: side.clone() }),
@@ -1028,6 +1046,15 @@ impl Practice {
         if let (None | Some("start"), Some(which)) = (on.as_deref(), wrong.iter().position(Option::is_some)) {
             shell.nav.focus(if which == 1 { "dummys" } else { "yours" }, 0);
         }
+    }
+
+    /// The pictures of the arena and the background chosen, as their rows show them (none: Random, or not drawn
+    /// yet: told again as they come).
+    fn tell_pictures(&self, shell: &Shell, game: &str) {
+        let ui = shell.ui();
+        let view = ui.global::<PracticeView>();
+        view.set_arena_picture(shell.practice.thumbs.picture(game, ARENA, self.place[ARENA]));
+        view.set_background_picture(shell.practice.thumbs.picture(game, BACKGROUND, self.place[BACKGROUND]));
     }
 
     /// The battle's music the player picked changed: as its row shows it (one pick with Play's lobby's:
@@ -1208,15 +1235,16 @@ impl Practice {
         self.play_music_after(shell, battle);
     }
 
-    /// Enter, a click or a tap on the menu's option at row `index`: Background and Music open their lists (as the
-    /// entry's rows of them), another steps on by one.
+    /// Enter, a click or a tap on the menu's option at row `index`: Arena, Background and Music open their lists
+    /// (as the entry's rows of them: Arena's and Background's grids of their pictures), another steps on by one.
     fn open_option(&mut self, shell: &mut Shell, index: i32) {
         let Some(session) = shell.practice.session.as_ref() else { return };
         let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
         match option {
-            Some(PracticeOption::Background) => {
-                let (labels, at) = (session.place_labels[BACKGROUND].clone(), session.place[BACKGROUND]);
-                open_places(shell, "menu.rows.option", index, &labels, at);
+            Some(option @ (PracticeOption::Arena | PracticeOption::Background)) => {
+                let part = if option == PracticeOption::Arena { ARENA } else { BACKGROUND };
+                let (game, labels, at) = (session.game.clone(), session.place_labels[part].clone(), session.place[part]);
+                open_places(shell, "menu.rows.option", index, &game, part, &labels, at);
             }
             Some(PracticeOption::Music) => crate::music::open(shell, "menu.rows.option", index),
             _ => self.change_option(shell, index, Change::By(1)),
@@ -1308,7 +1336,7 @@ impl Practice {
                 }
                 // (Above.)
                 PracticeOption::Music => {}
-                PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Place | PracticeOption::Battle | PracticeOption::Display => {}
+                PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Stage | PracticeOption::Options => {}
             }
             shell.save_settings();
             // (At once, on the battle as it stands behind the menu.)
@@ -1361,6 +1389,8 @@ impl Screen for Practice {
             return shell.go(ScreenId::Play);
         }
         shell.practice.visit.arrive();
+        // (The grids' pictures, made while the entry shows: by the time a grid opens they are there.)
+        want_pictures(shell, &game);
         self.tell(shell, &game, &ready);
         // The music the session will start plays here in place of the title music, from its start. (Shown again for
         // another game, the pick the visit's still, the same song goes on where it is: `Sound::set_preview`.)
@@ -1392,11 +1422,13 @@ impl Screen for Practice {
                 let options = self.builds.iter().map(|b| b.name.clone()).collect();
                 shell.pick(id, 0, options, self.chosen[which]);
             }
-            // (A place row steps on, as the menu's rows do.)
-            "arena" => self.step_place(shell, ARENA, 1),
-            // (Background and Music open their lists, as the build rows do: the user, "background and music
-            // selectors should both be dropdowns like they are in the practice screen".)
-            "background" if !self.builds.is_empty() => open_places(shell, id, 0, &self.place_labels[BACKGROUND], self.place[BACKGROUND]),
+            // (Arena and Background open their grids, Music its list, as the build rows do: the user, "arena selector
+            // should be like a dropdown that shows previews of all arenas. background dropdown should be similar".)
+            "arena" | "background" if !self.builds.is_empty() => {
+                let part = if id == "arena" { ARENA } else { BACKGROUND };
+                let game = self.game.clone().unwrap_or_default();
+                open_places(shell, id, 0, &game, part, &self.place_labels[part], self.place[part]);
+            }
             "music" if !self.builds.is_empty() => crate::music::open(shell, id, 0),
             "start" => self.start_practice(shell),
             "menu.resume" | "menu.restart" | "menu.exit" => match menu_button(id) {
@@ -1447,8 +1479,8 @@ impl Screen for Practice {
             crate::music::choose(shell, choice);
             self.tell_music(shell);
         }
-        if id == "background" {
-            self.set_place(shell, BACKGROUND, choice.max(0) as usize);
+        if id == "arena" || id == "background" {
+            self.set_place(shell, if id == "arena" { ARENA } else { BACKGROUND }, choice.max(0) as usize);
         }
         if id == "menu.rows.option" {
             self.change_option(shell, index, Change::To(choice.max(0) as usize));
@@ -1562,6 +1594,15 @@ impl Screen for Practice {
         }
         // A screen other than Practice and Builds ends the visit.
         shell.practice.visit.shown(shell.screen());
+        // The places' pictures made since the last frame: in the grid open, and the rows of the ones chosen.
+        if shell.practice.thumbs.poll() {
+            if let Some(game) = self.game.clone() {
+                self.tell_pictures(shell, &game);
+            }
+            if let Some(session) = shell.practice.session.as_ref() {
+                tell_rows(shell, session, &[PracticeOption::Arena, PracticeOption::Background]);
+            }
+        }
         // The entry's Music row's pick, once it has stayed a moment, in place of the music playing; and the entry's
         // music again after a session. (The screenshot pass doesn't wait.)
         if self.music_changed.is_some_and(|at| (shell.still && !shell.probe_motion) || now.saturating_duration_since(at) >= MUSIC_AFTER)
@@ -1714,11 +1755,11 @@ mod tests {
             (rows.len(), rows.get(at + 1).copied())
         };
         let (none, one) = (ROWS.len() - 1, ROWS.len());
-        assert_eq!(under(InFight::StandsStill), (none, Some(PracticeOption::Place)));
+        assert_eq!(under(InFight::StandsStill), (none, Some(PracticeOption::Stage)));
         assert!(!shown_rows(InFight::StandsStill, true).contains(&PracticeOption::Music), "beside a waiting invite");
-        assert_eq!(under(InFight::MovesAround), (none, Some(PracticeOption::Place)));
+        assert_eq!(under(InFight::MovesAround), (none, Some(PracticeOption::Stage)));
         assert_eq!(under(InFight::Ai), (one, Some(PracticeOption::Level)));
-        assert_eq!(under(InFight::SecondPad), (none, Some(PracticeOption::Place)));
+        assert_eq!(under(InFight::SecondPad), (none, Some(PracticeOption::Stage)));
         assert_eq!(dummy(InFight::Ai).on_custom_screen, OnCustomScreen::Ai);
         assert_eq!(dummy(InFight::StandsStill), Opponent::default());
     }

@@ -26,6 +26,7 @@ pub mod present;
 pub mod render;
 pub mod smooth;
 pub mod stage;
+pub mod still;
 pub mod strings;
 pub mod textlayer;
 pub mod vfont;
