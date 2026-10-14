@@ -360,7 +360,11 @@ Each is settled unless the user changes it.
       "instead of JACK IN! {navi}, EXECUTE! it should be BATTLE ROUTINE, SET! EXECUTE!". So it is
       "BATTLE ROUTINE, SET! EXECUTE!" in English; in Japanese "バトルオペレーション、セット！イン！", the Japanese
       games' own call for the moment (the operator's "バトルオペレーション、セット！" and the navi's "イン！"),
-      which was chosen here: the user gave the English alone. Its sound: "it shouldn't be the transmission sound,
+      which was chosen here: the user gave the English alone. Then: "BATTLE ROUTINE, SET! EXECUTE! should
+      appear in sequence rather than all at once". So the call stamps first and the answer about 0.4 s after it,
+      on one line (on a phone, one over the other), each in its place from the start; the telop has a clock of its
+      own (the theme's `telop`, 1000 ms), outlasting the set piece over the battle's first frames, and fades at
+      its end. Its sound: "it shouldn't be the transmission sound,
       it should be the encounter sound". It is the game's own encounter sound, the one every battle's start plays
       in the original as the screen breaks into it (song 0x78 in all three games: EXE6's `SOUND_BATTLE_START` of
       `gameState_8005BC8`, EXE5's 0x080054F6, EXE4's 0x08005490 and its two siblings), a sound effect of 0.7 s on
@@ -498,7 +502,7 @@ What moves:
 | the NaviCust | a piece picked up lifts (to 1.06, with a shadow), turns as a quarter turn, and drops with a pulse along its cells; the command line's arrows pulse; a bug that appears pulses purple once |
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps |
-| entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it while streaks in the cursor's color rush in toward the middle and the field rushes, a bright flash, and the battle shows; BATTLE ROUTINE, SET! EXECUTE! stamps in on a band across the middle and fades; the game's own encounter sound plays. With Reduce motion the ground and the telop fade (160) |
+| entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it while streaks in the cursor's color rush in toward the middle and the field rushes, a bright flash, and the battle shows; BATTLE ROUTINE, SET! stamps in on a band across the middle, EXECUTE! after it (400), and the band fades at 1000; the game's own encounter sound plays. With Reduce motion the ground and the telop fade (160) |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |
@@ -730,7 +734,8 @@ Each is in the mockups under the same name.
 ### Replays
 - **The list:** All, Online (and Training only if training is ever recorded) and a search by opponent; rows of the
   date, the opponent, the score, the length; beside it the selected replay with WATCH, EXPORT VIDEO, SHOW FILE and,
-  apart, DELETE. No build names (§2.16).
+  apart, DELETE. No build names (§2.16). A click chooses a replay and doesn't start it (the user: "clicking on a replay
+  shouldn't automatically start it"); WATCH, Enter or the pad's A does.
 - **The viewer:** the picture at three times over a transport: the time, a bar to click or drag with a mark where
   each round begins, the length; then to the round's start, a frame back, play or pause, a frame on, the next
   round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, Left and Right seek 5 seconds, comma and

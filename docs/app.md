@@ -1729,8 +1729,9 @@ themselves, so a screen built from them moves without its author writing an anim
 - a battle that had its cards jacks in as it begins (`JackIn` in shell.slint, `Shell::jack_in`; online,
   practice and a replay's viewer alike): over its first frames, for the set piece's time, the ground covers it
   while 28 streaks in the cursor's color rush in toward the middle and the field rushes again, a flash, and the
-  battle shows; "BATTLE ROUTINE, SET! EXECUTE!" stamps in on a band across the middle (in Japanese
-  "バトルオペレーション、セット！イン！") and fades; the game's encounter sound plays (§1). The battle starts when it
+  battle shows; "BATTLE ROUTINE, SET!" stamps in on a band across the middle and "EXECUTE!" beside it 0.4 s
+  later (in Japanese "バトルオペレーション、セット！" and "イン！"; on a phone one over the other), on the telop's
+  own clock (`Theme.telop`, 1000 ms, past the set piece's end), and the band fades; the game's encounter sound plays (§1). The battle starts when it
   would have and runs under it: it is drawn over the battle and takes no input, and nothing of it reaches the
   simulation, so an online match's two sides start in lockstep as before. With Reduce motion the ground and the
   telop fade over `calm-fade` (a `Pulse` that is `calm` runs with motion off); in the screenshot pass
@@ -2782,8 +2783,8 @@ only where even that doesn't.
 **The list** is the selected game's replays, newest first: the date, the opponent (the other player's name;
 `P1` or `P2` where the replay has none), the score as the recorder's (`W 2–1`, `W 10–9` in a set first to ten,
 which the score's column holds; the rounds alone where the set wasn't finished) and the length, each in a column of its own width. The search is by opponent. The filter
-between All and Online is there only while the game has replays of both kinds. Enter on a row watches it, E
-exports it, Delete asks once (Cancel focused) and removes the file. On a phone a tap on a row opens the
+between All and Online is there only while the game has replays of both kinds. Enter on a row watches it (a click chooses it
+and no more: WATCH starts it), E exports it, Delete asks once (Cancel focused) and removes the file. On a phone a tap on a row opens the
 selected replay as a sheet from the bottom, with the four actions one under the other. No build's name is
 anywhere: a replay has none.
 
