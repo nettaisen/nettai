@@ -412,7 +412,7 @@ impl Screen for Builds {
                 let name = store::new_name(&ui.global::<BuildsView>().get_new_name(), &self.taken());
                 self.naming = Some(Naming::New { name, version: 0 });
                 self.show_dialog(shell);
-                shell.nav.open("name.", Key::new("name.name", 0));
+                shell.nav.open_editing("name.", Key::new("name.name", 0));
             }
             "import" => {
                 let kind = shell.ui().global::<BuildsView>().get_save_files().to_string();
@@ -441,7 +441,7 @@ impl Screen for Builds {
                 let Some((_, build)) = self.chosen_build() else { return };
                 self.naming = Some(Naming::Rename { name: build.name.clone() });
                 self.show_dialog(shell);
-                shell.nav.open("name.", Key::new("name.name", 0));
+                shell.nav.open_editing("name.", Key::new("name.name", 0));
             }
             "delete" | "one.delete" => self.ask_delete(shell),
             "name.confirm" => {
