@@ -85,7 +85,7 @@ export global PracticeView {
     // The two builds' names, as the menu's line under its title says them.
     in property <string> session-yours;
     in property <string> session-dummys;
-    // The menu's rows, and whether it has CHANGE BUILDS and QUIT TO MENU (a session Practice started itself).
+    // The menu's rows, and whether it has EXIT (a session Practice started itself).
     in property <[PracticeRow]> rows;
     in property <bool> leave;
     // The input display: shown, and the buttons each side holds (the GBA's bits).
@@ -662,10 +662,10 @@ component MenuRow inherits Rectangle {
 
 // The practice menu: Start or Esc in a practice battle. The battle is paused behind it, the dummy in view at the right.
 export component PracticeMenu inherits MenuOverlay {
-    // RESUME and RESTART, and under them the ways out of a session Practice started itself; on a phone one
-    // over the other.
+    // RESUME and RESTART side by side, and under them EXIT, the way out of a session Practice started itself, as
+    // wide as the two; on a phone one over the other.
     property <length> button-width: Theme.phone ? root.inner-width : (root.inner-width - 8px) / 2;
-    property <length> buttons-height: Theme.phone ? (PracticeView.leave ? 184px : 88px) : (PracticeView.leave ? 88px : 40px);
+    property <length> buttons-height: Theme.phone ? (PracticeView.leave ? 136px : 88px) : (PracticeView.leave ? 88px : 40px);
     property <length> buttons-y: root.inner-height - root.buttons-height;
     title: @tr("PRACTICE");
     note: @tr("{} vs {}", PracticeView.session-yours, PracticeView.session-dummys);
@@ -709,24 +709,15 @@ export component PracticeMenu inherits MenuOverlay {
         text: @tr("RESTART");
     }
 
+    // (Back to Practice's entry: docs/design/app-ui.md §2.40.)
     Button {
         x: 0;
         y: root.buttons-y + (Theme.phone ? 96px : 48px);
-        width: root.button-width;
+        width: root.inner-width;
         visible: PracticeView.leave;
         enabled: PracticeView.leave;
-        nav: "menu.change";
-        text: @tr("CHANGE BUILDS");
-    }
-
-    Button {
-        x: Theme.phone ? 0px : root.button-width + 8px;
-        y: root.buttons-y + (Theme.phone ? 144px : 48px);
-        width: root.button-width;
-        visible: PracticeView.leave;
-        enabled: PracticeView.leave;
-        nav: "menu.quit";
-        text: @tr("QUIT TO MENU");
+        nav: "menu.exit";
+        text: @tr("EXIT");
         kind: ButtonKind.ghost;
     }
 }

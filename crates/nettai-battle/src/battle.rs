@@ -1321,13 +1321,7 @@ impl Battle {
             self.rng.next_positive();
             self.paused = true;
             self.gauge.rate = CustomGauge::rate_for(self.stats[0].gauge_speed, self.stats[1].gauge_speed);
-            let link = self.setup.settings.effects & effects::LINK != 0;
-            let music = if link {
-                Some(self.roles().link_battle_music(self.setup.settings.effects & effects::SET != 0))
-            } else {
-                self.content.stage(self.setup.settings.stage).music
-            };
-            if let Some(music) = music {
+            if let Some(music) = self.setup.settings.music(&self.content) {
                 self.play_sound(SoundCue::Music(music));
             }
             self.round.init = 4;
