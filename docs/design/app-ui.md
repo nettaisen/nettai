@@ -289,7 +289,7 @@ are the defaults; each is easy to reverse and is listed for review.
 |---|---|
 | Typefaces | Headings, buttons and labels in Chakra Petch; all other text in Murecho; codes and numbers in M PLUS 1 Code. (Japanese headings were Murecho's until the user chose M PLUS 1 for them: §2.23) |
 | A game's look, where the user said nothing (§2.23) | On a change of game the panels' and the text's colors cross-fade over the sweep's time (they don't change at the moving edge, which would mean drawing every screen twice); no art from the packs in the header |
-| A build's version | Fixed when the build is made, as a save's is ("It can't be changed later") |
+| A build's version | Fixed when the build is made, as a save's is ("It can't be changed later"). Reversed by §2.41: it is switched on the Navi tab |
 | Netplay rounds | A single battle or best of 3, a shared setting either player can change (since §2.34: First to, 1 to 10) |
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
 | What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
