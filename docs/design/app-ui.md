@@ -503,6 +503,10 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | a game's pack couldn't be extracted | BN6's data couldn't be extracted. Details are in the log file. |
 | anything else | Something went wrong. Details are in the log file. |
 
+A replay that fails as it is opened, or whose engine stops as it plays, is its line's dialog over the replays list
+(the viewer is left for it); the replay's box there shows its own still or nothing, never another battle's picture
+(the main menu's reel was what the user saw under the error).
+
 ## 8. Behind the screens
 
 1. **Gamepads** through `https://github.com/tangobattle/gamepad-facade` (a git dependency); gilrs goes.

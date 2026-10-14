@@ -250,12 +250,18 @@ impl Shell {
                 }
             },
             // A replay's viewer is its screen's: the cards go, and the screen shows it.
+            // (Its set is started again there: an engine that stops is a failure, not a crash.)
             Play::Watch(replay, side) => {
                 shell.set_versus(false);
-                return match preload.viewer(&replay, side) {
-                    Ok(viewer) => Some((start.owner, BattleEvent::Watching(Box::new(viewer)))),
-                    Err(refused) => {
+                return match nettai_frontend::session::in_engine(|| preload.viewer(&replay, side)) {
+                    Ok(Ok(viewer)) => Some((start.owner, BattleEvent::Watching(Box::new(viewer)))),
+                    Ok(Err(refused)) => {
                         self.fail(UserError::of_refusal("opening a replay", &refused));
+                        None
+                    }
+                    Err(panic) => {
+                        crate::errors::log("opening a replay", &format_args!("the engine stopped starting its set: {}", nettai_frontend::session::panic_message(panic.as_ref())));
+                        self.fail(UserError::Other);
                         None
                     }
                 };
@@ -357,6 +363,11 @@ impl Shell {
         self.nav.close("menu.");
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
+        // Its picture is nobody's now: taken away at once (a screen that leaves next keeps what it showed).
+        self.showing.reset();
+        if let Some(shown) = self.showing.tell() {
+            shell.set_picture_shown(shown);
+        }
         shell.set_battle(BattleKind::None);
         shell.set_battle_menu(false);
         shell.set_connection_shown(false);
@@ -461,20 +472,18 @@ impl Shell {
         self.own_ticks = Some(self.own_ticks.unwrap_or(0) + ticks);
     }
 
-    /// How the picture fits the room the screen's `Picture` has, if there is one; `surface` is to be presented
-    /// anew if the window's texture holds another's picture.
+    /// How the picture fits the room the screen's `Picture` has, if there is one; `surface` is shown this frame
+    /// (`stage::Showing`), and is to be presented anew if the window's texture holds another's picture. None
+    /// while a screen leaves: the room is still the leaving one's, and its `Picture` keeps what it showed.
     fn room_fit(&mut self, surface: &mut Surface) -> Option<stage::Fit> {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let factor = ui.window().scale_factor();
         let (width, height) = (shell.get_picture_room_width() * factor, shell.get_picture_room_height() * factor);
-        if width < 1.0 || height < 1.0 {
+        if width < 1.0 || height < 1.0 || self.leaving() {
             return None;
         }
-        if self.shown_stage != surface.id {
-            self.shown_stage = surface.id;
-            surface.refresh();
-        }
+        self.showing.show(surface);
         Some(self.fit(width, height))
     }
 
