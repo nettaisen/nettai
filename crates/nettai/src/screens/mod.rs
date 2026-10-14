@@ -61,6 +61,22 @@ impl ScreenId {
     }
 }
 
+/// What a screen that opens another for something tells it by (`Shell::tell`): this, and its own name
+/// (`ScreenId::name`). Play is opened so by Practice's CREATE A BUILD (`play::open`), Builds' editor by Play's EDIT
+/// and Practice's (`builds::open`); each Back goes back to the screen that opened it.
+const OPENED_BY: &str = "opened-by.";
+
+/// The tag screen `from` opens another by.
+pub fn opened_tag(from: ScreenId) -> String {
+    format!("{OPENED_BY}{}", from.name())
+}
+
+/// The screen a tag of [`opened_tag`]'s names, if it is one.
+pub fn opened_by(tag: &str) -> Option<ScreenId> {
+    let name = tag.strip_prefix(OPENED_BY)?;
+    ScreenId::ALL.into_iter().find(|s| s.name() == name)
+}
+
 /// Every screen's module, in [`ScreenId::ALL`]'s order.
 pub fn all() -> Vec<Box<dyn Screen>> {
     vec![
@@ -157,4 +173,23 @@ pub trait Screen {
     /// Every frame, after the battle's ticks: what they made to send goes out (a lobby polled, its outgoing
     /// datagrams sent). With `frame` this is the netplay library's one loop: feed, advance, poll, send.
     fn frame_end(&mut self, _shell: &mut Shell, _now: Instant) {}
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A screen that opens another is heard by its own name, and Back goes back to it; the screens' own dialogs'
+    /// tags are none of these.
+    #[test]
+    fn the_screen_that_opened_another_is_heard_by_its_name() {
+        for screen in ScreenId::ALL {
+            assert_eq!(opened_by(&opened_tag(screen)), Some(screen));
+        }
+        assert_eq!(opened_by("opened-by.practice"), Some(ScreenId::Practice));
+        assert_eq!(opened_by("opened-by.play"), Some(ScreenId::Play));
+        assert_eq!(opened_by("play.delete"), None);
+        assert_eq!(opened_by("practice"), None);
+        assert_eq!(opened_by("opened-by.nowhere"), None);
+    }
 }

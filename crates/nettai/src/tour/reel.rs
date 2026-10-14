@@ -20,7 +20,7 @@
 //! demo battles' seeds fixed), but with motion on and the battles playing: the main menu and its demo battle
 //! through a change of game to each and back; Practice (the entry, the music stepped to a battle theme, START,
 //! the practice menu setting the dummy to fight at Hard, a fight in which the player's side presses by itself);
-//! Builds (the list; the editor's Folder, NaviCust and Patch cards tabs in EXE6, the Auto battle tab in EXE5);
+//! the builds (Play's; the editor's Folder, NaviCust and Patch cards tabs in EXE6, the Auto battle tab in EXE5);
 //! Play (an invite, a second player joining, the lobby, a few seconds of their match); Replays (the list, a
 //! replay watched, a seek and a speed change); About. `reel.txt` in the pass's folder says what was written.
 
@@ -578,12 +578,12 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
             app.shell.keys.held = 0;
             crate::screens::practice::end(&mut app.shell);
             crate::tour::practice::forget(&mut app);
-            app.go_now(ScreenId::Builds);
+            app.go_now(ScreenId::Play);
             app.shell.nav.show_cursor(true, false);
         }),
     );
 
-    // 3. Builds: the list, a build's overview; the editor's Folder tab, a chip put in from the library; the
+    // 3. The builds: Play's, a build's overview; the editor's Folder tab, a chip put in from the library; the
     // NaviCust, a program taken and put down; the patch cards, three put in. Then EXE5's builds, and the Auto
     // battle tab, three places filled.
     add(1200, focus("builds", 1));
@@ -591,6 +591,7 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(500, Box::new(|_, app, _| {
         let mut app = app.borrow_mut();
         app.shell.nav.focus("builds", 0);
+        app.shell.nav.focus("edit", 0);
         app.act(Action::Confirm);
     }));
     add(900, crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::Folder));
@@ -625,6 +626,7 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(1500, Box::new(|_, app, _| {
         let mut app = app.borrow_mut();
         app.shell.nav.focus("builds", 0);
+        app.shell.nav.focus("edit", 0);
         app.act(Action::Confirm);
     }));
     add(800, crate::tour::build_tabs::to_tab(nettai_ui::EditorTab::AutoBattle));

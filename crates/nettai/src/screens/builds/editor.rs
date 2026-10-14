@@ -355,11 +355,6 @@ impl Editor {
         editor
     }
 
-    /// The file the build is kept in.
-    pub fn path(&self) -> &std::path::Path {
-        &self.draft.path
-    }
-
     /// Whether tab `i` can be gone to: one that is the game's own navi's alone can't while the build's navi
     /// is another.
     fn enabled(&self, i: usize) -> bool {

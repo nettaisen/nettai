@@ -34,6 +34,8 @@ pub enum UserError {
     /// This player's build breaks a rule: `reason` is the rule's own sentence, from the catalogs ("2 Giga
     /// chips, limit 1"), where the app's own check found it; none where the other side refused it.
     BuildUnusable { reason: Option<String> },
+    /// There is no build of the game to play with.
+    NoBuild,
     /// The opponent's build breaks a rule.
     TheirBuildUnusable,
     /// The opponent left the lobby or the match.
@@ -88,6 +90,7 @@ impl UserError {
             UserError::OtherGame { game } => (ErrorKind::OtherGame, game),
             UserError::BuildUnusable { reason: Some(reason) } => (ErrorKind::BuildUnusable, reason),
             UserError::BuildUnusable { reason: None } => (ErrorKind::BuildRefused, ""),
+            UserError::NoBuild => (ErrorKind::NoBuild, ""),
             UserError::TheirBuildUnusable => (ErrorKind::TheirBuildUnusable, ""),
             UserError::OpponentLeft => (ErrorKind::OpponentLeft, ""),
             UserError::NoAnswer => (ErrorKind::NoAnswer, ""),

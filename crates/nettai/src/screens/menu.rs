@@ -1,4 +1,4 @@
-//! The main menu (docs/design/app-ui.md §6): PLAY, PRACTICE, BUILDS, REPLAYS, Settings, Exit, and the demo reel.
+//! The main menu (docs/design/app-ui.md §6): PLAY, PRACTICE, REPLAYS, Settings, About, Exit, and the demo reel.
 //!
 //! The reel is a battle of the selected game playing itself: the player's latest replays of the game, one after
 //! another (`crate::replays::Reel`: found and read on a thread as the menu shows; one that doesn't play here
@@ -91,7 +91,6 @@ impl Screen for Menu {
         match id {
             "play" => shell.go(ScreenId::Play),
             "practice" => shell.go(ScreenId::Practice),
-            "builds" => shell.go(ScreenId::Builds),
             "replays" => shell.go(ScreenId::Replays),
             "settings" => shell.go(ScreenId::Settings),
             "about" => shell.go(ScreenId::About),

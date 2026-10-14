@@ -212,6 +212,8 @@ export enum ErrorKind {
     other-game,
     build-unusable,
     build-refused,
+    // There is no build of the game to play with.
+    no-build,
     their-build-unusable,
     opponent-left,
     no-answer,
@@ -261,6 +263,9 @@ export global Errors {
         }
         if kind == ErrorKind.build-refused {
             return @tr("This build can't be used.");
+        }
+        if kind == ErrorKind.no-build {
+            return @tr("Make a build first.");
         }
         if kind == ErrorKind.their-build-unusable {
             return @tr("Your opponent's build can't be used.");
@@ -344,6 +349,9 @@ export global Errors {
         if kind == ErrorKind.build-refused {
             return @tr("This build can't be used");
         }
+        if kind == ErrorKind.no-build {
+            return @tr("No build");
+        }
         if kind == ErrorKind.their-build-unusable {
             return @tr("Your opponent's build can't be used");
         }
@@ -424,6 +432,9 @@ export global Errors {
         }
         if kind == ErrorKind.build-refused {
             return "";
+        }
+        if kind == ErrorKind.no-build {
+            return @tr("Make a build first.");
         }
         if kind == ErrorKind.their-build-unusable {
             return "";

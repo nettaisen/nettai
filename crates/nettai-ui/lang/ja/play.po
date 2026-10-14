@@ -4,13 +4,54 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
 
-# ---- The builds, and the row that makes a link ----
+# ---- The builds, what is done with them, and the row that makes a link ----
 
-msgid "YOUR BUILD"
-msgstr "使う構築"
+msgid "NEW BUILD"
+msgstr "新規構築"
 
-msgid "CREATE A BUILD"
-msgstr "構築を作る"
+msgid "IMPORT SAVE…"
+msgstr "セーブを読み込む…"
+
+msgid "EDIT"
+msgstr "編集"
+
+msgid "DUPLICATE"
+msgstr "複製"
+
+msgid "RENAME"
+msgstr "名前を変更"
+
+msgid "DELETE"
+msgstr "削除"
+
+msgid "Delete"
+msgstr "削除"
+
+msgid "Delete {}?"
+msgstr "{}を削除しますか？"
+
+msgid "Save files"
+msgstr "セーブファイル"
+
+# A new build, and a build's new name.
+
+msgid "New build"
+msgstr "新しい構築"
+
+msgid "NAME"
+msgstr "名前"
+
+msgid "VERSION"
+msgstr "バージョン"
+
+# After what a version sets, in the game's own words ("Sets the Crosses and Giga chips.").
+msgid "{} It can be switched later in the editor."
+msgstr "{} あとから編集画面で切り替えられます。"
+
+msgid "CREATE BUILD"
+msgstr "構築を作成"
+
+# The row.
 
 msgid "CREATE INVITE"
 msgstr "招待を作る"
@@ -164,6 +205,9 @@ msgstr "対戦メニューにもどる"
 
 msgid "BACK TO MATCH"
 msgstr "対戦にもどる"
+
+msgid "YOUR BUILD"
+msgstr "使う構築"
 
 msgid "THEIR BUILD"
 msgstr "相手の構築"

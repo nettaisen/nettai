@@ -14,7 +14,7 @@ use crate::input::{Action, KeyPress};
 use nettai_battle::content::ChipClass;
 use crate::screens::ScreenId;
 use crate::shell::App;
-use nettai_ui::{BuildsPage, BuildsView, EditorTab, NavicustView};
+use nettai_ui::{BuildsView, EditorTab, NavicustView};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, Model};
 use std::cell::RefCell;
@@ -25,12 +25,12 @@ type Shot<'a> = &'a dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair);
 /// The walk is on tab `tab` of the editor; if it isn't, the report says so (as a text the pass counts against the
 /// picture).
 fn on_tab(tab: EditorTab, name: &'static str) -> Step {
-    Box::new(move |ui, _, tour| {
+    Box::new(move |ui, app, tour| {
         if tour.passing.get() {
             return;
         }
         let view = ui.global::<BuildsView>();
-        if view.get_page() != BuildsPage::Editor || view.get_shown() != tab {
+        if app.borrow().shell.screen() != ScreenId::Builds || view.get_shown() != tab {
             ui.global::<nettai_ui::Audit>().invoke_clipped(format!("(the walk isn't on the editor's {name} tab: this picture is of something else)").into());
         }
     })
@@ -69,47 +69,23 @@ fn screen(f: impl Fn(&mut dyn crate::screens::Screen, &mut crate::shell::Shell) 
         }
     })
 }
-/// A key pressed on the Builds screen, as the window's keys reach it (before the menus read it).
+/// A key pressed on the editor, as the window's keys reach it (before the menus read it).
 fn key(code: KeyCode, text: &'static str) -> Step {
     screen(move |s, shell| {
         s.key(shell, &KeyPress { code, text: Some(text.into()), repeat: false, shift: false });
     })
 }
 
-/// Out of whatever of the Builds screen is open, back to its list.
+/// Out of whatever of the builds is open, back to Play's builds.
 fn leave(app: &mut App) {
-    for _ in 0..4 {
-        if app.shell.screen() == ScreenId::Builds {
-            app.with_screen(ScreenId::Builds, |s, shell| {
-                s.back(shell);
-            });
-        }
-    }
+    super::builds::leave(app);
 }
 
-/// A build of the game's first version, made through the screen in an emptied builds folder, and open in the
-/// editor.
-fn open_build(add: &mut dyn FnMut(u64, Step), phone: bool) {
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            if let Some(game) = app.shell.game().map(str::to_string) {
-                let _ = std::fs::remove_dir_all(crate::builds::store::folder(&game));
-            }
-            leave(&mut app);
-            app.go_now(ScreenId::Builds);
-            app.shell.nav.show_cursor(true, false);
-        }),
-    );
-    add(SETTLE, press("new", 0));
-    add(SETTLE, screen(|s, shell| s.edit(shell, "name.name", 0, "Tab tour", true)));
-    add(SETTLE, screen(|s, shell| s.choose(shell, "name.version", 0, 0)));
-    add(SETTLE, press("name.confirm", 0));
-    add(SETTLE, press("builds", 0));
-    if phone {
-        add(SETTLE, press("one.edit", 0));
-    }
+/// A build of the game's first version, made through Play in an emptied builds folder, and open in the editor.
+fn open_build(add: &mut dyn FnMut(u64, Step)) {
+    add(SETTLE, super::builds::fresh());
+    super::builds::make(add, "Tab tour", 0);
+    add(SETTLE, press("edit", 0));
 }
 
 /// The editor's tab of kind `tab`, by its place in the bar. A tab the game hasn't is passed by: the steps after
@@ -912,10 +888,10 @@ fn to_held(class: ChipClass) -> Step {
 }
 
 /// A build whose auto battle data holds, in each list the rules hold to one class of chip, a chip of another (as a
-/// build file or a save made by hand may): the Builds list counts its problems, and in the editor its tab is
+/// build file or a save made by hand may): Play's list counts its problems, and in the editor its tab is
 /// flagged, the places are marked, and the strip says on one why. (A new build of the game's first version, beside
 /// the walk's.)
-fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
+fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     const NAME: &str = "Wrong places";
     add(
         SETTLE,
@@ -936,16 +912,12 @@ fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
             }
             let _ = store::write(&store::new_path(&kit.game, NAME), &content, &kit.game, &build);
             leave(&mut app);
-            app.go_now(ScreenId::Builds);
-            let at = store::list(&kit.game).iter().position(|l| l.name == NAME).unwrap_or_default();
-            app.shell.nav.focus("builds", at as i32);
+            app.go_now(ScreenId::Play);
+            super::builds::choose(&mut app, NAME);
         }),
     );
     shot(add, "tabs-auto-wrong-list", Pair::None);
-    add(SETTLE, act(Action::Confirm));
-    if phone {
-        add(SETTLE, press("one.edit", 0));
-    }
+    add(SETTLE, press("edit", 0));
     add(SETTLE, to_tab(EditorTab::AutoBattle));
     add(
         SETTLE,
@@ -1536,7 +1508,7 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
 /// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
 /// of a pair).
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
-    open_build(add, size == "phone");
+    open_build(add);
     navicust(add, shot);
     if size == "desktop" {
         carries(add, shot);
@@ -1548,7 +1520,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
         clicks(add, shot);
     }
     drags(add, shot, size == "phone");
-    wrong_classes(add, shot, size == "phone");
+    wrong_classes(add, shot);
     add(SETTLE, end());
 }
 
@@ -1556,7 +1528,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
 /// shot is taken, and the trigger): a piece taken up (it lifts), turned (a quarter turn), put down (a pulse along
 /// its cells), refused (it shakes), and a bug appearing (it pulses purple).
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
-    open_build(add, false);
+    open_build(add);
     add(SETTLE, to_tab(EditorTab::Navicust));
     add(SETTLE, to_tab(EditorTab::Folder));
     // An entry dragged three rows down: it lifts under the pointer, those between slide up to leave a gap where it

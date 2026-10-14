@@ -19,9 +19,6 @@ msgstr "対戦"
 msgid "PRACTICE"
 msgstr "練習"
 
-msgid "BUILDS"
-msgstr "構築"
-
 msgid "REPLAYS"
 msgstr "リプレイ"
 
@@ -124,6 +121,9 @@ msgstr "この構築は使えません: {}。"
 msgid "This build can't be used"
 msgstr "この構築は使えません"
 
+msgid "No build"
+msgstr "構築がありません"
+
 msgid "{}."
 msgstr "{}。"
 
@@ -147,6 +147,9 @@ msgstr "同じゲームを選んでください。"
 
 msgid "This build can't be used."
 msgstr "この構築は使えません。"
+
+msgid "Make a build first."
+msgstr "先に構築を作ってください。"
 
 msgid "Your opponent's build can't be used."
 msgstr "相手の構築は使えません。"

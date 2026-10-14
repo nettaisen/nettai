@@ -395,14 +395,12 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "menu-pointer", Pair::None);
 
     // The screens to be built.
-    for (name, to) in [("practice", ScreenId::Practice), ("builds", ScreenId::Builds)] {
-        add(SETTLE, go(to));
-        shot(&mut add, name, Pair::None);
-    }
+    add(SETTLE, go(ScreenId::Practice));
+    shot(&mut add, "practice", Pair::None);
     taking.set(walks("practice"));
     practice::steps(&mut add, lang, size);
 
-    // Builds: the list, its dialogs, and the editor's tabs.
+    // The builds: Play's, their dialogs, and the editor's tabs.
     taking.set(walks("builds"));
     builds::steps(&mut add, &shot, lang, size);
     taking.set(walks("build-tabs"));
