@@ -64,7 +64,8 @@ export global AutoBattleView {
     // The cursor is on the library's chip that the place being filled holds: Confirm takes it out again.
     in property <bool> on-placed;
     in property <bool> sheet;
-    // The place being dragged, as it shows (`Drag`), and the place a drag let go was refused at, counted: it shakes.
+    // The place being dragged, as it shows (`Drag`; a library's chip dragged in, as a place would show it), and the
+    // place a drag let go was refused at, counted: it shakes.
     in property <PlaceLine> lifted;
     in property <int> refused-place: -1;
     // How many of the places hold a chip, the note of its library row.
@@ -74,11 +75,13 @@ export global AutoBattleView {
 }
 
 // A place being dragged (`Drag`): where it would land (`to`, a place), and whether it trades places with what is
-// there (another list's place) or the places between shift (its own list's).
+// there (another list's place) or the places between shift (its own list's). A library's chip dragged in
+// (`filling`) takes the place of what the place it would land in holds, none shifting.
 global PlaceDrag {
     out property <bool> on: Drag.on && Drag.list == "places.";
-    out property <int> to: self.on ? Drag.to : -1;
-    out property <bool> shifting: self.to >= 0 && !Drag.swap;
+    out property <bool> filling: Drag.on && Drag.list == "lib.rows";
+    out property <int> to: self.on || self.filling ? Drag.to : -1;
+    out property <bool> shifting: self.on && self.to >= 0 && !Drag.swap;
     // Which way place `place` shifts while one is dragged in its list: to the place before it (-1), after (1), or
     // none.
     public pure function step(place: int) -> int {
@@ -127,7 +130,7 @@ component PlaceView inherits Rectangle {
         chip: root.line.chip;
         number: root.number;
         chosen: root.chosen;
-        hover: hit.has-hover && !PlaceDrag.on;
+        hover: hit.has-hover && !PlaceDrag.on && !PlaceDrag.filling;
         big: Theme.phone;
         animate x, y {
             duration: PlaceDrag.on ? Theme.quick : 0ms;
@@ -229,10 +232,12 @@ component AutoLibraryRowView inherits Rectangle {
         opacity: root.row-data.refused ? 0.5 : 1;
     }
 
+    // (Dragged into a place beside it, on a desktop: a phone's library is a sheet over the places.)
     touch := RowTouch {
         nav: "lib.rows";
         nav-index: root.nav-index;
         removable: true;
+        drag: Theme.phone ? "" : "lib.rows";
     }
 }
 
@@ -262,6 +267,8 @@ component ChipsPane inherits Rectangle {
         count: AutoBattleView.chips.length;
         row-height: Theme.phone ? 40px : Theme.chip-row;
         chosen: self.focused-row;
+        // (A mouse's drag on a row takes its chip into a place: the wheel scrolls.)
+        mouse-pan: Theme.phone;
         for slot in list.shown: AutoLibraryRowView {
             property <int> at: list.first + slot;
             y: self.at * list.pitch;
@@ -452,13 +459,16 @@ export component AutoBattleTab inherits Rectangle {
         }
     }
 
-    // (The place being dragged, under the pointer, and a place a drag was refused at: it shakes.)
+    // (The place being dragged, under the pointer, or a ghost of the library's chip, faint until it is over a place: a
+    // library's row is wider, and its ghost is held no farther in than its middle. And a place a drag was refused at:
+    // it shakes.)
     LiftedRow {
-        x: Drag.x - root.absolute-position.x - Drag.grab-x;
+        x: Drag.x - root.absolute-position.x - (PlaceDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
         y: Drag.y - root.absolute-position.y - Drag.grab-y;
         width: root.place-width;
         height: root.pitch - 2px;
-        visible: PlaceDrag.on;
+        visible: PlaceDrag.on || PlaceDrag.filling;
+        opacity: PlaceDrag.filling && PlaceDrag.to < 0 ? 0.7 : 1;
         big: Theme.phone;
         chip: AutoBattleView.lifted.chip;
         number: AutoBattleView.lifted.number;

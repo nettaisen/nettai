@@ -1166,6 +1166,63 @@ fn drop_on_library() -> Step {
     hand(Point::Middle("lib.rows", 0.0), Ev::Release)
 }
 
+/// The library's row a drag into the build's list takes, kept for the steps after it: its place, and what it shows
+/// (its name, and a patch card's slot).
+#[derive(Clone, Default)]
+struct Picked {
+    row: i32,
+    name: String,
+    slot: String,
+}
+
+/// The first of the library's rows `which` finds (its place, name and slot), brought into view (the focus on it), and
+/// kept in `picked`; none found, the report says so.
+fn pick(picked: &Rc<RefCell<Picked>>, which: impl Fn(&nettai_ui::AppWindow) -> Option<Picked> + 'static) -> Step {
+    let picked = picked.clone();
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(found) = which(ui) else {
+            *picked.borrow_mut() = Picked { row: -1, ..Default::default() };
+            tour.key_wrong("no library row to drag in".to_string());
+            return;
+        };
+        app.borrow_mut().shell.nav.focus("lib.rows", found.row);
+        *picked.borrow_mut() = found;
+    })
+}
+
+/// The pointer as the window has it, now, at the point `point` says (none: the report says so).
+fn hand_at(point: impl Fn(&nettai_ui::AppWindow, &App) -> Option<Point> + 'static, ev: fn(Point) -> Ev) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(at) = point(ui, &app.borrow()) else {
+            tour.key_wrong("the pointer has no place to go".to_string());
+            return;
+        };
+        hand(at, ev)(ui, app, tour)
+    })
+}
+
+/// The library's row `picked` pressed and dragged to `to`, held there: `hand_at(to, Ev::Release)` lets it go.
+fn drag_in(add: &mut dyn FnMut(u64, Step), picked: &Rc<RefCell<Picked>>, to: fn(&nettai_ui::AppWindow, &App) -> Option<Point>) {
+    let row = picked.clone();
+    add(SETTLE, hand_at(move |_, _| Some(Point::Control("lib.rows", row.borrow().row)), Ev::Press));
+    let row = picked.clone();
+    add(60, hand_at(move |_, _| Some(Point::Below("lib.rows", row.borrow().row, 8.0)), Ev::Move));
+    add(60, hand(Point::Middle("lib.rows", 0.0), Ev::Move));
+    add(60, hand_at(to, Ev::Move));
+    add(60, hand_at(to, Ev::Move));
+}
+
+/// The first of the build's patch cards (or slots) that holds a card.
+fn first_card(ui: &nettai_ui::AppWindow, _: &App) -> Option<Point> {
+    ui.global::<nettai_ui::PatchCardsView>().get_installed().iter().position(|c| c.there).map(|i| Point::Control("card", i as i32))
+}
+
 /// A right click on control `id`'s `index`, as the window has it.
 fn right(id: &'static str, index: i32) -> Step {
     Box::new(move |ui, app, tour| {
@@ -1262,6 +1319,48 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         let there = ui.global::<FolderView>().get_slots().row_data(12).map(|s| s.there);
         focus_on(app, "slot", 12).or_else(|| (there != Some(false)).then(|| "a right click on entry 13: its chip isn't taken out".to_string()))
     }));
+    // A library's chip dragged onto an entry ("you should allow drag and dropping from the library into a slot"): shot
+    // held over entry 11 (its ghost under the pointer, the entry outlined) and let go: it is in entry 11, the other
+    // entries as they were, and entry 11 is marked.
+    let picked: Rc<RefCell<Picked>> = Rc::default();
+    add(SETTLE, keep(&kept));
+    add(SETTLE, pick(&picked, |ui| {
+        let rows = ui.global::<FolderView>().get_rows();
+        rows.iter().position(|r| !r.refused).map(|i| Picked { row: i as i32, name: rows.row_data(i).unwrap().name.to_string(), ..Default::default() })
+    }));
+    drag_in(add, &picked, |_, _| Some(Point::Below("slot", 10, 10.0)));
+    shot(add, "tabs-folder-drag-in", Pair::None);
+    add(SETTLE, hand(Point::Below("slot", 10, 10.0), Ev::Release));
+    let (was, chip) = (kept.clone(), picked.clone());
+    add(SETTLE, expect(move |ui, app| {
+        let now = names(ui).0;
+        let mut want = was.borrow().0.clone();
+        if let Some(entry) = want.get_mut(10) {
+            *entry = chip.borrow().name.clone();
+        }
+        focus_on(app, "slot", 10).or_else(|| (now != want).then(|| format!("{:?} dragged onto entry 11: the entries are {now:?}, not {want:?}", chip.borrow().name)))
+    }));
+    shot(add, "tabs-folder-dragged-in", Pair::None);
+    // One the rules keep out there (another version's, or one more than the copies allowed) dragged onto entry 11:
+    // refused, its row shakes, the folder is as it was, and the strip says why.
+    add(SETTLE, keep(&kept));
+    let other = picked.clone();
+    add(SETTLE, pick(&picked, move |ui| {
+        let rows = ui.global::<FolderView>().get_rows();
+        let other = other.borrow().name.clone();
+        // (A standard chip's first: a Mega chip refused for the Mega limit might go in where another left.)
+        let refused = |standard: bool| rows.iter().position(|r| r.refused && (r.kind == nettai_ui::ChipKind::Standard) == standard && r.name != other.as_str());
+        refused(true).or_else(|| refused(false)).map(|i| Picked { row: i as i32, name: rows.row_data(i).unwrap().name.to_string(), ..Default::default() })
+    }));
+    drag_in(add, &picked, |_, _| Some(Point::Below("slot", 10, 10.0)));
+    add(SETTLE, hand(Point::Below("slot", 10, 10.0), Ev::Release));
+    let (was, chip) = (kept.clone(), picked.clone());
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).0;
+        let said = ui.global::<FolderView>().get_detail().problem;
+        (now != was.borrow().0 || said.is_empty()).then(|| format!("{:?}, refused, dragged onto entry 11: the folder changed, or the strip says nothing ({said:?})", chip.borrow().name))
+    }));
+    shot(add, "tabs-folder-drag-in-refused", Pair::None);
     // A patch card dragged above the one before it.
     // (Two more cards put in first, the library's first two that can go in: the walk has left one or none.)
     add(SETTLE, to_tab(EditorTab::PatchCards));
@@ -1291,7 +1390,7 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     add(SETTLE, expect(move |ui, _| {
         let now = names(ui).1;
         let was = &was.borrow().1;
-        // (EXE4's slots aren't dragged: each card's slot is its own.)
+        // (EXE4's slot's card, dragged over another slot, goes back to its own: each card's slot is its own.)
         if ui.global::<nettai_ui::PatchCardsView>().get_counts().slotted {
             return (now != *was).then(|| format!("a slot's card dragged above another: the cards are {now:?}, were {was:?}"));
         }
@@ -1299,21 +1398,48 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         (want.is_empty() || now.iter().take(2).collect::<Vec<_>>() != want).then(|| format!("the second card dragged above the first: the cards are {now:?}, were {was:?}"))
     }));
     shot(add, "tabs-cards-dragged", Pair::None);
-    // The first card dragged onto the card library: taken out, the others closing up.
+    // The first card dragged onto the card library: taken out, the others closing up (in EXE4, the first slot that
+    // holds a card emptied, the others as they were).
     add(SETTLE, keep(&kept));
-    onto_library(add, Point::Control("card", 0));
+    add(SETTLE, hand_at(first_card, Ev::Press));
+    add(60, hand(Point::Middle("lib.rows", 60.0), Ev::Move));
+    add(60, hand(Point::Middle("lib.rows", 0.0), Ev::Move));
     shot(add, "tabs-cards-drag-remove", Pair::None);
     add(SETTLE, drop_on_library());
     let was = kept.clone();
     add(SETTLE, expect(move |ui, _| {
-        // (EXE4's slots aren't dragged.)
-        if ui.global::<nettai_ui::PatchCardsView>().get_counts().slotted {
-            return None;
-        }
         let now = names(ui).1;
         let was = &was.borrow().1;
         (was.is_empty() || now.as_slice() != &was[1..]).then(|| format!("the first card dragged onto the library: the cards are {now:?}, were {was:?}"))
     }));
+    shot(add, "tabs-cards-drag-removed", Pair::None);
+    // A library's card that isn't in dragged onto the first of the build's: shot held there (its ghost, a gap where it
+    // would go in, the cards from there on shifted down) and let go: it is the first, the others after it as they
+    // were. In EXE4, whose cards go in slots, it goes in its own slot wherever over the slots it is let go (its slot
+    // outlined while it is held there), in place of what that slot held.
+    add(SETTLE, keep(&kept));
+    add(SETTLE, pick(&picked, |ui| {
+        let rows = ui.global::<nettai_ui::PatchCardsView>().get_rows();
+        let i = rows.iter().position(|r| !r.refused && r.note.is_empty())?;
+        let row = rows.row_data(i)?;
+        Some(Picked { row: i as i32, name: row.name.to_string(), slot: row.slot.to_string() })
+    }));
+    drag_in(add, &picked, |_, _| Some(Point::Below("card", 0, -14.0)));
+    shot(add, "tabs-cards-drag-in", Pair::None);
+    add(SETTLE, hand(Point::Below("card", 0, -14.0), Ev::Release));
+    let (was, card) = (kept.clone(), picked.clone());
+    add(SETTLE, expect(move |ui, _| {
+        let card = card.borrow();
+        let view = ui.global::<nettai_ui::PatchCardsView>();
+        if view.get_counts().slotted {
+            let held = view.get_installed().iter().find(|c| c.slot == card.slot.as_str()).map(|c| c.name.to_string());
+            return (held.as_deref() != Some(card.name.as_str())).then(|| format!("{:?} dragged onto the slots: its slot {} holds {held:?}", card.name, card.slot));
+        }
+        let now = names(ui).1;
+        let want: Vec<String> = std::iter::once(card.name.clone()).chain(was.borrow().1.iter().cloned()).collect();
+        (now != want).then(|| format!("{:?} dragged onto the first card: the cards are {now:?}, not {want:?}", card.name))
+    }));
+    shot(add, "tabs-cards-dragged-in", Pair::None);
     // An auto battle place's chip (the first list's third, where the walk left one) dragged two places back in its
     // list: the places between shift on.
     add(SETTLE, to_tab(EditorTab::AutoBattle));
@@ -1385,6 +1511,26 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         (!emptied).then(|| format!("the first place holding a chip dragged onto the library: the places that changed are {changed:?}, not one emptied"))
     }));
     shot(add, "tabs-auto-drag-removed", Pair::None);
+    // A library's chip (one place 2 doesn't hold) dragged onto the first list's second place: shot held there (its
+    // ghost, the place outlined) and let go: the place holds it, the others as they were, and it is marked.
+    add(SETTLE, keep(&kept));
+    let was = kept.clone();
+    add(SETTLE, pick(&picked, move |ui| {
+        let rows = ui.global::<nettai_ui::AutoBattleView>().get_chips();
+        let held = was.borrow().2.iter().find(|l| l.0 == 1).map(|l| l.1.clone()).unwrap_or_default();
+        let i = rows.iter().position(|r| r.name != held.as_str())?;
+        Some(Picked { row: i as i32, name: rows.row_data(i)?.name.to_string(), ..Default::default() })
+    }));
+    drag_in(add, &picked, |_, _| Some(Point::Below("places.place", 1, 10.0)));
+    shot(add, "tabs-auto-drag-in", Pair::None);
+    add(SETTLE, hand(Point::Below("places.place", 1, 10.0), Ev::Release));
+    let (was, chip) = (kept.clone(), picked.clone());
+    add(SETTLE, expect(move |ui, app| {
+        let now = names(ui).2;
+        let want: Vec<(i32, String)> = was.borrow().2.iter().map(|l| if l.0 == 1 { (1, chip.borrow().name.clone()) } else { l.clone() }).collect();
+        focus_on(app, "places.place", 1).or_else(|| (now != want).then(|| format!("{:?} dragged onto place 2: the places are {now:?}, not {want:?}", chip.borrow().name)))
+    }));
+    shot(add, "tabs-auto-dragged-in", Pair::None);
 }
 
 /// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
