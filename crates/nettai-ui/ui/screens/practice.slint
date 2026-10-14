@@ -29,8 +29,9 @@ export struct PracticeBuild {
 export enum PracticeOption {
     // A row another screen added (Copy invite code): its text is the row's own.
     added,
-    // The groups' titles.
+    // The groups' titles: the dummy's, the arena's (where the battle is, and its music), the battle's.
     dummy,
+    place,
     battle,
     display,
     // A label and a value between arrows.
@@ -115,6 +116,9 @@ export global PracticeView {
     pure public function label(option: PracticeOption) -> string {
         if option == PracticeOption.dummy {
             return @tr("DUMMY");
+        }
+        if option == PracticeOption.place {
+            return @tr("ARENA");
         }
         if option == PracticeOption.battle {
             return @tr("BATTLE");
@@ -587,7 +591,7 @@ component MenuRow inherits Rectangle {
     in property <PracticeRow> entry;
     in property <int> index;
     property <bool> added: root.entry.option == PracticeOption.added;
-    property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.battle || root.entry.option == PracticeOption.display;
+    property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.place || root.entry.option == PracticeOption.battle || root.entry.option == PracticeOption.display;
     property <bool> option: !root.added && !root.title;
     property <string> label: PracticeView.label(root.entry.option);
     property <string> value: root.option && root.entry.text != "" ? root.entry.text : PracticeView.value(root.entry.option, root.entry.value);
