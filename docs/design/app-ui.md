@@ -162,16 +162,16 @@ Each is settled unless the user changes it.
     arena, and a row of the menu over the battle, they chose **"Beside the arena, each their own"**: a Music row
     in Practice's entry beside Arena and Background (a Your music in Play's lobby too, until the user: "don't allow
     bgm select in lobby"): each player picks and hears their own, nothing of it is sent. The pick is one,
-    remembered between runs, and Practice's sessions play it; a match, a replay and its video play the game's own
-    ("why does the music setting carry over from practice mode into pvp mode? huh?", "for pvp it should use the
+    remembered between runs (since §2.40, kept for one visit to Practice), and Practice's sessions play it; a
+    match, a replay and its video play the game's own ("why does the music setting carry over from practice mode into pvp mode? huh?", "for pvp it should use the
     game's default for now"), and the practice battle beside a waiting invite leaves the menus' music on ("in the
     practice mode while the lobby is waiting, don't switch the music"). The themes and their names are the games' content (each game's rules'
     `battle_themes`, named in its locales), shown after the game's name as the language says it ("BN4 Tournament
     Battle", "EXE4 トーナメントバトル"). (§6, docs/app.md §1, "The battle's music".) Then: "in the practice
     screen, if the bgm choice changes from game default you should start playing the bgm": Practice's entry plays
     the pick in place of the title music while it shows (once the row has stayed on it a moment, so a run of steps
-    starts one song), the title music again for "Game's own" and elsewhere; and "also you should be able to change
-    the bgm in the practice menu": the practice menu's Battle rows have Music, the same pick, which switches the
+    starts one song), the title music again for "Game's own" and elsewhere (since §2.40 "Game's own" plays the
+    game's own battle music there); and "also you should be able to change the bgm in the practice menu": the practice menu's Battle rows have Music, the same pick, which switches the
     battle's music at once.
 30. **A build is 構築 in Japanese** (2026-10-13): "build should be called "構築" in japanese". Every Japanese string
     that said ビルド says 構築 (構築, 新規構築, 構築を編集, 相手の構築, この構築は使えません, and the rest).
@@ -243,6 +243,19 @@ Each is settled unless the user changes it.
     the sheet's REMOVE stays the way. Keys, the pad and the libraries' clicks are as they were.
     Later: "remove double clicking to remove", and of a click on the marked row removing, "remove that too": a
     click only marks a row; a right click, Del or a drag onto the library takes its thing out. (§4, §6, docs/app.md §8.)
+
+40. **Practice starts fresh, plays the battle's music through, and leaves by EXIT** (2026-10-14). The user: "going
+    into practice should reset all the arena settings, there's no reason for it to remember the last settings";
+    "the practice mode menu should also play the battle music and when it transitions it should play through the
+    transition and not restart"; and "you should also get rid of "quit to menu" and "change builds" should just
+    be "exit"". Arena, Background and Music are no longer remembered: each visit to Practice (from its entry being
+    shown from elsewhere until a screen other than Practice and Builds is shown; Builds through EDIT or CREATE A
+    BUILD is part of it) starts on Random, Random and the game's own, and keeps what the player sets through the
+    entry, its sessions and back. The entry plays the music its session will start (the game's own battle music,
+    not the title music, or the theme picked), and the battle takes that song over where it is: no fade, no
+    restart through the cards and the battle's start. The practice menu's buttons are RESUME, RESTART and EXIT
+    (CHANGE BUILDS renamed, doing what it did: the entry again; 終了 in Japanese); QUIT TO MENU is gone. (§6,
+    docs/app.md §1, "The battle's music", and §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -463,9 +476,12 @@ Each is in the mockups under the same name.
   so you should just have like a pager widget that goes through them. background should also be a arrow button
   pager thing": each an arrow pager, the arena by its place, "12 / 96", the background by its game and its
   name, "BN4 ACDC Area"), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
-  opening its list; a theme plays here in place of the title music once
-  the row rests on it a moment), all remembered, and START PRACTICE; beside them the two builds facing each other
+  opening its list), the builds remembered and Arena, Background and Music for one visit (§2.40: each visit
+  starts on Random, Random and the game's own), and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
+- **The entry plays the battle's music** (§2.29, §2.40): the music its session will start, the game's own battle
+  music or the theme picked (once the row rests on it a moment), in place of the title music; START PRACTICE
+  doesn't fade it, and it plays on through the cards into the battle with no restart.
 - **The arena preview moves** (§2.35): the round the session opens on, run into its fight with nothing pressed
   while the entry shows it, its background animating and scrolling and its field doing what it does (wind, roads,
   volcanoes, panels animating), the navis standing, with no custom gauge; never a custom screen, a banner or a
@@ -491,7 +507,7 @@ Each is in the mockups under the same name.
   - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
     folder order)
   - Display: Input display
-  - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
+  - RESUME, RESTART, EXIT (§2.40: the entry again; no QUIT TO MENU). Restart is also R or the pad's top button.
 
 ### Builds
 - **The list:** NEW BUILD and IMPORT SAVE… over the builds; the selected build's overview beside it, with EDIT,
@@ -593,7 +609,7 @@ The mockups show no screen for this; it is decided here.
   play again or leave. Another match with the same opponent needs no new invite code.
 - **LEAVE MATCH** in the match menu ends the match for both players and puts both back in the lobby, as a
   match's end does. Leaving the opponent altogether is the lobby's LEAVE.
-- **Practice** has no end: the practice menu's RESTART and QUIT TO MENU are the ways out of a set.
+- **Practice** has no end: the practice menu's RESTART and EXIT are the ways out of a set.
 - **A replay** stops at its end with the transport still there.
 
 ### Settings
