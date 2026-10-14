@@ -563,7 +563,12 @@ impl Shell {
         shell.set_picker_y(y);
         shell.set_picker_width(by.w);
         shell.set_picker(true);
-        self.picking = Some(Picking { owner: self.screen, key });
+        // (The battle's menu's list is its owner's, as the menu is: `App::hearer_of`.)
+        let owner = match &self.battle {
+            Some(b) if b.full || id.starts_with("menu.") => b.owner,
+            _ => self.screen,
+        };
+        self.picking = Some(Picking { owner, key });
         self.nav.open("pick.", Key::new("pick.option", chosen as i32));
         // (The chosen row, scrolled into view once the list is there.)
         self.nav.focus("pick.option", chosen as i32);

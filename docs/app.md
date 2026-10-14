@@ -218,7 +218,8 @@ under its menu, not stopped (§15).
   ROMs. A pack that names no such sound has none: one extracted before the names were given, until it is
   extracted again. Practice's entry plays in its place the battle's music its session will start, the game's own
   or the theme picked (below, "The battle's music"), crossfading as the title music does; the session's battle
-  takes it over, so it plays on through the cards into the fight.
+  takes it over, so it plays on through the cards into the fight, and back at the entry the entry takes the
+  battle's over, so it plays on there.
 - While a battle runs, both are ticked with the battle's ticks and their samples added to the battle's, sample
   for sample; with no battle running they run on their own clock at the same rate. (At first the menus' sound ran
   on its own clock throughout, beside the battle's, at twice the rate the device plays. The queue then sat at
@@ -318,8 +319,24 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   battle takes that one over.
 - *After that, the battle's as ever:* a round's end stops the music (`StopMusic`) and the next round starts it
   from its beginning; RESTART, and a set that ends and starts over, start the set again, whose round start finds
-  the music still playing (on through) or stopped after a round's end (from its beginning), as before. EXIT (§15)
-  ends the battle, and the entry plays its music again from its beginning, fading in.
+  the music still playing (on through) or stopped after a round's end (from its beginning), as before.
+- *Back at the entry it plays on* (the user: "also exiting practice mode back into the practice menu should
+  continue the music"; docs/design/app-ui.md §2.43). EXIT (§15), or the battle stopping with the entry shown,
+  hands the battle's sound to the entry, the other way of START's: the session's battle gives up its sound as it
+  ends (nettai-frontend's `Player::take_sound`, `practice::battle_sound`), and the entry's preview is that sound
+  where its music is the song the entry plays (`Sound::set_preview_after`, `music::preview_after`: its
+  `BattleAudio::music_heard` the preview's song, and its music player still playing), so the song goes on from
+  where the battle had it, with no restart and no fade-in (nettai's `the_entry_goes_on_with_the_battles_music`:
+  the song's clock past the battle's, at the music's level at once). The battle plays the pick, as the entry
+  does: a Music changed in the practice menu during the battle switched the battle's song to it (below), and the
+  entry plays the same one. Only the song comes over: nettai-audio's `BattleAudio::keep_music_alone` stops every
+  player but the music's and lets a queued sound effect go, turns BN6's low-HP speed-up off and the music
+  player's volume back to full (a dark chip's hover), and sets the sound's levels to 1, the menus' own (Settings'
+  Music is then applied as the menus apply it, the same level the battle had). The title music doesn't come in
+  between: what the menus played stops, and the preview is set in the same frame the battle ends. Where the
+  battle's music had stopped (a round's end) or another plays (the result's winner or loser music), the entry's
+  starts from its beginning, fading in, as before (nettai's `the_entry_starts_its_music_where_the_battles_stopped`).
+  Nothing of the battle changes: it is over, and only its sound, presentation, goes on.
 - *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
   the practice menu"): its Battle rows have Music, the same pick. A change switches the battle's music at once
   (`music::retheme`, `Player::set_sound_parts`, nettai-audio's `BattleAudio::set_songs`): where the battle's own
@@ -1884,7 +1901,8 @@ screen lists are the pass's own too, in `<folder>/builds` (`paths::keep_builds_i
 screen as a player makes them, and Replays lists replays of the pass's own.
 
 **Practice's steps** (`tour/practice.rs`) walk the entry, the two cards, the battle and the practice menu
-(each Battle row with its value changed, a pair apart), and drive the options in the battle as a player would,
+(each Battle row with its value changed, a pair apart; Background's and Music's lists open on the entry and in
+the menu, and a background chosen from the menu's, a step checking the list closed and the place moved on one), and drive the options in the battle as a player would,
 the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
 the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
 dummy's Action Fights with its Level under it. Then the way to Builds and back: CREATE A BUILD's list (the
@@ -2361,10 +2379,16 @@ again after them and the entry back from Builds keep what the player set. None o
   battle stages a match may name (`nettai_match::link_battle_stages`, the rules' `link_pick.match_stages`:
   EXE6's 96, EXE5's 94, EXE4's 96), and the background pool, every game's battle backgrounds
   (`nettai_match::ids::pool_backgrounds`: 70, BN4's, then BN5's, then BN6's, in any game's practice), each in
-  its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the practice
-  menu's rows have it (the user: "the arena names are meaningless so you should just have like a pager widget
-  that goes through them. background should also be a arrow button pager thing"): Left and Right or its arrows
-  step it, around from the last to Random, a held key repeating; Enter steps it on; it opens no list. It is the
+  its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Arena is an arrow
+  pager, the app's `Stepper` as the practice menu's rows have it (the user: "the arena names are meaningless so
+  you should just have like a pager widget that goes through them"): Left and Right or its arrows step it, around
+  from the last to Random, a held key repeating; Enter steps it on; it opens no list. Background was one too
+  ("background should also be a arrow button pager thing") until the user asked for lists: "background and music
+  selectors should both be dropdowns like they are in the practice screen" (docs/design/app-ui.md §2.43).
+  Background is now a dropdown, the same `Select` as the build rows': Enter, a click or a tap opens its list
+  (Random, then the pool's by game and name, as the row says them; a long one scrolls, open at the one chosen;
+  on a phone a sheet from the bottom, as the build rows'), and choosing closes it; Left and Right still step it,
+  as they step the build rows. It is the
   visit's (above): Random as a visit starts, kept through it, a choice of another game's entry Random (a match
   names a background by the name it writes, the game's own by its name in the pack, another game's with its
   game, `exe4:acdc-area`). Each step draws the arena again after the same 160 ms as a build's, so a run of steps
@@ -2382,14 +2406,16 @@ again after them and the entry back from Builds keep what the player set. None o
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
 - **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions play,
-  the visit's ("Game's own" as a visit starts): a row laid out as Arena's and Background's, stepped by Left and
-  Right around from the last theme to "Game's own", and Enter opens its list (its names say more than a place's
-  number). It changes nothing drawn (the arena's picture is silent). **The entry plays the battle's music** in
+  the visit's ("Game's own" as a visit starts): a dropdown as Background's, its list "Game's own" then the
+  themes, stepped by Left and Right around from the last theme to "Game's own", and Enter, a click or a tap opens
+  its list. It changes nothing drawn (the arena's picture is silent). **The entry plays the battle's music** in
   place of the title music (the user: "the practice mode menu should also play the battle music and when it
   transitions it should play through the transition and not restart"): the music its session will start, the
   game's own battle music for "Game's own", a theme for a theme, changing once the row has stayed on it 400 ms;
   START PRACTICE doesn't fade it, and the session's battle takes it over, so it plays on through the cards into
-  the fight (§1, "The battle's music"). After a session the entry plays it again from its beginning. (On a phone the five rows are 44 tall and 48 apart,
+  the fight (§1, "The battle's music"). After a session (EXIT) the entry takes the battle's music over the same
+  way, so it plays on where it is; where the battle's had stopped (a round's end, the result's music), the entry
+  plays its own from its beginning. (On a phone the five rows are 44 tall and 48 apart,
   where the four were 48 and 56, so that the cards and the arena still end over START PRACTICE.)
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round, the two builds' navis on it: a battle of its own, in a `Picture` at
@@ -2503,8 +2529,8 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
 | Arena: Arena | Random, then "1 / 96" and on, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
-| Arena: Background | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
-| Arena: Music | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
+| Arena: Background (a dropdown) | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
+| Arena: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
 | Battle: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
@@ -2529,8 +2555,15 @@ game's own (nettai's `on_another_background_the_battle_goes_on`); practice is ne
 compared with another's.
 
 Music changes the battle's music the player picked, the entry's row's one pick (§1, "The
-battle's music"): Left and Right step it (Enter steps it on, as the menu's other rows), and the battle's music
-switches at once, nothing else of it changing (nettai's `a_battle_changes_its_music_as_it_runs`).
+battle's music"): Left and Right step it, Enter opens its list, and the battle's music switches at once, nothing
+else of it changing (nettai's `a_battle_changes_its_music_as_it_runs`).
+
+Background and Music are dropdowns in the menu as on the entry (docs/design/app-ui.md §2.43): the row's value is
+the `Select` box, and Enter, a click or a tap opens its list (the shell's, by the row; open at the value chosen,
+a long one scrolling; on a phone the sheet); a choice from it changes the row as a step to it would, at once.
+Left and Right still step them. The list is the battle's owner's, as the menu is (`Shell::pick`: a menu's list
+over a battle is heard by the battle's owner, Practice, whatever screen started the session). Arena stays a
+pager.
 
 The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a practice session sets between ticks, applied to the battle's own typed state
@@ -2543,8 +2576,8 @@ nothing of the pause: a refill shows there (the HP rolls back up under the menu)
 there and the engine flags it full once the fight runs again, the folder is put in order there (the library's
 `the_options_act_in_the_games_own_pause`).
 
-A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
-value to its first. Under them RESUME and RESTART side by side, and under those EXIT, as wide as the two (on a
+A row is focused as a whole and changed at once by Left and Right (Enter steps it on, or opens the list of
+Background's and Music's), around from its last value to its first. Under them RESUME and RESTART side by side, and under those EXIT, as wide as the two (on a
 phone, the three one over the other): the entry again, with another arena (`menu.exit`; `practice::MENU_BUTTONS`).
 The user (docs/design/app-ui.md §2.40): "you should also get rid of "quit to menu" and "change builds" should
 just be "exit"": CHANGE BUILDS became EXIT, doing what it did, and QUIT TO MENU went (the entry's Back goes to
