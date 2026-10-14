@@ -76,6 +76,9 @@ msgstr "練習 · ラウンド{}"
 msgid "{} vs {}"
 msgstr "{} vs {}"
 
+msgid "ARENA"
+msgstr "アリーナ"
+
 msgid "BATTLE"
 msgstr "バトル"
 

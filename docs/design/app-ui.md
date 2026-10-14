@@ -447,10 +447,12 @@ Each is in the mockups under the same name.
     it fights) under it while it is Fights. Its custom screen goes with its Action. No recording: "get rid of
     recording support, it's so complicated". The user: "the dummy menu is so confusing and has so many redundant options and
     it's confusing to navigate. you should make it clearer and less redundant".
-  - Battle: Arena and Background (as on the entry; an arena changed starts the set over on it, a background
+  - Arena: Arena and Background (as on the entry; an arena changed starts the set over on it, a background
     changed only redraws: "changing the background shouldn't change the entire arena either in trianing
-    mode"), Music (the entry's pick, §2.29: the battle's music switched at once), Your HP and Dummy's HP
-    (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled, folder order)
+    mode"), Music (the entry's pick, §2.29: the battle's music switched at once). A group of their own: "you
+    should split the practice menu settings into arena and battle so the arena settings aren't mixed together".
+  - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
+    folder order)
   - Display: Input display
   - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
 
