@@ -1248,21 +1248,25 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   footer's hints follow the cursor: the hand's while a piece is held (Back: Put away), Del's Take off while the
   cursor is on a placed piece, Confirm's Take and Del's Take off on a placed program's row, and Take on another
   (`on-piece`, `in-list`). Leaving the tab with a piece picked up off the board puts it back where it was.
-- *The mouse.* The board and the list's rows tell the tab what the pointer does (`Nav.choose("drag", phase,
-  where)`: where is the window's point, which the tab turns into the cell under it from where the cells are
-  laid out). A press on a placed piece picks it up; a drag out of a program's row takes a new copy of it in hand,
-  as Confirm there does; while the button is held the piece follows the pointer cell by cell, and the
-  wheel turns it. Let go over the board, it is put down where it fits, else it shakes and then goes back where it
-  came from; let go off the board, it is put away into the list. A press let go where it was pressed is a click,
-  Confirm there; so the mouse works by clicks too: a piece a click takes up follows the pointer over the board with
-  no button held (the board's pointer area tells its moves while a piece is in hand), cell by cell, and stays at
-  the last cell it was over when the pointer leaves the board; the next click on the board puts it down (or it
-  shakes and stays in hand), a click off the board (on the list too) puts it away. A right click puts the piece in
-  hand away into the list however it was taken, by a click, a drag or the keys: off the board, never back where it
-  was. A key or button pressed during a drag ends it, as a put-back; with a piece a click took, it moves the piece
-  from where it is, and the pointer's next move takes it back under the pointer. (The footer's hints are the keys'
-  and the pad's; the mouse has none. The list doesn't scroll by a mouse's drag, `ListView`'s `mouse-pan`, so a
-  row's drag is its program's; the wheel scrolls it.)
+- *The mouse carries a piece by clicks* (the user: "dragging navicust piece is confusing because usually it's click
+  to drop"; §2.38 of the design). The board, the list's rows and the tab under them tell the tab what the pointer
+  does (`Nav.choose("drag", phase, where)`: where is the window's point, which the tab turns into the cell under it
+  from where the cells are laid out, or finds on the list by the list's view, `editor::over`). A click on a placed
+  piece picks it up; a click on a program's row takes a new copy of it in hand, as Confirm there does. The piece in
+  hand follows the pointer over the board with no button held, cell by cell, and stays at the last cell it was over
+  when the pointer leaves the board; the wheel turns it. The next click on the board puts it down where it fits (or
+  it shakes and stays in hand). A click on the list (a row, or the room under the rows) puts it away into the list,
+  as Back does ("drag it back to where it came from"); while the pointer is over the list with a piece in hand the
+  list shows so, as a library does under a row dragged there (`over-list`: the list fades back under a wash and an
+  edge in the error color and the line CLICK TO PUT AWAY, `RemoveTarget`; the piece on the board fades to 0.45). A
+  click anywhere else off the board (beside the cells, the effects, the key) puts it back where it was; a new copy,
+  which had no place, goes away. Each click acts as the button goes down: a press that moves before it is let go is
+  the same click, and nothing follows the held button (let go, the piece comes under the pointer). A right click puts
+  the piece in hand away into the list however it was taken, by a click or the keys (off the board, never back where
+  it was), and with nothing in hand takes off the piece under the pointer, or a program's last copy from its row. A
+  key moves the piece in hand from where it is, and the pointer's next move takes it back under the pointer. (The
+  footer's hints are the keys' and the pad's; the mouse has none. The list doesn't scroll by a mouse's drag,
+  `ListView`'s `mouse-pan`; the wheel scrolls it.)
 - *Its motion* (§4's NaviCust row): a piece taken up lifts to 1.06 with a shadow and a white outline along its
   edge (`lifted`), glides from cell to cell as it is moved (and is where it is taken up at once: `glide`), turns
   as a quarter turn about the cell held (`turned`, `turn-way`), shakes where it is refused, and drops with a
@@ -1336,7 +1340,7 @@ alone marking it otherwise, and with the focus kept on a clicked row nothing did
 tell now what is selected with the mouse on the left hand side in patch card/chip/abd etc"). A phone's folder,
 a `ListView` of its own, marks it with the list's `chosen`. The pass checks it as the window has it
 (`build_tabs::clicks`: a click, then R, T, Down and Del in the folder, Up on a patch card and a click on another
-and Del, Del on a place;
+that holds a card and Del (in EXE4, whose slots may be empty, the second slot that holds one), Del on a place;
 and a shot of each tab's first click with the pointer gone on to another row, §13).
 
 **A click on the marked row removes** what it holds, as Del does (the user: "clicking on an already selected chip or
@@ -1350,10 +1354,15 @@ row that isn't marked, its first click marks it and its second takes out what it
 out one thing, a click within a double click's time (500 ms, Slint's own) of one that took something out of that
 row being passed over (`Editor::clicked`, `DOUBLE_CLICK`) (a patch card's list closes up under it, and a second removal would
 take the next card). A click on a library row is as before (a patch card that is in, or the chip a place holds, is
-taken out by it). A right click does nothing on these rows now. The NaviCust is as it was: a click there takes a
-program or picks a piece up, so its right click still puts away the piece in hand or takes off the one under the
-pointer (`Nav.choose("remove", ...)`). A phone's tap opens the library's sheet as before, which has REMOVE: a tap
-isn't a removal there. The keys and the pad are unchanged.
+taken out by it). **A right click removes everywhere** (the user: "sure right click should remove everywhere"): on
+one of the build's rows it takes out what the row holds, as Del does, whether or not the row is marked, the focus
+coming to it (it doesn't mark it first: the press brings the focus, then `Nav.choose("remove", ...)`, which the
+editor hands the tab as `Action::Delete`); on a library row that is in the build (a patch card that is in, the chip
+the place holds) it takes that out; on the folder's library it does nothing (a chip of the library is in no one
+entry). The touches say which rows it removes from (`Focusable`'s and `RowTouch`'s `removable`, told to
+`Drag.pointer`). The NaviCust's right click is as it was: it puts away the piece in hand or takes off the one under
+the pointer. A phone's tap opens the library's sheet as before, which has REMOVE: a tap isn't a removal there. The
+keys and the pad are unchanged.
 
 **A row dragged moves** (the user: "also you should be able to drag and drop to reorder"). A press on one of the
 build's rows that moves 6 from where it went down (`Drag.threshold`, either way: the folder's second column is
@@ -1362,6 +1371,18 @@ in the cursor's color, `LiftedRow`), the rows between where it was and where it 
 a gap there, outlined in the cursor's color (`DropGap`; the slide is `Theme.quick`, a cut with motion off), and the
 numbers the folder's entries and the places show are those they would have. Let go, it lands there with the flash a
 chip put in has; let go off the list (more than 16 past its rows), it goes back, and nothing changes.
+
+**Dragged back onto the library, it is removed** (the user, of making removing with the mouse alike in every tab,
+chose "drag it back to where it came from": "ok do 1"). A row of the build's let go over the library beside its list
+(its search, its sort and its rows, or within 16 of them: `editor::over_library`) is taken out as Del takes it: the
+folder's entry emptied, the patch card taken out, the place emptied. While it is over the library the drag shows so
+(`Drag.removing`, which the app sets as it says where the row would land: `editor::show_remove`): the lifted row's
+line turns the error color and it fades to 0.6, and the library fades back under a wash and an edge in the error
+color with DROP TO REMOVE on a band across its middle (`RemoveTarget`, folder.slint; each fades in and out over
+`Theme.quick`); back off the library, the row looks as a drag does again. Anywhere else off the list it still goes
+back. A library's own rows aren't dragged (a click or Enter puts one in, as before). On a phone the library is a
+sheet, shut while a row is dragged, so nothing is over it: a drag there only reorders, and the sheet's REMOVE stays
+the way to take something out (`over_library` is false on a phone).
 
 - *How it is told.* The UI's `Drag` global (nav.slint) holds the drag (the list, the row, the pointer, where in the
   row it went down); the row's touch, given its list's name (`drag`), feeds it. Each move asks the app where the row
@@ -1389,9 +1410,17 @@ chip put in has; let go off the list (more than 16 past its rows), it goes back,
   and drags it (the Folder's, the Patch cards' and the Auto battle's lists on a phone alike; a list with nothing to
   scroll gives a touch's drag to the row at once).
 - *The pass* (`build_tabs::drags`, §13): a double click on an unmarked folder entry (taken out), and one on the
-  marked entry (one thing taken out, the next entry untouched); an entry dragged three rows down, shot held there and after; a patch card dragged above the
-  one before it; an auto battle place's chip dragged two places back in its list, then into another list (traded),
-  then down past the page's foot into the Mega list (it scrolls there; refused). On a phone, the folder's drag, with
+  marked entry (one thing taken out, the next entry untouched); an entry dragged three rows down, shot held there and after; an entry dragged onto the
+  library, shot held there (`tabs-folder-drag-remove`, the remove look) and after (`tabs-folder-drag-removed`: emptied,
+  the next entry untouched); a right click on an entry not marked (taken out, the focus on it); a patch card dragged
+  above the one before it, and the first card onto the card library (`tabs-cards-drag-remove`: taken out, the others
+  closing up; EXE4's slots aren't dragged, and nothing changes); an auto battle place's chip dragged two places back
+  in its list, then into another list (traded), then down past the page's foot into the Mega list (it scrolls there;
+  refused), then the first place holding a chip onto the library (`tabs-auto-drag-remove`, `-removed`: that place
+  emptied, the others as they were). On a desktop the NaviCust's clicks (`build_tabs::carries`): a placed piece clicked
+  up and carried over the list (`tabs-navicust-over-list`, the remove look), a click there (`tabs-navicust-clicked-away`:
+  a program fewer placed); another clicked up and carried off the board onto the effects (`tabs-navicust-carried-off`),
+  a click there (`tabs-navicust-put-back`: back where it was, the board as it was). On a phone, the folder's drag, with
   the mouse (the pass has no touches to give).
 
 **On a phone** each of the three is one column: the NaviCust's board over its key, the effects and the bugs a line
@@ -1819,9 +1848,12 @@ on the ring, over another, or anywhere on the board itself), so the walk is the 
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
 EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, compressed and
 decompressed (turned as it was, in place), the command line's arrows pulsing by themselves, a piece put down, put
-off the command line (a bug pulses), refused, a placed piece dragged two cells by the mouse (`drag_piece`: the
-window's pointer events, a press, moves and a release by timers, as Replays' bar is dragged); a card put in and
-one refused; a chip put in a place.
+off the command line (a bug pulses), refused; the mouse carrying pieces by clicks (the window's pointer events, by
+timers, as Replays' bar is dragged: a press moved with the button held and let go, then a click putting it down,
+`navicust-press-move`; a click, moves and a key, `navicust-click-move`; a program's row clicked and the copy clicked
+down; a click over another piece, then off the board; a right click; a click off the board, and one on the list,
+`navicust-click-list`, the list's remove look fading in; the wheel); a folder entry dragged onto the library
+(`folder-drag-remove`) and a right click on another; a card put in and one refused; a chip put in a place.
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
 Settings, a dialog, a battle; in the probe, a change of game too), `packs` (a pack being extracted, and the Legacy

@@ -13,7 +13,7 @@ import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow } from "../../build.slint";
-import { ChipDetail, LibraryRow, LibraryHead, DropGap, LiftedRow } from "folder.slint";
+import { ChipDetail, LibraryRow, LibraryHead, DropGap, LiftedRow, RemoveTarget } from "folder.slint";
 
 // A line of the places: a list's title (over both columns), or one of its places (its chip, by its place in its list
 // from 1, where it is: a column and a row of the panel).
@@ -140,6 +140,7 @@ component PlaceView inherits Rectangle {
         nav-index: root.line.place;
         marked: root.chosen && !Theme.phone;
         drag: root.line.title || !root.line.chip.there ? "" : "places.";
+        removable: !root.line.title;
     }
 }
 
@@ -232,6 +233,7 @@ component AutoLibraryRowView inherits Rectangle {
     touch := RowTouch {
         nav: "lib.rows";
         nav-index: root.nav-index;
+        removable: true;
     }
 }
 
@@ -430,12 +432,25 @@ export component AutoBattleTab inherits Rectangle {
         }
     }
 
-    // ---- The library, open.
-    if !Theme.phone: ChipsPane {
-        x: root.pane-width + 24px;
-        y: root.pane-y;
-        width: parent.width - self.x;
-        height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+    // ---- The library, open; a place's chip dragged over it is taken out, let go there.
+    if !Theme.phone: Rectangle {
+        library := ChipsPane {
+            x: root.pane-width + 24px;
+            y: root.pane-y;
+            width: parent.width - self.x;
+            height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+        }
+
+        RemoveTarget {
+            x: library.x - 8px;
+            y: library.y - 8px;
+            width: library.width + 8px;
+            height: library.height + 16px;
+            shown: PlaceDrag.on && Drag.removing;
+            text: @tr("DROP TO REMOVE");
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
     }
 
     // (The place being dragged, under the pointer, and a place a drag was refused at: it shakes.)
@@ -448,6 +463,7 @@ export component AutoBattleTab inherits Rectangle {
         big: Theme.phone;
         chip: AutoBattleView.lifted.chip;
         number: AutoBattleView.lifted.number;
+        removing: Drag.removing;
     }
 
     shake := Shake {

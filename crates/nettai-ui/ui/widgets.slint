@@ -878,6 +878,8 @@ export component RowTouch inherits TouchArea {
     in property <bool> marked;
     // The list its row can be dragged in to another place (`Drag`), or none.
     in property <string> drag;
+    // It holds something of the build: a right click on it removes that, as Del does.
+    in property <bool> removable;
     // (It was marked as the button went down: the press marks the row it is on.)
     property <bool> was-marked;
     clicked => {
@@ -888,7 +890,7 @@ export component RowTouch inherits TouchArea {
             root.was-marked = root.marked && e.button == PointerEventButton.left;
             Nav.point(nav, nav-index);
         }
-        Drag.pointer(root.drag, nav-index, e, self.absolute-position, self.mouse-x, self.mouse-y);
+        Drag.pointer(root.drag, nav-index, e, self.absolute-position, self.mouse-x, self.mouse-y, root.removable);
     }
     moved => {
         if self.pressed {
