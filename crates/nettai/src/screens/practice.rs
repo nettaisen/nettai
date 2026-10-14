@@ -1,11 +1,12 @@
 //! Practice (docs/design/app-ui.md §6): you against a dummy set up from a menu while practicing. Its UI is
 //! `ui/screens/practice.slint`.
 //!
-//! **The entry** ([`Practice`], the screen): four rows, Your build and Dummy's build (both the player's own
-//! builds of the selected game), Arena (the game's) and Background (every game's: the background pool), each
-//! after Random ([`Places`]), all remembered
-//! between runs by game, and START PRACTICE; beside them the two builds facing each other on the arena the
-//! session opens on. With no build of the game there is one button, Create a build. A build that can't be used
+//! **The entry** ([`Practice`], the screen): five rows, Your build and Dummy's build (both the player's own
+//! builds of the selected game, remembered between runs by game), Arena (the game's) and Background (every
+//! game's: the background pool), each after Random ([`Places`]), and Music (the battle's music), the three kept
+//! for one visit ([`Visit`]), and START PRACTICE; beside them the two builds facing each other on the arena the
+//! session opens on. While it shows it plays the music the session will start, which the session's battle takes
+//! over. With no build of the game there is one button, Create a build. A build that can't be used
 //! says so in the reserved line, and practice doesn't start. Each build's EDIT (or E, or the pad's north button,
 //! on its row) opens it in Builds' editor (`crate::screens::builds::open`), and Back from there comes back here,
 //! which lists the builds again as they were left.
@@ -18,7 +19,7 @@
 //!
 //! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle paused behind it. Its
 //! rows are a label and a value between arrows, changed at once by Left and Right: [`ROWS`] lists them, and a
-//! row is added there.
+//! row is added there. Under them RESUME, RESTART and, in a session of Practice's own, EXIT (the entry again).
 
 use crate::battle::{BattleEvent, BattleStart, Play};
 use crate::builds::store;
@@ -71,8 +72,8 @@ pub struct Start {
     /// What the places left to Random, each folder's order and the dummy's random presses are picked from.
     pub seed: u32,
     /// The screen that starts it, if not Practice itself, and the tag it hears of it by: a row it added was
-    /// chosen (`Screen::answered(tag, row)`, the row's place in `rows`). Its session has no CHANGE BUILDS and
-    /// no QUIT TO MENU (the screen's own rows are the ways out), and keeps nothing of the dummy's setup.
+    /// chosen (`Screen::answered(tag, row)`, the row's place in `rows`). Its session has no EXIT (the
+    /// screen's own rows are the ways out), and keeps nothing of the dummy's setup.
     pub from: Option<(ScreenId, &'static str)>,
     /// The rows that screen adds at the top of the practice menu: their texts, in the language shown.
     pub rows: Vec<String>,
@@ -121,6 +122,60 @@ pub struct Shared {
     /// files, as a player's does (the pass's own folder: what it made there to open in Builds).
     pub tour_no_builds: bool,
     pub tour_files: bool,
+    /// The visit to Practice on, and what it keeps.
+    pub visit: Visit,
+}
+
+/// A visit to Practice: from its entry being shown from elsewhere (the main menu, Play) until a screen other than
+/// Practice and Builds is shown. Builds is part of it: EDIT and CREATE A BUILD go there, and its Back comes
+/// back. Through it the entry, its sessions and the entry again after them keep the Arena, Background and Music
+/// the player set; each visit starts on their defaults, Random, Random and the game's own (the user: "going into
+/// practice should reset all the arena settings, there's no reason for it to remember the last settings").
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct Visit {
+    /// A visit is on.
+    on: bool,
+    /// The place chosen, and the game it is of (each its list's place, 0 Random: [`Places`]).
+    place: Option<(String, [usize; 2])>,
+    /// The battle's music picked (`Shell::battle_music`).
+    pub music: crate::music::Music,
+}
+
+impl Visit {
+    /// Practice's entry is shown: a visit starts, on the defaults, unless one is on. Whether one started.
+    pub fn arrive(&mut self) -> bool {
+        if self.on {
+            return false;
+        }
+        *self = Visit { on: true, ..Visit::default() };
+        true
+    }
+
+    /// Screen `screen` is the one shown: one other than Practice and Builds ends the visit.
+    pub fn shown(&mut self, screen: ScreenId) {
+        if !matches!(screen, ScreenId::Practice | ScreenId::Builds) {
+            self.leave();
+        }
+    }
+
+    /// The visit is over (Practice left for another screen than Builds, or the screenshot pass starting a walk):
+    /// what it kept goes, and the next starts on the defaults.
+    pub fn leave(&mut self) {
+        *self = Visit::default();
+    }
+
+    /// The place chosen for `game` in this visit, in `places` (Random where none is, or for another game).
+    fn place(&self, game: &str, places: &Places) -> [usize; 2] {
+        match &self.place {
+            Some((of, place)) if of == game => [ARENA, BACKGROUND].map(|part| if place[part] < places.len(part) { place[part] } else { 0 }),
+            _ => [0; 2],
+        }
+    }
+
+    /// Choose `place` for `game` for the rest of the visit.
+    fn set_place(&mut self, game: &str, place: [usize; 2]) {
+        self.place = Some((game.to_string(), place));
+    }
 }
 
 /// The practice session on.
@@ -182,6 +237,24 @@ pub(crate) const ROWS: [PracticeOption; 14] = [
     PracticeOption::Display,
     PracticeOption::InputDisplay,
 ];
+
+/// The practice menu's buttons under its rows (practice.slint's `PracticeMenu`): RESUME, RESTART, and in a session
+/// of Practice's own EXIT, the entry again (the user: "you should also get rid of "quit to menu" and "change
+/// builds" should just be "exit""). A session another screen started has its own rows as its ways out.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum MenuButton {
+    Resume,
+    Restart,
+    Exit,
+}
+
+/// The menu's buttons by their controls' names.
+const MENU_BUTTONS: [(&str, MenuButton); 3] = [("menu.resume", MenuButton::Resume), ("menu.restart", MenuButton::Restart), ("menu.exit", MenuButton::Exit)];
+
+/// The menu's button whose control is `id`, if it is one.
+fn menu_button(id: &str) -> Option<MenuButton> {
+    MENU_BUTTONS.iter().find(|(name, _)| *name == id).map(|(_, b)| *b)
+}
 
 /// How many values a row steps through (none: a group's title; Arena and Background the game's `places` and
 /// Random).
@@ -628,12 +701,12 @@ impl Places {
         [self.find(content, ARENA, arena), self.find(content, BACKGROUND, round.background.as_deref())]
     }
 
-    /// Where the choice remembered by `key` is in list `part` (none, or one the list hasn't: Random).
+    /// Where the choice named by `key` is in list `part` (none, or one the list hasn't: Random).
     fn find(&self, content: &Content, part: usize, key: Option<&str>) -> usize {
         key.and_then(|key| (1..self.len(part)).find(|&at| self.key(content, part, at) == Some(key))).unwrap_or(0)
     }
 
-    /// The key choice `at` of list `part` is remembered by: a stage's, the name a match writes for a background
+    /// The key choice `at` of list `part` is named by: a stage's, the name a match writes for a background
     /// (none: Random).
     fn key<'c>(&'c self, content: &'c Content, part: usize, at: usize) -> Option<&'c str> {
         let at = at.checked_sub(1)?;
@@ -649,19 +722,6 @@ impl Places {
             None => b.clone(),
         };
         [(0..self.arenas.len()).map(|at| place(at, self.arenas.len())).collect(), self.backgrounds.iter().map(background).collect()]
-    }
-
-    /// The place remembered for `game` (Random where nothing is, or the content no longer has it).
-    fn kept(&self, content: &Content, remembered: &std::collections::BTreeMap<String, String>, game: &str) -> [usize; 2] {
-        [ARENA, BACKGROUND].map(|part| self.find(content, part, remembered.get(&kept_place(game, part)).map(String::as_str)))
-    }
-
-    /// Remember choice `at` of list `part` for `game` (Random: nothing).
-    fn keep(&self, content: &Content, remembered: &mut std::collections::BTreeMap<String, String>, game: &str, part: usize, at: usize) {
-        match self.key(content, part, at) {
-            Some(key) => remembered.insert(kept_place(game, part), key.to_string()),
-            None => remembered.remove(&kept_place(game, part)),
-        };
     }
 }
 
@@ -686,11 +746,6 @@ fn natural(key: &str) -> String {
 /// The game and the name in its pack of the background a match of `game` names `written` (one of the pool's).
 fn pool_background<'c>(content: &'c Content, game: &str, written: &str) -> Option<(&'c str, &'c str)> {
     nettai_match::ids::background(content, game, written).and_then(|id| content.background_of(id))
-}
-
-/// The key the place chosen for `game` is remembered by: its arena's, or its background's.
-fn kept_place(game: &str, part: usize) -> String {
-    format!("training.{}.{game}", if part == ARENA { "arena" } else { "background" })
 }
 
 // ---- The entry ------------------------------------------------------------------------------------------------
@@ -779,6 +834,8 @@ pub struct Practice {
     changed: Option<Instant>,
     /// The Music row changed, and when: the entry plays it once it has stayed a moment ([`MUSIC_AFTER`]).
     music_changed: Option<Instant>,
+    /// Builds is being opened from here (EDIT, CREATE A BUILD): leaving for it goes on with the visit.
+    to_builds: bool,
 }
 
 /// The key the build chosen for `game` is remembered by: the player's, or the dummy's.
@@ -787,13 +844,13 @@ fn kept_build(game: &str, dummys: bool) -> String {
 }
 
 impl Practice {
-    /// List the selected game's builds and places, and choose those remembered: with no build remembered, the
-    /// first that can be used (else the first), for both; with no place, Random.
+    /// List the selected game's builds and places, and choose the builds remembered (with none, the first that can
+    /// be used, else the first, for both) and the place this visit chose ([`Visit`]: Random at first).
     fn list(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
         let content = ready.content();
         self.places = Places::of(content, game);
         self.place_labels = self.places.labels(content);
-        self.place = self.places.kept(content, &shell.settings.remembered, game);
+        self.place = shell.practice.visit.place(game, &self.places);
         self.builds = if shell.still && !shell.practice.tour_files {
             // (The screenshot pass's pictures don't depend on what the player has made: a new build of each
             // version, and one that can't be used, a side with nothing chosen.)
@@ -936,12 +993,13 @@ impl Practice {
             }
         }
         shell.save_settings();
+        self.to_builds = true;
         crate::screens::builds::open(shell, ScreenId::Practice, Some(at));
     }
 
     /// Step the place of list `part` (the arenas or the backgrounds, 0 Random) by `by`, around from its last to
-    /// Random: remembered for the game, and shown (the arena drawn again on it a moment after, as for a build;
-    /// what the seed picks, a Random arena, the same whatever the background).
+    /// Random: kept for the visit, and shown (the arena drawn again on it a moment after, as for a build; what
+    /// the seed picks, a Random arena, the same whatever the background).
     fn step_place(&mut self, shell: &mut Shell, part: usize, by: i32) {
         let Some((game, ready)) = shell.ready() else { return };
         let at = (self.place[part] as i32 + by).rem_euclid(self.places.len(part) as i32) as usize;
@@ -949,10 +1007,28 @@ impl Practice {
             return;
         }
         self.place[part] = at;
-        self.places.keep(ready.content(), &mut shell.settings.remembered, &game, part, at);
-        shell.save_settings();
+        shell.practice.visit.set_place(&game, self.place);
         self.changed = Some(crate::clock::now());
         self.tell(shell, &game, &ready);
+    }
+
+    /// The music the session will start as it opens on the place chosen (`BattleSettings::music`: a link
+    /// battle's, the same on every arena), as the pick plays it: what the entry plays.
+    fn session_music(&self, shell: &Shell) -> Option<nettai_battle::sound::SoundId> {
+        let (game, ready) = shell.ready()?;
+        let content = ready.content();
+        let mut m = Match::empty(content, &game).ok()?;
+        self.places.put(&mut m, self.place);
+        Some(m.undealt_round(content, self.seed).settings.music(content)).flatten()
+    }
+
+    /// Play the music the session will start (the user: "the practice mode menu should also play the battle
+    /// music"), in place of the title music: the game's own battle music, or the theme picked. A battle started
+    /// from here takes it over, so it goes on through the cards into the fight (`Shell::carried_music`).
+    fn play_music(&mut self, shell: &mut Shell) {
+        self.music_changed = None;
+        let song = self.session_music(shell);
+        crate::music::preview(shell, song);
     }
 
 
@@ -1012,6 +1088,10 @@ impl Practice {
         let round = self.places.round(self.place);
         let start = Start { opponent: kept_opponent(shell), level: kept_level(shell), options: kept_options(shell), round, seed: self.seed, ..Start::new(&game, you, dummy) };
         self.drop_arena(shell);
+        // (A Music row changed a moment ago is played now: the battle takes over the music playing.)
+        if self.music_changed.is_some() {
+            self.play_music(shell);
+        }
         if let Err(error) = self::start(shell, start) {
             shell.fail(error);
         }
@@ -1028,11 +1108,17 @@ impl Practice {
         true
     }
 
-    /// The entry again, after a session of its own: another arena, another deal.
+    /// The entry again, after a session of its own (EXIT): another arena, another deal, on the place the session
+    /// left (the menu's Arena and Background are the visit's), and the entry's music again from its start.
     fn back_to_entry(&mut self, shell: &mut Shell) {
         end(shell);
         self.seed = if shell.still { 7 } else { clock_seed() };
         self.changed = crate::clock::now().checked_sub(ARENA_AFTER);
+        if let Some((game, ready)) = shell.ready() {
+            self.place = shell.practice.visit.place(&game, &self.places);
+            self.tell(shell, &game, &ready);
+        }
+        self.play_music(shell);
     }
 
     /// Step the menu's option at row `index` by `by`, around from its last value to its first: it changes at
@@ -1060,8 +1146,8 @@ impl Practice {
                 PracticeOption::Arena | PracticeOption::Background => {
                     let part = if option == PracticeOption::Arena { ARENA } else { BACKGROUND };
                     session.place[part] = next;
-                    if keep && let Some(ready) = shell.games.ready(&session.game) {
-                        session.places.keep(ready.content(), &mut shell.settings.remembered, &session.game, part, next);
+                    if keep {
+                        shell.practice.visit.set_place(&session.game, session.place);
                     }
                     if part == ARENA {
                         restart_on_place(shell, &mut session);
@@ -1160,24 +1246,32 @@ impl Screen for Practice {
     fn show(&mut self, shell: &mut Shell) {
         // (While the game loads its bar is up, and the screen is shown again once it is ready.)
         let Some((game, ready)) = shell.ready() else { return };
+        // (Come from elsewhere, a visit starts on the defaults: Random, Random, the game's own music.)
+        shell.practice.visit.arrive();
         self.list(shell, &game, &ready);
         self.tell(shell, &game, &ready);
-        // The battle's music the player picked plays here in place of the title music, from the start.
-        self.music_changed = None;
-        crate::music::preview(shell, true);
+        // The music the session will start plays here in place of the title music, from its start.
+        self.play_music(shell);
     }
 
     fn hide(&mut self, shell: &mut Shell) {
         self.drop_arena(shell);
         // (Elsewhere the menus play the title music.)
         self.music_changed = None;
-        crate::music::preview(shell, false);
+        crate::music::preview(shell, None);
+        // (Leaving for another screen than Builds, through EDIT or CREATE A BUILD, ends the visit.)
+        if !std::mem::take(&mut self.to_builds) {
+            shell.practice.visit.leave();
+        }
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         match id {
             // (Back from Builds comes back here.)
-            "create" => crate::screens::builds::open(shell, ScreenId::Practice, None),
+            "create" => {
+                self.to_builds = true;
+                crate::screens::builds::open(shell, ScreenId::Practice, None);
+            }
             "edit" => self.edit_build(shell, index.clamp(0, 1) as usize),
             "yours" | "dummys" => {
                 let which = (id == "dummys") as usize;
@@ -1190,16 +1284,16 @@ impl Screen for Practice {
             // (The music's list opens: its names say more than a place's number.)
             "music" if !self.builds.is_empty() => crate::music::open(shell, id),
             "start" => self.start_practice(shell),
-            "menu.resume" => shell.close_menu(),
-            "menu.restart" => {
-                shell.close_menu();
-                restart(shell);
-            }
-            "menu.change" => self.back_to_entry(shell),
-            "menu.quit" => {
-                end(shell);
-                shell.go(ScreenId::Menu);
-            }
+            "menu.resume" | "menu.restart" | "menu.exit" => match menu_button(id) {
+                Some(MenuButton::Resume) => shell.close_menu(),
+                Some(MenuButton::Restart) => {
+                    shell.close_menu();
+                    restart(shell);
+                }
+                // (A session another screen started has no EXIT.)
+                Some(MenuButton::Exit) if shell.practice.session.as_ref().is_some_and(|s| s.from.is_none()) => self.back_to_entry(shell),
+                _ => {}
+            },
             "menu.rows.option" => self.step_option(shell, index, 1),
             // A row another screen added: it is told which.
             "menu.rows.added" => {
@@ -1294,6 +1388,10 @@ impl Screen for Practice {
             }
             BattleEvent::Stopped(reason) => {
                 end(shell);
+                // (The entry's music again, if the entry is what shows.)
+                if shell.screen() == ScreenId::Practice {
+                    self.play_music(shell);
+                }
                 if let Some(error) = UserError::of_stop(reason) {
                     shell.fail(error);
                 }
@@ -1347,13 +1445,16 @@ impl Screen for Practice {
                 shell.nav.focus(&at.id, at.index);
             }
         }
-        // The entry's Music row's pick, once it has stayed a moment, in place of the music playing. (The screenshot
-        // pass doesn't wait.)
+        // A screen other than Practice and Builds ends the visit.
+        shell.practice.visit.shown(shell.screen());
+        // The entry's Music row's pick, once it has stayed a moment, in place of the music playing; and the entry's
+        // music again after a session. (The screenshot pass doesn't wait.)
         if self.music_changed.is_some_and(|at| (shell.still && !shell.probe_motion) || now.saturating_duration_since(at) >= MUSIC_AFTER)
             && shell.screen() == ScreenId::Practice
+            && shell.battle.is_none()
+            && !shell.loading_battle()
         {
-            self.music_changed = None;
-            crate::music::preview(shell, true);
+            self.play_music(shell);
         }
         // The entry's arena, once the builds chosen have stayed a moment (and the screen is the one on screen:
         // while the one before it leaves, the picture's room is still that one's).
@@ -1508,10 +1609,10 @@ mod tests {
     }
 
     /// Each game's places are its link battle stages and the background pool, every game's backgrounds, after
-    /// Random: a place chosen is every round's (and the set's places are those), is remembered by its keys and
-    /// comes back from them (a background remembered by its name in the game's pack, as before the pool, too),
-    /// and Random names nothing and is remembered as nothing, a Random background drawn from the pool. An arena
-    /// is called by its place, a background by its game's name and its own in the language (each has one).
+    /// Random: a place chosen is every round's (and the set's places are those) and is found again from what the
+    /// round names (a background named by its name in the game's pack too), and Random names nothing, a Random
+    /// background drawn from the pool. An arena is called by its place, a background by its game's name and its
+    /// own in the language (each has one).
     #[test]
     fn the_places_are_the_games_after_random() {
         use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
@@ -1532,14 +1633,8 @@ mod tests {
             let fought = m.places(&content, 7).unwrap();
             assert!(fought.iter().all(|p| p.stage == arena && nettai_match::ids::background_name(&content, p.background) == Some(background.as_str())), "{game}: every round there");
             assert_eq!(places.chosen(&content, &places.round(last)), last, "{game}");
-            let mut remembered = std::collections::BTreeMap::new();
-            places.keep(&content, &mut remembered, game, ARENA, last[ARENA]);
-            places.keep(&content, &mut remembered, game, BACKGROUND, last[BACKGROUND]);
-            assert_eq!(places.kept(&content, &remembered, game), last, "{game}");
-            assert_eq!(remembered.get(&format!("training.background.{game}")), Some(&background));
-            places.keep(&content, &mut remembered, game, ARENA, 0);
-            assert_eq!(places.kept(&content, &remembered, game), [0, last[BACKGROUND]], "{game}: Random is remembered as nothing");
-            assert_eq!(remembered.len(), 1);
+            assert_eq!(places.key(&content, BACKGROUND, last[BACKGROUND]), Some(background.as_str()), "{game}");
+            assert_eq!(places.chosen(&content, &places.round([0, last[BACKGROUND]])), [0, last[BACKGROUND]], "{game}: Random names nothing");
             let [arenas, backgrounds] = places.labels(&content);
             let n = places.arenas.len();
             assert_eq!((arenas[0].clone(), arenas[n - 1].clone()), (format!("1 / {n}"), format!("{n} / {n}")), "{game}: each by its place");
@@ -1554,10 +1649,9 @@ mod tests {
             assert!(backgrounds.contains(&"BN5 NebulaGray".to_string()) && backgrounds.contains(&"BN4 Duo".to_string()), "{game}");
             let own = |b: &str| !b.contains(':');
             assert_eq!(places.backgrounds.iter().filter(|b| own(b)).count(), nettai_match::ids::backgrounds(&content, game).len(), "{game}: its own by their names");
-            // (A background remembered before the pool, by its name in the game's pack, is found.)
+            // (A background named by its name in the game's pack is found.)
             let named = nettai_match::ids::backgrounds(&content, game)[0].to_string();
-            remembered.insert(format!("training.background.{game}"), named.clone());
-            let at = places.kept(&content, &remembered, game)[BACKGROUND];
+            let at = places.find(&content, BACKGROUND, Some(&named));
             assert_eq!(places.backgrounds[at - 1], named, "{game}");
             // Random draws from the pool.
             let mut m = nettai_match::pick::live(&content, game, 7, None).unwrap();
@@ -1588,6 +1682,63 @@ mod tests {
                 }
             }
         }
+    }
+
+    /// A visit starts on the defaults (Random, Random, the game's own music) and keeps what the player sets
+    /// through the entry, its sessions and Builds through EDIT; another screen ends it, and the next visit starts
+    /// on the defaults again. A place is the game's: another game's entry is on Random.
+    #[test]
+    fn a_visit_starts_on_the_defaults() {
+        use crate::music::Music;
+        let content = nettai_match::testing::exe6_content();
+        let places = Places::of(&content, "exe6");
+        let theme = Music::Theme { game: "exe4".into(), song: "tournament-battle".into() };
+        let mut visit = Visit::default();
+        assert!(visit.arrive(), "from elsewhere, a visit starts");
+        assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "Random, Random, the game's own");
+        visit.set_place("exe6", [3, 5]);
+        visit.music = theme.clone();
+        // (The entry, a session and the entry again; Builds through EDIT and back; the entry shown again.)
+        for screen in [ScreenId::Practice, ScreenId::Builds, ScreenId::Practice] {
+            visit.shown(screen);
+            assert!(!visit.arrive(), "{screen:?}: the same visit");
+            assert_eq!((visit.place("exe6", &places), &visit.music), ([3, 5], &theme), "{screen:?}");
+        }
+        assert_eq!(visit.place("exe5", &places), [0, 0], "another game's: Random");
+        assert_eq!(visit.place("exe6", &Places::default()), [0, 0], "a place the list hasn't: Random");
+        for elsewhere in [ScreenId::Menu, ScreenId::Play] {
+            visit.shown(elsewhere);
+            assert!(visit.arrive(), "{elsewhere:?}: a new visit");
+            assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "{elsewhere:?}: the defaults again");
+            visit.set_place("exe6", [1, 1]);
+            visit.music = theme.clone();
+        }
+        // (Left from Practice itself, for another screen than Builds: the same.)
+        visit.leave();
+        assert_eq!(visit, Visit::default());
+        assert!(visit.arrive());
+    }
+
+    /// The practice menu's buttons are RESUME, RESTART and EXIT, and nothing else (no CHANGE BUILDS, no QUIT TO
+    /// MENU): practice.slint's `PracticeMenu` has a control of each, this screen hears each, and EXIT is shown in a
+    /// session of Practice's own alone.
+    #[test]
+    fn the_menus_buttons() {
+        let slint = include_str!("../../../nettai-ui/ui/screens/practice.slint");
+        let menu = &slint[slint.find("export component PracticeMenu").unwrap()..];
+        let menu = &menu[..menu.find("\n}\n").unwrap()];
+        let navs: Vec<&str> = menu.match_indices("nav: \"menu.").map(|(at, _)| &menu[at + 6..][..menu[at + 6..].find('"').unwrap()]).collect();
+        let buttons: Vec<&str> = navs.iter().copied().filter(|n| !n.starts_with("menu.rows")).collect();
+        assert_eq!(buttons, MENU_BUTTONS.map(|(name, _)| name), "RESUME, RESTART, EXIT");
+        assert_eq!(MENU_BUTTONS.map(|(name, _)| menu_button(name)), [Some(MenuButton::Resume), Some(MenuButton::Restart), Some(MenuButton::Exit)]);
+        for gone in ["menu.change", "menu.quit"] {
+            assert_eq!(menu_button(gone), None);
+            assert!(!slint.contains(gone), "{gone}");
+        }
+        let exit = &menu[..menu.find("nav: \"menu.exit\"").unwrap()];
+        let exit = &exit[exit.rfind("Button {").unwrap()..];
+        assert!(exit.contains("visible: PracticeView.leave;") && exit.contains("enabled: PracticeView.leave;"), "EXIT in Practice's own sessions alone");
+        assert!(menu.contains("@tr(\"EXIT\")"));
     }
 
     /// The builds chosen are remembered by game, the player's and the dummy's apart.

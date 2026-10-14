@@ -800,6 +800,12 @@ a driver of its own (`nettai_audio::with_theme`); `Player::set_sound_parts`
 changes it while the battle runs (`BattleAudio::set_songs`: the battle's own
 music playing starts again as the new song at once, the low-HP switch kept;
 the result's music stays, and the next round starts with the new song).
+`Player::carry_sound(audio)`, before the first tick, gives a player a
+host's sound of the same parts that already plays the music the first
+round starts (`BattleSettings::music`, started by its cue: a preview of
+the battle's music before the battle, nettai's Practice entry): the
+round's start finds that music playing and, as the game's `PlayMusic`
+does, leaves it be, so the song goes on where it was.
 Only the sound changes: the
 battle, its cues, a replay and the wire are the same, and the cues' rollback
 moves the music back to the theme where a result's music played on a wrong

@@ -162,8 +162,6 @@ msgstr "再開"
 msgid "RESTART"
 msgstr "最初から"
 
-msgid "CHANGE BUILDS"
-msgstr "構築を変える"
-
-msgid "QUIT TO MENU"
-msgstr "メニューにもどる"
+# Ends the session: back to Practice's entry.
+msgid "EXIT"
+msgstr "終了"

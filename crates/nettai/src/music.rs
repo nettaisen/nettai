@@ -1,4 +1,4 @@
-//! The battle's music (docs/app.md §9, "The battle's music"): the game's own, or a battle theme the player picked,
+//! The battle's music (docs/app.md §1, "The battle's music"): the game's own, or a battle theme the player picked,
 //! of any game whose pack is there. The user: "you should also allow for selectable battle themes (bn4 virus
 //! battle, bn4 boss battle, bn4 tournament battle, bn4 vs duo, bn5 virus battle, bn5 boss battle, bn5 vs nebula
 //! gray, bn6 virus battle, bn6 boss battle, bn6 vs cybeast, bn6 crossover battle)", picked "beside the arena, each
@@ -7,23 +7,24 @@
 //! What the themes are is each game's content: its rules' `battle_themes`, songs of its pack, and their names in
 //! its locales (`battle_themes`, by the song's asset name); this names no song and no game. A theme is offered
 //! once its game's parts are read (its content and its sound, `Games::read`: no runtime is needed), whichever
-//! game is selected. The pick is one, the player's own, remembered in the settings ([`REMEMBERED`]); the screens
-//! that show it (Play's lobby, Practice's battle options) show and change that one. Every battle the shell runs
-//! plays with it: a practice battle, an online match (each player hears their own: nothing of it goes on the
-//! wire), a replay watched, and a replay's video. It is presentation: the battle, its cues, a replay and its
-//! rollback are the same whatever plays (`nettai_audio::with_theme`).
+//! game is selected. The pick is one, the player's own, Practice's for one visit (`practice::Visit`: the user,
+//! "going into practice should reset all the arena settings"): its entry and its menu show and change that one,
+//! and its own sessions play it; a match, a replay and its video play the game's own. It is presentation: the
+//! battle, its cues, a replay and its rollback are the same whatever plays (`nettai_audio::with_theme`).
+//!
+//! Practice's entry plays the music its session will start ([`preview`]: the user, "the practice mode menu
+//! should also play the battle music and when it transitions it should play through the transition and not
+//! restart"), on the battle's own sound, which the session's battle then takes over (`Sound::take_preview`,
+//! `Player::carry_sound`): the song goes on through the cards into the battle.
 
 use crate::games::{Games, Ready};
-use crate::settings::Settings;
 use crate::shell::Shell;
+use crate::sound::PreviewSong;
+use nettai_battle::sound::SoundId;
 use nettai_frontend::preload::SoundParts;
 use slint::ComponentHandle;
 use std::cell::RefCell;
 use std::collections::HashMap;
-
-/// The key the pick is remembered by (`Settings::remembered`): `<game>:<song>`, the theme's game and its song's
-/// asset name (`exe4:tournament-battle`); none, the game's own.
-pub const REMEMBERED: &str = "battle.music";
 
 /// A battle's music.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
@@ -33,24 +34,6 @@ pub enum Music {
     GameOwn,
     /// A battle theme: game `game`'s theme of song `song` (its asset name).
     Theme { game: String, song: String },
-}
-
-impl Music {
-    /// The pick the settings remember (a value that names no theme is the game's own).
-    pub fn remembered(settings: &Settings) -> Music {
-        match settings.remembered.get(REMEMBERED).and_then(|v| v.split_once(':')) {
-            Some((game, song)) if !game.is_empty() && !song.is_empty() => Music::Theme { game: game.into(), song: song.into() },
-            _ => Music::GameOwn,
-        }
-    }
-
-    /// Remember the pick in the settings (the caller keeps them).
-    pub fn remember(&self, settings: &mut Settings) {
-        match self {
-            Music::GameOwn => settings.remembered.remove(REMEMBERED),
-            Music::Theme { game, song } => settings.remembered.insert(REMEMBERED.into(), format!("{game}:{song}")),
-        };
-    }
 }
 
 /// What a list of the battle's music offers: the game's own first, then the themes of each game whose parts
@@ -102,7 +85,7 @@ pub fn name(music: &Music, own: &str) -> String {
     }
 }
 
-// ---- A screen's Music row (Play's lobby, Practice's entry) ---------------------------------------------------
+// ---- A screen's Music row (Practice's entry and its menu) ---------------------------------------------------
 
 /// What the select's list offers, and the place of the pick in it.
 fn list(shell: &Shell) -> (Vec<Music>, usize) {
@@ -145,16 +128,28 @@ pub fn choose(shell: &mut Shell, choice: i32) {
     }
 }
 
-/// Have the menus play the pick in place of the title music where it is a theme (`on`: Practice's entry shows;
-/// the user: "in the practice screen, if the bgm choice changes from game default you should start playing the
-/// bgm"), else the title music: with its own pack's bank, at the music's level, crossfading as it changes
-/// (`Sound::set_preview`). A theme whose game isn't read is the title music.
-pub fn preview(shell: &mut Shell, on: bool) {
-    let theme = match (on, shell.battle_music()) {
-        (true, Music::Theme { game, song }) => shell.games.read(&game).and_then(|g| g.loaded.theme(&song)).map(|t| (format!("{game}:{song}"), t)),
-        _ => None,
-    };
-    shell.sound.set_preview(theme);
+/// Have the menus play, in place of the title music, the music a battle of the selected game with the pick
+/// starts as it opens: `song`, the round's music (`BattleSettings::music`), as the pick plays it (the game's
+/// own, or a theme: [`sound`]'s parts). None: the title music. (Practice's entry: the user, "the practice mode
+/// menu should also play the battle music".) Crossfading as it changes (`Sound::set_preview`); the battle that
+/// starts with the same music takes it over (`Shell::carried_music`).
+pub fn preview(shell: &mut Shell, song: Option<SoundId>) {
+    let preview = song.and_then(|song| {
+        let (game, ready) = shell.ready()?;
+        let music = shell.battle_music();
+        let parts = sound(&shell.games, &ready, &music)?;
+        Some(PreviewSong { key: key(&game, &music, song), parts, music: song })
+    });
+    shell.sound.set_preview(preview);
+}
+
+/// What a battle's music is told by, a preview's and the battle's that takes it over: the battle's game, the
+/// sound its round starts as its music, and the music picked.
+pub fn key(game: &str, music: &Music, song: SoundId) -> String {
+    match music {
+        Music::GameOwn => format!("{game}/{}", song.0),
+        Music::Theme { game: of, song: theme } => format!("{game}/{}/{of}:{theme}", song.0),
+    }
 }
 
 /// Play the pick in the battle the shell runs from now on, in place of the music it had (the user: "also you
@@ -185,25 +180,6 @@ pub fn sound(games: &Games, ready: &Ready, music: &Music) -> Option<SoundParts> 
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// The pick is kept in the settings by its key, and read back; the game's own is no key; a value that
-    /// names no theme reads as the game's own.
-    #[test]
-    fn the_pick_is_kept_and_read_back() {
-        let mut s = Settings::default();
-        assert_eq!(Music::remembered(&s), Music::GameOwn);
-        let pick = Music::Theme { game: "exe4".into(), song: "tournament-battle".into() };
-        pick.remember(&mut s);
-        assert_eq!(s.remembered.get(REMEMBERED).map(String::as_str), Some("exe4:tournament-battle"));
-        let text = toml::to_string(&s).unwrap();
-        assert_eq!(Music::remembered(&toml::from_str(&text).unwrap()), pick, "through the file");
-        Music::GameOwn.remember(&mut s);
-        assert!(!s.remembered.contains_key(REMEMBERED));
-        for odd in ["", "exe4", ":x", "exe4:"] {
-            s.remembered.insert(REMEMBERED.into(), odd.into());
-            assert_eq!(Music::remembered(&s), Music::GameOwn, "{odd:?}");
-        }
-    }
 
     /// A pick no longer offered shows as the game's own.
     #[test]
@@ -406,45 +382,120 @@ mod tests {
         assert_eq!(changed.battle().digest(), straight.battle().digest(), "the battle the same");
     }
 
-    /// Practice's entry plays the pick in place of the title music (`preview`'s `Sound::set_preview`): a theme on
-    /// its own pack's bank; another theme in its place; none, the title music; and it fades out where the menus'
-    /// music isn't wanted (a battle).
-    #[test]
-    fn the_entry_previews_the_pick() {
-        use nettai_audio::m4a::SongId;
-        let all = games(&["exe4", "exe6"]);
+    /// A practice set of game `game` (its first round: the music it starts), between two new sides.
+    fn practice_set(all: &Games, game: &str, seed: u32) -> nettai_match::Set {
+        let content = all.read(game).unwrap().content().clone();
+        let m = nettai_match::pick::live(&content, game, seed, None).unwrap();
+        let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
+        nettai_match::Set::new(content.clone(), m.round(&content, seed), folders)
+    }
+
+    /// What Practice's entry plays before `set` with `music` picked, as `preview` makes it: the battle's own sound's
+    /// parts, started by the song its first round starts.
+    fn entry_music(all: &Games, set: &nettai_match::Set, music: &Music) -> PreviewSong {
+        let game = set.content().game().to_string();
+        let ready = all.read(&game).unwrap();
+        let song = set.first().settings.music(set.content()).expect("a link battle's music");
+        PreviewSong { key: key(&game, music, song), parts: sound(all, &ready, music).unwrap(), music: song }
+    }
+
+    /// The menus' sound, the selected game `game`'s, wanting its music, and a clock of frames for it.
+    fn menus(all: &Games, game: &str) -> (crate::sound::Sound, impl FnMut(&mut crate::sound::Sound, u64)) {
         let mut sound = crate::sound::Sound::silent();
-        sound.use_game("exe6", &all.read("exe6").unwrap().loaded);
+        sound.use_game(game, &all.read(game).unwrap().loaded);
         sound.want_music(true);
-        let start = std::time::Instant::now();
-        let mut at = 0;
-        let mut frames = |sound: &mut crate::sound::Sound, n: u64| {
+        let (start, mut at) = (std::time::Instant::now(), 0);
+        let frames = move |sound: &mut crate::sound::Sound, n: u64| {
             for _ in 0..n {
                 at += 17;
                 sound.frame(start + std::time::Duration::from_millis(at), None, &mut Vec::new());
             }
         };
-        let theme = |song: &str| {
-            let t = all.read("exe4").unwrap().loaded.theme(song).unwrap();
-            (format!("exe4:{song}"), t)
+        (sound, frames)
+    }
+
+    /// Practice's entry plays the music its session will start in place of the title music (`preview`'s
+    /// `Sound::set_preview`): the game's own battle music on the game's bank, a theme on its own pack's; another in
+    /// its place; none, the title music; and it fades out where the menus' music isn't wanted.
+    #[test]
+    fn the_entry_plays_the_battles_music() {
+        use nettai_audio::m4a::SongId;
+        let all = games(&["exe4", "exe6"]);
+        let set = practice_set(&all, "exe6", 11);
+        let (mut sound, mut frames) = menus(&all, "exe6");
+        let number = |game: &str, song: &str| {
+            let c = all.read(game).unwrap().content().clone();
+            SongId(c.assets.sound(c.assets.handle(nettai_content_api::AssetKind::Sound, song).unwrap()).unwrap().id)
         };
-        let number = |song: &str| SongId(all.read("exe4").unwrap().loaded.theme(song).unwrap().song);
-        sound.set_preview(Some(theme("tournament-battle")));
+        let theme = |song: &str| Music::Theme { game: "exe4".into(), song: song.into() };
+        sound.set_preview(Some(entry_music(&all, &set, &Music::GameOwn)));
         frames(&mut sound, 3);
-        assert_eq!(sound.music_song(), Some((true, number("tournament-battle"))));
-        sound.set_preview(Some(theme("tournament-battle")));
-        sound.set_preview(Some(theme("final-battle")));
+        assert_eq!(sound.music_song(), Some((true, number("exe6", "virus-battle"))), "the game's own battle music, not the title music");
+        sound.set_preview(Some(entry_music(&all, &set, &theme("tournament-battle"))));
         frames(&mut sound, 3);
-        assert_eq!(sound.music_song(), Some((true, number("final-battle"))), "another in its place");
+        assert_eq!(sound.music_song(), Some((true, number("exe4", "tournament-battle"))), "a theme, on its own pack's driver");
+        let (_, _, at) = sound.music_at().unwrap();
+        sound.set_preview(Some(entry_music(&all, &set, &theme("tournament-battle"))));
+        frames(&mut sound, 3);
+        assert!(sound.music_at().unwrap().2 > at, "the same one again goes on");
+        sound.set_preview(Some(entry_music(&all, &set, &theme("final-battle"))));
+        frames(&mut sound, 3);
+        assert_eq!(sound.music_song(), Some((true, number("exe4", "final-battle"))), "another in its place");
         sound.want_music(false);
         frames(&mut sound, 90);
-        assert_eq!(sound.music_song(), None, "faded out and stopped under a battle");
+        assert_eq!(sound.music_song(), None, "faded out and stopped where the menus' music isn't wanted");
         sound.want_music(true);
         frames(&mut sound, 3);
-        assert_eq!(sound.music_song(), Some((true, number("final-battle"))), "again from its start");
+        assert_eq!(sound.music_song(), Some((true, number("exe4", "final-battle"))), "again from its start");
         sound.set_preview(None);
         frames(&mut sound, 3);
         // (content/'s EXE6 with its assets made up names no title music: the title music is none here.)
         assert_eq!(sound.music_song(), None, "the title music again");
+    }
+
+    /// The battle started from the entry takes over the entry's music (`Sound::take_preview`,
+    /// `Player::carry_sound`): its round's start finds its music playing, so the song goes on from where the entry
+    /// had it (its clock past the entry's, where a battle of its own starts it from 0), the game's own and a theme
+    /// alike. The battle is the same tick for tick.
+    #[test]
+    fn the_battle_goes_on_with_the_entrys_music() {
+        use nettai_audio::MUSIC_PLAYER;
+        use nettai_battle::content::PackId;
+        let all = games(&["exe4", "exe6"]);
+        let set = practice_set(&all, "exe6", 11);
+        let content = set.content().clone();
+        let player = |parts: SoundParts| {
+            let driver = nettai_frontend::driver::LivePlayer::against(set.clone(), Default::default(), 11);
+            let renderer = nettai_frontend::testing::graphics(&content, 0x7FFF).renderer(TextMode::Original, None);
+            nettai_frontend::Player::with(renderer, None, Some(nettai_audio::BattleAudio::with_banks(parts.0, parts.1)), Box::new(driver))
+        };
+        // (The battle's music: its song, and how far into it, on whichever pack's driver plays it.)
+        let music = |p: &nettai_frontend::Player| {
+            let audio = p.audio().unwrap();
+            (0..3).map_while(|n| audio.driver_of(PackId(n))).find_map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| Some((m.song()?, m.clock()))))
+        };
+        for picked in [Music::GameOwn, Music::Theme { game: "exe4".into(), song: "tournament-battle".into() }] {
+            let entry = entry_music(&all, &set, &picked);
+            let (key, parts) = (entry.key.clone(), entry.parts.clone());
+            let (mut sound, mut frames) = menus(&all, "exe6");
+            sound.set_preview(Some(entry));
+            // (The entry a while, then the cards: the menus' music goes on.)
+            frames(&mut sound, 240);
+            let (_, song, at) = sound.music_at().unwrap();
+            assert!(at > 0, "{picked:?}: the entry's music has played");
+            let audio = sound.take_preview(&key).expect("the entry's music, to take over");
+            assert_eq!(sound.music_song(), None, "{picked:?}: the menus play it no more");
+            let (mut carried, mut own) = (player(parts.clone()), player(parts));
+            carried.carry_sound(audio);
+            for _ in 0..30 {
+                carried.tick(0);
+                own.tick(0);
+            }
+            let (carried_song, carried_at) = music(&carried).expect("the battle's music");
+            let (own_song, own_at) = music(&own).expect("the battle's music");
+            assert_eq!((carried_song, own_song), (song, song), "{picked:?}: the same song");
+            assert!(carried_at > at && carried_at > own_at + at / 2, "{picked:?}: it went on ({carried_at} past the entry's {at}; a battle's own is at {own_at})");
+            assert_eq!(carried.battle().digest(), own.battle().digest(), "{picked:?}: the battle the same");
+        }
     }
 }
