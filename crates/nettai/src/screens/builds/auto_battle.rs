@@ -80,7 +80,7 @@ impl AutoBattle {
             icon: draft.kit.pictures.icon(chip),
             name: words.names.chip(chip).into(),
             kind: kind(record.class),
-            element: draft.kit.pictures.element(record.family),
+            element: draft.kit.pictures.chip_element(chip),
             flagged,
             ..Default::default()
         }
@@ -196,7 +196,7 @@ impl AutoBattle {
                         refused: false,
                         megabytes: say.invoke_megabytes(record.mb as i32),
                         attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
-                        element: draft.kit.pictures.element(record.family),
+                        element: draft.kit.pictures.chip_element(chip),
                         code: Default::default(),
                     }
                 })
@@ -243,7 +243,7 @@ impl AutoBattle {
                 name: words.names.chip(chip).into(),
                 kind: kind(record.class),
                 description: description.into(),
-                element: draft.kit.pictures.element(record.family),
+                element: draft.kit.pictures.chip_element(chip),
                 facts: ModelRc::new(VecModel::from(facts)),
                 problem: problem.into(),
                 ..Default::default()

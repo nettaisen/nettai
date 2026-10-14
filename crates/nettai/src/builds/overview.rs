@@ -34,7 +34,7 @@ pub fn chip_cell(kit: &Kit, names: &Names, folder: &Folder, entry: usize, flagge
             Some(build::Mark::Tag2) => ChipMark::Tag2,
             None => ChipMark::None,
         },
-        element: kit.pictures.element(record.family),
+        element: kit.pictures.chip_element(chip.id),
         code: chip.code.letter().to_string().into(),
         flagged,
     }

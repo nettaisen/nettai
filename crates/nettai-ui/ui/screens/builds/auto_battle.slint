@@ -240,6 +240,7 @@ export component AutoBattleTab inherits Rectangle {
     property <int> columns: Theme.phone ? 1 : 2;
     property <length> place-width: (root.pane-width - 24px - 12px - (root.columns - 1) * 12px) / root.columns;
     property <length> pitch: (Theme.phone ? 40px : Theme.chip-row) + 2px;
+    property <bool> has-element: AutoBattleView.detail.there && AutoBattleView.detail.element.width > 0;
     // ---- The strip: the chip under the cursor.
     PanelBack {
         x: 0;
@@ -303,8 +304,9 @@ export component AutoBattleTab inherits Rectangle {
         overflow: elide;
     }
 
+    // (A chip with no element, a Program Advance, has its facts where the element would be.)
     HorizontalLayout {
-        x: 120px;
+        x: root.has-element ? 120px : 104px;
         y: root.top + 69px;
         width: parent.width - 136px;
         height: 16px;
@@ -312,7 +314,7 @@ export component AutoBattleTab inherits Rectangle {
         spacing: 16px;
         alignment: start;
         Image {
-            width: AutoBattleView.detail.there ? 16px : 0px;
+            width: root.has-element ? 16px : 0px;
             height: 16px;
             source: AutoBattleView.detail.element;
             image-rendering: pixelated;
