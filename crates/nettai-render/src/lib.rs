@@ -30,4 +30,4 @@ pub mod strings;
 pub mod textlayer;
 pub mod vfont;
 
-pub use render::{Frame, GraphicsMode, Renderer};
+pub use render::{Frame, Glide, GraphicsMode, Renderer};

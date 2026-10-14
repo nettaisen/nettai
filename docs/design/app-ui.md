@@ -478,10 +478,15 @@ Each is settled unless the user changes it.
       light sweeps its bar; as they arrive the chip's name slides in at the bottom left and the chip icons pop
       in. Motion only, in whole frame pixels, nothing of new color or art; the custom screen is the game's own.
       Every game, each with the pieces it has.
+    - *The background glides.* Then the user: "can you also animate the battle background smoothly as well?" A
+      background that drifts by parts of a pixel a frame (most areas' half a pixel across and a quarter up or
+      down) is shown where the game's scroll counter is, at the window's resolution, not at the whole pixels
+      it steps by every second or fourth frame; its tile and palette animations stay the game's.
     - *One mode.* Then the user: "you should only enable the ui improvements if sharp rendering is enabled. you
       should call it something other than sharp font rendering as well since it does more than that now".
       Settings' Video row is **Battle graphics: Enhanced / Original** (it was Battle text: Sharp / Original):
-      Enhanced is the sharp text and the HUD's intro; Reduce motion takes the motion off and keeps the text.
+      Enhanced is the sharp text, the HUD's intro and the background's glide; Reduce motion takes the two
+      motions off and keeps the text.
       There is no row of its own for the motion.
     - *Presentation alone.* The motion goes by the battle's own ticks, never the clock, and is in no state the
       simulation keeps: a rollback, a replay and a video draw it alike. Original draws every frame exactly as
@@ -605,6 +610,7 @@ What moves:
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps |
 | entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it while streaks in the cursor's color rush in toward the middle and the field rushes, a bright flash; the ground splits along the middle, its halves thrown apart with lit edges, and a diamond shockwave bursts out from the middle as the battle shows; the game's own encounter sound plays. With Reduce motion the ground fades (160) |
 | a round's start, in the battle (§2.55) | with Battle graphics Enhanced, the game's HUD comes in piece by piece, each within 600 ms of its first showing, by the battle's ticks: the HP box slides in from the left as the intro's fade clears (12 ticks, a little past and back), the emotion window 5 ticks after; the opponents' HP numbers pop in (squash and stretch, a hop); with the first chips sent the custom gauge drops in from the top and a light sweeps its bar; as they arrive the chip's name slides in and the icons pop in. With Reduce motion, or Original, the HUD is where the game puts it from the first frame |
+| the battle's background (§2.55) | with Battle graphics Enhanced, a background that drifts by parts of a pixel a frame glides at the window's resolution instead of stepping a whole pixel every few frames. With Reduce motion, or Original, it steps as the game's does |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |

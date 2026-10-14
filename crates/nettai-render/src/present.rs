@@ -61,6 +61,9 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
         for (o, &fx) in out[at..at + place.width as usize].iter_mut().zip(&columns) {
             *o = to_rgb(row[fx]);
         }
+        if let Some(g) = &frame.glide {
+            glide_row(frame, g, &place, dy, fy, &mut out[at..at + place.width as usize]);
+        }
     }
     if let Some(t) = text
         && !frame.text.is_empty()
@@ -68,6 +71,27 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
         t.draw(&frame.text, &frame.depth, &place, out, w);
     }
     place
+}
+
+/// A glide's row of the output (`Glide`): where the frame's pixel under an
+/// output pixel is the background's (or the backdrop's), the background a
+/// part of a pixel on, at the output's resolution: each output pixel takes
+/// the background pixel its place, in sixteenths of a frame pixel, plus the
+/// glide's falls in.
+fn glide_row(frame: &Frame, g: &crate::render::Glide, place: &Placement, dy: i32, fy: usize, out: &mut [u32]) {
+    use crate::compose::BACKDROP_DEPTH;
+    use crate::render::Glide;
+    let sixteenths = |d: i32, size: usize, span: i32, sub: u8| ((d as i64 * 16 * size as i64 / span as i64) as usize + sub as usize) / 16;
+    let gy = sixteenths(dy, HEIGHT, place.height, g.sub.1).min(Glide::HEIGHT - 1);
+    let depth = &frame.depth[fy * WIDTH..(fy + 1) * WIDTH];
+    let source = &g.pixels[gy * Glide::WIDTH..(gy + 1) * Glide::WIDTH];
+    for (dx, o) in out.iter_mut().enumerate() {
+        let fx = (dx as i32 * WIDTH as i32 / place.width) as usize;
+        if depth[fx] == g.depth || depth[fx] == BACKDROP_DEPTH {
+            let gx = sixteenths(dx as i32, WIDTH, place.width, g.sub.0).min(Glide::WIDTH - 1);
+            *o = to_rgb(source[gx]);
+        }
+    }
 }
 
 /// Draw a frame's text items into its own picture, at the frame's
@@ -138,7 +162,7 @@ mod tests {
         let mut pixels = vec![0u16; WIDTH * HEIGHT];
         pixels[0] = 0x001F;
         pixels[WIDTH + 1] = 0x7C00;
-        let frame = Frame { pixels, depth: vec![0; WIDTH * HEIGHT], text: Vec::new() };
+        let frame = Frame { pixels, depth: vec![0; WIDTH * HEIGHT], text: Vec::new(), glide: None };
         let (w, h) = (2 * WIDTH + 10, 2 * HEIGHT);
         let mut out = vec![0xABCDEF; w * h];
         present(&frame, None, &mut out, w, h);
@@ -147,6 +171,36 @@ mod tests {
         assert_eq!(out[w + 6], to_rgb(0x001F));
         assert_eq!(out[2 * w + 7], to_rgb(0x7C00));
         assert_eq!(out[7], to_rgb(0));
+    }
+
+    /// A glide shows the background a part of a pixel on, at the output's
+    /// resolution, where the frame shows the background or the backdrop;
+    /// what is in front of it stays on the frame's pixels.
+    #[test]
+    fn a_glide_moves_the_background_by_parts_of_a_pixel() {
+        use crate::compose::{BACKDROP_DEPTH, depth_key};
+        use crate::render::Glide;
+        // The background's columns colored by their x; the frame shows it
+        // at its whole pixels, a sprite over its column 3.
+        let bg_depth = depth_key(3, 2, 0);
+        let mut pixels: Vec<u16> = (0..WIDTH * HEIGHT).map(|i| (i % WIDTH) as u16).collect();
+        let mut depth = vec![bg_depth; WIDTH * HEIGHT];
+        pixels[3] = 0x7FFF;
+        depth[3] = depth_key(0, 0, 1);
+        depth[4] = BACKDROP_DEPTH;
+        let glide = Glide { pixels: (0..Glide::WIDTH * Glide::HEIGHT).map(|i| (i % Glide::WIDTH) as u16).collect(), sub: (8, 0), depth: bg_depth };
+        let mut frame = Frame { pixels, depth, text: Vec::new(), glide: None };
+        let (w, h) = (2 * WIDTH, 2 * HEIGHT);
+        let mut still = vec![0; w * h];
+        present(&frame, None, &mut still, w, h);
+        frame.glide = Some(glide);
+        let mut moved = vec![0; w * h];
+        present(&frame, None, &mut moved, w, h);
+        let row = |out: &[u32]| out[..10].to_vec();
+        assert_eq!(row(&still), [0, 0, 1, 1, 2, 2, 0x7FFF, 0x7FFF, 4, 4].map(to_rgb));
+        // Half a pixel on: each output pixel a column further, half the time;
+        // the sprite's stays; the backdrop's glides.
+        assert_eq!(row(&moved), [0, 1, 1, 2, 2, 3, 0x7FFF, 0x7FFF, 4, 5].map(to_rgb));
     }
 
     /// The original mode's strings in a language the pack has no fonts for
@@ -159,7 +213,7 @@ mod tests {
         use crate::vfont::{Role, VectorFont};
         let (face, shadow) = (0x7FFF, 0x2108);
         let item = TextItem::new("Cannon", Role::Cell, Rect::new(16, 8, 64, 16), face, Some(shadow));
-        let mut frame = Frame { pixels: vec![0x1234; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item] };
+        let mut frame = Frame { pixels: vec![0x1234; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None };
         draw_text(&mut frame, &mut TextRenderer::new(std::sync::Arc::new(VectorFont::bundled())));
         assert!(frame.text.is_empty());
         let changed: Vec<usize> = (0..WIDTH * HEIGHT).filter(|&i| frame.pixels[i] != 0x1234).collect();

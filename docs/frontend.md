@@ -1233,8 +1233,31 @@ otherwise, moves what follows; its text stays either way.
   the chips of a later turn. Which pieces there are and where they rest is
   the pack's and the HUD's as ever: the intro moves what the HUD draws, in
   every game (EXE4's chip icons are its own stack, `own_icon_parts`).
+- *The background's glide* (`Frame::glide`, `present`). A background that
+  scrolls by sixteenths of a pixel a frame (its `scroll`: the game's scroll
+  counters) shows on the screen at the counter's whole pixels, a step every
+  second or fourth frame; the glide shows it where the counter is. The
+  renderer draws the background a pixel wider and taller than the frame
+  (`Stage::draw_background_wide`: the same tiles, tile animations and
+  palettes, faded as the frame's stage is) and the counter's low four bits
+  (`Stage::background_sub`); `present` shows that picture, moved on by
+  those sixteenths at the output's resolution, on every output pixel whose
+  frame pixel the background or the backdrop won (the frame's depth keys),
+  and the frame's own pixels elsewhere: what is in front of the background
+  keeps its place, and text is drawn over as ever. The frame itself (its
+  240x160 pixels, as `Player::frame` gives it) is unchanged. The rates, in
+  pixels a frame (the packs' `background.json`): most areas' and
+  computers' ½ across and ¼ up or down (-8, -4 in sixteenths), several
+  ½ across alone (EXE6's aquarium-comp and judgetree-comp, EXE5's
+  drill-comp, EXE4's air-stadium, colosseum, lans-hp and stadium), a few ¼
+  up or down alone (EXE6's copybot-comp and robot-control-comp, EXE5's
+  main-comp, EXE4's dexs-hp and toyrobo-comp), EXE6's graveyard 1/16
+  across; the undernets and a few more hold still. A speeding scroll (EXE5's
+  nebulagray, EXE4's duo) moves whole pixels every frame: no glide.
 
-The motion is presentation alone and deterministic. Where each piece is
+The motion is presentation alone and deterministic. The glide's sixteenths
+are the background's clock's (the round's frames, as its whole pixels
+are) times its rate. Where each HUD piece is
 comes from the battle: the round's ticks (`round.ticks`, which a new round
 starts over), the custom screen's `Sent` records of the round's first
 screen (the tick the local result went out, the tick the later one's last

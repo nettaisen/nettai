@@ -53,6 +53,29 @@ pub struct Frame {
     pub pixels: Vec<u16>,
     pub depth: Vec<u32>,
     pub text: Vec<TextItem>,
+    /// The background at the part of a pixel it has scrolled past the
+    /// frame's whole pixels (the enhanced mode's motion): `present` shows
+    /// it where the frame shows the background.
+    pub glide: Option<Glide>,
+}
+
+/// A background between two of the frame's pixels: `present` draws the
+/// frame's background pixels from `pixels` (`Glide::WIDTH` by
+/// `Glide::HEIGHT`, from the frame's top left, faded as the frame's are)
+/// moved on by `sub` sixteenths of a pixel, at the output's resolution.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Glide {
+    pub pixels: Vec<u16>,
+    pub sub: (u8, u8),
+    /// The background layer's depth key (`compose::layer_depth`): the
+    /// frame's pixels it won, and the backdrop's, show the glide.
+    pub depth: u32,
+}
+
+impl Glide {
+    /// A pixel more than the frame each way, for the part of one past it.
+    pub const WIDTH: usize = compose::WIDTH + 1;
+    pub const HEIGHT: usize = compose::HEIGHT + 1;
 }
 
 /// Picks battles; keeps its layer buffers between frames. It owns what it
@@ -346,6 +369,7 @@ impl Renderer {
         self.hud.priority = own_game.hud.layout.hud_priority;
         let (parts, tags) = list.into_tagged_parts();
         let backdrop = stage.palettes[0][0];
+        let scene = &stage;
         // The transformation's fade takes every background palette, a
         // dimming's the stage's; the custom screen's Beast Out the stage's
         // and the HUD's, its other fades the stage's (a dark chip's second
@@ -418,7 +442,15 @@ impl Renderer {
                 Some(item)
             })
             .collect();
-        let mut frame = Frame { pixels, depth, text };
+        // (The background between the whole pixels the frame shows, for the
+        // output to glide: a scroll by sixteenths of a pixel a frame shows
+        // a step every few frames otherwise.)
+        let glide = (self.motion() && scene.background_sub() != (0, 0)).then(|| {
+            let color = |c: u16| compose::apply_fade(compose::apply_fade(c, fades.stage), fades.screen);
+            let pixels = scene.draw_background_wide(Glide::WIDTH, Glide::HEIGHT, backdrop, color);
+            Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
+        });
+        let mut frame = Frame { pixels, depth, text, glide };
         if let Some((_, renderer)) = self.stand_in.as_ref().filter(|_| stand_in) {
             crate::present::draw_text(&mut frame, &mut renderer.borrow_mut());
         }
