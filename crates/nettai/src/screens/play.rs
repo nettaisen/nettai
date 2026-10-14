@@ -6,8 +6,9 @@
 //! this screen's rows in its menu). Once the link is open the two are in
 //! the lobby (`session`: one `Lobby` a link, for as long as they stay together): the match's shared settings,
 //! each one's ready mark, the connection's quality. Both ready, the match is agreed and made ready behind the
-//! shell's two cards, each side saying how far it is; both loaded, it starts. When it ends, or one of them
-//! leaves it, both are back in the lobby on the same link.
+//! shell's two cards, each side saying how far it is; both loaded, it starts. When its set is over, nettai's
+//! result shows over the picture (`MatchResult`) until the player goes on; when it is, or one of them leaves the
+//! match, both are back in the lobby on the same link, neither waiting on the other's result.
 //!
 //! What goes wrong is said as its typed kind's sentence (`crate::errors`): a field's problem in the space
 //! reserved beside it, a failure that ends what the player was doing as the shell's dialog. A build's name is
@@ -60,24 +61,34 @@ use crate::settings::MAX_INPUT_DELAY;
 use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use gamepad_facade::Button;
+use nettai_battle::BattleResult;
 use nettai_battle::input::keys;
 use nettai_frontend::driver::{Driver, StopReason};
 use nettai_frontend::lobby::{Agreement, Settings};
 use nettai_frontend::netplay::{NetOptions, NetPlayer};
+use nettai_frontend::player::FRAME_RATE;
 use nettai_frontend::replay::Recorder;
 use nettai_match::Side;
 use nettai_rtc::signal::{ALPHABET, CODE_LENGTH};
-use nettai_ui::{BattleKind, BuildEntry, BuildSheet, LobbyNote, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
+use nettai_ui::{BattleKind, BuildEntry, BuildSheet, LobbyNote, MatchOutcome, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
 use session::{Net, Session, Stands, Way};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
 
-/// How long a match stays on screen once its set is over, before both players are back in the lobby. The
-/// result is shown by the game itself, in its own way, before the set is over for the engine: the picture has
-/// faded out by then, so this is a beat, not the time the result is read in.
+/// How long a match stays on screen once its set is over, before the player is back in the lobby, where nettai
+/// shows no result of its own (a set that ended some other way than won, lost or drawn). The game shows the
+/// result itself, in its own way, before the set is over for the engine: the picture has faded out by then, so
+/// this is a beat, not the time the result is read in.
 const RESULT_SHOWN: Duration = Duration::from_millis(500);
+
+/// How long nettai's result stays, once its set is over, before the player goes on to the lobby by themselves.
+const RESULT_STAYS: Duration = Duration::from_secs(6);
+
+/// The result's numbers tick with the game's cursor sound, at most this often (the time's hundredths tick
+/// every frame).
+const TICK_SPACING: Duration = Duration::from_millis(45);
 
 /// The round wins a match's set may be first to: 1 (a single battle) to `nettai_match::MAX_FIRST_TO`, 2 (the
 /// original's triple battle) unless the player last played another.
@@ -167,8 +178,24 @@ enum Stage {
     Lobby,
     /// A match is agreed and is being made ready behind the two cards.
     Loading { seed: u32, gate: Rc<Gate> },
-    /// The match is on: since when its result has shown, once it has one.
-    Match { result: Option<Instant> },
+    /// The match is on: how its set ended, once it has.
+    Match { result: Option<Ended> },
+}
+
+/// A match's set is over: since when, and whether nettai's result is over the picture (`MatchResult`).
+#[derive(Clone, Copy)]
+struct Ended {
+    since: Instant,
+    shown: bool,
+}
+
+/// What the result's sounds have played: the numbers' ticks the UI had counted, when the last one played, and
+/// the confirm sound as the last number came to its value.
+#[derive(Default)]
+struct ResultHeard {
+    ticks: i32,
+    at: Option<Instant>,
+    done: bool,
 }
 
 /// What the lobby shows that changes by itself: told to the UI when it does.
@@ -222,6 +249,8 @@ pub struct Play {
     sheet_of: Option<(String, Option<Side>, &'static str)>,
     /// The screen is shown anew (from another): the focus starts on the chosen build.
     fresh: bool,
+    /// The result's sounds.
+    heard: ResultHeard,
 }
 
 impl Default for Play {
@@ -248,6 +277,7 @@ impl Default for Play {
             wait_rows: Vec::new(),
             sheet_of: None,
             fresh: true,
+            heard: ResultHeard::default(),
         }
     }
 }
@@ -592,6 +622,7 @@ impl Play {
     /// Back in the lobby after a match (its set over, or stopped with the link still up): the match's player
     /// is dropped, and the lobby opens again, nobody ready. `why`: what ended it, if it didn't end by itself.
     fn reopen(&mut self, shell: &mut Shell, why: Option<UserError>) {
+        self.hide_result(shell);
         shell.cancel_loading();
         if shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Play) {
             shell.end_battle();
@@ -604,6 +635,84 @@ impl Play {
         self.page = MatchPage::Menu;
         self.set_peek(shell, false);
         self.show(shell);
+    }
+
+    /// How the match went, over the picture once its set is over (docs/design/app-ui.md §6, "After a match"): won,
+    /// lost or drawn, the round wins each side has and the match's time, which the match's player already has (no
+    /// state of the battle's is kept for it). The keys are the result's while it shows. False where the set ended
+    /// some other way, which shows none.
+    fn show_result(&mut self, shell: &mut Shell, result: BattleResult) -> bool {
+        let outcome = match result {
+            BattleResult::Won => MatchOutcome::Won,
+            BattleResult::Lost => MatchOutcome::Lost,
+            BattleResult::Drawn => MatchOutcome::Drawn,
+            _ => return false,
+        };
+        let Some(b) = shell.battle.as_ref() else { return false };
+        let (wins, losses) = b.stage.player.battle().wins_for(b.viewer);
+        let time = b.stage.player.ticks() as f64 / FRAME_RATE;
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        view.set_outcome(outcome);
+        view.set_result_wins(wins as i32);
+        view.set_result_losses(losses as i32);
+        view.set_result_time((time * 100.0).round().min(i32::MAX as f64) as i32);
+        view.set_result_settled(false);
+        view.set_result_ticks(0);
+        view.set_result_done(false);
+        view.set_result_shown(true);
+        self.heard = ResultHeard::default();
+        self.set_peek(shell, false);
+        shell.cover_battle("result.", Some(Key::new("result.go", 0)));
+        true
+    }
+
+    /// Whether the match's result is over the picture.
+    fn result_shown(&self) -> bool {
+        matches!(self.stage, Stage::Match { result: Some(Ended { shown: true, .. }) })
+    }
+
+    /// CONTINUE: the result settles where it still moves; settled, the player goes on to the lobby.
+    fn go_on(&mut self, shell: &mut Shell) {
+        if !self.result_shown() {
+            return;
+        }
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        if !view.get_result_done() && !view.get_result_settled() {
+            view.set_result_settled(true);
+            return;
+        }
+        self.reopen(shell, None);
+    }
+
+    fn hide_result(&mut self, shell: &mut Shell) {
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        if view.get_result_shown() {
+            view.set_result_shown(false);
+            shell.cover_battle("result.", None);
+        }
+    }
+
+    /// The result's sounds, the game's own: its cursor's as its numbers tick (not more often than
+    /// `TICK_SPACING`), its confirm as the last one comes to its value.
+    fn result_sounds(&mut self, shell: &mut Shell, now: Instant) {
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        if self.heard.done {
+            return;
+        }
+        if view.get_result_done() {
+            self.heard.done = true;
+            shell.sound.play(Cue::Pick);
+            return;
+        }
+        let ticks = view.get_result_ticks();
+        if ticks > self.heard.ticks && self.heard.at.is_none_or(|at| now.saturating_duration_since(at) >= TICK_SPACING) {
+            self.heard = ResultHeard { ticks, at: Some(now), done: false };
+            shell.sound.play(Cue::Cursor);
+        }
     }
 
     /// The lobby's settings as the player's controls change them.
@@ -1120,6 +1229,8 @@ impl Screen for Play {
             "menu.back" => self.set_page(shell, MatchPage::Menu),
             "menu.delay" => {}
             "menu.leave" if matches!(self.stage, Stage::Match { .. }) => self.reopen(shell, None),
+            // ---- The match's result.
+            "result.go" => self.go_on(shell),
             _ => {}
         }
     }
@@ -1230,7 +1341,10 @@ impl Screen for Play {
     }
 
     fn back(&mut self, shell: &mut Shell) -> bool {
-        if self.boxes.is_some() {
+        // (Over a match's result, Back goes on as CONTINUE does: the match is over, and the other player stays.)
+        if self.result_shown() {
+            self.go_on(shell);
+        } else if self.boxes.is_some() {
             self.close_boxes(shell);
         } else if self.direct.is_some() {
             self.close_direct(shell);
@@ -1403,12 +1517,17 @@ impl Screen for Play {
             (Stands::Lobby | Stands::Loading(_) | Stands::Start(_), _) => {}
             (Stands::Playing, Stage::Match { result }) => {
                 let over = shell.battle.as_ref().and_then(|b| b.stage.player.result());
-                let shown = *result;
+                let ended = *result;
                 let their_back = session.lobby().is_some_and(|l| l.their_reopened());
-                match (over, shown) {
-                    // The set is over: its result stays on the picture a while, then the lobby.
-                    (Some(_), None) => self.stage = Stage::Match { result: Some(now) },
-                    (Some(_), Some(since)) if now.saturating_duration_since(since) >= RESULT_SHOWN => self.reopen(shell, None),
+                match (over, ended) {
+                    // The set is over, and the game has shown its result: nettai's, over the picture, until the
+                    // player goes on or a few seconds pass; then the lobby.
+                    (Some(over), None) => {
+                        let shown = self.show_result(shell, over);
+                        self.stage = Stage::Match { result: Some(Ended { since: now, shown }) };
+                    }
+                    (Some(_), Some(Ended { since, shown })) if now.saturating_duration_since(since) >= if shown { RESULT_STAYS } else { RESULT_SHOWN } => self.reopen(shell, None),
+                    (Some(_), Some(Ended { shown: true, .. })) => self.result_sounds(shell, now),
                     // The other player is back in the lobby and this one's set isn't over: they ended the
                     // match on their side.
                     (None, _) if their_back => self.reopen(shell, UserError::of_stop(StopReason::OpponentLeft)),

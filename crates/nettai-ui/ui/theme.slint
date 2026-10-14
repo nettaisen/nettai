@@ -164,8 +164,12 @@ export global Theme {
     // cross-fade take `settle` too.)
     out property <duration> settle: motion ? 200ms : 0ms;
     out property <duration> leave: motion ? 120ms : 0ms;
-    // The two set pieces: entering a battle, a result.
-    out property <duration> set-piece: motion ? 420ms : 0ms;
+    // The two set pieces: entering a battle (the jack-in), a result.
+    out property <duration> set-piece: motion ? 480ms : 0ms;
+    // What Reduce motion keeps of the jack-in: a short fade (`Pulse`'s `calm`). The screenshot pass (`still`)
+    // keeps nothing of it: there every clock is at its end.
+    in property <bool> still;
+    out property <duration> calm-fade: still ? 0ms : 160ms;
     // How far apart the parts of a screen arrive.
     out property <duration> stagger: 30ms;
     // The way the screen shown was reached: Back's arrival runs the other way.

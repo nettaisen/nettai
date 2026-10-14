@@ -116,10 +116,10 @@ export global Shell {
     in property <VersusCard> versus-left;
     in property <VersusCard> versus-right;
 
-    // A battle is being entered: the field's hexagons rush (it counts the times), and as the battle begins the
-    // screen wipes into it.
+    // A battle is being entered: the field's hexagons rush (it counts the times), and as the battle begins it
+    // jacks in (`JackIn`: it counts those).
     in property <int> rush-seq;
-    in property <int> wipe-seq;
+    in property <int> jack-in-seq;
 
     // The battle running, and whether its picture fills the window (else its screen shows it in a `Picture`
     // of its own). `battle-menu` is nettai's menu over it (Start or Esc).
@@ -622,7 +622,7 @@ export component Backdrop inherits Rectangle {
     property <float> pulse: Theme.motion ? clamp(mod(animation-tick(), 9s) / 2.8s, 0, 1) : 1;
     rush := Pulse {
         seq: Shell.rush-seq;
-        duration: 520ms;
+        duration: Theme.set-piece;
     }
 
     for ground in Shell.grounds: GroundLayer {
@@ -632,6 +632,118 @@ export component Backdrop inherits Rectangle {
         pulse: root.pulse;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+}
+
+// The jack-in (docs/design/app-ui.md §4, "Motion"; §2.49): as a battle begins, over its first frames, the field's
+// rush goes on across the window. The ground covers the battle while streaks in the cursor's color rush in toward
+// the middle, a flash, and the battle shows; a telop stamps over it, the operator's call. It is drawn over the
+// battle and takes no input: the battle starts when it would have, and runs under it. With motion turned down
+// the ground and the telop fade (`calm`, the theme's `calm-fade`), with no streaks and no stamp.
+export component JackIn inherits Rectangle {
+    // How far it is, 0 to 1 (1 once it is over, and as it is made: nothing shows).
+    property <float> p: 1 - clock.v;
+    property <float> stamp: Theme.motion ? clamp((root.p - 0.05) / 0.14, 0, 1) : 1;
+    property <float> stamped: 1 - pow(1 - root.stamp, 3);
+    clock := Pulse {
+        seq: Shell.jack-in-seq;
+        duration: Theme.motion ? Theme.set-piece : Theme.calm-fade;
+        calm: true;
+    }
+
+    Rectangle {
+        visible: clock.v > 0;
+        // The ground over the battle until the flash, then gone.
+        Rectangle {
+            background: @linear-gradient(180deg, Theme.ground-top 0%, Theme.ground-bottom 100%);
+            opacity: !Theme.motion ? clock.v : root.p < 0.5 ? 1 : max(0, 1 - (root.p - 0.5) / 0.2);
+        }
+
+        // The light gathering in the middle as the streaks come.
+        Rectangle {
+            x: (parent.width - self.width) / 2;
+            y: (parent.height - self.height) / 2;
+            width: (0.3 + root.p * 1.4) * min(parent.width, parent.height);
+            height: self.width;
+            visible: Theme.motion;
+            background: @radial-gradient(circle, Theme.cursor.with-alpha(0.5) 0%, Theme.clear 62%);
+            opacity: root.p < 0.5 ? root.p * 2 : max(0, 1 - (root.p - 0.5) / 0.2);
+        }
+
+        // The streaks: each from beyond the window's edge toward its middle, its bright end first, one after
+        // another (`start`, a spread of the first fifth).
+        for i in 28: Rectangle {
+            property <float> start: mod(i * 7, 11) / 11 * 0.2;
+            property <float> q: clamp((root.p - self.start) / 0.32, 0, 1);
+            property <angle> a: i * 360deg / 28 + mod(i * 37, 13) * 1deg;
+            property <length> length: 60px + mod(i * 53, 7) * 26px;
+            property <length> reach: max(parent.width, parent.height) * 0.62;
+            property <length> r: (1 - self.q * self.q) * self.reach + 12px + self.length / 2;
+            x: parent.width / 2 + cos(self.a) * self.r - self.width / 2;
+            y: parent.height / 2 + sin(self.a) * self.r - self.height / 2;
+            width: self.length;
+            height: mod(i, 3) == 0 ? 3px : 2px;
+            visible: Theme.motion && self.q > 0 && self.q < 1;
+            transform-rotation: self.a;
+            background: @linear-gradient(90deg, #ffffff 0%, Theme.cursor 18%, Theme.clear 100%);
+            opacity: sin(self.q * 180deg);
+        }
+
+        // The flash.
+        Rectangle {
+            visible: Theme.motion;
+            background: #ffffff.mix(Theme.cursor, 0.55);
+            opacity: max(0, 1 - abs(root.p - 0.5) / 0.12) * 0.85;
+        }
+
+        // The telop: a band across the middle, its call stamped in it.
+        Rectangle {
+            property <float> gone: !Theme.motion ? clock.v : root.p < 0.82 ? 1 : max(0, 1 - (root.p - 0.82) / 0.18);
+            y: (parent.height - self.height) / 2;
+            height: Theme.phone ? 96px : 72px;
+            opacity: root.stamp * self.gone;
+            Rectangle {
+                x: (parent.width - self.width) / 2;
+                width: parent.width * root.stamped;
+                background: Theme.ground-bottom.with-alpha(0.82);
+                Rectangle {
+                    y: 0;
+                    height: 2px;
+                    background: Theme.cursor;
+                    drop-shadow-blur: 10px;
+                    drop-shadow-color: Theme.glow;
+                }
+
+                Rectangle {
+                    y: parent.height - 2px;
+                    height: 2px;
+                    background: Theme.cursor;
+                    drop-shadow-blur: 10px;
+                    drop-shadow-color: Theme.glow;
+                }
+            }
+
+            telop := Text {
+                property <bool> over: Theme.audit && self.preferred-height > self.height + 0.5px;
+                x: Theme.margin;
+                width: parent.width - 2 * Theme.margin;
+                text: @tr("BATTLE ROUTINE, SET! EXECUTE!");
+                color: Theme.text;
+                font-family: Theme.display;
+                font-size: Theme.phone ? 20px : 34px;
+                font-weight: Theme.display-bold;
+                letter-spacing: Theme.title-tracking;
+                horizontal-alignment: center;
+                vertical-alignment: center;
+                wrap: word-wrap;
+                transform-scale: 1 + (1 - root.stamped) * 0.5;
+                changed over => {
+                    if over {
+                        Audit.clipped(self.text);
+                    }
+                }
+            }
+        }
     }
 }
 
