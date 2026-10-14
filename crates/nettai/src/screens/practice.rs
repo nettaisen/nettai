@@ -1348,7 +1348,8 @@ impl Screen for Practice {
         shell.practice.visit.arrive();
         self.list(shell, &game, &ready);
         self.tell(shell, &game, &ready);
-        // The music the session will start plays here in place of the title music, from its start.
+        // The music the session will start plays here in place of the title music, from its start. (Shown again for
+        // another game, the pick the visit's still, the same song goes on where it is: `Sound::set_preview`.)
         self.play_music(shell);
     }
 

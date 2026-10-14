@@ -305,6 +305,11 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   the next once the row has stayed on it 400 ms (`MUSIC_AFTER`: a run of steps starts one song, the one it stops
   on, as the arena waits 160 ms before it is drawn). Leaving the entry (to the menu, to Builds through EDIT)
   brings the title music back as the other menus have it.
+- *A change of game on the entry keeps the same song* (the user: "switching game in practice mode shouldn't
+  restart the music if it's the same music"; docs/design/app-ui.md §2.45): the pick stays (it is the visit's),
+  and the same pack's same song (a theme) goes on where it is on the new game's sound, which its session takes
+  over at START (`BattleAudio::go_on_with`; nettai's `a_game_changed_keeps_the_same_song`); another (Game's own:
+  BN6's, then BN5's) crossfades as before. (A step of the row to the same song goes on too.)
 - *Into the battle it plays on.* START PRACTICE doesn't fade it: while the cards show, the battle being made ready
   is one that takes it over (`Shell::carried_music`: a battle that plays the pick, whose first round's music and
   pick are the preview's, by `music::key`), so the menus keep it playing; as the battle begins, the preview's
