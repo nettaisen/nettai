@@ -207,6 +207,19 @@ Each is settled unless the user changes it.
     moving to buttons underneath". And the practice beside a waiting invite has no Music row: "in the waiting for
     opponent screen, it really shouldn't let you change the music because it does nothing" (its music is the
     menus', §2.29).
+37. **A click on the marked row removes, and a row is dragged to its place** (2026-10-13): "also actually clicking on
+    an already selected chip or patch card or whatever should remove it, instead of right clicking. also you should
+    be able to drag and drop to reorder". In the editor's own lists (the folder's entries, the patch cards and
+    EXE4's slots, the auto battle places), a click on the row that is marked takes out what it holds, as Del does;
+    a click on another marks it, as before; a right click does nothing there now. A double click does no more than
+    one click (a click within a double click's time of the last on that row is passed over), so it never removes by
+    accident. A row pressed and moved is dragged: it lifts under the pointer, the rows between slide to leave a gap
+    where it would land, the list scrolls near its edges, and let go it moves there (off the list, it goes back). A
+    folder's entry takes its Regular and tag marks with it; a patch card moves as `[` and `]` move it (EXE4's slots,
+    each card's own, aren't dragged); an auto battle place's chip moves within its list, or trades with another
+    list's place, refused with a shake where the rules hold that list to another class. The NaviCust keeps its right
+    click, and a phone's tap still opens the library's sheet; on a phone a touch held still a moment drags a row, and
+    one that moves at once scrolls. (§4, §6, docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -318,6 +331,7 @@ What moves:
 | a stepper, a tab | the value slides out and in within its box, the way pressed; a tab's underline slides and the body follows that way |
 | a list | the chosen row's bar and tint slide to the next row; scrolling is smooth, never a jump |
 | the folder | a chip put in flies from its library row to its slot, which flashes; a count that changes ticks to its number; a refusal shakes the row 4, twice, and flashes its reason |
+| a build's row dragged | it lifts under the pointer (to 1.03, raised, with a shadow and a line in the cursor's color), the rows between slide a row over to leave a gap where it would land, outlined (`quick`), and let go it lands with the flash of a chip put in; refused, it shakes |
 | the NaviCust | a piece picked up lifts (to 1.06, with a shadow), turns as a quarter turn, and drops with a pulse along its cells; the command line's arrows pulse; a bug that appears pulses purple once |
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps, and when both are full the screen wipes into the battle |
@@ -504,6 +518,11 @@ Each is in the mockups under the same name.
   named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
   puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
   shows its effect and the bugs it adds to or clears.
+- **The mouse on the build's lists** (§2.37): a click marks a row (a folder's entry, a patch card or slot, an auto
+  battle place), and a click on the marked one takes out what it holds; a row is dragged to another place (a
+  folder's entry with its marks, a patch card in the list's order, a place's chip in its list or traded with another
+  list's), and let go off the list it goes back. No right click; on a phone, a tap opens the library's sheet and a
+  held touch drags.
 - **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
   library offers what the place being filled can hold (§2.27): a Mega place the Mega chips, the Giga place the Giga
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
