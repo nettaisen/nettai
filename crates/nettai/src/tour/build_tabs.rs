@@ -114,7 +114,7 @@ fn open_build(add: &mut dyn FnMut(u64, Step), phone: bool) {
 
 /// The editor's tab of kind `tab`, by its place in the bar. A tab the game hasn't is passed by: the steps after
 /// this do nothing and take no picture, until the next tab is gone to or the walk ends.
-fn to_tab(tab: EditorTab) -> Step {
+pub(super) fn to_tab(tab: EditorTab) -> Step {
     Box::new(move |ui, app, tour| {
         let view = ui.global::<BuildsView>();
         let names = view.get_tab_names();
@@ -129,7 +129,7 @@ fn to_tab(tab: EditorTab) -> Step {
 }
 
 /// Take in hand the `nth` program of the NaviCust's list (from 0) that `which` picks, as Enter on its row does.
-fn take(nth: usize, which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
+pub(super) fn take(nth: usize, which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
     Box::new(move |ui, app, tour| {
         if tour.passing.get() {
             return;
@@ -145,7 +145,7 @@ fn take(nth: usize, which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
 /// Where the piece in hand may go: off the command line, on the out-of-bounds ring, over another piece, or anywhere
 /// on the board itself.
 #[derive(Clone, Copy, PartialEq)]
-enum Spot {
+pub(super) enum Spot {
     OffTheLine,
     Ring,
     Over,
@@ -154,7 +154,7 @@ enum Spot {
 
 /// Put the piece in hand down at the first cell where it would be at `spot` (and, but `Spot::Over`, fit), as the
 /// cursor moved there and Enter does: found from what the view shows of the board, whatever the game's shapes.
-fn put(spot: Spot) -> Step {
+pub(super) fn put(spot: Spot) -> Step {
     Box::new(move |ui, app, tour| {
         if !tour.passing.get() {
             put_now(ui, app, spot);
@@ -227,7 +227,7 @@ fn on_placed() -> Step {
 fn plus(r: &nettai_ui::ProgramRow) -> bool {
     r.plus
 }
-fn program(r: &nettai_ui::ProgramRow) -> bool {
+pub(super) fn program(r: &nettai_ui::ProgramRow) -> bool {
     !r.plus
 }
 
@@ -678,7 +678,7 @@ fn click_wheel_right(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev
 }
 
 /// Into the library from the build's cards (on a phone, its sheet), if the cursor isn't there; and back out.
-fn library() -> Step {
+pub(super) fn library() -> Step {
     Box::new(|_, app, tour| {
         if tour.passing.get() {
             return;
@@ -689,7 +689,7 @@ fn library() -> Step {
         }
     })
 }
-fn out_of_library() -> Step {
+pub(super) fn out_of_library() -> Step {
     Box::new(|_, app, tour| {
         if tour.passing.get() {
             return;

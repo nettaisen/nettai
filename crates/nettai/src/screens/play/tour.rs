@@ -1028,3 +1028,52 @@ pub fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64,
         }),
     );
 }
+
+/// Play in the showreel (`crate::tour::reel`): the builds; an invite, a practice session beside it while it waits;
+/// the second player joining by its code, their card coming into the lobby; their ready mark and this player's;
+/// the cards, and a few seconds of the match, the app's player pressing by itself. Then, off the air (`air`), the
+/// match and the lobby left. Each wait for the other player goes on from when they have done what is waited for.
+pub fn reel(add: &mut dyn FnMut(u64, Step), air: &dyn Fn(bool) -> Step) {
+    let reach = |add: &mut dyn FnMut(u64, Step), come: fn(&App, &AppWindow) -> bool| {
+        add(0, until(come));
+        add(0, step(|_| {}));
+    };
+    add(
+        0,
+        step(|app| {
+            RIG.with(|rig| *rig.borrow_mut() = Some(Rig::new()));
+            app.shell.settings.remembered.retain(|key, _| !key.starts_with("play."));
+            app.go_now(ScreenId::Play);
+            app.shell.nav.focus("invite", 0);
+            app.shell.nav.show_cursor(true, false);
+        }),
+    );
+    add(1800, press("invite"));
+    reach(add, |app, ui| part(ui) == PlayPart::Waiting && practicing(app));
+    add(2200, step(|app| come(app, Comes::Joining(Brings::New))));
+    reach(add, |_, ui| together(ui));
+    add(1100, focus("lobby.ready", 0));
+    add(600, peer(|p| p.wishes.ready = true));
+    reach(add, |_, ui| ui.global::<PlayView>().get_their_ready());
+    add(900, press("lobby.ready"));
+    reach(add, |app, _| in_match(app));
+    add(0, step(|_| {
+        with_rig(|rig| rig.shoots = true);
+    }));
+    add(5500, step(|app| app.shell.open_menu()));
+    add(900, air(false));
+    add(0, press("menu.leave"));
+    reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Lobby);
+    add(SETTLE, step(|_| {
+        with_rig(|rig| rig.shoots = false);
+    }));
+    add(SETTLE, press("lobby.leave"));
+    reach(add, |_, ui| part(ui) == PlayPart::Builds);
+    add(
+        SETTLE,
+        step(|app| {
+            RIG.with(|rig| *rig.borrow_mut() = None);
+            app.go_now(ScreenId::Menu);
+        }),
+    );
+}

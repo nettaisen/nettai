@@ -9,7 +9,8 @@
 //! `NETTAI_PLAY_STATS` prints what the battle's picture costs and how late it is, every two seconds;
 //! `NETTAI_KEY_PROBE` presses the right arrow now and then to measure it; `NETTAI_WINDOW_PROBE` minimizes or
 //! hides the window for a while; `NETTAI_TOUR=<folder>` walks every
-//! screen and writes each to a PNG (`tour`: a build with the `tour` feature's alone).
+//! screen and writes each to a PNG, and with `NETTAI_REEL=<out.mp4>` makes a showreel video of a scripted walk
+//! (`tour`: a build with the `tour` feature's alone).
 
 // A release build on Windows opens no console window beside its own (what it prints goes nowhere; the log is the
 // data folder's nettai.log). A development build keeps one, for what it prints.
@@ -19,6 +20,7 @@ mod awake;
 mod backgrounds;
 mod battle;
 mod bnlc;
+mod clock;
 mod builds;
 mod errors;
 mod games;
@@ -74,17 +76,30 @@ fn main() -> Result<(), slint::PlatformError> {
     nettai_frontend::session::quiet_engine_panics();
     errors::catch_library_logs();
     let tour = std::env::var_os("NETTAI_TOUR").map(std::path::PathBuf::from);
-    if cfg!(not(feature = "tour")) && tour.is_some() {
-        eprintln!("nettai: this build has no screenshot pass (NETTAI_TOUR): build it with `--features tour`");
+    // (The showreel: the pass's walk, made a video. It runs in the pass's folder.)
+    let reel = std::env::var_os("NETTAI_REEL").map(std::path::PathBuf::from);
+    if cfg!(not(feature = "tour")) && (tour.is_some() || reel.is_some()) {
+        eprintln!("nettai: this build has no screenshot pass (NETTAI_TOUR, NETTAI_REEL): build it with `--features tour`");
         std::process::exit(2);
     }
-    // (The clock needs the renderer that tells when it draws: femtovg.)
-    let mut backend = slint::BackendSelector::new().backend_name("winit".into()).renderer_name("femtovg".into());
-    if tour.is_some() {
-        // (The screenshot pass's window doesn't take the keyboard.)
-        backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
+    if reel.is_some() && tour.is_none() {
+        eprintln!("nettai: the showreel (NETTAI_REEL) runs in the screenshot pass's folder: give it NETTAI_TOUR=<folder> too");
+        std::process::exit(2);
     }
-    backend.select()?;
+    let reeling = cfg!(feature = "tour") && reel.is_some();
+    if reeling {
+        // (The same backend as below, its clock the reel's.)
+        #[cfg(feature = "tour")]
+        tour::reel::platform()?;
+    } else {
+        // (The clock needs the renderer that tells when it draws: femtovg.)
+        let mut backend = slint::BackendSelector::new().backend_name("winit".into()).renderer_name("femtovg".into());
+        if tour.is_some() {
+            // (The screenshot pass's window doesn't take the keyboard.)
+            backend = backend.with_winit_window_attributes_hook(|a| a.with_active(false));
+        }
+        backend.select()?;
+    }
     let ui = AppWindow::new()?;
     let app = Rc::new(RefCell::new(App::new(&ui, tour.is_some())));
     APP.with(|a| a.set(app.clone())).unwrap_or_else(|_| unreachable!("the app starts once"));
@@ -109,19 +124,22 @@ fn main() -> Result<(), slint::PlatformError> {
             RenderingState::RenderingTeardown => state.borrow_mut().shell.gl = None,
             // (The app is busy only while one of the system's dialogs is up, which a screen opened and which
             // runs the window's loop itself: those frames are drawn as the last was.)
-            RenderingState::BeforeRendering => {
+            // (In the showreel, only the frames it captures run the app's: the window's own draws show them.)
+            RenderingState::BeforeRendering if frame_due() => {
                 if let Ok(mut app) = state.try_borrow_mut() {
                     for input in WAITING.with(|w| std::mem::take(&mut *w.borrow_mut())) {
                         app.input(input);
                     }
-                    app.frame(Instant::now());
+                    app.frame(clock::now());
                 }
             }
             RenderingState::AfterRendering => {
                 if let Ok(mut app) = state.try_borrow_mut() {
                     app.drawn();
                 }
-                if let Some(ui) = weak.upgrade() {
+                if let Some(ui) = weak.upgrade()
+                    && !reeling
+                {
                     ui.window().request_redraw();
                 }
             }
@@ -209,9 +227,10 @@ fn main() -> Result<(), slint::PlatformError> {
 
     // The clock when the window isn't drawn (minimized, hidden, covered): a timer runs the app's frame while a
     // battle or a link must go on, and asks for a redraw so the window's frames take over again when it shows.
-    // (`NETTAI_NO_TIMER_CLOCK` leaves it out, to see what the window does alone.)
+    // (`NETTAI_NO_TIMER_CLOCK` leaves it out, to see what the window does alone. The showreel runs every frame
+    // itself.)
     let idle = slint::Timer::default();
-    if std::env::var_os("NETTAI_NO_TIMER_CLOCK").is_none() {
+    if std::env::var_os("NETTAI_NO_TIMER_CLOCK").is_none() && !reeling {
         let (weak, state) = (ui.as_weak(), app.clone());
         idle.start(slint::TimerMode::Repeated, Duration::from_millis(16), move || {
             let ran = state.try_borrow_mut().is_ok_and(|mut app| app.idle(Instant::now()));
@@ -228,7 +247,10 @@ fn main() -> Result<(), slint::PlatformError> {
     }
     #[cfg(feature = "tour")]
     if let Some(dir) = tour {
-        tour::start(&ui, &app, dir);
+        match reel {
+            Some(out) => tour::reel::start(&ui, &app, dir, out),
+            None => tour::start(&ui, &app, dir),
+        }
     }
     ui.run()?;
     // (The screenshot pass found something cut or moved, or was ended before its walk was done.)
@@ -239,6 +261,15 @@ fn main() -> Result<(), slint::PlatformError> {
         std::process::exit(1);
     }
     Ok(())
+}
+
+/// Whether the window's rendering runs the app's frame: always, but in the showreel (`tour::reel`).
+fn frame_due() -> bool {
+    #[cfg(feature = "tour")]
+    if !tour::reel::frame_due() {
+        return false;
+    }
+    true
 }
 
 /// `NETTAI_WINDOW_PROBE=<minimize|hide>:<after>:<for>`: the window minimized or hidden `after` seconds from the

@@ -1834,6 +1834,52 @@ the other's link brought, the longest it brought none for, the frames in which i
 match's ticks. The joiner's lines say whether the other side saw the host stall; with `NETTAI_NO_TIMER_CLOCK`
 on the host they show what a stall looks like. No shot is taken.
 
+**The showreel** (`tour/reel.rs`): `NETTAI_REEL=<out.mp4>` with the pass's folder, in a build with the `tour`
+feature, walks a scripted demo of the app with everything moving and sounding and writes it to an MP4 (H.264 and
+AAC through `ffmpeg`, `$NETTAI_FFMPEG` else the one on the path), so that the reel can be made again as the app
+changes:
+
+```
+cargo build -p nettai --release --features tour
+NETTAI_PACKS=data NETTAI_TOUR=/tmp/reel NETTAI_REEL=/tmp/reel/nettai-showreel.mp4 target/release/nettai
+```
+
+It shows, in about 90 seconds: the main menu with its demo battle and the title music, a change of game to EXE5,
+EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle); Practice's entry (the builds
+facing each other, the arena's preview, the arena stepped), its Music stepped to a battle theme, which plays,
+START, the cards, the practice menu setting the dummy to Fights at Hard, and a fight in which the player's side
+presses by itself (the custom screen picked through as the bots pick, chips used, a move, a charged shot, the
+custom screen opened once the gauge is full); Builds' list, the editor's Folder tab (a chip put in from the
+library), the NaviCust (two programs taken and put down) and the patch cards (three put in), then EXE5's builds
+and the Auto battle tab (three places filled); Play, an invite with a practice session beside it, the second
+player joining by its code (`screens/play/tour.rs`'s `reel`), both ready, the cards and a few seconds of their
+match; Replays, the list, a replay watched, a seek further on and twice the speed; About.
+
+- **Time is the reel's.** The app runs a frame at a time: each frame captured moves its clock on by exactly
+  1/60 s whatever the capture costs, so the video plays smoothly at 60 frames a second however slowly it was
+  made (a release build makes it in a few minutes). Slint's clock (its animations and timers, among them the
+  walk's steps) is the reel's through the window's backend, wrapped (the winit backend, built as `main.rs`'s
+  selection builds it, its `duration_since_start` the reel's); the app's (a frame's time, a screen's change, a
+  change of game's sweep, the cards' time up, a pick's delay) through `crate::clock::now`, which is the system's
+  but in the reel. Only the frames the reel captures run the app's frame: the window's own draws show them, and
+  the timer that runs frames for a window that isn't drawn is off.
+- **The sound is what the device would play**: `Sound::frame` hands the reel the samples it queues, at the
+  device's volume (the menus' sounds and music, a battle's, a replay's), and each video frame is written with
+  1/60 s of them. The sound is written 640 samples (20 ms) behind the picture, a battle tick's and a little, so
+  that a frame in which no tick ran doesn't leave a gap.
+- **What is only waited for is cut out.** The walk is off the air while the games load, its builds and replays
+  are made and the Replays screen plays them out, and while the other player's link is undone and the editor
+  is left: the clock runs, nothing is written, and the video cuts from before to after.
+- **The size.** The window is 1280 by 800 units at the display's pixels (2560 by 1600 at a scale of two),
+  scaled to 1920 by 1200 (Lanczos) and encoded at CRF 21: some 35 MB for the reel.
+
+The reel is the pass, held still as it is but for motion (on, as the probe's) and the battles (the menu's demo
+battle plays, and a replay's viewer: `Shell::reel`): the settings are the defaults and never written, the builds
+and replays are the pass's own (`<folder>/builds`, `<folder>/replays`), the demo battles' seeds are fixed, and
+the pointer is ignored. `reel.txt` in the folder says what was written: the frames and their size, the samples,
+how many were silence for want of any heard, the frames run off the air. The process ends with status 1 if
+ffmpeg failed.
+
 ## 14. Build time
 
 The user: "you should also try not make the slint build really expensive, because the current nettai binary takes

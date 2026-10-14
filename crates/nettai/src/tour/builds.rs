@@ -300,7 +300,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
 }
 
 /// Out of whatever of the Builds screen is open (a dialog, the library, the editor), back to its list.
-fn leave(app: &mut App) {
+pub(super) fn leave(app: &mut App) {
     for _ in 0..4 {
         if app.shell.screen() == ScreenId::Builds {
             app.with_screen(ScreenId::Builds, |s, shell| {
