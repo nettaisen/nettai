@@ -41,6 +41,8 @@ export enum PracticeOption {
     // the entry's row says it (none: Random).
     arena,
     background,
+    // The battle's music (the player's one pick, the entry's Music row's): the row's text is its name.
+    music,
     your-hp,
     dummys-hp,
     custom-gauge,
@@ -131,6 +133,9 @@ export global PracticeView {
         }
         if option == PracticeOption.background {
             return @tr("Background");
+        }
+        if option == PracticeOption.music {
+            return @tr("Music");
         }
         if option == PracticeOption.your-hp {
             return @tr("Your HP");
