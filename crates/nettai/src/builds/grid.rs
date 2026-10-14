@@ -492,6 +492,41 @@ mod tests {
         assert_eq!(nettai_match::check_match(&content, &m), Vec::<String>::new());
     }
 
+    /// A program is placed as many times as it is taken from the list: a second copy in the same color (and one in
+    /// another) goes down beside the first, and each game's rules accept the copies (they limit none; a save
+    /// compresses every copy of a program in one color alike, which `Navicust::take` keeps).
+    #[test]
+    fn a_program_is_placed_more_than_once() {
+        for (content, game, version) in [
+            (nettai_match::testing::exe6_content(), "exe6", "falzar"),
+            (nettai_match::testing::exe5_content(), "exe5", "protoman"),
+            (nettai_match::testing::exe4_content(), "exe4", "redsun"),
+        ] {
+            let builds = nettai_match::build::Builds::of(&content, game).unwrap();
+            let mut side = builds.new_build(&content, version).unwrap();
+            let data = read_game(&content, game).unwrap();
+            let piece = nettai_match::ids::entry(&content, game, &data.collection, "hp-50").unwrap_or_else(|| panic!("{game}: no HP+50")).0;
+            let board = data.board_of(&content, &side).map(|b| data.boards[b].clone()).unwrap();
+            let shape = data.shape(piece, false, 0);
+            let mut held = None;
+            for i in 0..3 {
+                // (The first two in the program's first color, the third in its last; each where it first fits
+                // wholly on the board, reading from the top.)
+                let color = if i < 2 { 0 } else { data.colors[&piece].len() as u8 - 1 };
+                let parts = placed(&content, &side);
+                let own = |&(x, y): &(i32, i32)| cells(&shape, x, y).iter().all(|&(cx, cy)| board.get(cy as usize).and_then(|r| r.get(cx as usize)) == Some(&b'o'));
+                let (x, y) = (0..7).flat_map(|y| (0..7).map(move |x| (x, y))).find(|at| own(at) && data.fits(&board, &parts, &shape, at.0, at.1)).unwrap();
+                edit(&data, &content, &mut side, &mut held, Edit::Hold(piece, color, false));
+                assert!(edit(&data, &content, &mut side, &mut held, Edit::Place(x, y)), "{game}: copy {} at ({x}, {y})", i + 1);
+            }
+            let parts = placed(&content, &side);
+            assert_eq!(parts.iter().filter(|p| p.piece == piece).count(), 3, "{game}");
+            assert_eq!(parts[0].color, parts[1].color, "{game}: two copies in one color");
+            let problems = nettai_match::build::Checked::of(&content, game, &side).problems;
+            assert!(problems.is_empty(), "{game}: {problems:?}");
+        }
+    }
+
     /// Compressing a piece in hand keeps its turns, and the cell it is held by where its other shape still has it
     /// (else the nearest one it has).
     #[test]

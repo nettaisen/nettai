@@ -59,7 +59,8 @@ Each is settled unless the user changes it.
 10. **The NaviCust:** EXE4 and EXE5 draw only their 5x5 board (they have no out-of-bounds cells); EXE6 draws its 7x7
     with the out-of-bounds ring and the command line clearly marked. Out of bounds "is fine, it's not an error", and
     "bugs can sometimes be good in a build", so neither is styled as a warning. A bug is shown by its name and its
-    level, whoever brings it, the NaviCust or a patch card. A bug's name is a full name spelled out from the game's
+    level, whoever brings it, the NaviCust or a patch card (the build overview lists both; the NaviCust tab only
+    the NaviCust's own, item 26). A bug's name is a full name spelled out from the game's
     own patch card effect name for the same bug ("MoveBug" is Movement Bug, "BatHPbug" is Battle HP Bug, "CustDmg"
     is Custom Damage), not the abbreviation and not a word of ours; a card's own lines stay the game's strings. A
     card's bug that writes what no level of the bug does is shown with its amount in the level's place (Custom
@@ -123,6 +124,19 @@ Each is settled unless the user changes it.
     About is a minor item of the main menu, beside Settings: the app's version and license, Slint's "Made with
     Slint" widget (which Slint's royalty-free license asks for in an About screen reached from the top menu), and
     every font and package the app is built from with its license's texts (§6, docs/app.md §18).
+26. **The NaviCust's bugs are its own, and a program is placed as often as wanted** (2026-10-13): "navicust
+    shouldn't display patch card bugs. also you should allow a navicust part to be placed multiple times". The
+    NaviCust tab's Bugs (on a phone, its Bugs line) list the bugs the NaviCust brings, the build's without its
+    patch cards, as its Effects already were; a card's bugs stay on the Patch cards tab (its lines, Together) and
+    in the build overview, which lists every bug. Taking a program from the list, by Enter, a click or a drag out
+    of its row, always takes a new copy in hand, however many copies are placed (before, it took a placed
+    program's last copy off); Del (or a right click) on its row takes the last copy off, and a placed piece is
+    taken off as before. A row with more than one copy placed says how many ("Placed ×2"). No game's rules limit
+    copies: the checks (EXE5's and EXE6's `@exelib/navicust/compile`'s `check`, EXE4's rules/navicust `validate`)
+    ask only for a color the program comes in, a turn, the board and no overlap, and of EXE5's and EXE6's copies of
+    one program in one color, that all or none are compressed. What the copies do is the games' own compile: on
+    the command line only the rightmost of an exclusive group works in EXE5 and EXE6 (two SuprArmrs are one), and
+    in EXE4 a program in one color works once there; plus parts add up.
 
 ## 3. Chosen where the user gave no answer
 
@@ -378,15 +392,18 @@ Each is in the mockups under the same name.
   a note, MB, attack, element, code), 15 showing. Enter on a slot goes to the library; Enter on a row puts it in
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's.
-- **NaviCust** (§2.10): a strip across the top describes the program under the cursor, in the game's words (the
-  user: "you should show ncp descriptions"); the board framed at the left with a key under it; PROGRAMS, an open
-  list, in the middle (each with its color, a cross if a plus part, and Placed, In hand or Out of bounds); Effects
-  and Bugs at the right. The command line is marked three ways: a line above and below its whole row that runs over
+- **NaviCust** (§2.10, §2.26): a strip across the top describes the program under the cursor, in the game's words
+  (the user: "you should show ncp descriptions"); the board framed at the left with a key under it; PROGRAMS, an
+  open list, in the middle (each with its color, a cross if a plus part, and Placed, Placed ×2 where more than one
+  copy is, In hand or Out of bounds); Effects and Bugs at the right, what the NaviCust does and the bugs it brings
+  (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
   outline at its edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and
   S turn it, C compresses it (in place, turned as it is: "rotating the ncp on compression is so confusing"), Enter (the
   pad's A) places it, Esc (the pad's B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
   up and putting it away, or with Del ("there seems to be no way to remove the ncp from the board once placed").
+  Enter on a program's row takes a new copy in hand whether or not copies are placed, and Del there takes the
+  last copy off (§2.26).
 - **Patch cards** (§2.19, §2.20): the folder's shape. EXE5 and EXE6: the installed cards in order in the framed
   panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
