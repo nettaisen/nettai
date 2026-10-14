@@ -5,7 +5,9 @@
 //! builds of the selected game), Arena and Background (the game's, after Random: [`Places`]), all remembered
 //! between runs by game, and START PRACTICE; beside them the two builds facing each other on the arena the
 //! session opens on. With no build of the game there is one button, Create a build. A build that can't be used
-//! says so in the reserved line, and practice doesn't start.
+//! says so in the reserved line, and practice doesn't start. Each build's EDIT (or E, or the pad's north button,
+//! on its row) opens it in Builds' editor (`crate::screens::builds::open`), and Back from there comes back here,
+//! which lists the builds again as they were left.
 //!
 //! **A practice session** is a battle against a dummy with the practice menu over it, and any screen may start
 //! one ([`start`]): Practice does from its entry, and Play does beside a waiting invite, with rows of its own at
@@ -114,8 +116,10 @@ impl Start {
 pub struct Shared {
     /// The session on, if one is.
     session: Option<Session>,
-    /// The screenshot pass: the entry is shown as with no build of the game.
+    /// The screenshot pass: the entry is shown as with no build of the game; or it lists the builds folder's
+    /// files, as a player's does (the pass's own folder: what it made there to open in Builds).
     pub tour_no_builds: bool,
+    pub tour_files: bool,
 }
 
 /// The practice session on.
@@ -505,6 +509,7 @@ fn shown(shell: &Shell, game: &str, ready: &Rc<Ready>, build: &Build) -> Practic
         name: build.name.as_str().into(),
         version: crate::builds::version_tag(shell, game, ready, &build.side),
         navi: names.navi(build.side.navi(content)).into(),
+        editable: true,
     }
 }
 
@@ -726,7 +731,7 @@ impl Practice {
         self.places = Places::of(content, game);
         self.place_labels = self.places.labels(&Names::of(content, &ready.graphics(shell.lang)));
         self.place = self.places.kept(content, &shell.settings.remembered, game);
-        self.builds = if shell.still {
+        self.builds = if shell.still && !shell.practice.tour_files {
             // (The screenshot pass's pictures don't depend on what the player has made: a new build of each
             // version, and one that can't be used, a side with nothing chosen.)
             let mut builds: Vec<Listed> = new_builds(content, game).unwrap_or_default().into_iter().map(|b| Listed { file: b.name.clone(), name: b.name, text: String::new(), side: Some(b.side) }).collect();
@@ -824,7 +829,7 @@ impl Practice {
         // PRACTICE can't be pressed, the screen opens on the row to change.
         let on = shell.nav.focused().map(|k| k.id.clone());
         match (self.builds.is_empty(), on.as_deref(), wrong.iter().position(Option::is_some)) {
-            (true, None | Some("start" | "yours" | "dummys" | "arena" | "background"), _) => shell.nav.focus("create", 0),
+            (true, None | Some("start" | "yours" | "dummys" | "edit" | "arena" | "background"), _) => shell.nav.focus("create", 0),
             (false, Some("create"), None) => shell.nav.focus("start", 0),
             (false, None | Some("start" | "create"), Some(which)) => shell.nav.focus(if which == 1 { "dummys" } else { "yours" }, 0),
             _ => {}
@@ -842,6 +847,24 @@ impl Practice {
         shell.save_settings();
         self.changed = Some(Instant::now());
         self.tell(shell, &game, &ready);
+    }
+
+    /// Open the build chosen, the player's (0) or the dummy's (1), in Builds' editor; Back from it comes back
+    /// here. It is found among the game's files as they are now, by its file (Builds lists them in that order);
+    /// one that isn't there, or doesn't read as a build, is refused. The two builds chosen are remembered for the
+    /// game first, so that the entry shows them again as they were left, whatever the edit did to them (one
+    /// that can't be used now stays chosen, the reserved line saying why).
+    fn edit_build(&mut self, shell: &mut Shell, which: usize) {
+        let Some(game) = self.game.clone() else { return };
+        let file = self.build(which).filter(|b| b.side.is_some()).map(|b| b.file.clone());
+        let Some(at) = file.and_then(|file| place_of(&store::list(&game), &file)) else { return shell.sound.play(Cue::Refused) };
+        for side in [0, 1] {
+            if let Some(b) = self.build(side) {
+                shell.settings.remembered.insert(kept_build(&game, side == 1), b.file.clone());
+            }
+        }
+        shell.save_settings();
+        crate::screens::builds::open(shell, ScreenId::Practice, Some(at));
     }
 
     /// Step the place of list `part` (the arenas or the backgrounds, 0 Random) by `by`, around from its last to
@@ -905,6 +928,17 @@ impl Practice {
         if let Err(error) = self::start(shell, start) {
             shell.fail(error);
         }
+    }
+
+    /// E or the pad's north button on the entry: a build opened in Builds' editor (`build_meant`). False with no
+    /// build, or a session on.
+    fn edit_focused(&mut self, shell: &mut Shell) -> bool {
+        if shell.battle.is_some() || shell.screen() != ScreenId::Practice || self.builds.is_empty() {
+            return false;
+        }
+        shell.sound.play(Cue::Pick);
+        self.edit_build(shell, build_meant(shell));
+        true
     }
 
     /// The entry again, after a session of its own: another arena, another deal.
@@ -1000,6 +1034,19 @@ impl Practice {
     }
 }
 
+/// Where the build kept in file `file` (its name without the extension) is among `files`, a game's builds as
+/// `store::list` has them.
+fn place_of(files: &[store::Listed], file: &str) -> Option<usize> {
+    files.iter().position(|b| b.path.file_stem().is_some_and(|stem| stem == file))
+}
+
+/// The build E and the pad's north button open: the dummy's (1) where the focus is on its row or its EDIT, else
+/// the player's (0).
+fn build_meant(shell: &Shell) -> usize {
+    let dummys = shell.nav.focused().is_some_and(|k| k.id == "dummys" || (k.id == "edit" && k.index == 1));
+    dummys as usize
+}
+
 /// The rule a build breaks, in the player's words, for the reserved line: its kind's sentence of the builds'
 /// catalog with its numbers, and what it is about (`builds::words::problem`; docs/app.md §8).
 fn rule(shell: &Shell, game: &str, ready: &Rc<Ready>, why: &Unusable) -> String {
@@ -1024,7 +1071,9 @@ impl Screen for Practice {
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         match id {
-            "create" => shell.go(ScreenId::Builds),
+            // (Back from Builds comes back here.)
+            "create" => crate::screens::builds::open(shell, ScreenId::Practice, None),
+            "edit" => self.edit_build(shell, index.clamp(0, 1) as usize),
             "yours" | "dummys" => {
                 let which = (id == "dummys") as usize;
                 let options = self.builds.iter().map(|b| b.name.clone()).collect();
@@ -1083,17 +1132,19 @@ impl Screen for Practice {
         }
     }
 
-    /// R or F5 in a practice battle: the set again from its start.
+    /// R or F5 in a practice battle: the set again from its start. E on the entry, on a build's row or its EDIT:
+    /// the build opened in Builds' editor.
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
-        if !matches!(key.code, KeyCode::KeyR | KeyCode::F5) {
-            return false;
+        match key.code {
+            KeyCode::KeyR | KeyCode::F5 => restart(shell),
+            KeyCode::KeyE => self.edit_focused(shell),
+            _ => false,
         }
-        restart(shell)
     }
 
-    /// The pad's north button, as R.
+    /// The pad's north button: as R in a practice battle, as E on the entry.
     fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
-        action == Action::Alternate && restart(shell)
+        action == Action::Alternate && (restart(shell) || self.edit_focused(shell))
     }
 
     fn button(&mut self, shell: &mut Shell, button: gamepad_facade::Button) -> bool {
@@ -1382,5 +1433,18 @@ mod tests {
     fn builds_are_remembered_by_game() {
         assert_eq!(kept_build("exe6", false), "training.build.exe6");
         assert_eq!(kept_build("exe5", true), "training.dummy.exe5");
+    }
+
+    /// EDIT finds its build among the game's files by its file alone (Builds lists them in that order): not by
+    /// its name, nor by a file whose name begins with its.
+    #[test]
+    fn a_build_is_found_among_the_files_by_its_file() {
+        let listed = |file: &str, name: &str| store::Listed { path: std::path::PathBuf::from(format!("/data/builds/exe6/{file}.toml")), name: name.into(), text: String::new() };
+        let files = [listed("Falzar heat", "Falzar heat"), listed("Falzar", "Gregar"), listed("Gregar", "Falzar")];
+        assert_eq!(place_of(&files, "Falzar"), Some(1));
+        assert_eq!(place_of(&files, "Gregar"), Some(2));
+        assert_eq!(place_of(&files, "Falzar heat"), Some(0));
+        assert_eq!(place_of(&files, "Falz"), None);
+        assert_eq!(place_of(&[], "Falzar"), None);
     }
 }

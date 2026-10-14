@@ -3,11 +3,13 @@
 //! can't be used, the arena and the background stepped, the arena around its end), the two cards, the battle, the
 //! practice menu (a value changed, the focus a row apart, the dummy that fights (its Action, and its Level under
 //! it), the arena and the background changed under it, each Battle row a value apart, the input display, the
-//! rows another screen adds), and the motion probe's bursts of what Practice moves.
+//! rows another screen adds), the way to Builds and back (CREATE A BUILD's list, EDIT's editor, a build edited
+//! there), and the motion probe's bursts of what Practice moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
 //! entry lists a new build of each of the game's versions and one that can't be used
-//! (`crate::screens::practice`, while the app is held still).
+//! (`crate::screens::practice`, while the app is held still). For the way to Builds it keeps those as files in
+//! its own builds folder, which the entry then lists as a player's (`Shared::tour_files`).
 
 use super::{Burst, SETTLE, Step, Tour, compare, flush_burst, write};
 use crate::input::Action;
@@ -16,7 +18,8 @@ use crate::screens::ScreenId;
 use crate::screens::practice;
 use crate::shell::App;
 use nettai_battle::input::keys;
-use nettai_ui::{AppWindow, Theme, PracticeOption};
+use crate::builds::store;
+use nettai_ui::{AppWindow, BuildsPage, BuildsView, PracticeOption, PracticeView, Theme};
 use slint::ComponentHandle;
 use std::time::Instant;
 
@@ -176,6 +179,23 @@ fn focus_row(option: PracticeOption) -> Step {
     })
 }
 
+/// The pass's own builds of the selected game, gone (the folder is the pass's: `paths::keep_builds_in`).
+fn clear_builds(app: &App) {
+    if let Some(game) = app.shell.game() {
+        let _ = std::fs::remove_dir_all(store::folder(game));
+    }
+}
+
+/// A step that checks the walk is where its next picture says it is: if it isn't, the report says so (as a text
+/// the pass counts against the picture, so the pass fails), a picture of something else passing for it otherwise.
+fn expect(is: impl Fn(&App, &AppWindow) -> bool + 'static, what: &'static str) -> Step {
+    Box::new(move |ui, app, _| {
+        if !is(&app.borrow(), ui) {
+            ui.global::<nettai_ui::Audit>().invoke_clipped(format!("(the walk isn't at {what}: the next picture is of something else)").into());
+        }
+    })
+}
+
 /// What the pass has changed of Practice's remembered choices, forgotten: each walk starts from none.
 fn forget(app: &mut App) {
     app.shell.settings.remembered.retain(|key, _| !key.starts_with("training."));
@@ -195,6 +215,21 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         }),
     );
     shot(add, "practice-none", lang, size, Differs::Unheld, false);
+    // CREATE A BUILD: Builds' list (the pass's own folder, emptied), its header's Back saying PRACTICE; and Back,
+    // Practice again.
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            clear_builds(&app);
+            app.shell.nav.focus("create", 0);
+            app.act(Action::Confirm);
+        }),
+    );
+    add(SETTLE, expect(|app, ui| app.shell.screen() == ScreenId::Builds && ui.global::<BuildsView>().get_to_practice(), "Builds' list, Back going to Practice"));
+    shot(add, "practice-create-builds", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Practice, "Practice, back from Builds"));
 
     // The entry: the focus a control up from START PRACTICE; the dummy's build stepped to the next; the builds'
     // list; a build that can't be used; the arena stepped to the next, and around from Random to the last; the
@@ -402,6 +437,61 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         }),
     );
     shot(add, "practice-entry-again", lang, size, Differs::Unheld, false);
+
+    // EDIT: the entry listing the pass's own files (a new build of each version, kept as a player's are), Your
+    // build's EDIT focused; the Builds editor it opens on that build, on its Folder tab, Back saying PRACTICE; an
+    // entry taken out of the folder there; and Back, Practice again with the build as it was left (it can't be
+    // used now, and the reserved line says so).
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            let Some((game, ready)) = app.shell.ready() else { return };
+            clear_builds(&app);
+            let content = ready.content();
+            for b in practice::new_builds(content, &game).unwrap_or_default() {
+                let build = store::Build::new(content, &b.name, b.side);
+                if let Err(why) = store::write(&store::new_path(&game, &b.name), content, &game, &build) {
+                    crate::errors::log("keeping the pass's build", &why);
+                }
+            }
+            forget(&mut app);
+            // (The editor opens on the tab last used: the Navi tab, for the same picture in every walk.)
+            app.shell.settings.remembered.remove("builds.tab");
+            app.shell.practice.tour_files = true;
+            app.with_screen(ScreenId::Practice, |screen, shell| screen.show(shell));
+            app.shell.nav.focus("edit", 0);
+        }),
+    );
+    shot(add, "practice-entry-edit", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Confirm));
+    add(
+        SETTLE,
+        expect(
+            |app, ui| {
+                let view = ui.global::<BuildsView>();
+                app.shell.screen() == ScreenId::Builds && view.get_page() == BuildsPage::Editor && view.get_to_practice() && view.get_name() == ui.global::<PracticeView>().get_yours().name
+            },
+            "Builds' editor on Your build, Back going to Practice",
+        ),
+    );
+    add(SETTLE, focus("tab", 1));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, focus("slot", 4));
+    shot(add, "practice-builds-editor", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Delete));
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, expect(|app, ui| app.shell.screen() == ScreenId::Practice && !ui.global::<PracticeView>().get_ready(), "Practice, back from the editor, the build as it was left"));
+    shot(add, "practice-entry-edited", lang, size, Differs::Unheld, false);
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            clear_builds(&app);
+            forget(&mut app);
+            app.shell.practice.tour_files = false;
+        }),
+    );
 
     // A session another screen starts, with rows of its own at the menu's top (Play's, beside a waiting invite:
     // here it fills the window, there being no such screen to show it in).

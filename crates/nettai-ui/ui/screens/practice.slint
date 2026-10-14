@@ -1,11 +1,12 @@
 // Practice (docs/design/app-ui.md §6): you against a dummy set up from a menu while practicing. Its Rust half
 // is src/screens/practice.rs.
 //
-// Three things are here. The entry (`PracticeScreen`): four rows, Your build, Dummy's build, Arena and
-// Background, and START PRACTICE, with the two builds facing each other and the arena beside them. The practice menu (`PracticeMenu`):
-// Start or Esc in a practice battle, the battle paused behind it; its rows are a model the Rust half makes, so a row is
-// added there and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both
-// sides' buttons, lit as they are held, in a corner of the picture.
+// Three things are here. The entry (`PracticeScreen`): four rows, Your build and Dummy's build (each with EDIT
+// beside it, which opens the build in Builds' editor), Arena and Background, and START PRACTICE, with the two
+// builds facing each other and the arena beside them. The practice menu (`PracticeMenu`): Start or Esc in a
+// practice battle, the battle paused behind it; its rows are a model the Rust half makes, so a row is added there
+// and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both sides'
+// buttons, lit as they are held, in a corner of the picture.
 
 import { Theme, Audit } from "../theme.slint";
 import { NavKind, Focusable } from "../nav.slint";
@@ -16,11 +17,12 @@ import { MenuOverlay } from "battle.slint";
 import { VersionTag } from "../build.slint";
 
 // A build as its card says it: its name, its version's tag (in the version's own color: the app's
-// `builds::version_tag`) and its navi.
+// `builds::version_tag`) and its navi; and whether it can be opened in Builds' editor (its file reads as a build).
 export struct PracticeBuild {
     name: string,
     version: VersionTag,
     navi: string,
+    editable: bool,
 }
 
 // What a row of the practice menu is.
@@ -174,22 +176,35 @@ export global PracticeView {
 // ---- The entry ----------------------------------------------------------------------------------------------
 
 // One of the entry's build rows: a label, and the choice in a box that steps through the choices and opens them
-// as a list. The row is what is focused. (On a phone it is lower, the four rows over the cards and the arena.)
+// as a list; beside it EDIT (the user: "you should be able to go to builds screen from the practice screen
+// somehow while having the relevant build displayed"), which opens the build chosen in Builds' editor, as E or
+// the pad's north button does (on the dummy's row, its build). The row is focused, and EDIT apart (`edit`, the
+// row's `index`): Tab goes from one to the other, and Up and Down from EDIT to EDIT. (On a phone it is lower,
+// the four rows over the cards and the arena, and EDIT as tall as the row, for a finger.)
 component EntryRow inherits Rectangle {
     in property <string> nav;
+    // The build's place in the pair: 0 the player's, 1 the dummy's.
+    in property <int> index;
     in property <string> label;
     in property <string> value;
     in property <bool> enabled: true;
-    property <length> box: Theme.phone ? 164px : 240px;
+    in property <bool> editable;
+    property <length> edit: Theme.phone ? 72px : 88px;
+    property <length> row-width: root.width - root.edit - 8px;
+    property <length> box: Theme.phone ? 120px : 180px;
     property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
     height: Theme.phone ? 48px : 56px;
     Rectangle {
+        x: 0;
+        width: root.row-width;
         background: hit.has-hover ? Theme.raised : Theme.panel;
         border-width: 1px;
         border-color: Theme.line;
     }
 
     hit := Focusable {
+        x: 0;
+        width: root.row-width;
         nav: root.nav;
         kind: NavKind.stepper;
         enabled: root.enabled;
@@ -197,7 +212,7 @@ component EntryRow inherits Rectangle {
 
     name := Text {
         x: 16px;
-        width: parent.width - root.box - 36px;
+        width: root.row-width - root.box - 36px;
         text: root.label;
         color: Theme.text;
         font-family: Theme.body;
@@ -208,13 +223,24 @@ component EntryRow inherits Rectangle {
     }
 
     Select {
-        x: parent.width - root.box - 8px;
+        x: root.row-width - root.box - 8px;
         y: (parent.height - self.height) / 2;
         width: root.box;
         height: Theme.phone ? 36px : 40px;
         nav: root.nav;
         value: root.value;
         focusable: false;
+    }
+
+    Button {
+        x: root.width - root.edit;
+        y: (parent.height - self.height) / 2;
+        width: root.edit;
+        height: Theme.phone ? parent.height : 40px;
+        nav: "edit";
+        nav-index: root.index;
+        text: @tr("EDIT");
+        enabled: root.enabled && root.editable;
     }
 
     changed over => {
@@ -353,6 +379,8 @@ export component PracticeScreen inherits Page {
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
         { key: "←→", text: @tr("Change") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open list") },
+        // (The dummy's build where the focus is on its row or its EDIT; else the player's.)
+        { key: "E", pad: PadButton.north, text: @tr("Edit build") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
@@ -378,9 +406,11 @@ export component PracticeScreen inherits Page {
             width: root.column;
             visible: !PracticeView.none;
             nav: "yours";
+            index: 0;
             label: @tr("Your build");
             value: PracticeView.yours.name;
             enabled: !PracticeView.none;
+            editable: PracticeView.yours.editable;
         }
 
         EntryRow {
@@ -389,9 +419,11 @@ export component PracticeScreen inherits Page {
             width: root.column;
             visible: !PracticeView.none;
             nav: "dummys";
+            index: 1;
             label: @tr("Dummy's build");
             value: PracticeView.dummys.name;
             enabled: !PracticeView.none;
+            editable: PracticeView.dummys.editable;
         }
 
         PagerRow {

@@ -54,6 +54,9 @@ export enum BuildsDialog {
 // What Builds shows: src/screens/builds/mod.rs sets these.
 export global BuildsView {
     in property <BuildsPage> page;
+    // Back goes to Practice, which opened the screen (its list, or the editor it opened a build in): the header
+    // says so.
+    in property <bool> to-practice;
     // ---- The list.
     in property <[BuildEntry]> builds;
     // The build whose overview shows (-1: none), and the overview.
@@ -186,7 +189,7 @@ export component BuildsScreen inherits Page {
     property <length> tab-y: Theme.phone ? 44px : 40px;
     property <length> tab-height: self.body-height - root.tab-y + (Theme.phone ? 0px : 8px);
     title: BuildsView.page == BuildsPage.list ? @tr("BUILDS") : BuildsView.name;
-    back: BuildsView.page == BuildsPage.list ? @tr("MENU") : @tr("BUILDS");
+    back: BuildsView.to-practice ? @tr("PRACTICE") : BuildsView.page == BuildsPage.list ? @tr("MENU") : @tr("BUILDS");
     // (A phone's header has the build's tag where the game is.)
     game: !(Theme.phone && root.editing);
     property <VersionTag> no-tag;
