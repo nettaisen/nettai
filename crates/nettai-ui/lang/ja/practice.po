@@ -1,4 +1,4 @@
-# Japanese: Training (ui/screens/training.slint).
+# Japanese: Practice (ui/screens/practice.slint).
 msgid ""
 msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -26,8 +26,8 @@ msgstr "ランダム"
 msgid "Set up the dummy from the menu once you're in."
 msgstr "ダミーの設定は、開始後にメニューからできます。"
 
-msgid "START TRAINING"
-msgstr "トレーニング開始"
+msgid "START PRACTICE"
+msgstr "練習開始"
 
 msgid "CREATE A BUILD"
 msgstr "ビルドを作る"
@@ -41,7 +41,11 @@ msgstr "変更"
 msgid "Open list"
 msgstr "一覧を開く"
 
-# Why training can't start: the reserved line. {} is the rule the build breaks.
+# A hint: the build opened in Builds' editor (the dummy's, where the focus is on its row or its EDIT).
+msgid "Edit build"
+msgstr "ビルドを編集"
+
+# Why practice can't start: the reserved line. {} is the rule the build breaks.
 msgid "Your build can't be used."
 msgstr "あなたのビルドは使えません。"
 
@@ -63,10 +67,10 @@ msgid "DUMMY"
 msgstr "ダミー"
 
 # Beside MENU on a phone: {} is the round's number.
-msgid "Training · Round {}"
-msgstr "トレーニング · ラウンド{}"
+msgid "Practice · Round {}"
+msgstr "練習 · ラウンド{}"
 
-# ---- The training menu ----
+# ---- The practice menu ----
 
 # Under the menu's title: the two builds' names.
 msgid "{} vs {}"

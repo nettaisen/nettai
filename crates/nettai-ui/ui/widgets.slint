@@ -191,7 +191,7 @@ export component Heading inherits Text {
     }
 }
 
-// A tag: a version, TRAINING.
+// A tag: a version, PRACTICE.
 export component Pill inherits Rectangle {
     in property <string> text;
     in property <color> tone: Theme.muted;
@@ -236,7 +236,7 @@ export component Button inherits Rectangle {
     in property <bool> enabled: true;
     // Its text in the error red (DELETE, LEAVE MATCH).
     in property <bool> danger;
-    // 52 tall (START TRAINING).
+    // 52 tall (START PRACTICE).
     in property <bool> big;
     out property <bool> focused: hit.focused;
     // As wide as its text asks (what it is where no `width` is given it: a layout that gives it another on a
@@ -977,7 +977,7 @@ export component MenuItem inherits Rectangle {
     }
 }
 
-// A row of a menu overlay: a label and a value between arrows (the training menu's).
+// A row of a menu overlay: a label and a value between arrows (the practice menu's).
 export component OptionRow inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
