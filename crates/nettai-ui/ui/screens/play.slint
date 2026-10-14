@@ -235,10 +235,10 @@ component BuildBox inherits Rectangle {
     height: 72px;
     PanelBack { }
 
-    name := Value {
+    Value {
         x: 16px;
         y: 14px;
-        width: min(self.preferred-width, parent.width - 68px - tag.width - 8px);
+        width: parent.width - 68px - tag.width;
         height: 24px;
         text: root.build.name;
         font-size: 18px;
@@ -248,7 +248,7 @@ component BuildBox inherits Rectangle {
     Text {
         x: 16px;
         y: 42px;
-        width: parent.width - 60px;
+        width: parent.width - 68px - tag.width;
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;
@@ -258,10 +258,9 @@ component BuildBox inherits Rectangle {
         overflow: elide;
     }
 
-    // (The version's tag follows the name, as in the list.)
     tag := Pill {
-        x: name.x + name.width + 8px;
-        y: name.y + (name.height - self.height) / 2;
+        x: parent.width - 40px - self.width;
+        y: (parent.height - self.height) / 2;
         text: root.build.version.text;
         tone: root.build.version.tone;
     }
