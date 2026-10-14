@@ -8,7 +8,8 @@
 
 use std::time::{Duration, Instant};
 
-use nettai_rtc::testing::Server;
+use nettai_rtc::signal::{FromServer, Refusal};
+use nettai_rtc::testing::{Client, Server};
 use nettai_rtc::{Config, Error, ErrorKind, Link, Role, signal};
 
 /// Links that find each other on loopback, with no STUN server, quick to
@@ -144,17 +145,83 @@ fn direct_links_trade_datagrams() {
     connected(&mut sides);
 }
 
+/// Both sides through: each has left its rooms, with the same reconnect
+/// code agreed (another than `before`), and the in-process server has no
+/// room and no socket left (the Worker, which can't be asked, is given a
+/// moment to read it). The code.
+fn through(sides: &mut [Side; 2], server: Option<&Server>, before: Option<&str>) -> String {
+    run(sides, Duration::from_secs(10), |s| {
+        s.iter().all(|s| !s.link.in_a_room()) && s[0].link.reconnect_code().is_some() && s[0].link.reconnect_code() == s[1].link.reconnect_code()
+    });
+    let code = sides[0].link.reconnect_code().unwrap().to_string();
+    assert!(signal::valid_reconnect_code(&code), "{code}");
+    assert_ne!(Some(code.as_str()), before, "a new code for each connection");
+    if let Some(server) = server {
+        let start = Instant::now();
+        while !(server.codes().is_empty() && server.reconnect_rooms().is_empty() && server.sockets() == 0) {
+            assert!(start.elapsed() < Duration::from_secs(10), "the server keeps {:?}, {:?}, {} sockets", server.codes(), server.reconnect_rooms(), server.sockets());
+            std::thread::sleep(Duration::from_millis(2));
+        }
+    } else {
+        run_for(sides, Duration::from_secs(2));
+    }
+    code
+}
+
+/// The links connect through the invite room, and once they are through
+/// both leave it: the server keeps nothing of it, and its code names no
+/// room.
 #[test]
 fn room_links_trade_datagrams() {
-    let (_server, url) = server();
+    let (server, url) = server();
     let (mut sides, code) = room(&url, config());
     connected(&mut sides);
     assert_eq!(sides.each_ref().map(|s| s.link.role()), [Some(Role::Host), Some(Role::Join)]);
-    // A third player is refused: the room is full. (The code as a player
-    // types it: in small letters, in two groups.)
+    through(&mut sides, server.as_ref(), None);
+    assert_eq!(sides.each_ref().map(|s| s.link.code()), [Some(code.as_str()); 2], "the invite's code is still the link's to say");
+    let e = refused(Link::join_room(&url, &code, config()).unwrap());
+    assert_eq!((e.kind, e.detail.as_str()), (ErrorKind::NoSuchRoom, "the signaling server refused: no room has that code"));
+    // The connection doesn't mind.
+    let before = sides.each_ref().map(|s| s.got.len());
+    run(&mut sides, Duration::from_secs(5), heard_more(before));
+}
+
+/// A third player is refused while the two are in the invite room (here
+/// kept there: the host says no code, so the two are never through). The
+/// code as a player types it: in small letters, in two groups.
+#[test]
+fn a_full_room_refuses_a_third() {
+    let (_server, url) = server();
+    let (mut sides, code) = room(&url, config());
+    sides[0].link.hold_codes(true);
+    connected(&mut sides);
     let typed = format!("{} {}", &code[..3], &code[3..]).to_lowercase();
     let e = refused(Link::join_room(&url, &typed, config()).unwrap());
     assert_eq!((e.kind, e.detail.as_str()), (ErrorKind::RoomFull, "the signaling server refused: the room is full"));
+    assert!(sides.iter().all(|s| s.link.in_a_room() && s.link.reconnect_code().is_none()));
+}
+
+/// Before the first connection the invite waits, as long as its room is
+/// kept: past the server's and the connection's timeouts, with nobody
+/// come; then the other player comes, and they connect.
+#[test]
+fn before_the_first_connection_an_invite_waits() {
+    let (server, url) = server();
+    let quick = Config { server_timeout: Duration::from_secs(1), connect_timeout: Duration::from_secs(1), ..config() };
+    let (mut host, code) = invite(&url, quick.clone());
+    let until = Instant::now() + Duration::from_secs(3);
+    while Instant::now() < until {
+        host.poll().unwrap();
+        assert!(!host.is_open() && host.down_for().is_none() && host.problem().is_none());
+        std::thread::sleep(Duration::from_millis(2));
+    }
+    if let Some(server) = &server {
+        assert_eq!(server.codes(), [code.as_str()]);
+    }
+    let join = Link::join_room(&url, &code, quick).unwrap();
+    let mut sides = [Side::new(host), Side::new(join)];
+    connected(&mut sides);
+    through(&mut sides, server.as_ref(), None);
 }
 
 /// The server picks each room's code: six characters of the alphabet,
@@ -187,7 +254,7 @@ fn a_code_no_room_has_is_refused() {
     let e = refused(Link::join_room(&url, other, config()).unwrap());
     assert_eq!((e.kind, e.detail.as_str()), (ErrorKind::NoSuchRoom, "the signaling server refused: no room has that code"));
     if let Some(server) = &server {
-        assert_eq!(server.codes(), [code.clone()], "no room was made of the code asked for");
+        assert_eq!(server.codes(), [code.as_str()], "no room was made of the code asked for");
     }
     // The host leaves (its link is dropped): the room is over, once the
     // server has read that (the in-process one says when; the Worker is
@@ -315,9 +382,15 @@ fn what_came_before_a_drop_is_still_taken() {
 /// the connection's state), and it comes back after it, a new connection
 /// (the next generation), the datagrams going again.
 fn outage(sides: &mut [Side; 2], side: usize, length: Duration) {
+    outage_and(sides, side, length, |_| {});
+}
+
+/// [`outage`], doing `meanwhile` once both see it down.
+fn outage_and(sides: &mut [Side; 2], side: usize, length: Duration, meanwhile: impl FnOnce(&mut [Side; 2])) {
     let generation = sides[0].link.generation();
     sides[side].link.outage(length);
     run(sides, Duration::from_secs(10), |s| s.iter().all(|s| s.link.down_for().is_some()));
+    meanwhile(sides);
     let before = sides.each_ref().map(|s| s.got.len());
     let took = run(sides, length + Duration::from_secs(20), heard_more(before));
     eprintln!("side {side}'s outage of {length:?}: back after {took:?} down, generations {:?}", sides.each_ref().map(|s| s.link.generation()));
@@ -333,21 +406,152 @@ fn a_direct_link_comes_back_after_an_outage() {
     outage(&mut sides, 0, Duration::from_secs(3));
 }
 
+/// The reconnect rooms the server made of `codes`, in order. (It may have
+/// made others: a host whose newest code isn't acknowledged when the
+/// connection drops waits in that code's room too, as when one side's
+/// connection opened and the other's dial gave up and went again.)
+fn made_of<'a, const N: usize>(server: &Server, codes: [&'a String; N]) -> Vec<&'a String> {
+    server.reconnects_made().iter().filter_map(|made| codes.iter().find(|c| **c == made).copied()).collect()
+}
+
+/// Both sides go on for `length`, sending and taking.
+fn run_for(sides: &mut [Side; 2], length: Duration) {
+    let start = Instant::now();
+    run(sides, length + Duration::from_secs(5), |_| start.elapsed() >= length);
+}
+
+/// A drop mid-link: the two meet again in the reconnect room of the code
+/// they agreed (the server's first word of it), are through again with a
+/// new code, and leave it; the next drop goes through that one. Then the
+/// server's sockets drop in the middle of a reconnection (its restart):
+/// they are made again, and the two meet all the same.
 #[test]
 fn a_room_link_comes_back_after_an_outage() {
     let (server, url) = server();
-    let (mut sides, code) = room(&url, config());
+    let (mut sides, _) = room(&url, config());
     connected(&mut sides);
+    let first = through(&mut sides, server.as_ref(), None);
     outage(&mut sides, 0, Duration::from_secs(3));
+    let second = through(&mut sides, server.as_ref(), Some(&first));
     outage(&mut sides, 1, Duration::from_secs(3));
-    // The signaling server's sockets drop (the connection doesn't mind),
-    // then an outage: they meet again through the room.
-    if let Some(server) = server {
-        server.kick(&code, Role::Host);
-        server.kick(&code, Role::Join);
-        let before = sides.each_ref().map(|s| s.got.len());
-        run(&mut sides, Duration::from_secs(5), heard_more(before));
-        outage(&mut sides, 1, Duration::from_secs(2));
+    let third = through(&mut sides, server.as_ref(), Some(&second));
+    if let Some(server) = &server {
+        assert_eq!(made_of(server, [&first, &second, &third]), [&first, &second], "each drop through the code agreed before it");
+        outage_and(&mut sides, 1, Duration::from_secs(4), |sides| {
+            run(sides, Duration::from_secs(5), |_| server.sockets() >= 2);
+            server.kick_all();
+        });
+        through(&mut sides, Some(server), Some(&third));
+        assert_eq!(made_of(server, [&first, &second, &third]), [&first, &second, &third]);
+    }
+}
+
+/// A code is spent once the next is agreed: a stranger waiting in the room
+/// of a spent code meets nobody, while the two meet again through their
+/// newest one. A third socket in a reconnect room is refused, and so is a
+/// code not of the clients' form.
+#[test]
+fn a_spent_code_is_no_use_and_a_third_is_refused() {
+    let (server, url) = server();
+    let (mut sides, _) = room(&url, config());
+    connected(&mut sides);
+    let first = through(&mut sides, server.as_ref(), None);
+    outage(&mut sides, 1, Duration::from_secs(3));
+    let second = through(&mut sides, server.as_ref(), Some(&first));
+    let mut stranger = Client::open(&signal::reconnect_url(&url, &first, "stranger")).unwrap();
+    assert_eq!(stranger.next(Duration::from_secs(5)), Some(FromServer::Welcome { role: None, peer: false, code: None }), "a room nobody else is in");
+    outage_and(&mut sides, 0, Duration::from_secs(5), |sides| {
+        // (Both in the room of their newest code by now.)
+        run_for(sides, Duration::from_secs(1));
+        if let Some(server) = &server {
+            assert_eq!(server.sockets(), 3, "the two and the stranger");
+        }
+        let mut third = Client::open(&signal::reconnect_url(&url, &second, "third")).unwrap();
+        assert!(matches!(third.next(Duration::from_secs(5)), Some(FromServer::Error { reason: Refusal::Full, .. })), "a third is refused");
+        let mut bad = Client::open(&signal::reconnect_url(&url, "ABC234", "bad")).unwrap();
+        assert!(matches!(bad.next(Duration::from_secs(5)), Some(FromServer::Error { reason: Refusal::BadRequest, .. })), "a code not of the clients' form is refused");
+    });
+    assert_eq!(stranger.next(Duration::from_millis(100)), None, "the stranger met nobody");
+    stranger.leave();
+    let third = through(&mut sides, server.as_ref(), Some(&second));
+    assert_ne!(third, first);
+    if let Some(server) = &server {
+        // (The second time, the stranger's.)
+        assert_eq!(made_of(server, [&first, &second]), [&first, &first, &second]);
+    }
+}
+
+/// A drop before the new code is acknowledged still reconnects. Where the
+/// host's code is lost (here it says none), the joiner has only the code
+/// from before, and the two meet through that again: before any code is
+/// agreed, that is the invite. Where only the joiner's acknowledgment is
+/// lost, the joiner has the new code and the host, not knowing whether it
+/// has, waits in both rooms: they meet through the new one.
+#[test]
+fn a_drop_before_the_code_is_acknowledged_still_reconnects() {
+    let (server, url) = server();
+    let (mut sides, code) = room(&url, config());
+    // The first connection's code lost: they meet in the invite room again.
+    sides[0].link.hold_codes(true);
+    connected(&mut sides);
+    outage(&mut sides, 1, Duration::from_secs(3));
+    assert!(sides.iter().all(|s| s.link.reconnect_code().is_none() && s.link.in_a_room()));
+    if let Some(server) = &server {
+        assert_eq!(server.codes(), [code.as_str()]);
+        // (The host's code, not said, had a room for the moment the joiner
+        // took to come.)
+        run(&mut sides, Duration::from_secs(5), |_| server.reconnect_rooms().is_empty());
+    }
+    sides[0].link.hold_codes(false);
+    let first = through(&mut sides, server.as_ref(), None);
+    // The next code lost: the drop after goes through the first again.
+    sides[0].link.hold_codes(true);
+    outage(&mut sides, 0, Duration::from_secs(3));
+    run_for(&mut sides, Duration::from_millis(500));
+    assert!(sides.iter().all(|s| s.link.reconnect_code() == Some(first.as_str()) && s.link.in_a_room()));
+    outage(&mut sides, 1, Duration::from_secs(3));
+    sides[0].link.hold_codes(false);
+    let second = through(&mut sides, server.as_ref(), Some(&first));
+    if let Some(server) = &server {
+        assert_eq!(made_of(server, [&first, &second]), [&first], "both drops through the first");
+    }
+    // Only the acknowledgment lost: the joiner takes the new code and
+    // leaves the room; the host waits in it.
+    sides[1].link.hold_codes(true);
+    outage(&mut sides, 1, Duration::from_secs(3));
+    run(&mut sides, Duration::from_secs(10), |s| s[1].link.reconnect_code() != Some(second.as_str()) && !s[1].link.in_a_room());
+    let third = sides[1].link.reconnect_code().unwrap().to_string();
+    assert!(sides[0].link.reconnect_code() == Some(second.as_str()) && sides[0].link.in_a_room());
+    outage(&mut sides, 0, Duration::from_secs(3));
+    assert_eq!(sides[0].link.reconnect_code(), Some(third.as_str()), "the host met the joiner through the code only the joiner was known to have");
+    sides[1].link.hold_codes(false);
+    through(&mut sides, server.as_ref(), Some(&third));
+    if let Some(server) = &server {
+        assert_eq!(made_of(server, [&first, &second, &third]), [&first, &second, &third]);
+    }
+}
+
+/// The server out of reach while the connection is down: the link goes on
+/// trying, saying the server can't be reached ([`Link::problem`]), and
+/// gives up when its time is out, the connection lost.
+#[test]
+fn a_server_out_of_reach_during_a_reconnect() {
+    let server = Some(Server::start());
+    let url = server.as_ref().unwrap().url();
+    let config = Config { reconnect_timeout: Duration::from_secs(3), ..config() };
+    let (mut sides, _) = room(&url, config);
+    connected(&mut sides);
+    through(&mut sides, server.as_ref(), None);
+    server.as_ref().unwrap().set_reachable(false);
+    sides[1].link.outage(Duration::from_secs(60));
+    run(&mut sides, Duration::from_secs(10), |s| s.iter().all(|s| s.link.down_for().is_some() && s.link.problem().is_some()));
+    for s in &sides {
+        assert_eq!(s.link.problem().unwrap().kind, ErrorKind::ServerUnreachable);
+    }
+    run(&mut sides, Duration::from_secs(15), |s| s.iter().all(|s| s.error.is_some()));
+    for s in &sides {
+        let e = s.error.as_ref().unwrap();
+        assert_eq!(e.kind, ErrorKind::ConnectionLost, "{e}");
     }
 }
 

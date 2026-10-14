@@ -18,17 +18,24 @@
 //!   ([`PeerEvent`]); event-driven, so that the browser's asynchronous
 //!   offer and answer fit the same API. Nothing waits.
 //! - [`Link`]: the channel a match is played on, which keeps a connection
-//!   up: it meets the other player (in a room of the signaling server,
-//!   `signal`: one it asks the server to make, [`Link::create_room`], whose
-//!   code the server picks, or one it was given the code of,
+//!   up: it meets the other player (in an invite room of the signaling
+//!   server, `signal`: one it asks the server to make, [`Link::create_room`],
+//!   whose code the server picks, or one it was given the code of,
 //!   [`Link::join_room`]; or directly, at a host's address and port,
-//!   natively), and when the connection drops (its state, its data channel,
-//!   or silence) it makes a new one through the same room or to the same
-//!   address, until [`Config::reconnect_timeout`]. Its `send` and `recv`
-//!   are a datagram channel's, which nettai-frontend's `netplay::Channel`
-//!   takes; while it is down, what is sent is dropped and nothing comes
-//!   ([`Link::down_for`] says so, and for how long;
-//!   [`Link::gives_up_in`], how long it has left).
+//!   natively). It needs the server only until the connection is through:
+//!   then both sides leave the room and close their sockets, having agreed
+//!   over the connection on the code of a reconnect room, a new one each
+//!   connection. When the connection drops (its state, its data channel, or
+//!   silence) it makes a new one through that reconnect room or to the same
+//!   address, until [`Config::reconnect_timeout`]. Its `send` and `recv` are
+//!   a datagram channel's, which nettai-frontend's `netplay::Channel` takes;
+//!   while it is down, what is sent is dropped and nothing comes
+//!   ([`Link::down_for`] says so, and for how long; [`Link::gives_up_in`],
+//!   how long it has left).
+//!
+//! The channel carries the link's own messages too (the reconnect code and
+//! its acknowledgment): as text messages, where the game's datagrams are
+//! binary ones, so they cost the game's datagrams no byte.
 //!
 //! What goes wrong is an [`Error`]: its [`ErrorKind`] is what a player can
 //! be told, each kind in the host's own words (its catalog's), and its
@@ -36,7 +43,9 @@
 //!
 //! The signaling server is the Cloudflare Worker in `signaling/`
 //! (TypeScript, a Durable Object a room); its protocol is [`signal`], and
-//! the `testing` feature has a server of its own speaking it, in process.
+//! the `testing` feature has a server of its own speaking it, in process,
+//! and a few of the link's insides for tests (`Link::hold_codes`,
+//! `Link::reconnect_code`, `Link::in_a_room`).
 
 pub mod signal;
 
@@ -80,10 +89,11 @@ pub struct Config {
     /// made again.
     pub dial_timeout: Duration,
     /// A dropped connection not back this long ends the link
-    /// ([`ErrorKind::ConnectionLost`]).
+    /// ([`ErrorKind::ConnectionLost`]), whether or not the signaling server
+    /// could be reached meanwhile.
     pub reconnect_timeout: Duration,
     /// The signaling server not answering this long, before it first lets
-    /// this player into the room, ends the link
+    /// this player into the invite room, ends the link
     /// ([`ErrorKind::ServerUnreachable`]).
     pub server_timeout: Duration,
     /// The other player there (in the room, or dialed directly) and no
@@ -102,7 +112,7 @@ impl Default for Config {
             ice_servers: vec![IceServer::new(DEFAULT_STUN)],
             silence: Duration::from_secs(3),
             dial_timeout: Duration::from_secs(10),
-            reconnect_timeout: Duration::from_secs(30),
+            reconnect_timeout: signal::RECONNECT_ROOM_KEPT,
             server_timeout: Duration::from_secs(10),
             connect_timeout: Duration::from_secs(30),
             loopback: false,
@@ -142,7 +152,9 @@ pub enum Role {
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum ErrorKind {
     /// The signaling server can't be reached: its socket didn't open, or it
-    /// didn't answer within [`Config::server_timeout`].
+    /// didn't answer within [`Config::server_timeout`]. (While a dropped
+    /// connection is made again it is only what [`Link::problem`] says: the
+    /// link goes on trying.)
     ServerUnreachable,
     /// The signaling server speaks another version of its protocol than
     /// this program does: one of the two is out of date.
@@ -219,6 +231,33 @@ pub enum PeerEvent {
     /// The connection is lost, failed or closed, and why: it won't come
     /// back (a new one does).
     Down(String),
+}
+
+/// What came on the data channel: a binary message, which is a datagram of
+/// the caller's, or a text one, which is the link's own (the channel's
+/// message type tells them apart, at no cost in bytes).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Message {
+    Binary(Vec<u8>),
+    Text(String),
+}
+
+/// `N` bytes from the system's cryptographic randomness (the browser's
+/// `crypto.getRandomValues` on the web).
+pub(crate) fn secure_random<const N: usize>() -> Result<[u8; N], Error> {
+    let mut bytes = [0; N];
+    #[cfg(not(target_arch = "wasm32"))]
+    getrandom::fill(&mut bytes).map_err(|e| Error::internal(format!("no randomness from the system: {e}")))?;
+    #[cfg(target_arch = "wasm32")]
+    {
+        use wasm_bindgen::JsCast;
+        let crypto = js_sys::Reflect::get(&js_sys::global(), &"crypto".into())
+            .ok()
+            .and_then(|c| c.dyn_into::<web_sys::Crypto>().ok())
+            .ok_or_else(|| Error::internal("the browser has no crypto"))?;
+        crypto.get_random_values_with_u8_array(&mut bytes).map_err(|e| Error::internal(format!("no randomness from the browser: {e:?}")))?;
+    }
+    Ok(bytes)
 }
 
 /// A peer's random id, and a direct joiner's nonce.

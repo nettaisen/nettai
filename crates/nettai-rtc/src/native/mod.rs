@@ -41,7 +41,7 @@ use rtc::sansio::Protocol;
 use rtc::shared::{TaggedBytesMut, TransportContext, TransportProtocol};
 use rtc::turn::client::{Client as TurnClient, ClientConfig as TurnConfig, Event as TurnEvent};
 
-use crate::{Candidate, Config, Error, PeerEvent};
+use crate::{Candidate, Config, Error, Message, PeerEvent};
 
 /// The data channel's label (both sides make it, negotiated: the label is
 /// for show).
@@ -140,7 +140,7 @@ pub struct PeerConnection {
     socks: Vec<Sock>,
     gatherer: Option<Gatherer>,
     events: VecDeque<PeerEvent>,
-    inbox: VecDeque<Vec<u8>>,
+    inbox: VecDeque<Message>,
     /// The connection is up (DTLS too), and its channel open.
     connected: bool,
     open: bool,
@@ -347,34 +347,45 @@ impl PeerConnection {
         self.events.pop_front()
     }
 
-    /// The next datagram that came, if any, without pumping.
-    /// Whether a datagram came that wasn't taken.
-    pub(crate) fn has_datagram(&self) -> bool {
-        !self.inbox.is_empty()
-    }
-
-    pub(crate) fn next_datagram(&mut self) -> Option<Vec<u8>> {
+    /// The next message that came, if any, without pumping.
+    pub(crate) fn next_message(&mut self) -> Option<Message> {
         self.inbox.pop_front()
     }
 
     /// Send a datagram to the other side; dropped if the channel isn't open.
     pub fn send(&mut self, data: &[u8]) {
+        self.send_message(|dc, now| dc.send(now, BytesMut::from(data)));
+    }
+
+    /// Send a text message (the link's own) to the other side; dropped if
+    /// the channel isn't open.
+    pub(crate) fn send_text(&mut self, text: &str) {
+        self.send_message(|dc, now| dc.send_text(now, text));
+    }
+
+    fn send_message<R>(&mut self, send: impl FnOnce(&mut rtc::data_channel::RTCDataChannel<'_>, Instant) -> R) {
         let now = Instant::now();
         if self.open
             && !self.outage.is_some_and(|t| now < t)
             && let Some(mut dc) = self.pc.data_channel(self.channel)
         {
-            let _ = dc.send(now, BytesMut::from(data));
+            let _ = send(&mut dc, now);
             self.flush(now);
         }
     }
 
-    /// The next datagram that came from the other side, if one has.
+    /// The next datagram that came from the other side, if one has (text
+    /// messages are skipped).
     pub fn recv(&mut self) -> Option<Vec<u8>> {
         if self.inbox.is_empty() {
             self.pump(Instant::now());
         }
-        self.inbox.pop_front()
+        while let Some(m) = self.inbox.pop_front() {
+            if let Message::Binary(d) = m {
+                return Some(d);
+            }
+        }
+        None
     }
 
     pub fn is_open(&self) -> bool {
@@ -455,7 +466,10 @@ impl PeerConnection {
                 && id == self.channel
                 && !out
             {
-                self.inbox.push_back(m.data.to_vec());
+                self.inbox.push_back(match m.is_string {
+                    true => Message::Text(String::from_utf8_lossy(&m.data).into_owned()),
+                    false => Message::Binary(m.data.to_vec()),
+                });
             }
         }
         self.flush(now);

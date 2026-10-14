@@ -3464,6 +3464,7 @@ name = "nettai-rtc"
 version = "0.1.0"
 dependencies = [
  "bytes",
+ "getrandom 0.3.4",
  "if-addrs",
  "js-sys",
  "nettai-rtc",
