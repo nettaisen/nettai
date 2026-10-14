@@ -162,16 +162,16 @@ Each is settled unless the user changes it.
     arena, and a row of the menu over the battle, they chose **"Beside the arena, each their own"**: a Music row
     in Practice's entry beside Arena and Background (a Your music in Play's lobby too, until the user: "don't allow
     bgm select in lobby"): each player picks and hears their own, nothing of it is sent. The pick is one,
-    remembered between runs, and Practice's sessions play it; a match, a replay and its video play the game's own
-    ("why does the music setting carry over from practice mode into pvp mode? huh?", "for pvp it should use the
+    remembered between runs (since §2.40, kept for one visit to Practice), and Practice's sessions play it; a
+    match, a replay and its video play the game's own ("why does the music setting carry over from practice mode into pvp mode? huh?", "for pvp it should use the
     game's default for now"), and the practice battle beside a waiting invite leaves the menus' music on ("in the
     practice mode while the lobby is waiting, don't switch the music"). The themes and their names are the games' content (each game's rules'
     `battle_themes`, named in its locales), shown after the game's name as the language says it ("BN4 Tournament
     Battle", "EXE4 トーナメントバトル"). (§6, docs/app.md §1, "The battle's music".) Then: "in the practice
     screen, if the bgm choice changes from game default you should start playing the bgm": Practice's entry plays
     the pick in place of the title music while it shows (once the row has stayed on it a moment, so a run of steps
-    starts one song), the title music again for "Game's own" and elsewhere; and "also you should be able to change
-    the bgm in the practice menu": the practice menu's Battle rows have Music, the same pick, which switches the
+    starts one song), the title music again for "Game's own" and elsewhere (since §2.40 "Game's own" plays the
+    game's own battle music there); and "also you should be able to change the bgm in the practice menu": the practice menu's Battle rows have Music, the same pick, which switches the
     battle's music at once.
 30. **A build is 構築 in Japanese** (2026-10-13): "build should be called "構築" in japanese". Every Japanese string
     that said ビルド says 構築 (構築, 新規構築, 構築を編集, 相手の構築, この構築は使えません, and the rest).
@@ -243,6 +243,31 @@ Each is settled unless the user changes it.
     the sheet's REMOVE stays the way. Keys, the pad and the libraries' clicks are as they were.
     Later: "remove double clicking to remove", and of a click on the marked row removing, "remove that too": a
     click only marks a row; a right click, Del or a drag onto the library takes its thing out. (§4, §6, docs/app.md §8.)
+39. **From the library into the list, by a drag; EXE4's patch cards too** (2026-10-14): "you should allow drag and
+    dropping from the library into a slot", and "you should also allow drag and dropping for exe4 patch cards". A
+    library's row (a chip of a code, a patch card, an auto battle chip) pressed and moved is dragged: it stays where it
+    is, a ghost of it follows the pointer, and over the build's list the row it would go in shows so, in the look of
+    a row dragged within the list; let go there, it goes in, as a click or Enter would put it, refused as they are (the
+    row shakes and the strip says why); anywhere else, nothing. A folder's chip takes the place of the entry's, a patch
+    card goes in at that place (the others shifting on), an auto battle chip takes the place of the place's. A press
+    that doesn't move is a click, as ever. EXE4's cards each belong in one slot, so a slot's card can't move to
+    another: dragged onto the library it is taken out (its slot emptied), and a library's card let go anywhere over the
+    slots goes in its own. On a phone the library is a sheet over the list, and its rows aren't dragged. (§6, docs/app.md
+    §8.)
+
+40. **Practice starts fresh, plays the battle's music through, and leaves by EXIT** (2026-10-14). The user: "going
+    into practice should reset all the arena settings, there's no reason for it to remember the last settings";
+    "the practice mode menu should also play the battle music and when it transitions it should play through the
+    transition and not restart"; and "you should also get rid of "quit to menu" and "change builds" should just
+    be "exit"". Arena, Background and Music are no longer remembered: each visit to Practice (from its entry being
+    shown from elsewhere until a screen other than Practice and Builds is shown; Builds through EDIT or CREATE A
+    BUILD is part of it) starts on Random, Random and the game's own, and keeps what the player sets through the
+    entry, its sessions and back. The entry plays the music its session will start (the game's own battle music,
+    not the title music, or the theme picked), and the battle takes that song over where it is: no fade, no
+    restart through the cards and the battle's start. The practice menu's buttons are RESUME, RESTART and EXIT
+    (CHANGE BUILDS renamed, doing what it did: the entry again; 終了 in Japanese); QUIT TO MENU is gone. (§6,
+    docs/app.md §1, "The battle's music", and §15.)
+
 41. **A build's version can be switched** (2026-10-14): "you should allow switching a save between game versions
     actually" (a save here is a build, made new or from a save). The version is switched on the Navi tab, near what it
     decides; the NEW BUILD dialog no longer says it can't be changed later. A switch makes what the version sets the
@@ -474,9 +499,12 @@ Each is in the mockups under the same name.
   so you should just have like a pager widget that goes through them. background should also be a arrow button
   pager thing": each an arrow pager, the arena by its place, "12 / 96", the background by its game and its
   name, "BN4 ACDC Area"), and Music (the battle's music, §2.29: a row laid out as Arena's, stepped by its arrows, Enter
-  opening its list; a theme plays here in place of the title music once
-  the row rests on it a moment), all remembered, and START PRACTICE; beside them the two builds facing each other
+  opening its list), the builds remembered and Arena, Background and Music for one visit (§2.40: each visit
+  starts on Random, Random and the game's own), and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
+- **The entry plays the battle's music** (§2.29, §2.40): the music its session will start, the game's own battle
+  music or the theme picked (once the row rests on it a moment), in place of the title music; START PRACTICE
+  doesn't fade it, and it plays on through the cards into the battle with no restart.
 - **The arena preview moves** (§2.35): the round the session opens on, run into its fight with nothing pressed
   while the entry shows it, its background animating and scrolling and its field doing what it does (wind, roads,
   volcanoes, panels animating), the navis standing, with no custom gauge; never a custom screen, a banner or a
@@ -502,7 +530,7 @@ Each is in the mockups under the same name.
   - Battle: Your HP and Dummy's HP (normal, refills), Custom gauge (normal, always full), Chip draw (shuffled,
     folder order)
   - Display: Input display
-  - RESUME, RESTART, CHANGE BUILDS, QUIT TO MENU. Restart is also R or the pad's top button.
+  - RESUME, RESTART, EXIT (§2.40: the entry again; no QUIT TO MENU). Restart is also R or the pad's top button.
 
 ### Builds
 - **The list:** NEW BUILD and IMPORT SAVE… over the builds; the selected build's overview beside it, with EDIT,
@@ -560,15 +588,19 @@ Each is in the mockups under the same name.
   Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
   same lines, and the strip across the top lays the card under the cursor out in its two groups. EXE4: six slots
   named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
-  puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
+  puts it there, in place of the card that slot held; so does a drag of it onto the slots, and a slot's card dragged
+  onto the library is taken out (it can move to no other slot). A two-part card says where its other half must be; a card
   shows its effect and the bugs it adds to or clears.
 - **The mouse on the build's lists** (§2.37, §2.38): a click marks a row (a folder's entry, a patch card or slot, an
   auto battle place) and removes nothing; a right click takes out what it holds; a row
   is dragged to another place (a folder's entry with its marks, a patch card in the list's order, a place's chip in
   its list or traded with another list's); dragged back onto the library and let go there, what it holds is taken
   out (the library shows DROP TO REMOVE while it is over it); let go anywhere else off the list it goes back. A right
-  click on a library row that is in the build takes it out. On a phone, a tap opens the library's sheet (its REMOVE
-  takes out) and a held touch drags, to reorder only.
+  click on a library row that is in the build takes it out. A library's row dragged onto the list goes in where it is
+  let go (§2.39): a chip in that entry or place in place of what it held, a card at that place, the others shifting
+  on (EXE4: in its own slot, wherever over the slots), refused as a click is; elsewhere, nothing. On a phone, a tap
+  opens the library's sheet (its REMOVE takes out) and a held touch drags, to reorder only; the sheet's rows aren't
+  dragged.
 - **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
   library offers what the place being filled can hold (§2.27): a Mega place the Mega chips, the Giga place the Giga
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
@@ -608,7 +640,7 @@ The mockups show no screen for this; it is decided here.
   play again or leave. Another match with the same opponent needs no new invite code.
 - **LEAVE MATCH** in the match menu ends the match for both players and puts both back in the lobby, as a
   match's end does. Leaving the opponent altogether is the lobby's LEAVE.
-- **Practice** has no end: the practice menu's RESTART and QUIT TO MENU are the ways out of a set.
+- **Practice** has no end: the practice menu's RESTART and EXIT are the ways out of a set.
 - **A replay** stops at its end with the transport still there.
 
 ### Settings

@@ -216,8 +216,9 @@ under its menu, not stopped (§15).
   the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
   screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
   ROMs. A pack that names no such sound has none: one extracted before the names were given, until it is
-  extracted again. Practice's entry plays the battle's music the player picked in its place, where that is a
-  theme (below, "The battle's music"), crossfading as the title music does.
+  extracted again. Practice's entry plays in its place the battle's music its session will start, the game's own
+  or the theme picked (below, "The battle's music"), crossfading as the title music does; the session's battle
+  takes it over, so it plays on through the cards into the fight.
 - While a battle runs, both are ticked with the battle's ticks and their samples added to the battle's, sample
   for sample; with no battle running they run on their own clock at the same rate. (At first the menus' sound ran
   on its own clock throughout, beside the battle's, at twice the rate the device plays. The queue then sat at
@@ -264,8 +265,10 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the packs' contents state.
 - *The pick* is the player's own and one: Practice's entry and its menu over the battle (§15) show and change the
-  same one (Play's lobby has none: the user, "don't allow bgm select in lobby"), remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
-  asset name; none, the game's own). The list is "Game's own", then the themes of every game whose parts are read
+  same one (Play's lobby has none: the user, "don't allow bgm select in lobby"). It is kept for one visit to
+  Practice (`practice::Visit`, `Shell::battle_music`; §15) and each visit starts on "Game's own" (the user, "going
+  into practice should reset all the arena settings, there's no reason for it to remember the last settings";
+  docs/design/app-ui.md §2.40): nothing of it is in the settings. The list is "Game's own", then the themes of every game whose parts are read
   (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose pack
   isn't there offers none, and a pick of one is played as the game's own until its game is read.
 - *Which battles play it* (`BattleStart::music`, `BattleMusic`): Practice's own sessions play the pick (the
@@ -289,14 +292,34 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   and the theme starts again on its own driver.
 - *A difference from the original:* a theme of another game has a mixer of its own, so the battle's effects don't
   take its channels as they take the game's own music's.
-- *Practice's entry plays the pick* (the user: "in the practice screen, if the bgm choice changes from game
-  default you should start playing the bgm"): while the entry shows, a theme plays in place of the menus' title
-  music (`music::preview`, `Sound::set_preview`), with its own pack's bank, at Settings' Music level. Stepping the
-  row crossfades to the next once the row has stayed on it 400 ms (`MUSIC_AFTER`: a run of steps starts one song,
-  the one it stops on, as the arena waits 160 ms before it is drawn); "Game's own" brings the title music back,
-  from its beginning. Leaving the entry (to the menu, to Builds through EDIT) brings the title music back as the
-  other menus have it; starting the battle fades it out as the title music fades, and the entry after the battle
-  plays it again from its beginning.
+- *Practice's entry plays the battle's music* (the user: "in the practice screen, if the bgm choice changes from
+  game default you should start playing the bgm", then "the practice mode menu should also play the battle music
+  and when it transitions it should play through the transition and not restart"): while the entry shows, the
+  music its session will start plays in place of the menus' title music (`Practice::play_music`,
+  `music::preview`, `Sound::set_preview`), at Settings' Music level: the song the session's first round starts
+  as it opens (`BattleSettings::music`, what `Battle::mode_intro` plays: a link battle's, so the game's own battle
+  music for "Game's own", EXE6's and EXE5's `virus-battle` and EXE4's set's `boss-battle`), as the pick plays it
+  (the theme in its place, on its own pack's bank). It plays on the battle's own sound: a `BattleAudio` of the
+  parts the battle is made with (`music::sound`), started by the music's own cue. Stepping the row crossfades to
+  the next once the row has stayed on it 400 ms (`MUSIC_AFTER`: a run of steps starts one song, the one it stops
+  on, as the arena waits 160 ms before it is drawn). Leaving the entry (to the menu, to Builds through EDIT)
+  brings the title music back as the other menus have it.
+- *Into the battle it plays on.* START PRACTICE doesn't fade it: while the cards show, the battle being made ready
+  is one that takes it over (`Shell::carried_music`: a battle that plays the pick, whose first round's music and
+  pick are the preview's, by `music::key`), so the menus keep it playing; as the battle begins, the preview's
+  sound is the battle's (`Sound::take_preview`, nettai-frontend's `Player::carry_sound`, before the first tick,
+  the levels given after). The round's start then plays its music cue as ever, and the game's own `PlayMusic`
+  finds that song playing already and does nothing (nettai-audio's `SoundCalls`: "nothing if it's the music
+  already"), so the song goes on from where the entry had it, through the cards, the wipe and the round's
+  opening (nettai's `the_battle_goes_on_with_the_entrys_music`: the song's clock past the entry's, where a battle
+  of its own starts it from 0, the battle the same by digest). Nothing of the battle changes: its cues are its
+  own, the sound is presentation, and practice has no rollback (a live set's cues are played as they come;
+  netplay's `CueTracker` is not involved). A Music row changed a moment before START is played at START, and the
+  battle takes that one over.
+- *After that, the battle's as ever:* a round's end stops the music (`StopMusic`) and the next round starts it
+  from its beginning; RESTART, and a set that ends and starts over, start the set again, whose round start finds
+  the music still playing (on through) or stopped after a round's end (from its beginning), as before. EXIT (§15)
+  ends the battle, and the entry plays its music again from its beginning, fading in.
 - *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
   the practice menu"): its Battle rows have Music, the same pick. A change switches the battle's music at once
   (`music::retheme`, `Player::set_sound_parts`, nettai-audio's `BattleAudio::set_songs`): where the battle's own
@@ -512,7 +535,7 @@ screen may start one beside something of its own (Play, while an invite waits fo
   that ended, hears the menu (`menu.*`) and the restart key whatever screen is shown, and the starter writes
   none of that. The starter's own controls stay its own: a control is heard by the battle's owner only if it is
   the battle's (its name begins `menu.`) or the battle fills the window (`App::hearer_of`).
-- A session started from outside has no CHANGE BUILDS and no QUIT TO MENU: its starter's rows are the ways out.
+- A session started from outside has no EXIT: its starter's rows are the ways out.
   Choosing an added row tells the starter and leaves the menu as it is (the starter closes it with
   `shell.close_menu()` if it wants, or ends the session). It keeps nothing of the dummy's setup.
 - One shown in the starter's own `Picture` (`full` off) lasts while that screen is shown: it ends by itself if
@@ -1396,9 +1419,48 @@ folder's entry emptied, the patch card taken out, the place emptied. While it is
 line turns the error color and it fades to 0.6, and the library fades back under a wash and an edge in the error
 color with DROP TO REMOVE on a band across its middle (`RemoveTarget`, folder.slint; each fades in and out over
 `Theme.quick`); back off the library, the row looks as a drag does again. Anywhere else off the list it still goes
-back. A library's own rows aren't dragged (a click or Enter puts one in, as before). On a phone the library is a
+back. On a phone the library is a
 sheet, shut while a row is dragged, so nothing is over it: a drag there only reorders, and the sheet's REMOVE stays
 the way to take something out (`over_library` is false on a phone).
+
+**A library's row dragged into the list goes in there** (the user: "you should allow drag and dropping from the
+library into a slot", and "you should also allow drag and dropping for exe4 patch cards"). A press on a library's row
+that moves 6 is a drag, as a row of the build's is; a press that doesn't move is still a click, which puts what the
+row holds in the marked row, as before. The library's row stays where it is, and a ghost of it follows the pointer
+(the lifted row's look in the shape of the build's rows, at 0.7 until it is over a row it would go in; held no
+farther in than its middle, as a library's row is wider). Over the build's list the row it would go in shows so, in
+the look of a row dragged within it; let go there, it goes in, by the rules a click or Enter goes by: a chip the
+rules refuse there, or a card the MB or the list's room can't take, isn't put in, its library row shakes and the
+strip says why ("Falzar only", "Needs 24 MB", "MrkCan1 can't be in the Mega list"), and nothing else changes. Let go
+anywhere else (the library among it), nothing happens. Put in, it flies from its row as a click's does, and the row it
+went in flashes and is the marked one (the folder's entry and the auto battle place with the focus on them, as after
+a move; a patch card with the focus left in the library, as after a click).
+
+- *The folder:* the chip goes in the entry under the pointer, in place of what it held, none shifting (`DropGap`
+  under that entry). Its reason is asked of the folder without that entry, as a click's is of the folder without the
+  marked one (`Folder::fill`); refused, the marked entry stays as it was. A refused click's row now says why in the
+  strip too (it said so in the row's note alone).
+- *The patch cards:* the card goes in at the place under the pointer, those from there on shifting down to leave it
+  a gap (`ListEdit::Insert`); over the Empty row after them, at their end. One that is in already moves there, as a
+  drag of it in the list would.
+- *EXE4's slots.* A card is the game's for one slot (its definition's `slot`, which `build_check` holds a build to:
+  content/exe4/rules/patch_cards), so it can be in no other, and a slot's card has nowhere to move to within the
+  list. What a drag can mean there is coming in and going out: a slot's card dragged onto the library empties its
+  slot, as the list's cards are taken out; over the slots it goes back to its own (its slot is outlined), and let go
+  there nothing changes. A library's card let go anywhere over the slots goes in its own slot, in place of what it
+  held, as a click puts it (its slot outlined while it is held there: `Drag.swap`, none shifting); one that is in
+  already stays.
+- *The auto battle places:* the chip goes in the place under the pointer, in place of what it held, none shifting,
+  held to what that place may hold (`AutoBattle::fill`). The library is still the one for the place being filled, so
+  a chip of another class dragged into a Mega, Giga or Program Advance place is refused there.
+- *How it is told.* The library's rows are given its list's name (`drag: "lib.rows"`), so `Drag.list` says a drag
+  is one of them; the editor tells the tab it as `drag-in-over` and `drag-in-drop` (`editor::from_library`), `index`
+  the library's row. The tab answers with `editor::show_landing`, which also names the list it lands in
+  (`Drag.into`, the list that scrolls near its edges: a row of the build's, its own); the views' drag globals
+  (`FolderDrag`, `CardDrag`, `PlaceDrag`) show it as `filling`. The ghost is the tab's: the folder's
+  `FolderView.ghost`, the auto battle's `lifted`, the patch cards' the library's own row.
+- *On a phone* the library is a sheet over the list, shut once something is put in, so a drag from it has nowhere to
+  land in view: its rows aren't dragged there, and a tap puts in as before.
 
 - *How it is told.* The UI's `Drag` global (nav.slint) holds the drag (the list, the row, the pointer, where in the
   row it went down); the row's touch, given its list's name (`drag`), feeds it. Each move asks the app where the row
@@ -1409,8 +1471,8 @@ the way to take something out (`over_library` is false on a phone).
 - *The folder:* an entry to another entry, those between shifting toward where it was, its Regular and tag marks
   going with their chips (`FolderEdit::Move`, `edit::moved`); it is then the marked entry.
 - *The patch cards:* a card to another place in the list, by the edit `[` and `]` make (`ListEdit::Move(from, to)`,
-  which the keys make a place up or down); past the last card, it is the last. EXE4's slots aren't dragged: each card
-  goes in its own slot, which the editor already holds to.
+  which the keys make a place up or down); past the last card, it is the last. An EXE4 slot's card goes back to its
+  own slot (each card's, which the editor already holds to), or onto the library, below.
 - *The auto battle places:* a place's chip to another place of its list, those between shifting (`Edit::Move`); to a
   place of another list, the two places trade what they hold (`Edit::Swap`), the target outlined and nothing
   shifting (`Drag.swap`). A chip the rules refuse where it would go isn't moved, as one from the library isn't: the
@@ -1419,21 +1481,30 @@ the way to take something out (`over_library` is false on a phone).
   the rules have against the result is the row's problem, as ever); only the auto battle's, as above, where the
   editor already refuses that chip in that place.
 - *Scrolling.* The lists the build's rows are in don't scroll by a mouse's drag (`ListView`'s and `ScrollPage`'s
-  `mouse-pan` off, as the NaviCust's programs), so a drag on a row is the row's; the wheel scrolls them. While a row is
-  dragged near a list's top or bottom edge (within 32, or up to 96 past it), the list scrolls that way (`Scroller`'s
-  timer, 8 a frame) and asks again where the row would land. A touch's drag still scrolls a phone's list, as Slint's
+  `mouse-pan` off, as the NaviCust's programs), so a drag on a row is the row's; the wheel scrolls them. The libraries
+  beside them are alike on a desktop: their rows are dragged into the list, so a mouse's drag doesn't pan them
+  (`mouse-pan: Theme.phone`; a phone's sheet keeps it, its rows not dragged). While a row is dragged near the top or
+  bottom edge of the list it lands in (`Drag.into`: within 32, or up to 96 past it), the list scrolls that way
+  (`Scroller`'s timer, 8 a frame) and asks again where the row would land; the library a row is dragged from doesn't. A touch's drag still scrolls a phone's list, as Slint's
   `Flickable` takes a touch that moves in its first half second; one held still for that half second is the row's,
   and drags it (the Folder's, the Patch cards' and the Auto battle's lists on a phone alike; a list with nothing to
   scroll gives a touch's drag to the row at once).
 - *The pass* (`build_tabs::drags`, §13): a double click on a folder entry and one more click on it, marked (its
   chip left in, `tabs-folder-clicked-twice`); an entry dragged three rows down, shot held there and after; an entry dragged onto the
   library, shot held there (`tabs-folder-drag-remove`, the remove look) and after (`tabs-folder-drag-removed`: emptied,
-  the next entry untouched); a right click on an entry not marked (taken out, the focus on it); a patch card dragged
-  above the one before it, and the first card onto the card library (`tabs-cards-drag-remove`: taken out, the others
-  closing up; EXE4's slots aren't dragged, and nothing changes); an auto battle place's chip dragged two places back
+  the next entry untouched); a right click on an entry not marked (taken out, the focus on it); the library's first
+  chip that can go in dragged onto the emptied entry, shot held there (`tabs-folder-drag-in`: its ghost, the entry
+  outlined) and after (`tabs-folder-dragged-in`: in that entry, the others as they were, the focus on it), and one
+  the rules refuse dragged there too (`tabs-folder-drag-in-refused`: nothing changed, the strip says why); a patch
+  card dragged above the one before it, and the first card onto the card library (`tabs-cards-drag-remove`: taken
+  out, the others closing up; in EXE4 the first slot that holds a card emptied, `-removed`); a library's card that
+  isn't in dragged onto the first card (`tabs-cards-drag-in`: a gap there, the cards from there on shifted down;
+  `tabs-cards-dragged-in`: it is the first, the others after it; in EXE4 its own slot outlined, and then holding it);
+  an auto battle place's chip dragged two places back
   in its list, then into another list (traded), then down past the page's foot into the Mega list (it scrolls there;
   refused), then the first place holding a chip onto the library (`tabs-auto-drag-remove`, `-removed`: that place
-  emptied, the others as they were). On a desktop the NaviCust's clicks (`build_tabs::carries`): a placed piece clicked
+  emptied, the others as they were), and a library's chip dragged onto the second place (`tabs-auto-drag-in`,
+  `tabs-auto-dragged-in`: it holds it, the others as they were, the focus on it). On a desktop the NaviCust's clicks (`build_tabs::carries`): a placed piece clicked
   up and carried over the list (`tabs-navicust-over-list`, the remove look), a click there (`tabs-navicust-clicked-away`:
   a program fewer placed); another clicked up and carried off the board onto the effects (`tabs-navicust-carried-off`),
   a click there (`tabs-navicust-put-back`: back where it was, the board as it was). On a phone, the folder's drag, with
@@ -1456,10 +1527,11 @@ last used, the picture's size (the largest that fits, or at most 1 to 8 times), 
 the system asks until the player says), the battle's text (sharp or original), the levels of the music and the
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
-and what screens remember by their own keys (`remembered`; among them the battle's music the player picked,
-`battle.music`, which Practice's rows change and its sessions play: §1, "The battle's music"). A setting the file leaves out is
-the app's default. The battle's music isn't one of Settings' rows (the user: "settings is a weird place to put
-it"): it is picked beside the arena.
+and what screens remember by their own keys (`remembered`: what a screen chose last, such as Practice's builds and
+its dummy's setup and options, §15, Play's build and First to, Builds' tab, a video's folder). A setting the file leaves out is the app's default. The battle's
+music isn't one of Settings' rows (the user: "settings is a weird place to put it"): it is picked beside the
+arena, for one visit to Practice, and kept nowhere (§1, "The battle's music"); nor are Practice's Arena and
+Background (§15).
 
 The Settings screen is one scrolling page with a list at its left that jumps to a group: General, Video, Audio,
 Online, Controls, About. In Controls, Enter on a key's or a pad button's box asks for the next key or button; one
@@ -2269,6 +2341,15 @@ docs/design/app-ui.md §6, "Practice": you against a dummy set up from a menu wh
 **The entry.** Five rows, Your build, Dummy's build, Arena, Background and Music, and START PRACTICE at the
 column's foot; beside them (on a phone, under them) the two builds as cards over the arena.
 
+**A visit** (`practice::Visit`, in `Shell::practice`): from the entry being shown from elsewhere (the main menu,
+Play) until a screen other than Practice and Builds is shown. Builds is part of it: EDIT and CREATE A BUILD go
+there and its Back comes back (`Practice::to_builds` keeps the visit through the entry's leaving for it; any
+other screen shown ends it, `Visit::shown`, as Practice leaving for one does). Arena, Background and Music are
+the visit's: each visit starts on Random, Random and "Game's own" (the user: "going into practice should reset
+all the arena settings, there's no reason for it to remember the last settings": docs/design/app-ui.md §2.40),
+and through it the entry, its sessions (the menu's Arena, Background and Music are the same three), the entry
+again after them and the entry back from Builds keep what the player set. None of the three is in the settings.
+
 - Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
   opened as a list with Enter. Both are remembered by game between runs (the settings' `remembered`:
   `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
@@ -2283,11 +2364,11 @@ column's foot; beside them (on a phone, under them) the two builds as cards over
   its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the practice
   menu's rows have it (the user: "the arena names are meaningless so you should just have like a pager widget
   that goes through them. background should also be a arrow button pager thing"): Left and Right or its arrows
-  step it, around from the last to Random, a held key repeating; Enter steps it on; it opens no list. It is
-  remembered by game (`training.arena.<game>` by the stage's key, `training.background.<game>` by the name a
-  match writes for the background: the game's own by its name in the pack, as before the pool, another game's
-  with its game, `exe4:acdc-area`; Random is nothing remembered). Each step draws the arena again after the same
-  160 ms as a build's, so a run of steps draws once.
+  step it, around from the last to Random, a held key repeating; Enter steps it on; it opens no list. It is the
+  visit's (above): Random as a visit starts, kept through it, a choice of another game's entry Random (a match
+  names a background by the name it writes, the game's own by its name in the pack, another game's with its
+  game, `exe4:acdc-area`). Each step draws the arena again after the same 160 ms as a build's, so a run of steps
+  draws once.
   - The two are apart in the games' own data: a link battle picks its stage and its background each on its
     own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
     own background is shown only where the rules list none to pick from. So either is chosen with any of the
@@ -2300,11 +2381,15 @@ column's foot; beside them (on a phone, under them) the two builds as cards over
     round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
-- **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions play:
-  a row laid out as Arena's and Background's, stepped by Left and Right around from the last theme to
-  "Game's own", and Enter opens its list (its names say more than a place's number). It changes nothing drawn
-  (the arena's picture is silent), the session plays it, and while the entry shows it plays in place of the title
-  music once the row has stayed on it 400 ms (§1, "The battle's music"). (On a phone the five rows are 44 tall and 48 apart,
+- **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions play,
+  the visit's ("Game's own" as a visit starts): a row laid out as Arena's and Background's, stepped by Left and
+  Right around from the last theme to "Game's own", and Enter opens its list (its names say more than a place's
+  number). It changes nothing drawn (the arena's picture is silent). **The entry plays the battle's music** in
+  place of the title music (the user: "the practice mode menu should also play the battle music and when it
+  transitions it should play through the transition and not restart"): the music its session will start, the
+  game's own battle music for "Game's own", a theme for a theme, changing once the row has stayed on it 400 ms;
+  START PRACTICE doesn't fade it, and the session's battle takes it over, so it plays on through the cards into
+  the fight (§1, "The battle's music"). After a session the entry plays it again from its beginning. (On a phone the five rows are 44 tall and 48 apart,
   where the four were 48 and 56, so that the cards and the arena still end over START PRACTICE.)
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round, the two builds' navis on it: a battle of its own, in a `Picture` at
@@ -2371,8 +2456,8 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
     (`Battle::paused_by`). While the menu is open the player's buttons reach neither the game nor the dummy:
     the battle is given START and nothing else.
   - The menu closes (RESUME, Esc, the pad's Start): the battle is given START again and leaves the pause as
-    the game does at its player's START, the fight going on where it was. RESTART, CHANGE BUILDS and QUIT TO
-    MENU work from the pause as from anywhere.
+    the game does at its player's START, the fight going on where it was. RESTART and EXIT work from the pause
+    as from anywhere.
   - Where START wouldn't pause the game, the battle steps on under the menu with no buttons: neither the
     player's (the menu has them) nor the dummy's (`Player::hold_opponent`: its presses are made as ever, and
     reach nothing), so its music and what the game moves go on there too.
@@ -2459,13 +2544,21 @@ there and the engine flags it full once the fight runs again, the folder is put 
 `the_options_act_in_the_games_own_pause`).
 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on), around from its last
-value to its first. Under them RESUME, RESTART, CHANGE BUILDS (the entry again, with another arena) and QUIT TO
-MENU. The menu opens where the focus last was in it. The dummy's setup, the battle's options and the input
-display are remembered between runs (`training.action`, `training.level`, `training.your-hp`,
-`training.dummys-hp`, `training.custom-gauge`, `training.chip-draw`, `training.inputs`), and the place by
-game as the entry's rows are; a session another screen started begins as that screen says, every
-battle option at its normal value and the place Random, and keeps nothing of the dummy's, the battle's or the
-place.
+value to its first. Under them RESUME and RESTART side by side, and under those EXIT, as wide as the two (on a
+phone, the three one over the other): the entry again, with another arena (`menu.exit`; `practice::MENU_BUTTONS`).
+The user (docs/design/app-ui.md §2.40): "you should also get rid of "quit to menu" and "change builds" should
+just be "exit"": CHANGE BUILDS became EXIT, doing what it did, and QUIT TO MENU went (the entry's Back goes to
+the menu). In Japanese EXIT is 終了, as a fighting game's training ends ("トレーニング終了"), apart from the
+entry's もどる. Esc and the pad's Start and back button close the menu as RESUME does, as before; R, F5 and the pad's north
+button restart. A session another screen started (Play's, beside a waiting invite) has no EXIT: its own rows,
+COPY INVITE CODE and CANCEL INVITE (hosting directly, COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE
+between them), are its ways out, over RESUME and RESTART. The
+menu opens where the focus last was in it. The dummy's setup, the battle's options and the input display are
+remembered between runs (`training.action`, `training.level`, `training.your-hp`, `training.dummys-hp`,
+`training.custom-gauge`, `training.chip-draw`, `training.inputs`); the place is the visit's, as the entry's rows
+are, and the entry after the session shows the place the menu left; a session another screen started begins as
+that screen says, every battle option at its normal value and the place Random, and keeps nothing of the
+dummy's, the battle's or the place.
 
 **The dummy's rows.** One row says what the dummy does, its Action, and its Level comes under it while it is
 Fights (`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it,

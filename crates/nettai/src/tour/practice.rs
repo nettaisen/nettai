@@ -196,9 +196,11 @@ fn expect(is: impl Fn(&App, &AppWindow) -> bool + 'static, what: &'static str) -
     })
 }
 
-/// What the pass has changed of Practice's remembered choices, forgotten: each walk starts from none.
+/// What the pass has changed of Practice's remembered choices, forgotten, and the visit over: each walk starts from
+/// none, on the entry's defaults.
 pub(super) fn forget(app: &mut App) {
     app.shell.settings.remembered.retain(|key, _| !key.starts_with("training."));
+    app.shell.practice.visit.leave();
 }
 
 /// Practice's steps of one language at one size.
@@ -444,14 +446,14 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(150, hold(0));
     add(2000, tell(lang, size, "the fight again"));
 
-    // CHANGE BUILDS: the entry again.
+    // EXIT: the entry again.
     add(
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             app.shell.keys.held = 0;
             app.shell.open_menu();
-            app.with_screen(ScreenId::Practice, |screen, shell| screen.activate(shell, "menu.change", 0));
+            app.with_screen(ScreenId::Practice, |screen, shell| screen.activate(shell, "menu.exit", 0));
         }),
     );
     shot(add, "practice-entry-again", lang, size, Differs::Unheld, false);

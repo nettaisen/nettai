@@ -185,19 +185,22 @@ component SlotName inherits Rectangle {
     }
 }
 
-// Where card `i` would be while one is dragged: at the place it shifts to (the dragged one where it would land).
+// Where card `i` would be while one is dragged: at the place it shifts to (the dragged one where it would land). A
+// library's card dragged in (`filling`) goes in at `to`, those from there on shifting down to leave it a gap; in a
+// game with slots (`Drag.swap`), into its own slot, in place of what it holds, none shifting.
 global CardDrag {
     out property <bool> on: Drag.on && Drag.list == "card";
-    out property <int> to: self.on ? Drag.to : -1;
+    out property <bool> filling: Drag.on && Drag.list == "lib.rows";
+    out property <int> to: self.on || self.filling ? Drag.to : -1;
     public pure function shown(i: int) -> int {
-        return self.to < 0 ? i : i == Drag.from ? self.to : (Drag.from < i && i <= self.to) ? i - 1 : (self.to <= i && i < Drag.from) ? i + 1 : i;
+        return self.to < 0 ? i : self.filling ? (!Drag.swap && i >= self.to ? i + 1 : i) : i == Drag.from ? self.to : (Drag.from < i && i <= self.to) ? i - 1 : (self.to <= i && i < Drag.from) ? i + 1 : i;
     }
 }
 
 // One of the build's cards (or slots): its slot's name, its number, its name and its MB over its lines; Empty where
-// it holds none. A click on it while it is marked takes its card out; in a game whose cards go in a list (not
-// slots), a drag takes it to another place in the list (`dy`: where it is shifted to while another is dragged; the
-// one dragged is drawn under the pointer, `gone` here). `lifted`: it is that one, drawn under the pointer.
+// it holds none. A drag takes its card to another place in the list, or onto the library (in a game with slots, the
+// library alone: a card's slot is its own) (`dy`: where it is shifted to while another is dragged; the one dragged
+// is drawn under the pointer, `gone` here). `lifted`: it is that one, drawn under the pointer.
 component InstalledRowView inherits Rectangle {
     in property <CardRow> card;
     in property <int> nav-index;
@@ -230,7 +233,7 @@ component InstalledRowView inherits Rectangle {
         y: root.dy;
         opacity: root.gone ? 0 : 1;
         animate y {
-            duration: CardDrag.on ? Theme.quick : 0ms;
+            duration: CardDrag.on || CardDrag.filling ? Theme.quick : 0ms;
             easing: ease-out;
         }
 
@@ -308,7 +311,7 @@ component InstalledRowView inherits Rectangle {
     touch := RowTouch {
         nav: "card";
         nav-index: root.nav-index;
-        drag: root.slotted || !root.card.there || root.nav-index < 0 ? "" : "card";
+        drag: !root.card.there || root.nav-index < 0 ? "" : "card";
         removable: root.nav-index >= 0;
     }
 }
@@ -387,10 +390,12 @@ component CardLibraryRowView inherits Rectangle {
         vertical-alignment: center;
     }
 
+    // (Dragged into the build's cards beside it, on a desktop: a phone's library is a sheet over them.)
     touch := RowTouch {
         nav: "lib.rows";
         nav-index: root.nav-index;
         removable: true;
+        drag: Theme.phone ? "" : "lib.rows";
     }
 }
 
@@ -421,6 +426,8 @@ component CardsLibraryPane inherits Rectangle {
         count: PatchCardsView.rows.length;
         row-height: Theme.phone ? 40px : Theme.chip-row;
         chosen: self.focused-row;
+        // (A mouse's drag on a row takes its card into the build's: the wheel scrolls.)
+        mouse-pan: Theme.phone;
         for slot in list.shown: CardLibraryRowView {
             property <int> at: list.first + slot;
             y: self.at * list.pitch;
@@ -762,19 +769,22 @@ export component PatchCardsTab inherits Rectangle {
         }
     }
 
-    // (The card being dragged, under the pointer, over everything.)
+    // (The card being dragged, under the pointer, over everything; or a ghost of the library's card, in the shape of
+    // the build's, faint until it is over the list. A library's row is wider: its ghost is held no farther in than its
+    // middle.)
     InstalledRowView {
-        x: Drag.x - root.absolute-position.x - Drag.grab-x;
+        x: Drag.x - root.absolute-position.x - (CardDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
         y: Drag.y - root.absolute-position.y - Drag.grab-y;
         width: cards.row-width;
         height: cards.row-height;
-        visible: CardDrag.on;
-        card: PatchCardsView.installed[max(0, Drag.from)];
+        visible: CardDrag.on || CardDrag.filling;
+        card: CardDrag.filling ? PatchCardsView.rows[max(0, Drag.from)] : PatchCardsView.installed[max(0, Drag.from)];
         nav-index: -1;
+        slotted: PatchCardsView.counts.slotted;
         lifted: true;
         chosen: !Drag.removing;
         removing: Drag.removing;
-        opacity: Drag.removing ? 0.6 : 1;
+        opacity: Drag.removing ? 0.6 : CardDrag.filling && CardDrag.to < 0 ? 0.7 : 1;
         animate opacity {
             duration: Theme.quick;
             easing: ease-out;
