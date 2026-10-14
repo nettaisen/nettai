@@ -5,8 +5,9 @@
 //! builds of the selected game, remembered between runs by game), Arena (the game's) and Background (every
 //! game's: the background pool), each after Random ([`Places`]), and Music (the battle's music), the three kept
 //! for one visit ([`Visit`]), and START PRACTICE; beside them the two builds facing each other on the arena the
-//! session opens on. While it shows it plays the music the session will start, which the session's battle takes
-//! over. With no build of the game there is one button, Create a build. A build that can't be used
+//! session opens on (Arena a pager, Background and Music dropdowns as the build rows are). While it shows it plays
+//! the music the session will start, which the session's battle takes over, and back from a session it plays on
+//! the battle's song where it is. With no build of the game there is one button, Create a build. A build that can't be used
 //! says so in the reserved line, and practice doesn't start. Each build's EDIT (or E, or the pad's north button,
 //! on its row) opens it in Builds' editor (`crate::screens::builds::open`), and Back from there comes back here,
 //! which lists the builds again as they were left.
@@ -18,8 +19,8 @@
 //! module hears its menu and its events whatever screen is shown.
 //!
 //! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle paused behind it. Its
-//! rows are a label and a value between arrows, changed at once by Left and Right: [`ROWS`] lists them, and a
-//! row is added there. Under them RESUME, RESTART and, in a session of Practice's own, EXIT (the entry again).
+//! rows are a label and a value between arrows, changed at once by Left and Right (Background and Music a
+//! dropdown, as on the entry: Enter opens its list): [`ROWS`] lists them, and a row is added there. Under them RESUME, RESTART and, in a session of Practice's own, EXIT (the entry again).
 
 use crate::battle::{BattleEvent, BattleStart, Play};
 use crate::builds::store;
@@ -217,7 +218,7 @@ struct Session {
 
 /// The practice menu's rows, in order, under whatever rows another screen added: each group's title, then its
 /// options. A row is added here, worded in practice.slint (`PracticeView.label` and `value`), and given what it
-/// does in [`values`], [`value`] and `Practice::step_option`. The dummy's Level is shown under its Action while
+/// does in [`values`], [`value`] and `Practice::change_option`. The dummy's Level is shown under its Action while
 /// that is Fights alone ([`shown_rows`]).
 pub(crate) const ROWS: [PracticeOption; 14] = [
     PracticeOption::Dummy,
@@ -262,7 +263,7 @@ fn values(option: PracticeOption, places: &Places) -> usize {
     match option {
         PracticeOption::Arena => places.len(ARENA),
         PracticeOption::Background => places.len(BACKGROUND),
-        // (The battle's music steps through what `crate::music` offers: `Practice::step_option`.)
+        // (The battle's music steps through what `crate::music` offers: `Practice::change_option`.)
         PracticeOption::Music => 1,
         PracticeOption::Action => ACTIONS.len(),
         PracticeOption::Level => LEVELS.len(),
@@ -549,6 +550,12 @@ fn battle_sound(shell: &mut Shell) -> Option<nettai_audio::BattleAudio> {
     shell.battle.as_mut().and_then(|b| b.stage.player.take_sound())
 }
 
+/// The place the practice session on is fought on (its lists' places, 0 Random).
+#[cfg(feature = "tour")]
+pub(crate) fn session_place(shell: &Shell) -> Option<[usize; 2]> {
+    shell.practice.session.as_ref().map(|s| s.place)
+}
+
 /// Whether the battle on is a practice session's.
 fn ours(shell: &Shell) -> bool {
     shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Practice && b.kind == BattleKind::Practice)
@@ -597,6 +604,21 @@ fn redraw_on_background(shell: &mut Shell, session: &mut Session) {
     if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
         b.stage.player.set_backgrounds(set);
     }
+}
+
+/// How a menu's option changes: stepped by so many, or to a value chosen from its list.
+#[derive(Clone, Copy)]
+enum Change {
+    By(i32),
+    To(usize),
+}
+
+/// Open the backgrounds as the list of the select `id`, `index` (the entry's Background row, or the menu's): Random,
+/// then `labels`, the background pool's as the rows say them; place `at` chosen.
+fn open_places(shell: &mut Shell, id: &str, index: i32, labels: &[String], at: usize) {
+    let random = shell.ui().global::<PracticeView>().get_random().to_string();
+    let names = std::iter::once(random).chain(labels.iter().cloned()).collect();
+    shell.pick(id, index, names, at);
 }
 
 /// A build as a card says it: its name, its version's tag and its navi's name in the language shown.
@@ -1010,9 +1032,14 @@ impl Practice {
     /// Random: kept for the visit, and shown (the arena drawn again on it a moment after, as for a build; what
     /// the seed picks, a Random arena, the same whatever the background).
     fn step_place(&mut self, shell: &mut Shell, part: usize, by: i32) {
-        let Some((game, ready)) = shell.ready() else { return };
         let at = (self.place[part] as i32 + by).rem_euclid(self.places.len(part) as i32) as usize;
-        if self.builds.is_empty() || self.place[part] == at {
+        self.set_place(shell, part, at);
+    }
+
+    /// Choose place `at` of list `part` (0 Random), as `step_place` steps to it.
+    fn set_place(&mut self, shell: &mut Shell, part: usize, at: usize) {
+        let Some((game, ready)) = shell.ready() else { return };
+        if self.builds.is_empty() || self.place[part] == at || at >= self.places.len(part) {
             return;
         }
         self.place[part] = at;
@@ -1138,15 +1165,33 @@ impl Practice {
         self.play_music_after(shell, battle);
     }
 
-    /// Step the menu's option at row `index` by `by`, around from its last value to its first: it changes at
-    /// once.
-    fn step_option(&mut self, shell: &mut Shell, index: i32, by: i32) {
+    /// Enter, a click or a tap on the menu's option at row `index`: Background and Music open their lists (as the
+    /// entry's rows of them), another steps on by one.
+    fn open_option(&mut self, shell: &mut Shell, index: i32) {
+        let Some(session) = shell.practice.session.as_ref() else { return };
+        let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
+        match option {
+            Some(PracticeOption::Background) => {
+                let (labels, at) = (session.place_labels[BACKGROUND].clone(), session.place[BACKGROUND]);
+                open_places(shell, "menu.rows.option", index, &labels, at);
+            }
+            Some(PracticeOption::Music) => crate::music::open(shell, "menu.rows.option", index),
+            _ => self.change_option(shell, index, Change::By(1)),
+        }
+    }
+
+    /// Change the menu's option at row `index` (`change`: stepped, around from its last value to its first, or
+    /// chosen from its list): it changes at once.
+    fn change_option(&mut self, shell: &mut Shell, index: i32, change: Change) {
         let Some(mut session) = shell.practice.session.take() else { return };
         let option = (index as usize).checked_sub(session.added).and_then(|at| session.rows.get(at)).copied();
         // Music: the player's one pick, stepped as the entry's row steps it, and the battle's music switched to it
         // at once (the user: "also you should be able to change the bgm in the practice menu").
         if option == Some(PracticeOption::Music) {
-            crate::music::step(shell, by);
+            match change {
+                Change::By(by) => crate::music::step(shell, by),
+                Change::To(at) => crate::music::choose(shell, at as i32),
+            }
             crate::music::retheme(shell);
             session.music = crate::music::shown(shell);
             tell_rows(shell, &session, &[PracticeOption::Music]);
@@ -1154,7 +1199,10 @@ impl Practice {
             return;
         }
         if let Some(option) = option.filter(|o| values(*o, &session.places) > 0) {
-            let next = (value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32 + by).rem_euclid(values(option, &session.places) as i32) as usize;
+            let next = match change {
+                Change::By(by) => (value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32 + by).rem_euclid(values(option, &session.places) as i32) as usize,
+                Change::To(at) => at.min(values(option, &session.places) - 1),
+            };
             // (A session another screen started keeps nothing of the dummy's setup, or of the place.)
             let keep = session.from.is_none();
             match option {
@@ -1297,9 +1345,10 @@ impl Screen for Practice {
             }
             // (A place row steps on, as the menu's rows do.)
             "arena" => self.step_place(shell, ARENA, 1),
-            "background" => self.step_place(shell, BACKGROUND, 1),
-            // (The music's list opens: its names say more than a place's number.)
-            "music" if !self.builds.is_empty() => crate::music::open(shell, id),
+            // (Background and Music open their lists, as the build rows do: the user, "background and music
+            // selectors should both be dropdowns like they are in the practice screen".)
+            "background" if !self.builds.is_empty() => open_places(shell, id, 0, &self.place_labels[BACKGROUND], self.place[BACKGROUND]),
+            "music" if !self.builds.is_empty() => crate::music::open(shell, id, 0),
             "start" => self.start_practice(shell),
             "menu.resume" | "menu.restart" | "menu.exit" => match menu_button(id) {
                 Some(MenuButton::Resume) => shell.close_menu(),
@@ -1311,7 +1360,7 @@ impl Screen for Practice {
                 Some(MenuButton::Exit) if shell.practice.session.as_ref().is_some_and(|s| s.from.is_none()) => self.back_to_entry(shell),
                 _ => {}
             },
-            "menu.rows.option" => self.step_option(shell, index, 1),
+            "menu.rows.option" => self.open_option(shell, index),
             // A row another screen added: it is told which.
             "menu.rows.added" => {
                 if let Some(Session { from: Some((to, tag)), .. }) = &shell.practice.session {
@@ -1336,18 +1385,24 @@ impl Screen for Practice {
                 crate::music::step(shell, by);
                 self.tell_music(shell);
             }
-            "menu.rows.option" => self.step_option(shell, index, by),
+            "menu.rows.option" => self.change_option(shell, index, Change::By(by)),
             _ => {}
         }
     }
 
-    fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
+    fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         if matches!(id, "yours" | "dummys") {
             self.choose_build(shell, (id == "dummys") as usize, choice.max(0) as usize);
         }
         if id == "music" {
             crate::music::choose(shell, choice);
             self.tell_music(shell);
+        }
+        if id == "background" {
+            self.set_place(shell, BACKGROUND, choice.max(0) as usize);
+        }
+        if id == "menu.rows.option" {
+            self.change_option(shell, index, Change::To(choice.max(0) as usize));
         }
     }
 
