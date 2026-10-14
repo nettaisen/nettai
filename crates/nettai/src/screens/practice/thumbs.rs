@@ -24,11 +24,12 @@ use std::sync::mpsc::{Receiver, Sender};
 type Pixels = SharedPixelBuffer<Rgba8Pixel>;
 
 /// A picture's size: the battle picture's width, and the band of its rows from [`TOP`] that holds the field, its
-/// panels and what stands on them (two and a half to one; the grid shows it at half that, which a display of two
-/// pixels a unit shows pixel for pixel).
+/// panels and what stands on them, the tallest whole (fifteen to seven: EXE4's flags on the back row reach up to
+/// row 40, its field's front edge down to row 151; the grid shows it at half that, which a display of two pixels a
+/// unit shows pixel for pixel).
 const WIDTH: usize = 240;
-const HEIGHT: usize = 96;
-const TOP: usize = 56;
+const HEIGHT: usize = 112;
+const TOP: usize = 40;
 
 /// The seed an arena's round is made from: its pictures are the same each time.
 const SEED: u32 = 7;
@@ -210,10 +211,17 @@ fn make(content: &Arc<Content>, graphics: &Graphics, game: &str, places: &Places
 }
 
 /// An arena's picture (the user: "you should just render the arena and megaman only without his hp", "you should
-/// show the opponent too as megaman on the other side"): a round on `stage` between two of `megaman`, as its
-/// opening ends, its field's panels and the two navis standing on them, each where the round puts it, and
-/// nothing else (no background, no HUD, no other object), each pixel `0xAARRGGBB`, clear where nothing is.
+/// show the opponent too as megaman on the other side"; and, of the objects its arena places, "objects don't seem to
+/// be rendered on stage previews"): a round on `stage` between two of `megaman`, as its opening ends, its field's
+/// panels and what stands on them ([`drawn`]), each where the round puts it, and nothing else (no background, no
+/// HUD, no object anything else made), each pixel `0xAARRGGBB`, clear where nothing is.
 fn arena(content: &Arc<Content>, packs: &nettai_render::packs::PackGraphics, game: &str, megaman: &nettai_match::Side, stage: nettai_content_api::StageHandle) -> Option<Vec<u32>> {
+    let session = opened(content, game, megaman, stage)?;
+    Some(nettai_render::still::field(packs, &session.battle, &drawn(&session.battle)))
+}
+
+/// A round on `stage` between two of `megaman`, played to its opening's end, as an arena's picture shows it.
+fn opened(content: &Arc<Content>, game: &str, megaman: &nettai_match::Side, stage: nettai_content_api::StageHandle) -> Option<Session> {
     let mut m = Match::empty(content, game).map_err(|why| crate::errors::log("drawing an arena's picture", &why)).ok()?;
     m.sides = [megaman.clone(), megaman.clone()];
     let round = RoundSettings { stage: Some(stage), background: None };
@@ -228,9 +236,19 @@ fn arena(content: &Arc<Content>, packs: &nettai_render::packs::PackGraphics, gam
             break;
         }
     }
-    let b = &session.battle;
-    let navis: Vec<_> = [0, 1].into_iter().filter_map(|side| b.player(side)).collect();
-    Some(nettai_render::still::field(packs, b, &navis))
+    Some(session)
+}
+
+/// What an arena's picture draws of round `b`: its two navis, and the objects its arena places as the round
+/// starts, those of the kinds its stage's list places beside the navis (the rocks, cubes, boulders, statues,
+/// flags and gears: `Battle::spawn_actors`), as the round has them, each by its kind's own sprite. (Anything they
+/// or the round make of other kinds is left out, the flags' HP with the rest of the HUD; the wind its windy arenas
+/// place is unseen.)
+fn drawn(b: &nettai_battle::Battle) -> Vec<nettai_battle::object::ObjectRef> {
+    use nettai_battle::content::Place;
+    let placed: Vec<_> = b.content.stage(b.setup.settings.stage).actors.iter().filter_map(|e| if let Place::Kind(kind) = e.place { Some(kind) } else { None }).collect();
+    let navis = [0, 1].into_iter().filter_map(|side| b.player(side));
+    navis.chain(b.objects.in_order().filter(|&r| placed.contains(&b.objects.get(r).kind))).collect()
 }
 
 /// [`HEIGHT`] rows of `argb` (the screen's width, each pixel `0xAARRGGBB`) from row `top`, as a picture's pixels.
@@ -244,4 +262,50 @@ fn crop(argb: &[u32], top: usize) -> Pixels {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use nettai_battle::content::Place;
+
+    /// An arena that places objects as its round starts has them in its picture, each on its panel (EXE6's cubes,
+    /// ice and statues, EXE5's cubes and Guardians, EXE4's flags and gears, and the boulders of each), beside the
+    /// two navis; one that places none has the two navis alone; and nothing else the round has is drawn.
+    #[test]
+    fn an_arenas_picture_has_its_objects() {
+        use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
+        for (game, content) in [("exe6", exe6_content()), ("exe5", exe5_content()), ("exe4", exe4_content())] {
+            let megaman = new_builds(&content, game).unwrap()[0].side.clone();
+            let places = Places::of(&content, game);
+            let mut with_objects = 0;
+            for records in &places.arenas {
+                let stage = records[0];
+                let session = opened(&content, game, &megaman, stage).unwrap();
+                let b = &session.battle;
+                let drawn = drawn(b);
+                let key = &content.defs.stage(stage).key;
+                let navis: Vec<_> = [0, 1].into_iter().filter_map(|side| b.player(side)).collect();
+                assert_eq!((navis.len(), &drawn[..2]), (2, &navis[..]), "{key}: the two navis first");
+                let entries: Vec<_> = content.stage(stage).actors.iter().filter(|e| matches!(e.place, Place::Kind(_))).collect();
+                for e in &entries {
+                    let Place::Kind(kind) = e.place else { unreachable!() };
+                    // (The wind its windy arenas place stands off the field.)
+                    let on_field = (1..=6).contains(&e.x) && (1..=3).contains(&e.y);
+                    let found = drawn[2..].iter().any(|&r| {
+                        let o = b.objects.get(r);
+                        o.kind == kind && (!on_field || (o.panel.x, o.panel.y) == (e.x, e.y))
+                    });
+                    assert!(found, "{key}: its {:?} on panel {},{}", content.defs.kind(kind).key, e.x, e.y);
+                }
+                with_objects += usize::from(!entries.is_empty());
+                assert_eq!(drawn.len(), 2 + entries.len(), "{key}: its navis and its objects, nothing else");
+                // (Drawn without a problem.)
+                let graphics = nettai_frontend::testing::graphics(&content, 0x7FFF);
+                let field = nettai_render::still::field(&graphics.packs(), b, &drawn);
+                assert_eq!(field.len(), 240 * 160, "{key}");
+            }
+            assert!(with_objects > 0, "{game}: some arenas place objects");
+        }
+    }
 }

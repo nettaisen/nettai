@@ -2487,7 +2487,7 @@ again after them and the entry back from Builds keep what the player set. None o
   them") and Background a dropdown (docs/design/app-ui.md §2.43); since §2.56 ("arena selector should be like a
   dropdown that shows previews of all arenas. background dropdown should be similar and show preview of all
   backgrounds. the practice menu and the practice start screen should use the same widgets") both are the same
-  pictured `Select` on the entry and in the menu (`pictured`: the chosen one's picture, two and a half times the
+  pictured `Select` on the entry and in the menu (`pictured`: the chosen one's picture, fifteen sevenths of the
   box's height less 12 wide, before its name; Random a question mark), and Enter, a click or a tap opens the grid
   of every choice's picture (`Shell::pick_grid`, below); Left and Right still step it, around from the last to
   Random. Each is the
@@ -2527,8 +2527,8 @@ again after them and the entry back from Builds keep what the player set. None o
     the same arena on the new background, and Random is the same arena each time the entry comes back to it,
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
 - **The grid** (`Shell::pick_grid`, the shell's `PickerLayer` with `picker-grid`; `Look::Grid`): every choice
-  as a cell, its picture 120 by 48 (two fifths of the cell's width: the field's band, which a display of two
-  pixels a unit shows pixel for pixel) over its name on two lines at most, Random first with a question mark. It
+  as a cell, its picture 120 by 56 (seven fifteenths of the cell's width: the field's band, which a display of
+  two pixels a unit shows pixel for pixel) over its name on two lines at most, Random first with a question mark. It
   opens under the select (over it where there is more room), five cells to a row, 8 apart, in 8 of padding with
   the scrollbar's 12 at the right (656 wide), showing as many rows as there are up to five and as fit
   (`Grid::rows`); on a phone a sheet from the bottom, three to a row sharing its width, three fifths of the window
@@ -2542,10 +2542,19 @@ again after them and the entry back from Builds keep what the player set. None o
   builds, a save or the dummy; the user: "you should just render the arena and megaman only without his hp",
   "you should show the opponent too as megaman on the other side. it should always be megaman as well, don't use
   the training dummy or saves"), played to its opening's end as the entry's preview is, and drawn by
-  nettai-render's `still::field`: the field's panels and the two navis, each with its own shadow, from the local
-  side, and nothing else (no background, no HUD, no other object; clear where nothing is, the cell's inset
-  showing). A background's is its first frame (`still::background`). Each is the battle picture's rows 56 to 152,
-  240 by 96. A game's are made on a thread of their own (`Thumbs::want`) when the entry shows it or a session of
+  nettai-render's `still::field`: the field's panels, the two navis, each with its own shadow, and the objects
+  the arena places as its round starts (the user: "objects don't seem to be rendered on stage previews"), from
+  the local side, and nothing else (no background, no HUD, no other object; clear where nothing is, the cell's
+  inset showing). The arena's objects are those of the kinds its stage's actor list places beside the navis
+  (`thumbs::drawn`, from the content: `StageData::actors`' `Place::Kind` entries, which `Battle::spawn_actors`
+  places through each kind's `place`), drawn as the round has them by their own sprites, the battle's path:
+  EXE6's cubes, ice and Guardian statues and its boulders, EXE5's the same, EXE4's boulders, gears and flags (its
+  windy arenas' wind is unseen, and the flags' HP is HUD, left out). A background's is its first frame
+  (`still::background`). Each is the battle picture's rows 40 to 152, 240 by 112: the tallest thing on the field
+  whole, EXE4's flags on the back row reaching up to row 40 and its field's front edge down to row 151 (until the
+  objects were drawn the band was rows 56 to 152, 240 by 96, which cut those flags, the cubes on EXE6's back row
+  and the navis of the arenas that start them there). The entry's own preview, a running round, drew the
+  objects already. A game's are made on a thread of their own (`Thumbs::want`) when the entry shows it or a session of
   it starts: the backgrounds first (they need no runtime), then the content's runtime loaded on that thread, then
   each arena; in a dev build about 20 ms, 0.25 s and 0.3 s for EXE6's 47, so they are all there some 0.6 s
   after the entry first shows, and opening a grid never waits (a cell not made yet is empty and fills in as its
