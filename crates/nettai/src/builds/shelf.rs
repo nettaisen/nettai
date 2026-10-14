@@ -1,12 +1,13 @@
-//! A game's builds as a list has them (the Builds screen's, and any other's that picks one: the UI's
-//! `BuildRow`, build.slint): each file of the game's builds folder read on the game's content and checked, with
-//! its row's words in the language shown ("MegaMan · ready", or how many problems, and its version's tag).
+//! A game's builds as a list has them (Play's, and any other's that picks one: the UI's `BuildRow`,
+//! build.slint): each file of the game's builds folder read on the game's content and checked, with its row's
+//! words in the language shown ("MegaMan · ready", or how many problems, and its version's tag).
 
 use crate::builds::store::{self, Build, Listed};
 use crate::builds::words::Words;
 use crate::builds::Kit;
 use crate::games::Names;
 use crate::shell::Shell;
+use nettai_match::Side;
 use nettai_match::build::Checked;
 use nettai_ui::BuildEntry;
 use slint::ComponentHandle;
@@ -18,10 +19,26 @@ pub struct Shelved {
     /// The build. None: its file doesn't read as one on this content (why is in the log).
     pub build: Option<Build>,
     /// Nothing is wrong with it: it can be played.
-    #[allow(dead_code)] // (The screens that play a build ask it.)
     pub ready: bool,
     /// Its row.
     pub row: BuildEntry,
+}
+
+impl Shelved {
+    /// Its name: the build's, or its file's where that doesn't read as one.
+    pub fn name(&self) -> &str {
+        self.build.as_ref().map_or(self.listed.name.as_str(), |b| b.name.as_str())
+    }
+
+    /// Its side, where its file reads on the game's content.
+    pub fn side(&self) -> Option<&Side> {
+        self.build.as_ref().map(|b| &b.side)
+    }
+
+    /// It can be played: it reads, and nothing is wrong with it.
+    pub fn usable(&self) -> bool {
+        self.build.is_some() && self.ready
+    }
 }
 
 /// `build` (the file `listed`'s) as a list has it.

@@ -927,17 +927,16 @@ mod tests {
         (Key::new(id, 0), rect(x, y, w, h))
     }
 
-    /// The main menu, as it is laid out at 1280 by 800: the four items in a column, Settings and Exit side by
+    /// The main menu, as it is laid out at 1280 by 800: the three items in a column, Settings and Exit side by
     /// side under them, the game at the header's right.
     fn menu() -> Vec<(Key, Rect)> {
         vec![
             at("game", 1092.0, 14.0, 156.0, 36.0),
-            at("play", 32.0, 223.0, 416.0, 72.0),
-            at("practice", 32.0, 303.0, 416.0, 72.0),
-            at("builds", 32.0, 383.0, 416.0, 72.0),
-            at("replays", 32.0, 463.0, 416.0, 72.0),
-            at("settings", 48.0, 570.0, 80.0, 32.0),
-            at("exit", 144.0, 570.0, 48.0, 32.0),
+            at("play", 32.0, 263.0, 416.0, 72.0),
+            at("practice", 32.0, 343.0, 416.0, 72.0),
+            at("replays", 32.0, 423.0, 416.0, 72.0),
+            at("settings", 48.0, 530.0, 80.0, 32.0),
+            at("exit", 144.0, 530.0, 48.0, 32.0),
         ]
     }
 
@@ -977,7 +976,7 @@ mod tests {
         let mut m = menu();
         m.reverse();
         let order: Vec<String> = reading_order(m).into_iter().map(|k| k.id).collect();
-        assert_eq!(order, ["game", "play", "practice", "builds", "replays", "settings", "exit"]);
+        assert_eq!(order, ["game", "play", "practice", "replays", "settings", "exit"]);
     }
 
     /// A control leaves the registry when the token it was given is dropped, and one made again before the old

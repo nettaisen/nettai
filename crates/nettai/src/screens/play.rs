@@ -1,7 +1,10 @@
-//! Play (docs/design/app-ui.md §6: "Play", "In an online match", "After a match"): online play.
+//! Play (docs/design/app-ui.md §6: "Play", "In an online match", "After a match"): the player's builds, and
+//! online play.
 //!
-//! The player picks one of their builds of the selected game and makes a link with it: an invite (a room of
-//! the signaling server, whose code the server picks), a code typed, or a direct connection. While they wait
+//! The player's builds of the selected game are here (`list`: NEW BUILD and IMPORT SAVE… over them, the chosen
+//! one's overview beside them with EDIT, which opens it in Builds' editor, DUPLICATE, RENAME and DELETE). The
+//! player picks one and makes a link with it: an invite (a room of the signaling server, whose code the server
+//! picks), a code typed, or a direct connection. While they wait
 //! for the other player a practice session runs beside the invite's code (`crate::screens::practice`'s, with
 //! this screen's rows in its menu). Once the link is open the two are in
 //! the lobby (`session`: one `Lobby` a link, for as long as they stay together): the match's shared settings,
@@ -14,6 +17,7 @@
 //! reserved beside it, a failure that ends what the player was doing as the shell's dialog. A build's name is
 //! this machine's alone: nothing here sends it.
 
+mod list;
 mod session;
 // (The screenshot pass's second player is the `tour` feature's; without it Play hears nothing of it.)
 #[cfg(any(test, feature = "tour"))]
@@ -52,6 +56,7 @@ mod tour {
 
 use crate::battle::{BattleEvent, BattleStart, Play as Played};
 use crate::builds::{self, overview, shelf, words};
+use list::Naming;
 use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress, key_cap, pad_cap};
@@ -70,7 +75,7 @@ use nettai_frontend::player::FRAME_RATE;
 use nettai_frontend::replay::Recorder;
 use nettai_match::Side;
 use nettai_rtc::signal::{ALPHABET, CODE_LENGTH};
-use nettai_ui::{BattleKind, BuildEntry, BuildSheet, LobbyNote, MatchOutcome, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
+use nettai_ui::{BattleKind, BuildSheet, LobbyNote, MatchOutcome, MatchPage, PadButton, PlayBuild, PlayControl, PlayPart, PlayView, VersusCard};
 use session::{Net, Session, Stands, Way};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::cell::{Cell, RefCell};
@@ -130,20 +135,10 @@ pub(crate) fn settings(game: &str, wins: u8) -> Settings {
     Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins) }
 }
 
-/// A build of the selected game, as the list has it (the Builds screen's row: `builds::shelf`).
-struct Build {
-    name: String,
-    /// Its side, where its file reads on the game's content.
-    side: Option<Side>,
-    /// Nothing keeps it from being played.
-    ready: bool,
-    row: BuildEntry,
-}
-
-impl Build {
-    fn usable(&self) -> bool {
-        self.side.is_some() && self.ready
-    }
+/// Play opened for screen `from` (Practice's CREATE A BUILD), Back from its builds going back to it.
+pub fn open(shell: &mut Shell, from: ScreenId) {
+    shell.go(ScreenId::Play);
+    shell.tell(ScreenId::Play, &crate::screens::opened_tag(from), 0);
 }
 
 /// A direct connection's dialog.
@@ -218,9 +213,17 @@ struct Live {
 
 pub struct Play {
     /// The builds listed, and the game they are of.
-    builds: Vec<Build>,
+    builds: Vec<shelf::Shelved>,
     builds_of: Option<String>,
     chosen: usize,
+    /// The dialog for a build's name open (`list`), and what the last import made, where that is worth saying
+    /// (quietly, in the space beside JOIN).
+    naming: Option<Naming>,
+    notice: String,
+    /// The screen that opened this one (`open`), which Back from the builds goes back to; and whether the editor
+    /// is being opened from here (EDIT), whose Back comes back here: leaving for it keeps that.
+    back_to: Option<ScreenId>,
+    to_editor: bool,
     /// The code typed (its characters alone), and what the space beside JOIN says.
     code: String,
     problem: Option<UserError>,
@@ -259,6 +262,10 @@ impl Default for Play {
             builds: Vec::new(),
             builds_of: None,
             chosen: 0,
+            naming: None,
+            notice: String::new(),
+            back_to: None,
+            to_editor: false,
             code: String::new(),
             problem: None,
             direct: None,
@@ -319,7 +326,7 @@ impl Play {
         }
     }
 
-    fn build(&self) -> Option<&Build> {
+    fn build(&self) -> Option<&shelf::Shelved> {
         self.builds.get(self.chosen)
     }
 
@@ -331,16 +338,16 @@ impl Play {
 
     // ---- The builds --------------------------------------------------------------------------------------
 
-    /// Read the selected game's builds as the Builds screen lists them (`builds::shelf`), each checked by the
-    /// game's rules.
+    /// Read the selected game's builds (`builds::shelf`), each checked by the game's rules: the one chosen before
+    /// chosen again, else the one remembered.
     fn read_builds(&mut self, shell: &Shell, game: &str) {
-        let before = self.build().map(|b| b.name.clone()).or_else(|| shell.settings.remembered.get(&remembered_build(game)).cloned());
+        let before = self.build().map(|b| b.name().to_string()).or_else(|| shell.settings.remembered.get(&remembered_build(game)).cloned());
         let Some(kit) = builds::kit(shell) else {
             self.builds = Vec::new();
             return;
         };
         // (The screenshot pass lists builds of its own: its pictures don't depend on what the player keeps.)
-        let shelved = match tour::builds(shell.still, kit.content(), game) {
+        self.builds = match tour::builds(shell.still, kit.content(), game) {
             Some(made) => {
                 let ui = shell.ui();
                 let graphics = kit.ready.graphics(shell.lang);
@@ -355,27 +362,26 @@ impl Play {
             }
             None => shelf::load(shell, &kit),
         };
-        self.builds = shelved
-            .into_iter()
-            .map(|s| Build { name: s.build.as_ref().map_or_else(|| s.listed.name.clone(), |b| b.name.clone()), side: s.build.map(|b| b.side), ready: s.ready, row: s.row })
-            .collect();
         self.builds_of = Some(game.to_string());
-        self.chosen = before.and_then(|name| self.builds.iter().position(|b| b.name == name)).unwrap_or(0);
+        self.chosen = before.and_then(|name| self.builds.iter().position(|b| b.name() == name)).unwrap_or(0);
     }
 
     /// The chosen build's overview, beside the list (made again only when the build or the language shown
-    /// changed: the builds are read each time the screen is shown).
+    /// changed: the builds are read each time the screen is shown), and whether it reads as one.
     fn show_sheet(&mut self, shell: &Shell) {
-        let key = self.build().map(|b| (b.name.clone(), b.side.clone(), shell.lang));
+        let ui = shell.ui();
+        let view = ui.global::<PlayView>();
+        view.set_readable(self.build().is_some_and(|b| b.build.is_some()));
+        let key = self.build().map(|b| (b.name().to_string(), b.side().cloned(), shell.lang));
         if key == self.sheet_of {
             return;
         }
         self.sheet_of = key;
-        let sheet = match (builds::kit(shell), self.build()) {
-            (Some(kit), Some(Build { name, side: Some(side), .. })) => overview::sheet(shell, &kit, "", name, side),
+        let sheet = match (builds::kit(shell), self.build().and_then(|b| Some((b.name(), b.side()?)))) {
+            (Some(kit), Some((name, side))) => overview::sheet(shell, &kit, "", name, side),
             _ => BuildSheet::default(),
         };
-        shell.ui().global::<PlayView>().set_sheet(sheet);
+        view.set_sheet(sheet);
     }
 
     /// This player's card in the lobby: the build as the match's settings would play it.
@@ -384,42 +390,49 @@ impl Play {
         let (Some(side), Some((game, ready)), Some(build)) = (side, shell.ready(), self.build()) else { return };
         let graphics = ready.graphics(shell.lang);
         let names = Names::of(ready.content(), &graphics);
-        let card = PlayBuild { name: build.name.as_str().into(), navi: names.navi(side.navi(ready.content())).into(), version: builds::version_tag(shell, &game, &ready, &side) };
+        let card = PlayBuild { name: build.name().into(), navi: names.navi(side.navi(ready.content())).into(), version: builds::version_tag(shell, &game, &ready, &side) };
         shell.ui().global::<PlayView>().set_card(card);
     }
 
-    /// Choose a build: the one a link brings.
+    /// Choose a build: the one a link brings, and the one the overview shows and its buttons act on.
     fn choose_build(&mut self, shell: &mut Shell, index: usize) {
         if index >= self.builds.len() || index == self.chosen {
             return;
         }
         self.chosen = index;
-        if let Some(game) = &self.builds_of {
-            shell.settings.remembered.insert(remembered_build(game), self.builds[index].name.clone());
-            shell.save_settings();
-        }
+        self.remember_chosen(shell);
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         view.set_chosen(index as i32);
         view.set_build(self.builds[index].row.clone());
+        self.show_sheet(shell);
         // (What was wrong with the build before is no more.)
         if matches!(self.problem, Some(UserError::BuildUnusable { .. })) {
             self.problem = None;
-            view.set_message(Default::default());
+            view.set_message(self.notice.as_str().into());
+            view.set_message_quiet(true);
         }
     }
 
-    /// The chosen build's side, if it can be played; else the space beside the control says it can't, and
-    /// nothing is made.
+    /// The chosen build is remembered for its game: the one chosen when Play is next shown.
+    fn remember_chosen(&self, shell: &mut Shell) {
+        if let (Some(game), Some(build)) = (&self.builds_of, self.build()) {
+            shell.settings.remembered.insert(remembered_build(game), build.name().to_string());
+            shell.save_settings();
+        }
+    }
+
+    /// The chosen build's side, if it can be played; else the space beside the control says it can't (or that
+    /// there is no build), and nothing is made.
     fn side(&self, shell: &Shell) -> Result<Side, UserError> {
         match self.build() {
-            Some(build) if build.usable() => Ok(build.side.clone().expect("a usable build has its side")),
-            // (What is wrong, in the player's words: the Builds screen's for each kind.)
-            Some(Build { side: Some(side), .. }) => {
-                let reason = builds::kit(shell).and_then(|kit| words::first_problem(shell, &kit, side));
+            None => Err(UserError::NoBuild),
+            Some(build) if build.usable() => Ok(build.side().cloned().expect("a usable build has its side")),
+            // (What is wrong, in the player's words: the editor's for each kind.)
+            Some(build) => {
+                let reason = build.side().and_then(|side| builds::kit(shell).and_then(|kit| words::first_problem(shell, &kit, side)));
                 Err(UserError::BuildUnusable { reason: reason.filter(|r| !r.is_empty()) })
             }
-            _ => Err(UserError::BuildUnusable { reason: None }),
         }
     }
 
@@ -428,6 +441,7 @@ impl Play {
     /// Make a link `way`, with the chosen build. What keeps it from being made is the control's problem.
     fn connect(&mut self, shell: &mut Shell, way: Way) -> Result<(), UserError> {
         self.drop_session(shell);
+        self.notice.clear();
         self.side(shell)?;
         let doing = match &way {
             Way::Invite => "making an invite",
@@ -526,7 +540,7 @@ impl Play {
     /// there it does, and a row of the menu stops it for the invite again.
     fn train(&mut self, shell: &mut Shell) {
         let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side(shell)) else { return };
-        let name = self.builds.get(self.chosen).map(|b| b.name.clone()).unwrap_or_default();
+        let name = self.builds.get(self.chosen).map(|b| b.name().to_string()).unwrap_or_default();
         let full = shell.scale.phone;
         self.wait_rows = match full {
             true => vec![WaitRow::Copy, WaitRow::Stop, WaitRow::Cancel],
@@ -993,12 +1007,15 @@ impl Screen for Play {
     }
 
     fn show(&mut self, shell: &mut Shell) {
-        // Another game was selected: its builds, and no link of the one before.
-        if self.builds_of.as_deref() != shell.game() && !matches!(self.stage, Stage::Idle) {
-            if let Some(session) = self.session.take() {
-                session.leave();
+        // Another game was selected: its builds, and no link of the one before (nor what an import made).
+        if self.builds_of.as_deref() != shell.game() {
+            self.notice.clear();
+            if !matches!(self.stage, Stage::Idle) {
+                if let Some(session) = self.session.take() {
+                    session.leave();
+                }
+                self.drop_session(shell);
             }
-            self.drop_session(shell);
         }
         // (While a link is up nothing is read or checked here: a link nobody polls reads as dropped.)
         if self.session.is_none()
@@ -1016,12 +1033,12 @@ impl Screen for Play {
         shell.nav.enter(name, main);
         shell.lock_game(part != PlayPart::Builds);
         // The list's cursor is on the chosen build (the chosen one is the one under it): as the screen is
-        // shown, and when the list was read again under the cursor. With no build, the one button.
-        if part == PlayPart::Builds {
+        // shown, and when the list was read again under the cursor. With no build, NEW BUILD.
+        if part == PlayPart::Builds && self.naming.is_none() {
             let on_list = shell.nav.focused().is_some_and(|k| k.id == "builds" || k.id == "build");
             if self.builds.is_empty() {
                 if self.fresh || on_list {
-                    shell.nav.focus("create", 0);
+                    shell.nav.focus("new", 0);
                 }
             } else if self.fresh || on_list {
                 match shell.scale.phone {
@@ -1039,15 +1056,20 @@ impl Screen for Play {
         view.set_chosen(self.chosen as i32);
         view.set_build(self.build().map(|b| b.row.clone()).unwrap_or_default());
         self.show_sheet(shell);
+        view.set_to_practice(self.back_to == Some(ScreenId::Practice));
+        if let Some(kit) = builds::kit(shell) {
+            self.show_versions(shell, &kit);
+        }
+        self.show_dialog(shell);
         view.set_code(code_shown(&self.code).into());
         self.show_boxes(shell);
-        // The space beside JOIN: a problem, or that a link is being made.
+        // The space beside JOIN: a problem, or that a link is being made, or what an import made.
         let meeting = matches!(self.stage, Stage::Meeting);
         let asked_directly = self.session.as_ref().is_some_and(|s| matches!(s.way, Way::Address(_)));
         view.set_message(match &self.problem {
             Some(problem) => problem.line(&ui).into(),
             None if meeting && !asked_directly => view.get_connecting(),
-            None => Default::default(),
+            None => self.notice.as_str().into(),
         });
         view.set_message_quiet(self.problem.is_none());
         // The direct connection's dialog.
@@ -1084,16 +1106,23 @@ impl Screen for Play {
         shell.nav.close("direct.");
         self.boxes = None;
         shell.nav.close("boxes.");
+        self.close_dialog(shell);
         self.problem = None;
+        self.notice.clear();
         self.fresh = true;
+        // (Left for the editor through EDIT, whose Back comes back here: whoever opened this one still is.)
+        if !std::mem::take(&mut self.to_editor) {
+            self.back_to = None;
+        }
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         // (A control of a part that isn't shown any more does nothing: a press may come as the part changes.)
         let part = self.part();
         let of_its_part = match id {
-            "builds" | "build" | "create" | "invite" | "join" | "direct" => part == PlayPart::Builds,
+            "builds" | "build" | "new" | "import" | "edit" | "duplicate" | "rename" | "delete" | "invite" | "join" | "direct" => part == PlayPart::Builds,
             "wait.copy" | "wait.cancel" | "wait.train" => part == PlayPart::Waiting,
+            _ if id.starts_with("name.") => self.naming.is_some(),
             _ if id.starts_with("direct.") => self.direct.is_some(),
             _ if id.starts_with("boxes.") => self.boxes.is_some(),
             _ if id.starts_with("lobby.") || id.starts_with("change.") => matches!(self.stage, Stage::Lobby),
@@ -1103,17 +1132,26 @@ impl Screen for Play {
             return;
         }
         match id {
-            // ---- The builds, and the row.
+            // ---- The builds, what is done with them, and the row.
             // (On a phone the builds are one box, which opens them as a sheet.)
             "build" => {
-                let names = self.builds.iter().map(|b| b.name.clone()).collect();
+                let names = self.builds.iter().map(|b| b.name().to_string()).collect();
                 shell.pick("build", 0, names, self.chosen);
             }
             "builds" => {
                 self.choose_build(shell, index.max(0) as usize);
                 shell.nav.focus("invite", 0);
             }
-            "create" => shell.go(ScreenId::Builds),
+            "new" => self.ask_new(shell),
+            "import" => self.import_chosen_file(shell),
+            "edit" => self.edit_chosen(shell),
+            "duplicate" => self.duplicate(shell),
+            "rename" => self.ask_rename(shell),
+            "delete" => self.ask_delete(shell),
+            "name.confirm" => self.confirm(shell),
+            "name.cancel" => self.close_dialog(shell),
+            // (Enter on the versions takes the other one.)
+            "name.version" => self.step(shell, id, index, 1),
             "invite" => {
                 self.problem = self.connect(shell, Way::Invite).err();
                 self.refuse_or_show(shell);
@@ -1204,7 +1242,7 @@ impl Screen for Play {
             // the lobby's to say: it can't be made ready, and the line says why.)
             "change.builds" => {
                 let index = index.max(0) as usize;
-                if let Some(side) = self.builds.get(index).and_then(|b| b.side.clone()) {
+                if let Some(side) = self.builds.get(index).and_then(|b| b.side().cloned()) {
                     self.choose_build(shell, index);
                     // (Nothing of it is said to the other player; a ready mark was for the build before.)
                     if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
@@ -1253,6 +1291,7 @@ impl Screen for Play {
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
+            "name.version" => self.step_version(shell, by),
             _ => {}
         }
     }
@@ -1260,6 +1299,7 @@ impl Screen for Play {
     fn choose(&mut self, shell: &mut Shell, id: &str, _index: i32, choice: i32) {
         match id {
             "build" => self.choose_build(shell, choice.max(0) as usize),
+            "name.version" => self.choose_version(shell, choice.max(0) as usize),
             "lobby.closed" => self.set_closed(choice == 1),
             "lobby.cards" => self.set_patch_cards(choice == 0),
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
@@ -1268,7 +1308,7 @@ impl Screen for Play {
         }
     }
 
-    fn edit(&mut self, shell: &mut Shell, id: &str, _index: i32, text: &str, _done: bool) {
+    fn edit(&mut self, shell: &mut Shell, id: &str, _index: i32, text: &str, done: bool) {
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         match id {
@@ -1277,9 +1317,11 @@ impl Screen for Play {
                 view.set_code(code_shown(&self.code).into());
                 // (What was wrong with the code before is no more.)
                 if self.problem.take().is_some() {
-                    view.set_message(Default::default());
+                    view.set_message(self.notice.as_str().into());
+                    view.set_message_quiet(true);
                 }
             }
+            "name.name" => self.edit_name(shell, text, done),
             "direct.address" => {
                 if let Some(direct) = &mut self.direct {
                     direct.address = text.chars().filter(|c| !c.is_control() && !c.is_whitespace()).take(80).collect();
@@ -1304,9 +1346,18 @@ impl Screen for Play {
         }
     }
 
-    /// The shoulders, in the lobby: the next control and the one before (its row of settings can't be
-    /// walked with Left and Right, which change them).
+    /// Delete on the builds' list asks whether the chosen build goes (and with a build's name being asked for,
+    /// nothing else is done: the game stays). The shoulders, in the lobby: the next control and the one before
+    /// (its row of settings can't be walked with Left and Right, which change them).
     fn action(&mut self, shell: &mut Shell, action: Action) -> bool {
+        if self.naming.is_some() {
+            return true;
+        }
+        let on_list = shell.nav.focused().is_some_and(|k| k.id == "builds" || k.id == "build");
+        if action == Action::Delete && on_list && self.part() == PlayPart::Builds {
+            self.ask_delete(shell);
+            return true;
+        }
         if !matches!(self.stage, Stage::Lobby) || shell.battle.is_some() || !matches!(action, Action::Previous | Action::Next) {
             return false;
         }
@@ -1344,6 +1395,8 @@ impl Screen for Play {
         // (Over a match's result, Back goes on as CONTINUE does: the match is over, and the other player stays.)
         if self.result_shown() {
             self.go_on(shell);
+        } else if self.naming.is_some() {
+            self.close_dialog(shell);
         } else if self.boxes.is_some() {
             self.close_boxes(shell);
         } else if self.direct.is_some() {
@@ -1367,14 +1420,29 @@ impl Screen for Play {
             });
         } else if !matches!(self.stage, Stage::Idle) {
             self.leave(shell);
+        } else if let Some(to) = self.back_to {
+            // (Back to the screen that opened this one: Practice, through its CREATE A BUILD.)
+            shell.go(to);
         } else {
             return false;
         }
         true
     }
 
-    /// A row this screen added to the practice menu was chosen; the lobby's question was answered.
+    /// Practice opened this screen (`open`); a row this screen added to the practice menu was chosen; a question
+    /// this screen asked (whether a build goes, whether the lobby is left) was answered.
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
+        if let Some(from) = crate::screens::opened_by(tag) {
+            self.back_to = Some(from);
+            shell.ui().global::<PlayView>().set_to_practice(from == ScreenId::Practice);
+            return;
+        }
+        if tag == list::DELETE {
+            if choice == 1 {
+                self.delete(shell);
+            }
+            return;
+        }
         // (Still in the lobby: a match may have been agreed meanwhile, or the lobby ended.)
         if tag == LEAVE_LOBBY {
             if choice == 1 && matches!(self.stage, Stage::Lobby | Stage::Loading { .. }) {
@@ -1394,6 +1462,13 @@ impl Screen for Play {
             Some(WaitRow::Stop) => practice::end(shell),
             Some(WaitRow::Cancel) => self.leave(shell),
             None => {}
+        }
+    }
+
+    /// A save dropped on the builds is made a build.
+    fn dropped(&mut self, shell: &mut Shell, path: &std::path::Path) {
+        if self.part() == PlayPart::Builds && self.naming.is_none() && self.direct.is_none() && self.boxes.is_none() {
+            self.import(shell, path);
         }
     }
 

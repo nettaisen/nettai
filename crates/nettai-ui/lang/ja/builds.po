@@ -1,4 +1,4 @@
-# Japanese: Builds (ui/screens/builds.slint, ui/screens/builds/*.slint), and what any screen shows of a build
+# Japanese: Builds' editor (ui/screens/builds.slint, ui/screens/builds/*.slint), and what any screen shows of a build
 # (ui/build.slint: the overview, a build's row, the words of a typed problem).
 msgid ""
 msgstr ""
@@ -6,46 +6,7 @@ msgstr ""
 "Language: ja\n"
 "Plural-Forms: nplurals=1; plural=0;\n"
 
-# ---- The list.
-
-msgid "Edit"
-msgstr "編集"
-
-msgid "Delete"
-msgstr "削除"
-
-msgid "{n} build"
-msgid_plural "{n} builds"
-msgstr[0] "構築 {n}件"
-
-msgid "NEW BUILD"
-msgstr "新規構築"
-
-msgid "IMPORT SAVE…"
-msgstr "セーブを読み込む…"
-
-msgid "EDIT"
-msgstr "編集"
-
-msgid "DUPLICATE"
-msgstr "複製"
-
-msgid "RENAME"
-msgstr "名前を変更"
-
-msgid "DELETE"
-msgstr "削除"
-
-msgid "CANCEL"
-msgstr "キャンセル"
-
-msgid "Delete {}?"
-msgstr "{}を削除しますか？"
-
-msgid "Save files"
-msgstr "セーブファイル"
-
-# A build's row: its navi and whether it is ready.
+# ---- A build's row: its navi and whether it is ready.
 
 msgid "{} · ready"
 msgstr "{} · 準備OK"
@@ -60,24 +21,6 @@ msgstr "読み込めません"
 # A save made a build: the preset it was put on, then the navi ("Imported as Dark MegaMan").
 msgid "Imported as {} {}"
 msgstr "{}{}として読み込みました"
-
-# ---- A new build, and a build's new name.
-
-msgid "New build"
-msgstr "新しい構築"
-
-msgid "NAME"
-msgstr "名前"
-
-msgid "VERSION"
-msgstr "バージョン"
-
-# After what a version sets, in the game's own words ("Sets the Crosses and Giga chips.").
-msgid "{} It can be switched later in the editor."
-msgstr "{} あとから編集画面で切り替えられます。"
-
-msgid "CREATE BUILD"
-msgstr "構築を作成"
 
 # ---- The build overview.
 

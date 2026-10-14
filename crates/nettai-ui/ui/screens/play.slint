@@ -1,8 +1,9 @@
 // Play (docs/design/app-ui.md §6: "Play", "In an online match", "After a match"): online play. Its Rust half
 // is src/screens/play.rs, which sets `PlayView` and hears the controls by their names.
 //
-// The screen has three parts, one shown at a time (`PlayView.part`): the player's builds with the row that
-// makes a link (an invite, a code typed, a direct connection); the wait for the other player, a practice
+// The screen has three parts, one shown at a time (`PlayView.part`): the player's builds (NEW BUILD and IMPORT
+// SAVE… over them, the chosen one's overview beside them with EDIT, DUPLICATE, RENAME and DELETE) with the row
+// that makes a link (an invite, a code typed, a direct connection); the wait for the other player, a practice
 // battle beside the invite's code; and the lobby, for as long as the two players stay together. The two cards
 // before a match and the match itself are the shell's (versus.slint, battle.slint); over the match are this
 // file's menu (`MatchMenu`), the two builds shown while Tab is held (`MatchPeek`), and how the match went once its
@@ -18,12 +19,19 @@ import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../
 
 // The part of Play shown.
 export enum PlayPart {
-    // The builds, and the row that makes a link.
+    // The builds, what is done with them, and the row that makes a link.
     builds,
     // An invite is out: its code, and a practice battle beside it.
     waiting,
     // The two players are together.
     lobby,
+}
+
+// A dialog of the builds' part: a new build's name and version, a build's new name.
+export enum BuildDialog {
+    none,
+    new-build,
+    rename,
 }
 
 // What the lobby's reserved line says.
@@ -77,13 +85,25 @@ export global PlayView {
     in property <PlayPart> part;
 
     // ---- The builds --------------------------------------------------------------------------------------
-    // The selected game's builds, and the one chosen (the one a link brings): its row, and its overview.
+    // The selected game's builds, and the one chosen (the one a link brings and the one EDIT, DUPLICATE, RENAME
+    // and DELETE act on): its row, and its overview. A build whose file doesn't read as one (not `readable`)
+    // can only be deleted.
     in property <[BuildEntry]> builds;
     in property <int> chosen;
     in property <BuildEntry> build;
     in property <BuildSheet> sheet;
+    in property <bool> readable;
+    // Back goes to Practice, which opened the screen (its CREATE A BUILD): the header says so.
+    in property <bool> to-practice;
+    // A dialog for a build's name: a new build's, with its version, or the chosen build's new name. The game's
+    // versions, in its own order, and the one chosen; what a version sets, in the game's words.
+    in property <BuildDialog> dialog;
+    in property <string> dialog-name;
+    in property <[VersionTag]> versions;
+    in property <int> dialog-version;
+    in property <string> version-sets;
     // The code typed, as the app keeps it (capitals, in threes), and what the space beside JOIN says: a
-    // problem, in the error red, or that a link is being made (`message-quiet`).
+    // problem, in the error red, or quietly that a link is being made or what an import made (`message-quiet`).
     in property <string> code;
     in property <string> message;
     in property <bool> message-quiet;
@@ -185,6 +205,12 @@ export global PlayView {
     out property <string> cancel-word: @tr("CANCEL");
     out property <string> leave-word: @tr("LEAVE");
     out property <string> connecting: @tr("Connecting…");
+    out property <string> new-name: @tr("New build");
+    out property <string> delete-word: @tr("DELETE");
+    out property <string> save-files: @tr("Save files");
+    public pure function delete-title(name: string) -> string {
+        return @tr("Delete {}?", name);
+    }
     // A row Play adds to the practice menu while the other player is waited for (src/screens/play.rs's
     // `WaitRow`, by its number), with an invite out or this machine hosting directly.
     public pure function wait-row(row: int, direct: bool) -> string {
@@ -308,6 +334,46 @@ component CodeBox inherits Rectangle {
     }
     changed count => {
         place();
+    }
+}
+
+// The two versions a new build is one of: Left and Right choose, a click takes one.
+component VersionChoice inherits Rectangle {
+    in property <[VersionTag]> versions;
+    in property <int> chosen;
+    property <length> box: (self.width - (root.versions.length - 1) * 12px) / max(1, root.versions.length);
+    height: 64px;
+    for version[i] in root.versions: Rectangle {
+        x: i * (root.box + 12px);
+        width: root.box;
+        background: Theme.inset;
+        border-width: i == root.chosen ? 2px : 1px;
+        border-color: i == root.chosen ? Theme.cursor : Theme.line;
+        Text {
+            text: version.text;
+            color: version.tone;
+            font-family: Theme.display;
+            font-size: 16px;
+            font-weight: Theme.display-bold;
+            letter-spacing: 0.6px;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        TouchArea {
+            clicked => {
+                Nav.point("name.version", 0);
+                Nav.choose("name.version", 0, i);
+            }
+        }
+    }
+
+    Focusable {
+        nav: "name.version";
+        kind: NavKind.stepper;
+        // (Its halves take the clicks.)
+        z: -1;
     }
 }
 
@@ -573,6 +639,7 @@ export component PlayScreen inherits Page {
     property <[Hint]> hints-builds: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Choose") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("Delete") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
@@ -587,9 +654,16 @@ export component PlayScreen inherits Page {
         { key: "Tab", pad: PadButton.shoulders, text: @tr("Next") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Leave") },
     ];
-    // The builds' part: the list's column, and the row under it.
-    property <length> list-width: 380px;
+    // The builds' part: the list's column, the overview's beside it with its buttons under it, and the row at the
+    // foot. On a phone one column: NEW BUILD and IMPORT SAVE…, the chosen build in a box, its buttons two by two,
+    // then the row one under the other (`low`: how far down what is above it puts it).
+    property <length> list-width: 400px;
+    property <length> side-x: root.list-width + 24px;
+    property <length> half: (self.body-width - 12px) / 2;
+    property <length> row-y: self.body-height - 40px;
+    property <length> low: 142px;
     property <bool> none: PlayView.builds.length == 0;
+    property <bool> usable: PlayView.chosen >= 0 && !root.none && PlayView.readable;
     // The waiting part: the picture, three times the battle's.
     property <length> picture-width: Theme.phone ? self.body-width : 720px;
     property <length> picture-height: self.picture-width * 2 / 3;
@@ -605,11 +679,11 @@ export component PlayScreen inherits Page {
     property <length> facts-top: Theme.phone ? 2 * self.card-height + 20px : self.lobby-top + 244px;
     property <length> buttons-top: Theme.phone ? self.facts-top + 232px : self.lobby-top + 346px;
     title: PlayView.part == PlayPart.lobby ? @tr("LOBBY") : PlayView.part == PlayPart.builds ? @tr("PLAY") : Theme.phone ? @tr("WAITING") : @tr("WAITING FOR OPPONENT");
-    back: PlayView.part == PlayPart.builds ? @tr("MENU") : @tr("PLAY");
+    back: PlayView.part != PlayPart.builds ? @tr("PLAY") : PlayView.to-practice ? @tr("PRACTICE") : @tr("MENU");
     hints: PlayView.part == PlayPart.lobby ? root.hints-lobby : PlayView.part == PlayPart.waiting ? root.hints-waiting : root.hints-builds;
     status: PlayView.part == PlayPart.lobby && PlayView.room != "" ? PlayView.room : Shell.player;
 
-    // ---- The builds, and the row that makes a link ----
+    // ---- The builds, what is done with them, and the row that makes a link ----
     // (One conditional a part, and what differs on a phone by its place and by `visible`: each conditional is a
     // component of its own in what Slint generates. A control that isn't shown is unavailable, so the focus
     // passes it by.)
@@ -620,21 +694,31 @@ export component PlayScreen inherits Page {
         height: root.body-height;
         Arrive {
             order: 0;
-            Label {
+            // (With no build of the game these two are the way in, and NEW BUILD is the main action.)
+            new := Button {
                 x: 0;
                 y: 0;
-                width: Theme.phone ? root.body-width : root.list-width;
-                height: 14px;
-                text: @tr("YOUR BUILD");
+                width: Theme.phone ? root.half : self.natural-width;
+                nav: "new";
+                text: @tr("NEW BUILD");
+                kind: root.none ? ButtonKind.main : ButtonKind.normal;
+            }
+
+            Button {
+                x: Theme.phone ? root.half + 12px : new.width + 12px;
+                y: 0;
+                width: Theme.phone ? root.half : self.natural-width;
+                nav: "import";
+                text: @tr("IMPORT SAVE…");
             }
 
             // The builds as a list; on a phone the chosen one in a box, which opens them as a sheet.
             list := ListView {
                 x: 0;
-                y: 26px;
+                y: 52px;
                 width: root.list-width;
-                height: root.body-height - 90px;
-                visible: !Theme.phone && !root.none;
+                height: root.row-y - 12px - self.y;
+                visible: !Theme.phone;
                 nav: "builds";
                 count: Theme.phone ? 0 : PlayView.builds.length;
                 row-height: 52px;
@@ -653,7 +737,7 @@ export component PlayScreen inherits Page {
 
             BuildBox {
                 x: 0;
-                y: 22px;
+                y: 52px;
                 width: root.body-width;
                 visible: Theme.phone && !root.none;
                 enabled: Theme.phone && !root.none;
@@ -662,48 +746,73 @@ export component PlayScreen inherits Page {
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
             }
-
-            // With no build of the game, one button in their place.
-            Button {
-                x: 0;
-                y: Theme.phone ? 22px : 26px;
-                width: Theme.phone ? root.body-width : self.natural-width;
-                visible: root.none;
-                enabled: root.none;
-                nav: "create";
-                text: @tr("CREATE A BUILD");
-                kind: ButtonKind.main;
-                big: Theme.phone;
-            }
         }
 
-        // The chosen build's overview (the Builds screen's: `BuildOverview`), the wide sheet.
+        // The chosen build's overview (`BuildOverview`, the wide sheet), and what is done with the build: EDIT,
+        // DUPLICATE, RENAME and, apart, DELETE. A build whose file doesn't read can only be deleted.
         Arrive {
             order: 1;
             BuildOverview {
-                x: root.list-width + 24px;
+                x: root.side-x;
                 y: 0;
                 // (On a phone it isn't shown, and is given the wide sheet's least width: its texts fit there.)
-                width: Theme.phone ? 620px : root.body-width - root.list-width - 24px;
+                width: Theme.phone ? 620px : root.body-width - root.side-x;
                 height: self.sheet-height;
-                visible: !Theme.phone && !root.none && PlayView.sheet.name != "";
+                visible: !Theme.phone && root.usable && PlayView.sheet.name != "";
                 build: PlayView.sheet;
+            }
+
+            edit := Button {
+                x: Theme.phone ? 0px : root.side-x;
+                y: Theme.phone ? 136px : root.row-y - 52px;
+                width: Theme.phone ? root.half : self.natural-width;
+                nav: "edit";
+                text: @tr("EDIT");
+                enabled: root.usable;
+            }
+
+            duplicate := Button {
+                x: Theme.phone ? root.half + 12px : edit.x + edit.width + 12px;
+                y: edit.y;
+                width: Theme.phone ? root.half : self.natural-width;
+                nav: "duplicate";
+                text: @tr("DUPLICATE");
+                enabled: root.usable;
+            }
+
+            Button {
+                x: Theme.phone ? 0px : duplicate.x + duplicate.width + 12px;
+                y: Theme.phone ? 184px : edit.y;
+                width: Theme.phone ? root.half : self.natural-width;
+                nav: "rename";
+                text: @tr("RENAME");
+                enabled: root.usable;
+            }
+
+            Button {
+                x: Theme.phone ? root.half + 12px : root.body-width - self.width;
+                y: Theme.phone ? 184px : edit.y;
+                width: Theme.phone ? root.half : self.natural-width;
+                nav: "delete";
+                text: @tr("DELETE");
+                kind: ButtonKind.ghost;
+                danger: true;
+                enabled: PlayView.chosen >= 0 && !root.none;
             }
         }
 
         // One row (on a phone, one under the other): an invite, a code typed, a direct connection. The space
-        // beside JOIN is there whether or not it says anything.
+        // beside JOIN is there whether or not it says anything. (With no build they say there why they can't.)
         Arrive {
             order: 2;
             invite := Button {
                 x: 0;
-                y: Theme.phone ? 106px : root.body-height - 40px;
+                y: Theme.phone ? root.low + 106px : root.row-y;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "invite";
                 text: @tr("CREATE INVITE");
                 kind: ButtonKind.main;
                 big: Theme.phone;
-                enabled: !root.none;
             }
 
             Rectangle {
@@ -717,14 +826,13 @@ export component PlayScreen inherits Page {
 
             code := Field {
                 x: Theme.phone ? 0px : invite.x + invite.width + 25px;
-                y: Theme.phone ? 170px : root.body-height - 40px;
+                y: Theme.phone ? root.low + 170px : root.row-y;
                 width: Theme.phone ? root.body-width - join.width - 8px : 208px;
                 nav: "code";
                 text: PlayView.code;
                 placeholder: @tr("INVITE CODE");
                 code: true;
                 error: PlayView.message != "" && !PlayView.message-quiet;
-                enabled: !root.none;
             }
 
             join := Button {
@@ -732,22 +840,20 @@ export component PlayScreen inherits Page {
                 y: code.y;
                 nav: "join";
                 text: @tr("JOIN");
-                enabled: !root.none;
             }
 
             direct := Button {
                 x: Theme.phone ? 0px : root.body-width - self.width;
-                y: Theme.phone ? 262px : root.body-height - 40px;
+                y: Theme.phone ? root.low + 262px : root.row-y;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "direct";
                 text: @tr("DIRECT CONNECT");
                 kind: ButtonKind.ghost;
-                enabled: !root.none;
             }
 
             Note {
                 x: Theme.phone ? 0px : join.x + join.width + 12px;
-                y: Theme.phone ? 214px : root.body-height - 40px;
+                y: Theme.phone ? root.low + 214px : root.row-y;
                 width: Theme.phone ? root.body-width : direct.x - self.x - 12px;
                 height: 40px;
                 text: PlayView.message;
@@ -1502,9 +1608,83 @@ export component MatchResult inherits Rectangle {
 
 // ---- Over the screen -------------------------------------------------------------------------------------
 
-// What opens over Play: a direct connection's dialog, and the lobby's list of builds to change to. It covers
-// the whole window, over the screen and under the shell's own dialogs; empty, it takes no clicks.
+// A new build's name and version, or a build's new name. Its controls' names begin with `name.`.
+component NameDialog inherits DialogFrame {
+    property <bool> versions: PlayView.dialog == BuildDialog.new-build;
+    property <length> buttons-y: root.versions ? 226px : 78px;
+    title: root.versions ? @tr("NEW BUILD") : @tr("RENAME");
+    content-height: root.buttons-y + 40px;
+    Label {
+        x: 0;
+        y: 0;
+        width: root.inner-width;
+        height: 14px;
+        text: @tr("NAME");
+    }
+
+    Field {
+        x: 0;
+        y: 22px;
+        width: root.inner-width;
+        nav: "name.name";
+        text: PlayView.dialog-name;
+    }
+
+    Label {
+        x: 0;
+        y: 78px;
+        width: root.inner-width;
+        height: 14px;
+        visible: root.versions;
+        text: @tr("VERSION");
+    }
+
+    if root.versions: VersionChoice {
+        x: 0;
+        y: 100px;
+        width: root.inner-width;
+        versions: PlayView.versions;
+        chosen: PlayView.dialog-version;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    Note {
+        x: 0;
+        y: 172px;
+        width: root.inner-width;
+        height: 38px;
+        visible: root.versions;
+        text: @tr("{} It can be switched later in the editor.", PlayView.version-sets);
+    }
+
+    confirm := Button {
+        x: root.inner-width - self.width;
+        y: root.buttons-y;
+        nav: "name.confirm";
+        text: root.versions ? @tr("CREATE BUILD") : @tr("RENAME");
+        kind: ButtonKind.main;
+        enabled: PlayView.dialog-name != "";
+    }
+
+    Button {
+        x: confirm.x - 12px - self.width;
+        y: root.buttons-y;
+        nav: "name.cancel";
+        text: @tr("CANCEL");
+        kind: ButtonKind.ghost;
+    }
+}
+
+// What opens over Play: a build's name, a direct connection's dialog, the code's boxes, and the lobby's list of
+// builds to change to. It covers the whole window, over the screen and under the shell's own dialogs; empty, it
+// takes no clicks.
 export component PlayOverlay inherits Rectangle {
+    if PlayView.dialog != BuildDialog.none: NameDialog {
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+
     // A direct connection: host, with this machine's address to send; or join, by the host's address.
     if PlayView.direct: direct := DialogFrame {
         // (On a phone each button is under its box: an address needs the dialog's width.)
