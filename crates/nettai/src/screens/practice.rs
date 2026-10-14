@@ -142,6 +142,24 @@ pub struct Visit {
     place: Option<(String, [usize; 2])>,
     /// The battle's music picked (`Shell::battle_music`).
     pub music: crate::music::Music,
+    /// The practice menu's choices, kept for the visit as the place is, each visit starting on their defaults (the
+    /// user: "yes for the practice options, they should all reset to default"; they had been kept between runs).
+    menu: MenuChoices,
+    /// The dummy's build chosen, and the game it is of (its file's name): the visit's too, the user: "you should
+    /// also not remember the last dummy build either" (none: the player's own).
+    dummys_build: Option<(String, String)>,
+}
+
+/// The practice menu's choices in a visit: the dummy's Action and Level (none: Stands still, Normal), each side's
+/// HP refilling, the custom gauge full, the chips drawn in the folder's order, the input display.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct MenuChoices {
+    action: Option<InFight>,
+    level: Option<usize>,
+    refills: [bool; 2],
+    full_gauge: bool,
+    folder_order: bool,
+    inputs: bool,
 }
 
 impl Visit {
@@ -281,7 +299,7 @@ fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Opti
         PracticeOption::Arena => place[ARENA],
         PracticeOption::Background => place[BACKGROUND],
         PracticeOption::Music => 0,
-        PracticeOption::Action => ACTIONS.iter().position(|(_, a)| *a == opponent.in_fight).unwrap_or(0),
+        PracticeOption::Action => ACTIONS.iter().position(|a| *a == opponent.in_fight).unwrap_or(0),
         PracticeOption::YourHp => options.refills[0] as usize,
         PracticeOption::DummysHp => options.refills[1] as usize,
         PracticeOption::CustomGauge => options.full_gauge as usize,
@@ -362,31 +380,16 @@ pub(crate) fn row_of(shell: &Shell, option: PracticeOption) -> Option<i32> {
     session.rows.iter().position(|o| *o == option).map(|at| (session.added + at) as i32)
 }
 
-/// What is remembered between runs, by these keys of the settings' `remembered`: the dummy's setup, the battle's
-/// options and the input display (the builds chosen are by game: [`kept_build`]).
-const KEPT_ACTION: &str = "training.action";
-const KEPT_LEVEL: &str = "training.level";
-const KEPT_HP: [&str; 2] = ["training.your-hp", "training.dummys-hp"];
-const KEPT_GAUGE: &str = "training.custom-gauge";
-const KEPT_DRAW: &str = "training.chip-draw";
-const KEPT_INPUTS: &str = "training.inputs";
+/// The dummy's Actions, in the row's order.
+const ACTIONS: [InFight; 4] = [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad];
 
-/// The dummy's Actions, in the row's order, by their names in the settings.
-const ACTIONS: [(&str, InFight); 4] = [
-    ("stands-still", InFight::StandsStill),
-    ("moves-around", InFight::MovesAround),
-    ("fights", InFight::Ai),
-    ("second-pad", InFight::SecondPad),
-];
-
-/// How well the dummy fights (its Action Fights: the AI's), by its name in the settings, in the Level row's
-/// order; Normal at first.
-const LEVELS: [(&str, Level); 3] = [("easy", Level::EASY), ("normal", Level::NORMAL), ("hard", Level::HARD)];
+/// How well the dummy fights (its Action Fights: the AI's), in the Level row's order; Normal at first.
+const LEVELS: [Level; 3] = [Level::EASY, Level::NORMAL, Level::HARD];
 const NORMAL: usize = 1;
 
-/// The dummy's level as it was last left in one of Practice's own sessions.
+/// The dummy's level as this visit last left it in one of Practice's own sessions.
 fn kept_level(shell: &Shell) -> usize {
-    shell.settings.remembered.get(KEPT_LEVEL).and_then(|v| LEVELS.iter().position(|(name, _)| name == v)).unwrap_or(NORMAL)
+    shell.practice.visit.menu.level.unwrap_or(NORMAL)
 }
 
 /// The dummy's AI as its Action needs it: a fighter at `level` while it fights (a new one for another level:
@@ -395,27 +398,21 @@ fn kept_level(shell: &Shell) -> usize {
 pub(crate) fn plug(live: &mut LivePlayer, opponent: Opponent, level: usize, seed: u32, plugged: Option<usize>) -> Option<usize> {
     let wanted = (opponent.in_fight == InFight::Ai || opponent.on_custom_screen == OnCustomScreen::Ai).then_some(level);
     if wanted != plugged {
-        live.set_ai(wanted.map(|level| Box::new(Fighter::new(LEVELS[level].1, seed as u64)) as Box<dyn Ai>));
+        live.set_ai(wanted.map(|level| Box::new(Fighter::new(LEVELS[level], seed as u64)) as Box<dyn Ai>));
     }
     wanted
 }
 
-/// The dummy's setup as it was last left in one of Practice's own sessions.
+/// The dummy's setup as this visit last left it in one of Practice's own sessions.
 fn kept_opponent(shell: &Shell) -> Opponent {
-    let kept = shell.settings.remembered.get(KEPT_ACTION).and_then(|v| ACTIONS.iter().find(|(name, _)| name == v));
-    dummy(kept.map_or(InFight::StandsStill, |(_, in_fight)| *in_fight))
+    dummy(shell.practice.visit.menu.action.unwrap_or(InFight::StandsStill))
 }
 
-/// The battle's options as they were last left in one of Practice's own sessions.
+/// The battle's options as this visit last left them in one of Practice's own sessions.
 fn kept_options(shell: &Shell) -> Options {
-    let kept = |key: &str, on: &str| shell.settings.remembered.get(key).is_some_and(|v| v == on);
-    let chip_draw = if kept(KEPT_DRAW, "folder-order") { ChipDraw::FolderOrder } else { ChipDraw::Shuffled };
-    Options { refills: KEPT_HP.map(|key| kept(key, "refills")), full_gauge: kept(KEPT_GAUGE, "full"), chip_draw }
-}
-
-/// Whether the input display is on.
-fn inputs_on(settings: &crate::settings::Settings) -> bool {
-    settings.remembered.get(KEPT_INPUTS).is_some_and(|v| v == "on")
+    let menu = &shell.practice.visit.menu;
+    let chip_draw = if menu.folder_order { ChipDraw::FolderOrder } else { ChipDraw::Shuffled };
+    Options { refills: menu.refills, full_gauge: menu.full_gauge, chip_draw }
 }
 
 /// Start a practice session: the two cards while it is made ready (if it has them), then the battle, with the
@@ -453,7 +450,7 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         cards[1].name = std::mem::take(&mut cards[1].build);
         cards
     });
-    let inputs = inputs_on(&shell.settings);
+    let inputs = shell.practice.visit.menu.inputs;
     let place_labels = places.labels(content);
     let mut session = Session {
         from: start.from,
@@ -904,22 +901,32 @@ pub struct Practice {
     away: bool,
 }
 
-/// The key the build chosen for `game` is remembered by: the player's, or the dummy's.
-fn kept_build(game: &str, dummys: bool) -> String {
-    format!("training.{}.{game}", if dummys { "dummy" } else { "build" })
+/// The key the player's build chosen for `game` is remembered by (the dummy's is the visit's).
+fn kept_build(game: &str) -> String {
+    format!("training.build.{game}")
+}
+
+/// Keep the build chosen for `game`, in its file `file`: the player's (0) remembered, the dummy's (1) for the visit.
+fn keep_build(shell: &mut Shell, game: &str, which: usize, file: &str) {
+    if which == 1 {
+        shell.practice.visit.dummys_build = Some((game.to_string(), file.to_string()));
+    } else {
+        shell.settings.remembered.insert(kept_build(game), file.to_string());
+    }
 }
 
 /// Play's PRACTICE: the entry, Your build the build of `game` kept in `file` (its file's name, as the entry lists
 /// it); the rest as the entry has it.
 pub fn open(shell: &mut Shell, game: &str, file: &str) {
-    shell.settings.remembered.insert(kept_build(game, false), file.to_string());
+    shell.settings.remembered.insert(kept_build(game), file.to_string());
     shell.save_settings();
     shell.go(ScreenId::Practice);
 }
 
 impl Practice {
-    /// List the selected game's builds and places, and choose the builds remembered (with none, the first that can
-    /// be used, else the first, for both) and the place this visit chose ([`Visit`]: Random at first).
+    /// List the selected game's builds and places, and choose the player's build remembered (with none, the first
+    /// that can be used, else the first), the dummy's this visit chose (at first the player's own) and the place
+    /// this visit chose ([`Visit`]: Random at first).
     fn list(&mut self, shell: &mut Shell, game: &str, ready: &Ready) {
         let content = ready.content();
         self.places = Places::of(content, game);
@@ -948,8 +955,9 @@ impl Practice {
             self.checked.clear();
             self.seed = if shell.still { 7 } else { clock_seed() };
         }
-        let kept = |dummys: bool| shell.settings.remembered.get(&kept_build(game, dummys)).and_then(|file| self.builds.iter().position(|b| b.file == *file));
-        let (yours, dummys) = (kept(false), kept(true));
+        let at = |file: &str| self.builds.iter().position(|b| b.file == file);
+        let yours = shell.settings.remembered.get(&kept_build(game)).and_then(|file| at(file));
+        let dummys = shell.practice.visit.dummys_build.as_ref().filter(|(of, _)| of == game).and_then(|(_, file)| at(file));
         let yours = yours.or_else(|| (0..self.builds.len()).find(|&at| self.unusable_at(ready, at).is_none())).unwrap_or(0);
         self.chosen = [yours, dummys.unwrap_or(yours)];
         // (The arena is made as soon as the screen is on screen: what is in its place until then isn't its own.)
@@ -1034,14 +1042,15 @@ impl Practice {
         shell.ui().global::<PracticeView>().set_music_shown(crate::music::shown(shell).into());
     }
 
-    /// Choose a build, the player's (0) or the dummy's (1): remembered for the game, and shown.
+    /// Choose a build, the player's (0) or the dummy's (1): kept ([`keep_build`]), and shown.
     fn choose_build(&mut self, shell: &mut Shell, which: usize, at: usize) {
         let Some((game, ready)) = shell.ready() else { return };
         if at >= self.builds.len() || self.chosen[which] == at {
             return;
         }
         self.chosen[which] = at;
-        shell.settings.remembered.insert(kept_build(&game, which == 1), self.builds[at].file.clone());
+        let file = self.builds[at].file.clone();
+        keep_build(shell, &game, which, &file);
         shell.save_settings();
         self.changed = Some(crate::clock::now());
         self.tell(shell, &game, &ready);
@@ -1057,8 +1066,8 @@ impl Practice {
         let file = self.build(which).filter(|b| b.side.is_some()).map(|b| b.file.clone());
         let Some(at) = file.and_then(|file| place_of(&store::list(&game), &file)) else { return shell.sound.play(Cue::Refused) };
         for side in [0, 1] {
-            if let Some(b) = self.build(side) {
-                shell.settings.remembered.insert(kept_build(&game, side == 1), b.file.clone());
+            if let Some(file) = self.build(side).map(|b| b.file.clone()) {
+                keep_build(shell, &game, side, &file);
             }
         }
         shell.save_settings();
@@ -1259,39 +1268,39 @@ impl Practice {
                     }
                 }
                 PracticeOption::Action => {
-                    let (name, in_fight) = ACTIONS[next];
+                    let in_fight = ACTIONS[next];
                     session.opponent = dummy(in_fight);
                     if keep {
-                        shell.settings.remembered.insert(KEPT_ACTION.into(), name.into());
+                        shell.practice.visit.menu.action = Some(in_fight);
                     }
                 }
                 PracticeOption::Level => {
                     session.level = next;
                     if keep {
-                        shell.settings.remembered.insert(KEPT_LEVEL.into(), LEVELS[next].0.into());
+                        shell.practice.visit.menu.level = Some(next);
                     }
                 }
                 PracticeOption::YourHp | PracticeOption::DummysHp => {
                     let side = (option == PracticeOption::DummysHp) as usize;
                     session.options.refills[side] = next == 1;
                     if keep {
-                        shell.settings.remembered.insert(KEPT_HP[side].into(), if next == 1 { "refills" } else { "normal" }.into());
+                        shell.practice.visit.menu.refills[side] = next == 1;
                     }
                 }
                 PracticeOption::CustomGauge => {
                     session.options.full_gauge = next == 1;
                     if keep {
-                        shell.settings.remembered.insert(KEPT_GAUGE.into(), if next == 1 { "full" } else { "normal" }.into());
+                        shell.practice.visit.menu.full_gauge = next == 1;
                     }
                 }
                 PracticeOption::ChipDraw => {
                     session.options.chip_draw = if next == 1 { ChipDraw::FolderOrder } else { ChipDraw::Shuffled };
                     if keep {
-                        shell.settings.remembered.insert(KEPT_DRAW.into(), if next == 1 { "folder-order" } else { "shuffled" }.into());
+                        shell.practice.visit.menu.folder_order = next == 1;
                     }
                 }
                 PracticeOption::InputDisplay => {
-                    shell.settings.remembered.insert(KEPT_INPUTS.into(), if next == 1 { "on" } else { "off" }.into());
+                    shell.practice.visit.menu.inputs = next == 1;
                     // (What each side holds is told from the next frame.)
                     session.inputs = next == 1;
                     session.held = [0; 2];
@@ -1693,10 +1702,10 @@ mod tests {
             }
         }
         assert_eq!(seen, 10, "Action, Level, Arena, Background, Music, Your HP, Dummy's HP, Custom gauge, Chip draw, Input display");
-        assert_eq!(ACTIONS.map(|(_, a)| a), [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
+        assert_eq!(ACTIONS, [InFight::StandsStill, InFight::MovesAround, InFight::Ai, InFight::SecondPad]);
         assert_eq!(value(PracticeOption::Action, dummy(InFight::Ai), NORMAL, options, false, [0; 2]), 2);
         assert_eq!(value(PracticeOption::Level, opponent, NORMAL, options, false, [0; 2]), 1, "Normal at first");
-        assert_eq!(LEVELS.map(|(_, level)| level), [Level::EASY, Level::NORMAL, Level::HARD]);
+        assert_eq!(LEVELS, [Level::EASY, Level::NORMAL, Level::HARD]);
         assert_eq!(value(PracticeOption::DummysHp, opponent, NORMAL, Options { refills: [false, true], ..options }, false, [0; 2]), 1);
         assert_eq!(value(PracticeOption::InputDisplay, opponent, NORMAL, options, true, [0; 2]), 1);
         assert_eq!(value(PracticeOption::Background, opponent, NORMAL, options, false, [3, 2]), 2);
@@ -1849,13 +1858,18 @@ mod tests {
         let mut visit = Visit::default();
         assert!(visit.arrive(), "from elsewhere, a visit starts");
         assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "Random, Random, the game's own");
+        assert_eq!((&visit.menu, &visit.dummys_build), (&MenuChoices::default(), &None), "the menu's defaults, the dummy on your build");
+        let menu = MenuChoices { action: Some(InFight::Ai), level: Some(2), refills: [true, false], full_gauge: true, folder_order: true, inputs: true };
         visit.set_place("exe6", [3, 5]);
         visit.music = theme.clone();
+        visit.menu = menu.clone();
+        visit.dummys_build = Some(("exe6".into(), "Swords".into()));
         // (The entry, a session and the entry again; Builds through EDIT and back; the entry shown again.)
         for screen in [ScreenId::Practice, ScreenId::Builds, ScreenId::Practice] {
             visit.shown(screen);
             assert!(!visit.arrive(), "{screen:?}: the same visit");
             assert_eq!((visit.place("exe6", &places), &visit.music), ([3, 5], &theme), "{screen:?}");
+            assert_eq!((&visit.menu, visit.dummys_build.is_some()), (&menu, true), "{screen:?}");
         }
         assert_eq!(visit.place("exe5", &places), [0, 0], "another game's: Random");
         assert_eq!(visit.place("exe6", &Places::default()), [0, 0], "a place the list hasn't: Random");
@@ -1863,6 +1877,7 @@ mod tests {
             visit.shown(elsewhere);
             assert!(visit.arrive(), "{elsewhere:?}: a new visit");
             assert_eq!((visit.place("exe6", &places), &visit.music), ([0, 0], &Music::GameOwn), "{elsewhere:?}: the defaults again");
+            assert_eq!((&visit.menu, &visit.dummys_build), (&MenuChoices::default(), &None), "{elsewhere:?}: the menu's too");
             visit.set_place("exe6", [1, 1]);
             visit.music = theme.clone();
         }
@@ -1897,8 +1912,7 @@ mod tests {
     /// The builds chosen are remembered by game, the player's and the dummy's apart.
     #[test]
     fn builds_are_remembered_by_game() {
-        assert_eq!(kept_build("exe6", false), "training.build.exe6");
-        assert_eq!(kept_build("exe5", true), "training.dummy.exe5");
+        assert_eq!(kept_build("exe6"), "training.build.exe6");
     }
 
     /// EDIT finds its build among the game's files by its file alone (Builds lists them in that order): not by
