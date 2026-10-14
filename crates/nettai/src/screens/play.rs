@@ -135,12 +135,6 @@ pub(crate) fn settings(game: &str, wins: u8) -> Settings {
     Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins) }
 }
 
-/// Play opened for screen `from` (Practice's CREATE A BUILD), Back from its builds going back to it.
-pub fn open(shell: &mut Shell, from: ScreenId) {
-    shell.go(ScreenId::Play);
-    shell.tell(ScreenId::Play, &crate::screens::opened_tag(from), 0);
-}
-
 /// A direct connection's dialog.
 #[derive(Default)]
 struct Direct {
@@ -220,10 +214,6 @@ pub struct Play {
     /// (quietly, in the space beside JOIN).
     naming: Option<Naming>,
     notice: String,
-    /// The screen that opened this one (`open`), which Back from the builds goes back to; and whether the editor
-    /// is being opened from here (EDIT), whose Back comes back here: leaving for it keeps that.
-    back_to: Option<ScreenId>,
-    to_editor: bool,
     /// The code typed (its characters alone), and what the space beside JOIN says.
     code: String,
     problem: Option<UserError>,
@@ -264,8 +254,6 @@ impl Default for Play {
             chosen: 0,
             naming: None,
             notice: String::new(),
-            back_to: None,
-            to_editor: false,
             code: String::new(),
             problem: None,
             direct: None,
@@ -1056,7 +1044,6 @@ impl Screen for Play {
         view.set_chosen(self.chosen as i32);
         view.set_build(self.build().map(|b| b.row.clone()).unwrap_or_default());
         self.show_sheet(shell);
-        view.set_to_practice(self.back_to == Some(ScreenId::Practice));
         if let Some(kit) = builds::kit(shell) {
             self.show_versions(shell, &kit);
         }
@@ -1110,17 +1097,13 @@ impl Screen for Play {
         self.problem = None;
         self.notice.clear();
         self.fresh = true;
-        // (Left for the editor through EDIT, whose Back comes back here: whoever opened this one still is.)
-        if !std::mem::take(&mut self.to_editor) {
-            self.back_to = None;
-        }
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         // (A control of a part that isn't shown any more does nothing: a press may come as the part changes.)
         let part = self.part();
         let of_its_part = match id {
-            "builds" | "build" | "new" | "import" | "edit" | "duplicate" | "rename" | "delete" | "invite" | "join" | "direct" => part == PlayPart::Builds,
+            "builds" | "build" | "new" | "import" | "edit" | "duplicate" | "rename" | "delete" | "invite" | "practice" | "join" | "direct" => part == PlayPart::Builds,
             "wait.copy" | "wait.cancel" | "wait.train" => part == PlayPart::Waiting,
             _ if id.starts_with("name.") => self.naming.is_some(),
             _ if id.starts_with("direct.") => self.direct.is_some(),
@@ -1148,6 +1131,7 @@ impl Screen for Play {
             "duplicate" => self.duplicate(shell),
             "rename" => self.ask_rename(shell),
             "delete" => self.ask_delete(shell),
+            "practice" => self.practice(shell),
             "name.confirm" => self.confirm(shell),
             "name.cancel" => self.close_dialog(shell),
             // (Enter on the versions takes the other one.)
@@ -1420,23 +1404,15 @@ impl Screen for Play {
             });
         } else if !matches!(self.stage, Stage::Idle) {
             self.leave(shell);
-        } else if let Some(to) = self.back_to {
-            // (Back to the screen that opened this one: Practice, through its CREATE A BUILD.)
-            shell.go(to);
         } else {
             return false;
         }
         true
     }
 
-    /// Practice opened this screen (`open`); a row this screen added to the practice menu was chosen; a question
-    /// this screen asked (whether a build goes, whether the lobby is left) was answered.
+    /// A row this screen added to the practice menu was chosen; a question this screen asked (whether a build goes,
+    /// whether the lobby is left) was answered.
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
-        if let Some(from) = crate::screens::opened_by(tag) {
-            self.back_to = Some(from);
-            shell.ui().global::<PlayView>().set_to_practice(from == ScreenId::Practice);
-            return;
-        }
         if tag == list::DELETE {
             if choice == 1 {
                 self.delete(shell);

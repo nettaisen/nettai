@@ -63,8 +63,6 @@ export struct PracticeRow {
 // Rust by that use: nothing is added to app.slint for it.)
 export global PracticeView {
     // ---- The entry.
-    // The game has no build: the one button, Create a build.
-    in property <bool> none;
     // The two builds chosen.
     in property <PracticeBuild> yours;
     in property <PracticeBuild> dummys;
@@ -400,12 +398,8 @@ export component PracticeScreen inherits Page {
     property <length> arena-width: Theme.phone ? self.body-width + 2 * Theme.margin : self.side-width;
     property <length> arena-height: self.arena-width * 2 / 3;
     title: @tr("PRACTICE");
-    back: @tr("MENU");
-    hints: PracticeView.none ? [
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open") },
-        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
-        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
-    ] : [
+    back: @tr("PLAY");
+    hints: [
         { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
         { key: "←→", text: @tr("Change") },
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open list") },
@@ -414,32 +408,16 @@ export component PracticeScreen inherits Page {
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
-    // (Each part is there whether or not the game has a build, shown and reachable by which it is: an `if`
-    // apiece would be a component apiece.)
-    // The column: with no build of the game the one button; else the five rows, the one line, the reserved
-    // line, and START PRACTICE at its foot.
+    // The column: the five rows, the one line, the reserved line, and START PRACTICE at its foot.
     Arrive {
-        Button {
-            x: 0;
-            y: 0;
-            width: Theme.phone ? root.body-width : max(240px, self.preferred-width);
-            visible: PracticeView.none;
-            nav: "create";
-            text: @tr("CREATE A BUILD");
-            kind: ButtonKind.main;
-            enabled: PracticeView.none;
-        }
-
         EntryRow {
             x: 0;
             y: 0;
             width: root.column;
-            visible: !PracticeView.none;
             nav: "yours";
             index: 0;
             label: @tr("Your build");
             value: PracticeView.yours.name;
-            enabled: !PracticeView.none;
             editable: PracticeView.yours.editable;
         }
 
@@ -447,12 +425,10 @@ export component PracticeScreen inherits Page {
             x: 0;
             y: root.row-step;
             width: root.column;
-            visible: !PracticeView.none;
             nav: "dummys";
             index: 1;
             label: @tr("Dummy's build");
             value: PracticeView.dummys.name;
-            enabled: !PracticeView.none;
             editable: PracticeView.dummys.editable;
         }
 
@@ -460,22 +436,18 @@ export component PracticeScreen inherits Page {
             x: 0;
             y: 2 * root.row-step;
             width: root.column;
-            visible: !PracticeView.none;
             nav: "arena";
             label: @tr("Arena");
             value: PracticeView.arena-shown == "" ? PracticeView.random : PracticeView.arena-shown;
-            enabled: !PracticeView.none;
         }
 
         PagerRow {
             x: 0;
             y: 3 * root.row-step;
             width: root.column;
-            visible: !PracticeView.none;
             nav: "background";
             label: @tr("Background");
             value: PracticeView.background-shown == "" ? PracticeView.random : PracticeView.background-shown;
-            enabled: !PracticeView.none;
             select: true;
         }
 
@@ -484,11 +456,9 @@ export component PracticeScreen inherits Page {
             x: 0;
             y: 4 * root.row-step;
             width: root.column;
-            visible: !PracticeView.none;
             nav: "music";
             label: @tr("Music");
             value: PracticeView.music-shown;
-            enabled: !PracticeView.none;
             select: true;
         }
 
@@ -498,7 +468,6 @@ export component PracticeScreen inherits Page {
             y: root.note-y;
             width: root.column;
             height: root.note-height;
-            visible: !PracticeView.none;
             text: @tr("Set up the dummy from the menu once you're in.");
             vertical-alignment: top;
         }
@@ -514,19 +483,17 @@ export component PracticeScreen inherits Page {
             x: 0;
             y: root.body-height - 52px;
             width: root.column;
-            visible: !PracticeView.none;
             nav: "start";
             text: @tr("START PRACTICE");
             kind: ButtonKind.main;
             big: true;
-            enabled: PracticeView.ready && !PracticeView.none;
+            enabled: PracticeView.ready;
         }
     }
 
     // The two builds facing each other.
     Arrive {
         order: 1;
-        visible: !PracticeView.none;
         BuildCard {
             x: root.side-x;
             y: root.cards-y;
@@ -565,7 +532,6 @@ export component PracticeScreen inherits Page {
     Arrive {
         order: 2;
         from-x: Theme.phone ? 0px : 24px;
-        visible: !PracticeView.none;
         // (Its box is there whether or not the picture is: the picture shows once it is the arena's own, and
         // never past its box.)
         Rectangle {
