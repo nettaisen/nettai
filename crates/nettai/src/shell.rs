@@ -69,7 +69,8 @@ const MENU_WIDTH: f32 = 200.0;
 /// A grid of pictures' sizes (`Shell::pick_grid`; the UI's `PickerLayer` lays it out by the same): its columns, a
 /// cell's width (on a phone, the sheet's width shared by its three), the gap between cells, the room under a
 /// cell's picture for its name, the padding around the cells (the scrollbar's 12 besides at the right, and 4
-/// more), and the most rows it shows at once. A cell's picture is two fifths as tall as it is wide.
+/// more), and the most rows it shows at once. A cell's picture is seven fifteenths as tall as it is wide (the
+/// battle's field's band, 240 by 112).
 const GRID_COLUMNS: usize = 5;
 const GRID_PHONE_COLUMNS: usize = 3;
 const GRID_CELL: f32 = 120.0;
@@ -114,7 +115,7 @@ impl Grid {
 
     /// The height of its panel showing `rows` rows of cells.
     fn height(&self, rows: usize) -> f32 {
-        rows as f32 * (self.cell * 0.4 + GRID_NAME + self.gap) - self.gap + 2.0 * GRID_PAD
+        rows as f32 * (self.cell * 7.0 / 15.0 + GRID_NAME + self.gap) - self.gap + 2.0 * GRID_PAD
     }
 
     /// The rows it shows at once of `count` choices, and whether it goes under its select: as many as it has, up

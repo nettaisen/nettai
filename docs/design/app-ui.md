@@ -538,7 +538,7 @@ Each is settled unless the user changes it.
     - *One widget.* Arena and Background, on Practice's entry and in the practice menu, are the same select (the
       pager of §6 is gone): collapsed, the chosen one's picture small before its name (Random a question mark),
       the dropdown's caret; Left and Right still step it without opening. Enter, the pad's A, a click or a tap
-      opens every choice as a grid, Random first: each cell its picture (120 by 48) over its name on two lines at
+      opens every choice as a grid, Random first: each cell its picture (120 by 56) over its name on two lines at
       most, five to a row under the select (over it where there is more room), up to five rows shown, the rest
       scrolling; arrows go a cell, the cursor brackets the cell, Enter or a click chooses, Esc or B closes. The
       chosen cell is outlined in the cursor's color over its tint. On a phone the grid is a sheet from the bottom,
@@ -547,8 +547,13 @@ Each is settled unless the user changes it.
     - *The pictures.* An arena's is its field, the panels alone with MegaMan on each side's starting panel (the
       user: "for arena thumbnails, you shouldn't render with the background, you should just render the arena and
       megaman only without his hp", then "you should show the opponent too as megaman on the other side. it should
-      always be megaman as well, don't use the training dummy or saves"): no background, no HUD, nothing else. A
-      background's is its first frame. Both are the battle picture's band that holds the field, 240 by 96. The
+      always be megaman as well, don't use the training dummy or saves"): no background, no HUD, nothing else of
+      the round's but the objects the arena itself places as it starts (then the user: "objects don't seem to be
+      rendered on stage previews"): the rocks, cubes, ice, boulders, statues, gears and flags its stage's list
+      places, each on its panel as the round has it, drawn as a battle draws them; never anything from a build. A
+      background's is its first frame. Both are the battle picture's band that holds the field and the tallest
+      thing on it, 240 by 112 (rows 40 to 152: it was 240 by 96, which cut EXE4's flags and the cubes on the
+      back row). The entry's preview, a running round, showed the objects already. The
       arenas have no names in the content, so a cell says its place, "12 / 47", as the select does; a background
       is named by its game and its area.
     - *Made as Practice opens.* The renderer draws them from the packs, a game's on a thread of its own as the
