@@ -159,8 +159,8 @@ pub struct Shell {
     picking: Option<Picking>,
     pub battle: Option<Battle>,
     pub(crate) loading: Option<Loading>,
-    /// The training session on, if one is: any screen may start one (`crate::screens::training::start`).
-    pub training: screens::training::Shared,
+    /// The practice session on, if one is: any screen may start one (`crate::screens::practice::start`).
+    pub practice: screens::practice::Shared,
     /// The screenshot pass holds things still: the two cards stay up whatever is ready, the loading bar is
     /// shown at a place of its choosing, and the menu's reel stops on one picture (`still`). Its motion probe
     /// lets things move all the same (`probe_motion`).
@@ -212,7 +212,7 @@ impl Shell {
 
     /// Tell screen `to` that something it asked of another screen was answered: it hears it as a dialog's
     /// answer, `Screen::answered(tag, choice)`, once the screen calling has returned (a row it added to the
-    /// training menu was chosen: `crate::screens::training`).
+    /// practice menu was chosen: `crate::screens::practice`).
     pub fn tell(&mut self, to: ScreenId, tag: &str, choice: usize) {
         self.asks.push(Ask::Tell(to, tag.to_string(), choice));
     }
@@ -712,7 +712,7 @@ impl App {
             picking: None,
             battle: None,
             loading: None,
-            training: Default::default(),
+            practice: Default::default(),
             hold_cards: false,
             hold_loading: None,
             still,
@@ -793,7 +793,7 @@ impl App {
 
     /// The screen that hears of the control `id`: the battle's owner for the battle's own (its menu's, whose
     /// names begin `menu.`, and everything while it fills the window), else the screen shown. A screen that
-    /// shows a battle another owns in a `Picture` of its own (Play, the training battle beside a waiting
+    /// shows a battle another owns in a `Picture` of its own (Play, the practice battle beside a waiting
     /// invite) keeps its own controls.
     fn hearer_of(&self, id: &str) -> ScreenId {
         match &self.shell.battle {

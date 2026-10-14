@@ -8,7 +8,7 @@ screen is added or filled in (§2), and the parts every screen shares (§3, §9 
 
 What exists: the design system, focus and navigation, the keyboard, mouse, touch and gamepads, scaling and the
 upright-phone switch, the languages, the errors and the log, Loading, the main menu with its reel and the title
-music, Settings, the two cards before a battle, and the battle's host with its menu overlay. Training is built
+music, Settings, the two cards before a battle, and the battle's host with its menu overlay. Practice is built
 (§15), and so are Play, the netplay UI (§4), Builds (§8) and Replays (§16: the list, the viewer with its
 transport, the export): each is one Slint file and one Rust module (§2).
 
@@ -41,7 +41,7 @@ variables are for development:
 | Variable | What it does |
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
-| `NETTAI_TRAINING=<game>` | Starts straight into a training session of the game: new builds of its first two versions, the other a dummy that stands still, the Battle options (§15) as Training last left them. |
+| `NETTAI_PRACTICE=<game>` | Starts straight into a practice session of the game: new builds of its first two versions, the other a dummy that stands still, the Battle options (§15) as Practice last left them. |
 | `NETTAI_REPLAY=<file>` | Starts straight into watching the replay, its game selected; `NETTAI_REPLAY_SPEED=half\|1\|2\|4` at that speed. |
 | `NETTAI_FFMPEG=<program>` | The `ffmpeg` a video is made with, instead of the one found (§16). |
 | `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle, on the main menu and in a replay's viewer; with the first, the replays' listing's and play-outs' times, and where each seek of the viewer landed (§16). |
@@ -75,7 +75,7 @@ it stopped mid-walk, in the middle of a frame, and never went on. So while a bat
 a screen says it has something that must go on (`Shell::stay_awake`: a link to another player), and during the
 screenshot pass, the app holds a Foundation activity (user-initiated, latency-critical, the display kept on: a
 player on a pad presses no key). It was checked by the system's list of them (`pmset -g assertions` names the
-app's, "a battle is running", during a training battle), not by covering the window under load again. Windows
+app's, "a battle is running", during a practice battle), not by covering the window under load again. Windows
 and Linux have nothing held.
 
 **The clock when the window isn't drawn.** The system draws no frames for a window that is minimized or hidden,
@@ -88,7 +88,7 @@ ticks by the clock, the sound plays, and `Screen::frame` and `Screen::frame_end`
 fed and polled. Each asks the window for a redraw, so the window's own frames take over again when it shows.
 While the window draws, the timer does nothing.
 
-Measured on macOS (2026-10-12): a training battle with the window taken away for 8 seconds, by
+Measured on macOS (2026-10-12): a practice battle with the window taken away for 8 seconds, by
 `NETTAI_WINDOW_PROBE` for the first two rows and by another program's window for the last two (load average 165
 to 318):
 
@@ -156,7 +156,7 @@ arrive. While the battle has the keys, they don't reach the menus. The battle's 
 
 - the arrows move; Z is A, X is B, A is L, S is R; Enter is START, Backspace is SELECT;
 - Esc opens nettai's menu;
-- in training, R (or F5) starts the set over, unless the player bound it to a button;
+- in a practice battle, R (or F5) starts the set over, unless the player bound it to a button;
 - in an online match, Tab held shows both builds (§4): no button can be bound to it.
 
 **The gamepads** are read through [gamepad-facade](https://github.com/tangobattle/gamepad-facade) (SDL3's
@@ -165,9 +165,9 @@ player:
 
 - the buttons are bound as the keys are; the defaults are the south button A, the west button B, the shoulders L
   and R, Start and Back;
-- in training, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
+- in a practice battle, with the dummy's Action "A second pad", the second pad used plays the dummy instead (§15);
 - the left stick moves whatever is bound;
-- the Guide button opens nettai's menu, and in training the north button starts over.
+- the Guide button opens nettai's menu, and in a practice battle the north button starts over.
 
 In the menus the same presses navigate (§11), and the key hints switch to the pad's buttons once it is used.
 
@@ -179,12 +179,12 @@ and a thread waiting on the pipe ends the window's event loop on the window's th
 does when the window's close button is pressed, and what the app holds is dropped in order (a recording's file
 flushed, a link closed; the settings are written as each changes). A second request while it closes is the
 system's own again. Run on macOS: the app ended with status 0 in 0.3 to 0.4 seconds, from the main menu and
-from a training battle, on SIGTERM and on SIGINT. Windows has no such signals and nothing is taken there.
+from a practice battle, on SIGTERM and on SIGINT. Windows has no such signals and nothing is taken there.
 
 **START never pauses the game.** In a fight the library reports START and doesn't act on it
 (`Player::take_pause_requests`: docs/frontend.md §2), and what it opens is nettai's menu (`Shell::open_menu`):
-the battle's owner's own, the training menu or the match menu (§2). A battle that can stop is paused under the
-menu; an online match keeps running, as the menu says. A training battle is held in **the game's own pause**
+the battle's owner's own, the practice menu or the match menu (§2). A battle that can stop is paused under the
+menu; an online match keeps running, as the menu says. A practice battle is held in **the game's own pause**
 under its menu, not stopped (§15).
 
 **The sound** is nettai-audio's `Output`, fed one stream at the battle's rate (`sound.rs`):
@@ -210,7 +210,7 @@ under its menu, not stopped (§15).
   battle the two levels against the louder of them (`Sound::battle_levels`, `Player::set_sound_levels`; a
   replay's viewer takes them the same way and keeps them across seeks) and plays its samples at the louder, so
   only the difference between the two is turned down in eight bits. At the full level the driver's output is
-  unchanged to the sample. Measured in a training battle of each game: with Music at 0 the stream is silent
+  unchanged to the sample. Measured in a practice battle of each game: with Music at 0 the stream is silent
   once the opening effects end; at 50 the music's peak is half (0.30 to 0.39 against 0.6 to 0.7).
 
 **A game is ready in two stretches**, and the loading screen's bar covers both (`games.rs`; docs/frontend.md §9):
@@ -277,7 +277,7 @@ again, and so that the UI can be built without optimization (§14).
                       screens/play/session.rs tour.rs                 Play's link and lobby; its part of §13
 
 **A screen is one Slint file and one Rust module** (which may have modules of its own under it:
-`screens/replays/`). Menu, Settings, Training, Play, Builds, Replays and About are built. `ui/screens/play.slint`
+`screens/replays/`). Menu, Settings, Practice, Play, Builds, Replays and About are built. `ui/screens/play.slint`
 holds:
 
 - `PlayView`, a global: the screen's data, which its Rust module sets (and may read back). A struct or an enum
@@ -285,8 +285,8 @@ holds:
 - `PlayScreen`, a component that `inherits Page` (shell.slint): the header with its title and where Back goes,
   the footer's key hints, and the screen's own parts in the body.
 - `PlayOverlay`: what the screen opens over itself (its dialogs, on a phone its sheets), over the whole window.
-  (A screen that opens nothing has none, and no `if` for one in app.slint: Training.)
-- For Training and Play, the menu over their battle (`TrainingMenu`, `MatchMenu`, each a `MenuOverlay`); for
+  (A screen that opens nothing has none, and no `if` for one in app.slint: Practice.)
+- For Practice and Play, the menu over their battle (`PracticeMenu`, `MatchMenu`, each a `MenuOverlay`); for
   Play also `MatchPeek`, what shows over an online match with no menu open.
 
 One thing to know in all of them: a part placed in a `Page`, a `MenuOverlay` or a `DialogFrame` is laid out in
@@ -307,11 +307,11 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 | `choose(id, index, choice)` | A choice made outright: one side of a switch clicked, a slider set, a row of a select's list. |
 | `edit(id, index, text, done)` | A field's text as it is typed, then as it is left. The screen keeps what it wants of it and sets its view's property, which the field then shows. |
 | `focused(id, index)` | The focus moved to a control (a list's row: the overview beside it follows). |
-| `key`, `button` | A key or a pad's button the screen may want for itself, before the menus read it (a key being bound; R in training). |
+| `key`, `button` | A key or a pad's button the screen may want for itself, before the menus read it (a key being bound; R in a practice battle). |
 | `action` | Previous and next (the shoulders, the keys bound to L and R), delete, the pad's north button. The shell changes the game with the first two unless the screen takes them. |
 | `scroll` | Up, Down, Page Up, Page Down, Home, End (keys, D-pad, stick), before the focus moves: for a page of the screen's own that scrolls with no control in it to move to (Play's build sheets in the match's menu). |
 | `back` | Esc or Back: true if the screen went back within itself; false and the shell goes to the menu. |
-| `answered(tag, choice)` | A dialog the screen asked was answered; or something it asked of another screen was (`Shell::tell`: a row it added to the training menu was chosen). |
+| `answered(tag, choice)` | A dialog the screen asked was answered; or something it asked of another screen was (`Shell::tell`: a row it added to the practice menu was chosen). |
 | `dropped(path)` | A file was dropped on the window. |
 | `battle(event)` | A battle the screen started began, ended (with its result) or stopped (with its reason); or the replay it asked for is ready to watch. |
 | `frame`, `frame_end` | Every frame, shown or not: before the battle's ticks, and after them. |
@@ -340,7 +340,9 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
   making ready. The shell owns no link and no lobby, and decides nothing when a battle ends: the owner is told
   the result or the reason and says what is next.
 - *Another screen:* `tell(screen, tag, choice)` has that screen hear `answered(tag, choice)` once the caller
-  has returned (how Training tells the screen that added a row to its menu).
+  has returned (how Practice tells the screen that added a row to its menu). With `go`, it asks another screen
+  for something: `screens::builds::open(shell, from, at)` goes to Builds and tells it which screen opened it and
+  which build to open in its editor (§8).
 - *A replay:* `start_battle` with `Play::Watch(replay, side)` makes its viewer ready behind the same cards and
   hands it over (`BattleEvent::Watching`); the screen shows it in a `Picture` of its own with
   `show_surface(surface, present)` and plays its sound with `play_samples`, having given the viewer the Music
@@ -351,28 +353,28 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
   the screen has a link open: the app isn't napped, and its frames run by a timer when the window isn't drawn
   (§1).
 
-**A training session, from any screen** (`crate::screens::training`, §15). A training session is a battle
-against a dummy with the training menu behind Start and Esc; Training starts one from its entry, and another
+**A practice session, from any screen** (`crate::screens::practice`, §15). A practice session is a battle
+against a dummy with the practice menu behind Start and Esc; Practice starts one from its entry, and another
 screen may start one beside something of its own (Play, while an invite waits for its opponent). Three calls:
 
-    use crate::screens::training::{self, Build, Start};
+    use crate::screens::practice::{self, Build, Start};
 
-    // Start one. `Start::new(game, you, dummy)` is Training's own (the two cards, the picture filling the
+    // Start one. `Start::new(game, you, dummy)` is Practice's own (the two cards, the picture filling the
     // window); `Start::beside(game, build, from, tag, rows)` is one a screen shows in a `Picture` of its own:
-    // the dummy a copy of the player's build, standing still, no cards, and `rows` at the top of the training
+    // the dummy a copy of the player's build, standing still, no cards, and `rows` at the top of the practice
     // menu. The fields are public: `opponent`, `seed`, `full`, `cards`.
     let rows = vec![copy_invite_code, cancel_invite];           // their texts, in the language shown
-    training::start(shell, Start::beside(&game, Build { name, side }, ScreenId::Play, "invite", rows))?;
+    practice::start(shell, Start::beside(&game, Build { name, side }, ScreenId::Play, "invite", rows))?;
 
     // A row it added was chosen: the screen hears it as a dialog's answer, by its tag and the row's place.
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) { /* "invite": 0 copy, 1 cancel */ }
 
-    // End it from outside (the opponent joined). `training::running(shell)` says whether one is on.
-    training::end(shell);
+    // End it from outside (the opponent joined). `practice::running(shell)` says whether one is on.
+    practice::end(shell);
 
 - `start` gives `Err(UserError)` if the game isn't ready or a build can't be played (the detail is in the log);
   both builds must be ready (`nettai_match::build::Checked::ready`). A session already on ends first.
-- The session's battle is always Training's (`ScreenId::Training` owns it), so Training's module restarts a set
+- The session's battle is always Practice's (`ScreenId::Practice` owns it), so Practice's module restarts a set
   that ended, hears the menu (`menu.*`) and the restart key whatever screen is shown, and the starter writes
   none of that. The starter's own controls stay its own: a control is heard by the battle's owner only if it is
   the battle's (its name begins `menu.`) or the battle fills the window (`App::hearer_of`).
@@ -383,7 +385,7 @@ screen may start one beside something of its own (Play, while an invite waits fo
   another screen is gone to, and when another battle starts in its place. The keys and a gamepad are the
   battle's there as anywhere; the phone's pad is drawn by the battle's own screen, which only a battle that
   fills the window has, so on a phone such a session has no pad unless its screen fills the window with it.
-- A dialog asked while it runs (`Shell::ask`) is answered to the battle's owner, as ever: Training passes the
+- A dialog asked while it runs (`Shell::ask`) is answered to the battle's owner, as ever: Practice passes the
   answer on to the starter (`answered`, by the dialog's tag).
 
 **Filling in a screen** touches three files: `ui/screens/<name>.slint`, `src/screens/<name>.rs` and
@@ -459,18 +461,18 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   CONNECT opens a dialog (a `DialogFrame` in `PlayOverlay`, its scope `direct.`): this machine's address with
   COPY, and HOST; an address's field, and CONNECT.
 - **Waiting** for the other player: the invite's code (a direct host's address), large, in fixed-width type,
-  with COPY CODE and CANCEL, and a training session beside it in a `Picture` of the screen's own. The session
-  is Training's (`training::start` with `Start::beside`, §2: the player's build against a copy of it that
-  stands still; Training owns its battle, starts its sets over and hears its menu), with Play's rows at the
-  top of the training menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
+  with COPY CODE and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
+  is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
+  stands still; Practice owns its battle, starts its sets over and hears its menu), with Play's rows at the
+  top of the practice menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
   menu, and CANCEL INVITE (STOP HOSTING), each heard as `Screen::answered` by the tag Play gave. The keys are
   the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc or Start
-  opens the training menu. The session ends when the other player comes (`training::end`) or the wait is
+  opens the practice menu. The session ends when the other player comes (`practice::end`) or the wait is
   given up.
-  *On a phone* a battle has its pad only where it fills the window (§2), and a battle to watch is no training:
-  so there the session isn't started with the wait. The invite shows with a TRAINING button under it; the
+  *On a phone* a battle has its pad only where it fills the window (§2), and a battle to watch is no practice:
+  so there the session isn't started with the wait. The invite shows with a PRACTICE button under it; the
   session then fills the window, pad and MENU under the picture as in any battle, and its menu has a third
-  row of Play's, STOP TRAINING, which goes back to the invite. The other player coming ends it for the lobby
+  row of Play's, STOP PRACTICE, which goes back to the invite. The other player coming ends it for the lobby
   as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
@@ -525,7 +527,7 @@ that can't be listened on). Meanwhile the space beside JOIN, or the dialog's und
 being made, and the loop goes on; a host's name that doesn't resolve is that address's error, and a
 signaling server that can't be reached is the server's. A STUN server whose name doesn't resolve is left out,
 as the link library has it (a link on one network needs none), not a failure. The lobby is made the moment the link is open, in the link's role, with
-a timeout of 45 seconds (longer than the link's 30 of making a dropped connection again), and the training
+a timeout of 45 seconds (longer than the link's 30 of making a dropped connection again), and the practice
 battle ends. From the moment a link is asked for until it is dropped (the wait, the lobby, the loading, a
 match and its result) the screen holds `Shell::stay_awake`: the app is kept awake, and the timer runs its
 frames while the window isn't drawn (§1), so the link is fed and polled with the window minimized or hidden.
@@ -588,8 +590,8 @@ before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), 
 
 - an invite made, and joined by its code; a code no match has, refused by the server; a direct host joined at
   its address; the other player's invite joined by its code, typed in small letters;
-- the wait's training session: started beside the invite (on a phone, by its button, filling the window), its
-  menu's COPY INVITE CODE, STOP TRAINING (a phone) and CANCEL INVITE each chosen, and the session ended by the
+- the wait's practice session: started beside the invite (on a phone, by its button, filling the window), its
+  menu's COPY INVITE CODE, STOP PRACTICE (a phone) and CANCEL INVITE each chosen, and the session ended by the
   other player coming;
 - the lobby's rounds, patch cards and closed builds changed by one player and taken by the other; the input
   delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
@@ -710,9 +712,9 @@ a random moment waits 8.4 ms on average (8.1 ms measured) before a tick sees it.
 
 The means vary from window to window with where the presses fall between ticks: four or five presses a window.
 
-**The redesigned app** (2026-10-12, the same Mac and window, `NETTAI_TRAINING=exe6` with both variables):
+**The redesigned app** (2026-10-12, the same Mac and window, `NETTAI_PRACTICE=exe6` with both variables):
 
-| nettai, `dev` | In a training battle | On the main menu, its reel playing |
+| nettai, `dev` | In a practice battle | On the main menu, its reel playing |
 |---|---|---|
 | frames a second | 119.9 to 120.1 | 120.0 |
 | frame time p95 / p99 | 8.37 to 8.59 / 8.44 to 12.48 ms | 8.38 to 8.58 / 8.41 to 11.78 ms |
@@ -735,10 +737,10 @@ Measuring found two things, both the ground's hexagons, a path stroked across th
   are drawn once into a layer (`cache-rendering-hint`), and the layer is what moves; with it a frame costs 0.2 ms
   more than with no ground at all.
 
-**With Training built** (§15; 2026-10-12, the same Mac, window and variables; the build before it and the build
+**With Practice built** (§15; 2026-10-12, the same Mac, window and variables; the build before it and the build
 with it run one after the other, twice over, 44 seconds each; load average 139 to 162):
 
-| nettai, `dev`, a training battle | Before Training | With it | With it, the input display on |
+| nettai, `dev`, a practice battle | Before Practice | With it | With it, the input display on |
 |---|---|---|---|
 | frames a second | 105.5 to 120.0 | 115.1 to 120.0 | 116.3 to 120.1 |
 | frame time p95 / p99 | 8.39 to 16.63 / 8.61 to 16.81 ms | 8.44 to 12.51 / 8.99 to 18.16 ms | 8.42 to 10.56 / 8.69 to 13.66 ms |
@@ -748,7 +750,7 @@ with it run one after the other, twice over, 44 seconds each; load average 139 t
 | key to its picture drawn (the two runs' means) | 7.2 to 13.2 ms (10.5, 11.1) | 8.0 to 14.6 ms (10.6, 10.6) | 8.7 to 17.4 ms (11.2, 12.6) |
 | sound queued | 50 to 58 ms | 51 to 58 ms | 45 to 63 ms |
 
-Each is the range over fifteen 2-second windows (fourteen in one) of each of two runs. A training session puts
+Each is the range over fifteen 2-second windows (fourteen in one) of each of two runs. A practice session puts
 nothing on the frame's path but a few comparisons: whether the session's battle is still the one on, the round's
 number, and, with the input display on, the two sides' buttons, told to the UI only when one changes.
 
@@ -815,11 +817,11 @@ cost what they did in the others, and the windows around it ran 115 to 119: the 
   to the two together within 0.5% (0.26022 and 0.25920, 0.20090 and 0.20022, 0.17623 and 0.17674, 0.18402 and
   0.18456).
 
-**With the training menu open** (2026-10-13, the same Mac, window and variables, the menu opened 22 seconds in
+**With the practice menu open** (2026-10-13, the same Mac, window and variables, the menu opened 22 seconds in
 with the battle in its fight; two runs each, back to back, load average 109 to 161): before, the battle held
 still under the menu; now, in the game's own pause (§15).
 
-| nettai, `dev`, a training battle | Menu closed | Menu open, before | Menu open, in the game's pause |
+| nettai, `dev`, a practice battle | Menu closed | Menu open, before | Menu open, in the game's pause |
 |---|---|---|---|
 | frames a second | 99.8 to 120.1 | 119.0 to 120.1 | 117.0 to 120.0 |
 | frame time p95 / p99 | 8.42 to 17.48 / 9.19 to 22.60 ms | 8.40 to 9.03 / 9.13 to 13.49 ms | 8.68 to 10.48 / 9.73 to 16.67 ms |
@@ -921,6 +923,12 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
 
 - **The name is the file's alone.** `[side]` is what a match, a lobby and a replay are given, and it holds no
   name (docs/design/app-ui.md §2.16).
+- **Opened by another screen** (`screens::builds::open(shell, from, at)`; docs/design/app-ui.md §2.28): Builds is
+  shown and told by `Shell::tell` which screen opened it (its tag is `opened-by.` and the screen's name) and,
+  with `at`, the build to open (its place in `store::list`'s order, which the list has). Back goes back to that
+  screen: from the list, or straight from the editor it asked for, which leaving the screen closes, the build
+  kept; the header's Back says where (`BuildsView.to-practice`). Practice's EDIT and CREATE A BUILD open it so
+  (§15); from the main menu Back goes to the menu as ever.
 - **A build made new** is `Builds::new_build(content, version)`: the game's own navi, that version, the folder a
   new save of the game starts with. There are no random builds.
 - **What is kept aside.** A NaviCust, patch cards and auto battle data are the game's own navi's alone, the one
@@ -959,7 +967,7 @@ line needs the content to name each navi's.
 
 **A problem's sentence** has no full stop and is whole by itself: "2 Giga chips, limit 1", "Gregar is Gregar
 only", "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
-after a colon in another's sentence, which ends it (Training's reserved line: "Your build can't be used: 31
+after a colon in another's sentence, which ends it (Practice's reserved line: "Your build can't be used: 31
 chips, a folder has 30."; the shell's "This build can't be used: {}."). `problem` words any
 `nettai_match::check::Problem`, whichever screen is shown; its kinds are matched with no catch-all, so a kind
 added to nettai-match doesn't compile until it has its sentence.
@@ -972,7 +980,7 @@ auto battle data). A kind that would otherwise say "something" says the part: "N
 chosen", "This navi isn't EXE6's", "Something in the patch cards is there twice", "This navi can't use the
 NaviCust". A problem that names no fact, or one with no part, keeps the general sentence ("Something isn't
 chosen"). `words::tests::a_problem_is_about_its_part` holds the parts to the facts (a side with no navi, a new
-EXE6 side with no version); the sentences are the catalog's, seen in Training's reserved line ("The dummy's
+EXE6 side with no version); the sentences are the catalog's, seen in Practice's reserved line ("The dummy's
 build can't be used: No version chosen.").
 
 **The overview on another screen.** A screen's view has a property of the model, its Slint places the
@@ -1224,7 +1232,7 @@ from the bottom; a menu's buttons one over the other; the battle's pad under the
 has the desktop's layout.
 
 On a phone the battle's picture has the window's whole width, at its top, with no gutter (`BattleScreen`), and
-so has Training's arena: the picture is a whole multiple of the game's 240 (§1), and the gutters' 32 can be the
+so has Practice's arena: the picture is a whole multiple of the game's 240 (§1), and the gutters' 32 can be the
 difference between one multiple and the next (a window 780 of the display's pixels wide takes three times, 720;
 716 took two).
 
@@ -1362,8 +1370,8 @@ Four rules hold for all of it:
 **A row that is focused as a whole** (the design's rows are: the cursor is around the label and its control
 together) has a `Focusable` of its own under its control, named as the control is, and the control's own is
 turned off (`focusable: false` on a `Stepper` or a `Select`): the arrows' clicks still step it, a click anywhere
-else on the row activates it, and the list `Shell::pick` opens is as wide as the row. Training's rows are so
-(`BuildOption` and `MenuRow` in training.slint); `OptionRow` here is the other way, the stepper alone focused.
+else on the row activates it, and the list `Shell::pick` opens is as wide as the row. Practice's rows are so
+(`BuildOption` and `MenuRow` in practice.slint); `OptionRow` here is the other way, the stepper alone focused.
 
 **What has run.** Everything the built screens use is in the screenshot pass and the motion probe (§13). The
 components no built screen uses yet (`TabBar`, `ListView`, `Panel`, `OptionRow`, `Count`, `Flash`, `Shake`, and
@@ -1376,7 +1384,7 @@ scrolling page, a view of a screen's own (`nav.enter`), a replay's viewer throug
 overview over it in the pass, and its viewer's `set_sound_levels` was checked by its samples (§16). Never run:
 `Shell::fly`, `Shell::recorder`, a dropped file, a real gamepad, an IME, a touch screen (the pad's fingers are
 put through the same entry by the screenshot pass).
-Training and Play were the first to show a `Message`, whose text sat in the middle of its line (a text with no
+Practice and Play were the first to show a `Message`, whose text sat in the middle of its line (a text with no
 width of its own is as wide as its words, centered): it is as wide as its line now, and at its left unless the
 screen says otherwise.
 
@@ -1528,10 +1536,10 @@ holds the window shows there, though the shots, each of which holds it some 60 m
 A screen's steps are a file of its own, `src/tour/<name>.rs` (a child module of `tour`, so it has the pass's
 own `write` and `compare`) or the screen's own (`screens/play/tour.rs`), with a function for the pass and one
 for the motion probe, each called from `tour::walk` and `tour::motion_walk` with one line
-(`training::steps(&mut add, lang, size)`; Play's take `walk`'s `add`, a step and the time it is given first,
+(`practice::steps(&mut add, lang, size)`; Play's take `walk`'s `add`, a step and the time it is given first,
 and its `shot`, a shot's name and its place in a pair). A pair's second shot may be given more to differ in
-than the two cursors (`training.rs`'s `Differs::Builds`: where the entry shows the builds chosen; its
-`Differs::Picture`: the game's picture where the training menu leaves it in view, as the game moves its
+than the two cursors (`practice.rs`'s `Differs::Builds`: where the entry shows the builds chosen; its
+`Differs::Picture`: the game's picture where the practice menu leaves it in view, as the game moves its
 backgrounds through its pause, each box given exactly so that none of the picture under the panel is let
 differ; `replays.rs`'s `Also::Playback`: the picture, the bar and its two times; `Tour::may_differ`, for the
 next pair of `walk`'s `shot`: the NaviCust's strip, which shows the program under the cursor), found from where
@@ -1541,19 +1549,24 @@ depend on its having come, the walk says when it didn't (`Tour::never_came`, whi
 pass fails on: Play's `reach`), so that a picture of the wrong thing isn't taken for the right one.
 `NETTAI_TOUR_ONLY=replays` walks Replays' steps alone (it has none for the motion probe).
 
-The pass has nothing of the player's to go by: its settings are the defaults, and Training and Play list a new
+The pass has nothing of the player's to go by: its settings are the defaults, and Practice and Play list a new
 build of each of the game's versions (and one that can't be used) in place of the player's builds. The builds the Builds
 screen lists are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through the
 screen as a player makes them, and Replays lists replays of the pass's own.
 
-**Training's steps** (`tour/training.rs`) walk the entry, the two cards, the battle and the training menu
+**Practice's steps** (`tour/practice.rs`) walk the entry, the two cards, the battle and the practice menu
 (each Battle row with its value changed, a pair apart), and drive the options in the battle as a player would,
 the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
 the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
-dummy's Action Fights with its Level under it. `training.txt` in the pass's folder says what no picture does at
+dummy's Action Fights with its Level under it. Then the way to Builds and back: CREATE A BUILD's list (the
+pass's own folder emptied), its header saying ‹ PRACTICE, and Back; and with the pass's new builds kept as files
+in its own folder (the entry lists them as a player's: `Shared::tour_files`), Your build's EDIT focused, the
+editor it opens on that build's Folder tab, an entry taken out there, and Back, the entry with the build as it
+was left (it can't be used now); a step before each picture checks the walk is where the picture says, and the
+report says so if not. `practice.txt` in the pass's folder says what no picture does at
 each: both navis' HP, the gauge, the options, and each side's deal beside the top of its folder as saved; that
 is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
-locked screen draws no frames, and the training battle never starts (`training.txt` says "no battle").
+locked screen draws no frames, and the practice battle never starts (`practice.txt` says "no battle").
 
 **Builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`): the list
 with none and with three builds (one named in Japanese, one with a name too long for its row), a new build's
@@ -1600,7 +1613,7 @@ one refused; a chip put in a place.
 
 `NETTAI_TOUR_ONLY=<part,...>` walks those parts alone: `shell` (loading, the menu, the screens as they open,
 Settings, a dialog, a battle; in the probe, a change of game too), `packs` (a pack being extracted, and the Legacy
-Collection not found: the loading screen's line and button, and its dialog), `training`, `builds`, `build-tabs`,
+Collection not found: the loading screen's line and button, and its dialog), `practice`, `builds`, `build-tabs`,
 `play` and `replays`; `play` or `replays` named alone walks Play's or Replays' steps alone. (The pass extracts
 nothing: its packs are `$NETTAI_PACKS`'s, and the extraction's screens are set on the view.)
 
@@ -1776,7 +1789,7 @@ the same. One dependency is new and slow: gamepad-facade's SDL3 is built from it
 and a half minutes of a clean build on the loaded machine (gilrs, which it replaces, took 23 seconds), once.
 
 **With Play** (2026-10-12; one script before the screen was written and after, on the branch it was written
-on, before Training and Builds were merged into it: dev profile, sccache off, the two crates cleaned with their
+on, before Practice and Builds were merged into it: dev profile, sccache off, the two crates cleaned with their
 dependencies built; the load average was 270 to 330 before and 200 to 230 after, so the CPU times are the ones
 to compare):
 
@@ -1798,32 +1811,32 @@ draft had one for each thing that differs. An edit to the app's Rust costs what 
 offsets they drive), which is in the figures above. The accessibility backend is off: a screen reader sees
 nothing of the app. And with one renderer, a machine without OpenGL can't run it.
 
-**What a screen costs: Training** (§15; measured 2026-10-12 with one script, back to back, the tree before it
+**What a screen costs: Practice** (§15; measured 2026-10-12 with one script, back to back, the tree before it
 and the tree with it; sccache off; CPU is user and system time together, and the one to compare: the wall
 times follow the machine's load, 129 to 206 before and 166 to 197 after):
 
-| | Before Training | With Training |
+| | Before Practice | With Practice |
 |---|---|---|
 | a clean build of nettai-ui and nettai | 77 s, 33.4 s of CPU | 162 s, 40.6 s of CPU |
 | nothing changed | 2.0 to 2.6 s, 0.7 s of CPU | 2.6 to 3.6 s, 0.6 to 0.9 s of CPU |
 | after one line of Rust changed (a constant of battle.rs, and put back) | 8.8 to 11.1 s, 5.8 to 6.0 s of CPU | 17.4 to 20.3 s, 6.9 to 7.1 s of CPU |
 | after one line of menu.slint changed (a value, and put back) | 20.7 to 31.9 s, 6.5 to 7.5 s of CPU | 38.6 to 40.0 s, 8.2 to 8.3 s of CPU |
-| after one line of training.slint changed (a value, and put back) | | 33.7 to 43.8 s, 7.9 to 8.1 s of CPU |
+| after one line of practice.slint changed (a value, and put back) | | 33.7 to 43.8 s, 7.9 to 8.1 s of CPU |
 | the generated module | 3.33 MB, 28,204 lines | 3.88 MB, 31,925 lines |
 | the Slint | 4,316 lines, 18 `if`s, 6 `for`s | 4,972 lines, 17 `if`s, 7 `for`s |
 
-Training's 656 lines of Slint are 0.55 MB of generated Rust: the entry 0.24 MB (the main menu's screen is 0.23),
-the training menu and its rows 0.22, the input display 0.09, the entry's cards and rows 0.07, less the 0.17 its
+Practice's 656 lines of Slint are 0.55 MB of generated Rust: the entry 0.24 MB (the main menu's screen is 0.23),
+the practice menu and its rows 0.22, the input display 0.09, the entry's cards and rows 0.07, less the 0.17 its
 stub was. What kept it there: the entry's parts are shown and hidden, not `if`s; the menu's rows are one
 component under one `for`; the input display is in the window throughout and shown when it is on, where an `if`
-was 46 KB more; Training has no overlay (an empty one under its `if` was 22 KB); a card places its three texts
+was 46 KB more; Practice has no overlay (an empty one under its `if` was 22 KB); a card places its three texts
 itself, where two layouts were 9 KB more; the display's arrows are the text face's, not paths (11 KB).
 
 The follow-ups after it (the phone's picture edge to edge, a select's list scrolling, a terminate request, a
 game that can't be loaded told; measured the same way, load average 260 to 336) cost 0.06 MB of generated Rust
 (3.88 to 3.94 MB: the select's list as a `ListView`) and nothing measurable in time: a clean build 35.5 s of CPU
 before and 36.7 after, one line of Rust 6.1 and 6.5 to 6.8, one line of a .slint file 7.0 to 7.1 and 7.3 to 7.6.
-A training battle's figures (§5) are the same before and after them: 107.6 to 120.0 frames a second and 117.6 to
+A practice battle's figures (§5) are the same before and after them: 107.6 to 120.0 frames a second and 117.6 to
 120.0, a key to its picture 11.9 and 11.1 ms against 11.0 and 10.2 (two runs each, back to back).
 
 **What a screen costs: Builds** (§8; measured 2026-10-12 with one script, back to back: the tree before it,
@@ -1840,7 +1853,7 @@ together, the one to compare: load average 207 to 345 throughout):
 | the generated module | 3.88 MB, 31,930 lines | 6.14 MB, 51,052 lines (6.08 MB after the three fixes below) |
 | the Slint | 4,975 lines, 17 `if`s, 7 `for`s | 7,125 lines, 31 `if`s, 18 `for`s |
 
-Builds' 2,150 lines of Slint are 2.2 MB of generated Rust, four times Training's for three times its Slint
+Builds' 2,150 lines of Slint are 2.2 MB of generated Rust, four times Practice's for three times its Slint
 (by component, after the fixes below): the Folder tab 0.72 MB (the tab 0.12 and its `if` 0.04, the library pane
 0.09 and its rows 0.1, a phone's list 0.1 and sheet 0.11, the slots 0.07), the list, the overview beside it and
 a phone's page of one build 0.44 (each `if` page 0.07 to 0.12: an `if` around a `ScrollPage` or a `ListView` has
@@ -1918,8 +1931,8 @@ accessibility Slint writes though its backend is off (its functions are 0.83 MB,
 tree's own share whatever is in it: every text, field and image given no role is 0.03 MB less); the whole UI
 copied in (Slint's `SLINT_INLINING`: 22.9 MB).
 
-Training's and the battle's files were left to last while other branches changed them. With those merged (main
-at 6a72049ad, 10.29 MB: Training's options had added 0.05 MB) their three components used in one place were
+Practice's and the battle's files were left to last while other branches changed them. With those merged (main
+at 6a72049ad, 10.29 MB: Practice's options had added 0.05 MB) their three components used in one place were
 copied in (the menu's row, the connection's mark, the touch pad): 10.26 MB, 83,075 lines. Their components used
 in a few places are smaller shared: copied in, the pad's keys would be 0.22 MB more, the input display's keys
 0.06, a build's card and option 0.02 and 0.01, an input row 0.02.
@@ -1934,12 +1947,12 @@ The tools that measured it are bn6battle-verify's tools/slint-size: the module's
 alone, its breakdown by kind of code and by component, what one component's code is, a construct's cost, and
 the components used in one place (given the child, or measured copied in).
 
-## 15. Training
+## 15. Practice
 
-docs/design/app-ui.md §6, "Training": you against a dummy set up from a menu while in training. It is
-`src/screens/training.rs` and `ui/screens/training.slint`.
+docs/design/app-ui.md §6, "Practice": you against a dummy set up from a menu while practicing. It is
+`src/screens/practice.rs` and `ui/screens/practice.slint`.
 
-**The entry.** Four rows, Your build, Dummy's build, Arena and Background, and START TRAINING at the column's
+**The entry.** Four rows, Your build, Dummy's build, Arena and Background, and START PRACTICE at the column's
 foot; beside them (on a phone, under them) the two builds as cards over the arena.
 
 - Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
@@ -1947,12 +1960,12 @@ foot; beside them (on a phone, under them) the two builds as cards over the aren
   `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
   the first build that can be used.
 - Arena and Background (the user: "in training mode can you also add arena + background select?") are where
-  every round of the session is fought (`training::Places`, from the game's content alone): Random first, a
-  place picked from the seed each round as a match that names none has it (what training did before), then
+  every round of the session is fought (`practice::Places`, from the game's content alone): Random first, a
+  place picked from the seed each round as a match that names none has it (what practice did before), then
   the game's arenas, the link battle stages a match may name (`nettai_match::link_battle_stages`, the rules'
   `link_pick.match_stages`: EXE6's 96, EXE5's 94, EXE4's 96), and its battle backgrounds
   (`nettai_match::ids::backgrounds`, the pack's), each in its keys' natural order (a run of digits by its
-  number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the training
+  number: `netbattle-2` before `netbattle-10`). Each is an arrow pager, the app's `Stepper` as the practice
   menu's rows have it (the user: "the arena names are meaningless so you should just have like a pager widget
   that goes through them. background should also be a arrow button pager thing"): Left and Right or its arrows
   step it, around from the last to Random, a held key repeating; Enter steps it on; it opens no list. It is
@@ -1978,22 +1991,31 @@ foot; beside them (on a phone, under them) the two builds as cards over the aren
   second frame the window draws of it.) It is made once the builds and the place chosen have stayed 160 ms (making a round holds the window about 20 ms: a
   step through them doesn't make one each time), on the place chosen, and what the session will be picked
   from is drawn as the entry lists a game's builds and after each session, so the arena shown (a Random one
-  too) is the one START TRAINING opens on.
-- With no build of the game there is one button, CREATE A BUILD, which goes to Builds.
+  too) is the one START PRACTICE opens on.
+- With no build of the game there is one button, CREATE A BUILD, which goes to Builds' list, whose Back comes
+  back here (`screens::builds::open`, §8).
+- **EDIT** beside each build's select (docs/design/app-ui.md §2.28: "you should be able to go to builds screen
+  from the practice screen somehow while having the relevant build displayed") opens it in Builds' editor; so do
+  E and the pad's north button (the dummy's build on its row or its EDIT, else the player's). The build is found
+  among the game's files as they are then by its file (`practice::place_of`), and the two chosen are
+  remembered first, so the entry shows them again as the edit left them: changed, or now one that can't be
+  used, which stays chosen and says why. Back from the editor comes straight back here. A build that doesn't
+  read as one has its EDIT unavailable. (The rows are 180 wide in their box, 120 on a phone, for EDIT's 88 and
+  72 beside them; on a phone EDIT is as tall as its row.)
 - A build is checked as the lobby will check one (`nettai_match::build::Checked`), once for what its file
   says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
-  can't be used."), START TRAINING is unavailable, no arena is drawn, and the screen opens with the focus on
+  can't be used."), START PRACTICE is unavailable, no arena is drawn, and the screen opens with the focus on
   the row to change. *The rule it breaks isn't said yet:*
-  `Wrong`'s kinds are the Builds screen's to word (§12), and `training::rule` is where that wording goes, as
+  `Wrong`'s kinds are the Builds screen's to word (§12), and `practice::rule` is where that wording goes, as
   the line's own `{}`; meanwhile each problem is in the log.
 
-**A session** (its interface is §2's "A training session, from any screen"). `training::start` checks the
+**A session** (its interface is §2's "A practice session, from any screen"). `practice::start` checks the
 match of the two builds (`nettai_match::check::problems`), shows the two cards while the library's `Preload`
 makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)`. It isn't recorded.
 
 - **Its pause is the game's.** The user: "the training pause should actually just use the game's pause
   behavior: music continues, stuff still animates. but don't show the PAUSED banner in the middle of the
-  screen". A training set's rounds leave the game its START (`HostKeys::pause` off: `training::set_of`; every
+  screen". A practice set's rounds leave the game its START (`HostKeys::pause` off: `practice::set_of`; every
   match's other rounds keep it the host's), and its battle is held under the menu by `Battle::pause_in_game`
   (`battle/game_pause.rs`), which does nothing that pausing does: it gives the game the START its player
   would, and reads the game's state.
@@ -2022,7 +2044,7 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
       time the player could do nothing but answer a dimming with a counter cut-in, where their chips have one:
       the fight is held for both sides, and a round's end and start take no buttons.
   - **The game's pause display is not drawn:** the HUD's "PAUSE" (what the HUD draws while the fight is in its
-    pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a training battle's
+    pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a practice battle's
     renderer alone. The game's pause state is simulated as the game has it; only that drawing is left out.
   - Nothing else changes: a battle never paused, every online match and every replay steps, sounds and draws
     as before (the engine's two calls are output only; the same hash over 2,194,500 samples and the same
@@ -2037,17 +2059,17 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
     were looked at (before, 300 and 330 ticks into the pause, with the display, after); nobody listened. In
     the app, with the menu open, the battle ran 59.5 to 60.0 ticks a second and the stream's peak stayed at
     0.36 to 0.67 (§5).
-- It has no end: when the set is decided the shell says `Finished` and Training starts the battle over
+- It has no end: when the set is decided the shell says `Finished` and Practice starts the battle over
   (`Battle::restart`), as RESTART does, and R or F5 on the keyboard and the pad's north button without opening
   the menu (unless the player bound them to a button).
-- The session is the shell's (`Shell::training`), and gone with its battle however that went: ended by
-  `training::end`, by a battle another screen started in its place, or, shown in another screen's `Picture`,
+- The session is the shell's (`Shell::practice`), and gone with its battle however that went: ended by
+  `practice::end`, by a battle another screen started in its place, or, shown in another screen's `Picture`,
   by that screen being left.
 
-**The training menu** (Start or Esc; the battle in the game's own pause behind it, the dummy in view beside the
+**The practice menu** (Start or Esc; the battle in the game's own pause behind it, the dummy in view beside the
 panel). Its
-rows are a model (`TrainingView.rows`: one row component under one `for`), made from one list,
-`training::ROWS`:
+rows are a model (`PracticeView.rows`: one row component under one `for`), made from one list,
+`practice::ROWS`:
 
 | Row | Values | What it sets |
 |---|---|---|
@@ -2075,11 +2097,11 @@ were: the set made again on the new background (its arenas the same, above) is p
 and the battle's setup says its backgrounds (the library's `Player::set_backgrounds`), drawn from the next
 frame, the rounds after and a RESTART on them too. Stepped on from there, the battle is the one without the
 change tick for tick, its digest the same but for the background its setup says (nettai's
-`on_another_background_the_battle_goes_on`); training is neither online nor recorded, so no digest of it is
+`on_another_background_the_battle_goes_on`); practice is neither online nor recorded, so no digest of it is
 compared with another's.
 
 The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
-the menu): host-side options a training session sets between ticks, applied to the battle's own typed state
+the menu): host-side options a practice session sets between ticks, applied to the battle's own typed state
 (a navi's HP, the custom gauge, the battle folder the custom screen deals from) before each tick, never a rule
 of the simulation. With them at their normal values the battle is
 the set's as it was before they existed, tick for tick by digest (the library's test of it, docs/frontend.md
@@ -2119,17 +2141,17 @@ its custom screen picks the first chip it can. Any other Action gives the pads b
 each level plays, measured), in the fight and on its custom screen, where Normal and Hard pick the chips worth
 most first (each tried in a copy of the fight; Easy, every chip it can in the cursor's order); it is
 plugged into the session's live play (`LivePlayer::set_ai`) while the Action is Fights, at the Level chosen, and
-taken out otherwise (`training::plug`); another Level plugs in a new one. It presses buttons as a player does: each few
+taken out otherwise (`practice::plug`); another Level plugs in a new one. It presses buttons as a player does: each few
 ticks it tries short plans in copies of the battle, on threads of its own (three at most, fewer on a machine
 with fewer cores to spare), and acts on its decision a reaction time later (Easy's half a second, Normal's about a
 quarter, Hard's a tenth); a decision not ready by then is waited for (measured at 60 ticks a second: none was
 late). On the web it thinks on the battle's own thread.
 
-*Adding a row*: a value of `TrainingOption` and its words in training.slint (`label`, `value`; a row whose
+*Adding a row*: a value of `PracticeOption` and its words in practice.slint (`label`, `value`; a row whose
 values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in
-`values`, `value` and `Training::step_option`. A group's title is a row too.
+`values`, `value` and `Practice::step_option`. A group's title is a row too.
 
-**The input display** (`TrainingInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
+**The input display** (`PracticeInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
 each side's custom screen reads (`Battle::custom.sides[n].joypad.held`: this tick's buttons, not the fight's
 delayed ones) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
@@ -2139,10 +2161,10 @@ nothing held: the battle takes no button then but the START that holds it in the
 presses go nowhere.
 
 **On a phone** the entry is one column (the four rows, lower than a desktop's, 48, the line, the cards side by
-side, the arena, START TRAINING at the foot; side by side, two rows would each step with Left and Right and
+side, the arena, START PRACTICE at the foot; side by side, two rows would each step with Left and Right and
 the arrows couldn't go from one to the other), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
 a desktop holds them all) and its buttons are one over the other, and in
-battle the line beside MENU says "Training · Round 1" (`Shell.battle-note`, which a battle's owner sets).
+battle the line beside MENU says "Practice · Round 1" (`Shell.battle-note`, which a battle's owner sets).
 
 **What isn't there.**
 
