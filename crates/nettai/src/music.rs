@@ -465,6 +465,59 @@ mod tests {
         assert_eq!(sound.music_song(), None, "the title music again");
     }
 
+    /// The selected game changed on Practice's entry (the user: "switching game in practice mode shouldn't restart
+    /// the music if it's the same music"): a theme picked plays the same song in either game, so it goes on where
+    /// it is, at its level, with no restart and no crossfade, on the new game's sound, which a battle of the new
+    /// game then takes over (its first pack the new game's, the song going on into it). A theme of the game left
+    /// is the same song too (on its game's driver there, a theme's own pack here). The game's own is each game's
+    /// own song: it switches, from its beginning, fading in.
+    #[test]
+    fn a_game_changed_keeps_the_same_song() {
+        use nettai_audio::MUSIC_PLAYER;
+        use nettai_battle::content::PackId;
+        let all = games(&["exe4", "exe5", "exe6"]);
+        let (six, five) = (practice_set(&all, "exe6", 11), practice_set(&all, "exe5", 11));
+        let theme = |game: &str, song: &str| Music::Theme { game: game.into(), song: song.into() };
+        for picked in [theme("exe4", "virus-battle"), theme("exe6", "final-battle"), Music::GameOwn] {
+            let (mut sound, mut frames) = menus(&all, "exe6");
+            sound.set_preview(Some(entry_music(&all, &six, &picked)));
+            frames(&mut sound, 240);
+            let (_, song, at) = sound.music_at().expect("the entry's music");
+            assert_eq!(sound.preview_sound().unwrap().1, 1.0, "{picked:?}: faded in");
+            // (The header's arrows: the new game's menus, and its entry shown again.)
+            sound.use_game("exe5", &all.read("exe5").unwrap().loaded);
+            let entry = entry_music(&all, &five, &picked);
+            let key = entry.key.clone();
+            sound.set_preview(Some(entry));
+            frames(&mut sound, 3);
+            let (preview, now, later) = sound.music_at().expect("the entry's music");
+            let fade = sound.preview_sound().unwrap().1;
+            if picked == Music::GameOwn {
+                let own = five.content().assets.sound(five.first().settings.music(five.content()).unwrap().0).unwrap().id;
+                assert_eq!((preview, now.0), (true, own), "the new game's own");
+                assert!(later < 10 && fade < 1.0, "the game's own switches, from its beginning ({later}), fading in ({fade})");
+                continue;
+            }
+            assert_eq!((preview, now), (true, song), "{picked:?}: the same song");
+            assert!(later > at && fade == 1.0, "{picked:?}: it goes on ({later} past {at}), at its level ({fade})");
+            // START: the new game's battle takes it over, the song going on.
+            let audio = sound.take_preview(&key).expect("the entry's music, to take over");
+            let five_bank = all.read("exe5").unwrap().loaded.sound.as_ref().unwrap().banks[0].clone();
+            assert!(std::sync::Arc::ptr_eq(audio.driver_of(PackId(0)).unwrap().bank(), &five_bank),"{picked:?}: the new game's sound");
+            let mut player = battle_on(&all, &five, &picked, (1.0, 1.0));
+            player.carry_sound(audio);
+            for _ in 0..30 {
+                player.tick(0);
+            }
+            let audio = player.audio().unwrap();
+            let (in_battle, clock) = (0..3)
+                .map_while(|n| audio.driver_of(PackId(n)))
+                .find_map(|d| d.player(MUSIC_PLAYER).filter(|m| m.is_playing()).and_then(|m| Some((m.song()?, m.clock()))))
+                .expect("the battle's music");
+            assert!(in_battle == song && clock > later, "{picked:?}: the battle goes on with it ({clock} past {later})");
+        }
+    }
+
     /// The battle started from the entry takes over the entry's music (`Sound::take_preview`,
     /// `Player::carry_sound`): its round's start finds its music playing, so the song goes on from where the entry
     /// had it (its clock past the entry's, where a battle of its own starts it from 0), the game's own and a theme
