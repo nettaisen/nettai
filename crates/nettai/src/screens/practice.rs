@@ -37,6 +37,7 @@ use nettai_frontend::driver::{Ai, ChipDraw, InFight, LivePlayer, OnCustomScreen,
 use nettai_training::{Fighter, Level};
 use nettai_match::build::{Builds, Checked};
 use nettai_battle::Content;
+use nettai_battle::content::{ActorEntry, StageData};
 use nettai_content_api::StageHandle;
 use nettai_match::{Match, RoundSettings, Set, Side, Wrong};
 use nettai_ui::{BattleKind, PracticeBuild, PracticeOption, PracticeRow, PracticeView, VersusCard};
@@ -686,12 +687,20 @@ const BACKGROUND: usize = 1;
 /// them), a background from the whole pool (`BackgroundPick::Pool`). A choice is a list's place, 0 Random.
 ///
 /// The games keep the two apart: a link battle picks its stage and its background each on its own (the rules'
-/// `link_pick`), so either goes with any of the other. An arena is said by its place in the list ("12 / 96":
+/// `link_pick`), so either goes with any of the other. An arena is said by its place in the list ("12 / 48":
 /// the user, "the arena names are meaningless"); a background by its game's name and what that game's locales
 /// call it (`crate::backgrounds::name`: "BN4 ACDC Area").
+///
+/// The arenas are listed once each: a game's link battle stages hold an arena more than once, as records that
+/// differ in nothing but the order their actor lists place in ([`same_arena`]: EXE6's each arena twice or four
+/// times, one record placing side 0's navi first and another side 1's), and the list shows the first of each
+/// such group in its order (the user: "don't show duplicate arenas in the practice mode selector, just show the
+/// first of any duplicates"). An arena chosen plays its first record, so a round on it always updates the same
+/// side first; Random is the rules' pick over every record, as a match's, the side a coin flip each round.
 #[derive(Clone, Default)]
 pub struct Places {
-    arenas: Vec<StageHandle>,
+    /// Each arena's records, in the list's order: the first is the one it plays.
+    arenas: Vec<Vec<StageHandle>>,
     /// By the names a match writes for them: the game's own by its name in its pack, another game's with its
     /// game (`exe4:acdc-area`).
     backgrounds: Vec<String>,
@@ -699,8 +708,15 @@ pub struct Places {
 
 impl Places {
     pub fn of(content: &Content, game: &str) -> Places {
-        let mut arenas = nettai_match::link_battle_stages(content, game);
-        arenas.sort_by_cached_key(|&s| natural(nettai_match::ids::local(&content.defs.stage(s).key)));
+        let mut stages = nettai_match::link_battle_stages(content, game);
+        stages.sort_by_cached_key(|&s| natural(nettai_match::ids::local(&content.defs.stage(s).key)));
+        let mut arenas: Vec<Vec<StageHandle>> = Vec::new();
+        for s in stages {
+            match arenas.iter_mut().find(|records| same_arena(content.stage(records[0]), content.stage(s))) {
+                Some(records) => records.push(s),
+                None => arenas.push(vec![s]),
+            }
+        }
         let mut backgrounds: Vec<String> = nettai_match::ids::pool_backgrounds(content).into_iter().map(str::to_string).collect();
         backgrounds.sort_by_cached_key(|b| pool_background(content, game, b).map(|(of, name)| (of.to_string(), natural(name))));
         Places { arenas, backgrounds }
@@ -714,7 +730,7 @@ impl Places {
     /// A round on the place `chosen`.
     fn round(&self, chosen: [usize; 2]) -> RoundSettings {
         RoundSettings {
-            stage: chosen[ARENA].checked_sub(1).and_then(|at| self.arenas.get(at)).copied(),
+            stage: chosen[ARENA].checked_sub(1).and_then(|at| self.arenas.get(at)).map(|records| records[0]),
             background: chosen[BACKGROUND].checked_sub(1).and_then(|at| self.backgrounds.get(at)).cloned(),
         }
     }
@@ -732,20 +748,26 @@ impl Places {
         [self.find(content, ARENA, arena), self.find(content, BACKGROUND, round.background.as_deref())]
     }
 
-    /// Where the choice named by `key` is in list `part` (none, or one the list hasn't: Random).
+    /// Where the choice named by `key` is in list `part` (none, or one the list hasn't: Random). A stage is
+    /// found as its arena, the first of its records or another.
     fn find(&self, content: &Content, part: usize, key: Option<&str>) -> usize {
-        key.and_then(|key| (1..self.len(part)).find(|&at| self.key(content, part, at) == Some(key))).unwrap_or(0)
+        let stage = |s: StageHandle| nettai_match::ids::local(&content.defs.stage(s).key);
+        let named = |at: usize| match part {
+            ARENA => self.arenas[at - 1].iter().any(|&s| key == Some(stage(s))),
+            _ => self.key(content, part, at) == key,
+        };
+        key.and_then(|_| (1..self.len(part)).find(|&at| named(at))).unwrap_or(0)
     }
 
-    /// The key choice `at` of list `part` is named by: a stage's, the name a match writes for a background
-    /// (none: Random).
+    /// The key choice `at` of list `part` is named by: the stage its arena plays, the name a match writes for a
+    /// background (none: Random).
     fn key<'c>(&'c self, content: &'c Content, part: usize, at: usize) -> Option<&'c str> {
         let at = at.checked_sub(1)?;
-        if part == ARENA { self.arenas.get(at).map(|&s| nettai_match::ids::local(&content.defs.stage(s).key)) } else { self.backgrounds.get(at).map(String::as_str) }
+        if part == ARENA { self.arenas.get(at).map(|records| nettai_match::ids::local(&content.defs.stage(records[0]).key)) } else { self.backgrounds.get(at).map(String::as_str) }
     }
 
     /// What each choice of the two lists but Random is shown as, in the language shown: an arena its place in
-    /// the list ("12 / 96"), a background its game's name and its own ("BN4 ACDC Area").
+    /// the list ("12 / 48"), a background its game's name and its own ("BN4 ACDC Area").
     fn labels(&self, content: &Content) -> [Vec<String>; 2] {
         let place = |at: usize, of: usize| format!("{} / {of}", at + 1);
         let background = |b: &String| match pool_background(content, content.game(), b) {
@@ -754,6 +776,17 @@ impl Places {
         };
         [(0..self.arenas.len()).map(|at| place(at, self.arenas.len())).collect(), self.backgrounds.iter().map(background).collect()]
     }
+}
+
+/// Whether two stages are the same arena: everything they state the same, the actors they place with them,
+/// whatever the order their actor lists place them in (which only says who is updated first).
+fn same_arena(a: &StageData, b: &StageData) -> bool {
+    let StageData { layout, panel_pattern, music, background, mode, battle_number, effects, actors } = a;
+    let count = |list: &[ActorEntry], e: &ActorEntry| list.iter().filter(|x| *x == e).count();
+    (layout, panel_pattern, music, background, mode, battle_number, effects)
+        == (&b.layout, &b.panel_pattern, &b.music, &b.background, &b.mode, &b.battle_number, &b.effects)
+        && actors.len() == b.actors.len()
+        && actors.iter().all(|e| count(actors, e) == count(&b.actors, e))
 }
 
 /// What `key` sorts by in its natural order: each run of digits as wide as any number's, so by its number
@@ -1657,7 +1690,7 @@ mod tests {
         assert_eq!(value(PracticeOption::InputDisplay, opponent, NORMAL, options, true, [0; 2]), 1);
         assert_eq!(value(PracticeOption::Background, opponent, NORMAL, options, false, [3, 2]), 2);
         // (The arenas and the backgrounds after Random.)
-        assert_eq!(values(PracticeOption::Arena, &places), 1 + nettai_match::link_battle_stages(&content, "exe6").len());
+        assert_eq!(values(PracticeOption::Arena, &places), 1 + places.arenas.len());
         assert_eq!(values(PracticeOption::Background, &places), 1 + nettai_match::ids::pool_backgrounds(&content).len(), "every game's");
     }
 
@@ -1692,7 +1725,7 @@ mod tests {
         crate::shell::Shell::read_game_names(&["exe4", "exe5", "exe6"], "en");
         for (game, content) in [("exe6", exe6_content()), ("exe5", exe5_content()), ("exe4", exe4_content())] {
             let places = Places::of(&content, game);
-            let (mut arenas, mut stages) = (places.arenas.clone(), nettai_match::link_battle_stages(&content, game));
+            let (mut arenas, mut stages) = (places.arenas.concat(), nettai_match::link_battle_stages(&content, game));
             arenas.sort();
             stages.sort();
             assert_eq!(arenas, stages, "{game}");
@@ -1701,7 +1734,7 @@ mod tests {
             let last = [places.len(ARENA) - 1, places.len(BACKGROUND) - 1];
             let mut m = nettai_match::pick::live(&content, game, 7, None).unwrap();
             places.put(&mut m, last);
-            let (arena, background) = (*places.arenas.last().unwrap(), places.backgrounds.last().unwrap().clone());
+            let (arena, background) = (places.arenas.last().unwrap()[0], places.backgrounds.last().unwrap().clone());
             assert!(m.rounds.iter().all(|r| *r == RoundSettings { stage: Some(arena), background: Some(background.clone()) }), "{game}");
             let fought = m.places(&content, 7).unwrap();
             assert!(fought.iter().all(|p| p.stage == arena && nettai_match::ids::background_name(&content, p.background) == Some(background.as_str())), "{game}: every round there");
@@ -1711,8 +1744,9 @@ mod tests {
             let [arenas, backgrounds] = places.labels(&content);
             let n = places.arenas.len();
             assert_eq!((arenas[0].clone(), arenas[n - 1].clone()), (format!("1 / {n}"), format!("{n} / {n}")), "{game}: each by its place");
-            let key = |at: usize| nettai_match::ids::local(&content.defs.stage(places.arenas[at]).key);
-            assert_eq!([key(0), key(1), key(9)], ["netbattle-1", "netbattle-2", "netbattle-10"], "{game}: in their numbers' order");
+            let key = |at: usize| nettai_match::ids::local(&content.defs.stage(places.arenas[at][0]).key);
+            let numbers: Vec<u32> = (0..n).map(|at| key(at).trim_start_matches("netbattle-").parse().unwrap()).collect();
+            assert!(numbers[0] == 1 && numbers.is_sorted(), "{game}: in their numbers' order");
             for (name, key) in backgrounds.iter().zip(&places.backgrounds) {
                 assert!(!name.is_empty() && name != key && !name.contains(" / ") && !name.contains('-'), "{game}: {key} has a name");
             }
@@ -1731,6 +1765,41 @@ mod tests {
             places.put(&mut m, [0, 0]);
             assert_eq!(m.backgrounds, nettai_match::BackgroundPick::Pool, "{game}");
         }
+    }
+
+    /// Each arena is listed once, as the first of its records in the list's order: EXE6's 96 link battle stages
+    /// are 48 arenas (EXE5's 94, EXE4's 96 too), each a group of records the same but for the order their actor
+    /// lists place in, every record not its group's first in a group before it. A round that names a later
+    /// record is on its arena, which plays its first. (EXE6's netbattle-95 and 96, EXE5's 93 and 94, are two:
+    /// the second's effects lack the first's 0x800.)
+    #[test]
+    fn each_arena_is_listed_once() {
+        use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
+        for (game, content, stages, arenas) in [("exe6", exe6_content(), 96, 48), ("exe5", exe5_content(), 94, 48), ("exe4", exe4_content(), 96, 48)] {
+            let places = Places::of(&content, game);
+            let all = nettai_match::link_battle_stages(&content, game);
+            assert_eq!((all.len(), places.arenas.len()), (stages, arenas), "{game}");
+            let key = |s: StageHandle| natural(nettai_match::ids::local(&content.defs.stage(s).key));
+            for (at, records) in places.arenas.iter().enumerate() {
+                // (Its records the same arena, the first the earliest; no earlier arena the same.)
+                assert!(records.iter().all(|&s| same_arena(content.stage(records[0]), content.stage(s)) && key(records[0]) <= key(s)), "{game}");
+                assert!(places.arenas[..at].iter().all(|other| !same_arena(content.stage(other[0]), content.stage(records[0]))), "{game}");
+                for &s in records {
+                    let round = RoundSettings { stage: Some(s), background: None };
+                    assert_eq!(places.chosen(&content, &round), [at + 1, 0], "{game}");
+                    assert_eq!(places.round([at + 1, 0]).stage, Some(records[0]), "{game}");
+                }
+            }
+        }
+        // (EXE6's records the same to the byte: one arena.)
+        let content = exe6_content();
+        let places = Places::of(&content, "exe6");
+        let stage = |name: &str| nettai_match::link_stage(&content, "exe6", name).unwrap();
+        for (first, later) in [("netbattle-1", "netbattle-89"), ("netbattle-2", "netbattle-90")] {
+            let at = places.find(&content, ARENA, Some(later));
+            assert!(at > 0 && places.arenas[at - 1].contains(&stage(first)), "{later}");
+        }
+        assert_eq!(places.arenas[0][..2], [stage("netbattle-1"), stage("netbattle-2")], "side 0's navi first, then side 1's");
     }
 
     /// A background chosen leaves the arenas as they were: with Arena Random the seed picks each round's arena

@@ -321,6 +321,10 @@ Each is settled unless the user changes it.
     instead of blue. you should also show the beast form as the first cross in bn6". EXE5's Team Colonel is drawn
     in green; under MegaMan, a BN6 version's faces start with its Beast Out (the builds rules' `shown_first`), then
     its Crosses.
+47. **Practice's Arena lists each arena once** (2026-10-14): "don't show duplicate arenas in the practice mode
+    selector, just show the first of any duplicates". The link battle stages that differ only in the order their
+    actor lists place in (which side is updated first) are one arena, shown as the first of them; the grouping is
+    read from the content, and Random still picks among all of them. (docs/app.md §15.)
 
 ## 3. Chosen where the user gave no answer
 
