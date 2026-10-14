@@ -1570,7 +1570,10 @@ field's own, but Esc restores the text it had, Enter finishes it, and Up, Down o
 the pad's A finishes and its B restores. A dialog whose first control is a text field (a build's name, a direct
 connection's address) opens with it edited, its text all selected, so what is typed replaces it
 (`Nav::open_editing`; the user: "you should auto focus the primary text field on dialogs that pop up"); Esc then
-ends the edit and leaves the dialog open, and a second Esc closes it. While a field is edited the footer's hints are the field's own
+ends the edit and leaves the dialog open, and a second Esc closes it. A search field's list (the libraries' of
+the folder, the patch cards and the auto battle data; the replays') goes back to its top as the search changes,
+sliding there as a reveal does, and the focus enters it at its first row next (`Nav::list_to_top`; the user:
+"when a search box is changed, it should reset scroll"). While a field is edited the footer's hints are the field's own
 ("Enter Done", "Esc Cancel", the `Page`'s `field-hints`). The field's border and caret light
 while it is edited, and its text is clipped at its padding and scrolled to keep the caret in view (rule 8). The
 edit is Slint's `TextInput`, so the desktop's IME composes into it. The screen is told each change and sets the
