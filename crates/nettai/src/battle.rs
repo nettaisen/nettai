@@ -190,7 +190,7 @@ impl Shell {
         }
         shell.set_battle(BattleKind::None);
         shell.set_battle_menu(false);
-        self.loading = Some(Loading { start, began: Instant::now(), preload: None, theirs: 0.0 });
+        self.loading = Some(Loading { start, began: crate::clock::now(), preload: None, theirs: 0.0 });
     }
 
     /// A frame of the cards: the match made ready a few steps at a time, and the battle begun once it is, the
