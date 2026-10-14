@@ -485,8 +485,8 @@ fn press_at(id: &'static str, index: i32) -> Step {
 }
 
 /// The wait's training session is being played.
-fn training(app: &App) -> bool {
-    app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Training && b.playing())
+fn practicing(app: &App) -> bool {
+    app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Practice && b.playing())
 }
 
 /// The step after waits for `come` (or a minute).
@@ -637,13 +637,13 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
         shot(add, "play-waiting", Pair::None);
         add(SETTLE, press("wait.train"));
     }
-    reach(add, |app, _| training(app));
+    reach(add, |app, _| practicing(app));
     add(2500, step(|_| {}));
-    shot(add, if phone { "play-waiting-training" } else { "play-waiting" }, Pair::None);
+    shot(add, if phone { "play-waiting-practice" } else { "play-waiting" }, Pair::None);
     add(SETTLE, step(|app| app.shell.open_menu()));
     shot(add, "play-waiting-menu", Pair::None);
     add(SETTLE, press_at("menu.rows.added", 0));
-    reach(add, |app, _| training(app));
+    reach(add, |app, _| practicing(app));
     if phone {
         add(SETTLE, step(|app| app.shell.open_menu()));
         add(SETTLE, press_at("menu.rows.added", 1));
@@ -844,7 +844,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     if phone {
         add(SETTLE, press("wait.train"));
     }
-    reach(add, |app, _| training(app));
+    reach(add, |app, _| practicing(app));
     add(SETTLE, step(|app| app.shell.open_menu()));
     add(SETTLE, press_at("menu.rows.added", if phone { 2 } else { 1 }));
     reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Builds);

@@ -96,7 +96,7 @@ nettai ([docs/app.md](docs/app.md)) is the player's program, navigated by the ke
 touch. It opens on a main menu, the selected game's battles playing beside it: PLAY, online against another
 player; TRAINING, offline against a dummy; BUILDS; REPLAYS; and Settings, kept between runs. The app is being
 rebuilt to a new design: the menu, Settings and the battle's host are built, and the other four screens aren't yet
-(`NETTAI_TRAINING=<game>` starts a training battle meanwhile). In the battle the arrows move, Z is A, X is B, A is
+(`NETTAI_PRACTICE=<game>` starts a training battle meanwhile). In the battle the arrows move, Z is A, X is B, A is
 L, S is R, Enter is START and Backspace is SELECT (Settings binds others, and a pad's buttons), and Esc opens the
 app's menu; in training, R starts over. A match file sets the game, its rounds (one `[[round]]` each: the set is as
 many rounds, three for the original's best of three), each side's navi, folder, version, forms, patch cards,

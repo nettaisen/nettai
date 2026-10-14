@@ -71,7 +71,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(
         SETTLE,
         step(|app| {
-            crate::screens::training::end(&mut app.shell);
+            crate::screens::practice::end(&mut app.shell);
             if app.shell.battle.is_some() {
                 app.shell.end_battle();
             }

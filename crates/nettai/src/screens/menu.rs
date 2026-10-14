@@ -90,7 +90,7 @@ impl Screen for Menu {
     fn activate(&mut self, shell: &mut Shell, id: &str, _index: i32) {
         match id {
             "play" => shell.go(ScreenId::Play),
-            "training" => shell.go(ScreenId::Training),
+            "practice" => shell.go(ScreenId::Practice),
             "builds" => shell.go(ScreenId::Builds),
             "replays" => shell.go(ScreenId::Replays),
             "settings" => shell.go(ScreenId::Settings),
