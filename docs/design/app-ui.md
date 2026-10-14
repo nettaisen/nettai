@@ -321,6 +321,19 @@ Each is settled unless the user changes it.
     instead of blue. you should also show the beast form as the first cross in bn6". EXE5's Team Colonel is drawn
     in green; under MegaMan, a BN6 version's faces start with its Beast Out (the builds rules' `shown_first`), then
     its Crosses.
+45. **A game changed on Practice's entry keeps the same song playing** (2026-10-14). The user: "switching game in
+    practice mode shouldn't restart the music if it's the same music". Where the entry's song after the change of
+    game (the header's arrows, or L and R) is the same one, the same pack's same song (a theme picked: BN4 Virus
+    Battle plays the same song in every game), it goes on where it is, with no restart and no crossfade, and the
+    session's battle of the new game takes it over at START as before. Where it differs (Game's own: BN6's own,
+    then BN5's), it crossfades as before. The pick stays what the player set across the change (§2.40: it is the
+    visit's). (docs/app.md §1, "The battle's music", and §15.)
+47. **Practice's Arena lists each arena once** (2026-10-14): "don't show duplicate arenas in the practice mode
+    selector, just show the first of any duplicates". The link battle stages that differ only in the order their
+    actor lists place in (which side is updated first) are one arena, shown as the first of them; the grouping is
+    read from the content, and Random still picks among all of them. Of the two pairs that differ only in their
+    effects, by a bit nothing reads (EXE6's netbattle-95 and 96, EXE5's 93 and 94): "they should count as
+    duplicates too", so the effects aren't compared. (docs/app.md §15.)
 48. **Bass-Cross MegaMan is one card whose effects are the build's version's** (2026-10-14). The user: "you should
     only allow the bass-cross megaman patch card for the given version and it should switch automatically depending
     on game version, e.g. team protoman can't pick team colonel's. it looks like bn6 is also missing gregar's
@@ -335,20 +348,6 @@ Each is settled unless the user changes it.
     first said it (a card's effects as a list or a table of lists by version): "i don't like this typing, it's
     weird and confusing. can you make it more consistent?", so a card's effects are always one list, a version's
     own effect marked by its `version`. (docs/app.md §8.)
-
-45. **A game changed on Practice's entry keeps the same song playing** (2026-10-14). The user: "switching game in
-    practice mode shouldn't restart the music if it's the same music". Where the entry's song after the change of
-    game (the header's arrows, or L and R) is the same one, the same pack's same song (a theme picked: BN4 Virus
-    Battle plays the same song in every game), it goes on where it is, with no restart and no crossfade, and the
-    session's battle of the new game takes it over at START as before. Where it differs (Game's own: BN6's own,
-    then BN5's), it crossfades as before. The pick stays what the player set across the change (§2.40: it is the
-    visit's). (docs/app.md §1, "The battle's music", and §15.)
-47. **Practice's Arena lists each arena once** (2026-10-14): "don't show duplicate arenas in the practice mode
-    selector, just show the first of any duplicates". The link battle stages that differ only in the order their
-    actor lists place in (which side is updated first) are one arena, shown as the first of them; the grouping is
-    read from the content, and Random still picks among all of them. Of the two pairs that differ only in their
-    effects, by a bit nothing reads (EXE6's netbattle-95 and 96, EXE5's 93 and 94): "they should count as
-    duplicates too", so the effects aren't compared. (docs/app.md §15.)
 
 ## 3. Chosen where the user gave no answer
 
