@@ -726,9 +726,10 @@ mod tests {
         }
         assert!(!problems.iter().any(|p| p.contains("crosses")), "no Crosses is none: {problems:?}");
         assert!(!write(&six, &new).contains("version") && !write(&six, &new).contains("crosses"));
-        // (Nor does the engine start its round: a player's setup states the
+        // (Nor does the engine set its round up, even undealt, its folders
+        // being made: a player's setup states the
         // version, and nothing fills one in.)
-        let refused = crate::check::start(&six, &new).err().expect("no round without the versions");
+        let refused = crate::check::set_up(&six, &new).err().expect("no round without the versions");
         assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the rules' `version` (gregar or falzar): none is assumed");
         let picked = write(&six, &crate::pick::live(&six, "exe6", 1, None).unwrap());
         assert_eq!(picked.matches("\nversion = \"falzar\"\n").count() + picked.matches("\nversion = \"gregar\"\n").count(), 2, "{picked}");
@@ -754,7 +755,7 @@ mod tests {
         }
         // (The navi's version is the side's version fact, which the round
         // carries: NaviStats+0x20 is compat's to write from it.)
-        let b = crate::check::start(&six, &none).unwrap();
+        let b = crate::check::set_up(&six, &none).unwrap();
         let version = |side: u8| b.fact(side, nettai_battle::content::PlayerFact::Version).and_then(|f| f.name().map(str::to_string));
         assert_eq!((version(0), version(1)), (Some("falzar".to_string()), Some("falzar".to_string())));
         assert!(!write(&six, &none).contains("crosses"));
