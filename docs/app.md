@@ -1137,16 +1137,24 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
     any build's; the auto battle's Giga place takes any Giga chip), so it stays and is no problem. Switched back,
     the build is as it was. A build file's format is unchanged: it states the version's facts as before.
 - **The header's version tag is the switch** (§2.42), on every tab and for every navi (the version decides the
-  folder's Giga chips whatever the navi). The shell's `Header` makes its tag a switch where the page names it
-  (`Page.tag-nav`; Builds names it `version`, and only while the editor shows does the tag have text, so enabled):
-  a `Focusable` of the stepper kind over the tag, so a click or a tap is `activate("version")` and Left and Right
-  are `step("version", ∓1)`. The editor's frame takes both whatever tab is shown (`Editor::step_version`: the
-  next version in the game's order, around; a build of none takes the first), switches through
-  `Draft::choose_version`, shows the tab anew and then the header. The tag keeps the `Pill`'s look, its name
-  and color the version's, with an `ArrowLeft` and an `ArrowRight` at its sides (muted, the cursor's color on
-  hover and focus) and Back's hover tint behind; its touch is the tag and arrows with 6 to each side, 30 tall,
-  and on a phone 44 tall and at least 44 wide. While it is focused the footer is `BuildsScreen.version-hints`
-  (←→ Switch version, Enter Next version). Other pages name no tag switch: their tags are plain.
+  folder's Giga chips whatever the navi), and it reads as a tag that opens a choice (§2.44: the user, "i just
+  don't like how the version changer looks it feels weird and out of place"). The shell's `Header` makes its tag a
+  select where the page names it (`Page.tag-nav`; Builds names it `version`, and only while the editor shows does
+  the tag have text, so enabled): a `Focusable` of the stepper kind over the tag, so a click, a tap, Enter or the
+  pad's A is `activate("version")` and Left and Right are `step("version", ∓1)`, as any select's. The tag is the
+  other headers' `Pill`, in the same place (16 after the title, centered in the header as theirs), its name and
+  color the version's, with a small `ArrowDown` in the tag's color after its name inside the pill (`Pill.caret`);
+  the hover tint (Theme.tint, pressed Theme.line) fills the pill. Its touch, and so the cursor's brackets, is the
+  pill with 6 at each side and 4 over and under, 30 tall, the brackets 5 past that; on a phone 44 tall and at
+  least 44 wide, inside the header. `activate` opens the game's versions as a list under the tag
+  (`Shell::pick_tags`, `Kit::version_tags`: the select's list, `PickerLayer`, each row's text a `Pill` in the
+  version's color through `Shell.picker-tones`, the list at least 168 wide and kept inside the window; on a phone
+  the sheet from the bottom), open at the build's version; a row chosen is `choose("version", 0, choice)`, which
+  puts the focus back on the tag and switches to that version (`Editor::switch_version`). Left and Right step it
+  without opening (`Editor::step_version`: the next or previous version in the game's order, around; a build of
+  none takes the first). Either switches through `Draft::choose_version`, shows the tab anew and then the header.
+  While it is focused the footer is `BuildsScreen.version-hints` (←→ Switch version, Enter Choose version).
+  Other pages name no tag switch: their tags are plain, with no caret.
 - **The Navi tab's forms.** While the game's own navi is the build's, the faces of the forms the version brings
   him are under the navi's facts (`Builds::forms_of`: of a new build of the version, its form list's and the forms
   of the facts the version sets: EXE6's five Crosses, EXE4's and EXE5's six souls), twice their size, in rows as
@@ -1940,7 +1948,7 @@ of the game's first version made beside the walk's, a Giga chip of that version'
 `builds-version-focus`, the tag focused on the Navi tab with the version's Crosses or souls under the navi and the
 footer's Switch version; `builds-version-switched`, Right: the next version's tag, its forms, the header's one
 problem, the Folder tab marked, the focus still on the tag; `builds-folder-switched`, the entry in the error red
-and the strip saying why; `builds-folder-switched-back`, Enter on the tag there: the first version again, ready;
+and the strip saying why; `builds-folder-switched-back`, Left on the tag there: the first version again, ready;
 a step after each checks the focus and the build's state are as the picture's name says). A game may have one navi or thirteen, a choice or none, four tabs or five:
 a step names the control it is for and does nothing where the game has none. The probe's bursts are the
 editor's body arriving as the tab changes, a chip the rules refuse (its row shakes) and a chip put in (it flies
@@ -2396,7 +2404,7 @@ again after them and the entry back from Builds keep what the player set. None o
   (`nettai_match::ids::pool_backgrounds`: 70, BN4's, then BN5's, then BN6's, in any game's practice), each in
   its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Arena is an arrow
   pager, the app's `Stepper` as the practice menu's rows have it (the user: "the arena names are meaningless so
-  you should just have like a pager widget that goes through them"): Left and Right or its arrows step it, around
+  you should just have like a pager widget that goes through them"), 40 tall as the selects (36 on a phone): Left and Right or its arrows step it, around
   from the last to Random, a held key repeating; Enter steps it on; it opens no list. Background was one too
   ("background should also be a arrow button pager thing") until the user asked for lists: "background and music
   selectors should both be dropdowns like they are in the practice screen" (docs/design/app-ui.md §2.43).
@@ -2550,6 +2558,13 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Battle: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
 | Battle: Chip draw | Shuffled, Folder order | `Training::chip_draw`: both sides' custom screens deal from their folders' tops, in the folders' own order |
 | Display: Input display | Off, On | the app's own drawing, below |
+
+**Its rows' look** (`MenuRow`): bare, a group's title over each group, the hover tint on a row. Its controls are
+the entry's size (docs/design/app-ui.md §2.44, the user's "option 1"): the steppers and the two selects 40 tall
+(36 on a phone, as the entry's), in one column, the value's box 196 and its arrows' room 72, right-aligned with 8
+to spare, so the selects and the steppers line up; a row is 52 tall (it was 44, its steppers 32 and its selects
+32 in a narrower column). On a phone a row is 64, its label over its control (24, then the control at 26, as wide
+as the panel). The menu scrolls a little more for it, and Up and Down go through the whole page first, as before.
 
 Arena changes the field, which a round sets as it starts, so a change starts the set over on the new arena:
 the session's match is put on it, its set made again from the session's seed, and the live driver plays that
