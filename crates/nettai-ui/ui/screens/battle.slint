@@ -306,15 +306,13 @@ export component BattleScreen inherits Rectangle {
     // (On a phone the picture's room is the window's width, at its top, with no gutter: the picture is a whole
     // multiple of the game's, and a gutter's 32 can be the difference between one multiple and the next.)
     property <length> picture-height: Theme.phone ? min(self.height, self.width * 2 / 3) : self.height;
-    Rectangle {
-        background: Theme.phone ? transparent : #000000;
-    }
-
+    // (No ground of its own: the backdrop is behind the picture, around it too.)
     Picture {
         x: 0;
         y: 0;
         width: parent.width;
         height: root.picture-height;
+        ground: transparent;
     }
 
     Connection {
