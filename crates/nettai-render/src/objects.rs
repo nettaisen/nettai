@@ -263,10 +263,13 @@ pub fn project(pos: (i32, i32, i32), view: &View) -> Projected {
 
 /// What [`project`] rounds off a position: its true place less the
 /// projected one, in 16.16 pixels right and down, at its anchor (`x`, `y`)
-/// and at its ground (`ground`). The projection takes the camera's whole
-/// pixels; the camera's part of a pixel (the custom screen's slide moves
-/// it 1.5 pixels a tick) is what it leaves (the field layer's the same:
-/// `Stage::draw_field`).
+/// and at its ground (`ground`). The projection takes the whole pixels of
+/// the position and of the camera; what it leaves is their parts of a
+/// pixel: an object's own (a thrown bomb's arc, 2.75 to 2.9 pixels a tick
+/// across, its height a parabola) and the camera's (the custom screen's
+/// slide moves it 1.5 pixels a tick; the field layer's the same:
+/// `Stage::draw_field`). The right-hand player's console mirrors the
+/// position, so its X's part goes the other way.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct FineProjected {
     pub x: i32,
@@ -280,10 +283,11 @@ fn sub(v: i32) -> i32 {
 }
 
 /// What [`project`] rounds off `pos` ([`FineProjected`]).
-pub fn project_fine(_pos: (i32, i32, i32), view: &View) -> FineProjected {
+pub fn project_fine(pos: (i32, i32, i32), view: &View) -> FineProjected {
     let (cx, cy, cz) = view.camera;
-    let ground = -sub(cy);
-    FineProjected { x: -sub(cx), ground, y: ground + sub(cz) }
+    let x = if view.mirror { -sub(pos.0) } else { sub(pos.0) };
+    let ground = sub(pos.1) - sub(cy);
+    FineProjected { x: x - sub(cx), ground, y: ground - (sub(pos.2) - sub(cz)) }
 }
 
 /// What [`project_hud`] rounds off `pos`: on the right-hand player's
@@ -628,6 +632,30 @@ mod tests {
         // Mirrored for the right-hand player.
         let p = project(((-60) << 16, 28 << 16, 0), &View { mirror: true, ..v });
         assert_eq!(p.x, 180);
+    }
+
+    /// What the projection rounds off, added back, is the true place: the
+    /// position and the camera taken whole, from either console, for the
+    /// battle's projection and the HUD's.
+    #[test]
+    fn the_rounded_off_part_of_a_pixel_added_back_is_the_true_place() {
+        let exact = |v: i32| v as f64 / 65536.0;
+        for pos in [(-60 << 16, 28 << 16, 0), (0x12_8000 - (60 << 16), 0x1C_4000, 0x9_C000), (-0x2_E666, 0x31_1999, 0x1_7333)] {
+            for camera in [(0, 0, 0), (0, -0x1_8000, 0), (0x2_0000, -0x4_8000, 0), (0x8000, 0x1_4000, 0)] {
+                for mirror in [false, true] {
+                    let view = View { camera, mirror, ..View::default() };
+                    let (p, f, h, fh) = (project(pos, &view), project_fine(pos, &view), project_hud(pos, &view), project_hud_fine(pos, &view));
+                    let sign = if mirror { -1.0 } else { 1.0 };
+                    let x = sign * exact(pos.0) - exact(camera.0) + 120.0;
+                    let ground = exact(pos.1) - exact(camera.1) + 80.0;
+                    let y = ground - (exact(pos.2) - exact(camera.2));
+                    let hud_x = if mirror { x + 2.0 * exact(camera.0) } else { x };
+                    let got = |whole: i32, part: i32| whole as f64 + exact(part);
+                    assert_eq!((got(p.x, f.x), got(p.ground, f.ground), got(p.y, f.y)), (x, ground, y), "{pos:?} {camera:?} {mirror}");
+                    assert_eq!((got(h.x, fh.x), got(h.y, fh.y)), (hud_x, y), "{pos:?} {camera:?} {mirror}: the HUD's");
+                }
+            }
+        }
     }
 
     #[test]

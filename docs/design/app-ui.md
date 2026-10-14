@@ -524,7 +524,9 @@ Each is settled unless the user changes it.
       the field half a pixel up on the odd ticks, each sprite at its true place, on the same path and ticks.
       The camera's shake has no in-between places: each tick's jitter is whole pixels by design (-2 to 1
       pixels each way at the common strength), so it stays the game's; nothing is made up between its
-      frames.
+      frames. Then, told the navis and the attacks on the field round their in-between places too, the user:
+      "you should also do". What moves by parts of a pixel (thrown bombs and rocks, arcs, a few shots and
+      dashes) is drawn where it truly is; a semi-transparent or mosaic sprite stays at its whole pixels.
     - *Presentation alone.* The motion goes by the battle's own ticks, never the clock, and is in no state the
       simulation keeps: a rollback, a replay and a video draw it alike. Original draws every frame exactly as
       before; every verification path draws Original (docs/frontend.md §3, "Enhanced and original").
@@ -649,6 +651,7 @@ What moves:
 | the battle's background (§2.55) | with Battle graphics Enhanced, a background that drifts by parts of a pixel a frame glides at the window's resolution instead of stepping a whole pixel every few frames. With Reduce motion, or Original, it steps as the game's does |
 | the banners and telops, in the battle (§2.55) | with Battle graphics Enhanced, their squash and stretch (and the custom screen's emblem as it spins) is drawn at the window's resolution, the game's own scale on each tick, instead of whole rows of the frame. With Reduce motion, or Original, as the game draws them |
 | the custom screen's slide, in the battle (§2.55) | with Battle graphics Enhanced, the field and the sprites on it, which move down 1.5 pixels a tick with the window, are drawn where they truly are at the window's resolution instead of in steps of 2, 1, 2, 1 pixels; the window itself slides as the game's. With Reduce motion, or Original, they step as the game's do |
+| what moves on the field, in the battle (§2.55) | with Battle graphics Enhanced, a sprite whose place is between whole pixels (a thrown bomb's arc) is drawn there at the window's resolution instead of in uneven whole-pixel steps; its pixel art is the game's. With Reduce motion, or Original, it steps as the game's does |
 | the custom gauge's fill, in the battle (§2.55) | with Battle graphics Enhanced, the fill's end is where the gauge's counter is, at the window's resolution, instead of stepping a pixel every 2, 4 or 8 ticks. With Reduce motion, or Original, it steps as the game's does |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |

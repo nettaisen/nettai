@@ -1244,6 +1244,33 @@ so it has no in-between places, and stays as the game draws it.
   through the slide. The path (15 pixels, linear) and the ticks are the
   game's; at three times the field moves 4 or 5 output pixels a tick, at
   two and four times exactly 3 and 6.
+- *The sprites between whole pixels* (`objects::project_fine`,
+  `Overlay::fine`). An object's place is 16.16 and the projection takes
+  its whole pixels too, so what moves by parts of a pixel a tick steps
+  unevenly on the screen; then the user: "you should also do" the navis and
+  attacks. Enhanced draws every part of an object's sprite (its shadow
+  among them, at the ground's part) and the HUD's pieces placed over it at
+  its true place, an overlay as above, the same path and ticks; a part at
+  a whole pixel stays in the frame. A part blended or in mosaic stays at
+  its whole pixels (the composition mixes it with what is behind), and
+  under a blended sprite in front an overlay doesn't show through; nor is
+  the hardware's quirk of a transparent sprite pixel raising the priority
+  of the one under it followed for overlays. What moves so (measured
+  2026-10-14 on a seeded match of each game, 6,000 ticks, the left player
+  throwing bombs and using TankCan, Magnum and BigHammer): the thrown
+  bombs alone (MiniBomb, BlkBomb, BugBomb: 2.75 to 2.9 pixels a tick
+  across, the height a parabola), 121, 137 and 156 sprite-ticks in about
+  21,000, 23,000 and 16,000 drawn, and an EXE5 effect at rest a part of a
+  pixel off; by the code, anything aimed by a division (`trajectory.in_ticks`,
+  `bios_div`: a rock thrown, CannBall, CrakBom, CactBall, CacDanc, Meddy,
+  NapalmMan, Django, FlshBom, RlngLog, VDoll, the heal supports, ChargeMan,
+  HeatMan, EXE4's Binder and SeekBom), the velocities the content divides
+  (RedSun, SunMoon and its meteors, SandWorm, EXE6's MegaMan code), and a
+  few speeds (JudgeMan 2.25 pixels a tick, KendoMan's dash 6.67, EXE4's
+  gear 0.5). The navis move a panel at a time (40 or 24 pixels), slide 10
+  across and 6 or 8 in depth, or warp; the buster, Cannon and AirShot hit
+  at once; most shots move 2 to 20 whole pixels a tick; sparks, effects
+  and attachments are placed at whole pixels: none of them changes.
 
 - *The custom gauge's fill* (`hud::gauge_sub`). The gauge's counter runs
   to 0x4000 over a bar of 16 cells of 8 pixels, 128 a pixel; it gains 0x20
@@ -1322,6 +1349,8 @@ colors, it leaves as the game draws it.
 | The Cross window's opening, the chatbox's (a description, a message) | three and four steps of their maps; the text printed a character at a time, the portrait's animation, the arrow's frames | pictures | the game's |
 | HP numbers, the judge's damage, the turn timer, "TIME UP!", "COUNTER HIT!", "PAUSE", the next chip's name, the chip icons, the warning markers | numbers roll by value, lines appear and go, the markers' two frames | none on the screen | the game's |
 | The emotion window's flicker and blink | its palette black two ticks of four, left out on two | palettes | the game's |
+| What moves on the field by parts of a pixel (thrown bombs and rocks, arcs, a few shots and dashes) | its 16.16 place and velocity | the place's whole pixels: uneven steps (a bomb's 2.9 pixels a tick across in steps of 3 and now and then 2) | where it truly is, at the window's resolution (overlays), but a blended or mosaic part |
+| Navis, shots, sparks and effects otherwise | a panel at a time, whole-pixel speeds, placed at whole pixels | whole pixels | the game's |
 | The camera's shake (hits, bombs, chips that strike the ground, a soul's or a Cross's change) | a jitter drawn each tick it shakes, by magnitude 0 to 3: -1 to 0, -2 to 1, -4 to 3, -8 to 7 pixels each way (EXE6's `byte_8030284`, EXE5's 0x08030DF4, the same in EXE4's 0x08025FE0: the RNG's bits less a whole-pixel bias) | whole pixels by design: no in-between place | the game's (nothing to smooth: no motion is made up between its frames) |
 | An object's shake (a dimmed navi hit, a rock before it is thrown) | a jitter around its whole-pixel origin each tick (`AddRandomVarianceToTwoCoords`) | whole pixels | the game's |
 | The fades: the intro's, a dimming's, a transformation's, the custom screen's, a palette flash | palettes toward black or white | sixteenths of the way, as the hardware's palette fade | the game's (a fade, no motion) |
