@@ -77,7 +77,8 @@ impl Socket {
         }
     }
 
-    /// Close it, after what was sent before.
+    /// Close it, after what was sent before (one still opening says that
+    /// once it has opened, then closes).
     pub(crate) fn close(&mut self) {
         let _ = self.commands.send(Command::Close);
     }
@@ -98,9 +99,9 @@ fn run(url: &str, take: &Receiver<Command>, tell: &Sender<WsEvent>) -> Result<()
     };
     tcp.set_read_timeout(Some(READ_WAIT)).map_err(|e| e.to_string())?;
     let _ = tcp.set_nodelay(true);
-    if tell.send(WsEvent::Open).is_err() {
-        return Ok(());
-    }
+    // (Its owner may have gone while it opened: what it said before it went
+    // is said all the same, then the close it asked for.)
+    let _ = tell.send(WsEvent::Open);
     loop {
         loop {
             match take.try_recv() {
@@ -110,10 +111,10 @@ fn run(url: &str, take: &Receiver<Command>, tell: &Sender<WsEvent>) -> Result<()
             }
         }
         match ws.read() {
+            // (Its owner gone, the commands it left are said first, then
+            // its close.)
             Ok(Message::Text(text)) => {
-                if tell.send(WsEvent::Text(text.to_string())).is_err() {
-                    return close(&mut ws);
-                }
+                let _ = tell.send(WsEvent::Text(text.to_string()));
             }
             Ok(Message::Close(frame)) => return Err(frame.map_or("the server closed it".into(), |f| format!("the server closed it ({})", f.reason))),
             Ok(_) => {}
