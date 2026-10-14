@@ -1,11 +1,12 @@
-// The NaviCust tab of a build's editor (docs/design/app-ui.md §6, "NaviCust"; §2 item 10). At the left the board,
-// framed, with its key under it: the game's board alone where it has no out-of-bounds cells (a 5x5), and EXE6's
-// 7x7 with its board outlined in white, the ring of out-of-bounds cells around it hatched and no cells at the
+// The NaviCust tab of a build's editor (docs/design/app-ui.md §6, "NaviCust"; §2 items 10 and 26). At the left the
+// board, framed, with its key under it: the game's board alone where it has no out-of-bounds cells (a 5x5), and
+// EXE6's 7x7 with its board outlined in white, the ring of out-of-bounds cells around it hatched and no cells at the
 // corners. The command line is marked three ways: a line over and under its row that runs over what is placed
 // there, an arrow at each end outside the board, and a tint in its empty cells. A plus part's cell is its color
-// crossed edge to edge, with no border. In the middle PROGRAMS, the open list to pick from: each program in each of
-// its colors, and whether it is placed, in hand or out of bounds (which is no error). At the right what the NaviCust
-// does and every bug the build has, by its full name and its level, purple.
+// crossed edge to edge, with no border. In the middle PROGRAMS, the open list to pick from (a program is taken from
+// it as many times as it is placed): each program in each of its colors, and whether it is placed (how many copies,
+// where more than one), in hand or out of bounds (which is no error). At the right what the NaviCust does and the
+// bugs it brings (not a patch card's), by their full names and levels, purple.
 //
 // The piece in hand is drawn over the board where the cursor holds it: lifted (a little larger, with a shadow), and
 // it turns a quarter at a time and drops with a pulse along its cells. On a phone the board is over the list, and
@@ -52,12 +53,13 @@ export enum ProgramState {
     out,
 }
 
-// A program in one of its colors, as the list shows it.
+// A program in one of its colors, as the list shows it: `copies`, how many of it are placed in that color.
 export struct ProgramRow {
     name: string,
     tone: color,
     plus: bool,
     state: ProgramState,
+    copies: int,
 }
 
 // A line of the effects or the bugs: a title, an effect, a bug with its level or amount (`extent`), a list with
@@ -92,7 +94,8 @@ export struct ProgramDetail {
 // What the tab shows: src/screens/builds/navicust.rs sets these.
 export global NavicustView {
     // (The footer says what the keys do where the cursor is: on a placed piece, Del takes it off; on a placed
-    // program's row, Enter does; with a piece in hand, Back puts it away into the list.)
+    // program's row, Enter takes another copy and Del takes the last one off; with a piece in hand, Back puts it
+    // away into the list.)
     out property <[Hint]> hints: self.holding ? self.holding-hints : self.on-piece ? (self.in-list ? self.row-hints : self.piece-hints) : self.hints-at-rest;
     property <[Hint]> hints-at-rest: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
@@ -102,7 +105,8 @@ export global NavicustView {
     ];
     property <[Hint]> row-hints: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take off") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("Take off") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -164,7 +168,7 @@ export global NavicustView {
     in property <[ProgramRow]> programs;
     // The cursor is in the list: its title is lit, the board's isn't.
     in property <bool> in-list;
-    // What the NaviCust does, and the build's bugs.
+    // What the NaviCust does, and the bugs it brings (a patch card's aren't the NaviCust's).
     in property <[EffectLine]> effects;
     in property <[EffectLine]> bugs;
     // The same on a line each, for a phone.
@@ -359,7 +363,8 @@ component DropFlash inherits Rectangle {
     }
 }
 
-// A program of the list: its color (a plus part's crossed), its name, and where it is.
+// A program of the list: its color (a plus part's crossed), its name, and where it is (placed, how many copies where
+// more than one).
 component ProgramRowView inherits Rectangle {
     in property <ProgramRow> program;
     in property <int> nav-index;
@@ -397,7 +402,7 @@ component ProgramRowView inherits Rectangle {
     state := Text {
         x: parent.width - 8px - self.width;
         width: 110px;
-        text: root.program.state == ProgramState.placed ? @tr("Placed") : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : "";
+        text: root.program.state == ProgramState.placed ? (root.program.copies > 1 ? @tr("Placed ×{}", root.program.copies) : @tr("Placed")) : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : "";
         color: root.program.state == ProgramState.held ? Theme.cursor : Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
@@ -928,7 +933,7 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    // ---- What the NaviCust does, and the build's bugs: two panels beside the list, or on a phone a line each.
+    // ---- What the NaviCust does, and its bugs: two panels beside the list, or on a phone a line each.
     if !Theme.phone: Rectangle {
         PanelBack {
             x: root.side-x;

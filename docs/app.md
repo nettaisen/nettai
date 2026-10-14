@@ -1038,7 +1038,7 @@ The five tabs are built. **Adding a tab** is its two files, `lang/ja/builds.po` 
 view's export (builds.slint and app.slint), its word in `BuildsView.tab-names`, its module in `editor::all()`,
 and its sheet's `if` in `BuildsOverlay` if it opens one on a phone.
 
-**The NaviCust tab** (`navicust`; docs/design/app-ui.md §2.10). What it draws is the game's data, read by
+**The NaviCust tab** (`navicust`; docs/design/app-ui.md §2.10, §2.26). What it draws is the game's data, read by
 `builds::grid` (the boards and the command line from the game's rules/navicust/board module as it loaded, each
 program's shape, compressed shape, colors and plus mark from its definition; a board by the setup's
 `navicust_expansions` where the game takes it, else its one: EXE4's): no game is named.
@@ -1056,35 +1056,40 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   go down.
 - *Programs*, the open list in the middle: each program in each of its colors (a row a color, as the folder's
   library has a row a code), in the library's order, with its color, its cross if a plus part, and where it is:
-  Placed, In hand, or Out of bounds (a placed copy over the ring: no error, and nothing red).
-- *Effects and Bugs*, two panels at the right. The effects are what the NaviCust alone does: the build's
-  overview without its patch cards (`Checked::of` a second time, the cards' fact emptied), each number it
-  changes ("HP +500") and each program at work that gives an ability. The bugs are the whole build's, whoever
-  brings them (the draft's overview), each by its full name and its level or amount, purple. A bug that wasn't
-  there before the last change pulses purple once.
+  Placed (with how many copies, Placed ×2, where more than one is: `ProgramRow.copies`), In hand, or Out of
+  bounds (a placed copy over the ring: no error, and nothing red).
+- *Effects and Bugs*, two panels at the right: what the NaviCust alone comes to, the build's overview without
+  its patch cards (`own_overview`: `Side::without_patch_cards`, and `Checked::of` a second time where the build
+  has cards). The effects are each number it changes ("HP +500") and each program at work that gives an
+  ability; the bugs are those it brings, each by its full name and its level or amount, purple. A patch card's
+  bugs aren't listed here (the user: "navicust shouldn't display patch card bugs"): they are the Patch cards
+  tab's (the card's lines, Together) and the build overview's, which has every bug the build has. A bug that
+  wasn't there before the last change pulses purple once.
 - *The strip* across the top, as the folder's: the program under the cursor (the piece in hand, the piece on
   the cell the cursor is on, or the list's row), its name beside its color, and the game's description of it
   (the locales' `[navicust_programs]` descriptions, the ROMs' own text, on one line). A phone has no strip.
 - *The keys.* The cursor goes over the board cell by cell (each cell is a control, `cell`, its place in the
-  drawn grid). Confirm on a placed piece picks it up by that cell; Confirm on a program's row takes it in hand,
-  its middle on the board's (a copy already placed in that color says whether it is compressed). While a piece
+  drawn grid). Confirm on a placed piece picks it up by that cell; Confirm on a program's row takes a new copy of
+  it in hand, its middle on the board's, however many copies are placed already (the user: "you should allow a
+  navicust part to be placed multiple times"; no game's rules limit copies, §2.26 of the design; a copy already
+  placed in that color says whether it is compressed, as a save compresses them all alike). While a piece
   is in hand it is where the cursor is: the arrows (and a pad's stick) move it a cell at a time, the keys bound
   to L and R (A and S) and the pad's shoulders turn it a quarter about the cell held (the tab's `key` and
   `button` take them before the frame changes the tab), C or the pad's north button compresses it in place (its
   other shape turned as it is, about the same middle, held by the same cell where it still has it, else by the
   nearest, the cursor going there: `Edit::Compress`), Confirm puts it down where it fits, and Back puts it away
   into the list, as the game's B does. So a placed program is taken off by picking it up and putting it away;
-  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand),
-  and so does Confirm on a placed program's row. One that doesn't fit is refused with the rules' own kind
+  Del does it at once (the piece under the cursor, or a program's last copy from its row, or the piece in hand).
+  One that doesn't fit is refused with the rules' own kind
   (`GridData::misfit`: `Wrong::OffBoard` or `Wrong::Overlap`) in the reserved line, and shakes; the piece in hand
   is outlined white where it would fit and red, its cells washed red, where it wouldn't (`held-fits`). The
   footer's hints follow the cursor: the hand's while a piece is held (Back: Put away), Del's Take off while the
-  cursor is on a placed piece, Confirm's Take off on a placed program's row and Take on another (`on-piece`,
-  `in-list`). Leaving the tab with a piece picked up off the board puts it back where it was.
+  cursor is on a placed piece, Confirm's Take and Del's Take off on a placed program's row, and Take on another
+  (`on-piece`, `in-list`). Leaving the tab with a piece picked up off the board puts it back where it was.
 - *The mouse.* The board and the list's rows tell the tab what the pointer does (`Nav.choose("drag", phase,
   where)`: where is the window's point, which the tab turns into the cell under it from where the cells are
-  laid out). A press on a placed piece picks it up; a drag out of a program's row takes it in hand (a placed
-  one's last copy off the board); while the button is held the piece follows the pointer cell by cell, and the
+  laid out). A press on a placed piece picks it up; a drag out of a program's row takes a new copy of it in hand,
+  as Confirm there does; while the button is held the piece follows the pointer cell by cell, and the
   wheel turns it. Let go over the board, it is put down where it fits, else it shakes and then goes back where it
   came from; let go off the board, it is put away into the list. A press let go where it was pressed is a click,
   Confirm there; so the mouse works by clicks too: a piece a click takes up follows the pointer over the board with
@@ -1550,17 +1555,21 @@ made through the screen): the NaviCust's list a focus move apart (a pair), a pro
 turned, put down on the command line, a plus part beside it, another program put off the command line (its bug
 appears), one put over another (refused, and why), a plus part on EXE6's ring (out of bounds; in a game
 without a ring the shot is of the piece in hand), and a placed program under the cursor (Del's hint), picked up
-(In hand) and put away into the list with Back (no longer placed), and a placed program's row under the cursor
-(Confirm's Take off) and Confirm on it; the patch cards' library, its search and sort a focus move apart (a
-pair), three cards put in, the cursor on one that is in (Confirm's Remove) and Confirm taking it out, the library
-by MB with a card the MB left can't take refused, one of the
-build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
+(In hand) and put away into the list with Back (no longer placed), and a placed plus part's row under the cursor
+(Confirm's Take, Del's Take off), Confirm on it (a second copy in hand), that copy put down where it fits
+(`tabs-navicust-twice`: two copies on the board, the row's Placed ×2) and Del on the row (the last copy off); the
+patch cards' library, its search and sort a focus move apart (a pair), three cards put in, the cursor on one that
+is in (Confirm's Remove) and Confirm taking it out, the library by MB with a card the MB left can't take refused,
+one of the build's moved up and taken out, the sort's list; a card that brings a bug, put in where the build's
+cards bring none yet (`bug_card`), shot on the Patch cards tab (`tabs-cards-bug`: its bug on its line and in
+Together) and on the NaviCust tab (`tabs-navicust-card-bug`: not in the NaviCust's Bugs, §8); the auto battle's
+places a focus move apart (a pair), three
 filled from the library, one emptied, the places scrolled to the last list; on a desktop, a click on one of the
 build's rows in each tab, shot with the pointer gone on to another row (`tabs-folder-clicked`,
 `tabs-cards-clicked`, `tabs-auto-clicked`: the cursor hidden, the row clicked marked, the other lit by the
 pointer), and the keys after the clicks (`clicks`). Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
-on the ring, or over another), so the walk is the same whatever the game's shapes. A tab the game hasn't is
+on the ring, over another, or anywhere on the board itself), so the walk is the same whatever the game's shapes. A tab the game hasn't is
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):
 EXE6's walk has no auto battle pictures. The probe's bursts: a piece taken up, moved, turned, compressed and
 decompressed (turned as it was, in place), the command line's arrows pulsing by themselves, a piece put down, put
