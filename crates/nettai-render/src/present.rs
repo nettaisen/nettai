@@ -77,6 +77,9 @@ pub fn present(frame: &Frame, text: Option<&mut TextRenderer>, out: &mut [u32], 
             glide_row(frame, g, &place, &nudged, dy, fy, line);
         }
     }
+    if !frame.overlays.is_empty() {
+        crate::smooth::draw_overlays(&frame.overlays, &frame.depth, frame.nudge.as_ref(), &place, out, w);
+    }
     if let Some(t) = text
         && !frame.text.is_empty()
     {
