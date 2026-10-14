@@ -397,6 +397,11 @@ definition_roles! {
         /// The Program Advance animation names a chip of the recipe, and the Program Advance.
         ProgramAdvancePart = "program_advance_part",
         ProgramAdvance = "program_advance",
+        /// A battle is entered: the sound every battle's start plays in the
+        /// original as the screen breaks into it, a random encounter's too
+        /// (EXE6's `gameState_8005BC8`). No rule plays it: the app plays it
+        /// as its screen goes into a battle.
+        Encounter = "encounter",
     }
 }
 

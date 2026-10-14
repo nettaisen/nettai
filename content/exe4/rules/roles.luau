@@ -110,6 +110,10 @@ local roles: RolesSpec = {
         custom_shade = asset.sound("dark-hover"),
         program_advance_part = asset.sound("program-advance-part"),
         program_advance = asset.sound("program-advance"),
+        -- A battle entered: what every battle's start plays as the screen
+        -- breaks into it, a random encounter's too (the battle's game state's entries, 0x08005490, 0x080054EE and 0x08005520).
+        -- No rule plays it; the app plays it as it goes into a battle.
+        encounter = asset.sound("encounter"),
         -- The fight's: a navi's hit, every console's (0x08013A96: 0x6B), a navi in auto battle's (0x6D).
         hit = asset.sound("hit"),
         auto_battle_hit = asset.sound("auto-battle-hit"),

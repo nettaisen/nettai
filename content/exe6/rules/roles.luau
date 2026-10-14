@@ -207,6 +207,10 @@ local roles: RolesSpec = {
         custom_scrap_done = asset.sound("elmnt-man-2"),
         program_advance_part = asset.sound("err-select-91"),
         program_advance = asset.sound("delta-ray-2"),
+        -- A battle entered: what every battle's start plays as the screen
+        -- breaks into it, a random encounter's too (the battle's game state's entry, gameState_8005BC8).
+        -- No rule plays it; the app plays it as it goes into a battle.
+        encounter = asset.sound("encounter"),
     },
     music = {
         -- A link battle's, whatever its stage's.
