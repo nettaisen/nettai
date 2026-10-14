@@ -1,6 +1,7 @@
 //! The screenshot pass's steps for the build editor's NaviCust, Patch cards and Auto battle tabs (docs/app.md
 //! §13): each tab in the game the pass walks, with pairs a focus move apart, a piece moved, turned, put down,
-//! refused and put back, cards put in and refused, places filled; and the motion probe's bursts of what the tabs
+//! refused and put back, a program placed twice, cards put in and refused, a card's bug (the Patch cards tab's, not
+//! the NaviCust's), places filled; and the motion probe's bursts of what the tabs
 //! move. A tab the game hasn't (auto battle data: EXE6's setup takes none) is passed over: a step names the tab by
 //! what it is, and `on_tab` reports a picture taken on another.
 //!
@@ -138,47 +139,54 @@ fn take(nth: usize, which: fn(&nettai_ui::ProgramRow) -> bool) -> Step {
     })
 }
 
-/// Where the piece in hand may go: off the command line, on the out-of-bounds ring, or over another piece.
+/// Where the piece in hand may go: off the command line, on the out-of-bounds ring, over another piece, or anywhere
+/// on the board itself.
 #[derive(Clone, Copy, PartialEq)]
 enum Spot {
     OffTheLine,
     Ring,
     Over,
+    Free,
 }
 
 /// Put the piece in hand down at the first cell where it would be at `spot` (and, but `Spot::Over`, fit), as the
 /// cursor moved there and Enter does: found from what the view shows of the board, whatever the game's shapes.
 fn put(spot: Spot) -> Step {
     Box::new(move |ui, app, tour| {
-        if tour.passing.get() {
-            return;
+        if !tour.passing.get() {
+            put_now(ui, app, spot);
         }
-        let view = ui.global::<NavicustView>();
-        let (n, command) = (view.get_columns(), view.get_command());
-        let cells: Vec<nettai_ui::GridCell> = view.get_cells().iter().collect();
-        let held: Vec<(i32, i32)> = view.get_held().iter().map(|c| (c.x, c.y)).collect();
-        let at = |x: i32, y: i32| (x >= 0 && y >= 0 && x < n && y < n).then(|| &cells[(y * n + x) as usize]);
-        let fits = |gx: i32, gy: i32, ring: bool| -> bool {
-            let on: Vec<Option<&nettai_ui::GridCell>> = held.iter().map(|&(dx, dy)| at(gx + dx, gy + dy)).collect();
-            let real = on.iter().all(|c| c.is_some_and(|c| c.kind != nettai_ui::CellKind::None));
-            let out = on.iter().flatten().filter(|c| c.kind == nettai_ui::CellKind::Out).count();
-            let over = on.iter().flatten().any(|c| c.filled);
-            let line = held.iter().any(|&(_, dy)| gy + dy == command);
-            real && out < held.len()
-                && match spot {
-                    Spot::OffTheLine => !over && !line && (ring || out == 0),
-                    Spot::Ring => !over && out > 0,
-                    Spot::Over => over,
-                }
-        };
-        // (Off the command line on the board itself where the piece has the room, else jutting onto the ring.)
-        let places = || (0..n).flat_map(|y| (0..n).map(move |x| (x, y))).filter(|&(x, y)| at(x, y).is_some_and(|c| c.kind != nettai_ui::CellKind::None));
-        let found = places().find(|&(x, y)| fits(x, y, false)).or_else(|| places().find(|&(x, y)| fits(x, y, true)));
-        let Some((gx, gy)) = found else { return };
-        let mut app = app.borrow_mut();
-        app.shell.nav.focus("cell", gy * n + gx);
-        app.act(Action::Confirm);
     })
+}
+
+/// `put`'s work, done at once.
+fn put_now(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, spot: Spot) {
+    let view = ui.global::<NavicustView>();
+    let (n, command) = (view.get_columns(), view.get_command());
+    let cells: Vec<nettai_ui::GridCell> = view.get_cells().iter().collect();
+    let held: Vec<(i32, i32)> = view.get_held().iter().map(|c| (c.x, c.y)).collect();
+    let at = |x: i32, y: i32| (x >= 0 && y >= 0 && x < n && y < n).then(|| &cells[(y * n + x) as usize]);
+    let fits = |gx: i32, gy: i32, ring: bool| -> bool {
+        let on: Vec<Option<&nettai_ui::GridCell>> = held.iter().map(|&(dx, dy)| at(gx + dx, gy + dy)).collect();
+        let real = on.iter().all(|c| c.is_some_and(|c| c.kind != nettai_ui::CellKind::None));
+        let out = on.iter().flatten().filter(|c| c.kind == nettai_ui::CellKind::Out).count();
+        let over = on.iter().flatten().any(|c| c.filled);
+        let line = held.iter().any(|&(_, dy)| gy + dy == command);
+        real && out < held.len()
+            && match spot {
+                Spot::OffTheLine => !over && !line && (ring || out == 0),
+                Spot::Ring => !over && out > 0,
+                Spot::Over => over,
+                Spot::Free => !over && out == 0,
+            }
+    };
+    // (Off the command line on the board itself where the piece has the room, else jutting onto the ring.)
+    let places = || (0..n).flat_map(|y| (0..n).map(move |x| (x, y))).filter(|&(x, y)| at(x, y).is_some_and(|c| c.kind != nettai_ui::CellKind::None));
+    let found = places().find(|&(x, y)| fits(x, y, false)).or_else(|| places().find(|&(x, y)| fits(x, y, true)));
+    let Some((gx, gy)) = found else { return };
+    let mut app = app.borrow_mut();
+    app.shell.nav.focus("cell", gy * n + gx);
+    app.act(Action::Confirm);
 }
 
 /// The next pair's second shot may differ in the strip too (the program under the cursor, which a focus move
@@ -277,11 +285,96 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     shot(add, "tabs-navicust-put-away", Pair::None);
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
-    // A placed program's row under the cursor (its hint: Enter takes it off), and Enter: its copy off the board.
-    add(SETTLE, row(|r| r.state == nettai_ui::ProgramState::Placed));
+    // A placed program's row under the cursor (its hints: Enter takes another copy, Del takes the last one off), and
+    // Enter: a second copy in hand, put down where it fits. Two copies on the board, which the row counts. (A plus
+    // part's, a small piece that finds room: one is placed first where none is.)
+    add(SETTLE, Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let rows = ui.global::<NavicustView>().get_programs();
+        if rows.iter().any(|r| r.plus && r.state == nettai_ui::ProgramState::Placed) {
+            return;
+        }
+        let Some(at) = rows.iter().position(|r| r.plus) else { return };
+        {
+            let mut app = app.borrow_mut();
+            app.shell.nav.focus("programs", at as i32);
+            app.act(Action::Confirm);
+        }
+        put_now(ui, app, Spot::Free);
+    }));
+    add(SETTLE, row(|r| r.plus && r.state == nettai_ui::ProgramState::Placed));
     shot(add, "tabs-navicust-row-placed", Pair::None);
     add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-navicust-row-taken", Pair::None);
+    add(SETTLE, put(Spot::Free));
+    add(SETTLE, row(|r| r.copies > 1));
+    shot(add, "tabs-navicust-twice", Pair::None);
+    add(SETTLE, expect(|ui, _| {
+        let rows = ui.global::<NavicustView>().get_programs();
+        (!rows.iter().any(|r| r.copies == 2)).then(|| "Enter on a placed program's row, and the copy put down: no program has two copies on the board".to_string())
+    }));
+    // Del on the row: its last copy off the board.
+    add(SETTLE, act(Action::Delete));
     shot(add, "tabs-navicust-row-taken-off", Pair::None);
+}
+
+/// A patch card that brings a bug, put in as Enter on its library row does, where the build's cards bring none yet:
+/// the first of the library's cards the build can take that brings one (by what the cards add up to: Together's
+/// bugs, the build's without its NaviCust). One tried that brings none (its bug line clears one) is taken out again.
+fn bug_card() -> Step {
+    use nettai_ui::PatchCardsView;
+    Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let view = ui.global::<PatchCardsView>();
+        if !view.get_together_bugs().is_empty() {
+            return;
+        }
+        let rows: Vec<nettai_ui::CardRow> = view.get_rows().iter().collect();
+        let mut app = app.borrow_mut();
+        for (i, _) in rows.iter().enumerate().filter(|(_, r)| !r.refused && r.lines.iter().any(|l| l.bug)) {
+            app.shell.nav.focus("lib.rows", i as i32);
+            app.act(Action::Confirm);
+            if !view.get_together_bugs().is_empty() {
+                return;
+            }
+            app.act(Action::Confirm);
+        }
+        tour.key_wrong("no card of the library that the build can take brings a bug".into());
+    })
+}
+
+/// The cursor on the first of the build's cards with a bug line.
+fn on_bug_card() -> Step {
+    use nettai_ui::PatchCardsView;
+    Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let cards = ui.global::<PatchCardsView>().get_installed();
+        let Some(at) = cards.iter().position(|c| c.there && c.lines.iter().any(|l| l.bug)) else { return };
+        app.borrow_mut().shell.nav.focus("card", at as i32);
+    })
+}
+
+/// The bugs a build's patch cards bring are the Patch cards tab's (each card's bug lines, and Together's) and not
+/// the NaviCust tab's, whose bugs are the NaviCust's own.
+fn card_bugs(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    add(SETTLE, focus("card", 0));
+    add(SETTLE, library());
+    add(SETTLE, bug_card());
+    add(SETTLE, out_of_library());
+    add(SETTLE, on_bug_card());
+    shot(add, "tabs-cards-bug", Pair::None);
+    add(90, on_tab(EditorTab::PatchCards, "Patch cards"));
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    add(SETTLE, focus("programs", 0));
+    shot(add, "tabs-navicust-card-bug", Pair::None);
+    add(90, on_tab(EditorTab::Navicust, "NaviCust"));
 }
 
 /// The cursor on the first row of the NaviCust's list that `which` picks.
@@ -514,8 +607,19 @@ fn click_move(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
 
 /// A program dragged out of its row (the first not placed) onto the board, and let go where it fits.
 fn row_drag(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+    drag_out(ui, |r| r.state == nettai_ui::ProgramState::None && !r.plus)
+}
+
+/// A placed program dragged out of its row (the first placed): a new copy of it onto the board, let go where it
+/// fits, the copy on the board staying where it is.
+fn placed_row_drag(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+    drag_out(ui, |r| r.state == nettai_ui::ProgramState::Placed)
+}
+
+/// The first of the list's first rows that `which` picks dragged out onto the board, and let go where the piece fits.
+fn drag_out(ui: &nettai_ui::AppWindow, which: fn(&nettai_ui::ProgramRow) -> bool) -> Option<Vec<(u64, Ev)>> {
     let rows = ui.global::<NavicustView>().get_programs();
-    let row = rows.iter().take(12).position(|r| r.state == nettai_ui::ProgramState::None && !r.plus)? as i32;
+    let row = rows.iter().take(12).position(|r| which(&r))? as i32;
     let mid = Board::of(ui).n as f32 / 2.0 - 0.5;
     Some(vec![
         (0, Ev::Press(Point::Row(row))),
@@ -811,6 +915,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     open_build(add, size == "phone");
     navicust(add, shot);
     patch_cards(add, shot);
+    card_bugs(add, shot);
     auto_battle(add, shot);
     if size == "desktop" {
         clicks(add, shot);
@@ -855,10 +960,12 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     // The mouse by clicks: a piece clicked up follows the pointer with no button held, cell by cell; a key moves it
     // from there and the pointer's next move takes it back under the pointer; a click puts it down.
     burst(add, "navicust-click-move", &[0, 120, 250, 350, 470, 570, 650, 760, 900, 1100, 1300], pointer(click_move));
-    // A program dragged out of its row onto the board and let go where it fits; a piece let go over another
+    // A program dragged out of its row onto the board and let go where it fits, and a placed one's (a new copy of
+    // it, the placed one staying); a piece let go over another
     // (it shakes and goes back); a key mid-drag (the piece goes back); a right click mid-drag and a drag off the
     // board (each puts the piece away); the wheel turning a clicked-up piece, and a right click putting it away.
     burst(add, "navicust-row-drag", &[0, 100, 200, 350, 500, 600, 800], pointer(row_drag));
+    burst(add, "navicust-row-drag-placed", &[0, 100, 200, 350, 500, 600, 800], pointer(placed_row_drag));
     burst(add, "navicust-drag-refused", &[0, 100, 200, 300, 420, 500, 600, 700, 800, 1000], pointer(drag_refused));
     burst(add, "navicust-drag-key", &[0, 100, 200, 350, 500, 650, 800], pointer(drag_key));
     burst(add, "navicust-drag-right-click", &[0, 100, 200, 350, 500, 650], pointer(drag_right));
