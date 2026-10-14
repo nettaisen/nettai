@@ -115,7 +115,10 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     add(SETTLE, fresh());
     shot(add, "builds-empty", Pair::None);
     add(SETTLE, press("new", 0));
-    shot(add, "builds-new", Pair::First);
+    // (The dialog opens editing its name, the name all selected; Back ends the edit and leaves the dialog open.)
+    shot(add, "builds-new", Pair::None);
+    add(SETTLE, act(Action::Back));
+    shot(add, "builds-new-field", Pair::First);
     add(SETTLE, act(Action::Down));
     shot(add, "builds-new-focus", Pair::Second);
     add(SETTLE, act(Action::Right));

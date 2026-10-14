@@ -617,7 +617,10 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
 
     // A direct connection: the focus a step down; an address that isn't one.
     add(SETTLE, press("direct"));
-    shot(add, "play-direct", Pair::First);
+    // (The dialog opens editing the address; Back ends the edit and leaves the dialog open.)
+    shot(add, "play-direct", Pair::None);
+    add(SETTLE, act(Action::Back));
+    shot(add, "play-direct-field", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "play-direct-focus", Pair::Second);
     add(SETTLE, focus("direct.address", 0));
