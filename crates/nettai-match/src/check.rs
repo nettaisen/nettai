@@ -114,17 +114,22 @@ pub fn side_alone(content: &Content, game: &str, s: &Side) -> Vec<Problem> {
 /// the NaviCust, the patch cards), or why it doesn't start.
 pub fn start(content: &Arc<Content>, m: &Match) -> Result<Battle, String> {
     // A folder being made has empty entries, and a round is set up with
-    // whole ones: here they hold a stand-in (the folder's first chip, else
-    // the content's first with a code). Its rules see its own entries
-    // (`validate`), and say it isn't whole.
+    // whole ones: here they hold a stand-in, a Standard chip (the folder's
+    // first, else the content's first with a code): a Mega or a Giga
+    // copied into every empty entry would make a folder the round can't
+    // deal (the user hit the Giga shuffle's divide by 0 in the folder
+    // builder). Its rules see its own entries (`validate`), and say it
+    // isn't whole.
     let mut m = m.clone();
     for s in &mut m.sides {
         let folder = s.folder(content);
         if folder.saved().is_none() {
+            let standard = |id: nettai_content_api::ChipHandle| content.chip(id).class == nettai_battle::content::ChipClass::Standard;
             let any = (0..content.defs.chips.len() as u16)
                 .map(nettai_content_api::ChipHandle)
+                .filter(|&id| standard(id))
                 .find_map(|id| content.chip(id).codes.first().map(|&code| nettai_battle::custom::FolderChip::new(id, code)));
-            let filler = folder.chips().next().or(any).ok_or("the content has no chip with a code")?;
+            let filler = folder.chips().find(|c| standard(c.id)).or(any).ok_or("the content has no Standard chip with a code")?;
             s.set_folder(content, &Folder::from(folder.filled_with(filler)))?;
         }
     }
@@ -300,6 +305,32 @@ mod tests {
         let problems = check_match(&content, &m);
         let b = Battle::new(m.round(&content, 3), content.clone());
         (b.stats[0], b.consoles[0].emotion_window_glitch, problems)
+    }
+
+    /// A folder being made whose first chip is a Giga: 13 chips, the empty entries filled with a Standard chip
+    /// for the round, not with the Giga (18 Gigas, which the shuffle couldn't deal: the user's crash in the folder
+    /// builder).
+    #[test]
+    fn a_folder_being_made_starts_its_round() {
+        use nettai_battle::content::ChipClass;
+        use nettai_battle::custom::FolderChip;
+        let content = crate::testing::exe6_content();
+        let mut m = crate::pick::live(&content, "exe6", 3, None).unwrap();
+        let of = |class: ChipClass| {
+            (0..content.defs.chips.len() as u16)
+                .map(nettai_content_api::ChipHandle)
+                .find_map(|id| (content.chip(id).class == class).then(|| content.chip(id).codes.first().map(|&code| FolderChip::new(id, code))).flatten())
+                .unwrap()
+        };
+        let mut folder = m.sides[0].folder(&content);
+        folder.chips = std::array::from_fn(|i| match i {
+            0 => Some(of(ChipClass::Giga)),
+            1..13 => Some(of(ChipClass::Standard)),
+            _ => None,
+        });
+        (folder.regular, folder.tags) = (None, None);
+        m.sides[0].set_folder(&content, &folder).unwrap();
+        assert!(start(&content, &m).is_ok());
     }
 
     #[test]
