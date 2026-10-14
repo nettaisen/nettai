@@ -33,7 +33,7 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
 - `--png-scale N` scales headless output (the text layer is drawn at that scale too).
 - `--text enhanced|original` chooses how the battle is drawn (default `enhanced`, also spelled `font`: the
   names, the telop, the chatbox and the HUD's lines in a vector font over the scaled frame, the background's
-  glide, the gauge's smooth fill and the banners' squash at the output's resolution, docs/frontend.md §3, "Enhanced and original"; `original` as the original does, the
+  glide, the gauge's smooth fill, the banners' squash and the custom screen's slide of the field at the output's resolution, docs/frontend.md §3, "Enhanced and original"; `original` as the original does, the
   text in the game's own fonts into the frame, which the frame comparison uses), and `--font <file>` puts
   another TrueType or OpenType font in the bundled one's place.
 - `--lang en|ja` the language of the battle's words (default `en`; docs/frontend.md §3, "Languages").
