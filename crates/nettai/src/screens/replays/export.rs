@@ -332,7 +332,8 @@ impl Export {
             graphics: ready.graphics(shell.lang),
             text,
             font: ready.loaded.font.clone().filter(|_| text == TextMode::Font),
-            sound: ready.loaded.sound.as_ref().map(|s| Sound { banks: s.banks.clone(), songs: s.songs.clone(), report: Default::default() }),
+            // (With the battle's music the player picked, as the replay plays in the viewer: `crate::music`.)
+            sound: crate::music::sound(&shell.games, &ready, &shell.battle_music()).map(|(banks, songs)| Sound { banks, songs, report: Default::default() }),
         };
         let options = Options { scale: SIZES[self.size], view: Some(self.side), part: if self.part == 0 { Part::Whole } else { Part::Round(self.part) } };
         let encoding = mp4::Settings { ffmpeg: ffmpeg(), ..mp4::Settings::default() };

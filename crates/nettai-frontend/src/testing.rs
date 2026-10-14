@@ -95,6 +95,12 @@ pub fn graphics(content: &Content, color: u16) -> Graphics {
 /// music does); the others are short notes, each on one of sixteen
 /// players at its own pitch.
 pub fn audio(content: &Content) -> BattleAudio {
+    BattleAudio::with_banks(vec![bank(content)], nettai_audio::Songs::numbers(content.assets.sounds.len()))
+}
+
+/// The bank of [`audio`]: a song for each of `content`'s sounds, by its
+/// handle (its song number is its handle).
+pub fn bank(content: &Content) -> Arc<m4a::SoundBank> {
     use m4a::bank::{Command, Envelope, MixerConfig, PlayerConfig, PlayerId, Song, Track, Voice, VoiceKind, Voicegroup, VoicegroupId};
     let square = Voice {
         kind: VoiceKind::Square1 { duty: 2, sweep: m4a::bank::NO_SWEEP, fixed: false },
@@ -135,5 +141,5 @@ pub fn audio(content: &Content) -> BattleAudio {
         samples: vec![],
         waves: vec![],
     };
-    BattleAudio::with_banks(vec![Arc::new(bank)], nettai_audio::Songs::numbers(count))
+    Arc::new(bank)
 }

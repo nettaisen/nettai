@@ -198,7 +198,8 @@ impl Shell {
                 let graphics = ready.graphics(self.lang);
                 let font = ready.loaded.font.clone().filter(|_| text == TextMode::Font);
                 let renderer = graphics.renderer(text, font.clone());
-                let sound = ready.loaded.sound.as_ref().map(|s| (s.banks.clone(), s.songs.clone()));
+                // (The music the player picked, the battle's game's own or a theme: `crate::music`.)
+                let sound = crate::music::sound(&self.games, &ready, &self.battle_music());
                 loading.preload = Some(Preload::with(renderer, font.map(TextRenderer::new), sound, &loading.start.set, loading.start.viewer, size));
             }
             Some(preload) => {

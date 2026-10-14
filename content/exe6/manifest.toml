@@ -9,5 +9,6 @@ depends = ["exelib"]
 # English, EXE6 in Japanese: the header's, a message's); `patch_card_effects`, each patch card effect's line on the
 # card screen, by the effect's kind and choice; `patch_card_groups`, the two groups the card screen lists them in, by
 # the effects' `group`; `bugs`, each NaviCust bug's name; `builds`, what a build is made of, by name (rules/builds:
-# its versions and its choices' presets).
-text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds"]
+# its versions and its choices' presets); `battle_themes`, each battle theme's name, by its song's asset name
+# (rules/battle_themes).
+text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "battle_themes"]

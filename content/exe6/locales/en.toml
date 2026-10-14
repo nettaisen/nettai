@@ -789,3 +789,11 @@ language = "en"
 [patch_card_groups]
 "parameter" = "Parameter"
 "ability" = "Ability"
+
+# The battle themes' names (rules/battle_themes), by their songs' asset names: a player picks one as a
+# battle's music, and the app shows it after the game's name ("BN6 Virus Battle"). Ours.
+[battle_themes]
+"virus-battle" = "Virus Battle"
+"boss-battle" = "Boss Battle"
+"final-battle" = "vs Cybeast"
+"crossover-battle" = "Crossover Battle"

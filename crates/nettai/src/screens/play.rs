@@ -626,6 +626,12 @@ impl Play {
         shell.ui().global::<PlayView>().set_input_delay(shell.settings.input_delay as i32);
     }
 
+    /// The battle's music the player picked, as the lobby's select shows it (their own: nothing of it is said
+    /// to the other player, whose lobby doesn't show it).
+    fn show_music(&self, shell: &Shell) {
+        shell.ui().global::<PlayView>().set_battle_music(crate::music::shown(shell).into());
+    }
+
     fn set_levels(&mut self, shell: &mut Shell, music: u32, effects: u32) {
         (shell.settings.music, shell.settings.effects) = (music.min(100), effects.min(100));
         shell.set_sound_levels(shell.settings.music, shell.settings.effects);
@@ -948,6 +954,7 @@ impl Screen for Play {
         view.set_invite_direct(self.session.as_ref().is_some_and(|s| s.way == Way::Host));
         view.set_room(self.session.as_ref().and_then(|s| s.code()).map(code_shown).unwrap_or_default().into());
         view.set_input_delay(shell.settings.input_delay as i32);
+        view.set_battle_music(crate::music::shown(shell).into());
         view.set_note_error(self.ended.as_ref().map(|e| e.line(&ui)).unwrap_or_default().into());
         view.set_changing(self.changing);
         self.show_live(shell);
@@ -1067,6 +1074,7 @@ impl Screen for Play {
                 shell.ui().global::<PlayView>().set_note_error(Default::default());
             }
             "lobby.rounds" => self.step(shell, id, index, 1),
+            "lobby.music" => crate::music::open(shell, id),
             "lobby.closed" => {
                 let closed = !self.live.closed;
                 self.set_closed(closed);
@@ -1128,6 +1136,10 @@ impl Screen for Play {
             "lobby.closed" => self.set_closed(by > 0),
             "lobby.cards" => self.set_patch_cards(by < 0),
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
+            "lobby.music" => {
+                crate::music::step(shell, by);
+                self.show_music(shell);
+            }
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
             _ => {}
@@ -1139,6 +1151,10 @@ impl Screen for Play {
             "build" => self.choose_build(shell, choice.max(0) as usize),
             "lobby.closed" => self.set_closed(choice == 1),
             "lobby.cards" => self.set_patch_cards(choice == 0),
+            "lobby.music" => {
+                crate::music::choose(shell, choice);
+                self.show_music(shell);
+            }
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
             _ => {}

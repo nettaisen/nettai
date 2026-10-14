@@ -2195,6 +2195,10 @@ export type RulesSpec = {
     reactions: RuleSection,
     status: RuleSection,
     -- The sections a game may leave out.
+    -- The game's battle themes: songs a player may pick as a battle's music in place of its game's own, in any
+    -- game's battle (the app's Music, docs/app.md §9), in the order a list shows them. Each is named in the
+    -- locales' text table `battle_themes` by its asset name. Presentation: the engine plays none of them by this.
+    battle_themes: { Sound }?,
     banners: any?,
     buster: any?,
     custom_screen: any?,
