@@ -59,6 +59,9 @@ const CHOOSE_SOURCE: &str = "source.choose";
 /// The most rows a select's list shows at once (`Shell::pick`): more scroll. And a row's height, the theme's.
 const PICKER_ROWS: usize = 10;
 const PICKER_ROW: f32 = 44.0;
+/// The least width of a list of tags (`Shell::pick_tags`): the longest version's tag in the longest language
+/// with the row's room at each side.
+const TAG_LIST: f32 = 168.0;
 
 /// The rows a select's list of `options` choices shows at once, and whether it goes under its select: as many
 /// as it has, up to [`PICKER_ROWS`] and to the whole rows there is room for, `under` the select or `over` it.
@@ -548,6 +551,18 @@ impl Shell {
     /// many rows as it has, up to [`PICKER_ROWS`] and to what the window has room for by the select; more
     /// scroll, the chosen one in view as it opens.
     pub fn pick(&mut self, id: &str, index: i32, options: Vec<String>, chosen: usize) {
+        self.open_picker(id, index, options, Vec::new(), chosen);
+    }
+
+    /// Open a list of tags by a tag that opens a choice (the editor's version), as [`Shell::pick`] does a
+    /// select's: each choice its text as a tag in its color. The list is at least [`TAG_LIST`] wide, the tag
+    /// it opens from being narrower than its choices may be.
+    pub fn pick_tags(&mut self, id: &str, index: i32, tags: Vec<nettai_ui::VersionTag>, chosen: usize) {
+        let (options, tones) = tags.into_iter().map(|tag| (tag.text.to_string(), tag.tone)).unzip();
+        self.open_picker(id, index, options, tones, chosen);
+    }
+
+    fn open_picker(&mut self, id: &str, index: i32, options: Vec<String>, tones: Vec<slint::Color>, chosen: usize) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
         let key = Key::new(id, index);
@@ -556,12 +571,15 @@ impl Shell {
         // (A phone's sheet is at the window's foot, three fifths of it at the most.)
         let (rows, under) = if self.scale.phone { picker_rows(options.len(), window.height * 0.6, 0.0) } else { picker_rows(options.len(), window.height - by.bottom() - 8.0, by.y - 8.0) };
         let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - (rows as f32 * PICKER_ROW + 2.0) };
+        let width = if tones.is_empty() { by.w } else { by.w.max(TAG_LIST) };
         shell.set_picker_rows(rows as i32);
         shell.set_picker_options(ModelRc::new(VecModel::from(options.into_iter().map(Into::into).collect::<Vec<slint::SharedString>>())));
+        shell.set_picker_tones(ModelRc::new(VecModel::from(tones)));
         shell.set_picker_chosen(chosen as i32);
-        shell.set_picker_x(by.x);
+        // (Inside the window, a list wider than what it opens from.)
+        shell.set_picker_x(by.x.min(window.width - width - 8.0).max(0.0));
         shell.set_picker_y(y);
-        shell.set_picker_width(by.w);
+        shell.set_picker_width(width);
         shell.set_picker(true);
         // (The battle's menu's list is its owner's, as the menu is: `App::hearer_of`.)
         let owner = match &self.battle {

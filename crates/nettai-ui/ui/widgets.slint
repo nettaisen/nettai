@@ -191,19 +191,29 @@ export component Heading inherits Text {
     }
 }
 
-// A tag: a version, PRACTICE.
+// A tag: a version, PRACTICE. With `caret`, a small arrow down after its text, in its color: a tag that opens
+// a choice (the editor's version).
 export component Pill inherits Rectangle {
     in property <string> text;
     in property <color> tone: Theme.muted;
+    in property <bool> caret;
     height: 22px;
     // (No text, no tag: it takes no room.)
-    width: root.text == "" ? 0px : label.preferred-width + 16px;
+    width: root.text == "" ? 0px : label.preferred-width + 16px + (root.caret ? 14px : 0px);
     Rectangle {
         border-width: root.text == "" ? 0px : 1px;
         border-color: root.tone;
     }
 
+    ArrowDown {
+        x: root.width - 16px;
+        y: (root.height - self.height) / 2;
+        visible: root.caret && root.text != "";
+        fill: root.tone;
+    }
+
     label := Text {
+        x: 8px;
         text: root.text;
         color: root.tone;
         font-family: Theme.display;
