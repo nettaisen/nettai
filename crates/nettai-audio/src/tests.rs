@@ -229,3 +229,102 @@ fn each_pack_plays_its_own_songs() {
     a.tick(&mut out);
     assert!((out.len() as i64 - 549).abs() <= 8, "{} samples for a frame", out.len());
 }
+
+/// Another game's bank: its own boss song (0x16) on the music player, a
+/// song the first bank hasn't.
+fn other_bank() -> Arc<SoundBank> {
+    let mut b = (*bank()).clone();
+    b.songs[0x16] = b.songs[0x15].clone();
+    b.songs[0x15] = None;
+    Arc::new(b)
+}
+
+/// The music player of pack `p` and the song it plays, if it plays one.
+fn music_of(a: &BattleAudio, p: u8) -> Option<SongId> {
+    let player = a.driver_of(nettai_battle::content::PackId(p))?.player(MUSIC_PLAYER)?;
+    player.is_playing().then(|| player.song()).flatten()
+}
+
+/// A battle theme of another game's plays in place of the battle's music,
+/// on a driver of its own bank: the battle's effects and its result's music
+/// stay the battle's pack's, and the result's music stops the theme.
+#[test]
+fn a_theme_plays_in_place_of_the_battles_music() {
+    let theme = Theme { bank: other_bank(), song: 0x16 };
+    let (banks, songs) = with_theme(vec![bank()], &Songs::numbers(0x200), &[VIRUS_BATTLE], &theme);
+    assert_eq!(banks.len(), 2, "the theme's bank is a pack more");
+    let mut a = BattleAudio::with_banks(banks, songs);
+    let mut out = Vec::new();
+    a.handle(&[SoundCue::Music(VIRUS_BATTLE), SoundCue::Effect(SoundId(0x94))]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "the theme, on its own bank's driver");
+    assert!(a.driver().player(PlayerId(16)).unwrap().is_playing(), "the effect on the battle's");
+    // The low-HP music's pitch and tempo are the music's: the theme's.
+    a.handle(&[SoundCue::Pinch(true)]);
+    a.tick(&mut out);
+    assert_eq!(a.driver_of(nettai_battle::content::PackId(1)).unwrap().player(MUSIC_PLAYER).unwrap().tempo_step(), 150 * 0x11A / 0x100);
+    a.handle(&[SoundCue::Pinch(false), SoundCue::Music(WINNER)]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (Some(SongId(0x1F)), None), "the winner's music is the battle's game's");
+}
+
+/// A theme of the battle's own game plays on its game's driver, as the
+/// game's own music does: no pack more.
+#[test]
+fn a_theme_of_the_games_own_is_no_pack_more() {
+    let own = bank();
+    let mut b = (*own).clone();
+    b.songs[0x16] = b.songs[0x15].clone();
+    let own = Arc::new(b);
+    let theme = Theme { bank: own.clone(), song: 0x16 };
+    let (banks, songs) = with_theme(vec![own], &Songs::numbers(0x200), &[VIRUS_BATTLE], &theme);
+    assert_eq!(banks.len(), 1);
+    assert_eq!(songs.song(VIRUS_BATTLE), SoundId(0x16));
+    assert_eq!(songs.song(WINNER), WINNER, "the result's music is the game's");
+}
+
+/// Under rollback, a result's music played on a wrong prediction is taken
+/// back: the theme, which it had moved the music from, starts again on its
+/// own driver, and the battle's driver stops only that song (an effect
+/// sounding there goes on).
+#[test]
+fn a_canceled_change_moves_the_music_back_to_the_theme() {
+    let theme = Theme { bank: other_bank(), song: 0x16 };
+    let (banks, songs) = with_theme(vec![bank()], &Songs::numbers(0x200), &[VIRUS_BATTLE], &theme);
+    let mut a = BattleAudio::with_banks(banks, songs);
+    let mut out = Vec::new();
+    a.handle_actions([CueAction::Play(SoundCue::Music(VIRUS_BATTLE))]);
+    a.tick(&mut out);
+    a.handle_actions([CueAction::Play(SoundCue::Music(WINNER)), CueAction::Play(SoundCue::Effect(SoundId(0x94)))]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (Some(SongId(0x1F)), None));
+    a.handle_actions([CueAction::Cancel(SoundCue::Music(WINNER))]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!((music_of(&a, 0), music_of(&a, 1)), (None, Some(SongId(0x16))), "the theme is the music again");
+    assert!(a.driver().player(PlayerId(16)).unwrap().is_playing(), "the effect sounds on");
+    // And the theme is the music: playing it again changes nothing, and a
+    // stop taken back starts it again.
+    a.handle_actions([CueAction::Play(SoundCue::Music(VIRUS_BATTLE))]);
+    assert!(a.packs.iter().all(|p| p.queue.is_empty()));
+    a.handle_actions([CueAction::Play(SoundCue::StopMusic), CueAction::Cancel(SoundCue::StopMusic)]);
+    a.tick(&mut out);
+    a.tick(&mut out);
+    assert_eq!(music_of(&a, 1), Some(SongId(0x16)));
+}
+
+/// A player's volume (the custom screen's hover over a dark chip) is set in
+/// every pack's driver: the music's on the theme's, the screen's sound's on
+/// the battle's.
+#[test]
+fn a_volume_is_every_packs() {
+    let theme = Theme { bank: other_bank(), song: 0x16 };
+    let (banks, songs) = with_theme(vec![bank()], &Songs::numbers(0x200), &[VIRUS_BATTLE], &theme);
+    let mut a = BattleAudio::with_banks(banks, songs);
+    a.handle(&[SoundCue::Music(VIRUS_BATTLE), SoundCue::Volume { player: 31, volume: 0x80 }, SoundCue::Volume { player: 22, volume: 0xA0 }]);
+    assert_eq!(a.packs[0].queue, a.packs[1].queue[1..], "the same volumes on both, after the theme's start");
+    assert_eq!(a.packs[0].queue.len(), 2);
+}

@@ -388,6 +388,7 @@ const ELEMENT_NAMES: [&str; 6] = ["null", "fire", "aqua", "elec", "wood", "drain
 /// schemas).
 pub(crate) const SECTIONS: &[&str] = &[
     "banners",
+    "battle_themes",
     "buster",
     "chip_use",
     "custom_screen",
@@ -427,6 +428,7 @@ struct Stated {
     effects: Option<super::rules::EffectsRules>,
     fresh_stats: Option<super::rules::FreshStatsRules>,
     link_pick: Option<LinkPickSection>,
+    battle_themes: Option<Vec<crate::sound::SoundId>>,
 }
 
 impl Stated {
@@ -490,6 +492,7 @@ impl Stated {
             link_pick: Some(LinkPickSection { first_round_stages: r.link_pick.first_round_stages, backgrounds: r.link_pick.backgrounds.clone() }),
             effects: Some(r.effects.clone()),
             fresh_stats: Some(r.fresh_stats),
+            battle_themes: Some(r.battle_themes.clone()),
         }
     }
 
@@ -557,6 +560,7 @@ impl Stated {
                 backgrounds: link_pick.backgrounds,
                 match_stages: Vec::new(),
             },
+            battle_themes: self.battle_themes.unwrap_or_default(),
             sine: self.sine.unwrap_or_default(),
             push_vectors: reactions.push,
             push_reading: reactions.push_reading,
@@ -807,6 +811,26 @@ fn section(stated: &mut Stated, name: &str, spec: &Data, at: &str, r: &SpecReade
                 });
             }
             "buster" => stated.buster = Some(r.read(spec, &at).map_err(e)?),
+            "battle_themes" => {
+                // (Songs alone: an asset of another kind is no theme.)
+                let items: &[Data] = match spec {
+                    Data::List(items) => items,
+                    Data::Map(entries) if entries.is_empty() => &[],
+                    _ => return Err(e(format!("{at}: a list of songs (asset.sound)"))),
+                };
+                let mut themes = Vec::with_capacity(items.len());
+                for (i, item) in items.iter().enumerate() {
+                    let Data::Asset(nettai_content_api::AssetKind::Sound, _) = item else {
+                        return Err(e(format!("{at}[{}]: a song (asset.sound), not {item:?}", i + 1)));
+                    };
+                    let theme = crate::sound::SoundId(r.read(item, &format!("{at}[{}]", i + 1)).map_err(e)?);
+                    if themes.contains(&theme) {
+                        return Err(e(format!("{at}[{}]: the same song as another theme", i + 1)));
+                    }
+                    themes.push(theme);
+                }
+                stated.battle_themes = Some(themes);
+            }
             "banners" => stated.holding_banners = Some(r.read::<BannersSection>(spec, &at).map_err(e)?.holding),
             "status" => stated.status = Some(r.read(spec, &at).map_err(e)?),
             "chip_use" => stated.chip_use = Some(r.read(spec, &at).map_err(e)?),

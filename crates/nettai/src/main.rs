@@ -25,6 +25,7 @@ mod gl;
 mod input;
 mod lang;
 mod look;
+mod music;
 mod nav;
 mod packs;
 mod paths;

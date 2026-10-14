@@ -278,6 +278,19 @@ impl Games {
         self.read(id).filter(|r| r.runtime.get())
     }
 
+    /// Games of `loaded`, each by its id, its parts read (a test's: no pack, no extraction).
+    #[cfg(test)]
+    pub(crate) fn read_of(loaded: Vec<(&str, Loaded)>) -> Games {
+        let list = loaded
+            .into_iter()
+            .map(|(id, loaded)| Entry {
+                id: id.to_string(),
+                state: State::Ready(Rc::new(Ready { loaded, graphics: Default::default(), runtime: false.into() })),
+            })
+            .collect();
+        Games { list, notices: Vec::new(), packs: PathBuf::new(), extracts: false, stale: Vec::new(), found_source: false, extractor: None, waiting: Vec::new() }
+    }
+
     /// Game `id`, if its parts are read (its runtime may yet be to load: [`Games::load_runtime`]).
     pub fn read(&self, id: &str) -> Option<Rc<Ready>> {
         match self.get(id).map(|e| &e.state) {
