@@ -2,8 +2,10 @@
 //! it loads, a netplay offer when it arrives (`check_side`), and the build creator
 //! shows as they fail. Each problem is said, with where it is.
 //!
-//! - **The rounds**: the content's game, 1 to [`crate::MAX_ROUNDS`] of
-//!   them, each stage stated one a match of the game may name (its rules'
+//! - **The rounds**: the content's game, as many as a set first to 1 to
+//!   [`crate::MAX_FIRST_TO`] round wins takes (`2 × wins − 1`,
+//!   [`crate::rounds_for`]), each stage stated one a match of the game may
+//!   name (its rules'
 //!   `link_pick.match_stages`, `crate::link_battle_stages`), each
 //!   background stated one its pack has, and a stage left unstated only
 //!   where the rules pick one (`link_pick.stages`).
@@ -48,6 +50,13 @@ fn check_round(content: &Content, game: &str, r: &RoundSettings, at: &str, out: 
     }
 }
 
+/// Why `rounds` rounds are no set's (a set first to `n` round wins has
+/// `2n − 1`, `n` from 1 to [`crate::MAX_FIRST_TO`]).
+pub fn no_set(rounds: usize) -> String {
+    let most = crate::rounds_for(crate::MAX_FIRST_TO);
+    format!("{rounds} rounds: a set is first to 1 to {} round wins, of 2 × wins − 1 rounds (1, 3, 5 ... {most})", crate::MAX_FIRST_TO)
+}
+
 /// What is wrong with a match's game and its rounds (`rounds`: each a
 /// round's settings, where it is fought).
 pub fn check_rounds(content: &Content, game: &str, rounds: &[RoundSettings]) -> Vec<String> {
@@ -59,8 +68,8 @@ pub fn check_rounds(content: &Content, game: &str, rounds: &[RoundSettings]) -> 
     if let Err(e) = crate::playable(content, game) {
         return vec![e];
     }
-    if rounds.is_empty() || rounds.len() > crate::MAX_ROUNDS {
-        out.push(format!("{} rounds: a match has 1 to {}", rounds.len(), crate::MAX_ROUNDS));
+    if crate::first_to(rounds.len()).is_none() {
+        out.push(no_set(rounds.len()));
     }
     for (i, r) in rounds.iter().enumerate() {
         check_round(content, game, r, &format!("round {}", i + 1), &mut out);
