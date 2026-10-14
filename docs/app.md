@@ -1231,8 +1231,10 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
 - *The keys.* The cursor goes over the board cell by cell (each cell is a control, `cell`, its place in the
   drawn grid). Confirm on a placed piece picks it up by that cell; Confirm on a program's row takes a new copy of
   it in hand, its middle on the board's, however many copies are placed already (the user: "you should allow a
-  navicust part to be placed multiple times"; no game's rules limit copies, §2.26 of the design; a copy already
-  placed in that color says whether it is compressed, as a save compresses them all alike). While a piece
+  navicust part to be placed multiple times"; no game's rules limit copies, §2.26 of the design; it comes
+  compressed where the program compresses, the user: "navicust pieces should default to compressed in the
+  editor"; a copy already placed in that color says whether it is compressed, as a save compresses them all
+  alike). While a piece
   is in hand it is where the cursor is: the arrows (and a pad's stick) move it a cell at a time, the keys bound
   to L and R (A and S) and the pad's shoulders turn it a quarter about the cell held (the tab's `key` and
   `button` take them before the frame changes the tab), C or the pad's north button compresses it in place (its

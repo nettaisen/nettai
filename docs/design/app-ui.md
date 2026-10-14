@@ -490,7 +490,9 @@ Each is in the mockups under the same name.
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
   outline at its edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and
-  S turn it, C compresses it (in place, turned as it is: "rotating the ncp on compression is so confusing"), Enter (the
+  S turn it, C compresses or decompresses it (in place, turned as it is: "rotating the ncp on compression is so
+  confusing"; a program taken from the list comes compressed where it compresses: "navicust pieces should default
+  to compressed in the editor"), Enter (the
   pad's A) places it, Esc (the pad's B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
   up and putting it away, or with Del ("there seems to be no way to remove the ncp from the board once placed").
   Enter on a program's row takes a new copy in hand whether or not copies are placed, and Del there takes the
