@@ -717,6 +717,11 @@ fn patch_cards(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     shot(add, "tabs-cards-search", Pair::First);
     add(SETTLE, act(Action::Right));
     shot(add, "tabs-cards-search-focus", Pair::Second);
+    // The library scrolled down, then a search typed: what it finds is shown from its top; the search cleared.
+    add(SETTLE, focus("lib.rows", 40));
+    add(SETTLE, screen(|s, shell| s.edit(shell, "lib.search", 0, "e", false)));
+    shot(add, "tabs-cards-search-top", Pair::None);
+    add(SETTLE, screen(|s, shell| s.edit(shell, "lib.search", 0, "", true)));
     for row in 0..3 {
         add(SETTLE, focus("lib.rows", row));
         add(SETTLE, act(Action::Confirm));

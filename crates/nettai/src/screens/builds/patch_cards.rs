@@ -606,6 +606,9 @@ impl Tab for PatchCards {
         }
         self.search = text.chars().filter(|c| !c.is_control()).take(SEARCH_LENGTH).collect();
         self.changed(shell, draft);
+        // (What the search finds is shown from its top.)
+        let ui = shell.ui();
+        shell.nav.list_to_top(&ui, "lib.rows");
     }
 
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
