@@ -505,7 +505,7 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     }
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
     shot(&mut add, "battle-practice-menu", Pair::None);
-    // (An online match's corner and menu, shown over the training battle: there is no link here.)
+    // (An online match's corner and menu, shown over the practice battle: there is no link here.)
     add(
         SETTLE,
         Box::new(|ui, app, _| {

@@ -1,4 +1,4 @@
-//! The main menu (docs/design/app-ui.md §6): PLAY, TRAINING, BUILDS, REPLAYS, Settings, Exit, and the demo reel.
+//! The main menu (docs/design/app-ui.md §6): PLAY, PRACTICE, BUILDS, REPLAYS, Settings, Exit, and the demo reel.
 //!
 //! The reel is a battle of the selected game playing itself: the player's latest replays of the game, one after
 //! another (`crate::replays::Reel`: found and read on a thread as the menu shows; one that doesn't play here
