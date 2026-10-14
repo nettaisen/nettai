@@ -220,6 +220,21 @@ pub struct Sound {
     pub report: Report,
 }
 
+impl Sound {
+    /// The parts of a battle's sound (as [`crate::preload::Preload::with`]
+    /// takes them) of `content`, this sound's game, with `theme` as the
+    /// battle's music in place of the game's own (the songs a round starts:
+    /// `Content::battle_music`); with none, the game's own. Presentation
+    /// alone: the battle, its cues, a replay and the wire are the same
+    /// whatever plays. Its rollback is the cues', as the game's own music's.
+    pub fn parts(&self, content: &Content, theme: Option<&nettai_audio::Theme>) -> crate::preload::SoundParts {
+        match theme {
+            Some(theme) => nettai_audio::with_theme(self.banks.clone(), &self.songs, &content.battle_music(), theme),
+            None => (self.banks.clone(), self.songs.clone()),
+        }
+    }
+}
+
 /// The font the `text` mode draws with: the file at `path`, else the one
 /// the library comes with; none in the original's text mode, which draws
 /// the pack's own fonts.
@@ -278,6 +293,29 @@ impl Loaded {
     /// A renderer of the game's graphics, the text as it was asked for.
     pub fn renderer(&self) -> Renderer {
         self.graphics.renderer(self.text, self.font.clone())
+    }
+
+    /// The game's battle themes (its rules' `battle_themes`), by their songs'
+    /// asset names, in its order: what a player may pick as a battle's music,
+    /// in this game's battles or another's ([`Loaded::theme`]).
+    pub fn battle_themes(&self) -> Vec<&str> {
+        let names = self.game.content.assets.names(nettai_content_api::AssetKind::Sound);
+        self.game.content.battle_themes().iter().filter_map(|t| names.get(t.0 as usize).copied()).collect()
+    }
+
+    /// Battle theme `song` (a song asset's name, one of
+    /// [`Loaded::battle_themes`]): its song with its pack's bank, to play as
+    /// a battle's music in place of its own ([`Sound::with_theme`]). None
+    /// where the game has no such theme, or no sound loaded.
+    pub fn theme(&self, song: &str) -> Option<nettai_audio::Theme> {
+        let assets = &self.game.content.assets;
+        let handle = assets.handle(nettai_content_api::AssetKind::Sound, song)?;
+        if !self.game.content.battle_themes().contains(&nettai_battle::sound::SoundId(handle)) {
+            return None;
+        }
+        let at = assets.sound(handle)?;
+        let bank = self.sound.as_ref()?.banks.get(at.pack.index())?.clone();
+        Some(nettai_audio::Theme { bank, song: at.id })
     }
 
     /// Everything the loaders reported, in the order they loaded.

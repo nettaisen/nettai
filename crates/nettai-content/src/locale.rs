@@ -139,6 +139,26 @@ pub fn game_name(dir: &Path, game: &str, lang: &str) -> Option<String> {
     read(lang).or_else(|| read(OWN))
 }
 
+/// Game `game`'s text table `table` (a manifest's `text`: the battle themes'
+/// names, [`BATTLE_THEMES`]) in `lang`, from the locales of content `dir`
+/// alone (a game without its pack has it too): each key's text in `lang`,
+/// else in the content's own language. Empty where neither has the table.
+pub fn text_table(dir: &Path, game: &str, lang: &str, table: &str) -> std::collections::BTreeMap<String, String> {
+    let read = |lang: &str| -> std::collections::BTreeMap<String, String> {
+        let Ok(text) = std::fs::read_to_string(path(&dir.join(game), lang)) else { return Default::default() };
+        let Ok(toml::Value::Table(mut tables)) = toml::from_str::<toml::Value>(&text) else { return Default::default() };
+        match tables.remove(table) {
+            Some(toml::Value::Table(t)) => t.into_iter().filter_map(|(k, v)| Some((k, v.as_str()?.to_string()))).collect(),
+            _ => Default::default(),
+        }
+    };
+    let mut out = read(OWN);
+    if lang != OWN {
+        out.extend(read(lang));
+    }
+    out
+}
+
 /// The languages pack folder `pack` has tables of.
 pub fn languages_of(pack: &Path) -> Vec<String> {
     let Ok(entries) = std::fs::read_dir(pack.join(DIR)) else { return Vec::new() };
@@ -280,6 +300,34 @@ pub fn check_backgrounds(s: &Strings, backgrounds: &[&str], own: bool) -> Vec<St
     out
 }
 
+/// The text table that names a game's battle themes (its rules'
+/// `battle_themes`), by their songs' asset names.
+pub const BATTLE_THEMES: &str = "battle_themes";
+
+/// What is wrong with a game's table's battle themes' names
+/// ([`BATTLE_THEMES`]) against the themes its rules state (`themes`, their
+/// songs' asset names): a name of a song that is no theme, and in the own
+/// language's (`own`), a theme without a name, which a list would show by
+/// its asset name.
+pub fn check_battle_themes(s: &Strings, themes: &[&str], own: bool) -> Vec<String> {
+    let mut out = Vec::new();
+    if let Some(Table::Text(names)) = s.tables.get(BATTLE_THEMES) {
+        for name in names.keys() {
+            if !themes.contains(&name.as_str()) {
+                out.push(format!("{BATTLE_THEMES}.{name}: the rules' battle_themes have no song of this name"));
+            }
+        }
+    }
+    if own {
+        for name in themes {
+            if s.text(BATTLE_THEMES, name).is_none() {
+                out.push(format!("{BATTLE_THEMES}.{name}: the content's own language names every battle theme"));
+            }
+        }
+    }
+    out
+}
+
 /// Check the tables of each game `c` loaded from content `dir` against
 /// `c`: each language's table of the game's pack (a chip the game's
 /// init.luau doesn't require yet, its folder `chips/<key>/` there without
@@ -290,6 +338,8 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
     use nettai_content_api::{AssetKind, AssetNames};
     let backgrounds: Vec<&str> =
         c.assets.names(AssetKind::Background).into_iter().filter(|n| !AssetNames::is_placeholder(AssetKind::Background, n)).collect();
+    let sounds = c.assets.names(AssetKind::Sound);
+    let themes: Vec<&str> = c.battle_themes().iter().filter_map(|t| sounds.get(t.0 as usize).copied()).collect();
     for game in c.scripts.games() {
         let pack = dir.join(&game);
         let text_tables = c.scripts.manifest(&game).map(|m| m.text.clone()).unwrap_or_default();
@@ -311,6 +361,9 @@ pub fn check_games(dir: &Path, c: &nettai_battle::Content, r: &mut crate::report
                         r.error(&at, problem);
                     }
                     for problem in check_backgrounds(&s, &backgrounds, lang == OWN) {
+                        r.error(&at, problem);
+                    }
+                    for problem in check_battle_themes(&s, &themes, lang == OWN) {
                         r.error(&at, problem);
                     }
                 }
@@ -388,5 +441,49 @@ mod tests {
             ["backgrounds.lan-hp: the pack has no background of this name", "backgrounds.comp: the content's own language names every background of the pack"]
         );
         assert_eq!(check_backgrounds(&s, &["lans-hp", "comp", "lan-hp"], false), Vec::<String>::new());
+    }
+
+    /// `[battle_themes]` names the rules' battle themes by their songs' asset names: a song that is no theme is
+    /// refused, and the own language names every theme.
+    #[test]
+    fn the_battle_themes_are_the_rules() {
+        let s = parse("language = \"en\"\n[battle_themes]\n\"virus-battle\" = \"Virus Battle\"\n\"winner\" = \"?\"\n", "en.toml").unwrap();
+        assert_eq!(s.text(BATTLE_THEMES, "virus-battle"), Some("Virus Battle"));
+        assert_eq!(
+            check_battle_themes(&s, &["virus-battle", "boss-battle"], true),
+            [
+                "battle_themes.winner: the rules' battle_themes have no song of this name",
+                "battle_themes.boss-battle: the content's own language names every battle theme"
+            ]
+        );
+        assert_eq!(check_battle_themes(&s, &["virus-battle", "winner"], false), Vec::<String>::new());
+    }
+
+    /// Each game's battle themes are named in English and in Japanese, and English names them after the game's
+    /// name as the user named them.
+    #[test]
+    fn each_games_battle_themes_are_named() {
+        let dir = crate::index::content();
+        for (game, en) in [
+            ("exe4", &["virus-battle", "boss-battle", "tournament-battle", "final-battle"][..]),
+            ("exe5", &["virus-battle", "boss-battle", "final-battle"][..]),
+            ("exe6", &["virus-battle", "boss-battle", "final-battle", "crossover-battle"][..]),
+        ] {
+            for lang in ["en", "ja"] {
+                let s = load(&dir.join(game), lang).unwrap().unwrap();
+                for song in en {
+                    assert!(s.text(BATTLE_THEMES, song).is_some(), "{game} {lang}: {song}");
+                }
+            }
+        }
+        // (Read alone, as the app lists them: a language's, else the own language's.)
+        let names = |game, lang| text_table(&dir, game, lang, BATTLE_THEMES);
+        assert_eq!(names("exe4", "en")["tournament-battle"], "Tournament Battle");
+        assert_eq!(names("exe4", "en")["final-battle"], "vs Duo");
+        assert_eq!(names("exe5", "en")["final-battle"], "vs Nebula Gray");
+        assert_eq!(names("exe6", "en")["final-battle"], "vs Cybeast");
+        assert_eq!(names("exe6", "ja")["final-battle"], "VS 電脳獣");
+        assert_eq!(names("exe6", "pseudo")["crossover-battle"], "Crossover Battle", "no table of its own");
+        assert!(names("nowhere", "en").is_empty());
     }
 }

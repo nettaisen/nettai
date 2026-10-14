@@ -780,3 +780,10 @@ language = "ja"
 [patch_card_groups]
 "parameter" = "パラメータ"
 "ability" = "アビリティ"
+
+# The battle themes' names (en.toml's `[battle_themes]` says what they are). Ours.
+[battle_themes]
+"virus-battle" = "ウイルスバトル"
+"boss-battle" = "ボスバトル"
+"final-battle" = "VS 電脳獣"
+"crossover-battle" = "クロスオーバーバトル"
