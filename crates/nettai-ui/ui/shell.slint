@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -176,6 +176,14 @@ export global Shell {
     in property <bool> picker-menu;
     in property <int> picker-apart: -1;
     in property <int> picker-rows;
+    // A grid of pictures (Practice's Arena and Background): each choice its picture over its name, `picker-columns`
+    // to a row, each `picker-cell` wide and its picture two fifths of that tall (the battle's field's band, 240 by
+    // 96); `picker-rows` the rows it shows at once. An empty picture is one not drawn yet, or the first choice,
+    // Random, which has none.
+    in property <bool> picker-grid;
+    in property <[image]> picker-pictures;
+    in property <int> picker-columns: 5;
+    in property <length> picker-cell: 120px;
     in property <length> picker-x;
     in property <length> picker-y;
     in property <length> picker-width;
@@ -1430,12 +1438,87 @@ component PickRow inherits Rectangle {
     }
 }
 
+// A choice of a grid of pictures (Practice's Arena and Background): its picture, and its name under it on two
+// lines at most. The cell is what is focused (the grid is a page of cells, the arrows going to the cell beside in
+// their direction); the chosen one's picture is outlined in the cursor's color over a tint. Random has no
+// picture: a question mark in its place. (Copied into the grid, its one use: docs/app.md §14.)
+component PlaceCell inherits Rectangle {
+    in property <image> picture;
+    in property <string> text;
+    in property <int> nav-index;
+    in property <bool> chosen;
+    property <length> thumb: self.width * 0.4;
+    Rectangle {
+        background: root.chosen ? Theme.tint : touch.has-hover ? Theme.tint-hover : transparent;
+    }
+
+    Rectangle {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.thumb;
+        background: Theme.inset;
+        Image {
+            x: 0;
+            y: 0;
+            width: parent.width;
+            height: parent.height;
+            source: root.picture;
+            image-fit: fill;
+        }
+
+        Text {
+            visible: root.nav-index == 0;
+            text: "?";
+            color: Theme.dim;
+            font-family: Theme.display;
+            font-size: 28px;
+            font-weight: Theme.display-bold;
+            horizontal-alignment: center;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            border-width: root.chosen ? 2px : 1px;
+            border-color: root.chosen ? Theme.cursor : touch.has-hover ? Theme.muted : Theme.line;
+        }
+    }
+
+    Text {
+        x: 2px;
+        y: root.thumb + 4px;
+        width: root.width - 4px;
+        height: 30px;
+        text: root.text;
+        color: root.chosen ? Theme.text : Theme.muted;
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: root.chosen ? 600 : 400;
+        horizontal-alignment: center;
+        vertical-alignment: top;
+        wrap: word-wrap;
+        overflow: elide;
+    }
+
+    touch := Focusable {
+        nav: "pick.grid.cell";
+        nav-index: root.nav-index;
+    }
+}
+
 // A select's choices: a list under it, or on a phone a sheet from the bottom. It drops into place as it opens.
 // The list is as tall as the rows the app says it shows (`Shell.picker-rows`: as many as there are, up to what
-// the window has room for) and keeps that height: more choices scroll, the focused one into view.
+// the window has room for) and keeps that height: more choices scroll, the focused one into view. A grid of
+// pictures (`Shell.picker-grid`) is the same, its rows of cells: a page whose cells are each focused, Up and Down
+// going a row, Left and Right a cell, the focused one scrolled into view. Its sizes are the app's
+// (`shell::GRID_*`): a cell `Shell.picker-cell` wide, its picture two fifths of that tall and 34 under it for the
+// name, 8 apart (6 on a phone), in 8 of padding with the scrollbar's 12 at the right.
 export component PickerLayer inherits Rectangle {
-    property <length> pad: Theme.phone ? 8px : 1px;
-    property <length> list-height: Shell.picker-rows * Theme.row + 2 * self.pad;
+    property <length> pad: Shell.picker-grid ? 8px : (Theme.phone ? 8px : 1px);
+    property <length> gap: Theme.phone ? 6px : 8px;
+    property <length> cell-height: Shell.picker-cell * 0.4 + 34px;
+    property <length> pitch: root.cell-height + root.gap;
+    property <length> list-height: Shell.picker-grid ? Shell.picker-rows * root.pitch - root.gap + 2 * self.pad : Shell.picker-rows * Theme.row + 2 * self.pad;
     arrive := Tween {
         duration: Theme.quick;
     }
@@ -1467,8 +1550,10 @@ export component PickerLayer inherits Rectangle {
             y: root.pad;
             width: parent.width - 2 * root.pad;
             height: parent.height - 2 * root.pad;
+            visible: !Shell.picker-grid;
             nav: "pick.option";
-            count: Shell.picker-options.length;
+            // (None while it is a grid: the cells are the choices.)
+            count: Shell.picker-grid ? 0 : Shell.picker-options.length;
             gap: 0px;
             chosen: Shell.picker-chosen;
             for slot in list.shown: PickRow {
@@ -1482,6 +1567,29 @@ export component PickerLayer inherits Rectangle {
                 danger: Shell.picker-menu && Shell.picker-apart >= 0 && self.at >= Shell.picker-apart;
                 apart: Shell.picker-menu && self.at == Shell.picker-apart && self.at > 0;
                 nav-index: self.at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        grid := ScrollPage {
+            x: root.pad;
+            y: root.pad;
+            // (The scrollbar's 12 in the padding's room at the right: the cells are as far from both edges.)
+            width: parent.width - root.pad - 4px;
+            height: parent.height - 2 * root.pad;
+            visible: Shell.picker-grid;
+            nav: "pick.grid";
+            content-height: ceil(Shell.picker-pictures.length / max(1, Shell.picker-columns)) * root.pitch - root.gap;
+            for picture[i] in Shell.picker-pictures: PlaceCell {
+                x: Math.mod(i, Shell.picker-columns) * (Shell.picker-cell + root.gap);
+                y: floor(i / Shell.picker-columns) * root.pitch;
+                width: Shell.picker-cell;
+                height: root.cell-height;
+                picture: picture;
+                text: Shell.picker-options[i];
+                chosen: i == Shell.picker-chosen;
+                nav-index: i;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)
             }
