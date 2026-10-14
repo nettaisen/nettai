@@ -4,7 +4,7 @@
 //! the first time it is asked for, and kept.
 
 use crate::games::Ready;
-use nettai_battle::content::ChipFamily;
+use nettai_battle::content::{ChipClass, ChipFamily};
 use nettai_content_api::{ChipHandle, FormHandle, NaviHandle};
 use nettai_match::build::Face;
 use nettai_render::packs::PackGraphics;
@@ -65,9 +65,23 @@ impl Pictures {
         kept(&self.icons, chip, || pictures::chip_icon(&self.packs.packs(), self.ready.content(), chip))
     }
 
-    /// A chip's 56x48 picture.
+    /// A chip's 56x48 picture. A Program Advance has none (what its pack holds in the place of one is no picture
+    /// of it): an empty image.
     pub fn art(&self, chip: ChipHandle) -> slint::Image {
+        if self.ready.content().chip(chip).class == ChipClass::ProgramAdvance {
+            return slint::Image::default();
+        }
         kept(&self.art, chip, || pictures::chip_art(&self.packs.packs(), self.ready.content(), chip))
+    }
+
+    /// A chip's element icon: its family's, as the game's chip window shows it. A Program Advance has no element: an
+    /// empty image.
+    pub fn chip_element(&self, chip: ChipHandle) -> slint::Image {
+        let record = self.ready.content().chip(chip);
+        if record.class == ChipClass::ProgramAdvance {
+            return slint::Image::default();
+        }
+        self.element(record.family)
     }
 
     /// A chip family's 16x16 element icon, as the game's chip window shows it.

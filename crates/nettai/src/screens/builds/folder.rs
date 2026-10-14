@@ -190,7 +190,7 @@ impl Folder {
                             refused: refusal.is_some(),
                             megabytes: say.invoke_megabytes(record.mb as i32),
                             attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
-                            element: kit.pictures.element(record.family),
+                            element: kit.pictures.chip_element(row.id),
                             code: Default::default(),
                         }
                     });
@@ -251,7 +251,7 @@ impl Folder {
                 kind: kind(record.class),
                 code: chip.code.letter().to_string().into(),
                 description: description(words, chip.id).into(),
-                element: kit.pictures.element(record.family),
+                element: kit.pictures.chip_element(chip.id),
                 facts: ModelRc::new(VecModel::from(facts)),
                 problem: problem.into(),
             }
