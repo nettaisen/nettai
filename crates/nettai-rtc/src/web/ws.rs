@@ -25,6 +25,8 @@ pub(crate) struct Socket {
     /// What is said before it opens.
     waiting: Vec<String>,
     open: Rc<RefCell<bool>>,
+    /// Closed while it opened: it closes itself once open.
+    closing: bool,
     _callbacks: Vec<Closure<dyn FnMut(JsValue)>>,
 }
 
@@ -36,7 +38,7 @@ impl Socket {
             Ok(ws) => ws,
             Err(e) => {
                 events.borrow_mut().push_back(WsEvent::Closed(format!("can't reach the signaling server: {e:?}")));
-                return Socket { ws: None, events, waiting: Vec::new(), open, _callbacks: Vec::new() };
+                return Socket { ws: None, events, waiting: Vec::new(), open, closing: false, _callbacks: Vec::new() };
             }
         };
         let mut callbacks: Vec<Closure<dyn FnMut(JsValue)>> = Vec::new();
@@ -61,7 +63,7 @@ impl Socket {
             e.borrow_mut().push_back(WsEvent::Closed(why));
         }));
         ws.set_onclose(Some(callbacks.last().unwrap().as_ref().unchecked_ref()));
-        Socket { ws: Some(ws), events, waiting: Vec::new(), open, _callbacks: callbacks }
+        Socket { ws: Some(ws), events, waiting: Vec::new(), open, closing: false, _callbacks: callbacks }
     }
 
     /// Send a text message (kept while it opens; lost if it closes).
@@ -86,21 +88,42 @@ impl Socket {
         event
     }
 
-    /// Close it, after what was sent before.
+    /// Close it, after what was sent before. One still opening says that
+    /// once it has opened, then closes: the browser's socket, and the
+    /// handler that does it, outlive this one (the server may have given it
+    /// a place, which what it says gives up).
     pub(crate) fn close(&mut self) {
-        if let Some(ws) = &self.ws {
-            let _ = ws.close();
+        let Some(ws) = &self.ws else { return };
+        if *self.open.borrow() {
+            for text in self.waiting.drain(..) {
+                let _ = ws.send_with_str(&text);
+            }
         }
+        if self.waiting.is_empty() || ws.ready_state() != WebSocket::CONNECTING {
+            let _ = ws.close();
+            return;
+        }
+        let (w, waiting) = (ws.clone(), std::mem::take(&mut self.waiting));
+        let then = Closure::once_into_js(move |_: JsValue| {
+            for text in &waiting {
+                let _ = w.send_with_str(text);
+            }
+            let _ = w.close();
+        });
+        ws.set_onopen(Some(then.unchecked_ref()));
+        self.closing = true;
     }
 }
 
 impl Drop for Socket {
     fn drop(&mut self) {
         if let Some(ws) = self.ws.take() {
-            ws.set_onopen(None);
             ws.set_onmessage(None);
             ws.set_onclose(None);
-            let _ = ws.close();
+            if !self.closing {
+                ws.set_onopen(None);
+                let _ = ws.close();
+            }
         }
     }
 }

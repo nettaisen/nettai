@@ -22,7 +22,7 @@ use web_sys::{
     RtcPeerConnectionIceEvent, RtcPeerConnectionState, RtcSdpType, RtcSessionDescriptionInit,
 };
 
-use crate::{Candidate, Config, Error, IceServer, Instant, PeerEvent};
+use crate::{Candidate, Config, Error, IceServer, Instant, Message, PeerEvent};
 
 /// The data channel's label (the native backend's).
 const LABEL: &str = "nettai";
@@ -42,7 +42,7 @@ impl Servers {
 #[derive(Default)]
 struct Found {
     events: VecDeque<PeerEvent>,
-    inbox: VecDeque<Vec<u8>>,
+    inbox: VecDeque<Message>,
     open: bool,
     down: bool,
     /// The other's description is in (its candidates wait for it).
@@ -189,7 +189,9 @@ impl PeerConnection {
         callbacks.push(Closure::own_assert_unwind_safe(move |e: JsValue| {
             let data = e.unchecked_into::<MessageEvent>().data();
             if let Some(buffer) = data.dyn_ref::<js_sys::ArrayBuffer>() {
-                f.borrow_mut().inbox.push_back(Uint8Array::new(buffer).to_vec());
+                f.borrow_mut().inbox.push_back(Message::Binary(Uint8Array::new(buffer).to_vec()));
+            } else if let Some(text) = data.as_string() {
+                f.borrow_mut().inbox.push_back(Message::Text(text));
             }
         }));
         channel.set_onmessage(Some(callbacks.last().unwrap().as_ref().unchecked_ref()));
@@ -232,12 +234,8 @@ impl PeerConnection {
         self.found.borrow_mut().events.pop_front()
     }
 
-    /// Whether a datagram came that wasn't taken.
-    pub(crate) fn has_datagram(&self) -> bool {
-        !self.found.borrow().inbox.is_empty()
-    }
-
-    pub(crate) fn next_datagram(&mut self) -> Option<Vec<u8>> {
+    /// The next message that came, if any.
+    pub(crate) fn next_message(&mut self) -> Option<Message> {
         self.found.borrow_mut().inbox.pop_front()
     }
 
@@ -251,9 +249,23 @@ impl PeerConnection {
         }
     }
 
-    /// The next datagram that came from the other side, if one has.
+    /// Send a text message (the link's own) to the other side; dropped if
+    /// the channel isn't open.
+    pub(crate) fn send_text(&mut self, text: &str) {
+        if self.found.borrow().open {
+            let _ = self.channel.send_with_str(text);
+        }
+    }
+
+    /// The next datagram that came from the other side, if one has (text
+    /// messages are skipped).
     pub fn recv(&mut self) -> Option<Vec<u8>> {
-        self.next_datagram()
+        while let Some(m) = self.next_message() {
+            if let Message::Binary(d) = m {
+                return Some(d);
+            }
+        }
+        None
     }
 
     pub fn is_open(&self) -> bool {
