@@ -88,9 +88,11 @@ export global Drag {
     out property <length> y;
     out property <length> grab-x;
     out property <length> grab-y;
-    // Where the row would land, as the app says.
+    // Where the row would land, as the app says; or that it is over the library beside its list, where let go what it
+    // holds is taken out (`removing`: the remove look).
     in-out property <int> to: -1;
     in-out property <bool> swap;
+    in-out property <bool> removing;
     out property <length> threshold: 6px;
     property <length> start-x;
     property <length> start-y;
@@ -107,8 +109,13 @@ export global Drag {
             Nav.activate(nav, index);
         }
     }
-    // A pointer event on row `row` of `list`, the touch at `origin` with the pointer at `mx`, `my` in it.
-    public function pointer(list: string, row: int, e: PointerEvent, origin: Point, mx: length, my: length) {
+    // A pointer event on row `row` of `list`, the touch at `origin` with the pointer at `mx`, `my` in it. A right click
+    // on a row that holds something of the build (`removable`; the press brought the focus to it) removes that, as Del
+    // does (`Nav.choose("remove", ...)`).
+    public function pointer(list: string, row: int, e: PointerEvent, origin: Point, mx: length, my: length, removable: bool) {
+        if removable && e.kind == PointerEventKind.down && e.button == PointerEventButton.right {
+            Nav.choose("remove", row, 0);
+        }
         if list == "" {
             return;
         }
@@ -118,6 +125,7 @@ export global Drag {
             root.on = false;
             root.to = -1;
             root.swap = false;
+            root.removing = false;
             root.grab-x = mx;
             root.grab-y = my;
             root.x = origin.x + mx;
@@ -157,6 +165,7 @@ export global Drag {
         root.on = false;
         root.to = -1;
         root.swap = false;
+        root.removing = false;
     }
 }
 
@@ -171,6 +180,8 @@ export component Focusable inherits TouchArea {
     in property <bool> marked;
     // The list its row can be dragged in to another place (`Drag`), or none.
     in property <string> drag;
+    // It holds something of the build: a right click on it removes that, as Del does.
+    in property <bool> removable;
     out property <bool> focused: nav != "" && Nav.id == nav && Nav.index == nav-index;
     property <[int]> token;
     property <length> ax: self.absolute-position.x;
@@ -211,7 +222,7 @@ export component Focusable inherits TouchArea {
             root.was-marked = root.marked && e.button == PointerEventButton.left;
             Nav.point(nav, nav-index);
         }
-        Drag.pointer(root.drag, nav-index, e, self.absolute-position, self.mouse-x, self.mouse-y);
+        Drag.pointer(root.drag, nav-index, e, self.absolute-position, self.mouse-x, self.mouse-y, root.removable);
     }
     moved => {
         if self.pressed {

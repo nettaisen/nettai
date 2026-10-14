@@ -171,6 +171,7 @@ component SlotRow inherits Rectangle {
         nav: "slot";
         nav-index: root.index;
         drag: "slot";
+        removable: true;
     }
 }
 
@@ -205,23 +206,31 @@ component SlotView inherits Rectangle {
         nav-index: root.index;
         marked: root.chosen;
         drag: "slot";
+        removable: true;
     }
 }
 
 // The row being dragged, under the pointer: lifted (a little larger, raised, with a shadow and a line in the
-// cursor's color), with the number it would have where it would land.
+// cursor's color), with the number it would have where it would land. Over the library (`removing`), its line is in
+// the error color and it fades back: let go, it is taken out.
 export component LiftedRow inherits Rectangle {
     in property <ChipCell> chip;
     in property <int> number;
     in property <bool> big;
+    in property <bool> removing;
     Rectangle {
         transform-scale: 1.03;
         background: Theme.raised;
         border-width: 1px;
-        border-color: Theme.cursor;
+        border-color: root.removing ? Theme.bad : Theme.cursor;
         drop-shadow-blur: 10px;
         drop-shadow-offset-y: 4px;
         drop-shadow-color: #00000090;
+        opacity: root.removing ? 0.6 : 1;
+        animate opacity, border-color {
+            duration: Theme.quick;
+            easing: ease-out;
+        }
         ChipRow {
             x: 0;
             y: 0;
@@ -230,7 +239,7 @@ export component LiftedRow inherits Rectangle {
             chip: root.chip;
             number: root.number;
             big: root.big;
-            chosen: true;
+            chosen: !root.removing;
         }
     }
 }
@@ -241,6 +250,50 @@ export component DropGap inherits Rectangle {
         background: Theme.tint;
         border-width: 1px;
         border-color: Theme.cursor.with-alpha(0.6);
+    }
+}
+
+// Over the library (the NaviCust's, its programs) while what is dragged or carried there would be taken out if let
+// go (or clicked): what is under it fades back under the ground, its edge and a faint wash in the error color, and a
+// line in its middle says so. It fades in and out (`quick`); it takes no clicks. (Small, it is copied into its uses:
+// docs/app.md §14.)
+export component RemoveTarget inherits Rectangle {
+    in property <bool> shown;
+    in property <string> text;
+    Rectangle {
+        x: 0;
+        y: 0;
+        opacity: root.shown ? 1 : 0;
+        animate opacity {
+            duration: Theme.quick;
+            easing: ease-out;
+        }
+        background: Theme.ground-bottom.with-alpha(0.7);
+        Rectangle {
+            x: 0;
+            y: 0;
+            background: Theme.bad.with-alpha(0.06);
+            border-width: 1px;
+            border-color: Theme.bad.with-alpha(0.7);
+        }
+
+        // (Its line on a band of the ground, so the rows under it don't run through the words.)
+        Rectangle {
+            x: 1px;
+            y: (parent.height - self.height) / 2;
+            width: parent.width - 2px;
+            height: 36px;
+            background: Theme.ground-bottom.with-alpha(0.9);
+            Label {
+                x: 12px;
+                y: 8px;
+                width: parent.width - 24px;
+                height: 20px;
+                text: root.text;
+                color: Theme.bad;
+                horizontal-alignment: center;
+            }
+        }
     }
 }
 
@@ -713,11 +766,23 @@ export component FolderTab inherits Rectangle {
         }
 
         // ---- The library, open.
-        LibraryPane {
+        library := LibraryPane {
             x: root.pane-width + 24px;
             y: root.pane-y;
             width: parent.width - self.x;
             height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+        }
+
+        // (An entry dragged over the library is taken out, let go there.)
+        RemoveTarget {
+            x: library.x - 8px;
+            y: library.y - 8px;
+            width: library.width + 8px;
+            height: library.height + 16px;
+            shown: FolderDrag.on && Drag.removing;
+            text: @tr("DROP TO REMOVE");
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
         // (The entry being dragged, under the pointer, over everything.)
@@ -729,6 +794,7 @@ export component FolderTab inherits Rectangle {
             visible: FolderDrag.on;
             chip: FolderView.slots[max(0, Drag.from)];
             number: FolderDrag.shown(max(0, Drag.from)) + 1;
+            removing: Drag.removing;
         }
     }
 
