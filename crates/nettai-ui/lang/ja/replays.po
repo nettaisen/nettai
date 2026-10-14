@@ -225,7 +225,7 @@ msgstr "MP4 動画"
 
 # The viewer: both builds, over the picture (B, Select). Over each one's name: YOU (Training's), OPPONENT.
 msgid "Builds"
-msgstr "ビルド"
+msgstr "構築"
 
 msgid "OPPONENT"
 msgstr "対戦相手"

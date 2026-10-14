@@ -7,10 +7,10 @@ msgstr ""
 # ---- The entry ----
 
 msgid "Your build"
-msgstr "あなたのビルド"
+msgstr "あなたの構築"
 
 msgid "Dummy's build"
-msgstr "ダミーのビルド"
+msgstr "ダミーの構築"
 
 # The entry's rows (and the menu's Battle rows): where each round is fought. Their choices are the content's
 # arenas and backgrounds, after Random (each round's picked from the seed).
@@ -30,7 +30,7 @@ msgid "START PRACTICE"
 msgstr "練習開始"
 
 msgid "CREATE A BUILD"
-msgstr "ビルドを作る"
+msgstr "構築を作る"
 
 msgid "ARENA PREVIEW"
 msgstr "アリーナ プレビュー"
@@ -43,20 +43,20 @@ msgstr "一覧を開く"
 
 # A hint: the build opened in Builds' editor (the dummy's, where the focus is on its row or its EDIT).
 msgid "Edit build"
-msgstr "ビルドを編集"
+msgstr "構築を編集"
 
 # Why practice can't start: the reserved line. {} is the rule the build breaks.
 msgid "Your build can't be used."
-msgstr "あなたのビルドは使えません。"
+msgstr "あなたの構築は使えません。"
 
 msgid "The dummy's build can't be used."
-msgstr "ダミーのビルドは使えません。"
+msgstr "ダミーの構築は使えません。"
 
 msgid "Your build can't be used: {}."
-msgstr "あなたのビルドは使えません: {}。"
+msgstr "あなたの構築は使えません: {}。"
 
 msgid "The dummy's build can't be used: {}."
-msgstr "ダミーのビルドは使えません: {}。"
+msgstr "ダミーの構築は使えません: {}。"
 
 # ---- Before the battle, and in it ----
 
@@ -160,7 +160,7 @@ msgid "RESTART"
 msgstr "最初から"
 
 msgid "CHANGE BUILDS"
-msgstr "ビルドを変える"
+msgstr "構築を変える"
 
 msgid "QUIT TO MENU"
 msgstr "メニューにもどる"
