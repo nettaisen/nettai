@@ -20,7 +20,9 @@ text = 0xF1EFFF
 muted = 0xAEA8D8
 dim = 0x655F94
 # The cursor (and the chosen row's bar, the active pane's title), the main action, and the text on the main action.
-cursor = 0x9FF0FF
+# The cursor is a lavender of the lines' violet, not the comet's ice-blue (the user: "the bn4 primary color for
+# arrows and stuff doesn't really match the purpleness of the borders").
+cursor = 0xB8A6FF
 action = 0xFF4FD8
 action_ink = 0x1A0016
 
