@@ -4,8 +4,9 @@
 had rejected as the default) with a bundled open-license font, as the default; §9 "As built" says what was built
 and how, and records the decisions; §9.8 (2026-10-13) is the fix of its sizes and of Japanese off its line: one size
 a role, a string narrowed to its box, kana and kanji on the capitals. §10 is the languages built on it
-(`--lang en|ja`) and where display text lives (no definition holds any: `locales/<lang>.toml`). §0 to §8 are the
-investigation as written before it, unchanged.
+(`--lang en|ja`) and where display text lives (no definition holds any: `locales/<lang>.toml`). §11 (2026-10-14) is a
+survey of the battle interface's pictures with lettering, and which of them the enhanced text could draw. §0 to §8
+are the investigation as written before it, unchanged.
 
 The question was: should the frontend draw its text (chip names, descriptions, telops and the rest) with a real
 font file rasterized at run time, instead of the pixel fonts extracted from the user's ROM? This document says what
@@ -1154,3 +1155,175 @@ The user's question (2026-10-02): "are the forms/weapons sections even used in t
   by its name, `[navicust_programs]` too): the patch cards' names, by card id, which gen-content checks (the English
   ones there, the Japanese ones the ROM's); no screen of the frontend shows them yet. (Until the cards became an
   engine definition kind, 2026-10-02, they were records and their names a `[records]` table.)
+
+## 11. Lettered pictures and the enhanced text: a survey (2026-10-14)
+
+The user (2026-10-14): "you should also survey all the sprite assets that have language-specific text and see if
+they can be replaced with enhanced rendering". Then, of its scope: "don't survey chip art or character sprites or
+backgrounds".
+
+This is a survey; nothing was changed. Each lettered picture of the battle interface is listed with what it says
+and how it is drawn, and judged as a candidate for drawing its words with the text layer (§9.3, `vfont.rs`) at the
+window's resolution in the enhanced graphics, keeping the art behind the words.
+
+### 11.1 What was surveyed, and how
+
+- **The lists**: the extractor's lettering (`crates/nettai-extract/src/exe6/lettering.rs`, `exe5/lettering.rs`,
+  EXE4's `lettering` in `exe4/graphics.rs` and `exe4/custom.rs`), every picture under the packs' `graphics/hud` and
+  `graphics/custom` (EXE4's, EXE5's and EXE6's packs of all four ROMs, so with their `-ja` files), the custom
+  window drawn from `window.png` through `custom.json`'s `window_maps` and EXE6's `form_list_maps`, the content's
+  banner roles (`rules/roles.luau` `banners`, the navis' `banners`) and the renderer's drawing (`nettai-render`
+  `hud.rs`, `custom.rs`).
+- **Left out on purpose** (the user's scope): every chip's picture and icon; every character sprite (navis,
+  viruses, their attacks, effects and portraits, the emotion window's faces among them); every battle background.
+  Whatever lettering those have is not in this survey.
+- **Not lettering**: chip codes (`codes.png`, `slot-codes.png`: A to Z and `*`, the same in every language) and
+  every number (HP, damage, the count box, the banner digits, the custom screen's digits), which stay pictures
+  (§9.1, 4); the hidden chip's `?` and the HUD layer's "????" (`hidden-icon.png`, `layer.png`); the Beast Out and
+  soul pictures and EXE6's scrap button, which have no words.
+- **Contact sheets** of every picture below at three times their size, the custom window drawn from its maps:
+  `target/lettering-survey/exe4-lettering.png`, `exe5-lettering.png` and `exe6-lettering.png` (rendered from the
+  packs in the survey's worktree, not committed).
+
+### 11.2 The verdicts, and what the text layer has
+
+- **(a) Easy**: plain letters on nothing, or on a plain or separable background. The text layer can draw the words
+  in the game's colors in a role like `Role::Cell`.
+- **(b) Possible with work**: styled lettering (an outline, a two-tone fill), which needs the text layer to grow a
+  style, or art behind the words that has to be separated from them.
+- **(c) Keep as pixel art**: a logo, letters that are part of a button or a frame, or no clean background in the
+  pack or the ROM. The packs come from the ROMs alone (no drawn or generated pictures), so a background the ROM
+  doesn't have can't be made.
+
+What the text layer has today (`textlayer::TextItem`): a face color and an optional shadow (half a frame pixel
+right and down) from the palette the original uses, its layer's fades, the banners' squash (`vscale`), a clip, and
+the depth of what it stands in for. No outline, no two-tone fill, one font (Murecho).
+
+Every banner but the Program Advance's has one look: cream capitals with a paler lower half (a two-tone fill) and
+a dark navy rim, heavier right and down, on the blue bar, in 20 cells of 8x16 (`BannerLayout::glyphs`: the ROM's
+20 pointers into one set of letter pictures, each letter with the bar behind it). The bar has cells of its own in
+that set: its left end, its body (the space between words), its right end, and the transparent filler. EXE6's 45
+banner pictures hold 52 distinct 8x16 cells (29 without the two Program Advance pictures), EXE5's and EXE4's 51
+each. So **the clean bar is in the ROM**, and in the pack's own banners, and needs no new pixels.
+
+### 11.3 EXE6
+
+| Asset | Where it shows | English | Japanese | Size | Drawn as | Moves | Look beyond letters | Verdict |
+|---|---|---|---|---|---|---|---|---|
+| `hud/banners/*` but the Program Advance's (43 pictures; `-ja` for four navis' names) | a round's and a turn's start (`battle-number-start`, `turn-start`), `final-turn`, the result (`enemy-deleted`, `you-win`, `you-lose`, `draw`), the judge's (`hit-damage-judge`), and in a link battle the navis' `NAVI-win` and `NAVI-deleted`. In the pack, named by no role or definition: `battle-start`, `battle-number`, `finish`, `time-up`, `flag-deleted`, `round-fight`, `max-mode`, `penalty`, `liberate-success`, `liberate-failed`, `turn-liberate` | BATTLE n START!, TURN n START!, FINAL TURN!, ENEMY DELETED, YOU WIN!, YOU LOSE, DRAW!, HIT DAMAGE JUDGE, CHARGEMAN WIN!, TOMAHAWKMANDELETED (no room for the space)... | the same Latin letters, with ROCKMAN, BLUES, KILLERMAN and AQUAMAN for MEGAMAN, PROTOMAN, ERASEMAN and SPOUTMAN, each starting where its length puts it | 160x16, 20 cells of 8x16 | five 32x16 sprites (enhanced: `smooth::Overlay`, at the window's resolution) | squash and stretch: 5 ticks in, a bounce to 1.23 and 1.14, 0x30 held, 5 out; the numbered ones' digits (`banner-digits.png`) at `number_at` | two-tone fill, dark rim, on the bar | **(b)**: an outline and a two-tone fill; the bar's cells are in the ROM |
+| `hud/banners/program-advance.png`, `program-advance-empty.png` | a Program Advance, and a selection that makes none | PrgAdvance | (the next row) | 160x16, about 90 pixels inked | as the banners | as the banners | italic white letters, a black outline, over a green arrow: a logo | **(c)**: a logo; no arrow without it |
+| `hud/banners/program-advance-ja.png`, `program-advance-empty-ja.png` | as above, in Japanese | | プログラムアドバンス | 160x16, about 85 pixels inked | as the banners | as the banners | white katakana with a gray rim, nothing behind | **(b)**: the outline; no background to keep |
+| `hud/pause.png` | the screen's middle while a player holds the battle | PAUSE | the same picture | 40x16 (a 32x16 and an 8x16 sprite: five glyphs) | sprites, in the enemy HP's palette | none | white letters, a dark slate rim | **(b)**: the outline alone; nothing behind |
+| `hud/waiting.png`, `waiting-ja.png` | the HUD layer at column 22, row 4, while the other player is still choosing | Cstmzing... | カスタム中… | 64x16 (8x2 tiles); Japanese 56x16 (7x2) | HUD layer tiles, the banners' palette | blinks every 32 frames | a cream face with a paler lower half, no rim | **(a)**: one face color (both tones would want the banners' fill) |
+| `hud/gauge.png` (the frame's word) | the custom gauge, top middle | CUSTOM | the same (`gauge-ja.png`) | 32x8 (4 tiles) of the 128x16 sheet | HUD layer tiles, the gauge's | none | light letters shading to blue, a dark rim, on the gauge's frame line | **(b)**: rim and shading; the frame line's blank cells are the gauge's own |
+| `hud/gauge.png`, `gauge-ja.png` ("L or R") | the full gauge's cells | Ⓛ or Ⓡ (letters in rings) | L or R (plain letters) | two frames of 32x8 (4 tiles each) | HUD layer tiles (`GAUGE_L_OR_R`) | the frames alternate every 8 ticks, cyan and orange | none: letters on the empty cells | **(a)**: the rings are `vfont::mark`'s; the two colors are the frames' |
+| `custom/turn-limit.png` | the HUD layer at column 15, row 4, beside the window, when the turn limit shows | FINAL TURN | the same picture | 56x16 (7x2 tiles) | HUD layer tiles, the layout's palette | none | yellow letters, no rim | **(a)** |
+| `custom/window.png`: "BATTLE CHIP" | the chip window's top frame | BATTLE CHIP | the same tiles | about 70x8 | the window's map on the HUD layer | slides with the window (12 pixels a tick), shakes and fades with it | engraved into the frame, two tones | **(c)**: part of the frame |
+| `custom/window.png`: "CHIP SELECT" | the header over the slots | CHIP SELECT | the same tiles | about 50x8 | as above | as above | small dark letters on the header strip | **(b)**: the strip's blank cells are in the window's tiles (not checked cell by cell); small letters, little to gain |
+| `custom/window.png`: OK | the OK button | OK | the same tiles | about 24x16 | as above | as above, the cursor's corners over it | white letters filling a red button | **(c)**: no blank button |
+| `custom/window.png` on the Cross window's maps: "▲CROSS SELECT", "CROSS SELECT", "B:EXIT" | the tab under the chip window; the Cross window's header and foot | ▲CROSS SELECT, CROSS SELECT, B:EXIT | the same tiles | about 60x8 and 40x8 | the form list's maps on the HUD layer | the window's three opening steps | dark letters on the frame's strips | **(b)**: as CHIP SELECT |
+| `custom/window.png`: the Cross window's empty plates | a place with no Cross | CROSS | the same tiles | about 48x16 a plate | as above | as above | engraved into the plate | **(c)** |
+| `custom/form-names-falzar.png`, `form-names-gregar.png`, their `-ja` | the Cross window: a Cross's name beside its face; palette 10 for the one under the cursor, gray for one not available | SPOUT, THAWK, TENGU, GRND, DUST; HEAT, ELEC, SLASH, ERASE, CHRG | アクア, トマホーク, テング, グランド, ダスト; ヒート, エレキ, スラッシュ, キラー, チャージ | 72x16 a name (9x2 tiles), ten a version (colored and gray) | the window's tiles | the hovered one's palette | white letters with a heavy dark outline on an orange bar, the Cross's face in the same tiles | **(c)**: the letters fill the bar, and no blank bar exists; the short names (THAWK, GRND) are no string the content has |
+| `custom/pictures/ok.png`, `ok-ja.png` | the chip window's picture, the cursor on OK with nothing picked | NO DATA SELECTED / Choose a chip! | NO DATA SELECTED / チップが えらばれて いません | 56x48 (7x6 tiles) | the window's tiles, palette 10 | none | a yellow display title over plain cream words, on a flat indigo panel with a lighter frame | **(b)**: no panel without words in the pack, nor one found in the ROM; filling the panel from its palette's colors would do, if the user counts that as no new picture |
+| `custom/pictures/ok-picked.png`, `ok-picked-ja.png` | the same, with chips picked | CHIP DATA TRANSMISSION / Sending chip data... | CHIP DATA TRANSMISSION / チップデータを 送信します | 56x48 | as above | none | as above | **(b)** |
+| `custom/pictures/redeal.png`, `redeal-ja.png` | the chip window's picture, the cursor on the re-deal | SHUFFLE! / Shuffle Folder | SHUFFLE! / チップフォルダを シャッフル! | 56x48 | as above | none | as above | **(b)** |
+| `custom/pictures/other.png`, `other-ja.png` | in the pack; the renderer draws it nowhere (battle mode 1's, no netbattle's) | BLOCKING! / Reject Disturb Icon | BLOCKING! / 1ターンのあいだ オジャマ攻撃を はねかえす | 56x48 | | | as above | **(b)**, not drawn |
+| `custom/pictures/scrap.png`, `scrap-ja.png` | the chip window's picture, the cursor on the scrap | TRASH CHUTE | DUST SHOOT | 56x48 | as above | none | orange display letters with a dithered trail over a tiled green pattern | **(c)**: a logo on art |
+| `custom/buttons/redeal.png` | the re-deal's slot | SHUFFLE | the same tiles | 96x24: three states of 32x24 (`sets: each`) | slot tiles | by state: selectable, unavailable, picked | dark letters filling a yellow plate with bolts; gray and red plates | **(c)**: no blank plate |
+| `custom/buttons/beast_out-falzar.png`, `beast_out-gregar.png`, the third set | in the pack; not drawn (`sets: other` uses the first two, `hidden` the fourth) | BLOCK | the same tiles | 32x16 | slot tiles | | a plate filled by the word | **(c)**, not drawn |
+
+EXE6: (a) 3, (b) 9, (c) 8.
+
+### 11.4 EXE5
+
+"As EXE6's" means the same look, drawing and motion as the EXE6 row.
+
+| Asset | Where it shows | English | Japanese | Size | Drawn as, moves | Look beyond letters | Verdict |
+|---|---|---|---|---|---|---|---|
+| `hud/banners/*` but the Program Advance's (45 pictures; `-ja` for four navis' names) | as EXE6's (EXE5's navis: COLONEL, GYROMAN, KNIGHTMAN, MAGNETMAN, MEDDY, MEGAMAN, NAPALMMAN, NUMBERMAN, PROTOMAN, SERCHMAN, SHADOWMAN, TOADMAN, TOMAHAWKMAN; `banner-90` is TURN LIBERATE!) | as EXE6's; SERCHMAN, TOMAHAWKMANDELETED | ROCKMAN, BLUES, SEARCHMAN, TODOMAN for MEGAMAN, PROTOMAN, SERCHMAN, TOADMAN | 160x16 | as EXE6's | as EXE6's | **(b)** |
+| `hud/banners/program-advance.png`, `program-advance-empty.png` | as EXE6's | PrgAdvance | | 160x16 | as EXE6's | the logo | **(c)** |
+| `hud/banners/program-advance-ja.png`, `program-advance-empty-ja.png` | as EXE6's | | プログラムアドバンス | 160x16 | as EXE6's | white katakana, gray rim | **(b)** |
+| `hud/pause.png` | as EXE6's | PAUSE | the same | 40x16 | as EXE6's | white, dark rim | **(b)** |
+| `hud/waiting.png`, `waiting-ja.png` | as EXE6's | Cstmzing... | カスタム中… | 64x16; Japanese 56x16 | HUD layer tiles, blinks every 32 frames | two-tone cream | **(a)** |
+| `hud/gauge.png` (the frame's word) | the custom gauge | CUSTOM | the same (`gauge-ja.png` is the same picture) | 32x8 | HUD layer tiles | rim and shading on the frame line | **(b)** |
+| `hud/gauge.png` ("L or R") | the full gauge | L or R | the same | two frames of 32x8 | the two frames every 8 ticks | plain letters (no rings in EXE5) | **(a)** |
+| `custom/turn-limit.png` | as EXE6's | FINAL TURN | the same | 56x16 | HUD layer tiles | yellow letters | **(a)** |
+| `custom/window.png`: "BATTLE CHIP" | the chip window's top frame | BATTLE CHIP | the same | about 70x8 | the window's map, sliding with it | engraved | **(c)** |
+| `custom/window.png`: "CHIP SELECT" | the header over the slots | CHIP SELECT | the same | about 50x8 | as above | dark letters on a strip | **(b)** |
+| `custom/window.png`: OK | the OK button | OK | the same | about 24x16 | as above | filling a red button | **(c)** |
+| `custom/pictures/ok.png`, `ok-picked.png`, their `-ja` | as EXE6's | NO DATA SELECTED / Choose a chip!; CHIP DATA TRANSMISSION / Sending chip data... | NO DATA SELECTED / チップが えらばれて いません; CHIP DATA TRANSMISSION / チップデータを 送信します | 56x48 each | the window's tiles, static | title and words on a flat panel | **(b)**, as EXE6's |
+| `custom/pictures/redeal.png`, `redeal-ja.png` | the cursor on the re-deal (Shuffle) | SHUFFLE! / Shuffle Folder | SHUFFLE! / チップフォルダを シャッフル! | 56x48 | as above | as above | **(b)** |
+| `custom/pictures/other.png`, `other-ja.png` | in the pack, drawn nowhere | BLOCKING! / Reject Disturb Icon | BLOCKING! / ゾクタイからの オジャマバットを はねかえします | 56x48 | | as above | **(b)**, not drawn |
+| `custom/pictures/arm_change.png` (`arm_change-ja.png` is the same picture) | the cursor on Arm Change | ARM CHANGE | the same | 56x48 | as above | red outlined display letters over a white burst: a logo | **(c)** |
+| `custom/buttons/redeal.png` | the Shuffle slot, with its uses left | SHUFFLE | the same | 96x24, three states | slot tiles by state | filling a yellow plate | **(c)** |
+| `custom/buttons/soul.png`, `soul-ja.png` | the soul button (the special slot) | UNITE | uni son (two rows) | 72x16: three sets of 24x16 (`sets: other` uses the first two; the third, BLOCK, isn't drawn) | slot tiles; Soul Unison's and Chaos Unison's palettes | filling a red plate; gray when unavailable | **(c)** |
+| `custom/buttons/arm_change.png` | the Arm Change slot, its held chip drawn in it (`held_at`) | ARM (one letter a row) | the same | 128x24 | slot tiles, `sets: unavailable` | letters in the slot's red frame | **(c)** |
+
+EXE5: (a) 3, (b) 8, (c) 7.
+
+### 11.5 EXE4
+
+| Asset | Where it shows | English | Japanese | Size | Drawn as, moves | Look beyond letters | Verdict |
+|---|---|---|---|---|---|---|---|
+| `hud/banners/*` but the Program Advance's (39 pictures; `-ja` for five navis' names) | as EXE6's (EXE4's navis: AQUAMAN, FIREMAN, GUTSMAN, HEALNAVI, JUNKMAN, MEGAMAN, METALMAN, NOMLNAVI, NUMBRMAN, PROTOMAN, ROLL, SEARCHMAN, THUNDERMAN, WINDMAN, WOODMAN) | BATTLE n START!, TURN n START!, FINAL TURN!, ENEMY DELETED, YOU WIN!, YOU LOSE, DRAW!, HIT DAMAGE JUDGE, FLAG DELETED, NAVI WIN!, NAVI DELETED | ROCKMAN, BLUES, NUMBERMAN, HEEL NAVI, NORMAL NAVI for MEGAMAN, PROTOMAN, NUMBRMAN, HEALNAVI, NOMLNAVI | 160x16 | five 32x16 sprites; 9 ticks in (by 0x40 in the texture's step), 30 held, 9 out, no bounce | as EXE6's | **(b)** |
+| `hud/banners/program-advance.png`, `program-advance-empty.png` | a Program Advance | ADVANCE, between two green arrows | | 160x16, about 85 pixels inked | as the banners | white letters on a blue pill between arrows: a logo | **(c)** |
+| `hud/banners/program-advance-ja.png`, `program-advance-empty-ja.png` | as above | | プログラムアドバンス | 160x16 | as the banners | white katakana, gray rim | **(b)** |
+| `hud/pause.png` | x 100, y 64 (`layout.pause`), in the banners' palette | PAUSE | the same | 40x16 | sprites, static | white, dark rim | **(b)** |
+| `hud/waiting.png`, `waiting-ja.png` | the HUD layer at column 22, row 4 (0x08015624) | BUSY... | カスタム中… | 56x16 each (7x2 tiles; the pack's file lays the US one out 8 tiles a row) | HUD layer tiles, the banners' palette | two-tone cream | **(a)** |
+| `hud/gauge.png` (the frame's word) | the custom gauge | CUSTOM | the same (`gauge-ja.png` is the same picture) | 32x8 | HUD layer tiles | rim and shading | **(b)** |
+| `hud/gauge.png` ("L or R") | the full gauge | L or R | the same | two frames of 32x8 | two frames | plain letters | **(a)** |
+| `custom/turn-limit.png` | the turn limit's block (`turn_limit_palette` 14) | FINAL TURN | the same | 56x16 | HUD layer tiles | yellow fading to white, a lavender rim | **(b)**: rim and fill |
+| `custom/window.png`: "CHIP SELECT" | the header over the slots | CHIP SELECT | the same | about 60x8 | the window's map | dark letters on a strip | **(b)** |
+| `custom/window.png`: OK | the OK button | OK | the same | about 24x16 | as above | filling a red button | **(c)** |
+| `custom/pictures/ok.png`, `ok-picked.png`, their `-ja` | as EXE6's | NO DATA SELECTED / Choose a chip!; CHIP DATA TRANSMISSION / Sending chip data... | NO DATA SELECTED / チップが えらばれて いません; CHIP DATA TRANSMISSION / チップデータを 送信します | 56x48 each | the window's tiles, static | title and words on a flat panel | **(b)** |
+| `custom/pictures/redeal.png`, `redeal-ja.png` | the cursor on Shuffle | SHUFFLE! / Shuffle Folder | SHUFFLE! / チップフォルダを シャッフル! | 56x48 | as above | as above | **(b)** |
+| `custom/buttons/redeal.png` | the Shuffle button (its own cells, `place`) | SHUFFLE | the same | 96x24, three states of 32x24 | the window's map by state | filling a yellow plate | **(c)** |
+| `custom/buttons/soul.png`, `soul-ja.png` | the UNITE button (its own cells on the window's map) | UNITE | uni son | 72x16: two sets of 24x16 and the window's fill | the window's map | filling a red plate; gray when unavailable | **(c)** |
+
+EXE4 has no "BATTLE CHIP" on its window, no Cross window, and no "other" picture (its `other.png` is empty).
+
+EXE4: (a) 2, (b) 8, (c) 4.
+
+### 11.6 Languages
+
+- **Pictures that differ by language today** (the pack's `-ja` files, which `Bundle::for_language` swaps in): in
+  each game ten banners (eight with a navi's name, the Program Advance's two); "Cstmzing..." or "BUSY..."
+  (カスタム中…); the OK and re-deal pictures, and EXE6's and EXE5's "other"; EXE6's scrap picture, its gauge's
+  "L or R" and its Cross names; EXE5's and EXE4's soul buttons (uni son).
+- **The same pictures in all four ROMs**, so English on a Japanese console too: every other banner, "PAUSE",
+  "CUSTOM", "FINAL TURN", the window's labels and OK, the SHUFFLE, BLOCK and ARM buttons, "ARM CHANGE", and
+  EXE5's and EXE4's "L or R".
+- **What drawn text would gain**: any language the content has strings for. Today a language a pack lacks falls
+  back to the pack's own pictures (§10.3: a pack of one release's ROMs shows that release's words); drawn, the
+  words would follow the chosen language whatever ROMs made the pack, and a banner's words would be strings (its
+  navi's name, the result's words), not one picture a banner a language. Drawing a Japanese word where the
+  Japanese game shows English (BATTLE START, PAUSE) would be a translation no ROM has, which `gen-content check`
+  (it compares the strings with the ROMs) could not check; the faithful Japanese strings there are the English
+  words.
+- **Names the 20 cells shortened** (TOMAHAWKMANDELETED in EXE6 and EXE5; EXE5's US SERCHMAN; EXE4's US NUMBRMAN,
+  NOMLNAVI, HEALNAVI): the strings would hold the ROM's words; spelling them out is a change of words, the user's
+  to choose.
+
+### 11.7 Recommendation
+
+1. **The banners first** ((b): EXE6's 43 pictures, EXE5's 45, EXE4's 39, eight of each game's with a Japanese
+   picture of their own, and the Japanese Program Advance's two). Most of the way is
+   built: a telop is already text on the banner block with the banners' squash (`TextItem::vscale`), and the
+   banners are already drawn at the window's resolution (`smooth::Overlay`). It needs:
+   - the extractor to write the bar's cells (left end, body, right end) from the ROM's set of banner letters,
+     which it reads already: no new pixels;
+   - one banner style in the text layer: the two-tone fill and the dark rim (an outline heavier right and down),
+     in the banners' palette;
+   - a strings table of the banners' words per language (`locales/<lang>.toml`, keyed by the banner's asset name,
+     the navis' banners by the navi), which `gen-content check` can compare with the ROMs' letter cells as it does
+     the chip names; the banner digits stay pictures at `number_at`;
+   - the Program Advance: the US logos stay pictures; the Japanese katakana can take the same style, with no bar;
+   - a user decision: Murecho bold, or a squarer display face nearer the banners' letters (a second bundled font).
+2. **The small plain labels** ((a)): "Cstmzing...", "BUSY..." and カスタム中…, "L or R" (the rings are
+   `vfont::mark`'s Ⓛ and Ⓡ), EXE6's and EXE5's "FINAL TURN". Nothing is behind them; they need strings and a role
+   like `Role::Cell` in the game's face colors. "PAUSE" (and EXE4's "FINAL TURN") too, once step 1's rim exists.
+3. **Leave as pixel art**: the buttons (SHUFFLE, UNITE and uni son, ARM, BLOCK), the window's OK and its engraved
+   labels, the Cross window's plates and names, and the logos (PrgAdvance, ADVANCE, ARM CHANGE, TRASH CHUTE and
+   DUST SHOOT). The chip window's OK and re-deal pictures only if the user accepts the frontend filling their panel
+   from its palette's colors, as it fills the chip window's blank name cells, in place of a picture the ROM
+   doesn't have.
