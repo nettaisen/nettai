@@ -63,6 +63,11 @@ impl Draft {
         &self.build.side
     }
 
+    /// The version the build is of (`Builds::version_of`), by its id; none: of none.
+    pub fn version(&self) -> Option<&str> {
+        self.kit.builds.version_of(self.content(), self.side())
+    }
+
     /// Change the build's side: `change` says whether it did. The build is checked again at once; the frame
     /// saves it when the tab's call returns.
     pub fn edit(&mut self, change: impl FnOnce(&Content, &mut Side) -> bool) -> bool {

@@ -2517,15 +2517,18 @@ the cards' routine (0x08138214) and then the HP rule. The application is EXE6's,
 rules/patch_cards/cards.luau gives its kinds' order, its choices and tables: `PatchCardsGame`). EXE6's is unchanged
 (the JP lab's card traces). EXE5's, content/exe5/rules/patch_cards:
 
-- **The cards** (content/exe5/patch_cards/, 112; compat/patch-cards.toml by number, card 111 by version), written by the
+- **The cards** (content/exe5/patch_cards/, 111; compat/patch-cards.toml by number), written by the
   verification workspace's tools/exe5/gen_patch_cards.py (gen_content.py) from the card table (BRBE 0x08138874,
   BRKE 0x0813895C, BRBJ 0x0813842C, BRKJ 0x08138514: u16 offsets by card number, 111 cards, three-byte entries: the
   effect's number, its value and whether the card shows it as a bug; the first the MB, number 0x8B), their names
   from the name archive (LZ77, a four-byte header; the locales' `[patch-cards]`). The four tables are the same but
   for card 111, Bass-Cross MegaMan, each team's own: Team ProtoMan's HP+20, SprArmr, TriBustr, B↓Sbustr; Team
-  Colonel's HP+20%, FlotShoe, TriBustr, B↓HelzR; both NormBody and a MegFld-2 bug. Its definitions are
-  `bass-cross-megaman-protoman` and `bass-cross-megaman-colonel`; exe5-compat's `trace::patch_cards` reads a save's
-  list (0x79A0 the count, 0x79D0 the list: a card a byte, bit 7 switched off) by the save's version.
+  Colonel's HP+20%, FlotShoe, TriBustr, B↓HelzR; both NormBody and a MegFld-2 bug. It is one card,
+  `bass-cross-megaman`, whose effects only one team's card has say their `version` (2026-10-14, the user: "it's
+  actually just the same card, but with different effects depending on version of the game"), Hub Style among
+  them; a side has those of its setup's `version` (its team). exe5-compat's `trace::patch_cards` reads a save's
+  list (0x79A0 the count, 0x79D0 the list: a card a byte, bit 7 switched off), and its import and its trace state
+  the side's `version` from the save's and the console's team.
 - **The effects** (the handlers at 0x08137BC8, 0x00 HP+ to 0x89 BugStop: the kinds' order): EXE6's kinds and EXE5's
   own: SoulTm+ and SoulTm- (+0x32, signed, clamped to -2..6: the stat `soul_turn_bonus`), the random encounters'
   element (+0x27, OilBody to Search), SneakRun, Millions, AutoHeal and MegVirus (bytes no battle reads), and Hub

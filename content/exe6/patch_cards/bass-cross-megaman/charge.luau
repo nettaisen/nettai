@@ -1,5 +1,5 @@
 --!strict
--- The charged shot of the patch card bass-cross-megaman
+-- Falzar's charged shot of the patch card bass-cross-megaman
 -- (`patch-cards/bass-cross-megaman/charge`): AirSpin's action with its
 -- variant 1, which no chip has: a seeking whirlwind (chips/airspin/whirl).
 -- The original's weapon routine 0x93 is `sub_8012144`, routine 0x3A's, with

@@ -1132,15 +1132,19 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   - *EXE6:* the `version` fact, and with it the build's MegaMan's Crosses (the `crosses` form list, MegaMan's own
     list of the version: the content's rules for a fresh build of it, as rules/builds says "the navi's own Crosses of
     the version follow it"; none for another navi). Beast Out follows the version at play.
-  - *EXE5:* the six souls (`souls`) and the Giga chips a save can have (`giga_chips`) are the new team's.
+  - *EXE5:* the `version` fact (its team), and the six souls (`souls`) and the Giga chips a save can have
+    (`giga_chips`) are the new team's.
   - *EXE4:* the same, Red Sun's or Blue Moon's six souls and Giga chips.
   - *Kept, in every game:* the navi, the folder with its Regular and tag chips, the NaviCust, the patch cards, the
     auto battle data, Light or Dark, and what is kept aside. What no longer fits is the build's problem, shown as any
     rule's break is, not changed: the other version's Giga chips in the folder (the rules' `ChipOfAnotherVersion`,
     "Bass is Team ProtoMan only", the entry in the error red, the Folder tab marked and the header counting it). The
-    rest is held to no version by any game's rules (EXE5's two Bass-Cross MegaMan cards, each a team's, are both
-    any build's; the auto battle's Giga place takes any Giga chip), so it stays and is no problem. Switched back,
-    the build is as it was. A build file's format is unchanged: it states the version's facts as before.
+    rest is held to no version by any game's rules (the auto battle's Giga place takes any Giga chip), so it stays
+    and is no problem. The Bass-Cross MegaMan card (EXE6's 117, EXE5's 111) is one card of either version whose
+    effects are the build's version's (§2.48: each version's ROM has its own card table's entry for it), so it
+    stays where it is in the list and does the new version's: its lines in the library and the build's list, the
+    overview and the round change with the switch. Switched back, the build is as it was. A build file's format is
+    unchanged: it states the version's facts as before (EXE5's now with its `version`).
 - **The header's version tag is the switch** (§2.42), on every tab and for every navi (the version decides the
   folder's Giga chips whatever the navi), and it reads as a tag that opens a choice (§2.44: the user, "i just
   don't like how the version changer looks it feels weird and out of place"). The shell's `Header` makes its tag a
@@ -1364,11 +1368,14 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
 **The Patch cards tab** (`patch_cards`; §2.19, §2.20): the folder's shape. A card's number, name, MB, slot and
 lines are the game's data: its number its own, as the game's compat tables state it (`builds::import::card_number`,
 each compat crate's `patch_card_number`: the number the card is printed with and a save holds; the library's
-order lists the cards by number, but EXE5's two 111s, each team's own, take two places in it, so its place isn't
-the number), its MB the field the rules' budget names (`Overview::budget`), its slot `Slots::own` and `name`, its
-lines `builds::cards` (each effect's line from the strings' `patch_card_effects`, a bug's marked by the effect's
-`bug`, the card screen's group by its `group`, an effect that holds effects of its own followed by theirs, and a
-line's names put in as the screen shows them: `cards::named_by`, a slot by its name, a card by its number).
+order lists the cards by number, one card a number), its MB the field the rules' budget names
+(`Overview::budget`), its slot `Slots::own` and `name`, its lines `builds::cards` (each effect's line from the
+strings' `patch_card_effects`, a bug's marked by the effect's `bug`, the card screen's group by its `group`, an
+effect that holds effects of its own followed by theirs, and a line's names put in as the screen shows them:
+`cards::named_by`, a slot by its name, a card by its number). An effect that says its `version` is that version's
+alone (`cards::of_version`, by the build's version, `Draft::version`): the Bass-Cross MegaMan card, one card whose
+effects each version's ROM gives its own (§2.48), shows the build's version's lines in the strip, the build's list
+and the library, and they change as the header's tag switches the version.
 
 - *The strip* lays the card under the cursor out: its number, name, MB or slot, why it can't go in (in the
   error red: the typed `EntryRefusal`, worded by `Words::entry_refusal`: "Needs 24 MB"; of one of the build's,

@@ -110,6 +110,10 @@ local rules: Rules = {
         -- The navi they play: the round's stats are its (`Battle::new` holds them to it). No default: a side states
         -- it.
         navi = "navi",
+        -- The game's version, its team: the patch cards' effects that are each team's own (./patch_cards: card 111,
+        -- Bass-Cross MegaMan, each team's ROMs their own). No default: a side states it, or the round doesn't start.
+        -- The versions come in the builds' order (Team ProtoMan, then Team Colonel), which tools go by.
+        version = { "protoman", "colonel" },
         -- Their folder as the save keeps it, an entry with no chip empty (a folder being made); the Regular chip, an
         -- entry of it (from 0), dealt first. (EXE5's folders have no tag chips.) A tool deals the round's battle folder
         -- from them; ./folder checks them (`validate`).

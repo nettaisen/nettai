@@ -45,11 +45,12 @@ const EXE5_SOULS: [&str; 12] = [
     "tomahawksoul",
 ];
 
-/// That two sides' facts are the same but a side's own navi and folder
-/// (its navi, its folder, its Regular and tag chips).
+/// That two sides' facts are the same but a side's own navi, folder and
+/// version (its navi, its folder, its Regular and tag chips, the version
+/// every side states).
 fn same_but_navi_and_folder(content: &Content, a: &crate::Facts, b: &crate::Facts) {
     for f in crate::facts::fields(content) {
-        if !["navi", "folder", "regular_chip", "tag_chips"].contains(&f.name) {
+        if !["navi", "folder", "regular_chip", "tag_chips", "version"].contains(&f.name) {
             assert_eq!(a.get(content, f.name), b.get(content, f.name), "{}", f.name);
         }
     }
@@ -107,7 +108,7 @@ const EXE6: [&str; 30] = [
 
 /// An EXE5 MegaMan with this folder.
 fn exe5(chips: &[&str], more: &str) -> String {
-    side("megaman", chips, more)
+    side("megaman", chips, &format!("version = \"protoman\"\n{more}"))
 }
 
 /// `chips` with entries `at` replaced by `with`.
@@ -352,10 +353,10 @@ fn a_match_is_described_by_its_facts() {
     assert!(crate::describe(&six, &m, 1, false, 0).lines().nth(1).unwrap().starts_with("  MegaMan (you); beast_out: no; bug_frags: 9; version: falzar"));
     let five = exe5_content();
     let mut m = parse(&five, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
-    assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you)");
+    assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you); version: protoman");
     m.sides[0].set_fact(&five, "karma", &number(100)).unwrap();
     m.sides[0].set_fact(&five, "souls", &[]).unwrap();
-    assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you); karma: 100; souls: none");
+    assert_eq!(crate::describe(&five, &m, 1, false, 0).lines().nth(1).unwrap(), "  MegaMan (you); karma: 100; souls: none; version: protoman");
 }
 
 /// What a tool offers for a side's list of definitions: for the engine's
@@ -448,7 +449,7 @@ fn karma_and_souls_write_and_read_back() {
 /// systems' `setup_defaults`), and a match writes none of it: EXE6's, Beast
 /// Out (its version and its Crosses have no default: a setup that says
 /// nothing states neither); EXE5's, every soul of either version, Chaos
-/// Unison and a fresh save's karma.
+/// Unison and a fresh save's karma (its version has no default either).
 #[test]
 fn a_setup_that_says_nothing_has_the_rules_defaults() {
     use nettai_battle::custom::PlayerSetup;
@@ -463,6 +464,7 @@ fn a_setup_that_says_nothing_has_the_rules_defaults() {
     assert_eq!(block.get(schema, schema.index_of("beast_out").unwrap()), FieldValue::Bool(true));
     let five = exe5_content();
     let (schema, block) = nothing.rules_block(&five).expect("EXE5's rules");
+    assert!(!block.stated(schema, schema.index_of("version").unwrap()), "version");
     let souls = schema.index_of("souls").unwrap();
     let listed: Vec<_> = (0..16).filter_map(|k| block.get_elem(schema, souls, k)).take_while(|v| *v != FieldValue::Ref(None)).collect();
     let all: Vec<_> = EXE5_SOULS.iter().map(|n| FieldValue::Ref(Some((Registry::Form, crate::ids::form(&five, "exe5", n).unwrap().0)))).collect();
@@ -746,8 +748,8 @@ fn karma_and_souls_reach_the_round() {
 
 /// What the match's rules and a side's navi take decide the side's own
 /// fields: an EXE6 match's side takes its version, a navi code's level and
-/// EXE6's SP times; an EXE5 match's no version and no level, and EXE5's own SP
-/// times (its SP navi chips', not EXE6's).
+/// EXE6's SP times; an EXE5 match's its version (its team), no level, and
+/// EXE5's own SP times (its SP navi chips', not EXE6's).
 #[test]
 fn a_sides_fields_are_its_rules() {
     let (c5, c6) = (exe5_content(), exe6_content());
@@ -755,7 +757,7 @@ fn a_sides_fields_are_its_rules() {
     let five = parse(&c5, &exe5(&TANGO_EXE5, ""), &exe5(&TANGO_EXE5, "")).unwrap();
     let sp_times = |c: &nettai_battle::Content| crate::facts::field(c, "sp_times").is_some();
     assert!(crate::Side::takes_version(&c6) && six.sides[0].takes_level(&c6) && sp_times(&c6));
-    assert!(!crate::Side::takes_version(&c5) && !five.sides[0].takes_level(&c5) && sp_times(&c5));
+    assert!(crate::Side::takes_version(&c5) && !five.sides[0].takes_level(&c5) && sp_times(&c5));
     // A side that says nothing has every SP chip of its game deleted in no
     // time.
     let times = |c: &nettai_battle::Content, m: &Match| -> Vec<(String, u16)> { crate::testing::sp_times(c, &m.sides[0].facts) };
