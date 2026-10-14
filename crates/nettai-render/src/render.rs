@@ -3,7 +3,7 @@
 
 use crate::audit::Problems;
 use crate::compose::{self, Fade, Fades, Layer, Palettes, SpritePart};
-use crate::smooth::{Nudge, Overlay, Smooth};
+use crate::smooth::{Lift, Nudge, Overlay, Smooth};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
@@ -61,6 +61,10 @@ pub struct Frame {
     /// The frame drawn again with the custom gauge's fill a pixel longer
     /// (the enhanced mode's motion), for `present` to show between the two.
     pub nudge: Option<crate::smooth::Nudge>,
+    /// The frame drawn again with the field layer a pixel up, where the
+    /// camera's Y is between whole pixels (the enhanced mode's motion: the
+    /// custom screen's slide), for `present` to show between the two.
+    pub lift: Option<crate::smooth::Lift>,
     /// The squashed and turned sprites the enhanced mode's motion draws at
     /// the output's resolution (left out of `pixels`), front first.
     pub overlays: Vec<crate::smooth::Overlay>,
@@ -143,7 +147,8 @@ pub struct Renderer {
     /// The enhanced mode without its motion (the app's Reduce motion): the
     /// background's glide (`present`) and the smooth motion (`smooth`: the
     /// gauge's fill, the squashed and turned sprites at the output's
-    /// resolution) are left out, the text stays. The original mode has
+    /// resolution, the field and its sprites between whole pixels) are left
+    /// out, the text stays. The original mode has
     /// none of them, whatever this says.
     pub reduce_motion: bool,
 }
@@ -269,23 +274,41 @@ impl Renderer {
         View { camera: (x, y + crate::custom::camera_y(b), 0), mirror: local & 1 == 1, fade }
     }
 
+    /// The part of a pixel (16.16) the camera's Y is past its whole
+    /// pixels: what the projection leaves of the custom screen's slide,
+    /// 1.5 pixels a tick (`custom::camera_y`). (A shake's jitter is whole
+    /// pixels, and the camera's X has no part of a pixel.)
+    pub fn camera_sub(b: &Battle) -> i32 {
+        Self::view(b).camera.1 & 0xFFFF
+    }
+
     /// Draw a battle as a 240x160 frame with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
-        // (The enhanced mode's motion: the frame, and where the gauge's fill
-        // ends between whole pixels, the frame again with it a pixel longer;
-        // the second drawing's problems and sprite count are the first's.)
+        // (The enhanced mode's motion: the frame, and where the camera is
+        // between whole pixels, the frame again with the field a pixel up;
+        // where the gauge's fill ends between whole pixels, the frame again
+        // with it a pixel longer. The later drawings' problems and sprite
+        // count are the first's.)
         let on = self.motion() && !self.lookups_only;
-        let mut frame = self.draw(b, Smooth { on, nudged: false });
+        let mut frame = self.draw(b, Smooth { on, ..Smooth::default() });
         if !on || frame.pixels.is_empty() {
             return frame;
         }
+        let (problems, drawn) = (self.problems.clone(), self.sprite_drawn.clone());
+        let camera = Self::camera_sub(b);
+        if camera != 0 {
+            let again = self.draw(b, Smooth { on, lifted: true, ..Smooth::default() });
+            frame.lift = Some(Lift { pixels: again.pixels, depth: again.depth, sub: camera });
+        }
+        // (The gauge is off the HUD while the custom screen's window
+        // slides, so a lift and a nudge never meet; were they to, the gauge
+        // would show at its whole pixels on the lifted rows.)
         let sub = crate::hud::gauge_sub(b, &self.hud_state, self.custom_gauge);
         if sub != 0 {
-            let (problems, drawn) = (self.problems.clone(), self.sprite_drawn.clone());
-            let again = self.draw(b, Smooth { on, nudged: true });
-            (self.problems, self.sprite_drawn) = (problems, drawn);
+            let again = self.draw(b, Smooth { on, nudged: true, ..Smooth::default() });
             frame.nudge = Some(Nudge { pixels: again.pixels, depth: again.depth, sub });
         }
+        (self.problems, self.sprite_drawn) = (problems, drawn);
         frame
     }
 
@@ -332,7 +355,12 @@ impl Renderer {
                 self.background.clear();
                 stage.draw_background(&mut self.background);
                 self.field.clear();
-                stage.draw_field(b, &mut self.field, b.setup.local_side, &view, &mut self.problems);
+                // (The lifted drawing's field a pixel up: `Lift`.)
+                let field_view = match smooth.lifted {
+                    true => View { camera: (view.camera.0, view.camera.1 + 0x10000, view.camera.2), ..view },
+                    false => view,
+                };
+                stage.draw_field(b, &mut self.field, b.setup.local_side, &field_view, &mut self.problems);
             }
             None => crate::stage::field_lookups(b, &packs, b.setup.local_side, &mut self.problems),
         }
@@ -396,7 +424,7 @@ impl Renderer {
         // (The HUD's BG3 is the game's priority: EXE4's 0 covers the HP
         // numbers' priority 1 where the custom screen is.)
         self.hud.priority = own_game.hud.layout.hud_priority;
-        let (parts, tags) = list.into_tagged_parts();
+        let (parts, tags, fines) = list.into_placed_parts();
         let backdrop = stage.palettes[0][0];
         let scene = &stage;
         // The transformation's fade takes every background palette, a
@@ -445,11 +473,16 @@ impl Renderer {
         let dialogue = if transform != Fade::None { transform } else { crate::custom::sprite_fade(b).unwrap_or_default() };
         let fades = Fades { stage, hud, hud_past_ranged, dialogue, sprites, screen: screen_fade(b) };
         let layers = [&self.dialogue, &self.names, &self.hud, &self.field, &self.background];
-        // (The squashed and turned sprites at the output's resolution, in
+        // (The squashed and turned sprites, and those whose true places
+        // are between the frame's pixels, at the output's resolution, in
         // the enhanced mode's motion: left out of the frame, their places
         // in the order kept.)
         let overlays: Vec<(usize, Overlay)> = match smooth.on {
-            true => parts.iter().enumerate().filter_map(|(i, p)| Some((i, Overlay::of(p, compose::sprite_depth(p.priority, i), [fades.sprites, fades.screen])?))).collect(),
+            true => parts
+                .iter()
+                .enumerate()
+                .filter_map(|(i, p)| Some((i, Overlay::of(p, compose::sprite_depth(p.priority, i), [fades.sprites, fades.screen], fines[i])?)))
+                .collect(),
             false => Vec::new(),
         };
         let (pixels, depth) = if overlays.is_empty() {
@@ -495,7 +528,7 @@ impl Renderer {
             let pixels = scene.draw_background_wide(Glide::WIDTH, Glide::HEIGHT, backdrop, color);
             Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
         });
-        let mut frame = Frame { pixels, depth, text, glide, nudge: None, overlays };
+        let mut frame = Frame { pixels, depth, text, glide, nudge: None, lift: None, overlays };
         if let Some((_, renderer)) = self.stand_in.as_ref().filter(|_| stand_in) {
             crate::present::draw_text(&mut frame, &mut renderer.borrow_mut());
         }

@@ -44,8 +44,14 @@ pub struct SpriteList<'a> {
     count: usize,
 }
 
-/// A depth bucket's parts, each with its tag.
-type Bucket<'a> = Vec<(SpritePart<'a>, Option<u32>)>;
+/// A depth bucket's parts, each with its tag and its fine offset.
+type Bucket<'a> = Vec<(SpritePart<'a>, Option<u32>, Fine)>;
+
+/// How far a part's true place is from where the frame draws it, in
+/// 16.16 pixels right and down: the part of a pixel the battle projection
+/// rounds off (`project`), which the enhanced mode's motion draws
+/// (`smooth::Overlay`). (0, 0) for a part at its true place.
+pub type Fine = (i32, i32);
 
 impl Default for SpriteList<'_> {
     fn default() -> Self {
@@ -59,14 +65,20 @@ impl<'a> SpriteList<'a> {
     /// bucket out of range drops it and the rest of the group
     /// (`sub_3006920`).
     pub fn insert_group(&mut self, group: Vec<(usize, i32, SpritePart<'a>)>) {
+        self.insert_placed_group(group.into_iter().map(|(layer, bucket, part)| (layer, bucket, part, (0, 0))).collect());
+    }
+
+    /// [`insert_group`](Self::insert_group), each part with its [`Fine`]
+    /// offset.
+    pub fn insert_placed_group(&mut self, group: Vec<(usize, i32, SpritePart<'a>, Fine)>) {
         if self.count + group.len() >= MAX_PARTS {
             return;
         }
-        for (layer, bucket, part) in group {
+        for (layer, bucket, part, fine) in group {
             if bucket < 0 || bucket as usize >= self.layers[layer].len() {
                 return;
             }
-            self.layers[layer][bucket as usize].push((part, None));
+            self.layers[layer][bucket as usize].push((part, None, fine));
             self.count += 1;
         }
     }
@@ -80,12 +92,18 @@ impl<'a> SpriteList<'a> {
 
     /// [`insert_at`](Self::insert_at), every part tagged `tag`.
     pub fn insert_tagged(&mut self, layer: usize, bucket: usize, group: Vec<SpritePart<'a>>, tag: Option<u32>) {
+        self.insert_placed(layer, bucket, group, tag, (0, 0));
+    }
+
+    /// [`insert_tagged`](Self::insert_tagged), every part `fine` off its
+    /// true place ([`Fine`]).
+    pub fn insert_placed(&mut self, layer: usize, bucket: usize, group: Vec<SpritePart<'a>>, tag: Option<u32>, fine: Fine) {
         for part in group.into_iter().rev() {
             if self.count >= MAX_PARTS {
                 return;
             }
             let Some(b) = self.layers[layer].get_mut(bucket) else { return };
-            b.push((part, tag));
+            b.push((part, tag, fine));
             self.count += 1;
         }
     }
@@ -97,17 +115,26 @@ impl<'a> SpriteList<'a> {
 
     /// Parts in hardware order (front first), and each part's tag.
     pub fn into_tagged_parts(self) -> (Vec<SpritePart<'a>>, Vec<Option<u32>>) {
+        let (parts, tags, _) = self.into_placed_parts();
+        (parts, tags)
+    }
+
+    /// Parts in hardware order (front first), each part's tag, and each
+    /// part's [`Fine`] offset.
+    pub fn into_placed_parts(self) -> (Vec<SpritePart<'a>>, Vec<Option<u32>>, Vec<Fine>) {
         let mut out = Vec::with_capacity(self.count);
         let mut tags = Vec::with_capacity(self.count);
+        let mut fines = Vec::with_capacity(self.count);
         for layer in self.layers {
             for bucket in layer.into_iter().rev() {
-                for (part, tag) in bucket.into_iter().rev() {
+                for (part, tag, fine) in bucket.into_iter().rev() {
                     out.push(part);
                     tags.push(tag);
+                    fines.push(fine);
                 }
             }
         }
-        (out, tags)
+        (out, tags, fines)
     }
 }
 
@@ -232,6 +259,38 @@ pub fn project(pos: (i32, i32, i32), view: &View) -> Projected {
     let ground = (int(pos.1) - cy + 0x50) as i16 as i32;
     let y = ground - (int(pos.2) - cz);
     Projected { x, ground, y }
+}
+
+/// What [`project`] rounds off a position: its true place less the
+/// projected one, in 16.16 pixels right and down, at its anchor (`x`, `y`)
+/// and at its ground (`ground`). The projection takes the camera's whole
+/// pixels; the camera's part of a pixel (the custom screen's slide moves
+/// it 1.5 pixels a tick) is what it leaves (the field layer's the same:
+/// `Stage::draw_field`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct FineProjected {
+    pub x: i32,
+    pub ground: i32,
+    pub y: i32,
+}
+
+/// The part of a pixel of a 16.16 value, as `v >> 16` leaves it.
+fn sub(v: i32) -> i32 {
+    v & 0xFFFF
+}
+
+/// What [`project`] rounds off `pos` ([`FineProjected`]).
+pub fn project_fine(_pos: (i32, i32, i32), view: &View) -> FineProjected {
+    let (cx, cy, cz) = view.camera;
+    let ground = -sub(cy);
+    FineProjected { x: -sub(cx), ground, y: ground + sub(cz) }
+}
+
+/// What [`project_hud`] rounds off `pos`: on the right-hand player's
+/// console the camera's X goes the other way.
+pub fn project_hud_fine(pos: (i32, i32, i32), view: &View) -> FineProjected {
+    let f = project_fine(pos, view);
+    FineProjected { x: if view.mirror { f.x + 2 * sub(view.camera.0) } else { f.x }, ..f }
 }
 
 /// The HUD's projection of a position (`sub_800362C`, for the opponents' HP
@@ -436,6 +495,7 @@ pub fn queue_objects<'a>(
                 continue;
             }
             let p = project((o.pos.x, o.pos.y, o.pos.z), view);
+            let fine = project_fine((o.pos.x, o.pos.y, o.pos.z), view);
             let hflip = look.hflip ^ view.mirror;
             let vflip = look.vflip;
 
@@ -519,7 +579,8 @@ pub fn queue_objects<'a>(
                     (true, false) => 2,
                 };
                 let (layer, bucket) = if as_shadow { (3, bias) } else { (2, p.ground + 0x40 + bias) };
-                group.push((layer, bucket, sprite));
+                let fine = (fine.x, if as_shadow && !under { fine.ground } else { fine.y });
+                group.push((layer, bucket, sprite, fine));
             }
             if !problems.marking.is_empty()
                 && let Some(name) = crate::packs::name(&b.content, nettai_content_api::AssetKind::Sprite, id.0)
@@ -532,7 +593,7 @@ pub fn queue_objects<'a>(
                     }
                 }
             }
-            list.insert_group(group);
+            list.insert_placed_group(group);
         }
     }
     draw.drawn()
@@ -540,9 +601,9 @@ pub fn queue_objects<'a>(
 
 /// Where an object is drawn: the box around its anchor, its ground and its
 /// parts (`Problems::mark`'s, for a sprite the caller names).
-fn object_box(p: &Projected, group: &[(usize, i32, SpritePart)]) -> [i32; 4] {
+fn object_box(p: &Projected, group: &[(usize, i32, SpritePart, Fine)]) -> [i32; 4] {
     let mut rect = [p.x, p.y.min(p.ground), p.x, p.y.max(p.ground)];
-    for (_, _, s) in group {
+    for (_, _, s, _) in group {
         // (The hardware's coordinates wrap: X at 512, Y at 256.)
         let x = if s.x >= 0x100 { s.x as i32 - 0x200 } else { s.x as i32 };
         let y = if s.y >= 0xC0 { s.y as i32 - 0x100 } else { s.y as i32 };

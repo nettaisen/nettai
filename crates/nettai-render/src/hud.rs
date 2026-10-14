@@ -8,7 +8,7 @@
 use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
-use crate::objects::{SpriteList, View, project_hud};
+use crate::objects::{SpriteList, View, project_hud, project_hud_fine};
 use crate::smooth::Smooth;
 use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
 use crate::vfont::Role;
@@ -894,7 +894,8 @@ pub fn draw<'a>(
             }
             group.push(glyph(digits, d, hud.enemy_palette, x + 8 * k as i32, y, hud.layout.hp_number_priority, None));
         }
-        list.insert_at(FIELD_LAYER, HP_BUCKET, group);
+        let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), &view);
+        list.insert_placed(FIELD_LAYER, HP_BUCKET, group, None, (fine.x, fine.y));
     }
     // A flickering emotion window is black two ticks of every four
     // (`sub_801CC94`: its palette blanks), and isn't drawn on the middle
@@ -1018,11 +1019,12 @@ const GAUGE_WARNING: (i32, i32) = (0x78, 0x0C);
 fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, list: &mut SpriteList<'a>, problems: &mut Problems) {
     let console = b.setup.local_side as usize & 1;
     for w in &b.warnings[console] {
-        let (x, y) = match w.at {
-            None => GAUGE_WARNING,
+        let ((x, y), fine) = match w.at {
+            None => (GAUGE_WARNING, (0, 0)),
             Some(at) => {
                 let p = project_hud((at.x, at.y, at.z), view);
-                (p.x, p.y)
+                let f = project_hud_fine((at.x, at.y, at.z), view);
+                ((p.x, p.y), (f.x, f.y))
             }
         };
         if !(0..0xFF - 16).contains(&x) || !(0..0xB0 - 16).contains(&y) {
@@ -1033,7 +1035,7 @@ fn warning_parts<'a>(b: &Battle, hud: &'a Hud, view: &View, list: &mut SpriteLis
         }
         let frame = if b.consoles[console].frames & 8 != 0 { 4 } else { 0 };
         let part = SpritePart { first_tile: frame, priority: 0, ..block(&hud.warning, 16, 16, hud.warning_palette, x, y) };
-        list.insert_at(FRONT_LAYER, 0, vec![part]);
+        list.insert_placed(FRONT_LAYER, 0, vec![part], None, fine);
     }
 }
 
@@ -1360,6 +1362,8 @@ fn icon_parts<'a>(
     if !on_screen(p) {
         return;
     }
+    let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), view);
+    let fine = (fine.x, fine.y);
     // (The console's own direction: `object_getAllianceDirection` of the
     // local side, whichever navi the icons are over.)
     let a = if b.setup.local_side & 1 == 0 { 1 } else { -1 };
@@ -1395,7 +1399,7 @@ fn icon_parts<'a>(
     }
     for k in 0..count {
         let icon = block(tiles, 16, 16, *icon_palette, x0 - 2 * k * a * f, y0 - 2 * k);
-        list.insert_at(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, vec![icon]);
+        list.insert_placed(FIELD_LAYER, ICON_BUCKET + (count - k) as usize, vec![icon], None, fine);
     }
 }
 
@@ -1425,6 +1429,8 @@ fn own_icon_parts<'a>(
     if !on_screen(p) {
         return;
     }
+    let fine = project_hud_fine((o.pos.x, o.pos.y, o.pos.z), view);
+    let fine = (fine.x, fine.y);
     let identity = b.content.identity(o.identity);
     let Some((dx, dy)) = identity.chip_icons_at else {
         problems.note(format!("identity {} has no `chip_icons_at`: its chip icons aren't drawn", identity.key));
@@ -1450,7 +1456,7 @@ fn own_icon_parts<'a>(
             }
         }
         let icon = SpritePart { priority: OWN_ICON_PRIORITY, ..block(tiles, 16, 16, *palette, x, y) };
-        list.insert_at(FIELD_LAYER, count - k, vec![icon]);
+        list.insert_placed(FIELD_LAYER, count - k, vec![icon], None, fine);
     }
 }
 
