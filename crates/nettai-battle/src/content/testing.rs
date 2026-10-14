@@ -598,6 +598,7 @@ const ROLE_SOUNDS: &[(&str, u16)] = &[
     ("custom-scrap-done", 0x182),
     ("program-advance-part", 0x91),
     ("program-advance", 0x92),
+    ("encounter", 0x78),
 ];
 const ROLE_MUSIC: &[(&str, u16)] = &[
     ("link-battle", 0x15),

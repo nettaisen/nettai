@@ -209,6 +209,7 @@ hit-bomb-1 = 0x070
 buster-charge = 0x071  # a charge's glow coming (effect 5's init, 0x080E21C2)
 buster-charged = 0x072  # a charge's glow as the charge fills (effect 5, 0x080E222C)
 log-in = 0x077
+encounter = 0x078  # a battle's start: 0x08005490 (0x080054E6), 0x080054EE (0x08005518) and 0x08005520 (0x0800553C), which a random encounter's and a script's battles enter by
 program-advance-part = 0x079  # the Program Advance animation naming a chip of the recipe (0x0801E74E); GrabRvng's and GrabBnsh's panels counted (effect 0x22, 0x080E47BA); a warning marker (0x08008424: VDoll's curse's mark)
 custom-open = 0x07a  # the custom screen's opening (the lab's flow/buster-duel, frame 258)
 custom-cursor = 0x07d  # the custom screen's cursor moving (0x0802049C, 0x080206F6, 0x080207DC)

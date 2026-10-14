@@ -121,6 +121,7 @@ hit = 0x06D
 guard = 0x06E
 buster_charge = 0x071
 buster_charged = 0x072
+encounter = 0x078
 custom_open = 0x079
 custom_run_message = 0x07B
 custom_cursor = 0x07F

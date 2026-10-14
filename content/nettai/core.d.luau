@@ -3104,6 +3104,7 @@ export type RolesSpec = {
         custom_scrap_done: Sound?,
         program_advance_part: Sound?,
         program_advance: Sound?,
+        encounter: Sound?,
     }?,
     -- The music the rules start themselves: a link battle's (and a single
     -- battle's, a link battle that is no set, in a game with another song
