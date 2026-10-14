@@ -584,15 +584,15 @@ Every string below comes from content or varies; each is drawn in the original's
 
 | String | Role | Box (the original's) | In front of it (depth) | Fades |
 |---|---|---|---|---|
-| The next chip's name (the hand window) | cell | its glyphs' cells from (0, 144); the damage digits stay after them | the HUD layer's | the HUD layer's, the screen's |
-| The chip window's name (custom screen) | cell | the window's 8 name cells where its map puts them, cut to the window's columns while it slides | the HUD layer's | as above (Beast Out's darkening, a Cross's whitening) |
+| The next chip's name (the hand window) | fitted cell | its glyphs' cells from (0, 144); the damage digits stay after them | the HUD layer's | the HUD layer's, the screen's |
+| The chip window's name (custom screen) | fitted cell | the window's 8 name cells where its map puts them, cut to the window's columns while it slides | the HUD layer's | as above (Beast Out's darkening, a Cross's whitening) |
 | A telop, "????" for a hidden one | cell | the name's cells, centered; the digits after them | its sprite parts' (front layer, bucket 6) | the sprites', the screen's; the banners' squash |
 | The chip the other player just used | cell | as a telop, without the squash | its sprite parts' | as a telop |
 | The Program Advance animation's names and codes | cell | 8 cells for the name, the 9th for the code | the HUD layer's | the HUD layer's |
-| The enemy names (round's first screen) | cell | their glyphs' cells on BG0, ending at column 30 | BG0's | BG0's (the HUD palettes') |
+| The enemy names (round's first screen) | fitted cell | their glyphs' cells on BG0, ending at column 30 | BG0's | BG0's (the HUD palettes') |
 | The HUD's lines: the turn timer's seconds, "TIME UP!", "COUNTER HIT!" | cell | the cells of the pack's line without its padding spaces | the HUD layer's | the HUD layer's |
 | "VS" between the judge's numbers | cell | 2 cells | the HUD layer's | the HUD layer's |
-| A description's and the run message's lines (the chatbox) | dialogue | 12 rows, every 14 rows from (51, 108), as wide as the open box's inside (to a pixel short of its right frame: 160 pixels in the description box, 184 in the message box; the line buffer's 192 run past the description box); cut where the line buffer's sprites end, plus 3 rows for a third line's descenders | its 18 sprite parts' (front layer, bucket 3: the key-wait arrow and the portrait are in front) | the sprites', the screen's |
+| A description's and the run message's lines (the chatbox) | dialogue | 12 rows, every 14 rows from (51, 108), as wide as the open box's inside (to a pixel short of its right frame: 160 pixels in the description box, 184 in the message box; the line buffer's 192 run past the description box); cut where the line buffer's sprites end, plus 3 rows, which hold a third line's descenders whole | its 18 sprite parts' (front layer, bucket 3: the key-wait arrow and the portrait are in front) | the sprites', the screen's |
 
 Not text, so unchanged: the Crosses' names in the Cross window (the pack's pictures, by each Cross's game); the
 custom screen's slots and picked column, which show icons and the code strips' letters, no names; chip codes,
@@ -625,7 +625,7 @@ the frontend's own status text (`text.rs`).
   own pixels go. So a dimming leaves text as it leaves the HUD, Beast Out's fade darkens the custom screen's names,
   a Cross's choice and the FlashBomb's flash whiten them, and the screen fades take everything.
 - **The squash**: an item's `vscale` is the banners' `n / 256` texture step; the text is scaled vertically by
-  256 / n about the box's middle and cut to the box's 16 rows, as the sprite is.
+  256 / n about the box's middle (until 2026-10-14 cut to the box's 16 rows, as the sprite is; no longer: §9.9).
 - **Drawing** (`present.rs`, `vfont.rs`): the window (`app.rs`) and the PNG writer (`headless.rs`) both go through
   `present`: the frame scaled to the output, then each item laid out and rasterized at the output's scale and
   blended over it, pixel by pixel through the item's clip and the depth keys of the frame pixel under it.
@@ -643,9 +643,12 @@ the frontend's own status text (`text.rs`).
 
 - **Roles.** The 8x16 font's strings (`Role::Cell`): capitals 10 frame pixels high (the original's take rows 4
   to 13 of the 16), the baseline 14 rows down, weight 700, a shadow in the palette's shadow color half a frame
-  pixel right and down (the original's is a pixel; half reads better at 3x and 4x). The dialogue font's
-  (`Role::Dialogue`): capitals 9 pixels high, the baseline 10.5 rows down, weight 300, no shadow. **A role has
-  one size** (since 2026-10-13, §9.8): every string of it is drawn at it, whatever its length or its box.
+  pixel right and down (the original's is a pixel; half reads better at 3x and 4x). Those whose cells something
+  follows right under them, the chip window's name, the hand window's and the enemy names (`Role::FittedCell`,
+  since 2026-10-14, §9.9): capitals 9 pixels high, the baseline 12.4 rows down, otherwise as `Cell`, so that their
+  descenders end in the cells. The dialogue font's (`Role::Dialogue`): capitals 9 pixels high, the baseline 10.5
+  rows down, weight 300, no shadow. **A role has one size** (since 2026-10-13, §9.8): every string of it is drawn
+  at it, whatever its length or its box. **No glyph is cut at its box's rows** (since 2026-10-14, §9.9).
 - **Kana and kanji** stand in the capitals' rows, as the original's fonts draw them (the 8x16 font's kana take
   rows 4 to 13, its capitals' rows; the Japanese dialogue font's kana and capitals both rows 1 to 10). A Japanese
   font draws them in its em box, lower and taller than its capitals (Murecho's bold kana are 1.1 times its
@@ -673,6 +676,9 @@ the frontend's own status text (`text.rs`).
   | EXE5 Japanese | 357 | 357 | to 62-79%, 185 under 65% | none of 1,036 |
   | EXE4 English | 339 | 139 | to 82-99% (NumbMnDS) | none of 961 |
   | EXE4 Japanese | 339 | 339 | to 62-79%, 169 under 65% | none of 950 |
+
+  These are the cell role's (the telop's). The fitted role (the hand, the chip window, the enemy names), drawn at
+  90%, narrows fewer names: §9.9.
 
   Every Japanese name is narrowed to about two thirds, because its box is the original's: the 8x16 font's kana are
   half-width, 7 pixels of ink in an 8-pixel cell and 10 high, where a Japanese font's are square. Narrowed to 62-70%,
@@ -732,8 +738,10 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
   with its layer; a font-mode telop as an item over blank parts where the original's glyph parts were; a HUD line
   without its padding; layout that never leaves its box and isn't stretched; a string too wide narrowed, its
   glyphs' size and baseline kept; kana and kanji at one size, their box the capitals' height on the capitals'
-  middle, in every string; the placement policy; marks (a stacked mark in one cell, a button in its ring: §10.5). The font
-  tests check layout and metrics, not pixels: the rasterizer's arithmetic is floating point (§2.2).
+  middle, in every string; the placement policy; marks (a stacked mark in one cell, a button in its ring: §10.5);
+  descenders drawn past the cells, and the fitted role's ending in them at 1x to 6x (§9.9). The font tests check
+  layout and metrics, not pixels (the rasterizer's arithmetic is floating point, §2.2), except the descender
+  tests, which check only which output rows are lit.
 - **Looked at**, headless at 4x: the hand, the chip window, telops through their squash and stretch, a hidden
   telop, the other player's chip, a description and the run message (printing too), the Program Advance's names,
   "COUNTER HIT!", the seconds, "TIME UP!" and "VS", Beast Out's darkening of the enemy name, a Cross's whitening,
@@ -775,7 +783,7 @@ columns in each text box against the original mode's):
   original's, and Latin was where it should be). In the chatbox the kana happened to be close (9.5 pixels, centered).
 - **Descenders out of their cells.** Murecho's descenders reach 3.3 pixels under the 8x16 font's baseline, the
   original's one: the chip window's "Spreadr1" drew its p over the chip's picture, the enemy name's g ran past its
-  bar.
+  bar. (The cut that answered it, below, is gone since 2026-10-14: §9.9.)
 - **A comma closing words up.** The US scripts write "Lan,this is no time to run away!" (EXE6's and EXE5's MegaMan,
   20 strings in the three games): the original's fonts give a comma a capital's advance, so the words stand apart;
   the font's comma is narrow and joined them.
@@ -790,14 +798,13 @@ columns in each text box against the original mode's):
   in rows 11 to 22.5 (the original's 10 to 22, its voiced marks reaching row 10), the description's first line in
   108.5 to 119.25 and 97.5 pixels wide (the original's 108 to 119 and 98), and Latin, kana and kanji of a string
   share one baseline;
-- a cell string is cut at its box's rows (`Style::in_rows`), as the original's glyphs stay in their cells; the
-  chatbox's lines keep their descenders as before;
+- (until 2026-10-14) a cell string was cut at its box's rows, as the original's glyphs stay in their cells; since
+  then no glyph is cut, and the chip window's, the hand window's and the enemy names' text is fitted so its
+  descenders end in their cells (§9.9);
 - a comma a letter follows at once is followed by a space's width (not between digits: "1,000").
 
 **Left as they are, listed:**
 
-- The hand window's name stands on the screen's last rows (its cells are rows 144 to 159): a descender loses its
-  last 1.3 pixels there, cut by the cells and the screen alike.
 - In the chip window and the Program Advance's names, whose box is 8 cells whatever the name, a short Japanese name
   has room and is drawn at its natural width (キャノン) while a long one is narrowed to about two thirds
   (バッドメディスン): their kana differ in width from name to name, never in height. The hand, the telop and the
@@ -835,6 +842,71 @@ name, three description lines) over a 4x frame, cached, took 180 µs in English 
 the least of eight batches of 200 frames; scaling the frame's picture takes 0.9 ms at 4x). A first frame (layouts
 and glyphs made) is 2 to 4 ms in either. A string's layout is cached as before; the kana box is measured once a
 weight, from 45 outlines.
+
+### 9.9 Descenders whole (2026-10-14)
+
+The user (2026-10-14): "also letters like lowercase g get cut off when rendered in sharp text mode in the game".
+
+**The rule since**: no glyph is cut in the font mode, anywhere. Where a role's descenders, drawn whole, would cover
+something the original draws under its cells, the role's text is fitted so they end in the room it has: its
+baseline a little higher and its whole text a little smaller, the same for every string of the role, so the names
+of a role stay alike. Where nothing of the original's is under them, they are drawn past the cells. Kana and kanji
+keep §9.4's rules (one baseline with Latin, the kana box the capitals' height). `vfont::Role` has a role for each
+case of the 8x16 font's strings: `Cell` (drawn past) and `FittedCell` (fitted); `Style::in_rows`, the cut, is gone.
+
+**What was cut.** Until then each cell string was cut at its box's 16 rows (§9.8). Murecho's deepest descender at
+weight 700 is g's, 0.235 em under the baseline, 0.323 of its capitals' height (0.728 em); p, q and y reach 0.224 em
+(0.308 of the capitals), j 0.205, the comma 0.139, the parentheses 0.118 (and the same at 300). With the cell role's
+capitals of 10 pixels on its baseline at row 14, g's ink ends on row 17.2 and its shadow on 17.75 to 18.0 (2x to
+6x; 19 at 1x), measured on rendered frames: the cut took its last 1.75 to 2 pixels. Kana and kanji end on rows 15.0
+to 15.7 with their shadow and were never cut. The original's descenders take one row under the baseline (row 14)
+and their shadow the next (15): they end on the cells' last row.
+
+**What is under each role's cells**, read from the original mode's frames at 1x in each game (the boxes are the same
+in both languages):
+
+| Where | Role | Box | What starts under its cells | Choice |
+|---|---|---|---|---|
+| The chip window's name | `FittedCell` | 8 cells from (16, 8) in EXE6 and EXE5, (8, 8) in EXE4 | the chip's picture on the next row (EXE6, EXE5: the name's band is rows 8 to 23, the picture starts on 24); the window's frame line (EXE4, row 24) | fitted to the 16 rows |
+| The hand window's name | `FittedCell` | its cells from (0, 144) | the screen's edge (row 160) | fitted to the 16 rows |
+| The enemy names | `FittedCell` | their cells, ending at column 30, rows 0 to 15 | their bar takes rows 3 to 13, its bottom the baseline; the original's descenders and their shadow are rows 14 and 15, under the bar and in the cells; then the field (EXE6, EXE5; EXE4 shows none) | fitted to the 16 rows, where the original's end |
+| A telop; the other player's chip | `Cell` | the name's cells from row 32 | the field: no window or bar | drawn past, through the banner's bounce too (stretched 1.23 times for two frames, where the original's own glyphs are cut at the sprite's rows) |
+| The Program Advance's names and codes | `Cell` | 9 cells, a name every 24 rows | the field, over the 8 rows to the next name, whose capitals start 4 rows into its cells | drawn past: a descender ends 2 rows into the 8 |
+| The HUD's lines, "VS" | `Cell` | their cells | nothing to cut: no descenders in either language ("TIME UP!", "COUNTER HIT!", the seconds) | drawn past (nothing changes) |
+| The chatbox's lines (description, run message) | `Dialogue` | 12 rows, every 14 rows | the line buffer's sprites, cut 3 rows under the third line's 12 (row 43 of the text) | as before: the third line's g ends on row 41.4 (2.9 pixels under its baseline at 38.5), never cut |
+
+**The fitted role** (`Role::FittedCell`). Its room is the cells' 16 rows. Its deepest descender with its shadow must
+end above row 16: baseline + 0.323 × the capitals' height + the shadow ≤ 16, in output pixels (the shadow is half a
+frame pixel rounded to output pixels, at least one: 1 pixel at 1x, 2/3 at 3x, 3/5 at 5x, 1/2 at 2x, 4x and 6x; a
+glyph's origin falls on an output row). What that allows:
+
+- raised only, the capitals 10: the baseline at 12.1 at most, the capitals in rows 2.1 to 12.1, 1.9 pixels above
+  the original's;
+- smaller only, on the original's baseline at 14: capitals 4 pixels high; not usable;
+- smaller with the capitals' top kept on row 4: capitals 8.6 pixels (86%), the baseline at 12.6;
+- **chosen: capitals 9 pixels (90%), the baseline at 12.4.** The capitals stand in rows 3.4 to 12.4 (the original's
+  4 to 14: 0.6 higher at the top, 1.6 at the bottom), as close to the original's place as the room allows with a
+  slight size change; kana and kanji follow (their box the capitals' height, centered on them), so they are 90%
+  too.
+
+Measured on rendered pixels (the test `a_fitted_cells_descenders_end_in_its_cells`, 1x to 6x): g, j, p, q and y
+with their shadow end on row 16.0 at 1x to 5x and 15.8 at 6x; the capitals take rows 3.3-3.5 to 12.3-12.5, kana 2.8-3.0
+to 13.0-13.7 and kanji 2.3-2.7 to 13.5-14.0 with their shadow, É's accent starts on row 1.0 (0 at 1x): nothing
+leaves the cells, and nothing in front of them is covered. At 90% fewer names are narrowed in their own cells (the
+hand; §9.4's table is the cell role's): of EXE6's English chip names 11 of 355, EXE5's 16 of 358, EXE4's 18 of 339, none
+under 91%; the Japanese names all but a few, as before, but to 69-88% (62-79% at the cell role's size).
+
+**The original mode is unchanged**: with packs that have both languages' lettering it never reaches the vector
+font, and the 15 states below rendered in `--text original` are byte for byte the same with main's frontend and this
+one. (The stand-in for a pack with no lettering in the language shown, which draws the vector font into the frame
+in the original mode, `Renderer::render`, lays strings out by these roles too, so its names follow them; no
+comparison uses it.)
+
+**Looked at**, headless at 3x, before and after: the chip window (EXE6's Spreadr1 and BigBomb, EXE5's and EXE4's
+Magnum, スプレッドガン1), the enemy names (SpoutMan, GyroMan, アクアマン), the hand window (Spreadr1, Magnum,
+スプレッドガン1), a telop at rest and in the banner's stretch (ComingRd), the Program Advance's names (Sword, WideSwrd,
+LongSwrd: the chip lab's pa/0x153-lifesrd/recipe1), a description (Spreadr1's), from match files with folders of
+names with descenders: each descender whole, nothing under the cells covered.
 
 ## 10. Languages and display text (as built, 2026-10-02)
 
