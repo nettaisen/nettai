@@ -323,6 +323,69 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     shot(add, "tabs-navicust-row-taken-off", Pair::None);
 }
 
+/// The NaviCust's board by the mouse's clicks (docs/app.md §8; the user: "dragging navicust piece is confusing because
+/// usually it's click to drop"): the first placed piece clicked up and carried over the list, shot there (the remove
+/// look: the piece faded on the board, the list washed under CLICK TO PUT AWAY), and a click on the list puts it away
+/// (a program fewer on the board); the next clicked up, carried off the board elsewhere (the effects' panel), shot
+/// there, and a click there puts it back where it was (the board as it was). A desktop's: a touch has no hover.
+fn carries(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    let kept: Rc<RefCell<(i32, Vec<(i32, i32)>)>> = Rc::default();
+    let keep = |kept: &Rc<RefCell<(i32, Vec<(i32, i32)>)>>| -> Step {
+        let kept = kept.clone();
+        Box::new(move |ui, _, _| *kept.borrow_mut() = (ui.global::<NavicustView>().get_placed(), Board::of(ui).filled()))
+    };
+    let first = |b: &Board| b.filled().first().map(|&(x, y)| Point::Cell(x as f32, y as f32));
+    add(SETTLE, keep(&kept));
+    add(SETTLE, mouse_on(first, true));
+    add(SETTLE, mouse_on(|_| Some(Point::Row(1)), false));
+    add(SETTLE, expect(|ui, _| {
+        let view = ui.global::<NavicustView>();
+        (!view.get_holding() || !view.get_over_list()).then(|| format!("a placed piece clicked up and carried over the list: in hand {}, the list's remove look {}", view.get_holding(), view.get_over_list()))
+    }));
+    shot(add, "tabs-navicust-over-list", Pair::None);
+    add(SETTLE, mouse_on(|_| Some(Point::Row(1)), true));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let view = ui.global::<NavicustView>();
+        let (placed, before) = (view.get_placed(), was.borrow().0);
+        (view.get_holding() || view.get_over_list() || placed + 1 != before).then(|| format!("a click on the list with a piece in hand: {placed} programs placed (were {before}), in hand {}", view.get_holding()))
+    }));
+    shot(add, "tabs-navicust-clicked-away", Pair::None);
+    add(SETTLE, keep(&kept));
+    add(SETTLE, mouse_on(first, true));
+    add(SETTLE, mouse_on(|_| Some(Point::Off), false));
+    shot(add, "tabs-navicust-carried-off", Pair::None);
+    add(SETTLE, mouse_on(|_| Some(Point::Off), true));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let view = ui.global::<NavicustView>();
+        let was = was.borrow();
+        let filled = Board::of(ui).filled();
+        (view.get_holding() || view.get_placed() != was.0 || filled != was.1).then(|| format!("a click off the board and the list with a piece in hand: in hand {}, {} placed (were {}), the board's cells {}", view.get_holding(), view.get_placed(), was.0, if filled == was.1 { "as they were" } else { "changed" }))
+    }));
+    shot(add, "tabs-navicust-put-back", Pair::None);
+}
+
+/// The pointer as the window has it, now, at the point `place` finds on the board as the view shows it (or any
+/// point it names): the left button pressed and let go there (`click`), else the pointer moved there.
+fn mouse_on(place: fn(&Board) -> Option<Point>, click: bool) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(position) = place(&Board::of(ui)).and_then(|p| locate(ui, app, p)) else {
+            tour.key_wrong("the pointer on the NaviCust: no place for it (no piece on the board?)".to_string());
+            return;
+        };
+        use slint::platform::{PointerEventButton as Button, WindowEvent as W};
+        let events = if click { vec![W::PointerPressed { position, button: Button::Left }, W::PointerReleased { position, button: Button::Left }] } else { vec![W::PointerMoved { position }] };
+        for event in events {
+            ui.window().dispatch_event(event);
+        }
+    })
+}
+
 /// A patch card that brings a bug, put in as Enter on its library row does, where the build's cards bring none yet:
 /// the first of the library's cards the build can take that brings one (by what the cards add up to: Together's
 /// bugs, the build's without its NaviCust). One tried that brings none (its bug line clears one) is taken out again.
@@ -404,6 +467,10 @@ enum Point {
     Control(&'static str, i32),
     /// A control's middle, so far down from it (up, below 0).
     Below(&'static str, i32, f32),
+    /// A list's (or a page's) view, so far down from its middle (up, below 0): wherever it is scrolled to.
+    Middle(&'static str, f32),
+    /// The first auto battle place shown that holds a chip.
+    Filled,
 }
 
 /// One of the probe's pointer events: the left button pressed or let go, the pointer moved (no button held unless
@@ -506,6 +573,14 @@ fn locate(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, point: Point) -> Op
         Point::Off => rect("programs", 0).map(|r| slint::LogicalPosition::new(r.x + r.w + 150.0, r.y + 200.0)),
         Point::Control(id, i) => rect(id, i).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
         Point::Below(id, i, dy) => rect(id, i).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0 + dy)),
+        Point::Middle(id, dy) => registry.view(id).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0 + dy)),
+        Point::Filled => ui
+            .global::<nettai_ui::AutoBattleView>()
+            .get_lines()
+            .iter()
+            .filter(|l| !l.title && l.chip.there)
+            .find_map(|l| rect("places.place", l.place).filter(|r| r.h > 0.0 && registry.view("places.").is_none_or(|v| r.y >= v.y && r.bottom() <= v.bottom())))
+            .map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
         Point::Fit => None,
     }
 }
@@ -574,8 +649,9 @@ fn right_row(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
     Some(vec![(0, Ev::Right(Point::Row(row)))])
 }
 
-/// A placed piece pressed, dragged two cells (one at a time) and let go there.
-fn drag_two(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+/// A placed piece pressed (it is taken up as the button goes down), moved two cells with the button held (it stays:
+/// the held button carries nothing), let go there (it comes under the pointer), and clicked down there.
+fn press_move(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
     let (s, way) = b.movable(&[2])?;
     Some(vec![
         (0, Ev::Press(cell_on(s, way, 0.0))),
@@ -584,6 +660,8 @@ fn drag_two(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
         (350, Ev::Move(cell_on(s, way, 1.5))),
         (400, Ev::Move(cell_on(s, way, 2.0))),
         (550, Ev::Release(cell_on(s, way, 2.0))),
+        (700, Ev::Press(cell_on(s, way, 2.0))),
+        (750, Ev::Release(cell_on(s, way, 2.0))),
     ])
 }
 
@@ -606,66 +684,77 @@ fn click_move(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
     ])
 }
 
-/// A program dragged out of its row (the first not placed) onto the board, and let go where it fits.
-fn row_drag(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
-    drag_out(ui, |r| r.state == nettai_ui::ProgramState::None && !r.plus)
+/// A program's row clicked (the first not placed): a new copy in hand, carried onto the board with no button held,
+/// and clicked down where it fits.
+fn row_click(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+    click_out(ui, |r| r.state == nettai_ui::ProgramState::None && !r.plus)
 }
 
-/// A placed program dragged out of its row (the first placed): a new copy of it onto the board, let go where it
-/// fits, the copy on the board staying where it is.
-fn placed_row_drag(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
-    drag_out(ui, |r| r.state == nettai_ui::ProgramState::Placed)
+/// A placed program's row clicked (the first placed): a new copy of it carried onto the board and clicked down where
+/// it fits, the copy on the board staying where it is.
+fn placed_row_click(_: &Board, ui: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+    click_out(ui, |r| r.state == nettai_ui::ProgramState::Placed)
 }
 
-/// The first of the list's first rows that `which` picks dragged out onto the board, and let go where the piece fits.
-fn drag_out(ui: &nettai_ui::AppWindow, which: fn(&nettai_ui::ProgramRow) -> bool) -> Option<Vec<(u64, Ev)>> {
+/// The first of the list's first rows that `which` picks clicked, the copy carried onto the board, and clicked down
+/// where it fits.
+fn click_out(ui: &nettai_ui::AppWindow, which: fn(&nettai_ui::ProgramRow) -> bool) -> Option<Vec<(u64, Ev)>> {
     let rows = ui.global::<NavicustView>().get_programs();
     let row = rows.iter().take(12).position(|r| which(&r))? as i32;
     let mid = Board::of(ui).n as f32 / 2.0 - 0.5;
     Some(vec![
         (0, Ev::Press(Point::Row(row))),
+        (50, Ev::Release(Point::Row(row))),
         (150, Ev::Move(Point::Cell(mid + 2.0, mid))),
         (300, Ev::Move(Point::Fit)),
-        (450, Ev::Release(Point::Fit)),
-        // (Where it found no fit, the drag ends off the board.)
-        (600, Ev::Release(Point::Off)),
+        (450, Ev::Press(Point::Fit)),
+        (500, Ev::Release(Point::Fit)),
     ])
 }
 
-/// A placed piece dragged onto another and let go there: it shakes and goes back.
-fn drag_refused(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+/// A placed piece clicked up, carried onto another and clicked there: it shakes and stays in hand; then a click off
+/// the board puts it back where it was.
+fn click_refused(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
     let (s, _) = b.movable(&[])?;
     let piece = b.piece_of(s);
     let other = b.filled().into_iter().find(|c| !piece.contains(c))?;
+    let at = cell_on(s, (0, 0), 0.0);
     let mid = Point::Cell((s.0 + other.0) as f32 / 2.0, (s.1 + other.1) as f32 / 2.0);
     let to = Point::Cell(other.0 as f32, other.1 as f32);
-    Some(vec![(0, Ev::Press(cell_on(s, (0, 0), 0.0))), (120, Ev::Move(mid)), (240, Ev::Move(to)), (360, Ev::Release(to))])
-}
-
-/// A placed piece dragged a cell, a key pressed (the drag ends, the piece goes back), the pointer moved on and let
-/// go (nothing more happens).
-fn drag_key(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
-    let (s, way) = b.movable(&[1]).or_else(|| b.movable(&[]))?;
     Some(vec![
-        (0, Ev::Press(cell_on(s, way, 0.0))),
-        (150, Ev::Move(cell_on(s, way, 1.0))),
-        (300, Ev::Key(KeyCode::ArrowRight)),
-        (450, Ev::Move(cell_on(s, way, 2.0))),
-        (600, Ev::Release(cell_on(s, way, 2.0))),
+        (0, Ev::Press(at)),
+        (50, Ev::Release(at)),
+        (120, Ev::Move(mid)),
+        (240, Ev::Move(to)),
+        (360, Ev::Press(to)),
+        (410, Ev::Release(to)),
+        (700, Ev::Move(Point::Off)),
+        (800, Ev::Press(Point::Off)),
+        (850, Ev::Release(Point::Off)),
     ])
 }
 
-/// A placed piece dragged toward the middle and right-clicked: put away into the list (off the board).
-fn drag_right(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+/// A placed piece clicked up, carried toward the middle and right-clicked: put away into the list (off the board).
+fn click_right(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
     let s = *b.filled().first()?;
+    let at = cell_on(s, (0, 0), 0.0);
     let mid = Point::Cell(b.n as f32 / 2.0 - 0.5, b.n as f32 / 2.0 - 0.5);
-    Some(vec![(0, Ev::Press(cell_on(s, (0, 0), 0.0))), (150, Ev::Move(mid)), (300, Ev::Right(mid)), (450, Ev::Release(mid))])
+    Some(vec![(0, Ev::Press(at)), (50, Ev::Release(at)), (150, Ev::Move(mid)), (300, Ev::Right(mid))])
 }
 
-/// A placed piece dragged off the board and let go there: put away into the list.
-fn drag_off(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+/// A placed piece clicked up, carried off the board (the effects' panel) and clicked there: back where it was.
+fn click_off(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
     let s = *b.filled().first()?;
-    Some(vec![(0, Ev::Press(cell_on(s, (0, 0), 0.0))), (150, Ev::Move(Point::Cell(b.n as f32, s.1 as f32))), (300, Ev::Move(Point::Off)), (450, Ev::Release(Point::Off))])
+    let at = cell_on(s, (0, 0), 0.0);
+    Some(vec![(0, Ev::Press(at)), (50, Ev::Release(at)), (150, Ev::Move(Point::Cell(b.n as f32, s.1 as f32))), (300, Ev::Move(Point::Off)), (450, Ev::Press(Point::Off)), (500, Ev::Release(Point::Off))])
+}
+
+/// A placed piece clicked up, carried over the list (the list's remove look fades in, the piece fades back) and
+/// clicked there: put away into the list.
+fn click_list(b: &Board, _: &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev)>> {
+    let s = *b.filled().first()?;
+    let at = cell_on(s, (0, 0), 0.0);
+    Some(vec![(0, Ev::Press(at)), (50, Ev::Release(at)), (150, Ev::Move(Point::Row(2))), (250, Ev::Move(Point::Row(1))), (450, Ev::Press(Point::Row(1))), (500, Ev::Release(Point::Row(1)))])
 }
 
 /// A placed piece clicked (taken up), turned twice by the wheel's notches, and right-clicked: put away.
@@ -875,12 +964,15 @@ fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
 
 /// A left click on control `id`'s `index`, as the window has one (pressed and let go there).
 fn click(id: &'static str, index: i32) -> Step {
+    click_at(Point::Control(id, index))
+}
+fn click_at(point: Point) -> Step {
     Box::new(move |ui, app, tour| {
         if tour.passing.get() {
             return;
         }
-        let Some(position) = locate(ui, app, Point::Control(id, index)) else {
-            tour.key_wrong(format!("a click on {id} {index}: it isn't on the screen"));
+        let Some(position) = locate(ui, app, point) else {
+            tour.key_wrong(format!("a click on {point:?}: it isn't on the screen"));
             return;
         };
         use slint::platform::{PointerEventButton as Button, WindowEvent as W};
@@ -985,12 +1077,23 @@ fn clicks(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     let before = Rc::new(std::cell::Cell::new(0usize));
     let kept = before.clone();
     add(SETTLE, Box::new(move |ui, _, _| kept.set(cards(ui))));
-    // (A click on the second card, the cursor gone up to the first: it is marked, and Del takes it out.)
-    add(SETTLE, click("card", 1));
+    // (A click on the second row that holds a card, the cursor gone up to the first row: it is marked, and Del takes
+    // it out. In a list it is the second row; in EXE4's slots, the second slot that holds one, an empty slot's Del
+    // having nothing to take out.)
+    fn second_card(ui: &nettai_ui::AppWindow) -> i32 {
+        ui.global::<PatchCardsView>().get_installed().iter().enumerate().filter(|(_, c)| c.there).nth(1).map_or(1, |(i, _)| i as i32)
+    }
+    let clicked = Rc::new(std::cell::Cell::new(1));
+    let chosen = clicked.clone();
+    add(SETTLE, Box::new(move |ui, app, tour| {
+        chosen.set(second_card(ui));
+        click_at(Point::Control("card", chosen.get()))(ui, app, tour)
+    }));
     add(SETTLE, press_key(KeyCode::Delete, ""));
     add(SETTLE, expect(move |ui, app| {
         let was = before.get();
-        focus_on(app, "card", 1).or_else(|| (cards(ui) + 1 != was).then(|| format!("Del after a click on the second card: {} cards, not {}", cards(ui), was.saturating_sub(1))))
+        let at = clicked.get();
+        focus_on(app, "card", at).or_else(|| (cards(ui) + 1 != was).then(|| format!("Del after a click on the second card (row {}): {} cards, not {}", at + 1, cards(ui), was.saturating_sub(1))))
     }));
     add(SETTLE, to_tab(EditorTab::AutoBattle));
     add(SETTLE, focus("places.place", 2));
@@ -1050,6 +1153,33 @@ fn drag_to(add: &mut dyn FnMut(u64, Step), id: &'static str, index: i32, to: i32
 }
 fn let_go(id: &'static str, to: i32, dy: f32) -> Step {
     hand(Point::Below(id, to, dy), Ev::Release)
+}
+
+/// The row at `from` pressed and dragged onto the library beside its list, held over the middle of its rows (wherever
+/// it is scrolled to): `drop_on_library()` lets it go there.
+fn onto_library(add: &mut dyn FnMut(u64, Step), from: Point) {
+    add(SETTLE, hand(from, Ev::Press));
+    add(60, hand(Point::Middle("lib.rows", 60.0), Ev::Move));
+    add(60, hand(Point::Middle("lib.rows", 0.0), Ev::Move));
+}
+fn drop_on_library() -> Step {
+    hand(Point::Middle("lib.rows", 0.0), Ev::Release)
+}
+
+/// A right click on control `id`'s `index`, as the window has it.
+fn right(id: &'static str, index: i32) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(position) = locate(ui, app, Point::Control(id, index)) else {
+            tour.key_wrong(format!("a right click on {id} {index}: it isn't on the screen"));
+            return;
+        };
+        use slint::platform::{PointerEventButton as Button, WindowEvent as W};
+        ui.window().dispatch_event(W::PointerPressed { position, button: Button::Right });
+        ui.window().dispatch_event(W::PointerReleased { position, button: Button::Right });
+    })
 }
 
 /// What the build's lists hold, as their views show them: the folder's entries by name, the patch cards by name, the
@@ -1117,6 +1247,30 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     if phone {
         return;
     }
+    // An entry dragged back onto the library ("drag it back to where it came from"), shot held there (the remove
+    // look: the entry's line red and faded, the library washed under DROP TO REMOVE), and let go: its chip is taken
+    // out, the entries after it where they were.
+    add(SETTLE, keep(&kept));
+    onto_library(add, Point::Control("slot", 10));
+    shot(add, "tabs-folder-drag-remove", Pair::None);
+    add(SETTLE, drop_on_library());
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).0;
+        let was = &was.borrow().0;
+        let there = ui.global::<FolderView>().get_slots().row_data(10).map(|s| s.there);
+        let held = was.get(10).is_some_and(|n| !n.is_empty());
+        (!held || there != Some(false) || now.get(11) != was.get(11)).then(|| format!("entry 11 ({:?}) dragged onto the library: it holds {there:?} (not emptied), or entry 12 changed ({:?})", was.get(10), now.get(11)))
+    }));
+    shot(add, "tabs-folder-drag-removed", Pair::None);
+    // A right click on an entry that isn't marked (the cursor on another): the focus comes to it, and its chip is
+    // taken out ("right click should remove everywhere").
+    add(SETTLE, focus("slot", 0));
+    add(SETTLE, right("slot", 12));
+    add(SETTLE, expect(|ui, app| {
+        let there = ui.global::<FolderView>().get_slots().row_data(12).map(|s| s.there);
+        focus_on(app, "slot", 12).or_else(|| (there != Some(false)).then(|| "a right click on entry 13: its chip isn't taken out".to_string()))
+    }));
     // A patch card dragged above the one before it.
     // (Two more cards put in first, the library's first two that can go in: the walk has left one or none.)
     add(SETTLE, to_tab(EditorTab::PatchCards));
@@ -1146,10 +1300,29 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     add(SETTLE, expect(move |ui, _| {
         let now = names(ui).1;
         let was = &was.borrow().1;
+        // (EXE4's slots aren't dragged: each card's slot is its own.)
+        if ui.global::<nettai_ui::PatchCardsView>().get_counts().slotted {
+            return (now != *was).then(|| format!("a slot's card dragged above another: the cards are {now:?}, were {was:?}"));
+        }
         let want: Vec<&String> = was.get(..2).map(|w| vec![&w[1], &w[0]]).unwrap_or_default();
         (want.is_empty() || now.iter().take(2).collect::<Vec<_>>() != want).then(|| format!("the second card dragged above the first: the cards are {now:?}, were {was:?}"))
     }));
     shot(add, "tabs-cards-dragged", Pair::None);
+    // The first card dragged onto the card library: taken out, the others closing up.
+    add(SETTLE, keep(&kept));
+    onto_library(add, Point::Control("card", 0));
+    shot(add, "tabs-cards-drag-remove", Pair::None);
+    add(SETTLE, drop_on_library());
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        // (EXE4's slots aren't dragged.)
+        if ui.global::<nettai_ui::PatchCardsView>().get_counts().slotted {
+            return None;
+        }
+        let now = names(ui).1;
+        let was = &was.borrow().1;
+        (was.is_empty() || now.as_slice() != &was[1..]).then(|| format!("the first card dragged onto the library: the cards are {now:?}, were {was:?}"))
+    }));
     // An auto battle place's chip (the first list's third, where the walk left one) dragged two places back in its
     // list: the places between shift on.
     add(SETTLE, to_tab(EditorTab::AutoBattle));
@@ -1205,6 +1378,22 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         (now != was.borrow().2 || said.is_empty()).then(|| format!("a standard chip dragged into the Mega list: the places changed, or the strip says nothing ({said:?})"))
     }));
     shot(add, "tabs-auto-drag-refused", Pair::None);
+    // Back at the first list (the page scrolled to its top), the first place holding a chip dragged onto the library:
+    // that place is emptied, the others as they were.
+    add(SETTLE, focus("places.place", 0));
+    add(SETTLE, keep(&kept));
+    onto_library(add, Point::Filled);
+    shot(add, "tabs-auto-drag-remove", Pair::None);
+    add(SETTLE, drop_on_library());
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).2;
+        let was = &was.borrow().2;
+        let changed: Vec<(&(i32, String), Option<&(i32, String)>)> = was.iter().map(|w| (w, now.iter().find(|n| n.0 == w.0))).filter(|(w, n)| Some(*w) != *n).collect();
+        let emptied = matches!(changed.as_slice(), [(w, Some(n))] if !w.1.is_empty() && n.1.is_empty());
+        (!emptied).then(|| format!("the first place holding a chip dragged onto the library: the places that changed are {changed:?}, not one emptied"))
+    }));
+    shot(add, "tabs-auto-drag-removed", Pair::None);
 }
 
 /// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
@@ -1212,6 +1401,9 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
     open_build(add, size == "phone");
     navicust(add, shot);
+    if size == "desktop" {
+        carries(add, shot);
+    }
     patch_cards(add, shot);
     card_bugs(add, shot);
     auto_battle(add, shot);
@@ -1236,6 +1428,14 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     // An entry dragged three rows down: it lifts under the pointer, those between slide up to leave a gap where it
     // would land, and let go it lands there with a flash.
     burst(add, "folder-drag", &[0, 60, 120, 200, 280, 360, 440, 520, 640, 800], pointer(|_, _| Some(drag_rows("slot", 5, 3))));
+    // An entry dragged onto the library: over it, the entry's line goes red and it fades back, and the library fades
+    // under DROP TO REMOVE; let go, its chip is taken out. Then a right click on another entry, not marked: emptied.
+    let onto = |_: &Board, _: &nettai_ui::AppWindow| {
+        let (from, to) = (Point::Control("slot", 12), Point::Middle("lib.rows", 0.0));
+        Some(vec![(0, Ev::Press(from)), (60, Ev::Move(Point::Below("slot", 12, 10.0))), (140, Ev::Move(Point::Middle("lib.rows", 60.0))), (220, Ev::Move(to)), (420, Ev::Release(to))])
+    };
+    burst(add, "folder-drag-remove", &[0, 60, 140, 180, 220, 260, 320, 420, 480, 600], pointer(onto));
+    burst(add, "folder-right-click", &[0, 60, 120, 200, 320], pointer(|_, _| Some(vec![(0, Ev::Right(Point::Control("slot", 14)))])));
     // A click on an entry and R (it is the Regular chip), a click on another and T (it is tagged): the keys act on
     // what was clicked.
     burst(add, "folder-click-r", &[0, 100, 250, 380, 520], click_then("slot", 8, KeyCode::KeyR));
@@ -1257,22 +1457,24 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, take(2, program));
     burst(add, "navicust-refused", &[0, 30, 60, 90, 120, 160, 220, 320], put(Spot::Over));
     add(SETTLE, act(Action::Back));
-    // A placed piece dragged with the mouse: pressed (it lifts), two cells on (it follows the pointer from cell to
-    // cell, outlined where it would land), let go (put down there, with its pulse).
-    burst(add, "navicust-drag", &[0, 60, 120, 170, 230, 300, 370, 430, 500, 580, 640, 720, 900], pointer(drag_two));
-    // The mouse by clicks: a piece clicked up follows the pointer with no button held, cell by cell; a key moves it
-    // from there and the pointer's next move takes it back under the pointer; a click puts it down.
+    // The mouse carries a piece by clicks ("usually it's click to drop"): a placed piece pressed (it lifts as the
+    // button goes down), moved two cells with the button held (it stays), let go (it comes under the pointer), and
+    // clicked down there (with its pulse).
+    burst(add, "navicust-press-move", &[0, 60, 120, 170, 230, 300, 370, 430, 500, 580, 640, 720, 800, 900], pointer(press_move));
+    // A piece clicked up follows the pointer with no button held, cell by cell; a key moves it from there and the
+    // pointer's next move takes it back under the pointer; a click puts it down.
     burst(add, "navicust-click-move", &[0, 120, 250, 350, 470, 570, 650, 760, 900, 1100, 1300], pointer(click_move));
-    // A program dragged out of its row onto the board and let go where it fits, and a placed one's (a new copy of
-    // it, the placed one staying); a piece let go over another
-    // (it shakes and goes back); a key mid-drag (the piece goes back); a right click mid-drag and a drag off the
-    // board (each puts the piece away); the wheel turning a clicked-up piece, and a right click putting it away.
-    burst(add, "navicust-row-drag", &[0, 100, 200, 350, 500, 600, 800], pointer(row_drag));
-    burst(add, "navicust-row-drag-placed", &[0, 100, 200, 350, 500, 600, 800], pointer(placed_row_drag));
-    burst(add, "navicust-drag-refused", &[0, 100, 200, 300, 420, 500, 600, 700, 800, 1000], pointer(drag_refused));
-    burst(add, "navicust-drag-key", &[0, 100, 200, 350, 500, 650, 800], pointer(drag_key));
-    burst(add, "navicust-drag-right-click", &[0, 100, 200, 350, 500, 650], pointer(drag_right));
-    burst(add, "navicust-drag-off", &[0, 100, 200, 350, 500, 650], pointer(drag_off));
+    // A program's row clicked, carried onto the board and clicked down where it fits, and a placed one's (a new copy
+    // of it, the placed one staying); a piece clicked over another (it shakes and stays in hand) and then off the
+    // board (back where it was); a right click with a piece in hand (put away); a piece clicked off the board (back
+    // where it was) and onto the list (the list's remove look, then put away); the wheel turning a clicked-up piece,
+    // and a right click putting it away.
+    burst(add, "navicust-row-click", &[0, 100, 200, 350, 500, 600, 800], pointer(row_click));
+    burst(add, "navicust-row-click-placed", &[0, 100, 200, 350, 500, 600, 800], pointer(placed_row_click));
+    burst(add, "navicust-click-refused", &[0, 100, 200, 300, 420, 500, 600, 700, 800, 900, 1000], pointer(click_refused));
+    burst(add, "navicust-click-right-click", &[0, 100, 200, 350, 500, 650], pointer(click_right));
+    burst(add, "navicust-click-off", &[0, 100, 200, 350, 500, 650], pointer(click_off));
+    burst(add, "navicust-click-list", &[0, 100, 200, 260, 320, 400, 500, 600, 750], pointer(click_list));
     burst(add, "navicust-click-wheel-right", &[0, 120, 260, 340, 460, 560, 700, 850], pointer(click_wheel_right));
     // Right clicks with nothing in hand: on a placed piece (taken off), and on a placed program's row (its copy off).
     add(SETTLE, take(0, program));

@@ -180,6 +180,31 @@ pub fn show_drop(shell: &Shell, to: Option<usize>, swap: bool) {
     let drag = ui.global::<nettai_ui::Drag>();
     drag.set_to(to.map_or(-1, |t| t as i32));
     drag.set_swap(swap && to.is_some());
+    drag.set_removing(false);
+}
+
+/// Tell the UI the row being dragged is over the library: let go, what it holds is taken out (the remove look).
+pub fn show_remove(shell: &Shell) {
+    show_drop(shell, None, false);
+    shell.ui().global::<nettai_ui::Drag>().set_removing(true);
+}
+
+/// Whether window point `(x, y)` is over the area the controls `ids` (each a control's first, or a list's view) take
+/// together, or within `NEAR` of it.
+pub fn over(shell: &Shell, ids: &[&str], (x, y): (f32, f32)) -> bool {
+    let registry = shell.nav.registry();
+    let registry = registry.borrow();
+    let rects: Vec<crate::nav::Rect> = ids.iter().filter_map(|id| registry.view(id).or_else(|| registry.rect(&crate::nav::Key::new(id, 0)))).filter(|r| r.w > 0.0 && r.h > 0.0).collect();
+    let (left, top) = rects.iter().fold((f32::MAX, f32::MAX), |(l, t), r| (l.min(r.x), t.min(r.y)));
+    let (right, bottom) = rects.iter().fold((f32::MIN, f32::MIN), |(l, t), r| (l.max(r.right()), t.max(r.bottom())));
+    !rects.is_empty() && x >= left - NEAR && x <= right + NEAR && y >= top - NEAR && y <= bottom + NEAR
+}
+
+/// Whether a row of the build's dragged to `at` (as the UI's `Drag` says it) is over the library beside the list, its
+/// search, its sort and its rows: let go there, what it holds is taken out, as Del does ("drag it back to where it
+/// came from"). Never on a phone, whose library is a sheet, shut while a row is dragged.
+pub fn over_library(shell: &Shell, at: i32) -> bool {
+    !shell.scale.phone && over(shell, &["lib.search", "lib.sort", "lib.direction", "lib.rows"], pointer_at(at))
 }
 
 /// The row of list `id` (a `ListView`) under `(x, y)`, of the first `rows` of its rows: past the last, the last;
@@ -445,8 +470,9 @@ impl Editor {
 
     /// A click on the marked row of one of the build's lists (`click-remove`: its touch's `marked`; the press
     /// brought the focus to it) removes what it holds, as Del there does, unless it is the second click of a double
-    /// click; the NaviCust's right click (`remove`) does at once. A row dragged (`drag-over`, `drag-drop`) is the
-    /// tab's, as its other choices are.
+    /// click; a right click (`remove`: on a row of the build's, a library's row that is in, the NaviCust's) does at
+    /// once ("sure right click should remove everywhere"). A row dragged (`drag-over`, `drag-drop`: let go over the
+    /// library, it is removed) is the tab's, as its other choices are.
     pub fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         if id == "remove" {
             let (tab, draft) = self.tab();

@@ -248,6 +248,10 @@ msgstr "タッグ"
 msgid "REMOVE"
 msgstr "外す"
 
+# Over the library while a row of the build's is dragged there: let go, it is taken out.
+msgid "DROP TO REMOVE"
+msgstr "ドロップで外す"
+
 # ---- The NaviCust tab.
 
 msgid "Pick up"
@@ -278,6 +282,10 @@ msgstr "置く"
 # The piece in hand put away into the list.
 msgid "Put away"
 msgstr "しまう"
+
+# Over the list while a piece is in hand: a click there puts it away into the list.
+msgid "CLICK TO PUT AWAY"
+msgstr "クリックでしまう"
 
 msgid "{n} program placed"
 msgid_plural "{n} programs placed"
