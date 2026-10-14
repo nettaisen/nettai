@@ -645,8 +645,9 @@ the frontend's own status text (`text.rs`).
   to 13 of the 16), the baseline 14 rows down, weight 700, a shadow in the palette's shadow color half a frame
   pixel right and down (the original's is a pixel; half reads better at 3x and 4x). Those whose cells something
   follows right under them, the chip window's name, the hand window's and the enemy names (`Role::FittedCell`,
-  since 2026-10-14, §9.9): capitals 9 pixels high, the baseline 12.4 rows down, otherwise as `Cell`, so that their
-  descenders end in the cells. The dialogue font's (`Role::Dialogue`): capitals 9 pixels high, the baseline 10.5
+  since 2026-10-14, §9.9): as `Cell`, its capitals 10 pixels high on the baseline 14 rows down, the original's, but
+  with short descenders: the part of each glyph under the baseline drawn 0.31 times as high, so that a descender
+  takes one row and its shadow the next, the cells' last, as the original's do. The dialogue font's (`Role::Dialogue`): capitals 9 pixels high, the baseline 10.5
   rows down, weight 300, no shadow. **A role has one size** (since 2026-10-13, §9.8): every string of it is drawn
   at it, whatever its length or its box. **No glyph is cut at its box's rows** (since 2026-10-14, §9.9).
 - **Kana and kanji** stand in the capitals' rows, as the original's fonts draw them (the 8x16 font's kana take
@@ -677,8 +678,8 @@ the frontend's own status text (`text.rs`).
   | EXE4 English | 339 | 139 | to 82-99% (NumbMnDS) | none of 961 |
   | EXE4 Japanese | 339 | 339 | to 62-79%, 169 under 65% | none of 950 |
 
-  These are the cell role's (the telop's). The fitted role (the hand, the chip window, the enemy names), drawn at
-  90%, narrows fewer names: §9.9.
+  These are the cell role's (the telop's), and the fitted role's (the hand, the chip window, the enemy names): the
+  two are the same size, and short descenders change no width (§9.9).
 
   Every Japanese name is narrowed to about two thirds, because its box is the original's: the 8x16 font's kana are
   half-width, 7 pixels of ink in an 8-pixel cell and 10 high, where a Japanese font's are square. Narrowed to 62-70%,
@@ -739,7 +740,8 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
   without its padding; layout that never leaves its box and isn't stretched; a string too wide narrowed, its
   glyphs' size and baseline kept; kana and kanji at one size, their box the capitals' height on the capitals'
   middle, in every string; the placement policy; marks (a stacked mark in one cell, a button in its ring: §10.5);
-  descenders drawn past the cells, and the fitted role's ending in them at 1x to 6x (§9.9). The font tests check
+  descenders drawn past the cells, and the fitted role's ending in them at 1x to 6x, its capitals the cell role's
+  pixels on the original's baseline (§9.9). The font tests check
   layout and metrics, not pixels (the rasterizer's arithmetic is floating point, §2.2), except the descender
   tests, which check only which output rows are lit.
 - **Looked at**, headless at 4x: the hand, the chip window, telops through their squash and stretch, a hidden
@@ -799,8 +801,9 @@ columns in each text box against the original mode's):
   108.5 to 119.25 and 97.5 pixels wide (the original's 108 to 119 and 98), and Latin, kana and kanji of a string
   share one baseline;
 - (until 2026-10-14) a cell string was cut at its box's rows, as the original's glyphs stay in their cells; since
-  then no glyph is cut, and the chip window's, the hand window's and the enemy names' text is fitted so its
-  descenders end in their cells (§9.9);
+  then no glyph is cut, and the chip window's, the hand window's and the enemy names' text, at the cell role's size
+  on the original's baseline, has short descenders that end in their cells: what each glyph's outline has under
+  the baseline is drawn 0.31 times as high, before it is rasterized (§9.9);
 - a comma a letter follows at once is followed by a space's width (not between digits: "1,000").
 
 **Left as they are, listed:**
@@ -843,16 +846,21 @@ the least of eight batches of 200 frames; scaling the frame's picture takes 0.9 
 and glyphs made) is 2 to 4 ms in either. A string's layout is cached as before; the kana box is measured once a
 weight, from 45 outlines.
 
-### 9.9 Descenders whole (2026-10-14)
+### 9.9 No glyph cut, short descenders (2026-10-14)
 
 The user (2026-10-14): "also letters like lowercase g get cut off when rendered in sharp text mode in the game".
 
+Then, of the first fit (a baseline raised to 12.4 and capitals of 9 pixels, below), the user (2026-10-14): "the
+baseline of the text is not aligned correctly anymore", of the chip names and the enemy names.
+
 **The rule since**: no glyph is cut in the enhanced mode, anywhere. Where a role's descenders, drawn whole, would cover
-something the original draws under its cells, the role's text is fitted so they end in the room it has: its
-baseline a little higher and its whole text a little smaller, the same for every string of the role, so the names
-of a role stay alike. Where nothing of the original's is under them, they are drawn past the cells. Kana and kanji
-keep §9.4's rules (one baseline with Latin, the kana box the capitals' height). `vfont::Role` has a role for each
-case of the 8x16 font's strings: `Cell` (drawn past) and `FittedCell` (fitted); `Style::in_rows`, the cut, is gone.
+something the original draws under its cells, the role keeps the original's baseline and size and its descenders
+are drawn short, so they end in the room it has: what each glyph's outline has under the baseline is scaled down
+vertically, by one factor for every string of the role, so the names of a role stay alike; the rest of each glyph
+is the font's, whole and at its size. Where nothing of the original's is under them, they are drawn past the
+cells, whole. Kana and kanji keep §9.4's rules (one baseline with Latin, the kana box the capitals' height), and
+what of them reaches under the baseline is shortened the same way. `vfont::Role` has a role for each case of the
+8x16 font's strings: `Cell` (drawn past) and `FittedCell` (short descenders); `Style::in_rows`, the cut, is gone.
 
 **What was cut.** Until then each cell string was cut at its box's 16 rows (§9.8). Murecho's deepest descender at
 weight 700 is g's, 0.235 em under the baseline, 0.323 of its capitals' height (0.728 em); p, q and y reach 0.224 em
@@ -875,38 +883,67 @@ in both languages):
 | The HUD's lines, "VS" | `Cell` | their cells | nothing to cut: no descenders in either language ("TIME UP!", "COUNTER HIT!", the seconds) | drawn past (nothing changes) |
 | The chatbox's lines (description, run message) | `Dialogue` | 12 rows, every 14 rows | the line buffer's sprites, cut 3 rows under the third line's 12 (row 43 of the text) | as before: the third line's g ends on row 41.4 (2.9 pixels under its baseline at 38.5), never cut |
 
-**The fitted role** (`Role::FittedCell`). Its room is the cells' 16 rows. Its deepest descender with its shadow must
-end above row 16: baseline + 0.323 × the capitals' height + the shadow ≤ 16, in output pixels (the shadow is half a
-frame pixel rounded to output pixels, at least one: 1 pixel at 1x, 2/3 at 3x, 3/5 at 5x, 1/2 at 2x, 4x and 6x; a
-glyph's origin falls on an output row). What that allows:
+**The fitted role** (`Role::FittedCell`). Its room is the cells' 16 rows, and its capitals and baseline are the
+original's: capitals 10 pixels high in rows 4 to 13, the baseline at row 14, as the cell role's (the same pixels:
+the test `a_fitted_cells_capitals_stand_on_the_originals_baseline`). Under the baseline are 2 rows, 14 and 15; the
+original's descenders take the first and their shadow the second. So the fitted role's descenders are drawn 1 pixel
+deep (`Style::descender`), the shadow (half a frame pixel rounded to output pixels, at least one: 1 pixel at 1x,
+2/3 at 3x, 3/5 at 5x, 1/2 at 2x, 4x and 6x) under it.
 
-- raised only, the capitals 10: the baseline at 12.1 at most, the capitals in rows 2.1 to 12.1, 1.9 pixels above
-  the original's;
-- smaller only, on the original's baseline at 14: capitals 4 pixels high; not usable;
-- smaller with the capitals' top kept on row 4: capitals 8.6 pixels (86%), the baseline at 12.6;
-- **chosen: capitals 9 pixels (90%), the baseline at 12.4.** The capitals stand in rows 3.4 to 12.4 (the original's
-  4 to 14: 0.6 higher at the top, 1.6 at the bottom), as close to the original's place as the room allows with a
-  slight size change; kana and kanji follow (their box the capitals' height, centered on them), so they are 90%
-  too.
+- **The factor**: the deepest descender of g, j, p, q and y (`vfont::DESCENDERS`), measured from the font's
+  outlines once a weight: Murecho's g, 0.235 em under the baseline at weight 700. At the capitals' 10 pixels
+  (13.74 pixels an em, Murecho's capitals being 0.728 em) that is 3.23 pixels; drawn 1 deep, the factor is
+  1 / 3.23 = **0.31**. Every glyph of the role is shortened by it, so its descenders stay alike: g comes out 1.0
+  pixel deep, p, q and y 0.95, j 0.87, the comma 0.59, the parentheses 0.50 (before the output's rounding).
+- **Where**: on the outline, between the font's scaling and the rasterizer (`vfont::Shorten`): the glyph's outline
+  is scaled at the output's size, the points under the text's baseline are moved toward it by the factor, and the
+  outline is rasterized as any other (zeno, as swash's `Render` does). So a short descender is as sharp as the rest
+  of the glyph at every scale, not a squashed picture. A glyph's image is cached with its shortening.
+- **Deeper than g**: a glyph that still reaches past the cells with its shadow (Murecho's double low line ‗, 0.34
+  em; the cedillas and Ŋ, a hair deeper than g at 0.237 and 0.242) is shortened just as much more as ends it
+  there, so nothing leaves the cells, whatever the string.
+- **Kana and kanji**: on their box (§9.4) most kanji and some kana reach under the baseline, 0.6 pixels for the
+  median kanji, 0.9 for the deepest (琴's, 妹's, 舞's feet), the full-width marks further (＠ 1.1, ＿ 1.6). With the
+  shadow they all ended in the cells already, except those marks; they are shortened as Latin is, being under
+  the same baseline: a kanji's foot comes up 0.4 to 0.6 pixels.
+- **What isn't**: the cell role (the telop, the Program Advance's names, the HUD's lines) and the chatbox keep the
+  font's descenders whole; a button's ring (Ⓐ, 0.75 pixels under the baseline) isn't an outline and isn't
+  shortened; it ends in the cells with its shadow. A round capital's overshoot under the baseline is shortened
+  with the rest, by under a tenth of a pixel.
 
-Measured on rendered pixels (the test `a_fitted_cells_descenders_end_in_its_cells`, 1x to 6x): g, j, p, q and y
-with their shadow end on row 16.0 at 1x to 5x and 15.8 at 6x; the capitals take rows 3.3-3.5 to 12.3-12.5, kana 2.8-3.0
-to 13.0-13.7 and kanji 2.3-2.7 to 13.5-14.0 with their shadow, É's accent starts on row 1.0 (0 at 1x): nothing
-leaves the cells, and nothing in front of them is covered. At 90% fewer names are narrowed in their own cells (the
-hand; §9.4's table is the cell role's): of EXE6's English chip names 11 of 355, EXE5's 16 of 358, EXE4's 18 of 339, none
-under 91%; the Japanese names all but a few, as before, but to 69-88% (62-79% at the cell role's size).
+Measured on rendered pixels (the tests `a_fitted_cells_descenders_end_in_its_cells` and
+`a_fitted_cells_capitals_stand_on_the_originals_baseline`, 1x to 6x), in rows of the cells: the capitals take rows
+4 to 13 at every scale, the cell role's pixels; g, j, p, q and y end on row 15.0 (row 14 their last) and with their
+shadow on 16.0 at 1x and 15.5 to 15.7 at 2x to 6x (the cell role's g ends on 17.25 to 18.0); kana end on 14.0 to
+14.5, kanji on 14.3 to 15.0, and with their shadow on 14.7 to 16.0; accents start inside the cells.
+Nothing leaves the cells, and nothing in front of them is covered.
+
+**Narrowing**: the fitted role is the cell role's size, so it narrows what the cell role does (§9.4's table), more
+than the first fit at 90% did. In their own cells (the hand; a cell a character), measured over en.toml and
+ja.toml's chip names: EXE6's English 116 of 354, the most to 83% (11 at 90%), EXE5's 117 of 357, to 83% (16 at
+90%), EXE4's 139 of 339, to 82% (18 at 90%); the Japanese all but one in EXE6 (353 of 354) and all in EXE5 (357) and
+EXE4 (339), to 62-79% (69-88% at 90%), as before the first fit.
+
+**The first fit** (2026-10-14, replaced the same day): the fitted role drawn at 90%, its capitals 9 pixels high,
+on a baseline raised to 12.4 (rows 3.4 to 12.4, the original's 4 to 14), so that the descenders, whole, ended in
+the 16 rows. It kept the descenders' shape at the cost of the names' place and size, which the user saw at once.
 
 **The original mode is unchanged**: with packs that have both languages' lettering it never reaches the vector
 font, and the 15 states below rendered in `--text original` are byte for byte the same with main's frontend and this
-one. (The stand-in for a pack with no lettering in the language shown, which draws the vector font into the frame
-in the original mode, `Renderer::render`, lays strings out by these roles too, so its names follow them; no
-comparison uses it.)
+one; with short descenders, the 16 states of the shots below in both languages (32 frames at 3x) in `--text
+original` are byte for byte the same with the first fit's frontend and this one. (The stand-in for a pack with no
+lettering in the language shown, which draws the vector font into the frame in the original mode,
+`Renderer::render`, lays strings out by these roles too, so its names follow them; no comparison uses it.)
 
 **Looked at**, headless at 3x, before and after: the chip window (EXE6's Spreadr1 and BigBomb, EXE5's and EXE4's
 Magnum, スプレッドガン1), the enemy names (SpoutMan, GyroMan, アクアマン), the hand window (Spreadr1, Magnum,
 スプレッドガン1), a telop at rest and in the banner's stretch (ComingRd), the Program Advance's names (Sword, WideSwrd,
 LongSwrd: the chip lab's pa/0x153-lifesrd/recipe1), a description (Spreadr1's), from match files with folders of
-names with descenders: each descender whole, nothing under the cells covered.
+names with descenders: each descender whole, nothing under the cells covered. With short descenders, at 3x, each
+beside the same frame in `--text original` and the first fit's, in English and Japanese: the chip window (EXE6's
+Spreadr1, BigBomb and YoYo, EXE5's Spreader, BugBomb and YoYo, EXE4's Spreader and Geddon1), the enemy name (EXE6's
+and EXE5's MegaMan), the hand (the same names), and at 6x the chip window's BigBomb and スプレッドガン1 and the enemy
+name: the capitals and kana on the original's rows, the descenders a row deep, their shadow on the cells' last row.
 
 ## 10. Languages and display text (as built, 2026-10-02)
 
