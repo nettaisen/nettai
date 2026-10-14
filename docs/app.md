@@ -2718,9 +2718,10 @@ button restart. A session another screen started (Play's, beside a waiting invit
 COPY INVITE CODE and CANCEL INVITE (hosting directly, COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE
 between them), are its ways out, over RESUME and RESTART. The
 menu opens where the focus last was in it. The dummy's setup, the battle's options and the input display are
-remembered between runs (`training.action`, `training.level`, `training.your-hp`, `training.dummys-hp`,
-`training.custom-gauge`, `training.chip-draw`, `training.inputs`); the place is the visit's, as the entry's rows
-are, and the entry after the session shows the place the menu left; a session another screen started begins as
+the visit's (`practice::Visit`), as the place and the dummy's build are: each visit starts on their defaults
+(Stands still, Normal, every option normal, the input display off, the dummy on the player's own build; the
+user: "yes for the practice options, they should all reset to default", "you should also not remember the last
+dummy build either"), and only the player's build is remembered between runs (`training.build.<game>`); and the entry after the session shows the place the menu left; a session another screen started begins as
 that screen says, every battle option at its normal value and the place Random, and keeps nothing of the
 dummy's, the battle's or the place.
 

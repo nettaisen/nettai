@@ -459,6 +459,13 @@ Each is settled unless the user changes it.
       itself, as the list and the license beside it are a page of their own, each scrolling, that can't scroll
       inside the settings' page; and the row's label Made with, over the list it opens.
     (§6, docs/app.md §2, §9 and §18.)
+54. **Practice keeps nothing between visits** (2026-10-14). Asked what is remembered between runs, the user: "yes
+    for the practice options, they should all reset to default", and "you should also not remember the last
+    dummy build either". The practice menu's rows (the dummy's Action and Level, both HP rows, the custom gauge,
+    the chip draw, the input display) and the Dummy's build are kept for one visit, as Arena, Background and
+    Music are (§2.40), and each visit starts on their defaults: Stands still, Normal, every option normal, the
+    input display off, the dummy on the player's own build. Your build stays PLAY's chosen one. In the same
+    exchange the build editor stopped reopening the tab last used: "don't remember the tab" (§6, Builds).
 
 ## 3. Chosen where the user gave no answer
 
@@ -727,8 +734,8 @@ the builds, the chosen build, what is done with it. In the body's units (1216 by
   pager thing": the arena an arrow pager, by its place, "12 / 96"; the background by its game and its name, "BN4
   ACDC Area", a dropdown since §2.43, "background and music selectors should both be dropdowns like they are in
   the practice screen": the build rows' select, Enter, a click or a tap opening its list, Left and Right still
-  stepping it), and Music (the battle's music, §2.29: a dropdown as Background's, §2.43), the builds remembered and Arena, Background and Music for one visit (§2.40: each visit
-  starts on Random, Random and the game's own), and START PRACTICE; beside them the two builds facing each other
+  stepping it), and Music (the battle's music, §2.29: a dropdown as Background's, §2.43), Your build remembered (PLAY's) and the Dummy's build, Arena, Background and Music for one visit (§2.40: each visit
+  starts on your own build, Random, Random and the game's own; the practice menu's rows too, §2.54), and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
 - **The entry plays the battle's music** (§2.29, §2.40): the music its session will start, the game's own battle
   music or the theme picked (once the row rests on it a moment), in place of the title music; START PRACTICE
