@@ -25,14 +25,17 @@ places.PLACE = PLACE
 export type Place = { chip: Chip?, pattern: number, zero: boolean }
 
 -- The lists the games write the places in (EXE5's 0x0802C692 to 0x0802C6E6): their names, first places (from 1) and
--- sizes.
-local LISTS: { { name: string, start: number, len: number } } = {
+-- sizes, and the class of chip a list holds where no chip of another class may stand in it (`validate`; a tool reads
+-- it to offer a place the chips it can hold): the mega, giga and program advance lists, which the games' writer
+-- fills with the most used chips of that class (nettai's choice, docs/design/app-ui.md §2.27). The first and standard
+-- lists take a chip of any class, though the writer puts only standard chips there.
+local LISTS: { { name: string, start: number, len: number, class: string? } } = {
     { name = "first", start = 1, len = 3 },
     { name = "standard", start = 4, len = 24 },
-    { name = "mega", start = 28, len = 5 },
-    { name = "giga", start = 33, len = 1 },
+    { name = "mega", start = 28, len = 5, class = "mega" },
+    { name = "giga", start = 33, len = 1, class = "giga" },
     { name = "patterns", start = 34, len = 8 },
-    { name = "program_advance", start = 42, len = 1 },
+    { name = "program_advance", start = 42, len = 1, class = "program_advance" },
 }
 places.LISTS = LISTS
 
@@ -133,8 +136,9 @@ function places.turn(sent: { Place }): { Place }
 end
 
 -- A game's `validate`'s part for a setup's places: each place one thing (a chip, a pattern, a 0, or empty), a
--- pattern one of the eight records, and no chip among the 42 places that the game's AI can't play (the original
--- crashes when its navi in auto battle goes to play one, and the game's own writer never puts one there).
+-- pattern one of the eight records, no chip among the 42 places that the game's AI can't play (the original
+-- crashes when its navi in auto battle goes to play one, and the game's own writer never puts one there), and in a
+-- list that holds one class of chip (`LISTS`' `class`), no chip of another.
 function places.validate(stated: { Place }, problem: (p: SetupProblem) -> ())
     for i, p in stated do
         local list = LISTS[#LISTS]
@@ -166,6 +170,21 @@ function places.validate(stated: { Place }, problem: (p: SetupProblem) -> ())
         end
         local chip: Chip? = p.chip
         if chip ~= nil then
+            if list.class ~= nil and chip.class ~= list.class then
+                problem({
+                    kind = "chip_not_allowed",
+                    field = "auto_battle_places",
+                    entry = i,
+                    chip = chip,
+                    text = string.format(
+                        "%s holds %s, a chip of class `%s`: the list holds `%s` chips alone",
+                        where,
+                        battle.name(chip),
+                        chip.class or "none",
+                        list.class
+                    ),
+                })
+            end
             -- (A chip with no `auto_battle`, the game's rules/auto_battle/place: its positioning class is past the
             -- table.)
             if (chip :: any).auto_battle == nil then

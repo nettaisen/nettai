@@ -400,6 +400,11 @@ msgstr[0] "{n}か所"
 msgid "{} can't be played in auto battle"
 msgstr "{}はオートバトルで使えません"
 
+# A chip in a list of the auto battle data that holds another class of chip: the chip's name, then the list's, as
+# the game's strings have it ("Cannon can't be in the Mega list").
+msgid "{} can't be in the {} list"
+msgstr "{}は{}に入れられません"
+
 # What the NaviCust changes of a number, the change put in ("HP +100").
 msgid "HP {}"
 msgstr "HP {}"
@@ -429,6 +434,10 @@ msgstr "レギュラーメモリ {}"
 
 msgid "Standard"
 msgstr "スタンダード"
+
+# A Program Advance's class (in the auto battle data's strip).
+msgid "Program Advance"
+msgstr "プログラムアドバンス"
 
 msgid "Dark"
 msgstr "ダーク"

@@ -53,6 +53,8 @@ pub struct Kit {
     pub order: order::Order,
     /// The chips only some versions' saves hold, each with those versions' ids (asked of the rules once).
     version_chips: OnceCell<HashMap<ChipHandle, Vec<String>>>,
+    /// The auto battle data's lists (read of the rules once).
+    auto_layout: OnceCell<Option<auto::Layout>>,
 }
 
 impl Kit {
@@ -70,6 +72,12 @@ impl Kit {
             })
         });
         chips.get(&chip).map(Vec::as_slice)
+    }
+
+    /// The auto battle data's lists, as the game's rules lay them out (`auto::Layout`: their `MODULE`); none where
+    /// its setup takes no such data.
+    pub fn auto_layout(&self) -> Option<&auto::Layout> {
+        self.auto_layout.get_or_init(|| auto::Layout::read(self.content(), module_data(self.content(), &self.game, auto::MODULE).as_ref())).as_ref()
     }
 
     /// A version's name, as the game's strings have it in `names`' language (its id where they have none).
@@ -117,6 +125,7 @@ pub fn kit_of(game: &str, ready: &Rc<Ready>) -> Option<Rc<Kit>> {
         pictures: pictures::Pictures::new(ready.clone()),
         order: order::Order::load(&ready.loaded.game.dir, game),
         version_chips: OnceCell::new(),
+        auto_layout: OnceCell::new(),
     });
     KITS.with(|kits| kits.borrow_mut().insert(game.to_string(), kit.clone()));
     Some(kit)
