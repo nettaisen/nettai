@@ -3,7 +3,7 @@
 
 use crate::audit::Problems;
 use crate::compose::{self, Fade, Fades, Layer, Palettes};
-use crate::smooth::{Nudge, Nudged, Smooth};
+use crate::smooth::{Nudge, Smooth};
 use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
@@ -58,10 +58,8 @@ pub struct Frame {
     /// frame's whole pixels (the enhanced mode's motion): `present` shows
     /// it where the frame shows the background.
     pub glide: Option<Glide>,
-    /// The frame drawn again with what moves between whole pixels a pixel
-    /// right (the enhanced mode's motion: the custom screen's slide, the
-    /// custom gauge's fill),
-    /// for `present` to show between the two.
+    /// The frame drawn again with the custom gauge's fill a pixel longer
+    /// (the enhanced mode's motion), for `present` to show between the two.
     pub nudge: Option<crate::smooth::Nudge>,
 }
 
@@ -141,8 +139,8 @@ pub struct Renderer {
     pub custom_gauge: bool,
     /// The enhanced mode without its motion (the app's Reduce motion): the
     /// background's glide (`present`) and the smooth motion (`smooth`: the
-    /// custom screen's slide, the gauge's fill) are left out, the text stays. The original
-    /// mode has none of them, whatever this says.
+    /// gauge's fill) are left out, the text stays. The original mode has
+    /// none of them, whatever this says.
     pub reduce_motion: bool,
 }
 
@@ -261,34 +259,26 @@ impl Renderer {
     /// camera a shake moves this tick (`camera_doShakeEffect_80301e8`) and
     /// the custom screen's window moves down while it is in.
     pub fn view(b: &Battle) -> View {
-        Self::view_with(b, crate::custom::Slide::Stepped)
-    }
-
-    /// [`Renderer::view`], the custom screen's slide drawn as `slide` says.
-    pub fn view_with(b: &Battle, slide: crate::custom::Slide) -> View {
         let local = b.setup.local_side;
         let (x, y) = b.consoles[local as usize & 1].camera.jitter;
         let fade = crate::custom::object_fade(b).unwrap_or_default();
-        View { camera: (x, y + crate::custom::camera_y(b, slide), 0), mirror: local & 1 == 1, fade }
+        View { camera: (x, y + crate::custom::camera_y(b), 0), mirror: local & 1 == 1, fade }
     }
 
     /// Draw a battle as a 240x160 frame with its text items.
     pub fn render(&mut self, b: &Battle) -> Frame {
-        // (The enhanced mode's motion: the frame, and where something moves
-        // between whole pixels, the frame again with it a pixel right; the
-        // second drawing's problems and sprite count are the first's.)
+        // (The enhanced mode's motion: the frame, and where the gauge's fill
+        // ends between whole pixels, the frame again with it a pixel longer;
+        // the second drawing's problems and sprite count are the first's.)
         let on = self.motion() && !self.lookups_only;
-        let mut frame = self.draw(b, Smooth { on, nudged: None });
+        let mut frame = self.draw(b, Smooth { on, nudged: false });
         if !on || frame.pixels.is_empty() {
             return frame;
         }
-        let (nudged, sub) = match crate::custom::slide_sub(b) {
-            0 => (Nudged::Gauge, crate::hud::gauge_sub(b, &self.hud_state, self.custom_gauge)),
-            sub => (Nudged::Slide, sub),
-        };
+        let sub = crate::hud::gauge_sub(b, &self.hud_state, self.custom_gauge);
         if sub != 0 {
             let (problems, drawn) = (self.problems.clone(), self.sprite_drawn.clone());
-            let again = self.draw(b, Smooth { on, nudged: Some(nudged) });
+            let again = self.draw(b, Smooth { on, nudged: true });
             (self.problems, self.sprite_drawn) = (problems, drawn);
             frame.nudge = Some(Nudge { pixels: again.pixels, depth: again.depth, sub });
         }
@@ -304,7 +294,7 @@ impl Renderer {
         // renderer's own fields, written while these are read.)
         let mut packs = self.graphics.packs();
         packs.set_version(self.console_version);
-        let view = Self::view_with(b, smooth.slide());
+        let view = Self::view(b);
         // (The background is its own pack's, another game's too (the
         // background pool's), or where that pack isn't here, the stage's own;
         // the field, the game's pack's: `FieldArt`.)
@@ -387,7 +377,6 @@ impl Renderer {
             &mut self.names,
             &mut list,
             &mut text,
-            smooth.slide(),
             &mut self.problems,
         );
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
