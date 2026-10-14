@@ -12,13 +12,17 @@
 //!
 //! **Enter on a place goes to the library** (on a phone, its sheet); **Enter on a chip puts it in the place and goes
 //! on to the next;** Enter (or Del, or a click) on the chip the place holds already takes it out again. Del empties
-//! the place. A pattern's places aren't shown: a build states no pattern records, so none of its places can point at
+//! the place. **The mouse:** a click on a place marks it (the focus stays on it); a click on the marked one empties
+//! it, as Del does. A place's chip dragged to another place of its list moves there, the places between shifting
+//! toward where it was (`Edit::Move`); to a place of another list, the two trade what they hold (`Edit::Swap`), unless
+//! the rules refuse either there: then nothing changes, the place dragged shakes, and the strip says why, as a chip
+//! put from the library is refused. A pattern's places aren't shown: a build states no pattern records, so none of its places can point at
 //! one (the game's own writer puts none there but a learned pattern's), and a match is sent them empty, a valid block.
 
 use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds};
 use crate::builds::words::kind;
 use crate::input::Action;
-use crate::screens::builds::editor::{Draft, Tab};
+use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
@@ -307,6 +311,7 @@ impl AutoBattle {
             });
             self.refused += 1;
             view.set_refused(row as i32);
+            view.set_refused_place(-1);
             view.set_refused_seq(self.refused);
             shell.sound.play(Cue::Refused);
             self.notice = Some(draft.with_words(shell, |w| w.problem(&problem)));
@@ -356,6 +361,74 @@ impl AutoBattle {
         } else {
             shell.sound.play(Cue::Refused);
         }
+    }
+
+    /// The list place `place` is in (where the game lays out none, all are one).
+    fn list_of(draft: &Draft, place: usize) -> Option<usize> {
+        draft.kit.auto_layout().and_then(|l| l.lists.iter().position(|list| list.places().contains(&place)))
+    }
+
+    /// Where place `from`'s chip dragged to `at` (the window's point) would land: the place under the pointer, and
+    /// whether it is another list's (the two trade what they hold); none off the places.
+    fn drop_at(&self, shell: &Shell, draft: &Draft, from: usize, at: i32) -> Option<(usize, bool)> {
+        let to = editor::nearest(shell, "places.place", self.editable.iter().copied(), editor::pointer_at(at), Some("places."))?;
+        Some((to, AutoBattle::list_of(draft, to) != AutoBattle::list_of(draft, from)))
+    }
+
+    /// A drag of place `from` begun or moved on: the place, as the row under the pointer shows it (with the number of
+    /// the place it would land in), and where it would land.
+    fn drag_over(&self, shell: &Shell, draft: &Draft, from: usize, at: i32) {
+        let ui = shell.ui();
+        let view = ui.global::<AutoBattleView>();
+        let drop = self.drop_at(shell, draft, from, at);
+        let lines = view.get_lines();
+        let line = |place: usize| lines.iter().find(|l| !l.title && l.place == place as i32);
+        if let Some(mut lifted) = line(from) {
+            lifted.number = drop.and_then(|d| line(d.0)).map_or(lifted.number, |l| l.number);
+            view.set_lifted(lifted);
+        }
+        editor::show_drop(shell, drop.map(|d| d.0), drop.is_some_and(|d| d.1));
+    }
+
+    /// Place `from`'s chip let go over place `to`: moved there within its list, or traded with another list's, unless
+    /// the rules refuse a chip where it would go (then it shakes, and the strip says why).
+    fn reorder(&mut self, shell: &mut Shell, draft: &mut Draft, from: usize, to: usize, swap: bool) {
+        let before = draft.side().clone();
+        let field = Some(auto::PLACES_FIELD);
+        let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field).map(|p| p.text.clone()).collect();
+        let change = if swap { Edit::Swap(from, to) } else { Edit::Move(from, to) };
+        if !draft.edit(|content, side| auto::update(content, side, change)) {
+            return;
+        }
+        let ui = shell.ui();
+        let view = ui.global::<AutoBattleView>();
+        // (Within a list nothing is refused: its places hold the same chips. Across, each place the trade fills is
+        // held to what the rules let it hold.)
+        let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && (p.entry == Some(from) || p.entry == Some(to)) && !had.contains(&p.text)).cloned();
+        if let Some(problem) = against.filter(|_| swap) {
+            draft.edit(|_, side| {
+                *side = before;
+                true
+            });
+            self.refused += 1;
+            view.set_refused(-1);
+            view.set_refused_place(from as i32);
+            view.set_refused_seq(self.refused);
+            shell.sound.play(Cue::Refused);
+            self.notice = Some(draft.with_words(shell, |w| w.problem(&problem)));
+            return self.show_detail(shell, draft);
+        }
+        shell.sound.play(Cue::Pick);
+        self.place = to;
+        self.described = Some(Described::Place(to));
+        self.notice = None;
+        self.changed(shell, draft);
+        self.landed += 1;
+        let (column, r) = self.at.get(to).copied().unwrap_or_default();
+        view.set_landed_column(column);
+        view.set_landed_row(r);
+        view.set_landed_seq(self.landed);
+        shell.nav.focus("places.place", to as i32);
     }
 
     fn focused_place(shell: &Shell) -> Option<usize> {
@@ -439,10 +512,21 @@ impl Tab for AutoBattle {
         }
     }
 
-    fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, _index: i32, choice: i32) {
-        if id == "lib.sort" {
-            self.sort = (choice.max(0) as usize).min(SORTS.len() - 1);
-            self.changed(shell, draft);
+    fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
+        match id {
+            "lib.sort" => {
+                self.sort = (choice.max(0) as usize).min(SORTS.len() - 1);
+                self.changed(shell, draft);
+            }
+            // A place's chip dragged: where it would land; let go there, it moves (off the places, it goes back).
+            "drag-over" if index >= 0 => self.drag_over(shell, draft, index as usize, choice),
+            "drag-drop" if index >= 0 => {
+                editor::show_drop(shell, None, false);
+                if let Some((to, swap)) = self.drop_at(shell, draft, index as usize, choice).filter(|d| d.0 != index as usize) {
+                    self.reorder(shell, draft, index as usize, to, swap);
+                }
+            }
+            _ => {}
         }
     }
 

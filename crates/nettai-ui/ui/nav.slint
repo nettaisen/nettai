@@ -70,6 +70,96 @@ export global Nav {
     callback scrolled();
 }
 
+// The clicks and drags of a build's list's rows (docs/app.md §8), as their touch (`Focusable`, or `RowTouch` in a
+// `ListView`) tells them. A click on the row that is marked removes what it holds, as Del does
+// (`Nav.choose("click-remove", ...)`); on another, it is an ordinary click. A row given its list's name (`drag`) can
+// be dragged to another place: a press is a click until the pointer has gone `threshold` from where it went down, then
+// a drag (`on`), and each move (and each step of a list scrolling under it) asks the app where the row would land
+// (`Nav.choose("drag-over", from, at)`, `at` the pointer's place in the window as x * 65536 + y). The app says so in
+// `to` (-1: nowhere, the pointer is off the list: let go there, the row goes back) and `swap` (it trades places with
+// what is there, where otherwise the rows between shift). Let go, `Nav.choose("drag-drop", from, at)`.
+export global Drag {
+    // The list a row is pressed in ("" while none is), the row, and whether it has gone far enough to be a drag.
+    out property <string> list;
+    out property <int> from: -1;
+    out property <bool> on;
+    // The pointer, in the window, and where in the row it went down.
+    out property <length> x;
+    out property <length> y;
+    out property <length> grab-x;
+    out property <length> grab-y;
+    // Where the row would land, as the app says.
+    in-out property <int> to: -1;
+    in-out property <bool> swap;
+    out property <length> threshold: 6px;
+    property <length> start-x;
+    property <length> start-y;
+    pure function at() -> int {
+        return max(0, round(root.x / 1px)) * 65536 + max(0, round(root.y / 1px));
+    }
+    // A click on row `index` of `nav` (`marked`: it was the marked one as the button went down).
+    public function clicked(list: string, nav: string, index: int, marked: bool) {
+        if list != "" && root.on {
+            // (A press that became a drag is no click.)
+        } else if marked {
+            Nav.choose("click-remove", index, 0);
+        } else {
+            Nav.activate(nav, index);
+        }
+    }
+    // A pointer event on row `row` of `list`, the touch at `origin` with the pointer at `mx`, `my` in it.
+    public function pointer(list: string, row: int, e: PointerEvent, origin: Point, mx: length, my: length) {
+        if list == "" {
+            return;
+        }
+        if e.kind == PointerEventKind.down && e.button == PointerEventButton.left {
+            root.list = list;
+            root.from = row;
+            root.on = false;
+            root.to = -1;
+            root.swap = false;
+            root.grab-x = mx;
+            root.grab-y = my;
+            root.x = origin.x + mx;
+            root.y = origin.y + my;
+            root.start-x = root.x;
+            root.start-y = root.y;
+        } else if e.kind == PointerEventKind.up && e.button == PointerEventButton.left && root.list == list {
+            if root.on {
+                Nav.choose("drag-drop", root.from, root.at());
+            }
+            root.end();
+        } else if e.kind == PointerEventKind.cancel && root.list == list {
+            root.end();
+        }
+    }
+    // The pointer moved with the button held.
+    public function move(list: string, origin: Point, mx: length, my: length) {
+        if list == "" || root.list != list {
+            return;
+        }
+        root.x = origin.x + mx;
+        root.y = origin.y + my;
+        if !root.on && (abs(root.x - root.start-x) > root.threshold || abs(root.y - root.start-y) > root.threshold) {
+            root.on = true;
+        }
+        root.over();
+    }
+    // Where the row would land, asked again (the list scrolled under it).
+    public function over() {
+        if root.on {
+            Nav.choose("drag-over", root.from, root.at());
+        }
+    }
+    public function end() {
+        root.list = "";
+        root.from = -1;
+        root.on = false;
+        root.to = -1;
+        root.swap = false;
+    }
+}
+
 // What makes a control focusable, and takes its clicks. Fill the control with one (it is a `TouchArea`) and give
 // it the control's name: unique on its screen, and with a prefix where it belongs to a scrolling page or a
 // dialog (`set.name` on the page `set.`). A control with no name takes clicks alone.
@@ -77,12 +167,16 @@ export component Focusable inherits TouchArea {
     in property <string> nav;
     in property <int> nav-index;
     in property <NavKind> kind: NavKind.button;
-    // A right click on it removes what it holds, as Del does (`Nav.choose("remove", ...)` after the focus comes).
-    in property <bool> removable;
+    // It is the marked row of a build's list: a click on it removes what it holds, as Del does (`Drag.clicked`).
+    in property <bool> marked;
+    // The list its row can be dragged in to another place (`Drag`), or none.
+    in property <string> drag;
     out property <bool> focused: nav != "" && Nav.id == nav && Nav.index == nav-index;
     property <[int]> token;
     property <length> ax: self.absolute-position.x;
     property <length> ay: self.absolute-position.y;
+    // (It was marked as the button went down: the press marks the row it is on.)
+    property <bool> was-marked;
     function place() {
         if nav != "" {
             Nav.place(nav, nav-index, ax, ay, self.width, self.height, self.enabled);
@@ -110,14 +204,18 @@ export component Focusable inherits TouchArea {
         place();
     }
     clicked => {
-        Nav.activate(nav, nav-index);
+        Drag.clicked(root.drag, nav, nav-index, root.was-marked);
     }
     pointer-event(e) => {
         if e.kind == PointerEventKind.down && nav != "" {
+            root.was-marked = root.marked && e.button == PointerEventButton.left;
             Nav.point(nav, nav-index);
-            if root.removable && e.button == PointerEventButton.right {
-                Nav.choose("remove", nav-index, 0);
-            }
+        }
+        Drag.pointer(root.drag, nav-index, e, self.absolute-position, self.mouse-x, self.mouse-y);
+    }
+    moved => {
+        if self.pressed {
+            Drag.move(root.drag, self.absolute-position, self.mouse-x, self.mouse-y);
         }
     }
 }

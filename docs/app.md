@@ -1335,16 +1335,64 @@ library, the cursor shown or not. It had them only while the focus was in the li
 alone marking it otherwise, and with the focus kept on a clicked row nothing did (the user: "it is impossible to
 tell now what is selected with the mouse on the left hand side in patch card/chip/abd etc"). A phone's folder,
 a `ListView` of its own, marks it with the list's `chosen`. The pass checks it as the window has it
-(`build_tabs::clicks`: a click, then R, T, Down and Del in the folder, Up and Del on a patch card, Del on a place;
+(`build_tabs::clicks`: a click, then R, T, Down and Del in the folder, Up on a patch card and a click on another
+and Del, Del on a place;
 and a shot of each tab's first click with the pointer gone on to another row, §13).
 
-**A right click removes**, as Del does, wherever the build holds something: a folder's entry (its Regular mark and
-tags with it), a placed NaviCust piece on the board or a placed program's row (its last copy), an auto battle
-place, a patch card in the build's list or on its row in the library (in a game with slots, its slot emptied).
-The cursor comes to what was clicked first, as a click's does: the row's touch (`Focusable` and `RowTouch`, where
-`removable`) points the nav at it and asks `Nav.choose("remove", ...)`, which the editor hands the tab as
-`Action::Delete`; the NaviCust's board finds the piece under the pointer itself (and with a piece in hand, a right
-click puts that away).
+**A click on the marked row removes** what it holds, as Del does (the user: "clicking on an already selected chip or
+patch card or whatever should remove it, instead of right clicking"): a folder's entry (its Regular mark and tags
+with it), a patch card or an EXE4 slot (emptied), an auto battle place. A click on another row marks it, as above;
+so the first click on a row marks it and the next takes out what it holds. The row's touch (`Focusable` or
+`RowTouch`, given `marked`) notes whether it was the marked row as the button went down (the press marks the row it
+is on), and if it was, its click asks `Nav.choose("click-remove", ...)` (`Drag.clicked`, nav.slint), which the
+editor hands the tab as `Action::Delete`. **A double click does nothing more than one click:** a click on the marked
+row within a double click's time (500 ms, Slint's own) of the click before on that row is passed over
+(`Editor::clicked`, `DOUBLE_CLICK`), so a double click on a row that isn't marked marks it and leaves what it holds,
+and one on the marked row takes out one thing (a patch card's list closes up under it, and a second removal would
+take the next card). A click on a library row is as before (a patch card that is in, or the chip a place holds, is
+taken out by it). A right click does nothing on these rows now. The NaviCust is as it was: a click there takes a
+program or picks a piece up, so its right click still puts away the piece in hand or takes off the one under the
+pointer (`Nav.choose("remove", ...)`). A phone's tap opens the library's sheet as before, which has REMOVE: a tap
+isn't a removal there. The keys and the pad are unchanged.
+
+**A row dragged moves** (the user: "also you should be able to drag and drop to reorder"). A press on one of the
+build's rows that moves 6 from where it went down (`Drag.threshold`, either way: the folder's second column is
+reached sideways) is a drag, not a click: the row lifts under the pointer (raised, 1.03 larger, a shadow and a line
+in the cursor's color, `LiftedRow`), the rows between where it was and where it would land slide over a row to leave
+a gap there, outlined in the cursor's color (`DropGap`; the slide is `Theme.quick`, a cut with motion off), and the
+numbers the folder's entries and the places show are those they would have. Let go, it lands there with the flash a
+chip put in has; let go off the list (more than 16 past its rows), it goes back, and nothing changes.
+
+- *How it is told.* The UI's `Drag` global (nav.slint) holds the drag (the list, the row, the pointer, where in the
+  row it went down); the row's touch, given its list's name (`drag`), feeds it. Each move asks the app where the row
+  would land (`Nav.choose("drag-over", from, at)`, `at` the window's point); the tab works it out from where its rows
+  are as the focus's registry has them (`editor::nearest`, `editor::list_row`, with `Registry::view` and
+  `Registry::row_at`), as they are laid out still, the shifting being the rows' insides alone, and says so in
+  `Drag.to` (and `Drag.swap`). Let go, `Nav.choose("drag-drop", from, at)` makes the edit.
+- *The folder:* an entry to another entry, those between shifting toward where it was, its Regular and tag marks
+  going with their chips (`FolderEdit::Move`, `edit::moved`); it is then the marked entry.
+- *The patch cards:* a card to another place in the list, by the edit `[` and `]` make (`ListEdit::Move(from, to)`,
+  which the keys make a place up or down); past the last card, it is the last. EXE4's slots aren't dragged: each card
+  goes in its own slot, which the editor already holds to.
+- *The auto battle places:* a place's chip to another place of its list, those between shifting (`Edit::Move`); to a
+  place of another list, the two places trade what they hold (`Edit::Swap`), the target outlined and nothing
+  shifting (`Drag.swap`). A chip the rules refuse where it would go isn't moved, as one from the library isn't: the
+  place dragged shakes and the strip says why ("MrkCan1 can't be in the Mega list").
+- *The rules:* a move is shown as any edit is (the folder's entries and the patch cards are never refused one: what
+  the rules have against the result is the row's problem, as ever); only the auto battle's, as above, where the
+  editor already refuses that chip in that place.
+- *Scrolling.* The lists the build's rows are in don't scroll by a mouse's drag (`ListView`'s and `ScrollPage`'s
+  `mouse-pan` off, as the NaviCust's programs), so a drag on a row is the row's; the wheel scrolls them. While a row is
+  dragged near a list's top or bottom edge (within 32, or up to 96 past it), the list scrolls that way (`Scroller`'s
+  timer, 8 a frame) and asks again where the row would land. A touch's drag still scrolls a phone's list, as Slint's
+  `Flickable` takes a touch that moves in its first half second; one held still for that half second is the row's,
+  and drags it (the Folder's, the Patch cards' and the Auto battle's lists on a phone alike; a list with nothing to
+  scroll gives a touch's drag to the row at once).
+- *The pass* (`build_tabs::drags`, §13): a click on the marked folder entry (taken out) after a double click on it
+  unmarked (only marked); an entry dragged three rows down, shot held there and after; a patch card dragged above the
+  one before it; an auto battle place's chip dragged two places back in its list, then into another list (traded),
+  then down past the page's foot into the Mega list (it scrolls there; refused). On a phone, the folder's drag, with
+  the mouse (the pass has no touches to give).
 
 **On a phone** each of the three is one column: the NaviCust's board over its key, the effects and the bugs a line
 each, then the programs; the patch cards' counts, their cards and Together, with the library as a sheet from the

@@ -8,12 +8,12 @@
 // Rust half is src/screens/builds/auto_battle.rs.
 
 import { Theme, Audit } from "../../theme.slint";
-import { Nav, Focusable } from "../../nav.slint";
+import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow } from "../../build.slint";
-import { ChipDetail, LibraryRow, LibraryHead } from "folder.slint";
+import { ChipDetail, LibraryRow, LibraryHead, DropGap, LiftedRow } from "folder.slint";
 
 // A line of the places: a list's title (over both columns), or one of its places (its chip, by its place in its list
 // from 1, where it is: a column and a row of the panel).
@@ -64,17 +64,51 @@ export global AutoBattleView {
     // The cursor is on the library's chip that the place being filled holds: Confirm takes it out again.
     in property <bool> on-placed;
     in property <bool> sheet;
+    // The place being dragged, as it shows (`Drag`), and the place a drag let go was refused at, counted: it shakes.
+    in property <PlaceLine> lifted;
+    in property <int> refused-place: -1;
     // How many of the places hold a chip, the note of its library row.
     public pure function in-places(n: int) -> string {
         return @tr("In {n} place" | "In {n} places" % n);
     }
 }
 
+// A place being dragged (`Drag`): where it would land (`to`, a place), and whether it trades places with what is
+// there (another list's place) or the places between shift (its own list's).
+global PlaceDrag {
+    out property <bool> on: Drag.on && Drag.list == "places.";
+    out property <int> to: self.on ? Drag.to : -1;
+    out property <bool> shifting: self.to >= 0 && !Drag.swap;
+    // Which way place `place` shifts while one is dragged in its list: to the place before it (-1), after (1), or
+    // none.
+    public pure function step(place: int) -> int {
+        return !self.shifting ? 0 : (Drag.from < place && place <= self.to) ? -1 : (self.to <= place && place < Drag.from) ? 1 : 0;
+    }
+}
+
 // A line of the places: a list's title, or a place, the overview's chip row as a control of the places' page (empty:
-// its number alone).
+// its number alone). A click on a place while it is marked empties it; a drag takes its chip to another place
+// (`dx`, `dy`: where it is shifted to while another of its list is dragged; the one dragged is drawn under the
+// pointer, `gone` here; `gap`: a drag would land here).
 component PlaceView inherits Rectangle {
     in property <PlaceLine> line;
     in property <bool> chosen;
+    in property <length> dx;
+    in property <length> dy;
+    in property <bool> gone;
+    in property <bool> gap;
+    // Its number in its list, as it shows (shifted, the place's it shows at).
+    in property <int> number;
+    DropGap {
+        x: 0;
+        y: 0;
+        width: root.width;
+        height: root.height;
+        visible: root.gap;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
     Label {
         x: 0;
         y: 6px;
@@ -85,18 +119,27 @@ component PlaceView inherits Rectangle {
     }
 
     ChipRow {
+        x: root.dx;
+        y: root.dy;
+        width: root.width;
         visible: !root.line.title;
+        opacity: root.gone ? 0 : 1;
         chip: root.line.chip;
-        number: root.line.number;
+        number: root.number;
         chosen: root.chosen;
-        hover: hit.has-hover;
+        hover: hit.has-hover && !PlaceDrag.on;
         big: Theme.phone;
+        animate x, y {
+            duration: PlaceDrag.on ? Theme.quick : 0ms;
+            easing: ease-out;
+        }
     }
 
     hit := Focusable {
         nav: root.line.title ? "" : "places.place";
         nav-index: root.line.place;
-        removable: true;
+        marked: root.chosen && !Theme.phone;
+        drag: root.line.title || !root.line.chip.there ? "" : "places.";
     }
 }
 
@@ -355,13 +398,22 @@ export component AutoBattleTab inherits Rectangle {
         height: root.pane-height - (Theme.phone ? 0px : 44px + 12px);
         nav: "places.";
         content-height: AutoBattleView.rows * root.pitch;
-        for line in AutoBattleView.lines: PlaceView {
+        // (A mouse's drag on a place moves its chip: the wheel scrolls.)
+        mouse-pan: false;
+        for line[k] in AutoBattleView.lines: PlaceView {
+            // (Shifted to the place before or after it in its list: the line before or after it.)
+            property <int> step: line.title ? 0 : PlaceDrag.step(line.place);
             x: line.column * (root.place-width + 12px);
             y: line.row * root.pitch;
             width: line.title ? page.view-width - 12px : root.place-width;
             height: root.pitch - 2px;
             line: line;
             chosen: !line.title && line.place == AutoBattleView.marked;
+            dx: (AutoBattleView.lines[k + self.step].column - line.column) * (root.place-width + 12px) + (!line.title && line.place == AutoBattleView.refused-place ? shake.dx : 0px);
+            dy: (AutoBattleView.lines[k + self.step].row - line.row) * root.pitch;
+            gone: PlaceDrag.on && !line.title && line.place == Drag.from;
+            gap: !line.title && line.place == PlaceDrag.to;
+            number: AutoBattleView.lines[k + self.step].number;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -384,6 +436,22 @@ export component AutoBattleTab inherits Rectangle {
         y: root.pane-y;
         width: parent.width - self.x;
         height: 52px + 15 * (Theme.chip-row + 2px) - 2px;
+    }
+
+    // (The place being dragged, under the pointer, and a place a drag was refused at: it shakes.)
+    LiftedRow {
+        x: Drag.x - root.absolute-position.x - Drag.grab-x;
+        y: Drag.y - root.absolute-position.y - Drag.grab-y;
+        width: root.place-width;
+        height: root.pitch - 2px;
+        visible: PlaceDrag.on;
+        big: Theme.phone;
+        chip: AutoBattleView.lifted.chip;
+        number: AutoBattleView.lifted.number;
+    }
+
+    shake := Shake {
+        seq: AutoBattleView.refused-seq;
     }
 }
 

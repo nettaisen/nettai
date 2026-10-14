@@ -402,6 +402,8 @@ enum Point {
     Off,
     Fit,
     Control(&'static str, i32),
+    /// A control's middle, so far down from it (up, below 0).
+    Below(&'static str, i32, f32),
 }
 
 /// One of the probe's pointer events: the left button pressed or let go, the pointer moved (no button held unless
@@ -503,6 +505,7 @@ fn locate(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, point: Point) -> Op
         Point::Row(r) => rect("programs", r).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
         Point::Off => rect("programs", 0).map(|r| slint::LogicalPosition::new(r.x + r.w + 150.0, r.y + 200.0)),
         Point::Control(id, i) => rect(id, i).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
+        Point::Below(id, i, dy) => rect(id, i).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0 + dy)),
         Point::Fit => None,
     }
 }
@@ -556,11 +559,6 @@ fn pointer(script: impl Fn(&Board, &nettai_ui::AppWindow) -> Option<Vec<(u64, Ev
 fn click_then(id: &'static str, index: i32, code: KeyCode) -> Step {
     let at = Point::Control(id, index);
     pointer(move |_, _| Some(vec![(0, Ev::Press(at)), (40, Ev::Release(at)), (300, Ev::Key(code))]))
-}
-
-/// A right click on control `id`'s `index`.
-fn right_on(id: &'static str, index: i32) -> Step {
-    pointer(move |_, _| Some(vec![(0, Ev::Right(Point::Control(id, index)))]))
 }
 
 /// A right click on the first placed piece of the board.
@@ -987,11 +985,12 @@ fn clicks(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     let before = Rc::new(std::cell::Cell::new(0usize));
     let kept = before.clone();
     add(SETTLE, Box::new(move |ui, _, _| kept.set(cards(ui))));
-    add(SETTLE, click("card", 0));
+    // (A click on the second card, the cursor gone up to the first: it is marked, and Del takes it out.)
+    add(SETTLE, click("card", 1));
     add(SETTLE, press_key(KeyCode::Delete, ""));
     add(SETTLE, expect(move |ui, app| {
         let was = before.get();
-        focus_on(app, "card", 0).or_else(|| (cards(ui) + 1 != was).then(|| format!("Del after a click on the first card: {} cards, not {}", cards(ui), was.saturating_sub(1))))
+        focus_on(app, "card", 1).or_else(|| (cards(ui) + 1 != was).then(|| format!("Del after a click on the second card: {} cards, not {}", cards(ui), was.saturating_sub(1))))
     }));
     add(SETTLE, to_tab(EditorTab::AutoBattle));
     add(SETTLE, focus("places.place", 2));
@@ -1005,6 +1004,206 @@ fn clicks(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     }));
 }
 
+/// Row `index` of `id` pressed, dragged `by` rows down (up, below 0) a row at a time, and let go there.
+fn drag_rows(id: &'static str, index: i32, by: i32) -> Vec<(u64, Ev)> {
+    let way = by.signum();
+    let mut events = vec![(0, Ev::Press(Point::Control(id, index))), (60, Ev::Move(Point::Below(id, index, 8.0 * way as f32)))];
+    for k in 1..=by.abs() {
+        events.push((60 + 80 * k as u64, Ev::Move(Point::Control(id, index + k * way))));
+    }
+    events.push((60 + 80 * by.unsigned_abs() as u64 + 120, Ev::Release(Point::Control(id, index + by))));
+    events
+}
+
+/// The pointer as the window has it, now: the left button pressed at `point`, moved there with it held, or let go.
+fn hand(point: Point, ev: fn(Point) -> Ev) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let Some(position) = locate(ui, app, point) else {
+            tour.key_wrong(format!("the pointer at {point:?}: it isn't on the screen"));
+            return;
+        };
+        use slint::platform::{PointerEventButton as Button, WindowEvent as W};
+        let event = match ev(point) {
+            Ev::Press(_) => W::PointerPressed { position, button: Button::Left },
+            Ev::Release(_) => W::PointerReleased { position, button: Button::Left },
+            _ => W::PointerMoved { position },
+        };
+        ui.window().dispatch_event(event);
+    })
+}
+
+/// Row `index` of `id` pressed and dragged to row `to` (its middle `dy` down from that row's), a row at a time, held
+/// there: `let_go` lets it go.
+fn drag_to(add: &mut dyn FnMut(u64, Step), id: &'static str, index: i32, to: i32, dy: f32) {
+    add(SETTLE, hand(Point::Control(id, index), Ev::Press));
+    let way = (to - index).signum();
+    add(60, hand(Point::Below(id, index, 8.0 * if way == 0 { 1.0 } else { way as f32 }), Ev::Move));
+    let mut at = index;
+    while at != to {
+        at += way;
+        add(60, hand(Point::Control(id, at), Ev::Move));
+    }
+    add(60, hand(Point::Below(id, to, dy), Ev::Move));
+}
+fn let_go(id: &'static str, to: i32, dy: f32) -> Step {
+    hand(Point::Below(id, to, dy), Ev::Release)
+}
+
+/// What the build's lists hold, as their views show them: the folder's entries by name, the patch cards by name, the
+/// auto battle places by name (by place).
+fn names(ui: &nettai_ui::AppWindow) -> (Vec<String>, Vec<String>, Vec<(i32, String)>) {
+    use nettai_ui::{AutoBattleView, FolderView, PatchCardsView};
+    let folder = ui.global::<FolderView>().get_slots().iter().map(|s| s.name.to_string()).collect();
+    let cards = ui.global::<PatchCardsView>().get_installed().iter().filter(|c| c.there).map(|c| c.name.to_string()).collect();
+    let places = ui.global::<AutoBattleView>().get_lines().iter().filter(|l| !l.title).map(|l| (l.place, l.chip.name.to_string())).collect();
+    (folder, cards, places)
+}
+
+/// The mouse on the build's lists (docs/app.md §8): a click on the marked folder entry takes its chip out (a double
+/// click on another only marks it); an entry dragged three rows down (shot as it is held there, the rows between
+/// shifted up, and let go: it is there, those between one up); a patch card dragged above the one before it; an auto
+/// battle place's chip dragged two places back in its list (those between shift on), then into another list's place
+/// (the two trade), then into the Mega list, which the rules refuse it (it shakes, and nothing changes). On a phone,
+/// the folder's drag alone, with the mouse (the folder is a list of its own there; the pass has no touches to give).
+fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
+    use nettai_ui::FolderView;
+    let kept: Rc<RefCell<(Vec<String>, Vec<String>, Vec<(i32, String)>)>> = Rc::default();
+    let keep = |kept: &Rc<RefCell<_>>| -> Step {
+        let kept = kept.clone();
+        Box::new(move |ui, _, _| *kept.borrow_mut() = names(ui))
+    };
+    add(SETTLE, to_tab(EditorTab::Folder));
+    add(SETTLE, out_of_library());
+    if !phone {
+        // A double click on an entry not marked: marked, its chip left in.
+        add(SETTLE, focus("slot", 0));
+        add(SETTLE, keep(&kept));
+        add(SETTLE, click("slot", 2));
+        add(40, click("slot", 2));
+        let was = kept.clone();
+        add(SETTLE, expect(move |ui, app| {
+            let name = ui.global::<FolderView>().get_slots().row_data(2).map(|s| s.name.to_string());
+            focus_on(app, "slot", 2).or_else(|| (name.as_ref() != was.borrow().0.get(2)).then(|| format!("a double click on entry 3, not marked: it holds {name:?}, not {:?}", was.borrow().0.get(2))))
+        }));
+        // A click on it now, marked: its chip is taken out.
+        add(600, click("slot", 2));
+        add(SETTLE, expect(|ui, _| {
+            let there = ui.global::<FolderView>().get_slots().row_data(2).map(|s| s.there);
+            (there != Some(false)).then(|| "a click on the marked entry 3: its chip isn't taken out".to_string())
+        }));
+        add(SETTLE, hover("slot", 9));
+        shot(add, "tabs-folder-click-removed", Pair::None);
+    }
+    // An entry dragged three rows down, held there: the rows between have shifted up, a gap where it would land.
+    add(SETTLE, keep(&kept));
+    drag_to(add, "slot", 5, 8, 0.0);
+    shot(add, "tabs-folder-drag", Pair::None);
+    add(SETTLE, let_go("slot", 8, 0.0));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).0;
+        let was = &was.borrow().0;
+        let want: Vec<&String> = [6, 7, 8, 5].iter().filter_map(|&i| was.get(i)).collect();
+        let got: Vec<&String> = now.iter().skip(5).take(4).collect();
+        (got != want).then(|| format!("entry 6 dragged to 9: entries 6 to 9 are {got:?}, not {want:?}"))
+    }));
+    shot(add, "tabs-folder-dragged", Pair::None);
+    if phone {
+        return;
+    }
+    // A patch card dragged above the one before it.
+    // (Two more cards put in first, the library's first two that can go in: the walk has left one or none.)
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    add(SETTLE, focus("card", 0));
+    add(SETTLE, library());
+    for _ in 0..2 {
+        add(
+            SETTLE,
+            Box::new(|ui, app, tour| {
+                if tour.passing.get() {
+                    return;
+                }
+                let rows = ui.global::<nettai_ui::PatchCardsView>().get_rows();
+                let Some(row) = rows.iter().position(|r| !r.refused && r.note.is_empty()) else { return };
+                let mut app = app.borrow_mut();
+                app.shell.nav.focus("lib.rows", row as i32);
+                app.act(Action::Confirm);
+            }),
+        );
+    }
+    add(SETTLE, out_of_library());
+    add(SETTLE, keep(&kept));
+    drag_to(add, "card", 1, 0, -10.0);
+    shot(add, "tabs-cards-drag", Pair::None);
+    add(SETTLE, let_go("card", 0, -10.0));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).1;
+        let was = &was.borrow().1;
+        let want: Vec<&String> = was.get(..2).map(|w| vec![&w[1], &w[0]]).unwrap_or_default();
+        (want.is_empty() || now.iter().take(2).collect::<Vec<_>>() != want).then(|| format!("the second card dragged above the first: the cards are {now:?}, were {was:?}"))
+    }));
+    shot(add, "tabs-cards-dragged", Pair::None);
+    // An auto battle place's chip (the first list's third, where the walk left one) dragged two places back in its
+    // list: the places between shift on.
+    add(SETTLE, to_tab(EditorTab::AutoBattle));
+    add(SETTLE, out_of_library());
+    add(SETTLE, keep(&kept));
+    drag_to(add, "places.place", 2, 0, 0.0);
+    shot(add, "tabs-auto-drag", Pair::None);
+    add(SETTLE, let_go("places.place", 0, 0.0));
+    let at = |places: &[(i32, String)], p: i32| places.iter().find(|l| l.0 == p).map(|l| l.1.clone()).unwrap_or_default();
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).2;
+        let was = &was.borrow().2;
+        let want = [at(was, 2), at(was, 0), at(was, 1)];
+        let got = [at(&now, 0), at(&now, 1), at(&now, 2)];
+        (want[0].is_empty() || got != want).then(|| format!("place 3's chip dragged to place 1: places 1 to 3 hold {got:?}, not {want:?}"))
+    }));
+    shot(add, "tabs-auto-dragged", Pair::None);
+    // Then into the standard list's second place: another list, the two places trade what they hold.
+    add(SETTLE, keep(&kept));
+    drag_to(add, "places.place", 0, 4, 0.0);
+    shot(add, "tabs-auto-drag-swap", Pair::None);
+    add(SETTLE, let_go("places.place", 4, 0.0));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).2;
+        let was = &was.borrow().2;
+        let want = [at(was, 4), at(was, 0)];
+        let got = [at(&now, 0), at(&now, 4)];
+        (got != want).then(|| format!("place 1's chip dragged to place 5, another list's: places 1 and 5 hold {got:?}, not {want:?}"))
+    }));
+    shot(add, "tabs-auto-swapped", Pair::None);
+    // One dragged down past the page's foot (it scrolls on while the pointer is near its edge) into the Mega list,
+    // which holds Mega chips alone: refused, it shakes, nothing changes, and the strip says why.
+    add(SETTLE, keep(&kept));
+    add(SETTLE, hand(Point::Control("places.place", 4), Ev::Press));
+    add(60, hand(Point::Below("places.place", 4, 10.0), Ev::Move));
+    add(60, hand(Point::Below("places.place", 4, 300.0), Ev::Move));
+    add(1500, Box::new(|_, _, _| {}));
+    shot(add, "tabs-auto-drag-scroll", Pair::None);
+    let onto = |ev: fn(Point) -> Ev| -> Step {
+        Box::new(move |ui, app, tour| {
+            let Some(mega) = held(&app.borrow(), ChipClass::Mega) else { return };
+            hand(Point::Control("places.place", mega as i32), ev)(ui, app, tour)
+        })
+    };
+    add(SETTLE, onto(Ev::Move));
+    add(60, onto(Ev::Release));
+    let was = kept.clone();
+    add(SETTLE, expect(move |ui, _| {
+        let now = names(ui).2;
+        let said = ui.global::<nettai_ui::AutoBattleView>().get_detail().problem;
+        (now != was.borrow().2 || said.is_empty()).then(|| format!("a standard chip dragged into the Mega list: the places changed, or the strip says nothing ({said:?})"))
+    }));
+    shot(add, "tabs-auto-drag-refused", Pair::None);
+}
+
 /// The tabs' steps in language `lang` at size `size`. `shot` takes a picture under a name (and compares the two
 /// of a pair).
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static str, size: &'static str) {
@@ -1016,6 +1215,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     if size == "desktop" {
         clicks(add, shot);
     }
+    drags(add, shot, size == "phone");
     wrong_classes(add, shot, size == "phone");
     add(SETTLE, end());
 }
@@ -1026,10 +1226,13 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, &[u64], Step)) {
     open_build(add, false);
     add(SETTLE, to_tab(EditorTab::Navicust));
-    // A right click on a folder's entry, the cursor elsewhere: the cursor comes to it, and it is emptied.
+    // A click on the marked entry: it is emptied.
     add(SETTLE, to_tab(EditorTab::Folder));
-    add(SETTLE, focus("slot", 0));
-    burst(add, "folder-right-click", &[0, 60, 120, 200, 320, 480], right_on("slot", 3));
+    add(SETTLE, focus("slot", 3));
+    burst(add, "folder-click-marked", &[0, 60, 120, 200, 320, 480], click("slot", 3));
+    // An entry dragged three rows down: it lifts under the pointer, those between slide up to leave a gap where it
+    // would land, and let go it lands there with a flash.
+    burst(add, "folder-drag", &[0, 60, 120, 200, 280, 360, 440, 520, 640, 800], pointer(|_, _| Some(drag_rows("slot", 5, 3))));
     // A click on an entry and R (it is the Regular chip), a click on another and T (it is tagged): the keys act on
     // what was clicked.
     burst(add, "folder-click-r", &[0, 100, 250, 380, 520], click_then("slot", 8, KeyCode::KeyR));
@@ -1082,12 +1285,13 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, library());
     add(SETTLE, focus("lib.rows", 0));
     burst(add, "cards-put", &[0, 30, 60, 90, 120, 160, 200, 260, 340, 480], act(Action::Confirm));
-    // A right click on that card's row in the library (taken out, flying back; in a game with slots, its slot
-    // emptied), and it put back; then one on the build's card (taken out).
-    burst(add, "cards-right-click-library", &[0, 30, 60, 90, 120, 160, 220, 320, 480], right_on("lib.rows", 0));
+    // A click on that card's row in the library (taken out, flying back; in a game with slots, its slot emptied), and
+    // it put back; then one on the build's card, marked (taken out).
+    burst(add, "cards-click-library", &[0, 30, 60, 90, 120, 160, 220, 320, 480], click("lib.rows", 0));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, out_of_library());
-    burst(add, "cards-right-click", &[0, 30, 60, 90, 120, 160, 220, 320, 480], right_on("card", 0));
+    add(SETTLE, focus("card", 0));
+    burst(add, "cards-click-marked", &[0, 30, 60, 90, 120, 160, 220, 320, 480], click("card", 0));
     add(SETTLE, library());
     add(SETTLE, focus("lib.rows", 0));
     add(SETTLE, act(Action::Confirm));
@@ -1108,8 +1312,9 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step), burst: &dyn Fn(&mut dyn FnM
     add(SETTLE, library());
     add(SETTLE, focus("lib.rows", 0));
     burst(add, "auto-put", &[0, 30, 60, 90, 120, 160, 200, 260, 340, 480], act(Action::Confirm));
-    // A right click on the place just filled, the cursor on the next: the cursor comes back to it, and it is emptied.
-    burst(add, "auto-right-click", &[0, 60, 120, 200, 320, 480], right_on("places.place", 0));
+    // A click on the place just filled, marked: it is emptied.
+    add(SETTLE, focus("places.place", 0));
+    burst(add, "auto-click-marked", &[0, 60, 120, 200, 320, 480], click("places.place", 0));
     add(SETTLE, end());
 }
 
