@@ -13,7 +13,7 @@ use std::path::{Path, PathBuf};
 /// The fonts the UI bundles, each with its license file (from the workspace's root).
 const FONTS: [(&str, &str); 4] = [
     ("Chakra Petch", "crates/nettai-ui/fonts/chakra-petch/OFL.txt"),
-    ("M PLUS 1", "crates/nettai-ui/fonts/m-plus-1/OFL.txt"),
+    ("Corporate Logo", "crates/nettai-ui/fonts/corporate-logo/OFL.txt"),
     ("M PLUS 1 Code", "crates/nettai-ui/fonts/m-plus-1-code/OFL.txt"),
     ("Murecho", "crates/nettai-render/fonts/murecho/OFL.txt"),
 ];
