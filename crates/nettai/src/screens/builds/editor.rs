@@ -1,6 +1,7 @@
 //! A build's editor (docs/design/app-ui.md §6, "The editor"; docs/app.md §8): the build being edited
 //! ([`Draft`]), the tabs ([`Tab`]), and the frame that hosts them ([`Editor`]: the header's name, version and
-//! "✓ Ready to play", the tab bar, the tab shown).
+//! "✓ Ready to play", the tab bar, the tab shown). The header's version tag is the version's switch, the frame's
+//! whichever tab is shown (`version`: [`Editor::step_version`]).
 //!
 //! **A tab is one Slint file and one module here** (`ui/screens/builds/<tab>.slint`, `<tab>.rs`), as a screen
 //! is one of each for the shell. Its Slint has its view (a global its module sets: its key hints and its
@@ -467,10 +468,33 @@ impl Editor {
         self.go(shell, to as usize, by.signum());
     }
 
+    /// The header's version tag stepped (`by`: Left -1, Right, Enter and a click 1): the build's version is the
+    /// one `by` from its own in the game's order, around (a build of none takes the first), and the tab shown shows
+    /// what follows (the Navi tab's forms, the Folder tab's entries the version no longer allows).
+    fn step_version(&mut self, shell: &mut Shell, by: i32) {
+        let kit = self.draft.kit.clone();
+        let versions = &kit.builds.versions;
+        if versions.is_empty() {
+            return;
+        }
+        let next = match kit.builds.version_of(self.draft.content(), self.draft.side()).and_then(|v| versions.iter().position(|x| x.id == v)) {
+            Some(at) => (at as i32 + by).rem_euclid(versions.len() as i32) as usize,
+            None => 0,
+        };
+        if self.draft.choose_version(&versions[next].id) {
+            let (tab, draft) = self.tab();
+            tab.show(shell, draft);
+            self.after(shell);
+        }
+    }
+
     pub fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
         if id == "tab" {
             let way = if index as usize >= self.at { 1 } else { -1 };
             return self.go(shell, index.max(0) as usize, way);
+        }
+        if id == "version" {
+            return self.step_version(shell, 1);
         }
         let (tab, draft) = self.tab();
         tab.activate(shell, draft, id, index);
@@ -488,6 +512,9 @@ impl Editor {
     }
 
     pub fn step(&mut self, shell: &mut Shell, id: &str, index: i32, by: i32) {
+        if id == "version" {
+            return self.step_version(shell, by);
+        }
         let (tab, draft) = self.tab();
         tab.step(shell, draft, id, index, by);
         self.after(shell);

@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -714,13 +714,21 @@ export component Header inherits Rectangle {
     // A tag after the title (a build's version), and a short state before the game ("✓ Ready to play", in green,
     // or what is wrong, in the error red). On a phone the tag is at the header's right and the state is left out.
     in property <VersionTag> tag;
+    // The tag is a switch where it has a name (the editor's version, docs/design/app-ui.md §2.42): a control in
+    // the focus order, a stepper, Left and Right stepping it and a click or Enter taking the next; an arrow at
+    // each side of it, lit on hover and focus, and Back's hover look. On a phone its touch is 44 tall and as wide.
+    in property <string> tag-nav;
     in property <string> state;
     in property <bool> state-good;
     property <length> pad: Theme.margin;
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
     property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
     property <length> state-width: root.state == "" || Theme.phone ? 0px : 166px;
-    property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 16px;
+    property <bool> switch: root.tag-nav != "" && tag-pill.width > 0 && !root.logo;
+    // The room an arrow takes at each side of a switch's tag.
+    property <length> mark: root.switch ? 11px : 0px;
+    property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - 2 * root.mark - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
+    property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 2 * root.mark + 16px;
     // The title's room: what the tag, the state and the game leave of the header.
     property <length> title-room: self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.state-width - root.tag-width;
     property <length> title-width: min(title-text.preferred-width, root.title-room);
@@ -811,11 +819,46 @@ export component Header inherits Rectangle {
         }
     }
 
+    // (A switch's hover look, behind its tag and arrows, as Back's.)
+    Rectangle {
+        x: root.tag-x - 6px;
+        y: (parent.height - 30px) / 2;
+        width: tag-pill.width + 2 * root.mark + 12px;
+        height: 30px;
+        visible: root.switch;
+        background: tag-hit.pressed ? Theme.line : (tag-hit.has-hover ? Theme.tint : transparent);
+    }
+
+    ArrowLeft {
+        x: root.tag-x;
+        y: (parent.height - self.height) / 2;
+        visible: root.switch;
+        fill: tag-hit.has-hover || tag-hit.focused ? Theme.cursor : Theme.muted;
+    }
+
     tag-pill := Pill {
-        x: Theme.phone ? parent.width - root.pad - self.width - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
+        x: root.tag-x + root.mark;
         text: root.logo ? "" : root.tag.text;
         tone: root.tag.tone;
         opacity: arrive.t;
+    }
+
+    ArrowRight {
+        x: root.tag-x + root.mark + tag-pill.width + 6px;
+        y: (parent.height - self.height) / 2;
+        visible: root.switch;
+        fill: tag-hit.has-hover || tag-hit.focused ? Theme.cursor : Theme.muted;
+    }
+
+    // (Its touch: the tag and its arrows with the hover look's margin; on a phone 44 by at least 44.)
+    tag-hit := Focusable {
+        x: root.tag-x - 6px - max(0px, (Theme.phone ? 44px : 0px) - (tag-pill.width + 2 * root.mark + 12px)) / 2;
+        y: (parent.height - self.height) / 2;
+        width: max(Theme.phone ? 44px : 0px, tag-pill.width + 2 * root.mark + 12px);
+        height: Theme.phone ? 44px : 30px;
+        nav: root.tag-nav;
+        kind: NavKind.stepper;
+        enabled: root.switch;
     }
 
     Text {
@@ -1054,6 +1097,8 @@ export component Page inherits Rectangle {
     // The header's tag after the title, and its state before the game (a build's version, and whether it is
     // ready to play).
     in property <VersionTag> tag;
+    // The tag's name in the focus order where it is a switch (the editor's version); none, a plain tag.
+    in property <string> tag-nav;
     in property <string> state;
     in property <bool> state-good;
     in property <[Hint]> hints;
@@ -1067,6 +1112,7 @@ export component Page inherits Rectangle {
         logo: root.logo;
         game: root.game;
         tag: root.tag;
+        tag-nav: root.tag-nav;
         state: root.state;
         state-good: root.state-good;
     }
