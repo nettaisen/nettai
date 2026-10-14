@@ -5,7 +5,7 @@
 //! builds of the selected game, remembered between runs by game), Arena (the game's) and Background (every
 //! game's: the background pool), each after Random ([`Places`]), and Music (the battle's music), the three kept
 //! for one visit ([`Visit`]), and START PRACTICE; beside them the two builds facing each other on the arena the
-//! session opens on (Arena a pager, Background and Music dropdowns as the build rows are). While it shows it plays
+//! session opens on (Arena and Background dropdowns of their pictures, Music a dropdown as the build rows are). While it shows it plays
 //! the music the session will start, which the session's battle takes over, and back from a session it plays on
 //! the battle's song where it is. Play's PRACTICE opens it ([`open`]) with Your build the one chosen there, and Back
 //! goes back to Play; with no build of the game it goes back to Play at once. A build that can't be used
@@ -20,8 +20,8 @@
 //! module hears its menu and its events whatever screen is shown.
 //!
 //! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle paused behind it. Its
-//! rows are a label and a value between arrows, changed at once by Left and Right (Background and Music a
-//! dropdown, as on the entry: Enter opens its list): [`ROWS`] lists them, and a row is added there. Under them RESUME, RESTART and, in a session of Practice's own, EXIT (the entry again).
+//! rows are a label and a value between arrows, changed at once by Left and Right (Arena, Background and Music a
+//! dropdown, as on the entry: Enter opens its list, Arena's and Background's a grid of pictures): [`ROWS`] lists them, and a row is added there. Under them RESUME, RESTART and, in a session of Practice's own, EXIT (the entry again).
 
 use crate::battle::{BattleEvent, BattleStart, Play};
 use crate::builds::store;
