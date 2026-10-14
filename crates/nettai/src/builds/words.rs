@@ -209,7 +209,7 @@ impl Words<'_> {
 /// What is wrong with a build of `game`, in the language shown: the sentence of `problem`'s kind from the
 /// catalogs, with its numbers, the chip's and the version's names, and what it is about where it names a fact
 /// ("2 Giga chips, limit 1", "Gregar is Gregar only", "No version chosen"). It has no full stop: it goes after
-/// "Your build can't be used:" or on a line of its own. For any screen, whichever is shown: Training's reserved
+/// "Your build can't be used:" or on a line of its own. For any screen, whichever is shown: Practice's reserved
 /// line, a lobby's (`Reason::YourBuild { problems }`). Empty where the game says nothing of its builds (the line
 /// then says only that the build can't be used; why is in the log).
 pub fn problem(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate::games::Ready>, problem: &Problem) -> String {

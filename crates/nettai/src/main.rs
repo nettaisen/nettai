@@ -1,4 +1,4 @@
-//! nettai: the app (docs/app.md). A main menu, Play, Training, Builds, Replays and Settings around a battle
+//! nettai: the app (docs/app.md). A main menu, Play, Practice, Builds, Replays and Settings around a battle
 //! played through nettai-frontend, in a Slint window whose UI is the nettai-ui crate.
 //!
 //! The window's rendering is the clock: before each frame is drawn the app runs (`App::frame`: the battle's
