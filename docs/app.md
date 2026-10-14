@@ -42,7 +42,7 @@ variables are for development:
 |---|---|
 | `NETTAI_LANG=<code>` | The first language shown, instead of the settings' or the system's. |
 | `NETTAI_PRACTICE=<game>` | Starts straight into a practice session of the game: new builds of its first two versions, the other a dummy that stands still, the Battle options (§15) as Practice last left them. |
-| `NETTAI_REPLAY=<file>` | Starts straight into watching the replay, its game selected; `NETTAI_REPLAY_SPEED=half\|1\|2\|4` at that speed. |
+| `NETTAI_REPLAY=<file>` | Starts straight into watching the replay, its game selected (once: a game that can't be played here, the shell says why and the replay is let go); `NETTAI_REPLAY_SPEED=half\|1\|2\|4` at that speed. |
 | `NETTAI_FFMPEG=<program>` | The `ffmpeg` a video is made with, instead of the one found (§16). |
 | `NETTAI_PLAY_STATS`, `NETTAI_KEY_PROBE` | The latency figures of §5, in a battle, on the main menu and in a replay's viewer; with the first, the replays' listing's and play-outs' times, and where each seek of the viewer landed (§16). |
 | `NETTAI_VIEWER_PROBE=<seconds>:<step>,...` | Drives a replay's viewer as a player would (§5): `click:<part>` (the bar pressed and let go `part` of the way along), `drag:<from>:<to>` (pressed, moved over a second, let go), `speed:<half\|1\|2\|4>`. The pointer's are the window's own events. |
@@ -126,6 +126,25 @@ There is one texture and it holds one picture: the battle's, the main menu's ree
 still of the replay selected in the list. Each
 is a `Surface` (`stage.rs`: the buffer something presents itself into, how it fits, whether it is out of date),
 and the one last shown is the one in the texture; another shown after it presents its own picture anew.
+
+**The picture is shown only in a frame in which something was shown in it** (`stage::Showing`: the UI's
+`Shell.picture-shown`, which every `Picture` follows). The texture keeps what was presented last, and every
+`Picture` would show it: a screen with nothing of its own to present showed whatever had been there, at its
+size and place. The user saw it ("if a replay rendering errors it ends up showing the demo video below"): Replays
+with a replay that can't be played selected, come from the main menu, had the menu's reel in its box, spilling
+past it over the facts under it, the row's error in the middle of it; a replay that failed as it was opened had
+it under the error's dialog. Now each frame starts with nothing shown; a battle, the reel, a replay's still or its
+viewer shown in the frame (`Shell::show`, `Shell::show_surface`) shows the picture, and a change of what the
+window shows (another screen, a battle ended) takes it away in the frame it comes, whatever was shown before it
+in that frame. A screen with nothing of its own shows its `Picture`'s ground. While a screen leaves (§10)
+nothing presents (the room is still the leaving screen's) and the leaving one keeps what it showed: the menu's
+reel goes with the menu, and a battle that ended took its picture away at once, so a screen leaving after it
+shows none of it. And no picture is drawn past its `Picture`'s box (the box clips it), whatever size it was
+presented at for the room before. Practice's entry keeps its own wait for the arena's room (§15), which this
+doesn't replace. (`stage::tests::the_picture_is_shown_only_in_a_frame_something_was_shown_in`; the screenshot
+pass's `replays-unreadable` and `replays-watch-failed`, §16, each of which showed the reel before; a screen
+leaving is the motion probe's, §13, whose `screen-to-settings` has the menu leave with its reel and
+`screen-back-to-menu` has it come back with one, and whose `battle-entered` ends on the battle's picture.)
 
 **Where the picture goes** is a `Picture` in the screen's Slint (shell.slint): a box that says where it is and
 how large (`Shell.picture-room-*`). The app draws the picture in the box's middle, at the frame's largest whole
@@ -1545,8 +1564,9 @@ The libraries' errors are typed the same way, a kind for the player and a detail
 `Reason`), `of_stop` (a match's `StopReason`), `of_replay_read` and `of_refusal` (a replay that doesn't read, or
 isn't played here) and `of_export` (nettai-video's) each write the detail and give the kind's sentence; a test
 holds every kind to one. Replays shows the first two at the end of a replay's row and beside the list, and the
-last in its export dialog's reserved line (§16). What breaks a build's rules is nettai-match's `Wrong`, which the
-Builds screen words in its own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
+last in its export dialog's reserved line (§16); a replay that fails as it is opened or as it plays is a dialog
+over the list (§16), with the replay's own still or nothing in its box (§1). What breaks a build's rules is
+nettai-match's `Wrong`, which the Builds screen words in its own catalog and hands to `UserError::BuildUnusable` as the reason. A game's pack that
 can't be loaded is `UserError::GameOutdated`, with the game's name as shown (§1). With the app's own packs (§17),
 no Legacy Collection to extract a missing pack from is `UserError::NoLegacyCollection`, whose dialog has the way
 to the collection's folder, and a pack that couldn't be extracted is `UserError::ExtractFailed`, by the game's
@@ -1692,12 +1712,16 @@ and what is cut. Two things went unseen that way, and each now has its check.
 three sets of the selected game are played by themselves there, recorded, and written again under other names,
 days and kinds of match (fifteen files), with three that aren't played beside them (another layout's, other
 content's, no replay at all). The steps: the list; the actions beside it (a pair: the focus a step along); a
-search; the Online filter; a file that doesn't read; the delete question, and then a delete carried out, of a
+search; the Online filter; a file that doesn't read, selected as the screen arrives from the main menu (its box
+empty, nothing of the menu's reel in it: §1); the delete question, and then a delete carried out, of a
 file made for it; the export's dialog as it opens (a pair), as an export under way looks and as a failed one
 does (both set on the view: no export runs); the two cards; the viewer held a little way into the second round
 (a pair a focus move apart, and a pair a second of playback apart); five seconds on; the other console; both
-builds over it; the export from the viewer; a closed-builds match's viewer (BUILDS unavailable); and on a phone
-the selected replay's sheet (a pair). A shot that follows a change of the selected replay waits for that
+builds over it; the export from the viewer; a closed-builds match's viewer (BUILDS unavailable); a replay that
+fails as it is watched (`replays-watch-failed`: a copy of the first, damaged after the list read it, its size
+and time kept so that the list still offers it, watched as the screen arrives from the menu: the error's dialog
+over the list, the replay's box empty; the copy is removed after); and on a phone the selected replay's sheet (a
+pair). A shot that follows a change of the selected replay waits for that
 replay's still. `replays.txt` in the pass's folder says whether the deleted
 file went and the list followed; that is said, not one of the pass's own checks. `NETTAI_TOUR_EXPORT=1` adds,
 once (in English at the desktop's size), a real export through `ffmpeg` (the first replay's last round, at
@@ -2291,6 +2315,18 @@ screen runs the ticks due, presents the picture into the window's texture if one
   arrows walk through the row and past it. Space plays and pauses, comma and period step a frame (and pause),
   the brackets (and the shoulders) go a round, Enter on the bar plays and pauses, Esc goes back to the list.
   At its end a replay stops with the transport there; play starts it again.
+- *What fails, and what shows under it.* One that fails as it is opened is the error's dialog over the list
+  (`Shell::fail`): its file doesn't read now (it changed since the list read it), the library refuses it, the
+  engine stops making its first battle (`watch` and the cards' last step each start its set inside the library's
+  `in_engine`: a failure, not a crash), or the cards' making ready stops (`UserError::Other`). One whose engine
+  stops as it plays (as it plays, at a frame stepped to, or where a seek or a drag took it) ends there: the
+  viewer is left for the list and "Something went wrong" is over it, the detail (the tick, and the panic's words)
+  in the log as `watching <file>`, as Practice's battle that stops is (§15). Under each, and beside a replay
+  that can't be played at all (a row: above), the replay's box holds its own still or nothing: never the menu's
+  reel nor another replay's still, which until the user saw it was what the box showed, spilling past it
+  (§1). The screenshot pass shoots two (§13: `replays-unreadable`, `replays-watch-failed`); the engine's stop
+  as it plays was seen once, through a panic forced at a tick of the second round in a build made for it and
+  not kept: the viewer went back to the list with the dialog over it and the replay's own still in its box.
 - *No seek stalls the window.* From the moment it shows, the replay is indexed ahead a slice a frame
   (`Viewer::index`), each slice as many ticks as the last one's time says fit a budget: 1.5 ms while the
   replay plays, 5 ms while nothing does. A seek to what is indexed is done at once (it plays under 240 ticks).
