@@ -489,8 +489,6 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
                 }
             }
             forget(&mut app);
-            // (The editor opens on the tab last used: the Navi tab, for the same picture in every walk.)
-            app.shell.settings.remembered.remove("builds.tab");
             app.shell.practice.tour_files = true;
             app.with_screen(ScreenId::Practice, |screen, shell| screen.show(shell));
             app.shell.nav.focus("edit", 0);
