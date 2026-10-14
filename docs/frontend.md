@@ -142,7 +142,7 @@ The graphics load into the types of the `nettai-assets` crate, decoded
 
 What the HUD shows of the content comes from the content: a chip's name is
 its definition's, spelled with the font's glyphs (`Hud::glyphs`), or in the
-font text mode drawn with the bundled font (§3, "Text"); its icon
+enhanced mode drawn with the bundled font (§3, "Text"); its icon
 is the pack's image under the chip's key; whether its damage shows is its
 definition's flag. The emotion window shows the face the navi's form names
 for its emotion (`mugshot`, `FormData::mugshot`), or a link navi's own
@@ -955,7 +955,7 @@ panel is said in the audits, not counted.
   tiles, as the original renders them: the timer's eight glyphs over the
   message's first eight every tick the fight runs from the 15th turn, so a
   message there reads "    1    HIT!" after its first frame (on which the
-  timer's row reads the message's start); the font mode draws both whole;
+  timer's row reads the message's start); the enhanced mode draws both whole;
 - the HUD's text lines: the turn timer's seconds and "TIME UP!" from a
   netbattle's 15th turn, "COUNTER HIT!" (`Battle::message`);
 - "Cstmzing..." while the opponent is still choosing, "PAUSE".
@@ -1067,7 +1067,7 @@ chatbox draws each tick: the box's map on BG0 at its opening step (row 12,
 the message box or the narrower description box); the text as the line
 buffer's three rows of six sprites at (51, 108), its lines 14 rows apart
 (the third row of sprites is 32x8: a third line's descenders are cut, as in
-the original; in the font mode each line fits the open box's inside,
+the original; in the enhanced mode each line fits the open box's inside,
 `text_room`); the speaker's portrait, a sprite whose animations are its
 faces, stepped by its updates and tinted while it fades; the key-wait
 arrow. The text is the content's strings (the chip's or the Cross's
@@ -1151,8 +1151,8 @@ differs are in §4.
 telops, the enemy names, the Program Advance's names, "VS") and the
 dialogue font's (`dialogue_glyphs`, `dialogue_text`, which composes a line
 as the original's line buffer does: each glyph OR'd in at the pen, cut
-past its advance but never before eight pixels). In the original text
-mode that is all. In the font mode (the default) each of those strings
+past its advance but never before eight pixels). In the original
+mode that is all. In the enhanced mode (the default) each of those strings
 that the font has every character of becomes a text item instead
 (`textlayer.rs`): the words, in the box the original's glyphs take, with
 the face and shadow colors of the palette the original draws them in;
@@ -1171,7 +1171,7 @@ its text. A string the font lacks a character of is drawn in the game's
 font, whole.
 
 **Languages** (docs/design/text-rendering.md §10). `--lang ja` shows
-the battle's text as the Japanese games do, in either text mode: the
+the battle's text as the Japanese games do, in either mode: the
 pack's Japanese lettering (the Japanese ROMs' 8x16 and dialogue fonts in
 their encoding, the HUD's lines in their glyphs, the banners whose words
 differ, カスタム中…, the gauge's "L or R", the chip window's pictures for
@@ -1455,7 +1455,7 @@ them).
   content says which chips copy that buffer.
 - An EXE5 console in Japanese: the EXE5 pack has the US ROMs' lettering
   alone (docs/design/exe5-map.md §11), so `--lang ja --text original`
-  draws its Japanese names in the US font (the font mode draws them); the
+  draws its Japanese names in the US font (the enhanced mode draws them); the
   static audit says so, not counted.
 - Live play shows the custom screen as text.
 - One blend register for every semi-transparent sprite. `sprite_setAlpha`
@@ -2127,7 +2127,7 @@ bring a driver of its own (`Driver`): nettai-tools' replays the original's
 recordings.
 
 **The player** (`Player`) is what the host drives. It owns the session, the
-renderer, the font mode's text renderer and the battle's audio:
+renderer, the enhanced mode's text renderer and the battle's audio:
 
     use nettai_frontend::{Player, driver::LivePlayer, game};
 
@@ -2168,7 +2168,7 @@ renderer, the font mode's text renderer and the battle's audio:
   embedding example does.
 - `frame()` is the battle's 240x160 picture with nothing over it;
   `present(buffer, width, height)` scales it by the largest whole factor that
-  fits and draws the font mode's text (the game's own) at the buffer's
+  fits and draws the enhanced mode's text (the game's own) at the buffer's
   resolution. Neither has anything of the library's over it: the library
   composes no text and draws none.
 - What a host may want to say is values, to show however it likes or not
@@ -2528,7 +2528,7 @@ been sought about first).
 
 **The picture is scaled here, by whole multiples and the nearest pixel**
 (`Options::scale`, 1 to 16), not left at 240x160 for ffmpeg to scale: in the
-font text mode the battle's words are drawn at the output's resolution over
+enhanced mode the battle's words are drawn at the output's resolution over
 the scaled frame, so only a frame presented at its final size has them sharp.
 The cost is the stream's size, which is raw: 115 KB a frame at 240x160, 1.04
 MB at three times (62 MB a second), so the stream is for a pipe or a short
@@ -2581,8 +2581,8 @@ frames and samples to exactly the bytes written; and the MP4 hold every
 frame, as H.264 and AAC. On EXE6's own packs, a part's stream decoded by
 ffmpeg is byte for byte the PNGs `nettai-tool --headless` writes for the same
 ticks (the picture the renderer presents: 120 frames at twice the frame with
-the font mode's text from the left console, 60 at three times in the
-original text mode from the right), a part's pictures and sound are the
+the enhanced mode's text from the left console, 60 at three times in the
+original mode from the right), a part's pictures and sound are the
 whole's for its ticks (120 frames of 900, the part's 65,835 samples the
 whole's from sample 328,626, where tick 599 starts by the clock), the sound
 is the picture's length to the sample (493,762 samples for 900 ticks;
@@ -2635,7 +2635,7 @@ out):
 |---|---|---|
 | The content's runtime on the thread | the first battle made on a thread, or the first build checked there (`check_match`, `pick::live`) | **EXE6 1.2 to 1.4 s, EXE5 0.8 s, EXE4 0.4 s** (EXE6's 0.8 to 2.7 s on the thread that had just loaded the game) |
 | The player and the round's first battle | `Player::new` | 15 ms |
-| A string's layout and glyphs, in the font mode | the first frame each string shows on (a custom screen opening: the chips' names) | a picture 3.5 ms longer at most, against 0.9 ms a picture on average; 13 to 15 strings and 160 to 330 glyphs in a match's first 3,000 ticks |
+| A string's layout and glyphs, in the enhanced mode | the first frame each string shows on (a custom screen opening: the chips' names) | a picture 3.5 ms longer at most, against 0.9 ms a picture on average; 13 to 15 strings and 160 to 330 glyphs in a match's first 3,000 ticks |
 | A tick | | 80 µs on average, 0.56 ms at most: nothing is made in a tick |
 
 The runtime is the stutter: the worst wait there was, and the only one a player could see. Every thread that

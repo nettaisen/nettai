@@ -85,17 +85,17 @@ msgstr "オフ"
 msgid "ON"
 msgstr "オン"
 
-msgid "Battle text"
-msgstr "バトルの文字"
+msgid "Battle graphics"
+msgstr "バトルの描画"
 
-msgid "SHARP"
-msgstr "くっきり"
+msgid "ENHANCED"
+msgstr "強化"
 
 msgid "ORIGINAL"
 msgstr "オリジナル"
 
-msgid "Sharp redraws the text at your window's resolution."
-msgstr "「くっきり」はウィンドウの解像度で文字を描き直します。"
+msgid "Enhanced adds sharp text and smooth motion."
+msgstr "「強化」は文字をくっきり描き、動きをなめらかにします。"
 
 msgid "Music"
 msgstr "BGM"

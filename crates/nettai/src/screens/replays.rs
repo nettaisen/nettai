@@ -23,7 +23,7 @@ use crate::sound::Cue;
 use crate::stage::Surface;
 use export::Export;
 use nettai_battle::{BattleResult, Content};
-use nettai_frontend::game::TextMode;
+use nettai_frontend::game::GraphicsMode;
 use nettai_frontend::player::time_of;
 use nettai_frontend::replay::{ENGINE, Info, MatchKind, Outcome};
 use nettai_render::Frame;
@@ -122,7 +122,7 @@ struct Still {
     surface: Surface,
     /// The frame, and whose it is.
     frame: Option<(PathBuf, Box<Frame>)>,
-    /// The font mode's text over it.
+    /// The enhanced mode's text over it.
     text: Option<TextRenderer>,
     /// The replay whose still was asked for last.
     asked: Option<PathBuf>,
@@ -330,8 +330,8 @@ impl Replays {
             Ok(s) if reason.is_none() => {
                 if !made && self.still.asked.as_ref() != Some(&entry.path) {
                     self.still.asked = Some(entry.path.clone());
-                    let text = if shell.settings.sharp_text { TextMode::Font } else { TextMode::Original };
-                    let look = Look { graphics: ready.graphics(shell.lang), text, font: ready.loaded.font.clone().filter(|_| text == TextMode::Font) };
+                    let mode = shell.settings.graphics();
+                    let look = Look { graphics: ready.graphics(shell.lang), mode, font: ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced) };
                     self.library.still(&entry, s.info.side, content, look);
                 }
                 view.set_still(made);
@@ -537,7 +537,7 @@ impl Screen for Replays {
         // The game or the language may have changed under it: the stills are drawn anew.
         self.still.frame = None;
         self.still.asked = None;
-        self.still.text = shell.ready().and_then(|(_, ready)| ready.loaded.font.clone().filter(|_| shell.settings.sharp_text)).map(TextRenderer::new);
+        self.still.text = shell.ready().and_then(|(_, ready)| ready.loaded.font.clone().filter(|_| shell.settings.enhanced)).map(TextRenderer::new);
         if let Some(w) = &mut self.watching {
             shell.nav.enter(VIEWER, "seek");
             shell.lock_game(true);

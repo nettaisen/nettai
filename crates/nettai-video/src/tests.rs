@@ -2,7 +2,7 @@ use super::*;
 use crate::nut::reading;
 use nettai_battle::content::Content;
 use nettai_frontend::Player;
-use nettai_frontend::game::TextMode;
+use nettai_frontend::game::GraphicsMode;
 use nettai_frontend::replay::ReplayPlayer;
 use nettai_frontend::testing::{audio, graphics, recorded};
 use std::sync::Arc;
@@ -10,7 +10,7 @@ use std::sync::Arc;
 /// A viewer of `replay` from `view`'s side, on graphics without a pack and
 /// a sound of every cue.
 pub(crate) fn viewer(content: &Arc<Content>, replay: &Replay, view: u8) -> Viewer {
-    let renderer = graphics(content, 0x7C1F).renderer(TextMode::Original, None);
+    let renderer = graphics(content, 0x7C1F).renderer(GraphicsMode::Original, None);
     Viewer::with(content, replay, Some(view), renderer, None, Some(audio(content))).unwrap()
 }
 
@@ -29,7 +29,7 @@ fn exported(content: &Arc<Content>, replay: &Replay, view: u8, scale: u32, part:
 /// and its samples. (A [`Player`]: nothing of the viewer or its seeking.)
 fn played(content: &Arc<Content>, replay: &Replay, view: u8, scale: usize) -> Vec<(Vec<u8>, Vec<[f32; 2]>)> {
     let driver = ReplayPlayer::new(content, replay, Some(view)).unwrap();
-    let renderer = graphics(content, 0x7C1F).renderer(TextMode::Original, None);
+    let renderer = graphics(content, 0x7C1F).renderer(GraphicsMode::Original, None);
     let mut p = Player::with(renderer, None, Some(audio(content)), Box::new(driver));
     let (w, h) = (WIDTH * scale, HEIGHT * scale);
     let mut buffer = vec![0u32; w * h];
@@ -196,7 +196,7 @@ fn progress_is_told_and_may_cancel() {
     let canceled = write(&mut viewer(&content, &replay, 0), 1, &Part::Whole, Vec::new(), &mut stop_at_twenty);
     assert!(matches!(canceled, Err(Error::Canceled)) && frames == 20);
     // Without sound.
-    let renderer = graphics(&content, 0x7C1F).renderer(TextMode::Original, None);
+    let renderer = graphics(&content, 0x7C1F).renderer(GraphicsMode::Original, None);
     let mut silent = Viewer::with(&content, &replay, Some(0), renderer, None, None).unwrap();
     let file = reading::read(&write(&mut silent, 1, &Part::Round(1), Vec::new(), &mut go_on).unwrap()).unwrap();
     assert_eq!((file.streams.len(), file.frames.len() as u32), (1, second));
@@ -223,7 +223,7 @@ fn what_cant_be_made_is_refused() {
     assert_eq!(refused(1, Part::Ticks(0..length + 1)), format!("no ticks 0 to {} of a replay of {length} ticks", length + 1));
     // A replay of another game isn't opened.
     let five = nettai_match::testing::exe5_content();
-    let renderer = graphics(&five, 0x7C1F).renderer(TextMode::Original, None);
+    let renderer = graphics(&five, 0x7C1F).renderer(GraphicsMode::Original, None);
     let other = Viewer::with(&five, &replay, None, renderer, None, None).map_err(Error::Replay).err().unwrap();
     assert_eq!(other.to_string(), "the replay isn't played: the replay is of exe6, not exe5");
 }

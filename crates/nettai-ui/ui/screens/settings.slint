@@ -25,7 +25,7 @@ export global SettingsView {
     in property <string> picture-size;
     in property <bool> full-screen;
     in property <bool> reduce-motion;
-    in property <bool> sharp-text;
+    in property <bool> enhanced;
     in property <int> music;
     in property <int> effects;
     in property <int> input-delay;
@@ -294,8 +294,8 @@ component SettingsPage inherits Page {
                 Rectangle {
                     height: row5.height;
                     row5 := SettingLabel {
-                        label: @tr("Battle text");
-                        note: @tr("Sharp redraws the text at your window's resolution.");
+                        label: @tr("Battle graphics");
+                        note: @tr("Enhanced adds sharp text and smooth motion.");
                         control-x: root.control-x;
                         control-width: root.control-width;
                     }
@@ -303,10 +303,10 @@ component SettingsPage inherits Page {
                     Seg {
                         x: root.control-x;
                         y: 6px;
-                        nav: "set.text";
-                        first: @tr("SHARP");
+                        nav: "set.graphics";
+                        first: @tr("ENHANCED");
                         second: @tr("ORIGINAL");
-                        chosen: SettingsView.sharp-text ? 0 : 1;
+                        chosen: SettingsView.enhanced ? 0 : 1;
                     }
                 }
 

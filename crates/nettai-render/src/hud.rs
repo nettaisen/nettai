@@ -9,7 +9,7 @@ use crate::audit::Problems;
 use crate::compose::{Layer, SpritePart};
 use crate::fonts;
 use crate::objects::{SpriteList, View, project_hud};
-use crate::textlayer::{Align, Plane, Rect, TextItem, TextMode, TextSink};
+use crate::textlayer::{Align, Plane, Rect, TextItem, GraphicsMode, TextSink};
 use crate::vfont::Role;
 use nettai_assets::{Bundle, Hud, MapEntry, Palette, TelopLook, TelopTiles, Tiles};
 use nettai_battle::Battle;
@@ -232,7 +232,7 @@ pub fn shared_glyphs<'a>(
     let banner_palette = matches!(s.palette, Load::Banner(_)) || s.palette == Load::Pause && t.pause_loads_banner_palette;
     out.telop_palette = banner_palette.then_some(hud.banner_palette);
     out.banner_palette = matches!(s.palette, Load::Telop(_)).then_some(look.palette);
-    // A telop's name glyphs, as its start renders them (none in the font
+    // A telop's name glyphs, as its start renders them (none in the enhanced
     // mode, whose name is the text layer's).
     let name_tiles = |name: TelopName, problems: &mut Problems| -> Option<Vec<(&'a Tiles, usize)>> {
         let codes = match name {
@@ -267,11 +267,11 @@ pub fn shared_glyphs<'a>(
     }
     // A telop's '×' and '2' (either place's: one 16x16 sprite at `signs`,
     // the '×' its left column, 0x08015522) where a banner loaded over them.
-    // (The font mode's telops keep their glyphs: their names are the text
+    // (The enhanced mode's telops keep their glyphs: their names are the text
     // layer's.)
     let telop_shown = b.used_chip_for(local).is_some() || telops.iter().any(Option::is_some);
     if telop_shown
-        && text.mode == TextMode::Original
+        && text.mode == GraphicsMode::Original
         && let Load::Banner(id) = s.signs
         && let Some((_, layout, _)) = crate::lookups::banner(packs, &b.content, id, problems)
     {
@@ -769,10 +769,10 @@ pub fn draw<'a>(
     // message's first frame the timer's row reads the message's first
     // eight glyphs, and from the next the message's row starts with the
     // timer's ("    1    HIT!", "TIME UP! HIT!"). (The original's tiles:
-    // the font mode's lines stay whole.)
+    // the enhanced mode's lines stay whole.)
     let timer_line = TEXT_TIME_UP + (b.fight.turn_timer / 60) as usize;
     let late = b.late_turns() && b.round.mode == mode::FIGHTING;
-    let one_line = late && text.mode == TextMode::Original;
+    let one_line = late && text.mode == GraphicsMode::Original;
     let message = b.message.map(|m| {
         let line = match m.message {
             nettai_battle::hud::Message::CounterHit => TEXT_COUNTER_HIT,
@@ -1074,7 +1074,7 @@ fn draw_chip_name(
     let cells = if text.takes(words) { fonts::box_cells(hud, words, name.len(), name.len().max(8)) } else { name.len() };
     fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
-    // the font mode a pixel after the name as the text layer draws it.
+    // the enhanced mode a pixel after the name as the text layer draws it.
     let mut x = 8 * cells as i32;
     if text.takes(words)
         && let Some(w) = text.fitted_width(words, Role::FittedCell, 8 * cells as i32)
@@ -1578,7 +1578,7 @@ static BLANK_GLYPH: std::sync::LazyLock<Tiles> = std::sync::LazyLock::new(|| Til
 /// A chip's name (its words and the font's glyphs for them) with its
 /// numbers (damage, bonus, doubled) as `sub_801E95C` lays them out from a
 /// telop's place (`style`): centered as fifteen glyphs are; the other
-/// player's (`remote`) moves over for the "x2". In the font mode the name
+/// player's (`remote`) moves over for the "x2". In the enhanced mode the name
 /// is a text item in the cells its glyphs take, returned (`Laid`), and
 /// blank parts stand in for the glyphs.
 #[allow(clippy::too_many_arguments)]
@@ -1632,8 +1632,8 @@ fn name_parts<'a>(
 }
 
 /// A telop as `name_parts` laid it out: the text layer's item for its name
-/// (the font mode's), how many of its parts, from the first, are the
-/// name's glyphs (none in the font mode), and where among them the '×' of
+/// (the enhanced mode's), how many of its parts, from the first, are the
+/// name's glyphs (none in the enhanced mode), and where among them the '×' of
 /// a doubled chip is (the '2' after it).
 #[derive(Default)]
 struct Laid {
@@ -1803,7 +1803,7 @@ mod tests {
             Some(Telop { side: 0, chip: Some(chip), damage: 120, doubled: true, bonus: 10, hidden: TelopHidden::No });
         let hud = hud();
         let font = crate::vfont::VectorFont::bundled();
-        let text = TextSink::new(crate::textlayer::TextMode::Font, Some(&font));
+        let text = TextSink::new(crate::textlayer::GraphicsMode::Enhanced, Some(&font));
         let mut problems = Problems::default();
         let mut parts = Vec::new();
         let item = telop_parts(&b, TelopStyle::banner(&hud, &hud.banners[0x4C / 4]), b.telop_for(0).unwrap(), &b.banner, &mut parts, &text, &mut problems).name.unwrap();
