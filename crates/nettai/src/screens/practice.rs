@@ -28,7 +28,6 @@ use crate::builds::store;
 use crate::errors::UserError;
 use crate::games::{Names, Ready};
 use crate::input::{Action, KeyPress};
-use crate::nav::Key;
 use crate::screens::menu::clock_seed;
 use crate::screens::{Screen, ScreenId};
 use crate::shell::Shell;
@@ -228,9 +227,8 @@ struct Session {
     inputs: bool,
     /// The level of the AI plugged into the dummy's live play, while one is ([`plug`]).
     ai: Option<usize>,
-    /// The menu is open, and the row the focus was last on in it (it opens there).
+    /// The menu is open (it opens on RESUME every time).
     menu_open: bool,
-    menu_focus: Key,
     /// What the UI was last told: the round, and the buttons each side holds.
     round: Option<u8>,
     held: [u16; 2],
@@ -470,8 +468,6 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
         inputs,
         ai: None,
         menu_open: false,
-        // (The menu opens on its first row: a row its starter added, else the first option.)
-        menu_focus: if start.rows.is_empty() { Key::new("menu.rows.option", shown_rows(start.opponent.in_fight, start.from.is_some()).iter().position(|o| values(*o, &Places::default()) > 0).unwrap_or(0) as i32) } else { Key::new("menu.rows.added", 0) },
         round: None,
         held: [0; 2],
     };
@@ -1459,13 +1455,6 @@ impl Screen for Practice {
         }
     }
 
-    /// The menu's row the focus is on is where the menu opens next.
-    fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
-        if let Some(session) = shell.practice.session.as_mut().filter(|_| id.starts_with("menu.")) {
-            session.menu_focus = Key::new(id, index);
-        }
-    }
-
     /// R or F5 in a practice battle: the set again from its start. E on the entry, on a build's row or its EDIT:
     /// the build opened in Builds' editor.
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
@@ -1560,15 +1549,15 @@ impl Screen for Practice {
                 live.set_second_pad(held.map(|h| if playing { h } else { 0 }));
             }
         }
-        // Its menu opens where the focus last was in it.
+        // Its menu opens on RESUME, every time (the user: "when opening the pause menu in training, focus should
+        // always default to the resume button").
         let open = shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Practice && b.menu_open());
         if let Some(session) = &mut shell.practice.session
             && session.menu_open != open
         {
             session.menu_open = open;
             if open {
-                let at = session.menu_focus.clone();
-                shell.nav.focus(&at.id, at.index);
+                shell.nav.focus("menu.resume", 0);
             }
         }
         // A screen other than Practice and Builds ends the visit.

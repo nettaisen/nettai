@@ -796,7 +796,8 @@ the builds, the chosen build, what is done with it. In the body's units (1216 by
   comes straight back to the entry, the two builds still chosen and shown as the edit left them (one that can't
   be used now says why in the reserved line). A build gone from the files is missed as any is: the first that can
   be used is chosen.
-- **The practice menu** (Start or Esc in a practice battle): a panel on the left, the battle behind it in the game's own pause
+- **The practice menu** (Start or Esc in a practice battle), its focus on RESUME each time it opens ("focus should
+  always default to the resume button"): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
   in view. Rows are a label and a value between arrows, changed at once by Left and Right; bare rows under group
   titles, their steppers and dropdowns the entry's size, 40 tall (36 on a phone), in one column so they line up,
