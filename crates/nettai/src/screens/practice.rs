@@ -164,14 +164,17 @@ struct Session {
 /// options. A row is added here, worded in practice.slint (`PracticeView.label` and `value`), and given what it
 /// does in [`values`], [`value`] and `Practice::step_option`. The dummy's Level is shown under its Action while
 /// that is Fights alone ([`shown_rows`]).
-pub(crate) const ROWS: [PracticeOption; 13] = [
+pub(crate) const ROWS: [PracticeOption; 14] = [
     PracticeOption::Dummy,
     PracticeOption::Action,
     PracticeOption::Level,
-    PracticeOption::Battle,
+    // (The arena's apart from the battle's numbers: the user, "you should split the practice menu settings into
+    // arena and battle so the arena settings aren't mixed together".)
+    PracticeOption::Place,
     PracticeOption::Arena,
     PracticeOption::Background,
     PracticeOption::Music,
+    PracticeOption::Battle,
     PracticeOption::YourHp,
     PracticeOption::DummysHp,
     PracticeOption::CustomGauge,
@@ -191,7 +194,7 @@ fn values(option: PracticeOption, places: &Places) -> usize {
         PracticeOption::Action => ACTIONS.len(),
         PracticeOption::Level => LEVELS.len(),
         PracticeOption::YourHp | PracticeOption::DummysHp | PracticeOption::CustomGauge | PracticeOption::ChipDraw | PracticeOption::InputDisplay => 2,
-        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Battle | PracticeOption::Display => 0,
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Place | PracticeOption::Battle | PracticeOption::Display => 0,
     }
 }
 
@@ -208,7 +211,7 @@ fn value(option: PracticeOption, opponent: Opponent, level: usize, options: Opti
         PracticeOption::CustomGauge => options.full_gauge as usize,
         PracticeOption::ChipDraw => (options.chip_draw == ChipDraw::FolderOrder) as usize,
         PracticeOption::InputDisplay => inputs as usize,
-        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Battle | PracticeOption::Display => 0,
+        PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Place | PracticeOption::Battle | PracticeOption::Display => 0,
     }
 }
 
@@ -1111,7 +1114,7 @@ impl Practice {
                 }
                 // (Above.)
                 PracticeOption::Music => {}
-                PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Battle | PracticeOption::Display => {}
+                PracticeOption::Added | PracticeOption::Dummy | PracticeOption::Place | PracticeOption::Battle | PracticeOption::Display => {}
             }
             shell.save_settings();
             // (At once, on the battle as it stands behind the menu.)
@@ -1495,11 +1498,11 @@ mod tests {
             (rows.len(), rows.get(at + 1).copied())
         };
         let (none, one) = (ROWS.len() - 1, ROWS.len());
-        assert_eq!(under(InFight::StandsStill), (none, Some(PracticeOption::Battle)));
+        assert_eq!(under(InFight::StandsStill), (none, Some(PracticeOption::Place)));
         assert!(!shown_rows(InFight::StandsStill, true).contains(&PracticeOption::Music), "beside a waiting invite");
-        assert_eq!(under(InFight::MovesAround), (none, Some(PracticeOption::Battle)));
+        assert_eq!(under(InFight::MovesAround), (none, Some(PracticeOption::Place)));
         assert_eq!(under(InFight::Ai), (one, Some(PracticeOption::Level)));
-        assert_eq!(under(InFight::SecondPad), (none, Some(PracticeOption::Battle)));
+        assert_eq!(under(InFight::SecondPad), (none, Some(PracticeOption::Place)));
         assert_eq!(dummy(InFight::Ai).on_custom_screen, OnCustomScreen::Ai);
         assert_eq!(dummy(InFight::StandsStill), Opponent::default());
     }
