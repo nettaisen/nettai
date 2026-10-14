@@ -105,6 +105,8 @@ export global FolderView {
     in property <bool> in-library;
     // On a phone: the library's sheet is open.
     in property <bool> sheet;
+    // The library's chip being dragged into the folder, as an entry would show it.
+    in property <ChipCell> ghost;
 }
 
 // One of the folder's counts: its word, and what the folder holds of its limit, which ticks as it changes. In the
@@ -136,12 +138,14 @@ component CountBox inherits Rectangle {
     }
 }
 
-// Where entry `i` would be while one is dragged: at the place it shifts to (the dragged one where it would land).
+// Where entry `i` would be while one is dragged: at the place it shifts to (the dragged one where it would land). A
+// library's chip dragged (`filling`) shifts none: it takes the place of the chip of the entry it would land in (`to`).
 export global FolderDrag {
     out property <bool> on: Drag.on && Drag.list == "slot";
-    out property <int> to: self.on ? Drag.to : -1;
+    out property <bool> filling: Drag.on && Drag.list == "lib.rows";
+    out property <int> to: self.on || self.filling ? Drag.to : -1;
     public pure function shown(i: int) -> int {
-        return self.to < 0 ? i : i == Drag.from ? self.to : (Drag.from < i && i <= self.to) ? i - 1 : (self.to <= i && i < Drag.from) ? i + 1 : i;
+        return !self.on || self.to < 0 ? i : i == Drag.from ? self.to : (Drag.from < i && i <= self.to) ? i - 1 : (self.to <= i && i < Drag.from) ? i + 1 : i;
     }
 }
 
@@ -397,9 +401,11 @@ component LibraryRowView inherits Rectangle {
         vertical-alignment: center;
     }
 
+    // (Dragged into the folder beside it, on a desktop: a phone's library is a sheet over the folder.)
     touch := RowTouch {
         nav: "lib.rows";
         nav-index: root.nav-index;
+        drag: Theme.phone ? "" : "lib.rows";
     }
 }
 
@@ -512,6 +518,8 @@ component LibraryPane inherits Rectangle {
         count: FolderView.rows.length;
         row-height: Theme.phone ? 40px : Theme.chip-row;
         chosen: self.focused-row;
+        // (A mouse's drag on a row takes its chip into the folder: the wheel scrolls.)
+        mouse-pan: Theme.phone;
         for slot in list.shown: LibraryRowView {
             property <int> at: list.first + slot;
             y: self.at * list.pitch;
@@ -784,15 +792,18 @@ export component FolderTab inherits Rectangle {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
-        // (The entry being dragged, under the pointer, over everything.)
+        // (The entry being dragged, under the pointer, over everything; or a ghost of the library's chip, in an
+        // entry's shape, faint until it is over the entry it would go in.)
         LiftedRow {
-            x: Drag.x - root.absolute-position.x - Drag.grab-x;
+            // (A library's row is wider than an entry: its ghost is held no farther in than its middle.)
+            x: Drag.x - root.absolute-position.x - (FolderDrag.filling ? min(Drag.grab-x, self.width / 2) : Drag.grab-x);
             y: Drag.y - root.absolute-position.y - Drag.grab-y;
             width: root.slot-width;
             height: Theme.chip-row;
-            visible: FolderDrag.on;
-            chip: FolderView.slots[max(0, Drag.from)];
-            number: FolderDrag.shown(max(0, Drag.from)) + 1;
+            visible: FolderDrag.on || FolderDrag.filling;
+            opacity: FolderDrag.filling && FolderDrag.to < 0 ? 0.7 : 1;
+            chip: FolderDrag.filling ? FolderView.ghost : FolderView.slots[max(0, Drag.from)];
+            number: FolderDrag.filling ? 0 : FolderDrag.shown(max(0, Drag.from)) + 1;
             removing: Drag.removing;
         }
     }

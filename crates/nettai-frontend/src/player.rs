@@ -477,6 +477,22 @@ impl Player {
         }
     }
 
+    /// Play the battle's sound on `audio` from now on, in place of the one
+    /// it was made with: a host's sound of the same parts (`Sound::parts`,
+    /// as the player's was made with) that already plays the music the
+    /// battle's first round starts (`BattleSettings::music`), started by
+    /// that music's cue (a host's preview of the battle's music before the
+    /// battle). The round's start then finds its music playing and leaves
+    /// it be, as the game's `PlayMusic` does, so the song goes on where it
+    /// is. Given before the first tick. Presentation alone: the battle and
+    /// its cues are the same; the host gives the levels after
+    /// ([`Player::set_sound_levels`]). Nothing for a player without audio.
+    pub fn carry_sound(&mut self, audio: BattleAudio) {
+        if self.audio.is_some() {
+            self.audio = Some(audio);
+        }
+    }
+
     /// The battle's sound as it stands (none: silent): what each pack's
     /// driver plays (a host's check of the music it was given).
     pub fn audio(&self) -> Option<&BattleAudio> {

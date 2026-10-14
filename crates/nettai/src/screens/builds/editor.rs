@@ -199,6 +199,23 @@ pub fn show_drop(shell: &Shell, to: Option<usize>, swap: bool) {
     drag.set_removing(false);
 }
 
+/// The library's rows, the list a library's row is dragged from (`Drag.list`) into the build's list beside it.
+pub const LIBRARY: &str = "lib.rows";
+
+/// Whether the drag under way is a library's row's, into the build's list: the tab is told it as `drag-in-over` and
+/// `drag-in-drop` (the editor's `choose`).
+fn from_library(shell: &Shell) -> bool {
+    shell.ui().global::<nettai_ui::Drag>().get_list() == LIBRARY
+}
+
+/// Tell the UI where the library's row being dragged into list `into` (its name: the list that scrolls near its edges)
+/// would land (`None`: nowhere, let go nothing happens), and whether it takes the place of what is there (else those
+/// from there on shift to leave it a gap).
+pub fn show_landing(shell: &Shell, into: &str, to: Option<usize>, swap: bool) {
+    show_drop(shell, to, swap);
+    shell.ui().global::<nettai_ui::Drag>().set_into(into.into());
+}
+
 /// Tell the UI the row being dragged is over the library: let go, what it holds is taken out (the remove look).
 pub fn show_remove(shell: &Shell) {
     show_drop(shell, None, false);
@@ -479,8 +496,15 @@ impl Editor {
     /// A right click (`remove`: on a row of the build's, a library's row that is in, the NaviCust's) removes what it
     /// is on, as Del there does ("sure right click should remove everywhere"); a click removes nothing ("remove that
     /// too"). A row dragged (`drag-over`, `drag-drop`: let go over the
-    /// library, it is removed) is the tab's, as its other choices are.
+    /// library, it is removed) is the tab's, as its other choices are; a library's row dragged into the build's list
+    /// is told it as `drag-in-over` and `drag-in-drop` ("you should allow drag and dropping from the library into a
+    /// slot"), `index` the library's row.
     pub fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
+        let id = match id {
+            "drag-over" if from_library(shell) => "drag-in-over",
+            "drag-drop" if from_library(shell) => "drag-in-drop",
+            id => id,
+        };
         if id == "remove" {
             let (tab, draft) = self.tab();
             tab.action(shell, draft, Action::Delete);
