@@ -903,7 +903,8 @@ mod tests {
     }
 
     /// The enhanced mode's smooth motion (`nettai_render::smooth`): the frames differ from the motion reduced's
-    /// only on the custom screen's slide (the window eased, the field with it); every frame is the battle's
+    /// only on the custom screen's slide (the window eased, the field with it), and the gauge's fill shows
+    /// between its whole pixels (a nudge) without changing the frame's own pixels; every frame is the battle's
     /// alone: a renderer that draws a copy of the battle as it was at that tick, with the HUD's rolling state as
     /// it was, draws the same frame (as a rollback or a seek draws a frame again). The original mode draws alike
     /// with the motion reduced or not.
@@ -936,7 +937,7 @@ mod tests {
         let player = |mode, reduce| Player::with(renderer(mode, reduce), None, None, live());
         let (mut on, mut off) = (player(GraphicsMode::Enhanced, false), player(GraphicsMode::Enhanced, true));
         let (mut original, mut original_reduced) = (player(GraphicsMode::Original, false), player(GraphicsMode::Original, true));
-        let (mut differ, mut sliding, mut fought) = (Vec::new(), Vec::new(), 0);
+        let (mut differ, mut sliding, mut nudged_gauge, mut fought) = (Vec::new(), Vec::new(), 0, 0);
         for tick in 0..3000u32 {
             let k = bot_buttons(on.battle(), 0, tick);
             assert!(on.tick(k) && off.tick(k) && original.tick(k) && original_reduced.tick(k));
@@ -953,8 +954,11 @@ mod tests {
             if frame.pixels != plain.pixels {
                 differ.push(t);
             }
-            if let Some(n) = &frame.nudge {
-                assert!(slides && n.sub > 0 && n.sub < 16, "tick {t}: a nudge only on the slide");
+            if let Some(n) = &frame.nudge
+                && !slides
+            {
+                assert!(n.sub > 0 && n.sub < 16);
+                nudged_gauge += 1;
             }
             // Drawn again from a copy of the battle at this tick.
             let mut again = renderer(GraphicsMode::Enhanced, false);
@@ -972,6 +976,7 @@ mod tests {
         assert!(fought > 60, "the fight runs");
         assert!(!sliding.is_empty() && differ.iter().all(|t| sliding.contains(t)), "only the slide's frames differ: {differ:?} (sliding {sliding:?})");
         assert!(differ.len() >= sliding.len() / 2, "the slide is eased: {differ:?} of {sliding:?}");
+        assert!(nudged_gauge > 10, "the gauge fills between its whole pixels ({nudged_gauge} frames)");
     }
 
     /// The renderer's pause display: drawn while a player holds the fight in the game's own pause, as the
