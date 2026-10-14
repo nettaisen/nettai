@@ -602,7 +602,8 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
 /// Draw the HUD layer and queue the HUD sprites. What the HUD needs and
 /// the pack or the content doesn't have (a chip's icon, a character of its
 /// name, a banner's glyphs) goes to `problems`. Without `pause_display`
-/// the pause display is left out (`Renderer::pause_display`).
+/// the pause display is left out (`Renderer::pause_display`); without
+/// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`).
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &Battle,
@@ -611,6 +612,7 @@ pub fn draw<'a>(
     state: &HudState,
     shared: &'a SharedGlyphs,
     pause_display: bool,
+    custom_gauge: bool,
     layer: &mut Layer,
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
@@ -643,7 +645,7 @@ pub fn draw<'a>(
     }
 
     // Custom gauge, top center.
-    if gauge_shown(b, state) {
+    if custom_gauge && gauge_shown(b, state) {
         let pal = &hud.gauge_palette;
         for (i, &e) in hud.gauge_frame.iter().enumerate() {
             put(layer, hud, pal, e, GAUGE_COLUMN + (i as i32 % GAUGE_COLUMNS), i as i32 / GAUGE_COLUMNS);

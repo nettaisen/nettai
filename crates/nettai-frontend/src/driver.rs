@@ -701,6 +701,13 @@ pub fn bot_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
     custom_buttons(b, side, tick, true)
 }
 
+/// A custom screen's buttons straight to OK with no chip, a press every
+/// other tick, as an opponent that picks nothing presses them (a host's
+/// battle that only has to get to its fight).
+pub fn ok_buttons(b: &Battle, side: usize, tick: u32) -> u16 {
+    custom_buttons(b, side, tick, false)
+}
+
 /// A custom screen's buttons as [`bot_buttons`] presses them; without
 /// `picks`, straight to OK with no chip.
 fn custom_buttons(b: &Battle, side: usize, tick: u32, picks: bool) -> u16 {

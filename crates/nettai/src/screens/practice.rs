@@ -691,6 +691,32 @@ fn kept_place(game: &str, part: usize) -> String {
 /// field faded in, the two navis on it, nothing yet over them), and no later than this.
 const OPENING: u32 = 300;
 
+/// The most ticks more the arena's round is played to reach its fight, where it runs on while the entry shows
+/// it: the first custom screen pressed straight through to OK and the start banner's (each a few seconds at
+/// most). A round that hasn't reached its fight by then is held at its opening's end, as the screenshot pass's.
+const TO_FIGHT: u32 = 600;
+
+/// Whether the arena's round is in its fight, as it runs while the entry shows it: past the start banner, no
+/// custom screen open, no side down and the time not up.
+fn in_fight(b: &nettai_battle::Battle) -> bool {
+    use nettai_battle::battle::{fight, mode};
+    b.round.mode == mode::FIGHTING && b.fight.state == fight::FIGHTING && !b.is_battle_over()
+}
+
+/// Play the arena's round on from its opening's end into its fight: each custom screen pressed straight to OK
+/// with no chip (the dummy's picks nothing too), the start banner through. Whether it got there.
+fn to_fight(player: &mut nettai_frontend::player::Player) -> bool {
+    for tick in 0..TO_FIGHT {
+        if in_fight(player.battle()) {
+            return true;
+        }
+        if !player.tick(nettai_frontend::driver::ok_buttons(player.battle(), 0, tick)) {
+            return false;
+        }
+    }
+    in_fight(player.battle())
+}
+
 /// How long the builds chosen stay as they are before the arena is drawn again with them: a step through the
 /// builds doesn't make a round each time, and a value has slid into its box before the window is held a moment
 /// to make one.
@@ -733,8 +759,11 @@ pub struct Practice {
     checked: HashMap<(String, String), Option<Unusable>>,
     /// What the session will be picked from: the arena shown is the one it opens on.
     seed: u32,
-    /// The arena: the round as it opens, held there. None until it is made, and while a build can't be used.
+    /// The arena: the round's fight, running with nothing pressed (`arena_runs`); in the screenshot pass, the
+    /// round as it opens, held there. None until it is made, and while a build can't be used.
     arena: Option<Stage>,
+    /// The arena runs: its fight goes on a tick at a time while the entry shows it.
+    arena_runs: bool,
     /// The frames the arena's picture has been shown (of those the window drew), to two: the view shows it from
     /// the second (the first may have gone to the room of what was on screen before).
     arena_frames: u8,
@@ -791,7 +820,7 @@ impl Practice {
 
     /// The arena's picture is no longer the one in the window: nothing is shown in its place.
     fn drop_arena(&mut self, shell: &Shell) {
-        (self.arena, self.arena_frames) = (None, 0);
+        (self.arena, self.arena_runs, self.arena_frames) = (None, false, 0);
         shell.ui().global::<PracticeView>().set_arena(false);
     }
 
@@ -928,8 +957,13 @@ impl Practice {
         Some([build(0)?, build(1)?])
     }
 
-    /// Make the arena's picture: the session's first round as it opens, the two builds' navis on it.
+    /// Make the arena: the session's first round, the two builds' navis on it, played past its opening and its
+    /// first custom screen (both sides straight to OK with no chip) into its fight, which then runs with nothing
+    /// pressed while the entry shows it (the user: "you should also run the field a little so it shows stuff like
+    /// wind fields and panel animations"; its background moves with it). The screenshot pass holds it as its
+    /// opening ends, before any custom screen.
     fn make_arena(&mut self, shell: &mut Shell) {
+        let shell_runs = !shell.still || shell.probe_motion;
         let made = (|| {
             let (game, ready) = shell.ready()?;
             let [you, dummy] = self.pair(&ready)?;
@@ -937,18 +971,28 @@ impl Practice {
             let mut m = Match::empty(content, &game).map_err(|why| crate::errors::log("making the arena's match", &why)).ok()?;
             m.sides = [you.side, dummy.side];
             self.places.put(&mut m, self.place);
-            let mut player = crate::screens::menu::player(shell, &ready, Box::new(LivePlayer::new(Set::of(content, &m, self.seed))));
-            let opening = player.battle().round.mode;
-            for _ in 0..OPENING {
-                if player.battle().round.mode != opening || !player.tick(0) {
-                    break;
+            let opened = || {
+                let mut live = LivePlayer::new(Set::of(content, &m, self.seed));
+                live.set_opponent(Opponent { in_fight: InFight::StandsStill, on_custom_screen: OnCustomScreen::PicksNothing });
+                let mut player = crate::screens::menu::player(shell, &ready, Box::new(live));
+                // (Without the custom gauge: the user, "you should disable the custom gauge in the arena preview".)
+                player.renderer().custom_gauge = false;
+                let opening = player.battle().round.mode;
+                for _ in 0..OPENING {
+                    if player.battle().round.mode != opening || !player.tick(0) {
+                        break;
+                    }
                 }
-            }
-            Some(Stage::new(player))
+                player
+            };
+            let mut player = opened();
+            // (One that doesn't reach its fight is held as its opening ends, made again.)
+            let runs = shell_runs && to_fight(&mut player);
+            Some((Stage::new(if runs || !shell_runs { player } else { opened() }), runs))
         })();
         match made {
             // (In place of the one before it, if there was one: the picture changes, and nothing else.)
-            Some(arena) => self.arena = Some(arena),
+            Some((arena, runs)) => (self.arena, self.arena_runs) = (Some(arena), runs),
             None => self.drop_arena(shell),
         }
     }
@@ -1306,16 +1350,23 @@ impl Screen for Practice {
         // The entry's arena, once the builds chosen have stayed a moment (and the screen is the one on screen:
         // while the one before it leaves, the picture's room is still that one's).
         if !shown || shell.battle.is_some() || shell.loading_battle() || shell.ready().is_none() {
-            // (Something else has the window: when the entry shows again, the arena is shown anew.)
+            // (Something else has the window: when the entry shows again, the arena is shown anew, and runs on
+            // from where it was.)
             if self.arena_frames != 0 {
                 self.arena_frames = 0;
                 shell.ui().global::<PracticeView>().set_arena(false);
+            }
+            if let Some(arena) = &mut self.arena {
+                arena.hold();
             }
             return;
         }
         let ui = shell.ui();
         let screen = ui.global::<nettai_ui::Shell>();
         if screen.get_screen() != ScreenId::Practice.view() || screen.get_leaving() {
+            if let Some(arena) = &mut self.arena {
+                arena.hold();
+            }
             return;
         }
         // (The screenshot pass doesn't wait; its motion probe does, as a player's app.)
@@ -1323,8 +1374,22 @@ impl Screen for Practice {
             self.changed = None;
             self.make_arena(shell);
         }
+        // (A running arena's fight, the ticks due with nothing pressed; one that has left its fight, a navi down
+        // on a field that hurts, say, is made again from its start.)
+        if self.arena_runs
+            && let Some(arena) = &mut self.arena
+        {
+            arena.advance(now, 0, &mut Vec::new());
+            arena.player.take_pause_requests();
+            arena.samples.clear();
+            if !in_fight(arena.player.battle()) || arena.player.stopped().is_some() {
+                self.make_arena(shell);
+            }
+        }
         if let Some(arena) = &mut self.arena {
             shell.show(arena);
+            // (`NETTAI_PLAY_STATS`: the entry's frames a second, its arena running.)
+            arena.report(now);
             // (A frame the window doesn't draw shows nothing, and places no picture's room.)
             if self.arena_frames < 2 && shell.drawing {
                 self.arena_frames += 1;
