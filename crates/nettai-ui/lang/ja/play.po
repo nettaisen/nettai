@@ -137,10 +137,6 @@ msgstr "ビルド非公開"
 msgid "Ping"
 msgstr "Ping"
 
-# The battle's music this player hears (the game's own, or a battle theme): theirs alone, like the input delay.
-msgid "Your music"
-msgstr "あなたのBGM"
-
 msgid "CHANGE BUILD"
 msgstr "ビルド変更"
 
