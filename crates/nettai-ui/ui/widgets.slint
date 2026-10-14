@@ -701,8 +701,8 @@ export component Slider inherits Rectangle {
 // A box with its value and an arrow: Left and Right step through its choices, Enter opens them as a list. Where
 // the row it is in is what is focused (a `Focusable` of the row's own), `focusable` is off. One whose choices are
 // pictures (`pictured`: Practice's Arena and Background, which open as a grid of them) shows the chosen one's
-// picture small before its value, the box's height less 6 at each side and two and a half times as wide (the
-// field's band of the battle's picture); `random`, the first choice, which has none, a question mark in its place.
+// picture small before its value, the box's height less 6 at each side and fifteen sevenths as wide (the field's
+// band of the battle's picture, 240 by 112); `random`, the first choice, which has none, a question mark in its place.
 export component Select inherits Rectangle {
     in property <string> nav;
     in property <int> nav-index;
@@ -714,7 +714,7 @@ export component Select inherits Rectangle {
     in property <bool> random;
     out property <bool> focused: hit.focused;
     property <length> thumb-height: root.height - 12px;
-    property <length> thumb-width: root.pictured ? root.thumb-height * 2.5 : 0px;
+    property <length> thumb-width: root.pictured ? root.thumb-height * 15 / 7 : 0px;
     height: 40px;
     Rectangle {
         background: Theme.inset;
