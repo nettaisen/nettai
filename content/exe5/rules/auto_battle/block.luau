@@ -153,9 +153,10 @@ end
 
 
 -- `validate`'s part: each place one thing (a chip, a pattern, a 0, or empty), a pattern one of the eight records,
--- and no chip among the 42 places that the AI can't play (the original crashes when its navi in auto battle goes to
+-- no chip among the 42 places that the AI can't play (the original crashes when its navi in auto battle goes to
 -- play one, and the game's own writer never puts one there; a record's chip place may hold one, as the game writes
--- them there and a record never plays).
+-- them there and a record never plays), and only mega chips in the mega list, giga chips in the giga list and program
+-- advances in the program advance list (@exelib/auto_battle/places' `LISTS`).
 function block.validate(side: number, problem: (p: SetupProblem) -> ())
     places.validate(rules.setup_of(side).auto_battle_places, problem)
 end

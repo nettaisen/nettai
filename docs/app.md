@@ -1138,12 +1138,22 @@ would have its 42 places as one, untitled). A build states the places alone (its
 default, nothing learned), so a place holds a chip or nothing, and the pattern list's places aren't shown (the
 game puts none there but a learned pattern's: a match is sent them empty, a valid block); the status counts the
 places shown. The strip describes the chip under the cursor; the places are framed under their lists' titles in
-two columns, scrolled (a `ScrollPage`, `places.`); the library is a row a chip of those a folder of the build
-can hold, each saying in how many places it is. Enter on a place goes to the library, Enter on a chip puts it in
-and goes on to the next place shown (it flies there, the place flashes), Enter, Del or a click on the chip the
-place holds takes it out again (it flies back; its hint Remove, `on-placed`), Del empties a place. A chip the rules refuse in a place
-(their `validate`: one its navi can't play) isn't put: its row shakes and the strip says why, worded for the
-part (`Words::problem`: "{chip} can't be played in auto battle").
+two columns, scrolled (a `ScrollPage`, `places.`); the library is a row a chip, each saying in how many places it
+is, of what the place being filled can hold. **The mega, giga and program advance lists hold their class alone**
+(the user, 2026-10-13: "only allow mega chips in mega, giga chips in giga, and PA in program advance"): the rules
+say so, each such list's `class` in @exelib/auto_battle/places' `LISTS`, which their `validate` holds a place to
+and the tab reads (`Holds::Chips`). For a place of such a list the library is the game's chips of that class
+(`auto::of_class`: the Mega chips, the Giga chips, the Program Advances, which no folder holds); for a place of
+another, the chips a folder of the build can hold. The library changes with the place the cursor is on, from its
+first row; a Program Advance's class in the strip is Program Advance. Enter on a place goes to the library, Enter
+on a chip puts it in and goes on to the next place shown (it flies there, the place flashes), Enter, Del or a
+click on the chip the place holds takes it out again (it flies back; its hint Remove, `on-placed`), Del empties a
+place. A chip the rules refuse in a place (their `validate`: one its navi can't play, or one of another class in
+a list held to one) isn't put: its row shakes and the strip says why, worded for the part (`Words::problem`:
+"{chip} can't be played in auto battle"; in a list held to another class, "{chip} can't be in the {list} list",
+the list's name as the game's strings have it). A build that holds such a chip already (a build file or a save
+made by hand) has the problem as any other: the Builds list counts it, the tab is flagged, the place's row is in
+the error red (`flagged`, as a folder's entry), and the strip says why on it.
 
 **A click chooses** one of the build's rows (a folder's entry, a patch card or an EXE4 slot, an auto battle place)
 as Enter does, but where the library is beside it the focus stays on what was clicked (the editor's `activate`
@@ -1555,10 +1565,14 @@ without a ring the shot is of the piece in hand), and a placed program under the
 pair), three cards put in, the cursor on one that is in (Confirm's Remove) and Confirm taking it out, the library
 by MB with a card the MB left can't take refused, one of the
 build's moved up and taken out, the sort's list; the auto battle's places a focus move apart (a pair), three
-filled from the library, one emptied, the places scrolled to the last list; on a desktop, a click on one of the
-build's rows in each tab, shot with the pointer gone on to another row (`tabs-folder-clicked`,
+filled from the library, one emptied, the places scrolled to the last list, the library of a place in each list
+held to one class (`tabs-auto-mega`, `tabs-auto-giga`, `tabs-auto-advance`: its Mega chips, its Giga chips, its
+Program Advances) and a Program Advance put in its place (`tabs-auto-advance-put`); on a desktop, a click on one
+of the build's rows in each tab, shot with the pointer gone on to another row (`tabs-folder-clicked`,
 `tabs-cards-clicked`, `tabs-auto-clicked`: the cursor hidden, the row clicked marked, the other lit by the
-pointer), and the keys after the clicks (`clicks`). Where a piece goes is found from
+pointer), and the keys after the clicks (`clicks`); last, a new build made beside the walk's with a chip of
+another class in each list held to one (`wrong_classes`: `tabs-auto-wrong-list`, the Builds list counting its
+problems; `tabs-auto-wrong`, its tab flagged, the places red, the strip saying why). Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
 on the ring, or over another), so the walk is the same whatever the game's shapes. A tab the game hasn't is
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):

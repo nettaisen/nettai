@@ -123,6 +123,12 @@ Each is settled unless the user changes it.
     About is a minor item of the main menu, beside Settings: the app's version and license, Slint's "Made with
     Slint" widget (which Slint's royalty-free license asks for in an About screen reached from the top menu), and
     every font and package the app is built from with its license's texts (§6, docs/app.md §18).
+26. **The auto battle data's mega, giga and program advance lists hold their class alone** (2026-10-13): "also fix
+    the abd editor to only allow mega chips in mega, giga chips in giga, and PA in program advance". It is a rule
+    of the games' content (each such list's `class` in @exelib/auto_battle/places, which the rules' `validate`
+    holds a place to), and the editor reads it: a place of one of those lists is offered that class's chips, the
+    Program Advances among them. The first and standard lists are as they were, a chip of any class (the user named
+    three lists). (§6, docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -394,7 +400,12 @@ Each is in the mockups under the same name.
   named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
   puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
   shows its effect and the bugs it adds to or clears.
-- **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel.
+- **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
+  library offers what the place being filled can hold (§2.26): a Mega place the Mega chips, the Giga place the Giga
+  chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
+  folder can hold. A chip of another class in one of those three lists (a build or save made by hand) is a
+  problem of the build, shown as any other: its place's row in the error red, and the strip says why ("Cannon
+  can't be in the Mega list").
 
 ### Replays
 - **The list:** All, Online (and Training only if training is ever recorded) and a search by opponent; rows of the
