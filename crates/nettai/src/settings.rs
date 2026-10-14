@@ -2,7 +2,7 @@
 //! written each time one changes and read as the app starts. A setting the file leaves out (or one it can't
 //! read) is the app's own default.
 //!
-//! A screen that remembers something of its own (the builds Training last used, the rounds last played) keeps
+//! A screen that remembers something of its own (the builds Practice last used, the rounds last played) keeps
 //! it by a key in [`Settings::remembered`], so it adds no field here.
 
 use crate::input::{BUTTONS, Bindings, key_name, key_named, pad_name, pad_named};

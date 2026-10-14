@@ -880,7 +880,7 @@ mod tests {
         vec![
             at("game", 1092.0, 14.0, 156.0, 36.0),
             at("play", 32.0, 223.0, 416.0, 72.0),
-            at("training", 32.0, 303.0, 416.0, 72.0),
+            at("practice", 32.0, 303.0, 416.0, 72.0),
             at("builds", 32.0, 383.0, 416.0, 72.0),
             at("replays", 32.0, 463.0, 416.0, 72.0),
             at("settings", 48.0, 570.0, 80.0, 32.0),
@@ -899,7 +899,7 @@ mod tests {
     #[test]
     fn arrows_find_the_neighbor_in_their_direction() {
         let m = menu();
-        assert_eq!(from(&m, "play", Direction::Down).as_deref(), Some("training"));
+        assert_eq!(from(&m, "play", Direction::Down).as_deref(), Some("practice"));
         assert_eq!(from(&m, "replays", Direction::Down).as_deref(), Some("settings"));
         assert_eq!(from(&m, "settings", Direction::Right).as_deref(), Some("exit"));
         assert_eq!(from(&m, "exit", Direction::Left).as_deref(), Some("settings"));
@@ -924,7 +924,7 @@ mod tests {
         let mut m = menu();
         m.reverse();
         let order: Vec<String> = reading_order(m).into_iter().map(|k| k.id).collect();
-        assert_eq!(order, ["game", "play", "training", "builds", "replays", "settings", "exit"]);
+        assert_eq!(order, ["game", "play", "practice", "builds", "replays", "settings", "exit"]);
     }
 
     /// A control leaves the registry when the token it was given is dropped, and one made again before the old

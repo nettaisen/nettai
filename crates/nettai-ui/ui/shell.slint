@@ -13,7 +13,7 @@ import { VersionTag } from "build.slint";
 export enum Screen {
     menu,
     play,
-    training,
+    practice,
     builds,
     replays,
     settings,
@@ -23,7 +23,7 @@ export enum Screen {
 // What a battle on screen is, which says whose menu Start opens.
 export enum BattleKind {
     none,
-    training,
+    practice,
     online,
     replay,
 }
@@ -126,7 +126,7 @@ export global Shell {
     in property <BattleKind> battle;
     in property <bool> battle-full;
     in property <bool> battle-menu;
-    // What the battle is, in a few words of its owner's (Training · Round 1): the line beside MENU on a phone.
+    // What the battle is, in a few words of its owner's (Practice · Round 1): the line beside MENU on a phone.
     in property <string> battle-note;
     // The battle's music a player picks (Play's lobby, Practice): its list's first choice, the battle's game's
     // own; the rest are the games' battle themes, which the content names.

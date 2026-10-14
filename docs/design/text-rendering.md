@@ -1037,7 +1037,7 @@ The user's question (2026-10-02): "are the forms/weapons sections even used in t
   other 15 forms' names (the base form, the Beasts, the Crosses' Beast forms, Beast Over) were read by nothing and
   are gone; the check refuses a form that isn't a Cross, and the own language must name every Cross. R looks the hovered
   Cross up by its form (`CrossWindow::hovered`; docs/engine/custom-screen.md §4.1).
-- `[backgrounds]`: a background's name in the app's arenas (the Training preview's rounds); the check refuses a
+- `[backgrounds]`: a background's name in the app's arenas (the Practice preview's rounds); the check refuses a
   name the pack hasn't, and the own language must name every background of the pack.
 - `[weapons]` (124 names: 69 navi and form weapons', 55 patch card weapons') was read by nothing (no screen
   shows a weapon's name; `Strings::weapon` had no caller): the table, `WeaponStrings` and its check are gone.

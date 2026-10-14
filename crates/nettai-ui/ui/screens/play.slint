@@ -2,7 +2,7 @@
 // is src/screens/play.rs, which sets `PlayView` and hears the controls by their names.
 //
 // The screen has three parts, one shown at a time (`PlayView.part`): the player's builds with the row that
-// makes a link (an invite, a code typed, a direct connection); the wait for the other player, a training
+// makes a link (an invite, a code typed, a direct connection); the wait for the other player, a practice
 // battle beside the invite's code; and the lobby, for as long as the two players stay together. The two cards
 // before a match and the match itself are the shell's (versus.slint, battle.slint); over the match are this
 // file's menu (`MatchMenu`) and the two builds shown while Tab is held (`MatchPeek`).
@@ -19,7 +19,7 @@ import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../
 export enum PlayPart {
     // The builds, and the row that makes a link.
     builds,
-    // An invite is out: its code, and a training battle beside it.
+    // An invite is out: its code, and a practice battle beside it.
     waiting,
     // The two players are together.
     lobby,
@@ -164,14 +164,14 @@ export global PlayView {
     out property <string> cancel-word: @tr("CANCEL");
     out property <string> leave-word: @tr("LEAVE");
     out property <string> connecting: @tr("Connecting…");
-    // A row Play adds to the training menu while the other player is waited for (src/screens/play.rs's
+    // A row Play adds to the practice menu while the other player is waited for (src/screens/play.rs's
     // `WaitRow`, by its number), with an invite out or this machine hosting directly.
     public pure function wait-row(row: int, direct: bool) -> string {
         if row == 0 {
             return direct ? @tr("COPY ADDRESS") : @tr("COPY INVITE CODE");
         }
         if row == 1 {
-            return @tr("STOP TRAINING");
+            return @tr("STOP PRACTICE");
         }
         return direct ? @tr("STOP HOSTING") : @tr("CANCEL INVITE");
     }
@@ -583,7 +583,7 @@ export component PlayScreen inherits Page {
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
     property <[Hint]> hints-waiting: [
-        { key: "Esc", pad: PadButton.start, text: @tr("Training menu") },
+        { key: "Esc", pad: PadButton.start, text: @tr("Practice menu") },
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Fight") },
     ];
     property <[Hint]> hints-lobby: [
@@ -763,7 +763,7 @@ export component PlayScreen inherits Page {
         }
     }
 
-    // ---- Waiting for the other player: the invite's code, and a training session beside it ----
+    // ---- Waiting for the other player: the invite's code, and a practice session beside it ----
     // (On a phone a battle has its pad only where it fills the window: there the session is asked for, under
     // the invite, and fills it.)
     if PlayView.part == PlayPart.waiting: Rectangle {
@@ -785,12 +785,12 @@ export component PlayScreen inherits Page {
             Rectangle {
                 x: 12px;
                 y: root.wait-top + root.picture-height - 34px;
-                width: training.preferred-width + 16px;
+                width: practice.preferred-width + 16px;
                 height: 22px;
                 visible: !Theme.phone;
                 background: Theme.shade;
-                training := Text {
-                    text: @tr("TRAINING");
+                practice := Text {
+                    text: @tr("PRACTICE");
                     color: Theme.text;
                     font-family: Theme.display;
                     font-size: 11px;
@@ -897,7 +897,7 @@ export component PlayScreen inherits Page {
                 visible: Theme.phone;
                 enabled: Theme.phone;
                 nav: "wait.train";
-                text: @tr("TRAINING");
+                text: @tr("PRACTICE");
             }
         }
     }
