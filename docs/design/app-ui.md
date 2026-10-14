@@ -503,6 +503,10 @@ Each is settled unless the user changes it.
       the field 1.5 pixels a tick down with it. Enhanced eases it over the same ticks (in, slowing into its
       place; out, speeding off), the window at the window's resolution, the field and the navis at whole
       pixels, from and to the same places on the same ticks.
+    - *The gauge fills smoothly.* Then the user: "can you fill the custom gauge smoothly as well?" The game draws
+      the fill to its counter's whole pixels (128 of its 0x4000 a pixel), a pixel every 4 ticks at the normal
+      speed; Enhanced draws its end where the counter is, at the window's resolution. Its tiles, colors and
+      full flashing stay the game's.
     - *Presentation alone.* The motion goes by the battle's own ticks, never the clock, and is in no state the
       simulation keeps: a rollback, a replay and a video draw it alike. Original draws every frame exactly as
       before; every verification path draws Original (docs/frontend.md §3, "Enhanced and original").
@@ -626,6 +630,7 @@ What moves:
 | entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it and the field rushes, then a swipe takes the ground off from the left in eight strips, each a little after the one above, each strip's edge lit with a band of the cursor's color trailing it; the game's own encounter sound plays. With Reduce motion the ground fades (160) |
 | the battle's background (§2.55) | with Battle graphics Enhanced, a background that drifts by parts of a pixel a frame glides at the window's resolution instead of stepping a whole pixel every few frames. With Reduce motion, or Original, it steps as the game's does |
 | the custom screen's slide, in the battle (§2.55) | with Battle graphics Enhanced, the window slides in and out eased over the game's own 10 ticks (in, slowing into place; out, speeding off) instead of 12 pixels a tick, at the window's resolution; the HP box, the emblem and the field move with it on the same curve. With Reduce motion, or Original, it moves as the game's does |
+| the custom gauge's fill, in the battle (§2.55) | with Battle graphics Enhanced, the fill's end is where the gauge's counter is, at the window's resolution, instead of stepping a pixel every 2, 4 or 8 ticks. With Reduce motion, or Original, it steps as the game's does |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |

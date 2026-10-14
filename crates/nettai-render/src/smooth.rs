@@ -6,6 +6,8 @@
 //!
 //! - **The custom screen's slide** (`custom::Slide`): eased over the
 //!   original's 10 ticks in and out instead of 12 pixels a tick.
+//! - **The custom gauge's fill** (`hud::gauge_sub`): its end where the
+//!   counter is, not at its whole pixels.
 //! - (The background's glide is `Frame::glide`, `present`.)
 //!
 //! A position between two whole pixels is drawn twice: the frame as ever,
@@ -16,7 +18,7 @@
 //! thing is, so the rest of the frame stays as it is.
 //!
 //! **Deterministic.** Every place is the battle's state's: the custom
-//! screen's phase and tick. Nothing reads a clock and nothing is kept in the
+//! screen's phase and tick, the gauge's counter. Nothing reads a clock and nothing is kept in the
 //! simulation, its snapshot or its digest; a rollback that draws a frame
 //! again, a replay and a video draw it the same. The frame's own 240x160
 //! pixels (`Frame::pixels`) are a whole-pixel picture of the same, as the
@@ -40,6 +42,8 @@ pub struct Smooth {
 pub enum Nudged {
     /// The custom screen's window and what moves with it.
     Slide,
+    /// The custom gauge's fill's end (a pixel longer).
+    Gauge,
 }
 
 impl Smooth {
