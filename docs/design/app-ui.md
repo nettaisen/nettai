@@ -181,7 +181,12 @@ Each is settled unless the user changes it.
     match's, both players seeing the round's and a replay keeping it, or becomes each player's own as the music
     is, they chose **"Shared, as now"**: the lobby agrees it with the round and a replay records it. The rules,
     the chips and the field stay the arena game's. (§6, docs/app.md §1, "The battle's background".)
-32. **Practice's arena preview moves** (2026-10-13): "you should also animate the background in the practice setup
+32. **A dialog's text field is ready to type in** (2026-10-13): "you should auto focus the primary text field on
+    dialogs that pop up". A dialog that asks for text (a build's name, new or renamed; a direct connection's
+    address) opens with the field edited and its text selected.
+33. **A search starts its list from the top** (2026-10-13): "when a search box is changed, it should reset
+    scroll". Each change to a search field shows its list from its first row.
+34. **Practice's arena preview moves** (2026-10-13): "you should also animate the background in the practice setup
     screen", then "you should also run the field a little so it shows stuff like wind fields and panel animations"
     and "you should disable the custom gauge in the arena preview". The preview on Practice's entry is the
     session's first round run into its fight with nobody pressing anything: its background animates and scrolls,
@@ -409,7 +414,7 @@ Each is in the mockups under the same name.
   opening its list; a theme plays here in place of the title music once
   the row rests on it a moment), all remembered, and START PRACTICE; beside them the two builds facing each other
   and the arena. One line: "Set up the dummy from the menu once you're in."
-- **The arena preview moves** (§2.32): the round the session opens on, run into its fight with nothing pressed
+- **The arena preview moves** (§2.34): the round the session opens on, run into its fight with nothing pressed
   while the entry shows it, its background animating and scrolling and its field doing what it does (wind, roads,
   volcanoes, panels animating), the navis standing, with no custom gauge; never a custom screen, a banner or a
   round's end. A change of arena or background shows the new one from its start. The screenshot pass holds it
