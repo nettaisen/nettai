@@ -373,14 +373,18 @@ Each is settled unless the user changes it.
       transition or something". So there is no text: at the flash the ground splits along the middle, its two
       halves thrown apart (eased in, faster and faster) with lit edges at the split, and a diamond shockwave
       (the app's shapes are cut, never round), a second fainter one just behind it, bursts out from the middle
-      over the battle as it shows, its line thinning and fading. Its sound: "it shouldn't be the transmission sound,
+      over the battle as it shows, its line thinning and fading. That went too: "the diamond fade is too
+      exciting, maybe just like an interesting swipe". So it is a swipe: the ground covers the battle and is
+      taken off from the left in eight strips across the window, each a little after the one above (so the
+      swipe's edge is a staircase), each strip's edge lit in the cursor's color with a soft band trailing it over
+      the battle. Its sound: "it shouldn't be the transmission sound,
       it should be the encounter sound". It is the game's own encounter sound, the one every battle's start plays
       in the original as the screen breaks into it (song 0x78 in all three games: EXE6's `SOUND_BATTLE_START` of
       `gameState_8005BC8`, EXE5's 0x080054F6, EXE4's 0x08005490 and its two siblings), a sound effect of 0.7 s on
       an effects player, so it plays over the battle's music, which starts at once. The packs name it
       `encounter`, and each game's content names it as the role `sounds.encounter`; Rust names no sound. With
       Reduce motion on it is a short fade (the theme's `calm-fade`, 160 ms) of the ground, with no
-      streaks, no split and no shockwave.
+      swipe.
     - *The result*: when an online match's set is over, the game's own end plays as before, and then nettai's
       result shows over the picture before the lobby. The winner's half of the window floods with their side's
       color, sweeping in from its edge (the player's own half, on the left, in player one's `#ff5d50` as
@@ -585,7 +589,7 @@ What moves:
 | the NaviCust | a piece picked up lifts (to 1.06, with a shadow), turns as a quarter turn, and drops with a pulse along its cells; the command line's arrows pulse; a bug that appears pulses purple once |
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps |
-| entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it while streaks in the cursor's color rush in toward the middle and the field rushes, a bright flash; the ground splits along the middle, its halves thrown apart with lit edges, and a diamond shockwave bursts out from the middle as the battle shows; the game's own encounter sound plays. With Reduce motion the ground fades (160) |
+| entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it and the field rushes, then a swipe takes the ground off from the left in eight strips, each a little after the one above, each strip's edge lit with a band of the cursor's color trailing it; the game's own encounter sound plays. With Reduce motion the ground fades (160) |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
 | an error | a field's message fades in; a failure's dialog shakes once |
