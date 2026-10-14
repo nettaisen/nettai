@@ -168,6 +168,11 @@ impl Watching {
         Speed::ALL.iter().position(|s| *s == self.viewer.speed()).unwrap_or(1) as i32
     }
 
+    /// Why the replay can't go on from where it is shown: the engine stopped there, short of its end.
+    pub fn stopped(&self) -> Option<&str> {
+        self.viewer.stopped()
+    }
+
     /// Whether ticks run: it isn't paused, held by a seek or a drag, at its end, or stopped.
     pub fn playing(&self) -> bool {
         !self.viewer.paused() && self.pending.is_none() && self.drag.is_none() && !self.viewer.at_end() && self.viewer.stopped().is_none()

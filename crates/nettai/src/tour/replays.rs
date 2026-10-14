@@ -1,7 +1,8 @@
 //! The screenshot pass's steps through Replays (docs/app.md §13): the list, the selected replay, a search, a
-//! file that doesn't read, the delete question, the export's dialog (idle, under way, failed), the two cards,
-//! the viewer (a focus move and a second of playback apart, each a pair), the other console, and on a phone the
-//! selected replay's sheet.
+//! file that doesn't read (selected as the screen arrives from the menu), the delete question, the export's
+//! dialog (idle, under way, failed), the two cards, the viewer (a focus move and a second of playback apart,
+//! each a pair), the other console, a replay that fails as it is watched, and on a phone the selected replay's
+//! sheet.
 //!
 //! The pass has replays of its own, made here the first time through (`crate::replays::folder` is the pass's
 //! folder while it runs): three sets of the selected game played by themselves and recorded, written again
@@ -247,6 +248,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             if let Err(why) = make(&app.shell, &tour.dir.join("replays")) {
                 eprintln!("tour: the replays couldn't be made: {why}");
             }
+            // (A copy a pass stopped part way left.)
+            let _ = std::fs::remove_file(tour.dir.join(CHANGED));
             app.go_now(ScreenId::Replays);
             app.shell.nav.focus("list", 0);
             app.shell.nav.show_cursor(true, false);
@@ -284,7 +287,11 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "kind", 0, 1))));
     shot(add, "replays-online", Pair::None, Also::Nothing);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "kind", 0, 0))));
+    // A file that doesn't read, selected as the screen arrives from the menu: its box is empty, with nothing of
+    // the menu's reel in it (the window's picture is the reel's until something else is shown in it).
     add(SETTLE, focus("list", 5));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().go_now(ScreenId::Menu)));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().go_now(ScreenId::Replays)));
     shot(add, "replays-unreadable", Pair::None, Also::Nothing);
     add(SETTLE, focus("list", 1));
     add(SETTLE, until(|view| view.get_still()));
@@ -373,14 +380,73 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, until(|view| view.get_watching()));
     add(SETTLE * 2, focus("seek", 0));
     shot(add, "viewer-closed", Pair::None, Also::Nothing);
+    add(SETTLE, act(Action::Back));
+    watch_failed(add, until, phone);
+    shot(add, "replays-watch-failed", Pair::None, Also::Nothing);
     add(
         SETTLE,
-        Box::new(|_, app, _| {
+        Box::new(|_, app, tour| {
             let mut app = app.borrow_mut();
             app.act(Action::Back);
+            let _ = std::fs::remove_file(tour.dir.join(CHANGED));
             app.go_now(ScreenId::Menu);
         }),
     );
+}
+
+/// The file of the replay that fails as it is watched ([`watch_failed`]), in the pass's folder while its steps
+/// run.
+const CHANGED: &str = "replays/changed.ntrp";
+
+/// A replay that fails as it is watched, up to its shot: its file, a copy of the first's, damaged after the
+/// list read it (its size and its time as they were, so that the list keeps it as playable), and WATCH pressed
+/// as the screen arrives from the menu, whose reel the window's picture was last. The error is over the list,
+/// the replay's box empty: nothing of the reel, nor of another replay's still. (The copy is removed after the
+/// shot.)
+fn watch_failed(add: &mut dyn FnMut(u64, Step), until: impl Fn(fn(&ReplaysView) -> bool) -> Step, phone: bool) {
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            let copied = std::fs::copy(tour.dir.join("replays/00.ntrp"), tour.dir.join(CHANGED));
+            let made = copied.and_then(|_| std::fs::File::options().write(true).open(tour.dir.join(CHANGED))?.set_modified(std::time::UNIX_EPOCH + std::time::Duration::from_secs(october(12, 9, 0))));
+            if let Err(why) = made {
+                eprintln!("tour: the replay to damage couldn't be made: {why}");
+            }
+            // (The folder is listed again as the screen shows.)
+            let mut app = app.borrow_mut();
+            app.go_now(ScreenId::Menu);
+            app.go_now(ScreenId::Replays);
+        }),
+    );
+    add(SETTLE, until(|view| view.get_listed() && view.get_count() == 19));
+    // (It is the newest.)
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.nav.focus("list", 0)));
+    add(SETTLE, until(|view| view.get_still()));
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().go_now(ScreenId::Menu)));
+    add(
+        SETTLE,
+        Box::new(move |_, app, tour| {
+            if let Err(why) = damage(&tour.dir.join(CHANGED)) {
+                eprintln!("tour: the replay couldn't be damaged: {why}");
+            }
+            let mut app = app.borrow_mut();
+            app.go_now(ScreenId::Replays);
+            app.with_screen(ScreenId::Replays, |s, shell| s.activate(shell, if phone { "sheet.watch" } else { "watch" }, 0));
+        }),
+    );
+}
+
+/// Damage the replay at `path` where nothing shows it: its first tick's record made one no writer writes, its
+/// size and its time as they were.
+fn damage(path: &Path) -> Result<(), String> {
+    let mut bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let was = std::fs::metadata(path).and_then(|m| m.modified()).map_err(|e| e.to_string())?;
+    let replay = Replay::read(&bytes).map_err(|e| e.to_string())?;
+    // (Where its input starts: after what a file of no ticks holds.)
+    let start = written(&replay, &replay.info, Some(0)).len();
+    *bytes.get_mut(start).ok_or("the replay has no input")? |= 0x20;
+    std::fs::write(path, &bytes).map_err(|e| e.to_string())?;
+    std::fs::File::options().write(true).open(path).and_then(|f| f.set_modified(was)).map_err(|e| e.to_string())
 }
 
 /// `NETTAI_TOUR_EXPORT`: a real export of the first replay's last round, at twice the frame, into the pass's
