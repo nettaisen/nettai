@@ -255,6 +255,8 @@ impl Shell {
         }
         // The battle.
         let Loading { start, preload, .. } = loading;
+        // (The music the menus play, where it is the music this battle starts: Practice's entry's.)
+        let carried = self.carried_music(&start);
         let preload = preload.expect("made above");
         for missing in preload.missing() {
             crate::errors::log("the pack lacks something this battle draws", &missing);
@@ -288,6 +290,11 @@ impl Shell {
             }
         };
         let mut player = preload.player(driver);
+        // The battle's music goes on from where the entry's is, through the cards: the battle plays on the sound
+        // that plays it, and its round's start finds its music playing (docs/app.md §1, "The battle's music").
+        if let Some(audio) = carried.and_then(|key| self.sound.take_preview(&key)) {
+            player.carry_sound(audio);
+        }
         if let Some(recorder) = start.recorder
             && let Err(why) = player.record(recorder)
         {
@@ -309,6 +316,17 @@ impl Shell {
         self.keys.pressed.clear();
         self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, over: false, game_pause: None });
         Some((start.owner, BattleEvent::Started))
+    }
+
+    /// What the music battle `start` opens with is told by (`crate::music::key`), where it plays the player's
+    /// pick (Practice's own sessions) and its first round starts music: the menus playing that music (Practice's
+    /// entry's preview, `Sound::previewing`) keep it through the cards, and the battle takes it over as it begins.
+    pub(crate) fn carried_music(&self, start: &BattleStart) -> Option<String> {
+        if start.music != BattleMusic::Picked {
+            return None;
+        }
+        let song = start.set.first().settings.music(start.set.content())?;
+        Some(crate::music::key(&start.game, &self.battle_music(), song))
     }
 
     fn loading_failed(&mut self) {

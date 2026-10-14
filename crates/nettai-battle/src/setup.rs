@@ -22,6 +22,19 @@ impl BattleSettings {
         let s = content.stage(stage);
         BattleSettings { stage, background: s.background, effects: s.effects }
     }
+
+    /// The music a round of these settings starts as it opens
+    /// (`Battle::mode_intro`): a link battle's (a set's, or a single
+    /// battle's where the game has one), else the stage's own; none: the
+    /// stage has none. A host that plays it before the battle (a preview)
+    /// asks here.
+    pub fn music(&self, content: &Content) -> Option<crate::sound::SoundId> {
+        if self.effects & effects::LINK != 0 {
+            Some(content.defs.roles().link_battle_music(self.effects & effects::SET != 0))
+        } else {
+            content.stage(self.stage).music
+        }
+    }
 }
 
 /// Battle effects bits.

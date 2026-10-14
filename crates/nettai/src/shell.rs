@@ -345,17 +345,16 @@ impl Shell {
         self.save_settings();
     }
 
-    /// The battle's music the player picked (`crate::music`): every battle the shell runs plays with it, a
-    /// replay watched too.
+    /// The battle's music the player picked (`crate::music`), for this visit to Practice
+    /// (`screens::practice::Visit`): Practice's own sessions play it (`BattleMusic::Picked`).
     pub fn battle_music(&self) -> crate::music::Music {
-        crate::music::Music::remembered(&self.settings)
+        self.practice.visit.music.clone()
     }
 
-    /// Pick the battle's music: remembered, for the next battle the shell makes ready (a battle running goes on
-    /// with what it has).
+    /// Pick the battle's music, for the rest of this visit to Practice and the next battle the shell makes ready
+    /// (a battle running goes on with what it has: `crate::music::retheme` changes it).
     pub fn set_battle_music(&mut self, music: &crate::music::Music) {
-        music.remember(&mut self.settings);
-        self.save_settings();
+        self.practice.visit.music = music.clone();
     }
 
     /// Keep the settings as they are now.
@@ -1350,9 +1349,12 @@ impl App {
         self.settle();
         // The title music plays on the menu screens (not under a battle with music of its own, or under what a
         // screen plays itself).
+        // (A battle being made ready that will take over the music the menus play, Practice's entry's, keeps it
+        // playing through the cards: `Shell::carried_music`.)
         let silent = |m: crate::battle::BattleMusic| m == crate::battle::BattleMusic::None;
+        let carried = self.shell.loading.as_ref().and_then(|l| self.shell.carried_music(&l.start)).is_some_and(|key| self.shell.sound.previewing(&key));
         let in_battle = self.shell.battle.as_ref().is_some_and(|b| !silent(b.music))
-            || self.shell.loading.as_ref().is_some_and(|l| !silent(l.start.music))
+            || self.shell.loading.as_ref().is_some_and(|l| !silent(l.start.music) && !carried)
             || (ticks.is_some() && !self.shell.battle.as_ref().is_some_and(|b| silent(b.music)));
         self.shell.sound.want_music(!in_battle && self.shell.ready().is_some());
         self.shell.sound.frame(now, ticks, &mut samples);

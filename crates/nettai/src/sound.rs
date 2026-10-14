@@ -5,9 +5,10 @@
 //! game's too: the sound its pack names `title-screen`, played across the menu screens, faded out as a battle
 //! starts, and crossfaded with the next game's as the game changes (docs/design/app-ui.md §6).
 //!
-//! A screen may have the menus play a battle theme in place of the title music ([`Sound::set_preview`]:
-//! Practice's entry, its Music row on a theme), on a driver of the theme's own pack's bank; the music crossfades
-//! as it changes, as it does between two games' title music.
+//! A screen may have the menus play a battle's music in place of the title music ([`Sound::set_preview`]:
+//! Practice's entry, the music its session will start), on the battle's own sound (its packs' drivers, a theme's
+//! pack among them); the music crossfades as it changes, as it does between two games' title music. The battle
+//! that starts then takes that sound over ([`Sound::take_preview`]), so its music goes on where it is.
 //!
 //! The device gets one stream at the battle's rate. While a battle runs, the menus' sounds are ticked with
 //! its ticks and added to its samples; with none running they run on their own clock at the same rate
@@ -57,11 +58,21 @@ struct Menu {
     playing: bool,
 }
 
-/// A song the menus play in place of the title music: a battle theme previewed (by its key, the pick's), on a
-/// driver of its own pack's bank, its sound 0 the theme's song.
+/// A battle's music the menus play in place of the title music ([`Sound::set_preview`]): by a key that says
+/// which (the battle's game, the music picked and the song), the battle's own sound's parts, and the battle's
+/// sound that is its music (the cue its first round starts it with).
+pub struct PreviewSong {
+    pub key: String,
+    pub parts: nettai_frontend::preload::SoundParts,
+    pub music: SoundId,
+}
+
+/// A battle's music played in place of the title music: on a sound of the battle's own parts, started by the
+/// battle's own cue, so that the battle can take it over as its sound.
 struct Preview {
     key: String,
     music: BattleAudio,
+    cue: SoundCue,
     /// It is playing (or fading out).
     playing: bool,
 }
@@ -172,12 +183,12 @@ impl Sound {
         }
     }
 
-    /// Play `preview` in place of the title music (a key that says which, and the battle theme: a screen's
-    /// preview of the battle's music the player picked), or the title music again (none). Where it is another
-    /// than the one playing, that one fades out under it, and it starts from its beginning, fading in (as the
-    /// title music does), while the menus' music is wanted.
-    pub fn set_preview(&mut self, preview: Option<(String, nettai_audio::Theme)>) {
-        if self.preview.as_ref().map(|p| p.key.as_str()) == preview.as_ref().map(|(key, _)| key.as_str()) {
+    /// Play `preview` in place of the title music (a screen's preview of a battle's music: Practice's entry), or
+    /// the title music again (none). Where it is another than the one playing (by its key), that one fades out
+    /// under it, and it starts from its beginning, fading in (as the title music does), while the menus' music is
+    /// wanted.
+    pub fn set_preview(&mut self, preview: Option<PreviewSong>) {
+        if self.preview.as_ref().map(|p| p.key.as_str()) == preview.as_ref().map(|p| p.key.as_str()) {
             return;
         }
         let old = match self.preview.take() {
@@ -194,22 +205,46 @@ impl Sound {
             self.leaving = Some((old, self.fade));
         }
         self.fade = 0.0;
-        self.preview = preview.map(|(key, theme)| {
-            let song = nettai_audio::Songs(vec![nettai_battle::content::InPack { pack: Default::default(), id: theme.song }]);
-            Preview { key, music: BattleAudio::with_banks(vec![theme.bank], song), playing: false }
-        });
+        self.preview = preview.map(|PreviewSong { key, parts: (banks, songs), music }| Preview { key, music: BattleAudio::with_banks(banks, songs), cue: SoundCue::Music(music), playing: false });
     }
 
-    /// The song the menus' music plays now, if it plays one, and whether it is the preview's (by its own bank's
+    /// Whether the preview is `key`'s, playing or to play (a battle about to start that takes it over keeps the
+    /// menus' music wanted meanwhile).
+    pub fn previewing(&self, key: &str) -> bool {
+        self.preview.as_ref().is_some_and(|p| p.key == key)
+    }
+
+    /// The preview's sound, playing `key`'s music, for the battle that starts now to play on
+    /// (`Player::carry_sound`): its music goes on there where it is, at the battle's levels. None: no such preview
+    /// plays. The menus' music fades in afresh when it is wanted again.
+    pub fn take_preview(&mut self, key: &str) -> Option<BattleAudio> {
+        if !self.preview.as_ref().is_some_and(|p| p.key == key && p.playing) {
+            return None;
+        }
+        self.fade = 0.0;
+        self.preview.take().map(|p| p.music)
+    }
+
+    /// The song the menus' music plays now, if it plays one, and whether it is the preview's (by its own pack's
     /// number) or the title music's.
     #[cfg(test)]
     pub fn music_song(&self) -> Option<(bool, nettai_audio::m4a::SongId)> {
+        self.music_at().map(|(preview, song, _)| (preview, song))
+    }
+
+    /// [`Sound::music_song`], and how far into the song it is (its player's clock: ticks played since it started).
+    #[cfg(test)]
+    pub fn music_at(&self) -> Option<(bool, nettai_audio::m4a::SongId, u32)> {
         let (audio, preview) = match &self.preview {
             Some(p) => (&p.music, true),
             None => (&self.menu.as_ref()?.music, false),
         };
-        let player = audio.driver().player(nettai_audio::MUSIC_PLAYER)?;
-        player.is_playing().then(|| player.song().map(|s| (preview, s))).flatten()
+        // (A preview's music is on its song's own pack's driver: a theme of another game's on that game's.)
+        (0..=u8::MAX)
+            .map_while(|n| audio.driver_of(nettai_battle::content::PackId(n)))
+            .filter_map(|d| d.player(nettai_audio::MUSIC_PLAYER).filter(|p| p.is_playing()).and_then(|p| Some((p.song()?, p.clock()))))
+            .next()
+            .map(|(song, clock)| (preview, song, clock))
     }
 
     /// Whether the title music should play: on the menu screens, not in a battle or on the cards before one.
@@ -245,7 +280,7 @@ impl Sound {
             // The title music, or the preview in its place: started (from nothing, fading in) when it is
             // wanted, faded out and then stopped when it isn't.
             let (music, cue, playing) = match &mut self.preview {
-                Some(p) => (&mut p.music, Some(SoundCue::Music(SoundId(0))), &mut p.playing),
+                Some(p) => (&mut p.music, Some(p.cue), &mut p.playing),
                 None => (&mut m.music, m.title, &mut m.playing),
             };
             if self.wanted && !*playing {
