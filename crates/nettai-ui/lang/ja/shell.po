@@ -20,7 +20,7 @@ msgid "PRACTICE"
 msgstr "練習"
 
 msgid "BUILDS"
-msgstr "ビルド"
+msgstr "構築"
 
 msgid "REPLAYS"
 msgstr "リプレイ"
@@ -119,10 +119,10 @@ msgid "Different versions"
 msgstr "バージョンが違います"
 
 msgid "This build can't be used: {}."
-msgstr "このビルドは使えません: {}。"
+msgstr "この構築は使えません: {}。"
 
 msgid "This build can't be used"
-msgstr "このビルドは使えません"
+msgstr "この構築は使えません"
 
 msgid "{}."
 msgstr "{}。"
@@ -146,13 +146,13 @@ msgid "Pick the same game."
 msgstr "同じゲームを選んでください。"
 
 msgid "This build can't be used."
-msgstr "このビルドは使えません。"
+msgstr "この構築は使えません。"
 
 msgid "Your opponent's build can't be used."
-msgstr "相手のビルドは使えません。"
+msgstr "相手の構築は使えません。"
 
 msgid "Your opponent's build can't be used"
-msgstr "相手のビルドは使えません"
+msgstr "相手の構築は使えません"
 
 msgid "Your opponent left."
 msgstr "相手が退出しました。"

@@ -171,6 +171,8 @@ Each is settled unless the user changes it.
     starts one song), the title music again for "Game's own" and elsewhere; and "also you should be able to change
     the bgm in the practice menu": the practice menu's Battle rows have Music, the same pick, which switches the
     battle's music at once.
+30. **A build is 構築 in Japanese** (2026-10-13): "build should be called "構築" in japanese". Every Japanese string
+    that said ビルド says 構築 (構築, 新規構築, 構築を編集, 相手の構築, この構築は使えません, and the rest).
 
 ## 3. Chosen where the user gave no answer
 
