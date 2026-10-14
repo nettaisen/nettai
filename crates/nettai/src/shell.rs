@@ -1379,7 +1379,8 @@ impl App {
         let in_battle = self.shell.battle.as_ref().is_some_and(|b| !silent(b.music))
             || self.shell.loading.as_ref().is_some_and(|l| !silent(l.start.music) && !carried)
             || (ticks.is_some() && !self.shell.battle.as_ref().is_some_and(|b| silent(b.music)));
-        self.shell.sound.want_music(!in_battle && self.shell.ready().is_some());
+        // (Practice's entry's music plays on while the game it changed to loads: the same song goes on after.)
+        self.shell.sound.want_music(!in_battle && (self.shell.ready().is_some() || self.shell.sound.previews()));
         self.shell.sound.frame(now, ticks, &mut samples);
         // The screen that was leaving has left.
         if self.shell.swap.as_ref().is_some_and(|s| now >= s.at) {
