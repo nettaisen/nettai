@@ -27,7 +27,9 @@ is the battle once `f + 1` ticks have run. getgud's tick `t` is the state after 
 - **Transport**: a WebRTC data channel, unordered and without retransmits (nettai-rtc: native on the `rtc` crate,
   the browser's on wasm32), met in a room of the signaling server (`signaling/`, a Cloudflare Worker: a player asks
   it for a room, it picks the room's code, and the other player joins by that code) or directly (a host's UDP port,
-  joined by its address); a dropped connection is made again and the match goes on where it was. What goes wrong is
+  joined by its address). The two leave the room once their connection is through, having agreed over it on the
+  code of a reconnect room; a dropped connection is made again through that room, a new code agreed each time, and
+  the match goes on where it was. What goes wrong is
   a kind a host can say to its player in its own words, with the detail apart, for a log (§4.8, §4.9).
 - **Before the match**: a lobby checks the protocol, the engine, the game and the content; holds the match's
   settings, which are both players' (the rounds, whether patch cards apply, and whether builds are closed: either
@@ -740,15 +742,19 @@ on no engine crate. Two layers:
 - `PeerConnection`: one connection and its data channel. It is told the other side's description and candidates
   and hands over its own as events (`PeerEvent`: the description, each candidate as it is found, open, down), so
   the browser's asynchronous offer and answer fit the same API; `send` and `recv` never wait.
-- `Link`: the channel a match is played on, which keeps a connection up: it meets the other player (in a room of
-  the signaling server, one it asks the server to make, `Link::create_room`, or one it has the code of,
+- `Link`: the channel a match is played on, which keeps a connection up: it meets the other player (in an invite
+  room of the signaling server, one it asks the server to make, `Link::create_room`, or one it has the code of,
   `Link::join_room`; or directly at a host's port, natively, `Link::host` and `Link::join`), and when the connection
-  drops makes another (below). Its `send` and `recv` are a datagram channel's; while it is down, what is sent is
-  dropped and nothing comes.
+  drops makes another (below), through the server's reconnect room or to the same address. Its `send` and `recv`
+  are a datagram channel's; while it is down, what is sent is dropped and nothing comes.
 
 **The channel** is opened unordered and without retransmits, and negotiated out of band (stream 0 on both sides, no
 in-band announcement), so both sides make it alike and a lost datagram is the next one's to make up, never SCTP's to
-resend late. WebRTC's framing adds about 94 bytes to each frame (§4.6).
+resend late. WebRTC's framing adds about 94 bytes to each frame (§4.6). The link has a few messages of its own on the
+same channel (the reconnect code and its acknowledgment, below). They are the channel's text messages, and the
+game's datagrams are its binary ones: a data channel message says which it is (SCTP's payload protocol id), so the
+two are told apart at no cost, and a frame has no byte more than before. `Link::send` and `Link::recv` carry only
+the binary ones.
 
 **The native backend** runs on the caller's thread and never waits: each call pumps the connection (the datagrams
 that came, `rtc`'s timers when due, what it has to send, its events), and the frontend calls in every frame, often
@@ -768,36 +774,81 @@ soon as the network is back.)
 **The signaling server** is `signaling/`, a Cloudflare Worker in TypeScript with a Durable Object a room, on the
 WebSocket hibernation API (an idle room costs nothing; `ping` is answered `pong` without waking it). TypeScript
 because the Durable Object WebSocket API is the Workers runtime's own, with no build step under `wrangler dev`;
-workers-rs would add a wasm build for a relay of about 200 lines. This is version 1 of its protocol (nettai-rtc's
-`signal` module; a client says its version as it connects, `v=1`, and a server of another refuses it):
+workers-rs would add a wasm build for a relay of about 300 lines. This is version 1 of its protocol (nettai-rtc's
+`signal` module; a client says its version as it connects, `v=1`, and a server of another refuses it).
 
-- **A room's code is the server's to pick**, never a client's (the user's instruction: "signaling server should
-  assign invite code instead of the client generating one"). It is six characters of
-  `ABCDEFGHJKMNPQRSTUVWXYZ23456789`: capitals and digits without `0` and `O` and without `1`, `I` and `L`, so that
-  none reads as another; some 887 million codes. The server draws it evenly from its own randomness
+**The server only while it is needed.** The user's request: "the signaling server session should last just long
+enough for the peers to reach each other, so it doesn't have to hold onto a connection longer than required. but it
+should also support reconnect somehow, maybe by some special lobby code that the two players agree on for each
+reconnect?" So the two players are in a room of the server only until their connection is through, and again while
+a dropped one is made anew. Between those times neither has a socket to it: a lobby, a match and the lobby after
+it (another match with the same opponent) need no server. There are two kinds of room:
+
+- **An invite room** is where two players first meet. Its code is the server's to pick, never a client's (the
+  user's instruction: "signaling server should assign invite code instead of the client generating one"). It is six
+  characters of `ABCDEFGHJKMNPQRSTUVWXYZ23456789`: capitals and digits without `0` and `O` and without `1`, `I` and
+  `L`, so that none reads as another; some 887 million codes. The server draws it evenly from its own randomness
   (`crypto.getRandomValues`), and draws again if a room has it. A code as a player types it has its letters made
   capitals and its spaces and hyphens dropped (`signal::normalize_code`): a host may show it in two groups of three.
-- **To make a room** a client opens a WebSocket to `/rooms?peer=ID&v=1` (ID the client's own, random, the same on
-  every reconnection). The server makes the room, the client is its host (side 0, the left navi), and the server's
-  welcome says the code (`Link::code`).
-- **To join a room**, or to come back to one after the socket dropped, a client opens
-  `/rooms/CODE?peer=ID&v=1`. A code no room has is refused as that, and no room is made of it.
-- The room has two places: its maker hosts and the next ID to come joins; an ID that comes again gets its place
-  back, which is how a reconnecting player keeps its side, and a third is refused.
-- The server says `welcome` (the place, whether the other is there, and the room's code), `peer` (the other came or
-  went), `signal` (what the other sent) and `error` (a refusal, after which the socket closes: its `reason` is
-  `not-found`, `full`, `version`, `bad-request` or `busy`, and its `message` is for a log); a client says `signal`
-  (relayed to the other, dropped if it isn't there) and `leave` (gives its place up).
+  To make one a client opens a WebSocket to `/rooms?peer=ID&v=1` (ID the client's own, random, the same on every
+  reconnection of its socket). The server makes the room, the client is its host (side 0, the left navi), and the
+  server's welcome says the code (`Link::code`). To join one, or to come back to one after the socket dropped, a
+  client opens `/rooms/CODE?peer=ID&v=1`. A code no room has is refused as that, and no room is made of it.
+- **A reconnect room** is where the two meet again after their connection dropped, by a code they agreed on over
+  that connection (below): 32 lowercase hex digits, 128 random bits. Both open `/reconnect/CODE?peer=ID&v=1`. The
+  first to come makes the room and the second joins it. A code not of that form is refused (`bad-request`). The
+  server can't tell a code that was used before from a new one, and doesn't need to: the clients never go back to
+  a spent one, and nobody else knows it.
+- A room has two places. In an invite room its maker hosts and the next ID to come joins; in a reconnect room the
+  places are only the first and the second to come, and the clients keep the roles they had. An ID that comes again
+  gets its place back, which is how a client whose socket dropped keeps its side, and a third is refused.
+- The server says `welcome` (in an invite room the place, whether the other is there, and the invite's code; in a
+  reconnect room whether the other is there), `peer` (the other came or went), `signal` (what the other sent) and
+  `error` (a refusal, after which the socket closes: its `reason` is `not-found`, `full`, `version`, `bad-request`
+  or `busy`, and its `message` is for a log); a client says `signal` (relayed to the other, dropped if it isn't
+  there) and `leave` (gives its place up).
 - It reads none of the signals: the joiner's offer, the host's answer, the candidates, each of a connection's
   generation, and the host's call to dial again.
-- A room is kept while a socket of it is open and ten minutes after the last one goes; then it is forgotten, and its
-  code with it. A room both players left is forgotten at once. A code whose room is forgotten is refused like one
-  that never was a room's.
+- A room both players left is forgotten at once, and its code with it. Otherwise a room is kept while a socket of it
+  is open, and after the last one goes ten minutes for an invite room (a player whose socket dropped comes back to
+  its place) and 30 seconds for a reconnect room (the link's time to reconnect, `signal::RECONNECT_ROOM_KEPT`);
+  then it is forgotten. A code whose invite room is forgotten is refused like one that never was a room's.
+- Taking a place and giving one up each read and write the room's places with nothing else between
+  (`blockConcurrencyWhile`): the two leave a room at about the same moment, and come to a reconnect room at about
+  the same moment, and each must see the other's doing.
 
-nettai-rtc's `testing` feature has a server of its own speaking the protocol, in process, for tests (it picks codes
-and refuses as the Worker does; `Server::forget` ends a room as the Worker's ten minutes do). The Worker is run
-locally (`npx wrangler dev`), and nettai-rtc's link tests run against it too, with
-`NETTAI_TEST_SIGNAL=ws://127.0.0.1:8787`; deploying it is its owner's step (`npx wrangler deploy`).
+**The code of the next reconnection** is agreed over each connection, once it is open, so the server first sees a
+code when it is used. The host draws it from the system's cryptographic randomness (`getrandom`; the browser's
+`crypto.getRandomValues`), 16 bytes, a new one for every connection, and says it (`code HEX`, a text message)
+every 100 ms until the joiner acknowledges it (`ack HEX`), the way the lobby says its part again; the joiner
+acknowledges every one that comes. The channel is DTLS's, so nobody between the two reads it.
+
+- **Through.** The connection is through, for the joiner, when the code comes: it has heard the host on an open
+  channel. For the host it is when the acknowledgment comes: a datagram has gone each way. Each side then gives its
+  place in the room up (`leave`) and closes its socket. Once both have, the server forgets the room, and an invite's
+  code names no room from then. Before that the link stays in the room it met in, as it did, and an invite waits as
+  long as its room is kept.
+- **A drop** sends each side to the reconnect room of the code agreed last; before any is agreed, to the invite
+  room, which neither has then left. A code agreed is spent once the next one is: until then it is the one the two
+  meet by (its room made again if it was forgotten), so a drop before the new code is acknowledged reconnects by
+  the code from before. The joiner always knows its one code. The host doesn't, when its newest code isn't
+  acknowledged: the code may have been lost on the way, or only the acknowledgment. So it waits in that code's room
+  as well as the one from before, and keeps the room the joiner's offer comes through (the joiner has the new code
+  if, and only if, it is there), leaving the other.
+- Roles stay as they were in a reconnect room: the joiner dials and the host answers, and the generations go on
+  counting. Once the new connection is through, both leave and close, a new code agreed for the next drop.
+- A reconnect room's socket that doesn't open, or drops, is made again (0.5 seconds, then twice as long each time,
+  up to 5): the server out of reach is no reason to stop before the link's 30 seconds are out, and then it is
+  `ConnectionLost` as for any drop that didn't come back. Meanwhile `Link::problem` says the server can't be
+  reached. A refusal in a reconnect room (a third socket in it, or another version) ends the link: the connection
+  is lost (`ServerVersion` for the version).
+
+nettai-rtc's `testing` feature has a server of its own speaking the protocol, in process, for tests (it picks codes,
+refuses and forgets as the Worker does; `Server::forget` ends a room at once, `Server::set_reachable` takes it off
+the network, and `testing::Client` is a socket of a test's own, for either server). The Worker is run locally
+(`npx wrangler dev`), and nettai-rtc's link tests run against it too, with `NETTAI_TEST_SIGNAL=ws://127.0.0.1:8787`
+(those that look inside the server, or take it off the network, run on the in-process one only); deploying it is
+its owner's step (`npx wrangler deploy`).
 
 **Direct connect** (native only) exchanges nothing before ICE: each side makes up the other's description, every
 field of which is fixed but two. The ICE credentials are fixed (the joiner's username fragment is its nonce, drawn
@@ -814,21 +865,20 @@ generation, which works the same on both backends and directly; what is said of 
 drop is the connection's state (disconnected, failed or closed), its data channel closing, or silence: nothing from
 the other side for 3 seconds while it is open (the lobby sends every 100 ms, a match every frame). Then the joiner
 dials again at once, and again after 0.5, 1, 2, then every 3 seconds while dials don't open (each given 10
-seconds), and in a room also when the host says it lost the connection, or when the host is back in the room. The
-host waits for the next generation: its offer in the room (asking for it every 2 seconds while it has no new
-connection under way), or directly the joiner's checks, whose username fragment names a newer generation (the host
+seconds), and in a room also when the host says it lost the connection, or when the host comes into the room. The
+host waits for the next generation: its offer in the reconnect room (asking for it every 2 seconds while it has no
+new connection under way), or directly the joiner's checks, whose username fragment names a newer generation (the host
 reads its socket itself, and takes only the joiner whose nonce came first). After 30 seconds down the link gives
 up, and every call after errs (`ErrorKind::ConnectionLost`; its detail: "the connection to the other player dropped
 (WHY) and didn't come back within 30 seconds"); while it is down, `Link::down_for` says for how long and
 `Link::gives_up_in` how long is left. What a connection had taken before it dropped is still handed over
 (`Link::recv` gives it first): a player who leaves says so in their last datagrams, which come with the close that
-follows them. The signaling WebSocket reconnects on its own, with the same ID; the connection doesn't need it while
-it is up.
+follows them. The connection doesn't need the server while it is up, and has no socket to it then.
 
 **Before the first connection** nothing is down, and two waits end the link instead. The signaling server not
-letting the player in within 10 seconds (`Config::server_timeout`), or its socket not opening at all, is
-`ErrorKind::ServerUnreachable`, at once: a player who asked for a room is told now, and nothing is tried again
-(once the server has let the player in, a socket that drops is made again for as long as the room is kept). And
+letting the player into the invite room within 10 seconds (`Config::server_timeout`), or its socket not opening at
+all, is `ErrorKind::ServerUnreachable`, at once: a player who asked for a room is told now, and nothing is tried
+again (once the server has let the player in, a socket that drops is made again for as long as the room is kept). And
 once the other player is there to connect to (in the room; dialed directly; dialing a direct host) with no
 connection open after 30 seconds (`Config::connect_timeout`), the link gives up with `ErrorKind::CantConnect`: no
 path between the two networks was found, or nothing answers at the address. How long a host waits for the other
@@ -857,7 +907,7 @@ link that has ended (the first error a link meets is the one every later call re
 
 | `ErrorKind` | When |
 |---|---|
-| `ServerUnreachable` | The signaling server's socket didn't open, or the server didn't let the player in within `Config::server_timeout` |
+| `ServerUnreachable` | The signaling server's socket didn't open, or the server didn't let the player into the invite room within `Config::server_timeout` (while a dropped connection is made again, the server out of reach is only what `Link::problem` says, and the link goes on trying until it is `ConnectionLost`) |
 | `ServerVersion` | The signaling server speaks another version of its protocol than the program: one of the two is out of date |
 | `NoSuchRoom` | No room has that code: mistyped (refused before the server is asked, if it can't be a code), or its room is over |
 | `RoomFull` | The room has two players already |
@@ -1037,12 +1087,17 @@ Over WebRTC links in a room of the in-process signaling server, a short set (the
 has 1 HP) is cut mid-round-one by three seconds of the joiner's network going: both see the channel down, a new
 connection comes back about 0.1 s after the network does, and the set goes on to its end, both replays the same but
 for who recorded, one playing back with no difference. nettai-rtc's tests open links on loopback (directly in about
-0.1 s, through a room in about 0.15 s), bring them back after outages of either side (one generation an outage),
-give up after the reconnection timeout, and are refused, each by its kind, where they should be: a third player in
-a room, a code no room has (one that can't be a code, one that was never a room's, one whose room both players
-left, one whose room's time ran out), a server that isn't there or doesn't answer or speaks another version, a
-direct address that names nothing, a port that is taken, a host that never answers. The same tests pass against the
-Worker under `wrangler dev` (but the one that needs a room's time to run out), and in a browser (headless Chrome) two connections in a page, two links in a room, and
+0.1 s, through a room in about 0.15 s), see both leave the room once through (the server keeping nothing, the
+invite's code then naming no room), bring them back after outages of either side (one generation an outage) through
+the reconnect room of the code agreed before it, each drop by the next code, also when the server's sockets drop
+in the middle, and when the newest code or only its acknowledgment was lost before the drop, give up after the
+reconnection timeout (also with the server out of reach meanwhile), and are refused, each by its kind, where they
+should be: a third player in a room or a reconnect room, a reconnect code not of the clients' form, a code no room
+has (one that can't be a code, one that was never a room's, one whose room both players left, one whose room's time
+ran out), a server that isn't there or doesn't answer or speaks another version, a direct address that names
+nothing, a port that is taken, a host that never answers; a stranger in the room of a spent code meets nobody. The
+same tests pass against the Worker under `wrangler dev` (but those that need a room's time to run out or the server
+off the network, and the checks that look inside the server), and in a browser (headless Chrome) two connections in a page, two links in a room, and
 a browser's link and a native one in the same room trade datagrams. The frontend's tests over links in a room go
 the way a Play screen does: `an_invite_becomes_a_match` (an invite's code typed, the lobby with its settings
 changed, each side's preload feeding the loading, the match on the lobby's channel, one player leaving the match and
