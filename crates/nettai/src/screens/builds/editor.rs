@@ -89,6 +89,23 @@ impl Draft {
         true
     }
 
+    /// Switch the build's version (`Build::set_version`: what the version sets is the new one's, the rest kept).
+    /// Whether it changed.
+    pub fn choose_version(&mut self, version: &str) -> bool {
+        let kit = self.kit.clone();
+        match self.build.set_version(kit.content(), &kit.builds, version) {
+            Ok(true) => {
+                self.recheck();
+                true
+            }
+            Ok(false) => false,
+            Err(why) => {
+                crate::errors::log("switching a build's version", &why);
+                false
+            }
+        }
+    }
+
     fn recheck(&mut self) {
         self.checked = Checked::of(self.kit.content(), &self.kit.game, &self.build.side);
         self.changed = true;

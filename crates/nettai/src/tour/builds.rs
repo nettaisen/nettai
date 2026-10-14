@@ -153,6 +153,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
         shot(add, "builds-one-focus", Pair::Second);
         add(SETTLE, press("one.rename", 0));
         shot(add, "builds-rename", Pair::None);
+        // (The first Back ends the name's edit, the second shuts the dialog: §2.32's field ready to type in.)
+        add(SETTLE, act(Action::Back));
         add(SETTLE, act(Action::Back));
         add(SETTLE, press("one.delete", 0));
         shot(add, "builds-delete", Pair::None);
@@ -165,6 +167,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
         shot(add, "builds-buttons-focus", Pair::Second);
         add(SETTLE, press("rename", 0));
         shot(add, "builds-rename", Pair::None);
+        // (The first Back ends the name's edit, the second shuts the dialog: §2.32's field ready to type in.)
+        add(SETTLE, act(Action::Back));
         add(SETTLE, act(Action::Back));
         add(SETTLE, press("delete", 0));
         shot(add, "builds-delete", Pair::None);
@@ -289,6 +293,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     shot(add, "builds-navicust", Pair::None);
     add(90, on_tab(EditorTab::Navicust, "NaviCust"));
 
+    switched(add, shot, phone);
+
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -297,6 +303,54 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
             app.go_now(ScreenId::Menu);
         }),
     );
+}
+
+/// A build's version switched on the Navi tab (docs/app.md §8): a build of the game's first version made beside
+/// the walk's, with a Giga chip of that version's alone in its folder's first entry; the switch, the focus on it,
+/// with the forms the version brings the game's own navi under it (`builds-navi-version`); switched to the next
+/// version (`builds-navi-switched`: the header's tag and its count, the Folder tab marked); and the Folder tab,
+/// the entry in the error red and the strip saying why (`builds-folder-switched`).
+fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), phone: bool) {
+    const NAME: &str = "Switched";
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            let Some(kit) = crate::builds::kit(&app.shell) else { return };
+            let content = kit.content().clone();
+            let Some(first) = kit.builds.versions.first().map(|v| v.id.clone()) else { return };
+            let Ok(mut side) = kit.builds.new_build(&content, &first) else { return };
+            let own = (0..content.defs.chips.len() as u16)
+                .map(nettai_content_api::ChipHandle)
+                .find(|&c| kit.versions_of(c).is_some_and(|v| v == [first.clone()]) && !content.chip(c).codes.is_empty());
+            if let Some(chip) = own {
+                let mut folder = side.folder(&content);
+                folder.chips[0] = Some(nettai_battle::custom::FolderChip::new(chip, content.chip(chip).codes[0]));
+                let _ = side.set_folder(&content, &folder);
+            }
+            let build = crate::builds::store::Build::new(&content, NAME, side);
+            let _ = crate::builds::store::write(&crate::builds::store::new_path(&kit.game, NAME), &content, &kit.game, &build);
+            leave(&mut app);
+            app.go_now(ScreenId::Builds);
+            let at = crate::builds::store::list(&kit.game).iter().position(|l| l.name == NAME).unwrap_or_default();
+            app.shell.nav.focus("builds", at as i32);
+        }),
+    );
+    add(SETTLE, act(Action::Confirm));
+    if phone {
+        add(SETTLE, press("one.edit", 0));
+    }
+    add(SETTLE, press("tab", 0));
+    add(SETTLE, focus("version", 0));
+    shot(add, "builds-navi-version", Pair::None);
+    add(90, on_tab(EditorTab::Navi, "Navi"));
+    add(SETTLE, act(Action::Right));
+    shot(add, "builds-navi-switched", Pair::None);
+    add(90, on_tab(EditorTab::Navi, "Navi"));
+    add(SETTLE, press("tab", 1));
+    add(SETTLE, focus("slot", 0));
+    shot(add, "builds-folder-switched", Pair::None);
+    add(90, on_tab(EditorTab::Folder, "Folder"));
 }
 
 /// Out of whatever of the Builds screen is open (a dialog, the library, the editor), back to its list.
