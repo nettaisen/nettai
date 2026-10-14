@@ -667,6 +667,10 @@ impl Screen for Replays {
         self.search = text.chars().filter(|c| !c.is_control()).take(SEARCH_LENGTH).collect();
         shell.ui().global::<ReplaysView>().set_search(self.search.as_str().into());
         self.fill(shell);
+        // (What the search finds is shown from its top: the user, "when a search box is changed, it should reset
+        // scroll".)
+        let ui = shell.ui();
+        shell.nav.list_to_top(&ui, "list");
     }
 
     fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {

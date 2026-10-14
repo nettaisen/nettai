@@ -184,6 +184,8 @@ Each is settled unless the user changes it.
 32. **A dialog's text field is ready to type in** (2026-10-13): "you should auto focus the primary text field on
     dialogs that pop up". A dialog that asks for text (a build's name, new or renamed; a direct connection's
     address) opens with the field edited and its text selected.
+33. **A search starts its list from the top** (2026-10-13): "when a search box is changed, it should reset
+    scroll". Each change to a search field shows its list from its first row.
 
 ## 3. Chosen where the user gave no answer
 
