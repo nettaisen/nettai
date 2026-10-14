@@ -650,20 +650,15 @@ export component Backdrop inherits Rectangle {
 }
 
 // The jack-in (docs/design/app-ui.md §4, "Motion"; §2.49): as a battle begins, over its first frames, the field's
-// rush goes on across the window. The ground covers the battle while streaks in the cursor's color rush in toward
-// the middle and the light gathers there; at the flash the ground splits along the middle, its two halves thrown
-// apart with lit edges, and a diamond shockwave bursts out from the middle over the battle as it shows. It is drawn
-// over the battle and takes no input: the battle starts when it would have, and runs under it. With motion turned
-// down the ground only fades (`calm`, the theme's `calm-fade`), with no streaks, no split and no shockwave.
+// rush goes on across the window. The ground covers the battle, and a swipe takes it off from the left: eight
+// strips across the window, each a little after the one above, so the swipe's edge is a staircase, each strip's
+// edge lit in the cursor's color with a soft band trailing it over the battle. It is drawn over the battle and
+// takes no input: the battle starts when it would have, and runs under it. With motion turned down the ground
+// only fades (`calm`, the theme's `calm-fade`).
 export component JackIn inherits Rectangle {
     // How far it is, 0 to 1 (1 once it is over, and as it is made: nothing shows).
     property <float> p: 1 - clock.v;
-    // How far the ground has split (from the flash on), eased in: its halves leave faster and faster.
-    property <float> split: clamp((root.p - 0.46) / 0.3, 0, 1);
-    property <float> thrown: root.split * root.split;
-    // How far the shockwave has gone (from the flash on), eased out.
-    property <float> wave: 1 - pow(1 - clamp((root.p - 0.47) / 0.45, 0, 1), 3);
-    property <length> half: self.height / 2;
+    property <int> strips: 8;
     clock := Pulse {
         seq: Shell.jack-in-seq;
         duration: Theme.motion ? Theme.set-piece : Theme.calm-fade;
@@ -679,77 +674,45 @@ export component JackIn inherits Rectangle {
             opacity: clock.v;
         }
 
-        // The ground's two halves over the battle, thrown apart from the flash on, each with a lit edge at the
-        // split.
-        for side in 2: Rectangle {
-            property <bool> lower: side == 1;
-            visible: Theme.motion && root.split < 1;
-            y: (self.lower ? root.half : 0px) + (self.lower ? 1 : -1) * root.thrown * (root.half + 12px);
-            height: root.half;
-            background: self.lower ? @linear-gradient(180deg, Theme.ground-top.mix(Theme.ground-bottom, 0.5) 0%, Theme.ground-bottom 100%) : @linear-gradient(180deg, Theme.ground-top 0%, Theme.ground-top.mix(Theme.ground-bottom, 0.5) 100%);
+        // The strips: each the ground's own slice, its edge moving from the window's left to beyond its right
+        // (eased in and out), a strip lower down a little later.
+        for i in root.strips: Rectangle {
+            property <float> q: clamp((root.p - i * 0.045) / 0.62, 0, 1);
+            property <float> eased: self.q < 0.5 ? 4 * self.q * self.q * self.q : 1 - pow(-2 * self.q + 2, 3) / 2;
+            property <length> band: 140px;
+            property <length> edge: self.eased * (parent.width + self.band);
+            visible: Theme.motion && self.q < 1;
+            y: i * parent.height / root.strips;
+            height: parent.height / root.strips + 1px;
+            clip: true;
+            // (The ground of the whole window, in its slice's place, so the strips together are the gradient.)
             Rectangle {
-                y: parent.lower ? 0px : parent.height - self.height;
-                height: 3px;
-                background: #ffffff.mix(Theme.cursor, 0.4);
-                drop-shadow-blur: 16px;
-                drop-shadow-color: Theme.cursor;
-                opacity: root.p < 0.42 ? 0 : 1 - root.split * 0.6;
+                x: parent.edge;
+                y: -parent.y;
+                width: max(0px, root.width - parent.edge);
+                height: root.height;
+                clip: true;
+                Rectangle {
+                    x: -parent.x;
+                    width: root.width;
+                    background: @linear-gradient(180deg, Theme.ground-top 0%, Theme.ground-bottom 100%);
+                }
             }
-        }
 
-        // The light gathering in the middle as the streaks come.
-        Rectangle {
-            x: (parent.width - self.width) / 2;
-            y: (parent.height - self.height) / 2;
-            width: (0.3 + root.p * 1.4) * min(parent.width, parent.height);
-            height: self.width;
-            visible: Theme.motion;
-            background: @radial-gradient(circle, Theme.cursor.with-alpha(0.5) 0%, Theme.clear 62%);
-            opacity: root.p < 0.5 ? root.p * 2 : max(0, 1 - (root.p - 0.5) / 0.2);
-        }
+            // The band trailing the edge over the battle, and the lit edge.
+            Rectangle {
+                x: parent.edge - parent.band;
+                width: parent.band;
+                background: @linear-gradient(90deg, Theme.clear 0%, Theme.cursor.with-alpha(0.28) 100%);
+            }
 
-        // The streaks: each from beyond the window's edge toward its middle, its bright end first, one after
-        // another (`start`, a spread of the first fifth).
-        for i in 28: Rectangle {
-            property <float> start: mod(i * 7, 11) / 11 * 0.2;
-            property <float> q: clamp((root.p - self.start) / 0.32, 0, 1);
-            property <angle> a: i * 360deg / 28 + mod(i * 37, 13) * 1deg;
-            property <length> length: 60px + mod(i * 53, 7) * 26px;
-            property <length> reach: max(parent.width, parent.height) * 0.62;
-            property <length> r: (1 - self.q * self.q) * self.reach + 12px + self.length / 2;
-            x: parent.width / 2 + cos(self.a) * self.r - self.width / 2;
-            y: parent.height / 2 + sin(self.a) * self.r - self.height / 2;
-            width: self.length;
-            height: mod(i, 3) == 0 ? 3px : 2px;
-            visible: Theme.motion && self.q > 0 && self.q < 1;
-            transform-rotation: self.a;
-            background: @linear-gradient(90deg, #ffffff 0%, Theme.cursor 18%, Theme.clear 100%);
-            opacity: sin(self.q * 180deg);
-        }
-
-        // The shockwave: a diamond (the app's shapes are cut, never round) bursting out from the middle, its line
-        // thinning and fading as it goes; a fainter one just behind it.
-        for ring in 2: Rectangle {
-            property <float> w: max(0, root.wave - ring * 0.12);
-            property <length> size: (0.08 + self.w * 1.6) * max(parent.width, parent.height);
-            x: (parent.width - self.size) / 2;
-            y: (parent.height - self.size) / 2;
-            width: self.size;
-            height: self.size;
-            visible: Theme.motion && root.p > 0.47 && self.w < 1;
-            transform-rotation: 45deg;
-            border-width: (1 - self.w) * (ring == 0 ? 10px : 4px) + 1px;
-            border-color: #ffffff.mix(Theme.cursor, 0.35);
-            drop-shadow-blur: 18px;
-            drop-shadow-color: Theme.cursor;
-            opacity: (1 - self.w) * (ring == 0 ? 1 : 0.5);
-        }
-
-        // The flash.
-        Rectangle {
-            visible: Theme.motion;
-            background: #ffffff.mix(Theme.cursor, 0.55);
-            opacity: max(0, 1 - abs(root.p - 0.48) / 0.1) * 0.85;
+            Rectangle {
+                x: parent.edge - 2px;
+                width: 3px;
+                background: #ffffff.mix(Theme.cursor, 0.4);
+                drop-shadow-blur: 12px;
+                drop-shadow-color: Theme.cursor;
+            }
         }
     }
 }

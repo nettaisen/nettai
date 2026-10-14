@@ -1751,12 +1751,12 @@ themselves, so a screen built from them moves without its author writing an anim
   pattern drifts otherwise, and a soft pulse crosses it now and then;
 - a battle that had its cards jacks in as it begins (`JackIn` in shell.slint, `Shell::jack_in`; online,
   practice and a replay's viewer alike): over its first frames, for the set piece's time, the ground covers it
-  while 28 streaks in the cursor's color rush in toward the middle and the field rushes again, a flash, and the
-  ground's two halves are thrown apart from the middle with lit edges while a diamond shockwave (two: the second
-  fainter, just behind) bursts out over the battle as it shows; the game's encounter sound plays (§1). The battle starts when it
+  as the field rushes again, and a swipe takes it off from the left: eight strips, each 0.045 of the set piece
+  after the one above, each strip's edge lit in the cursor's color with a 140-wide band of it trailing over the
+  battle; the game's encounter sound plays (§1). The battle starts when it
   would have and runs under it: it is drawn over the battle and takes no input, and nothing of it reaches the
   simulation, so an online match's two sides start in lockstep as before. With Reduce motion the ground fades over
-  `calm-fade` (a `Pulse` that is `calm` runs with motion off), with no streaks, split or shockwave; in the screenshot pass
+  `calm-fade` (a `Pulse` that is `calm` runs with motion off), with no swipe; in the screenshot pass
   (`Theme.still`) there is nothing of it;
 - an online match's result (§4): the winner's half floods in from its edge (`settle`), WIN or LOSE stamps in
   (`brisk`, `quick` after), then the score and the time count up (`Count`), ending with the set piece;
