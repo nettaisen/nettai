@@ -1,14 +1,16 @@
-// About (docs/app.md §18): the app, its version and its license; Slint's "Made with Slint", as an app made with
-// Slint under its royalty-free license shows it (in an About screen reached from the top menu); and the software
-// the app is made of, a list with the chosen one's license beside it. On a phone the list is the page and the
-// chosen one's license opens as a sheet from the bottom. Its Rust half is src/screens/about.rs.
+// About, Settings' subscreen (docs/app.md §18; docs/design/app-ui.md §2.53): the app, its version and its license;
+// Slint's "Made with Slint", as an app made with Slint under its royalty-free license shows it (in an About screen
+// reached from the top menu: SETTINGS, then its About group's SHOW LICENSES); and the software the app is made
+// of, a list with the chosen one's license beside it. It is shown in the settings' place, its Back going back
+// to them. On a phone the list is the page and the chosen one's license opens as a sheet from the bottom. Its
+// Rust half is src/screens/settings/about.rs.
 
 import { AboutSlint, Palette } from "std-widgets.slint";
-import { Theme } from "../theme.slint";
-import { Nav, Focusable } from "../nav.slint";
-import { Shell, Page, PadButton } from "../shell.slint";
-import { Label, Note, Value, Mono, Heading, Button, ListView, RowBack, RowTouch, PanelBack, GroupTitle } from "../widgets.slint";
-import { Arrive, Tween } from "../motion.slint";
+import { Theme } from "../../theme.slint";
+import { Nav, Focusable } from "../../nav.slint";
+import { Shell, Page, PadButton } from "../../shell.slint";
+import { Label, Note, Value, Mono, Heading, Button, ListView, RowBack, RowTouch, PanelBack, GroupTitle } from "../../widgets.slint";
+import { Arrive, Tween } from "../../motion.slint";
 
 // A package or a font in the list.
 export struct SoftwareRow {
@@ -25,7 +27,7 @@ export struct LicensePart {
     text: string,
 }
 
-// What About shows: src/screens/about.rs sets these.
+// What About shows: src/screens/settings/about.rs sets these.
 export global AboutView {
     in property <[SoftwareRow]> rows;
     in property <int> fonts;
@@ -197,11 +199,11 @@ component SoftwareHead inherits Rectangle {
     }
 }
 
-export component AboutScreen inherits Page {
+export component AboutPage inherits Page {
     property <length> list-width: Theme.phone ? self.body-width : 440px;
     property <length> list-top: 236px;
     title: @tr("ABOUT");
-    back: @tr("MENU");
+    back: @tr("SETTINGS");
     game: false;
     status: @tr("{n} package" | "{n} packages" % (AboutView.rows.length - AboutView.fonts)) + " · " + @tr("{n} font" | "{n} fonts" % AboutView.fonts);
     hints: [
@@ -352,7 +354,7 @@ component LicenseSheet inherits Rectangle {
 }
 
 // What opens over About: a phone's sheet of the chosen one's license. It covers the whole window, over the
-// screen and under the shell's own dialogs; empty, it takes no clicks.
+// screen and under the shell's own dialogs; empty, it takes no clicks. (Settings' overlay.)
 export component AboutOverlay inherits Rectangle {
     if Theme.phone && AboutView.sheet: LicenseSheet {
         Rectangle { }  // (Copied in: docs/app.md §14.)
