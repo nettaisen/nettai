@@ -1892,4 +1892,71 @@ mod tests {
         assert_eq!(problems.len(), 1);
         assert!(problems.lines()[0].contains("no glyph for ['G']"), "{:?}", problems.lines());
     }
+
+    /// EXE4's BATTLE START (its banner 0: twenty 8x16 glyphs at (52, 64)
+    /// whose outlines reach the glyphs' first and last rows, as all of
+    /// EXE4's banners' do; EXE5's and EXE6's leave those rows clear but
+    /// their PROGRAM ADVANCE) in Enhanced, at three and at five times the
+    /// frame: on every tick of its 9 in, 30 held and 9 out
+    /// (content/exe4/rules/effects.luau), each glyph's overlay draws every
+    /// frame pixel the frame's own sprite draws, the first output pixel of
+    /// it in the frame's texel, and while the banner is whole, the whole
+    /// pixel and nothing else: the last row's outline whole, not cut by the
+    /// box.
+    #[test]
+    fn exe4s_battle_start_overlay_covers_its_sprite_on_every_tick() {
+        use crate::compose::{BACKDROP_DEPTH, Fade, Fades, HEIGHT, WIDTH, compose_with_depth, sprite_depth, to_rgb};
+        use crate::present::Placement;
+        use crate::smooth::{Overlay, draw_overlays};
+        use nettai_battle::content::{BannerRelease, BannerSteps};
+
+        // Every texel opaque, colored by its row (rows 0 and 15 alike).
+        let mut pixels = vec![0u8; 40 * Tiles::TILE];
+        for g in 0..20 {
+            for row in 0..16 {
+                for col in 0..8 {
+                    pixels[(2 * g + row / 8) * Tiles::TILE + (row % 8) * 8 + col] = 1 + (row % 15) as u8;
+                }
+            }
+        }
+        let layout = BannerLayout { x: 52, y: 64, kind: 0, glyphs: Tiles { pixels }, number_at: None };
+        let hud = Hud { banner_palette: std::array::from_fn(|i| i as u16 * 0x0421), ..hud() };
+        let steps = BannerSteps { slide_in: 9, hold: 30, slide_out: 9, release: BannerRelease::SlidesOut, bounces: false };
+        let mut b = battle();
+        assert!(b.banner.start(BannerId(0), false, steps));
+        const UNDRAWN: u32 = u32::MAX;
+        let mut ticks = 0;
+        while b.banner.active {
+            let mut parts = Vec::new();
+            banner_parts(&b, &hud, &layout, 0, &mut parts);
+            assert_eq!(parts.len(), 20);
+            let whole = banner_scale(&b.banner) == 0x100;
+            for part in &parts {
+                let (framed, _) = compose_with_depth(0, &[], std::slice::from_ref(part), Fades::default());
+                let overlay = Overlay::of(part, sprite_depth(0, 0), [Fade::None; 2], (0, 0)).expect("a squashed part is an overlay");
+                for scale in [3, 5] {
+                    let (w, h) = (scale * WIDTH, scale * HEIGHT);
+                    let mut out = vec![UNDRAWN; w * h];
+                    draw_overlays(std::slice::from_ref(&overlay), &vec![BACKDROP_DEPTH; WIDTH * HEIGHT], None, None, &Placement::fit(w, h), &mut out, w);
+                    for fy in 0..HEIGHT {
+                        for fx in 0..WIDTH {
+                            let color = framed[fy * WIDTH + fx];
+                            let out = &out;
+                            let mut block = (0..scale).flat_map(|j| (0..scale).map(move |i| out[(scale * fy + j) * w + scale * fx + i]));
+                            let here = || format!("tick {ticks} (step {}), the glyph at x {}, frame pixel ({fx}, {fy}) at {scale} times", b.banner.step, part.x);
+                            if color == 0 {
+                                assert!(!whole || block.all(|c| c == UNDRAWN), "{}: drawn where the frame's sprite isn't", here());
+                                continue;
+                            }
+                            assert_eq!(out[scale * fy * w + scale * fx], to_rgb(color), "{}: the frame's texel", here());
+                            assert!(!whole || block.all(|c| c == to_rgb(color)), "{}: not all of the frame's pixel", here());
+                        }
+                    }
+                }
+            }
+            b.banner.tick();
+            ticks += 1;
+        }
+        assert!(ticks >= 9 + 30 + 9, "{ticks} ticks");
+    }
 }
