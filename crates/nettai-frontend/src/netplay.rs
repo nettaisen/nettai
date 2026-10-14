@@ -858,8 +858,9 @@ mod tests {
     /// One player asks the server for a room and is given its code; the
     /// other joins by the code as typed. Their lobbies meet: the joiner's
     /// takes the host's settings, each sees the other's name and the round
-    /// trip. The host makes it a single battle with closed builds, which
-    /// both show, nobody ready any more. Both ready: the match is agreed,
+    /// trip; the links leave the room, which the server forgets. The host
+    /// makes it a single battle with closed builds, which both show, nobody
+    /// ready any more. Both ready: the match is agreed,
     /// and each host preloads it (`crate::preload`), saying how far it is as
     /// it goes, which the other sees; nothing starts while one is still
     /// loading. Both loaded: both start the same match, closed builds with
@@ -877,8 +878,11 @@ mod tests {
         // Each one's lobby: the host's a triple battle, the joiner's what
         // it last played, a single battle.
         let (mut seats, code) = meet(&content, &server, [Settings::new("exe6", TRIPLE_BATTLE), Settings::new("exe6", 1)], [side(&content, 3), side(&content, 4)]);
-        assert_eq!(server.codes(), [code]);
         until(&mut seats, "the lobbies meet", idle, |s, _| s.iter().all(|seat| seat.lobby.their_present() && seat.lobby.ping().is_some()) && s[1].lobby.settings() == s[0].lobby.settings());
+        // The links are through, and have left the room they met in: the
+        // server keeps nothing of it, and nothing more needs it.
+        until(&mut seats, "the room is left", idle, |_, _| server.codes().is_empty() && server.sockets() == 0);
+        assert_eq!(seats.each_ref().map(|seat| seat.link.code()), [Some(code.as_str()); 2]);
         assert_eq!(seats[1].lobby.settings(), &Settings::new("exe6", TRIPLE_BATTLE), "the joiner takes the host's settings");
         assert_eq!((seats[0].lobby.their_name(), seats[1].lobby.their_name()), (Some("Chaud"), Some("Lan")));
         for seat in &seats {
@@ -1071,7 +1075,7 @@ mod tests {
     }
 
     /// Two matches in a row over one link, as "play again" goes: no new
-    /// invite, the same room. The first match (a single battle: the host's
+    /// invite, and no server (the room they met in is gone). The first match (a single battle: the host's
     /// navi shoots, the joiner's has 1 HP) is played to its end on both. The
     /// host goes back to the lobby while the joiner still looks at the
     /// result: the host's lobby shows the same settings and nobody ready,
@@ -1105,7 +1109,7 @@ mod tests {
         let server = nettai_rtc::testing::Server::start();
         let m = short_set::of(&content, "exe6", 7);
         let single = Settings::new("exe6", 1);
-        let (mut seats, code) = meet(&content, &server, [single.clone(), single.clone()], m.sides.clone());
+        let (mut seats, _) = meet(&content, &server, [single.clone(), single.clone()], m.sides.clone());
         let keys = |b: &Battle, side: usize, frame: u32| if side == 0 { short_set::shooter(b, side, frame) } else { crate::driver::bot_buttons(b, side, frame) };
         let (agreeing, loading, starting, playing) =
             ([Stands::Agreeing, Stands::Agreeing], [Stands::Loading, Stands::Loading], [Stands::Start, Stands::Start], [Stands::Playing, Stands::Playing]);
@@ -1150,7 +1154,7 @@ mod tests {
         until(&mut seats, "the joiner is back in the lobby", keys, |s, stands| *stands == agreeing && s[1].lobby.their_ready());
         assert_eq!(seats[1].lobby.settings(), &single);
         assert!(!seats[1].lobby.ready() && !seats[0].lobby.their_ready() && seats[0].lobby.ready());
-        assert_eq!(server.codes(), [code], "the room they met in, kept");
+        assert!(server.codes().is_empty() && server.sockets() == 0, "another match needs no server");
 
         // ---- The second match.
         seats[1].lobby.set_ready(true);
