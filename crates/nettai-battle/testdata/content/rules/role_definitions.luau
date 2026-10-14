@@ -123,6 +123,7 @@ return {
         custom_scrap_done = asset.sound("test-sound-custom-scrap-done"),
         program_advance_part = asset.sound("test-sound-program-advance-part"),
         program_advance = asset.sound("test-sound-program-advance"),
+        encounter = asset.sound("test-sound-encounter"),
     },
     music = {
         link_battle = asset.sound("test-music-link-battle"),
