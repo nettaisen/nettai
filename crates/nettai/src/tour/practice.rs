@@ -2,9 +2,9 @@
 //! control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
 //! can't be used, the arena and the background stepped, the arena around its end, the music stepped and its
 //! list), the two cards, the battle, the practice menu (a value changed, the focus a row apart, the dummy that
-//! fights (its Action, and its Level under it), the arena and the background changed under it, each Battle row a
-//! value apart, the input display, the rows another screen adds), the way to Builds and back (CREATE A BUILD's list, EDIT's editor, a build edited
-//! there), and the motion probe's bursts of what Practice moves.
+//! fights (its Action, and its Level under it), the arena, the background and the music changed under it, each
+//! Battle row a value apart, the input display, the rows another screen adds), the way to Builds and back (CREATE
+//! A BUILD's list, EDIT's editor, a build edited there), and the motion probe's bursts of what Practice moves.
 //!
 //! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
 //! entry lists a new build of each of the game's versions and one that can't be used
@@ -342,6 +342,13 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-menu-background", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-background-value", lang, size, Differs::Unheld, false);
+    // The Music row, and its value changed: the battle's music switched at once (nothing drawn changes but the
+    // row's value); then the game's own again.
+    add(SETTLE, focus_row(PracticeOption::Music));
+    shot(add, "practice-menu-music", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Right));
+    shot(add, "practice-menu-music-value", lang, size, Differs::Picture, false);
+    add(SETTLE, act(Action::Left));
     // Each of the other Battle rows, and its value changed (at once, on the battle behind the menu: the HP
     // refilled, the gauge full, the folders put in their own order).
     for (name, changed, option) in [
