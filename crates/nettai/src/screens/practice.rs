@@ -779,12 +779,13 @@ impl Places {
 }
 
 /// Whether two stages are the same arena: everything they state the same, the actors they place with them,
-/// whatever the order their actor lists place them in (which only says who is updated first).
+/// whatever the order their actor lists place them in (which only says who is updated first), and whatever their
+/// effects (the user, of EXE6's netbattle-95 and 96 and EXE5's 93 and 94, which differ in effects alone, by a bit
+/// nothing reads: "they should count as duplicates too").
 fn same_arena(a: &StageData, b: &StageData) -> bool {
-    let StageData { layout, panel_pattern, music, background, mode, battle_number, effects, actors } = a;
+    let StageData { layout, panel_pattern, music, background, mode, battle_number, effects: _, actors } = a;
     let count = |list: &[ActorEntry], e: &ActorEntry| list.iter().filter(|x| *x == e).count();
-    (layout, panel_pattern, music, background, mode, battle_number, effects)
-        == (&b.layout, &b.panel_pattern, &b.music, &b.background, &b.mode, &b.battle_number, &b.effects)
+    (layout, panel_pattern, music, background, mode, battle_number) == (&b.layout, &b.panel_pattern, &b.music, &b.background, &b.mode, &b.battle_number)
         && actors.len() == b.actors.len()
         && actors.iter().all(|e| count(actors, e) == count(&b.actors, e))
 }
@@ -1769,14 +1770,14 @@ mod tests {
     }
 
     /// Each arena is listed once, as the first of its records in the list's order: EXE6's 96 link battle stages
-    /// are 48 arenas (EXE5's 94, EXE4's 96 too), each a group of records the same but for the order their actor
-    /// lists place in, every record not its group's first in a group before it. A round that names a later
-    /// record is on its arena, which plays its first. (EXE6's netbattle-95 and 96, EXE5's 93 and 94, are two:
-    /// the second's effects lack the first's 0x800.)
+    /// are 47 arenas (EXE5's 94 47, EXE4's 96 48), each a group of records the same but for the order their actor
+    /// lists place in (and EXE6's netbattle-95 and 96, EXE5's 93 and 94, their effects), every record not its
+    /// group's first in a group before it. A round that names a later record is on its arena, which plays its
+    /// first.
     #[test]
     fn each_arena_is_listed_once() {
         use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
-        for (game, content, stages, arenas) in [("exe6", exe6_content(), 96, 48), ("exe5", exe5_content(), 94, 48), ("exe4", exe4_content(), 96, 48)] {
+        for (game, content, stages, arenas) in [("exe6", exe6_content(), 96, 47), ("exe5", exe5_content(), 94, 47), ("exe4", exe4_content(), 96, 48)] {
             let places = Places::of(&content, game);
             let all = nettai_match::link_battle_stages(&content, game);
             assert_eq!((all.len(), places.arenas.len()), (stages, arenas), "{game}");
