@@ -508,6 +508,38 @@ impl BattleAudio {
         self.packs.len() - 1
     }
 
+    /// Go on with `from`'s music in place of starting `music` (a sound's
+    /// handle in this sound's songs), where `from`'s music player plays
+    /// the song `music` is here: the same bank (by its `Arc`) and the same
+    /// number. That pack's driver is then this sound's for the song's pack,
+    /// as `from` had it, so the song goes on where it is, and `music` is
+    /// this sound's music as if its cue had started it (a cue of it later
+    /// finds it playing and leaves it be). A host's menus playing a
+    /// battle's music before a battle of another game's sound whose music
+    /// is the same song (a battle theme, the same in either game). Else
+    /// `from` comes back, and nothing here changes.
+    pub fn go_on_with(&mut self, music: SoundId, mut from: BattleAudio) -> Result<(), BattleAudio> {
+        let Some(&to) = self.songs.0.get(music.0 as usize) else { return Err(from) };
+        let here = to.pack.index().min(self.packs.len() - 1);
+        let Some(there) = from.music else { return Err(from) };
+        let source = &from.packs[there];
+        let same = Arc::ptr_eq(source.driver.bank(), self.packs[here].driver.bank())
+            && source.calls.music == to.id
+            && source.driver.player(MUSIC_PLAYER).is_some_and(|m| m.is_playing() && m.song() == Some(SongId(to.id)));
+        if !same {
+            return Err(from);
+        }
+        let mut pack = from.packs.swap_remove(there);
+        leveled(&mut pack.driver, self.levels);
+        self.packs[here] = pack;
+        self.music = Some(here);
+        self.moved_from = None;
+        self.heard = Some(music);
+        self.heard_before = None;
+        self.pinch = from.pinch;
+        Ok(())
+    }
+
     /// The battle's music as its cues name it now (a sound's handle; none:
     /// stopped).
     pub fn music_heard(&self) -> Option<SoundId> {
