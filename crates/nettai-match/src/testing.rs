@@ -37,6 +37,7 @@ fn defined_of(read: nettai_content::index::Read) -> Result<Content, String> {
     c.scripts = read.scripts();
     c.strings = read.strings;
     c.assets = nettai_battle::content::testing::asset_names_for(&c.scripts);
+    c.background_pool = nettai_content::locale::background_pool(&read.dir);
     timed(&mut c);
     c.define().map_err(|e| e.message)?;
     Ok(c)

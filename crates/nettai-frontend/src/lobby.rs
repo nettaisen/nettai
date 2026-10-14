@@ -20,11 +20,12 @@
 //! frame of a match's protocol (once it has started; item 5), or one of:
 //!
 //! 1. **Lobby** — the compatibility fields (the protocol's version, the
-//!    engine's, the game, the content's hash, the role), so a peer that
-//!    can't play the other's match says so at once; the match's settings
-//!    ([`Settings`]: the game, the rounds by name, each round's stage and
-//!    background stated or left to the seed, whether patch cards apply and
-//!    whether builds are closed) with their stamp; whether the peer is ready to play them; its
+//!    engine's, the game, the content's hash, the background pool's
+//!    identity, the role), so a peer that can't play the other's match says
+//!    so at once; the match's settings ([`Settings`]: the game, the rounds by
+//!    name, each round's stage and background stated or left to the seed,
+//!    what a background left to the seed is drawn from, whether patch cards
+//!    apply and whether builds are closed) with their stamp; whether the peer is ready to play them; its
 //!    player's name ([`player_name`]: shown, never taken for who they are);
 //!    and a clock to time the round trip by ([`Lobby::ping`]).
 //!
@@ -130,7 +131,7 @@ use std::time::{Duration, Instant};
 use nettai_battle::content::{Content, ContentHash};
 use nettai_match::build::Checked;
 use nettai_match::check::Problem;
-use nettai_match::{Match, RoundSettings, Set, Side};
+use nettai_match::{BackgroundPick, Match, RoundSettings, Set, Side};
 use nettai_netplay::protocol;
 use nettai_netplay::rng::SplitMix64;
 use nettai_netplay::wire::{Reader, Writer};
@@ -303,21 +304,31 @@ impl Refusal {
 
 /// What two peers must share to play together: the protocol's version, the
 /// engine's (the state's digest covers its layout, and the simulation must
-/// be the same code), the game (a match is of one) and the content (its
-/// hash); and opposite roles.
+/// be the same code), the game (a match is of one), the content (its hash)
+/// and the background pool (its identity: every game's backgrounds, which a
+/// round may be drawn on and the seed picks from, and which the content's
+/// hash leaves out, `Content::background_pool`); and opposite roles.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Compat {
     pub protocol: u16,
     pub engine: String,
     pub game: String,
     pub content: ContentHash,
+    pub backgrounds: u64,
     pub role: Role,
 }
 
 impl Compat {
     /// This build's, on `content`, in `role`.
     pub fn new(content: &Content, role: Role) -> Compat {
-        Compat { protocol: protocol::VERSION, engine: ENGINE.to_string(), game: content.game().to_string(), content: content.hash(), role }
+        Compat {
+            protocol: protocol::VERSION,
+            engine: ENGINE.to_string(),
+            game: content.game().to_string(),
+            content: content.hash(),
+            backgrounds: content.background_pool.identity(),
+            role,
+        }
     }
 
     fn write(&self, w: &mut Writer) {
@@ -325,6 +336,7 @@ impl Compat {
         w.put(&self.engine);
         w.put(&self.game);
         w.put(&self.content);
+        w.put(&self.backgrounds);
         w.put(&(self.role == Role::Join));
     }
 
@@ -335,13 +347,14 @@ impl Compat {
     fn read(&self, r: &mut Reader) -> std::io::Result<Compat> {
         let protocol: u16 = r.get()?;
         if protocol != self.protocol {
-            return Ok(Compat { protocol, engine: String::new(), game: String::new(), content: ContentHash(0), role: self.role });
+            return Ok(Compat { protocol, engine: String::new(), game: String::new(), content: ContentHash(0), backgrounds: 0, role: self.role });
         }
         Ok(Compat {
             protocol,
             engine: r.get()?,
             game: r.get()?,
             content: r.get()?,
+            backgrounds: r.get()?,
             role: if r.get::<bool>()? { Role::Join } else { Role::Host },
         })
     }
@@ -364,6 +377,15 @@ impl Compat {
                 format!("the other side plays other content (its hash {}, this one's {}): both must play the same content", other.content, self.content),
             );
         }
+        if other.backgrounds != self.backgrounds {
+            return failure(
+                Reason::DifferentContent,
+                format!(
+                    "the other side has other backgrounds (its pool {:016x}, this one's {:016x}): both must play the same content",
+                    other.backgrounds, self.backgrounds
+                ),
+            );
+        }
         if other.role == self.role {
             let what = if self.role == Role::Host { "host" } else { "join" };
             return failure(Reason::Protocol, format!("both sides {what}: one hosts and the other joins"));
@@ -374,7 +396,8 @@ impl Compat {
 
 /// What a match is played as, that both peers agree: its game (a match is
 /// of one), its rounds, each round's stage and background stated or left to
-/// the seed, whether patch cards apply, and whether the builds are closed.
+/// the seed, what a background left to the seed is drawn from, whether patch
+/// cards apply, and whether the builds are closed.
 /// They are the match's, not a player's: either player changes them in the
 /// lobby and both see the same ([`Lobby::propose`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -384,6 +407,10 @@ pub struct Settings {
     /// battle (best of three), and a set takes any number from 1 to
     /// [`nettai_match::MAX_ROUNDS`].
     pub rounds: Vec<RoundSettings>,
+    /// What a round's background left to the seed is drawn from: as the
+    /// game picks a link battle's (`BackgroundPick::Game`, a match's own
+    /// way), or the background pool, every game's (`Pool`: nettai's Play).
+    pub backgrounds: BackgroundPick,
     /// Whether the players' patch cards apply. On (a match's own way): each
     /// build plays as it is. Off: neither player's cards apply, and each
     /// side plays as it is without them ([`Settings::as_played`]): the match
@@ -404,16 +431,22 @@ fn put_name(w: &mut Writer, name: Option<&str>) {
 }
 
 impl Settings {
-    /// A match of `game` of `rounds` rounds, every place left to the seed,
-    /// with patch cards and open builds.
+    /// A match of `game` of `rounds` rounds, every place left to the seed
+    /// as the game picks a link battle's, with patch cards and open builds.
     pub fn new(game: &str, rounds: usize) -> Settings {
-        Settings { game: game.to_string(), rounds: vec![RoundSettings::default(); rounds], patch_cards: true, closed_builds: false }
+        Settings {
+            game: game.to_string(),
+            rounds: vec![RoundSettings::default(); rounds],
+            backgrounds: BackgroundPick::Game,
+            patch_cards: true,
+            closed_builds: false,
+        }
     }
 
-    /// A match file's: its game and its rounds, with patch cards and open
-    /// builds.
+    /// A match file's: its game, its rounds and what their backgrounds are
+    /// drawn from, with patch cards and open builds.
     pub fn of_match(m: &Match) -> Settings {
-        Settings { game: m.game.clone(), rounds: m.rounds.clone(), patch_cards: true, closed_builds: false }
+        Settings { game: m.game.clone(), rounds: m.rounds.clone(), backgrounds: m.backgrounds, patch_cards: true, closed_builds: false }
     }
 
     /// `side` as a match of these settings plays it: as it is with patch
@@ -439,14 +472,17 @@ impl Settings {
     }
 
     /// The settings as the lobby carries them: the game, whether builds are
-    /// closed, whether patch cards apply, then each round's stage and
-    /// background by name (empty: from the seed).
+    /// closed, whether patch cards apply, whether a background left to the
+    /// seed is the pool's, then each round's stage and background by name
+    /// (empty: from the seed; another game's background with its game,
+    /// `exe4:acdc-area`).
     pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
         w.put(&self.game);
         w.put(&self.closed_builds);
         w.put(&self.patch_cards);
+        w.put(&(self.backgrounds == BackgroundPick::Pool));
         w.put(&(self.rounds.len() as u16));
         for r in &self.rounds {
             put_name(&mut w, r.stage.map(|s| nettai_match::ids::local(&content.defs.stage(s).key)));
@@ -465,6 +501,7 @@ impl Settings {
         let game: String = r.get().map_err(bad)?;
         let closed_builds: bool = r.get().map_err(bad)?;
         let patch_cards: bool = r.get().map_err(bad)?;
+        let backgrounds = if r.get::<bool>().map_err(bad)? { BackgroundPick::Pool } else { BackgroundPick::Game };
         let count: u16 = r.get().map_err(bad)?;
         if count == 0 || count as usize > nettai_match::MAX_ROUNDS {
             return Err(format!("{count} rounds: a match has 1 to {}", nettai_match::MAX_ROUNDS));
@@ -480,7 +517,8 @@ impl Settings {
             let background = match background.as_str() {
                 "" => None,
                 name => {
-                    nettai_match::background(content, &game, name).ok_or_else(|| format!("round {}: no background {name} in {game}'s pack", i + 1))?;
+                    let place = if name.contains(':') { "the background pool".to_string() } else { format!("{game}'s pack") };
+                    nettai_match::background(content, &game, name).ok_or_else(|| format!("round {}: no background {name} in {place}", i + 1))?;
                     Some(name.to_string())
                 }
             };
@@ -495,7 +533,7 @@ impl Settings {
         if let Some(problem) = nettai_match::check::check_rounds(content, &game, &rounds).into_iter().next() {
             return Err(problem);
         }
-        Ok(Settings { game, rounds, patch_cards, closed_builds })
+        Ok(Settings { game, rounds, backgrounds, patch_cards, closed_builds })
     }
 
     /// The settings' hash, of their bytes.
@@ -1758,6 +1796,7 @@ mod tests {
         w.put(&"exe6".to_string());
         w.put(&false);
         w.put(&true);
+        w.put(&false);
         w.put(&1u16);
         w.put(&"no-such-stage".to_string());
         w.put(&String::new());
@@ -1766,6 +1805,34 @@ mod tests {
             let none = Settings { rounds: vec![RoundSettings::default(); count], ..blank.clone() };
             assert_eq!(Settings::from_bytes(&content, &none.to_bytes(&content)).unwrap_err(), format!("{count} rounds: a match has 1 to 99"));
         }
+        // Backgrounds from the pool, one round on another game's: both read back, and both commit to the pick.
+        let pool = Settings { backgrounds: BackgroundPick::Pool, ..blank.clone() };
+        assert_eq!(Settings::from_bytes(&content, &pool.to_bytes(&content)).unwrap(), pool);
+        assert_ne!(pool.hash(&content), blank.hash(&content));
+        let mut foreign = pool.clone();
+        foreign.rounds[1].background = Some("exe4:acdc-area".into());
+        assert_eq!(Settings::from_bytes(&content, &foreign.to_bytes(&content)).unwrap(), foreign);
+        foreign.rounds[1].background = Some("exe4:nowhere".into());
+        assert_eq!(Settings::from_bytes(&content, &foreign.to_bytes(&content)).unwrap_err(), "round 2: no background exe4:nowhere in the background pool");
+    }
+
+    /// With the backgrounds from the pool, both peers draw each round's from it alike, by the seed from both
+    /// nonces: the same match, other games' backgrounds among its rounds', and the same set.
+    #[test]
+    fn peers_draw_the_same_pool_backgrounds() {
+        let content = nettai_match::testing::exe6_content();
+        let mut games = std::collections::BTreeSet::new();
+        for rounds in [5, 7] {
+            let s = Settings { backgrounds: BackgroundPick::Pool, ..settings(rounds) };
+            let [h, j] = agree(&content, &s, [side(&content, 3), side(&content, 4)]);
+            assert_eq!((h.seed, &h.m), (j.seed, &j.m));
+            assert_eq!(format!("{:?}", h.set.first()), format!("{:?}", j.set.first()));
+            for p in h.m.places(&content, h.seed).unwrap() {
+                assert!(content.pool_backgrounds().contains(&p.background));
+                games.insert(content.background_of(p.background).unwrap().0.to_string());
+            }
+        }
+        assert!(games.len() > 1, "other games' among them: {games:?}");
     }
 
     /// Two peers agree each kind of arena alike (every part from the seed;
@@ -2233,6 +2300,10 @@ mod tests {
         let [h, j] = cant(&|l| l[1].compat.content = ContentHash(l[1].compat.content.0 ^ 1));
         assert!(j.reason == Reason::DifferentContent && j.detail.starts_with("can't play: the other side plays other content"), "{j:?}");
         assert!(h.reason == Reason::DifferentContent && h.detail.starts_with("the other side refused: can't play: the other side plays other content"), "{h:?}");
+        // Another background pool (other content beside the game's: a round may be drawn on any game's).
+        let [h, j] = cant(&|l| l[1].compat.backgrounds ^= 1);
+        assert!(j.reason == Reason::DifferentContent && j.detail.starts_with("can't play: the other side has other backgrounds"), "{j:?}");
+        assert!(h.reason == Reason::DifferentContent && h.detail.starts_with("the other side refused: can't play: the other side has other backgrounds"), "{h:?}");
         let [h, j] = cant(&|l| l[1].compat.role = Role::Host);
         assert_eq!((j.reason, j.detail.as_str()), (Reason::Protocol, "can't play: both sides host: one hosts and the other joins"));
         assert_eq!(h.reason, Reason::Protocol);

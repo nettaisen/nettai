@@ -83,6 +83,7 @@ pub fn graphics(content: &Content, color: u16) -> Graphics {
     };
     Graphics {
         bundles: vec![Arc::new(Bundle { field, ..Bundle::default() })],
+        others: Default::default(),
         strings: None,
         own: nettai_battle::content::PackId(0),
         report: Default::default(),
