@@ -134,9 +134,8 @@ pub struct Renderer {
     /// arena preview).
     pub custom_gauge: bool,
     /// The enhanced mode without its motion (the app's Reduce motion): the
-    /// HUD's entrance at a round's start (`intro`) and the background's
-    /// glide (`present`) are left out, the text stays. The original mode
-    /// has neither, whatever this says.
+    /// background's glide (`present`) is left out, the text stays. The
+    /// original mode has no motion of its own, whatever this says.
     pub reduce_motion: bool,
 }
 
@@ -356,8 +355,7 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        let intro = crate::intro::Intro::of(b, self.motion());
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, &intro, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();

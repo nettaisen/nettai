@@ -489,9 +489,16 @@ Each is settled unless the user changes it.
     - *One mode.* Then the user: "you should only enable the ui improvements if sharp rendering is enabled. you
       should call it something other than sharp font rendering as well since it does more than that now".
       Settings' Video row is **Battle graphics: Enhanced / Original** (it was Battle text: Sharp / Original):
-      Enhanced is the sharp text, the HUD's intro and the background's glide; Reduce motion takes the two
-      motions off and keeps the text.
+      Enhanced is the sharp text and the background's glide; Reduce motion takes the motion off and keeps the
+      text.
       There is no row of its own for the motion.
+    - *The HUD's intro is gone.* Looking at frame strips of it, the user: "the custom screen should slide
+      smoothly too. why does the custom bar do a weird animation like that?" (the custom gauge's light sweeping
+      its bar read as the empty gauge filling and vanishing), then "don't animate extra slide ins that weren't
+      present in the original". The whole intro is removed: the HP box's and the emotion window's slides, the
+      HP numbers' pops, the gauge's drop and sweep, the chip name's slide and the chip icons' pops. Enhanced
+      smooths only motion the original itself has, over the same frames, and adds none; nothing comes in with
+      an animation the game doesn't have.
     - *Presentation alone.* The motion goes by the battle's own ticks, never the clock, and is in no state the
       simulation keeps: a rollback, a replay and a video draw it alike. Original draws every frame exactly as
       before; every verification path draws Original (docs/frontend.md §3, "Enhanced and original").
@@ -613,7 +620,6 @@ What moves:
 | a dialog, a menu | the scrim fades (120) as the panel grows from 96% (160); the practice and match menus slide in from the left |
 | loading | a bar fills smoothly under a moving highlight; before a battle the two cards slide in from their sides and "VS" stamps |
 | entering a battle (the jack-in, §2.49) | when both bars are full the battle begins under the set piece (480): the ground covers it and the field rushes, then a swipe takes the ground off from the left in eight strips, each a little after the one above, each strip's edge lit with a band of the cursor's color trailing it; the game's own encounter sound plays. With Reduce motion the ground fades (160) |
-| a round's start, in the battle (§2.55) | with Battle graphics Enhanced, the game's HUD comes in piece by piece, each within 600 ms of its first showing, by the battle's ticks: the HP box slides in from the left as the intro's fade clears (12 ticks, a little past and back), the emotion window 5 ticks after; the opponents' HP numbers pop in (squash and stretch, a hop); with the first chips sent the custom gauge drops in from the top and a light sweeps its bar; as they arrive the chip's name slides in and the icons pop in. With Reduce motion, or Original, the HUD is where the game puts it from the first frame |
 | the battle's background (§2.55) | with Battle graphics Enhanced, a background that drifts by parts of a pixel a frame glides at the window's resolution instead of stepping a whole pixel every few frames. With Reduce motion, or Original, it steps as the game's does |
 | a match's result (§2.49) | over the picture, the winner's half floods with their side's color from its edge (200), WIN or LOSE stamps in on the player's half, then the rounds' score and the match's time count up one after another, the cursor's sound at each tick and the confirm sound at the last, all within the set piece's 480; a press settles it |
 | the lobby | the opponent's card slides in as they join; READY stamps with a flash |
