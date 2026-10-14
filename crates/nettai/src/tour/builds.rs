@@ -305,11 +305,15 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     );
 }
 
-/// A build's version switched on the Navi tab (docs/app.md §8): a build of the game's first version made beside
-/// the walk's, with a Giga chip of that version's alone in its folder's first entry; the switch, the focus on it,
-/// with the forms the version brings the game's own navi under it (`builds-navi-version`); switched to the next
-/// version (`builds-navi-switched`: the header's tag and its count, the Folder tab marked); and the Folder tab,
-/// the entry in the error red and the strip saying why (`builds-folder-switched`).
+/// A build's version switched by the header's tag (docs/app.md §8, docs/design/app-ui.md §2.42): a build of the
+/// game's first version made beside the walk's, with a Giga chip of that version's alone in its folder's first
+/// entry; on the Navi tab, the tag focused, the forms the version brings the game's own navi under the navi
+/// (`builds-version-focus`: the cursor on the tag, the footer's Switch version); Right, the next version
+/// (`builds-version-switched`: the tag's name and color, its forms, the header's count, the Folder tab marked, the
+/// focus still on the tag); the Folder tab, the entry in the error red and the strip saying why
+/// (`builds-folder-switched`); and Enter on the tag there, the first version again with nothing wrong
+/// (`builds-folder-switched-back`). A step after each picture checks the focus and the build's state are as it
+/// says.
 fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair), phone: bool) {
     const NAME: &str = "Switched";
     add(
@@ -342,15 +346,35 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     }
     add(SETTLE, press("tab", 0));
     add(SETTLE, focus("version", 0));
-    shot(add, "builds-navi-version", Pair::None);
+    shot(add, "builds-version-focus", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
+    add(0, state("builds-version-focus", true, true));
     add(SETTLE, act(Action::Right));
-    shot(add, "builds-navi-switched", Pair::None);
+    shot(add, "builds-version-switched", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
+    add(0, state("builds-version-switched", true, false));
     add(SETTLE, press("tab", 1));
     add(SETTLE, focus("slot", 0));
     shot(add, "builds-folder-switched", Pair::None);
     add(90, on_tab(EditorTab::Folder, "Folder"));
+    add(0, state("builds-folder-switched", false, false));
+    add(SETTLE, press("version", 0));
+    shot(add, "builds-folder-switched-back", Pair::None);
+    add(90, on_tab(EditorTab::Folder, "Folder"));
+    add(0, state("builds-folder-switched-back", true, true));
+}
+
+/// The walk's version switch is as picture `name` says: the focus on the header's tag or not, and the build ready
+/// or not (its one problem, the other version's Giga chip). If not, the report says so, as `on_tab` does.
+fn state(name: &'static str, on_tag: bool, ready: bool) -> Step {
+    Box::new(move |ui, app, _| {
+        let tagged = app.borrow().shell.nav.focused().is_some_and(|k| k.id == "version");
+        let good = ui.global::<BuildsView>().get_state_good();
+        if tagged != on_tag || good != ready {
+            let why = format!("(at {name} the focus is {}on the version's tag and the build is {}ready)", if tagged { "" } else { "not " }, if good { "" } else { "not " });
+            ui.global::<nettai_ui::Audit>().invoke_clipped(why.into());
+        }
+    })
 }
 
 /// Out of whatever of the Builds screen is open (a dialog, the library, the editor), back to its list.

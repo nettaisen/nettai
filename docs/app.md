@@ -1102,8 +1102,9 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   (§15); from the main menu Back goes to the menu as ever.
 - **A build made new** is `Builds::new_build(content, version)`: the game's own navi, that version, the folder a
   new save of the game starts with. There are no random builds.
-- **A build's version is switched** on the Navi tab (docs/design/app-ui.md §2.41; the user: "you should allow
-  switching a save between game versions actually"), for any build, made new or from a save: `Draft::choose_version`,
+- **A build's version is switched** by the editor's header's tag (docs/design/app-ui.md §2.41, §2.42; the user:
+  "you should allow switching a save between game versions actually", and of where: "header please"), for any
+  build, made new or from a save: `Draft::choose_version`,
   `Build::set_version`, which is `Builds::take_version`. What the game's builds data says a version sets becomes
   the new version's, and nothing else of the build changes:
   - *EXE6:* the `version` fact, and with it the build's MegaMan's Crosses (the `crosses` form list, MegaMan's own
@@ -1118,13 +1119,23 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
     rest is held to no version by any game's rules (EXE5's two Bass-Cross MegaMan cards, each a team's, are both
     any build's; the auto battle's Giga place takes any Giga chip), so it stays and is no problem. Switched back,
     the build is as it was. A build file's format is unchanged: it states the version's facts as before.
-- **The Navi tab's version** is a stepper in the build's navi's panel, for every navi (the version decides the
-  folder's Giga chips whatever the navi), the header's tag following it. While the game's own navi is the build's,
-  the faces of the forms the version brings him are under it (`Builds::forms_of`: of a new build of the version,
-  its form list's and the forms of the facts the version sets: EXE6's five Crosses, EXE4's and EXE5's six souls),
-  twice their size, in rows as even as they go (three and two, three and three); for another navi none. The NEW
-  BUILD dialog's choice stays the two names alone, its note the game's words with "It can be switched later on the
-  Navi tab."
+- **The header's version tag is the switch** (§2.42), on every tab and for every navi (the version decides the
+  folder's Giga chips whatever the navi). The shell's `Header` makes its tag a switch where the page names it
+  (`Page.tag-nav`; Builds names it `version`, and only while the editor shows does the tag have text, so enabled):
+  a `Focusable` of the stepper kind over the tag, so a click or a tap is `activate("version")` and Left and Right
+  are `step("version", ∓1)`. The editor's frame takes both whatever tab is shown (`Editor::step_version`: the
+  next version in the game's order, around; a build of none takes the first), switches through
+  `Draft::choose_version`, shows the tab anew and then the header. The tag keeps the `Pill`'s look, its name
+  and color the version's, with an `ArrowLeft` and an `ArrowRight` at its sides (muted, the cursor's color on
+  hover and focus) and Back's hover tint behind; its touch is the tag and arrows with 6 to each side, 30 tall,
+  and on a phone 44 tall and at least 44 wide. While it is focused the footer is `BuildsScreen.version-hints`
+  (←→ Switch version, Enter Next version). Other pages name no tag switch: their tags are plain.
+- **The Navi tab's forms.** While the game's own navi is the build's, the faces of the forms the version brings
+  him are under the navi's facts (`Builds::forms_of`: of a new build of the version, its form list's and the forms
+  of the facts the version sets: EXE6's five Crosses, EXE4's and EXE5's six souls), twice their size, in rows as
+  even as they go (three and two, three and three); for another navi none. They change as the header's tag
+  switches the version. The NEW BUILD dialog's choice stays the two names alone, its note the game's words with
+  "It can be switched later in the editor."
 - **What is kept aside.** A NaviCust, patch cards and auto battle data are the game's own navi's alone, the one
   that changes form. While a build's navi is another, the facts of the editor's tabs that are that navi's
   (`screens::builds::editor::navi_only_fields`) are kept under `[aside]`, outside the side (the rules refuse a
@@ -1199,8 +1210,9 @@ Narrower than 400, a phone's, it is one column throughout, 1158 tall, for a page
 leave a chip's name 39 wide there. `sheet-height` is the height of the one it is at its width; which it is
 depends on the width alone, never on the build. Every number is the compiled one (`Checked::overview`).
 
-**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, version and
-"✓ Ready to play" (or how many problems), the tab bar, and the tab chosen. **A tab is one Slint file and one
+**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, version (its tag
+the version's switch, the frame's whichever tab shows) and "✓ Ready to play" (or how many problems), the tab bar,
+and the tab chosen. **A tab is one Slint file and one
 Rust module**, as a screen is for the shell:
 
 - `ui/screens/builds/<tab>.slint` has `<Tab>View`, a global the module sets (with `hints`, the footer's key
@@ -1218,6 +1230,7 @@ Rust module**, as a screen is for the shell:
 | `checked` | The build checked (`nettai_match::build::Checked`): its problems, its round's stats, the folder's view, the navi's first face, of its round set up with no folder dealt (`check::set_up`: a folder being made is checked as it is, with no stand-in chips). Made again at each change |
 | `edit(|content, side| -> bool)` | **How a tab changes the build.** The closure says whether it did; the draft is checked again at once |
 | `choose_navi(navi)` | The navi changed, with what is kept aside moved |
+| `choose_version(version)` | The version switched (`Build::set_version`), the rest kept: the header's tag's, through the frame |
 | `with_words(shell, |words| ...)` | The catalogs' and the game's words in the language shown |
 
 A tab neither saves nor checks. When its call returns, the frame keeps the build's file if the draft changed and
@@ -1904,11 +1917,13 @@ question before it is deleted, the Navi tab with the focus a card on, with anoth
 other preset of the game's choice, and the Folder tab (an entry, the library, its controls a focus move apart,
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,
 the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out, the
-sort's list), then the tab after it; last, a build's version switched (`switched`: a build of the game's first
-version made beside the walk's, a Giga chip of that version's alone in its first entry; `builds-navi-version`, the
-switch focused with the version's Crosses or souls under it; `builds-navi-switched`, the next version, its forms,
-the header's tag and its one problem, the Folder tab marked; `builds-folder-switched`, the entry in the error red
-and the strip saying why). A game may have one navi or thirteen, a choice or none, four tabs or five:
+sort's list), then the tab after it; last, a build's version switched by the header's tag (`switched`: a build
+of the game's first version made beside the walk's, a Giga chip of that version's alone in its first entry;
+`builds-version-focus`, the tag focused on the Navi tab with the version's Crosses or souls under the navi and the
+footer's Switch version; `builds-version-switched`, Right: the next version's tag, its forms, the header's one
+problem, the Folder tab marked, the focus still on the tag; `builds-folder-switched`, the entry in the error red
+and the strip saying why; `builds-folder-switched-back`, Enter on the tag there: the first version again, ready;
+a step after each checks the focus and the build's state are as the picture's name says). A game may have one navi or thirteen, a choice or none, four tabs or five:
 a step names the control it is for and does nothing where the game has none. The probe's bursts are the
 editor's body arriving as the tab changes, a chip the rules refuse (its row shakes) and a chip put in (it flies
 to its entry, the entry flashes, a count that changed ticks).

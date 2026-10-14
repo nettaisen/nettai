@@ -73,8 +73,8 @@ msgid "VERSION"
 msgstr "バージョン"
 
 # After what a version sets, in the game's own words ("Sets the Crosses and Giga chips.").
-msgid "{} It can be switched later on the Navi tab."
-msgstr "{} あとからナビタブで切り替えられます。"
+msgid "{} It can be switched later in the editor."
+msgstr "{} あとから編集画面で切り替えられます。"
 
 msgid "CREATE BUILD"
 msgstr "構築を作成"
@@ -170,6 +170,14 @@ msgstr "✓ 対戦できます"
 msgid "{n} problem"
 msgid_plural "{n} problems"
 msgstr[0] "問題 {n}件"
+
+# The key hints while the header's version tag is focused: Left and Right switch the build's version, Enter takes
+# the next.
+msgid "Switch version"
+msgstr "バージョン切替"
+
+msgid "Next version"
+msgstr "次のバージョン"
 
 # ---- The Navi tab.
 
