@@ -18,7 +18,6 @@ pub mod compose;
 pub mod custom;
 pub mod fonts;
 pub mod hud;
-pub mod intro;
 pub mod lookups;
 pub mod objects;
 pub mod packs;
