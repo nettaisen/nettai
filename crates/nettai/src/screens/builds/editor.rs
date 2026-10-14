@@ -468,20 +468,29 @@ impl Editor {
         self.go(shell, to as usize, by.signum());
     }
 
-    /// The header's version tag stepped (`by`: Left -1, Right, Enter and a click 1): the build's version is the
-    /// one `by` from its own in the game's order, around (a build of none takes the first), and the tab shown shows
-    /// what follows (the Navi tab's forms, the Folder tab's entries the version no longer allows).
+    /// The build's version's place in the game's order; none: a build of none.
+    fn version_at(&self) -> Option<usize> {
+        let versions = &self.draft.kit.builds.versions;
+        self.draft.kit.builds.version_of(self.draft.content(), self.draft.side()).and_then(|v| versions.iter().position(|x| x.id == v))
+    }
+
+    /// The header's version tag stepped (`by`: Left -1, Right 1): the build's version is the one `by` from its own
+    /// in the game's order, around (a build of none takes the first).
     fn step_version(&mut self, shell: &mut Shell, by: i32) {
-        let kit = self.draft.kit.clone();
-        let versions = &kit.builds.versions;
-        if versions.is_empty() {
+        let count = self.draft.kit.builds.versions.len() as i32;
+        if count == 0 {
             return;
         }
-        let next = match kit.builds.version_of(self.draft.content(), self.draft.side()).and_then(|v| versions.iter().position(|x| x.id == v)) {
-            Some(at) => (at as i32 + by).rem_euclid(versions.len() as i32) as usize,
-            None => 0,
-        };
-        if self.draft.choose_version(&versions[next].id) {
+        let next = self.version_at().map_or(0, |at| (at as i32 + by).rem_euclid(count) as usize);
+        self.switch_version(shell, next);
+    }
+
+    /// The build's version made the game's `at`th, and the tab shown shows what follows (the Navi tab's forms, the
+    /// Folder tab's entries the version no longer allows).
+    fn switch_version(&mut self, shell: &mut Shell, at: usize) {
+        let kit = self.draft.kit.clone();
+        let Some(version) = kit.builds.versions.get(at) else { return };
+        if self.draft.choose_version(&version.id) {
             let (tab, draft) = self.tab();
             tab.show(shell, draft);
             self.after(shell);
@@ -493,8 +502,14 @@ impl Editor {
             let way = if index as usize >= self.at { 1 } else { -1 };
             return self.go(shell, index.max(0) as usize, way);
         }
+        // (The header's version tag opens the game's versions as a list of their tags, open at the build's: one
+        // chosen comes back as `choose`.)
         if id == "version" {
-            return self.step_version(shell, 1);
+            let tags = self.draft.with_words(shell, |words| words.kit.version_tags(words.names));
+            if !tags.is_empty() {
+                shell.pick_tags(id, index, tags, self.version_at().unwrap_or(0));
+            }
+            return;
         }
         let (tab, draft) = self.tab();
         tab.activate(shell, draft, id, index);
@@ -532,6 +547,11 @@ impl Editor {
             "drag-drop" if from_library(shell) => "drag-in-drop",
             id => id,
         };
+        // (A version chosen from the tag's list: the focus back on the tag first, so the tab shown keeps it there.)
+        if id == "version" {
+            shell.nav.focus(id, index);
+            return self.switch_version(shell, choice.max(0) as usize);
+        }
         if id == "remove" {
             let (tab, draft) = self.tab();
             tab.action(shell, draft, Action::Delete);

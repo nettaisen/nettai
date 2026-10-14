@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, ArrowLeft, ArrowRight, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, Pill } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -168,6 +168,9 @@ export global Shell {
     // height, which scrolls where there are more.
     in property <bool> picker;
     in property <[string]> picker-options;
+    // A list of tags (the editor's versions): each choice's color, its text drawn as a tag in it; none, a plain
+    // list.
+    in property <[color]> picker-tones;
     in property <int> picker-chosen;
     in property <int> picker-rows;
     in property <length> picker-x;
@@ -714,9 +717,10 @@ export component Header inherits Rectangle {
     // A tag after the title (a build's version), and a short state before the game ("✓ Ready to play", in green,
     // or what is wrong, in the error red). On a phone the tag is at the header's right and the state is left out.
     in property <VersionTag> tag;
-    // The tag is a switch where it has a name (the editor's version, docs/design/app-ui.md §2.42): a control in
-    // the focus order, a stepper, Left and Right stepping it and a click or Enter taking the next; an arrow at
-    // each side of it, lit on hover and focus, and Back's hover look. On a phone its touch is 44 tall and as wide.
+    // The tag opens a choice where it has a name (the editor's version, docs/design/app-ui.md §2.42, §2.44): a
+    // select in the focus order, the same tag with a small arrow down in it, the hover tint inside it; a click,
+    // a tap or Enter opens the versions as a list under it, Left and Right step it. Its touch (and the cursor's
+    // place) is the tag with room around it; on a phone 44 tall and as wide.
     in property <string> tag-nav;
     in property <string> state;
     in property <bool> state-good;
@@ -724,11 +728,9 @@ export component Header inherits Rectangle {
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
     property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
     property <length> state-width: root.state == "" || Theme.phone ? 0px : 166px;
-    property <bool> switch: root.tag-nav != "" && tag-pill.width > 0 && !root.logo;
-    // The room an arrow takes at each side of a switch's tag.
-    property <length> mark: root.switch ? 11px : 0px;
-    property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - 2 * root.mark - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
-    property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 2 * root.mark + 16px;
+    property <bool> switch: root.tag-nav != "" && root.tag.text != "" && !root.logo;
+    property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
+    property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 16px;
     // The title's room: what the tag, the state and the game leave of the header.
     property <length> title-room: self.width - root.title-x - root.pad - (root.game ? game.width + 16px : 0px) - root.state-width - root.tag-width;
     property <length> title-width: min(title-text.preferred-width, root.title-room);
@@ -819,42 +821,30 @@ export component Header inherits Rectangle {
         }
     }
 
-    // (A switch's hover look, behind its tag and arrows, as Back's.)
+    // (The select's hover look: the hover tint inside the tag, as the other controls'.)
     Rectangle {
-        x: root.tag-x - 6px;
-        y: (parent.height - 30px) / 2;
-        width: tag-pill.width + 2 * root.mark + 12px;
-        height: 30px;
+        x: root.tag-x;
+        y: (parent.height - tag-pill.height) / 2;
+        width: tag-pill.width;
+        height: tag-pill.height;
         visible: root.switch;
         background: tag-hit.pressed ? Theme.line : (tag-hit.has-hover ? Theme.tint : transparent);
     }
 
-    ArrowLeft {
-        x: root.tag-x;
-        y: (parent.height - self.height) / 2;
-        visible: root.switch;
-        fill: tag-hit.has-hover || tag-hit.focused ? Theme.cursor : Theme.muted;
-    }
-
     tag-pill := Pill {
-        x: root.tag-x + root.mark;
+        x: root.tag-x;
         text: root.logo ? "" : root.tag.text;
         tone: root.tag.tone;
+        caret: root.switch;
         opacity: arrive.t;
     }
 
-    ArrowRight {
-        x: root.tag-x + root.mark + tag-pill.width + 6px;
-        y: (parent.height - self.height) / 2;
-        visible: root.switch;
-        fill: tag-hit.has-hover || tag-hit.focused ? Theme.cursor : Theme.muted;
-    }
-
-    // (Its touch: the tag and its arrows with the hover look's margin; on a phone 44 by at least 44.)
+    // (Its touch, and where the cursor's brackets go: the tag with 6 of room at each side and 4 over and under,
+    // the brackets 5 past that; on a phone 44 by at least 44, inside the header.)
     tag-hit := Focusable {
-        x: root.tag-x - 6px - max(0px, (Theme.phone ? 44px : 0px) - (tag-pill.width + 2 * root.mark + 12px)) / 2;
+        x: min(parent.width - self.width, root.tag-x - (self.width - tag-pill.width) / 2);
         y: (parent.height - self.height) / 2;
-        width: max(Theme.phone ? 44px : 0px, tag-pill.width + 2 * root.mark + 12px);
+        width: max(Theme.phone ? 44px : 0px, tag-pill.width + 12px);
         height: Theme.phone ? 44px : 30px;
         nav: root.tag-nav;
         kind: NavKind.stepper;
@@ -1306,10 +1296,13 @@ export component DialogLayer inherits DialogFrame {
     }
 }
 
-// A choice of a select's list: a row of the list, which is what is focused.
+// A choice of a select's list: a row of the list, which is what is focused. In a list of tags, its text is a tag
+// in its color (`tagged`, `tone`).
 component PickRow inherits Rectangle {
     in property <string> text;
     in property <int> nav-index;
+    in property <bool> tagged;
+    in property <color> tone;
     height: Theme.row;
     RowBack {
         hover: touch.has-hover;
@@ -1320,8 +1313,15 @@ component PickRow inherits Rectangle {
     Value {
         x: 12px;
         width: parent.width - 24px;
+        visible: !root.tagged;
         text: root.text;
         font-weight: 400;
+    }
+
+    Pill {
+        x: 12px;
+        text: root.tagged ? root.text : "";
+        tone: root.tone;
     }
 
     touch := RowTouch {
@@ -1376,6 +1376,8 @@ export component PickerLayer inherits Rectangle {
                 y: self.at * list.pitch;
                 width: list.row-width;
                 text: Shell.picker-options[self.at];
+                tagged: Shell.picker-tones.length > 0;
+                tone: Shell.picker-tones[self.at];
                 nav-index: self.at;
 
                 Rectangle { }  // (Copied in: docs/app.md §14.)

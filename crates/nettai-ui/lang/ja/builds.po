@@ -171,13 +171,13 @@ msgid "{n} problem"
 msgid_plural "{n} problems"
 msgstr[0] "問題 {n}件"
 
-# The key hints while the header's version tag is focused: Left and Right switch the build's version, Enter takes
-# the next.
+# The key hints while the header's version tag is focused: Left and Right switch the build's version, Enter opens
+# the versions as a list to choose from.
 msgid "Switch version"
 msgstr "バージョン切替"
 
-msgid "Next version"
-msgstr "次のバージョン"
+msgid "Choose version"
+msgstr "バージョンを選ぶ"
 
 # ---- The Navi tab.
 

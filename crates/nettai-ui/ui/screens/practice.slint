@@ -305,6 +305,7 @@ component PagerRow inherits Rectangle {
     Stepper {
         x: parent.width - self.width - 8px;
         y: (parent.height - self.height) / 2;
+        height: Theme.phone ? 36px : 40px;
         visible: !root.select;
         nav: root.select ? "" : root.nav;
         value: root.value;
@@ -605,8 +606,10 @@ export component PracticeScreen inherits Page {
 
 // A row of the practice menu, whatever it is: a group's title; a label and a value between arrows, the row
 // focused as a whole (on a phone the label is over the arrows), or for Background and Music the value in a box
-// that opens the values as a list, as the entry's rows of them; or a row another screen added. (One component
-// under the menu's one `for`: its parts are all there, and those the row isn't don't show.)
+// that opens the values as a list, as the entry's rows of them; or a row another screen added. Its controls are
+// the entry's height, 40 (36 on a phone), its steppers and selects one column's width so they line up (the
+// user's "option 1", docs/design/app-ui.md §2.44); the row is bare, 52 tall. (One component under the menu's one
+// `for`: its parts are all there, and those the row isn't don't show.)
 component MenuRow inherits Rectangle {
     in property <PracticeRow> entry;
     in property <int> index;
@@ -617,10 +620,13 @@ component MenuRow inherits Rectangle {
     property <string> label: PracticeView.label(root.entry.option);
     property <string> value: root.option && root.entry.text != "" ? root.entry.text : PracticeView.value(root.entry.option, root.entry.value);
     // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
-    // and tells the pass if it can't).
+    // and tells the pass if it can't); the stepper and the select are as wide as it and their arrows (`box`), and
+    // as tall as the entry's.
     property <length> value-width: Theme.phone ? root.width - 72px : 196px;
+    property <length> box: root.value-width + 72px;
+    property <length> control: Theme.phone ? 36px : 40px;
     property <bool> over: Theme.audit && root.option && name.preferred-width > name.width + 0.5px;
-    height: root.title ? head.height : (root.added ? 48px : (Theme.phone ? 64px : Theme.row));
+    height: root.title ? head.height : (root.added ? 48px : (Theme.phone ? 64px : 52px));
     head := GroupTitle {
         x: 0;
         y: 0;
@@ -663,8 +669,9 @@ component MenuRow inherits Rectangle {
         }
 
         Stepper {
-            x: Theme.phone ? 0px : parent.width - self.width - 8px;
-            y: Theme.phone ? 24px : (parent.height - self.height) / 2;
+            x: Theme.phone ? 0px : parent.width - root.box - 8px;
+            y: Theme.phone ? 26px : (parent.height - self.height) / 2;
+            height: root.control;
             visible: !root.select;
             nav: root.select ? "" : "menu.rows.option";
             nav-index: root.index;
@@ -674,10 +681,10 @@ component MenuRow inherits Rectangle {
         }
 
         Select {
-            x: Theme.phone ? 0px : parent.width - self.width - 8px;
+            x: Theme.phone ? 0px : parent.width - root.box - 8px;
             y: Theme.phone ? 26px : (parent.height - self.height) / 2;
-            width: root.value-width + 72px;
-            height: Theme.phone ? 36px : 32px;
+            width: root.box;
+            height: root.control;
             visible: root.select;
             nav: root.select ? "menu.rows.option" : "";
             nav-index: root.index;

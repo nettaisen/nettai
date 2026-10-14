@@ -290,7 +290,7 @@ Each is settled unless the user changes it.
     stepper is gone; its panel keeps the faces of the version's Crosses or souls under MegaMan, changing as the tag
     does. A switch is §2.41's, its problems shown as they were (the Folder tab marked, the header's count). Only
     the editor's tag is a switch: Play's, the Builds list's and Practice's stay plain. The NEW BUILD dialog's note
-    says "It can be switched later in the editor." (§6, docs/app.md §8.)
+    says "It can be switched later in the editor." (§6, docs/app.md §8.) Its look went to §2.44.
 
 43. **Practice's music plays on back at the entry; Background and Music are dropdowns** (2026-10-14). The user:
     "also exiting practice mode back into the practice menu should continue the music" (the practice menu here is
@@ -304,6 +304,19 @@ Each is settled unless the user changes it.
     select (Enter, a click or a tap opens the list, open at the value chosen and scrolling where it is long, a
     sheet on a phone; choosing closes it; Left and Right still step it); Arena stays a pager, as asked before
     (its places are numbers). (§6, docs/app.md §1, "The battle's music", and §15.)
+
+44. **The practice menu's controls are the entry's size; the version tag opens a list** (2026-10-14). Asked why
+    the dropdowns differ (the entry's 40 tall in 56-tall framed rows, the practice menu's 32 tall in 44-tall bare
+    rows, its steppers 32 too), the user chose "option 1": the menu uses the entry's sizes. Its steppers and its
+    Background and Music dropdowns are 40 tall (36 on a phone, as the entry's), one column wide so they line up,
+    its rows 52 tall to fit; it stays bare, with its group titles, and scrolls a little more. Of §2.42's tag: "i
+    just don't like how the version changer looks it feels weird and out of place". It stays in the header and
+    reads as a tag that opens a choice: the other headers' tag (the same pill, color, size and place after the
+    title) with a small down caret inside it in place of the side arrows, the hover tint inside it, and the
+    cursor's brackets with room around it; a click, a tap, Enter or the pad's A opens the game's versions as the
+    selects' list under it, each its own colored tag, open at the build's; choosing one closes it and switches.
+    Left and Right still step it without opening, as any select's; the footer says Choose version for Enter. Only
+    the editor's tag has it. (§6, docs/app.md §8 and §15.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -546,7 +559,9 @@ Each is in the mockups under the same name.
   be used is chosen. With no build, CREATE A BUILD opens Builds' list, whose Back goes back to Practice.
 - **The practice menu** (Start or Esc in a practice battle): a panel on the left, the battle behind it in the game's own pause
   ("music continues, stuff still animates"), without the game's PAUSED banner, with the dummy
-  in view. Rows are a label and a value between arrows, changed at once by Left and Right:
+  in view. Rows are a label and a value between arrows, changed at once by Left and Right; bare rows under group
+  titles, their steppers and dropdowns the entry's size, 40 tall (36 on a phone), in one column so they line up,
+  the rows 52 tall (§2.44: "option 1"; on a phone the label over the control):
   - Dummy: Action (stands still, moves around, fights, a second pad), with its Level (easy, normal, hard: how well
     it fights) under it while it is Fights. Its custom screen goes with its Action. No recording: "get rid of
     recording support, it's so complicated". The user: "the dummy menu is so confusing and has so many redundant options and
@@ -573,10 +588,12 @@ Each is in the mockups under the same name.
   Giga chips. It can be switched later in the editor." (§2.41, §2.42.) The folder starts as a new save's of that game.
   There are no random builds anywhere.
 - **The editor's** header has the build's name, its version's tag, and "✓ Ready to play" or how many problems. The
-  tag is the version's switch (§2.42), on every tab: a click or a tap takes the next version, and it is in the
-  focus order, Left and Right stepping it, Enter stepping it on (the footer: ←→ Switch version, Enter Next
-  version); it changes its name and color with the version, keeps a tag's look with a small arrow at each side
-  (lit on hover and focus) and Back's hover look, and on a phone, at the header's right, has a touch 44 tall. A
+  tag is the version's switch (§2.42), on every tab, and reads as a tag that opens a choice (§2.44): the other
+  headers' tag, in their place after the title, its name and color the version's, with a small down caret inside
+  it; the hover tint inside it and the cursor's brackets with room around it; on a phone, at the header's right, a
+  touch 44 tall. A click, a tap, Enter or the pad's A opens the game's versions under it as the selects' list (a
+  phone's sheet), each its own colored tag, open at the build's; choosing one switches; Left and Right step it
+  without opening (the footer: ←→ Switch version, Enter Choose version). A
   switch keeps the rest of the build; what no longer fits (the other version's Giga chips in the folder) is a
   problem as any other. Elsewhere (Play, the Builds list, Practice) a version's tag is plain. Its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
