@@ -548,7 +548,7 @@ impl Tab for Folder {
         }
     }
 
-    /// R and T on an entry; in the library, a letter typed starts a search.
+    /// R and T on an entry.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
         if let Some(slot) = Folder::focused_slot(shell) {
             match key.code {
@@ -557,17 +557,6 @@ impl Tab for Folder {
                 KeyCode::KeyR | KeyCode::KeyT => {}
                 _ => return false,
             }
-            return true;
-        }
-        // (The keys that change the tab stay the tabs'.)
-        let in_rows = shell.nav.focused().is_some_and(|k| k.id == "lib.rows");
-        let typed = key.text.as_deref().filter(|t| t.chars().count() == 1 && t.chars().all(|c| c.is_alphanumeric()));
-        if in_rows
-            && let Some(typed) = typed
-            && !matches!(shell.bindings.of_key(key.code), Some(nettai_battle::input::keys::L | nettai_battle::input::keys::R))
-        {
-            shell.nav.focus("lib.search", 0);
-            shell.nav.begin_edit(&shell.ui(), typed);
             return true;
         }
         false
