@@ -22,10 +22,11 @@
 //! 1. **Lobby** — the compatibility fields (the protocol's version, the
 //!    engine's, the game, the content's hash, the background pool's
 //!    identity, the role), so a peer that can't play the other's match says
-//!    so at once; the match's settings ([`Settings`]: the game, the rounds by
-//!    name, each round's stage and background stated or left to the seed,
-//!    what a background left to the seed is drawn from, whether patch cards
-//!    apply and whether builds are closed) with their stamp; whether the peer is ready to play them; its
+//!    so at once; the match's settings ([`Settings`]: the game, the round
+//!    wins its set is first to, each of its rounds' stage and background by
+//!    name, stated or left to the seed, what a background left to the seed
+//!    is drawn from, whether patch cards apply and whether builds are
+//!    closed) with their stamp; whether the peer is ready to play them; its
 //!    player's name ([`player_name`]: shown, never taken for who they are);
 //!    and a clock to time the round trip by ([`Lobby::ping`]).
 //!
@@ -49,8 +50,8 @@
 //!    The check is a build's (`nettai_match::build::Checked`): the answer a
 //!    build screen has of the same side.
 //! 2. **Hello** — once a peer sees the settings agreed: the compatibility
-//!    fields, the lobby revisions it agrees to and the rounds' count, in
-//!    the clear, and one commitment: SHA-256 of the agreed settings' hash
+//!    fields, the lobby revisions it agrees to and the round wins the set
+//!    is first to, in the clear, and one commitment: SHA-256 of the agreed settings' hash
 //!    and the bytes of the Reveal it will send. A peer reveals nothing
 //!    before it has the other's Hello.
 //! 3. **Reveal** — the lobby revisions it is of (as its Hello said them),
@@ -395,17 +396,19 @@ impl Compat {
 }
 
 /// What a match is played as, that both peers agree: its game (a match is
-/// of one), its rounds, each round's stage and background stated or left to
-/// the seed, what a background left to the seed is drawn from, whether patch
-/// cards apply, and whether the builds are closed.
+/// of one), the round wins its set is first to and each of its rounds'
+/// stage and background stated or left to the seed, what a background left
+/// to the seed is drawn from, whether patch cards apply, and whether the
+/// builds are closed.
 /// They are the match's, not a player's: either player changes them in the
 /// lobby and both see the same ([`Lobby::propose`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub game: String,
-    /// The rounds: one is a single battle, three the original's triple
-    /// battle (best of three), and a set takes any number from 1 to
-    /// [`nettai_match::MAX_ROUNDS`].
+    /// The rounds the set may take: `2n − 1` for a set first to `n` round
+    /// wins (`nettai_match::rounds_for`, `n` from 1 to
+    /// [`nettai_match::MAX_FIRST_TO`]): one is a single battle (first to 1),
+    /// three the original's triple battle (first to 2).
     pub rounds: Vec<RoundSettings>,
     /// What a round's background left to the seed is drawn from: as the
     /// game picks a link battle's (`BackgroundPick::Game`, a match's own
@@ -431,16 +434,22 @@ fn put_name(w: &mut Writer, name: Option<&str>) {
 }
 
 impl Settings {
-    /// A match of `game` of `rounds` rounds, every place left to the seed
-    /// as the game picks a link battle's, with patch cards and open builds.
-    pub fn new(game: &str, rounds: usize) -> Settings {
+    /// A match of `game` whose set is first to `wins` round wins (1 to
+    /// [`nettai_match::MAX_FIRST_TO`]), every place left to the seed as the
+    /// game picks a link battle's, with patch cards and open builds.
+    pub fn new(game: &str, wins: u8) -> Settings {
         Settings {
             game: game.to_string(),
-            rounds: vec![RoundSettings::default(); rounds],
+            rounds: vec![RoundSettings::default(); nettai_match::rounds_for(wins.clamp(1, nettai_match::MAX_FIRST_TO))],
             backgrounds: BackgroundPick::Game,
             patch_cards: true,
             closed_builds: false,
         }
+    }
+
+    /// The round wins the set is first to.
+    pub fn first_to(&self) -> u8 {
+        nettai_match::first_to(self.rounds.len()).expect("the settings' rounds are a set's")
     }
 
     /// A match file's: its game, its rounds and what their backgrounds are
@@ -473,7 +482,8 @@ impl Settings {
 
     /// The settings as the lobby carries them: the game, whether builds are
     /// closed, whether patch cards apply, whether a background left to the
-    /// seed is the pool's, then each round's stage and background by name
+    /// seed is the pool's, the round wins the set is first to (`n`, a byte),
+    /// then each of its `2n − 1` rounds' stage and background by name
     /// (empty: from the seed; another game's background with its game,
     /// `exe4:acdc-area`).
     pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
@@ -483,7 +493,7 @@ impl Settings {
         w.put(&self.closed_builds);
         w.put(&self.patch_cards);
         w.put(&(self.backgrounds == BackgroundPick::Pool));
-        w.put(&(self.rounds.len() as u16));
+        w.put(&self.first_to());
         for r in &self.rounds {
             put_name(&mut w, r.stage.map(|s| nettai_match::ids::local(&content.defs.stage(s).key)));
             put_name(&mut w, r.background.as_deref());
@@ -492,7 +502,8 @@ impl Settings {
     }
 
     /// Settings from the lobby's bytes, on `content`: refused, with why,
-    /// where they have no round or too many, name a stage or a background
+    /// where their set is first to none or more than
+    /// [`nettai_match::MAX_FIRST_TO`], they name a stage or a background
     /// the content hasn't, a round a match of the game can't be fought on,
     /// or a game other than the content's.
     pub fn from_bytes(content: &Content, bytes: &[u8]) -> Result<Settings, String> {
@@ -502,11 +513,12 @@ impl Settings {
         let closed_builds: bool = r.get().map_err(bad)?;
         let patch_cards: bool = r.get().map_err(bad)?;
         let backgrounds = if r.get::<bool>().map_err(bad)? { BackgroundPick::Pool } else { BackgroundPick::Game };
-        let count: u16 = r.get().map_err(bad)?;
-        if count == 0 || count as usize > nettai_match::MAX_ROUNDS {
-            return Err(format!("{count} rounds: a match has 1 to {}", nettai_match::MAX_ROUNDS));
+        let first_to: u8 = r.get().map_err(bad)?;
+        if first_to == 0 || first_to > nettai_match::MAX_FIRST_TO {
+            return Err(format!("first to {first_to}: a set is first to 1 to {}", nettai_match::MAX_FIRST_TO));
         }
-        let mut rounds = Vec::with_capacity(count as usize);
+        let count = nettai_match::rounds_for(first_to);
+        let mut rounds = Vec::with_capacity(count);
         for i in 0..count {
             let stage: String = r.get().map_err(bad)?;
             let background: String = r.get().map_err(bad)?;
@@ -752,7 +764,7 @@ pub struct Lobby {
     phase: Phase,
     /// A Hello or a Reveal of the other's that came before this peer could
     /// take it (by its revisions, or a Reveal before its Hello).
-    their_hello: Option<((u32, u32), u16, [u8; 32])>,
+    their_hello: Option<((u32, u32), u8, [u8; 32])>,
     their_reveal: Option<Vec<u8>>,
     /// Loading the agreed match: the digest of its first round at its
     /// start, as this engine sets it up; how far this peer is (of
@@ -942,10 +954,11 @@ impl Lobby {
         }
     }
 
-    /// Change how many rounds the match has (each place left to the seed):
-    /// [`Lobby::propose`] of the settings with that many.
-    pub fn set_rounds(&mut self, rounds: usize) {
-        let rounds = vec![RoundSettings::default(); rounds.clamp(1, nettai_match::MAX_ROUNDS)];
+    /// Change the round wins the match's set is first to (1 to
+    /// [`nettai_match::MAX_FIRST_TO`]; each place left to the seed):
+    /// [`Lobby::propose`] of the settings with that.
+    pub fn set_first_to(&mut self, wins: u8) {
+        let rounds = Settings::new(&self.mine.game, wins).rounds;
         self.propose(Settings { rounds, ..self.mine.clone() });
     }
 
@@ -1298,12 +1311,12 @@ impl Lobby {
         if !self.compatible(&compat) {
             return;
         }
-        let (Ok(theirs), Ok(mine), Ok(rounds), Ok(commitment)) = (r.get::<u32>(), r.get::<u32>(), r.get::<u16>(), r.bytes()) else { return };
+        let (Ok(theirs), Ok(mine), Ok(first_to), Ok(commitment)) = (r.get::<u32>(), r.get::<u32>(), r.get::<u8>(), r.bytes()) else { return };
         let Ok(commitment) = <[u8; 32]>::try_from(commitment) else { return };
         match &self.phase {
             // After the match is agreed: the other hasn't our Reveal.
             Phase::Done(a) => self.outgoing.push(a.answer.clone()),
-            _ => self.their_hello = Some(((theirs, mine), rounds, commitment)),
+            _ => self.their_hello = Some(((theirs, mine), first_to, commitment)),
         }
     }
 
@@ -1367,9 +1380,9 @@ impl Lobby {
         }
         // The other's Hello, once it is of this agreement: reveal.
         if let Phase::Hello(c) = &self.phase
-            && let Some(((theirs, mine), rounds, commitment)) = &self.their_hello
+            && let Some(((theirs, mine), first_to, commitment)) = &self.their_hello
             && (*mine, *theirs) == c.revisions
-            && *rounds as usize == c.settings.rounds.len()
+            && *first_to == c.settings.first_to()
         {
             let (c, commitment) = (c.clone(), *commitment);
             self.outgoing.push(c.reveal.clone());
@@ -1490,7 +1503,7 @@ impl Lobby {
         self.compat.write(&mut w);
         w.put(&self.revision);
         w.put(&theirs);
-        w.put(&(self.mine.rounds.len() as u16));
+        w.put(&self.mine.first_to());
         w.bytes(&commitment(&hash, &reveal[1..]));
         Committed { settings: self.mine.clone(), hash, revisions: (self.revision, theirs), hello, reveal }
     }
@@ -1665,8 +1678,9 @@ mod tests {
         other
     }
 
-    fn settings(rounds: usize) -> Settings {
-        Settings::new("exe6", rounds)
+    /// EXE6's settings of a set first to `wins`.
+    fn settings(wins: u8) -> Settings {
+        Settings::new("exe6", wins)
     }
 
     /// Why a lobby failed.
@@ -1768,8 +1782,9 @@ mod tests {
         }
     }
 
-    /// Settings go by name and read back, closed builds with them; ones
-    /// this content can't play are refused with why.
+    /// Settings go by name and read back, closed builds with them, and what
+    /// the set is first to (one round's wins, a triple battle's, four's);
+    /// ones this content can't play are refused with why.
     #[test]
     fn settings_go_by_name() {
         let content = nettai_match::testing::exe6_content();
@@ -1781,13 +1796,19 @@ mod tests {
         assert_ne!(closed.hash(&content), s.hash(&content), "what both commit to says whether builds are closed");
         // Patch cards apply unless the settings say they don't, which both
         // commit to as well.
-        assert!(s.patch_cards && settings(3).patch_cards);
+        assert!(s.patch_cards && settings(TRIPLE_BATTLE).patch_cards);
         let bare = Settings { patch_cards: false, ..s.clone() };
         assert_eq!(Settings::from_bytes(&content, &bare.to_bytes(&content)).unwrap(), bare);
         assert!(bare.hash(&content) != s.hash(&content) && bare.hash(&content) != closed.hash(&content));
-        let blank = settings(5);
+        let blank = settings(3);
         assert_eq!(Settings::from_bytes(&content, &blank.to_bytes(&content)).unwrap(), blank);
         assert_eq!(settings(1).rounds, vec![RoundSettings::default()]);
+        for (wins, rounds) in [(1, 1), (TRIPLE_BATTLE, 3), (4, 7), (nettai_match::MAX_FIRST_TO, 19)] {
+            let set = settings(wins);
+            assert_eq!((set.first_to(), set.rounds.len()), (wins, rounds));
+            let back = Settings::from_bytes(&content, &set.to_bytes(&content)).unwrap();
+            assert_eq!((back.first_to(), &back), (wins, &set));
+        }
         let mut other = s.clone();
         other.game = "exe5".into();
         assert!(Settings::from_bytes(&content, &other.to_bytes(&content)).unwrap_err().contains("no stage"));
@@ -1797,13 +1818,18 @@ mod tests {
         w.put(&false);
         w.put(&true);
         w.put(&false);
-        w.put(&1u16);
+        w.put(&1u8);
         w.put(&"no-such-stage".to_string());
         w.put(&String::new());
         assert_eq!(Settings::from_bytes(&content, &bytes).unwrap_err(), "round 1: no stage no-such-stage in exe6");
-        for count in [0, nettai_match::MAX_ROUNDS + 1] {
-            let none = Settings { rounds: vec![RoundSettings::default(); count], ..blank.clone() };
-            assert_eq!(Settings::from_bytes(&content, &none.to_bytes(&content)).unwrap_err(), format!("{count} rounds: a match has 1 to 99"));
+        // (What the set is first to is the byte after the game and the three
+        // switches.)
+        let first_to = 1 + "exe6".len() + 3;
+        assert_eq!(blank.to_bytes(&content)[first_to], 3);
+        for wins in [0, nettai_match::MAX_FIRST_TO + 1] {
+            let mut none = blank.to_bytes(&content);
+            none[first_to] = wins;
+            assert_eq!(Settings::from_bytes(&content, &none).unwrap_err(), format!("first to {wins}: a set is first to 1 to 10"));
         }
         // Backgrounds from the pool, one round on another game's: both read back, and both commit to the pick.
         let pool = Settings { backgrounds: BackgroundPick::Pool, ..blank.clone() };
@@ -1837,7 +1863,8 @@ mod tests {
 
     /// Two peers agree each kind of arena alike (every part from the seed;
     /// a stage alone; a background alone; a random match's three, stated;
-    /// five of every kind; one round), each player's side on their side,
+    /// five of every kind; one round; a set first to 4's seven), each
+    /// player's side on their side,
     /// every place stated as the seed picks those left, the seed from both
     /// nonces; the set both start is the same.
     #[test]
@@ -1847,7 +1874,8 @@ mod tests {
         let stage = RoundSettings { stage: m.rounds[0].stage, background: None };
         let background = RoundSettings { stage: None, background: m.rounds[1].background.clone() };
         let five = vec![RoundSettings::default(), stage.clone(), background.clone(), m.rounds[2].clone(), RoundSettings::default()];
-        for rounds in [vec![RoundSettings::default(); TRIPLE_BATTLE], vec![stage], vec![background], m.rounds.clone(), five] {
+        let seven = vec![RoundSettings::default(); nettai_match::rounds_for(4)];
+        for rounds in [vec![RoundSettings::default(); nettai_match::rounds_for(TRIPLE_BATTLE)], vec![stage], vec![background], m.rounds.clone(), five, seven] {
             let s = Settings { rounds: rounds.clone(), ..settings(1) };
             let sides = [side(&content, 3), side(&content, 4)];
             let [h, j] = agree(&content, &s, sides.clone());
@@ -1855,7 +1883,7 @@ mod tests {
             assert_eq!(h.seed, j.seed);
             assert_eq!((&h.m, &h.sides), (&j.m, &j.sides));
             assert_eq!(h.sides, sides);
-            assert_eq!(h.m.rounds.len(), rounds.len());
+            assert_eq!((h.m.rounds.len(), h.m.first_to()), (rounds.len(), s.first_to()));
             for (stated, asked) in h.m.rounds.iter().zip(&rounds) {
                 assert!(stated.stage.is_some() && stated.background.is_some());
                 assert!(asked.stage.is_none() || asked.stage == stated.stage);
@@ -1887,7 +1915,7 @@ mod tests {
         // The joiner readies; before the host has heard it, the host makes
         // it a single battle: both show that, and both marks are clear.
         lobbies[1].set_ready(true);
-        lobbies[0].set_rounds(1);
+        lobbies[0].set_first_to(1);
         assert_eq!(marks(&lobbies)[0], false, "the player who changes them isn't ready for them yet");
         run(&mut lobbies, now, 4, &mut |_, _| {});
         assert_eq!(both(&lobbies), [settings(1), settings(1)]);
@@ -1911,8 +1939,8 @@ mod tests {
         assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)));
         // Both change them at once (neither has heard the other's change):
         // the host's stands, on both.
-        lobbies[0].set_rounds(TRIPLE_BATTLE);
-        lobbies[1].set_rounds(5);
+        lobbies[0].set_first_to(TRIPLE_BATTLE);
+        lobbies[1].set_first_to(3);
         run(&mut lobbies, now, 6, &mut |_, _| {});
         let agreed = Settings { closed_builds: true, ..settings(TRIPLE_BATTLE) };
         assert_eq!(both(&lobbies), [agreed.clone(), agreed.clone()]);
@@ -1939,7 +1967,7 @@ mod tests {
         for l in &mut lobbies {
             let a = started(l, now);
             assert_eq!(a.settings, agreed);
-            assert!(a.closed_builds() && a.patch_cards() && a.m.rounds.len() == TRIPLE_BATTLE);
+            assert!(a.closed_builds() && a.patch_cards() && a.m.first_to() == TRIPLE_BATTLE);
         }
     }
 
@@ -2169,7 +2197,7 @@ mod tests {
     #[test]
     fn a_tampered_reveal_is_refused() {
         let content = nettai_match::testing::exe6_content();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         // (The joiner's Reveal: its kind, the two revisions it is of, then
         // the nonce, then its side.)
         for (what, at) in [("nonce", 3usize), ("side", 14)] {
@@ -2193,7 +2221,7 @@ mod tests {
     fn a_reveal_of_an_agreement_taken_back_is_left() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
         // Both commit and reveal; no Reveal arrives (the joiner's first is
         // kept, on its way).
@@ -2240,7 +2268,7 @@ mod tests {
     fn a_match_only_one_peer_agreed_goes_back_to_the_lobby() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
         // The host's Reveal doesn't arrive: the host has the joiner's, and
         // is loading; the joiner still waits for the host's.
@@ -2276,7 +2304,7 @@ mod tests {
     #[test]
     fn peers_that_cant_play_say_why() {
         let content = nettai_match::testing::exe6_content();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         let now = Instant::now();
         // (Each failed: the joiner, who hears the host first, refuses, and
         // the host hears it.)
@@ -2352,7 +2380,7 @@ mod tests {
     fn a_player_who_leaves_says_so() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         for stage in ["agreeing", "loading", "playing", "in the lobby again"] {
             let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
             if stage == "agreeing" {
@@ -2474,7 +2502,7 @@ mod tests {
     fn one_player_is_back_in_the_lobby_before_the_other() {
         let content = nettai_match::testing::exe6_content();
         let mut now = Instant::now();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
         run(&mut lobbies, now, 20, &mut |_, _| {});
         load(&mut lobbies, now);
@@ -2509,9 +2537,9 @@ mod tests {
             }
             assert!(again >= 1, "the host's last frame, again");
         }
-        // The host makes it five rounds and readies, meanwhile: none of it
+        // The host makes it first to 3 and readies, meanwhile: none of it
         // is the joiner's lobby's while its match is up.
-        lobbies[0].set_rounds(5);
+        lobbies[0].set_first_to(3);
         lobbies[0].set_ready(true);
         run(&mut lobbies, now, 2, &mut |_, _| {});
         assert_eq!(lobbies[1].settings(), &s, "as the match was agreed");
@@ -2522,7 +2550,7 @@ mod tests {
         assert!(lobbies[1].reopen());
         assert!(!lobbies[1].their_ready(), "the host's mark was for the match that was played");
         run(&mut lobbies, now + RESEND, 4, &mut |_, _| {});
-        assert_eq!((lobbies[1].settings(), lobbies[1].their_ready(), lobbies[1].ready(), lobbies[0].their_ready()), (&settings(5), true, false, false));
+        assert_eq!((lobbies[1].settings(), lobbies[1].their_ready(), lobbies[1].ready(), lobbies[0].their_ready()), (&settings(3), true, false, false));
         now += 2 * RESEND;
         run(&mut lobbies, now, 2, &mut |from, d| assert!(!(from == 0 && d[0] == Kind::Frame as u8), "the joiner has ended the match: it needs no more of it"));
         // The next match is agreed; the host has loaded, and waits for the
@@ -2553,7 +2581,7 @@ mod tests {
     fn the_match_starts_once_both_have_loaded() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         let loading = |lobbies: &mut [Lobby; 2]| -> [bool; 2] { [0, 1].map(|i| matches!(lobbies[i].poll(now), Status::Loading(_))) };
         let starts = |lobbies: &mut [Lobby; 2]| -> [bool; 2] { [0, 1].map(|i| matches!(lobbies[i].poll(now), Status::Start(_))) };
         let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
@@ -2646,7 +2674,7 @@ mod tests {
         w.put(&3u16);
         w.bytes(&[0; 32]);
         for said in [lobby_5, hello_5] {
-            let mut lobby = Lobby::new(Role::Host, &content, settings(3), side(&content, 3), 7, Duration::from_secs(10));
+            let mut lobby = Lobby::new(Role::Host, &content, settings(TRIPLE_BATTLE), side(&content, 3), 7, Duration::from_secs(10));
             lobby.set_ready(true);
             lobby.receive(now, &said);
             let failure = failed(&mut lobby, now);
@@ -2668,7 +2696,7 @@ mod tests {
     fn programs_that_set_a_match_up_differently_dont_start_it() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let s = settings(3);
+        let s = settings(TRIPLE_BATTLE);
         let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
         run(&mut lobbies, now, 20, &mut |_, _| {});
         // What an engine without the host's keys makes of the agreed match:
@@ -2715,7 +2743,7 @@ mod tests {
     fn the_lobby_times_the_round_trip() {
         let content = nettai_match::testing::exe6_content();
         for (each_way, quality) in [(30u64, Quality::Excellent), (120, Quality::Poor)] {
-            let s = settings(3);
+            let s = settings(TRIPLE_BATTLE);
             let mut lobbies = pair(&content, [s.clone(), s.clone()], [side(&content, 3), side(&content, 4)]);
             lobbies[0].set_ready(false);
             assert_eq!(lobbies[0].ping(), None);

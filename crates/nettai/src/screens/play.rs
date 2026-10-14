@@ -79,8 +79,9 @@ use std::time::{Duration, Instant};
 /// faded out by then, so this is a beat, not the time the result is read in.
 const RESULT_SHOWN: Duration = Duration::from_millis(500);
 
-/// The rounds a match may be: a single battle, or best of three.
-const ROUNDS: [usize; 2] = [1, 3];
+/// The round wins a match's set may be first to: 1 (a single battle) to `nettai_match::MAX_FIRST_TO`, 2 (the
+/// original's triple battle) unless the player last played another.
+const FIRST_TO: std::ops::RangeInclusive<u8> = 1..=nettai_match::MAX_FIRST_TO;
 
 /// The tag this screen hears of its rows in the practice menu by (`Screen::answered`).
 const WAIT_ROWS: &str = "play.wait";
@@ -103,18 +104,19 @@ enum WaitRow {
     Cancel = 2,
 }
 
-/// What the settings remember for Play: the rounds last played, and the build last chosen, by game.
-const REMEMBERED_ROUNDS: &str = "play.rounds";
+/// What the settings remember for Play: the round wins the last match's set was first to, and the build last
+/// chosen, by game.
+const REMEMBERED_FIRST_TO: &str = "play.first-to";
 
 fn remembered_build(game: &str) -> String {
     format!("play.build.{game}")
 }
 
-/// The settings a lobby of `game` opens with: `rounds` rounds, each place picked from the match's seed, its
-/// background from the background pool, every game's (docs/app.md §1, "The battle's background"), shared by both
-/// players as the round's settings are.
-pub(crate) fn settings(game: &str, rounds: usize) -> Settings {
-    Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, rounds) }
+/// The settings a lobby of `game` opens with: a set first to `wins` round wins, each place picked from the match's
+/// seed, its background from the background pool, every game's (docs/app.md §1, "The battle's background"), shared
+/// by both players as the round's settings are.
+pub(crate) fn settings(game: &str, wins: u8) -> Settings {
+    Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins) }
 }
 
 /// A build of the selected game, as the list has it (the Builds screen's row: `builds::shelf`).
@@ -176,7 +178,7 @@ struct Live {
     their_name: String,
     ready: bool,
     their_ready: bool,
-    rounds: i32,
+    first_to: i32,
     patch_cards: bool,
     /// What is wrong with this player's build as the settings would play it: the first thing.
     problem: Option<nettai_match::check::Problem>,
@@ -520,10 +522,10 @@ impl Play {
         let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side(shell)) else {
             return self.ended(shell, Some(UserError::Other));
         };
-        let rounds = shell.settings.remembered.get(REMEMBERED_ROUNDS).and_then(|r| r.parse().ok()).filter(|r| ROUNDS.contains(r)).unwrap_or(ROUNDS[1]);
+        let first_to = shell.settings.remembered.get(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
         // (The screenshot pass's matches are the same from run to run.)
         let entropy = tour::entropy().unwrap_or_else(nettai_frontend::lobby::entropy);
-        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), settings(&game, rounds), side, &shell.settings.name, entropy));
+        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), settings(&game, first_to), side, &shell.settings.name, entropy));
         if !made {
             return;
         }
@@ -558,7 +560,7 @@ impl Play {
         ];
         let gate = Rc::new(Gate::default());
         let (said, made) = (gate.clone(), gate.clone());
-        shell.settings.remembered.insert(REMEMBERED_ROUNDS.into(), agreed.settings.rounds.len().to_string());
+        shell.settings.remembered.insert(REMEMBERED_FIRST_TO.into(), agreed.settings.first_to().to_string());
         shell.save_settings();
         shell.start_battle(BattleStart {
             owner: ScreenId::Play,
@@ -603,9 +605,9 @@ impl Play {
     }
 
     /// The lobby's settings as the player's controls change them.
-    fn set_rounds(&mut self, rounds: usize) {
+    fn set_first_to(&mut self, wins: u8) {
         if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-            lobby.set_rounds(rounds);
+            lobby.set_first_to(wins);
         }
         self.ended = None;
     }
@@ -659,7 +661,7 @@ impl Play {
             their_name: lobby.their_name().unwrap_or_default().to_string(),
             ready,
             their_ready,
-            rounds: lobby.settings().rounds.len() as i32,
+            first_to: lobby.settings().first_to() as i32,
             patch_cards: lobby.settings().patch_cards,
             closed: lobby.settings().closed_builds,
             bars: if reconnecting.is_some() { 0 } else { steady.map_or(ping.map_or(0, |p| p.quality().bars() as i32), |s| s.0) },
@@ -694,7 +696,7 @@ impl Play {
         view.set_their_ready(live.their_ready);
         view.set_ready_seq(self.ready_seq);
         view.set_their_ready_seq(self.their_ready_seq);
-        view.set_rounds(live.rounds);
+        view.set_first_to(live.first_to);
         view.set_patch_cards(live.patch_cards);
         // (The build's problem in the player's words: the Builds screen's for each kind.)
         if live.problem != self.live.problem || live.patch_cards != self.live.patch_cards {
@@ -1073,7 +1075,7 @@ impl Screen for Play {
                 self.ended = None;
                 shell.ui().global::<PlayView>().set_note_error(Default::default());
             }
-            "lobby.rounds" => self.step(shell, id, index, 1),
+            "lobby.first-to" => self.step(shell, id, index, 1),
             "lobby.closed" => {
                 let closed = !self.live.closed;
                 self.set_closed(closed);
@@ -1128,9 +1130,10 @@ impl Screen for Play {
                     self.choose_build(shell, (self.chosen as i32 + by).rem_euclid(count) as usize);
                 }
             }
-            "lobby.rounds" => {
-                let at = ROUNDS.iter().position(|r| *r as i32 == self.live.rounds).unwrap_or(0) as i32;
-                self.set_rounds(ROUNDS[(at + by).rem_euclid(ROUNDS.len() as i32) as usize]);
+            // (Around from the last to the first, as the stepper went from best of three to a single battle.)
+            "lobby.first-to" => {
+                let (first, count) = (*FIRST_TO.start() as i32, FIRST_TO.len() as i32);
+                self.set_first_to((first + (self.live.first_to - first + by).rem_euclid(count)) as u8);
             }
             "lobby.closed" => self.set_closed(by > 0),
             "lobby.cards" => self.set_patch_cards(by < 0),

@@ -98,8 +98,8 @@ player; PRACTICE, offline against a dummy; BUILDS; REPLAYS; and Settings, kept b
 rebuilt to a new design: the menu, Settings and the battle's host are built, and the other four screens aren't yet
 (`NETTAI_PRACTICE=<game>` starts a practice battle meanwhile). In the battle the arrows move, Z is A, X is B, A is
 L, S is R, Enter is START and Backspace is SELECT (Settings binds others, and a pad's buttons), and Esc opens the
-app's menu; in a practice battle, R starts over. A match file sets the game, its rounds (one `[[round]]` each: the set is as
-many rounds, three for the original's best of three), each side's navi, folder, version, forms, patch cards,
+app's menu; in a practice battle, R starts over. A match file sets the game, its rounds (one `[[round]]` each: a set first to n
+round wins takes 2n - 1 at most, one for a single battle, three for the original's triple battle), each side's navi, folder, version, forms, patch cards,
 NaviCust and what its save brings to the stats (the rules build the rest); its optional `seed` sets the battle's
 RNG, and without one the seed comes from the clock ([docs/frontend.md](docs/frontend.md) §6).
 
@@ -123,7 +123,7 @@ Cloudflare account:
 One player asks the signaling server for a room, the server picks its code, and the other joins by that code.
 Both need the same engine, game and content pack (the lobby checks, and each is told what differs). Each brings
 their build (or a random side), which stays their own until the match: the lobby says nothing of it. The match's
-settings (its rounds, whether builds are closed) are both players', and the two agree them in the lobby; each
+settings (the round wins its set is first to, whether builds are closed) are both players', and the two agree them in the lobby; each
 commits to its half of the seed and its side before either reveals them, and the battle's RNG comes from both
 halves. Both play with rollback: inputs go out every frame, the other player's are predicted until they arrive,
 and the battle is simulated again when a prediction was wrong. Each player's input delay is their own (4 ticks

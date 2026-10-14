@@ -888,7 +888,7 @@ mod tests {
         // The joiner readies; the host makes it a single battle with closed
         // builds: both show that, and nobody is ready.
         seats[1].lobby.set_ready(true);
-        seats[0].lobby.set_rounds(1);
+        seats[0].lobby.set_first_to(1);
         seats[0].lobby.set_closed_builds(true);
         let single = Settings { closed_builds: true, ..Settings::new("exe6", 1) };
         until(&mut seats, "the settings are both players'", idle, |s, _| s.iter().all(|seat| *seat.lobby.settings() == single && !seat.lobby.ready() && !seat.lobby.their_ready()));
@@ -1547,17 +1547,17 @@ mod tests {
     }
 
     /// Two players on a channel the test shuttles by hand play a set of
-    /// `game` of `rounds` rounds to its end: the host's navi shoots, the
-    /// joiner's has 1 HP and stands still (the short set's sides, each
+    /// `game` first to `wins` round wins to its end: the host's navi shoots,
+    /// the joiner's has 1 HP and stands still (the short set's sides, each
     /// player bringing theirs).
-    fn set_pair(game: &'static str, rounds: usize) -> [SetPlayed; 2] {
+    fn set_pair(game: &'static str, wins: u8) -> [SetPlayed; 2] {
         use crate::driver::short_set;
         let content = if game == "exe5" { nettai_match::testing::exe5_content() } else { exe6_test_content() };
         // Both agree the match's rounds (the stages of the first three, the
         // rest left to the seed); the host brings the shooter's side, the
         // joiner the side with 1 HP.
         let mut m = short_set::of(&content, game, 7);
-        m.rounds.resize(rounds, RoundSettings::default());
+        m.rounds.resize(nettai_match::rounds_for(wins), RoundSettings::default());
         let (mut shuttle, hands) = Shuttle::new();
         let mut hands = hands.into_iter().enumerate();
         let mut playing = agreed(&content, &Settings::of_match(&m), m.sides.clone()).map(|a| {
@@ -1677,13 +1677,13 @@ mod tests {
         }
     }
 
-    /// A netplay set of five rounds, best of five: the host wins three
+    /// A netplay set first to 3 (five rounds at most): the host wins three
     /// straight, which decides it, on both peers alike (rounds two and three
     /// start with the score carried, the settled states agree in every
     /// round).
     #[test]
-    fn a_netplay_set_of_five_rounds() {
-        let [hosted, joined] = set_pair("exe6", 5);
+    fn a_netplay_set_first_to_three() {
+        let [hosted, joined] = set_pair("exe6", 3);
         assert_eq!((hosted.result, joined.result), (Some(BattleResult::Won), Some(BattleResult::Lost)));
         for p in [&hosted, &joined] {
             assert_eq!(p.rounds.iter().map(|r| r.1).collect::<Vec<_>>(), [(1, 1, 0), (2, 2, 0)]);

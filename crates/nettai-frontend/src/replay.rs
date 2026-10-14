@@ -376,32 +376,35 @@ mod tests {
     use crate::driver::{LivePlayer, short_set};
     use crate::session::Session;
 
-    /// Sets of other numbers of rounds than the original's three, played
-    /// offline by both players (each round won by the side the case says:
-    /// it shoots, the other stands, both navis at 1 HP), end when they
-    /// should: best of five decided 3-0 after three rounds either way and
-    /// 3-2 after all five (both games); best of four drawn at 2-2 after
-    /// four; a set of one round after it. Each new round starts with the
-    /// score carried. Each set is recorded, every round's place kept, and
-    /// its replay plays back to the same end with the same round ends,
-    /// every digest and mark the recording's, and played out says who won
-    /// each round.
+    /// Sets first to other numbers of round wins than the original's two,
+    /// played offline by both players (each round won by the side the case
+    /// says: it shoots, the other stands, both navis at 1 HP), end when a
+    /// side has them: first to 3 decided 3-0 after three rounds either way
+    /// and 3-2 after all five (all three games); first to 4 at 4-3 after
+    /// seven, and at 4-1 after five; first to 1 after its one round. Each
+    /// new round starts with the score carried. Each set is recorded, every
+    /// round's place kept and what the set is first to with them, and its
+    /// replay plays back to the same end with the same round ends, every
+    /// digest and mark the recording's, and played out says who won each
+    /// round.
     #[test]
-    fn a_set_of_n_rounds_ends_when_it_should() {
-        use BattleResult::{Drawn, Lost, Won};
-        let (six, five) = (nettai_match::testing::exe6_content(), nettai_match::testing::exe5_content());
-        let cases: [(&Arc<Content>, &str, usize, &[usize], BattleResult); 7] = [
-            (&six, "exe6", 5, &[0, 0, 0], Won),
-            (&six, "exe6", 5, &[1, 1, 1], Lost),
-            (&six, "exe6", 5, &[0, 1, 0, 1, 0], Won),
-            (&five, "exe5", 5, &[1, 0, 1, 0, 1], Lost),
-            (&six, "exe6", 5, &[1, 1, 0, 0, 0], Won),
-            (&six, "exe6", 4, &[0, 1, 1, 0], Drawn),
+    fn a_set_first_to_n_ends_when_it_should() {
+        use BattleResult::{Lost, Won};
+        let (six, five, four) = (nettai_match::testing::exe6_content(), nettai_match::testing::exe5_content(), nettai_match::testing::exe4_content());
+        let cases: [(&Arc<Content>, &str, u8, &[usize], BattleResult); 9] = [
+            (&six, "exe6", 3, &[0, 0, 0], Won),
+            (&six, "exe6", 3, &[1, 1, 1], Lost),
+            (&six, "exe6", 3, &[0, 1, 0, 1, 0], Won),
+            (&five, "exe5", 3, &[1, 0, 1, 0, 1], Lost),
+            (&four, "exe4", 3, &[0, 1, 0, 1, 0], Won),
+            (&six, "exe6", 3, &[1, 1, 0, 0, 0], Won),
+            (&six, "exe6", 4, &[0, 1, 0, 1, 0, 1, 1], Lost),
+            (&four, "exe4", 4, &[0, 0, 1, 0, 0], Won),
             (&six, "exe6", 1, &[1], Lost),
         ];
-        for (content, game, rounds, winners, result) in cases {
-            let case = format!("{game} best of {rounds}, won by {winners:?}");
-            let m = short_set::duel(content, game, 7, rounds);
+        for (content, game, first_to, winners, result) in cases {
+            let case = format!("{game} first to {first_to}, won by {winners:?}");
+            let m = short_set::duel(content, game, 7, first_to);
             let sink = Shared::default();
             let live = LivePlayer::new(Set::of(content, &m, 7));
             let mut s = Session::new(Box::new(short_set::Scripted { live, winners: winners.to_vec() }));
@@ -429,7 +432,7 @@ mod tests {
             assert_eq!((replay.end, replay.rounds().len(), replay.ticks.len() as u64), (End::Set, winners.len(), s.ticks), "{case}");
             let kept = nettai_match::binary::read_match(content, &replay.match_bytes).unwrap();
             assert_eq!(kept, m.stated(content, 7).unwrap(), "{case}");
-            assert_eq!(kept.rounds.len(), rounds, "{case}");
+            assert_eq!((kept.first_to(), kept.rounds.len()), (first_to, nettai_match::rounds_for(first_to)), "{case}");
             let out = play_out(content, &replay).unwrap();
             let want = Outcome {
                 ticks: s.ticks,

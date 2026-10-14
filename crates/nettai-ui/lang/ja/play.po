@@ -116,14 +116,12 @@ msgstr "準備完了"
 msgid "NOT READY"
 msgstr "準備中"
 
-msgid "Rounds"
-msgstr "ラウンド"
+msgid "First to"
+msgstr "先取"
 
-msgid "Single battle"
-msgstr "1本勝負"
-
-msgid "Best of {}"
-msgstr "{}本勝負"
+msgctxt "first to"
+msgid "{}"
+msgstr "{}本先取"
 
 msgid "Patch cards"
 msgstr "改造カード"
