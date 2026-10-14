@@ -566,7 +566,7 @@ that reference; the battle picture alone is always a whole multiple of 240 by 16
 | line (every border) | `#3d3574` | `#3f5435` | `#27508f` |
 | inset (a field, a value box) | `#06040e` | `#080b06` | `#040813` |
 | text; muted; dim | `#f1efff`; `#aea8d8`; `#655f94` | `#f0f5e8`; `#a6b597`; `#617056` | `#eaf3ff`; `#8ea8d4`; `#55698f` |
-| the cursor, the active pane's title, the chosen row's bar | `#9ff0ff` | `#c8ff5a` | `#66e0ff` |
+| the cursor, the active pane's title, the chosen row's bar | `#b8a6ff` | `#c8ff5a` | `#66e0ff` |
 | the main action, its text | `#ff4fd8`, `#1a0016` | `#ffcc33`, `#171200` | `#ffb62e`, `#1b1100` |
 | the backdrop's pattern | a starfield: three lattices of dots (white at 0.22 and 0.14, `#9ff0ff` at 0.20) and a streak across the window at 118 degrees from `#9ff0ff` into the main action's magenta | an isometric grid: 1-unit lines of `#c8ff5a` at 0.055, 46 apart at 30 degrees each way, over a faint wash of it low on the window | hexagons stroked in `#62b4ff` at 0.078 |
 
