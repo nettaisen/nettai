@@ -283,6 +283,10 @@ impl Navicust {
                 view.set_held(ModelRc::new(VecModel::from(held)));
                 view.set_held_tone(tone(color.as_deref()));
                 view.set_held_plus(d.plus.contains(&h.piece));
+                // (C's hint: Uncompress where it can be: the user, "compress key on the navicust view should say
+                // uncompress if uncompress is possible".)
+                view.set_held_compresses(d.compresses(h.piece));
+                view.set_held_compressed(h.compressed && d.compresses(h.piece));
                 view.set_glide(self.glide);
                 view.set_grab_x(self.at.0 - first);
                 view.set_grab_y(self.at.1 - first);
