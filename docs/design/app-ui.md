@@ -420,7 +420,8 @@ Each is in the mockups under the same name.
 - **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
   library offers what the place being filled can hold (§2.27): a Mega place the Mega chips, the Giga place the Giga
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
-  folder can hold. A chip of another class in one of those three lists (a build or save made by hand) is a
+  folder can hold. A Program Advance has no picture and no element, and none is shown ("program advances don't
+  have elements or chip art, so don't show those"). A chip of another class in one of those three lists (a build or save made by hand) is a
   problem of the build, shown as any other: its place's row in the error red, and the strip says why ("Cannon
   can't be in the Mega list").
 
