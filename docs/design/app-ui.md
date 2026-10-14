@@ -122,9 +122,10 @@ Each is settled unless the user changes it.
     playable as its pack lands. Without the collection, a game with no pack says so, with a way to choose the
     collection's folder. (docs/app.md §17.)
 25. **An About screen** (2026-10-13): "add an about screen with license and dependency info etc like for slint".
-    About is a minor item of the main menu, beside Settings (alone under the line since §2.50): the app's version and license, Slint's "Made with
-    Slint" widget (which Slint's royalty-free license asks for in an About screen reached from the top menu), and
-    every font and package the app is built from with its license's texts (§6, docs/app.md §18).
+    About was a minor item of the main menu, beside Settings (alone under the line since §2.50; Settings'
+    subscreen since §2.53): the app's version and license, Slint's "Made with Slint" widget (which Slint's
+    royalty-free license asks for in an About screen reached from the top menu), and every font and package the
+    app is built from with its license's texts (§6, docs/app.md §18).
 26. **The NaviCust's bugs are its own, and a program is placed as often as wanted** (2026-10-13): "navicust
     shouldn't display patch card bugs. also you should allow a navicust part to be placed multiple times". The
     NaviCust tab's Bugs (on a phone, its Bugs line) list the bugs the NaviCust brings, the build's without its
@@ -408,7 +409,8 @@ Each is settled unless the user changes it.
       the music carried over are as they were. Practice's CREATE A BUILD (§2.28) is gone: the entry is entered with
       a build, and one that finds no build of the game goes back to PLAY.
     - *The main menu* is PLAY, REPLAYS, SETTINGS and EXIT, large, as a fighting game's title screen has them
-      (SETTINGS came up from the small row, and EXIT with it), and About alone small under the line. The words are
+      (SETTINGS came up from the small row, and EXIT with it), and About alone small under the line (since §2.53
+      in Settings, and the line gone with it). The words are
       48 on rows 96 (36 and 72 before), the type's largest step, in the same 416 column, the four as tall as the
       reel beside them; on a phone 32 on rows 68.
     (§4, §6, docs/app.md §2, §4, §8 and §15.)
@@ -443,6 +445,20 @@ Each is settled unless the user changes it.
       is the one main action then), and the save's build named for its file whatever the dialog's name field
       says.
     (§6, docs/app.md §4.)
+53. **About is in Settings** (2026-10-14). The user: "the about screen should be moved as a subscreen of the
+    settings dialog and removed from the main menu".
+    - *Settings' About group,* the last in the list at its left as before, has under Version and Your files a row
+      of its own, Made with, whose SHOW LICENSES opens About in the page's place: its title ABOUT, its Back
+      ‹ SETTINGS, and all it showed as it was (the app's name, its version and license, Slint's "Made with Slint",
+      MADE WITH and the chosen one's license beside it scrolling, a phone's sheet), with its keys, its pad and its
+      pointer as before. Back from its list comes back to the page, the focus on SHOW LICENSES; opened again, it
+      is on the row it was on. Slint's widget is still reached from the top menu, by SETTINGS.
+    - *The main menu* is PLAY, REPLAYS, SETTINGS and EXIT alone, the four big words with nothing under them and
+      no line, centered in the body's height (on a phone under the reel, as before).
+    - Chosen here, the user saying no more: a subscreen opened from a row, not About's parts laid in the group
+      itself, as the list and the license beside it are a page of their own, each scrolling, that can't scroll
+      inside the settings' page; and the row's label Made with, over the list it opens.
+    (§6, docs/app.md §2, §9 and §18.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -632,9 +648,9 @@ Each is in the mockups under the same name.
 
 ### Main menu
 - Left: PLAY, REPLAYS, SETTINGS and EXIT (§2.50), each the word alone, 48 (`Theme.menu-word`, tracked 0.075em), in
-  a column 416 wide, rows 96 tall 8 apart, centered with what is under them in the body's height, as tall as the
-  reel beside them. Below a line: About, 16, muted. The longest word the languages have (the pseudo-locale's
-  REPLAYS) fits the column's 384 for text. On a phone the words are 32 on rows 68, under the reel. Practice is in
+  a column 416 wide, rows 96 tall 8 apart, centered in the body's height, about as tall as the reel beside
+  them; nothing under them (About is in Settings, §2.53). The longest word the languages have (the
+  pseudo-locale's REPLAYS) fits the column's 384 for text. On a phone the words are 32 on rows 68, under the reel. Practice is in
   Play's row and the builds are Play's (§2.50).
 - Right: the demo reel, the battle picture at three times (720 by 480), with no caption under it ("don't show the
   caption text").
@@ -876,13 +892,15 @@ The mockups show no screen for this; it is decided here.
 One scrolling page, a list at the left jumping to a group: General (Name, "Shown to your opponent."; Language),
 Video (Picture size, Full screen, Battle text: sharp or original, Reduce motion), Audio (Music, Sound effects), Online (Input
 delay, "In frames. Lower feels faster; higher rolls back less."), Controls (every action with its key and its pad
-button, each rebindable), About.
+button, each rebindable), About (Version; Your files, SHOW FOLDER; Made with, SHOW LICENSES, which opens About).
 
 ### About
-The app's name, its version and its license; Slint's "Made with Slint" widget; and MADE WITH, a list 440 wide of
-the fonts the app bundles and every package built into it (each row its name, its version, and its license under
-them), the chosen one's license files beside it in a panel, scrolling (§2.25). On a phone the list is the page and
-a license opens as a sheet from the bottom.
+Settings' subscreen (§2.53): SHOW LICENSES in Settings' About group shows it in the page's place, its title
+ABOUT and its Back ‹ SETTINGS, which comes back to the page on SHOW LICENSES. The app's name, its version and its
+license; Slint's "Made with Slint" widget; and MADE WITH, a list 440 wide of the fonts the app bundles and every
+package built into it (each row its name, its version, and its license under them), the chosen one's license
+files beside it in a panel, scrolling (§2.25). On a phone the list is the page and a license opens as a sheet from
+the bottom.
 
 ### On a phone
 One column; pickers and the chip library open as sheets from the bottom; everything tapped is at least 44 tall; no
