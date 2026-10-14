@@ -645,7 +645,9 @@ The builds and the way into a match or practice, on one screen (§2.50), in thre
 the builds, the chosen build, what is done with it. In the body's units (1216 by 644 at the reference window):
 - **The builds**, the left column, 400 wide: + NEW BUILD at the top (as wide as its words; the main action while
   the game has no build), and under it from 52 the player's builds of the game, an open list down to 540 (rows
-  52: the name, then "MegaMan · ready" or what is wrong, and the version's tag). The row the cursor is on is the
+  52: the name with the version's tag 8 after it, then "MegaMan · ready" or what is wrong; the user: "the
+  version tag should probably also be next to the name on the left menu as well", and so in a phone's box of
+  the chosen build). The row the cursor is on is the
   build chosen, remembered by game. A save dropped on the window is made a build ("Imported as Dark MegaMan"
   quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as the
   menu's DELETE does; a right click on a row opens the build's menu there.
