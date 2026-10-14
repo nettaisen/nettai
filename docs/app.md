@@ -2152,13 +2152,33 @@ column's foot; beside them (on a phone, under them) the two builds as cards over
   music once the row has stayed on it 400 ms (§1, "The battle's music"). (On a phone the five rows are 44 tall and 48 apart,
   where the four were 48 and 56, so that the cards and the arena still end over START PRACTICE.)
 - A card says its build's name, its version's tag and its navi.
-- The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
-  held at that tick, in a `Picture` at three times (§1), so it is whole pixels as every picture of the battle
-  is. (The window has one texture: the entry's box shows it only once the arena is what is in it, from the
-  second frame the window draws of it.) It is made once the builds and the place chosen have stayed 160 ms (making a round holds the window about 20 ms: a
-  step through them doesn't make one each time), on the place chosen, and what the session will be picked
-  from is drawn as the entry lists a game's builds and after each session, so the arena shown (a Random one
-  too) is the one START PRACTICE opens on.
+- The arena is the session's first round, the two builds' navis on it: a battle of its own, in a `Picture` at
+  three times (§1), so it is whole pixels as every picture of the battle is. (The window has one texture: the
+  entry's box shows it only once the arena is what is in it, from the second frame the window draws of it.) It
+  is made once the builds and the place chosen have stayed 160 ms (making a round holds the window about 5 to
+  8 ms in a dev build: a step through them doesn't make one each time), on the place chosen, and what the
+  session will be picked from is drawn as the entry lists a game's builds and after each session, so the arena
+  shown (a Random one too) is the one START PRACTICE opens on.
+- **The arena runs** (docs/design/app-ui.md §2.35: "you should also animate the background in the practice setup
+  screen", "you should also run the field a little so it shows stuff like wind fields and panel animations",
+  "you should disable the custom gauge in the arena preview"). Made, the round is played past its opening
+  (52 ticks or so; at most 300) and its first custom screen, both sides pressed straight to OK with no chip
+  (`driver::ok_buttons`; the dummy is an `Opponent` that stands still and picks nothing), through the start
+  banner into its fight: about 280 ticks in all, at most 600 more (`TO_FIGHT`). From there the entry runs it
+  as a battle runs, the ticks due each frame (`Stage::advance`) with nothing pressed, and presents each new
+  picture: the background animates and scrolls on the round's own clock, the panels' palettes cycle, and what
+  the arena's field does goes on (EXE4's wind stages' gusts, EXE6's roads and volcanoes). Nobody presses L or
+  R, so no custom screen opens; a round that leaves its fight all the same (a navi down on a field that hurts,
+  the time up) is made again from its start, in the frame it left, so none of that is shown. Hidden (another
+  screen, a session), it is held, and runs on from there when the entry shows again; a change of arena,
+  background or build makes it anew from its start. It is silent (the player has no audio). The HUD draws no
+  custom gauge: the renderer's `custom_gauge` is off for it (`Renderer::custom_gauge`, presentation only, as
+  `pause_display` is), so neither the bar nor its filling shows; the HP box and the mugshot stay.
+  The screenshot pass holds it as its opening ends, as before (no custom screen yet, so no gauge either): its
+  pictures are the same; its motion probe runs it as the app does. With `NETTAI_PLAY_STATS` the entry prints
+  §5's figures for it: on a 120 Hz display, 117 to 120 frames a second, 59.3 to 60 ticks a second at 35 to 230
+  µs a frame that ran them, each picture (720x480) presented in about 1.5 ms (a dev build; EXE4's wind stage,
+  EXE6's road and volcano stages, EXE5's NebulaGray).
 - With no build of the game there is one button, CREATE A BUILD, which goes to Builds' list, whose Back comes
   back here (`screens::builds::open`, §8).
 - **EDIT** beside each build's select (docs/design/app-ui.md §2.28: "you should be able to go to builds screen
