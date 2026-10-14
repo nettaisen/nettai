@@ -1166,7 +1166,7 @@ Rust module**, as a screen is for the shell:
 |---|---|
 | `kit` | The game's builds data, pictures and library order |
 | `build`, `side()` | The build, and the side a match is handed |
-| `checked` | The build checked (`nettai_match::build::Checked`): its problems, its round's stats, the folder's view, the navi's first face. Made again at each change |
+| `checked` | The build checked (`nettai_match::build::Checked`): its problems, its round's stats, the folder's view, the navi's first face, of its round set up with no folder dealt (`check::set_up`: a folder being made is checked as it is, with no stand-in chips). Made again at each change |
 | `edit(|content, side| -> bool)` | **How a tab changes the build.** The closure says whether it did; the draft is checked again at once |
 | `choose_navi(navi)` | The navi changed, with what is kept aside moved |
 | `with_words(shell, |words| ...)` | The catalogs' and the game's words in the language shown |

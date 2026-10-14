@@ -729,7 +729,10 @@ impl Battle {
     /// thread keeps: `behavior`). Panics if the setup names other content
     /// (`RoundSetup::content`), if the content isn't defined
     /// (`Content::define`), or if its scripts don't load (a content error,
-    /// the same on every machine).
+    /// the same on every machine). It deals nothing: each player's battle
+    /// folder is the setup's, as their console shuffled it; a setup with
+    /// empty ones (`BattleFolder::empty`) is set up all the same, for tools
+    /// to ask the rules of (no folder is read before a custom screen opens).
     pub fn new(mut setup: RoundSetup, content: Arc<Content>) -> Battle {
         let hash = content.hash();
         assert_eq!(setup.content, hash, "the round's setup names content {} but runs on content {hash}", setup.content);
