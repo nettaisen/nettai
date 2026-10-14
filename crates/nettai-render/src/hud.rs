@@ -743,7 +743,7 @@ pub fn draw<'a>(
             digit(layer, d, 13 - left.len() as i32 + i as i32);
         }
         let (vs, _) = fonts::cell_glyphs(hud, "VS");
-        fonts::layer_text(text, Plane::Hud, layer, hud, "VS", &vs, vs.len(), pal, (14 * 8, 5 * 8), Align::Left);
+        fonts::layer_text(text, Plane::Hud, layer, hud, "VS", &vs, vs.len(), pal, (14 * 8, 5 * 8), (Role::Cell, Align::Left));
         for (i, d) in right.min(9999).to_string().bytes().enumerate() {
             digit(layer, d, 17 + i as i32);
         }
@@ -1072,12 +1072,12 @@ fn draw_chip_name(
     // (The text layer's box: the cells its glyphs take, or a character a
     // cell, eight at most, where the pack's font lacks the language's.)
     let cells = if text.takes(words) { fonts::box_cells(hud, words, name.len(), name.len().max(8)) } else { name.len() };
-    fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), Align::Left);
+    fonts::layer_text(text, Plane::Hud, layer, hud, words, &name, cells, pal, (0, 18 * 8), (Role::FittedCell, Align::Left));
     // The damage follows the name: after the cells its glyphs take, or in
     // the font mode a pixel after the name as the text layer draws it.
     let mut x = 8 * cells as i32;
     if text.takes(words)
-        && let Some(w) = text.fitted_width(words, Role::Cell, 8 * cells as i32)
+        && let Some(w) = text.fitted_width(words, Role::FittedCell, 8 * cells as i32)
     {
         x = w.ceil() as i32 + 1;
     }
