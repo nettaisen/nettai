@@ -17,7 +17,7 @@ pub mod cache;
 use cache::{Cache, Id};
 use nettai_battle::Content;
 use nettai_battle::battle::mode;
-use nettai_frontend::game::{Graphics, TextMode};
+use nettai_frontend::game::{Graphics, GraphicsMode};
 use nettai_frontend::replay::{Info, Outcome, ReadError, Refused, Replay};
 use nettai_frontend::viewer::Viewer;
 use nettai_render::Frame;
@@ -105,11 +105,11 @@ type Key = (PathBuf, Stamp);
 /// What playing a replay out made: what happened in it, or why it isn't played here.
 pub type Played = Result<Outcome, Refused>;
 
-/// What a still is drawn with: the game's graphics in the language shown, and the text as the settings say.
+/// What a still is drawn with: the game's graphics in the language shown, and the graphics mode the settings say.
 #[derive(Clone)]
 pub struct Look {
     pub graphics: Graphics,
-    pub text: TextMode,
+    pub mode: GraphicsMode,
     pub font: Option<Arc<VectorFont>>,
 }
 
@@ -348,7 +348,7 @@ fn play(path: &Path, content: &Arc<Content>) -> Played {
 /// if it has no such moment). None if it isn't played here.
 fn still_of(path: &Path, side: u8, content: &Arc<Content>, look: &Look) -> Option<Frame> {
     let replay = read(path).ok()?;
-    let renderer = look.graphics.renderer(look.text, look.font.clone());
+    let renderer = look.graphics.renderer(look.mode, look.font.clone());
     let mut viewer = Viewer::with(content, &replay, Some(side), renderer, None, None).ok()?;
     let mut fought = 0;
     while fought < STILL_AFTER && viewer.step_forward() {

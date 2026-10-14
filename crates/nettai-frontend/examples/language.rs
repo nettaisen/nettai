@@ -21,7 +21,7 @@ use nettai_battle::custom::Phase;
 use nettai_battle::input::keys;
 use nettai_frontend::Player;
 use nettai_frontend::driver::LivePlayer;
-use nettai_frontend::game::{self, Found, Game, Graphics, TextMode};
+use nettai_frontend::game::{self, Found, Game, Graphics, GraphicsMode};
 use nettai_render::vfont::TextRenderer;
 
 /// The buttons held, by tick: R on the first custom screen opens the chip's
@@ -39,7 +39,7 @@ fn held(tick: u32) -> u16 {
 }
 
 fn run() -> Result<String, String> {
-    let (mut name, mut seed, mut from, mut to, mut text) = (None, None, "en".to_string(), "ja".to_string(), TextMode::Font);
+    let (mut name, mut seed, mut from, mut to, mut text) = (None, None, "en".to_string(), "ja".to_string(), GraphicsMode::Enhanced);
     let mut args = std::env::args().skip(1);
     while let Some(a) = args.next() {
         let mut value = || args.next().ok_or(format!("{a} needs a value"));
@@ -50,8 +50,8 @@ fn run() -> Result<String, String> {
             "--to" => to = value()?,
             "--text" => {
                 text = match value()?.as_str() {
-                    "original" => TextMode::Original,
-                    "font" => TextMode::Font,
+                    "original" => GraphicsMode::Original,
+                    "font" => GraphicsMode::Enhanced,
                     other => return Err(format!("--text {other}: original or font")),
                 }
             }

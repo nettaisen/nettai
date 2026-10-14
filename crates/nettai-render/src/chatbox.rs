@@ -55,7 +55,7 @@ pub struct Shown<'a> {
     chatbox: Chatbox,
     kind: usize,
     text: Tiles,
-    /// In the font text mode, the lines for the text layer (their sprites'
+    /// In the enhanced mode, the lines for the text layer (their sprites'
     /// tiles are blank): each line's text and the units of it printed.
     lines: Option<Vec<(String, usize)>>,
     portrait: Option<(&'a SpriteSheet, PortraitLook)>,
@@ -111,7 +111,7 @@ pub fn prepare<'a>(b: &Battle, assets: &'a Bundle, packs: &crate::packs::Packs<'
         Script::RunMessage { .. } => MESSAGE_BOX,
     };
     let string = said.map_or("", |s| s.text);
-    // (The dialogue font's glyphs, which the original text mode draws: in
+    // (The dialogue font's glyphs, which the original mode draws: in
     // either mode the lookup.)
     let glyphs = match lookup {
         Some(l) => crate::lookups::dialogue(&assets.hud.dialogue_font, l, string, problems),
@@ -255,7 +255,7 @@ pub fn draw<'a>(shown: &'a Shown<'a>, assets: &'a Bundle, names_layer: &mut Laye
         rows.reverse();
         let group = rows.into_iter().flatten().collect();
         match &shown.lines {
-            // In the font mode the sprites are blank and the lines are text
+            // In the enhanced mode the sprites are blank and the lines are text
             // items as deep as them, cut where they end (the last row of
             // sprites is 8 rows high).
             Some(lines) => {

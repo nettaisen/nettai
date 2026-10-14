@@ -90,7 +90,7 @@ not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whet
 (with what it said) or the file couldn't be written.
 
 - `--scale N` makes the picture N times the frame's 240x160 (1 to 16; default 1). The scaling is the nearest
-  pixel's, and the font mode's text is drawn at that size, as `--png-scale` does for a PNG. For an MP4, an even N
+  pixel's, and the enhanced mode's text is drawn at that size, as `--png-scale` does for a PNG. For an MP4, an even N
   keeps every pixel's edge clean in 4:2:0; an odd one leaves a fringe of mixed color at each (docs/frontend.md §8).
 - `--side left|right` is the console shown (default: the side that recorded the replay).
 - `--round N` shows that round alone, and `--ticks A-B` the frames A to B alone, numbered as `--headless` numbers

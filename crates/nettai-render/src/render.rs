@@ -7,7 +7,7 @@ use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
 use crate::stage::{Stage, StageClock};
-use crate::textlayer::{Plane, TextItem, TextMode, TextSink};
+use crate::textlayer::{Plane, TextItem, TextSink};
 use crate::vfont::VectorFont;
 use nettai_assets::Bundle;
 use nettai_battle::Battle;
@@ -16,9 +16,38 @@ use nettai_battle::content::PaletteFlashOrder;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use std::sync::Arc;
 
+/// How a battle is drawn: as the original draws it, or enhanced (the
+/// app's "Battle graphics").
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GraphicsMode {
+    /// Exactly as the original draws it: the game's own fonts into the
+    /// frame, and nothing moved that the game doesn't move. The reference
+    /// the frame comparison and the tests use. (Where the pack has no fonts
+    /// of the language shown, the vector font into the frame.)
+    #[default]
+    Original,
+    /// Enhanced: the text in a vector font at the output's resolution, on a
+    /// layer over the scaled frame (docs/design/text-rendering.md).
+    Enhanced,
+}
+
+impl std::str::FromStr for GraphicsMode {
+    type Err = String;
+
+    /// "original", or "enhanced" ("font" too: the tools' `--text` named it
+    /// so first).
+    fn from_str(s: &str) -> Result<GraphicsMode, String> {
+        match s {
+            "original" => Ok(GraphicsMode::Original),
+            "enhanced" | "font" => Ok(GraphicsMode::Enhanced),
+            _ => Err(format!("no graphics mode {s:?} (enhanced or original)")),
+        }
+    }
+}
+
 /// A drawn frame: the 240x160 picture (BGR555), per pixel the depth key
 /// of what won it (`compose::depth_key`), and the text items to draw over
-/// it at the output's resolution (none in the original text mode).
+/// it at the output's resolution (none in the original mode).
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
     pub pixels: Vec<u16>,
@@ -56,10 +85,10 @@ pub struct Renderer {
     /// version the console's player brought, or the pack's base version
     /// (`custom::console_version`).
     pub console_version: Option<&'static str>,
-    /// How text is drawn, and the font of the font mode.
-    text_mode: TextMode,
+    /// How the battle is drawn, and the font of the enhanced mode's text.
+    mode: GraphicsMode,
     font: Option<Arc<VectorFont>>,
-    /// The font mode's layouts, for what the frame places after a string
+    /// The enhanced mode's layouts, for what the frame places after a string
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
     /// What the original mode draws strings with where the pack has no
@@ -84,7 +113,7 @@ pub struct Renderer {
 }
 
 impl Renderer {
-    /// A renderer of one pack's graphics, in the original text mode.
+    /// A renderer of one pack's graphics, in the original mode.
     pub fn new(assets: Arc<Bundle>) -> Renderer {
         Renderer::with_packs(PackGraphics::one(assets))
     }
@@ -104,7 +133,7 @@ impl Renderer {
             problems: Problems::default(),
             sprite_drawn: objects::SpriteDrawn::default(),
             console_version: None,
-            text_mode: TextMode::Original,
+            mode: GraphicsMode::Original,
             font: None,
             measure: None,
             stand_in: None,
@@ -136,25 +165,25 @@ impl Renderer {
         self.strings.as_ref()
     }
 
-    /// Draw text in `mode`; the font mode hands the strings `font` has to
-    /// the text layer (without a font it draws as the original does). The
+    /// Draw in `mode`; the enhanced mode hands the strings `font` has to
+    /// the text layer (without a font it draws them as the original does). The
     /// original mode draws every string into the frame in the pack's
     /// fonts, and with a pack that has no lettering in the language shown
     /// (its fonts are another language's) in `font`, else the font the
     /// frontend comes with, at the frame's resolution (`render`).
-    pub fn set_text(&mut self, mode: TextMode, font: Option<Arc<VectorFont>>) {
-        self.text_mode = mode;
+    pub fn set_mode(&mut self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) {
+        self.mode = mode;
         self.measure = font.clone().map(|f| std::cell::RefCell::new(crate::vfont::TextRenderer::new(f)));
         self.font = font;
         self.stand_in = None;
     }
 
-    pub fn text_mode(&self) -> TextMode {
-        self.text_mode
+    pub fn mode(&self) -> GraphicsMode {
+        self.mode
     }
 
     /// The strings the frames drawn so far had to lay out to place what
-    /// follows them (the font mode's: a chip's damage after its name), each
+    /// follows them (the enhanced mode's: a chip's damage after its name), each
     /// the first time it was met.
     pub fn layouts_made(&self) -> u64 {
         self.measure.as_ref().map_or(0, |m| m.borrow().made().layouts)
@@ -255,18 +284,18 @@ impl Renderer {
         // own (`Bundle::for_language`): its pictures with words are that
         // language's, and so are its fonts, which lack most of the shown
         // language's characters. The original mode then lays the strings
-        // out as the font mode does and draws them with the vector font
+        // out as the enhanced mode does and draws them with the vector font
         // into the frame, at the frame's resolution: the frame still
         // carries all its text.
         let shown = self.strings.as_ref().map_or(nettai_content::locale::OWN, |s| s.language.as_str());
-        let stand_in = self.text_mode == TextMode::Original && own_game.hud.language() != shown;
+        let stand_in = self.mode == GraphicsMode::Original && own_game.hud.language() != shown;
         if stand_in && self.stand_in.is_none() {
             let font = self.font.clone().unwrap_or_else(|| Arc::new(VectorFont::bundled()));
             self.stand_in = Some((font.clone(), std::cell::RefCell::new(crate::vfont::TextRenderer::new(font))));
         }
         let (mode, font, measure) = match &self.stand_in {
-            Some((font, measure)) if stand_in => (TextMode::Font, Some(&**font), Some(measure)),
-            _ => (self.text_mode, self.font.as_deref(), self.measure.as_ref()),
+            Some((font, measure)) if stand_in => (GraphicsMode::Enhanced, Some(&**font), Some(measure)),
+            _ => (self.mode, self.font.as_deref(), self.measure.as_ref()),
         };
         let mut text = TextSink::new(mode, font).measuring(measure).with_language(self.strings.as_deref());
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);

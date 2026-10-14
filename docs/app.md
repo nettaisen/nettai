@@ -1616,7 +1616,7 @@ the patch cards' lines (`cards`), the auto battle data (`auto`), a list's edits 
 **The settings** are `settings.toml` in the data folder (`settings.rs`), written as each changes and read as the
 app starts: the player's name (their account's on this machine until they choose one), the language, the game
 last used, the picture's size (the largest that fits, or at most 1 to 8 times), full screen, Reduce motion (as
-the system asks until the player says), the battle's text (sharp or original), the levels of the music and the
+the system asks until the player says), the battle's graphics (enhanced or original), the levels of the music and the
 sound effects, the input delay (4), the folder the player chose the Legacy Collection in (`legacy_collection`,
 where Steam doesn't list it: §17), the keys and the pad's buttons bound (those that differ from the defaults),
 and what screens remember by their own keys (`remembered`: what a screen chose last, such as Practice's builds and

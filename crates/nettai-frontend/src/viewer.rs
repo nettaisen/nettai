@@ -207,7 +207,7 @@ impl Viewer {
     }
 
     /// A viewer from its parts: the content the replay plays on, the
-    /// renderer, the font mode's text renderer (none: the frames carry
+    /// renderer, the enhanced mode's text renderer (none: the frames carry
     /// their own text) and the sound (none: silent; it is copied for the
     /// other console).
     pub fn with(
@@ -542,7 +542,7 @@ impl Viewer {
     /// The picture into the host's pixels, as [`crate::Player::present`]:
     /// `buffer` holds `width` x `height` of them, 0x00RRGGBB each; the
     /// frame is scaled up by the largest whole factor that fits, and the
-    /// font mode's text is drawn at the buffer's resolution.
+    /// enhanced mode's text is drawn at the buffer's resolution.
     pub fn present(&mut self, buffer: &mut [u32], width: usize, height: usize) {
         let frame = self.frame();
         nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
@@ -568,7 +568,7 @@ impl Viewer {
         self.renderer.set_strings(graphics.strings.clone());
     }
 
-    /// The renderer (what it looked up and didn't find, its text mode).
+    /// The renderer (what it looked up and didn't find, its graphics mode).
     pub fn renderer(&mut self) -> &mut Renderer {
         &mut self.renderer
     }

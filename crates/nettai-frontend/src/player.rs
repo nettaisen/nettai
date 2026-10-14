@@ -1,5 +1,5 @@
 //! A battle being played, for a host to show and hear: [`Player`] owns the
-//! session, the renderer, the text renderer (the font mode's) and the
+//! session, the renderer, the text renderer (the enhanced mode's) and the
 //! battle's audio, and the host drives it.
 //!
 //! The host gives it the GBA buttons held (its own keys' business) and
@@ -173,7 +173,7 @@ impl Player {
     }
 
     /// A player of what `driver` plays, from its parts: the renderer, the
-    /// font mode's text renderer (none: the frames carry their own text)
+    /// enhanced mode's text renderer (none: the frames carry their own text)
     /// and the audio (none: silent).
     pub fn with(renderer: Renderer, text: Option<TextRenderer>, audio: Option<BattleAudio>, driver: Box<dyn Driver>) -> Player {
         // (Counted from before the driver makes its first battle: a thread
@@ -447,7 +447,7 @@ impl Player {
 
     /// The picture into the host's pixels: `buffer` holds `width` x
     /// `height` of them, 0x00RRGGBB each, row by row. The frame is scaled
-    /// up by the largest whole factor that fits and centered, and the font
+    /// up by the largest whole factor that fits and centered, and the enhanced
     /// mode's text (the game's own) is drawn at the buffer's resolution.
     /// Nothing else is drawn.
     pub fn present(&mut self, buffer: &mut [u32], width: usize, height: usize) {
@@ -602,12 +602,12 @@ impl Player {
         &self.session
     }
 
-    /// The renderer (what it looked up and didn't find, its text mode).
+    /// The renderer (what it looked up and didn't find, its graphics mode).
     pub fn renderer(&mut self) -> &mut Renderer {
         &mut self.renderer
     }
 
-    /// The font mode's text renderer, for drawing a frame's text items
+    /// The enhanced mode's text renderer, for drawing a frame's text items
     /// oneself (`nettai_render::present`).
     pub fn text(&mut self) -> Option<&mut TextRenderer> {
         self.text.as_mut()
@@ -618,7 +618,7 @@ impl Player {
 mod tests {
     use super::*;
     use crate::driver::{LivePlayer, Step, folder_of, live_setup};
-    use crate::game::TextMode;
+    use crate::game::GraphicsMode;
     use nettai_battle::content::testing;
     use std::sync::Arc;
 
@@ -840,7 +840,7 @@ mod tests {
     #[test]
     fn the_language_changes_mid_battle() {
         let (red, green) = (graphics_of(0x001F), graphics_of(0x03E0));
-        let player = |g: &Graphics| Player::with(g.renderer(TextMode::Original, None), None, None, live());
+        let player = |g: &Graphics| Player::with(g.renderer(GraphicsMode::Original, None), None, None, live());
         let (mut first, mut second, mut swapped) = (player(&red), player(&green), player(&red));
         let mut differed = 0;
         for tick in 1..=240u32 {

@@ -9,7 +9,7 @@
 //! - The dialogue font ([`dialogue_text`]): proportional 16x12 glyphs,
 //!   the chatbox's descriptions and messages.
 //!
-//! In the font text mode the same places hand their strings to the text
+//! In the enhanced mode the same places hand their strings to the text
 //! layer instead ([`layer_text`], [`layer_line`]; the telop, the custom
 //! screen's names and the chatbox ask the `TextSink` themselves), in the
 //! box the original's glyphs take.
@@ -65,7 +65,7 @@ pub fn cell_glyph(hud: &Hud, glyph: u16) -> (&Tiles, usize) {
     (&hud.font, 2 * glyph as usize)
 }
 
-/// The cells a string of the 8x16 font has in the font mode: as many as
+/// The cells a string of the 8x16 font has in the enhanced mode: as many as
 /// the original's glyphs of it take (`glyphs`), or one a character up to
 /// `room` when the pack's font has no glyph for some.
 pub fn box_cells(hud: &Hud, text: &str, glyphs: usize, room: usize) -> usize {
@@ -74,7 +74,7 @@ pub fn box_cells(hud: &Hud, text: &str, glyphs: usize, room: usize) -> usize {
 }
 
 /// A string of the 8x16 font on a tile layer: as [`draw_cell_text`] draws
-/// its glyphs (`cells` cells from (x, y)); in the font mode, when the
+/// its glyphs (`cells` cells from (x, y)); in the enhanced mode, when the
 /// font has the string, a text item of `role` (one of the 8x16 font's) in
 /// the glyphs' box instead, in the palette's face and shadow colors.
 #[allow(clippy::too_many_arguments)]
@@ -100,7 +100,7 @@ pub fn layer_text(
 }
 
 /// A line of the pack's HUD text (glyph numbers, `Hud::texts`) on a tile
-/// layer, a cell a glyph from (x, y); in the font mode its words without
+/// layer, a cell a glyph from (x, y); in the enhanced mode its words without
 /// the spaces that pad it, in the cells they take.
 pub fn layer_line(sink: &mut TextSink, plane: Plane, layer: &mut Layer, hud: &Hud, glyphs: &[u16], palette: &Palette, (x, y): (i32, i32)) {
     let words: Vec<&str> = glyphs.iter().map(|&g| hud.font_chars.get(g as usize).map_or("", String::as_str)).collect();
@@ -170,7 +170,7 @@ mod tests {
     #[test]
     fn a_hud_line_goes_to_the_text_layer_without_its_padding() {
         use crate::compose::CLEAR;
-        use crate::textlayer::TextMode;
+        use crate::textlayer::GraphicsMode;
         // Glyph 0 (space) blank, glyphs 1 and 2 ("U", "P") all color 1.
         let mut font = Tiles { pixels: vec![0; 6 * Tiles::TILE] };
         font.pixels[2 * Tiles::TILE..].fill(1);
@@ -179,7 +179,7 @@ mod tests {
         (palette[1], palette[2]) = (0x7FFF, 0x2108);
         let line = [0, 0, 1, 2, 0];
         let vf = crate::vfont::VectorFont::bundled();
-        let mut sink = TextSink::new(TextMode::Font, Some(&vf));
+        let mut sink = TextSink::new(GraphicsMode::Enhanced, Some(&vf));
         let mut layer = Layer::new(1, 3);
         layer_line(&mut sink, Plane::Hud, &mut layer, &hud, &line, &palette, (8, 16));
         assert!(layer.pixels.iter().all(|&p| p == CLEAR), "nothing drawn into the frame");
