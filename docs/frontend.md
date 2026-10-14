@@ -1822,19 +1822,27 @@ lists are the rules', for what they say of a place):
 An entry is `{ chip = "..." }`; `{ pattern = n }`, pattern record n (the
 first of `auto_battle_records` is 1); `{ zero = true }`, a place holding 0
 (no chip, but no empty place either); or `{}`, an empty place. The lists
-are named for what the game writes there, but any entry may stand in any
-place, as in the save (a save made by hand can have a giga chip among the
-patterns' places).
+are named for what the game writes there. Any entry may stand in a place of
+the first, standard and patterns lists, as in the save (a save made by hand
+can have a giga chip among the patterns' places); a chip in the mega, giga
+or program advance list must be of that class (the list's `class` in
+@exelib/auto_battle/places' `LISTS`: nettai's rule, docs/design/app-ui.md
+§2.26), and a pattern, a 0 or an empty place may stand there too.
 
-One kind of chip is refused in a place: a chip the original can't play in
+A chip of another class there is refused, where the check says: "place 29
+of the auto battle data (`mega`, entry 2) holds Cannon, a chip of class
+`standard`: the list holds `mega` chips alone". The game's own writer puts
+only its player's most used chips of the list's class there.
+
+One kind of chip is refused in any place: a chip the original can't play in
 auto battle (a team navi's own chip, such as StepSwrd, and the chips
 past the library, FtrSword to PnkCapsl). The AI gets in place for a chip by
 the chip's positioning class, and theirs, `unplayable` (the original's 255),
 is past the game's table of classes: the original crashes there, and the
 engine raises. The game's own
 writer never puts one among the 42 places (it counts library chips only),
-so only a block made by hand holds one, and the check says where: "place 29
-of the auto battle data (`mega`, entry 2) holds StepSwrd: the original
+so only a block made by hand holds one, and the check says where: "place 5
+of the auto battle data (`standard`, entry 2) holds StepSwrd: the original
 can't play it in auto battle (...)". Which chips those are is the content's
 to say (EXE5's rules' `validate`, from its own data's classes), so a navi's
 own chip is covered as it lands. A pattern record may hold one (the game
@@ -1855,7 +1863,8 @@ The file refuses what the game can't hold: more places or records than the
 block has, a place from the target or a score that doesn't fit its bytes, a
 chip the game hasn't, a field a place or a record hasn't; and either fact
 for a game without auto battle (EXE6). EXE5's rules' `validate` refuses a
-pattern number past 8 and a place that is two things at once.
+pattern number past 8, a place that is two things at once, and a chip of
+another class in the mega, giga or program advance list.
 
 **Why all of it is stated.** The navi in auto battle plays the entries in order,
 the played one going last: three times in four the first, otherwise it steps
