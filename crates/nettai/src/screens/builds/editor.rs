@@ -35,7 +35,6 @@ use slint::{ComponentHandle, ModelRc, VecModel};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
-use std::time::{Duration, Instant};
 
 /// The build being edited: what a tab is handed, with the shell.
 pub struct Draft {
@@ -297,16 +296,8 @@ pub struct Editor {
     pub draft: Draft,
     tabs: Vec<Box<dyn Tab>>,
     at: usize,
-    /// The row a click last took something out of, and when: a click on it again within a double click's time does
-    /// nothing more (`DOUBLE_CLICK`).
-    clicked: Option<(String, i32, Instant)>,
 }
 
-/// A double click's time (Slint's own). A double click on a row that isn't marked marks it and takes out what it
-/// holds (the user: "fast double click should remove"); one on the marked row takes out one thing: a click within
-/// it of a click that took something out of that row does nothing (a patch card's list closes up under the first,
-/// and the second would take the next card).
-const DOUBLE_CLICK: Duration = Duration::from_millis(500);
 
 impl Editor {
     /// Open `build` (kept at `path`) in the editor: settled as every build is, on the tab last used.
@@ -318,7 +309,7 @@ impl Editor {
         let tabs: Vec<Box<dyn Tab>> = all().into_iter().filter(|t| has(&content, t.as_ref())).collect();
         let draft = Draft { kit, build, checked, path, navi_only, changed: settled };
         let last = shell.settings.remembered.get(REMEMBERED).cloned();
-        let mut editor = Editor { draft, tabs, at: 0, clicked: None };
+        let mut editor = Editor { draft, tabs, at: 0 };
         editor.at = editor.tabs.iter().position(|t| Some(name(t.id())) == last.as_deref()).filter(|&i| editor.enabled(i)).unwrap_or(0);
         editor.save(shell);
         editor
@@ -468,25 +459,12 @@ impl Editor {
         self.after(shell);
     }
 
-    /// A click on the marked row of one of the build's lists (`click-remove`: its touch's `marked`; the press
-    /// brought the focus to it) removes what it holds, as Del there does, unless it is the second click of a double
-    /// click; a right click (`remove`: on a row of the build's, a library's row that is in, the NaviCust's) does at
-    /// once ("sure right click should remove everywhere"). A row dragged (`drag-over`, `drag-drop`: let go over the
+    /// A right click (`remove`: on a row of the build's, a library's row that is in, the NaviCust's) removes what it
+    /// is on, as Del there does ("sure right click should remove everywhere"); a click removes nothing ("remove that
+    /// too"). A row dragged (`drag-over`, `drag-drop`: let go over the
     /// library, it is removed) is the tab's, as its other choices are.
     pub fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         if id == "remove" {
-            let (tab, draft) = self.tab();
-            tab.action(shell, draft, Action::Delete);
-        } else if id == "click-remove" {
-            let key = shell.nav.focused().map(|k| (k.id.clone(), k.index));
-            let now = Instant::now();
-            let again = matches!((&self.clicked, &key), (Some((i, n, at)), Some((id, index))) if i == id && n == index && now.duration_since(*at) < DOUBLE_CLICK);
-            if again {
-                return;
-            }
-            if let Some((id, index)) = key {
-                self.clicked = Some((id, index, now));
-            }
             let (tab, draft) = self.tab();
             tab.action(shell, draft, Action::Delete);
         } else {

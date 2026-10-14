@@ -211,8 +211,9 @@ Each is settled unless the user changes it.
     an already selected chip or patch card or whatever should remove it, instead of right clicking. also you should
     be able to drag and drop to reorder". In the editor's own lists (the folder's entries, the patch cards and
     EXE4's slots, the auto battle places), a click on the row that is marked takes out what it holds, as Del does;
-    a click on another marks it, as before; a right click did nothing there then (since §2.38 it removes). A double click removes, on a
-    row marked or not ("fast double click should remove"), and takes out one thing only. A row pressed and moved is dragged: it lifts under the pointer, the rows between slide to leave a gap
+    a click on another marks it, as before; a right click did nothing there then (since §2.38 it removes). A double click removes nothing
+    a single click wouldn't ("fast double click should remove" for a while, then "remove double clicking to
+    remove"): on a row that isn't marked it only marks it. A row pressed and moved is dragged: it lifts under the pointer, the rows between slide to leave a gap
     where it would land, the list scrolls near its edges, and let go it moves there (off the list, it goes back). A
     folder's entry takes its Regular and tag marks with it; a patch card moves as `[` and `]` move it (EXE4's slots,
     each card's own, aren't dragged); an auto battle place's chip moves within its list, or trades with another
@@ -239,8 +240,9 @@ Each is settled unless the user changes it.
     the focus coming to it; on a library row that is in the build (a patch card that is in, the chip the place
     holds) it takes that out; the NaviCust's is as it was (it puts the piece in hand away, or takes off the piece
     under the pointer). On a phone the library is a sheet, not beside the list, so dragging onto it doesn't arise:
-    the sheet's REMOVE stays the way. Keys, the pad, a click on the marked row, a double click and the libraries'
-    clicks are as they were. (§4, §6, docs/app.md §8.)
+    the sheet's REMOVE stays the way. Keys, the pad and the libraries' clicks are as they were.
+    Later: "remove double clicking to remove", and of a click on the marked row removing, "remove that too": a
+    click only marks a row; a right click, Del or a drag onto the library takes its thing out. (§4, §6, docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -546,7 +548,7 @@ Each is in the mockups under the same name.
   puts it there, in place of the card that slot held. A two-part card says where its other half must be; a card
   shows its effect and the bugs it adds to or clears.
 - **The mouse on the build's lists** (§2.37, §2.38): a click marks a row (a folder's entry, a patch card or slot, an
-  auto battle place), and a click on the marked one, a double click or a right click takes out what it holds; a row
+  auto battle place) and removes nothing; a right click takes out what it holds; a row
   is dragged to another place (a folder's entry with its marks, a patch card in the list's order, a place's chip in
   its list or traded with another list's); dragged back onto the library and let go there, what it holds is taken
   out (the library shows DROP TO REMOVE while it is over it); let go anywhere else off the list it goes back. A right
