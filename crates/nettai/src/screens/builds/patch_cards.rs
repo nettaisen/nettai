@@ -14,10 +14,11 @@
 //! `[` and `]` (the pad's north button: up) move it in the list's order, which matters (a later card can undo an
 //! earlier one's work).
 //!
-//! **The mouse:** a click on one of the build's cards marks it (the focus stays on it); a click on the marked one
-//! takes it out, as Del does. A card dragged to another place in the list moves there, those between shifting toward
-//! where it was (the keys' edit, `ListEdit::Move`). In a game whose cards go in slots each card's slot is its own: a
-//! slot isn't dragged.
+//! **The mouse:** a click on one of the build's cards marks it (the focus stays on it); a click on the marked one, a
+//! double click or a right click takes it out, as Del does (a right click on a library card that is in, too). A card
+//! dragged to another place in the list moves there, those between shifting toward where it was (the keys' edit,
+//! `ListEdit::Move`); dragged onto the library, it is taken out. In a game whose cards go in slots each card's slot is
+//! its own: a slot isn't dragged.
 
 use crate::builds::cards::{self, Line};
 use crate::builds::edit::{self, ListEdit};
@@ -618,11 +619,15 @@ impl Tab for PatchCards {
                 self.sort = (choice.max(0) as usize).min(SORTS.len() - 1);
                 self.changed(shell, draft);
             }
-            // A card dragged: where it would land; let go there, it moves (off the list, it goes back).
+            // A card dragged: where it would land; let go there, it moves (over the library, it is taken out;
+            // elsewhere off the list, it goes back).
+            "drag-over" if editor::over_library(shell, choice) => editor::show_remove(shell),
             "drag-over" => editor::show_drop(shell, PatchCards::drop_at(shell, draft, choice), false),
             "drag-drop" => {
                 editor::show_drop(shell, None, false);
-                if let Some(to) = PatchCards::drop_at(shell, draft, choice).filter(|&to| to as i32 != index && index >= 0)
+                if index >= 0 && editor::over_library(shell, choice) {
+                    self.remove(shell, draft, index as usize);
+                } else if let Some(to) = PatchCards::drop_at(shell, draft, choice).filter(|&to| to as i32 != index && index >= 0)
                     && self.move_card(shell, draft, index as usize, to)
                 {
                     shell.sound.play(Cue::Pick);
