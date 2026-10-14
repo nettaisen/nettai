@@ -216,7 +216,8 @@ under its menu, not stopped (§15).
   the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
   screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
   ROMs. A pack that names no such sound has none: one extracted before the names were given, until it is
-  extracted again.
+  extracted again. Practice's entry plays the battle's music the player picked in its place, where that is a
+  theme (below, "The battle's music"), crossfading as the title music does.
 - While a battle runs, both are ticked with the battle's ticks and their samples added to the battle's, sample
   for sample; with no battle running they run on their own clock at the same rate. (At first the menus' sound ran
   on its own clock throughout, beside the battle's, at twice the rate the device plays. The queue then sat at
@@ -262,8 +263,8 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
 
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the packs' contents state.
-- *The pick* is the player's own and one: Play's lobby (§4) and Practice's entry (§15) show and change the same
-  one, remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
+- *The pick* is the player's own and one: Play's lobby (§4), Practice's entry and its menu over the battle (§15)
+  show and change the same one, remembered in the settings (`remembered`, `battle.music`: `<game>:<song>`, the theme's game and its song's
   asset name; none, the game's own). The list is "Game's own", then the themes of every game whose parts are read
   (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose pack
   isn't there offers none, and a pick of one is played as the game's own until its game is read.
@@ -284,6 +285,24 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   and the theme starts again on its own driver.
 - *A difference from the original:* a theme of another game has a mixer of its own, so the battle's effects don't
   take its channels as they take the game's own music's.
+- *Practice's entry plays the pick* (the user: "in the practice screen, if the bgm choice changes from game
+  default you should start playing the bgm"): while the entry shows, a theme plays in place of the menus' title
+  music (`music::preview`, `Sound::set_preview`), with its own pack's bank, at Settings' Music level. Stepping the
+  row crossfades to the next once the row has stayed on it 400 ms (`MUSIC_AFTER`: a run of steps starts one song,
+  the one it stops on, as the arena waits 160 ms before it is drawn); "Game's own" brings the title music back,
+  from its beginning. Leaving the entry (to the menu, to Builds through EDIT) brings the title music back as the
+  other menus have it; starting the battle fades it out as the title music fades, and the entry after the battle
+  plays it again from its beginning. Play's lobby doesn't: its Music is heard in the match (whether it should be is
+  the user's to say).
+- *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
+  the practice menu"): its Battle rows have Music, the same pick. A change switches the battle's music at once
+  (`music::retheme`, `Player::set_sound_parts`, nettai-audio's `BattleAudio::set_songs`): where the battle's own
+  music is playing, the new song starts from its beginning on its own pack's driver (the one before stops, that
+  song alone: the effects play on), with BN6's low-HP speed-up kept on where it is on; where the result's music is
+  playing, or the round's end has stopped the music, nothing changes then, and the next round starts with the new
+  song. A pack the battle hadn't is added at Settings' levels. The battle, its cues and its rollback are the same.
+  (A volume the custom screen's hover over a dark chip set before the change isn't carried to a pack the change
+  adds; the next one the screen sets is every pack's.)
 
 **A game is ready in two stretches**, and the loading screen's bar covers both (`games.rs`; docs/frontend.md §9):
 
@@ -2068,8 +2087,9 @@ column's foot; beside them (on a phone, under them) the two builds as cards over
     until a session is over (each entry after a session has a seed of its own); the session opens on it.
 - **Music** is the battle's music the player picked (§1, "The battle's music"), the same one pick as Play's
   lobby's: a row laid out as Arena's and Background's, stepped by Left and Right around from the last theme to
-  "Game's own", and Enter opens its list (its names say more than a place's number). It changes nothing drawn:
-  the arena's picture is silent, and the session plays it. (On a phone the five rows are 44 tall and 48 apart,
+  "Game's own", and Enter opens its list (its names say more than a place's number). It changes nothing drawn
+  (the arena's picture is silent), the session plays it, and while the entry shows it plays in place of the title
+  music once the row has stayed on it 400 ms (§1, "The battle's music"). (On a phone the five rows are 44 tall and 48 apart,
   where the four were 48 and 56, so that the cards and the arena still end over START PRACTICE.)
 - A card says its build's name, its version's tag and its navi.
 - The arena is the session's first round as its opening ends, the two builds' navis on it: a battle of its own
@@ -2186,6 +2206,10 @@ frame, the rounds after and a RESTART on them too. Stepped on from there, the ba
 change tick for tick, its digest the same but for the background its setup says (nettai's
 `on_another_background_the_battle_goes_on`); practice is neither online nor recorded, so no digest of it is
 compared with another's.
+
+Music changes the battle's music the player picked, the entry's row's and the lobby's one pick (§1, "The
+battle's music"): Left and Right step it (Enter steps it on, as the menu's other rows), and the battle's music
+switches at once, nothing else of it changing (nettai's `a_battle_changes_its_music_as_it_runs`).
 
 The other Battle rows are the library's training options (`Player::set_training`, set at once on the battle behind
 the menu): host-side options a practice session sets between ticks, applied to the battle's own typed state
