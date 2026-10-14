@@ -17,10 +17,10 @@ use crate::textlayer::{Align, Rect, TextItem};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::Path;
-use swash::scale::image::Image;
+use swash::scale::image::{Content, Image};
 use swash::scale::{Render, ScaleContext, Source};
 use swash::shape::ShapeContext;
-use swash::zeno::{Format, Transform, Vector};
+use swash::zeno::{Format, Mask, Origin, Transform, Vector};
 use swash::{CacheKey, FontRef, GlyphId, Setting};
 
 /// Murecho, its variable cut (weights 100 to 900; 1.4 MB): the font file,
@@ -37,6 +37,9 @@ fn cjk(c: char) -> bool {
     matches!(c, '\u{3000}'..='\u{9FFF}' | '\u{F900}'..='\u{FAFF}' | '\u{FF00}'..='\u{FFEF}')
 }
 
+/// The letters whose ink a role with short descenders measures the font's
+/// deepest descender from ([`Shorten`]; Murecho's: g, 0.235 em).
+const DESCENDERS: &str = "gjpqy";
 /// The full-size katakana whose ink the font's kana box is measured from
 /// ([`Face`]): no voiced, small or long forms.
 const KANA: &str = "アイウエオカキクケコサシスセソタチツテトナニヌネノハヒフヘホマミムメモヤユヨラリルレロワン";
@@ -78,10 +81,11 @@ pub enum Role {
     Cell,
     /// The 8x16 font's strings whose cells end where something else starts
     /// (the chip window's name over the chip's picture, the hand window's
-    /// on the screen's last rows, the enemy names on their bar): drawn at
-    /// 90% of [`Role::Cell`]'s size, 1.6 pixels higher, so that the deepest
-    /// descender and its shadow end in the cells' 16 rows at every scale,
-    /// as the original's do.
+    /// on the screen's last rows, the enemy names on their bar): as
+    /// [`Role::Cell`], at its size on its baseline, but with short
+    /// descenders: what a glyph's outline has under the baseline is drawn
+    /// shorter, so that the descenders take one row and their shadow the
+    /// next, the cells' last, as the original's do.
     FittedCell,
     /// The dialogue font's (the chatbox): lines 12 rows high whose
     /// capitals, digits and kana take rows 1 to 10 (the Japanese font's;
@@ -104,21 +108,25 @@ struct Style {
     /// the space the original's glyphs keep before what follows them (a
     /// name's damage digits).
     margin: f32,
+    /// Short descenders: how far under the baseline the deepest of them
+    /// reaches, in frame pixels (its shadow takes the row under it). What
+    /// a glyph's outline has under the baseline is drawn that much
+    /// shorter, measured from the font's deepest descender ([`Shorten`]).
+    /// None: the font's descenders, whole.
+    descender: Option<f32>,
 }
 
 impl Role {
     fn style(self) -> Style {
         match self {
-            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0 },
-            // Murecho's deepest descender (g) is 0.323 of its capitals'
-            // height under the baseline: 2.9 pixels at 9, so with the
-            // shadow (at most 1 pixel, at 1x; 2/3 at 3x) and the output
-            // pixels' rounding it ends above row 16 at 1x to 6x (the test
-            // `a_fitted_cells_descenders_end_in_its_cells`).
-            Role::FittedCell => Style { cap: 9.0, baseline: 12.4, weight: 700.0, margin: 1.0 },
+            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None },
+            // The original's descenders take row 14, their shadow row 15:
+            // Murecho's g, 3.2 pixels deep at this size, is drawn 1 deep
+            // (the test `a_fitted_cells_descenders_end_in_its_cells`).
+            Role::FittedCell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: Some(1.0) },
             // (The chatbox's lines are cut where its sprites end, which
             // leaves a third line's descenders room: `chatbox::draw`.)
-            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0 },
+            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0, descender: None },
         }
     }
 }
@@ -296,6 +304,9 @@ struct Layout {
     width: f32,
     /// How much it is narrowed to fit its box (1: not at all).
     xscale: f32,
+    /// Its role's short descenders: what its glyphs have under the
+    /// baseline is drawn this many times as high ([`Shorten`]).
+    shorten: Option<f32>,
 }
 
 /// A glyph image's cache key: sizes in 64ths of an output pixel, axes in
@@ -309,6 +320,44 @@ struct GlyphKey {
     xscale: i32,
     yscale: i32,
     sub: u8,
+    shorten: Option<Shorten>,
+}
+
+/// Short descenders (a role's `Style::descender`): the part of a glyph's
+/// outline under the text's baseline is scaled vertically about it, so a
+/// descender ends where the original's does; the rest of the glyph is the
+/// font's, whole and at its size. One factor for every glyph of the role,
+/// from the font's deepest descender ([`DESCENDERS`]), so its descenders
+/// stay alike; a glyph that reaches deeper still (a cedilla, the low line)
+/// is shortened just as far as ends it in the box's rows, its shadow
+/// included. Done to the outline before it is rasterized, so the glyph is
+/// as sharp as any at every scale. Output pixels, up from the glyph's
+/// origin, in 64ths; the factor in 1024ths.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+struct Shorten {
+    factor: i32,
+    /// The text's baseline.
+    baseline: i32,
+    /// The lowest the outline may reach: the box's last row's bottom, less
+    /// the shadow's offset.
+    floor: i32,
+}
+
+impl Shorten {
+    fn apply(self, points: &mut [Vector]) {
+        let (baseline, floor) = (self.baseline as f32 / 64.0, self.floor as f32 / 64.0);
+        let squeeze = |points: &mut [Vector], k: f32| {
+            for p in points.iter_mut().filter(|p| p.y < baseline) {
+                p.y = baseline + (p.y - baseline) * k;
+            }
+        };
+        squeeze(points, self.factor as f32 / 1024.0);
+        // (The outline's points bound its curves.)
+        let lowest = points.iter().map(|p| p.y).fold(f32::INFINITY, f32::min);
+        if lowest < floor && floor < baseline {
+            squeeze(points, (baseline - floor) / (baseline - lowest));
+        }
+    }
 }
 
 /// Lays out and draws text items at the output's resolution, keeping the
@@ -322,6 +371,9 @@ pub struct TextRenderer {
     /// The font's kana box by weight (16ths), once measured (none: the
     /// font has no kana).
     faces: HashMap<i32, Option<Face>>,
+    /// The font's deepest descender by weight (16ths), in ems under the
+    /// baseline.
+    descenders: HashMap<i32, f32>,
     made: Made,
 }
 
@@ -345,6 +397,7 @@ impl TextRenderer {
             layouts: HashMap::new(),
             glyphs: HashMap::new(),
             faces: HashMap::new(),
+            descenders: HashMap::new(),
             made: Made::default(),
         }
     }
@@ -370,7 +423,8 @@ impl TextRenderer {
             if self.layouts.len() > 1024 {
                 self.layouts.clear();
             }
-            let l = self.fit(text, role, (room as f32 - role.style().margin).max(1.0));
+            let mut l = self.fit(text, role, (room as f32 - role.style().margin).max(1.0));
+            l.shorten = self.shorten(role);
             self.made.layouts += 1;
             self.layouts.insert(key.clone(), l);
         }
@@ -410,6 +464,35 @@ impl TextRenderer {
         l.width = (l.width * xscale).min(room);
         l.xscale = xscale;
         l
+    }
+
+    /// A role's short descenders' factor ([`Shorten`]): its descender's
+    /// depth over the font's deepest descender's at the role's size (never
+    /// more than 1).
+    fn shorten(&mut self, role: Role) -> Option<f32> {
+        let st = role.style();
+        let depth = st.descender?;
+        let weight = self.font.weight.map(|a| st.weight.clamp(a.min, a.max));
+        let key = weight.map_or(0, |w| (w * 16.0).round() as i32);
+        let deepest = match self.descenders.get(&key) {
+            Some(&d) => d,
+            None => {
+                let font = self.font.font();
+                let cmap = font.charmap();
+                let upem = font.metrics(&[]).units_per_em as f32;
+                let settings: Vec<Setting<f32>> = weight.map(|w| ("wght", w).into()).into_iter().collect();
+                let mut scaler = self.scaler.builder(font).size(upem).variations(settings).build();
+                let d = DESCENDERS
+                    .chars()
+                    .filter_map(|c| scaler.scale_outline(cmap.map(c)))
+                    .map(|o| -o.bounds().min.y / upem)
+                    .fold(0.0, f32::max);
+                self.descenders.insert(key, d);
+                d
+            }
+        };
+        let px = deepest * st.cap / self.font.cap;
+        Some(if px > depth { depth / px } else { 1.0 })
     }
 
     /// The font's kana box at `weight` ([`Face`]), measured once.
@@ -568,11 +651,28 @@ impl TextRenderer {
             let mut scaler = self.scaler.builder(font).size(key.size as f32 / 64.0).hint(key.size < HINT_BELOW * 64).variations(settings).build();
             let (xs, ys) = (key.xscale as f32 / 1024.0, key.yscale as f32 / 1024.0);
             let transform = ((xs, ys) != (1.0, 1.0)).then(|| Transform::scale(xs, ys));
-            let image = Render::new(&[Source::Outline])
-                .format(Format::Alpha)
-                .offset(Vector::new(key.sub as f32 / 4.0, 0.0))
-                .transform(transform)
-                .render(&mut scaler, key.id);
+            let offset = Vector::new(key.sub as f32 / 4.0, 0.0);
+            let image = match key.shorten {
+                None => Render::new(&[Source::Outline]).format(Format::Alpha).offset(offset).transform(transform).render(&mut scaler, key.id),
+                // As `Render` draws an outline, shortened between.
+                Some(shorten) => scaler.scale_outline(key.id).map(|mut outline| {
+                    if let Some(t) = &transform {
+                        outline.transform(t);
+                    }
+                    shorten.apply(outline.points_mut());
+                    // (`inspect` first: `Mask::render` places a bottom-left
+                    // mask's top wrongly, by its height.)
+                    let mut data = Vec::new();
+                    let placement = Mask::new(outline.path())
+                        .format(Format::Alpha)
+                        .origin(Origin::BottomLeft)
+                        .offset(offset)
+                        .render_offset(offset)
+                        .inspect(|format, w, h| data.resize(format.buffer_size(w, h), 0))
+                        .render_into(&mut data, None);
+                    Image { source: Source::Outline, content: Content::Mask, placement, data }
+                }),
+            };
             self.made.glyphs += 1;
             self.glyphs.insert(key, image);
         }
@@ -619,6 +719,9 @@ impl TextRenderer {
         let color = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
         let mut target = Target { depth, place, out, out_w, clip, key: item.depth };
         let offset = (SHADOW * s).round().max(1.0) as i32;
+        // Short descenders: the text's baseline and how low its ink may
+        // reach (the box's bottom, less the shadow's offset), in output rows.
+        let shorten = layout.shorten.map(|k| (k, place.y as f32 + baseline * s, place.y as f32 + (item.rect.y + item.rect.h) as f32 * s - offset as f32));
         let passes: Vec<(u32, i32)> = item.shadow.map(|c| (color(c), offset)).into_iter().chain([(color(item.face), 0)]).collect();
         for (rgb, off) in passes {
             for g in layout.glyphs.iter().filter(|g| g.unit < shown) {
@@ -626,6 +729,9 @@ impl TextRenderer {
                 let gy = place.y as f32 + (baseline - g.y * k) * s;
                 let ix = gx.floor();
                 let sub = (((gx - ix) * 4.0) as u8).min(3);
+                let origin = gy.round();
+                let up = |row: f32| ((origin - row) * 64.0).round() as i32;
+                let shorten = shorten.map(|(k, baseline, floor)| Shorten { factor: (k * 1024.0).round() as i32, baseline: up(baseline), floor: up(floor) });
                 let key = GlyphKey {
                     id: g.id,
                     size: (g.size * s * 64.0).round() as u32,
@@ -634,10 +740,11 @@ impl TextRenderer {
                     xscale: (layout.xscale * g.stretch * 1024.0).round() as i32,
                     yscale: (k * 1024.0).round() as i32,
                     sub,
+                    shorten,
                 };
                 let Some(image) = self.glyph(key) else { continue };
                 let (w, h) = (image.placement.width as i32, image.placement.height as i32);
-                let (left, top) = (ix as i32 + image.placement.left + off, gy.round() as i32 - image.placement.top + off);
+                let (left, top) = (ix as i32 + image.placement.left + off, origin as i32 - image.placement.top + off);
                 for y in 0..h {
                     for x in 0..w {
                         let a = image.data[(y * w + x) as usize];
@@ -844,13 +951,14 @@ mod tests {
     /// A fitted cell string, whatever its letters, stays in its cells at
     /// every scale, its shadow included: its deepest descenders end on the
     /// cells' last row, where the original's do, and its ascenders, kana
-    /// and kanji start under their first.
+    /// and kanji start under their first. What reaches deeper than g (the
+    /// cedilla, the low line, a kanji's foot) ends there too.
     #[test]
     fn a_fitted_cells_descenders_end_in_its_cells() {
         let at = Rect::new(16, 8, 64, 16);
         for scale in 1..=6 {
             let mut deepest = 0;
-            for text in ["gjpqy", "Spreadr1", "BigBomb", "(Ⓐ),;", "攻撃熱斗", "ガンデルソル3", "バッドメディスン", "Éfl"] {
+            for text in ["gjpqy", "Spreadr1", "BigBomb", "(Ⓐ),;", "攻撃熱斗", "ガンデルソル3", "バッドメディスン", "Éfl", "Çŋ_‗", "妹舞＿"] {
                 let (first, last) = lit_rows(TextItem::new(text, Role::FittedCell, at, 0x7FFF, Some(0x2108)), scale);
                 assert!(first >= at.y as usize * scale, "{text} at {scale}x: from output row {first}");
                 assert!(last < (at.y + at.h) as usize * scale, "{text} at {scale}x: to output row {last}");
@@ -858,6 +966,43 @@ mod tests {
             }
             // (Not fitted further than it needs: the last row is reached.)
             assert!(deepest + 2 * scale > (at.y + at.h) as usize * scale, "{scale}x: to output row {deepest}");
+        }
+    }
+
+    /// A fitted cell string stands where a cell string does, the
+    /// original's: its capitals are the cell role's, the same pixels in
+    /// rows 4 to 13 of the cells on the baseline at 14, at every scale.
+    /// Only what is under the baseline differs: its descenders take one
+    /// row (14) and their shadow the next (15), as the original's do,
+    /// where the cell role's reach 3.2 rows.
+    #[test]
+    fn a_fitted_cells_capitals_stand_on_the_originals_baseline() {
+        let at = Rect::new(16, 8, 64, 16);
+        let baseline = at.y as usize + 14;
+        for scale in 1..=6 {
+            let shot = |text: &str, role: Role| {
+                let item = TextItem::new(text, role, at, 0x7FFF, Some(0x2108));
+                let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None, ..crate::render::Frame::default() };
+                let (w, h) = (WIDTH * scale, HEIGHT * scale);
+                let mut out = vec![0u32; w * h];
+                crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
+                out
+            };
+            // The capitals: the cell role's pixels, shadow and all (those
+            // that reach no lower than the baseline: a round capital's
+            // overshoot under it is shortened too).
+            for text in ["HIEML", "TNKZ1", "AVFWX"] {
+                assert!(shot(text, Role::FittedCell) == shot(text, Role::Cell), "{text} at {scale}x");
+            }
+            let rows = |text: &str, role: Role| lit_rows(TextItem::new(text, role, at, 0x7FFF, None), scale);
+            let (top, bottom) = rows("HIEML", Role::FittedCell);
+            assert_eq!((top, bottom + 1), ((at.y as usize + 4) * scale, baseline * scale), "{scale}x: the capitals' rows");
+            // The descenders: one row under the baseline, where the cell
+            // role's go three and more.
+            let (_, low) = rows("gjpqy", Role::FittedCell);
+            assert!(low >= baseline * scale && low < (baseline + 1) * scale, "{scale}x: descenders to output row {low}");
+            let (_, whole) = rows("gjpqy", Role::Cell);
+            assert!(whole >= (baseline + 3) * scale, "{scale}x: the cell role's to output row {whole}");
         }
     }
 
