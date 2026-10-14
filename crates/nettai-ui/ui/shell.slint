@@ -635,24 +635,53 @@ export component Backdrop inherits Rectangle {
     }
 }
 
+// One of the telop's calls, stamping in as `stamp` goes from 0 to 1.
+component TelopCall inherits Text {
+    in property <float> stamp;
+    property <bool> over: Theme.audit && self.preferred-width > self.width + 0.5px;
+    color: Theme.text;
+    font-family: Theme.display;
+    font-size: Theme.phone ? 20px : 34px;
+    font-weight: Theme.display-bold;
+    letter-spacing: Theme.title-tracking;
+    horizontal-alignment: center;
+    vertical-alignment: center;
+    opacity: root.stamp;
+    transform-scale: 1 + (1 - (1 - pow(1 - root.stamp, 3))) * 0.5;
+    changed over => {
+        if over {
+            Audit.clipped(self.text);
+        }
+    }
+}
+
 // The jack-in (docs/design/app-ui.md §4, "Motion"; §2.49): as a battle begins, over its first frames, the field's
 // rush goes on across the window. The ground covers the battle while streaks in the cursor's color rush in toward
-// the middle, a flash, and the battle shows; a telop stamps over it, the operator's call. It is drawn over the
-// battle and takes no input: the battle starts when it would have, and runs under it. With motion turned down
-// the ground and the telop fade (`calm`, the theme's `calm-fade`), with no streaks and no stamp.
+// the middle, a flash, and the battle shows; a telop stamps over it, the operator's call and then the navi's
+// answer, one after the other, and stays a little over the battle (its own clock, the theme's `telop`). It is
+// drawn over the battle and takes no input: the battle starts when it would have, and runs under it. With motion
+// turned down the ground and the telop fade (`calm`, the theme's `calm-fade`), with no streaks and no stamps.
 export component JackIn inherits Rectangle {
     // How far it is, 0 to 1 (1 once it is over, and as it is made: nothing shows).
     property <float> p: 1 - clock.v;
-    property <float> stamp: Theme.motion ? clamp((root.p - 0.05) / 0.14, 0, 1) : 1;
-    property <float> stamped: 1 - pow(1 - root.stamp, 3);
+    // How far the telop is, on its own clock: the call stamps first, the answer after it.
+    property <float> tp: 1 - telop-clock.v;
+    property <float> call: Theme.motion ? clamp((root.tp - 0.025) / 0.07, 0, 1) : 1;
+    property <float> answer: Theme.motion ? clamp((root.tp - 0.42) / 0.07, 0, 1) : 1;
     clock := Pulse {
         seq: Shell.jack-in-seq;
         duration: Theme.motion ? Theme.set-piece : Theme.calm-fade;
         calm: true;
     }
 
+    telop-clock := Pulse {
+        seq: Shell.jack-in-seq;
+        duration: Theme.motion ? Theme.telop : Theme.calm-fade;
+        calm: true;
+    }
+
     Rectangle {
-        visible: clock.v > 0;
+        visible: clock.v > 0 || telop-clock.v > 0;
         // The ground over the battle until the flash, then gone.
         Rectangle {
             background: @linear-gradient(180deg, Theme.ground-top 0%, Theme.ground-bottom 100%);
@@ -696,15 +725,17 @@ export component JackIn inherits Rectangle {
             opacity: max(0, 1 - abs(root.p - 0.5) / 0.12) * 0.85;
         }
 
-        // The telop: a band across the middle, its call stamped in it.
+        // The telop: a band across the middle, its two calls stamped in it in turn, on one line (on a phone, one
+        // over the other). Each has its place from the start, so the answer's coming moves nothing.
         Rectangle {
-            property <float> gone: !Theme.motion ? clock.v : root.p < 0.82 ? 1 : max(0, 1 - (root.p - 0.82) / 0.18);
+            property <float> gone: !Theme.motion ? telop-clock.v : root.tp < 0.82 ? 1 : max(0, 1 - (root.tp - 0.82) / 0.18);
+            property <float> band: 1 - pow(1 - root.call, 3);
             y: (parent.height - self.height) / 2;
             height: Theme.phone ? 96px : 72px;
-            opacity: root.stamp * self.gone;
+            opacity: root.call * self.gone;
             Rectangle {
                 x: (parent.width - self.width) / 2;
-                width: parent.width * root.stamped;
+                width: parent.width * parent.band;
                 background: Theme.ground-bottom.with-alpha(0.82);
                 Rectangle {
                     y: 0;
@@ -723,24 +754,34 @@ export component JackIn inherits Rectangle {
                 }
             }
 
-            telop := Text {
-                property <bool> over: Theme.audit && self.preferred-height > self.height + 0.5px;
+            if !Theme.phone: HorizontalLayout {
                 x: Theme.margin;
                 width: parent.width - 2 * Theme.margin;
-                text: @tr("BATTLE ROUTINE, SET! EXECUTE!");
-                color: Theme.text;
-                font-family: Theme.display;
-                font-size: Theme.phone ? 20px : 34px;
-                font-weight: Theme.display-bold;
-                letter-spacing: Theme.title-tracking;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-                wrap: word-wrap;
-                transform-scale: 1 + (1 - root.stamped) * 0.5;
-                changed over => {
-                    if over {
-                        Audit.clipped(self.text);
-                    }
+                alignment: center;
+                spacing: 14px;
+                TelopCall {
+                    text: @tr("BATTLE ROUTINE, SET!");
+                    stamp: root.call;
+                }
+
+                TelopCall {
+                    text: @tr("EXECUTE!");
+                    stamp: root.answer;
+                }
+            }
+            if Theme.phone: VerticalLayout {
+                x: Theme.margin;
+                width: parent.width - 2 * Theme.margin;
+                alignment: center;
+                spacing: 4px;
+                TelopCall {
+                    text: @tr("BATTLE ROUTINE, SET!");
+                    stamp: root.call;
+                }
+
+                TelopCall {
+                    text: @tr("EXECUTE!");
+                    stamp: root.answer;
                 }
             }
         }
