@@ -360,6 +360,13 @@ pub fn reading_order(mut candidates: Vec<(Key, Rect)>) -> Vec<Key> {
     rows.into_iter().flatten().map(|(key, _)| key).collect()
 }
 
+/// `order` (reading order) with the controls named in `zones` first, in that order, and the rest after them as
+/// they were.
+pub fn in_zones(mut order: Vec<Key>, zones: &[&str]) -> Vec<Key> {
+    order.sort_by_key(|k| zones.iter().position(|z| *z == k.id).unwrap_or(zones.len()));
+    order
+}
+
 /// What a key did to the focused control, for the app to pass to the screen.
 #[derive(Clone, Debug, PartialEq)]
 pub enum Did {
@@ -792,7 +799,13 @@ impl Nav {
 
     /// Tab (or Shift+Tab, `back`): the next control in reading order, around from the last to the first.
     pub fn tab(&mut self, ui: &AppWindow, back: bool) {
-        let order = reading_order(self.registry.borrow().candidates(self.scope(), None, &self.row_of()));
+        self.tab_in(ui, back, &[]);
+    }
+
+    /// Tab as [`Nav::tab`], through the controls named in `zones` first, in that order (a list by its name),
+    /// then the rest in reading order: a screen whose parts read in an order their places don't (Play's zones).
+    pub fn tab_in(&mut self, ui: &AppWindow, back: bool, zones: &[&str]) {
+        let order = in_zones(reading_order(self.registry.borrow().candidates(self.scope(), None, &self.row_of())), zones);
         if order.is_empty() {
             return;
         }
@@ -806,6 +819,20 @@ impl Nav {
         };
         self.take(order[next].clone());
         self.reveal(ui);
+    }
+
+    /// Put the focus on the first of `ids` that can take it now (a list on its row), scrolled into view. False if
+    /// none can.
+    pub fn focus_first(&mut self, ui: &AppWindow, ids: &[&str]) -> bool {
+        let to = {
+            let row_of = self.row_of();
+            ids.iter().map(|id| Key::new(id, row_of(id))).find(|key| self.registry.borrow().holds(key))
+        };
+        let Some(to) = to else { return false };
+        self.leave_edit();
+        self.take(to);
+        self.reveal(ui);
+        true
     }
 
     /// A list's page up or down, its first or last row (`to`: the row's change, clamped to the list).
@@ -976,6 +1003,34 @@ mod tests {
         m.reverse();
         let order: Vec<String> = reading_order(m).into_iter().map(|k| k.id).collect();
         assert_eq!(order, ["game", "play", "replays", "settings", "exit", "about"]);
+    }
+
+    /// Play's builds, as they are laid out at 1280 by 800: Tab goes zone by zone (the builds, the chosen build,
+    /// what is done with it) where reading order would go from + NEW BUILD to EDIT, at the same height, before
+    /// the list; the arrows go by place, Right from a row of the list being the screen's own (`Screen::route`).
+    #[test]
+    fn play_tabs_by_its_zones() {
+        let play = vec![
+            at("new", 32.0, 88.0, 140.0, 40.0),
+            at("edit", 1072.0, 112.0, 120.0, 40.0),
+            at("more", 1200.0, 112.0, 40.0, 40.0),
+            at("builds", 32.0, 140.0, 400.0, 488.0),
+            at("practice", 32.0, 666.0, 140.0, 40.0),
+            at("invite", 456.0, 666.0, 160.0, 40.0),
+            at("code", 628.0, 666.0, 208.0, 40.0),
+            at("join", 844.0, 666.0, 120.0, 40.0),
+            at("direct", 1090.0, 666.0, 158.0, 40.0),
+        ];
+        let reading: Vec<String> = reading_order(play.clone()).into_iter().map(|k| k.id).collect();
+        assert_eq!(reading[..4], ["new", "edit", "more", "builds"]);
+        let zones = ["new", "builds", "edit", "more", "practice", "invite", "code", "join", "direct"];
+        let order: Vec<String> = in_zones(reading_order(play.clone()), &zones).into_iter().map(|k| k.id).collect();
+        assert_eq!(order, zones);
+        assert_eq!(from(&play, "new", Direction::Right).as_deref(), Some("edit"));
+        assert_eq!(from(&play, "new", Direction::Down).as_deref(), Some("builds"));
+        assert_eq!(from(&play, "edit", Direction::Left).as_deref(), Some("builds"));
+        assert_eq!(from(&play, "practice", Direction::Right).as_deref(), Some("invite"));
+        assert_eq!(from(&play, "practice", Direction::Up).as_deref(), Some("builds"));
     }
 
     /// A control leaves the registry when the token it was given is dropped, and one made again before the old

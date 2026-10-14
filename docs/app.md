@@ -13,8 +13,8 @@ music, Settings, the two cards before a battle, and the battle's host with its m
 transport, the export): each is one Slint file and one Rust module (§2).
 
 Builds is filled in (§8): the editor with its five tabs behind its tab interface: Navi, Folder, NaviCust, Patch cards and, in a game whose setup takes
-it, Auto battle. The builds themselves (a new build, a save's import, the chosen one's overview, DUPLICATE, RENAME,
-DELETE) are Play's (§4), and so is the way into Practice (docs/design/app-ui.md §2.50). The overview, a build's row
+it, Auto battle. The builds themselves (a new build, a save's import, the chosen one's overview, its menu of DUPLICATE,
+RENAME and DELETE) are Play's (§4), and so is the way into Practice (docs/design/app-ui.md §2.50). The overview, a build's row
 and a version's tag are components any screen uses.
 
 nettai is the player's host of nettai-frontend (docs/frontend.md: the battle it plays and draws); nettai-tools is
@@ -637,23 +637,28 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 
 **The screen has three parts**, one shown at a time (`PlayView.part`), and two things over a match:
 
-- **The builds** (docs/design/app-ui.md §2.50: Play and the Builds list made one). NEW BUILD and IMPORT SAVE…
-  over the player's builds of the selected game as a list (`builds::shelf::load`, its `BuildRow`s: each read
-  from its file and checked by the game's rules; one that can't be played says how many problems it has, in the
-  error red), the chosen one's overview beside it (the wide sheet, §8) with EDIT, DUPLICATE, RENAME and DELETE
-  under it, and one row under them all: CREATE INVITE, PRACTICE, the code's field with JOIN and a space for a
-  message, DIRECT CONNECT. The chosen build is the one under the list's cursor, remembered by game; the overview
-  follows it. What is done with the builds is `screens/play/list.rs`: NEW BUILD and RENAME open the name's
-  dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
-  (`Builds::new_build`); IMPORT SAVE… (or a save dropped on the window) makes a build of a save
-  (`builds::import`), saying quietly in the space beside JOIN what it was put on where that changed it
-  ("Imported as Dark MegaMan"); DELETE (and Delete on the list) asks once, Cancel focused; EDIT opens the build in
-  Builds' editor (`screens::builds::open(shell, ScreenId::Play, at)`), whose Back comes back here with it still
-  chosen; PRACTICE opens Practice's entry on it (`screens::practice::open`, Your build the chosen one's file),
-  whose Back comes back here too (§15). With no build of the game NEW BUILD is the main action, the focus is on
-  it, and each of the row's controls says "Make a build first." when pressed (`UserError::NoBuild`). On a phone
-  the list is one box of the chosen build, which opens the builds as a sheet, its buttons two by two under it,
-  and no overview. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
+- **The builds** (docs/design/app-ui.md §2.50: Play and the Builds list made one; §2.52: in three zones). + NEW
+  BUILD over the player's builds of the selected game as a list (`builds::shelf::load`, its `BuildRow`s: each
+  read from its file and checked by the game's rules; one that can't be played says how many problems it has, in
+  the error red); the chosen one's overview beside it (the wide sheet, §8) with EDIT and ⋯ in its header
+  (`BuildOverview.tools`, the room it leaves them); and the band under both: PRACTICE under the list, and under
+  the overview the ONLINE group, CREATE INVITE, the code's field with JOIN, DIRECT CONNECT (a text button), the
+  reserved line under them. The chosen build is the one under the list's cursor, remembered by game; the
+  overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD and RENAME open the
+  name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
+  (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
+  a save chosen in the system's dialog, as a save dropped on the window does (`builds::import`), saying quietly in
+  the reserved line what it was put on where that changed it ("Imported as Dark MegaMan"); ⋯ (`more`) and a right
+  click on a row (`row-menu`) open the build's menu (`Shell::pick_menu`, its choice heard as `more`'s): DUPLICATE,
+  RENAME and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
+  once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
+  at)`), whose Back comes back here with it still chosen; PRACTICE opens Practice's entry on it
+  (`screens::practice::open`, Your build the chosen one's file), whose Back comes back here too (§15). With no
+  build of the game + NEW BUILD is the one main action (CREATE INVITE takes the normal look), the focus is on it,
+  and each of the band's controls says "Make a build first." when pressed (`UserError::NoBuild`). Right from the
+  list goes to EDIT and Tab goes zone by zone (`Screen::route`, §11). On a phone the list is one box of the chosen
+  build, which opens the builds as a sheet, EDIT and ⋯ under it, then the band one under the other, and no
+  overview. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
   whatever it was typed with (`code_typed`, `code_shown`). A pad can't type: its confirm on the field opens the
   code as six boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through
   a box's characters (the alphabet codes are written in), and a character typed goes into the box and on to
@@ -1149,8 +1154,9 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
 
 - **The name is the file's alone.** `[side]` is what a match, a lobby and a replay are given, and it holds no
   name (docs/design/app-ui.md §2.16).
-- **The Builds screen is the editor alone** (docs/design/app-ui.md §2.50): the builds themselves, NEW BUILD,
-  IMPORT SAVE…, the overview, DUPLICATE, RENAME and DELETE, are Play's (§4), and the main menu has no BUILDS.
+- **The Builds screen is the editor alone** (docs/design/app-ui.md §2.50): the builds themselves, + NEW BUILD
+  (and its FROM A SAVE FILE…), the overview, the build's menu of DUPLICATE, RENAME and DELETE, are Play's (§4),
+  and the main menu has no BUILDS.
 - **Opened by another screen** (`screens::builds::open(shell, from, at)`; docs/design/app-ui.md §2.28): Builds is
   shown and told by `Shell::tell` which screen opened it (its tag is `opened-by.` and the screen's name,
   `screens::opened_tag`) and the build to open (its place in `store::list`'s order, which every list of them has).
@@ -1705,7 +1711,7 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
 | Component | What it is |
 |---|---|
 | `Cut`, `PanelBack`, `Panel` | The rectangle with one line and its bottom right corner cut (9 on a button, 12 on a panel, 18 on a dialog or a menu); a panel's back with the cyan accent, or a player's color; a panel with something in it |
-| `Button` | Default, the main action (amber), ghost, unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
+| `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused: Play's DIRECT CONNECT), unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
 | `Field` | A text field (§11) |
 | `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`: at most ten rows at once, fewer where the window has less room by the select; more scroll, and it opens with the chosen one in view); `focusable` off where its row is what is focused |
 | `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked`; `focusable` off where its row is what is focused |
@@ -1821,9 +1827,13 @@ tells the app where it is in the window and takes its clicks. From those rectang
 
 - **The arrows** go to the neighbor in their direction: a control straight ahead (one that overlaps the focused
   one across the direction) before a nearer one off to the side, and of two equally near the one that starts
-  where the focused one does (in Play's row, CREATE INVITE, not PRACTICE, under the list). On a stepper, a select, a switch or a slider,
+  where the focused one does. On a stepper, a select, a switch or a slider,
   Left and Right change the value instead.
 - **Tab and Shift+Tab** go through the same controls in reading order, around from the last to the first.
+- **A screen may route a move itself** where the places don't say it (`Screen::route`, asked before the nav for
+  an arrow or Tab while nothing is open over the screen): Play's Right from its list goes past the overview,
+  which takes no focus, to EDIT (`Nav::focus_first`), and its Tab goes zone by zone (`Nav::tab_in`, the
+  controls it names first in its order, the rest in reading order after them).
 - **Enter** (and Num Enter, Space) activates; **Esc** goes back: out of a list, a dialog or a menu (a battle's
   menu too, which Esc opened), else within the screen (`Screen::back`), else to the main menu. These are the
   menus' fixed keys (`input::menu_action`, with the arrows, Tab and Shift+Tab, Delete and Backspace, Page Up and
@@ -1869,7 +1879,11 @@ scrolled into view. A `ScrollPage`'s controls are scrolled into view as the focu
 with the page's end, so a note under it shows), and those out of view are passed by when the focus comes from
 outside it. The scrollbar's room is reserved whether or not it shows. A select's choices (`PickerLayer`) are a
 `ListView` of a set height: it is as tall as its rows up to ten (and to the room the window has under the
-select, or over it), keeps that height, and scrolls for more, the chosen row in view as it opens.
+select, or over it), keeps that height, and scrolls for more, the chosen row in view as it opens. A menu of
+actions is the same list (`Shell::pick_menu`, `Shell.picker-menu`: Play's build menu, from its ⋯ or a right
+click on a build's row, `RowTouch.menu`): 200 wide with its right edge at what opened it, its rows in the
+buttons' type, the cursor on the first, and those from `Shell.picker-apart` on under a line in the error color
+(DELETE).
 
 **Pads** (rule 10) follow the pad's bindings in the same way (`Bindings::pad_action`): the D-pad or the stick
 moves, the button bound to A confirms and B's goes back (the south and west buttons until rebound; south and
@@ -1999,9 +2013,9 @@ locked screen draws no frames, and the practice battle never starts (`practice.t
 
 **The builds' steps** (`tour/builds.rs`; `steps` is handed `walk`'s `shot`, `motion` the probe's `burst`):
 Play's builds with none and with three (one named in Japanese, one with a name too long for its row), a new build's
-dialog with the focus a control on, a file that is no save dropped on the list, a build's rename and the
-question before it is deleted (EDIT's row a focus move apart: the same steps on a phone, whose page has the same
-buttons), the editor opened by EDIT: the Navi tab with the focus a card on, with another navi chosen and with the
+dialog with the focus a control on, a file that is no save dropped on the list, EDIT and ⋯ a focus move apart,
+the build's menu open (`builds-menu`), a build's rename and the question before it is deleted, each chosen from the
+menu (the same steps on a phone, whose page has the same buttons), the editor opened by EDIT: the Navi tab with the focus a card on, with another navi chosen and with the
 other preset of the game's choice, and the Folder tab (an entry, the library, its controls a focus move apart,
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,
 the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out, the

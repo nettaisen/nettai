@@ -62,6 +62,17 @@ const PICKER_ROW: f32 = 44.0;
 /// The least width of a list of tags (`Shell::pick_tags`): the longest version's tag in the longest language
 /// with the row's room at each side.
 const TAG_LIST: f32 = 168.0;
+/// The width of a menu of actions (`Shell::pick_menu`): its longest words in the longest language, with a row's
+/// room at each side.
+const MENU_WIDTH: f32 = 200.0;
+
+/// What a list of choices is: a select's, a list of tags, or a menu of actions whose rows from `apart` on (where
+/// some) are set apart in the error color.
+enum Look {
+    Select,
+    Tags(Vec<slint::Color>),
+    Menu { apart: Option<usize> },
+}
 
 /// The rows a select's list of `options` choices shows at once, and whether it goes under its select: as many
 /// as it has, up to [`PICKER_ROWS`] and to the whole rows there is room for, `under` the select or `over` it.
@@ -555,7 +566,15 @@ impl Shell {
     /// many rows as it has, up to [`PICKER_ROWS`] and to what the window has room for by the select; more
     /// scroll, the chosen one in view as it opens.
     pub fn pick(&mut self, id: &str, index: i32, options: Vec<String>, chosen: usize) {
-        self.open_picker(id, index, options, Vec::new(), chosen);
+        self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Select, chosen as i32);
+    }
+
+    /// Open a menu of actions (Play's build menu) as a select's list, by the control `at` (its ⋯ button, or the
+    /// row a right click opened it on), [`MENU_WIDTH`] wide with its right edge at `at`'s: the screen hears the
+    /// choice as `Screen::choose(id, index, choice)`. The rows from `apart` on are set apart under a line, in the
+    /// error color (DELETE). No row is marked; the cursor starts on the first.
+    pub fn pick_menu(&mut self, id: &str, index: i32, at: &Key, options: Vec<String>, apart: Option<usize>) {
+        self.open_picker(Key::new(id, index), at, options, Look::Menu { apart }, -1);
     }
 
     /// Open a list of tags by a tag that opens a choice (the editor's version), as [`Shell::pick`] does a
@@ -563,37 +582,50 @@ impl Shell {
     /// it opens from being narrower than its choices may be.
     pub fn pick_tags(&mut self, id: &str, index: i32, tags: Vec<nettai_ui::VersionTag>, chosen: usize) {
         let (options, tones) = tags.into_iter().map(|tag| (tag.text.to_string(), tag.tone)).unzip();
-        self.open_picker(id, index, options, tones, chosen);
+        self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Tags(tones), chosen as i32);
     }
 
-    fn open_picker(&mut self, id: &str, index: i32, options: Vec<String>, tones: Vec<slint::Color>, chosen: usize) {
+    /// Open the list of `key`'s choices by the control `at`, `chosen` marked (-1: none, the cursor on the first).
+    fn open_picker(&mut self, key: Key, at: &Key, options: Vec<String>, look: Look, chosen: i32) {
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
-        let key = Key::new(id, index);
-        let by = self.nav.registry().borrow().rect(&key).unwrap_or_default();
+        let by = self.nav.registry().borrow().rect(at).unwrap_or_default();
         let window = ui.window().size().to_logical(ui.window().scale_factor());
         // (A phone's sheet is at the window's foot, three fifths of it at the most.)
         let (rows, under) = if self.scale.phone { picker_rows(options.len(), window.height * 0.6, 0.0) } else { picker_rows(options.len(), window.height - by.bottom() - 8.0, by.y - 8.0) };
         let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - (rows as f32 * PICKER_ROW + 2.0) };
-        let width = if tones.is_empty() { by.w } else { by.w.max(TAG_LIST) };
+        let (width, x) = match &look {
+            Look::Select => (by.w, by.x),
+            Look::Tags(_) => (by.w.max(TAG_LIST), by.x),
+            Look::Menu { .. } => (MENU_WIDTH, by.right() - MENU_WIDTH),
+        };
         shell.set_picker_rows(rows as i32);
         shell.set_picker_options(ModelRc::new(VecModel::from(options.into_iter().map(Into::into).collect::<Vec<slint::SharedString>>())));
-        shell.set_picker_tones(ModelRc::new(VecModel::from(tones)));
-        shell.set_picker_chosen(chosen as i32);
+        shell.set_picker_menu(matches!(look, Look::Menu { .. }));
+        shell.set_picker_apart(match &look {
+            Look::Menu { apart: Some(apart) } => *apart as i32,
+            _ => -1,
+        });
+        shell.set_picker_tones(ModelRc::new(VecModel::from(match look {
+            Look::Tags(tones) => tones,
+            _ => Vec::new(),
+        })));
+        shell.set_picker_chosen(chosen);
         // (Inside the window, a list wider than what it opens from.)
-        shell.set_picker_x(by.x.min(window.width - width - 8.0).max(0.0));
+        shell.set_picker_x(x.min(window.width - width - 8.0).max(0.0));
         shell.set_picker_y(y);
         shell.set_picker_width(width);
         shell.set_picker(true);
         // (The battle's menu's list is its owner's, as the menu is: `App::hearer_of`.)
         let owner = match &self.battle {
-            Some(b) if b.full || id.starts_with("menu.") => b.owner,
+            Some(b) if b.full || key.id.starts_with("menu.") => b.owner,
             _ => self.screen,
         };
         self.picking = Some(Picking { owner, key });
-        self.nav.open("pick.", Key::new("pick.option", chosen as i32));
+        let row = chosen.max(0);
+        self.nav.open("pick.", Key::new("pick.option", row));
         // (The chosen row, scrolled into view once the list is there.)
-        self.nav.focus("pick.option", chosen as i32);
+        self.nav.focus("pick.option", row);
     }
 
     fn close_picker(&mut self) -> Option<Picking> {
@@ -1033,6 +1065,15 @@ impl App {
         if !over && matches!(action, Action::Up | Action::Down | Action::PageUp | Action::PageDown | Action::Home | Action::End) {
             let hearer = self.hearer();
             if self.call(hearer, |s, shell| s.scroll(shell, action)).unwrap_or(false) {
+                self.settle();
+                return;
+            }
+        }
+        // (A move the screen makes itself, where the controls' places don't say where it goes: `Screen::route`.)
+        if !over && matches!(action, Action::Up | Action::Down | Action::Left | Action::Right | Action::NextFocus | Action::PreviousFocus) {
+            let hearer = self.hearer();
+            if self.call(hearer, |s, shell| s.route(shell, action)).unwrap_or(false) {
+                self.shell.sound.play(Cue::Cursor);
                 self.settle();
                 return;
             }

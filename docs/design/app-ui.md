@@ -397,7 +397,8 @@ Each is settled unless the user changes it.
       and, apart, DELETE (as the list had them), and under them Play's row. With no build NEW BUILD (the main action
       then) and IMPORT SAVE… are the way in, and the row's controls say in its reserved line why they can't be used
       ("Make a build first."). The editor opened from PLAY has ‹ PLAY as its Back, which comes back with the build
-      still chosen. There is no Builds list any more, and BUILDS left the main menu.
+      still chosen. There is no Builds list any more, and BUILDS left the main menu. (Since §2.52: + NEW BUILD
+      alone, a save started from its dialog, and DUPLICATE, RENAME and DELETE in the build's menu.)
     - *PRACTICE is in PLAY's row,* beside CREATE INVITE (which stays the main action): it opens Practice's entry
       with Your build the build chosen in PLAY, the entry otherwise as it was (Dummy's build, Arena, Background,
       Music, START PRACTICE, EDIT); the entry's Back is ‹ PLAY, coming back with the same build chosen. With no
@@ -417,6 +418,29 @@ Each is settled unless the user changes it.
     Sans's, and it covers both JIS levels. It replaces M PLUS 1 for every Japanese title, button, tab, label and
     the telop, in every game, at 700 (the one weight bundled, for the bold and the semibold alike); the tracking
     stays nearly none. Body text stays Murecho; codes and numbers M PLUS 1 Code.
+52. **PLAY in three zones; the build's actions in a menu; one NEW BUILD** (2026-10-14). The user, of §2.50's
+    screen: "the play menu feels so crowded now". Of the options put to them they chose two, "Build actions in a
+    menu" and "One NEW BUILD button" (not "Online behind one button" nor "Smaller overview"), and added: "you
+    shold rethink the layout to be more coherent i guess it's kind of crowded now".
+    - *The build's actions in a menu.* Beside the overview only EDIT stays a button; DUPLICATE, RENAME and DELETE
+      are in the build's menu, which ⋯ (a small button beside EDIT) opens as the selects' list opens (the
+      cursor in it, Enter or a click choosing, Esc or B closing it; a phone's sheet), and which a right click on
+      a build's row opens at the row. DELETE is last, under a line, in the error color, and asks once as before
+      (Cancel focused); Del on the list still asks it.
+    - *One NEW BUILD.* Over the list only + NEW BUILD. Its dialog has, under its buttons, FROM A SAVE FILE…: the
+      system's file dialog, and a build made of the save as IMPORT SAVE… made one (named for its file, "Imported
+      as Dark MegaMan" in the reserved line where that was so). IMPORT SAVE… is gone; a save dropped on the
+      window is still made a build.
+    - *Three zones, read in order*: the builds (+ NEW BUILD, the list), the chosen build (its overview, with EDIT
+      and ⋯ in its header), what is done with it (PRACTICE; ONLINE, one group under a small label, CREATE
+      INVITE its one main action, the code and JOIN, DIRECT CONNECT a text button), the reserved line under
+      them. The online controls all stay on the screen. Tab goes zone by zone, and Right from the list goes to
+      EDIT past the overview. Chosen here, the user saying no more: the two columns kept (the list 400 wide, the
+      overview its 792 by 540), the band at their foot aligned to them, EDIT and ⋯ in the overview's header so
+      that no row of buttons sits under it, CREATE INVITE in the normal look while there is no build (+ NEW BUILD
+      is the one main action then), and the save's build named for its file whatever the dialog's name field
+      says.
+    (§6, docs/app.md §4.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -615,28 +639,46 @@ Each is in the mockups under the same name.
 - The selected game's title music plays across the menu screens and fades out as a battle starts.
 
 ### Play
-The builds and the way into a match or practice, on one screen (§2.50).
-- Left: NEW BUILD and IMPORT SAVE… over the player's builds of the game, an open list 400 wide (rows 52: the name,
-  then "MegaMan · ready" or what is wrong, and the version's tag). The row the cursor is on is the build chosen,
-  remembered by game. A save dropped on the window is made a build, as IMPORT SAVE… makes one ("Imported as Dark
-  MegaMan" quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as
-  DELETE does. With no build of the game NEW BUILD is the main action, and with IMPORT SAVE… the way in.
-- Right: the chosen build's overview (Builds, below), framed; under it EDIT, DUPLICATE, RENAME and, apart at the
-  right, DELETE (asks once, Cancel focused). A build whose file doesn't read can only be deleted.
-- Below, one row: CREATE INVITE (the main action), PRACTICE | the code field and JOIN, with a reserved space beside
-  for a message | DIRECT CONNECT at the far right. Pressed with no build, each says in the reserved line "Make a
-  build first." (§7). With a build that can't be used, CREATE INVITE, JOIN and DIRECT CONNECT say why there, and
-  PRACTICE opens the entry, which says it in its own line.
+The builds and the way into a match or practice, on one screen (§2.50), in three zones read in order (§2.52):
+the builds, the chosen build, what is done with it. In the body's units (1216 by 644 at the reference window):
+- **The builds**, the left column, 400 wide: + NEW BUILD at the top (as wide as its words; the main action while
+  the game has no build), and under it from 52 the player's builds of the game, an open list down to 540 (rows
+  52: the name, then "MegaMan · ready" or what is wrong, and the version's tag). The row the cursor is on is the
+  build chosen, remembered by game. A save dropped on the window is made a build ("Imported as Dark MegaMan"
+  quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as the
+  menu's DELETE does; a right click on a row opens the build's menu there.
+- **The chosen build**, the right column, from 424, 792 wide: its overview (Builds, below; the wide sheet, 540
+  tall), framed, with EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24 down,
+  8 apart, the version's tag before them. ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
+  under it, its right edge at the button's (over it where there is no room under; a phone's sheet): DUPLICATE,
+  RENAME and DELETE, in the buttons' type, DELETE under a line in the error color. The cursor starts on the
+  first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
+  build whose file doesn't read has an empty frame, EDIT unavailable and DELETE alone in its menu; with no
+  build, neither EDIT nor ⋯ is there.
+- **What is done with it**, the band under both: PRACTICE at 578 under the list (the left column's edge), and
+  ONLINE, a label (11) at 556 over the right column's group at 578: CREATE INVITE (the main action), 12 on the
+  code field (208) and JOIN 8 beside it, and DIRECT CONNECT at the far right, a text button (no fill, no line,
+  its words muted until the pointer or the cursor is on it). Under them at 626 the reserved line (18 tall, the
+  body's width, 12). Pressed with no build, each says there "Make a build first." (§7). With a build that can't
+  be used, CREATE INVITE, JOIN and DIRECT CONNECT say why there, and PRACTICE opens the entry, which says it in
+  its own line. While there is no build CREATE INVITE has the normal look, so that one main action shows.
+- **+ NEW BUILD** opens its dialog: a name and the version, CANCEL and CREATE BUILD, and under them, below a line,
+  FROM A SAVE FILE…, which closes it and opens the system's file dialog for a save; the build is made of the save
+  and named for its file (Builds, below).
 - **EDIT** opens the chosen build in Builds' editor, whose Back (‹ PLAY) comes back with the build still chosen.
 - **PRACTICE** opens Practice's entry with Your build the build chosen here; its Back (‹ PLAY) comes back with it
   still chosen.
-- The focus opens on the chosen build in the list (with none, on NEW BUILD), and Enter there goes to CREATE
-  INVITE. The arrows walk the list, the overview's buttons and the row by where they are; Tab is reading order:
-  NEW BUILD, IMPORT SAVE…, the list, EDIT to DELETE, then the row.
-- **On a phone** one column: NEW BUILD and IMPORT SAVE… side by side; the chosen build in a box (Left and Right
-  step it, Enter opens the builds as a sheet); EDIT and DUPLICATE, RENAME and DELETE two by two; then CREATE INVITE,
-  PRACTICE, the code and JOIN, the reserved line and DIRECT CONNECT one under the other. The overview isn't shown
-  there (the editor shows the build whole).
+- The focus opens on the chosen build in the list (with none, on + NEW BUILD), and Enter there goes to CREATE
+  INVITE. The arrows walk by where things are: Down from + NEW BUILD into the list and from its last row to
+  PRACTICE, Right from + NEW BUILD to EDIT, Right from any row of the list to EDIT (past the overview, which
+  takes no focus; to ⋯ where EDIT can't be used), Left from EDIT back to the list, Down from EDIT and ⋯ into
+  the band. Tab goes zone by zone: + NEW BUILD, the list, EDIT, ⋯, PRACTICE, CREATE INVITE, the code, JOIN,
+  DIRECT CONNECT. A control that isn't there is passed by.
+- **On a phone** one column in the same order (358 wide): + NEW BUILD the column's width; at 52 the chosen build
+  in a box, 72 tall (Left and Right step it, Enter opens the builds as a sheet); at 136 EDIT and ⋯ (40) beside it;
+  at 200 PRACTICE; at 264 ONLINE, then CREATE INVITE (52 tall), the code and JOIN, DIRECT CONNECT and the reserved
+  line (two lines, 40) one under the other, 12 apart. The overview isn't shown there (the editor shows the build
+  whole).
 - **Direct connection** is a dialog: Host (this machine's address with Copy, and HOST; "Send this address to your
   opponent.") and Join (an address field and CONNECT).
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
@@ -703,17 +745,20 @@ The builds and the way into a match or practice, on one screen (§2.50).
   - RESUME, RESTART, EXIT (§2.40: the entry again; no QUIT TO MENU). Restart is also R or the pad's top button.
 
 ### Builds
-A build's editor, and what any screen shows of a build. The builds themselves are Play's (§2.50): NEW BUILD,
-IMPORT SAVE…, the chosen build's overview with EDIT, DUPLICATE, RENAME and DELETE.
+A build's editor, and what any screen shows of a build. The builds themselves are Play's (§2.50, §2.52): + NEW
+BUILD (with FROM A SAVE FILE… in its dialog), the chosen build's overview with EDIT and ⋯, the build's menu of
+DUPLICATE, RENAME and DELETE.
 - **Opened by Play or Practice:** their EDIT opens the build in the editor, whose Back (‹ PLAY or ‹ PRACTICE in the
   header) goes straight back to the screen that opened it (§2.28).
 - **The build overview** (also Play's, and each player's panel in a match): the build's name, navi and version;
   Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
   patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips
   in two columns of 26-tall rows: number, icon, name, REG or TAG1 or TAG2, element, code.
-- **New build** (Play's NEW BUILD; RENAME is the same dialog with the name alone): a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
+- **New build** (Play's + NEW BUILD; RENAME is the same dialog with the name alone): a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
   Giga chips. It can be switched later in the editor." (§2.41, §2.42.) The folder starts as a new save's of that game.
-  There are no random builds anywhere.
+  There are no random builds anywhere. Under its CANCEL and CREATE BUILD, below a line, FROM A SAVE FILE… (a ghost
+  button) closes it and opens the system's file dialog: the save's build is named for its file, its version and
+  everything else the save's (§2.52).
 - **The editor's** header has the build's name, its version's tag, and "✓ Ready to play" or how many problems. The
   tag is the version's switch (§2.42), on every tab, and reads as a tag that opens a choice (§2.44): the other
   headers' tag, in their place after the title, its name and color the version's, with a small down caret inside
