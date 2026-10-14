@@ -20,21 +20,22 @@
 //! the program under the cursor, in the game's words. The piece in hand is outlined white where it could be put
 //! down, red where it can't.
 //!
-//! **The mouse** (the view's pointer areas, told here as `Tab::choose`'s "drag"): a press on a placed piece picks it
-//! up, and a drag out of a program's row takes a new copy of it; while the button is held the piece follows the
-//! pointer from cell to cell, and the wheel turns it. Let go over the board, it is put down where it fits, else it
-//! shakes and goes back where it came from; let go off the board, it is put away into the list. A press and release
-//! that never left the cell or row is a click, as Enter there: a piece a click takes up follows the pointer over the
-//! board with no button held, cell by cell (off the board it stays at the last cell it was over), the next click on
-//! the board puts it down (or it shakes and stays in hand), and a click off the board puts it away. A right click
-//! puts the piece in hand away, however it was taken: off the board, never back where it was. A key or button
-//! pressed during a drag ends it, as a put-back; one pressed with a piece a click took moves it from where it is,
-//! and the pointer's next move takes it back under the pointer.
+//! **The mouse carries a piece by clicks** (the view's pointer areas, told here as `Tab::choose`'s "drag"; the user:
+//! "dragging navicust piece is confusing because usually it's click to drop"). A click on a placed piece picks it up,
+//! one on a program's row takes a new copy of it; the piece in hand follows the pointer over the board with no button
+//! held, cell by cell (off the board it stays at the last cell it was over), and the wheel turns it. The next click on
+//! the board puts it down (or it shakes and stays in hand); a click on the list puts it away into it ("drag it back to
+//! where it came from"), the list showing so while the pointer is over it (`over-list`); a click anywhere else off
+//! the board puts it back where it was (a new copy, which had no place, goes away). Each click acts as the button goes
+//! down: a press that moves before it is let go is the same click, and nothing follows the held button (let go, the
+//! piece comes under the pointer). A right click puts the piece in hand away, however it was taken, or takes off the
+//! piece under the pointer. A key moves the piece in hand from where it is, and the pointer's next move takes it back
+//! under the pointer.
 
 use crate::builds::grid::{self, Edit, GridData, Held};
 use crate::builds::overview;
 use crate::input::{Action, KeyPress};
-use crate::screens::builds::editor::{Draft, Tab};
+use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
@@ -46,45 +47,25 @@ use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCel
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::sync::Arc;
-use std::time::Duration;
 
 /// The lines each of the effects' and the bugs' panels has room for under its title.
 const LINES: usize = 10;
 
-/// What the view's pointer areas tell (`Nav.choose("drag", phase, value)`): a press on a row of the list (`value` its
-/// place) or on the board, a move, a release (`value` where the pointer is: x * 65536 + y, the window's logical
-/// pixels), the wheel (`value` its delta), a press the window took back; the put-back due after a refusal (`value`
-/// its count); the pointer over the board with no button held (`value` where), a right click, and a press off the
-/// board and the list, each while a piece is in hand.
+/// What the view's pointer areas tell (`Nav.choose("drag", phase, value)`): the left button down on a row of the list
+/// (`value` its place) or on the board, let go (`value` where the pointer is: x * 65536 + y, the window's logical
+/// pixels), the wheel (`value` its delta); with a piece in hand, the pointer moved with no button held (`value`
+/// where), a right click (on the board, `value` where), and the left button down off the board and the list's rows
+/// (`value` where).
 const PRESS_ROW: i32 = 0;
 const PRESS_BOARD: i32 = 1;
-const MOVE: i32 = 2;
 const RELEASE: i32 = 3;
 const WHEEL: i32 = 4;
-const CANCEL: i32 = 5;
-const PUT_BACK: i32 = 6;
 const HOVER: i32 = 7;
 const RIGHT_CLICK: i32 = 8;
 const PRESS_OFF: i32 = 9;
 
 /// How far the wheel goes for a quarter turn (a mouse's notch is more).
 const NOTCH: i32 = 40;
-
-/// How long a piece let go where it can't be put down shakes before it goes back (Shake's own length).
-const SHAKE: Duration = Duration::from_millis(280);
-
-/// A press of the mouse's, until it is let go.
-#[derive(Clone, Copy, Debug)]
-struct Drag {
-    /// The list's row it was pressed on (else the board).
-    row: Option<usize>,
-    /// The board's cell it was pressed on.
-    cell: Option<(i32, i32)>,
-    /// A piece was in hand at the press (a click puts it down there).
-    had: bool,
-    /// The pointer has left where it was pressed with a piece in hand: letting go puts it down.
-    moving: bool,
-}
 
 #[derive(Default)]
 pub struct Navicust {
@@ -112,12 +93,10 @@ pub struct Navicust {
     notice: Option<String>,
     /// The bugs shown last (one that wasn't there pulses).
     bugs: Option<Vec<String>>,
-    /// The mouse's press, while it is held; the wheel's way toward the next quarter turn.
-    drag: Option<Drag>,
+    /// The wheel's way toward the next quarter turn.
     wheel: i32,
-    /// A piece let go where it can't be put down goes back once it has shaken: the count of the put-back due.
-    back_due: Option<i32>,
-    backs: i32,
+    /// The pointer is over the list with a piece in hand: a click there puts it away.
+    over_list: bool,
 }
 
 /// What `board` has at a place of the engine's grid: `o` a cell, `f` its frame, `.` none.
@@ -294,6 +273,7 @@ impl Navicust {
             }
             None => view.set_holding(false),
         }
+        view.set_over_list(self.held.is_some() && self.over_list);
         view.set_lifted(self.lifted);
         view.set_turned(self.turned);
         view.set_turn_way(self.turn_way);
@@ -408,6 +388,8 @@ impl Navicust {
         let Some(board) = self.data.as_ref().and_then(Option::as_ref).and_then(|d| Navicust::board(d, draft)) else { return };
         let middle = board.len() as i32 / 2;
         self.at = (middle, middle);
+        // (Where the pointer is, the mouse's next move says.)
+        self.over_list = false;
         self.lifted += 1;
         self.glide = false;
         self.notice = None;
@@ -453,6 +435,7 @@ impl Navicust {
                 let Some(&i) = d.occupied(&parts).get(&at) else { return false };
                 if self.edit(draft, Edit::PickUp(i, at.0, at.1)) {
                     self.at = at;
+                    self.over_list = false;
                     self.lifted += 1;
                     self.glide = false;
                     shell.sound.play(Cue::Pick);
@@ -491,7 +474,7 @@ impl Navicust {
         changed
     }
 
-    /// The piece in hand back where it came from (a drag ended by a key, or let go where it can't be put down).
+    /// The piece in hand back where it came from (a click off the board and the list).
     fn put_back(&mut self, shell: &mut Shell, draft: &mut Draft) {
         if self.held.is_none() {
             return;
@@ -538,90 +521,63 @@ impl Navicust {
         ((0..n).contains(&cx) && (0..n).contains(&cy)).then_some((self.first + cx, self.first + cy))
     }
 
-    /// What the mouse did (`PRESS_ROW` and the rest).
-    fn dragged(&mut self, shell: &mut Shell, draft: &mut Draft, phase: i32, value: i32) {
+    /// Whether window point `at` (`x * 65536 + y`) is over the list (its rows and the room under them): a click
+    /// there with a piece in hand puts it away into it.
+    fn on_list(shell: &Shell, at: i32) -> bool {
+        editor::over(shell, &["programs"], editor::pointer_at(at))
+    }
+
+    /// The pointer at `at` with no button held (or just let go), a piece in hand: over the board, the piece follows
+    /// it from cell to cell (off the board it stays at the last cell it was over); over the list, the list shows that
+    /// a click there puts it away.
+    fn hover(&mut self, shell: &mut Shell, draft: &Draft, at: i32) {
+        let cell = self.cell_under(shell, at);
+        let over_list = cell.is_none() && Navicust::on_list(shell, at);
+        let moved = cell.filter(|&c| c != self.at);
+        let shown = over_list != self.over_list;
+        self.over_list = over_list;
+        match moved {
+            Some(c) => self.follow(shell, draft, c),
+            None if shown => self.show_board(shell, draft),
+            None => {}
+        }
+    }
+
+    /// What the mouse did (`PRESS_ROW` and the rest). A click acts as the button goes down, so a press that moves
+    /// before it is let go is the same click, and the held button carries nothing.
+    fn pointed(&mut self, shell: &mut Shell, draft: &mut Draft, phase: i32, value: i32) {
         match phase {
-            PRESS_ROW | PRESS_BOARD => {
-                self.back_due = None;
-                self.wheel = 0;
+            // (A click on a program's row takes a new copy of it; with a piece in hand, it puts that away into the
+            // list: "drag it back to where it came from".)
+            PRESS_ROW => {
                 shell.nav.used_pointer();
-                let had = self.held.is_some();
-                if phase == PRESS_ROW {
-                    self.drag = Some(Drag { row: Some(value.max(0) as usize), cell: None, had, moving: false });
-                    return;
+                self.wheel = 0;
+                if self.held.is_some() {
+                    self.put_away(shell, draft);
+                } else {
+                    self.activate(shell, draft, "programs", value);
                 }
-                let cell = self.cell_under(shell, value);
-                self.drag = Some(Drag { row: None, cell, had, moving: false });
-                match cell {
-                    // (The piece in hand comes to the cell pressed; else a placed piece there is picked up.)
-                    Some(at) if had => self.follow(shell, draft, at),
-                    Some(at) => {
+            }
+            // (A click on the board puts the piece in hand down on the cell clicked, or it shakes and stays in hand;
+            // with none, it picks up the placed piece there. One beside the cells puts the piece in hand back.)
+            PRESS_BOARD => {
+                shell.nav.used_pointer();
+                self.wheel = 0;
+                match (self.held.is_some(), self.cell_under(shell, value)) {
+                    (true, Some(at)) => {
+                        self.follow(shell, draft, at);
+                        self.press(shell, draft, at);
+                    }
+                    (true, None) => self.put_back(shell, draft),
+                    (false, Some(at)) => {
                         self.press(shell, draft, at);
                         self.focus_cell(shell, at);
                     }
-                    None => {}
+                    (false, None) => {}
                 }
             }
-            MOVE => {
-                let Some(mut drag) = self.drag else { return };
-                let cell = self.cell_under(shell, value);
-                if !drag.moving {
-                    match drag.row {
-                        // (Out of its row: a new copy of the program is in hand.)
-                        Some(row) => {
-                            self.take(shell, draft, row);
-                            if self.held.is_none() {
-                                self.drag = None;
-                                return;
-                            }
-                        }
-                        None if self.held.is_some() && cell != drag.cell => {}
-                        None => return,
-                    }
-                    drag.moving = true;
-                    self.drag = Some(drag);
-                }
-                if let Some(at) = cell
-                    && at != self.at
-                {
-                    self.follow(shell, draft, at);
-                }
-            }
-            RELEASE => {
-                let Some(drag) = self.drag.take() else { return };
-                if !drag.moving {
-                    // (A click: as Enter on what was pressed, and a piece picked up by the press stays in hand,
-                    // following the pointer; with a piece in hand, a click on the board puts it down there, one off
-                    // the board, on the list too, puts it away.)
-                    match (drag.row, drag.cell) {
-                        (_, None) if drag.had => self.put_away(shell, draft),
-                        (Some(row), _) => self.activate(shell, draft, "programs", row as i32),
-                        (None, Some(at)) if drag.had => {
-                            self.press(shell, draft, at);
-                        }
-                        _ => {}
-                    }
-                    return;
-                }
-                match self.cell_under(shell, value) {
-                    Some(at) => {
-                        self.at = at;
-                        // (One the mouse had in hand before the press shakes and stays there, as a click's.)
-                        if self.press(shell, draft, at) && !(drag.row.is_none() && drag.had) {
-                            // (It shakes where it was let go, then goes back.)
-                            self.backs += 1;
-                            self.back_due = Some(self.backs);
-                            let (ui, due) = (shell.ui().as_weak(), self.backs);
-                            slint::Timer::single_shot(SHAKE, move || {
-                                if let Some(ui) = ui.upgrade() {
-                                    ui.global::<nettai_ui::Nav>().invoke_choose("drag".into(), PUT_BACK, due);
-                                }
-                            });
-                        }
-                    }
-                    None => self.put_away(shell, draft),
-                }
-            }
+            // (Let go, the piece in hand comes under the pointer, and follows it.)
+            RELEASE | HOVER if self.held.is_some() => self.hover(shell, draft, value),
             // (A notch turns it a quarter; a trackpad's small steps add up to one.)
             WHEEL if self.held.is_some() => {
                 self.wheel += value;
@@ -630,31 +586,18 @@ impl Navicust {
                     self.wheel = 0;
                 }
             }
-            CANCEL => {
-                if self.drag.take().is_some_and(|d| d.moving) {
+            // (A right click puts the piece in hand away into the list, whoever took it and from where: off the
+            // board, never back where it was.)
+            RIGHT_CLICK if self.held.is_some() => self.put_away(shell, draft),
+            // (A click off the board and the list's rows with a piece in hand: on the list (the room under its rows),
+            // it is put away into it; anywhere else, it goes back where it was, and a new copy, which had no place,
+            // goes away.)
+            PRESS_OFF if self.held.is_some() => {
+                if Navicust::on_list(shell, value) {
+                    self.put_away(shell, draft);
+                } else {
                     self.put_back(shell, draft);
                 }
-            }
-            PUT_BACK if self.back_due == Some(value) => {
-                self.back_due = None;
-                self.put_back(shell, draft);
-            }
-            // (A row's drag out over the board is the board's to tell: the list keeps no pointer that leaves it.)
-            HOVER if self.drag.is_some_and(|d| d.row.is_some()) => self.dragged(shell, draft, MOVE, value),
-            // (The piece in hand follows the pointer over the board with no button held, from cell to cell; off
-            // the board it stays at the last cell it was over.)
-            HOVER if self.held.is_some() && self.drag.is_none() && self.back_due.is_none() => {
-                if let Some(at) = self.cell_under(shell, value)
-                    && at != self.at
-                {
-                    self.follow(shell, draft, at);
-                }
-            }
-            // (A right click puts the piece in hand away into the list, whoever took it and from where: off the
-            // board, never back where it was; a press off the board and the list does too.)
-            RIGHT_CLICK | PRESS_OFF if self.held.is_some() => {
-                (self.drag, self.back_due) = (None, None);
-                self.put_away(shell, draft);
             }
             // (With nothing in hand, a right click on a placed piece takes it off, as Del does; the cursor comes to
             // it first, as a click's does.)
@@ -670,20 +613,6 @@ impl Navicust {
             }
             _ => {}
         }
-    }
-
-    /// A key or button pressed while the mouse holds a piece (or one let go is about to go back): the drag ends,
-    /// the piece goes back where it came from, and the key does nothing else. Whether it did.
-    fn end_drag(&mut self, shell: &mut Shell, draft: &mut Draft) -> bool {
-        let drag = self.drag.take();
-        let due = self.back_due.take().is_some();
-        // (A press on an empty cell held nothing: the key is the key's.)
-        let holding = drag.is_some_and(|d| d.moving || !d.had) && self.held.is_some();
-        if !(holding || due) {
-            return false;
-        }
-        self.put_back(shell, draft);
-        true
     }
 
     /// The piece in hand turned a quarter (`clockwise`, or back), about the cell it is held by.
@@ -812,7 +741,6 @@ impl Tab for Navicust {
     /// A piece in hand isn't lost: one picked up off the board goes back where it was.
     fn hide(&mut self, shell: &mut Shell, draft: &mut Draft) {
         self.let_go(draft);
-        (self.drag, self.back_due) = (None, None);
         self.notice = None;
         let _ = shell;
     }
@@ -820,7 +748,6 @@ impl Tab for Navicust {
     /// Enter on a program's row takes a new copy of it in hand, however many are placed (Del takes the last one
     /// off); on a cell, see `press`.
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
-        self.back_due = None;
         match id {
             "programs" => self.take(shell, draft, index.max(0) as usize),
             "cell" => {
@@ -831,10 +758,10 @@ impl Tab for Navicust {
         }
     }
 
-    /// The mouse's press, drag and release (the view's pointer areas).
+    /// The mouse's clicks and moves (the view's pointer areas).
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
         if id == "drag" {
-            self.dragged(shell, draft, index, choice);
+            self.pointed(shell, draft, index, choice);
         }
     }
 
@@ -858,9 +785,6 @@ impl Tab for Navicust {
 
     /// The piece in hand: A and S (the keys bound to L and R) turn it, C compresses it.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
-        if self.end_drag(shell, draft) {
-            return true;
-        }
         if self.held.is_none() {
             return false;
         }
@@ -876,9 +800,6 @@ impl Tab for Navicust {
 
     /// The piece in hand: the pad's shoulders turn it, its north button compresses it.
     fn button(&mut self, shell: &mut Shell, draft: &mut Draft, button: gamepad_facade::Button) -> bool {
-        if self.end_drag(shell, draft) {
-            return true;
-        }
         if self.held.is_none() {
             return false;
         }
@@ -893,9 +814,6 @@ impl Tab for Navicust {
 
     /// Delete: the piece in hand put away, the piece under the cursor taken off, or a program's last copy.
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
-        if self.end_drag(shell, draft) {
-            return true;
-        }
         if action != Action::Delete {
             return false;
         }
@@ -916,9 +834,6 @@ impl Tab for Navicust {
 
     /// Back (Esc, the pad's east button) with a piece in hand puts it away into the list.
     fn back(&mut self, shell: &mut Shell, draft: &mut Draft) -> bool {
-        if self.end_drag(shell, draft) {
-            return true;
-        }
         if self.held.is_none() {
             return false;
         }

@@ -12,11 +12,12 @@
 //!
 //! **Enter on a place goes to the library** (on a phone, its sheet); **Enter on a chip puts it in the place and goes
 //! on to the next;** Enter (or Del, or a click) on the chip the place holds already takes it out again. Del empties
-//! the place. **The mouse:** a click on a place marks it (the focus stays on it); a click on the marked one empties
-//! it, as Del does. A place's chip dragged to another place of its list moves there, the places between shifting
-//! toward where it was (`Edit::Move`); to a place of another list, the two trade what they hold (`Edit::Swap`), unless
-//! the rules refuse either there: then nothing changes, the place dragged shakes, and the strip says why, as a chip
-//! put from the library is refused. A pattern's places aren't shown: a build states no pattern records, so none of its places can point at
+//! the place. **The mouse:** a click on a place marks it (the focus stays on it); a click on the marked one, a double
+//! click or a right click empties it, as Del does (a right click on the library's chip the place holds, too). A place's
+//! chip dragged to another place of its list moves there, the places between shifting toward where it was
+//! (`Edit::Move`); to a place of another list, the two trade what they hold (`Edit::Swap`), unless the rules refuse
+//! either there: then nothing changes, the place dragged shakes, and the strip says why, as a chip put from the
+//! library is refused; dragged onto the library, the place is emptied. A pattern's places aren't shown: a build states no pattern records, so none of its places can point at
 //! one (the game's own writer puts none there but a learned pattern's), and a match is sent them empty, a valid block.
 
 use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds};
@@ -387,6 +388,9 @@ impl AutoBattle {
             lifted.number = drop.and_then(|d| line(d.0)).map_or(lifted.number, |l| l.number);
             view.set_lifted(lifted);
         }
+        if editor::over_library(shell, at) {
+            return editor::show_remove(shell);
+        }
         editor::show_drop(shell, drop.map(|d| d.0), drop.is_some_and(|d| d.1));
     }
 
@@ -518,11 +522,14 @@ impl Tab for AutoBattle {
                 self.sort = (choice.max(0) as usize).min(SORTS.len() - 1);
                 self.changed(shell, draft);
             }
-            // A place's chip dragged: where it would land; let go there, it moves (off the places, it goes back).
+            // A place's chip dragged: where it would land; let go there, it moves (over the library, the place is
+            // emptied; elsewhere off the places, it goes back).
             "drag-over" if index >= 0 => self.drag_over(shell, draft, index as usize, choice),
             "drag-drop" if index >= 0 => {
                 editor::show_drop(shell, None, false);
-                if let Some((to, swap)) = self.drop_at(shell, draft, index as usize, choice).filter(|d| d.0 != index as usize) {
+                if editor::over_library(shell, choice) {
+                    self.remove(shell, draft, index as usize);
+                } else if let Some((to, swap)) = self.drop_at(shell, draft, index as usize, choice).filter(|d| d.0 != index as usize) {
                     self.reorder(shell, draft, index as usize, to, swap);
                 }
             }
