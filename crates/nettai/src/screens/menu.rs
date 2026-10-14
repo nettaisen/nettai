@@ -64,7 +64,7 @@ impl Screen for Menu {
         }
         if self.shown_game.is_some() && self.shown_game.as_deref() != shell.game() {
             let sweep = shell.ui().global::<nettai_ui::Theme>().get_settle();
-            self.hold = (sweep > 0).then(|| Instant::now() + std::time::Duration::from_millis(sweep as u64) + HOLD_PAST_SWEEP);
+            self.hold = (sweep > 0).then(|| crate::clock::now() + std::time::Duration::from_millis(sweep as u64) + HOLD_PAST_SWEEP);
         }
         self.shown_game = shell.game().map(str::to_string);
         match (&mut self.reel, shell.ready()) {
@@ -118,7 +118,7 @@ impl Screen for Menu {
             shell.ui().global::<MenuView>().set_reel_seq(self.reels);
         }
         let Some(reel) = &mut self.reel else { return };
-        if shell.still {
+        if shell.still && !shell.reel {
             // The screenshot pass: the reel played to one tick and held there, so two shots of the menu differ
             // only where the menu does.
             while reel.ticks < STILL_AT && reel.stage.player.tick(demo_buttons(reel.stage.player.battle(), reel.ticks)) {

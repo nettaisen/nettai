@@ -26,6 +26,10 @@
 //! - **A press acts at once.** A move pressed in the same instant as a screen change lands on the new screen's
 //!   controls, and a direction held through a scrolling page moves the focus at every repeat, whatever is
 //!   still sliding.
+//!
+//! **The showreel** (`NETTAI_REEL=<out.mp4>`, with the same folder: `tour/reel.rs`) walks a scripted demo of the
+//! app with everything moving and sounding, and writes every frame and the sound to an MP4, a frame at a time on a
+//! clock of its own.
 
 use crate::errors::UserError;
 use crate::input::Action;
@@ -50,6 +54,10 @@ mod builds;
 mod confirm_keys;
 mod replays;
 mod practice;
+// The showreel (`NETTAI_REEL`): the pass's walk made a video, a frame at a time (its own dependencies are the
+// feature's alone: the tests don't compile it).
+#[cfg(feature = "tour")]
+pub mod reel;
 
 /// Whether the walk takes part `part` of its steps: all of them, or those `NETTAI_TOUR_ONLY` names (`shell`,
 /// `packs`, the screens' own: `practice`, `builds`, `build-tabs`, `play`, `replays`), for looking at one screen
@@ -170,6 +178,42 @@ pub fn ended(terminated: bool) {
 
 /// Walk the screens, writing each to `dir`, then quit.
 pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
+    let tour = begin(ui, app, dir);
+    let asked = |var: &str| std::env::var(var).ok().map(|list| list.split(',').map(str::to_string).collect::<Vec<_>>());
+    let languages: Vec<&'static str> = crate::lang::LANGUAGES.iter().map(|(c, _)| *c).filter(|c| asked("NETTAI_TOUR_LANGS").is_none_or(|l| l.iter().any(|a| a == c))).collect();
+    let sizes: Vec<(&str, u32, u32)> = SIZES.into_iter().filter(|(name, ..)| asked("NETTAI_TOUR_SIZES").is_none_or(|l| l.iter().any(|a| a == name))).collect();
+
+    let mut steps: Vec<(u64, Step)> = Vec::new();
+    if std::env::var_os("NETTAI_TOUR_MOTION").is_some() {
+        {
+            let mut app = app.borrow_mut();
+            app.shell.probe_motion = true;
+            app.shell.apply_motion();
+        }
+        motion_walk(&mut steps);
+        steps.push((SETTLE, Box::new(|_, _, tour| finish(tour))));
+        return when_ready(ui.as_weak(), app.clone(), tour, Rc::new(steps), 0);
+    }
+    for (size, width, height) in sizes {
+        steps.push((
+            SETTLE * 3,
+            Box::new(move |ui, _, _| {
+                // (In the display's pixels: the window's own scale is the app's to set.)
+                let os = slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| w.scale_factor()).unwrap_or(1.0);
+                ui.window().set_size(PhysicalSize::new((width as f64 * os).round() as u32, (height as f64 * os).round() as u32));
+            }),
+        ));
+        for &lang in &languages {
+            walk(&mut steps, lang, size);
+        }
+    }
+    steps.push((SETTLE, Box::new(|_, _, tour| finish(tour))));
+    when_ready(ui.as_weak(), app.clone(), tour, Rc::new(steps), 0);
+}
+
+/// The pass's start, the walk's or the showreel's: its folder (the builds it makes and lists its own), what it
+/// keeps as it goes, the texts' check, and the game asked for.
+fn begin(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) -> Rc<Tour> {
     let _ = std::fs::create_dir_all(&dir);
     // (The builds the pass makes and lists are its own, never the player's.)
     let _ = std::fs::remove_dir_all(dir.join("builds"));
@@ -201,36 +245,7 @@ pub fn start(ui: &AppWindow, app: &Rc<RefCell<App>>, dir: PathBuf) {
     if let Ok(game) = std::env::var("NETTAI_TOUR_GAME") {
         app.borrow_mut().shell.select_game(&game);
     }
-    let asked = |var: &str| std::env::var(var).ok().map(|list| list.split(',').map(str::to_string).collect::<Vec<_>>());
-    let languages: Vec<&'static str> = crate::lang::LANGUAGES.iter().map(|(c, _)| *c).filter(|c| asked("NETTAI_TOUR_LANGS").is_none_or(|l| l.iter().any(|a| a == c))).collect();
-    let sizes: Vec<(&str, u32, u32)> = SIZES.into_iter().filter(|(name, ..)| asked("NETTAI_TOUR_SIZES").is_none_or(|l| l.iter().any(|a| a == name))).collect();
-
-    let mut steps: Vec<(u64, Step)> = Vec::new();
-    if std::env::var_os("NETTAI_TOUR_MOTION").is_some() {
-        {
-            let mut app = app.borrow_mut();
-            app.shell.probe_motion = true;
-            app.shell.apply_motion();
-        }
-        motion_walk(&mut steps);
-        steps.push((SETTLE, Box::new(|_, _, tour| finish(tour))));
-        return when_ready(ui.as_weak(), app.clone(), tour, Rc::new(steps), 0);
-    }
-    for (size, width, height) in sizes {
-        steps.push((
-            SETTLE * 3,
-            Box::new(move |ui, _, _| {
-                // (In the display's pixels: the window's own scale is the app's to set.)
-                let os = slint::winit_030::WinitWindowAccessor::with_winit_window(ui.window(), |w| w.scale_factor()).unwrap_or(1.0);
-                ui.window().set_size(PhysicalSize::new((width as f64 * os).round() as u32, (height as f64 * os).round() as u32));
-            }),
-        ));
-        for &lang in &languages {
-            walk(&mut steps, lang, size);
-        }
-    }
-    steps.push((SETTLE, Box::new(|_, _, tour| finish(tour))));
-    when_ready(ui.as_weak(), app.clone(), tour, Rc::new(steps), 0);
+    tour
 }
 
 /// The steps of one language at one size.
