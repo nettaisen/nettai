@@ -443,7 +443,7 @@ pub struct PadEvents {
     pub at: Option<Instant>,
 }
 
-/// The gamepads, through gamepad-facade. Every pad plays the one player, unless training's dummy has the second
+/// The gamepads, through gamepad-facade. Every pad plays the one player, unless practice's dummy has the second
 /// ([`Pad::apart`]).
 #[derive(Default)]
 pub struct Pad {
@@ -453,7 +453,7 @@ pub struct Pad {
     sticks: Vec<(Id, (f32, f32), u16)>,
     /// The pads, in the order they were first used (a pad is known by its first event).
     pads: Vec<Id>,
-    /// The second pad is training's dummy's (its Action "a second pad"): its buttons aren't the player's, and
+    /// The second pad is practice's dummy's (its Action "a second pad"): its buttons aren't the player's, and
     /// its presses don't reach the menus.
     pub apart: bool,
     /// The direction held in the menus, since when, and when it last repeated.
@@ -483,7 +483,7 @@ impl Pad {
         self.held_by(bindings, |id| !self.dummys(id))
     }
 
-    /// The GBA buttons training's dummy's pad holds, while there is one (the second used, while it is apart).
+    /// The GBA buttons practice's dummy's pad holds, while there is one (the second used, while it is apart).
     pub fn second(&self, bindings: &Bindings) -> Option<u16> {
         let id = *self.pads.get(1).filter(|_| self.apart)?;
         Some(self.held_by(bindings, |of| of == id))
