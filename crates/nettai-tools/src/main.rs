@@ -9,7 +9,7 @@ use nettai_frontend::driver::{Driver, LivePlayer};
 use nettai_frontend::game::{Failed, Found, Game, LoadError, Sound};
 use nettai_frontend::player::Player;
 use nettai_frontend::session;
-use nettai_render::textlayer::TextMode;
+use nettai_render::GraphicsMode;
 use nettai_render::vfont::TextRenderer;
 use nettai_tools::headless;
 use nettai_tools::trace::trace_rounds;
@@ -46,7 +46,7 @@ struct Args {
     marks: Vec<String>,
     out: PathBuf,
     png_scale: usize,
-    text: TextMode,
+    mode: GraphicsMode,
     font: Option<PathBuf>,
     lang: String,
     /// Write a replay of the set played headless to this file.
@@ -113,7 +113,7 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    running ffmpeg on that stream; OUT is there only once it
                    is whole
   --scale N        with --nut or --mp4: the picture N times the frame's
-                   240x160 (default 1; the font mode's text is drawn at that
+                   240x160 (default 1; the enhanced mode's text is drawn at that
                    size)
   --ticks A-B      with --nut or --mp4: the frames A to B alone, as --headless
                    numbers them (the pictures after the set's ticks A to B)
@@ -154,12 +154,14 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
   --lookups FILE   with --audit: write each trace's lookups to FILE (a line
                    each: the trace, a tab, the lookup), for the trace cover;
                    with --audit-content, its own (as the trace \"content\")
-  --text MODE      how strings are drawn: font (default) draws the names, the
-                   telop, the chatbox and the HUD's lines with a vector font
-                   over the scaled frame; original draws them in the game's
-                   own fonts into the frame, as the original does (what the
-                   frame comparison uses)
-  --font PATH      the font mode's font (a TrueType or OpenType file) instead
+  --text MODE      how the battle is drawn: enhanced (default; `font` says
+                   the same) draws the names, the telop, the chatbox and the
+                   HUD's lines with a vector font over the scaled frame, brings
+                   the HUD in at each round's start and glides the background
+                   (docs/frontend.md §3); original draws it all as the
+                   original does, the text in the game's own fonts into the
+                   frame (what the frame comparison uses)
+  --font PATH      the enhanced mode's font (a TrueType or OpenType file) instead
                    of the bundled one (Murecho)
   --lang LANG      the language of the battle's text: en (default, the
                    content's own) or ja (the content's locales/ja.toml, and
@@ -186,7 +188,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         marks: Vec::new(),
         out: PathBuf::from("."),
         png_scale: 1,
-        text: TextMode::Font,
+        mode: GraphicsMode::Enhanced,
         font: None,
         lang: nettai_assets::BASE_LANGUAGE.into(),
         record: None,
@@ -223,7 +225,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--mark" => a.marks.extend(value("--mark")?.split(',').filter(|m| !m.is_empty()).map(str::to_string)),
             "--out" => a.out = value("--out")?.into(),
             "--png-scale" => a.png_scale = number(value("--png-scale")?, "--png-scale")? as usize,
-            "--text" => a.text = value("--text")?.parse()?,
+            "--text" => a.mode = value("--text")?.parse()?,
             "--font" => a.font = Some(value("--font")?.into()),
             "--lang" => a.lang = value("--lang")?,
             "--record" => a.record = Some(value("--record")?.into()),
@@ -641,16 +643,16 @@ fn main() {
     let graphics = loaded.graphics(&args.lang).unwrap_or_else(|e| load_failed(e));
     show(&graphics.report);
     load_time("graphics", t);
-    // The font mode's font, shared by the renderer (which strings it has)
+    // The enhanced mode's font, shared by the renderer (which strings it has)
     // and the text layer's drawing.
-    let font = nettai_frontend::game::font(args.text, args.font.as_deref()).unwrap_or_else(|e| load_failed(e));
-    let mut renderer = graphics.renderer(args.text, font.clone());
+    let font = nettai_frontend::game::font(args.mode, args.font.as_deref()).unwrap_or_else(|e| load_failed(e));
+    let mut renderer = graphics.renderer(args.mode, font.clone());
     renderer.problems.marking = args.marks.iter().cloned().collect();
     if args.audit {
         let setup = headless::AuditSetup {
             packs: renderer.graphics().clone(),
             strings: graphics.strings.clone(),
-            text: args.text,
+            mode: args.mode,
             font,
             sound: (!args.mute).then(|| sound_of(&loaded).banks),
             draw: args.draw,

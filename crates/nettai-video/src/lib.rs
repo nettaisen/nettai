@@ -25,10 +25,10 @@
 //! ticks.
 //!
 //! **The picture is scaled here**, by whole multiples and the nearest
-//! pixel, not left at 240x160 for ffmpeg: in the font text mode the
+//! pixel, not left at 240x160 for ffmpeg: in the enhanced mode the
 //! battle's words are drawn at the output's resolution over the scaled
 //! frame, so only a frame presented at its final size has them sharp. (In
-//! the original text mode the scaling is plain pixel repetition either
+//! the original mode the scaling is plain pixel repetition either
 //! way.)
 //!
 //! **The same replay gives the same bytes.** The stream has no time of

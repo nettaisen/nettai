@@ -22,7 +22,7 @@ use crate::shell::Shell;
 use crate::stage::{self, Stage, Surface};
 use nettai_battle::BattleResult;
 use nettai_frontend::driver::{Driver, StopReason};
-use nettai_frontend::game::TextMode;
+use nettai_frontend::game::GraphicsMode;
 use nettai_frontend::preload::{Part, Preload};
 use nettai_frontend::replay::{Recorder, Replay};
 use nettai_frontend::viewer::Viewer;
@@ -213,10 +213,11 @@ impl Shell {
                 let size = ui.window().size();
                 let fit = self.fit(size.width as f32, size.height as f32);
                 let size = (nettai_render::compose::WIDTH * fit.density as usize, nettai_render::compose::HEIGHT * fit.density as usize);
-                let text = if self.settings.sharp_text { TextMode::Font } else { TextMode::Original };
+                let mode = self.settings.graphics();
                 let graphics = ready.graphics(self.lang);
-                let font = ready.loaded.font.clone().filter(|_| text == TextMode::Font);
-                let renderer = graphics.renderer(text, font.clone());
+                let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
+                let mut renderer = graphics.renderer(mode, font.clone());
+                renderer.reduce_motion = self.reduces_motion();
                 // (The music the player picked, the battle's game's own or a theme, where the battle plays the pick:
                 // `crate::music`.)
                 let music = if loading.start.music == BattleMusic::Picked { self.battle_music() } else { crate::music::Music::GameOwn };
@@ -603,7 +604,7 @@ mod tests {
         // (A set a shot decides: the dummy has 1 HP.)
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
-        let player = Player::with(graphics(&content, 0x7FFF).renderer(TextMode::Original, None), None, None, Box::new(driver));
+        let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));
         let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, game_pause: None };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
@@ -653,7 +654,7 @@ mod tests {
         use nettai_battle::battle::mode;
         let driver = LivePlayer::against(set, opponent, 11);
         let audio = nettai_frontend::testing::audio(&content);
-        let player = Player::with(graphics(&content, 0x7FFF).renderer(TextMode::Original, None), None, Some(audio), Box::new(driver));
+        let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
         let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, game_pause: None };
         b.pause_in_game();
         // Onto the custom screen, a chip picked; the menu opened there: the battle steps on with no buttons, its
@@ -859,7 +860,7 @@ mod tests {
         let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().unwrap());
         let driver = LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64);
         let audio = nettai_frontend::testing::audio(content);
-        let player = Player::with(graphics(content, 0x7FFF).renderer(TextMode::Original, None), None, Some(audio), Box::new(driver));
+        let player = Player::with(graphics(content, 0x7FFF).renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
         let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, game_pause: None };
         b.pause_in_game();
         b

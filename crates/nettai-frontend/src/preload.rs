@@ -19,7 +19,7 @@
 //!   host may load it behind its start-up bar, as soon as the game is
 //!   loaded);
 //! - **the round's first battle and its first picture**: about 15 ms;
-//! - **the text**: in the font mode, a string is laid out and its glyphs
+//! - **the text**: in the enhanced mode, a string is laid out and its glyphs
 //!   drawn from the font's outlines the first time it shows (a few
 //!   milliseconds on the frame a custom screen opens, at most 3.5 ms
 //!   measured at three times the frame's size; [`Late::layouts`] and
@@ -82,7 +82,7 @@ pub struct Late {
     /// (`nettai_content::pack::reads`).
     pub reads: u64,
     /// Strings its text was laid out for, and glyph images drawn from the
-    /// font, each for the first time, since (the font mode's).
+    /// font, each for the first time, since (the enhanced mode's).
     pub layouts: u64,
     pub glyphs: u64,
 }
@@ -155,7 +155,7 @@ impl Preload {
     }
 
     /// The same from a player's parts ([`Player::with`]): the renderer, the
-    /// font mode's text renderer and the sound (none: silent).
+    /// enhanced mode's text renderer and the sound (none: silent).
     pub fn with(renderer: Renderer, text: Option<TextRenderer>, sound: Option<SoundParts>, set: &Set, viewer: u8, size: (usize, usize)) -> Preload {
         let content = set.content().clone();
         let mut steps = Vec::new();

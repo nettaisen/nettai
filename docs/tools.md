@@ -31,10 +31,11 @@ nettai-demo's for the same, so the verification's scripts took it as they were.)
 - `--round N` starts a trace at round N (later rounds follow when a round's input runs out); of a replay's video
   it is the round shown alone.
 - `--png-scale N` scales headless output (the text layer is drawn at that scale too).
-- `--text font|original` chooses how strings are drawn (default `font`: the names, the telop, the chatbox and
-  the HUD's lines in a vector font over the scaled frame; `original` in the game's own fonts into the frame, as
-  the original does, which the frame comparison uses), and `--font <file>` puts another TrueType or OpenType
-  font in the bundled one's place.
+- `--text enhanced|original` chooses how the battle is drawn (default `enhanced`, also spelled `font`: the
+  names, the telop, the chatbox and the HUD's lines in a vector font over the scaled frame, the HUD's intro at
+  each round's start and the background's glide, docs/frontend.md §3, "Enhanced and original"; `original` as the original does, the
+  text in the game's own fonts into the frame, which the frame comparison uses), and `--font <file>` puts
+  another TrueType or OpenType font in the bundled one's place.
 - `--lang en|ja` the language of the battle's words (default `en`; docs/frontend.md §3, "Languages").
 - `--match FILE` is a match file (docs/frontend.md §6): its setup said on the terminal (the folders with
   `--show-folders`), its frames rendered with `--headless`, and with `--audit-content` the game whose content is
@@ -90,7 +91,7 @@ not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whet
 (with what it said) or the file couldn't be written.
 
 - `--scale N` makes the picture N times the frame's 240x160 (1 to 16; default 1). The scaling is the nearest
-  pixel's, and the font mode's text is drawn at that size, as `--png-scale` does for a PNG. For an MP4, an even N
+  pixel's, and the enhanced mode's text is drawn at that size, as `--png-scale` does for a PNG. For an MP4, an even N
   keeps every pixel's edge clean in 4:2:0; an odd one leaves a fringe of mixed color at each (docs/frontend.md §8).
 - `--side left|right` is the console shown (default: the side that recorded the replay).
 - `--round N` shows that round alone, and `--ticks A-B` the frames A to B alone, numbered as `--headless` numbers

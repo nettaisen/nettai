@@ -7,7 +7,7 @@ use crate::hud::HudState;
 use crate::objects::{self, SpriteList, View};
 use crate::packs::PackGraphics;
 use crate::stage::{Stage, StageClock};
-use crate::textlayer::{Plane, TextItem, TextMode, TextSink};
+use crate::textlayer::{Plane, TextItem, TextSink};
 use crate::vfont::VectorFont;
 use nettai_assets::Bundle;
 use nettai_battle::Battle;
@@ -16,14 +16,66 @@ use nettai_battle::content::PaletteFlashOrder;
 use nettai_battle::transform::{SequencerState, TransformPhase};
 use std::sync::Arc;
 
+/// How a battle is drawn: as the original draws it, or enhanced (the
+/// app's "Battle graphics").
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum GraphicsMode {
+    /// Exactly as the original draws it: the game's own fonts into the
+    /// frame, and nothing moved that the game doesn't move. The reference
+    /// the frame comparison and the tests use. (Where the pack has no fonts
+    /// of the language shown, the vector font into the frame.)
+    #[default]
+    Original,
+    /// Enhanced: the text in a vector font at the output's resolution, on a
+    /// layer over the scaled frame (docs/design/text-rendering.md).
+    Enhanced,
+}
+
+impl std::str::FromStr for GraphicsMode {
+    type Err = String;
+
+    /// "original", or "enhanced" ("font" too: the tools' `--text` named it
+    /// so first).
+    fn from_str(s: &str) -> Result<GraphicsMode, String> {
+        match s {
+            "original" => Ok(GraphicsMode::Original),
+            "enhanced" | "font" => Ok(GraphicsMode::Enhanced),
+            _ => Err(format!("no graphics mode {s:?} (enhanced or original)")),
+        }
+    }
+}
+
 /// A drawn frame: the 240x160 picture (BGR555), per pixel the depth key
 /// of what won it (`compose::depth_key`), and the text items to draw over
-/// it at the output's resolution (none in the original text mode).
+/// it at the output's resolution (none in the original mode).
 #[derive(Clone, Debug, Default)]
 pub struct Frame {
     pub pixels: Vec<u16>,
     pub depth: Vec<u32>,
     pub text: Vec<TextItem>,
+    /// The background at the part of a pixel it has scrolled past the
+    /// frame's whole pixels (the enhanced mode's motion): `present` shows
+    /// it where the frame shows the background.
+    pub glide: Option<Glide>,
+}
+
+/// A background between two of the frame's pixels: `present` draws the
+/// frame's background pixels from `pixels` (`Glide::WIDTH` by
+/// `Glide::HEIGHT`, from the frame's top left, faded as the frame's are)
+/// moved on by `sub` sixteenths of a pixel, at the output's resolution.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Glide {
+    pub pixels: Vec<u16>,
+    pub sub: (u8, u8),
+    /// The background layer's depth key (`compose::layer_depth`): the
+    /// frame's pixels it won, and the backdrop's, show the glide.
+    pub depth: u32,
+}
+
+impl Glide {
+    /// A pixel more than the frame each way, for the part of one past it.
+    pub const WIDTH: usize = compose::WIDTH + 1;
+    pub const HEIGHT: usize = compose::HEIGHT + 1;
 }
 
 /// Picks battles; keeps its layer buffers between frames. It owns what it
@@ -56,10 +108,10 @@ pub struct Renderer {
     /// version the console's player brought, or the pack's base version
     /// (`custom::console_version`).
     pub console_version: Option<&'static str>,
-    /// How text is drawn, and the font of the font mode.
-    text_mode: TextMode,
+    /// How the battle is drawn, and the font of the enhanced mode's text.
+    mode: GraphicsMode,
     font: Option<Arc<VectorFont>>,
-    /// The font mode's layouts, for what the frame places after a string
+    /// The enhanced mode's layouts, for what the frame places after a string
     /// (a chip's damage after its name).
     measure: Option<std::cell::RefCell<crate::vfont::TextRenderer>>,
     /// What the original mode draws strings with where the pack has no
@@ -81,10 +133,15 @@ pub struct Renderer {
     /// changes: a host's picture of a fight no one plays (Practice's
     /// arena preview).
     pub custom_gauge: bool,
+    /// The enhanced mode without its motion (the app's Reduce motion): the
+    /// HUD's entrance at a round's start (`intro`) and the background's
+    /// glide (`present`) are left out, the text stays. The original mode
+    /// has neither, whatever this says.
+    pub reduce_motion: bool,
 }
 
 impl Renderer {
-    /// A renderer of one pack's graphics, in the original text mode.
+    /// A renderer of one pack's graphics, in the original mode.
     pub fn new(assets: Arc<Bundle>) -> Renderer {
         Renderer::with_packs(PackGraphics::one(assets))
     }
@@ -104,7 +161,7 @@ impl Renderer {
             problems: Problems::default(),
             sprite_drawn: objects::SpriteDrawn::default(),
             console_version: None,
-            text_mode: TextMode::Original,
+            mode: GraphicsMode::Original,
             font: None,
             measure: None,
             stand_in: None,
@@ -112,6 +169,7 @@ impl Renderer {
             lookups_only: false,
             pause_display: true,
             custom_gauge: true,
+            reduce_motion: false,
         }
     }
 
@@ -136,25 +194,31 @@ impl Renderer {
         self.strings.as_ref()
     }
 
-    /// Draw text in `mode`; the font mode hands the strings `font` has to
-    /// the text layer (without a font it draws as the original does). The
+    /// Draw in `mode`; the enhanced mode hands the strings `font` has to
+    /// the text layer (without a font it draws them as the original does). The
     /// original mode draws every string into the frame in the pack's
     /// fonts, and with a pack that has no lettering in the language shown
     /// (its fonts are another language's) in `font`, else the font the
     /// frontend comes with, at the frame's resolution (`render`).
-    pub fn set_text(&mut self, mode: TextMode, font: Option<Arc<VectorFont>>) {
-        self.text_mode = mode;
+    pub fn set_mode(&mut self, mode: GraphicsMode, font: Option<Arc<VectorFont>>) {
+        self.mode = mode;
         self.measure = font.clone().map(|f| std::cell::RefCell::new(crate::vfont::TextRenderer::new(f)));
         self.font = font;
         self.stand_in = None;
     }
 
-    pub fn text_mode(&self) -> TextMode {
-        self.text_mode
+    pub fn mode(&self) -> GraphicsMode {
+        self.mode
+    }
+
+    /// Whether the frames move what the original holds still: the enhanced
+    /// mode's motion, unless reduced (`reduce_motion`).
+    pub fn motion(&self) -> bool {
+        self.mode == GraphicsMode::Enhanced && !self.reduce_motion
     }
 
     /// The strings the frames drawn so far had to lay out to place what
-    /// follows them (the font mode's: a chip's damage after its name), each
+    /// follows them (the enhanced mode's: a chip's damage after its name), each
     /// the first time it was met.
     pub fn layouts_made(&self) -> u64 {
         self.measure.as_ref().map_or(0, |m| m.borrow().made().layouts)
@@ -255,18 +319,18 @@ impl Renderer {
         // own (`Bundle::for_language`): its pictures with words are that
         // language's, and so are its fonts, which lack most of the shown
         // language's characters. The original mode then lays the strings
-        // out as the font mode does and draws them with the vector font
+        // out as the enhanced mode does and draws them with the vector font
         // into the frame, at the frame's resolution: the frame still
         // carries all its text.
         let shown = self.strings.as_ref().map_or(nettai_content::locale::OWN, |s| s.language.as_str());
-        let stand_in = self.text_mode == TextMode::Original && own_game.hud.language() != shown;
+        let stand_in = self.mode == GraphicsMode::Original && own_game.hud.language() != shown;
         if stand_in && self.stand_in.is_none() {
             let font = self.font.clone().unwrap_or_else(|| Arc::new(VectorFont::bundled()));
             self.stand_in = Some((font.clone(), std::cell::RefCell::new(crate::vfont::TextRenderer::new(font))));
         }
         let (mode, font, measure) = match &self.stand_in {
-            Some((font, measure)) if stand_in => (TextMode::Font, Some(&**font), Some(measure)),
-            _ => (self.text_mode, self.font.as_deref(), self.measure.as_ref()),
+            Some((font, measure)) if stand_in => (GraphicsMode::Enhanced, Some(&**font), Some(measure)),
+            _ => (self.mode, self.font.as_deref(), self.measure.as_ref()),
         };
         let mut text = TextSink::new(mode, font).measuring(measure).with_language(self.strings.as_deref());
         let emblem = crate::lookups::emblem(&own_game.custom, &b.content, b.stats[local].navi, &mut self.problems);
@@ -292,7 +356,8 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        let intro = crate::intro::Intro::of(b, self.motion());
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, &intro, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();
@@ -304,6 +369,7 @@ impl Renderer {
         self.hud.priority = own_game.hud.layout.hud_priority;
         let (parts, tags) = list.into_tagged_parts();
         let backdrop = stage.palettes[0][0];
+        let scene = &stage;
         // The transformation's fade takes every background palette, a
         // dimming's the stage's; the custom screen's Beast Out the stage's
         // and the HUD's, its other fades the stage's (a dark chip's second
@@ -376,7 +442,15 @@ impl Renderer {
                 Some(item)
             })
             .collect();
-        let mut frame = Frame { pixels, depth, text };
+        // (The background between the whole pixels the frame shows, for the
+        // output to glide: a scroll by sixteenths of a pixel a frame shows
+        // a step every few frames otherwise.)
+        let glide = (self.motion() && scene.background_sub() != (0, 0)).then(|| {
+            let color = |c: u16| compose::apply_fade(compose::apply_fade(c, fades.stage), fades.screen);
+            let pixels = scene.draw_background_wide(Glide::WIDTH, Glide::HEIGHT, backdrop, color);
+            Glide { pixels, sub: scene.background_sub(), depth: compose::layer_depth(&self.background) }
+        });
+        let mut frame = Frame { pixels, depth, text, glide };
         if let Some((_, renderer)) = self.stand_in.as_ref().filter(|_| stand_in) {
             crate::present::draw_text(&mut frame, &mut renderer.borrow_mut());
         }
