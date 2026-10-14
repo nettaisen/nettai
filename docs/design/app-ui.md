@@ -181,6 +181,9 @@ Each is settled unless the user changes it.
     match's, both players seeing the round's and a replay keeping it, or becomes each player's own as the music
     is, they chose **"Shared, as now"**: the lobby agrees it with the round and a replay records it. The rules,
     the chips and the field stay the arena game's. (§6, docs/app.md §1, "The battle's background".)
+32. **A dialog's text field is ready to type in** (2026-10-13): "you should auto focus the primary text field on
+    dialogs that pop up". A dialog that asks for text (a build's name, new or renamed; a direct connection's
+    address) opens with the field edited and its text selected.
 
 ## 3. Chosen where the user gave no answer
 
