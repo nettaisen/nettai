@@ -243,6 +243,17 @@ Each is settled unless the user changes it.
     the sheet's REMOVE stays the way. Keys, the pad and the libraries' clicks are as they were.
     Later: "remove double clicking to remove", and of a click on the marked row removing, "remove that too": a
     click only marks a row; a right click, Del or a drag onto the library takes its thing out. (§4, §6, docs/app.md §8.)
+41. **A build's version can be switched** (2026-10-14): "you should allow switching a save between game versions
+    actually" (a save here is a build, made new or from a save). The version is switched on the Navi tab, near what it
+    decides; the NEW BUILD dialog no longer says it can't be changed later. A switch makes what the version sets the
+    new version's (EXE6's version and its MegaMan's Crosses; EXE4's and EXE5's souls and the Giga chips a save can
+    have) and keeps everything else; what no longer fits, the other version's Giga chips in the folder, stays and is
+    the build's problem as any rule's break is. Then: "you should show the crosses/souls as well to indicate which are
+    available for the version". Asked "should those be under the right side under megaman if he's selected?", yes:
+    the switch is in the Navi tab's panel of the build's navi, and under it, while MegaMan is the build's navi, the
+    faces of that version's Crosses (EXE6) or souls (EXE4, EXE5), changing with it; the NEW BUILD dialog keeps its
+    plain choice, with no faces. And: "well i think the version is still required for non-megaman because of folder
+    restrictions right?": so the switch is there for every navi, the faces for MegaMan alone. (§6, docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -502,8 +513,9 @@ Each is in the mockups under the same name.
   Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
   patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips
   in two columns of 26-tall rows: number, icon, name, REG or TAG1 or TAG2, element, code.
-- **New build:** a name and the version (two choices, in §2.2's order); "Sets the Crosses and Giga chips. It can't
-  be changed later." The folder starts as a new save's of that game. There are no random builds anywhere.
+- **New build:** a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
+  Giga chips. It can be switched later on the Navi tab." (§2.41.) The folder starts as a new save's of that game.
+  There are no random builds anywhere.
 - **The editor's** header has the build's name, its version, and "✓ Ready to play" or how many problems; its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
   them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
@@ -511,8 +523,11 @@ Each is in the mockups under the same name.
   refuse a NaviCust on a navi that compiles none), and puts them back when MegaMan is chosen again.
 - **Navi:** the game's navis as a grid of cards; the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
   user chose to leave it out); "NaviCust
-  and patch cards are MegaMan only." In EXE4 and EXE5, MegaMan's panel also has Light or Dark, a stepper, with the face the
-  round starts him with.
+  and patch cards are MegaMan only." Under the navi's facts, the build's version, a stepper, for every navi (§2.41:
+  it decides the folder's Giga chips whatever the navi); with MegaMan, under it the faces of the Crosses (EXE6) or
+  souls (EXE4, EXE5) that version gives him, changing as the version does. Switching keeps the rest of the build;
+  what no longer fits (the other version's Giga chips in the folder) is a problem as any other. In EXE4 and EXE5,
+  MegaMan's panel also has Light or Dark, a stepper, with the face the round starts him with.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header holding Chips 30/30, Mega, Giga, Reg and Tag memory, then the overview's own 2 by
