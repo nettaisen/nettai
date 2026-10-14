@@ -540,6 +540,15 @@ pub fn running(shell: &Shell) -> bool {
     shell.practice.session.is_some()
 }
 
+/// The sound of the practice session's battle on, taken as it ends, for the entry to play its music on
+/// (`Practice::play_music_after`).
+fn battle_sound(shell: &mut Shell) -> Option<nettai_audio::BattleAudio> {
+    if !ours(shell) {
+        return None;
+    }
+    shell.battle.as_mut().and_then(|b| b.stage.player.take_sound())
+}
+
 /// Whether the battle on is a practice session's.
 fn ours(shell: &Shell) -> bool {
     shell.battle.as_ref().is_some_and(|b| b.owner == ScreenId::Practice && b.kind == BattleKind::Practice)
@@ -1026,9 +1035,15 @@ impl Practice {
     /// music"), in place of the title music: the game's own battle music, or the theme picked. A battle started
     /// from here takes it over, so it goes on through the cards into the fight (`Shell::carried_music`).
     fn play_music(&mut self, shell: &mut Shell) {
+        self.play_music_after(shell, None);
+    }
+
+    /// [`Practice::play_music`] as a session's battle ends back here: `battle` is its sound (`battle_sound`), whose
+    /// music, where it is the entry's song still playing, goes on here where it is (`crate::music::preview_after`).
+    fn play_music_after(&mut self, shell: &mut Shell, battle: Option<nettai_audio::BattleAudio>) {
         self.music_changed = None;
         let song = self.session_music(shell);
-        crate::music::preview(shell, song);
+        crate::music::preview_after(shell, song, battle);
     }
 
 
@@ -1109,8 +1124,10 @@ impl Practice {
     }
 
     /// The entry again, after a session of its own (EXIT): another arena, another deal, on the place the session
-    /// left (the menu's Arena and Background are the visit's), and the entry's music again from its start.
+    /// left (the menu's Arena and Background are the visit's), and the battle's music going on as the entry's
+    /// (from its start, where the battle's had stopped).
     fn back_to_entry(&mut self, shell: &mut Shell) {
+        let battle = battle_sound(shell);
         end(shell);
         self.seed = if shell.still { 7 } else { clock_seed() };
         self.changed = crate::clock::now().checked_sub(ARENA_AFTER);
@@ -1118,7 +1135,7 @@ impl Practice {
             self.place = shell.practice.visit.place(&game, &self.places);
             self.tell(shell, &game, &ready);
         }
-        self.play_music(shell);
+        self.play_music_after(shell, battle);
     }
 
     /// Step the menu's option at row `index` by `by`, around from its last value to its first: it changes at
@@ -1387,10 +1404,11 @@ impl Screen for Practice {
                 }
             }
             BattleEvent::Stopped(reason) => {
+                let battle = battle_sound(shell);
                 end(shell);
-                // (The entry's music again, if the entry is what shows.)
+                // (The entry's music, going on from the battle's, if the entry is what shows.)
                 if shell.screen() == ScreenId::Practice {
-                    self.play_music(shell);
+                    self.play_music_after(shell, battle);
                 }
                 if let Some(error) = UserError::of_stop(reason) {
                     shell.fail(error);
