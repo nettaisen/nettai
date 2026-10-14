@@ -425,16 +425,26 @@ refuses, and `set_training` is refused while a replay is written).
   round's own shuffle again (with its Regular chip and tag pair if no screen
   has dealt yet).
 
-Live play is a set of the rounds the match lists, as a link battle is (the
-original's triple battle: three, best of three; a match may list any number
-from 1 to 99): when a round ends the
-next one starts, on the next round's place, with the score carried and each
-folder shuffled again by its console's RNG, and when the set is decided play
-stops with the result (`the match is over: you won`). A set
-of `n` rounds is decided once one side can no longer be caught, or after its
-last round, drawn if the sides are level (`sub_800AF50`, with `n` for three: an
-even number of rounds may end drawn, as three may on a drawn round); each
-round opens with the ROUND banner and its number, in the banner's digits. How a
+Live play is a set, as a link battle is: first to `n` round wins, `n` from 1
+to 10 (`nettai_match::MAX_FIRST_TO`; the original's single battle is first to
+1, its triple battle first to 2), its rounds the `2n − 1` the match lists
+(`nettai_match::rounds_for`; a match lists no other count): when a round ends
+the next one starts, on the next round's place, with the score carried and
+each folder shuffled again by its console's RNG, and when the set is decided
+play stops with the result (`the match is over: you won`). A set of `2n − 1`
+rounds is decided as the original decides its triple battle (`sub_800AF50`,
+whose 3 the engine takes as the set's count): once one side can no longer be
+caught, else after its last round, drawn if the sides are level. With no
+round drawn that is when a side has `n` wins; a drawn round is one of the
+rounds, as in the original, so a set with one can end on fewer wins (first
+to 2 after a win and two draws: 1–0) or drawn (first to 3 at 2–2 with a
+draw). First to 1 and to 2 play exactly as the original's single and triple
+battles (the engine's `a_set_first_to_n_ends_once_its_result_cant_change`
+checks every score of first to 2 against the original's own code). Each round
+opens with the BATTLE n START! banner, its number in the banner's two digits,
+as every game draws it (the games have no other art for a later round: a
+fourth is "BATTLE 4 START!", a nineteenth "BATTLE 19 START!"). The HUD shows
+no win marks (the original shows none). How a
 set goes on is `nettai_match::Set`'s to say, for live play and netplay alike
 (`Set::after`: the next round's battle from the round that ended, or the
 result); the session swaps the battle and tells the presentation to start
@@ -612,14 +622,16 @@ host calls, in order:
     no label. A build's name is never sent at all. A player may change
     their build in the lobby (`Lobby::set_side`): if they were ready they
     no longer are, and the other sees nothing else.
-  - **The settings are the match's**: its rounds (`Settings::rounds`: one
-    is a single battle, three a best of three; each round's stage and
+  - **The settings are the match's**: the round wins its set is first to
+    (`Settings::first_to`, 1 to 10, a byte in the lobby's message and in the
+    Hello; 1 a single battle, 2 the original's triple battle) and its
+    rounds (`Settings::rounds`, `2n − 1` of them: each round's stage and
     background stated, or left to the seed; `backgrounds`, whether a
     background left to the seed is the game's link pick's or the
     background pool's, nettai's Play the pool), whether patch cards apply
     (`patch_cards`, on unless a player turns them off) and whether builds
     are closed (`closed_builds`). Either player changes them
-    (`Lobby::set_rounds`, `set_patch_cards`, `set_closed_builds`, or
+    (`Lobby::set_first_to`, `set_patch_cards`, `set_closed_builds`, or
     `propose` for the whole), the other's lobby takes the change, both
     show the same (`Lobby::settings`), and both ready marks clear; a
     joiner coming into the lobby takes the host's. They are agreed when
@@ -1497,8 +1509,8 @@ compares the digest every tick).
 game = "exe6"                               # the match's game and its rules: everything below is its
 seed = 42                                  # optional: the setup's and battle's seed
 
-[[round]]                                  # the set's rounds, a table each, in order: as many as the set has
-stage = "netbattle-43"                     # (1 to 99; three: the original's triple battle). A round's stage (a
+[[round]]                                  # the set's rounds, a table each, in order: 2n - 1 for a set first to n
+stage = "netbattle-43"                     # (n 1 to 10; one: a single battle; three: the triple battle). A round's stage (a
 background = "lans-hp"                     # link battle stage of the game's) and background (of its pack); a part
                                            # left out is picked from the seed, as the game picks a link battle's
 [[round]]                                  # (or with `backgrounds = "pool"` at the top, a background from every
@@ -1950,8 +1962,10 @@ is said with where it is:
   record, a form), and every stat is in range; a match made in memory
   holding another game's (no file or offer can) is refused the same way
   ("right: a navi exe5 hasn't");
-- it lists 1 to 99 rounds (a file that lists none is refused: list one
-  `[[round]]` per round, an empty one picked from the seed); each stage
+- it lists the rounds of a set first to 1 to 10 round wins, `2n − 1` of
+  them (1, 3, 5 ... 19; a file that lists none, or another count, is
+  refused: list one `[[round]]` per round, an empty one picked from the
+  seed); each stage
   stated is one a match of the game may name (its rules'
   `link_pick.match_stages`: EXE6's and EXE5's link battle stages, each a
   settings record with the link effect that isn't the random battle's;
@@ -2451,8 +2465,8 @@ round := what the round states (a byte: 1 its stage, 2 its background, 3 both, 0
 side  := the side's setup of the game's rules in its compact form (each fact in the
          setup's order at its width; a record's fields in order; a list as its
          count and only the entries it holds)
-match := seed (u32), the rounds' count (u8), every round's place (as the seed picks
-         those the match leaves), side 0, side 1
+match := seed (u32), the round wins its set is first to (u8: n, 1 to 10), every one of
+         its 2n - 1 rounds' places (as the seed picks those the match leaves), side 0, side 1
 offer := the rounds' count (u8), each round as the player states it (round), then the side
 ```
 
