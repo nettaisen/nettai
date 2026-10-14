@@ -1841,6 +1841,12 @@ pub struct Rules {
     /// What a link battle picks at random (the section `link_pick`; none
     /// stated: nothing).
     pub link_pick: LinkPick,
+    /// The game's battle themes (the section `battle_themes`; none stated:
+    /// none): songs a player may pick as a battle's music in place of its
+    /// game's own, in the order a list shows them. Presentation, which no
+    /// battle reads: a host plays the pick in place of
+    /// [`Content::battle_music`](super::Content::battle_music).
+    pub battle_themes: Vec<crate::sound::SoundId>,
     /// The sine table (`math_sinTable`, which `math_cosTable` continues):
     /// 256 steps a turn, 1.0 = 0x100, over a turn and a half, so that the
     /// cosine of step `a` is entry `a + 64`.

@@ -128,6 +128,9 @@ export global Shell {
     in property <bool> battle-menu;
     // What the battle is, in a few words of its owner's (Training · Round 1): the line beside MENU on a phone.
     in property <string> battle-note;
+    // The battle's music a player picks (Play's lobby, Practice): its list's first choice, the battle's game's
+    // own; the rest are the games' battle themes, which the content names.
+    out property <string> game-own-music: @tr("Game's own");
     // The connection's corner: shown online; its bars (0 to 4), the round trip in ms, and the seconds the link
     // has been down while it is (-1: it is up).
     in property <bool> connection-shown;

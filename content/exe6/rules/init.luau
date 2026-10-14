@@ -310,6 +310,8 @@ local rules: Rules = {
     },
     -- Its rule sections (each a plain table, which the engine reads by its schema) and its roles.
     banners = require("@self/banners"),
+    -- The songs a player may pick as a battle's music (./battle_themes), which the battle plays none of.
+    battle_themes = require("@self/battle_themes"),
     buster = require("@self/buster"),
     chip_use = require("@self/chip_use"),
     custom_screen = require("@self/custom_screen"),
