@@ -24,6 +24,7 @@ pub mod packs;
 pub mod pictures;
 pub mod present;
 pub mod render;
+pub mod smooth;
 pub mod stage;
 pub mod strings;
 pub mod textlayer;

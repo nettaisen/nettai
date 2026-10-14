@@ -809,7 +809,7 @@ mod tests {
     /// A white item over a black frame at 2x, `depth` the frame's depth
     /// keys: which output columns of the box's rows it lit.
     fn lit_columns(item: TextItem, depth: Vec<u32>) -> Vec<bool> {
-        let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth, text: vec![item], glide: None };
+        let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth, text: vec![item], glide: None, ..crate::render::Frame::default() };
         let (w, h) = (WIDTH * 2, HEIGHT * 2);
         let mut out = vec![0u32; w * h];
         crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);
@@ -819,7 +819,7 @@ mod tests {
     /// The first and last output rows an item lights, white with a shadow
     /// over a black frame, at `scale` times the frame.
     fn lit_rows(item: TextItem, scale: usize) -> (usize, usize) {
-        let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None };
+        let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: vec![item], glide: None, ..crate::render::Frame::default() };
         let (w, h) = (WIDTH * scale, HEIGHT * scale);
         let mut out = vec![0u32; w * h];
         crate::present::present(&frame, Some(&mut renderer()), &mut out, w, h);

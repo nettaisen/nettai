@@ -122,8 +122,23 @@ fn cleared_out(k: u32) -> usize {
     (1..=k).map(|i| ((12 * i) & 4) as usize / 4 ^ 1).map(|n| n + 1).sum::<usize>().min(COLUMNS)
 }
 
-/// The window's placement for a screen in this phase.
-pub fn placement(s: &Screen) -> Placement {
+/// The window's placement for a screen in this phase, its slide drawn as
+/// `slide` says.
+pub fn placement(s: &Screen, slide: Slide) -> Placement {
+    let stepped = stepped_placement(s);
+    let (Slide::Smooth { nudged }, Some(x16)) = (slide, smooth_x16(s)) else { return stepped };
+    // (The window's left edge at the eased place's whole pixels, or a
+    // pixel right of them; the layer's scroll is its opposite. The columns
+    // on the layer are those that show at that scroll: a column further
+    // left would wrap round to the screen's right, which the original's
+    // copying and clearing keep off the layer as they do at its steps.)
+    let scroll = -(x16.div_euclid(16) + nudged as i32);
+    let from = (0..COLUMNS).find(|&c| 8 * c as i32 + 16 > scroll).unwrap_or(COLUMNS);
+    Placement { scroll: scroll.max(0) as u32, from, ..stepped }
+}
+
+/// The window's placement as the original steps it.
+fn stepped_placement(s: &Screen) -> Placement {
     match s.phase {
         Phase::Opening { tick: 0 } => Placement { scroll: 0, from: COLUMNS, to: COLUMNS, slid: 0 },
         Phase::Opening { tick } => {
@@ -142,15 +157,68 @@ pub fn placement(s: &Screen) -> Placement {
     }
 }
 
+/// How the window's slide is drawn. The original moves it 12 pixels a tick
+/// over its 10 ticks, in and out alike, and the field and the sprites 1.5
+/// pixels a tick down and back up with it (`sub_8026B04`, `sub_8026BF4`;
+/// every game's). The enhanced mode's motion (`Renderer::motion`) eases it
+/// over the same ticks instead: in, fast at first and slowing into its
+/// place; out, slow at first and speeding off; from the same place on the
+/// slide's first tick to the same place on its last. The window, what the
+/// HUD moves with it (the HP box, the emotion window), its sprites (the
+/// emblem, EXE4's element) and the camera all follow the one curve. Where it
+/// is between two whole pixels, the frame is drawn twice, the second time a
+/// pixel right (`nudged`), and the output shows the two at its own
+/// resolution (`Frame::nudge`).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Slide {
+    #[default]
+    Stepped,
+    Smooth { nudged: bool },
+}
+
+/// The slide's eased place: the window's left edge in sixteenths of a
+/// pixel from its place in (-1920 all the way out), on the slide's ticks
+/// between its first and its last (the curve passes through the original's
+/// places on those: out before it opens, in once open, and back). Quadratic:
+/// in, the distance left falls as the square of the ticks left; out, the
+/// distance gone grows as the square of the ticks gone.
+fn smooth_x16(s: &Screen) -> Option<i32> {
+    eased_x16(s.phase)
+}
+
+fn eased_x16(phase: Phase) -> Option<i32> {
+    let ticks = SLIDE_TICKS;
+    let full = 16 * SLIDE as i32;
+    match phase {
+        Phase::Opening { tick } if (1..ticks).contains(&(tick as i32)) => {
+            let left = ticks - tick as i32;
+            Some(-(full * left * left) / (ticks * ticks))
+        }
+        Phase::Closing { tick } if (1..ticks).contains(&(tick as i32)) => {
+            let gone = tick as i32;
+            Some(-(full * gone * gone) / (ticks * ticks))
+        }
+        _ => None,
+    }
+}
+
+/// The part of a pixel past the whole pixels where the smooth slide has
+/// the window this frame, in sixteenths (0: on a whole pixel, or not
+/// sliding): the share of each frame pixel the output shows the frame
+/// drawn a pixel right (`Frame::nudge`).
+pub fn slide_sub(b: &Battle) -> u8 {
+    local(b).and_then(|(_, s)| smooth_x16(s)).map_or(0, |x16| x16.rem_euclid(16) as u8)
+}
+
 /// How far the HUD's HP box and mugshot move right while the custom
 /// screen is up (the HUD's `+0x12` and the HP box at column 15 under the
 /// layer's scroll): 120 less the scroll, from the slide's first tick until
 /// the result is sent.
-pub fn hud_shift(b: &Battle) -> i32 {
+pub fn hud_shift(b: &Battle, slide: Slide) -> i32 {
     let Some((_, s)) = local(b) else { return 0 };
     match s.phase {
         Phase::Opening { tick: 0 } | Phase::ProgramAdvance { .. } | Phase::Sending { .. } => 0,
-        _ => SLIDE as i32 - placement(s).scroll as i32,
+        _ => SLIDE as i32 - placement(s, slide).scroll as i32,
     }
 }
 
@@ -188,9 +256,18 @@ pub fn gauge_held(b: &Battle) -> bool {
     local(b).is_some_and(|(_, s)| !matches!(s.phase, Phase::Sending { started: true }))
 }
 
-/// The camera's offset (16.16, added to its Y) while the window is in.
-pub fn camera_y(b: &Battle) -> i32 {
-    local(b).map_or(0, |(_, s)| -CAMERA_STEP * placement(s).slid)
+/// The camera's offset (16.16, added to its Y) while the window is in:
+/// down as far as the window has come in, along the smooth slide's curve
+/// where it is smooth (whole pixels: the field is drawn at the frame's).
+pub fn camera_y(b: &Battle, slide: Slide) -> i32 {
+    let Some((_, s)) = local(b) else { return 0 };
+    match (slide, smooth_x16(s)) {
+        (Slide::Smooth { .. }, Some(x16)) => {
+            let full = 16 * SLIDE as i64;
+            (-(CAMERA_STEP as i64) * SLIDE_TICKS as i64 * (full + x16 as i64) / full) as i32
+        }
+        _ => -CAMERA_STEP * placement(s, slide).slid,
+    }
 }
 
 /// The screen fade the local screen runs on the stage and the battle's
@@ -1712,7 +1789,7 @@ fn regular_part<'a>(v: &View, a: &'a CustomScreen) -> SpritePart<'a> {
 /// enemy names on `names_layer` (BG0), the sprites into `list`.
 /// `emblem` holds the emblem sprite's tiles (`emblem_sprite`) and
 /// `emblem_palette` the emblem's palette (`lookups::emblem`); the enhanced mode's
-/// strings go to `text`.
+/// strings go to `text`. The window's slide is drawn as `slide` says.
 #[allow(clippy::too_many_arguments)]
 pub fn draw<'a>(
     b: &'a Battle,
@@ -1724,6 +1801,7 @@ pub fn draw<'a>(
     names_layer: &mut Layer,
     list: &mut SpriteList<'a>,
     text: &mut TextSink,
+    slide: Slide,
     problems: &mut Problems,
 ) {
     let Some((_, screen)) = local(b) else { return };
@@ -1742,7 +1820,7 @@ pub fn draw<'a>(
         hud: &assets.hud,
         packs: packs.clone(),
     };
-    let place = placement(screen);
+    let place = placement(screen, slide);
     let mut w = Window::build(&v, text, problems);
     let advance_names = w.program_advance(&v, text, problems);
     w.draw(hud_layer, place);
@@ -1829,7 +1907,14 @@ pub fn draw<'a>(
     }
     queue.extend(element_part(&v, a, place));
     // (A screen with an emblem of its own draws it on the window's map.)
-    if let Some((x, spin)) = drawn.emblem.filter(|_| a.window_emblem.is_none()) {
+    // (Sliding smoothly, the emblem is where the window is, drawn where the
+    // original's rule draws it at that place.)
+    let emblem_at = match smooth_x16(screen).filter(|_| slide != Slide::Stepped) {
+        Some(_) => (place.scroll <= nettai_battle::custom::look::EMBLEM_HIDDEN_PAST)
+            .then(|| (place.scroll, drawn.emblem.map_or(screen.look.spin, |(_, spin)| spin))),
+        None => drawn.emblem,
+    };
+    if let Some((x, spin)) = emblem_at.filter(|_| a.window_emblem.is_none()) {
         let part = emblem_part(&v, emblem, x, spin);
         if let Some(why) = known_emblem(b, packs, side) {
             // (Where the sprite is, its coordinates wrapped as the
@@ -1877,5 +1962,30 @@ mod tests {
         assert_eq!(ins, [2, 3, 5, 6, 8, 9, 11, 12, 14, 15]);
         let outs: Vec<usize> = (1..=10).map(cleared_out).collect();
         assert_eq!(outs, [1, 3, 4, 6, 7, 9, 10, 12, 13, 15]);
+    }
+
+    /// The smooth slide passes through the original's places at its ends
+    /// (out before its first tick, in once its last has run, and back) and
+    /// eases between: in, it gains most at first and less every tick after;
+    /// out, it loses least at first and more every tick after.
+    #[test]
+    fn the_smooth_slide_eases_over_the_originals_ticks() {
+        let at = |phase| eased_x16(phase).map(|x| x as f64 / 16.0);
+        let opening: Vec<f64> = (1..10).map(|tick| at(Phase::Opening { tick }).unwrap()).collect();
+        let closing: Vec<f64> = (1..10).map(|tick| at(Phase::Closing { tick }).unwrap()).collect();
+        let (out, inside) = (-(SLIDE as f64), 0.0);
+        let steps = |places: &[f64], from: f64, to: f64| -> Vec<f64> {
+            std::iter::once(from).chain(places.iter().copied()).chain([to]).collect::<Vec<_>>().windows(2).map(|w| w[1] - w[0]).collect()
+        };
+        let ins = steps(&opening, out, inside);
+        assert!(ins.windows(2).all(|w| w[0] > w[1] && w[1] > 0.0), "in: {ins:?}");
+        let outs = steps(&closing, inside, out);
+        assert!(outs.windows(2).all(|w| w[0] > w[1] && w[0] < 0.0), "out: {outs:?}");
+        assert_eq!((ins.len(), outs.len()), (10, 10), "over the original's ten ticks");
+        assert_eq!((ins.iter().sum::<f64>(), outs.iter().sum::<f64>()), (SLIDE as f64, -(SLIDE as f64)));
+        // (Not on the ends, where the window is the original's.)
+        for phase in [Phase::Opening { tick: 0 }, Phase::Opening { tick: 10 }, Phase::Closing { tick: 0 }, Phase::Closing { tick: 10 }, Phase::Choosing] {
+            assert_eq!(eased_x16(phase), None);
+        }
     }
 }

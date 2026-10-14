@@ -902,6 +902,78 @@ mod tests {
         assert!(samples.is_empty());
     }
 
+    /// The enhanced mode's smooth motion (`nettai_render::smooth`): the frames differ from the motion reduced's
+    /// only on the custom screen's slide (the window eased, the field with it); every frame is the battle's
+    /// alone: a renderer that draws a copy of the battle as it was at that tick, with the HUD's rolling state as
+    /// it was, draws the same frame (as a rollback or a seek draws a frame again). The original mode draws alike
+    /// with the motion reduced or not.
+    #[test]
+    fn the_smooth_motion_is_the_battles_alone_and_only_where_the_original_moves() {
+        use crate::driver::bot_buttons;
+        use nettai_battle::battle::{fight, mode};
+        use nettai_battle::custom::Phase;
+        let content = testing::content();
+        let mut graphics = crate::testing::graphics(&content, 0x001F);
+        // (A HUD with tiles: the HP box and the gauge drawn, its cells by eighths in their own colors.)
+        let mut bundle = (*graphics.bundles[0]).clone();
+        let hud = &mut bundle.hud;
+        hud.tiles = nettai_assets::Tiles { pixels: vec![1; 0x40 * nettai_assets::Tiles::TILE] };
+        hud.first_tile = 0x100;
+        hud.gauge_tiles = nettai_assets::Tiles { pixels: (0..0x20 * nettai_assets::Tiles::TILE).map(|i| (i / nettai_assets::Tiles::TILE) as u8 % 15 + 1).collect() };
+        hud.gauge_first_tile = 0x200;
+        hud.hp_palettes = [[0x7FFF; 16]; 3];
+        hud.gauge_palette = std::array::from_fn(|i| i as u16 * 0x421);
+        let entry = |tile| nettai_assets::MapEntry { tile, hflip: false, vflip: false, palette: 13 };
+        hud.hp_box = vec![entry(0x120); 12];
+        hud.gauge_frame = vec![entry(0x200); 36];
+        graphics.bundles[0] = Arc::new(bundle);
+        let renderer = |mode: GraphicsMode, reduce: bool| {
+            let mut renderer = Renderer::with_packs(graphics.packs());
+            renderer.set_mode(mode, None);
+            renderer.reduce_motion = reduce;
+            renderer
+        };
+        let player = |mode, reduce| Player::with(renderer(mode, reduce), None, None, live());
+        let (mut on, mut off) = (player(GraphicsMode::Enhanced, false), player(GraphicsMode::Enhanced, true));
+        let (mut original, mut original_reduced) = (player(GraphicsMode::Original, false), player(GraphicsMode::Original, true));
+        let (mut differ, mut sliding, mut fought) = (Vec::new(), Vec::new(), 0);
+        for tick in 0..3000u32 {
+            let k = bot_buttons(on.battle(), 0, tick);
+            assert!(on.tick(k) && off.tick(k) && original.tick(k) && original_reduced.tick(k));
+            let frame = on.frame();
+            let b = on.battle();
+            let t = b.round.ticks;
+            let slides = b.round.mode == mode::CUSTOM
+                && nettai_render::custom::local(b).is_some_and(|(_, s)| matches!(s.phase, Phase::Opening { tick: 1..=9 } | Phase::Closing { tick: 1..=9 }));
+            if slides {
+                sliding.push(t);
+            }
+            let plain = off.frame();
+            assert!(plain.nudge.is_none(), "tick {t}: reduced motion draws none");
+            if frame.pixels != plain.pixels {
+                differ.push(t);
+            }
+            if let Some(n) = &frame.nudge {
+                assert!(slides && n.sub > 0 && n.sub < 16, "tick {t}: a nudge only on the slide");
+            }
+            // Drawn again from a copy of the battle at this tick.
+            let mut again = renderer(GraphicsMode::Enhanced, false);
+            again.hud_state = on.renderer().hud_state.clone();
+            let copy = on.battle().clone();
+            let redrawn = again.render(&copy);
+            assert!(redrawn.pixels == frame.pixels && redrawn.nudge == frame.nudge, "tick {t}: drawn again");
+            let o = original.frame();
+            assert!(o.pixels == original_reduced.frame().pixels && o.nudge.is_none(), "tick {t}: the original's");
+            fought += (on.battle().round.mode == mode::FIGHTING && on.battle().fight.state == fight::FIGHTING) as u32;
+            if fought > 60 {
+                break;
+            }
+        }
+        assert!(fought > 60, "the fight runs");
+        assert!(!sliding.is_empty() && differ.iter().all(|t| sliding.contains(t)), "only the slide's frames differ: {differ:?} (sliding {sliding:?})");
+        assert!(differ.len() >= sliding.len() / 2, "the slide is eased: {differ:?} of {sliding:?}");
+    }
+
     /// The renderer's pause display: drawn while a player holds the fight in the game's own pause, as the
     /// game draws it (the default), and left out with `pause_display` off, which changes nothing else of the
     /// frame; out of the pause the two draw alike. (A round that leaves the game its START: its own pause.)

@@ -284,7 +284,7 @@ const SPIN: [(u8, u8); 19] = [
     (0x00, 0x40),
 ];
 /// The window's offset past which the emblem isn't drawn.
-const EMBLEM_HIDDEN_PAST: u32 = 0x67;
+pub const EMBLEM_HIDDEN_PAST: u32 = 0x67;
 /// The spin's last step.
 const SPIN_STEPS: u8 = 0x14;
 
