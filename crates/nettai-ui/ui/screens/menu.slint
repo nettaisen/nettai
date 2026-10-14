@@ -1,6 +1,6 @@
-// The main menu (docs/design/app-ui.md §6): PLAY, PRACTICE and REPLAYS, each the word alone; below a line,
-// Settings, About and Exit, smaller; beside them the demo reel, a battle of the selected game playing itself in a
-// box that keeps its size. On a phone the reel is above the items.
+// The main menu (docs/design/app-ui.md §6): PLAY, REPLAYS, SETTINGS and EXIT, each the word alone and large, as a
+// fighting game's title screen has them; below a line, About, smaller; beside them the demo reel, a battle of the
+// selected game playing itself in a box that keeps its size. On a phone the reel is above the items.
 
 import { Theme } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
@@ -16,7 +16,7 @@ export global MenuView {
     in property <int> reel-seq;
 }
 
-// Settings, About and Exit: less than the three above them.
+// About: less than the four above it.
 component MinorItem inherits Rectangle {
     in property <string> text;
     in property <string> nav;
@@ -42,10 +42,12 @@ export component MenuScreen inherits Page {
     property <length> column: Theme.phone ? self.body-width : 416px;
     property <length> reel-width: Theme.phone ? self.body-width : 720px;
     property <length> reel-height: self.reel-width * 2 / 3;
-    property <length> item: Theme.phone ? 68px : 72px;
-    // The three words, 8 apart, and under them the line (16 below) and the smaller items (35 below, 32 tall), all
-    // centered together.
-    property <length> items-height: 3 * self.item + 2 * 8px;
+    // A word's row (`MenuItem`'s, big), and the step from one to the next.
+    property <length> item: Theme.phone ? 68px : 96px;
+    property <length> step: self.item + 8px;
+    // The four words, 8 apart, and under them the line (16 below) and About (35 below, 32 tall), all centered
+    // together: on a desktop about as tall as the reel beside them.
+    property <length> items-height: 4 * self.item + 3 * 8px;
     property <length> items-top: Theme.phone ? self.reel-height + 12px : (self.body-height - self.items-height - 61px) / 2;
     property <length> reel-top: Theme.phone ? 0px : (self.body-height - self.reel-height) / 2;
     logo: true;
@@ -54,7 +56,7 @@ export component MenuScreen inherits Page {
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
     ];
-    // (The parts assemble in turn as the menu arrives: the three words, what is under them, the reel.)
+    // (The parts assemble in turn as the menu arrives: the four words, what is under them, the reel.)
     Arrive {
         order: 0;
         MenuItem {
@@ -71,19 +73,7 @@ export component MenuScreen inherits Page {
         order: 1;
         MenuItem {
             x: 0;
-            y: root.items-top + root.item + 8px;
-            width: root.column;
-            nav: "practice";
-            text: @tr("PRACTICE");
-            big: true;
-        }
-    }
-
-    Arrive {
-        order: 2;
-        MenuItem {
-            x: 0;
-            y: root.items-top + 2 * (root.item + 8px);
+            y: root.items-top + root.step;
             width: root.column;
             nav: "replays";
             text: @tr("REPLAYS");
@@ -92,7 +82,31 @@ export component MenuScreen inherits Page {
     }
 
     Arrive {
+        order: 2;
+        MenuItem {
+            x: 0;
+            y: root.items-top + 2 * root.step;
+            width: root.column;
+            nav: "settings";
+            text: @tr("SETTINGS");
+            big: true;
+        }
+    }
+
+    Arrive {
         order: 3;
+        MenuItem {
+            x: 0;
+            y: root.items-top + 3 * root.step;
+            width: root.column;
+            nav: "exit";
+            text: @tr("EXIT");
+            big: true;
+        }
+    }
+
+    Arrive {
+        order: 4;
         Rule {
             x: 0;
             y: root.items-top + root.items-height + 16px;
@@ -101,25 +115,13 @@ export component MenuScreen inherits Page {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
 
-        settings := MinorItem {
+        MinorItem {
             x: Theme.phone ? 8px : 16px;
             y: root.items-top + root.items-height + 35px;
-            nav: "settings";
-            text: @tr("Settings");
-        }
-
-        about := MinorItem {
-            x: settings.x + settings.width + 16px;
-            y: settings.y;
             nav: "about";
             text: @tr("About");
-        }
 
-        MinorItem {
-            x: about.x + about.width + 16px;
-            y: settings.y;
-            nav: "exit";
-            text: @tr("Exit");
+            Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
 

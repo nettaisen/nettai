@@ -22,10 +22,10 @@ msgstr "練習"
 msgid "REPLAYS"
 msgstr "リプレイ"
 
-msgid "Settings"
+msgid "SETTINGS"
 msgstr "設定"
 
-msgid "Exit"
+msgid "EXIT"
 msgstr "終了"
 
 msgid "DEMO"
