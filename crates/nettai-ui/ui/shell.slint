@@ -177,8 +177,8 @@ export global Shell {
     in property <int> picker-apart: -1;
     in property <int> picker-rows;
     // A grid of pictures (Practice's Arena and Background): each choice its picture over its name, `picker-columns`
-    // to a row, each `picker-cell` wide and its picture two fifths of that tall (the battle's field's band, 240 by
-    // 96); `picker-rows` the rows it shows at once. An empty picture is one not drawn yet, or the first choice,
+    // to a row, each `picker-cell` wide and its picture seven fifteenths of that tall (the battle's field's band,
+    // 240 by 112); `picker-rows` the rows it shows at once. An empty picture is one not drawn yet, or the first choice,
     // Random, which has none.
     in property <bool> picker-grid;
     in property <[image]> picker-pictures;
@@ -1447,7 +1447,7 @@ component PlaceCell inherits Rectangle {
     in property <string> text;
     in property <int> nav-index;
     in property <bool> chosen;
-    property <length> thumb: self.width * 0.4;
+    property <length> thumb: self.width * 7 / 15;
     Rectangle {
         background: root.chosen ? Theme.tint : touch.has-hover ? Theme.tint-hover : transparent;
     }
@@ -1511,12 +1511,12 @@ component PlaceCell inherits Rectangle {
 // the window has room for) and keeps that height: more choices scroll, the focused one into view. A grid of
 // pictures (`Shell.picker-grid`) is the same, its rows of cells: a page whose cells are each focused, Up and Down
 // going a row, Left and Right a cell, the focused one scrolled into view. Its sizes are the app's
-// (`shell::GRID_*`): a cell `Shell.picker-cell` wide, its picture two fifths of that tall and 34 under it for the
+// (`shell::GRID_*`): a cell `Shell.picker-cell` wide, its picture seven fifteenths of that tall and 34 under it for the
 // name, 8 apart (6 on a phone), in 8 of padding with the scrollbar's 12 at the right.
 export component PickerLayer inherits Rectangle {
     property <length> pad: Shell.picker-grid ? 8px : (Theme.phone ? 8px : 1px);
     property <length> gap: Theme.phone ? 6px : 8px;
-    property <length> cell-height: Shell.picker-cell * 0.4 + 34px;
+    property <length> cell-height: Shell.picker-cell * 7 / 15 + 34px;
     property <length> pitch: root.cell-height + root.gap;
     property <length> list-height: Shell.picker-grid ? Shell.picker-rows * root.pitch - root.gap + 2 * self.pad : Shell.picker-rows * Theme.row + 2 * self.pad;
     arrive := Tween {
