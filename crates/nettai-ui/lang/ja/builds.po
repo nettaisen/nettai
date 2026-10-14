@@ -287,6 +287,10 @@ msgstr "プログラム"
 msgid "Placed"
 msgstr "配置済み"
 
+# A program placed more than once: how many copies of it are on the board.
+msgid "Placed ×{}"
+msgstr "配置済み ×{}"
+
 msgid "In hand"
 msgstr "移動中"
 

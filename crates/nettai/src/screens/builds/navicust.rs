@@ -3,31 +3,33 @@
 //! What the board is, what a program's shape is, where a piece fits and how it turns and compresses is the game's
 //! data, read by `crate::builds::grid` (the boards and the command line from its rules/navicust/board module, each
 //! program's shape, colors and plus mark from its definition). What the NaviCust comes to is the game's rules'
-//! (nettai-match's `Checked::overview`): what it does is the build's overview without its patch cards, and its bugs
-//! are the whole build's, whoever brings them.
+//! (nettai-match's `Checked::overview`): what it does and the bugs it brings are the build's overview without its
+//! patch cards (`own_overview`; a card's bugs are the Patch cards tab's and the build overview's: the user,
+//! "navicust shouldn't display patch card bugs").
 //!
 //! **The cursor goes over the board cell by cell.** Enter on a placed piece picks it up by that cell; Enter on a
-//! program of the list takes it in hand, its middle on the board's. While a piece is in hand it is where the cursor
-//! is on the board: the arrows move it (the cursor goes to the next cell), the keys bound to L and R (A and S) and
-//! the pad's shoulders turn it about the cell held, C (the pad's north button) compresses it in place (its other
-//! shape turned as it is, about the same middle, held by the same cell where it still has it), Confirm (Enter, A)
-//! puts it down where it fits (else it shakes and the line under the key says why, typed as the rules say it), and
-//! Back (Esc, B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
-//! up and putting it away. Del takes the piece under the cursor off at once, or a program's last copy from the
-//! list, or puts the piece in hand away; Enter on a placed program's row takes its last copy off too. The strip
-//! across the top describes the program under the cursor, in the game's words. The piece in hand is outlined white
-//! where it could be put down, red where it can't.
+//! program of the list takes a new copy of it in hand, its middle on the board's, however many copies are placed
+//! already (no game's rules limit them: the user, "you should allow a navicust part to be placed multiple times").
+//! While a piece is in hand it is where the cursor is on the board: the arrows move it (the cursor goes to the next
+//! cell), the keys bound to L and R (A and S) and the pad's shoulders turn it about the cell held, C (the pad's
+//! north button) compresses it in place (its other shape turned as it is, about the same middle, held by the same
+//! cell where it still has it), Confirm (Enter, A) puts it down where it fits (else it shakes and the line under the
+//! key says why, typed as the rules say it), and Back (Esc, B) puts it away into the list, as the game's B does: so
+//! a placed program is taken off by picking it up and putting it away. Del takes the piece under the cursor off at
+//! once, or a program's last copy from the list, or puts the piece in hand away. The strip across the top describes
+//! the program under the cursor, in the game's words. The piece in hand is outlined white where it could be put
+//! down, red where it can't.
 //!
 //! **The mouse** (the view's pointer areas, told here as `Tab::choose`'s "drag"): a press on a placed piece picks it
-//! up, and a drag out of a program's row takes it (a placed one's last copy off the board); while the button is
-//! held the piece follows the pointer from cell to cell, and the wheel turns it. Let go over the board, it is put
-//! down where it fits, else it shakes and goes back where it came from; let go off the board, it is put away into
-//! the list. A press and release that never left the cell or row is a click, as Enter there: a piece a click takes
-//! up follows the pointer over the board with no button held, cell by cell (off the board it stays at the last cell
-//! it was over), the next click on the board puts it down (or it shakes and stays in hand), and a click off the
-//! board puts it away. A right click puts the piece in hand away, however it was taken: off the board, never back
-//! where it was. A key or button pressed during a drag ends it, as a put-back; one pressed with a piece a click took
-//! moves it from where it is, and the pointer's next move takes it back under the pointer.
+//! up, and a drag out of a program's row takes a new copy of it; while the button is held the piece follows the
+//! pointer from cell to cell, and the wheel turns it. Let go over the board, it is put down where it fits, else it
+//! shakes and goes back where it came from; let go off the board, it is put away into the list. A press and release
+//! that never left the cell or row is a click, as Enter there: a piece a click takes up follows the pointer over the
+//! board with no button held, cell by cell (off the board it stays at the last cell it was over), the next click on
+//! the board puts it down (or it shakes and stays in hand), and a click off the board puts it away. A right click
+//! puts the piece in hand away, however it was taken: off the board, never back where it was. A key or button
+//! pressed during a drag ends it, as a put-back; one pressed with a piece a click took moves it from where it is,
+//! and the pointer's next move takes it back under the pointer.
 
 use crate::builds::grid::{self, Edit, GridData, Held};
 use crate::builds::overview;
@@ -38,10 +40,12 @@ use crate::sound::Cue;
 use nettai_battle::Content;
 use nettai_battle::input::keys;
 use nettai_content_api::EntryHandle;
+use nettai_match::Side;
 use nettai_match::build::{Checked, Overview, Stat};
 use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
+use std::sync::Arc;
 use std::time::Duration;
 
 /// The lines each of the effects' and the bugs' panels has room for under its title.
@@ -144,6 +148,15 @@ fn drawn(d: &GridData) -> (i32, i32) {
 /// The overview's numbers, in the order of the stats' words (`NavicustView.stat`).
 fn stats(o: &Overview) -> [Stat; 8] {
     [o.hp, o.attack, o.rapid, o.charge, o.custom, o.mega, o.giga, o.regular_memory]
+}
+
+/// What the NaviCust comes to: the overview of `side` (a build of `game`) without its patch cards, so the numbers
+/// the NaviCust changes, the abilities its programs give and the bugs it brings, not a card's (the user: "navicust
+/// shouldn't display patch card bugs"). `checked` is the whole build's, which is its own where the build has no
+/// cards (or its game none). None: the round doesn't start.
+fn own_overview(content: &Arc<Content>, game: &str, side: &Side, checked: &mut Checked) -> Option<Overview> {
+    let bare = side.without_patch_cards(content);
+    if bare == *side { checked.overview(content, side) } else { Checked::of(content, game, &bare).overview(content, &bare) }
 }
 
 /// A color by its name, as the app draws a program in it.
@@ -284,7 +297,7 @@ impl Navicust {
         view.set_notice(self.notice.clone().unwrap_or_default().into());
     }
 
-    /// The list: each program in each color, and where it is.
+    /// The list: each program in each color, where it is, and how many copies of it are placed.
     fn show_list(&self, shell: &Shell, draft: &Draft) {
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
@@ -306,24 +319,27 @@ impl Navicust {
                         _ if !copies.is_empty() => ProgramState::Placed,
                         _ => ProgramState::None,
                     };
-                    ProgramRow { name: words.names.entry(EntryHandle(piece)).into(), tone: tone(name.as_deref()), plus: d.plus.contains(&piece), state }
+                    ProgramRow {
+                        name: words.names.entry(EntryHandle(piece)).into(),
+                        tone: tone(name.as_deref()),
+                        plus: d.plus.contains(&piece),
+                        state,
+                        copies: copies.len() as i32,
+                    }
                 })
                 .collect()
         });
         view.set_programs(ModelRc::new(VecModel::from(rows)));
     }
 
-    /// What the NaviCust does (the build's overview without its patch cards: each number it changes, the programs
-    /// at work that give an ability), and every bug the build has, whoever brings it, by its full name and its
-    /// level or amount. A bug that wasn't there before pulses.
+    /// What the NaviCust does and the bugs it brings (`own_overview`: each number it changes, the programs at work
+    /// that give an ability, each bug by its full name and its level or amount); a patch card's bugs aren't its.
+    /// A bug that wasn't there before pulses.
     fn show_effects(&mut self, shell: &Shell, draft: &mut Draft) {
         let content = draft.content().clone();
         let side = draft.side().clone();
-        let full = draft.checked.overview(&content, &side);
-        let mut bare = side.clone();
-        // (A game without patch cards has no such fact: the build is its NaviCust's alone already.)
-        let _ = bare.set_fact(&content, super::patch_cards::FIELD, &[]);
-        let alone = if bare == side { full.clone() } else { Checked::of(&content, &draft.kit.game, &bare).overview(&content, &bare) };
+        let game = draft.kit.game.clone();
+        let alone = own_overview(&content, &game, &side, &mut draft.checked);
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
         let say = ui.global::<BuildWords>();
@@ -340,7 +356,7 @@ impl Navicust {
                 })
                 .collect();
             effects.extend(alone.iter().flat_map(|o| o.abilities.iter()).map(|&s| overview::source(words, s)));
-            let bugs: Vec<(String, String)> = full.iter().flat_map(|o| o.bugs.iter()).map(|b| overview::bug(words, b)).collect();
+            let bugs: Vec<(String, String)> = alone.iter().flat_map(|o| o.bugs.iter()).map(|b| overview::bug(words, b)).collect();
             (effects, bugs)
         });
         let said = |(n, e): &(String, String)| if e.is_empty() { n.clone() } else { format!("{n} {e}") };
@@ -372,8 +388,9 @@ impl Navicust {
         draft.edit(|content, side| grid::edit(d, content, side, held, edit))
     }
 
-    /// Take row `row`'s program in hand, its middle on the board's (a copy already placed in its color says
-    /// whether it is compressed: a save compresses every copy of a program in one color alike).
+    /// Take a new copy of row `row`'s program in hand, its middle on the board's, whether or not copies of it are
+    /// placed (one already placed in its color says whether it is compressed: a save compresses every copy of a
+    /// program in one color alike).
     fn take(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
         let Some(&(piece, color)) = self.rows.get(row) else { return };
         let Some(Some(d)) = &self.data else { return };
@@ -439,7 +456,7 @@ impl Navicust {
         false
     }
 
-    /// The program's last copy on the board taken off (Del on its row, or Enter there).
+    /// The placed piece at `i` taken off (Del or a right click on it, or on its program's row: its last copy).
     fn take_off(&mut self, shell: &mut Shell, draft: &mut Draft, i: Option<usize>) {
         match i {
             Some(i) if self.edit(draft, Edit::Remove(i)) => {
@@ -514,21 +531,6 @@ impl Navicust {
         ((0..n).contains(&cx) && (0..n).contains(&cy)).then_some((self.first + cx, self.first + cy))
     }
 
-    /// The program of row `row` in hand for a drag out of the list: a placed one's last copy picked up off the
-    /// board (by its first cell), else one taken from the list.
-    fn lift_row(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
-        let Some(Some(d)) = &self.data else { return };
-        match self.last_copy(draft, row) {
-            Some(i) => {
-                let parts = grid::placed(draft.content(), draft.side());
-                let Some(at) = d.occupied(&parts).iter().filter(|&(_, &j)| j == i).map(|(&c, _)| c).min() else { return };
-                self.let_go(draft);
-                self.press(shell, draft, at);
-            }
-            None => self.take(shell, draft, row),
-        }
-    }
-
     /// What the mouse did (`PRESS_ROW` and the rest).
     fn dragged(&mut self, shell: &mut Shell, draft: &mut Draft, phase: i32, value: i32) {
         match phase {
@@ -558,9 +560,9 @@ impl Navicust {
                 let cell = self.cell_under(shell, value);
                 if !drag.moving {
                     match drag.row {
-                        // (Out of its row: the program is in hand.)
+                        // (Out of its row: a new copy of the program is in hand.)
                         Some(row) => {
-                            self.lift_row(shell, draft, row);
+                            self.take(shell, draft, row);
                             if self.held.is_none() {
                                 self.drag = None;
                                 return;
@@ -726,8 +728,8 @@ impl Navicust {
     }
 
     /// The program under the cursor, in its color (its place among the program's): the piece in hand, the piece
-    /// placed on the cell the cursor is on, or the list's row; and whether it is a placed piece the cursor is on
-    /// (Del takes it off).
+    /// placed on the cell the cursor is on, or the list's row; and whether it is a placed piece the cursor is on, or
+    /// a placed program's row (Del takes it off, or its last copy).
     fn under_cursor(&self, shell: &Shell, draft: &Draft) -> (Option<(u16, u8)>, bool) {
         let Some(Some(d)) = &self.data else { return (None, false) };
         if let Some(h) = &self.held {
@@ -753,7 +755,7 @@ impl Navicust {
     }
 
     /// The strip across the top: the program under the cursor, by its name in its color, and the game's
-    /// description of it; and the footer's hints for a placed piece under the cursor.
+    /// description of it; and the footer's hints for a placed piece (or a placed program's row) under the cursor.
     fn show_strip(&self, shell: &Shell, draft: &Draft) {
         let (program, on_piece) = self.under_cursor(shell, draft);
         let ui = shell.ui();
@@ -808,14 +810,11 @@ impl Tab for Navicust {
         let _ = shell;
     }
 
-    /// Enter on a program's row takes it in hand, or a placed one's last copy off; on a cell, see `press`.
+    /// Enter on a program's row takes a new copy of it in hand, however many are placed (Del takes the last one
+    /// off); on a cell, see `press`.
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         self.back_due = None;
         match id {
-            "programs" if self.held.is_none() && self.last_copy(draft, index.max(0) as usize).is_some() => {
-                let i = self.last_copy(draft, index.max(0) as usize);
-                self.take_off(shell, draft, i);
-            }
             "programs" => self.take(shell, draft, index.max(0) as usize),
             "cell" => {
                 let at = self.cell_at(index);
@@ -940,5 +939,25 @@ mod tests {
             let last = data.boards.last().unwrap();
             assert_eq!(last.iter().any(|r| r.contains(&b'f')), game == "exe6", "{game}: a ring");
         }
+    }
+
+    /// The bugs the tab lists are the NaviCust's own: UnderSht off the command line brings the Movement Bug, and
+    /// Kettle's card the Custom Damage, which the whole build's overview has and the NaviCust's doesn't.
+    #[test]
+    fn the_bugs_are_the_navicusts_own() {
+        use nettai_match::build::Bug;
+        use nettai_match::testing::{PlacedProgram, patch_cards, program_colors, set_navicust};
+        let content = nettai_match::testing::exe6_content();
+        let builds = nettai_match::build::Builds::of(&content, "exe6").unwrap();
+        let mut side = builds.new_build(&content, "falzar").unwrap();
+        let undersht = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "undersht").unwrap();
+        let white = program_colors(&content, undersht).iter().position(|c| *c == "white").unwrap() as u8;
+        set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: white, x: 1, y: 2, rotation: 0, compressed: false }], 2);
+        let bugs = |o: Option<Overview>| o.unwrap().bugs.into_iter().filter_map(|b| if let Bug::Named { key, .. } = b { Some(key) } else { None }).collect::<Vec<_>>();
+        let own = |side: &Side| bugs(own_overview(&content, "exe6", side, &mut Checked::of(&content, "exe6", side)));
+        assert_eq!(own(&side), ["step_bug"], "no cards: the build's bugs are the NaviCust's");
+        side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "kettle")).unwrap();
+        assert_eq!(bugs(Checked::of(&content, "exe6", &side).overview(&content, &side)), ["step_bug", "custom_damage"], "the whole build's");
+        assert_eq!(own(&side), ["step_bug"], "Kettle's isn't the NaviCust's");
     }
 }
