@@ -279,6 +279,18 @@ Each is settled unless the user changes it.
     faces of that version's Crosses (EXE6) or souls (EXE4, EXE5), changing with it; the NEW BUILD dialog keeps its
     plain choice, with no faces. And: "well i think the version is still required for non-megaman because of folder
     restrictions right?": so the switch is there for every navi, the faces for MegaMan alone. (§6, docs/app.md §8.)
+    Where the switch is went to §2.42.
+
+42. **The version is switched by the header's tag** (2026-10-14). The user, of §2.41's stepper on the Navi tab:
+    "the game version switcher is in a weird place", and given the choices, "header please": the editor's header's
+    version tag (GREGAR, in the version's color) is the switch. A click or a tap takes the next version; it is a
+    control in the focus order, which Left and Right step and Enter steps on, its text and color changing with the
+    version; it keeps a tag's look, with a small arrow at each side lit on hover and focus, Back's hover look, and
+    on a phone a touch 44 tall. While it is focused the footer says Switch version and Next version. The Navi tab's
+    stepper is gone; its panel keeps the faces of the version's Crosses or souls under MegaMan, changing as the tag
+    does. A switch is §2.41's, its problems shown as they were (the Folder tab marked, the header's count). Only
+    the editor's tag is a switch: Play's, the Builds list's and Practice's stay plain. The NEW BUILD dialog's note
+    says "It can be switched later in the editor." (§6, docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -289,7 +301,7 @@ are the defaults; each is easy to reverse and is listed for review.
 |---|---|
 | Typefaces | Headings, buttons and labels in Chakra Petch; all other text in Murecho; codes and numbers in M PLUS 1 Code. (Japanese headings were Murecho's until the user chose M PLUS 1 for them: §2.23) |
 | A game's look, where the user said nothing (§2.23) | On a change of game the panels' and the text's colors cross-fade over the sweep's time (they don't change at the moving edge, which would mean drawing every screen twice); no art from the packs in the header |
-| A build's version | Fixed when the build is made, as a save's is ("It can't be changed later"). Reversed by §2.41: it is switched on the Navi tab |
+| A build's version | Fixed when the build is made, as a save's is ("It can't be changed later"). Reversed by §2.41: it is switched in the editor (by the header's tag: §2.42) |
 | Netplay rounds | A single battle or best of 3, a shared setting either player can change (since §2.34: First to, 1 to 10) |
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
 | What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
@@ -542,19 +554,23 @@ Each is in the mockups under the same name.
   patch cards added beside it in cyan); Abilities; Bugs, each by name and level, purple; then the folder's 30 chips
   in two columns of 26-tall rows: number, icon, name, REG or TAG1 or TAG2, element, code.
 - **New build:** a name and the version (two choices, in §2.2's order, their names alone); "Sets the Crosses and
-  Giga chips. It can be switched later on the Navi tab." (§2.41.) The folder starts as a new save's of that game.
+  Giga chips. It can be switched later in the editor." (§2.41, §2.42.) The folder starts as a new save's of that game.
   There are no random builds anywhere.
-- **The editor's** header has the build's name, its version, and "✓ Ready to play" or how many problems; its tabs
+- **The editor's** header has the build's name, its version's tag, and "✓ Ready to play" or how many problems. The
+  tag is the version's switch (§2.42), on every tab: a click or a tap takes the next version, and it is in the
+  focus order, Left and Right stepping it, Enter stepping it on (the footer: ←→ Switch version, Enter Next
+  version); it changes its name and color with the version, keeps a tag's look with a small arrow at each side
+  (lit on hover and focus) and Back's hover look, and on a phone, at the header's right, has a touch 44 tall. A
+  switch keeps the rest of the build; what no longer fits (the other version's Giga chips in the folder) is a
+  problem as any other. Elsewhere (Play, the Builds list, Practice) a version's tag is plain. Its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
   them). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
   keeps MegaMan's NaviCust, cards and auto battle data aside, outside the side it hands to a match (the rules
   refuse a NaviCust on a navi that compiles none), and puts them back when MegaMan is chosen again.
 - **Navi:** the game's navis as a grid of cards; the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
   user chose to leave it out); "NaviCust
-  and patch cards are MegaMan only." Under the navi's facts, the build's version, a stepper, for every navi (§2.41:
-  it decides the folder's Giga chips whatever the navi); with MegaMan, under it the faces of the Crosses (EXE6) or
-  souls (EXE4, EXE5) that version gives him, changing as the version does. Switching keeps the rest of the build;
-  what no longer fits (the other version's Giga chips in the folder) is a problem as any other. In EXE4 and EXE5,
+  and patch cards are MegaMan only." With MegaMan, under the navi's facts the faces of the Crosses (EXE6) or souls
+  (EXE4, EXE5) the build's version gives him, changing as the header's tag switches it (§2.41, §2.42). In EXE4 and EXE5,
   MegaMan's panel also has Light or Dark, a stepper, with the face the round starts him with.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
