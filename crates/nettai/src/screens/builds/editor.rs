@@ -35,6 +35,7 @@ use slint::{ComponentHandle, ModelRc, VecModel};
 use std::path::PathBuf;
 use std::rc::Rc;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
 
 /// The build being edited: what a tab is handed, with the shell.
 pub struct Draft {
@@ -161,6 +162,62 @@ pub trait Tab {
     fn answered(&mut self, _shell: &mut Shell, _draft: &mut Draft, _tag: &str, _choice: usize) {}
 }
 
+// ---- A row dragged to another place ---------------------------------------------------------------------------
+
+/// How near a list the pointer may be, past its edge, and still be over it (a drag let go there lands on the
+/// nearest row; past it, the row goes back).
+const NEAR: f32 = 16.0;
+
+/// Where in the window a drag's pointer is: `at` as the UI's `Drag` says it (x * 65536 + y).
+pub fn pointer_at(at: i32) -> (f32, f32) {
+    ((at.max(0) / 65536) as f32, (at.max(0) % 65536) as f32)
+}
+
+/// Tell the UI where the row being dragged would land (`None`: nowhere, it goes back), and whether it trades places
+/// with what is there.
+pub fn show_drop(shell: &Shell, to: Option<usize>, swap: bool) {
+    let ui = shell.ui();
+    let drag = ui.global::<nettai_ui::Drag>();
+    drag.set_to(to.map_or(-1, |t| t as i32));
+    drag.set_swap(swap && to.is_some());
+}
+
+/// The row of list `id` (a `ListView`) under `(x, y)`, of the first `rows` of its rows: past the last, the last;
+/// none where the pointer is off the list.
+pub fn list_row(shell: &Shell, id: &str, (x, y): (f32, f32), rows: usize) -> Option<usize> {
+    let registry = shell.nav.registry();
+    let registry = registry.borrow();
+    let view = registry.view(id)?;
+    let near = x >= view.x - NEAR && x <= view.right() + NEAR && y >= view.y - NEAR && y <= view.bottom() + NEAR;
+    let row = registry.row_at(id, y.clamp(view.y, view.bottom() - 1.0))?;
+    (near && rows > 0).then(|| row.clamp(0, rows as i32 - 1) as usize)
+}
+
+/// The control of `id` among `indices` nearest `(x, y)`, where the pointer is among them (within their bounds, and
+/// within page `page`'s view if they are on one); none where it is off them.
+pub fn nearest(shell: &Shell, id: &str, indices: impl Iterator<Item = usize>, (x, y): (f32, f32), page: Option<&str>) -> Option<usize> {
+    let registry = shell.nav.registry();
+    let registry = registry.borrow();
+    let view = page.and_then(|p| registry.view(p));
+    if let Some(view) = view
+        && (x < view.x - NEAR || x > view.right() + NEAR || y < view.y - NEAR || y > view.bottom() + NEAR)
+    {
+        return None;
+    }
+    // (On a page, those scrolled out of its view aren't among them.)
+    let shown = |r: &crate::nav::Rect| r.w > 0.0 && view.is_none_or(|v| r.bottom() > v.y && r.y < v.bottom());
+    let rects: Vec<(usize, crate::nav::Rect)> = indices.filter_map(|i| registry.rect(&crate::nav::Key::new(id, i as i32)).filter(shown).map(|r| (i, r))).collect();
+    let (left, top) = rects.iter().fold((f32::MAX, f32::MAX), |(l, t), (_, r)| (l.min(r.x), t.min(r.y)));
+    let (right, bottom) = rects.iter().fold((f32::MIN, f32::MIN), |(l, t), (_, r)| (l.max(r.right()), t.max(r.bottom())));
+    if x < left - NEAR || x > right + NEAR || y < top - NEAR || y > bottom + NEAR {
+        return None;
+    }
+    // (How far the pointer is from a row: across counted twice, so a row beside it in another column is farther
+    // than one above it in its own.)
+    let off = |r: &crate::nav::Rect| 2.0 * (r.x - x).max(x - r.right()).max(0.0) + (r.y - y).max(y - r.bottom()).max(0.0);
+    rects.iter().min_by(|a, b| off(&a.1).total_cmp(&off(&b.1))).map(|(i, _)| *i)
+}
+
 /// Every tab's module, in the bar's order.
 fn all() -> Vec<Box<dyn Tab>> {
     vec![
@@ -215,7 +272,15 @@ pub struct Editor {
     pub draft: Draft,
     tabs: Vec<Box<dyn Tab>>,
     at: usize,
+    /// The row last clicked, and when: a click on the marked row within a double click's time of the click before on
+    /// it does nothing more (`DOUBLE_CLICK`).
+    clicked: Option<(String, i32, Instant)>,
 }
+
+/// A double click's time (Slint's own): a click on the marked row within it of the click before on that row does
+/// nothing, so a double click on a row that isn't marked marks it and leaves what it holds, and one on the marked
+/// row removes one thing.
+const DOUBLE_CLICK: Duration = Duration::from_millis(500);
 
 impl Editor {
     /// Open `build` (kept at `path`) in the editor: settled as every build is, on the tab last used.
@@ -227,7 +292,7 @@ impl Editor {
         let tabs: Vec<Box<dyn Tab>> = all().into_iter().filter(|t| has(&content, t.as_ref())).collect();
         let draft = Draft { kit, build, checked, path, navi_only, changed: settled };
         let last = shell.settings.remembered.get(REMEMBERED).cloned();
-        let mut editor = Editor { draft, tabs, at: 0 };
+        let mut editor = Editor { draft, tabs, at: 0, clicked: None };
         editor.at = editor.tabs.iter().position(|t| Some(name(t.id())) == last.as_deref()).filter(|&i| editor.enabled(i)).unwrap_or(0);
         editor.save(shell);
         editor
@@ -356,6 +421,9 @@ impl Editor {
             let way = if index as usize >= self.at { 1 } else { -1 };
             return self.go(shell, index.max(0) as usize, way);
         }
+        if shell.nav.pointing() {
+            self.clicked = Some((id.to_string(), index, Instant::now()));
+        }
         let (tab, draft) = self.tab();
         tab.activate(shell, draft, id, index);
         // (A click on one of the build's own rows, an entry, a card, a slot or a place, chooses it as Enter does,
@@ -377,13 +445,28 @@ impl Editor {
         self.after(shell);
     }
 
-    /// A right click on a row that holds something of the build (its `removable` touch, which brought the focus to
-    /// it) removes it, as Del there does.
+    /// A click on the marked row of one of the build's lists (`click-remove`: its touch's `marked`; the press
+    /// brought the focus to it) removes what it holds, as Del there does, unless it is the second click of a double
+    /// click; the NaviCust's right click (`remove`) does at once. A row dragged (`drag-over`, `drag-drop`) is the
+    /// tab's, as its other choices are.
     pub fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
-        let (tab, draft) = self.tab();
         if id == "remove" {
+            let (tab, draft) = self.tab();
+            tab.action(shell, draft, Action::Delete);
+        } else if id == "click-remove" {
+            let key = shell.nav.focused().map(|k| (k.id.clone(), k.index));
+            let now = Instant::now();
+            let again = matches!((&self.clicked, &key), (Some((i, n, at)), Some((id, index))) if i == id && n == index && now.duration_since(*at) < DOUBLE_CLICK);
+            if let Some((id, index)) = key {
+                self.clicked = Some((id, index, now));
+            }
+            if again {
+                return;
+            }
+            let (tab, draft) = self.tab();
             tab.action(shell, draft, Action::Delete);
         } else {
+            let (tab, draft) = self.tab();
             tab.choose(shell, draft, id, index, choice);
         }
         self.after(shell);

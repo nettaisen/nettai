@@ -235,6 +235,18 @@ impl Registry {
         }
     }
 
+    /// Where a page's or a list's view is.
+    pub fn view(&self, id: &str) -> Option<Rect> {
+        self.lists.get(id).map(|l| l.view).or_else(|| self.pages.get(id).map(|p| p.view))
+    }
+
+    /// The row of list `id` at height `y` in the window, as it is scrolled (it may be past its rows: below 0, or
+    /// `rows` or more).
+    pub fn row_at(&self, id: &str, y: f32) -> Option<i32> {
+        let l = self.lists.get(id).filter(|l| l.pitch > 0.0)?;
+        Some(((y - l.view.y + l.scroll) / l.pitch).floor() as i32)
+    }
+
     /// The page `id` is in: the one with the longest name that begins `id`.
     fn page_of(&self, id: &str) -> Option<(&str, Rect)> {
         self.pages.iter().filter(|(name, _)| id.starts_with(name.as_str())).max_by_key(|(name, _)| name.len()).map(|(name, p)| (name.as_str(), p.view))

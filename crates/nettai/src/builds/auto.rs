@@ -300,19 +300,28 @@ pub enum Edit {
     Zero(usize),
     /// Every place emptied.
     Clear,
+    /// What a place holds moved to another, the places between shifting one toward where it was (within one list).
+    Move(usize, usize),
+    /// What two places hold traded.
+    Swap(usize, usize),
 }
 
 /// Apply `edit` to the side's places: whether the side changed.
 pub fn update(content: &Content, side: &mut Side, edit: Edit) -> bool {
     let mut data = AutoBattle::of_side(content, side);
-    let mut set = |i: usize, e: Entry| data.places.get_mut(i).is_some_and(|p| std::mem::replace(p, e) != e);
-    let changed = match edit {
-        Edit::Put(i, chip) => set(i, Entry::Chip(chip)),
-        Edit::Empty(i) => set(i, Entry::Empty),
-        Edit::Zero(i) => set(i, Entry::Zero),
-        Edit::Clear => (0..PLACES).fold(false, |changed, i| set(i, Entry::Empty) || changed),
-    };
-    changed && data.write(content, side).is_ok()
+    let before = data.places;
+    let places = &mut data.places;
+    match edit {
+        Edit::Put(i, chip) if i < PLACES => places[i] = Entry::Chip(chip),
+        Edit::Empty(i) if i < PLACES => places[i] = Entry::Empty,
+        Edit::Zero(i) if i < PLACES => places[i] = Entry::Zero,
+        Edit::Clear => *places = [Entry::Empty; PLACES],
+        Edit::Move(from, to) if from < to && to < PLACES => places[from..=to].rotate_left(1),
+        Edit::Move(from, to) if to < from && from < PLACES => places[to..=from].rotate_right(1),
+        Edit::Swap(a, b) if a.max(b) < PLACES => places.swap(a, b),
+        _ => return false,
+    }
+    data.places != before && data.write(content, side).is_ok()
 }
 
 /// Empty the side's places that point at a pattern record (whose records
@@ -393,6 +402,13 @@ mod tests {
         assert!(update(&content, side, Edit::Zero(3)));
         assert_eq!(AutoBattle::of_side(&content, side).places[3], Entry::Zero);
         assert!(update(&content, side, Edit::Empty(3)));
+        // Moved down two, the places between shifting up; traded with another.
+        assert!(update(&content, side, Edit::Put(3, sword)) && update(&content, side, Edit::Move(3, 5)));
+        assert_eq!(AutoBattle::of_side(&content, side).places[3..6], [Entry::Chip(cannon), Entry::Empty, Entry::Chip(sword)]);
+        assert!(update(&content, side, Edit::Swap(3, 5)) && !update(&content, side, Edit::Move(4, 4)));
+        assert_eq!(AutoBattle::of_side(&content, side).places[3..6], [Entry::Chip(sword), Entry::Empty, Entry::Chip(cannon)]);
+        assert!(update(&content, side, Edit::Move(5, 4)) && update(&content, side, Edit::Empty(3)));
+        assert_eq!(AutoBattle::of_side(&content, side).places[3..6], [Entry::Empty, Entry::Chip(cannon), Entry::Empty]);
         // A save's place that points at a pattern: dropped.
         let mut data = AutoBattle::of_side(&content, side);
         data.places[33] = Entry::Pattern(1);

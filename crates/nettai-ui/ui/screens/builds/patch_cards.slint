@@ -11,11 +11,11 @@
 // (`PatchCardsOverlay`), with what a card's keys do as buttons. Its Rust half is src/screens/builds/patch_cards.rs.
 
 import { Theme, Audit } from "../../theme.slint";
-import { Nav, Focusable } from "../../nav.slint";
+import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
-import { LibraryHead } from "folder.slint";
+import { LibraryHead, DropGap } from "folder.slint";
 
 // One line a card writes, and what comes before it in a row of them: nothing, a dot between two of one group, a bar
 // between the groups.
@@ -185,88 +185,125 @@ component SlotName inherits Rectangle {
     }
 }
 
+// Where card `i` would be while one is dragged: at the place it shifts to (the dragged one where it would land).
+global CardDrag {
+    out property <bool> on: Drag.on && Drag.list == "card";
+    out property <int> to: self.on ? Drag.to : -1;
+    public pure function shown(i: int) -> int {
+        return self.to < 0 ? i : i == Drag.from ? self.to : (Drag.from < i && i <= self.to) ? i - 1 : (self.to <= i && i < Drag.from) ? i + 1 : i;
+    }
+}
+
 // One of the build's cards (or slots): its slot's name, its number, its name and its MB over its lines; Empty where
-// it holds none.
+// it holds none. A click on it while it is marked takes its card out; in a game whose cards go in a list (not
+// slots), a drag takes it to another place in the list (`dy`: where it is shifted to while another is dragged; the
+// one dragged is drawn under the pointer, `gone` here). `lifted`: it is that one, drawn under the pointer.
 component InstalledRowView inherits Rectangle {
     in property <CardRow> card;
     in property <int> nav-index;
     in property <bool> chosen;
     in property <bool> slotted;
+    in property <length> dy;
+    in property <bool> gone;
+    in property <bool> lifted;
     property <length> lead: root.slotted ? 8px + 34px + 8px : 8px;
+    // (Lifted: raised, a little larger, with a shadow and a line in the cursor's color.)
     Rectangle {
-        background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+        visible: root.lifted;
+        transform-scale: 1.03;
+        background: Theme.raised;
+        border-width: 1px;
+        border-color: Theme.cursor;
+        drop-shadow-blur: 10px;
+        drop-shadow-offset-y: 4px;
+        drop-shadow-color: #00000090;
     }
 
     Rectangle {
         x: 0;
-        width: 2px;
-        background: root.chosen ? Theme.cursor : transparent;
-    }
+        y: root.dy;
+        opacity: root.gone ? 0 : 1;
+        animate y {
+            duration: CardDrag.on ? Theme.quick : 0ms;
+            easing: ease-out;
+        }
 
-    SlotName {
-        x: 8px;
-        y: 5px;
-        visible: root.slotted;
-        text: root.card.slot;
+        Rectangle {
+            background: root.chosen ? @linear-gradient(90deg, Theme.tint 0%, Theme.clear 85%) : touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+        }
 
-        Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
+        Rectangle {
+            x: 0;
+            width: 2px;
+            background: root.chosen ? Theme.cursor : transparent;
+        }
 
-    Text {
-        x: root.lead;
-        y: 4px;
-        width: 30px;
-        height: 20px;
-        text: root.card.number;
-        color: Theme.dim;
-        font-family: Theme.mono;
-        font-size: 11px;
-        font-weight: 500;
-        vertical-alignment: center;
-    }
+        SlotName {
+            x: 8px;
+            y: 5px;
+            visible: root.slotted;
+            text: root.card.slot;
 
-    Text {
-        x: root.lead + 30px + 8px;
-        y: 4px;
-        width: parent.width - self.x - 8px - 56px - 8px;
-        height: 20px;
-        text: root.card.there ? root.card.name : @tr("Empty");
-        color: root.card.there ? Theme.text : Theme.dim;
-        font-family: Theme.body;
-        font-size: 13px;
-        font-weight: root.card.there ? 600 : 400;
-        vertical-alignment: center;
-        overflow: elide;
-    }
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
 
-    Text {
-        x: parent.width - 8px - 56px;
-        y: 4px;
-        width: 56px;
-        height: 20px;
-        text: root.card.megabytes;
-        color: Theme.muted;
-        font-family: Theme.mono;
-        font-size: 12px;
-        font-weight: 500;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-    }
+        Text {
+            x: root.lead;
+            y: 4px;
+            width: 30px;
+            height: 20px;
+            text: root.card.number;
+            color: Theme.dim;
+            font-family: Theme.mono;
+            font-size: 11px;
+            font-weight: 500;
+            vertical-alignment: center;
+        }
 
-    CardLinesView {
-        x: root.lead + 30px + 8px;
-        y: 24px;
-        width: parent.width - self.x - 8px;
-        height: 16px;
-        lines: root.card.lines;
-        // (A phone's cards are over the ground.)
-        on-panel: !Theme.phone;
+        Text {
+            x: root.lead + 30px + 8px;
+            y: 4px;
+            width: parent.width - self.x - 8px - 56px - 8px;
+            height: 20px;
+            text: root.card.there ? root.card.name : @tr("Empty");
+            color: root.card.there ? Theme.text : Theme.dim;
+            font-family: Theme.body;
+            font-size: 13px;
+            font-weight: root.card.there ? 600 : 400;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        Text {
+            x: parent.width - 8px - 56px;
+            y: 4px;
+            width: 56px;
+            height: 20px;
+            text: root.card.megabytes;
+            color: Theme.muted;
+            font-family: Theme.mono;
+            font-size: 12px;
+            font-weight: 500;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+        }
+
+        CardLinesView {
+            x: root.lead + 30px + 8px;
+            y: 24px;
+            width: parent.width - self.x - 8px;
+            height: 16px;
+            lines: root.card.lines;
+            // (A phone's cards are over the ground.)
+            on-panel: !Theme.phone;
+        }
     }
 
     touch := RowTouch {
         nav: "card";
         nav-index: root.nav-index;
-        removable: true;
+        marked: root.chosen && !Theme.phone;
+        drag: root.slotted || !root.card.there || root.nav-index < 0 ? "" : "card";
     }
 }
 
@@ -347,7 +384,6 @@ component CardLibraryRowView inherits Rectangle {
     touch := RowTouch {
         nav: "lib.rows";
         nav-index: root.nav-index;
-        removable: true;
     }
 }
 
@@ -647,6 +683,8 @@ export component PatchCardsTab inherits Rectangle {
         nav: "card";
         count: PatchCardsView.installed.length;
         row-height: Theme.phone ? 48px : 44px;
+        // (A mouse's drag on a card moves it: the wheel scrolls.)
+        mouse-pan: false;
         for at in cards.shown: InstalledRowView {
             property <int> index: cards.first + at;
             y: self.index * cards.pitch;
@@ -656,16 +694,41 @@ export component PatchCardsTab inherits Rectangle {
             nav-index: self.index;
             slotted: PatchCardsView.counts.slotted;
             chosen: self.index == PatchCardsView.marked;
+            dy: (CardDrag.shown(self.index) - self.index) * cards.pitch;
+            gone: CardDrag.on && self.index == Drag.from;
         }
     }
 
-    // (The row a card went into, over the list where it is scrolled to.)
+    // (The card being dragged, under the pointer.)
+    InstalledRowView {
+        x: Drag.x - root.absolute-position.x - Drag.grab-x;
+        y: Drag.y - root.absolute-position.y - Drag.grab-y;
+        width: cards.row-width;
+        height: cards.row-height;
+        visible: CardDrag.on;
+        card: PatchCardsView.installed[max(0, Drag.from)];
+        nav-index: -1;
+        lifted: true;
+        chosen: true;
+    }
+
+    // (The row a card went into, and where a card dragged would land, over the list where it is scrolled to.)
     Rectangle {
         x: cards.x;
         y: cards.y;
         width: cards.row-width;
         height: cards.height;
         clip: true;
+        DropGap {
+            x: 0;
+            y: max(0, CardDrag.to) * cards.pitch - cards.scroll;
+            width: parent.width;
+            height: cards.row-height;
+            visible: CardDrag.to >= 0;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
         Flash {
             y: PatchCardsView.landed * cards.pitch - cards.scroll;
             height: cards.row-height;
