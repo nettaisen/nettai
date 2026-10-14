@@ -358,7 +358,9 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     shot(add, "builds-folder-switched", Pair::None);
     add(90, on_tab(EditorTab::Folder, "Folder"));
     add(0, state("builds-folder-switched", false, false));
-    add(SETTLE, press("version", 0));
+    // (Back by Left on the tag, which steps it without opening its list.)
+    add(SETTLE, focus("version", 0));
+    add(SETTLE, act(Action::Left));
     shot(add, "builds-folder-switched-back", Pair::None);
     add(90, on_tab(EditorTab::Folder, "Folder"));
     add(0, state("builds-folder-switched-back", true, true));
