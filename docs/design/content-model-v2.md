@@ -796,7 +796,12 @@ neither one of the core's types nor a collection of the game's root is refused a
 names one by its id there (`patch_cards = ["canodumb"]`), the locales by a table of the collection's name
 (`[patch_cards]`), the library order by a list of its name (`navicust_programs = [...]`). Rust names neither
 patch cards nor NaviCust programs; their types (`PatchCard`, `NaviCustProgram`) are exelib's
-(content/exelib/types.d.luau), and compat, the game's boundary, maps a save's numbers to the entries.
+(content/exelib/types.d.luau), and compat, the game's boundary, maps a save's numbers to the entries. A fact only
+one version of the game has is said where it is, by the version's id as the side's `version` fact names it: a chip
+its `version` (EXE6's version-only Giga chips), a patch card's effect its `version` (the user, 2026-10-14: "it's
+actually just the same card, but with different effects depending on version of the game": Bass-Cross MegaMan is
+one card each game, whose effects each version's ROM gives its own; a side has the effects of its version and of
+none, and a tool shows its build's).
 
 ## 4. Folder layout
 

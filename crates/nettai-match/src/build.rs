@@ -1211,10 +1211,11 @@ mod tests {
     /// A version's forms are its own: a new build of each has its version's
     /// souls (EXE4's and EXE5's, which the version sets) or Crosses (EXE6's,
     /// MegaMan's own forms of the version), and is told by them as that
-    /// version; made the other version, it has the other's. In EXE4 and
-    /// EXE5, whose rules take no version, a side with some souls of each, or
-    /// every soul (the rules' default, a fresh side's), is of no version; in
-    /// EXE6 the version is the rules' own fact, whatever the Crosses.
+    /// version; made the other version, it has the other's. A side with some
+    /// souls of each, or every soul (the rules' default, a fresh side's), is
+    /// of no version (EXE4's rules take none; EXE5's version goes with its
+    /// souls); in EXE6 the version is the rules' own fact, whatever the
+    /// Crosses.
     #[test]
     fn each_version_has_its_own_forms() {
         let red = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"];
@@ -1252,7 +1253,7 @@ mod tests {
                 let expected: Vec<&str> = first.iter().map(String::as_str).chain(forms[v].iter().copied()).collect();
                 assert_eq!(shown, expected, "{game} {version}");
                 assert_eq!(builds.version_of(&content, &side), Some(*version), "{game}");
-                assert_eq!(side.version(&content), (game == "exe6").then_some(*version), "{game}: the rules' own version");
+                assert_eq!(side.version(&content), (game != "exe4").then_some(*version), "{game}: the rules' own version");
                 builds.take_version(&content, &mut side, versions[1 - v]).unwrap();
                 assert_eq!(names(&side), sorted(forms[1 - v]), "{game} {version} made {}", versions[1 - v]);
                 assert_eq!(builds.version_of(&content, &side), Some(versions[1 - v]), "{game}");
@@ -1269,6 +1270,73 @@ mod tests {
             } else {
                 assert_eq!(builds.version_of(&content, &mixed), None, "{game}: a mix of souls");
                 assert_eq!(builds.version_of(&content, &Side::fresh(&content, game).unwrap()), None, "{game}: every soul");
+            }
+        }
+    }
+
+    /// The Bass-Cross MegaMan card is one card whose effects are its build's version's (EXE6's card 117, EXE5's 111:
+    /// each version's ROM its own card table's entry; the user: "it's actually just the same card, but with different
+    /// effects depending on version of the game"). A build of either version holds it with nothing wrong, and has the
+    /// effects of no version's (NormBody, TriBustr, the MegFld-2 bug) and its version's own: Gregar's and Team
+    /// ProtoMan's HP+200, SprArmr and the rapid buster, Falzar's and Team Colonel's HP+20%, FlotShoe and their own
+    /// charged shot. Switched to the other version, the build keeps the card where it was and has the other's effects.
+    #[test]
+    fn bass_cross_megamans_effects_are_the_versions() {
+        for (content, game, versions) in [(exe6_content(), "exe6", ["gregar", "falzar"]), (exe5_content(), "exe5", ["protoman", "colonel"])] {
+            let builds = Builds::of(&content, game).unwrap();
+            let card = ids::entry(&content, game, facts::PATCH_CARDS, "bass-cross-megaman").unwrap();
+            let other = ids::entry(&content, game, facts::PATCH_CARDS, if game == "exe6" { "canodumb" } else { "billy" }).unwrap();
+            let entry = |h: EntryHandle| Fact::Value(Value::Def(Registry::Entry, h.0));
+            // The kind of the card's effect at place `i` of its list.
+            let kind_at = |i: usize| {
+                let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(card).key).unwrap();
+                let nettai_content_api::Data::List(effects) = d.spec.field("effects") else { panic!("{game}: its effects") };
+                effects[i].field("kind").str().unwrap().to_string()
+            };
+            // What the build comes to: its HP, its Mega chips, its abilities (the card's by their kinds) and its
+            // charged shot.
+            let looked = |side: &Side| {
+                let mut checked = Checked::of(&content, game, side);
+                assert_eq!(checked.problems, Vec::new(), "{game}");
+                let charge = checked.stats().unwrap().weapons.charge_shot;
+                let o = checked.overview(&content, side).unwrap();
+                let abilities: Vec<String> = o
+                    .abilities
+                    .iter()
+                    .map(|s| match *s {
+                        Source::Effect(h, i) if h == card => kind_at(i),
+                        Source::Effect(..) | Source::Entry(_) => "another's".to_string(),
+                    })
+                    .collect();
+                ((o.hp.value, o.mega.value, abilities), charge)
+            };
+            // The HP the other card leaves (the card before it in the list).
+            let before = {
+                let mut side = builds.new_build(&content, versions[0]).unwrap();
+                side.set_fact(&content, facts::PATCH_CARDS, &[entry(other)]).unwrap();
+                looked(&side).0.0
+            };
+            // A version's own: Gregar's and Team ProtoMan's HP+200 and SprArmr, Falzar's and Team Colonel's HP+20% and
+            // FlotShoe (and in EXE5 each team's Hub Style, which the card screen doesn't show).
+            let own = |version: &str| -> (i32, i32, Vec<String>) {
+                let (hp, first) = if ["gregar", "protoman"].contains(&version) { (before + 200, "super_armor") } else { (before * 6 / 5, "float_shoes") };
+                let mut abilities: Vec<String> = [first, "b_button", "charged_shot"].map(str::to_string).to_vec();
+                if game == "exe5" {
+                    abilities.push("hub_style".into());
+                }
+                (hp, 3, abilities)
+            };
+            for (v, version) in versions.iter().enumerate() {
+                let mut side = builds.new_build(&content, version).unwrap();
+                side.set_fact(&content, facts::PATCH_CARDS, &[entry(other), entry(card)]).unwrap();
+                let (seen, charge) = looked(&side);
+                assert_eq!(seen, own(version), "{game} {version}");
+                let switched = versions[1 - v];
+                builds.take_version(&content, &mut side, switched).unwrap();
+                assert_eq!(side.facts.get(&content, facts::PATCH_CARDS).map(|l| l.defs()), Some(vec![other.0, card.0]), "{game}: the card stays");
+                let (seen, switched_charge) = looked(&side);
+                assert_eq!(seen, own(switched), "{game} {version} made {switched}");
+                assert_ne!(switched_charge, charge, "{game} {version} made {switched}: the other's charged shot");
             }
         }
     }

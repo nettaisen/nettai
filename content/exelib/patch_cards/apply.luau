@@ -25,6 +25,23 @@ local function div(n: number, d: number): number
     return if q >= 0 then math.floor(q) else math.ceil(q)
 end
 
+-- Whether effect `e` is one a side of version `version` (its setup's `version`) has: one of no version's, or of its.
+function apply.has(e: PatchCardEffect, version: string?): boolean
+    return e.version == nil or e.version == version
+end
+
+-- Card `card`'s effects as a side of version `version` has them, in the card's order: those of no version's, and
+-- those of its (the Bass-Cross MegaMan cards' each version's own).
+function apply.effects(card: PatchCard, version: string?): { PatchCardEffect }
+    local out: { PatchCardEffect } = {}
+    for _, e in card.effects :: { PatchCardEffect } do
+        if apply.has(e, version) then
+            table.insert(out, e)
+        end
+    end
+    return out
+end
+
 -- A card's effects in the order they apply: by kind; of two that are the
 -- same effect, the first.
 function apply.in_order(effects: { PatchCardEffect }, game: PatchCardsGame): { PatchCardEffect }
@@ -116,7 +133,8 @@ local DRAIN_MOST = 7
 -- have, with its level or its amount (`card_bug`, the game's: its rules/navicust knows the bugs' levels); any other
 -- effect a card marks as a bug (an ordinary one that is a drawback: Super Armor off, a lost shield) as its card's
 -- effect, the card's own line; and a bug slot's value that is neither a bug nor its fix (a holy trail) is an ability. Of two cards' effects of one kind the later is listed, as its write is the one that holds. And the list
--- itself: its cards' MB together against the most a list holds (`mb`), a card once.
+-- itself: its cards' MB together against the most a list holds (`mb`), a card once. A card's effects are those the
+-- side's version has (`version`, `apply.has`); an effect is named by its place in the card's list.
 --
 -- The cards' effects are listed only where the cards apply (`applies`: the navi that changes form, as each game's
 -- `apply` has it), and their bug effects only where no card's BugStop holds them back (the copy's `bug_stop`). Where
@@ -128,6 +146,7 @@ local DRAIN_MOST = 7
 -- their levels together.
 function apply.overview(
     installed: { PatchCard },
+    version: string?,
     mb: number,
     bug_kinds: { [string]: boolean },
     applies: boolean,
@@ -139,8 +158,7 @@ function apply.overview(
     local total = 0
     for i, c in installed do
         total += c.mb or 0
-        local effects: { PatchCardEffect } = c.effects
-        for _, e in effects do
+        for _, e in apply.effects(c, version) do
             if e.group == "ability" then
                 last[e.kind] = i
                 held[e.kind] = e
@@ -172,9 +190,8 @@ function apply.overview(
         table.insert(out.bugs, bug)
     end
     for i, c in installed do
-        local effects: { PatchCardEffect } = c.effects
-        for at, e in effects do
-            if e.group == "ability" and last[e.kind] == i and not (stopped and bug_kinds[e.kind]) then
+        for at, e in c.effects :: { PatchCardEffect } do
+            if apply.has(e, version) and e.group == "ability" and last[e.kind] == i and not (stopped and bug_kinds[e.kind]) then
                 local line: SetupSource = { entry = c, effect = at }
                 if not bug_kinds[e.kind] then
                     if e.bug then
@@ -201,8 +218,15 @@ function apply.overview(
 end
 
 -- The cards of `installed` over the block (`slot`, seeded by the game; `hp` the working HP, EXE6's
--- `sub_8141AEC`, EXE5's 0x08137B00): the working HP after them, and which slots a card wrote.
-function apply.run(installed: { PatchCard }, game: PatchCardsGame, hp: number, slot: { [string]: any }): (number, { [string]: boolean })
+-- `sub_8141AEC`, EXE5's 0x08137B00), each with its effects for the side's version (`version`): the working HP after
+-- them, and which slots a card wrote.
+function apply.run(
+    installed: { PatchCard },
+    version: string?,
+    game: PatchCardsGame,
+    hp: number,
+    slot: { [string]: any }
+): (number, { [string]: boolean })
     local written: { [string]: boolean } = {}
     local clamp, signed_byte = apply.clamp, apply.signed_byte
     local function put(name: string, v: any)
@@ -213,7 +237,7 @@ function apply.run(installed: { PatchCard }, game: PatchCardsGame, hp: number, s
         put(name, bit32.band(clamp(signed_byte(slot[name]) + d, lo, hi), 0xFF))
     end
     for _, c in installed do
-        for _, e in apply.in_order(c.effects, game) do
+        for _, e in apply.in_order(apply.effects(c, version), game) do
             local k, n = e.kind, e.amount or 0
             if k == "hp_add" then
                 hp = clamp(hp + n, 1, 9999)
