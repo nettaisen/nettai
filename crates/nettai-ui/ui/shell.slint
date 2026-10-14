@@ -141,6 +141,9 @@ export global Shell {
     // The battle's picture (one texture, written in place), and its size as drawn: a whole multiple of 240 by
     // 160 display pixels. A screen shows it with a `Picture`, which says how much room it has.
     in property <image> picture;
+    // Something was shown in it this frame (a battle, the menu's reel, a replay's still or its viewer): a
+    // `Picture` whose screen shows nothing of its own shows its ground, never what another presented last.
+    in property <bool> picture-shown;
     in property <length> picture-width;
     in property <length> picture-height;
     // Where it is drawn in its room: the room's middle, moved onto the display's pixels (the app does it: a
@@ -1100,14 +1103,17 @@ export component Page inherits Rectangle {
 
 // The battle's picture, in the middle of the room it is given: the largest whole multiple of 240 by 160 display
 // pixels that fits (the app sizes it: `Shell.picture-width`). The box keeps its size whatever the multiple, so
-// nothing beside it moves. One is shown at a time.
+// nothing beside it moves. One is shown at a time; the picture is there only while something is shown in it
+// (`Shell.picture-shown`), and never past the box.
 export component Picture inherits Rectangle {
     in property <brush> ground: #000000;
+    clip: true;
     Rectangle {
         background: root.ground;
     }
 
     Image {
+        visible: Shell.picture-shown;
         x: Shell.picture-x;
         y: Shell.picture-y;
         width: Shell.picture-width;

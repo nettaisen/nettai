@@ -134,8 +134,8 @@ pub struct Shell {
     pub scale: Scale,
     /// Present the picture at the display's density (`NETTAI_PHYSICAL_PIXELS`).
     pub(crate) sharp: bool,
-    /// The surface whose picture the texture holds.
-    pub(crate) shown_stage: u64,
+    /// Which surface's picture the texture holds, and whether one is shown (docs/app.md §1).
+    pub(crate) showing: crate::stage::Showing,
     /// Samples a screen played this frame (`Shell::play_samples`), and the ticks that made them.
     pub(crate) own_samples: Vec<[f32; 2]>,
     pub(crate) own_ticks: Option<u32>,
@@ -476,6 +476,11 @@ impl Shell {
         fx.set_fly_seq(self.flights);
     }
 
+    /// A screen is leaving (docs/app.md §10): the screen shown is still the one before.
+    pub(crate) fn leaving(&self) -> bool {
+        self.swap.is_some()
+    }
+
     /// The screen that was leaving has left (or is cut short): the next is shown.
     fn finish_swap(&mut self) {
         let Some(swap) = self.swap.take() else { return };
@@ -696,7 +701,7 @@ impl App {
             gl: None,
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },
             sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some(),
-            shown_stage: 0,
+            showing: Default::default(),
             own_samples: Vec::new(),
             own_ticks: None,
             game: None,
@@ -832,6 +837,8 @@ impl App {
         self.shell.finish_swap();
         self.call(from, |s, shell| s.hide(shell));
         self.shell.close_picker();
+        // (What was shown this frame is the screen before's.)
+        self.shell.showing.reset();
         self.shell.screen = to;
         self.shell.lock_game(false);
         let ui = self.shell.ui();
@@ -1298,6 +1305,7 @@ impl App {
     fn run(&mut self, now: Instant) {
         // (The last frame was drawn, if the renderer didn't say so.)
         self.drawn();
+        self.shell.showing.reset();
         if self.shell.fit_window() {
             self.shell.refresh();
         }
@@ -1343,8 +1351,17 @@ impl App {
         if self.shell.swap.as_ref().is_some_and(|s| now >= s.at) {
             self.shell.finish_swap();
         }
-        // The one focus, and where it is.
         let ui = self.shell.ui();
+        // The window's picture, only if something was shown in it this frame (`stage::Showing`): a screen with
+        // nothing of its own shows its `Picture`'s ground, not what another presented last. (While a screen
+        // leaves, it keeps what it had.)
+        if self.shell.drawing
+            && !self.shell.leaving()
+            && let Some(shown) = self.shell.showing.tell()
+        {
+            ui.global::<nettai_ui::Shell>().set_picture_shown(shown);
+        }
+        // The one focus, and where it is.
         let moved = self.shell.nav.settle(&ui, now, ui.global::<Theme>().get_motion());
         // What was pressed before its controls existed, now that they do (or after a few frames without).
         if !self.pending.is_empty() && self.shell.swap.is_none() {
