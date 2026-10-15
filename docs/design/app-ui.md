@@ -1100,6 +1100,24 @@ Each is settled unless the user changes it.
       dropped by the user). A ruleset still never changes how a round plays.
     (§6 Builds; docs/app.md §8; docs/design/rules-in-luau.md, "Rulesets".)
 
+69. **ALL and NONE of the forms** (2026-10-15). The user, of the Navi tab's selector: "the souls/crosses should be
+    able to select all/none".
+    - *Where:* a list of forms (EXE6's Crosses, EXE4's and EXE5's souls) has two small words, ALL and NONE (すべて,
+      なし), in its heads' letters at the right end of each version's head, a hairline between: per version, as the
+      cartridges' builds are one version's (GREGAR ALL is Gregar's five Crosses); a group of none after the
+      versions' has them on its head's room. A list that shows no versions has them at its heading's right end. A
+      fact of one form always chosen (EXE6's Beast Out) has none. The head's name is cut short of them; nothing
+      moves, the words are on lines that were there (a phone's touch is 6 more over and under the line, in the room
+      over and under the head).
+    - *What they do:* ALL puts the group's forms in, in the list's order, while the list has room ("CROSSES 5/5"),
+      kept in the battle's order; the rest are left out, with the refusal's sound (the tab's refusal: a full list
+      refuses one more). NONE takes the group's forms out. Each is one change (`Builds::choose_forms`; the editor has
+      no undo). A word that would do nothing (ALL with the group in or the list full, NONE with none of it in) is
+      dim, and refused if taken.
+    - *Controls of their own:* each word is a control the arrows reach as any (`forms-all`, `forms-none`), Enter (the
+      pad's A) takes it; the footer's Choose says so. Chosen over a segmented pair: they are actions, not a state.
+    (§6 Builds; docs/app.md §8.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1493,7 +1511,10 @@ DUPLICATE, RENAME and DELETE.
   (in a mix of versions, every form of each version the build has), "Not allowed" quietly at the end of a form's
   row the ruleset holds back (it can still be chosen, §2.68), and in the note's place, in its stead, what the build's problems have against the form under
   the cursor or the pointer, else against the navi, the ruleset's among them (the problem's mark, the first and " ·
-  +n more"). On a phone the panel is over the grid, as tall as what it shows, the selector's rows two to a row, the
+  +n more"). A list of forms (Crosses, souls; not the Beast Out, one always chosen) has ALL and NONE at the right end
+  of each version's head, or of its heading where it shows no versions (§2.69): ALL puts that group's forms in, in
+  order, while the list has room, and refuses the rest; NONE takes them out; each one change, dim where it would do
+  nothing. On a phone the panel is over the grid, as tall as what it shows, the selector's rows two to a row, the
   note's place as a desktop's, and the ruleset's select between the panel and the grid.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
