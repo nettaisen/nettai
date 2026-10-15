@@ -851,8 +851,12 @@ has the logo in Back's and the title's place: the app's icon, then "nettai" (the
 header, maybe logo then \"nettai\""). The icon (`docs/logo/nettai-icon.svg`) is a retrowave sun setting over the
 battle field, three rows of six panels in perspective, red on the left and blue on the right ("maybe the retrowave
 sun with the perspective battle field looks the best actually"), without the characters ("don't bother with putting
-the characters on it, i feel like the tropical feel already engenders it"). The logotype, 熱帯 in the sunset
-gradient as tall as the t of nettai beside it (`docs/logo/nettai-logotype.svg`, from Corporate Logo and Chakra Petch
+the characters on it, i feel like the tropical feel already engenders it"). It is drawn as the app is ("i feel like
+the visual style of the logo looks out of place" of a first, glossy one: a rounded tile, gradients, a glow): flat,
+the action's amber for the sun and its stripes and the horizon, the field's columns and rows in the two sides' red
+and blue over their tints (made solid, so it reads on any background), the seam in the text's white; no tile, no
+gradient, no glow. It is the same mark everywhere: the header, the loading screen and the installers' icons. The
+logotype, 熱帯 in the same amber as tall as the t of nettai beside it (`docs/logo/nettai-logotype.svg`, from Corporate Logo and Chakra Petch
 outlined), is for the README, the installers and a site, not the app's screens.
 
 **The footer** holds key hints at the left (key caps or pad buttons, by what was last used) and one short status at
