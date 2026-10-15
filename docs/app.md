@@ -1454,8 +1454,8 @@ end, the counts ending before it on that line; its word counts in the room the o
 
 **CLEAR** (docs/design/app-ui.md §2.71): the Folder, NaviCust, Patch cards and Auto battle tabs each have one small
 word (`WordButton`, a control of its own, `clear`) at the right end of a pane's header: the folder's, the cards',
-the board's key's first line (PROGRAMS' title line where the game draws no board), the places'; a phone's at the
-right end of the counts' box's first line, the board's key's, the places' problem line. `activate("clear", 0)`, or X on the tab (`editor::clear_key`: not on a text field, not a key
+the board's pane's header, NAVICUST (PROGRAMS' title line where the game draws no board), the places'; a phone's at
+the right end of the counts' box's first line, the board's pane's header, the places' problem line. `activate("clear", 0)`, or X on the tab (`editor::clear_key`: not on a text field, not a key
 the menus take; the NaviCust's with no piece in hand), asks first (`editor::ask_clear`: `Shell::ask`, the tag
 `editor::CLEAR`, the tab's `clear-question` and CANCEL focused, CLEAR in the error red), and is refused where the
 part holds nothing (the word is then dim and disabled: the folder's chips, the cards, `NavicustView.clearable`, the
