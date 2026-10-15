@@ -645,9 +645,10 @@ Each is settled unless the user changes it.
       should be the same as the usual practice menu". The practice battle beside a waiting invite (or a direct
       host's wait) has the practice menu's groups, rows and widgets, and its hold: DUMMY (Dummy's build, a
       dropdown of the game's builds that can be played, the player's own at first; Action; Level), STAGE (Arena,
-      Background) and OPTIONS, all of them. Its own rows stay where they were, at the top: COPY INVITE CODE and
-      CANCEL INVITE (a direct host's COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE between them), in
-      place of EXIT. Two rows stay out (chosen here): Music, since its music is the menus' (§2.29, the user: "in
+      Background) and OPTIONS, all of them. It has no EXIT, and no rows of Play's but a phone's STOP PRACTICE
+      at the top (back to the waiting panel, which the session there covers): the code (the address) and
+      cancelling are the waiting panel's (the user: "get rid of COPY INVITE CODE and CANCEL INVITE since it's
+      already available on the host screen"). Two rows stay out (chosen here): Music, since its music is the menus' (§2.29, the user: "in
       the practice mode while the lobby is waiting, don't switch the music", and #36's "it really shouldn't let
       you change the music because it does nothing"), so the row would change nothing heard; and EDIT, since the
       editor is another screen and Play gives up its link as it is left (a link nobody polls reads as dropped),

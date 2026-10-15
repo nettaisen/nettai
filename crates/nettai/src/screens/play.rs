@@ -109,18 +109,6 @@ const LEAVE_LOBBY: &str = "play.leave";
 /// How far Up and Down scroll a build's page in the match's menu: two of its chips' rows.
 const SHEET_STEP: f32 = 56.0;
 
-/// A row this screen adds at the top of the practice menu while the other player is waited for. (Its number is
-/// what the UI words it by: `PlayView.wait-row`.)
-#[derive(Clone, Copy, PartialEq)]
-enum WaitRow {
-    /// Copy the invite's code (a direct host's address).
-    Copy = 0,
-    /// Stop practice, for the invite again: where the session fills the window (a phone).
-    Stop = 1,
-    /// Cancel the invite.
-    Cancel = 2,
-}
-
 /// What the settings remember for Play: the round wins the last match's set was first to, and the build last
 /// chosen, by game.
 const REMEMBERED_FIRST_TO: &str = "play.first-to";
@@ -261,7 +249,6 @@ pub struct Play {
     their_ready_seq: i32,
     copied_seq: i32,
     /// The rows this screen added to the practice menu of the session on, in their order.
-    wait_rows: Vec<WaitRow>,
     /// The build the overview beside the list was made of (its name and side), and in which language.
     sheet_of: Option<(String, Option<Side>, &'static str)>,
     /// The screen is shown anew (from another): the focus starts on the chosen build.
@@ -293,7 +280,6 @@ impl Default for Play {
             ready_seq: 0,
             their_ready_seq: 0,
             copied_seq: 0,
-            wait_rows: Vec::new(),
             sheet_of: None,
             fresh: true,
             heard: ResultHeard::default(),
@@ -557,15 +543,11 @@ impl Play {
     fn train(&mut self, shell: &mut Shell) {
         let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side(shell)) else { return };
         let name = self.builds.get(self.chosen).map(|b| b.name().to_string()).unwrap_or_default();
+        // (The invite's code or the address, and cancelling, are the waiting panel's, not the menu's: the user,
+        // "get rid of COPY INVITE CODE and CANCEL INVITE since it's already available on the host screen". Where the
+        // session fills the window and hides the panel, a phone, the menu's one row stops it for the panel.)
         let full = shell.scale.phone;
-        self.wait_rows = match full {
-            true => vec![WaitRow::Copy, WaitRow::Stop, WaitRow::Cancel],
-            false => vec![WaitRow::Copy, WaitRow::Cancel],
-        };
-        let direct = self.session.as_ref().is_some_and(|s| s.way == Way::Host);
-        let view = shell.ui();
-        let view = view.global::<PlayView>();
-        let rows = self.wait_rows.iter().map(|row| view.invoke_wait_row(*row as i32, direct).to_string()).collect();
+        let rows = if full { vec![shell.ui().global::<PlayView>().get_stop_practice().to_string()] } else { Vec::new() };
         let mut start = practice::Start::beside(&game, practice::Build { name, side }, ScreenId::Play, WAIT_ROWS, rows);
         start.full = full;
         if shell.still {
@@ -1476,15 +1458,8 @@ impl Screen for Play {
         if tag != WAIT_ROWS || !matches!(self.stage, Stage::Waiting) {
             return;
         }
-        match self.wait_rows.get(choice) {
-            Some(WaitRow::Copy) => {
-                let invite = self.invite();
-                self.copy(shell, &invite);
-                shell.close_menu();
-            }
-            Some(WaitRow::Stop) => practice::stop(shell),
-            Some(WaitRow::Cancel) => self.leave(shell),
-            None => {}
+        if choice == 0 {
+            practice::stop(shell);
         }
     }
 

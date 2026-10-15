@@ -121,17 +121,8 @@ msgstr "コードをコピー"
 msgid "COPY ADDRESS"
 msgstr "アドレスをコピー"
 
-msgid "COPY INVITE CODE"
-msgstr "招待コードをコピー"
-
 msgid "STOP PRACTICE"
 msgstr "練習をやめる"
-
-msgid "CANCEL INVITE"
-msgstr "招待を取り消す"
-
-msgid "STOP HOSTING"
-msgstr "ホストをやめる"
 
 msgid "Waiting for opponent"
 msgstr "対戦相手を待っています"
