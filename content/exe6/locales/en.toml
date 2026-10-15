@@ -782,7 +782,7 @@ language = "en"
 # version a build is one of, `version.<id>`.
 [builds]
 # What a new build of a version starts with, for a tool that asks which version's a new build starts from.
-"versions" = "Starts with the version's Crosses and Beast form."
+"versions" = "Starts with the version's Crosses and Beast Out."
 "version.gregar" = "Gregar"
 "version.falzar" = "Falzar"
 
@@ -793,7 +793,7 @@ language = "en"
 "category.folder" = "Chips"
 "category.navicust_programs" = "NaviCust programs"
 "category.patch_cards" = "Patch cards"
-"category.cybeast" = "Beast form"
+"category.cybeast" = "Beast Out"
 "category.crosses" = "Crosses"
 "preset.standard" = "Standard"
 "preset.mixed" = "Mixed"

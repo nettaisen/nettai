@@ -12,10 +12,11 @@
 //! editor's lists (the user: "the rows in the editor are too tall, they should match the height of the regular
 //! editor"): checked where it is the build's, its face, its name, and the mark of the version it is one's own (the
 //! user: "you should indicate in the editor version exclusives"). Enter, a click or a tap on one chooses it, or takes
-//! it out of a list (`Builds::choose_form`). What is wrong with a fact is said by its heading, its first problem in
-//! the player's words, and the rows it is about are in the error red (the user: "if there's a problem with e.g.
-//! crosses or souls there's nowhere in the ui that shows it"): a form the ruleset the player plays by doesn't allow,
-//! another version's under one version per build, one past the fact's room or not the navi's. The lists are the
+//! it out of a list (`Builds::choose_form`). What is wrong with a fact is said by its heading and the rows it is
+//! about, in the error red (the user: "if there's a problem with e.g. crosses or souls there's nowhere in the ui that
+//! shows it"), and in the player's words in the note's place under the selector, two lines reserved, which moves
+//! nothing when a problem appears (the user: "error messages for beast form/crosses ends up shifting layout"): a form
+//! the ruleset the player plays by doesn't allow, another version's under one version per build, one past the fact's room or not the navi's. The lists are the
 //! game's own navi's alone; the Cybeast is every navi's (MstrCros plays its version's Crosses).
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
@@ -32,6 +33,9 @@ use nettai_match::check::Problem;
 use nettai_match::ruleset::Item;
 use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView};
 use slint::{ComponentHandle, ModelRc, VecModel};
+
+/// The lines of the note's place under the selector, which says what is wrong with the forms where they have problems.
+const PROBLEM_LINES: usize = 2;
 
 #[derive(Default)]
 pub struct Navi {
@@ -190,6 +194,25 @@ impl Tab for Navi {
                 .collect()
         });
         view.set_form_groups(ModelRc::new(VecModel::from(groups)));
+        // What is wrong with the forms, in the note's place under the selector (in its stead): each problem about a
+        // fact once (a mix of versions is each of its facts'), a line each, whole; past the place's two lines, the
+        // first and how many more.
+        let mut said: Vec<String> = draft.with_words(shell, |words| {
+            let mut said: Vec<String> = Vec::new();
+            for p in draft.checked.problems.iter().filter(|p| choices.iter().any(|c| draft.facts_of(p).contains(&c.fact))) {
+                let line = words.problem(p);
+                if !said.contains(&line) {
+                    said.push(line);
+                }
+            }
+            said
+        });
+        if said.len() > PROBLEM_LINES {
+            let more = said.len() - (PROBLEM_LINES - 1);
+            said.truncate(PROBLEM_LINES - 1);
+            said.push(shell.ui().global::<nettai_ui::BuildWords>().invoke_more(more as i32).into());
+        }
+        view.set_problems(said.join("\n").into());
         let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
         view.set_face(face);

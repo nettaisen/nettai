@@ -28,14 +28,14 @@ msgstr "すべて使用不可"
 msgid "{} of {} allowed"
 msgstr "{}/{} 使用可"
 
-# The row of the name: Versions, one per build or mixed.
-msgid "VERSIONS"
-msgstr "バージョン"
+# The row of the name: Version exclusives, a build of one version's alone or of the versions' mixed.
+msgid "VERSION EXCLUSIVES"
+msgstr "バージョン限定"
 
-msgid "ONE PER BUILD"
-msgstr "構築ごとに1つ"
+msgid "ONE VERSION"
+msgstr "1バージョンのみ"
 
-msgid "MIXED"
+msgid "MIX VERSIONS"
 msgstr "混在可"
 
 # A category's head: its items all allowed or none, a version's quick choice and All, the search.

@@ -218,8 +218,9 @@ export global NavicustView {
     in property <int> dropped-seq;
     in property <int> refused-seq;
     in property <string> notice;
-    // The list: each program in each of its colors.
+    // The list: each program once, in its color chosen; the most colors a program of it comes in.
     in property <[ProgramRow]> programs;
+    in property <int> most-colors;
     // The cursor is in the list: its title is lit, the board's isn't.
     in property <bool> in-list;
     // What the NaviCust does, and the bugs it brings (a patch card's aren't the NaviCust's).
@@ -417,18 +418,23 @@ component DropFlash inherits Rectangle {
     }
 }
 
-// A program of the list: its color chosen (a plus part's crossed), its name, the colors to choose from where it has
-// more than one (the one chosen outlined, one the ruleset doesn't allow ringed in the error red), and where that
-// color's part is (placed, how many copies where more than one).
+// A program of the list: its color chosen (a plus part's crossed), its name, where that color's part is (placed, how
+// many copies where more than one), and at the row's right edge the colors to choose from where it has more than one
+// (the one chosen outlined, one the ruleset doesn't allow ringed in the error red): the user, "the error message
+// should go to the left of the color". The state's column ends where the list's most colors start, so the states line
+// up whatever each row's colors.
 component ProgramRowView inherits Rectangle {
     in property <ProgramRow> program;
     in property <int> nav-index;
     in property <bool> big;
+    // The most colors a row of the list has (the colors' column is as wide as that many boxes).
+    in property <int> most-colors;
     property <bool> choice: root.program.colors.length > 1;
-    // (Each color a box 14 wide, 4 apart, before the state's column.)
+    // (Each color a box 14 wide, 4 apart, at the row's right edge.)
     property <length> pitch: 18px;
     property <length> colors-width: root.choice ? root.program.colors.length * root.pitch - 4px : 0px;
-    property <length> colors-x: root.width - 8px - 110px - 8px - root.colors-width;
+    property <length> colors-x: root.width - 8px - root.colors-width;
+    property <length> state-right: root.width - 8px - (root.most-colors > 1 ? root.most-colors * root.pitch - 4px + 8px : 0px);
     changed nav-index => {
         if touch.has-hover {
             Nav.hover("programs", root.nav-index, true);
@@ -454,7 +460,7 @@ component ProgramRowView inherits Rectangle {
 
     Text {
         x: 32px;
-        width: max(0px, root.colors-x - 8px - 32px);
+        width: max(0px, root.state-right - 110px - 8px - 32px);
         text: root.program.name;
         color: Theme.text;
         font-family: Theme.body;
@@ -482,7 +488,7 @@ component ProgramRowView inherits Rectangle {
     }
 
     state := Text {
-        x: parent.width - 8px - self.width;
+        x: root.state-right - self.width;
         width: 110px;
         text: root.program.state == ProgramState.placed ? (root.program.copies > 1 ? @tr("Placed ×{}", root.program.copies) : @tr("Placed")) : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : root.program.state == ProgramState.not-allowed ? @tr("Not allowed") : "";
         color: root.program.state == ProgramState.held ? Theme.cursor : root.program.state == ProgramState.not-allowed ? Theme.bad : Theme.muted;
@@ -505,7 +511,8 @@ component ProgramRowView inherits Rectangle {
             if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
                 Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
             } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down && !NavicustView.holding && root.choice && self.mouse-x >= root.colors-x - 2px && self.mouse-x < root.colors-x + root.colors-width + 2px {
-                // (A click or a tap on one of its colors chooses it: the next copy taken is that color's.)
+                // (A click or a tap on one of its colors chooses it and takes that color's part in hand, as a click
+                // on the row does: the user, "selecting the color in the ncp editor should also pick up the ncp".)
                 Nav.point("programs", root.nav-index);
                 Nav.choose("color", root.nav-index, max(0, min(root.program.colors.length - 1, floor((self.mouse-x - root.colors-x + 2px) / root.pitch))));
             } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
@@ -744,10 +751,11 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    // ---- The strip: the program under the cursor (or the pointer): its shape and, where it compresses into another,
-    // its compressed shape, each over its word; its name in its color, the game's description of it, and the colors it
-    // comes in, the row's outlined.
-    property <length> shape-width: 100px;
+    // ---- The strip: the program under the cursor (or the pointer): where it compresses into another shape, its
+    // compressed shape then its whole one, each over its word (else its one shape); its name in its color, the game's
+    // description of it, and the colors it comes in, the row's outlined.
+    property <length> shape-width: 120px;
+    property <bool> two-shapes: NavicustView.detail.compressed-columns > 0;
     property <length> words-x: 16px + 2 * root.shape-width + 8px + 16px;
     PanelBack {
         x: 0;
@@ -761,13 +769,16 @@ export component NavicustTab inherits Rectangle {
         y: root.top;
         width: root.words-x;
         height: 104px;
+        // (The compressed shape first, then the whole one: the user, "instead of shape/compressed it should be
+        // compressed/uncompressed (in that order)". A program of one shape alone has that one, first and with no
+        // word: it is neither, "there's only one form of it".)
         ShapeView {
             x: 16px;
             y: 12px;
             width: root.shape-width;
             height: 62px;
-            cells: NavicustView.detail.shape;
-            columns: NavicustView.detail.columns;
+            cells: root.two-shapes ? NavicustView.detail.compressed : NavicustView.detail.shape;
+            columns: root.two-shapes ? NavicustView.detail.compressed-columns : NavicustView.detail.columns;
             tone: NavicustView.detail.tone;
             plus: NavicustView.detail.plus;
         }
@@ -777,7 +788,8 @@ export component NavicustTab inherits Rectangle {
             y: 78px;
             width: root.shape-width;
             height: 14px;
-            text: @tr("SHAPE");
+            visible: root.two-shapes;
+            text: @tr("COMPRESSED");
             horizontal-alignment: center;
         }
 
@@ -786,9 +798,9 @@ export component NavicustTab inherits Rectangle {
             y: 12px;
             width: root.shape-width;
             height: 62px;
-            visible: NavicustView.detail.compressed-columns > 0;
-            cells: NavicustView.detail.compressed;
-            columns: NavicustView.detail.compressed-columns;
+            visible: root.two-shapes;
+            cells: NavicustView.detail.shape;
+            columns: NavicustView.detail.columns;
             tone: NavicustView.detail.tone;
             plus: NavicustView.detail.plus;
         }
@@ -798,8 +810,8 @@ export component NavicustTab inherits Rectangle {
             y: 78px;
             width: root.shape-width;
             height: 14px;
-            visible: NavicustView.detail.compressed-columns > 0;
-            text: @tr("COMPRESSED");
+            visible: root.two-shapes;
+            text: @tr("UNCOMPRESSED");
             horizontal-alignment: center;
         }
     }
@@ -1119,6 +1131,7 @@ export component NavicustTab inherits Rectangle {
             program: NavicustView.programs[self.at];
             nav-index: self.at;
             big: Theme.phone;
+            most-colors: NavicustView.most-colors;
 
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }

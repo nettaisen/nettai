@@ -3,9 +3,10 @@
 // going on under it); its Rust half is src/rulesets/page.rs, which the screen that opened it hands its controls
 // to (their names begin `rules.`, a scope of the focus's).
 //
-// In the body's units: a row of the name, Versions and, at the right, DUPLICATE and DELETE; under it the
+// In the body's units: a row of the name, Version exclusives and, at the right, DUPLICATE and DELETE; under it the
 // categories (a list, 300 wide) and the chosen one's head (ALLOW ALL, ALLOW NONE, a version's quick choices, the
-// search) over its items; the reserved line at the foot. On a phone one column: the name, Versions, the buttons,
+// search) over its items; the reserved line at the foot. On a phone one column: the name, Version exclusives (its
+// word over its control), the buttons,
 // the category as a select, the head, the items.
 
 import { Theme } from "theme.slint";
@@ -49,7 +50,7 @@ export global RulesetView {
     in property <bool> editable;
     in property <bool> deletable;
     in property <string> name;
-    // Versions: 0 one per build, 1 mixed.
+    // Version exclusives: 0 one version's alone in a build, 1 the versions' mixed.
     in property <int> versions;
     in property <[RulesetCategory]> categories;
     in property <int> category;
@@ -197,7 +198,7 @@ export component RulesetPage inherits Page {
     property <length> list-width: 300px;
     property <length> right-x: Theme.phone ? 0px : root.list-width + 24px;
     property <length> right-width: self.body-width - root.right-x;
-    property <length> head-y: Theme.phone ? 208px : 64px;
+    property <length> head-y: Theme.phone ? 232px : 64px;
     property <length> items-y: Theme.phone ? root.head-y + 104px : root.head-y + 52px;
     property <length> foot: 26px;
     title: RulesetView.title;
@@ -206,7 +207,7 @@ export component RulesetPage inherits Page {
     tag: { text: RulesetView.preset ? RulesetView.preset-word : "", tone: Theme.muted };
     hints: root.page-hints;
 
-    // ---- The row: the name, Versions, DUPLICATE and DELETE.
+    // ---- The row: the name, Version exclusives, DUPLICATE and DELETE.
     Field {
         x: 0;
         y: 0;
@@ -216,27 +217,30 @@ export component RulesetPage inherits Page {
         enabled: RulesetView.editable;
     }
 
+    // (Whether a build keeps to one version's own things, as a cartridge does, or may mix the versions': the user,
+    // "versions: one per build is weird wording, you should make it more understandable". On a phone the word is
+    // over the control, which the width wouldn't hold beside it.)
     versions-label := Label {
         x: Theme.phone ? 0px : 384px;
         y: Theme.phone ? 52px : 0px;
         width: self.preferred-width;
-        height: 40px;
-        text: @tr("VERSIONS");
+        height: Theme.phone ? 16px : 40px;
+        text: @tr("VERSION EXCLUSIVES");
     }
 
     Seg {
-        x: versions-label.x + versions-label.width + 12px;
-        y: versions-label.y + 2px;
+        x: Theme.phone ? 0px : versions-label.x + versions-label.width + 12px;
+        y: Theme.phone ? 72px : versions-label.y + 2px;
         nav: "rules.versions";
-        first: @tr("ONE PER BUILD");
-        second: @tr("MIXED");
+        first: @tr("ONE VERSION");
+        second: @tr("MIX VERSIONS");
         chosen: RulesetView.versions;
         enabled: RulesetView.editable;
     }
 
     delete := Button {
         x: root.body-width - self.width;
-        y: Theme.phone ? 104px : 0px;
+        y: Theme.phone ? 128px : 0px;
         width: self.natural-width;
         visible: RulesetView.deletable;
         nav: "rules.delete";
