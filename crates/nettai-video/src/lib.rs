@@ -5,8 +5,9 @@
 //!   replays.
 //! - [`write`] and [`export`]: a replay played through a
 //!   [`Viewer`] and written as such a stream: the whole replay or a part of
-//!   it (a round, a range of ticks), from either console, the picture at a
-//!   whole multiple of the frame's 240x160.
+//!   it (a round, a range of ticks), from either console or both side by
+//!   side ([`Sides`]), the picture at a whole multiple of the frame's
+//!   240x160.
 //! - [`mp4`]: `ffmpeg` run as a child that reads a NUT stream from a pipe
 //!   and writes an MP4 (H.264 and AAC), into a file that takes its name
 //!   only once it is whole. [`export_mp4`] is the two together. No encoder
@@ -37,7 +38,7 @@
 //!
 //! ```ignore
 //! // On a thread of its own: the progress goes to the UI, which may cancel.
-//! let options = Options { scale: 3, view: None, part: Part::Round(2) };
+//! let options = Options { scale: 3, view: None, sides: Sides::One, part: Part::Round(2) };
 //! let result = nettai_video::export_mp4(&game, &replay, &options, &mp4::Settings::default(), &path, &mut |p| {
 //!     tx.send(p).ok();
 //!     if canceled.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
@@ -99,15 +100,45 @@ impl Part {
     }
 }
 
+/// Which consoles a video's picture shows.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub enum Sides {
+    /// The console the viewer shows, and its sound.
+    #[default]
+    One,
+    /// Both consoles side by side in a picture twice as wide: the one the
+    /// viewer shows at the left, the other at the right, each as a viewer
+    /// shown from its side presents it at the tick (one simulation: the
+    /// other is drawn from the same battle, `Viewer::present_view`). The
+    /// sound is the left console's alone: the two hear one battle, the same
+    /// music and nearly all the same effects, so the two together would be
+    /// every shared sound twice as loud, and at the set's end the winner's
+    /// music over the loser's; what only one hears (its own charge, its own
+    /// navi's hit) is the left one's. (A width twice an even one is even:
+    /// nothing changes for 4:2:0, `mp4`.)
+    Both,
+}
+
+impl Sides {
+    /// The consoles side by side.
+    pub fn count(self) -> usize {
+        match self {
+            Sides::One => 1,
+            Sides::Both => 2,
+        }
+    }
+}
+
 /// What a video is made of ([`export`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Options {
     /// The picture's size as a multiple of the frame's 240x160, 1 to
-    /// [`MOST_SCALE`].
+    /// [`MOST_SCALE`] (each side's, with both).
     pub scale: u32,
     /// The side whose console is shown (none: the side that recorded the
-    /// replay).
+    /// replay); with both sides, the one at the left, whose sound it is.
     pub view: Option<u8>,
+    pub sides: Sides,
     pub part: Part,
 }
 
@@ -194,12 +225,13 @@ pub type OnProgress<'a> = &'a mut dyn FnMut(Progress) -> ControlFlow<()>;
 
 /// Write `part` of the replay `viewer` plays to `out` as a NUT stream, the
 /// picture `scale` times the frame's size, from the console the viewer
-/// shows, with its sound if it has any. The viewer is left paused at the
+/// shows (with [`Sides::Both`], beside it the other's), with its sound if it
+/// has any. The viewer is left paused at the
 /// part's end, at the original's speed. `progress` is told before the
 /// first frame and after each, and may stop it ([`Error::Canceled`]: what
 /// was written of the stream stays in `out`, which is the caller's to
 /// throw away).
-pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, part: &Part, out: W, progress: OnProgress) -> Result<W, Error> {
+pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, sides: Sides, part: &Part, out: W, progress: OnProgress) -> Result<W, Error> {
     if !(1..=MOST_SCALE).contains(&scale) {
         return Err(Error::Scale(scale));
     }
@@ -220,12 +252,15 @@ pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, part: &Part, out: W, pro
     if viewer.position() != ticks.start {
         return Err(stopped(viewer));
     }
+    // (Each console's picture is presented at its own size; with both, the
+    // rows of the two are put side by side.)
     let (width, height) = (WIDTH * scale as usize, HEIGHT * scale as usize);
-    let video = nut::Video { width: width as u32, height: height as u32, frame_time: TICK_SECONDS };
+    let video = nut::Video { width: (width * sides.count()) as u32, height: height as u32, frame_time: TICK_SECONDS };
     let audio = viewer.has_sound().then_some(nut::Audio { sample_rate: nettai_audio::SAMPLE_RATE });
     let mut stream = nut::Writer::new(out, video, audio).map_err(Error::Write)?;
     let mut picture = vec![0u32; width * height];
-    let mut rgb = Vec::with_capacity(width * height * 3);
+    let mut other = vec![0u32; if sides == Sides::Both { width * height } else { 0 }];
+    let mut rgb = Vec::with_capacity(width * sides.count() * height * 3);
     let mut sound = Vec::new();
     for tick in ticks.clone() {
         at.round = viewer.round_at(tick);
@@ -234,7 +269,16 @@ pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, part: &Part, out: W, pro
         }
         viewer.present(&mut picture, width, height);
         rgb.clear();
-        rgb.extend(picture.iter().flat_map(|&c| [(c >> 16) as u8, (c >> 8) as u8, c as u8]));
+        let bytes = |c: &u32| [(c >> 16) as u8, (c >> 8) as u8, *c as u8];
+        match sides {
+            Sides::One => rgb.extend(picture.iter().flat_map(bytes)),
+            Sides::Both => {
+                viewer.present_view(viewer.view() ^ 1, &mut other, width, height);
+                for (left, right) in picture.chunks_exact(width).zip(other.chunks_exact(width)) {
+                    rgb.extend(left.iter().chain(right).flat_map(bytes));
+                }
+            }
+        }
         sound.clear();
         viewer.take_samples(&mut sound);
         stream.frame(&rgb, &sound).map_err(Error::Write)?;
@@ -250,7 +294,7 @@ pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, part: &Part, out: W, pro
 /// (a host calls it on one that isn't its window's).
 pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, out: W, progress: OnProgress) -> Result<W, Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
-    write(&mut viewer, options.scale, &options.part, out, progress)
+    write(&mut viewer, options.scale, options.sides, &options.part, out, progress)
 }
 
 /// Write a replay as an MP4 at `to`, through `ffmpeg` ([`mp4::Encoder`]):
@@ -258,18 +302,18 @@ pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, out: 
 /// failed, nothing of it is left.
 pub fn export_mp4(game: &Loaded, replay: &Replay, options: &Options, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
-    write_mp4(&mut viewer, options.scale, &options.part, encoding, to, progress)
+    write_mp4(&mut viewer, options.scale, options.sides, &options.part, encoding, to, progress)
 }
 
 /// [`write`], to an MP4 at `to` through `ffmpeg`.
-pub fn write_mp4(viewer: &mut Viewer, scale: u32, part: &Part, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
+pub fn write_mp4(viewer: &mut Viewer, scale: u32, sides: Sides, part: &Part, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
     // (What can't be made is said before ffmpeg is started.)
     if !(1..=MOST_SCALE).contains(&scale) {
         return Err(Error::Scale(scale));
     }
     part.ticks(viewer.rounds(), viewer.length())?;
     let mut encoder = mp4::Encoder::start(to, encoding)?;
-    match write(viewer, scale, part, &mut encoder, progress) {
+    match write(viewer, scale, sides, part, &mut encoder, progress) {
         Ok(_) => encoder.finish(),
         // (A pipe that closed is ffmpeg having stopped: why is its to say.)
         Err(Error::Write(e)) => Err(encoder.failed(e)),

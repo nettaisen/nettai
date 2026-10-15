@@ -494,6 +494,25 @@ impl Shell {
         self.place_picture(fit, shown);
     }
 
+    /// A second, small picture over the window's one (the replay viewer's other console): `multiple` times the
+    /// frame in the display's pixels, presented at the window's density as the picture is (`stage::fit`), into
+    /// a texture of its own (`inset_gl`; else an image made anew), when `surface` is out of date or its size
+    /// changed. Its image when there is a new one to show, and its size in the window's logical pixels; none in
+    /// a frame the window doesn't draw.
+    pub fn show_inset(&mut self, surface: &mut Surface, multiple: u32, present: impl FnOnce(&mut [u32], usize, usize)) -> Option<(Option<slint::Image>, f32, f32)> {
+        if !self.drawing {
+            return None;
+        }
+        let factor = self.ui().window().scale_factor();
+        let (width, height) = ((nettai_render::compose::WIDTH as u32 * multiple) as f32, (nettai_render::compose::HEIGHT as u32 * multiple) as f32);
+        let fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced);
+        let image = match surface.picture(fit, self.inset_gl.as_mut(), present) {
+            stage::Shown::New(image) => Some(image),
+            stage::Shown::Same | stage::Shown::Written => None,
+        };
+        Some((image, width / factor, height / factor))
+    }
+
     /// Play samples of a screen's own this frame (a replay's viewer's: 32768 Hz, stereo), which ran `ticks` of
     /// what made them. They are mixed with the menus' sounds, as a battle's are.
     pub fn play_samples(&mut self, samples: &mut Vec<[f32; 2]>, ticks: u32) {

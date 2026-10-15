@@ -62,14 +62,16 @@ struct Args {
     mp4: Option<PathBuf>,
     scale: u32,
     ticks: Option<String>,
+    /// The video shows both consoles side by side (`--side`'s at the left).
+    both_sides: bool,
 }
 
 const USAGE: &str = "\
 usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-scale N]
        nettai-tool [OPTIONS] --match FILE --headless FRAMES [--keys K]
        nettai-tool [OPTIONS] --replay FILE --headless FRAMES [--side SIDE]
-       nettai-tool [OPTIONS] --replay FILE --nut OUT|- [--scale N] [--round N | --ticks A-B]
-       nettai-tool [OPTIONS] --replay FILE --mp4 OUT [--scale N] [--round N | --ticks A-B]
+       nettai-tool [OPTIONS] --replay FILE --nut OUT|- [--scale N] [--both-sides] [--round N | --ticks A-B]
+       nettai-tool [OPTIONS] --replay FILE --mp4 OUT [--scale N] [--both-sides] [--round N | --ticks A-B]
        nettai-tool [OPTIONS] --match FILE [--show-folders] [--save-match FILE]
        nettai-tool [OPTIONS] --replay FILE
        nettai-tool [OPTIONS] --match FILE --audit-content
@@ -118,6 +120,9 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    size)
   --ticks A-B      with --nut or --mp4: the frames A to B alone, as --headless
                    numbers them (the pictures after the set's ticks A to B)
+  --both-sides     with --nut or --mp4: both consoles side by side, in a
+                   picture twice as wide: --side's at the left (default: the
+                   side that recorded it), with its sound alone
   --headless F     render frames F (e.g. 150,300,600 or 100-120; trace frame
                    numbers, or ticks in live play) to frame_NNNNN.png files
                    in --out (default .)
@@ -200,6 +205,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
         mp4: None,
         scale: 1,
         ticks: None,
+        both_sides: false,
     };
     while let Some(arg) = it.next() {
         let mut value = |name: &str| it.next().ok_or_else(|| format!("{name} needs a value"));
@@ -213,6 +219,7 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
             "--mp4" => a.mp4 = Some(value("--mp4")?.into()),
             "--scale" => a.scale = number(value("--scale")?, "--scale")? as u32,
             "--ticks" => a.ticks = Some(value("--ticks")?),
+            "--both-sides" => a.both_sides = true,
             "--match" => a.match_file = Some(value("--match")?.into()),
             "--save-match" => a.save_match = Some(value("--save-match")?.into()),
             "--show-folders" => a.show_folders = true,
@@ -255,8 +262,8 @@ fn parse(mut it: impl Iterator<Item = String>) -> Result<Args, String> {
     if video && (a.replay.is_none() || a.headless.is_some() || (a.nut.is_some() && a.mp4.is_some())) {
         return Err("--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)".into());
     }
-    if !video && (a.scale != 1 || a.ticks.is_some()) {
-        return Err("--scale and --ticks go with --nut or --mp4".into());
+    if !video && (a.scale != 1 || a.ticks.is_some() || a.both_sides) {
+        return Err("--scale, --ticks and --both-sides go with --nut or --mp4".into());
     }
     if video && a.round.is_some() && a.ticks.is_some() {
         return Err("a video shows a round (--round N) or a range of frames (--ticks A-B), not both".into());
@@ -522,7 +529,7 @@ fn check_replay(content: &Arc<nettai_battle::Content>, replay: &nettai_frontend:
 /// part asked for; then exit. Progress goes to standard error (the
 /// stream may be standard output's).
 fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
-    use nettai_video::{Part, Progress};
+    use nettai_video::{Part, Progress, Sides};
     use std::ops::ControlFlow;
     let part = match (args.round, &args.ticks) {
         (Some(round), _) => Part::Round(round as u32),
@@ -551,16 +558,17 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
         ControlFlow::Continue(())
     };
     let scale = args.scale;
+    let sides = if args.both_sides { Sides::Both } else { Sides::One };
     let wrote = if let Some(to) = &args.mp4 {
-        nettai_video::write_mp4(&mut viewer, scale, &part, &nettai_video::mp4::Settings { ffmpeg: nettai_video::mp4::find_ffmpeg(), ..Default::default() }, to, &mut progress).map(|()| to.display().to_string())
+        nettai_video::write_mp4(&mut viewer, scale, sides, &part, &nettai_video::mp4::Settings { ffmpeg: nettai_video::mp4::find_ffmpeg(), ..Default::default() }, to, &mut progress).map(|()| to.display().to_string())
     } else {
         let to = args.nut.as_deref().expect("a video's stream");
         if to == Path::new("-") {
             let out = std::io::BufWriter::with_capacity(1 << 20, std::io::stdout().lock());
-            nettai_video::write(&mut viewer, scale, &part, out, &mut progress).map(|_| "standard output".to_string())
+            nettai_video::write(&mut viewer, scale, sides, &part, out, &mut progress).map(|_| "standard output".to_string())
         } else {
             let file = std::fs::File::create(to).unwrap_or_else(|e| fail(format!("can't write {}: {e}", to.display())));
-            let written = nettai_video::write(&mut viewer, scale, &part, std::io::BufWriter::with_capacity(1 << 20, file), &mut progress);
+            let written = nettai_video::write(&mut viewer, scale, sides, &part, std::io::BufWriter::with_capacity(1 << 20, file), &mut progress);
             if written.is_err() {
                 // (No part of a stream is left under the file's name.)
                 let _ = std::fs::remove_file(to);
@@ -572,7 +580,7 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
         Ok(to) => {
             let seconds = nettai_frontend::player::time_of(last.of as u64).as_secs_f64();
             let sound = if viewer.has_sound() { "with its sound" } else { "without sound" };
-            eprintln!("wrote {} frames ({}x{}, {seconds:.1} s, {sound}) to {to} in {:.1?}", last.of, 240 * scale, 160 * scale, started.elapsed());
+            eprintln!("wrote {} frames ({}x{}, {seconds:.1} s, {sound}) to {to} in {:.1?}", last.of, 240 * scale * sides.count() as u32, 160 * scale, started.elapsed());
             if let Some(differs) = viewer.diverged() {
                 eprintln!("the replay doesn't reproduce: {differs}");
                 std::process::exit(1);
@@ -747,6 +755,7 @@ mod tests {
             vec!["--replay", "set.ntrp"],
             vec!["--replay", "set.ntrp", "--nut", "-", "--scale", "3", "--side", "right", "--round", "2"],
             vec!["--replay", "set.ntrp", "--mp4", "set.mp4", "--ticks", "1-600", "--mute"],
+            vec!["--replay", "set.ntrp", "--mp4", "both.mp4", "--both-sides", "--side", "right", "--scale", "2"],
         ] {
             assert!(args(&options).is_ok(), "{options:?}: {:?}", args(&options).err());
         }
@@ -768,7 +777,8 @@ mod tests {
             (vec!["--match", "m.toml", "--nut", "-"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.ntrp", "--nut", "-", "--headless", "1"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
             (vec!["--replay", "r.ntrp", "--nut", "-", "--mp4", "o.mp4"], "--nut OUT or --mp4 OUT writes a replay as video (--replay FILE, no --headless)"),
-            (vec!["--replay", "r.ntrp", "--scale", "2"], "--scale and --ticks go with --nut or --mp4"),
+            (vec!["--replay", "r.ntrp", "--scale", "2"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
+            (vec!["--replay", "r.ntrp", "--both-sides"], "--scale, --ticks and --both-sides go with --nut or --mp4"),
             (vec!["--replay", "r.ntrp", "--nut", "-", "--round", "1", "--ticks", "1-9"], "a video shows a round (--round N) or a range of frames (--ticks A-B), not both"),
         ] {
             assert_eq!(args(&options).err().as_deref(), Some(why), "{options:?}");
