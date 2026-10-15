@@ -252,12 +252,17 @@ impl Encoder {
         // (The file made here first: a place that can't be written is the
         // disk's error, told before ffmpeg is started.)
         std::fs::File::create(&part).map_err(Error::Disk)?;
-        let spawned = Command::new(&settings.ffmpeg)
-            .args(settings.arguments(&part))
-            .stdin(Stdio::piped())
-            .stdout(Stdio::null())
-            .stderr(Stdio::piped())
-            .spawn();
+        let mut command = Command::new(&settings.ffmpeg);
+        command.args(settings.arguments(&part)).stdin(Stdio::piped()).stdout(Stdio::null()).stderr(Stdio::piped());
+        // (On Windows a console program started by a windowed one opens a console window of its own unless told
+        // not to: the user, "make ffmpeg not open a terminal window on windows".)
+        #[cfg(windows)]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+            command.creation_flags(CREATE_NO_WINDOW);
+        }
+        let spawned = command.spawn();
         let mut child = match spawned {
             Ok(child) => child,
             Err(e) => {
