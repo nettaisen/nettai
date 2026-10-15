@@ -764,9 +764,12 @@ candidate; on the socket the system routes to the STUN server it asks for its ad
 server-reflexive candidate), and with a TURN server it allocates a relayed address (`rtc`'s TURN client, sans-I/O
 too: what is sent from the relayed address goes through it, with a permission for each remote candidate). A
 browser's candidates under an mDNS name (`.local`) are skipped; the browser still reaches the native side's host
-or server-reflexive candidates, and the native side learns the browser's address from its checks. What may block
-runs on threads of its own: the signaling WebSocket (tungstenite, rustls), and resolving the STUN and TURN names,
-once a link. (`rtc` 0.21 passes a negotiated channel's open on only with the next datagram that comes, up to two
+or server-reflexive candidates, and the native side learns the browser's address from its checks. It relays over
+UDP only: of a server's URLs it takes `stun:` and the first `turn:` without `transport=tcp`, and leaves `turns:`
+(TLS) and TURN over TCP out (the browser takes them all). What may block runs on threads of its own: the
+signaling WebSocket (tungstenite, rustls), and resolving the names of the STUN and TURN servers a welcome gives
+(below). `Config::relay_only` offers relayed candidates alone, as the browser's `iceTransportPolicy: "relay"`
+does (the tests' relayed connection). (`rtc` 0.21 passes a negotiated channel's open on only with the next datagram that comes, up to two
 seconds later at the ICE keepalive; the backend hands it an empty one, which it drops, to drain it at once. ICE
 checks a pair for as long as a dial is given, not `rtc`'s 1.4 seconds, so a dial made during an outage connects as
 soon as the network is back.)
@@ -776,6 +779,52 @@ WebSocket hibernation API (an idle room costs nothing; `ping` is answered `pong`
 because the Durable Object WebSocket API is the Workers runtime's own, with no build step under `wrangler dev`;
 workers-rs would add a wasm build for a relay of about 300 lines. This is version 1 of its protocol (nettai-rtc's
 `signal` module; a client says its version as it connects, `v=1`, and a server of another refuses it).
+
+**The default server.** The user: "default signaling server should be matchmaking.nettai.n1gp.net". The app
+meets through `wss://matchmaking.nettai.n1gp.net` (`DEFAULT_SIGNAL`, where the app builds its `Net`, in
+`crates/nettai/src/screens/play/session.rs`), unless `$NETTAI_SIGNAL` names another (`ws://127.0.0.1:8787` for
+`wrangler dev`). The Worker serves that hostname as a custom domain of its own, which its owner gives it
+(`signaling/wrangler.toml` says how). No test reaches it: every test that makes a room's link names its server
+(the in-process one, or `$NETTAI_TEST_SIGNAL`), and the app's tour pass its rig's.
+
+**STUN and TURN are the server's to give.** The user: "add cloudflare turn support to signaling server", and "the
+signaling server should return stun and turn server credentials"; and of the Google STUN server the clients had
+by default, "you don't even need a google default right? direct connect doesn't even need stun?" So:
+
+- Every welcome, in an invite room and a reconnect room alike, carries `iceServers`: the STUN and TURN servers
+  the client's connections use, as the browser's `RTCIceServer`s (`{"urls":[...],"username":...,
+  "credential":...}`, nettai-rtc's `IceServer`). With its TURN key, the Worker asks Cloudflare's TURN service
+  (Cloudflare Realtime) for credentials for that client, `POST
+  https://rtc.live.cloudflare.com/v1/turn/keys/{TURN_KEY_ID}/credentials/generate-ice-servers` with
+  `Authorization: Bearer {TURN_KEY_API_TOKEN}` and `{"ttl":14400}`, and gives the servers it answers: its STUN
+  server (`stun:stun.cloudflare.com:3478`) and its TURN servers (`turn:` over UDP and TCP, `turns:` over TLS,
+  each with the username and credential). Without the key, or when the service answers with an error, gives no
+  server, or doesn't answer within 3 seconds, the welcome gives Cloudflare's public STUN server alone (a constant
+  in the Worker): a room never waits on the service longer, nor fails for it. The failure is logged on the
+  Worker, by its kind or HTTP status; the secrets are sent to Cloudflare's API and nowhere else, and never
+  logged.
+- The credentials last four hours (`signal::TURN_CREDENTIALS_LAST`, the Worker's `TURN_TTL_SECONDS`): a long
+  sitting of matches with one opponent, and its reconnections. Every reconnection goes through a reconnect room,
+  whose welcome gives new ones; a relayed connection that outlasts its credentials may drop when its allocation
+  can't be refreshed, and comes back the same way.
+- A client uses exactly the servers the latest welcome gave, for each connection made after it (so a
+  reconnection has its reconnect room's). `Config::ice_servers`, empty by default, is a client's own servers,
+  used only where a server's welcome gives none (the in-process test server, unless a test sets some) and by a
+  `PeerConnection` made by hand. A direct link uses no STUN or TURN server: it says no candidate to anyone (the
+  joiner dials the host's address, and the host learns the joiner's from its checks), so its address as the
+  Internet sees it would go nowhere, and a relay would need a server to hand out credentials.
+- No connection is made on servers it hasn't had. The server sends the welcome before anything of the other
+  client's, and a joiner dials only once it is in the room with the other (which the welcome, or a `peer` after
+  it, says). The welcome's names are resolved natively on a thread of their own (the browser resolves its own),
+  and until they are (at most 5 seconds; then the servers from before), the joiner doesn't dial and a host holds
+  the joiner's offer, and the candidates that follow it, before answering. A room's link waits on nothing as it
+  is made.
+- **The owner's setup.** Make a TURN key (the Cloudflare dashboard's Realtime, TURN Server, Create; or the API's
+  `POST /accounts/{account_id}/calls/turn_keys`): it shows the key's ID (the "Turn Token ID") and its API token.
+  Give them to the Worker as its two secrets, `npx wrangler secret put TURN_KEY_ID` and `npx wrangler secret put
+  TURN_KEY_API_TOKEN` in `signaling/` (for `wrangler dev`, the same names in `signaling/.dev.vars`, which git
+  ignores); then `npx wrangler deploy`. Neither secret is ever in the repository. Deploying, the secrets and the
+  custom domain are the owner's steps, never an agent's.
 
 **The server only while it is needed.** The user's request: "the signaling server session should last just long
 enough for the peers to reach each other, so it doesn't have to hold onto a connection longer than required. but it
@@ -803,7 +852,7 @@ it (another match with the same opponent) need no server. There are two kinds of
   places are only the first and the second to come, and the clients keep the roles they had. An ID that comes again
   gets its place back, which is how a client whose socket dropped keeps its side, and a third is refused.
 - The server says `welcome` (in an invite room the place, whether the other is there, and the invite's code; in a
-  reconnect room whether the other is there), `peer` (the other came or went), `signal` (what the other sent) and
+  reconnect room whether the other is there; in both, the STUN and TURN servers, below), `peer` (the other came or went), `signal` (what the other sent) and
   `error` (a refusal, after which the socket closes: its `reason` is `not-found`, `full`, `version`, `bad-request`
   or `busy`, and its `message` is for a log); a client says `signal` (relayed to the other, dropped if it isn't
   there) and `leave` (gives its place up).
@@ -845,7 +894,12 @@ acknowledges every one that comes. The channel is DTLS's, so nobody between the 
 
 nettai-rtc's `testing` feature has a server of its own speaking the protocol, in process, for tests (it picks codes,
 refuses and forgets as the Worker does; `Server::forget` ends a room at once, `Server::set_reachable` takes it off
-the network, and `testing::Client` is a socket of a test's own, for either server). The Worker is run locally
+the network, `Server::set_ice_servers` sets the servers its welcomes give, none at first, and `testing::Client`
+is a socket of a test's own, for either server). The link tests check that a room's connections ask the
+welcome's servers and no others (STUN and TURN with credentials, STUN alone without; the links' own only when a
+welcome gives none; a direct link none), and connect relayed alone through a TURN server of the tests' own
+(`tests/turn`: long-term credentials, allocations, permissions, indications and channels on loopback, a few
+hundred lines on `rtc`'s STUN and TURN types), which refuses other credentials. The Worker is run locally
 (`npx wrangler dev`), and nettai-rtc's link tests run against it too, with `NETTAI_TEST_SIGNAL=ws://127.0.0.1:8787`
 (those that look inside the server, or take it off the network, run on the in-process one only); deploying it is
 its owner's step (`npx wrangler deploy`).
