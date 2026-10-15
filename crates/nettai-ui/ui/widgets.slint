@@ -129,16 +129,28 @@ export component Note inherits Text {
     }
 }
 
+// A build's problem's mark (docs/design/app-ui.md §2.66): a square of the error red, as a tab's in the bar. It goes
+// before what says something is wrong with a build as it stands (the header's line, a build's line in a list, the
+// lobby's, Play's); a refusal, why what was asked wasn't done, has none.
+export component ProblemMark inherits Rectangle {
+    width: 5px;
+    height: 5px;
+    background: Theme.bad;
+}
+
 // A reserved line for a message: 16 tall whether it says anything or not, in the error red. What it says fades
-// in.
+// in. `mark`: what it says is a build's problem (the lobby's "This build can't be used"), which has the problem's
+// mark before it (`ProblemMark`).
 export component Message inherits Rectangle {
     in property <string> text;
     in property <color> tone: Theme.bad;
     in property <TextHorizontalAlignment> horizontal-alignment: left;
+    in property <bool> mark;
+    property <length> lead: root.mark ? 9px : 0px;
     height: 16px;
-    Text {
-        x: 0;
-        width: parent.width;
+    said := Text {
+        x: root.horizontal-alignment == TextHorizontalAlignment.left ? root.lead : 0px;
+        width: parent.width - (root.horizontal-alignment == TextHorizontalAlignment.left ? root.lead : 0px);
         text: root.text;
         color: root.tone;
         font-family: Theme.body;
@@ -151,6 +163,35 @@ export component Message inherits Rectangle {
             duration: Theme.brisk;
             easing: ease-out;
         }
+    }
+
+    // (Before the words wherever they start: at the left, or where the middle's start.)
+    ProblemMark {
+        x: root.horizontal-alignment == TextHorizontalAlignment.center ? max(0px, (root.width - min(said.preferred-width, root.width)) / 2 - 9px) : 0px;
+        y: (root.height - 5px) / 2;
+        visible: root.mark && root.text != "";
+    }
+}
+
+// Why what was asked of the item a build editor's strip describes wasn't done, or can't be ("Needs 70 MB", "Giga
+// limit reached", "Overlaps a program"): at the strip's top right in the error red, with no problem's mark (§2.66).
+// Every tab's strip has it in the same place; the build's problems are the header's.
+export component Refusal inherits Rectangle {
+    in property <string> text;
+    height: 20px;
+    Text {
+        x: 0;
+        y: 0;
+        width: parent.width;
+        height: parent.height;
+        text: root.text;
+        color: Theme.bad;
+        font-family: Theme.body;
+        font-size: 12px;
+        font-weight: 500;
+        horizontal-alignment: right;
+        vertical-alignment: center;
+        overflow: elide;
     }
 }
 
@@ -1109,13 +1150,11 @@ component TabItem inherits Rectangle {
         }
     }
 
-    // (Something in the tab is wrong: a mark at its word's upper right.)
-    Rectangle {
+    // (Something in the tab is wrong: the problem's mark at its word's upper right.)
+    ProblemMark {
         x: parent.width - (Theme.phone ? 9px : 13px);
         y: 9px;
-        width: 5px;
-        height: 5px;
-        background: root.tab.flagged && root.tab.enabled ? Theme.bad : transparent;
+        visible: root.tab.flagged && root.tab.enabled;
     }
 
     hit := Focusable {

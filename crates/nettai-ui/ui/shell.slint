@@ -4,7 +4,7 @@
 
 import { Theme, Audit, Look, PatternKind } from "theme.slint";
 import { Nav, NavKind, Focusable } from "nav.slint";
-import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, ScrollPage, Pill } from "widgets.slint";
+import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, RowBack, RowTouch, ListView, ScrollPage, Pill, ProblemMark, ArrowDown } from "widgets.slint";
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
@@ -830,16 +830,24 @@ export component Header inherits Rectangle {
     in property <string> back;
     in property <bool> logo;
     in property <bool> game: true;
-    // A tag after the title (a ruleset's page's PRESET), and a short state before the game ("✓ Ready to play", in
-    // green, or what is wrong, in the error red). On a phone the tag is at the header's right and the state is left
-    // out.
+    // A tag after the title (a ruleset's page's PRESET), and a state before the game: "✓ Ready to play", in green, or
+    // what is wrong, in the error red after the problem's mark (the build editor's: the shown tab's problems, or how
+    // many the build has; docs/design/app-ui.md §2.66). `state-nav` makes it a control, by that name, with a caret: it
+    // opens the build's problems. On a phone the tag is at the header's right.
     in property <VersionTag> tag;
     in property <string> state;
     in property <bool> state-good;
+    in property <string> state-nav;
     property <length> pad: Theme.margin;
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
     property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
-    property <length> state-width: root.state == "" || Theme.phone ? 0px : 166px;
+    // The state's box: its words (a desktop's up to 560, the longest problem's sentence and "+n more"; a phone's a
+    // count), the mark's room before them and, as a control, the caret's after and 8 of padding each side.
+    // (Ready to play, it opens nothing: it is words alone.)
+    property <bool> state-control: root.state-nav != "" && !root.state-good;
+    property <length> state-inner: (root.state-good ? 0px : 9px) + (root.state-control ? 14px : 0px);
+    property <length> state-box: root.state == "" ? 0px : min(Theme.phone ? 160px : 560px, state-text.preferred-width + root.state-inner) + (root.state-control ? 16px : 0px);
+    property <length> state-width: root.state-box == 0px ? 0px : root.state-box + 16px;
     property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
     property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 16px;
     // The title's room: what the tag, the state and the game leave of the header.
@@ -950,18 +958,43 @@ export component Header inherits Rectangle {
         opacity: arrive.t;
     }
 
-    Text {
-        x: parent.width - root.pad - (root.game ? game.width + 16px : 0px) - 150px;
-        width: 150px;
-        visible: root.state-width > 0;
-        text: root.state;
-        color: root.state-good ? Theme.good : Theme.bad;
-        font-family: Theme.body;
-        font-size: 13px;
-        font-weight: 600;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        overflow: elide;
+    // (The state: as a control, its hover's tint around it and its caret after it.)
+    Rectangle {
+        x: parent.width - root.pad - (root.game ? game.width + 16px : 0px) - root.state-box;
+        y: (parent.height - self.height) / 2;
+        width: root.state-box;
+        height: 30px;
+        visible: root.state-box > 0;
+        background: state-hit.pressed ? Theme.line : (state-hit.has-hover ? Theme.tint : transparent);
+        ProblemMark {
+            x: root.state-control ? 8px : 0px;
+            y: (parent.height - self.height) / 2;
+            visible: !root.state-good;
+        }
+
+        state-text := Text {
+            x: (root.state-control ? 8px : 0px) + (root.state-good ? 0px : 9px);
+            width: max(0px, root.state-box - (root.state-control ? 16px : 0px) - root.state-inner);
+            text: root.state;
+            color: root.state-good ? Theme.good : Theme.bad;
+            font-family: Theme.body;
+            font-size: 13px;
+            font-weight: 600;
+            horizontal-alignment: right;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        ArrowDown {
+            x: parent.width - 8px - self.width;
+            y: (parent.height - self.height) / 2;
+            visible: root.state-control;
+        }
+
+        state-hit := Focusable {
+            nav: root.state-nav;
+            enabled: root.state-control;
+        }
     }
 
     // The game.
@@ -1183,10 +1216,12 @@ export component Page inherits Rectangle {
     in property <string> back;
     in property <bool> logo;
     in property <bool> game: true;
-    // The header's tag after the title, and its state before the game (whether a build is ready to play).
+    // The header's tag after the title, and its state before the game (whether a build is ready to play, and as a
+    // control by `state-nav`'s name, what is wrong with it).
     in property <VersionTag> tag;
     in property <string> state;
     in property <bool> state-good;
+    in property <string> state-nav;
     in property <[Hint]> hints;
     in property <string> status: Shell.player;
     out property <length> body-width: body.width;
@@ -1200,6 +1235,7 @@ export component Page inherits Rectangle {
         tag: root.tag;
         state: root.state;
         state-good: root.state-good;
+        state-nav: root.state-nav;
     }
 
     // (As the screen leaves, its body slides 16 and fades: to the left, or after Back to the right. What

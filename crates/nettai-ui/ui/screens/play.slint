@@ -13,7 +13,7 @@
 import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
-import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
+import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage, ProblemMark } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
@@ -104,6 +104,9 @@ export global PlayView {
     in property <string> code;
     in property <string> message;
     in property <bool> message-quiet;
+    // What it says is why the chosen build can't be played (its problems, docs/design/app-ui.md §2.66): the problem's
+    // mark before it, and the code's field isn't marked.
+    in property <bool> message-problem;
 
     // The code a box a character, where it can't be typed (a pad): open, and its six characters. `code-set` is
     // how many characters a code is written in.
@@ -242,9 +245,9 @@ component BuildBox inherits Rectangle {
     }
 
     Text {
-        x: 16px;
+        x: root.build.bad ? 25px : 16px;
         y: 42px;
-        width: parent.width - 68px;
+        width: parent.width - 68px - (root.build.bad ? 9px : 0px);
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;
@@ -252,6 +255,13 @@ component BuildBox inherits Rectangle {
         font-size: 12px;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    // (A build with problems: their mark before the words.)
+    ProblemMark {
+        x: 16px;
+        y: 42px + 5.5px;
+        visible: root.build.bad;
     }
 
     ArrowDown {
@@ -858,7 +868,7 @@ export component PlayScreen inherits Page {
                 text: PlayView.code;
                 placeholder: @tr("Invite code");
                 code: true;
-                error: PlayView.message != "" && !PlayView.message-quiet;
+                error: PlayView.message != "" && !PlayView.message-quiet && !PlayView.message-problem;
             }
 
             join := Button {
@@ -878,11 +888,18 @@ export component PlayScreen inherits Page {
                 text: @tr("DIRECT CONNECT");
             }
 
-            Note {
+            ProblemMark {
                 x: Theme.phone ? 0px : root.side-x;
+                y: root.message-y + (Theme.phone ? 6px : 6.5px);
+                visible: PlayView.message-problem && PlayView.message != "";
+            }
+
+            Note {
+                x: (Theme.phone ? 0px : root.side-x) + (PlayView.message-problem ? 9px : 0px);
                 y: root.message-y;
-                width: Theme.phone ? root.body-width : root.side-width;
+                width: (Theme.phone ? root.body-width : root.side-width) - (PlayView.message-problem ? 9px : 0px);
                 height: Theme.phone ? 40px : 18px;
+                vertical-alignment: Theme.phone ? top : center;
                 text: PlayView.message;
                 color: PlayView.message-quiet ? Theme.muted : Theme.bad;
                 font-size: 12px;
@@ -1138,6 +1155,7 @@ export component PlayScreen inherits Page {
                 width: root.body-width;
                 text: PlayView.note == LobbyNote.reconnecting ? @tr("Reconnecting {} s", PlayView.note-seconds) : PlayView.note == LobbyNote.unusable ? PlayView.note-problem : PlayView.note-error != "" ? PlayView.note-error : PlayView.note == LobbyNote.you ? @tr("Waiting for you to ready up.") : PlayView.note == LobbyNote.them ? @tr("Waiting for your opponent to ready up.") : "";
                 tone: PlayView.note-error != "" || PlayView.note == LobbyNote.reconnecting || PlayView.note == LobbyNote.unusable ? Theme.bad : Theme.muted;
+                mark: PlayView.note == LobbyNote.unusable;
                 horizontal-alignment: center;
             }
         }

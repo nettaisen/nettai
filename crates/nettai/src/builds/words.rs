@@ -3,8 +3,9 @@
 //! numbers. A problem's own `text` is English for the log, and is never shown.
 //!
 //! One kind reads two ways. As what is wrong with a build ([`Words::problem`]: "2 Giga chips, limit 1"), in the
-//! folder editor's strip and after "This build can't be used:". And as why a chip can't go into the folder now
-//! ([`Words::refusal`]: "Giga limit reached"), at the end of its library row.
+//! editor's header and its list of the build's problems, and after "This build can't be used:"; several in a line as
+//! [`Words::summary`] says them ("… +2 more"). And as why a chip can't go into the folder now ([`Words::refusal`]:
+//! "Giga limit reached"), at the end of its library row and in the strip (docs/design/app-ui.md §2.66).
 //!
 //! A problem's sentence says what it is about where the problem names a fact ([`part_of`]): "No navi
 //! chosen", "No form chosen", "Something in the patch cards is there twice", "This navi isn't EXE6's". A kind
@@ -197,37 +198,49 @@ impl Words<'_> {
         }
     }
 
-    /// The editor's header's: "✓ Ready to play", or how many problems.
-    pub fn header(&self, checked: &Checked) -> (String, bool) {
+    /// The editor's header's (docs/design/app-ui.md §2.66): "✓ Ready to play"; else the shown tab's problems `shown`
+    /// as [`Words::summary`] says them, or where the tab has none (or the line is `short`, a phone's), how many the build
+    /// has. And whether it is ready.
+    pub fn header(&self, checked: &Checked, shown: &[&Problem], short: bool) -> (String, bool) {
         match checked.problems.len() {
             0 => (self.say().invoke_ready_to_play().into(), true),
-            n => (self.say().invoke_problem_count(n as i32).into(), false),
+            n => match self.summary(shown.iter().copied()).filter(|_| !short) {
+                Some(said) => (said, false),
+                None => (self.say().invoke_problem_count(n as i32).into(), false),
+            },
         }
     }
 
-    /// The reason a build can't be played, for `UserError::BuildUnusable`: its first problem's sentence. None:
-    /// nothing is wrong with it.
-    pub fn first_problem(&self, problems: &[Problem]) -> Option<String> {
-        problems.first().map(|p| self.problem(p))
+    /// Problems said in one line (docs/design/app-ui.md §2.66): the first's sentence, and how many more there are
+    /// after it ("Mixes Gregar and Falzar: FBeast · +1 more"). Wherever a build's problems are said in a line they are
+    /// said so: the editor's header (a tab's), and the reason a build can't be played (`UserError::BuildUnusable`:
+    /// Play's, the lobby's, Practice's). None: there are none.
+    pub fn summary<'p>(&self, problems: impl IntoIterator<Item = &'p Problem>) -> Option<String> {
+        let mut problems = problems.into_iter();
+        let first = self.problem(problems.next()?);
+        Some(match problems.count() {
+            0 => first,
+            more => format!("{first} · {}", self.say().invoke_more(more as i32)),
+        })
     }
 }
 
-/// What is wrong with a build of `game`, in the language shown: the sentence of `problem`'s kind from the
-/// catalogs, with its numbers, the chip's and the version's names, and what it is about where it names a fact
-/// ("2 Giga chips, limit 1", "Gregar is Gregar only", "No version chosen"). It has no full stop: it goes after
-/// "This build can't be used:" or on a line of its own. For any screen, whichever is shown: a lobby's reserved
-/// line (`Reason::YourBuild { problems }`). Empty where the game says nothing of its builds (the line
-/// then says only that the build can't be used; why is in the log).
-pub fn problem(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate::games::Ready>, problem: &Problem) -> String {
+/// What is wrong with a build of `game`, in the language shown: its problems as [`Words::summary`] says them, the
+/// first's sentence of the catalogs with its numbers, the chip's and the version's names, and what it is about where
+/// it names a fact ("2 Giga chips, limit 1", "Gregar is Gregar only", "No version chosen"), and "+n more". It has no
+/// full stop: it goes after "This build can't be used:" or on a line of its own. For any screen, whichever is shown: a
+/// lobby's reserved line (`Reason::YourBuild { problems }`). Empty where the game says nothing of its builds (the line
+/// then says only that the build can't be used; why is in the log), or there are none.
+pub fn problems(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate::games::Ready>, problems: &[Problem]) -> String {
     let Some(kit) = crate::builds::kit_of(game, ready) else { return String::new() };
     let ui = shell.ui();
     let graphics = ready.graphics(shell.lang);
     let names = Names::of(ready.content(), &graphics);
-    Words { ui: &ui, kit: &kit, names: &names }.problem(problem)
+    Words { ui: &ui, kit: &kit, names: &names }.summary(problems).unwrap_or_default()
 }
 
-/// [`problem`] for a kind alone, where the problem's fact isn't at hand: a kind that is about a part of the
-/// build has its general sentence ("Something isn't chosen"). Ask [`problem`] where there is a `Problem`.
+/// A kind alone said, where the problem's fact isn't at hand: a kind that is about a part of the build has its
+/// general sentence ("Something isn't chosen"). Ask [`problems`] where there is a `Problem`.
 #[allow(dead_code)] // (Kept for a screen that has only a kind: Play's lobby was told of it.)
 pub fn wrong(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate::games::Ready>, wrong: &Wrong) -> String {
     let Some(kit) = crate::builds::kit_of(game, ready) else { return String::new() };
@@ -237,14 +250,14 @@ pub fn wrong(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate:
     Words { ui: &ui, kit: &kit, names: &names }.wrong(wrong)
 }
 
-/// The first of `problems` (a build's of `kit`'s game, as a list checked it: `shelf::Shelved::problems`), in the
-/// language shown: the reason of `UserError::BuildUnusable` ("This build can't be used: 2 Giga chips, limit 1."),
-/// for a screen that starts a match with a build. None: nothing is wrong with it.
-pub fn first_problem(shell: &crate::shell::Shell, kit: &Kit, problems: &[Problem]) -> Option<String> {
+/// `problems` (a build's of `kit`'s game, as a list checked it: `shelf::Shelved::problems`) as [`Words::summary`] says
+/// them, in the language shown: the reason of `UserError::BuildUnusable` ("This build can't be used: 2 Giga chips,
+/// limit 1 · +1 more."), for a screen that starts a match with a build. None: nothing is wrong with it.
+pub fn summary(shell: &crate::shell::Shell, kit: &Kit, problems: &[Problem]) -> Option<String> {
     let ui = shell.ui();
     let graphics = kit.ready.graphics(shell.lang);
     let names = Names::of(kit.content(), &graphics);
-    Words { ui: &ui, kit, names: &names }.first_problem(problems)
+    Words { ui: &ui, kit, names: &names }.summary(problems)
 }
 
 #[cfg(test)]

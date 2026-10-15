@@ -1,8 +1,8 @@
 //! The screenshot pass's steps for the build editor's NaviCust, Patch cards and Auto battle tabs (docs/app.md
 //! §13): each tab in the game the pass walks, with pairs a focus move apart, a piece moved, turned, put down,
 //! refused and put back, a program placed twice, cards put in and refused, a card's bug (the Patch cards tab's, not
-//! the NaviCust's), places filled; and the motion probe's bursts of what the tabs
-//! move. A tab the game hasn't (auto battle data: EXE6's setup takes none) is passed over: a step names the tab by
+//! the NaviCust's), places filled, a build's problems said on its tabs (two programs over each other, a card of the
+//! other version); and the motion probe's bursts of what the tabs move. A tab the game hasn't (auto battle data: EXE6's setup takes none) is passed over: a step names the tab by
 //! what it is, and `on_tab` reports a picture taken on another.
 //!
 //! The walk makes a build of its own (the pass's builds folder, `paths::keep_builds_in`), as a player makes one.
@@ -241,6 +241,8 @@ fn navicust(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     // A program put over another: refused, and why; put back.
     add(SETTLE, take(2, program));
     add(SETTLE, put(Spot::Over));
+    // (Enter again where it is: the focus's move to the cell, told after the first, said nothing of why.)
+    add(SETTLE, act(Action::Confirm));
     shot(add, "tabs-navicust-refused", Pair::None);
     add(SETTLE, act(Action::Back));
     // A plus part on the ring, where the game's board has one (EXE6's: out of bounds, which is no error); a game
@@ -940,6 +942,92 @@ fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot) {
         }),
     );
     shot(add, "tabs-auto-wrong", Pair::None);
+}
+
+/// A build whose NaviCust has two programs over each other (the walk's own build's first program placed again where it
+/// is, as a build file made by hand may have it: the editor never puts one so): on the NaviCust tab the header says
+/// what is wrong (docs/design/app-ui.md §2.66), the tab's word marked (`tabs-navicust-overlap`). (A build of its own,
+/// beside the walk's.)
+fn overlap(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    const NAME: &str = "Overlap";
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            // (Whatever tab the steps before passed by: this build is every game's.)
+            tour.passing.set(false);
+            let mut app = app.borrow_mut();
+            let Some(kit) = crate::builds::kit(&app.shell) else { return };
+            let content = kit.content().clone();
+            let Some(listed) = store::list(&kit.game).into_iter().find(|l| l.name == "Tab tour") else { return };
+            let Ok(walked) = store::read(&content, &kit.game, &listed.text) else { return };
+            let mut build = store::Build::new(&content, NAME, walked.side.clone());
+            let mut parts = crate::builds::grid::placed(&content, &build.side);
+            let Some(first) = parts.first().cloned() else { return };
+            parts.push(first);
+            crate::builds::grid::set_placed(&content, &mut build.side, &parts);
+            let _ = store::write(&store::new_path(&kit.game, NAME), &content, &kit.game, &build);
+            leave(&mut app);
+            app.go_now(ScreenId::Play);
+            super::builds::choose(&mut app, NAME);
+        }),
+    );
+    add(SETTLE, press("edit", 0));
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    add(SETTLE, focus("programs", 0));
+    shot(add, "tabs-navicust-overlap", Pair::None);
+    add(90, on_tab(EditorTab::Navicust, "NaviCust"));
+}
+
+/// A build of the game's first version given the other version's variant of a card that has one per version
+/// (Bass-Cross MegaMan's, EXE5's teams'), which a ruleset of one version per build refuses (the Masters class preset's):
+/// on the Patch cards tab the card's name in the error red and the header saying the mix (`tabs-cards-mixed`); and the
+/// header's line opened, the build's problems listed, each by its tab (`tabs-problems-list`). (A build of its own.)
+fn card_mix(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    const NAME: &str = "Card mix";
+    add(
+        SETTLE,
+        Box::new(|_, app, tour| {
+            tour.passing.set(false);
+            let mut app = app.borrow_mut();
+            let Some(kit) = crate::builds::kit(&app.shell) else { return };
+            let content = kit.content().clone();
+            let Some(side) = kit.builds.groups.first().and_then(|v| kit.builds.new_build(&content, &v.id).ok()) else { return };
+            let build = store::Build::new(&content, NAME, side);
+            let _ = store::write(&store::new_path(&kit.game, NAME), &content, &kit.game, &build);
+            leave(&mut app);
+            app.go_now(ScreenId::Play);
+            super::builds::choose(&mut app, NAME);
+        }),
+    );
+    add(SETTLE, press("edit", 0));
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    // (A card of a version's variant put in from the library's row, as Enter there does; where it is the build's own
+    // version's, the other's in its place. A tab with no cards has none to focus: Enter on the bar's word would go
+    // nowhere it means.)
+    add(SETTLE, put_variant(0));
+    add(SETTLE, put_variant(1));
+    add(SETTLE, out_of_library());
+    add(SETTLE, focus("card", 0));
+    shot(add, "tabs-cards-mixed", Pair::None);
+    add(90, on_tab(EditorTab::PatchCards, "Patch cards"));
+    add(SETTLE, press("problems", 0));
+    shot(add, "tabs-problems-list", Pair::None);
+    add(SETTLE, act(Action::Back));
+}
+
+/// The library's `nth` card of a version's variant (a row with a version's mark) put in, unless the build mixes the
+/// versions already (the header isn't "ready").
+fn put_variant(nth: usize) -> Step {
+    Box::new(move |ui, app, tour| {
+        if tour.passing.get() || (nth > 0 && !ui.global::<BuildsView>().get_state_good()) {
+            return;
+        }
+        let rows = ui.global::<nettai_ui::PatchCardsView>().get_rows();
+        let Some(at) = rows.iter().enumerate().filter(|(_, r)| !r.version.text.is_empty()).nth(nth).map(|(i, _)| i) else { return };
+        let mut app = app.borrow_mut();
+        app.shell.nav.focus("lib.rows", at as i32);
+        app.act(Action::Confirm);
+    })
 }
 
 /// A left click on control `id`'s `index`, as the window has one (pressed and let go there).
@@ -1670,6 +1758,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     }
     drags(add, shot, size == "phone");
     wrong_classes(add, shot);
+    overlap(add, shot);
+    card_mix(add, shot);
     add(SETTLE, end());
 }
 

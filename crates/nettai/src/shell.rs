@@ -84,6 +84,8 @@ const GRID_CELL_KEY: &str = "pick.grid.cell";
 /// some) are set apart in the error color, or a grid of the choices' pictures.
 enum Look {
     Select,
+    /// A select's rows, `width` wide with its right edge at the control's (the build editor's problems).
+    List { width: f32 },
     Menu { apart: Option<usize> },
     Grid(ModelRc<slint::Image>),
 }
@@ -621,6 +623,13 @@ impl Shell {
         self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Select, chosen as i32);
     }
 
+    /// Open a list of `options` by control `id` (the build editor's header's problems: docs/design/app-ui.md §2.66),
+    /// as a select's list but `width` wide (at the least the control's) with its right edge at the control's, no row
+    /// marked and the cursor on the first: the screen hears the choice as `Screen::choose(id, index, choice)`.
+    pub fn pick_list(&mut self, id: &str, index: i32, options: Vec<String>, width: f32) {
+        self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::List { width }, -1);
+    }
+
     /// Open a menu of actions (Play's build menu) as a select's list, by the control `at` (its ⋯ button, or the
     /// row a right click opened it on), [`MENU_WIDTH`] wide with its right edge at `at`'s: the screen hears the
     /// choice as `Screen::choose(id, index, choice)`. The rows from `apart` on are set apart under a line, in the
@@ -659,6 +668,7 @@ impl Shell {
         let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - height };
         let (width, x) = match &look {
             Look::Select => (by.w, by.x),
+            Look::List { width } => (width.max(by.w), by.right() - width.max(by.w)),
             Look::Menu { .. } => (MENU_WIDTH, by.right() - MENU_WIDTH),
             Look::Grid(_) => (grid.map_or(0.0, |g| g.width()), by.x),
         };

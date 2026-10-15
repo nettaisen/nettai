@@ -21,9 +21,10 @@
 //! While a piece is in hand it is where the cursor is on the board: the arrows move it (the cursor goes to the next
 //! cell), the keys bound to L and R (A and S) and the pad's shoulders turn it about the cell held, C (the pad's
 //! north button) compresses it in place (its other shape turned as it is, about the same middle, held by the same
-//! cell where it still has it), Confirm (Enter, A) puts it down where it fits (else it shakes and the line under the
-//! key says why, typed as the rules say it), and Back (Esc, B) puts it away into the list, as the game's B does: so
-//! a placed program is taken off by picking it up and putting it away. Del takes the piece under the cursor off at
+//! cell where it still has it), Confirm (Enter, A) puts it down where it fits (else it shakes and the strip says why
+//! at its top right, typed as the rules say it, as every tab's strip says a refusal; a phone's line under the key),
+//! and Back (Esc, B) puts it away into the list, as the game's B does: so a placed program is taken off by picking it
+//! up and putting it away. Del takes the piece under the cursor off at
 //! once, or a program's last copy from the list, or puts the piece in hand away. The strip across the top describes
 //! the program under the cursor: its shape and, where it compresses into another, its compressed shape, its name in
 //! its color, the game's words for it and the colors it comes in; while the pointer is on a row of the list (and no
@@ -357,15 +358,20 @@ impl Navicust {
                     let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
                     // (The ruleset holds a program back whole: each of its colors' parts with it.)
                     let allowed = draft.allows(grid::PIECES_FIELD, piece);
-                    let colors: Vec<ProgramColor> = d.colors.get(&piece).into_iter().flatten().map(|c| ProgramColor { tone: tone(Some(c)), not_allowed: !allowed }).collect();
+                    let colors: Vec<ProgramColor> = d.colors.get(&piece).into_iter().flatten().map(|c| ProgramColor { tone: tone(Some(c)) }).collect();
                     let copies: Vec<&grid::Placed> = parts.iter().filter(|p| p.piece == piece && p.color == name).collect();
+                    // (The build's problems about a placed copy of it, by its place in the list, from 1 as the rules
+                    // count; or the ruleset holds back a program the build has.)
+                    let at: Vec<usize> = parts.iter().enumerate().filter(|(_, p)| p.piece == piece).map(|(i, _)| i + 1).collect();
+                    let flagged = (!allowed && !at.is_empty())
+                        || draft.checked.problems.iter().any(|p| p.field.as_deref() == Some(grid::PIECES_FIELD) && p.entry.is_some_and(|e| at.contains(&e)));
                     // (A copy over the ring is out of bounds: no error, the rules bug it.)
                     let out = copies.iter().any(|p| board.is_some_and(|b| grid::cells(&d.shape(p.piece, p.compressed, p.rotation), p.x, p.y).iter().any(|&(x, y)| kind_at(b, x, y) == b'f')));
                     let state = match &self.held {
                         Some(h) if h.piece == piece => ProgramState::Held,
-                        // (One the ruleset the player plays by doesn't allow, in every color, says so in the error
-                        // red.)
-                        _ if colors.iter().all(|c| c.not_allowed) && !allowed => ProgramState::NotAllowed,
+                        // (One the ruleset the player plays by doesn't allow says so in the error red, placed or not:
+                        // placed, its name is in it too.)
+                        _ if !allowed => ProgramState::NotAllowed,
                         _ if out => ProgramState::Out,
                         _ if !copies.is_empty() => ProgramState::Placed,
                         _ => ProgramState::None,
@@ -378,6 +384,7 @@ impl Navicust {
                         copies: copies.len() as i32,
                         colors: ModelRc::new(VecModel::from(colors)),
                         color: color as i32,
+                        flagged,
                     }
                 })
                 .collect()

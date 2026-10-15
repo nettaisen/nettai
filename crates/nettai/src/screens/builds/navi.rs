@@ -12,12 +12,14 @@
 //! editor's lists (the user: "the rows in the editor are too tall, they should match the height of the regular
 //! editor"): checked where it is the build's, its face, its name, and the mark of the version it is one's own (the
 //! user: "you should indicate in the editor version exclusives"). Enter, a click or a tap on one chooses it, or takes
-//! it out of a list (`Builds::choose_form`). What is wrong with a fact is said by its heading and the rows it is
-//! about, in the error red (the user: "if there's a problem with e.g. crosses or souls there's nowhere in the ui that
-//! shows it"), and in the player's words in the note's place under the selector, two lines reserved, which moves
-//! nothing when a problem appears (the user: "error messages for beast form/crosses ends up shifting layout"): a form
-//! the ruleset the player plays by doesn't allow, another version's under one version per build, one past the fact's room or not the navi's. The lists are the
-//! game's own navi's alone; the Cybeast is every navi's (MstrCros plays its version's Crosses).
+//! it out of a list (`Builds::choose_form`). What is wrong with a fact is marked as every tab marks its items
+//! (docs/design/app-ui.md §2.66): its heading in the error red, and a form of the build's a problem is about, its name
+//! in it (the user: "if there's a problem with e.g. crosses or souls there's nowhere in the ui that shows it"); a form
+//! the ruleset the player plays by doesn't allow says so at its row's end, as a library's row does. The sentences are
+//! the header's, as every tab's are (a form another version's under one version per build, one past the fact's room
+//! or not the navi's), so nothing under the selector moves when one appears (the user: "error messages for beast
+//! form/crosses ends up shifting layout"). The lists are the game's own navi's alone; the Cybeast is every navi's
+//! (MstrCros plays its version's Crosses).
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
 //! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
@@ -33,9 +35,6 @@ use nettai_match::check::Problem;
 use nettai_match::ruleset::Item;
 use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView};
 use slint::{ComponentHandle, ModelRc, VecModel};
-
-/// The lines of the note's place under the selector, which says what is wrong with the forms where they have problems.
-const PROBLEM_LINES: usize = 2;
 
 #[derive(Default)]
 pub struct Navi {
@@ -125,9 +124,9 @@ impl Tab for Navi {
             view.set_own(own.into());
         });
         // The selector: each fact of forms the build chooses, named as the game's rulesets name it ("CROSSES"), with how
-        // many it has of its room (none said of the one always chosen) and the first of its problems, its forms checked
-        // where they are the build's, marked where they are one version's, in the error red where a problem is
-        // about them.
+        // many it has of its room (none said of the one always chosen), in the error red where it has a problem; its
+        // forms checked where they are the build's, under their versions' heads, a form's name in the error red where a
+        // problem is about it, and "Not allowed" at the end of one the ruleset holds back.
         let choices = kit.builds.form_choices(&content, draft.side());
         self.forms = choices.iter().flat_map(|c| c.forms.iter().map(|&f| (c.fact.clone(), f))).collect();
         // (One column of rows on a desktop, two on a phone.)
@@ -174,45 +173,21 @@ impl Tab for Navi {
                             row,
                             heads,
                             chosen: chosen.contains(&f),
-                            flagged: !draft.allows(&c.fact, f.0) || problems.iter().any(|p| about(p, &c.fact, &chosen, f)),
+                            flagged: problems.iter().any(|p| about(p, &c.fact, &chosen, f)),
+                            banned: !draft.allows(&c.fact, f.0),
                         });
                         place += 1;
                     }
                     let name = words.names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{}", c.fact)).unwrap_or_else(|| c.fact.clone());
                     let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
-                    // (Its first problem; how many more there are after it.)
-                    let problem = match problems.split_first() {
-                        Some((first, [])) => words.problem(first),
-                        Some((first, rest)) => format!("{} {}", words.problem(first), shell.ui().global::<nettai_ui::BuildWords>().invoke_more(rest.len() as i32)),
-                        None => String::new(),
-                    };
                     let columns = if side_by_side { 2 } else { columns };
-                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), problem: problem.into(), columns, rows, heads, forms: ModelRc::new(VecModel::from(forms)), at };
+                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), flagged: !problems.is_empty(), columns, rows, heads, forms: ModelRc::new(VecModel::from(forms)), at };
                     at += c.forms.len() as i32;
                     group
                 })
                 .collect()
         });
         view.set_form_groups(ModelRc::new(VecModel::from(groups)));
-        // What is wrong with the forms, in the note's place under the selector (in its stead): each problem about a
-        // fact once (a mix of versions is each of its facts'), a line each, whole; past the place's two lines, the
-        // first and how many more.
-        let mut said: Vec<String> = draft.with_words(shell, |words| {
-            let mut said: Vec<String> = Vec::new();
-            for p in draft.checked.problems.iter().filter(|p| choices.iter().any(|c| draft.facts_of(p).contains(&c.fact))) {
-                let line = words.problem(p);
-                if !said.contains(&line) {
-                    said.push(line);
-                }
-            }
-            said
-        });
-        if said.len() > PROBLEM_LINES {
-            let more = said.len() - (PROBLEM_LINES - 1);
-            said.truncate(PROBLEM_LINES - 1);
-            said.push(shell.ui().global::<nettai_ui::BuildWords>().invoke_more(more as i32).into());
-        }
-        view.set_problems(said.join("\n").into());
         let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
         view.set_face(face);

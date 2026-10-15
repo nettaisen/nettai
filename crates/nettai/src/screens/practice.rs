@@ -1005,7 +1005,7 @@ impl Practice {
         let yours = yours.and_then(|name| named(&name)).or_else(|| listed.iter().position(|b| b.usable())).ok_or(UserError::NoBuild)?;
         let entry = &listed[yours];
         if !entry.usable() {
-            let reason = words::first_problem(shell, &kit, &entry.problems);
+            let reason = words::summary(shell, &kit, &entry.problems);
             return Err(UserError::BuildUnusable { reason: reason.filter(|r| !r.is_empty()) });
         }
         let picks = picks(&listed);

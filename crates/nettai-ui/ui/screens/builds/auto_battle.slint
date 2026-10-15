@@ -10,7 +10,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionMark } from "../../build.slint";
 import { ChipDetail, LibraryRow, LibraryHead, DropGap, LiftedRow, RemoveTarget } from "folder.slint";
@@ -337,20 +337,15 @@ export component AutoBattleTab inherits Rectangle {
         overflow: elide;
     }
 
-    Text {
+    // (Why what was asked of the place under the cursor wasn't done: the strip's refusal.)
+    Refusal {
         x: parent.width / 2;
         y: root.top + 19px;
         width: parent.width / 2 - 16px;
-        height: 20px;
         visible: !Theme.phone;
         text: AutoBattleView.detail.problem;
-        color: Theme.bad;
-        font-family: Theme.body;
-        font-size: 12px;
-        font-weight: 500;
-        horizontal-alignment: right;
-        vertical-alignment: center;
-        overflow: elide;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Text {
