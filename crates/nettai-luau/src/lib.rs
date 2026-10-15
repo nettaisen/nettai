@@ -338,8 +338,13 @@ impl LuauContent {
         rules: Option<bind::RulesCtx>,
         args: impl mlua::IntoLuaMulti,
     ) -> Result<R, ContentError> {
-        let _enter = bind::Enter::new(api, &self.bound, rules);
-        BUDGET.with(|b| b.set(self.budget));
+        let enter = bind::Enter::new(api, &self.bound, rules);
+        // A call from inside another spends what the outer call has left: a
+        // budget of its own would let a loop that makes such calls run on
+        // without end.
+        if !enter.nested() {
+            BUDGET.with(|b| b.set(self.budget));
+        }
         if coverage::recording() {
             coverage::called(f);
         }
