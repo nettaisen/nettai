@@ -3499,13 +3499,17 @@ which builds may play it, so the simulation never reads it.
     folder holds), the forms the fact offers (`facts::offered`: EXE6's Crosses of MegaMan's lists, EXE4's and EXE5's
     souls of the rules' default), else the registry's definitions of the game (an entry of the list's collection),
     in the order a build's lists show them.
-- **Groups** (docs/design/versions.md §2.2): the game's versions as what only a save of each can own. A group is a
-  version of the builds data (rules/builds' `versions`: its id, its color, its name `builds.version.<id>`), and
-  its members are the chips and forms whose own `version` names it (EXE6's Giga chips, Crosses and Beasts) and the
-  definitions the version states that no other one does (EXE4's and EXE5's souls and Giga chips: ChaosLrd and Duo,
-  which both state, are none's). A ruleset never reads a build's version: a group is a quick choice of a category's
-  items, and the Versions setting checks what a build holds. (Until §2.1 is built the groups are read from the
-  version records as they are; the work that turns them into the content's `groups` moves the reader with them.)
+- **Groups** (docs/design/versions.md §2.2): the game's versions as what only a save of each can own. A group is one
+  of the builds data's `groups` (rules/builds: its id, its color, its name `builds.version.<id>`), and its members
+  are the chips and forms whose own `version` names it (EXE6's Giga chips, Crosses and Beast forms, the Cybeasts
+  among them; EXE4's and EXE5's souls and Giga chips: ChaosLrd and Duo say none) and the card variants of its name
+  (Bass-Cross MegaMan's). A build has no version (§2.1): a group is a quick choice of a category's items, and the
+  Versions setting checks what a build holds.
+- **Items** (`ruleset::Item`): what a category holds back is a definition, or one variant of one where the fact's
+  records choose their definition's (`variant`: EXE5's and EXE6's patch cards, a card's variants the versions its
+  effects name, `ruleset::variants_of`). A card with variants is in its category once for each, so a ruleset can
+  hold back Gregar's Bass-Cross MegaMan and not Falzar's; as text a variant follows its card's name
+  (`bass-cross-megaman/gregar`). The Cybeast is a category of EXE6's (`cybeast`), its items the two Beast forms.
 - **Presets** are the game's rulesets ready-made, in order, each by an id: `versions` (`one_per_build` or
   `mixed`), the `groups` whose own things it allows (none said: every one), what each category allows `only` (a
   list of items' names, `{}` none; a category it doesn't name allows everything). Each game's: `standard` (the cartridges' own rules, the user: "you should have a standard
@@ -3519,10 +3523,11 @@ which builds may play it, so the simulation never reads it.
   allowed, so what a game gains later is allowed by every ruleset until one holds it back. Rust names no category:
   it reads a fact by the category's name and the definitions it names by the fact's type.
 - **A build under a ruleset** (`build::Checked::under`): the build's check (`Checked::of`) and, for each
-  category, a problem for each definition the build's fact names that the ruleset doesn't allow (`Wrong::NotAllowed
-  { registry, def }`, its field the fact and its entry the first that names it), and under one version per build
+  category, a problem for each item the build's fact names that the ruleset doesn't allow (`Wrong::NotAllowed
+  { registry, item }`, its field the fact and its entry the first that names it), and under one version per build
   one where what it holds of the categories is more than one group's (`Wrong::Mixed { groups, items }`: the
-  groups, and what it holds of all but the one it holds most of). Nothing is taken out of a build.
+  groups, and what it holds of all but the one it holds most of: its souls or Crosses, its Cybeast, its Giga chips,
+  a card's variant). Nothing is taken out of a build.
   It is nettai-match's, as the rules' `build_check` is beside `validate`: what is held back is the same question for
   every game and every category, so no game's Luau answers it.
 - **Patch cards off** is a ruleset that allows no patch cards (`no_patch_cards`): a build that holds cards is
