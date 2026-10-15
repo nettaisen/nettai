@@ -1229,7 +1229,10 @@ A category is named by the fact of a build it holds back (the folder's chips, th
 allowed. Closed builds is no ruleset's: it is the lobby's own setting.
 - **The ruleset a player plays by** is one for each game, remembered under `ruleset.<game>` in the settings
   (`rulesets::played_by`, `remember`: `preset:<id>` or `own:<name>`; the game's first preset where none is, or
-  the one remembered is gone). A host's lobby starts on it, and the build editor checks the build under it.
+  the one remembered is gone). A host's lobby starts on it, and the build editor checks the build under it, as
+  Play's list and Practice check the game's builds (`builds::shelf::played_by`; docs/design/versions.md §4). In a
+  lobby Play checks them again under the lobby's, the host's (`Play::check_builds`: CHANGE BUILD's list); joining
+  asks only the game's rules of a build (`Shelved::playable`), the lobby checking it under the host's.
 - **The build editor's ruleset**: at the tab bar's right end, RULESET, its select (`ruleset`: the presets, then
   the player's own) and EDIT (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's
   panel and the grid. The build is checked under it (`Draft::checked` is `Checked::under`), so what it doesn't
