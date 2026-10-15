@@ -2696,7 +2696,7 @@ are each used alone:
 - **`nut`**: FFmpeg's NUT container, written to any `std::io::Write`: raw
   frames and PCM sound in one stream, which `ffmpeg -f nut -i -` reads from a
   pipe. It knows nothing of replays.
-- **`write(&mut viewer, scale, sides, &part, out, progress)`** and
+- **`write(&mut viewer, &options, out, progress)`** and
   **`export(&game, &replay, &options, out, progress)`**: a replay through a
   viewer into such a stream.
 - **`mp4::Encoder`**: `ffmpeg` run as a child that reads a NUT stream from a
@@ -2712,14 +2712,31 @@ from either console (`Options::view`), or from both side by side
 160·N, the view's console at the left and the other's at the right, each
 half byte for byte that console's own video, from one playing of the
 replay: `Viewer::present_view`; nettai-video's test
-`both_sides_are_each_sides_video_side_by_side`). With both, the sound is
-the left console's alone: the two hear one battle, so a mix would be its
-music and shared effects twice over, and at the set's end the winner's
-music over the loser's; what one console alone hears (its own charge, its
-own navi's hit) is the left one's. A width twice an even one is even, so
-nothing changes for 4:2:0. A part starts in the state straight
+`both_sides_are_each_sides_video_side_by_side`). With both, each console's
+sound is a track of its own, the left one's first and the right one's
+second, each sample for sample what that console played
+(`Viewer::take_samples_of`: both consoles' sounds run every tick, so one
+playing gives both). Not a mix: the two hear one battle, so a mix would be
+its music and shared effects twice over, and at the set's end the winner's
+music over the loser's; apart, what one console alone hears (its own
+charge, its own navi's hit) is in its own track. A width twice an even one
+is even, so nothing changes for 4:2:0. A part starts in the state straight
 playback reaches there, sound included (the viewer's seek), so a part's
 frames and samples are the whole video's for those ticks.
+
+**Titles and chapters** (`Options::titles`, a host's words: the app's in
+its language). The first track is the default; each track is titled with
+the player whose console it is (`Titles::sides`, else the replay's name,
+else "Player 1" or "Player 2"). Each round is a chapter titled
+`Titles::rounds`' (else "Round N"), from the frame its picture begins on to
+the next one's (`chapters`). That frame is the tick before the round's
+first: the tick that ends a round shows the next one at its start, the
+position the viewer calls the round's first (what is heard of that tick is
+still the round it ended). A part's first frame is its round's, and a
+round whose picture begins on a part's last frame starts no chapter (a
+round's part ends on the next round's first picture). nettai-video's tests
+`a_chapter_is_a_round_from_its_first_picture` and
+`the_stream_says_its_tracks_and_chapters`.
 
 **The stream**, in NUT's terms (the specification is the NUT repository's
 `docs/nut.txt`, version 3, and `nut4cc.txt` for the raw formats' names):
@@ -2728,14 +2745,15 @@ frames and samples are the whole video's for those ticks.
 |---|---|
 | the picture | stream 0, `RGB[24]` (8-bit red, green, blue; square pixels), 240·N by 160·N |
 | its time base | 4389/262144 s: a tick exactly (280,896 cycles of the GBA's 16,777,216 Hz clock: `player::TICK_SECONDS`); frame `n`'s pts is `n` |
-| the sound | stream 1, `PFD[32]` (32-bit little-endian floats, left and right), 32768 Hz; none from a viewer without sound |
-| its time base | 1/32768 s; a frame's pts is the samples before it (4389 samples every 8 ticks, by the same clock) |
-| order | frames in time order across the streams, each a keyframe behind a syncpoint of its own (a raw frame is far past `max_distance`), its header checked |
-| headers | at the start, after each of 8, 64, 512 MiB..., and at the end before the index: three times at least |
+| the sound | stream 1 (and with both sides stream 2, the right console's), `PFD[32]` (32-bit little-endian floats, left and right), 32768 Hz; none from a viewer without sound |
+| its time base | 1/32768 s, every track's; a frame's pts is the samples before it (4389 samples every 8 ticks, by the same clock) |
+| order | frames in time order across the streams (a track's before a later one's where they start together), each a keyframe behind a syncpoint of its own (a raw frame is far past `max_distance`), its header checked |
+| info | info packets after the stream headers: each track's `Title` (and `handler_name`, FFmpeg's name for an MP4 track's handler), the first track's `Disposition` `default`, and a packet a chapter (its start and length on the picture's time base, its `Title`) |
+| headers | the main and stream headers and the info, at the start, after each of 8, 64, 512 MiB..., and at the end before the index: three times at least |
 | index | the last packet: a reader of a file has the length and every frame's place from it; a reader of a pipe skips it |
 
-Nothing in it varies: no time of day, no name, no encoder string. **The same
-replay gives the same bytes** (nettai-video's test
+Nothing in it varies: no time of day, no encoder string, no name but the
+titles given. **The same replay gives the same bytes** (nettai-video's test
 `the_same_replay_gives_the_same_bytes`, and the same from a viewer that had
 been sought about first).
 
@@ -2758,7 +2776,13 @@ animation -crf 16`), 4:2:0, the colors converted and tagged as BT.709 (the
 primaries and the transfer by `setparams` on the frames: ffmpeg 9.0's encoder
 takes them from the frames, and with `-color_primaries` and `-color_trc` alone
 the MP4 said "unknown" for both); AAC at 192 kb/s resampled to 48 kHz (the
-GBA's 32768 Hz is no rate AAC has); `+faststart`. The picture isn't scaled by ffmpeg. What 4:2:0 costs depends on
+GBA's 32768 Hz is no rate AAC has); `+faststart`; `-map 0`, so every track
+of the stream is one of the MP4 (by itself ffmpeg takes one sound). ffmpeg
+keeps the stream's info by its defaults: the tracks' titles as each track's
+name and handler name, the default track enabled and the other its
+alternate, and the chapters both ways players read an MP4's, a chapter text
+track (QuickTime's) and Nero's `chpl` box. The bundled build has all of it in
+the NUT reader and the MP4 writer it had. The picture isn't scaled by ffmpeg. What 4:2:0 costs depends on
 the size: at an even multiple of the frame every game pixel covers whole
 color samples and edges stay clean, at an odd one every edge gets a fringe
 of mixed color. Measured on 120 frames of an EXE6 fight (the decoded MP4
@@ -2805,7 +2829,9 @@ says what went wrong as a type, with the detail as its `Display`:
 262144/4389 frames a second and `pcm_f32le`, 32768 Hz, stereo, with its
 length from the index and nothing said at `-v error`; ffmpeg decode its
 frames and samples to exactly the bytes written; and the MP4 hold every
-frame, as H.264 and AAC. On EXE6's own packs, a part's stream decoded by
+frame, as H.264 and AAC; and a two-sided MP4 have a track a side in order,
+named, the first the default, the two decoding differently, and the rounds
+as chapters from the frame the second's picture begins on. On EXE6's own packs, a part's stream decoded by
 ffmpeg is byte for byte the PNGs `nettai-tool --headless` writes for the same
 ticks (the picture the renderer presents: 120 frames at twice the frame with
 the enhanced mode's text from the left console, 60 at three times in the
