@@ -11,6 +11,6 @@ depends = ["exelib"]
 # the effects' `group`; `bugs`, each NaviCust bug's name; `builds`, what a build is made of, by name (rules/builds:
 # its versions and its choices' presets); `auto_battle_lists`, the auto battle data's lists, by name
 # (rules/auto_battle/block's `LISTS`); `battle_themes`, each battle theme's name, by its song's asset name
-# (rules/battle_themes); `abilities`, what the rules' overview names of what several entries do together (a Soul
+# (rules/battle_themes); `stats`, the stats the rules' overview gives beyond the eight every game's have (a Soul
 # Unison's turns, rules/souls/custom).
-text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "auto_battle_lists", "battle_themes", "abilities"]
+text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "auto_battle_lists", "battle_themes", "stats"]
