@@ -870,9 +870,20 @@ export component Header inherits Rectangle {
         background: Theme.line;
     }
 
-    // The logo.
-    Text {
+    // The logo: the app's icon (docs/logo/nettai-icon.svg, the retrowave sun over the battle field), then its name
+    // (the user: "logo then \"nettai\"").
+    Image {
         x: root.pad;
+        y: (parent.height - self.height) / 2;
+        width: Theme.phone ? 28px : 34px;
+        height: self.width;
+        visible: root.logo;
+        source: @image-url("../../../docs/logo/nettai-icon.svg");
+        opacity: arrive.t;
+    }
+
+    Text {
+        x: root.pad + (Theme.phone ? 38px : 46px);
         visible: root.logo;
         text: "nettai";
         color: Theme.text;
