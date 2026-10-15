@@ -864,6 +864,14 @@ anyone) and authenticates nobody, as plain UDP doesn't. Over the Internet, a dir
 
 ## 5. Latency and smoothness
 
+**Slow frames in a battle are logged** (`shell.rs`, `SlowFrames`): a frame drawn more than 40 ms after the one
+before (and less than a second: past that the window wasn't drawing at all) writes a line to the log with how long
+the app's part of it took (the battle's ticks and picture, the screens), how long the window's drawing took, and
+whether the custom screen was up; forty at most a run. The user asked "why does entering custom for the first time
+stutter sometimes?", and the battle's own work on a custom screen's first frames, timed tick by tick in a release
+build (simulation, picture with its text, sound; EXE6, three seeds, a 1200x800 picture), was 2 to 6 ms a frame:
+whatever stutters there is the window's drawing or the app around the battle, which the log tells apart.
+
 Measured as nettai-demo measured (docs/frontend.md §7, its lessons). `NETTAI_KEY_PROBE` presses the right arrow
 every 300 to 400 ms, through the event loop as a key's event arrives, at no particular point between frames.
 `NETTAI_PLAY_STATS` prints, every two seconds:
