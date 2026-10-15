@@ -88,6 +88,8 @@ pub fn read(rulesets: &Rulesets, content: &Content, text: &str) -> Result<Rulese
 pub fn text(content: &Content, game: &str, ruleset: &Ruleset) -> String {
     let name = match &ruleset.name {
         Name::Own(name) | Name::Preset(name) => name.clone(),
+        // (The other player's is never saved as it is: a copy of it is the player's own, named.)
+        Name::Theirs => String::new(),
     };
     let f = RulesetFile {
         game: game.to_string(),
