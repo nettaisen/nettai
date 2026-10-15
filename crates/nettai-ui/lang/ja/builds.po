@@ -107,13 +107,6 @@ msgstr "オートバトル"
 msgid "Tab"
 msgstr "タブ"
 
-msgid "✓ Ready to play"
-msgstr "✓ 対戦できます"
-
-msgid "{n} problem"
-msgid_plural "{n} problems"
-msgstr[0] "問題 {n}件"
-
 # ---- The Navi tab.
 
 msgid "Choose"

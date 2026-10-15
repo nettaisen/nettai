@@ -341,8 +341,16 @@ impl Navicust {
         view.set_notice(self.notice.clone().unwrap_or_default().into());
     }
 
+    /// The game's rules' problems about a placed copy of program `piece`, by its place in the list, from 1 as they count.
+    fn problems<'d>(draft: &'d Draft, piece: u16) -> Vec<&'d nettai_match::check::Problem> {
+        let parts = grid::placed(draft.content(), draft.side());
+        let at: Vec<usize> = parts.iter().enumerate().filter(|(_, p)| p.piece == piece).map(|(i, _)| i + 1).collect();
+        draft.checked.problems.iter().filter(|p| !p.what.of_ruleset() && p.field.as_deref() == Some(grid::PIECES_FIELD) && p.entry.is_some_and(|e| at.contains(&e))).collect()
+    }
+
     /// The list: each program in its color chosen, its colors, where that color's part is and how many copies of it
-    /// are placed.
+    /// are placed, its name red where the rules have something against a placed copy; over it, what the game's rules
+    /// have against the NaviCust, a placed program or the whole (docs/design/app-ui.md §2.66).
     fn show_list(&self, shell: &Shell, draft: &Draft) {
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
@@ -360,11 +368,9 @@ impl Navicust {
                     let allowed = draft.allows(grid::PIECES_FIELD, piece);
                     let colors: Vec<ProgramColor> = d.colors.get(&piece).into_iter().flatten().map(|c| ProgramColor { tone: tone(Some(c)) }).collect();
                     let copies: Vec<&grid::Placed> = parts.iter().filter(|p| p.piece == piece && p.color == name).collect();
-                    // (The build's problems about a placed copy of it, by its place in the list, from 1 as the rules
-                    // count; or the ruleset holds back a program the build has.)
-                    let at: Vec<usize> = parts.iter().enumerate().filter(|(_, p)| p.piece == piece).map(|(i, _)| i + 1).collect();
-                    let flagged = (!allowed && !at.is_empty())
-                        || draft.checked.problems.iter().any(|p| p.field.as_deref() == Some(grid::PIECES_FIELD) && p.entry.is_some_and(|e| at.contains(&e)));
+                    // (The game's rules have something against a placed copy of it, or the ruleset holds back a program
+                    // the build has.)
+                    let flagged = (!allowed && parts.iter().any(|p| p.piece == piece)) || !Navicust::problems(draft, piece).is_empty();
                     // (A copy over the ring is out of bounds: no error, the rules bug it.)
                     let out = copies.iter().any(|p| board.is_some_and(|b| grid::cells(&d.shape(p.piece, p.compressed, p.rotation), p.x, p.y).iter().any(|&(x, y)| kind_at(b, x, y) == b'f')));
                     let state = match &self.held {
@@ -390,6 +396,7 @@ impl Navicust {
                 .collect()
         });
         view.set_programs(ModelRc::new(VecModel::from(rows)));
+        view.set_problems(draft.pane_line(shell, &self.fields(draft.content()), false).into());
         // (The rows' colors' column is as wide as the most of them, so their states line up.)
         view.set_most_colors(self.rows.iter().map(|&piece| self.colors(piece)).max().unwrap_or(1) as i32);
     }
@@ -776,8 +783,9 @@ impl Navicust {
 
     /// The strip across the top: the program under the cursor (while the pointer is on a row of the list and no piece
     /// is in hand, that row's), by its shape and compressed shape, its name in its color, the game's description of it
-    /// and the colors it comes in; and the footer's hints for a placed piece (or a placed program's row) under the
-    /// cursor.
+    /// and the colors it comes in, and at its top right where nothing was refused what the game's rules have against a
+    /// placed copy of it (as the list's title's line says it too: docs/design/app-ui.md §2.66); and the footer's hints
+    /// for a placed piece (or a placed program's row) under the cursor.
     fn show_strip(&self, shell: &Shell, draft: &Draft) {
         let (program, on_piece) = self.under_cursor(shell, draft);
         let hovered = self.hovered.filter(|_| self.held.is_none()).and_then(|r| self.row(draft, r));
@@ -786,6 +794,7 @@ impl Navicust {
         let view = ui.global::<NavicustView>();
         view.set_on_piece(on_piece);
         view.set_on_colors(self.held.is_none() && self.focused_row(shell).and_then(|r| self.rows.get(r)).is_some_and(|&p| self.colors(p) > 1));
+        view.set_fault(program.map(|(piece, _)| draft.line(shell, Navicust::problems(draft, piece))).unwrap_or_default().into());
         let Some((Some(d), (piece, color))) = self.data.as_ref().zip(program) else { return view.set_detail(ProgramDetail::default()) };
         let detail = draft.with_words(shell, |words| {
             let colors = d.colors.get(&piece).cloned().unwrap_or_default();

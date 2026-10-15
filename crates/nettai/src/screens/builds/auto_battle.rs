@@ -100,12 +100,14 @@ impl AutoBattle {
         }
     }
 
-    /// Whether the rules have something against place `place` (from 0).
-    fn flagged(draft: &Draft, place: usize) -> bool {
-        draft.checked.problems.iter().any(|p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(place))
+    /// The rules' problems with place `place` (from 0).
+    fn problems(draft: &Draft, place: usize) -> impl Iterator<Item = &nettai_match::check::Problem> {
+        draft.checked.problems.iter().filter(move |p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(place))
     }
 
-    /// The places under their lists' titles, two columns of them (on a phone one), each place where it is.
+    /// The places under their lists' titles, two columns of them (on a phone one), each place where it is, marked
+    /// where the rules have something against it; in the header, what the game's rules have against the data, a place
+    /// of it or the whole (docs/design/app-ui.md §2.66).
     fn show_places(&mut self, shell: &Shell, draft: &Draft) {
         let columns = if shell.scale.phone { 1 } else { 2 };
         let kit = draft.kit.clone();
@@ -129,7 +131,7 @@ impl AutoBattle {
                     let (column, r) = ((k % columns) as i32, row + (k / columns) as i32);
                     self.at[place] = (column, r);
                     self.editable.push(place);
-                    let chip = AutoBattle::cell(draft, words, data.places[place], AutoBattle::flagged(draft, place));
+                    let chip = AutoBattle::cell(draft, words, data.places[place], AutoBattle::problems(draft, place).next().is_some());
                     lines.push(PlaceLine { chip, number: k as i32 + 1, place: place as i32, column, row: r, ..Default::default() });
                 }
                 row += list.len.div_ceil(columns) as i32;
@@ -143,6 +145,7 @@ impl AutoBattle {
         view.set_place(self.place as i32);
         view.set_filled(self.editable.iter().filter(|&&p| data.places[p] != Entry::Empty).count() as i32);
         view.set_places(self.editable.len() as i32);
+        view.set_problems(draft.pane_line(shell, &[auto::PLACES_FIELD.to_string()], false).into());
     }
 
     /// The library's rows, as sorted and searched: of the chips the place being filled can hold.
@@ -244,13 +247,19 @@ impl AutoBattle {
             Some(Described::Row(r)) => self.rows.get(r).copied(),
             None => None,
         };
+        // (What the game's rules have against the place described, as its pane's header says it too: said where nothing
+        // was refused, docs/design/app-ui.md §2.66.)
+        let fault = match hovered.or(self.described) {
+            Some(Described::Place(i)) => draft.line(shell, AutoBattle::problems(draft, i)),
+            _ => String::new(),
+        };
         let ui = shell.ui();
         let say = ui.global::<BuildWords>();
         let detail = draft.with_words(shell, |words| {
             // (Why what was asked of the place wasn't done: the strip's refusal. What the rules have against the place is
-            // the header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            // its pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
             let problem = notice.unwrap_or_default();
-            let Some(chip) = chip else { return ChipDetail { problem: problem.into(), ..Default::default() } };
+            let Some(chip) = chip else { return ChipDetail { problem: problem.into(), fault: fault.into(), ..Default::default() } };
             let record = content.chip(chip);
             let dark = record.flags.has(nettai_battle::content::ChipFlags::DARK);
             let mut facts = vec![say.invoke_class(kind(record.class), dark), say.invoke_megabytes(record.mb as i32)];
@@ -269,6 +278,7 @@ impl AutoBattle {
                 element: draft.kit.pictures.chip_element(chip),
                 facts: ModelRc::new(VecModel::from(facts)),
                 problem: problem.into(),
+                fault: fault.into(),
                 ..Default::default()
             }
         });

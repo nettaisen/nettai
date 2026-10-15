@@ -17,7 +17,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message, Refusal } from "../../widgets.slint";
+import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message, Refusal, ProblemNote } from "../../widgets.slint";
 import { Tween, Pulse, Shake } from "../../motion.slint";
 import { RemoveTarget } from "folder.slint";
 
@@ -224,6 +224,11 @@ export global NavicustView {
     in property <int> most-colors;
     // The cursor is in the list: its title is lit, the board's isn't.
     in property <bool> in-list;
+    // What the game's rules have against the NaviCust (a placed program, or the whole), the first and "+n more": said on
+    // the list's title's line (docs/design/app-ui.md §2.66), a program a problem is about its name red; and what they
+    // have against the program the strip describes, at its top right where nothing was refused.
+    in property <string> problems;
+    in property <string> fault;
     // What the NaviCust does, and the bugs it brings (a patch card's aren't the NaviCust's).
     in property <[EffectLine]> effects;
     in property <[EffectLine]> bugs;
@@ -1096,14 +1101,15 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    // (Why the piece in hand couldn't be put down: the strip's refusal, at its top right as every tab's strip has it.
-    // A phone has no strip: its line is under the key.)
+    // (Why the piece in hand couldn't be put down: the strip's refusal, at its top right as every tab's strip has it;
+    // else what the rules have against the program it describes. A phone has no strip: its line is under the key.)
     Refusal {
         x: parent.width / 2;
         y: root.top + 19px;
         width: parent.width / 2 - 16px;
         visible: !Theme.phone;
         text: NavicustView.notice;
+        problem: NavicustView.fault;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -1116,14 +1122,21 @@ export component NavicustTab inherits Rectangle {
         text: NavicustView.notice;
     }
 
-    // ---- The programs: an open list.
-    Label {
+    // ---- The programs: an open list, what is wrong with the NaviCust on its title's line.
+    programs-title := Label {
         x: root.list-x;
         y: root.list-y;
         width: root.list-width;
         height: 20px;
         text: @tr("PROGRAMS");
         color: NavicustView.in-list ? Theme.cursor : Theme.muted;
+    }
+
+    ProblemNote {
+        x: root.list-x + min(programs-title.width, programs-title.preferred-width) + 16px;
+        y: root.list-y + (20px - self.height) / 2;
+        width: max(0px, root.list-x + root.list-width - 8px - self.x);
+        text: NavicustView.problems;
     }
 
     list := ListView {

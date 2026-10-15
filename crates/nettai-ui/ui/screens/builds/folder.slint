@@ -11,13 +11,14 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown, Refusal, ProblemNote } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionTag, VersionMark } from "../../build.slint";
 
 // The chip under the cursor, for the strip: its picture, its name and code, the game's description of it, its
-// element's icon, its facts (its class, its MB, its attack, how many the folder holds), and why a mark asked of it
-// wasn't made (`problem`: a refusal; the build's problems are the header's, docs/design/app-ui.md §2.66).
+// element's icon, its facts (its class, its MB, its attack, how many the folder holds), why a mark asked of it wasn't
+// made (`problem`: a refusal), and what the game's rules have against it (`fault`: said where there is no refusal,
+// as its pane's header says it too; docs/design/app-ui.md §2.66).
 export struct ChipDetail {
     there: bool,
     art: image,
@@ -28,6 +29,7 @@ export struct ChipDetail {
     element: image,
     facts: [string],
     problem: string,
+    fault: string,
 }
 
 // A chip in one of its codes, as the library lists it. `note` is how many the folder holds, or with `refused`
@@ -91,6 +93,10 @@ export global FolderView {
     in property <int> slot;
     out property <int> marked: (self.in-library || Nav.id == "slot") ? self.slot : -1;
     in property <FolderCounts> counts;
+    // What the game's rules have against the folder ("29 chips, a folder has 30", an entry's chip in a code it doesn't
+    // come in), the first and "+n more": said in its header (docs/design/app-ui.md §2.66). An entry a problem is about
+    // has its name red.
+    in property <string> problems;
     // The entry a chip just landed in, counted: it flashes.
     in property <int> landed;
     in property <int> landed-seq;
@@ -555,13 +561,15 @@ export component FolderTab inherits Rectangle {
     property <length> pane-y: root.top + 104px + 12px;
     property <length> pane-width: 528px;
     property <length> slot-width: (root.pane-width - 24px - 12px) / 2;
-    // A phone: the counts' box, and the folder in one column under it.
-    property <length> counts-height: FolderView.counts.tags ? 90px : 68px;
-    // The folder's header: its title and its counts on one line where the language's words leave them the room,
-    // else the counts on a line of their own under the title. The header is 44 either way, and which it is
-    // depends on the language alone, never on what the folder holds.
+    // A phone: the counts' box, its last line kept for what is wrong with the folder, and the folder in one column
+    // under it.
+    property <length> counts-height: (FolderView.counts.tags ? 90px : 68px) + 22px;
+    // The folder's header, 44 tall: its title, and on its line after it what is wrong with the folder or an entry of it
+    // (the line the problems have in every tab's pane: docs/design/app-ui.md §2.66); the counts on a line of their own
+    // under it, which they share with nothing. (The two never fit on one line in English: EXE6's five counts leave the
+    // title's line no room for a problem's words.)
     property <length> counts-width: chips.width + mega.width + giga.width + regular.width + 3 * 12px + (FolderView.counts.tags ? tag.width + 12px : 0px);
-    property <bool> two-lines: folder-title.preferred-width + 12px + root.counts-width > root.pane-width - 24px;
+    property <bool> two-lines: true;
     property <length> counts-y: root.pane-y + (root.two-lines ? 24px : 14px);
     // (The screenshot pass is told if the counts don't fit the pane even so.)
     property <bool> counts-over: Theme.audit && !Theme.phone && root.counts-width > root.pane-width - 24px + 0.5px;
@@ -617,13 +625,15 @@ export component FolderTab inherits Rectangle {
         }
     }
 
-    // (Why the mark asked of the entry under the cursor wasn't made: the strip's refusal.)
+    // (Why the mark asked of the entry under the cursor wasn't made: the strip's refusal; else what the rules have
+    // against it.)
     Refusal {
         x: parent.width / 2;
         y: root.top + 19px;
         width: parent.width / 2 - 16px;
         visible: !Theme.phone;
         text: FolderView.detail.problem;
+        problem: FolderView.detail.fault;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -736,6 +746,14 @@ export component FolderTab inherits Rectangle {
         suffix: "/\{FolderView.counts.tag-limit} MB";
         value-width: 52px;
         over: FolderView.counts.tag > FolderView.counts.tag-limit;
+    }
+
+    // (What is wrong with the folder: on its title's line, or a phone's last line of its counts' box.)
+    ProblemNote {
+        x: Theme.phone ? 12px : folder-title.x + folder-title.preferred-width + 16px;
+        y: Theme.phone ? root.counts-height - 12px - self.height : folder-title.y + (folder-title.height - self.height) / 2;
+        width: Theme.phone ? parent.width - 24px : root.pane-width - 12px - self.x;
+        text: FolderView.problems;
     }
 
     changed counts-over => {

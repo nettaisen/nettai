@@ -14,7 +14,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
@@ -27,7 +27,8 @@ export struct CardLine {
 
 // A card, as a row shows it: its number and name, its MB (none in a game without), the slot it belongs in (a game
 // with slots); in the library, a note (it is in, or why it can't go in: `refused` greys the row, `bad` puts the note
-// in the error red). `there` off: a slot or a place with no card.
+// in the error red); in the build's, `bad` puts its name in the error red where a problem is about it
+// (docs/design/app-ui.md §2.66). `there` off: a slot or a place with no card.
 export struct CardRow {
     there: bool,
     number: string,
@@ -41,14 +42,16 @@ export struct CardRow {
     version: VersionTag,
 }
 
-// The card under the cursor, for the strip: its number, name and facts (its MB, its slot), why it can't go in, and its
-// lines in its two groups under their titles.
+// The card under the cursor, for the strip: its number, name and facts (its MB, its slot), why it can't go in
+// (`problem`, a refusal) or what the game's rules have against it (`fault`), and its lines in its two groups under
+// their titles.
 export struct CardDetail {
     there: bool,
     number: string,
     name: string,
     facts: string,
     problem: string,
+    fault: string,
     first-title: string,
     first: [CardLine],
     second-title: string,
@@ -96,6 +99,10 @@ export global PatchCardsView {
     in property <int> slot;
     out property <int> marked: (self.in-library || Nav.id == "card") ? self.slot : -1;
     in property <CardCounts> counts;
+    // What the game's rules have against the cards (one of them, or all: "90 MB, the most is 80"), the first and "+n
+    // more": said in the header, before the counts (docs/design/app-ui.md §2.66). A card a problem is about has its name
+    // red.
+    in property <string> problems;
     // What the cards add up to: the numbers they change, what they give, their bugs.
     in property <string> together-numbers;
     in property <string> together-abilities;
@@ -581,13 +588,14 @@ export component PatchCardsTab inherits Rectangle {
     }
 
     // (Why the card under the cursor can't go in, or why it wasn't put in: the strip's refusal, at its top right as
-    // every tab's strip has it.)
+    // every tab's strip has it; else what the rules have against it.)
     Refusal {
         x: parent.width / 2;
         y: root.top + 19px;
         width: parent.width / 2 - 16px;
         visible: !Theme.phone;
         text: PatchCardsView.detail.problem;
+        problem: PatchCardsView.detail.fault;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -602,7 +610,7 @@ export component PatchCardsTab inherits Rectangle {
         fill: Theme.phone ? Theme.inset : Theme.panel;
     }
 
-    Label {
+    cards-title := Label {
         x: 12px;
         y: root.pane-y;
         width: root.pane-width - 24px - counts.width - 12px;
@@ -610,6 +618,14 @@ export component PatchCardsTab inherits Rectangle {
         visible: !Theme.phone;
         text: @tr("PATCH CARDS");
         color: PatchCardsView.in-library ? Theme.muted : Theme.cursor;
+    }
+
+    // (What is wrong with the cards: on the title's line, up to the counts; a phone's, after them.)
+    ProblemNote {
+        x: Theme.phone ? counts.x + counts.width + 16px : cards-title.x + min(cards-title.width, cards-title.preferred-width) + 16px;
+        y: counts.y;
+        width: max(0px, Theme.phone ? parent.width - 12px - self.x : counts.x - 16px - self.x);
+        text: PatchCardsView.problems;
     }
 
     counts := HorizontalLayout {

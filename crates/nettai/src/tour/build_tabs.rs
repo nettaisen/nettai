@@ -899,7 +899,7 @@ fn to_held(class: ChipClass) -> Step {
 
 /// A build whose auto battle data holds, in each list the rules hold to one class of chip, a chip of another (as a
 /// build file or a save made by hand may): Play's list counts its problems, and in the editor its tab is
-/// flagged, the places are marked, and the strip says on one why. (A new build of the game's first version, beside
+/// flagged, the places are marked, each saying why at its end. (A new build of the game's first version, beside
 /// the walk's.)
 fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     const NAME: &str = "Wrong places";
@@ -945,8 +945,8 @@ fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot) {
 }
 
 /// A build whose NaviCust has two programs over each other (the walk's own build's first program placed again where it
-/// is, as a build file made by hand may have it: the editor never puts one so): on the NaviCust tab the header says
-/// what is wrong (docs/design/app-ui.md §2.66), the tab's word marked (`tabs-navicust-overlap`). (A build of its own,
+/// is, as a build file made by hand may have it: the editor never puts one so): on the NaviCust tab the program's row
+/// says what is wrong (docs/design/app-ui.md §2.66), the tab's word marked (`tabs-navicust-overlap`). (A build of its own,
 /// beside the walk's.)
 fn overlap(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     const NAME: &str = "Overlap";
@@ -980,8 +980,8 @@ fn overlap(add: &mut dyn FnMut(u64, Step), shot: Shot) {
 
 /// A build of the game's first version given the other version's variant of a card that has one per version
 /// (Bass-Cross MegaMan's, EXE5's teams'), which a ruleset of one version per build refuses (the Masters class preset's):
-/// on the Patch cards tab the card's name in the error red and the header saying the mix (`tabs-cards-mixed`); and the
-/// header's line opened, the build's problems listed, each by its tab (`tabs-problems-list`). (A build of its own.)
+/// on the Patch cards tab the card's name in the error red and the ruleset's select saying the mix
+/// (`tabs-cards-mixed`). (A build of its own.)
 fn card_mix(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     const NAME: &str = "Card mix";
     add(
@@ -1010,16 +1010,13 @@ fn card_mix(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, focus("card", 0));
     shot(add, "tabs-cards-mixed", Pair::None);
     add(90, on_tab(EditorTab::PatchCards, "Patch cards"));
-    add(SETTLE, press("problems", 0));
-    shot(add, "tabs-problems-list", Pair::None);
-    add(SETTLE, act(Action::Back));
 }
 
 /// The library's `nth` card of a version's variant (a row with a version's mark) put in, unless the build mixes the
-/// versions already (the header isn't "ready").
+/// versions already (the ruleset's select says what it has against the build).
 fn put_variant(nth: usize) -> Step {
     Box::new(move |ui, app, tour| {
-        if tour.passing.get() || (nth > 0 && !ui.global::<BuildsView>().get_state_good()) {
+        if tour.passing.get() || (nth > 0 && !ui.global::<BuildsView>().get_ruleset_problems().is_empty()) {
             return;
         }
         let rows = ui.global::<nettai_ui::PatchCardsView>().get_rows();

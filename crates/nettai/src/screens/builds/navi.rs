@@ -15,11 +15,12 @@
 //! it out of a list (`Builds::choose_form`). What is wrong with a fact is marked as every tab marks its items
 //! (docs/design/app-ui.md §2.66): its heading in the error red, and a form of the build's a problem is about, its name
 //! in it (the user: "if there's a problem with e.g. crosses or souls there's nowhere in the ui that shows it"); a form
-//! the ruleset the player plays by doesn't allow says so at its row's end, as a library's row does. The sentences are
-//! the header's, as every tab's are (a form another version's under one version per build, one past the fact's room
-//! or not the navi's), so nothing under the selector moves when one appears (the user: "error messages for beast
-//! form/crosses ends up shifting layout"). The lists are the game's own navi's alone; the Cybeast is every navi's
-//! (MstrCros plays its version's Crosses).
+//! the ruleset the player plays by doesn't allow says so at its row's end, as a library's row does. What the game's
+//! rules have against a fact (a form of it, or the whole) is said on its heading's line, against the navi on its name's
+//! line, each in a place that is there when it says nothing, so nothing moves when one appears (the user: "error
+//! messages for beast form/crosses ends up shifting layout"); what the ruleset has against them (a form another
+//! version's under one version per build) is said by its select. The lists are the game's own navi's alone;
+//! the Cybeast is every navi's (MstrCros plays its version's Crosses).
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
 //! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
@@ -181,7 +182,18 @@ impl Tab for Navi {
                     let name = words.names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{}", c.fact)).unwrap_or_else(|| c.fact.clone());
                     let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
                     let columns = if side_by_side { 2 } else { columns };
-                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), flagged: !problems.is_empty(), columns, rows, heads, forms: ModelRc::new(VecModel::from(forms)), at };
+                    let problem = draft.line(shell, problems.iter().copied());
+                    let group = NaviFormGroup {
+                        name: name.to_uppercase().into(),
+                        count: count.into(),
+                        flagged: !problems.is_empty(),
+                        problem: problem.into(),
+                        columns,
+                        rows,
+                        heads,
+                        forms: ModelRc::new(VecModel::from(forms)),
+                        at,
+                    };
                     at += c.forms.len() as i32;
                     group
                 })
@@ -190,6 +202,12 @@ impl Tab for Navi {
         view.set_form_groups(ModelRc::new(VecModel::from(groups)));
         let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
+        // (What the ruleset has against the build: a phone's under its select. What the game's rules have against the
+        // navi, or against the build where no tab shows what it is about: on the navi's name's line.)
+        let against = draft.with_words(shell, |words| words.summary(draft.ruleset_problems()));
+        view.set_ruleset_problems(against.unwrap_or_default().into());
+        let navi_fact: Vec<String> = content.defs.fact_name(PlayerFact::Navi).map(str::to_string).into_iter().collect();
+        view.set_problems(draft.pane_line(shell, &navi_fact, true).into());
         view.set_face(face);
         view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));

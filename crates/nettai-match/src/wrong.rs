@@ -113,6 +113,13 @@ pub enum Wrong {
 }
 
 impl Wrong {
+    /// Whether it is the ruleset's alone ([`Wrong::NotAllowed`],
+    /// [`Wrong::Mixed`]: `build::Checked::under` adds them), not the game's
+    /// rules': a build has it only by the ruleset it is checked under.
+    pub fn of_ruleset(&self) -> bool {
+        matches!(self, Wrong::NotAllowed { .. } | Wrong::Mixed { .. })
+    }
+
     /// A problem of the rules' (`nettai_battle::rules::Problem`: its kind's
     /// name and its table), typed. A kind this crate doesn't know, or one
     /// without its numbers, is [`Wrong::Invalid`] (the rules' sentence still
