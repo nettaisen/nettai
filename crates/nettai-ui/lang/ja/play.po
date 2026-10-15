@@ -166,8 +166,13 @@ msgctxt "first to"
 msgid "{}"
 msgstr "{}本先取"
 
-msgid "Patch cards"
-msgstr "改造カード"
+# The match's ruleset (docs/design/app-ui.md §2.59), and the joiner's button that opens it to read.
+msgid "Ruleset"
+msgstr "ルール"
+
+msgctxt "ruleset"
+msgid "VIEW"
+msgstr "見る"
 
 msgid "Leave the lobby?"
 msgstr "ロビーから退出しますか？"

@@ -34,6 +34,7 @@ mod packs;
 mod paths;
 mod quit;
 mod replays;
+mod rulesets;
 mod screens;
 mod settings;
 mod shell;

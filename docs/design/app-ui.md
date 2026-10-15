@@ -83,7 +83,8 @@ Each is settled unless the user changes it.
     lobby's protocol sends none of a build's name, version or navi label.)
 17. **During a match both builds can be viewed**, as in Tango; and **the lobby has a "closed builds" setting**.
     The lobby's match settings also have **a toggle for patch cards, on or off** ("for netbattle settings you should
-    also have a toggle for patch cards on/off").
+    also have a toggle for patch cards on/off"). (Patch cards are a ruleset's since §2.59, allowed or not one by
+    one; Closed builds stays the lobby's own setting.)
 18. **Connection quality is shown during play.** Clicking the corner opens the link panel (2026-10-14: "you should
     allow clicking the ping indicator in pvp to bring up a tango-style link quality panel thing").
 19. **Patch cards are shown comprehensively**, have no image area ("patch cards don't have images"), have no on/off
@@ -716,6 +717,81 @@ Each is settled unless the user changes it.
     under it (the abilities and bugs a line fewer, nine to eight); the narrow sheet's two columns of four have no
     room for a ninth, so it is a row of its own under them at the left, the sheet 22 taller (a third column would
     leave a stat's label 40% longer no room); a phone's sheet has it as its ninth row. (§6 Builds, docs/app.md §8.)
+59. **Rulesets in place of Patch cards** (2026-10-15). The user: "instead of just closed setup and
+    patch cards on/off there should be an entire ruleset configuration thing like: - closed setups - allowed
+    navicust pieces - allowed patch cards - allowed chips - allowed navis - allowed sets of souls/crosses (should be
+    able to represent game)". Asked how, they chose: for souls and Crosses both a version's set as a quick choice
+    (EXE6: Gregar's Crosses, Falzar's, or both; EXE5: Team ProtoMan's souls, Team Colonel's, or both; a version's
+    set is exactly what that cartridge has) and a toggle for each soul or Cross under them; named rulesets the
+    host saves and picks in the lobby, beside built-in presets of each game ("Standard" allowing everything), the
+    lobby showing the ruleset chosen and the joiner seeing it read-only; and the build editor marking what a
+    ruleset bans, the player picking a ruleset there (remembered by game) so that they can build to it, and the
+    lobby's line saying what a build breaks under the agreed ruleset ("banned chip: X" style). What follows is
+    chosen here, where they said no more.
+    - *A ruleset* is what may be played: a name, Versions (below) and, for each of the game's ruleset
+      categories, the items it doesn't allow. Closed builds isn't a ruleset's (the user, as rulesets were built:
+      "i think closed setup should not be part of the ruleset actually"): it stays the lobby's own setting, as it
+      was, and no ruleset file or page has it. A category is one of what
+      a build is made of that the game lets a ruleset hold back: Navis (EXE5, EXE6), Chips, NaviCust programs,
+      Patch cards, and Crosses (EXE6) or Souls (EXE4, EXE5). The game's content says which categories it has
+      and what it offers ready-made; nothing in the app names one (docs/design/rules-in-luau.md, "Rulesets").
+      *Versions* is a ruleset's setting too (docs/design/versions.md §2.3): one per build (each build is one
+      cartridge's: what it holds of a version's own things, its souls or Crosses and its Giga chips, all one
+      version's) or mixed (the allowlists alone say what may be played). The versions are the game's *groups*
+      (docs/design/versions.md §2.2), read from what a build holds, never from its version: a category's items that
+      are a version's own have that version as a quick choice on the page (Gregar, Falzar, All), and a build of
+      two versions' things under one per build is a problem ("Mixes Gregar and Falzar: TenguCross, Bass").
+    - *Presets* are each game's, in its order. Standard, the cartridges' own rules (the user, of rulesets once the
+      versions were decided: "you should have a standard ruleset for each game that enforces version-specific
+      stuff"): everything allowed, Versions one per build, both versions allowed; it is a new lobby's,
+      and a player's until they pick another. Then Mixed (everything allowed, Versions mixed), one for each version
+      (named for it: "Gregar" allows Gregar's own things alone, one per build), and No patch cards (Standard with no
+      patch card allowed). A preset can't be changed; DUPLICATE makes the player's own copy of it. *The player's
+      own* are named by them and kept as files, one per ruleset, by game (docs/app.md §8), as builds are.
+    - *What a ruleset does to a build:* a build that holds something its ruleset doesn't allow can't be played
+      under it. Each thing is a problem of the build as a rule's break is, one for each item ("Bass isn't
+      allowed", "TenguCross isn't allowed"): the lobby's line says the first and READY is refused, the build
+      editor's header counts them, and the item is marked where the editor shows it. Nothing is taken out of a
+      build to play it. **So Patch cards off is gone, and it worked otherwise**: with it off each build was played
+      without its cards; now a ruleset that allows no patch cards (the No patch cards preset) refuses a build that
+      holds any, and the player takes them out, or brings another build. A ruleset that allows some cards and not
+      others reads the same way, as the user's "allowed patch cards" asks.
+    - *A build's souls and Crosses are as they were* until docs/design/versions.md §2.1 is built: its version brings
+      them all, and the build editor has no way to leave one out. So a ruleset that holds back one soul or Cross
+      of a version refuses every build of that version for now; a version's quick choice, which holds back its
+      things together, is the way to build to it.
+    - *The lobby's row* is First to, Ruleset, Closed builds, Input delay and Ping: Ruleset takes Patch cards'
+      place. The host's is a select of the game's presets and then the player's own by name (Left and Right step
+      it, Enter opens it as a list), with EDIT after it, which opens the ruleset's page. The joiner's shows the
+      host's ruleset by its name, can't be stepped or opened, and has VIEW after it, which opens the page
+      read-only. A ruleset chosen, or the one chosen changed on its page, clears both ready marks as any shared
+      setting does. Each player checks their own build against it, and their peer checks the other's. A host's
+      lobby starts on the ruleset that player plays by (below).
+    - *The ruleset a player plays by* is one choice for each game, remembered: the one the lobby starts on when
+      they host, and the one the build editor marks builds against. The build editor's is a select at the tab
+      bar's right end ("Ruleset", then the select, and EDIT), on every tab; a phone has it on the Navi tab, a row
+      between the navi's panel and the grid. Picked in either place it is the other's too (a joiner's lobby shows the host's and changes nothing).
+      The game's first preset (Standard) until one is picked, or when the one picked is deleted.
+    - *What the editor marks:* a navi's card it doesn't allow (a red line under its name, "Not allowed"); a chip
+      in the folder's library (its row's reason, as another version's Giga chip's: "Not allowed", in the error
+      red, and it can't be added) and a folder's entry of one (the entry's red, as any entry's problem); a NaviCust
+      program's row in PROGRAMS (Not allowed, in the error red where Placed is); a patch card's library row and an
+      installed card (in the error red); a soul's or Cross's face on the Navi tab (a red ring). The header's count has them.
+    - *The ruleset's page* covers the screen it was opened from (the lobby, or the build editor), which goes on
+      under it (the lobby's link with it); its Back (‹ LOBBY, ‹ EDITOR) or Esc comes back to the control it was
+      opened from. Header: the ruleset's name, and PRESET as its tag for a preset. Body, in its units: a row of
+      the Name field (360; disabled for a preset, and for a ruleset viewed), Versions (ONE PER BUILD, MIXED) and, at the right, DUPLICATE and DELETE (the player's own alone; it asks once). Under it from 64 the categories at the
+      left (an open list 300 wide, rows 52: the category's name, and how much it allows, "All allowed", "None
+      allowed" or "12 of 380 allowed"), and the chosen one's items at the right: a head of ALLOW ALL, ALLOW
+      NONE, for a category with a version's own items the quick choices (a segmented choice of each version
+      and All, the one lit whose own items alone are allowed of the versions'), and a search field; then the items as the build editor's
+      lists show them (chips with their icon in the library's order; navis, souls and Crosses with their faces;
+      programs and cards by name), each row a check mark, allowed or not, toggled by Enter, a click or a tap.
+      Each change is saved at once, as a build's are. A preset's page, or a ruleset viewed, changes nothing (its
+      rows' marks still show) and says so in the reserved line ("A preset can't be changed. Duplicate it to make
+      your own."), but DUPLICATE works there: a viewed ruleset duplicated is the joiner's own copy. On a phone
+      one column: the name, Versions, the buttons, the category as a select, then its head and items.
+    (§6 Play and Builds; docs/app.md §4 and §8; docs/design/rules-in-luau.md, "Rulesets".)
 
 ## 3. Chosen where the user gave no answer
 
@@ -1000,14 +1076,14 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   always did, with no menu over it: §2.57.)
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
-  10, 2 at first: §2.34), Patch cards
-  (on, off), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), the
+  10, 2 at first: §2.34), Ruleset (§2.59: the host's a select with EDIT, the joiner's the host's ruleset by
+  name with VIEW), Closed builds (off, on), Input delay (a stepper, yours alone, default 4, remembered), the
   connection's bars and ping (no music: "don't allow bgm select in lobby"; the battle's music is picked in
-  Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, Patch cards and Closed
-  builds are shared: either player changes them, both see it, and both ready marks clear; the opponent never sees
-  Input delay. With Patch
-  cards off, neither player's cards apply in the match: each build plays as it is without them, and a build that
-  breaks a rule without its cards (a sixth Mega chip a card allowed, say) can't ready up and says why.
+  Practice, §2.29); then READY, CHANGE BUILD, LEAVE; then a reserved status line. First to, the Ruleset and
+  Closed builds are shared: both see them, and a change clears both ready marks; either player changes First to
+  and Closed builds, the host alone the Ruleset; the opponent never sees Input delay. A build that holds something the ruleset doesn't allow can't
+  ready up and the line says the first thing ("Bass isn't allowed"); nothing is taken out of a build to play it
+  (Patch cards off, which played each build without its cards, is gone: §2.59).
 
 ### Practice
 - **No screen of its own** (§2.57): PLAY's PRACTICE goes straight into a practice battle, the two cards and the
@@ -1270,8 +1346,8 @@ A replay that fails as it is opened, or whose engine stops as it plays, is its l
    (`Slots::own` and `name`, `held`, `put`). docs/design/rules-in-luau.md's last section says how the rules
    answer.
 8. **Replays:** seeking, by keeping snapshots; export through `nettai-video` and ffmpeg; no build names in the file.
-9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds and Closed builds as
-   shared settings; and holds the start until both sides have loaded.
+9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds, the Ruleset (by
+   names: §2.59) and Closed builds as shared settings; and holds the start until both sides have loaded.
 10. **Random builds** are removed from Play, Practice and the lobby.
 11. **Practice's** new options (§3) need new support in the battle engine.
 12. **The screenshot pass** (the old `NETTAI_TOUR`) walks every screen in each language and size and is compared

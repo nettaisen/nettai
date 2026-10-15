@@ -288,7 +288,9 @@ impl Peer {
                 Some(nettai_rtc::Role::Host) => Role::Host,
                 _ => Role::Join,
             };
-            let mut lobby = Lobby::new(role, &self.content, super::settings(&self.game, 1), self.side.clone(), ENTROPY[1], Duration::from_secs(45));
+            let Ok(rulesets) = nettai_match::ruleset::Rulesets::of(&self.content, &self.game) else { return false };
+            let ruleset = rulesets.first().clone();
+            let mut lobby = Lobby::new(role, &self.content, std::sync::Arc::new(rulesets), super::settings(&self.game, 1, ruleset), self.side.clone(), ENTROPY[1], Duration::from_secs(45));
             lobby.set_name(PEER);
             self.lobby = Some(lobby);
         }
@@ -801,14 +803,15 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     reach(add, |_, ui| !ui.global::<PlayView>().get_ready() && !ui.global::<PlayView>().get_their_ready());
     shot(add, "play-lobby-again", Pair::None);
 
-    // Patch cards off, the focus on it: the other player's lobby takes it. Then a build the settings can't
-    // play, chosen in the lobby: READY is refused, and the line says why; the first build again.
-    add(SETTLE, focus("lobby.cards", 0));
-    shot(add, "play-lobby-cards", Pair::First);
+    // The host's Ruleset stepped on from the game's first preset (Standard) to the next (Mixed), the focus on it:
+    // the other player's lobby takes it. Then a build the settings can't play, chosen in the lobby: READY is
+    // refused, and the line says why; the first build again.
+    let mixed = || nettai_match::ruleset::Name::Preset("mixed".into());
+    add(SETTLE, focus("lobby.ruleset", 0));
+    shot(add, "play-lobby-ruleset", Pair::First);
     add(SETTLE, act(Action::Right));
-    reach(add, |_, ui| !ui.global::<PlayView>().get_patch_cards());
-    shot(add, "play-lobby-cards-off", Pair::Second);
-    reach(add, |_, _| with_rig(|rig| rig.peer.as_ref().and_then(|p| p.lobby.as_ref()).is_some_and(|l| !l.settings().patch_cards)) == Some(true));
+    reach(add, move |_, _| with_rig(|rig| rig.peer.as_ref().and_then(|p| p.lobby.as_ref()).is_some_and(|l| l.settings().ruleset.name == mixed())) == Some(true));
+    shot(add, "play-lobby-ruleset-mixed", Pair::Second);
     add(SETTLE, press("lobby.change"));
     add(SETTLE, press_at("change.builds", BUILDS.len() as i32 - 1));
     reach(add, |_, ui| !ui.global::<PlayView>().get_changing());
@@ -819,7 +822,7 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press_at("change.builds", 0));
     reach(add, |_, ui| !ui.global::<PlayView>().get_changing() && ui.global::<PlayView>().get_note() != LobbyNote::Unusable);
 
-    // A second match on the same link, with patch cards off and closed builds; the other player leaves it:
+    // A second match on the same link, under Mixed and with closed builds; the other player leaves it:
     // both are back in the lobby, which says why.
     add(SETTLE, focus("lobby.closed", 0));
     add(SETTLE, act(Action::Right));

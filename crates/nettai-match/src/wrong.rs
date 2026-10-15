@@ -97,6 +97,16 @@ pub enum Wrong {
     /// catalog slot: [`crate::build::Slots`] names the slots). A build's
     /// alone: a match's checks leave it be.
     Slot { entry: EntryHandle, slot: u32, own: u32 },
+    /// A definition the match's ruleset doesn't allow (`def` of `registry`,
+    /// by handle: a chip, a navi, a form, a patch card), held by the fact the
+    /// problem's field names ([`crate::ruleset::Ruleset::problems`]). A
+    /// build's under a ruleset alone: no game's rules say it.
+    NotAllowed { registry: Registry, def: u16 },
+    /// Under a ruleset of one version per build, what the build holds is
+    /// more than one version's (docs/design/versions.md §2.3): the groups it
+    /// holds things of (`ruleset::Group` ids, in order) and the things it
+    /// holds of the groups but the one it holds most of.
+    Mixed { groups: Vec<String>, items: Vec<(Registry, u16)> },
     /// Anything else no save holds.
     Invalid,
 

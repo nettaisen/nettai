@@ -57,6 +57,8 @@ mod tour {
 
 use crate::battle::{BattleEvent, BattleStart, Play as Played};
 use crate::builds::{self, overview, shelf, words};
+use crate::rulesets::page::{self as rules_page, Outcome, Page as RulesPage};
+use crate::rulesets::{self, Pickable};
 use list::Naming;
 use crate::errors::UserError;
 use crate::games::Names;
@@ -142,9 +144,9 @@ pub(crate) fn shelved(shell: &Shell, kit: &builds::Kit) -> Vec<shelf::Shelved> {
 
 /// The settings a lobby of `game` opens with: a set first to `wins` round wins, each place picked from the match's
 /// seed, its background from the background pool, every game's (docs/app.md §1, "The battle's background"), shared
-/// by both players as the round's settings are.
-pub(crate) fn settings(game: &str, wins: u8) -> Settings {
-    Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins) }
+/// by both players as the round's settings are, under `ruleset` (the one the player plays by: `rulesets::played_by`).
+pub(crate) fn settings(game: &str, wins: u8, ruleset: nettai_match::ruleset::Ruleset) -> Settings {
+    Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins, ruleset) }
 }
 
 /// A direct connection's dialog.
@@ -207,8 +209,10 @@ struct Live {
     ready: bool,
     their_ready: bool,
     first_to: i32,
-    patch_cards: bool,
-    /// What is wrong with this player's build as the settings would play it: the first thing.
+    /// The match's ruleset, and whether this player is the host, who chooses it.
+    ruleset: Option<nettai_match::ruleset::Ruleset>,
+    host: bool,
+    /// What is wrong with this player's build under the settings: the first thing.
     problem: Option<nettai_match::check::Problem>,
     closed: bool,
     bars: i32,
@@ -235,6 +239,8 @@ pub struct Play {
     boxes: Option<[usize; CODE_LENGTH]>,
     /// The lobby's list of builds is open.
     changing: bool,
+    /// The ruleset's page is open over the lobby.
+    rules: Option<RulesPage>,
     session: Option<Session>,
     stage: Stage,
     /// The match agreed last: what the match's panels show.
@@ -269,6 +275,7 @@ impl Default for Play {
             direct: None,
             boxes: None,
             changing: false,
+            rules: None,
             session: None,
             stage: Stage::Idle,
             agreed: None,
@@ -385,9 +392,9 @@ impl Play {
         view.set_sheet(sheet);
     }
 
-    /// This player's card in the lobby: the build as the match's settings would play it.
+    /// This player's card in the lobby: the build they bring, as the match plays it.
     fn show_card(&mut self, shell: &Shell) {
-        let side = self.session.as_mut().and_then(Session::lobby).map(|lobby| lobby.side_as_played());
+        let side = self.session.as_mut().and_then(Session::lobby).map(|lobby| lobby.side().clone());
         let (Some(side), Some((game, ready)), Some(build)) = (side, shell.ready(), self.build()) else { return };
         let graphics = ready.graphics(shell.lang);
         let names = Names::of(ready.content(), &graphics);
@@ -477,6 +484,7 @@ impl Play {
         self.agreed = None;
         self.changing = false;
         shell.nav.close("change.");
+        self.close_rules(shell);
         shell.stay_awake = false;
         self.set_peek(shell, false);
     }
@@ -575,10 +583,14 @@ impl Play {
         let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side(shell)) else {
             return self.ended(shell, Some(UserError::Other));
         };
+        // (A lobby starts on the ruleset this player plays by: what the other player adopts if this one hosts.)
+        let Some((rulesets, played)) = builds::kit(shell).and_then(|kit| Some((kit.rulesets()?, rulesets::played_by(shell, &kit)?))) else {
+            return self.ended(shell, Some(UserError::Other));
+        };
         let first_to = shell.settings.remembered.get(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
         // (The screenshot pass's matches are the same from run to run.)
         let entropy = tour::entropy().unwrap_or_else(nettai_rtc::random_u64);
-        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), settings(&game, first_to), side, &shell.settings.name, entropy));
+        let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), rulesets, settings(&game, first_to, played.ruleset), side, &shell.settings.name, entropy));
         if !made {
             return;
         }
@@ -638,6 +650,7 @@ impl Play {
         self.stage = Stage::Loading { seed: agreed.seed, gate };
         self.changing = false;
         shell.nav.close("change.");
+        self.close_rules(shell);
         self.agreed = Some(agreed);
         self.show_match(shell);
     }
@@ -753,11 +766,80 @@ impl Play {
         self.ended = None;
     }
 
-    fn set_patch_cards(&mut self, on: bool) {
+    /// The host picks the match's ruleset (a joiner's lobby changes nothing): it is the one this player plays
+    /// by, remembered.
+    fn set_ruleset(&mut self, shell: &mut Shell, picked: &Pickable) {
+        if let Some(game) = shell.game().map(str::to_string) {
+            rulesets::remember(shell, &game, &picked.ruleset.name);
+        }
         if let Some(lobby) = self.session.as_mut().and_then(Session::lobby) {
-            lobby.set_patch_cards(on);
+            lobby.set_ruleset(picked.ruleset.clone());
         }
         self.ended = None;
+    }
+
+    /// The rulesets the host can pick, and which of them the lobby's is.
+    fn ruleset_choices(&mut self, shell: &Shell) -> Option<(Vec<Pickable>, usize)> {
+        let kit = builds::kit(shell)?;
+        let lobby = self.session.as_mut().and_then(Session::lobby)?;
+        let picks = rulesets::pickable(&kit);
+        let at = picks.iter().position(|p| p.ruleset.name == lobby.settings().ruleset.name).unwrap_or(0);
+        Some((picks, at))
+    }
+
+    /// The lobby's Ruleset stepped or chosen (the host's): the `at`th of the rulesets it can pick.
+    fn pick_ruleset(&mut self, shell: &mut Shell, at: i32, by: i32) {
+        let Some((picks, now)) = self.ruleset_choices(shell) else { return };
+        if picks.is_empty() || !self.is_host() {
+            return;
+        }
+        let at = if by == 0 { at } else { now as i32 + by };
+        let picked = picks[at.rem_euclid(picks.len() as i32) as usize].clone();
+        self.set_ruleset(shell, &picked);
+    }
+
+    /// Whether this player hosts the lobby (and so chooses its ruleset).
+    fn is_host(&mut self) -> bool {
+        self.session.as_mut().and_then(Session::lobby).is_some_and(|l| l.role() == nettai_frontend::lobby::Role::Host)
+    }
+
+    /// EDIT (the host's) or VIEW (the joiner's): the lobby's ruleset's page, over the lobby. The host's own
+    /// ruleset can be changed there, and a change is the match's at once; a preset, or the host's ruleset seen by
+    /// the joiner, is read alone.
+    fn open_rules(&mut self, shell: &mut Shell) {
+        let host = self.is_host();
+        let (Some(kit), Some(ruleset)) = (builds::kit(shell), self.session.as_mut().and_then(Session::lobby).map(|l| l.settings().ruleset.clone())) else { return };
+        let shown = match host {
+            true => rulesets::pickable(&kit).into_iter().find(|p| p.ruleset == ruleset),
+            false => None,
+        };
+        let shown = shown.unwrap_or(Pickable { ruleset, path: None });
+        let back = shell.ui().global::<nettai_ui::RulesetView>().get_lobby_word().to_string();
+        shell.sound.play(Cue::Pick);
+        self.rules = RulesPage::open(shell, kit, shown, !host, &back);
+    }
+
+    /// The ruleset's page closed (Back), or gone with the lobby.
+    fn close_rules(&mut self, shell: &mut Shell) {
+        if let Some(page) = self.rules.take() {
+            page.close(shell);
+        }
+    }
+
+    /// What the ruleset's page did: the ruleset it shows changed, or is another (a copy), and is the match's
+    /// (the host's) and the one the player plays by; or it was deleted, and the game's first preset is.
+    fn ruleset_outcome(&mut self, shell: &mut Shell, outcome: Outcome) {
+        match outcome {
+            Outcome::Nothing => {}
+            Outcome::Changed(picked) => self.set_ruleset(shell, &picked),
+            Outcome::Deleted => {
+                self.rules = None;
+                if let Some(first) = builds::kit(shell).and_then(|kit| rulesets::pickable(&kit).into_iter().next()) {
+                    self.set_ruleset(shell, &first);
+                }
+            }
+        }
+        self.show_live(shell);
     }
 
     fn set_delay(&mut self, shell: &mut Shell, by: i32) {
@@ -796,7 +878,8 @@ impl Play {
             ready,
             their_ready,
             first_to: lobby.settings().first_to() as i32,
-            patch_cards: lobby.settings().patch_cards,
+            ruleset: Some(lobby.settings().ruleset.clone()),
+            host: lobby.role() == nettai_frontend::lobby::Role::Host,
             closed: lobby.settings().closed_builds,
             bars: if reconnecting.is_some() { 0 } else { steady.map_or(ping.map_or(0, |p| p.quality().bars() as i32), |s| s.0) },
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
@@ -831,9 +914,13 @@ impl Play {
         view.set_ready_seq(self.ready_seq);
         view.set_their_ready_seq(self.their_ready_seq);
         view.set_first_to(live.first_to);
-        view.set_patch_cards(live.patch_cards);
+        view.set_host(live.host);
+        if let (Some(ruleset), Some((_, ready))) = (&live.ruleset, shell.ready()) {
+            let graphics = ready.graphics(shell.lang);
+            view.set_ruleset(rulesets::shown_name(&Names::of(ready.content(), &graphics), &ruleset.name).into());
+        }
         // (The build's problem in the player's words: the Builds screen's for each kind.)
-        if live.problem != self.live.problem || live.patch_cards != self.live.patch_cards {
+        if live.problem != self.live.problem || live.ruleset != self.live.ruleset {
             let said = match (&live.problem, shell.ready()) {
                 (Some(problem), Some((game, ready))) => Some(words::problem(shell, &game, &ready, problem)),
                 _ => None,
@@ -1121,6 +1208,11 @@ impl Screen for Play {
     }
 
     fn activate(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        // (The ruleset's page's controls are its own.)
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.activate(shell, id, index));
+            return self.ruleset_outcome(shell, outcome);
+        }
         // (A control of a part that isn't shown any more does nothing: a press may come as the part changes.)
         let part = self.part();
         let of_its_part = match id {
@@ -1231,10 +1323,18 @@ impl Screen for Play {
                 let closed = !self.live.closed;
                 self.set_closed(closed);
             }
-            "lobby.cards" => {
-                let on = !self.live.patch_cards;
-                self.set_patch_cards(on);
+            // The host's Ruleset opens its rulesets as a list; the joiner's VIEW is beside it.
+            "lobby.ruleset" => {
+                if let Some((picks, at)) = self.ruleset_choices(shell).filter(|_| self.is_host())
+                    && let Some((_, ready)) = shell.ready()
+                {
+                    let graphics = ready.graphics(shell.lang);
+                    let names = Names::of(ready.content(), &graphics);
+                    let shown = picks.iter().map(|p| rulesets::shown_name(&names, &p.ruleset.name)).collect();
+                    shell.pick("lobby.ruleset", 0, shown, at);
+                }
             }
+            "lobby.rules" => self.open_rules(shell),
             "lobby.change" => {
                 self.changing = true;
                 shell.nav.open("change.", Key::new("change.builds", self.chosen as i32));
@@ -1275,7 +1375,11 @@ impl Screen for Play {
         }
     }
 
-    fn step(&mut self, shell: &mut Shell, id: &str, _index: i32, by: i32) {
+    fn step(&mut self, shell: &mut Shell, id: &str, index: i32, by: i32) {
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.step(shell, id, index, by));
+            return self.ruleset_outcome(shell, outcome);
+        }
         match id {
             "build" => {
                 let count = self.builds.len() as i32;
@@ -1289,7 +1393,7 @@ impl Screen for Play {
                 self.set_first_to((first + (self.live.first_to - first + by).rem_euclid(count)) as u8);
             }
             "lobby.closed" => self.set_closed(by > 0),
-            "lobby.cards" => self.set_patch_cards(by < 0),
+            "lobby.ruleset" => self.pick_ruleset(shell, 0, by),
             "lobby.delay" | "menu.delay" => self.set_delay(shell, by),
             "menu.music" => self.set_levels(shell, (shell.settings.music as i32 + 5 * by).clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, (shell.settings.effects as i32 + 5 * by).clamp(0, 100) as u32),
@@ -1299,6 +1403,10 @@ impl Screen for Play {
     }
 
     fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.choose(shell, id, index, choice));
+            return self.ruleset_outcome(shell, outcome);
+        }
         match id {
             "build" => self.choose_build(shell, choice.max(0) as usize),
             // The build's menu: from ⋯, or a right click on a row of the list (the press chose that build).
@@ -1306,7 +1414,7 @@ impl Screen for Play {
             "row-menu" if self.part() == PlayPart::Builds && self.naming.is_none() => self.open_menu(shell, &Key::new("builds", index)),
             "name.version" => self.choose_version(shell, choice.max(0) as usize),
             "lobby.closed" => self.set_closed(choice == 1),
-            "lobby.cards" => self.set_patch_cards(choice == 0),
+            "lobby.ruleset" => self.pick_ruleset(shell, choice, 0),
             "menu.music" => self.set_levels(shell, choice.clamp(0, 100) as u32, shell.settings.effects),
             "menu.effects" => self.set_levels(shell, shell.settings.music, choice.clamp(0, 100) as u32),
             _ => {}
@@ -1314,6 +1422,10 @@ impl Screen for Play {
     }
 
     fn edit(&mut self, shell: &mut Shell, id: &str, _index: i32, text: &str, done: bool) {
+        if RulesPage::owns(id) {
+            let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.edit(shell, id, text, done));
+            return self.ruleset_outcome(shell, outcome);
+        }
         let ui = shell.ui();
         let view = ui.global::<PlayView>();
         match id {
@@ -1351,6 +1463,9 @@ impl Screen for Play {
     }
 
     fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        if let Some(page) = self.rules.as_mut().filter(|_| RulesPage::owns(id)) {
+            return page.focused(shell, id, index);
+        }
         // The list's row under the cursor is the build chosen: the overview beside it follows.
         if id == "builds" {
             self.choose_build(shell, index.max(0) as usize);
@@ -1429,6 +1544,8 @@ impl Screen for Play {
         // (Over a match's result, Back goes on as CONTINUE does: the match is over, and the other player stays.)
         if self.result_shown() {
             self.go_on(shell);
+        } else if self.rules.is_some() {
+            self.close_rules(shell);
         } else if self.naming.is_some() {
             self.close_dialog(shell);
         } else if self.boxes.is_some() {
@@ -1463,6 +1580,15 @@ impl Screen for Play {
     /// A row this screen added to the practice menu was chosen; a question this screen asked (whether a build goes,
     /// whether the lobby is left) was answered.
     fn answered(&mut self, shell: &mut Shell, tag: &str, choice: usize) {
+        if tag == rules_page::DELETE {
+            if let Some(page) = self.rules.take() {
+                match page.answered(shell, choice) {
+                    Ok(outcome) => self.ruleset_outcome(shell, outcome),
+                    Err(page) => self.rules = Some(page),
+                }
+            }
+            return;
+        }
         if tag == list::DELETE {
             if choice == 1 {
                 self.delete(shell);

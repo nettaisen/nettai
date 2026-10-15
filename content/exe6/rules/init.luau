@@ -22,6 +22,8 @@ local save = require("@self/save")
 -- What the tools read of the game's builds, as data (./builds: the versions, a new save's folder): loaded with the
 -- rules, which read none of it.
 require("@self/builds")
+-- And what a ruleset may hold back of a build, and the game's ready-made rulesets (./rulesets), likewise.
+require("@self/rulesets")
 
 local rules: Rules = {
     -- What a side keeps through a round.
