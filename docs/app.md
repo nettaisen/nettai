@@ -2911,13 +2911,38 @@ screen runs the ticks due, presents the picture into the window's texture if one
   them, and its keys still work. On a phone they are one under the other in a page that scrolls (each sheet is
   then one column, 1158 tall). A closed-builds match's sides aren't kept at all (`Info::closed_builds`): its
   BUILDS can't be pressed.
+- *What else may be over the picture* (the user: "add support for input view and picture in picture in replay
+  viewer"), each off at first, toggled by its transport button after BUILDS (lit while it is on) or a key, and
+  kept from one replay to the next while the app runs (not saved: the viewer saves no setting of its own):
+  - *The input display* (I): Practice's (§15; one component, `ui/inputs.slint`'s `InputDisplay`, which Practice
+    places too), in the picture's top right corner as Practice's is, the console shown's player's buttons in
+    red over the other's in blue (the colors of their sides of the picture). The buttons are the battle's own
+    (`custom.sides[side].joypad.held`, as Practice reads them), so they are the tick shown's wherever the replay
+    is: playing, paused, stepped, sought or dragged.
+  - *The other console's picture* (P: a picture in the picture), in the shown one's bottom right corner, four of
+    the game's pixels in, a line around it: a whole multiple of the frame about a third of the picture's width
+    (the picture's scale over three, rounded, at least one: twice the frame where the picture is six times it),
+    on the display's pixels. It is presented from the same tick as the picture (the library's
+    `Viewer::present_view`: the replay is played once, the other console drawn from the same battle with its
+    own HUD state), whenever the picture is, at the window's density as the picture is (`stage::fit`: in the
+    original mode the frame itself, 115 KB), into a second texture of its own (`Shell::inset_gl`, written in
+    place as the picture's is; `Shell::show_inset`): the window's one picture and its `Showing` are untouched.
+    So it keeps step with every seek, step, drag and pause, and costs a second frame drawn per tick shown.
+  Neither has a footer hint: with them the pseudo-locale's hints no longer left the status its room.
 - *On a phone* the picture has the window's whole width, as the battle's has (§9): a window 780 of the display's
   pixels wide shows three times the frame, where the page's gutters left room for two. The transport is under
-  it, with its buttons across, then Speed and View as steppers and EXPORT VIDEO. One component is both shapes
+  it, with its eight buttons across (each 40 wide, as on a desktop), then Speed and View as steppers and EXPORT
+  VIDEO. One component is both shapes
   (the other shape's parts hidden and passed by), since two under an `if` each cost more (§14).
 
 **The export** (`Export`) is a dialog of one size from its start to its end: Size (2, 4 and 6 times the frame,
-4 chosen), View, Part (the whole match, or a round), Save as, the bar and its line, CANCEL and EXPORT. EXPORT
+4 chosen), View, Sides (One, or Both: the user, "add support for two sided side by side export"), Part (the
+whole match, or a round), Save as, the bar and its line, CANCEL and EXPORT. With Both, the video is both
+consoles side by side, the View's at the left and the other's at the right, twice as wide (the Size says the
+video's pixels: 1920 × 640 at four times), from one playing of the replay (nettai-video's `Sides::Both`,
+docs/frontend.md §8), and the file's name ends "both sides". Its sound is the left console's alone: the two
+hear one battle, so a mix would be the music and the shared effects twice over, and at the set's end the
+winner's music over the loser's. EXPORT
 runs nettai-video's `export_mp4` on a thread of its own, with a copy of what the window plays from (the game's
 graphics in the language shown, the text as the settings have it, its sound); the thread says how far it is
 and is told to stop through what the two share, which the dialog reads each frame. CANCEL (or Esc) stops an
@@ -2953,6 +2978,16 @@ left), and Replays' steps with them in the folder listed them first, watched the
 Never run: a real pointer or a pad (the probe's are the window's events, not the system's), SHOW FILE, Save as's
 system dialog, the main menu's reel playing a replay (its order is a unit test), the builds with a real key, and
 anything on a real phone.
+
+The input display and the other console's picture were shot by the pass (`viewer-overlays`, on together over
+the other console, I by its key and P by its button; English at a desktop's size, Japanese and the pseudo-locale at both)
+and looked at: the inset is the other side's console at twice the frame in a picture six times it. The dialog
+with Both is `viewer-export-both`. Not run: either while a replay plays in a window (the pass holds the viewer
+still), so neither's cost per frame was measured. The two-sided video ran once through `nettai-tool --both-sides`
+on one of the user's EXE4 replays (copied out; 7,237 ticks): 1,800 frames as an MP4 at twice the frame,
+960 × 320, H.264 and AAC by Homebrew's ffmpeg, a frame of it each side's own custom screen; and 120 frames as
+NUT streams, both sides and each alone, decoded by ffmpeg: each half byte for byte that side's own video, the
+halves different in every frame, the sound the left side's sample for sample.
 
 ## 17. The packs, from the Legacy Collection
 

@@ -118,10 +118,15 @@ fn main() -> Result<(), slint::PlatformError> {
                 if let slint::GraphicsAPI::NativeOpenGL { get_proc_address } = api
                     && std::env::var_os("NETTAI_NO_TEXTURE").is_none()
                 {
-                    state.borrow_mut().shell.gl = Some(gl::GlPicture::new(get_proc_address));
+                    let shell = &mut state.borrow_mut().shell;
+                    shell.gl = Some(gl::GlPicture::new(get_proc_address));
+                    shell.inset_gl = Some(gl::GlPicture::new(get_proc_address));
                 }
             }
-            RenderingState::RenderingTeardown => state.borrow_mut().shell.gl = None,
+            RenderingState::RenderingTeardown => {
+                let shell = &mut state.borrow_mut().shell;
+                (shell.gl, shell.inset_gl) = (None, None);
+            }
             // (The app is busy only while one of the system's dialogs is up, which a screen opened and which
             // runs the window's loop itself: those frames are drawn as the last was.)
             // (In the showreel, only the frames it captures run the app's: the window's own draws show them.)

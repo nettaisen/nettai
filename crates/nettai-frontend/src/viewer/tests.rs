@@ -205,6 +205,35 @@ fn the_view_changes_to_the_other_consoles_exactly() {
     assert_eq!(v.result(), Some(BattleResult::Won));
 }
 
+/// The other console's picture, presented beside the one shown, is what a
+/// viewer shown from that side presents at the same tick; and presenting it
+/// changes nothing of the shown console's picture, its HUD or what follows.
+/// (The test's graphics are flat and the same both ways, so the two
+/// consoles' pictures are told apart by their HUDs' states here; on a
+/// game's packs, by the pictures: docs/frontend.md §8, "Video".)
+#[test]
+fn the_other_console_is_presented_as_its_own_viewer_presents_it() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let length = ticks as u32;
+    let s = straight(&content, &replay, 0);
+    let (mut v, mut other) = (viewer(&content, &replay, 0), viewer(&content, &replay, 1));
+    let (w, h) = (nettai_render::compose::WIDTH * 2, nettai_render::compose::HEIGHT * 2);
+    let (mut inset, mut own) = (vec![0u32; w * h], vec![0u32; w * h]);
+    let mut huds_differ = false;
+    for at in [0, 1, 120, 300, length / 2, length - 30, length] {
+        v.seek(at);
+        other.seek(at);
+        v.present_view(1, &mut inset, w, h);
+        other.present(&mut own, w, h);
+        assert!(inset == own, "side 1's picture beside side 0's at tick {at}");
+        huds_differ |= format!("{:?}", v.renderer().hud_state) != format!("{:?}", other.renderer().hud_state);
+        same(&mut v, &s, at, &format!("side 0 after side 1 was presented at tick {at}"));
+        follow(&mut v, &s, 20, &format!("side 0 on from tick {at}"));
+    }
+    assert!(huds_differ, "the two consoles' HUDs are alike: nothing was told apart");
+}
+
 /// The transport: the length and the rounds are known as the replay opens;
 /// the clock runs the ticks due at each speed and none while paused or at
 /// the end; five seconds on and back, a round on and back, a frame on and

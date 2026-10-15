@@ -21,7 +21,7 @@ fn go_on(_: Progress) -> ControlFlow<()> {
 /// `part` of `replay` from `view`'s side as a NUT stream, the picture
 /// `scale` times the frame.
 fn exported(content: &Arc<Content>, replay: &Replay, view: u8, scale: u32, part: &Part) -> Vec<u8> {
-    write(&mut viewer(content, replay, view), scale, part, Vec::new(), &mut go_on).unwrap()
+    write(&mut viewer(content, replay, view), scale, Sides::One, part, Vec::new(), &mut go_on).unwrap()
 }
 
 /// What a player playing `replay` straight presents and plays, a tick at
@@ -101,6 +101,34 @@ fn a_replay_is_written_as_it_is_shown_and_heard() {
     assert!(sides[0] != sides[1]);
 }
 
+/// Both sides side by side: a picture twice as wide, each row the left
+/// console's row then the right one's, each half that console's own video
+/// frame for frame, and the sound the left console's sample for sample.
+/// (The test's graphics are flat: the two halves differ on a game's packs.)
+#[test]
+fn both_sides_are_each_sides_video_side_by_side() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, _) = recorded(&content, "exe6", 7);
+    let part = Part::Ticks(250..400);
+    for (left, scale) in [(0u8, 2usize), (1, 1)] {
+        let both = write(&mut viewer(&content, &replay, left), scale as u32, Sides::Both, &part, Vec::new(), &mut go_on).unwrap();
+        let both = reading::read(&both).unwrap();
+        assert_eq!(both.streams[0].size, (480 * scale as u64, 160 * scale as u64));
+        let alone = |view| reading::read(&exported(&content, &replay, view, scale as u32, &part)).unwrap();
+        let (own, other) = (alone(left), alone(left ^ 1));
+        let ((pictures, sound), (own_pictures, own_sound), (other_pictures, _)) = (pictures_and_sound(&both), pictures_and_sound(&own), pictures_and_sound(&other));
+        assert_eq!(pictures.len(), 150);
+        let row = 240 * scale * 3;
+        for (tick, ((picture, l), r)) in pictures.iter().zip(&own_pictures).zip(&other_pictures).enumerate() {
+            for (y, (l, r)) in l.chunks_exact(row).zip(r.chunks_exact(row)).enumerate() {
+                let at = y * row * 2;
+                assert!(&picture[at..at + row] == l && &picture[at + row..at + 2 * row] == r, "left {left}: tick {tick}'s row {y}");
+            }
+        }
+        assert!(sound == own_sound, "left {left}: the sound isn't the left console's");
+    }
+}
+
 /// The same replay gives the same bytes, from a viewer made anew each
 /// time; and a viewer that has been about the replay first (sought,
 /// played, shown from the other side) writes them too.
@@ -117,7 +145,7 @@ fn the_same_replay_gives_the_same_bytes() {
     }
     v.set_view(0);
     v.set_speed(Speed::Double);
-    let after = write(&mut v, 1, &Part::Whole, Vec::new(), &mut go_on).unwrap();
+    let after = write(&mut v, 1, Sides::One, &Part::Whole, Vec::new(), &mut go_on).unwrap();
     assert!(first == after, "a viewer that had been about the replay writes other bytes");
     assert!(v.paused() && v.at_end() && v.speed() == Speed::Normal);
 }
@@ -170,7 +198,7 @@ fn progress_is_told_and_may_cancel() {
         told.push(p);
         ControlFlow::Continue(())
     };
-    write(&mut viewer(&content, &replay, 0), 1, &Part::Whole, Vec::new(), &mut tell).unwrap();
+    write(&mut viewer(&content, &replay, 0), 1, Sides::One, &Part::Whole, Vec::new(), &mut tell).unwrap();
     assert_eq!(told.len() as u32, length + 1);
     assert_eq!(told[0], Progress { written: 0, of: length, round: 1, rounds: 2 });
     assert!(told.iter().enumerate().all(|(n, p)| p.written == n as u32 && p.of == length && p.rounds == 2));
@@ -183,7 +211,7 @@ fn progress_is_told_and_may_cancel() {
         told.push(p);
         ControlFlow::Continue(())
     };
-    write(&mut viewer(&content, &replay, 0), 1, &Part::Ticks(length - 10..length), Vec::new(), &mut tell).unwrap();
+    write(&mut viewer(&content, &replay, 0), 1, Sides::One, &Part::Ticks(length - 10..length), Vec::new(), &mut tell).unwrap();
     let before = told.iter().filter(|p| p.written == 0).count();
     assert!(before > 1 && told.len() == before + 10, "{before} of {}", told.len());
     assert!(told.iter().all(|p| p.of == 10 && p.round == 2));
@@ -193,12 +221,12 @@ fn progress_is_told_and_may_cancel() {
         frames = p.written;
         if p.written == 20 { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
     };
-    let canceled = write(&mut viewer(&content, &replay, 0), 1, &Part::Whole, Vec::new(), &mut stop_at_twenty);
+    let canceled = write(&mut viewer(&content, &replay, 0), 1, Sides::One, &Part::Whole, Vec::new(), &mut stop_at_twenty);
     assert!(matches!(canceled, Err(Error::Canceled)) && frames == 20);
     // Without sound.
     let renderer = graphics(&content, 0x7C1F).renderer(GraphicsMode::Original, None);
     let mut silent = Viewer::with(&content, &replay, Some(0), renderer, None, None).unwrap();
-    let file = reading::read(&write(&mut silent, 1, &Part::Round(1), Vec::new(), &mut go_on).unwrap()).unwrap();
+    let file = reading::read(&write(&mut silent, 1, Sides::One, &Part::Round(1), Vec::new(), &mut go_on).unwrap()).unwrap();
     assert_eq!((file.streams.len(), file.frames.len() as u32), (1, second));
 }
 
@@ -211,7 +239,7 @@ fn what_cant_be_made_is_refused() {
     let mut v = viewer(&content, &replay, 0);
     let mut refused = |scale, part: Part| {
         let mut out = Vec::new();
-        let e = write(&mut v, scale, &part, &mut out, &mut go_on).unwrap_err();
+        let e = write(&mut v, scale, Sides::One, &part, &mut out, &mut go_on).unwrap_err();
         assert!(out.is_empty(), "{part:?}: something was written");
         e.to_string()
     };

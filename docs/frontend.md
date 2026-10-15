@@ -2550,6 +2550,7 @@ out)`, `set_language`), and has a transport:
 | `step_forward()`, `step_back()` | a frame on (with its sound), a frame back |
 | `set_speed(Speed)` | `Half`, `Normal`, `Double`, `Quadruple`; the sound follows as a tape's does, so the host gets as much sound a second at any speed |
 | `set_view(side)` | either console's picture, HUD and sound, switched while it plays |
+| `present_view(side, ...)` | either console's picture now, whichever is shown: the other's is drawn from the same tick with its own HUD state (both run every tick), so a host shows both at once without playing twice; nothing shown or heard changes |
 | `set_paused(bool)` | pause, or go on |
 | `result()`, `stopped()`, `diverged()` | the set's result for the console shown (at the end of a whole set), why the engine stopped short of the end, the first difference from the recording |
 | `index(ticks)`, `indexed()` | play ahead without moving (below) |
@@ -2691,7 +2692,7 @@ are each used alone:
 - **`nut`**: FFmpeg's NUT container, written to any `std::io::Write`: raw
   frames and PCM sound in one stream, which `ffmpeg -f nut -i -` reads from a
   pipe. It knows nothing of replays.
-- **`write(&mut viewer, scale, &part, out, progress)`** and
+- **`write(&mut viewer, scale, sides, &part, out, progress)`** and
   **`export(&game, &replay, &options, out, progress)`**: a replay through a
   viewer into such a stream.
 - **`mp4::Encoder`**: `ffmpeg` run as a child that reads a NUT stream from a
@@ -2702,7 +2703,17 @@ made, as a viewer playing the part straight presents and plays them
 (`Viewer::present`, text and all; `Viewer::take_samples`). The part is the
 whole replay, a round (`Part::Round(n)`) or a range of ticks
 (`Part::Ticks(a..b)`: what playing from position `a` to position `b` shows),
-from either console (`Options::view`). A part starts in the state straight
+from either console (`Options::view`), or from both side by side
+(`Options::sides`: `Sides::Both`, a picture twice as wide, 480·N by
+160·N, the view's console at the left and the other's at the right, each
+half byte for byte that console's own video, from one playing of the
+replay: `Viewer::present_view`; nettai-video's test
+`both_sides_are_each_sides_video_side_by_side`). With both, the sound is
+the left console's alone: the two hear one battle, so a mix would be its
+music and shared effects twice over, and at the set's end the winner's
+music over the loser's; what one console alone hears (its own charge, its
+own navi's hit) is the left one's. A width twice an even one is even, so
+nothing changes for 4:2:0. A part starts in the state straight
 playback reaches there, sound included (the viewer's seek), so a part's
 frames and samples are the whole video's for those ticks.
 

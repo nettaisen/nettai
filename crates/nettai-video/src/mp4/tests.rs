@@ -220,7 +220,7 @@ mod with_a_stand_in {
 #[ignore]
 fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     use crate::tests::viewer;
-    use crate::{Part, write, write_mp4};
+    use crate::{Part, Sides, write, write_mp4};
     use std::ops::ControlFlow;
     use std::process::Command;
     let _turn = one_at_a_time();
@@ -228,7 +228,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     let (replay, _) = nettai_frontend::testing::recorded(&content, "exe6", 7);
     let dir = scratch("ffmpeg");
     let part = Part::Ticks(200..320);
-    let nut = write(&mut viewer(&content, &replay, 0), 2, &part, Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
+    let nut = write(&mut viewer(&content, &replay, 0), 2, Sides::One, &part, Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
     let file = crate::nut::reading::read(&nut).unwrap();
     std::fs::write(dir.join("part.nut"), &nut).unwrap();
     let run = |program: &str, args: &[&str]| -> Vec<u8> {
@@ -256,7 +256,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     assert!(run("ffmpeg", &[&quiet[..], &["-i", "part.nut", "-map", "0:a", "-f", "f32le", "-"]].concat()) == sound);
     // The MP4: every frame, H.264 and AAC, the picture close to the frames.
     let to = dir.join("part.mp4");
-    write_mp4(&mut viewer(&content, &replay, 0), 2, &part, &Settings::default(), &to, &mut |_| ControlFlow::Continue(())).unwrap();
+    write_mp4(&mut viewer(&content, &replay, 0), 2, Sides::One, &part, &Settings::default(), &to, &mut |_| ControlFlow::Continue(())).unwrap();
     assert_eq!(left_in(&dir), ["part.mp4", "part.nut"]);
     let probed = String::from_utf8(run(
         "ffprobe",
