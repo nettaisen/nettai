@@ -984,12 +984,16 @@ fn hover(id: &'static str, index: i32) -> Step {
 /// put away after; then a click on its last color's box, which chooses it and takes its part (`color-clicked`).
 fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, to_tab(EditorTab::Navicust));
-    add(SETTLE, Box::new(|ui, app, tour| {
+    // (The row, and how many colors it has.)
+    let at: Rc<RefCell<(i32, i32)>> = Rc::new(RefCell::new((-1, 0)));
+    let kept = at.clone();
+    add(SETTLE, Box::new(move |ui, app, tour| {
         if tour.passing.get() {
             return;
         }
         let rows = ui.global::<NavicustView>().get_programs();
         let Some(at) = rows.iter().position(|r| r.colors.row_count() > 1) else { return tour.key_wrong("no program has two colors".into()) };
+        *kept.borrow_mut() = (at as i32, rows.row_data(at).map_or(0, |r| r.colors.row_count() as i32));
         app.borrow_mut().shell.nav.focus("programs", at as i32);
     }));
     shot(add, "tabs-navicust-colors", Pair::None);
@@ -1006,13 +1010,6 @@ fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, act(Action::Back));
     // A click on the row's last color: it is chosen, and its part taken in hand at once, as a click on the row takes
     // it (the user: "selecting the color in the ncp editor should also pick up the ncp"); put away after.
-    let at: Rc<RefCell<(i32, i32)>> = Rc::default();
-    let kept = at.clone();
-    add(SETTLE, Box::new(move |ui, app, _| {
-        let row = app.borrow().shell.nav.focused().filter(|k| k.id == "programs").map_or(-1, |k| k.index);
-        let colors = ui.global::<NavicustView>().get_programs().row_data(row.max(0) as usize).map_or(0, |r| r.colors.row_count() as i32);
-        *kept.borrow_mut() = (row, colors);
-    }));
     for (wait, ev) in [(SETTLE, Ev::Press as fn(Point) -> Ev), (40, Ev::Release)] {
         let at = at.clone();
         add(wait, hand_at(move |_, _| {
@@ -1027,7 +1024,12 @@ fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
         let chosen = view.get_programs().row_data(row.max(0) as usize).map(|r| r.color);
         (!view.get_holding() || chosen != Some(colors - 1)).then(|| format!("a click on row {row}'s last color: holding {}, its color {chosen:?}", view.get_holding()))
     }));
-    add(SETTLE, act(Action::Back));
+    // (Put away: Back with nothing in hand would leave the editor.)
+    add(SETTLE, Box::new(|ui, app, _| {
+        if ui.global::<NavicustView>().get_holding() {
+            app.borrow_mut().act(Action::Back);
+        }
+    }));
 }
 
 /// The pointer gone out of the window: nothing is lit under it.
@@ -1430,11 +1432,29 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
     }));
     shot(add, "tabs-folder-dragged-in", Pair::None);
     // One the rules keep out there dragged onto entry 11: refused, its row shakes, the folder is as it was, and the
-    // strip says why. (Played by the game's first version's preset, its third: Gregar, Red Sun, Team ProtoMan, which
-    // holds the other version's own chips back. A build has no version (docs/design/app-ui.md §2.60), so the folder's
-    // rules alone may refuse nothing the walk's folder could take: one more than the copies allowed, a Giga chip past
-    // the limit, where the folder is at it.)
-    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 2)));
+    // strip says why. (Played by a ruleset of the player's own that allows of the folder's chips the game's first
+    // version's own alone, as the page's quick choice makes one, so the other version's Giga chips are refused: a
+    // build has no version (docs/design/app-ui.md §2.60) and no preset holds a version's chips back, so the folder's
+    // rules alone may refuse nothing the walk's folder could take. It is deleted after.)
+    let own_file: Rc<RefCell<Option<std::path::PathBuf>>> = Rc::default();
+    let written = own_file.clone();
+    add(SETTLE, Box::new(move |_, app, _| {
+        let mut app = app.borrow_mut();
+        let Some(kit) = crate::builds::kit(&app.shell) else { return };
+        let Some(rulesets) = kit.rulesets() else { return };
+        let (Some(folder), Some(first)) = (rulesets.categories.iter().find(|c| c.fact == "folder"), rulesets.groups.first()) else { return };
+        let mut own = rulesets.presets[0].clone();
+        own.name = nettai_match::ruleset::Name::Own("Tour".into());
+        own.allow_groups(&rulesets, folder, &[first.id.as_str()]);
+        let path = crate::rulesets::store::new_path(&kit.game, "Tour");
+        if crate::rulesets::store::write(&path, kit.content(), &kit.game, &own).is_err() {
+            return;
+        }
+        *written.borrow_mut() = Some(path);
+        if let Some(at) = crate::rulesets::pickable(&kit).iter().position(|p| p.ruleset.name == own.name) {
+            app.with_screen(ScreenId::Builds, |s, shell| s.choose(shell, "ruleset", 0, at as i32));
+        }
+    }));
     add(SETTLE, keep(&kept));
     let other = picked.clone();
     add(SETTLE, pick(&picked, move |ui| {
@@ -1453,8 +1473,13 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         (now != was.borrow().0 || said.is_empty()).then(|| format!("{:?}, refused, dragged onto entry 11: the folder changed, or the strip says nothing ({said:?})", chip.borrow().name))
     }));
     shot(add, "tabs-folder-drag-in-refused", Pair::None);
-    // (The game's first preset again, Standard, as the walk plays by.)
+    // (The game's first preset again, as the walk plays by, and the player's own ruleset gone.)
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
+    add(SETTLE, Box::new(move |_, _, _| {
+        if let Some(path) = own_file.borrow_mut().take() {
+            let _ = std::fs::remove_file(path);
+        }
+    }));
     // A patch card dragged above the one before it.
     // (Two more cards put in first, the library's first two that can go in: the walk has left one or none.)
     add(SETTLE, to_tab(EditorTab::PatchCards));
