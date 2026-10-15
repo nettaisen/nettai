@@ -7,7 +7,7 @@ fn the_command_line_is_as_stated() {
     let said: Vec<String> = args.iter().map(|a| a.to_string_lossy().into_owned()).collect();
     assert_eq!(
         said.join(" "),
-        "-hide_banner -nostdin -loglevel error -f nut -i pipe:0 \
+        "-hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0 \
          -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709 \
          -c:v libx264 -preset medium -tune animation -crf 16 \
          -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv \
@@ -214,13 +214,15 @@ mod with_a_stand_in {
 /// With ffmpeg itself (not run by default: it needs `ffmpeg` and `ffprobe`
 /// installed; `cargo test -p nettai-video -- --ignored`): a short set's
 /// stream is read by ffmpeg as the frames and the samples that were
-/// written, bit for bit, at the frame rate and sample rate stated; and
-/// its MP4 is H.264 and AAC of every frame, close to them.
+/// written, bit for bit, at the frame rate and sample rate stated; its
+/// MP4 is H.264 and AAC of every frame, close to them; and a two-sided
+/// one's has a track each side, named and the first the default, and the
+/// rounds as chapters.
 #[test]
 #[ignore]
 fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
-    use crate::tests::viewer;
-    use crate::{Part, Sides, write, write_mp4};
+    use crate::tests::{options, viewer};
+    use crate::{Options, Part, Sides, Titles, write, write_mp4};
     use std::ops::ControlFlow;
     use std::process::Command;
     let _turn = one_at_a_time();
@@ -228,7 +230,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     let (replay, _) = nettai_frontend::testing::recorded(&content, "exe6", 7);
     let dir = scratch("ffmpeg");
     let part = Part::Ticks(200..320);
-    let nut = write(&mut viewer(&content, &replay, 0), 2, Sides::One, &part, Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
+    let nut = write(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), Vec::new(), &mut |_| ControlFlow::Continue(())).unwrap();
     let file = crate::nut::reading::read(&nut).unwrap();
     std::fs::write(dir.join("part.nut"), &nut).unwrap();
     let run = |program: &str, args: &[&str]| -> Vec<u8> {
@@ -256,7 +258,7 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     assert!(run("ffmpeg", &[&quiet[..], &["-i", "part.nut", "-map", "0:a", "-f", "f32le", "-"]].concat()) == sound);
     // The MP4: every frame, H.264 and AAC, the picture close to the frames.
     let to = dir.join("part.mp4");
-    write_mp4(&mut viewer(&content, &replay, 0), 2, Sides::One, &part, &Settings::default(), &to, &mut |_| ControlFlow::Continue(())).unwrap();
+    write_mp4(&mut viewer(&content, &replay, 0), &options(2, Sides::One, &part), &Settings::default(), &to, &mut |_| ControlFlow::Continue(())).unwrap();
     assert_eq!(left_in(&dir), ["part.mp4", "part.nut"]);
     let probed = String::from_utf8(run(
         "ffprobe",
@@ -270,5 +272,29 @@ fn ffmpeg_reads_the_stream_and_makes_the_mp4() {
     assert_eq!(decoded.len(), pictures.len());
     let off: u64 = decoded.iter().zip(&pictures).map(|(a, b)| a.abs_diff(*b) as u64).sum();
     assert!((off as f64 / pictures.len() as f64) < 2.0, "the MP4's pictures are {} off a byte", off as f64 / pictures.len() as f64);
+    // Both sides across the second round's start: a track each, the left
+    // console's first and the default, each named for its player; the
+    // rounds as chapters, the second from the frame its picture begins on
+    // (59 frames in: the tick before its first); and the chapter text track
+    // last.
+    let second = replay.round_starts()[1];
+    let titles = Titles { rounds: Vec::new(), sides: ["Lan".into(), "Chaud".into()] };
+    let both = Options { scale: 1, view: None, sides: Sides::Both, part: Part::Ticks(second - 60..second + 60), titles };
+    write_mp4(&mut viewer(&content, &replay, 1), &both, &Settings::default(), &dir.join("both.mp4"), &mut |_| ControlFlow::Continue(())).unwrap();
+    let entries = "stream=codec_type,codec_name:stream_disposition=default:stream_tags=name,handler_name";
+    let probed = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", entries, "-of", "csv=p=0", "both.mp4"])).unwrap();
+    assert_eq!(
+        probed.lines().collect::<Vec<_>>(),
+        ["h264,video,1,VideoHandler", "aac,audio,1,Chaud,Chaud", "aac,audio,0,Lan,Lan", "bin_data,data,0,SubtitleHandler"],
+        "{probed}"
+    );
+    let entries = "chapter=start_time,end_time:chapter_tags=title";
+    let probed = String::from_utf8(run("ffprobe", &["-v", "error", "-show_entries", entries, "-of", "csv=p=0", "both.mp4"])).unwrap();
+    let at = |frames: f64| format!("{:.6}", frames * 4389.0 / 262_144.0);
+    assert_eq!(probed.lines().collect::<Vec<_>>(), [format!("0.000000,{},Round 1", at(59.0)), format!("{},{},Round 2", at(59.0), at(120.0))], "{probed}");
+    // Each track decodes to its side's sound: they differ.
+    let left = run("ffmpeg", &[&quiet[..], &["-i", "both.mp4", "-map", "0:a:0", "-f", "f32le", "-"]].concat());
+    let right = run("ffmpeg", &[&quiet[..], &["-i", "both.mp4", "-map", "0:a:1", "-f", "f32le", "-"]].concat());
+    assert!(left.len() == right.len() && left != right);
     let _ = std::fs::remove_dir_all(dir);
 }

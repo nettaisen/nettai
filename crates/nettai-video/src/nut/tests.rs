@@ -24,10 +24,10 @@ fn sound(n: usize) -> Vec<[f32; 2]> {
 /// sound or without.
 fn written(width: u32, height: u32, frames: usize, with_sound: bool) -> Vec<u8> {
     let video = Video { width, height, frame_time: FRAME_TIME };
-    let mut w = Writer::new(Vec::new(), video, with_sound.then_some(Audio { sample_rate: RATE })).unwrap();
+    let mut w = Writer::new(Vec::new(), video, with_sound.then_some(Audio { sample_rate: RATE, tracks: 1 })).unwrap();
     for n in 0..frames {
         let heard = if with_sound { sound(n) } else { Vec::new() };
-        w.frame(&picture(width, height, n), &heard).unwrap();
+        w.frame(&picture(width, height, n), &[&heard]).unwrap();
     }
     assert_eq!(w.frames(), frames as u64);
     let bytes = w.bytes();
@@ -76,6 +76,63 @@ fn a_stream_reads_back() {
     // (Both orders came up: the sound runs a little behind, then catches up.)
     let first: Vec<usize> = file.frames.chunks(2).map(|pair| pair[0].stream).collect();
     assert!(first.contains(&0) && first.contains(&1), "{first:?}");
+}
+
+/// Two sound tracks and the info: each track a stream of its own on the
+/// sound's time base, holding its own samples; its frames in time order
+/// with the picture's, the first track's before the second's where they
+/// start together; and the info packets in every set of headers: each
+/// track's title, the first the default, and each chapter on the picture's
+/// time base. The same frames and info give the same bytes.
+#[test]
+fn two_tracks_and_the_info_read_back() {
+    let video = Video { width: 4, height: 2, frame_time: FRAME_TIME };
+    let info = Info {
+        titles: vec!["Lan".into(), "Chaud".into()],
+        chapters: vec![Chapter { start: 0, frames: 30, title: "Round 1".into() }, Chapter { start: 30, frames: 10, title: "ラウンド 2".into() }],
+    };
+    let right = |n: usize| -> Vec<[f32; 2]> { sound(n).iter().map(|s| [-s[0], s[1] * 3.0]).collect() };
+    let write = || {
+        let mut w = Writer::with_info(Vec::new(), video, Some(Audio { sample_rate: RATE, tracks: 2 }), &info).unwrap();
+        for n in 0..40 {
+            w.frame(&picture(4, 2, n), &[&sound(n), &right(n)]).unwrap();
+        }
+        assert_eq!((w.samples(0), w.samples(1), w.samples(2)), (w.samples(1), (0..40).map(|n| sound(n).len() as u64).sum(), 0));
+        w.finish().unwrap()
+    };
+    let bytes = write();
+    assert_eq!(bytes, write(), "the same frames, other bytes");
+    let file = reading::read(&bytes).unwrap();
+    assert_eq!((file.streams.len(), file.header_sets.len(), file.frames.len()), (3, 3, 120));
+    assert!(file.streams[1] == file.streams[2] && file.streams[1].fourcc == b"PFD\x20" && file.streams[1].time_base == (1, 32_768));
+    let raw = |heard: Vec<[f32; 2]>| -> Vec<u8> { heard.iter().flat_map(|s| [s[0].to_le_bytes(), s[1].to_le_bytes()]).flatten().collect() };
+    let mut samples = 0;
+    for (n, tick) in file.frames.chunks(3).enumerate() {
+        let shown = Frame { stream: 0, pts: n as u64, data: picture(4, 2, n) };
+        let (left, other) = (Frame { stream: 1, pts: samples, data: raw(sound(n)) }, Frame { stream: 2, pts: samples, data: raw(right(n)) });
+        let order = if samples * 8 <= n as u64 * 4389 { [left, other, shown] } else { [shown, left, other] };
+        assert!(tick == order, "tick {n}");
+        samples += sound(n).len() as u64;
+    }
+    let fields = |pairs: &[(&str, &str)]| -> Vec<(String, String)> { pairs.iter().map(|(a, b)| (a.to_string(), b.to_string())).collect() };
+    let info = |stream_id_plus1, chapter_id, start, length, pairs: &[(&str, &str)]| reading::Info { stream_id_plus1, chapter_id, start, length, fields: fields(pairs) };
+    assert_eq!(
+        file.info,
+        [
+            info(2, 0, 0, 0, &[("Title", "Lan"), ("handler_name", "Lan"), ("Disposition", "default")]),
+            info(3, 0, 0, 0, &[("Title", "Chaud"), ("handler_name", "Chaud")]),
+            // (A chapter's start is a `t`: the frame times the two time
+            // bases, plus the picture's index, 0.)
+            info(0, 1, 0, 30, &[("Title", "Round 1")]),
+            info(0, 2, 60, 10, &[("Title", "ラウンド 2")]),
+        ]
+    );
+    // A track without a title says only that it is the default; a stream
+    // without sound has no track's info.
+    let untitled = Writer::with_info(Vec::new(), video, Some(Audio { sample_rate: RATE, tracks: 1 }), &Info::default()).unwrap().finish().unwrap();
+    assert_eq!(reading::read(&untitled).unwrap().info, [info(2, 0, 0, 0, &[("Disposition", "default")])]);
+    let silent = Writer::with_info(Vec::new(), video, None, &Info { titles: Vec::new(), chapters: vec![Chapter { start: 0, frames: 1, title: "Round 1".into() }] });
+    assert_eq!(reading::read(&silent.unwrap().finish().unwrap()).unwrap().info, [info(0, 1, 0, 1, &[("Title", "Round 1")])]);
 }
 
 /// A stream without sound is the picture's alone: one stream, one time
@@ -135,21 +192,30 @@ fn what_isnt_a_stream_is_refused() {
     assert_eq!(refused(Video { width: 0, ..video }, None).unwrap(), "a picture of 0 by 2 pixels");
     assert_eq!(refused(Video { frame_time: (2, 4), ..video }, None).unwrap(), "a frame time of 2/4 s: a fraction in lowest terms, each part under 2^31");
     assert_eq!(refused(Video { frame_time: (1, 0), ..video }, None).unwrap(), "a frame time of 1/0 s: a fraction in lowest terms, each part under 2^31");
-    assert_eq!(refused(video, Some(Audio { sample_rate: 0 })).unwrap(), "a sample rate of 0 Hz");
-    assert_eq!(refused(Video { frame_time: (1, 60), ..video }, Some(Audio { sample_rate: 60 })).unwrap(), "the sound's time base is the picture's (1/60 s)");
+    assert_eq!(refused(video, Some(Audio { sample_rate: 0, tracks: 1 })).unwrap(), "a sample rate of 0 Hz");
+    assert_eq!(refused(Video { frame_time: (1, 60), ..video }, Some(Audio { sample_rate: 60, tracks: 1 })).unwrap(), "the sound's time base is the picture's (1/60 s)");
+    assert_eq!(refused(video, Some(Audio { sample_rate: RATE, tracks: 0 })).unwrap(), "0 sound tracks (1 to 16)");
+    assert_eq!(refused(video, Some(Audio { sample_rate: RATE, tracks: 17 })).unwrap(), "17 sound tracks (1 to 16)");
     assert_eq!(refused(video, None), None);
+    let titled = Info { titles: vec!["A".into()], chapters: Vec::new() };
+    let refused_titles = Writer::with_info(Vec::new(), video, None, &titled).err().map(|e| e.to_string());
+    assert_eq!(refused_titles.unwrap(), "titles for 1 sound tracks of a stream of 0");
     let mut w = Writer::new(Vec::new(), video, None).unwrap();
     let before = w.bytes();
     assert_eq!(w.frame(&[0; 23], &[]).unwrap_err().to_string(), "23 bytes of picture; a frame of 4 by 2 is 24");
-    assert_eq!(w.frame(&[0; 24], &[[0.0; 2]]).unwrap_err().to_string(), "sound for a stream that has none");
+    assert_eq!(w.frame(&[0; 24], &[&[[0.0; 2]]]).unwrap_err().to_string(), "sound for a stream that has none");
+    assert_eq!((w.bytes(), w.frames()), (before, 0), "nothing was written");
+    let mut w = Writer::new(Vec::new(), video, Some(Audio { sample_rate: RATE, tracks: 2 })).unwrap();
+    let before = w.bytes();
+    assert_eq!(w.frame(&[0; 24], &[&[[0.0; 2]]]).unwrap_err().to_string(), "sound of 1 tracks for a stream of 2");
     assert_eq!((w.bytes(), w.frames()), (before, 0), "nothing was written");
     // Far more sound than a frame's: it is cut into frames of 4096 samples
     // around its picture, and the next picture would come before the last
     // of it.
-    let mut w = Writer::new(Vec::new(), video, Some(Audio { sample_rate: RATE })).unwrap();
-    w.frame(&[0; 24], &[[0.5; 2]; 5000]).unwrap();
-    assert_eq!((w.frames(), w.samples()), (1, 5000));
-    assert_eq!(w.frame(&[0; 24], &[[0.5; 2]; 549]).unwrap_err().to_string(), "frame 1 of the picture would come before sample 4096 of the sound, already written");
+    let mut w = Writer::new(Vec::new(), video, Some(Audio { sample_rate: RATE, tracks: 1 })).unwrap();
+    w.frame(&[0; 24], &[&[[0.5; 2]; 5000][..]]).unwrap();
+    assert_eq!((w.frames(), w.samples(0)), (1, 5000));
+    assert_eq!(w.frame(&[0; 24], &[&[[0.5; 2]; 549][..]]).unwrap_err().to_string(), "frame 1 of the picture would come before sample 4096 of the sound, already written");
     let file = reading::read(&w.finish().unwrap()).unwrap();
     let order: Vec<(usize, u64, usize)> = file.frames.iter().map(|f| (f.stream, f.pts, f.data.len())).collect();
     assert_eq!(order, [(1, 0, 4096 * 8), (0, 0, 24), (1, 4096, 904 * 8)]);
@@ -185,6 +251,7 @@ fn the_numbers_and_the_checksum_are_nuts() {
     assert_eq!(MAIN_STARTCODE.to_be_bytes(), [b'N', b'M', 0x7A, 0x56, 0x1F, 0x5F, 0x04, 0xAD]);
     assert_eq!(STREAM_STARTCODE.to_be_bytes(), [b'N', b'S', 0x11, 0x40, 0x5B, 0xF2, 0xF9, 0xDB]);
     assert_eq!(SYNCPOINT_STARTCODE.to_be_bytes(), [b'N', b'K', 0xE4, 0xAD, 0xEE, 0xCA, 0x45, 0x69]);
+    assert_eq!(INFO_STARTCODE.to_be_bytes(), [b'N', b'I', 0xAB, 0x68, 0xB5, 0x96, 0xBA, 0x78]);
 }
 
 /// A stream that breaks the specification is told from one that keeps it
