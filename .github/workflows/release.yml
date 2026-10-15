@@ -53,6 +53,11 @@ jobs:
       - name: Rust
         run: rustup toolchain install stable --profile minimal --no-self-update && rustup default stable
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+      # (datachannel-facade's libdatachannel has a submodule, nlohmann/json, whose test files' paths pass Windows'
+      # 260 characters under cargo's git folder: Git, and the libgit2 cargo checks submodules out with, take long
+      # paths only when asked.)
+      - name: Long paths for Git
+        run: git config --global core.longpaths true
       # (crates/nettai/build.rs lists the packages offline: every one is fetched first.)
       - name: Fetch the crates
         run: cargo fetch --locked
