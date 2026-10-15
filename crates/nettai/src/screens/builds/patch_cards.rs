@@ -402,6 +402,7 @@ impl PatchCards {
         // (What the game's rules have against the build's card described, as the pane's header says it too: said where
         // nothing was refused, docs/design/app-ui.md §2.66.)
         let fault = at.map(|i| draft.line(shell, PatchCards::problems(draft, &installed, i))).unwrap_or_default();
+        let fault = Draft::unsaid(fault, &draft.pane_line(shell, &[FIELD.to_string()], false));
         let detail = draft.with_words(shell, |words| {
             // Why a library's card can't go in, the strip's refusal. (What the rules have against a card of the
             // build's is the pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)

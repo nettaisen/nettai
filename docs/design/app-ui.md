@@ -995,7 +995,9 @@ Each is settled unless the user changes it.
       a row's sentence at its end, in the place its state or its mark, element and code had.)
     - *And the strip:* the item a strip describes (the focused one, or the one under the pointer) has its problem at
       the strip's top right, the place a refusal has, where nothing was refused: the strip's top right is empty
-      otherwise, so nothing moves, and a cut sentence in the header can be read whole there.
+      otherwise, so nothing moves, and a cut sentence in the header can be read whole there. Not when its pane's
+      header already says it first (`Draft::unsaid`): the same sentence twice on one screen ("Two pieces overlap" by
+      PROGRAMS and again in the strip; an empty entry's "29 chips, a folder has 30") said nothing more.
     - *The ruleset's, by the ruleset:* said by its select, the same place on every tab: the ruleset is the frame's, and
       what it has against the build is the build's, whichever tab is shown. The items it is about (a Giga chip, a form,
       a card's variant, a program it holds back) are marked where they are, red, without the sentence again.

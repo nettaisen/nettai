@@ -253,6 +253,7 @@ impl AutoBattle {
             Some(Described::Place(i)) => draft.line(shell, AutoBattle::problems(draft, i)),
             _ => String::new(),
         };
+        let fault = Draft::unsaid(fault, &draft.pane_line(shell, &[auto::PLACES_FIELD.to_string()], false));
         let ui = shell.ui();
         let say = ui.global::<BuildWords>();
         let detail = draft.with_words(shell, |words| {

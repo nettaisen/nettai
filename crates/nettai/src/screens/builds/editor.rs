@@ -187,6 +187,12 @@ impl Draft {
         self.with_words(shell, |words| words.summary(said)).unwrap_or_default()
     }
 
+    /// `fault` (what a strip says against the item it describes), unless its pane's header `pane` already says it
+    /// first: the same sentence isn't said twice on one screen (docs/design/app-ui.md §2.66).
+    pub fn unsaid(fault: String, pane: &str) -> String {
+        if !fault.is_empty() && pane.starts_with(fault.as_str()) { String::new() } else { fault }
+    }
+
     /// The catalogs' and the game's words, in the language shown.
     pub fn with_words<R>(&self, shell: &Shell, f: impl FnOnce(&Words) -> R) -> R {
         let ui = shell.ui();
