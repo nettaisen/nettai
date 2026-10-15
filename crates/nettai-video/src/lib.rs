@@ -25,6 +25,13 @@
 //! seek), so a part's frames and samples are the whole video's for those
 //! ticks.
 //!
+//! **Its tracks and chapters.** The sound is a track a console shown: the
+//! console's own, as [`Viewer::take_samples_of`] gives it, titled with its
+//! player's name ([`Titles`]); the first is the default. Each round is a
+//! chapter, titled in the host's words, from the frame its picture begins
+//! on ([`chapters`]). They are said in the stream's info packets
+//! ([`nut::Info`]), which ffmpeg keeps in the MP4.
+//!
 //! **The picture is scaled here**, by whole multiples and the nearest
 //! pixel, not left at 240x160 for ffmpeg: in the enhanced mode the
 //! battle's words are drawn at the output's resolution over the scaled
@@ -38,7 +45,8 @@
 //!
 //! ```ignore
 //! // On a thread of its own: the progress goes to the UI, which may cancel.
-//! let options = Options { scale: 3, view: None, sides: Sides::One, part: Part::Round(2) };
+//! let titles = Titles { rounds: vec!["Round 1".into(), "Round 2".into()], sides: Default::default() };
+//! let options = Options { scale: 3, view: None, sides: Sides::One, part: Part::Round(2), titles };
 //! let result = nettai_video::export_mp4(&game, &replay, &options, &mp4::Settings::default(), &path, &mut |p| {
 //!     tx.send(p).ok();
 //!     if canceled.load(Ordering::Relaxed) { ControlFlow::Break(()) } else { ControlFlow::Continue(()) }
@@ -51,7 +59,7 @@ pub mod nut;
 
 use nettai_frontend::game::Loaded;
 use nettai_frontend::player::TICK_SECONDS;
-use nettai_frontend::replay::{Refused, Replay};
+use nettai_frontend::replay::{Info, Refused, Replay};
 use nettai_frontend::viewer::{Speed, Viewer};
 use nettai_render::compose::{HEIGHT, WIDTH};
 use std::fmt;
@@ -109,13 +117,15 @@ pub enum Sides {
     /// Both consoles side by side in a picture twice as wide: the one the
     /// viewer shows at the left, the other at the right, each as a viewer
     /// shown from its side presents it at the tick (one simulation: the
-    /// other is drawn from the same battle, `Viewer::present_view`). The
-    /// sound is the left console's alone: the two hear one battle, the same
-    /// music and nearly all the same effects, so the two together would be
-    /// every shared sound twice as loud, and at the set's end the winner's
-    /// music over the loser's; what only one hears (its own charge, its own
-    /// navi's hit) is the left one's. (A width twice an even one is even:
-    /// nothing changes for 4:2:0, `mp4`.)
+    /// other is drawn from the same battle, `Viewer::present_view`). Each
+    /// console's sound is a track of its own, the left one's first (the
+    /// default) and the right one's second, each what that console played
+    /// (`Viewer::take_samples_of`): not a mix, since the two hear one
+    /// battle, the same music and nearly all the same effects, so the two
+    /// together would be every shared sound twice as loud, and at the set's
+    /// end the winner's music over the loser's; apart, what only one hears
+    /// (its own charge, its own navi's hit) is in its own track. (A width
+    /// twice an even one is even: nothing changes for 4:2:0, `mp4`.)
     Both,
 }
 
@@ -136,10 +146,72 @@ pub struct Options {
     /// [`MOST_SCALE`] (each side's, with both).
     pub scale: u32,
     /// The side whose console is shown (none: the side that recorded the
-    /// replay); with both sides, the one at the left, whose sound it is.
+    /// replay); with both sides, the one at the left, whose sound is the
+    /// first track.
     pub view: Option<u8>,
     pub sides: Sides,
     pub part: Part,
+    pub titles: Titles,
+}
+
+/// What a video calls its chapters and its sound tracks, in its host's
+/// words (the app's, in the language it shows).
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct Titles {
+    /// Each round's chapter, by round from 1; an empty one, or one past
+    /// these, is "Round N".
+    pub rounds: Vec<String>,
+    /// The track of each side's console's sound, by side; an empty one is
+    /// the player's name as the replay has it, else "Player 1" or
+    /// "Player 2".
+    pub sides: [String; 2],
+}
+
+impl Titles {
+    /// Round `round`'s chapter (from 1).
+    pub fn round(&self, round: u32) -> String {
+        let given = (round as usize).checked_sub(1).and_then(|i| self.rounds.get(i)).filter(|t| !t.trim().is_empty());
+        given.cloned().unwrap_or_else(|| format!("Round {round}"))
+    }
+
+    /// The track of `side`'s sound, in a replay that says `info` of itself.
+    pub fn side(&self, side: u8, info: &Info) -> String {
+        let side = side.min(1) as usize;
+        [self.sides[side].trim(), info.names[side].trim()]
+            .into_iter()
+            .find(|t| !t.is_empty())
+            .map_or_else(|| format!("Player {}", side + 1), str::to_string)
+    }
+}
+
+/// The chapters of a video of `ticks` of a replay whose rounds start at
+/// `rounds` (each one's first tick, the first round's 0): a round each,
+/// titled by `titles`, from the frame its picture begins on to the next
+/// one's (the frames counted from the video's first, a tick's each). A
+/// round's picture begins on the frame of the tick before its first: the
+/// tick that ends a round shows the next one at its start (what is heard
+/// of it is still the round it ended). The video's first frame is its
+/// round's; a round whose picture begins on the video's last frame has no
+/// chapter (there is nothing of it to go to: a round's part ends so).
+pub fn chapters(rounds: &[u32], ticks: &Range<u32>, titles: &Titles) -> Vec<nut::Chapter> {
+    let frames = ticks.end.saturating_sub(ticks.start);
+    let mut out: Vec<nut::Chapter> = Vec::new();
+    for (i, &start) in rounds.iter().enumerate() {
+        let (begins, ends) = (start.saturating_sub(1), rounds.get(i + 1).map_or(u32::MAX, |next| next.saturating_sub(1)));
+        if ends <= ticks.start || begins >= ticks.end {
+            continue;
+        }
+        let first = begins.max(ticks.start) - ticks.start;
+        if first > 0 && first + 1 >= frames {
+            continue;
+        }
+        out.push(nut::Chapter { start: first as u64, frames: 0, title: titles.round(i as u32 + 1) });
+    }
+    let starts: Vec<u64> = out.iter().skip(1).map(|c| c.start).chain([frames as u64]).collect();
+    for (chapter, end) in out.iter_mut().zip(starts) {
+        chapter.frames = end - chapter.start;
+    }
+    out
 }
 
 /// How far a video is, for whoever shows it.
@@ -223,19 +295,25 @@ impl std::error::Error for Error {
 /// stop (the video is canceled).
 pub type OnProgress<'a> = &'a mut dyn FnMut(Progress) -> ControlFlow<()>;
 
-/// Write `part` of the replay `viewer` plays to `out` as a NUT stream, the
-/// picture `scale` times the frame's size, from the console the viewer
-/// shows (with [`Sides::Both`], beside it the other's), with its sound if it
-/// has any. The viewer is left paused at the
+/// Write the replay `viewer` plays to `out` as a NUT stream, as `options`
+/// say: their part, the picture `scale` times the frame's size, from the
+/// console of their view (none: the one the viewer shows; with
+/// [`Sides::Both`], beside it the other's), each console shown's sound a
+/// track if the viewer has sound, and the part's rounds as chapters
+/// ([`chapters`]), titled by their titles. The viewer is left paused at the
 /// part's end, at the original's speed. `progress` is told before the
 /// first frame and after each, and may stop it ([`Error::Canceled`]: what
 /// was written of the stream stays in `out`, which is the caller's to
 /// throw away).
-pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, sides: Sides, part: &Part, out: W, progress: OnProgress) -> Result<W, Error> {
+pub fn write<W: Write>(viewer: &mut Viewer, options: &Options, out: W, progress: OnProgress) -> Result<W, Error> {
+    let Options { scale, view, sides, ref part, ref titles } = *options;
     if !(1..=MOST_SCALE).contains(&scale) {
         return Err(Error::Scale(scale));
     }
     let ticks = part.ticks(viewer.rounds(), viewer.length())?;
+    if let Some(view) = view {
+        viewer.set_view(view);
+    }
     let rounds = viewer.rounds().len() as u32;
     let mut at = Progress { written: 0, of: ticks.end - ticks.start, round: viewer.round_at(ticks.start), rounds };
     let mut tell = |at: Progress| if progress(at).is_break() { Err(Error::Canceled) } else { Ok(()) };
@@ -253,15 +331,22 @@ pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, sides: Sides, part: &Par
         return Err(stopped(viewer));
     }
     // (Each console's picture is presented at its own size; with both, the
-    // rows of the two are put side by side.)
+    // rows of the two are put side by side. The sound is a track a console
+    // shown, in the same order.)
     let (width, height) = (WIDTH * scale as usize, HEIGHT * scale as usize);
     let video = nut::Video { width: (width * sides.count()) as u32, height: height as u32, frame_time: TICK_SECONDS };
-    let audio = viewer.has_sound().then_some(nut::Audio { sample_rate: nettai_audio::SAMPLE_RATE });
-    let mut stream = nut::Writer::new(out, video, audio).map_err(Error::Write)?;
+    let shown = [viewer.view(), viewer.view() ^ 1];
+    let shown = &shown[..sides.count()];
+    let audio = viewer.has_sound().then_some(nut::Audio { sample_rate: nettai_audio::SAMPLE_RATE, tracks: shown.len() });
+    let info = nut::Info {
+        titles: if audio.is_some() { shown.iter().map(|&side| titles.side(side, viewer.info())).collect() } else { Vec::new() },
+        chapters: chapters(viewer.rounds(), &ticks, titles),
+    };
+    let mut stream = nut::Writer::with_info(out, video, audio, &info).map_err(Error::Write)?;
     let mut picture = vec![0u32; width * height];
     let mut other = vec![0u32; if sides == Sides::Both { width * height } else { 0 }];
     let mut rgb = Vec::with_capacity(width * sides.count() * height * 3);
-    let mut sound = Vec::new();
+    let mut sound = vec![Vec::new(); shown.len()];
     for tick in ticks.clone() {
         at.round = viewer.round_at(tick);
         if !viewer.step_forward() {
@@ -279,9 +364,12 @@ pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, sides: Sides, part: &Par
                 }
             }
         }
-        sound.clear();
-        viewer.take_samples(&mut sound);
-        stream.frame(&rgb, &sound).map_err(Error::Write)?;
+        for (heard, &side) in sound.iter_mut().zip(shown) {
+            heard.clear();
+            viewer.take_samples_of(side, heard);
+        }
+        let tracks: Vec<&[[f32; 2]]> = sound.iter().map(Vec::as_slice).collect();
+        stream.frame(&rgb, &tracks).map_err(Error::Write)?;
         at.written += 1;
         tell(at)?;
     }
@@ -294,7 +382,7 @@ pub fn write<W: Write>(viewer: &mut Viewer, scale: u32, sides: Sides, part: &Par
 /// (a host calls it on one that isn't its window's).
 pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, out: W, progress: OnProgress) -> Result<W, Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
-    write(&mut viewer, options.scale, options.sides, &options.part, out, progress)
+    write(&mut viewer, options, out, progress)
 }
 
 /// Write a replay as an MP4 at `to`, through `ffmpeg` ([`mp4::Encoder`]):
@@ -302,18 +390,18 @@ pub fn export<W: Write>(game: &Loaded, replay: &Replay, options: &Options, out: 
 /// failed, nothing of it is left.
 pub fn export_mp4(game: &Loaded, replay: &Replay, options: &Options, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
     let mut viewer = Viewer::open(game, replay, options.view).map_err(Error::Replay)?;
-    write_mp4(&mut viewer, options.scale, options.sides, &options.part, encoding, to, progress)
+    write_mp4(&mut viewer, options, encoding, to, progress)
 }
 
 /// [`write`], to an MP4 at `to` through `ffmpeg`.
-pub fn write_mp4(viewer: &mut Viewer, scale: u32, sides: Sides, part: &Part, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
+pub fn write_mp4(viewer: &mut Viewer, options: &Options, encoding: &mp4::Settings, to: &Path, progress: OnProgress) -> Result<(), Error> {
     // (What can't be made is said before ffmpeg is started.)
-    if !(1..=MOST_SCALE).contains(&scale) {
-        return Err(Error::Scale(scale));
+    if !(1..=MOST_SCALE).contains(&options.scale) {
+        return Err(Error::Scale(options.scale));
     }
-    part.ticks(viewer.rounds(), viewer.length())?;
+    options.part.ticks(viewer.rounds(), viewer.length())?;
     let mut encoder = mp4::Encoder::start(to, encoding)?;
-    match write(viewer, scale, sides, part, &mut encoder, progress) {
+    match write(viewer, options, &mut encoder, progress) {
         Ok(_) => encoder.finish(),
         // (A pipe that closed is ffmpeg having stopped: why is its to say.)
         Err(Error::Write(e)) => Err(encoder.failed(e)),

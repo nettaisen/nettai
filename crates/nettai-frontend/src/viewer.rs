@@ -181,12 +181,12 @@ pub struct Viewer {
     paused: bool,
     speed: Speed,
     clock: Clock,
-    /// The sound of the ticks played since the host last took it.
-    samples: Vec<[f32; 2]>,
-    /// A tick's samples as the sound makes them, and those of a group not
-    /// yet whole at a speed above the original's.
+    /// The sound of the ticks played since the host last took it, by side.
+    samples: [Vec<[f32; 2]>; 2],
+    /// A tick's samples as the sound makes them, and by side those of a
+    /// group not yet whole at a speed above the original's.
     scratch: Vec<[f32; 2]>,
-    group: Vec<[f32; 2]>,
+    group: [Vec<[f32; 2]>; 2],
 }
 
 // (A viewer borrows nothing: a host's state of any lifetime holds one.)
@@ -244,9 +244,9 @@ impl Viewer {
             paused: false,
             speed: Speed::Normal,
             clock: Clock::new(),
-            samples: Vec::new(),
+            samples: Default::default(),
             scratch: Vec::new(),
-            group: Vec::new(),
+            group: Default::default(),
         };
         viewer.keyframes.push(viewer.state());
         Ok(viewer)
@@ -372,7 +372,7 @@ impl Viewer {
     /// speed.
     pub fn set_speed(&mut self, speed: Speed) {
         self.speed = speed;
-        self.group.clear();
+        self.group.iter_mut().for_each(Vec::clear);
     }
 
     pub fn speed(&self) -> Speed {
@@ -570,7 +570,20 @@ impl Viewer {
     /// tick at the original's speed. Nothing from a silent viewer, and
     /// nothing of the ticks a seek passed over.
     pub fn take_samples(&mut self, out: &mut Vec<[f32; 2]>) {
-        out.append(&mut self.samples);
+        out.append(&mut self.samples[self.view as usize]);
+    }
+
+    /// The sound `side`'s console played in the ticks played since the
+    /// last call for that side, appended to `out` as [`Viewer::take_samples`]
+    /// gives the shown one's (which this is, for the side shown): both
+    /// consoles' sounds run every tick, so a host can have both at once (a
+    /// video's two sides, each its own track) without playing the replay
+    /// twice. A host that takes only the shown side's leaves the other's
+    /// kept to a second, as it keeps the shown one's.
+    pub fn take_samples_of(&mut self, side: u8, out: &mut Vec<[f32; 2]>) {
+        if let Some(samples) = self.samples.get_mut(side as usize) {
+            out.append(samples);
+        }
     }
 
     /// Whether the viewer has sound (a silent one gives no samples).
@@ -598,8 +611,8 @@ impl Viewer {
     }
 
     /// One tick of the replay: the battle's, then both consoles' HUD
-    /// states and sounds; with `heard`, the shown console's sound is kept
-    /// for the host. The state it leaves is kept if it is one seeks go on
+    /// states and sounds; with `heard`, each console's sound is kept for
+    /// the host. The state it leaves is kept if it is one seeks go on
     /// from. False, and nothing runs, at the end or where the engine
     /// stopped.
     fn run(&mut self, heard: bool) -> bool {
@@ -613,6 +626,7 @@ impl Viewer {
         // asked here: a viewer's pause is its own host's.)
         self.session.pause_requests = [false; 2];
         let view = self.view;
+        let speed = self.speed;
         if self.session.new_round {
             self.renderer.reset();
             self.other_hud = HudState::default();
@@ -632,8 +646,8 @@ impl Viewer {
                 sound.handle(ticked.sound_cues_for(side as u8));
                 self.scratch.clear();
                 sound.tick(&mut self.scratch);
-                if heard && side as u8 == view {
-                    hear(&self.scratch, self.speed, &mut self.group, &mut self.samples);
+                if heard {
+                    hear(&self.scratch, speed, &mut self.group[side], &mut self.samples[side]);
                 }
             }
         }
@@ -712,8 +726,7 @@ impl Viewer {
     /// After a jump: the sound kept for the host is of somewhere else, and
     /// the clock starts again from here.
     fn settle(&mut self) {
-        self.samples.clear();
-        self.group.clear();
+        self.samples.iter_mut().chain(&mut self.group).for_each(Vec::clear);
         self.clock.rest();
     }
 }

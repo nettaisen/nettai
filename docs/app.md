@@ -3023,9 +3023,21 @@ screen runs the ticks due, presents the picture into the window's texture if one
 whole match, or a round), Save as, the bar and its line, CANCEL and EXPORT. With Both, the video is both
 consoles side by side, the View's at the left and the other's at the right, twice as wide (the Size says the
 video's pixels: 1920 × 640 at four times), from one playing of the replay (nettai-video's `Sides::Both`,
-docs/frontend.md §8), and the file's name ends "both sides". Its sound is the left console's alone: the two
-hear one battle, so a mix would be the music and the shared effects twice over, and at the set's end the
-winner's music over the loser's. EXPORT
+docs/frontend.md §8), and the file's name ends "both sides". Its sound is two tracks, not a mix (the user:
+"for 2 sided replays, audio track 1 should be left player audio, audio track 2 should be right player
+audio"): the first is what the left console played, the default a player starts with, the second what the
+right one played, which a player's audio track menu switches to. Each track is titled with its player's name
+as the replay has it (else P1 or P2, in the app's words), as the MP4 track's name and its handler's. A mix
+would be the music and the shared effects twice over, and at the set's end the winner's music over the
+loser's. With One the sound is the shown console's, one track titled the same way.
+
+Every export has **chapters**, a round each (the user: "video exports should have chapter info for
+rounds"): "Round 1", "Round 2"… in the app's language (`ReplaysView.chapter`, "ラウンド 1" in Japanese), each
+from the frame its round's picture begins on (the tick that ends a round shows the next one at its start) to
+the next one's; a round's part has its round's chapter alone. They reach the MP4 the way the tracks' titles
+do, in the NUT stream's info packets, which ffmpeg keeps (nettai-video's `chapters` and `nut::Info`,
+docs/frontend.md §8): the MP4 has them both ways players read chapters, as a chapter text track (QuickTime's)
+and as Nero's `chpl` box. The bundled ffmpeg needed nothing added for either. EXPORT
 runs nettai-video's `export_mp4` on a thread of its own, with a copy of what the window plays from (the game's
 graphics in the language shown, the text as the settings have it, its sound); the thread says how far it is
 and is told to stop through what the two share, which the dialog reads each frame. CANCEL (or Esc) stops an
@@ -3070,7 +3082,16 @@ still), so neither's cost per frame was measured. The two-sided video ran once t
 on one of the user's EXE4 replays (copied out; 7,237 ticks): 1,800 frames as an MP4 at twice the frame,
 960 × 320, H.264 and AAC by Homebrew's ffmpeg, a frame of it each side's own custom screen; and 120 frames as
 NUT streams, both sides and each alone, decoded by ffmpeg: each half byte for byte that side's own video, the
-halves different in every frame, the sound the left side's sample for sample.
+halves different in every frame, the sound the left side's sample for sample (before it was a track a side).
+
+The tracks and the chapters ran through `nettai-tool --mp4` with the bundled ffmpeg (ffmpeg-9.0.2-1's
+macos-arm64 binary, by `NETTAI_FFMPEG`) on EXE6's packs, a two-round set of 962 ticks recorded headless:
+two-sided with the right side at the left, ffprobe read H.264, then AAC "Chaud" (the default), then AAC
+"Lan", then the chapter text track, and the chapters "Round 1" (0 to 7.986 s) and "Round 2" (7.986 to
+16.106 s: frame 477, the second round's first picture); one-sided, one AAC track "Lan" and the same
+chapters. Decoded, the two-sided file's first track was sample for sample the right side's own one-sided
+export's and its second the left side's, the two different (the difference's RMS 0.18, over most samples).
+Not tried: a player's menus themselves (QuickTime's, VLC's, mpv's).
 
 ## 17. The packs, from the Legacy Collection
 

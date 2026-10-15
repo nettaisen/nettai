@@ -110,7 +110,9 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    frames (RGB) and PCM sound, to the file OUT, or to standard
                    output for `-` (so `nettai-tool --replay set.ntrp --nut - |
                    ffmpeg -f nut -i - out.mp4` makes an MP4): a frame a tick,
-                   as a viewer playing it straight shows and plays it
+                   as a viewer playing it straight shows and plays it, each
+                   round a chapter ('Round N') and the sound titled with its
+                   player's name
   --mp4 OUT        with --replay: write it as an MP4 (H.264 and AAC), by
                    running ffmpeg on that stream ($NETTAI_FFMPEG, else one
                    beside this program, else the path's); OUT is there only
@@ -122,7 +124,9 @@ usage: nettai-tool [OPTIONS] TRACE.jsonl --headless FRAMES [--out DIR] [--png-sc
                    numbers them (the pictures after the set's ticks A to B)
   --both-sides     with --nut or --mp4: both consoles side by side, in a
                    picture twice as wide: --side's at the left (default: the
-                   side that recorded it), with its sound alone
+                   side that recorded it), each console's sound a track of
+                   its own, the left one's first (with --nut, ffmpeg takes
+                   both with -map 0)
   --headless F     render frames F (e.g. 150,300,600 or 100-120; trace frame
                    numbers, or ticks in live play) to frame_NNNNN.png files
                    in --out (default .)
@@ -529,7 +533,7 @@ fn check_replay(content: &Arc<nettai_battle::Content>, replay: &nettai_frontend:
 /// part asked for; then exit. Progress goes to standard error (the
 /// stream may be standard output's).
 fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
-    use nettai_video::{Part, Progress, Sides};
+    use nettai_video::{Options, Part, Progress, Sides, Titles};
     use std::ops::ControlFlow;
     let part = match (args.round, &args.ticks) {
         (Some(round), _) => Part::Round(round as u32),
@@ -559,16 +563,18 @@ fn write_video(args: &Args, mut viewer: nettai_frontend::viewer::Viewer) -> ! {
     };
     let scale = args.scale;
     let sides = if args.both_sides { Sides::Both } else { Sides::One };
+    // (The chapters "Round N" and the tracks the players' names, in English.)
+    let options = Options { scale, view: None, sides, part, titles: Titles::default() };
     let wrote = if let Some(to) = &args.mp4 {
-        nettai_video::write_mp4(&mut viewer, scale, sides, &part, &nettai_video::mp4::Settings { ffmpeg: nettai_video::mp4::find_ffmpeg(), ..Default::default() }, to, &mut progress).map(|()| to.display().to_string())
+        nettai_video::write_mp4(&mut viewer, &options, &nettai_video::mp4::Settings { ffmpeg: nettai_video::mp4::find_ffmpeg(), ..Default::default() }, to, &mut progress).map(|()| to.display().to_string())
     } else {
         let to = args.nut.as_deref().expect("a video's stream");
         if to == Path::new("-") {
             let out = std::io::BufWriter::with_capacity(1 << 20, std::io::stdout().lock());
-            nettai_video::write(&mut viewer, scale, sides, &part, out, &mut progress).map(|_| "standard output".to_string())
+            nettai_video::write(&mut viewer, &options, out, &mut progress).map(|_| "standard output".to_string())
         } else {
             let file = std::fs::File::create(to).unwrap_or_else(|e| fail(format!("can't write {}: {e}", to.display())));
-            let written = nettai_video::write(&mut viewer, scale, sides, &part, std::io::BufWriter::with_capacity(1 << 20, file), &mut progress);
+            let written = nettai_video::write(&mut viewer, &options, std::io::BufWriter::with_capacity(1 << 20, file), &mut progress);
             if written.is_err() {
                 // (No part of a stream is left under the file's name.)
                 let _ = std::fs::remove_file(to);
