@@ -803,6 +803,16 @@ by default, "you don't even need a google default right? direct connect doesn't 
   in the Worker): a room never waits on the service longer, nor fails for it. The failure is logged on the
   Worker, by its kind or HTTP status; the secrets are sent to Cloudflare's API and nowhere else, and never
   logged.
+- **TURN only for a room both players are in, and only so often.** The credentials cost the key's owner what is
+  relayed on them, and anyone could open a socket to `/rooms` (the security audit's finding; the user: "fix the
+  open turn credentials as well"). So a welcome gives TURN credentials only once the room's two places are taken;
+  before, STUN alone. The client that waited alone (the host of an invite, the first to a reconnect room) is given
+  its TURN credentials as the other comes, in the peer message (`{"type":"peer","present":true,"iceServers":[...]}`),
+  which a client takes as a welcome's servers; a `peer` without them leaves the servers as they were. And one
+  client, by its IP address (Cloudflare's `CF-Connecting-IP`; an IPv6 address by its /64), is given credentials at
+  most 10 times a minute (the Worker's rate limit binding `TURN_LIMIT`, in `wrangler.toml`; a pairing is two, both
+  counted against the client whose coming made it): past that, STUN alone, logged. The in-process test server gives
+  its servers the same way, so the room tests take the host's from the peer message.
 - The credentials last four hours (`signal::TURN_CREDENTIALS_LAST`, the Worker's `TURN_TTL_SECONDS`): a long
   sitting of matches with one opponent, and its reconnections. Every reconnection goes through a reconnect room,
   whose welcome gives new ones; a relayed connection that outlasts its credentials may drop when its allocation

@@ -650,7 +650,9 @@ fn sockets_asking(heard: &[(u16, SocketAddr)], kind: u16) -> usize {
     heard.iter().filter(|(k, _)| *k == kind).map(|(_, from)| from).collect::<HashSet<_>>().len()
 }
 
-/// A room's connections use exactly the servers its welcome gives, in place
+/// A room's connections use exactly the servers its welcome gives (the
+/// host's, which waited alone, come as the joiner does, in the peer message:
+/// the Worker gives TURN credentials only to a room both are in), in place
 /// of the links' own: with credentials (the Worker's when it has its TURN
 /// key), a STUN server and a TURN server, each asked by both sides (neither
 /// answers here, and the two connect on loopback all the same); without
