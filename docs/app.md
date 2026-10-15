@@ -1091,7 +1091,7 @@ What was tried with the first app, on `wasm32-unknown-unknown` (installed). nett
     IndexedDB, with download and upload.
   - **Sound.** cpal's `wasm-bindgen` feature (WebAudio), started on the first click as browsers require.
   - **Gamepads.** gamepad-facade's web backend is the browser's Gamepad API; the app's side is the same.
-  - **Netplay** is nettai-rtc's web backend (the browser's `RTCPeerConnection`).
+  - **Netplay** is nettai-rtc on the web (the browser's `RTCPeerConnection`, through datachannel-facade).
   - **Rendering.** Slint's femtovg on WebGL2, which calls the rendering notifier, so the clock carries over.
 - **IME on the web.** Slint's canvas can't host the browser's IME, so a text field gets a small HTML `<input>`
   laid over the canvas while it is edited: the field's edit (§11) hands the host its rectangle and its text; the
@@ -1125,7 +1125,8 @@ Not built. What it would take:
     touches itself, every finger its own. No touch screen has run it.
   - Gamepads: gamepad-facade's native backend is SDL3, which has both platforms' controllers.
 - **Text:** the system IME works through winit on Android and iOS.
-- **Netplay:** nettai-rtc's native backend (the `rtc` crate over UDP) runs on both.
+- **Netplay:** nettai-rtc natively is libdatachannel (C++ and Mbed TLS through datachannel-facade, built with
+  CMake as SDL is), which builds for both platforms; not tried here.
 - **Lifecycle:** suspend and resume. Netplay can't tick in the background, so a suspended match is a dropped
   link, which reconnects within its 30 s or ends.
 
@@ -3097,16 +3098,18 @@ lists for the target being built, with the features a build of the app alone giv
 tools that build or test it; `cargo metadata` would unify the whole workspace's features and list packages the app
 never builds), and the sources of a library a build script compiles into it (a `*-src` package: SDL's, Luau's).
 `cargo metadata` says where each one's files are; its license files are those named LICENSE, LICENCE, COPYING,
-COPYRIGHT, NOTICE or UNLICENSE (in its folder or a folder of its own), everything in a `LICENSES` folder, and the
-file its manifest names. The workspace's own crates are not listed. The fonts and their OFL files are named in the
-build script. What it writes (`licenses.rs`, in the build's output) holds each text once, as many packages ship
-the same one: 251 texts for 398 entries, about 0.9 MB in the binary. It is written again when Cargo.lock, the
-app's manifest or a font's license changes. The same list is written as a text file beside it (`licenses.txt`),
+COPYRIGHT, NOTICE or UNLICENSE (in its folder or a folder of its own, and in that folder's `deps`: the libraries a
+vendored library vendors, as libdatachannel's ICE, SCTP and logging in libdatachannel-sys), everything in a
+`LICENSES` folder, and the file its manifest names. The workspace's own crates are not listed. The fonts and their
+OFL files are named in the build script. What it writes (`licenses.rs`, in the build's output) holds each text
+once, as many packages ship the same one: 220 texts for 328 entries on macOS (2026-10-14, once the `rtc` crates
+had given way to libdatachannel), about 0.8 MB in the binary. It is written again when Cargo.lock, the app's
+manifest or a font's license changes. The same list is written as a text file beside it (`licenses.txt`),
 which a package ships as THIRD-PARTY-NOTICES.txt (§19).
 
-41 of the packages ship no license file in what they publish (the rtc-* crates, the objc2 family, the lyon ones,
-libc, taffy, gamepad-facade and some others): their row and panel name their license, and the panel says the
-package comes with none.
+24 of the packages ship no license file in what they publish (the objc2 family, the lyon ones, libc, taffy,
+gamepad-facade and some others): their row and panel name their license, and the panel says the package comes
+with none.
 
 **The keys.** Up and Down go through the list, and the license beside it follows the focus; Enter (A) goes to the
 license, where Up and Down scroll it a step, Page Up and Page Down a page, Home and End to its ends
@@ -3159,6 +3162,11 @@ SVG itself (`app.slint`).
 A package's build sets `NETTAI_PACKAGED`: its content lookup then has no fallback to the repository's `content/`
 (`nettai_content::index::content`), so that the program names no folder of the machine it was built on and reads
 only the content it ships. The version is `$NETTAI_VERSION` (`-Version` on Windows), else the app crate's.
+
+Besides Rust, a build needs CMake (SDL's, and libdatachannel's: nettai-rtc's WebRTC, C++ with Mbed TLS, its
+sources submodules of the facade's repository, which Cargo fetches with it) and libclang (bindgen, for
+libdatachannel's C API): Xcode's on macOS, the runner's LLVM on Windows, `libclang-dev` on Linux (the workflow
+installs it).
 
 The workflow (`.github/workflows/release.yml`) runs on a tag `v*` and by hand. The icons are made once, on Linux;
 then Windows (`windows-latest`), macOS (`macos-latest`, universal) and Linux (`ubuntu-22.04`) each package and
