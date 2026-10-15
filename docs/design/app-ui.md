@@ -862,6 +862,28 @@ Each is settled unless the user changes it.
     has it over its stats, six to a row, and is taller by it; a phone's as many to a row as its width takes.
     (§6 Builds; docs/app.md §8.)
 
+63. **The Navi tab's panel, reviewed** (2026-10-15). The user: "the light/dark switcher should be above the souls.
+    the souls/crosses layout is also very cramped. for other navis, the spacing for the description text is not
+    important since stuff has moved around. the light/dark switcher also takes up too much space."
+    - *Choices first, and small:* under the navi's facts come the build's choices, then the selector. Each choice
+      is a segmented control of its presets in capitals (LIGHT | DARK), as the app's two-way one (Versions' ONE PER
+      BUILD | MIXED) is drawn: each segment as wide as its word (44 at least), the build's tinted and underlined in
+      the cursor's color, the control as tall as the editor's rows (26; a phone's 44, to be tapped) and as wide as
+      its segments, where the stepper was the panel's width and 36 tall. Left and Right step it (none past its
+      ends), Enter takes the next (of two, the other), a click or a tap on a segment takes its preset. A navi
+      with none of a choice has nothing in its place.
+    - *Room in the selector:* the panel's padding stays 16 all round (the editor's strips' and the NaviCust's
+      effects'); the choices, each fact of forms and the note are 20 apart; each version's head has 8 over it (from
+      its fact's heading, or the group before) and 4 under it. The rows stay the lists' (`Theme.list-row`, 2
+      apart). Where each of two versions has one form (EXE6's Beast form: GBeast, FBeast), the two groups are side
+      by side, a column each under its head: one row, which gives EXE6's Crosses the room the gaps take (stacked,
+      EXE6's selector ran past the panel's foot).
+    - *The note* ("NaviCust and patch cards are MegaMan only.") follows whatever is over it, 20 after it, as tall
+      as its words: nothing is reserved for it, nor for a choice the navi doesn't have. (Read so: with another
+      navi the panel kept an empty stepper's 44 and the note's box of 60 from the old layout, so the note sat apart
+      under nothing; now it sits right under the navi's facts.)
+    (§6 Builds.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1231,10 +1253,12 @@ DUPLICATE, RENAME and DELETE.
   keeps MegaMan's NaviCust, cards and auto battle data aside, outside the side it hands to a match (the rules
   refuse a NaviCust on a navi that compiles none), and puts them back when MegaMan is chosen again.
 - **Navi:** the game's navis as a grid of cards; the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
-  user chose to leave it out); "NaviCust
-  and patch cards are MegaMan only." With MegaMan, under the navi's facts the faces of the Crosses (EXE6) or souls
-  (EXE4, EXE5) the build's version gives him, changing as the header's tag switches it (§2.41, §2.42). In EXE4 and EXE5,
-  MegaMan's panel also has Light or Dark, a stepper, with the face the round starts him with.
+  user chose to leave it out), the face the round starts it with. Under them, one after the other with nothing
+  reserved (§2.63): in EXE4 and EXE5 MegaMan's Light or Dark, a segmented control (LIGHT | DARK) as tall as the
+  editor's rows; the selector of the build's forms (§2.60, §2.61): EXE6's Beast form (GBeast and FBeast side by
+  side under their versions' heads) and Crosses, EXE4's and EXE5's souls, each fact's heading with its count and
+  problem over its forms' rows grouped by version; and "NaviCust and patch cards are MegaMan only." On a phone the
+  panel is over the grid, as tall as what it shows, the selector's rows two to a row.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header holding Chips 30/30, Mega, Giga, Reg and Tag memory, then the overview's own 2 by
