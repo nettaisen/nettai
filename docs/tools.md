@@ -96,14 +96,19 @@ not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whet
   keeps every pixel's edge clean in 4:2:0; an odd one leaves a fringe of mixed color at each (docs/frontend.md §8).
 - `--side left|right` is the console shown (default: the side that recorded the replay).
 - `--both-sides` shows both consoles side by side in a picture twice as wide (480·N by 160·N): `--side`'s at the
-  left, the other's at the right, each byte for byte its own video's, from one playing of the replay; the sound is
-  the left console's alone (nettai-video's `Sides::Both`, docs/frontend.md §8).
+  left, the other's at the right, each byte for byte its own video's, from one playing of the replay; each
+  console's sound is a track of its own, the left one's first and the default (nettai-video's `Sides::Both`,
+  docs/frontend.md §8). An `ffmpeg` reading `--nut` takes one sound unless told `-map 0`, as `--mp4` tells it.
 - `--round N` shows that round alone, and `--ticks A-B` the frames A to B alone, numbered as `--headless` numbers
   them (the pictures after the set's ticks A to B: `--ticks 600-719` is the 120 frames `--headless 600-719` writes
   as PNGs, and is byte for byte those pictures). A part starts as playing straight to it leaves the battle, its
   sound in mid-note included.
 - `--mute` leaves the sound out (a stream of the picture alone); `--text` and `--lang` are the picture's, as for
   headless frames.
+
+Either way each round is a chapter, "Round 1", "Round 2"…, from the frame its picture begins on, and each sound
+track is titled with its player's name as the replay has it (else "Player 1" or "Player 2"): in English here;
+the app's export says them in its language.
 
 The same replay and options give the same bytes. It exits 1 if the replay doesn't reproduce, as `--replay FILE`
 alone does.

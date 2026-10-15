@@ -216,6 +216,10 @@ msgstr "試合全体 · {}"
 msgid "Round {} · {}"
 msgstr "ラウンド {} · {}"
 
+# A round's chapter in an exported video.
+msgid "Round {}"
+msgstr "ラウンド {}"
+
 msgid "Exporting round {} of {} · {}%"
 msgstr "書き出し中 ラウンド {}/{} · {}%"
 

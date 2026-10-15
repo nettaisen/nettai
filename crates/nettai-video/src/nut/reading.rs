@@ -31,12 +31,29 @@ pub struct Frame {
     pub data: Vec<u8>,
 }
 
+/// An info packet of a NUT file.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Info {
+    /// Its stream, plus 1 (0: of the file, or of a chapter).
+    pub stream_id_plus1: u64,
+    /// Its chapter (0: none), the chapter's start (a `t`: the pts times
+    /// the time bases' count, plus its base's index) and length.
+    pub chapter_id: i64,
+    pub start: u64,
+    pub length: u64,
+    /// Its fields, each a name and UTF-8 text (a writer writes no other
+    /// kind).
+    pub fields: Vec<(String, String)>,
+}
+
 /// A NUT file, read.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct File {
     pub version: u64,
     pub max_distance: u64,
     pub streams: Vec<Stream>,
+    /// The info packets of the headers (every set has the same).
+    pub info: Vec<Info>,
     /// Every frame, in the file's order.
     pub frames: Vec<Frame>,
     /// How many times the headers are in the file, and where each set
@@ -153,7 +170,7 @@ pub fn read(bytes: &[u8]) -> Result<File, String> {
     if b.take(FILE_ID.len()).ok() != Some(FILE_ID) {
         return Err("no file id string at the start".into());
     }
-    let mut file = File { version: 0, max_distance: 0, streams: Vec::new(), frames: Vec::new(), header_sets: Vec::new(), syncpoints: Vec::new(), index: None };
+    let mut file = File { version: 0, max_distance: 0, streams: Vec::new(), info: Vec::new(), frames: Vec::new(), header_sets: Vec::new(), syncpoints: Vec::new(), index: None };
     // For each syncpoint, the first frame of each stream behind it (before
     // the next syncpoint): its pts.
     let mut behind: Vec<Vec<Option<u64>>> = Vec::new();
@@ -360,11 +377,34 @@ pub fn read(bytes: &[u8]) -> Result<File, String> {
                     done(&p, &what)?;
                     read_streams.push(stream);
                 }
+                // The info packets, if any.
+                let mut infos = Vec::new();
+                while b.all.get(b.at..b.at + 8) == Some(&INFO.to_be_bytes()[..]) {
+                    let info_at = b.at;
+                    b.take(8)?;
+                    let mut p = packet(&mut b, info_at, "an info packet")?;
+                    set_end = b.at;
+                    let (stream_id_plus1, chapter_id, start, length) = (p.v()?, p.s()?, p.v()?, p.v()?);
+                    if stream_id_plus1 > streams as u64 || (chapter_id == 0 && (start, length) != (0, 0)) || (stream_id_plus1 != 0 && chapter_id != 0) {
+                        return Err(format!("the info packet at {info_at}: stream {stream_id_plus1} - 1, chapter {chapter_id} from {start} for {length}"));
+                    }
+                    let mut fields = Vec::new();
+                    for _ in 0..p.v()? {
+                        let name = String::from_utf8(p.vb()?).map_err(|_| format!("the info packet at {info_at}: a name that isn't UTF-8"))?;
+                        if p.s()? != -1 {
+                            return Err(format!("the info packet at {info_at}: {name} isn't text"));
+                        }
+                        let value = String::from_utf8(p.vb()?).map_err(|_| format!("the info packet at {info_at}: {name}'s text isn't UTF-8"))?;
+                        fields.push((name, value));
+                    }
+                    done(&p, "an info packet")?;
+                    infos.push(Info { stream_id_plus1, chapter_id, start, length, fields });
+                }
                 let set = bytes[at..set_end].to_vec();
                 match &first_set {
                     None => {
                         first_set = Some(set);
-                        (file.version, file.max_distance, file.streams) = (version, max_distance, read_streams);
+                        (file.version, file.max_distance, file.streams, file.info) = (version, max_distance, read_streams, infos);
                         (codes, time_bases) = (table, bases);
                         syncpoint_before = vec![None; streams];
                     }
@@ -412,8 +452,8 @@ pub fn read(bytes: &[u8]) -> Result<File, String> {
                 // The latest pts, and every syncpoint's place.
                 let t = p.v()?;
                 let max = ((t % time_bases.len() as u64) as usize, t / time_bases.len() as u64);
-                if Some(max) != last_frame {
-                    return Err(format!("the index's last pts is stream {}'s {}; the last frame's is {last_frame:?}", max.0, max.1));
+                if last_frame.is_none_or(|(s, p)| (time_bases[max.0], max.1) != (file.streams[s].time_base, p)) {
+                    return Err(format!("the index's last pts is time base {}'s {}; the last frame's is {last_frame:?}", max.0, max.1));
                 }
                 let count = p.v()? as usize;
                 let mut place = 0;
