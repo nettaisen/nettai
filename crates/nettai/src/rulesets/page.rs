@@ -92,6 +92,16 @@ impl Page {
         id.starts_with(PREFIX)
     }
 
+    /// The lobby's ruleset as it stands now, where this page views it (a joiner's view of the host's): shown as
+    /// the host changes it, as they change it (the user: "show live edits of host's ruleset"). The category, the
+    /// search and the cursor stay where the player has them.
+    pub fn follow(&mut self, shell: &Shell, ruleset: &nettai_match::ruleset::Ruleset) {
+        if self.viewed && self.shown.ruleset != *ruleset {
+            self.shown.ruleset = ruleset.clone();
+            self.show(shell);
+        }
+    }
+
     /// The ruleset can be changed here: the player's own, not one viewed.
     fn editable(&self) -> bool {
         !self.viewed && self.shown.path.is_some()

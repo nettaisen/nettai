@@ -144,8 +144,11 @@ mod tests {
     fn a_ruleset_reads_back() {
         let content = exe6_content();
         let r = rulesets("exe6");
-        let mut own = r.preset("gregar").unwrap().clone();
-        own.name = Name::Own("Gregar \"cup\"".into());
+        let mut own = Ruleset::open(Name::Own("Gregar \"cup\"".into()));
+        own.one_per_build = true;
+        for c in r.categories.clone() {
+            own.allow_groups(&r, &c, &["gregar"]);
+        }
         own.set_allowed("folder", &nettai_match::ruleset::Item::of(nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0), false);
         let text = text(&content, "exe6", &own);
         assert!(text.contains("versions = \"one_per_build\"") && text.contains("bass"), "{text}");
@@ -154,7 +157,7 @@ mod tests {
         assert!(read(&rulesets("exe5"), &nettai_match::testing::exe5_content(), &text).unwrap_err().contains("not of exe5"));
         assert!(read(&r, &content, &text.replacen("bass", "nobody", 1)).is_err());
         assert!(read(&r, &content, &text.replacen("one_per_build", "sometimes", 1)).is_err());
-        let mut mixed = r.preset("mixed").unwrap().clone();
+        let mut mixed = r.preset("unrestricted").unwrap().clone();
         mixed.name = Name::Own("Open".into());
         assert_eq!(read(&r, &content, &super::text(&content, "exe6", &mixed)), Ok(mixed));
     }
