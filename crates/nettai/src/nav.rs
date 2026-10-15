@@ -247,6 +247,13 @@ impl Registry {
         Some(((y - l.view.y + l.scroll) / l.pitch).floor() as i32)
     }
 
+    /// The list's row or the control at `(x, y)` in the window, if there is one there.
+    pub fn at(&self, (x, y): (f32, f32)) -> Option<Key> {
+        let inside = |r: &Rect| x >= r.x && x < r.right() && y >= r.y && y < r.bottom();
+        let row = self.lists.iter().filter(|(_, l)| inside(&l.view)).find_map(|(id, l)| self.row_at(id, y).filter(|r| (0..l.rows).contains(r)).map(|r| Key::new(id, r)));
+        row.or_else(|| self.items.iter().find(|(_, i)| i.rect.w > 0.0 && inside(&i.rect)).map(|(k, _)| k.clone()))
+    }
+
     /// The page `id` is in: the one with the longest name that begins `id`.
     fn page_of(&self, id: &str) -> Option<(&str, Rect)> {
         self.pages.iter().filter(|(name, _)| id.starts_with(name.as_str())).max_by_key(|(name, _)| name.len()).map(|(name, p)| (name.as_str(), p.view))

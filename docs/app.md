@@ -1407,9 +1407,13 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   its empty cells are tinted. Under the board, its key (Board, Command line, Plus part, and Out of bounds where
   there is a ring), on one line or two by the language's words alone, and a reserved line for why a piece can't
   go down.
-- *Programs*, the open list in the middle: each program in each of its colors (a row a color, as the folder's
-  library has a row a code), in the library's order, with its color, its cross if a plus part, and where it is:
-  Placed (with how many copies, Placed ×2, where more than one is: `ProgramRow.copies`), In hand, or Out of
+- *Programs*, the open list in the middle: each program once (design §2.64: its colors are its definition's,
+  `GridData::colors`), in the library's order, in the color chosen for it, its cross if a plus part; where it has
+  more than one color, its colors as small boxes before its state (`ProgramRow.colors`, the chosen one,
+  `ProgramRow.color`, outlined; one the ruleset doesn't allow ringed in the error red). Left and Right on the row
+  (`Tab::route`: past the first or the last the focus moves on) or a click or a tap on a box (`choose("color")`)
+  choose the color; it starts at the color the build has placed first (`Navicust::color`). Where that color's part
+  is: Placed (with how many copies, Placed ×2, where more than one is: `ProgramRow.copies`), In hand, or Out of
   bounds (a placed copy over the ring: no error, and nothing red).
 - *Effects and Bugs*, two panels at the right: what the NaviCust alone comes to, the build's overview without
   its patch cards (`own_overview`: `Side::without_patch_cards`, and `Checked::of` a second time where the build
@@ -1420,8 +1424,10 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   tab's (the card's lines, Together) and the build overview's, which has every bug the build has. A bug that
   wasn't there before the last change pulses purple once.
 - *The strip* across the top, as the folder's: the program under the cursor (the piece in hand, the piece on
-  the cell the cursor is on, or the list's row), its name beside its color, and the game's description of it
-  (the locales' `[navicust_programs]` descriptions, the ROMs' own text, on one line). A phone has no strip.
+  the cell the cursor is on, or the list's row in its color chosen; with no piece in hand, the row under the
+  pointer: design §2.64), its shape and, where it compresses into another, its compressed shape (`boxed`: the
+  shape's cells' box, drawn in its color), its name beside its color, the game's description of it (the locales'
+  `[navicust_programs]` descriptions, the ROMs' own text, on one line) and its colors. A phone has no strip.
 - *The keys.* The cursor goes over the board cell by cell (each cell is a control, `cell`, its place in the
   drawn grid). Confirm on a placed piece picks it up by that cell; Confirm on a program's row takes a new copy of
   it in hand, its middle on the board's, however many copies are placed already (the user: "you should allow a
@@ -1483,17 +1489,18 @@ that variant (a record of the card and its `variant`: `edit::list`, `edit::varia
 while it is chooses the other in its place. The build's list and the strip show the installed card's variant's
 lines. A ruleset can hold one variant back (its item `bass-cross-megaman/gregar`): that row is "Not allowed".
 
-- *The strip* lays the card under the cursor out: its number, name, MB or slot, why it can't go in (in the
+- *The strip* lays the card under the cursor (or, design §2.64, under the pointer) out: its number, name, MB or
+  slot, why it can't go in (in the
   error red: the typed `EntryRefusal`, worded by `Words::entry_refusal`: "Needs 24 MB"; of one of the build's,
   the rules' problem with it), and its lines in its two groups under their names in the game's strings
   (`patch_card_groups`: Parameter, Ability); where a game's cards have no groups (EXE4's), what it does and the
   bugs it adds to or clears.
-- *The build's cards*, framed: in their order, a row a card (number, name, MB, then every line it writes on one
-  line, a bar between its groups, bugs purple, fading where they run past the row), and an Empty row after them
+- *The build's cards*, framed: in their order, a row a card as the folder's (number, name, its version's mark, MB;
+  its lines are the strip's: design §2.64), and an Empty row after them
   while the list has room; in a game whose cards go in slots, each slot by its name with its card or Empty. Cards
   and MB used (or Slots filled) in the header, ticking as they change, and Together at the foot: what the cards
   add up to, the build's overview without its NaviCust (the numbers they change, what they give, their bugs).
-- *The library*, open: every card of the game with its lines, a search by name, and a sort (number, name, MB;
+- *The library*, open: every card of the game, its rows as the build's, a search by name, and a sort (number, name, MB;
   in a game with slots, number, name, slot). A card that is in says Installed; one that can't go in is greyed
   with why, in the error red what it needs. No pictures (a card has none) and no on or off (nettai plays every
   card in).
@@ -1558,6 +1565,18 @@ entry). The touches say which rows it removes from (`Focusable`'s and `RowTouch`
 `Drag.pointer`). The NaviCust's right click is as it was: it puts away the piece in hand or takes off the one under
 the pointer. A phone's tap opens the library's sheet as before, which has REMOVE: a tap isn't a removal there. The
 keys and the pad are unchanged.
+
+**The pointer on a row describes it** (design §2.64: "show chip/patch card/ncp details on list item hover"). A row
+given `describes` (`Focusable`'s and `RowTouch`'s; the NaviCust's program rows their own touch's) says when the
+pointer comes onto it and leaves it, and when its list scrolls another row under the pointer: `Nav.hover(id, index,
+on)`, the app's `NavInput::Hover`, handed to the screen as `Screen::hovered` and by the editor to the tab. Each tab
+keeps the row hovered beside the one it describes (`editor::hover`: a row left that isn't the one hovered changes
+nothing, the next row's coming may be told first), and its strip shows the hovered row while there is one, else the
+focused one; the focus doesn't move. A move of the focus (a key, a click) drops the hover, so the strip follows
+whatever was used last; a coming onto a row while the keys were used last (`Nav::pointing` false: a row the keys
+scrolled under a still pointer) isn't told at all, nor anything on a phone. A refusal's reason belongs to the focused
+row, shown with it; the row a drag was let go over (`Registry::at`, the editor's `rest`) isn't a hover until the
+pointer goes on to another, so a refused drop's reason stays in the strip.
 
 **A row dragged moves** (the user: "also you should be able to drag and drop to reorder"). A press on one of the
 build's rows that moves 6 from where it went down (`Drag.threshold`, either way: the folder's second column is
@@ -2115,7 +2134,7 @@ without a ring the shot is of the piece in hand), and a placed program under the
 patch cards' library, its search and sort a focus move apart (a pair), three cards put in, the cursor on one that
 is in (Confirm's Remove) and Confirm taking it out, the library by MB with a card the MB left can't take refused,
 one of the build's moved up and taken out, the sort's list; a card that brings a bug, put in where the build's
-cards bring none yet (`bug_card`), shot on the Patch cards tab (`tabs-cards-bug`: its bug on its line and in
+cards bring none yet (`bug_card`), shot on the Patch cards tab (`tabs-cards-bug`: its bug in the strip and in
 Together) and on the NaviCust tab (`tabs-navicust-card-bug`: not in the NaviCust's Bugs, §8); the auto battle's
 places a focus move apart (a pair), three filled from the library, one emptied, the places scrolled to the last
 list, the library of a place in each list held to one class (`tabs-auto-mega`, `tabs-auto-giga`,
@@ -2125,7 +2144,12 @@ on to another row (`tabs-folder-clicked`,
 `tabs-cards-clicked`, `tabs-auto-clicked`: the cursor hidden, the row clicked marked, the other lit by the
 pointer), and the keys after the clicks (`clicks`); last, a new build made beside the walk's with a chip of
 another class in each list held to one (`wrong_classes`: `tabs-auto-wrong-list`, Play's list counting its
-problems; `tabs-auto-wrong`, its tab flagged, the places red, the strip saying why). Where a piece goes is found from
+problems; `tabs-auto-wrong`, its tab flagged, the places red, the strip saying why); on a desktop, the pointer on a row
+describing it in the strip, the focus where it was (`hovers`: `tabs-hover-chip`, `tabs-hover-program`,
+`tabs-hover-card`, `tabs-hover-installed`, a step after each checking the strip is the row's and the focus
+unmoved; the pass's pointer moves are the window's, the pointer marked the last thing used), and a program's colors
+(`program_colors`: `tabs-navicust-colors`, Right choosing the second, `tabs-navicust-color-chosen`, and Enter taking
+that color's part, `tabs-navicust-color-held`). Where a piece goes is found from
 what the view shows of the board (`put`: the first cell where the piece in hand would be off the command line,
 on the ring, over another, or anywhere on the board itself), so the walk is the same whatever the game's shapes. A tab the game hasn't is
 passed by (`to_tab` sets `Tour::passing`: the steps after it do nothing and take no picture until the next tab):

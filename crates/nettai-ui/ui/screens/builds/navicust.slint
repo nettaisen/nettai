@@ -4,8 +4,10 @@
 // corners. The command line is marked three ways: a line over and under its row that runs over what is placed
 // there, an arrow at each end outside the board, and a tint in its empty cells. A plus part's cell is its color
 // crossed edge to edge, with no border. In the middle PROGRAMS, the open list to pick from (a program is taken from
-// it as many times as it is placed): each program in each of its colors, and whether it is placed (how many copies,
-// where more than one), in hand or out of bounds (which is no error). At the right what the NaviCust does and the
+// it as many times as it is placed): each program once, in the color chosen for it, with its colors to choose from
+// where it has more than one (the user: "deduppe navicust program parts in the list and then have you select by
+// color"), and whether that color's part is placed (how many copies, where more than one), in hand or out of bounds
+// (which is no error). At the right what the NaviCust does and the
 // bugs it brings (not a patch card's), by their full names and levels, purple.
 //
 // The piece in hand is drawn over the board where the cursor holds it: lifted (a little larger, with a shadow), and
@@ -56,13 +58,24 @@ export enum ProgramState {
     not-allowed,
 }
 
-// A program in one of its colors, as the list shows it: `copies`, how many of it are placed in that color.
+// One of a program's colors, as its row offers it: the color, and whether the ruleset the player plays by doesn't
+// allow its part (a ring in the error red).
+export struct ProgramColor {
+    tone: color,
+    not-allowed: bool,
+}
+
+// A program, as the list shows it: its name, in the color chosen (`color`, its place among `colors`, the colors it
+// comes in: a choice on the row where there is more than one); where that color's part is, and `copies`, how many of
+// it are placed.
 export struct ProgramRow {
     name: string,
     tone: color,
     plus: bool,
     state: ProgramState,
     copies: int,
+    colors: [ProgramColor],
+    color: int,
 }
 
 // A line of the effects or the bugs: a title, an effect, a bug with its level or amount (`extent`), a list with
@@ -84,14 +97,21 @@ export struct EffectLine {
     fresh: bool,
 }
 
-// The program under the cursor, for the strip: its name in its color (a plus part's crossed), and the game's
-// description of it.
+// The program under the cursor (or the pointer), for the strip: its name in its color (a plus part's crossed), the
+// game's description of it, its shape (its cells' box row by row, `columns` a row) and, where it compresses into
+// another, its compressed shape (else none), and the colors it comes in (`color`: the row's among them).
 export struct ProgramDetail {
     there: bool,
     name: string,
     tone: color,
     plus: bool,
     description: string,
+    shape: [bool],
+    columns: int,
+    compressed: [bool],
+    compressed-columns: int,
+    colors: [color],
+    color: int,
 }
 
 // What the tab shows: src/screens/builds/navicust.rs sets these.
@@ -99,7 +119,23 @@ export global NavicustView {
     // (The footer says what the keys do where the cursor is: on a placed piece, Del takes it off; on a placed
     // program's row, Enter takes another copy and Del takes the last one off; with a piece in hand, Back puts it
     // away into the list.)
-    out property <[Hint]> hints: self.holding ? (NavicustView.held-compresses ? self.holding-hints : self.holding-hints-one) : self.on-piece ? (self.in-list ? self.row-hints : self.piece-hints) : self.hints-at-rest;
+    out property <[Hint]> hints: self.holding ? (NavicustView.held-compresses ? self.holding-hints : self.holding-hints-one) : self.on-colors ? (self.on-piece ? self.color-row-hints : self.color-hints) : self.on-piece ? (self.in-list ? self.row-hints : self.piece-hints) : self.hints-at-rest;
+    // (On a program's row that has colors to choose from, Left and Right choose one.)
+    property <[Hint]> color-hints: [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
+        { key: "←→", pad: PadButton.move, text: @tr("Color") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+    ];
+    property <[Hint]> color-row-hints: [
+        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
+        { key: "←→", pad: PadButton.move, text: @tr("Color") },
+        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Take") },
+        { key: "Del", pad: Shell.pad-delete, text: @tr("Take off") },
+        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
+        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
+    ];
     property <[Hint]> hints-at-rest: [
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: self.in-list ? @tr("Take") : @tr("Pick up") },
@@ -134,8 +170,9 @@ export global NavicustView {
         { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Place") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Put away") },
     ];
-    // The cursor is on a placed piece (or a placed program's row).
+    // The cursor is on a placed piece (or a placed program's row); on a program's row with colors to choose from.
     in property <bool> on-piece;
+    in property <bool> on-colors;
     // The strip: the program under the cursor.
     in property <ProgramDetail> detail;
     out property <string> status: @tr("{n} program placed" | "{n} programs placed" % self.placed);
@@ -380,12 +417,23 @@ component DropFlash inherits Rectangle {
     }
 }
 
-// A program of the list: its color (a plus part's crossed), its name, and where it is (placed, how many copies where
-// more than one).
+// A program of the list: its color chosen (a plus part's crossed), its name, the colors to choose from where it has
+// more than one (the one chosen outlined, one the ruleset doesn't allow ringed in the error red), and where that
+// color's part is (placed, how many copies where more than one).
 component ProgramRowView inherits Rectangle {
     in property <ProgramRow> program;
     in property <int> nav-index;
     in property <bool> big;
+    property <bool> choice: root.program.colors.length > 1;
+    // (Each color a box 14 wide, 4 apart, before the state's column.)
+    property <length> pitch: 18px;
+    property <length> colors-width: root.choice ? root.program.colors.length * root.pitch - 4px : 0px;
+    property <length> colors-x: root.width - 8px - 110px - 8px - root.colors-width;
+    changed nav-index => {
+        if touch.has-hover {
+            Nav.hover("programs", root.nav-index, true);
+        }
+    }
     Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
@@ -406,7 +454,7 @@ component ProgramRowView inherits Rectangle {
 
     Text {
         x: 32px;
-        width: parent.width - 32px - 8px - state.width - 8px;
+        width: max(0px, root.colors-x - 8px - 32px);
         text: root.program.name;
         color: Theme.text;
         font-family: Theme.body;
@@ -414,6 +462,23 @@ component ProgramRowView inherits Rectangle {
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    for c[i] in root.program.colors: Rectangle {
+        x: root.colors-x + i * root.pitch;
+        y: (parent.height - 14px) / 2;
+        width: 14px;
+        height: 14px;
+        visible: root.choice;
+        border-width: c.not-allowed ? (i == root.program.color ? 2px : 1px) : (i == root.program.color ? 1px : 0px);
+        border-color: c.not-allowed ? Theme.bad : Theme.text;
+        Rectangle {
+            x: 3px;
+            y: 3px;
+            width: 8px;
+            height: 8px;
+            background: c.tone;
+        }
     }
 
     state := Text {
@@ -430,11 +495,19 @@ component ProgramRowView inherits Rectangle {
 
     // (A click, as the button goes down: it takes a new copy of the program, or puts the piece in hand away. The
     // pointer's moves with a piece in hand and its release are told too, where it is (`Pointer`): over the list, the
-    // list shows that a click puts the piece away.)
+    // list shows that a click puts the piece away. The pointer over it shows its program in the strip, as the cursor
+    // on it does: `Nav.hover`, a row that scrolls under the pointer another.)
     touch := TouchArea {
+        changed has-hover => {
+            Nav.hover("programs", root.nav-index, self.has-hover);
+        }
         pointer-event(e) => {
             if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
                 Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
+            } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down && !NavicustView.holding && root.choice && self.mouse-x >= root.colors-x - 2px && self.mouse-x < root.colors-x + root.colors-width + 2px {
+                // (A click or a tap on one of its colors chooses it: the next copy taken is that color's.)
+                Nav.point("programs", root.nav-index);
+                Nav.choose("color", root.nav-index, max(0, min(root.program.colors.length - 1, floor((self.mouse-x - root.colors-x + 2px) / root.pitch))));
             } else if e.button == PointerEventButton.left && e.kind == PointerEventKind.down {
                 Nav.point("programs", root.nav-index);
                 Nav.choose("drag", 0, root.nav-index);
@@ -447,6 +520,31 @@ component ProgramRowView inherits Rectangle {
                 Nav.point("programs", root.nav-index);
                 Nav.choose("remove", root.nav-index, 0);
             }
+        }
+    }
+}
+
+// A program's shape in the strip: its cells' box, each cell of it the program's color (a plus part's crossed) or the
+// board's empty cell, in the middle of a box five cells a side, the most any program's shape takes.
+component ShapeView inherits Rectangle {
+    in property <[bool]> cells;
+    in property <int> columns;
+    in property <color> tone;
+    in property <bool> plus;
+    property <length> cell: 10px;
+    property <length> pitch: 12px;
+    property <int> rows: root.columns > 0 ? ceil(root.cells.length / root.columns) : 0;
+    property <length> left: (self.width - (root.columns * root.pitch - 2px)) / 2;
+    property <length> top: (self.height - (root.rows * root.pitch - 2px)) / 2;
+    for filled[i] in root.cells: Rectangle {
+        x: root.left + mod(i, root.columns) * root.pitch;
+        y: root.top + floor(i / root.columns) * root.pitch;
+        width: root.cell;
+        height: root.cell;
+        background: filled ? root.tone : Theme.inset;
+        Cross {
+            visible: filled && root.plus;
+            bar: 1.5px;
         }
     }
 }
@@ -646,7 +744,11 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    // ---- The strip: the program under the cursor, its name in its color and the game's description of it.
+    // ---- The strip: the program under the cursor (or the pointer): its shape and, where it compresses into another,
+    // its compressed shape, each over its word; its name in its color, the game's description of it, and the colors it
+    // comes in, the row's outlined.
+    property <length> shape-width: 100px;
+    property <length> words-x: 16px + 2 * root.shape-width + 8px + 16px;
     PanelBack {
         x: 0;
         y: root.top;
@@ -654,8 +756,56 @@ export component NavicustTab inherits Rectangle {
         visible: !Theme.phone;
     }
 
+    if !Theme.phone && NavicustView.detail.there: Rectangle {
+        x: 0;
+        y: root.top;
+        width: root.words-x;
+        height: 104px;
+        ShapeView {
+            x: 16px;
+            y: 12px;
+            width: root.shape-width;
+            height: 62px;
+            cells: NavicustView.detail.shape;
+            columns: NavicustView.detail.columns;
+            tone: NavicustView.detail.tone;
+            plus: NavicustView.detail.plus;
+        }
+
+        Label {
+            x: 16px;
+            y: 78px;
+            width: root.shape-width;
+            height: 14px;
+            text: @tr("SHAPE");
+            horizontal-alignment: center;
+        }
+
+        ShapeView {
+            x: 16px + root.shape-width + 8px;
+            y: 12px;
+            width: root.shape-width;
+            height: 62px;
+            visible: NavicustView.detail.compressed-columns > 0;
+            cells: NavicustView.detail.compressed;
+            columns: NavicustView.detail.compressed-columns;
+            tone: NavicustView.detail.tone;
+            plus: NavicustView.detail.plus;
+        }
+
+        Label {
+            x: 16px + root.shape-width + 8px;
+            y: 78px;
+            width: root.shape-width;
+            height: 14px;
+            visible: NavicustView.detail.compressed-columns > 0;
+            text: @tr("COMPRESSED");
+            horizontal-alignment: center;
+        }
+    }
+
     Rectangle {
-        x: 18px;
+        x: root.words-x;
         y: root.top + 21px;
         width: 16px;
         height: 16px;
@@ -668,9 +818,9 @@ export component NavicustTab inherits Rectangle {
     }
 
     Text {
-        x: 44px;
+        x: root.words-x + 26px;
         y: root.top + 19px;
-        width: parent.width - 60px;
+        width: parent.width - self.x - 16px;
         height: 20px;
         visible: !Theme.phone;
         text: NavicustView.detail.name;
@@ -683,9 +833,9 @@ export component NavicustTab inherits Rectangle {
     }
 
     Text {
-        x: 18px;
-        y: root.top + 47px;
-        width: parent.width - 36px;
+        x: root.words-x;
+        y: root.top + 43px;
+        width: parent.width - self.x - 16px;
         height: 18px;
         visible: !Theme.phone;
         text: NavicustView.detail.description;
@@ -694,6 +844,41 @@ export component NavicustTab inherits Rectangle {
         font-size: 13px;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    HorizontalLayout {
+        x: root.words-x;
+        y: root.top + 69px;
+        width: parent.width - self.x - 16px;
+        height: 16px;
+        visible: !Theme.phone && NavicustView.detail.there;
+        spacing: 6px;
+        alignment: start;
+        Text {
+            text: @tr("Colors");
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            width: 2px;
+        }
+
+        for tone[i] in NavicustView.detail.colors: Rectangle {
+            width: 16px;
+            height: 16px;
+            border-width: i == NavicustView.detail.color ? 1px : 0px;
+            border-color: Theme.text;
+            Rectangle {
+                x: 3px;
+                y: 3px;
+                width: 10px;
+                height: 10px;
+                background: tone;
+            }
+        }
     }
 
     // ---- The board, framed.

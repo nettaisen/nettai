@@ -62,6 +62,9 @@ export global Nav {
     callback choose(string, int, int);
     // The pointer went down on a control: the focus goes there.
     callback point(string, int);
+    // The pointer came onto a row that describes what it holds (`describes`), or left it (false): the build editor's
+    // strip shows the row under the pointer, and the focused row's again once the pointer has left it.
+    callback hover(string, int, bool);
     // A field's edit: begun (with the text it had), a change, the end (Enter).
     callback edit-began(string, int, string);
     callback edited(string, int, string);
@@ -183,6 +186,8 @@ export component Focusable inherits TouchArea {
     in property <string> drag;
     // It holds something of the build: a right click on it removes that, as Del does.
     in property <bool> removable;
+    // The pointer over it describes what it holds, as the focus on it does (`Nav.hover`).
+    in property <bool> describes;
     out property <bool> focused: nav != "" && Nav.id == nav && Nav.index == nav-index;
     property <[int]> token;
     property <length> ax: self.absolute-position.x;
@@ -212,6 +217,11 @@ export component Focusable inherits TouchArea {
     }
     changed enabled => {
         place();
+    }
+    changed has-hover => {
+        if root.describes && nav != "" {
+            Nav.hover(nav, nav-index, self.has-hover);
+        }
     }
     clicked => {
         Drag.clicked(root.drag, nav, nav-index);

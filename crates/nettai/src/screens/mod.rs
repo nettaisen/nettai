@@ -125,6 +125,10 @@ pub trait Screen {
     /// The focus moved to a control (a list's row: the overview beside a list follows it).
     fn focused(&mut self, _shell: &mut Shell, _id: &str, _index: i32) {}
 
+    /// The pointer came onto a row that describes what it holds (`on`), or left it: what the screen shows of the
+    /// focused row it shows of that one while the pointer is on it (the build editor's strip).
+    fn hovered(&mut self, _shell: &mut Shell, _id: &str, _index: i32, _on: bool) {}
+
     /// A key pressed that the screen may want for itself, before the menus' keys are read from it (a letter
     /// that acts on the focused row, a key being bound). True if it was the screen's.
     fn key(&mut self, _shell: &mut Shell, _key: &KeyPress) -> bool {
