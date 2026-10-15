@@ -9,9 +9,10 @@
 //!
 //! **The list has each program once** (the user: "deduppe navicust program parts in the list and then have you select
 //! by color"): a program's colors are its definition's (`GridData::colors`), and its row offers them where there is more
-//! than one. Left and Right on the row (the pad's too), or a click or a tap on one of them, choose the color whose part
-//! Enter takes (past the first or the last, the focus moves on as ever); it starts at the color of the copy the build
-//! has placed first, else the first. What the row says (placed, how many copies, out of bounds) is that color's part's;
+//! than one. Left and Right on the row (the pad's too) choose the color whose part Enter takes (past the first or the
+//! last, the focus moves on as ever); a click or a tap on one of them chooses it and takes its part, as Enter would (the
+//! user: "selecting the color in the ncp editor should also pick up the ncp"). It starts at the color of the copy the
+//! build has placed first, else the first. What the row says (placed, how many copies, out of bounds) is that color's part's;
 //! the strip shows that part.
 //!
 //! **The cursor goes over the board cell by cell.** Enter on a placed piece picks it up by that cell; Enter on a
@@ -382,6 +383,8 @@ impl Navicust {
                 .collect()
         });
         view.set_programs(ModelRc::new(VecModel::from(rows)));
+        // (The rows' colors' column is as wide as the most of them, so their states line up.)
+        view.set_most_colors(self.rows.iter().map(|&piece| self.colors(piece)).max().unwrap_or(1) as i32);
     }
 
     /// What the NaviCust does and the bugs it brings (`own_overview`: each number it changes, the rules' own stats
@@ -851,10 +854,14 @@ impl Tab for Navicust {
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
         match id {
             "drag" => self.pointed(shell, draft, index, choice),
-            // (A click or a tap on one of a row's colors.)
+            // (A click or a tap on one of a row's colors chooses it and takes that color's part in hand, as a click on
+            // the row does: the user, "selecting the color in the ncp editor should also pick up the ncp". Left and
+            // Right choose alone: taking a part puts the cursor on the board, and the next color would be a key
+            // away no more.)
             "color" => {
-                shell.sound.play(Cue::Cursor);
-                self.choose_color(shell, draft, index.max(0) as usize, choice.max(0) as usize);
+                let row = index.max(0) as usize;
+                self.choose_color(shell, draft, row, choice.max(0) as usize);
+                self.pointed(shell, draft, PRESS_ROW, row as i32);
             }
             _ => {}
         }

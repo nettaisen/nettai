@@ -1184,7 +1184,7 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
 - **A build has no version** (docs/design/versions.md §2.1, §3.3; the user: "the builds don't have version labels
   either, they're kind of pointless since they correspond to ruleset rules"). It states what it has: its forms, its
   folder (Giga chips of both versions included: no game's folder rules hold a build to one version, the ruleset's
-  Versions setting does, §8's Rulesets), its cards (a Bass-Cross MegaMan card's variant its own). No list, sheet,
+  Version exclusives setting does, §8's Rulesets), its cards (a Bass-Cross MegaMan card's variant its own). No list, sheet,
   card or header shows a version's tag; the header's tag after the title is a page's own (a ruleset's PRESET).
   A build file written before (its `version`, its cards as names) is no build now: the list shows it as one that
   can't be read (docs/design/versions.md §3.2: old builds are dropped, not converted).
@@ -1268,7 +1268,8 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
   a phone's select), the chosen one's items with a check each (Enter, a click or a tap), ALLOW ALL, ALLOW NONE,
   the version's quick choices (`rules.set`: each group with items in the category, then All; their rows changed
   in place, so a press on one keeps its focus), the search; the name (saved when confirmed, numbered where
-  another of the player's own has it), Versions, DUPLICATE (named after the ruleset, numbered past the presets'
+  another of the player's own has it), Version exclusives (ONE VERSION | MIX VERSIONS, design §2.65: the file's
+  `versions`, `one_per_build` or `mixed`), DUPLICATE (named after the ruleset, numbered past the presets'
   names and the player's own) and DELETE (asked once). Each change is saved at once. A preset, or the host's
   ruleset a joiner views, changes nothing, and the reserved line says why.
 
@@ -1409,12 +1410,14 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   go down.
 - *Programs*, the open list in the middle: each program once (design §2.64: its colors are its definition's,
   `GridData::colors`), in the library's order, in the color chosen for it, its cross if a plus part; where it has
-  more than one color, its colors as small boxes before its state (`ProgramRow.colors`, the chosen one,
-  `ProgramRow.color`, outlined; one the ruleset doesn't allow ringed in the error red). Left and Right on the row
-  (`Tab::route`: past the first or the last the focus moves on) or a click or a tap on a box (`choose("color")`)
-  choose the color; it starts at the color the build has placed first (`Navicust::color`). Where that color's part
-  is: Placed (with how many copies, Placed ×2, where more than one is: `ProgramRow.copies`), In hand, or Out of
-  bounds (a placed copy over the ring: no error, and nothing red).
+  more than one color, its colors as small boxes at the row's right edge (`ProgramRow.colors`, the chosen one,
+  `ProgramRow.color`, outlined; one the ruleset doesn't allow ringed in the error red), the state's column ending
+  where the list's most colors start (`NavicustView.most-colors`), so the states line up. Left and Right on the
+  row (`Tab::route`: past the first or the last the focus moves on) choose the color alone; a click or a tap on a
+  box (`choose("color")`) chooses it and takes its part in hand, as a click on the row does (design §2.65); it
+  starts at the color the build has placed first (`Navicust::color`). Where that color's part is, before the
+  boxes: Placed (with how many copies, Placed ×2, where more than one is: `ProgramRow.copies`), In hand, Not
+  allowed, or Out of bounds (a placed copy over the ring: no error, and nothing red).
 - *Effects and Bugs*, two panels at the right: what the NaviCust alone comes to, the build's overview without
   its patch cards (`own_overview`: `Side::without_patch_cards`, and `Checked::of` a second time where the build
   has cards). The effects are each number it changes ("HP +500"; the rules' own stats among them, EXE5's
@@ -1425,8 +1428,9 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   wasn't there before the last change pulses purple once.
 - *The strip* across the top, as the folder's: the program under the cursor (the piece in hand, the piece on
   the cell the cursor is on, or the list's row in its color chosen; with no piece in hand, the row under the
-  pointer: design §2.64), its shape and, where it compresses into another, its compressed shape (`boxed`: the
-  shape's cells' box, drawn in its color), its name beside its color, the game's description of it (the locales'
+  pointer: design §2.64), where it compresses into another shape its compressed shape then its whole one, over
+  COMPRESSED and UNCOMPRESSED (design §2.65; a program of one shape alone, that one with no word), each `boxed`
+  (the shape's cells' box, drawn in its color), its name beside its color, the game's description of it (the locales'
   `[navicust_programs]` descriptions, the ROMs' own text, on one line) and its colors. A phone has no strip.
 - *The keys.* The cursor goes over the board cell by cell (each cell is a control, `cell`, its place in the
   drawn grid). Confirm on a placed piece picks it up by that cell; Confirm on a program's row takes a new copy of

@@ -115,6 +115,9 @@ asked for sit under the groups, as the ruleset work already has them.
 A build breaking it is the lobby's usual typed problem: "Mixes Gregar's and Falzar's" (listing what), as a banned
 chip is.
 
+(The app words it for a player as **Version exclusives**, ONE VERSION | MIX VERSIONS (app-ui §2.65: the user, "one
+per build is weird wording"); the ruleset files keep `versions = "one_per_build"` or `"mixed"`.)
+
 ### 2.4 Saves, recordings and the original
 
 The version stays where the original keeps it: the save, and the boundary that reads it (exe5-compat, exe6-compat,
