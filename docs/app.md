@@ -1207,11 +1207,14 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   about it (`Draft::facts_of`: the one a problem names, and for a mix of versions, which names none, each fact
   holding one of its things); the chosen forms it is about have their names in the error red (one the ruleset the
   player plays by doesn't allow, one of a mix of versions, the entry a problem names), and a form the ruleset holds
-  back has "Not allowed" at its row's end (`NaviForm.banned`). The sentences are the header's (design §2.66), as
-  every tab's are: the note under the selector is the note alone, and nothing moves when a problem appears. The same
-  facts flag the tab bar's words (`Editor::tabs_of`), so a mix of versions marks the tabs that hold its things (a Beast
-  form's the Navi tab, a Giga chip's the Folder tab, where its entry's name is red; a card's variant's the Patch
-  cards tab), and the header says it on each. Enter, a click or a tap is `activate("form", i)`:
+  back has "Not allowed" at its row's end (`NaviForm.banned`). The sentences are said where they are (design §2.66),
+  as every tab's are: what the game's rules have against a fact (a form of it, or the whole) on its heading's line
+  (`NaviFormGroup.problem`), against the navi on its name's line (`NaviView.problems`), each in a place that is there
+  when empty, so nothing moves when a problem appears; what the ruleset has against them is the ruleset's select's to
+  say. The same facts flag the tab bar's words
+  (`Editor::tabs_of`), so a mix of versions marks the tabs that hold its things (a Beast form's the Navi tab, a Giga
+  chip's the Folder tab, where its entry's name is red; a card's variant's the Patch cards tab), and the ruleset's
+  select says it on each. Enter, a click or a tap is `activate("form", i)`:
   `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a list takes it out, or puts it in where the list
   has room (the Cross window's five, the soul button's twelve: the setup's `form[5]` and `form[12]`), in the
   battle's order; a full list refuses one more.
@@ -1262,7 +1265,10 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
 - **The build editor's ruleset**: at the tab bar's right end, RULESET, its select (`ruleset`: the presets, then
   the player's own) and EDIT (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's
   panel and the grid. The build is checked under it (`Draft::checked` is `Checked::under`), so what it doesn't
-  allow is among the header's problems, and each tab marks it (`Draft::allows`): a navi's card ("Not allowed" in
+  allow is among the build's problems, and what it has against the build (`Draft::ruleset_problems`: the problems
+  `Wrong::of_ruleset` says are its, an item it doesn't allow and a mix of versions) is said beside the select, the
+  first and " · +n more" (`BuildsView.ruleset-problems`; a phone's under the select, `NaviView.ruleset-problems`,
+  design §2.66). Each tab marks what it is about (`Draft::allows`): a navi's card ("Not allowed" in
   the error red), the folder's library rows ("Not allowed", refused) and entries (the folder's view held to the
   ruleset: `View::hold_to`), a NaviCust program's row (`ProgramState::NotAllowed`), a patch card's library row
   and installed card (refused, in the error red), a soul's or Cross's face (a red ring).
@@ -1300,7 +1306,7 @@ line needs the content to name each navi's.
 | The build overview | `BuildOverview { build: <BuildSheet>; }` | `builds::overview::sheet(shell, kit, label, name, side)` |
 | A game's builds for a list | `BuildRow { build: <BuildEntry>; nav: "builds"; nav-index: at; }` under a `ListView` of 52-tall rows (the row holds its own touch) | `builds::shelf::load(shell, kit)` (`Shelved`: the file, the build, whether it is ready, its row) |
 | A chip's row | `ChipRow { chip: <ChipCell>; number: 1; }` | `builds::overview::chip_cell` |
-| What is wrong with a build, in the player's words | the catalog's `BuildWords` | `builds::words::Words::problem(&Problem)`: the kind's sentence with its numbers and names, about the part of the build its fact is (`words::wrong(.., &Wrong)` for a kind alone: the general sentence). `words::summary(shell, kit, problems)` words a build's problems as one line, the first and " · +n more" (`Words::summary`, design §2.66), for `UserError::BuildUnusable`; `words::problems(shell, game, ready, &[Problem])` the same for the lobby's line. `builds::words::Words` (`problem`, `summary`, `refusal`, `status`, `header`) where many are worded at once |
+| What is wrong with a build, in the player's words | the catalog's `BuildWords` | `builds::words::Words::problem(&Problem)`: the kind's sentence with its numbers and names, about the part of the build its fact is (`words::wrong(.., &Wrong)` for a kind alone: the general sentence). `words::summary(shell, kit, problems)` words a build's problems as one line, the first and " · +n more" (`Words::summary`, design §2.66), for `UserError::BuildUnusable`; `words::problems(shell, game, ready, &[Problem])` the same for the lobby's line. `builds::words::Words` (`problem`, `summary`, `refusal`, `status`) where many are worded at once |
 
 **A problem's sentence** has no full stop and is whole by itself: "2 Giga chips, limit 1", "Mixes Gregar and
 Falzar: HeatCross", "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
@@ -1350,9 +1356,12 @@ columns at the left (a second one beside it), the sheet 22 taller (672); on a ph
 build, and its height on the width and the stats after the eight. Every number is the compiled one
 (`Checked::overview`).
 
-**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name and "✓ Ready to
-play" (or how many problems), the tab bar,
-and the tab chosen. **A tab is one Slint file and one
+**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name (nothing of the build's
+problems: each tab says them where they are, design §2.66), the tab bar with the ruleset's select, and the tab
+chosen. A tab says the game's rules' problems with its facts in its pane's header, on the title's line
+(`Draft::pane_line`: an item's, its name red on its row, and the whole's), and the item its strip describes at the
+strip's top right where nothing was refused (`Draft::line`: `ChipDetail.fault`, `CardDetail.fault`,
+`NavicustView.fault`; `Refusal`'s `problem`). **A tab is one Slint file and one
 Rust module**, as a screen is for the shell:
 
 - `ui/screens/builds/<tab>.slint` has `<Tab>View`, a global the module sets (with `hints`, the footer's key
@@ -1546,7 +1555,8 @@ a list held to one) isn't put: its row shakes and the strip says why, worded for
 "{chip} can't be played in auto battle"; in a list held to another class, "{chip} can't be in the {list} list",
 the list's name as the game's strings have it). A build that holds such a chip already (a build file or a save
 made by hand) has the problem as any other: Play's list counts it, the tab is flagged, the place's name is in
-the error red (`flagged`, as a folder's entry), and the header says why (design §2.66: the strip says only refusals).
+the error red (`flagged`, as a folder's entry), and AUTO BATTLE's line says why (`AutoBattleView.problems`; design
+§2.66), as the strip's top right does of the place it describes where nothing was refused.
 
 **A click chooses** one of the build's rows (a folder's entry, a patch card or an EXE4 slot, an auto battle place)
 as Enter does, but where the library is beside it the focus stays on what was clicked (the editor's `activate`
@@ -2154,11 +2164,11 @@ on to another row (`tabs-folder-clicked`,
 `tabs-cards-clicked`, `tabs-auto-clicked`: the cursor hidden, the row clicked marked, the other lit by the
 pointer), and the keys after the clicks (`clicks`); last, a new build made beside the walk's with a chip of
 another class in each list held to one (`wrong_classes`: `tabs-auto-wrong-list`, Play's list counting its
-problems; `tabs-auto-wrong`, its tab flagged, the places' names red, the header saying why), then two builds of
-their own with a problem on another tab (design §2.66): the walk's build with its first program placed again over
-itself (`overlap`: `tabs-navicust-overlap`, the header saying it on the NaviCust tab), and a new build of the first
-version given the other version's variant of a card (`card_mix`: `tabs-cards-mixed`, the card's name red and the
-header saying the mix; `tabs-problems-list`, the header's line opened, the build's problems each by its tab); on a
+problems; `tabs-auto-wrong`, its tab flagged, the places' names red, the pane's title line and the strip saying
+why), then two builds of their own with a problem on another tab (design §2.66): the walk's build with its first
+program placed again over itself (`overlap`: `tabs-navicust-overlap`, PROGRAMS' line and the strip saying it), and a new build of the first version
+given the other version's variant of a card (`card_mix`: `tabs-cards-mixed`, the card's name red and the ruleset's
+select saying the mix); on a
 desktop, the pointer on a row
 describing it in the strip, the focus where it was (`hovers`: `tabs-hover-chip`, `tabs-hover-program`,
 `tabs-hover-card`, `tabs-hover-installed`, a step after each checking the strip is the row's and the focus

@@ -260,11 +260,28 @@ impl PatchCards {
         })
     }
 
-    /// The build's cards (or slots), their counts and what they add up to.
+    /// The game's rules' problems with the build's card at `i` of `installed` (none: an empty slot): by its place in the
+    /// list's records, from 1, as they count. (What the ruleset has against it, `row_of` marks.)
+    fn problems<'d>(draft: &'d Draft, installed: &[Option<Card>], i: usize) -> impl Iterator<Item = &'d nettai_match::check::Problem> + 'd {
+        let place = installed.get(i).is_some_and(Option::is_some).then(|| installed[..i].iter().flatten().count() + 1);
+        draft.checked.problems.iter().filter(move |p| place.is_some() && !p.what.of_ruleset() && p.field.as_deref() == Some(FIELD) && p.entry == place)
+    }
+
+    /// The build's cards (or slots), each marked where the rules have something against it, their counts and in the
+    /// header what the game's rules have against them (one, or all), and what they add up to (docs/design/app-ui.md
+    /// §2.66).
     fn show_installed(&self, shell: &Shell, draft: &mut Draft, budget: Option<&Budget>) {
         let installed = PatchCards::installed(draft);
         let slotted = PatchCards::slotted(draft);
-        let rows: Vec<CardRow> = installed.iter().enumerate().map(|(i, c)| self.row_of(shell, draft, c.as_ref(), slotted.then_some(i), budget)).collect();
+        let rows: Vec<CardRow> = installed
+            .iter()
+            .enumerate()
+            .map(|(i, c)| {
+                let mut row = self.row_of(shell, draft, c.as_ref(), slotted.then_some(i), budget);
+                row.bad |= PatchCards::problems(draft, &installed, i).next().is_some();
+                row
+            })
+            .collect();
         let ui = shell.ui();
         let view = ui.global::<PatchCardsView>();
         let cards = installed.iter().flatten().count() as i32;
@@ -279,6 +296,7 @@ impl PatchCards {
             filled: cards,
             slots: if slotted { installed.len() as i32 } else { 0 },
         });
+        view.set_problems(draft.pane_line(shell, &[FIELD.to_string()], false).into());
         // What the cards add up to: the build without its NaviCust, overviewed.
         let content = draft.content().clone();
         let mut bare = draft.side().clone();
@@ -381,15 +399,18 @@ impl PatchCards {
             Some(Described::Row(r)) => (self.rows.get(r).cloned(), None),
             None => (None, None),
         };
+        // (What the game's rules have against the build's card described, as the pane's header says it too: said where
+        // nothing was refused, docs/design/app-ui.md §2.66.)
+        let fault = at.map(|i| draft.line(shell, PatchCards::problems(draft, &installed, i))).unwrap_or_default();
         let detail = draft.with_words(shell, |words| {
             // Why a library's card can't go in, the strip's refusal. (What the rules have against a card of the
-            // build's is the header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            // build's is the pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
             let problem = match (&card, at) {
                 (Some((h, _)), None) if slots.is_none() => budget.and_then(|b| b.refusal(content, draft.side(), *h)).filter(|r| matches!(r, EntryRefusal::Needs { .. })).map(|r| words.entry_refusal(r)),
                 _ => None,
             };
             let problem = notice.or(problem).unwrap_or_default();
-            let Some(card) = card else { return CardDetail { problem: problem.into(), ..Default::default() } };
+            let Some(card) = card else { return CardDetail { problem: problem.into(), fault: fault.into(), ..Default::default() } };
             let h = card.0;
             let named = cards::named_by(words.kit);
             let lines = cards::lines(words.names, h, card.1.as_deref(), &named).unwrap_or_default();
@@ -424,6 +445,7 @@ impl PatchCards {
                 name: PatchCards::name_of(shell, words, &card),
                 facts: facts.join(" · ").into(),
                 problem: problem.into(),
+                fault: fault.into(),
                 first_title: titles.0.into(),
                 first: ModelRc::new(VecModel::from(fit(first))),
                 second_title: titles.1.into(),

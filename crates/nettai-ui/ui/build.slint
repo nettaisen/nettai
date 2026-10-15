@@ -176,13 +176,6 @@ export global BuildWords {
     public pure function unreadable() -> string {
         return @tr("Can't be read");
     }
-    // ---- The editor's header.
-    public pure function ready-to-play() -> string {
-        return @tr("✓ Ready to play");
-    }
-    public pure function problem-count(n: int) -> string {
-        return @tr("{n} problem" | "{n} problems" % n);
-    }
     // ---- A bug's level or amount, and a list with nothing or too much in it.
     public pure function level(n: int) -> string {
         return @tr("Lv {}", n);

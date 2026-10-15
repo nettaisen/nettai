@@ -10,7 +10,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage, Refusal, ProblemNote } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { ChipCell, ChipKind, ChipRow, VersionMark } from "../../build.slint";
 import { ChipDetail, LibraryRow, LibraryHead, DropGap, LiftedRow, RemoveTarget } from "folder.slint";
@@ -47,6 +47,10 @@ export global AutoBattleView {
     in property <[PlaceLine]> lines;
     in property <int> rows;
     in property <int> place;
+    // What the game's rules have against the data (a place's chip, or the whole), the first and "+n more": said in its
+    // header (a phone's line over the places; docs/design/app-ui.md §2.66). A place a problem is about has its name
+    // red.
+    in property <string> problems;
     out property <int> marked: (self.in-library || Nav.id == "places.place") ? self.place : -1;
     // Where the place a chip just went into is (its column and row), counted: it flashes.
     in property <int> landed-column;
@@ -301,6 +305,8 @@ export component AutoBattleTab inherits Rectangle {
     property <length> pane-width: Theme.phone ? self.width : 528px;
     property <length> pane-height: Theme.phone ? self.height : 482px;
     property <int> columns: Theme.phone ? 1 : 2;
+    // (A phone's line for what is wrong with the data, over the places.)
+    property <length> phone-lead: 24px;
     property <length> place-width: (root.pane-width - 24px - 12px - (root.columns - 1) * 12px) / root.columns;
     property <length> pitch: Theme.list-row + Theme.list-gap;
     property <bool> has-element: AutoBattleView.detail.there && AutoBattleView.detail.element.width > 0;
@@ -337,13 +343,15 @@ export component AutoBattleTab inherits Rectangle {
         overflow: elide;
     }
 
-    // (Why what was asked of the place under the cursor wasn't done: the strip's refusal.)
+    // (Why what was asked of the place under the cursor wasn't done: the strip's refusal; else what the rules have
+    // against it.)
     Refusal {
         x: parent.width / 2;
         y: root.top + 19px;
         width: parent.width / 2 - 16px;
         visible: !Theme.phone;
         text: AutoBattleView.detail.problem;
+        problem: AutoBattleView.detail.fault;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
@@ -396,7 +404,7 @@ export component AutoBattleTab inherits Rectangle {
         visible: !Theme.phone;
     }
 
-    Label {
+    places-title := Label {
         x: 12px;
         y: root.pane-y;
         width: root.pane-width - 24px;
@@ -406,11 +414,19 @@ export component AutoBattleTab inherits Rectangle {
         color: AutoBattleView.in-library ? Theme.muted : Theme.cursor;
     }
 
+    // (What is wrong with the data: on the title's line; a phone's, a line of its own over the places.)
+    ProblemNote {
+        x: Theme.phone ? 0px : places-title.x + places-title.preferred-width + 16px;
+        y: Theme.phone ? 0px : root.pane-y + (44px - self.height) / 2;
+        width: Theme.phone ? root.pane-width : root.pane-width - 12px - self.x;
+        text: AutoBattleView.problems;
+    }
+
     page := ScrollPage {
         x: Theme.phone ? 0px : 12px;
-        y: root.pane-y + (Theme.phone ? 0px : 44px);
+        y: root.pane-y + (Theme.phone ? root.phone-lead : 44px);
         width: root.pane-width - (Theme.phone ? 0px : 12px);
-        height: root.pane-height - (Theme.phone ? 0px : 44px + 12px);
+        height: root.pane-height - (Theme.phone ? root.phone-lead : 44px + 12px);
         nav: "places.";
         content-height: AutoBattleView.rows * root.pitch;
         // (A mouse's drag on a place moves its chip: the wheel scrolls.)

@@ -10,7 +10,7 @@ use crate::screens::ScreenId;
 use crate::shell::App;
 use super::{Pair, SETTLE, Step};
 use nettai_ui::{BuildsView, EditorTab};
-use slint::ComponentHandle;
+use slint::{ComponentHandle, Model};
 use slint::winit_030::winit::keyboard::KeyCode;
 
 /// The walk is where its last picture's name says: on tab `tab` of the editor. If it isn't, the report says so
@@ -293,7 +293,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     add(SETTLE, focus("slot", 13));
     add(SETTLE, letter(KeyCode::KeyR, "r"));
     shot(add, "builds-folder-mark-refused", Pair::None);
-    // A chip taken out: the header says what is wrong, and the tab is marked.
+    // A chip taken out: the folder's header says what is wrong, and the tab is marked.
     add(SETTLE, focus("slot", 4));
     add(SETTLE, act(Action::Delete));
     shot(add, "builds-folder-short", Pair::None);
@@ -328,9 +328,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
 /// version made beside the walk's; on the Navi tab the selector's first form focused (`builds-forms-focus`: EXE6's
 /// Cybeast, EXE4's and EXE5's first soul; the build ready); the other version's first form of the selector's first
 /// fact chosen (`builds-forms-mixed`: EXE6's other Cybeast, an EXE4 or EXE5 build's other version's soul too; under
-/// the Standard ruleset, one version per build, the build mixes the versions, which the header says; and the header's
-/// line opened, its problems listed: `builds-forms-problems`); and the first version's again
-/// (`builds-forms-back`: ready). A step after each picture checks the focus and the build's state are as it says.
+/// the Standard ruleset, one version per build, the build mixes the versions, which is said by the ruleset's select);
+/// and the first version's again (`builds-forms-back`: ready). A step after each picture checks the focus and the build's state are as it says.
 fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
     const NAME: &str = "Switched";
     add(
@@ -358,10 +357,6 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     shot(add, "builds-forms-mixed", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
     add(0, state("builds-forms-mixed", true, false));
-    // (The header's line opened: the build's problems, each by its tab.)
-    add(SETTLE, press("problems", 0));
-    shot(add, "builds-forms-problems", Pair::None);
-    add(SETTLE, act(Action::Back));
     add(SETTLE, choose_other(false));
     shot(add, "builds-forms-back", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
@@ -423,7 +418,8 @@ fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
 fn state(name: &'static str, on_form: bool, ready: bool) -> Step {
     Box::new(move |ui, app, _| {
         let tagged = app.borrow().shell.nav.focused().is_some_and(|k| k.id == "form");
-        let good = ui.global::<BuildsView>().get_state_good();
+        // (Ready: no tab is marked, every problem marking one.)
+        let good = !ui.global::<BuildsView>().get_tabs().iter().any(|t| t.flagged);
         if tagged != on_form || good != ready {
             let why = format!("(at {name} the focus is {}on a form and the build is {}ready)", if tagged { "" } else { "not " }, if good { "" } else { "not " });
             ui.global::<nettai_ui::Audit>().invoke_clipped(why.into());
