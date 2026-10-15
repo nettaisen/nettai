@@ -756,10 +756,9 @@ Each is settled unless the user changes it.
       without its cards; now a ruleset that allows no patch cards (the No patch cards preset) refuses a build that
       holds any, and the player takes them out, or brings another build. A ruleset that allows some cards and not
       others reads the same way, as the user's "allowed patch cards" asks.
-    - *A build's souls and Crosses are as they were* until docs/design/versions.md §2.1 is built: its version brings
-      them all, and the build editor has no way to leave one out. So a ruleset that holds back one soul or Cross
-      of a version refuses every build of that version for now; a version's quick choice, which holds back its
-      things together, is the way to build to it.
+    - *A build's souls and Crosses* were its version's, all of them, until docs/design/versions.md §2.1 was
+      built: now the Navi tab's selector chooses them one by one (§2.60), and a ruleset that holds back one soul or
+      Cross refuses only a build that holds it.
     - *The lobby's row* is First to, Ruleset, Closed builds, Input delay and Ping: Ruleset takes Patch cards'
       place. The host's is a select of the game's presets and then the player's own by name (Left and Right step
       it, Enter opens it as a list), with EDIT after it, which opens the ruleset's page. The joiner's shows the
@@ -792,6 +791,37 @@ Each is settled unless the user changes it.
       your own."), but DUPLICATE works there: a viewed ruleset duplicated is the joiner's own copy. On a phone
       one column: the name, Versions, the buttons, the category as a select, then its head and items.
     (§6 Play and Builds; docs/app.md §4 and §8; docs/design/rules-in-luau.md, "Rulesets".)
+
+60. **A build has no version; the editor chooses its forms** (2026-10-15; docs/design/versions.md, built). The
+    user, of the versions' design: "1. bass cross variant on the card 2. drop them, ignore backward compatibility 3.
+    no label 4. one per build", then "the builds don't have version labels either, they're kind of pointless since
+    they correspond to ruleset rules", and "you probably need to have some kind of soul and cross and cybeast
+    selector in the editor now right?".
+    - *No version label anywhere:* the editor's header's tag and its list of versions (§2.42, §2.44) are gone, and
+      so are the tags of the Builds list's and Play's rows, the build sheet, Play's card and the versus cards. A
+      build that fits one version is the ruleset's to say (Versions one per build: §2.59's "Mixes Gregar and
+      Falzar: …"). The header's tag after a title stays a page's own (a ruleset's PRESET).
+    - *The Navi tab's selector*, under the navi's facts where §2.41's faces were: each fact of forms the build
+      chooses, by the game's rulesets' name for it and how many it has of its room ("CROSSES 5/5"), its faces
+      twice their size in the battle's order, both versions' (EXE6's Cybeast at the head, Gregar's then Falzar's,
+      one always chosen, for every navi; then the ten Crosses, up to the Cross window's five; EXE4's and EXE5's
+      twelve souls, up to the soul button's twelve: the lists are the game's own navi's alone). The build's are
+      lit with a line in the cursor's color under them, the others dim; one the ruleset the player plays by
+      doesn't allow has a ring in the error red. Enter, a click or a tap chooses one (the Cybeast), or puts a
+      soul or Cross in (in the battle's order, where the list has room) or takes it out.
+    - *Bass-Cross MegaMan's variant is the card's:* the Patch cards library lists the card once for each variant
+      ("Bass-Cross MegaMan (Gregar)", "(Falzar)"; EXE5's teams'), each with its variant's lines, as the NaviCust's
+      list has a program once for each color. Putting one in installs the card of that variant; putting the other
+      in while it is chooses the other in its place (the card is in once). The installed card's row and the
+      strip show its variant's lines. A ruleset's page lists the card's variants as items of their own, so a
+      ruleset can hold one back.
+    - *NEW BUILD* still offers the game's versions as tags in their colors: what the build starts from, its note
+      the game's words ("Starts with the version's Crosses and Cybeast.") and "They can be changed later in the
+      editor."
+    - *Old builds are dropped:* a build file that states a version is no build now; the list shows it as one
+      that can't be read.
+    (§6 Builds; docs/app.md §8.) §2.41, §2.42, §2.44 and §2.46 (the version's switch and faces) and §2.48's
+    effects by the build's version are gone with it.
 
 ## 3. Chosen where the user gave no answer
 

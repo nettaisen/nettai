@@ -1101,7 +1101,7 @@ What an EXE5 console does otherwise, by data, not by game:
   the order the navi lists its souls, the original's soul numbers'), in the
   palette of the soul's own version on any console (Team Colonel's icons
   have another outline color, the pack's `icon_versions`; the form's
-  version is its place's in its list, a version's after another's:
+  version is its own `version`, which a ruleset's groups read too:
   `icon_palette_row`; §5);
 - what a soul adds to the screen, drawn by what the engine's screen says,
   not by soul (verified frame for frame, exe5.txt's custom/capsules,
@@ -1621,9 +1621,9 @@ them).
   icon. The frontend draws each soul's in the soul's own version's on either
   console, as a version's chips show that version's art (the user's choice):
   so nothing of an EXE5 match needs a console's version to draw it. A soul's
-  version is its place's among MegaMan's souls (`forms.souls.form_list` lists Team
-  ProtoMan's six, then Team Colonel's: `custom::icon_palette_row`); no
-  field restates it. A console of the other version than the soul's shows
+  version is its form's own `version` (Team ProtoMan's six, Team Colonel's six:
+  `custom::icon_palette_row`), the field a ruleset's groups read
+  (docs/design/versions.md §2.2). A console of the other version than the soul's shows
   the icon in its own outline: listed as known
   (`custom::OTHER_VERSIONS_ICON`), as is a MeddySoul capsule's icon, which
   flies in the same palette.
@@ -2183,8 +2183,8 @@ is said with where it is:
   another game's folder rules are its own Luau: EXE5's
   (content/exe5/rules/folder/init.luau, its folder editor's) are four copies
   of a Standard chip and one of a Mega, Giga or dark chip, the Mega and Giga
-  levels, at most three dark chips, the chips a save can collect (and of
-  the Giga chips those its setup's `giga_chips` hold: a version's), the Regular
+  levels, at most three dark chips, the chips a save can collect (either
+  version's Giga chips: a ruleset holds a build to one version), the Regular
   chip within the Regular memory, and no tag chips. A folder holds the
   game's chips alone (the rules' pool is the game's). Live play's random
   folders are drawn from the rules' pool and kept only

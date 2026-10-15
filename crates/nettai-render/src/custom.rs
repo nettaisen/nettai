@@ -446,28 +446,13 @@ fn offered_flight<'a>(v: &View<'a>, at: Flight, problems: &mut Problems) -> Opti
 pub const OTHER_VERSIONS_ICON: &str = "an offered form's icon in its own version's outline (the console's ROM draws every one in the console's)";
 
 /// The row of the offer button's icon palettes that is `form`'s own
-/// version's, of `rows` (the pack's base version's, then each other
-/// version's: `icon_palettes`). A form's version is its place's in the
-/// navi's form list that holds it, which lists a version after another in
-/// equal runs (EXE5's souls, the original's soul numbers: Team ProtoMan's
-/// six, then Team Colonel's): no field restates it. No form, or one none of
-/// the navi's lists holds: the base version's.
-fn icon_palette_row(b: &Battle, side: u8, form: Option<FormHandle>, rows: usize) -> usize {
-    match form_place(b, side, form) {
-        Some((place, len)) => version_run(Some(place), len, rows),
-        None => 0,
-    }
-}
-
-/// Which of `versions` equal runs of a list of `len` place `place` (from
-/// 0) is in: the version of a form by its place in its navi's list. No
-/// place: the first.
-fn version_run(place: Option<usize>, len: usize, versions: usize) -> usize {
-    let run = len / versions.max(1);
-    match place {
-        Some(place) if run > 0 => (place / run).min(versions - 1),
-        _ => 0,
-    }
+/// version's, of the pack's base version's (0) and then each other
+/// version's (`icon_palettes`, by name): the form's own `version` (EXE5's
+/// souls: Team ProtoMan's or Team Colonel's). No form, one of no version,
+/// or one of the base version: the base version's.
+fn icon_palette_row(b: &Battle, form: Option<FormHandle>, palettes: &[(String, [u16; 16])]) -> usize {
+    let version = form.and_then(|f| b.content.form(f).version.as_deref());
+    version.and_then(|v| palettes.iter().position(|(name, _)| name == v)).map_or(0, |i| i + 1)
 }
 
 /// EXE5's capsule's mix (its state 0x3C, 0x0802373A: the window whose view
@@ -511,7 +496,7 @@ fn flight<'a>(v: &View<'a>, tiles: &'a Tiles, first: usize, at: Flight, form: Op
     };
     let b = view_look(v, ButtonView::FormOffer)?;
     // (The form's version's: Team Colonel's souls' outline is another color.)
-    let row = icon_palette_row(v.b, v.side, form, 1 + b.icon_palettes.len());
+    let row = icon_palette_row(v.b, form, &b.icon_palettes);
     let colors = row.checked_sub(1).and_then(|i| b.icon_palettes.get(i)).map_or(b.icon_palette, |(_, p)| *p);
     // The row a console of the recording's version draws every icon in.
     let console = v.packs.version().map(|version| b.icon_palettes.iter().position(|(name, _)| name == version).map_or(0, |i| i + 1));
@@ -1857,19 +1842,6 @@ pub fn draw<'a>(
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    /// A form's version by its place in its navi's list: of EXE5's twelve
-    /// souls, Team ProtoMan's six (the pack's base version's palette, row
-    /// 0), then Team Colonel's (row 1); no form, the base's; a pack with
-    /// one version's palette alone, that one.
-    #[test]
-    fn a_forms_version_is_its_places_run() {
-        let rows: Vec<usize> = (0..12).map(|place| version_run(Some(place), 12, 2)).collect();
-        assert_eq!(rows, [0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 1]);
-        assert_eq!((version_run(None, 12, 2), version_run(Some(11), 12, 1), version_run(Some(3), 0, 2)), (0, 0, 0));
-        // (A list that doesn't divide evenly: the last run takes the rest.)
-        assert_eq!(version_run(Some(12), 13, 2), 1);
-    }
 
     #[test]
     fn the_window_slides_in_and_out_a_column_or_two_a_tick() {
