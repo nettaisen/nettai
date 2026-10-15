@@ -83,6 +83,60 @@ msgstr "再接続中 {} 秒"
 msgid "{} ms"
 msgstr "{} ms"
 
+# The link panel the connection's corner opens. The figures in frames (the input delay, a rollback's depth,
+# the skew, the lead) are bare numbers.
+msgid "CONNECTION"
+msgstr "接続状況"
+
+msgid "ROUND TRIP"
+msgstr "往復時間"
+
+msgid "JITTER"
+msgstr "ゆらぎ"
+
+# The share of the other player's packets lost: {} is the number, to a tenth.
+msgid "LOSS"
+msgstr "ロス率"
+
+msgid "{}%"
+msgstr "{}%"
+
+msgid "RECONNECTS"
+msgstr "再接続"
+
+# Clock sync's skew: how far this player runs ahead of the other (+) or behind (-), in frames.
+msgid "SKEW"
+msgstr "ずれ"
+
+# This player's inputs the other's haven't matched yet, in frames.
+msgid "LEAD"
+msgstr "先行"
+
+msgid "INPUT DELAY"
+msgstr "入力遅延"
+
+msgid "ROLLBACKS"
+msgstr "巻き戻し回数"
+
+msgid "LAST ROLLBACK"
+msgstr "直近の巻き戻し"
+
+# The deepest rollback of the match, in frames.
+msgid "DEEPEST"
+msgstr "最大の巻き戻し"
+
+msgid "FRAMES WAITED"
+msgstr "待機フレーム"
+
+msgid "SENT"
+msgstr "送信"
+
+msgid "RECEIVED"
+msgstr "受信"
+
+msgid "{} packets · {} KB"
+msgstr "{} パケット · {} KB"
+
 # ---- What can go wrong ----
 
 msgid "OK"

@@ -1,13 +1,13 @@
 // The battle (docs/design/app-ui.md §6, "In an online match"; docs/app.md §1): the picture fills the window,
-// with no header or footer. Over it: the connection's corner while online; nettai's menu, which Start or Esc
-// opens in place of the game's own pause (the practice menu or the match menu: each is its screen's own
-// component, in practice.slint and play.slint, built on `MenuOverlay` here); on a phone, the pad under the
-// picture.
+// with no header or footer. Over it: the connection's corner while online, and the link panel it opens; nettai's
+// menu, which Start or Esc opens in place of the game's own pause (the practice menu or the match menu: each is
+// its screen's own component, in practice.slint and play.slint, built on `MenuOverlay` here); on a phone, the pad
+// under the picture.
 
 import { Theme } from "../theme.slint";
 import { Nav, Focusable } from "../nav.slint";
-import { Shell, BattleKind, Picture } from "../shell.slint";
-import { Cut, Heading, Note, Mono, Bars, Button } from "../widgets.slint";
+import { Shell, BattleKind, Picture, LinkFigures } from "../shell.slint";
+import { Cut, Heading, Label, Note, Mono, Bars, Button } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 
 // A menu over the battle: a shade, and a panel (which slides in from the left as the shade fades in) with its
@@ -81,7 +81,7 @@ export component MenuOverlay inherits Rectangle {
 }
 
 // The connection's quality, in a corner for the whole match: four bars and the round trip, or how long the link
-// has been down.
+// has been down. A click on it opens the link panel over it, and another closes it.
 component Connection inherits Rectangle {
     // (One width whichever it says: room for the longest thing it says, the link down with all its time left.)
     width: max(132px, longest.preferred-width + 28px);
@@ -89,7 +89,7 @@ component Connection inherits Rectangle {
     Rectangle {
         background: Theme.shade;
         border-width: 1px;
-        border-color: Theme.line;
+        border-color: Shell.connection-open || hit.has-hover ? Theme.cursor : Theme.line;
     }
 
     longest := Text {
@@ -113,6 +113,245 @@ component Connection inherits Rectangle {
         color: Shell.connection-down >= 0 ? Theme.bad : Theme.text;
         font-family: Shell.connection-down >= 0 ? Theme.body : Theme.mono;
         horizontal-alignment: right;
+    }
+
+    // (On a phone what is tapped is 44 tall: the corner's touch reaches past its box.)
+    hit := TouchArea {
+        y: Theme.phone ? -7px : 0;
+        height: Theme.phone ? 44px : parent.height;
+        clicked => {
+            Shell.connection-open = !Shell.connection-open;
+        }
+    }
+}
+
+// One of the link panel's figures: its name at the left and its value at the right, in fixed-width digits, in a
+// tone where it says the link is doing badly.
+component LinkRow inherits Rectangle {
+    in property <string> label;
+    in property <string> value;
+    in property <color> tone: Theme.text;
+    height: 20px;
+    Label {
+        x: 0;
+        width: max(0px, parent.width - figure.width - 8px);
+        height: parent.height;
+        text: root.label;
+    }
+
+    figure := Mono {
+        x: parent.width - self.width;
+        width: min(self.preferred-width, parent.width * 0.65);
+        height: parent.height;
+        text: root.value;
+        color: root.tone;
+        horizontal-alignment: right;
+    }
+}
+
+// The link panel (the user: "you should allow clicking the ping indicator in pvp to bring up a tango-style link
+// quality panel thing"), over the connection's corner while it is open, live: the round trip's last ten seconds
+// as a graph; then the link (the round trip and its jitter, the loss, the reconnects, clock sync's skew and the
+// lead) beside the rollback (the input delay, the rollbacks, the last one's depth and the deepest, the frames
+// waited); and what went each way. It fades and rises in. The match goes on under it: it takes the clicks on it
+// (none does anything) and no keys.
+component LinkPanel inherits Rectangle {
+    property <LinkFigures> f: Shell.link;
+    property <length> column: (self.width - 24px - 16px) / 2;
+    property <length> top: 98px;
+    // The round trip's tone, as the bars': green, amber, red.
+    property <color> tone: Shell.connection-level >= 3 ? Theme.good : Shell.connection-level == 2 ? Theme.action : Theme.bad;
+    arrive := Tween {
+        duration: Theme.brisk;
+    }
+
+    height: root.top + 8 * 20px + 12px;
+    Rectangle {
+        x: 0;
+        y: (1 - arrive.t) * 8px;
+        opacity: arrive.t;
+        Cut {
+            cut: 12px;
+            background: Theme.panel;
+        }
+
+        TouchArea { }
+
+        Label {
+            x: 12px;
+            y: 10px;
+            width: parent.width - 24px - 34px;
+            height: 20px;
+            text: @tr("CONNECTION");
+            color: Theme.text;
+        }
+
+        Bars {
+            x: parent.width - 12px - self.width;
+            y: 13px;
+            level: Shell.connection-down >= 0 ? 0 : Shell.connection-level;
+        }
+
+        // The graph: the round trip at its top, and a line across at half of it.
+        Rectangle {
+            x: 12px;
+            y: 38px;
+            width: parent.width - 24px;
+            height: 52px;
+            background: Theme.inset;
+            Rectangle {
+                x: 0;
+                y: parent.height / 2;
+                height: 1px;
+                background: Theme.line;
+            }
+
+            Path {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
+                commands: root.f.graph-area;
+                fill: root.tone.with-alpha(0.18);
+                viewbox-width: 99;
+                viewbox-height: 100;
+                fit: fill;
+            }
+
+            Path {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
+                commands: root.f.graph;
+                stroke: root.tone;
+                stroke-width: 1.5px;
+                viewbox-width: 99;
+                viewbox-height: 100;
+                fit: fill;
+            }
+
+            Mono {
+                x: 4px;
+                y: 2px;
+                width: parent.width - 8px;
+                height: 14px;
+                text: @tr("{} ms", root.f.graph-top);
+                color: Theme.muted;
+                font-size: 10px;
+            }
+        }
+
+        // The link.
+        LinkRow {
+            x: 12px;
+            y: root.top;
+            width: root.column;
+            label: @tr("ROUND TRIP");
+            value: Shell.connection-ping < 0 ? "–" : @tr("{} ms", Shell.connection-ping);
+            tone: Shell.connection-level >= 3 ? Theme.text : root.tone;
+        }
+
+        LinkRow {
+            x: 12px;
+            y: root.top + 20px;
+            width: root.column;
+            label: @tr("JITTER");
+            value: root.f.jitter < 0 ? "–" : @tr("{} ms", root.f.jitter);
+        }
+
+        LinkRow {
+            x: 12px;
+            y: root.top + 40px;
+            width: root.column;
+            label: @tr("LOSS");
+            value: @tr("{}%", floor(root.f.loss / 10) + "." + mod(root.f.loss, 10));
+            tone: root.f.loss < 10 ? Theme.text : root.f.loss < 50 ? Theme.action : Theme.bad;
+        }
+
+        LinkRow {
+            x: 12px;
+            y: root.top + 60px;
+            width: root.column;
+            label: @tr("RECONNECTS");
+            value: root.f.reconnects;
+        }
+
+        LinkRow {
+            x: 12px;
+            y: root.top + 80px;
+            width: root.column;
+            label: @tr("SKEW");
+            value: root.f.skew > 0 ? "+" + root.f.skew : "" + root.f.skew;
+            tone: abs(root.f.skew) <= 3 ? Theme.text : abs(root.f.skew) <= 7 ? Theme.action : Theme.bad;
+        }
+
+        LinkRow {
+            x: 12px;
+            y: root.top + 100px;
+            width: root.column;
+            label: @tr("LEAD");
+            value: root.f.lead;
+        }
+
+        // The rollback.
+        LinkRow {
+            x: parent.width - 12px - root.column;
+            y: root.top;
+            width: root.column;
+            label: @tr("INPUT DELAY");
+            value: root.f.input-delay;
+        }
+
+        LinkRow {
+            x: parent.width - 12px - root.column;
+            y: root.top + 20px;
+            width: root.column;
+            label: @tr("ROLLBACKS");
+            value: root.f.rollbacks;
+        }
+
+        LinkRow {
+            x: parent.width - 12px - root.column;
+            y: root.top + 40px;
+            width: root.column;
+            label: @tr("LAST ROLLBACK");
+            value: root.f.last-rollback;
+            tone: root.f.last-rollback <= 2 ? Theme.text : root.f.last-rollback <= 5 ? Theme.action : Theme.bad;
+        }
+
+        LinkRow {
+            x: parent.width - 12px - root.column;
+            y: root.top + 60px;
+            width: root.column;
+            label: @tr("DEEPEST");
+            value: root.f.deepest-rollback;
+        }
+
+        LinkRow {
+            x: parent.width - 12px - root.column;
+            y: root.top + 80px;
+            width: root.column;
+            label: @tr("FRAMES WAITED");
+            value: root.f.waits;
+        }
+
+        // What went each way.
+        LinkRow {
+            x: 12px;
+            y: root.top + 120px;
+            width: parent.width - 24px;
+            label: @tr("SENT");
+            value: @tr("{} packets · {} KB", root.f.sent, root.f.sent-kb);
+        }
+
+        LinkRow {
+            x: 12px;
+            y: root.top + 140px;
+            width: parent.width - 24px;
+            label: @tr("RECEIVED");
+            value: @tr("{} packets · {} KB", root.f.received, root.f.received-kb);
+        }
     }
 }
 
@@ -315,10 +554,30 @@ export component BattleScreen inherits Rectangle {
         ground: transparent;
     }
 
-    Connection {
+    // (While the link panel is open a click anywhere else on the battle closes it.)
+    TouchArea {
+        x: 0;
+        y: 0;
+        visible: Shell.connection-shown && Shell.connection-open;
+        clicked => {
+            Shell.connection-open = false;
+        }
+    }
+
+    corner := Connection {
         x: parent.width - self.width - (Theme.phone ? Theme.margin : 56px);
         y: (Theme.phone ? root.picture-height : parent.height) - self.height - 16px;
         visible: Shell.connection-shown;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    // (Over the corner, its right edge on the corner's; on a phone, where the picture is short, as near the top
+    // as it has to be.)
+    if Shell.connection-shown && Shell.connection-open: LinkPanel {
+        width: min(340px, parent.width - 2 * Theme.margin);
+        x: corner.x + corner.width - self.width;
+        y: max(8px, corner.y - self.height - 8px);
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }

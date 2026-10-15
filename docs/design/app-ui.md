@@ -84,7 +84,8 @@ Each is settled unless the user changes it.
 17. **During a match both builds can be viewed**, as in Tango; and **the lobby has a "closed builds" setting**.
     The lobby's match settings also have **a toggle for patch cards, on or off** ("for netbattle settings you should
     also have a toggle for patch cards on/off").
-18. **Connection quality is shown during play.**
+18. **Connection quality is shown during play.** Clicking the corner opens the link panel (2026-10-14: "you should
+    allow clicking the ping indicator in pvp to bring up a tango-style link quality panel thing").
 19. **Patch cards are shown comprehensively**, have no image area ("patch cards don't have images"), have no on/off
     switch ("nettai doesn't support turning them off"), and a card that doesn't fit says so in the error red
     ("Needs 24 MB"), "like how errors in the folder editor get surfaced".
@@ -1143,6 +1144,14 @@ DUPLICATE, RENAME and DELETE.
 - The picture fills the window, with no header or footer.
 - **Connection quality:** four bars and the round-trip time in a corner for the whole match, amber then red as the
   link worsens; "Reconnecting 12 s" while it is down.
+- **The link panel** (§18): clicking or tapping the corner opens a panel over it, modeled on Tango's PvP telemetry,
+  live and refreshed ten times a second: the bars again, a graph of the round trip over the last ten seconds (a gap
+  where the link was down), then two columns: the link (round trip, jitter, loss, reconnects, clock sync's skew,
+  the lead) and the rollback (input delay, rollbacks, the last one's depth, the deepest, frames waited), and under
+  them the packets and KB sent and received. A figure that says the link is doing badly is amber, then red, as the
+  bars. Clicking the corner again, or anywhere else on the battle, closes it; it takes no keys (the match has them,
+  and Tab and Esc keep their jobs), and the match keeps running under it. On a phone it sits as near the top as it
+  has to.
 - **Both builds:** holding Tab (Select on a pad) shows the player's build on their side and the opponent's on
   theirs, each the build overview without a name; letting go hides them. With Closed builds on, only the player's
   own.
