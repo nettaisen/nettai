@@ -37,6 +37,19 @@
 //! - `{"type":"welcome","role":"host"|"join","peer":BOOL,"code":CODE}` in an
 //!   invite room and `{"type":"welcome","peer":BOOL}` in a reconnect room:
 //!   this client's place, whether the other is there, and the invite's code;
+//!   in either, `"iceServers":[...]` too: the STUN and TURN servers the
+//!   client's connections use (as the browser's `RTCIceServer`s,
+//!   [`IceServer`]). The Worker's are Cloudflare's: its TURN service's STUN
+//!   and TURN servers, with credentials it asked for this client, which last
+//!   [`TURN_CREDENTIALS_LAST`]; without them (no TURN key set, or the
+//!   service didn't answer), Cloudflare's public STUN server alone. A
+//!   client uses exactly the servers a welcome gives (only a server that
+//!   gives none, such as [`crate::testing`]'s by default, leaves it to its
+//!   own, [`crate::Config::ice_servers`], none unless a caller names some);
+//!   the latest welcome's, so a reconnection has the credentials its
+//!   reconnect room gave. The welcome comes before
+//!   anything the other client sends, and a client makes no connection in a
+//!   room before it, so every connection has them;
 //! - `{"type":"peer","present":BOOL}`: the other came, or its socket went;
 //! - `{"type":"signal","data":...}`: what the other sent;
 //! - `{"type":"error","reason":REASON,"message":"..."}`: refused, and the
@@ -59,7 +72,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::{Candidate, Duration, Role};
+use crate::{Candidate, Duration, IceServer, Role};
 
 /// The protocol's version, which a client says as it connects (`v=`): a
 /// server of another refuses it ([`Refusal::Version`]).
@@ -82,6 +95,13 @@ pub const RECONNECT_CODE_BYTES: usize = 16;
 /// neither side comes back to it.
 pub const RECONNECT_ROOM_KEPT: Duration = Duration::from_secs(30);
 
+/// How long the TURN credentials a welcome gives last (the Worker asks
+/// Cloudflare for this TTL): a long sitting of matches with one opponent on
+/// one connection, and its reconnections. A relayed connection that outlasts
+/// them may drop when its allocation can't be refreshed; the reconnect
+/// room's welcome then gives new ones.
+pub const TURN_CREDENTIALS_LAST: Duration = Duration::from_secs(4 * 60 * 60);
+
 /// What a client says to the server.
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "lowercase")]
@@ -95,13 +115,16 @@ pub enum ToServer {
 #[serde(tag = "type", rename_all = "lowercase")]
 pub enum FromServer {
     /// (The place and the code in an invite room; neither in a reconnect
-    /// room.)
+    /// room. The STUN and TURN servers, in either, when the server has
+    /// some: a server that isn't one, its URLs not strings, is left out.)
     Welcome {
         #[serde(default, skip_serializing_if = "Option::is_none")]
         role: Option<Role>,
         peer: bool,
         #[serde(default, skip_serializing_if = "Option::is_none")]
         code: Option<String>,
+        #[serde(rename = "iceServers", default, skip_serializing_if = "Vec::is_empty", deserialize_with = "servers_that_read")]
+        ice_servers: Vec<IceServer>,
     },
     Peer {
         present: bool,
@@ -153,6 +176,13 @@ pub enum Signal {
     },
     /// The host lost connection `generation`: the joiner dials again.
     Redial { generation: u32 },
+}
+
+/// A welcome's servers, those that read as [`IceServer`]s (a welcome is
+/// never lost to one that doesn't: the client would wait on it).
+fn servers_that_read<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<IceServer>, D::Error> {
+    let serde_json::Value::Array(list) = serde_json::Value::deserialize(d)? else { return Ok(Vec::new()) };
+    Ok(list.into_iter().filter_map(|s| serde_json::from_value(s).ok()).collect())
 }
 
 /// The keepalive a client sends, and the answer.
@@ -218,15 +248,39 @@ mod tests {
     #[test]
     fn messages_are_the_workers_json() {
         let said = |m: &FromServer| serde_json::to_string(m).unwrap();
-        assert_eq!(said(&FromServer::Welcome { role: Some(Role::Join), peer: true, code: Some("ABC234".into()) }), r#"{"type":"welcome","role":"join","peer":true,"code":"ABC234"}"#);
-        assert_eq!(said(&FromServer::Welcome { role: None, peer: false, code: None }), r#"{"type":"welcome","peer":false}"#);
-        assert_eq!(serde_json::from_str::<FromServer>(r#"{"type":"welcome","peer":true}"#).unwrap(), FromServer::Welcome { role: None, peer: true, code: None });
+        assert_eq!(
+            said(&FromServer::Welcome { role: Some(Role::Join), peer: true, code: Some("ABC234".into()), ice_servers: Vec::new() }),
+            r#"{"type":"welcome","role":"join","peer":true,"code":"ABC234"}"#
+        );
+        assert_eq!(said(&FromServer::Welcome { role: None, peer: false, code: None, ice_servers: Vec::new() }), r#"{"type":"welcome","peer":false}"#);
+        assert_eq!(serde_json::from_str::<FromServer>(r#"{"type":"welcome","peer":true}"#).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: Vec::new() });
         assert_eq!(said(&FromServer::Peer { present: false }), r#"{"type":"peer","present":false}"#);
         let candidate = Signal::Candidate { generation: 2, candidate: Candidate { candidate: "candidate:1 1 udp 1 192.0.2.1 9 typ host".into(), mid: Some("0".into()), mline: Some(0) } };
         let text = serde_json::to_string(&ToServer::Signal { data: candidate.clone() }).unwrap();
         assert_eq!(text, r#"{"type":"signal","data":{"kind":"candidate","generation":2,"candidate":"candidate:1 1 udp 1 192.0.2.1 9 typ host","mid":"0","mline":0}}"#);
         assert_eq!(serde_json::from_str::<ToServer>(&text).unwrap(), ToServer::Signal { data: candidate });
         assert_eq!(serde_json::to_string(&ToServer::Leave).unwrap(), r#"{"type":"leave"}"#);
+    }
+
+    /// A welcome's STUN and TURN servers are the browser's `RTCIceServer`s,
+    /// as Cloudflare's TURN service gives them; one that doesn't read is
+    /// left out, and the welcome still reads.
+    #[test]
+    fn a_welcome_gives_ice_servers() {
+        let text = r#"{"type":"welcome","role":"host","peer":false,"code":"ABC234","iceServers":[{"urls":["stun:stun.cloudflare.com:3478"]},{"urls":["turn:turn.cloudflare.com:3478?transport=udp","turns:turn.cloudflare.com:443?transport=tcp"],"username":"u","credential":"c"}]}"#;
+        let stun = IceServer::new("stun:stun.cloudflare.com:3478");
+        let turn = IceServer {
+            urls: vec!["turn:turn.cloudflare.com:3478?transport=udp".into(), "turns:turn.cloudflare.com:443?transport=tcp".into()],
+            username: "u".into(),
+            credential: "c".into(),
+        };
+        let welcome = FromServer::Welcome { role: Some(Role::Host), peer: false, code: Some("ABC234".into()), ice_servers: vec![stun.clone(), turn] };
+        assert_eq!(serde_json::from_str::<FromServer>(text).unwrap(), welcome);
+        assert_eq!(serde_json::to_string(&welcome).unwrap(), text);
+        let odd = r#"{"type":"welcome","peer":true,"iceServers":[{"urls":"stun:one.example"},{"username":"u"},{"urls":["stun:stun.cloudflare.com:3478"]}]}"#;
+        assert_eq!(serde_json::from_str::<FromServer>(odd).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: vec![stun] });
+        let none = r#"{"type":"welcome","peer":true,"iceServers":"none"}"#;
+        assert_eq!(serde_json::from_str::<FromServer>(none).unwrap(), FromServer::Welcome { role: None, peer: true, code: None, ice_servers: Vec::new() });
     }
 
     /// A refusal's reason is one of the protocol's; one this client doesn't

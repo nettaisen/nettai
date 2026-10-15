@@ -21,14 +21,15 @@ use crate::native::ws::{Socket, WsEvent};
 use crate::signal::{self, FromServer, Refusal, Signal, ToServer};
 #[cfg(target_arch = "wasm32")]
 use crate::web::ws::{Socket, WsEvent};
-use crate::{Duration, Error, ErrorKind, Instant, Role};
+use crate::{Duration, Error, ErrorKind, IceServer, Instant, Role};
 
 /// What the room says, for the link.
 #[derive(Debug)]
 pub(crate) enum RoomEvent {
-    /// This client's place (in an invite room), and whether the other is
-    /// there.
-    Welcome { role: Option<Role>, peer: bool },
+    /// This client's place (in an invite room), whether the other is there,
+    /// and the STUN and TURN servers its connections use (none: the server
+    /// gives none).
+    Welcome { role: Option<Role>, peer: bool, ice_servers: Vec<IceServer> },
     /// The other came, or went.
     Peer(bool),
     Signal(Signal),
@@ -210,7 +211,7 @@ impl Room {
                 }
                 WsEvent::Text(text) if text == signal::PONG => {}
                 WsEvent::Text(text) => match serde_json::from_str::<FromServer>(&text) {
-                    Ok(FromServer::Welcome { role, peer, code }) => {
+                    Ok(FromServer::Welcome { role, peer, code, ice_servers }) => {
                         if let Kind::Invite(had) = &mut self.kind {
                             if role.is_none() {
                                 self.leave();
@@ -227,7 +228,7 @@ impl Room {
                         self.welcomed = true;
                         self.there = peer;
                         let role = if self.invite() { role } else { None };
-                        return Ok(Some(RoomEvent::Welcome { role, peer }));
+                        return Ok(Some(RoomEvent::Welcome { role, peer, ice_servers }));
                     }
                     Ok(FromServer::Peer { present }) => {
                         self.there = present;

@@ -18,7 +18,7 @@ use wasm_bindgen::JsCast;
 use wasm_bindgen::prelude::*;
 use wasm_bindgen_futures::{JsFuture, spawn_local};
 use web_sys::{
-    MessageEvent, RtcConfiguration, RtcDataChannel, RtcDataChannelInit, RtcDataChannelType, RtcIceCandidateInit, RtcIceServer, RtcPeerConnection,
+    MessageEvent, RtcConfiguration, RtcDataChannel, RtcDataChannelInit, RtcDataChannelType, RtcIceCandidateInit, RtcIceServer, RtcIceTransportPolicy, RtcPeerConnection,
     RtcPeerConnectionIceEvent, RtcPeerConnectionState, RtcSdpType, RtcSessionDescriptionInit,
 };
 
@@ -34,7 +34,25 @@ pub(crate) struct Servers(Vec<IceServer>);
 
 impl Servers {
     pub(crate) fn resolve(config: &Config) -> Servers {
-        Servers(config.ice_servers.clone())
+        Servers::of(&config.ice_servers)
+    }
+
+    pub(crate) fn of(list: &[IceServer]) -> Servers {
+        Servers(list.to_vec())
+    }
+}
+
+/// Servers being resolved: at once (the native backend's waits on a
+/// thread).
+pub(crate) struct Resolving(Option<Servers>);
+
+impl Resolving {
+    pub(crate) fn start(list: Vec<IceServer>) -> Resolving {
+        Resolving(Some(Servers(list)))
+    }
+
+    pub(crate) fn poll(&mut self) -> Option<Servers> {
+        Some(self.0.take().unwrap_or_default())
     }
 }
 
@@ -88,8 +106,8 @@ impl PeerConnection {
         PeerConnection::answer_with(config, &Servers::resolve(config), offer)
     }
 
-    pub(crate) fn offer_with(_: &Config, servers: &Servers) -> Result<PeerConnection, Error> {
-        let c = PeerConnection::new(servers)?;
+    pub(crate) fn offer_with(config: &Config, servers: &Servers) -> Result<PeerConnection, Error> {
+        let c = PeerConnection::new(config, servers)?;
         let (pc, found) = (c.pc.clone(), c.found.clone());
         spawn_local(async move {
             let made = async {
@@ -108,8 +126,8 @@ impl PeerConnection {
         Ok(c)
     }
 
-    pub(crate) fn answer_with(_: &Config, servers: &Servers, offer: &str) -> Result<PeerConnection, Error> {
-        let c = PeerConnection::new(servers)?;
+    pub(crate) fn answer_with(config: &Config, servers: &Servers, offer: &str) -> Result<PeerConnection, Error> {
+        let c = PeerConnection::new(config, servers)?;
         let (pc, found, offer) = (c.pc.clone(), c.found.clone(), offer.to_string());
         spawn_local(async move {
             let made = async {
@@ -132,10 +150,14 @@ impl PeerConnection {
         Ok(c)
     }
 
-    /// A connection on `servers` with the game's channel (negotiated as
-    /// stream 0, unordered, no retransmits), its callbacks set.
-    fn new(servers: &Servers) -> Result<PeerConnection, Error> {
+    /// A connection on `servers` (relayed only, if `link` says so) with the
+    /// game's channel (negotiated as stream 0, unordered, no retransmits),
+    /// its callbacks set.
+    fn new(link: &Config, servers: &Servers) -> Result<PeerConnection, Error> {
         let config = RtcConfiguration::new();
+        if link.relay_only {
+            config.set_ice_transport_policy(RtcIceTransportPolicy::Relay);
+        }
         let list = Array::new();
         for s in &servers.0 {
             let server = RtcIceServer::new();

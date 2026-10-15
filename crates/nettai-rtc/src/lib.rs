@@ -41,6 +41,15 @@
 //! be told, each kind in the host's own words (its catalog's), and its
 //! detail is for a log, never for the player.
 //!
+//! **STUN and TURN** are the signaling server's to give. The user's words:
+//! "the signaling server should return stun and turn server credentials",
+//! and of a default STUN server, "you don't even need a google default
+//! right? direct connect doesn't even need stun?" So a link in a room uses
+//! exactly the servers the server's welcome gives (the Worker's: Cloudflare's
+//! STUN server, and its TURN service's with credentials of a few hours; or
+//! the STUN server alone when it has none), and has none of its own; a
+//! direct link uses none, since it says no candidate to anyone.
+//!
 //! The signaling server is the Cloudflare Worker in `signaling/`
 //! (TypeScript, a Durable Object a room); its protocol is [`signal`], and
 //! the `testing` feature has a server of its own speaking it, in process,
@@ -69,17 +78,18 @@ pub use web_time::{Duration, Instant};
 
 use std::fmt;
 
-/// A public STUN server, which a connection asks for its address as the
-/// Internet sees it (its server-reflexive candidate) unless told another.
-pub const DEFAULT_STUN: &str = "stun:stun.l.google.com:19302";
-
 /// How connections are made and kept.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Config {
-    /// The STUN and TURN servers (as the browser's `RTCIceServer`). TURN
-    /// relays when no direct path is found; it needs credentials (a
-    /// public one such as Cloudflare's hands out short-lived ones from its
-    /// own API).
+    /// STUN and TURN servers of the caller's own (as the browser's
+    /// `RTCIceServer`), none by default: what a [`PeerConnection`] made by
+    /// hand uses, and a link in a room whose server's welcome gives none. A
+    /// link in a room uses exactly the servers the welcome gives (Cloudflare's
+    /// STUN server, and its TURN service's with short-lived credentials:
+    /// [`signal`]). A direct link uses none: it says no candidate to anyone
+    /// (the joiner dials the host's address, and the host learns the
+    /// joiner's from its checks), so its address as the Internet sees it
+    /// would go nowhere.
     pub ice_servers: Vec<IceServer>,
     /// Nothing from the other peer this long, while the channel is open, is
     /// a dropped connection (both sides send many times a second: the
@@ -104,29 +114,39 @@ pub struct Config {
     /// Offer the loopback interface's address too (two peers on one
     /// machine; it is offered anyway where there is no other).
     pub loopback: bool,
+    /// Offer only relayed candidates (the browser's `iceTransportPolicy:
+    /// "relay"`): every datagram goes through a TURN server, and nothing
+    /// connects without one. (Tests: a connection relayed on one machine.)
+    pub relay_only: bool,
 }
 
 impl Default for Config {
     fn default() -> Config {
         Config {
-            ice_servers: vec![IceServer::new(DEFAULT_STUN)],
+            ice_servers: Vec::new(),
             silence: Duration::from_secs(3),
             dial_timeout: Duration::from_secs(10),
             reconnect_timeout: signal::RECONNECT_ROOM_KEPT,
             server_timeout: Duration::from_secs(10),
             connect_timeout: Duration::from_secs(30),
             loopback: false,
+            relay_only: false,
         }
     }
 }
 
-/// A STUN or TURN server: `stun:HOST[:PORT]` or
-/// `turn:HOST[:PORT][?transport=udp]` (the native backend relays over UDP;
-/// the browser takes what it takes).
-#[derive(Clone, Debug, Default, PartialEq, Eq)]
+/// A STUN or TURN server as the browser's `RTCIceServer` has it (and the
+/// signaling server's welcome, [`signal`]): its URLs, `stun:HOST[:PORT]`,
+/// `turn:HOST[:PORT][?transport=udp|tcp]` or
+/// `turns:HOST[:PORT][?transport=tcp]`, and a TURN server's credentials.
+/// The browser takes every URL; the native backend relays over UDP only
+/// (`turn:` without `transport=tcp`) and leaves the others out.
+#[derive(Clone, Debug, Default, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct IceServer {
     pub urls: Vec<String>,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub username: String,
+    #[serde(default, skip_serializing_if = "String::is_empty")]
     pub credential: String,
 }
 

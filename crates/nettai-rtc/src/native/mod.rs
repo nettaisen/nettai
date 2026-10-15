@@ -4,8 +4,9 @@
 //! call pumps the connection (the datagrams that came, the timers that are
 //! due, what it has to send, its events), and the game calls in every
 //! frame, which is often enough for ICE, DTLS and SCTP. Only what may
-//! block runs on threads of its own: the signaling WebSocket (`ws`) and,
-//! once a link, resolving the STUN and TURN servers' names.
+//! block runs on threads of its own: the signaling WebSocket (`ws`) and
+//! resolving the names of the STUN and TURN servers a welcome gives
+//! ([`Resolving`]).
 //!
 //! **Candidates.** `rtc` gathers nothing: a connection binds a UDP socket on
 //! each address of the machine's interfaces (IPv4, and IPv6's global ones;
@@ -23,6 +24,7 @@ pub(crate) mod ws;
 
 use std::collections::VecDeque;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr, ToSocketAddrs, UdpSocket};
+use std::sync::mpsc::{self, Receiver, TryRecvError};
 use std::time::{Duration, Instant};
 
 use bytes::BytesMut;
@@ -41,7 +43,7 @@ use rtc::sansio::Protocol;
 use rtc::shared::{TaggedBytesMut, TransportContext, TransportProtocol};
 use rtc::turn::client::{Client as TurnClient, ClientConfig as TurnConfig, Event as TurnEvent};
 
-use crate::{Candidate, Config, Error, Message, PeerEvent};
+use crate::{Candidate, Config, Error, IceServer, Message, PeerEvent};
 
 /// The data channel's label (both sides make it, negotiated: the label is
 /// for show).
@@ -60,9 +62,9 @@ fn err(what: &str) -> impl Fn(rtc::shared::error::Error) -> Error + '_ {
     move |e| Error::internal(format!("{what}: {e}"))
 }
 
-/// The STUN and TURN servers of a [`Config`], their names resolved (which
-/// may wait on the system's resolver: done once, when a link starts, not
-/// each time it connects).
+/// STUN and TURN servers, their names resolved (which may wait on the
+/// system's resolver: done on a thread of its own, [`Resolving`], when a
+/// welcome gives them, not each time a connection is made).
 #[derive(Clone, Debug, Default)]
 pub(crate) struct Servers {
     stun: Vec<SocketAddr>,
@@ -78,15 +80,30 @@ struct Turn {
 }
 
 impl Servers {
-    /// `config`'s servers, resolved: those whose URL this backend can't use
-    /// (`turns:`, TURN over TCP) or whose name doesn't resolve are left out.
+    /// `config`'s servers, resolved (waiting).
     pub(crate) fn resolve(config: &Config) -> Servers {
+        Servers::of(&config.ice_servers)
+    }
+
+    /// `list`'s servers, resolved (waiting): the URLs this backend can use,
+    /// `stun:` and `turn:` over UDP (no `transport`, or `transport=udp`),
+    /// each TURN server's first that resolves (a connection relays through
+    /// one). `turns:` (TLS) and TURN over TCP are left out unresolved, and
+    /// so is a name that doesn't resolve.
+    pub(crate) fn of(list: &[IceServer]) -> Servers {
         let mut servers = Servers::default();
-        for server in &config.ice_servers {
+        for server in list {
+            let mut relayed = false;
             for url in &server.urls {
                 let Some((scheme, rest)) = url.split_once(':') else { continue };
                 let (host, query) = rest.split_once('?').unwrap_or((rest, ""));
-                if query.contains("transport=tcp") {
+                let transport = query.split('&').find_map(|kv| kv.strip_prefix("transport="));
+                let usable = match scheme {
+                    "stun" => true,
+                    "turn" => !relayed && transport.is_none_or(|t| t.eq_ignore_ascii_case("udp")),
+                    _ => false,
+                };
+                if !usable {
                     continue;
                 }
                 let host = host.trim_start_matches("//");
@@ -102,12 +119,39 @@ impl Servers {
                 let Some(&addr) = addrs.first() else { continue };
                 match scheme {
                     "stun" => servers.stun.push(addr),
-                    "turn" => servers.turn.push(Turn { addr, url: url.clone(), username: server.username.clone(), credential: server.credential.clone() }),
-                    _ => {}
+                    _ => {
+                        servers.turn.push(Turn { addr, url: url.clone(), username: server.username.clone(), credential: server.credential.clone() });
+                        relayed = true;
+                    }
                 }
             }
         }
         servers
+    }
+}
+
+/// Servers being resolved on a thread of their own ([`Servers::of`] may
+/// wait on the system's resolver, and the caller's thread never does).
+pub(crate) struct Resolving(Receiver<Servers>);
+
+impl Resolving {
+    pub(crate) fn start(list: Vec<IceServer>) -> Resolving {
+        let (tell, resolved) = mpsc::channel();
+        let job = move || {
+            let _ = tell.send(Servers::of(&list));
+        };
+        // (No thread to be had: no servers.)
+        let _ = std::thread::Builder::new().name("nettai-resolve".into()).spawn(job);
+        Resolving(resolved)
+    }
+
+    /// The servers, once they are resolved (none, if the thread is gone).
+    pub(crate) fn poll(&mut self) -> Option<Servers> {
+        match self.0.try_recv() {
+            Ok(servers) => Some(servers),
+            Err(TryRecvError::Empty) => None,
+            Err(TryRecvError::Disconnected) => Some(Servers::default()),
+        }
     }
 }
 
@@ -148,6 +192,8 @@ pub struct PeerConnection {
     /// Whether the other's description is in (candidates wait for it).
     remote: bool,
     early: Vec<Candidate>,
+    /// It says only relayed candidates ([`Config::relay_only`]).
+    relay_only: bool,
     /// Drop everything sent and taken until then (tests: a network
     /// outage).
     outage: Option<Instant>,
@@ -208,6 +254,7 @@ impl PeerConnection {
             down: false,
             remote: false,
             early: Vec::new(),
+            relay_only: false,
             outage: None,
             buf: vec![0; MAX_DATAGRAM],
         })
@@ -286,10 +333,15 @@ impl PeerConnection {
         if self.socks.is_empty() {
             return Err(Error::internal("can't bind a UDP socket on any of this machine's addresses"));
         }
+        // (Relayed only: the sockets are the TURN client's, and say no
+        // candidate of their own.)
         for i in 0..self.socks.len() {
             let local = self.socks[i].local;
-            self.add_local(host(local))?;
+            if !config.relay_only {
+                self.add_local(host(local))?;
+            }
         }
+        self.relay_only = config.relay_only;
         // STUN and TURN, on the socket routed to the first server (IPv4: a
         // server's address is resolved IPv4 first).
         let turn = servers.turn.first();
@@ -516,7 +568,9 @@ impl PeerConnection {
                 TurnEvent::BindingResponse(_, mapped) if g.mapped.is_none() => {
                     g.mapped = Some(mapped);
                     let base = self.socks[g.sock].local;
-                    found.push(srflx(mapped, base, g.stun_url.clone()));
+                    if !self.relay_only {
+                        found.push(srflx(mapped, base, g.stun_url.clone()));
+                    }
                 }
                 TurnEvent::AllocateResponse(_, relayed) => {
                     g.relayed = Some(relayed);
