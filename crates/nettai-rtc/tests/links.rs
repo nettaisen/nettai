@@ -4,19 +4,24 @@
 //! Worker under `wrangler dev` instead): one asks the server for a room and
 //! the other joins it by the code the server gave; they connect, trade
 //! datagrams, and come back after an outage, or give up after the timeout.
-//! What goes wrong comes as a kind a player can be told.
+//! What goes wrong comes as a kind a player can be told. A room's links
+//! connect on the STUN and TURN servers its welcome gives, and through a
+//! TURN server alone (`turn`, one of the tests' own).
 
+mod turn;
+
+use std::collections::HashSet;
+use std::net::{SocketAddr, UdpSocket};
 use std::time::{Duration, Instant};
 
 use nettai_rtc::signal::{FromServer, Refusal};
 use nettai_rtc::testing::{Client, Server};
-use nettai_rtc::{Config, Error, ErrorKind, Link, Role, signal};
+use nettai_rtc::{Config, Error, ErrorKind, IceServer, Link, Role, signal};
 
-/// Links that find each other on loopback, with no STUN server, quick to
-/// notice a drop.
+/// Links that find each other on loopback (with no STUN or TURN server of
+/// their own, as by default), quick to notice a drop.
 fn config() -> Config {
     Config {
-        ice_servers: Vec::new(),
         loopback: true,
         silence: Duration::from_secs(1),
         dial_timeout: Duration::from_secs(5),
@@ -459,7 +464,7 @@ fn a_spent_code_is_no_use_and_a_third_is_refused() {
     outage(&mut sides, 1, Duration::from_secs(3));
     let second = through(&mut sides, server.as_ref(), Some(&first));
     let mut stranger = Client::open(&signal::reconnect_url(&url, &first, "stranger")).unwrap();
-    assert_eq!(stranger.next(Duration::from_secs(5)), Some(FromServer::Welcome { role: None, peer: false, code: None }), "a room nobody else is in");
+    assert!(matches!(stranger.next(Duration::from_secs(5)), Some(FromServer::Welcome { role: None, peer: false, code: None, .. })), "a room nobody else is in");
     outage_and(&mut sides, 0, Duration::from_secs(5), |sides| {
         // (Both in the room of their newest code by now.)
         run_for(sides, Duration::from_secs(1));
@@ -588,7 +593,7 @@ fn a_link_gives_up_after_the_timeout() {
 #[ignore]
 fn a_native_link_meets_a_browser() {
     let Ok(url) = std::env::var("NETTAI_TEST_SIGNAL") else { panic!("NETTAI_TEST_SIGNAL, please") };
-    let config = Config { ice_servers: Vec::new(), ..Config::default() };
+    let config = Config::default();
     let (mut link, code) = invite(&url, config);
     eprintln!("the room's code, for the browser's NETTAI_TEST_ROOM: {code}");
     let (start, mut got) = (Instant::now(), 0);
@@ -609,4 +614,113 @@ fn a_native_link_meets_a_browser() {
         while link.recv().unwrap().is_some() {}
         std::thread::sleep(Duration::from_millis(10));
     }
+}
+
+/// A UDP socket on loopback posing as a STUN or TURN server: it answers
+/// nothing, and says what came to it.
+struct Listening(UdpSocket);
+
+/// A STUN binding request's message type, and a TURN allocation's.
+const BINDING: u16 = 0x0001;
+const ALLOCATE: u16 = 0x0003;
+
+impl Listening {
+    fn new() -> Listening {
+        let socket = UdpSocket::bind("127.0.0.1:0").unwrap();
+        socket.set_nonblocking(true).unwrap();
+        Listening(socket)
+    }
+
+    fn port(&self) -> u16 {
+        self.0.local_addr().unwrap().port()
+    }
+
+    /// The STUN messages that came since (by their type), and from where.
+    fn heard(&self) -> Vec<(u16, SocketAddr)> {
+        let mut buf = [0; 2048];
+        std::iter::from_fn(|| self.0.recv_from(&mut buf).ok().map(|(n, from)| (n, buf[..2].to_vec(), from)))
+            .filter(|(n, _, _)| *n >= 2)
+            .map(|(_, kind, from)| (u16::from_be_bytes([kind[0], kind[1]]), from))
+            .collect()
+    }
+}
+
+/// From how many sockets messages of type `kind` came.
+fn sockets_asking(heard: &[(u16, SocketAddr)], kind: u16) -> usize {
+    heard.iter().filter(|(k, _)| *k == kind).map(|(_, from)| from).collect::<HashSet<_>>().len()
+}
+
+/// A room's connections use exactly the servers its welcome gives, in place
+/// of the links' own: with credentials (the Worker's when it has its TURN
+/// key), a STUN server and a TURN server, each asked by both sides (neither
+/// answers here, and the two connect on loopback all the same); without
+/// (the Worker's when it hasn't), the STUN server alone. The URLs the
+/// native backend can't use (`turns:`, TURN over TCP) are asked by nobody,
+/// and so are the links' own servers.
+#[test]
+fn a_room_connects_on_the_servers_its_welcome_gives() {
+    for credentials in [true, false] {
+        let (stun, turn, unusable, own) = (Listening::new(), Listening::new(), Listening::new(), Listening::new());
+        let server = Server::start();
+        let mut given = vec![IceServer::new(&format!("stun:127.0.0.1:{}", stun.port()))];
+        if credentials {
+            given.push(IceServer {
+                urls: vec![
+                    format!("turns:127.0.0.1:{}?transport=tcp", unusable.port()),
+                    format!("turn:127.0.0.1:{}?transport=tcp", unusable.port()),
+                    format!("turn:127.0.0.1:{}?transport=udp", turn.port()),
+                ],
+                username: "user".into(),
+                credential: "secret".into(),
+            });
+        }
+        server.set_ice_servers(given);
+        let config = Config { ice_servers: vec![IceServer::new(&format!("stun:127.0.0.1:{}", own.port()))], ..config() };
+        let (mut sides, _) = room(&server.url(), config);
+        connected(&mut sides);
+        let (stun, turn, unusable, own) = (stun.heard(), turn.heard(), unusable.heard(), own.heard());
+        assert_eq!(sockets_asking(&stun, BINDING), 2, "both sides ask the welcome's STUN server: {stun:?}");
+        assert_eq!(sockets_asking(&turn, ALLOCATE), if credentials { 2 } else { 0 }, "both sides ask the welcome's TURN server, if any: {turn:?}");
+        assert!(unusable.is_empty() && own.is_empty(), "nobody asks the others: {unusable:?} {own:?}");
+    }
+}
+
+/// A server whose welcome gives no servers (the in-process one, unless a
+/// test sets some) leaves a room's links to their own. A direct link asks
+/// no server at all, its own neither: it says no candidate to anyone.
+#[test]
+fn without_a_welcomes_servers_a_link_uses_its_own() {
+    let own = Listening::new();
+    let config = Config { ice_servers: vec![IceServer::new(&format!("stun:127.0.0.1:{}", own.port()))], ..config() };
+    let server = Server::start();
+    let (mut sides, _) = room(&server.url(), config.clone());
+    connected(&mut sides);
+    assert_eq!(sockets_asking(&own.heard(), BINDING), 2, "both sides ask their own STUN server");
+    drop(sides);
+    let mut sides = direct(config);
+    connected(&mut sides);
+    assert!(own.heard().is_empty(), "a direct link asks no STUN server");
+}
+
+/// Two links whose connections go through the TURN server their room's
+/// welcome gives, and nowhere else (relayed candidates alone,
+/// `Config::relay_only`): they connect and trade datagrams through it, on
+/// the welcome's credentials. With others, which the server refuses, they
+/// can't connect.
+#[test]
+fn a_room_link_relays_through_the_welcomes_turn_server() {
+    let relay = turn::TurnServer::start("user", "secret");
+    let server = Server::start();
+    let turn = |credential: &str| IceServer { urls: vec![relay.url()], username: "user".into(), credential: credential.into() };
+    server.set_ice_servers(vec![turn("secret")]);
+    let (mut sides, _) = room(&server.url(), Config { relay_only: true, ..config() });
+    connected(&mut sides);
+    let (before, got) = (relay.relayed(), sides.each_ref().map(|s| s.got.len()));
+    run(&mut sides, Duration::from_secs(5), heard_more(got));
+    assert!(relay.relayed() - before >= 40, "the datagrams went through the TURN server ({} relayed)", relay.relayed() - before);
+    drop(sides);
+    server.set_ice_servers(vec![turn("wrong")]);
+    let (mut sides, _) = room(&server.url(), Config { relay_only: true, connect_timeout: Duration::from_secs(4), ..config() });
+    run(&mut sides, Duration::from_secs(15), |s| s.iter().all(|s| s.error.is_some()));
+    assert!(sides.iter().all(|s| s.error.as_ref().is_some_and(|e| e.kind == ErrorKind::CantConnect)), "{:?}", sides.each_ref().map(|s| s.error.clone()));
 }

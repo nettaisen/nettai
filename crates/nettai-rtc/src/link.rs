@@ -54,6 +54,16 @@
 //!   asks for every 2 seconds), or the joiner's connectivity checks
 //!   directly.
 //!
+//! **STUN and TURN** in a room are the server's: each welcome gives the
+//! servers the connections are made on (`crate::signal`), and the latest
+//! welcome's are what the next connection uses, so a reconnection has the
+//! credentials its reconnect room gave. Their names are resolved on a
+//! thread of their own (natively), and no connection is made before: the
+//! joiner dials once it has its welcome and they are resolved, and a host
+//! holds an offer (and the candidates that follow it) until its own are.
+//! The welcome comes before anything the other side sends, so neither side
+//! starts ICE on servers it hasn't had. A direct link uses none.
+//!
 //! A reconnect room's socket that doesn't open, or drops, is made again:
 //! the server being out of reach is no reason to stop sooner than the
 //! reconnection's time.
@@ -83,12 +93,12 @@ use std::collections::VecDeque;
 
 use crate::room::{Room, RoomEvent};
 use crate::signal::{self, Signal};
-use crate::{Config, Duration, Error, ErrorKind, Instant, Message, PeerConnection, PeerEvent, Role};
+use crate::{Candidate, Config, Duration, Error, ErrorKind, IceServer, Instant, Message, PeerConnection, PeerEvent, Role};
 
 #[cfg(not(target_arch = "wasm32"))]
-use crate::native::{Servers, direct::Listener};
+use crate::native::{Resolving, Servers, direct::Listener};
 #[cfg(target_arch = "wasm32")]
-use crate::web::Servers;
+use crate::web::{Resolving, Servers};
 
 /// How often a host in a room asks the joiner to dial again while it is
 /// down.
@@ -98,6 +108,10 @@ const MAX_BACKOFF: Duration = Duration::from_secs(3);
 /// How often the host says the next reconnect code until it is
 /// acknowledged.
 const SAY_AGAIN: Duration = Duration::from_millis(100);
+/// How long a new connection waits for the names of the servers a welcome
+/// gave to be resolved; then it is made with those it had (the next one has
+/// them, once they are).
+const RESOLVE_WAIT: Duration = Duration::from_secs(5);
 
 /// The link's own messages, as text on the channel: the host's next
 /// reconnect code, and the joiner's acknowledgment of it (each followed by
@@ -225,10 +239,27 @@ fn hex(bytes: &[u8]) -> String {
     bytes.iter().map(|b| format!("{b:02x}")).collect()
 }
 
+/// The joiner's offer, held by a host until the servers its answer is made
+/// on are resolved: the room it came through, its generation, and the
+/// joiner's candidates that came since.
+struct Held {
+    place: Place,
+    generation: u32,
+    sdp: String,
+    candidates: Vec<Candidate>,
+}
+
 /// The channel to the other player (the module's docs).
 pub struct Link {
     config: Config,
+    /// The STUN and TURN servers its connections are made on, resolved: in
+    /// a room, the latest welcome's (none until the first); directly, none.
     servers: Servers,
+    /// The servers the latest welcome gave (or, if it gave none, the
+    /// config's), and while their names are being resolved, since when.
+    given: Option<Vec<IceServer>>,
+    resolving: Option<(Resolving, Instant)>,
+    held: Option<Held>,
     way: Way,
     role: Option<Role>,
     /// The connection, if there is one, and its generation.
@@ -264,11 +295,14 @@ pub struct Link {
 }
 
 impl Link {
-    fn new(config: Config, servers: Servers, way: Way, role: Option<Role>) -> Link {
+    fn new(config: Config, way: Way, role: Option<Role>) -> Link {
         let now = Instant::now();
         Link {
             config,
-            servers,
+            servers: Servers::default(),
+            given: None,
+            resolving: None,
+            held: None,
             way,
             role,
             pc: None,
@@ -295,37 +329,36 @@ impl Link {
     /// which this player hosts: an invite. The server picks the room's code
     /// and says it as it lets this player in ([`Link::code`], none until
     /// then), for the other player to join by ([`Link::join_room`]). The
-    /// STUN and TURN servers' names are resolved now (natively: which may
-    /// wait).
+    /// STUN and TURN servers come with the server's welcome: nothing here
+    /// waits.
     pub fn create_room(server: &str, config: Config) -> Link {
         let peer = format!("{:016x}", crate::random_u64());
         let room = Room::create(server, &peer, config.server_timeout);
-        let servers = Servers::resolve(&config);
         let way = Way::Server(Signaling::new(server, &peer, config.server_timeout, room));
-        Link::new(config, servers, way, None)
+        Link::new(config, way, None)
     }
 
     /// Join the room with `code` on the signaling server at `server`
     /// (`wss://...`): the code a host was given by the server and gave this
     /// player, as typed ([`crate::signal::normalize_code`]). No room is made
     /// of a code no room has: that errs ([`ErrorKind::NoSuchRoom`]), here
-    /// for a code that can't be one, else when the server says so. The STUN
-    /// and TURN servers' names are resolved now (natively: which may wait).
+    /// for a code that can't be one, else when the server says so. Nothing
+    /// here waits: the STUN and TURN servers come with the welcome.
     pub fn join_room(server: &str, code: &str, config: Config) -> Result<Link, Error> {
         let peer = format!("{:016x}", crate::random_u64());
         let room = Room::join(server, code, &peer, config.server_timeout)?;
-        let servers = Servers::resolve(&config);
         let way = Way::Server(Signaling::new(server, &peer, config.server_timeout, room));
-        Ok(Link::new(config, servers, way, None))
+        Ok(Link::new(config, way, None))
     }
 
     /// Host directly: listen on UDP `port` of every IPv4 interface (0: one
     /// the system picks, [`Link::port`]) for the joiner. A port that can't
-    /// be listened on errs ([`ErrorKind::PortUnavailable`]).
+    /// be listened on errs ([`ErrorKind::PortUnavailable`]). A direct link
+    /// asks no STUN or TURN server: it says no candidate to anyone.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn host(port: u16, config: Config) -> Result<Link, Error> {
         let listener = Listener::bind(port)?;
-        Ok(Link::new(config, Servers::default(), Way::Listen(listener), Some(Role::Host)))
+        Ok(Link::new(config, Way::Listen(listener), Some(Role::Host)))
     }
 
     /// Join the host at `addr` (`host:port`) directly (resolving its name
@@ -340,7 +373,7 @@ impl Link {
             .min_by_key(|a| !a.is_ipv4())
             .ok_or_else(|| Error::new(ErrorKind::BadAddress, format!("{addr} resolves to nothing")))?;
         let nonce = crate::random_u64() as u32;
-        Ok(Link::new(config, Servers::default(), Way::Dial { host, nonce }, Some(Role::Join)))
+        Ok(Link::new(config, Way::Dial { host, nonce }, Some(Role::Join)))
     }
 
     /// This side's role: known at once directly, and from the server's
@@ -562,7 +595,10 @@ impl Link {
         }
         match self.role {
             Some(Role::Join) => self.dial(now)?,
-            Some(Role::Host) => self.ask(now),
+            Some(Role::Host) => {
+                self.answer(now);
+                self.ask(now);
+            }
             None => {}
         }
         if let Some((since, why)) = &self.down
@@ -605,19 +641,47 @@ impl Link {
             return Ok(());
         }
         match event {
-            RoomEvent::Welcome { role, peer } => {
+            RoomEvent::Welcome { role, peer, ice_servers } => {
                 if let Some(role) = role {
                     if self.role.is_some_and(|r| r != role) {
                         return Err(Error::internal("the signaling server forgot this player's place in the room"));
                     }
                     self.role = Some(role);
                 }
+                self.given(now, ice_servers);
                 self.peer_here(now, peer);
             }
             RoomEvent::Peer(present) => self.peer_here(now, present),
             RoomEvent::Signal(signal) => self.signal(now, &place, signal),
         }
         Ok(())
+    }
+
+    /// A welcome's STUN and TURN servers: exactly those are what the next
+    /// connections are made on (a server that gives none leaves it to the
+    /// config's), their names resolved on a thread of their own (natively)
+    /// unless they are the ones there are already.
+    fn given(&mut self, now: Instant, ice_servers: Vec<IceServer>) {
+        let list = if ice_servers.is_empty() { self.config.ice_servers.clone() } else { ice_servers };
+        if self.given.as_ref() != Some(&list) {
+            self.resolving = Some((Resolving::start(list.clone()), now));
+            self.given = Some(list);
+        }
+    }
+
+    /// Whether a connection can be made now: the servers the latest welcome
+    /// gave are resolved (or have been [`RESOLVE_WAIT`] in resolving, and the
+    /// connection is made on those from before).
+    fn servers_ready(&mut self, now: Instant) -> bool {
+        let Some((resolving, since)) = &mut self.resolving else { return true };
+        match resolving.poll() {
+            Some(servers) => {
+                self.servers = servers;
+                self.resolving = None;
+                true
+            }
+            None => now.duration_since(*since) >= RESOLVE_WAIT,
+        }
     }
 
     /// The other is in a room (or not): a joiner that isn't connected dials
@@ -632,19 +696,9 @@ impl Link {
 
     fn signal(&mut self, now: Instant, place: &Place, signal: Signal) {
         match (self.role, signal) {
-            (Some(Role::Host), Signal::Offer { generation, sdp }) if generation > self.generation => {
-                // The joiner dialed again: what this side had is dropped.
-                if self.open {
-                    self.lost(now, "the other player dialed again".into());
-                }
-                if let Way::Server(s) = &mut self.way {
-                    s.met(place);
-                }
-                match PeerConnection::answer_with(&self.config, &self.servers, &sdp) {
-                    Ok(pc) => self.adopt(pc, generation),
-                    // (A bad offer: the joiner's next dial is another.)
-                    Err(_) => self.pc = None,
-                }
+            (Some(Role::Host), Signal::Offer { generation, sdp }) if generation > self.generation && self.held.as_ref().is_none_or(|h| generation > h.generation) => {
+                self.held = Some(Held { place: place.clone(), generation, sdp, candidates: Vec::new() });
+                self.answer(now);
             }
             (Some(Role::Join), Signal::Answer { generation, sdp }) if generation == self.generation => {
                 if let Some(pc) = &mut self.pc
@@ -658,11 +712,45 @@ impl Link {
                     let _ = pc.add_candidate(&candidate);
                 }
             }
+            (_, Signal::Candidate { generation, candidate }) if self.held.as_ref().is_some_and(|h| h.generation == generation) => {
+                self.held.as_mut().expect("an offer held").candidates.push(candidate);
+            }
             (Some(Role::Join), Signal::Redial { generation }) if generation == self.generation => {
                 self.lost(now, "the other player lost the connection".into());
                 self.next_dial = Some(now);
             }
             _ => {}
+        }
+    }
+
+    /// The host: answer the offer it holds, once the servers are ready (an
+    /// offer from a room left since is dropped).
+    fn answer(&mut self, now: Instant) {
+        if self.held.is_none() || !self.servers_ready(now) {
+            return;
+        }
+        let Held { place, generation, sdp, candidates } = self.held.take().expect("an offer held");
+        if let Way::Server(s) = &self.way
+            && !s.rooms.iter().any(|(p, _)| *p == place)
+        {
+            return;
+        }
+        // The joiner dialed again: what this side had is dropped.
+        if self.open {
+            self.lost(now, "the other player dialed again".into());
+        }
+        if let Way::Server(s) = &mut self.way {
+            s.met(&place);
+        }
+        match PeerConnection::answer_with(&self.config, &self.servers, &sdp) {
+            Ok(pc) => {
+                let pc = self.adopt(pc, generation);
+                for c in &candidates {
+                    let _ = pc.add_candidate(c);
+                }
+            }
+            // (A bad offer: the joiner's next dial is another.)
+            Err(_) => self.pc = None,
         }
     }
 
@@ -801,14 +889,13 @@ impl Link {
     }
 
     /// A new connection, of `generation`.
-    fn adopt(&mut self, pc: PeerConnection, generation: u32) {
+    fn adopt(&mut self, pc: PeerConnection, generation: u32) -> &mut PeerConnection {
+        self.generation = generation;
+        self.open = false;
         let pc = self.pc.insert(pc);
         #[cfg(not(target_arch = "wasm32"))]
         pc.set_outage(self.outage);
-        #[cfg(target_arch = "wasm32")]
-        let _ = pc;
-        self.generation = generation;
-        self.open = false;
+        pc
     }
 
     /// The joiner: dial when it is time (the host in a room with it), and
@@ -825,9 +912,12 @@ impl Link {
             return Ok(());
         }
         let generation = self.generation + 1;
+        // (In a room: on the servers its welcome gave, so not before they
+        // are resolved.)
+        let ready = self.servers_ready(now);
         let pc = match &self.way {
             Way::Server(s) => {
-                if !s.there() {
+                if !s.there() || !ready {
                     return Ok(());
                 }
                 PeerConnection::offer_with(&self.config, &self.servers)
@@ -856,7 +946,7 @@ impl Link {
     /// ask the joiner to dial again.
     fn ask(&mut self, now: Instant) {
         let Way::Server(s) = &mut self.way else { return };
-        if self.down.is_none() || self.pc.is_some() || !s.there() || self.asked.is_some_and(|t| now.duration_since(t) < ASK_AGAIN) {
+        if self.down.is_none() || self.pc.is_some() || self.held.is_some() || !s.there() || self.asked.is_some_and(|t| now.duration_since(t) < ASK_AGAIN) {
             return;
         }
         s.send(Signal::Redial { generation: self.generation });

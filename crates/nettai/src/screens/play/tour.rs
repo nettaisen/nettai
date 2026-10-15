@@ -89,9 +89,10 @@ fn with_peer(f: impl FnOnce(&mut Peer)) {
     });
 }
 
-/// How two players of one process connect: no server asked for an address, the loopback interface offered.
+/// How two players of one process connect: the loopback interface offered (the rig's server gives no STUN or
+/// TURN server, and a link has none of its own).
 fn config() -> Config {
-    Config { ice_servers: Vec::new(), loopback: true, ..Config::default() }
+    Config { loopback: true, ..Config::default() }
 }
 
 /// Where Play makes its links in the pass: the rig's server. None outside the pass.

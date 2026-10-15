@@ -818,7 +818,7 @@ mod tests {
     /// room's code.
     fn meet(content: &Arc<Content>, server: &nettai_rtc::testing::Server, settings: [Settings; 2], sides: [Side; 2]) -> ([Seat; 2], String) {
         use crate::lobby::{Lobby, Role, entropy};
-        let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, ..nettai_rtc::Config::default() };
+        let config = nettai_rtc::Config { loopback: true, ..nettai_rtc::Config::default() };
         let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
         let start = Instant::now();
         while host.role().is_none() {
@@ -1221,7 +1221,7 @@ mod tests {
         let content = exe6_test_content();
         let m = short_set::of(&content, "exe6", 7);
         let server = nettai_rtc::testing::Server::start();
-        let config = nettai_rtc::Config { ice_servers: Vec::new(), loopback: true, silence: Duration::from_secs(1), ..nettai_rtc::Config::default() };
+        let config = nettai_rtc::Config { loopback: true, silence: Duration::from_secs(1), ..nettai_rtc::Config::default() };
         // (The host asks the server for a room; the joiner comes by the
         // code the server gave it.)
         let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
