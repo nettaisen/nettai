@@ -12,7 +12,10 @@
 //! editor's lists (the user: "the rows in the editor are too tall, they should match the height of the regular
 //! editor"): checked where it is the build's, its face, its name, and the mark of the version it is one's own (the
 //! user: "you should indicate in the editor version exclusives"). Enter, a click or a tap on one chooses it, or takes
-//! it out of a list (`Builds::choose_form`). A strip across the top, as every tab has (docs/design/app-ui.md §2.66; the
+//! it out of a list (`Builds::choose_form`). A list has ALL and NONE (docs/design/app-ui.md §2.69; the user: "the
+//! souls/crosses should be able to select all/none") on each version's head, or on its heading where it shows no
+//! versions: that group's forms put in while the list has room, the rest refused, or taken out (`Builds::choose_forms`,
+//! one change). A strip across the top, as every tab has (docs/design/app-ui.md §2.66; the
 //! user: "it doesn't really have a good place to put errors for crosses/souls/beast outs"), describes the form under
 //! the cursor or the pointer (its face, its name and version, its description, its element and its fact), else the
 //! build's navi (its face, name, element and HP); and at its top right what the build's problems have against it, the
@@ -45,6 +48,9 @@ pub struct Navi {
     navis: Vec<NaviHandle>,
     /// The selector's forms, each with the fact it is of, in the focus order.
     forms: Vec<(String, FormHandle)>,
+    /// What each ALL and NONE of the selector is of (their focus keys' index): a fact of forms, and its version's
+    /// group's forms (or the whole list's, where it shows no versions).
+    sets: Vec<(String, Vec<FormHandle>)>,
     /// The form the pointer is on (its place in the focus order), which the strip describes in place of the focused one
     /// (`editor::hover`).
     hovered: Option<usize>,
@@ -200,6 +206,7 @@ impl Tab for Navi {
         self.forms = choices.iter().flat_map(|c| c.forms.iter().map(|&f| (c.fact.clone(), f))).collect();
         // (One column of rows on a desktop, two on a phone.)
         let columns = if shell.scale.phone { 2 } else { 1 };
+        let mut sets: Vec<(String, Vec<FormHandle>)> = Vec::new();
         let groups: Vec<NaviFormGroup> = draft.with_words(shell, |words| {
             let mut at = 0;
             choices
@@ -214,12 +221,31 @@ impl Tab for Navi {
                     // their heads.)
                     let versions: Vec<Option<String>> = c.forms.iter().map(|f| content.defs.forms.get(f.index()).and_then(|d| d.record.version.clone())).collect();
                     let side_by_side = versions.len() == 2 && versions[0].is_some() && versions[1].is_some() && versions[0] != versions[1];
+                    // (A list's ALL and NONE: on each version's head where its forms are grouped by version, a group of
+                    // none's too, else on the fact's heading; whether each would do anything, ALL where the list has
+                    // room for one of them it lacks, NONE where it has one. A fact of one form has none.)
+                    let mut set_of = |forms: Vec<FormHandle>| -> (i32, bool, bool) {
+                        if c.one {
+                            return (-1, false, false);
+                        }
+                        let all = chosen.len() < c.room && forms.iter().any(|f| !chosen.contains(f));
+                        let none = forms.iter().any(|f| chosen.contains(f));
+                        sets.push((c.fact.clone(), forms));
+                        (sets.len() as i32 - 1, all, none)
+                    };
+                    let by_version = versions.iter().any(Option::is_some);
+                    let whole = if by_version { (-1, false, false) } else { set_of(c.forms.clone()) };
                     let mut forms: Vec<NaviForm> = Vec::new();
                     let (mut rows, mut heads, mut first_row, mut place) = (0, 0, 0, 0);
                     let mut last: Option<Option<String>> = None;
-                    for (n, (&f, version)) in c.forms.iter().zip(versions).enumerate() {
+                    for (n, (&f, version)) in c.forms.iter().zip(versions.clone()).enumerate() {
                         let tag = kit.version_tag_of(words.names, Registry::Form, &Item::of(f.0));
                         let starts = last.as_ref() != Some(&version);
+                        let (set, all, none) = if starts && by_version {
+                            set_of(c.forms.iter().zip(&versions).skip(n).take_while(|(_, v)| **v == version).map(|(&f, _)| f).collect())
+                        } else {
+                            (-1, false, false)
+                        };
                         if starts && !side_by_side {
                             // (A group of none after the versions' has a head's room, and no name.)
                             if version.is_some() || last.is_some() {
@@ -244,6 +270,10 @@ impl Tab for Navi {
                             chosen: chosen.contains(&f),
                             flagged: problems.iter().any(|p| about(p, &c.fact, &chosen, f)),
                             banned: !draft.allows(&c.fact, f.0),
+                            set,
+                            span: if side_by_side { 1 } else { columns },
+                            all,
+                            none,
                         });
                         place += 1;
                     }
@@ -262,12 +292,16 @@ impl Tab for Navi {
                         heads,
                         forms: ModelRc::new(VecModel::from(forms)),
                         at,
+                        set: whole.0,
+                        all: whole.1,
+                        none: whole.2,
                     };
                     at += c.forms.len() as i32;
                     group
                 })
                 .collect()
         });
+        self.sets = sets;
         view.set_form_groups(ModelRc::new(VecModel::from(groups)));
         let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
@@ -278,7 +312,7 @@ impl Tab for Navi {
         view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
         // (The focus starts on the build's navi's card.)
-        if shell.nav.focused().is_none_or(|k| !["navi", "form", "choice", "tab", "ruleset", "ruleset-edit"].contains(&k.id.as_str()))
+        if shell.nav.focused().is_none_or(|k| !["navi", "form", "forms-all", "forms-none", "choice", "tab", "ruleset", "ruleset-edit"].contains(&k.id.as_str()))
             && let Some(at) = self.navis.iter().position(|&n| n == chosen)
         {
             shell.nav.focus("navi", at as i32);
@@ -322,6 +356,17 @@ impl Tab for Navi {
                     self.show(shell, draft);
                 } else {
                     shell.sound.play(crate::sound::Cue::Refused);
+                }
+            }
+            // (ALL or NONE of a version's group of forms, or of a whole list: as many put in as the list has room for,
+            // in order, and the rest refused; or all taken out. One change.)
+            "forms-all" | "forms-none" => {
+                let Some((fact, forms)) = self.sets.get(index.max(0) as usize).cloned() else { return };
+                let (changed, left) = draft.choose_forms(&fact, &forms, id == "forms-all");
+                let cue = if changed && left == 0 { crate::sound::Cue::Pick } else { crate::sound::Cue::Refused };
+                shell.sound.play(cue);
+                if changed {
+                    self.show(shell, draft);
                 }
             }
             // (Enter on a choice takes its next preset, after the last its first: of two, the other.)
