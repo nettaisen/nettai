@@ -37,7 +37,7 @@ enum Differs {
 /// Where the game's picture is in view beside the practice menu's panel, each box given exactly (`compare` lets a
 /// pair differ 12 around each box it is given: these are 12 inside), in the UI's units. The panel is the menu's
 /// (`MenuOverlay`, at the side: the theme's margin from the left, 24 from the top and bottom, at most 500 wide),
-/// over everything under it: none of the picture under the panel is let differ.
+/// over everything under it: none of the picture under the panel is let differ, but where its cut corner shows it.
 fn picture_beside_menu(ui: &AppWindow) -> Vec<Option<Rect>> {
     let shell = ui.global::<nettai_ui::Shell>();
     let picture = Rect {
@@ -60,6 +60,8 @@ fn picture_beside_menu(ui: &AppWindow) -> Vec<Option<Rect>> {
         exactly(l.max(panel.right()), t, r, b),
         exactly(inner_l, t, inner_r, b.min(panel.y)),
         exactly(inner_l, t.max(panel.bottom()), inner_r, b),
+        // (And through the panel's cut corner, 18 at its bottom right: a dialog's or a menu's.)
+        exactly(panel.right() - 18.0, panel.bottom() - 18.0, panel.right(), panel.bottom()),
     ]
 }
 

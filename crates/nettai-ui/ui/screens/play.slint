@@ -241,10 +241,9 @@ component Link inherits Rectangle {
         width: parent.width;
         text: root.text;
         color: hit.has-hover || hit.focused ? Theme.text : Theme.muted;
-        font-family: Theme.display;
+        font-family: Theme.body;
         font-size: 12px;
-        font-weight: Theme.display-semibold;
-        letter-spacing: Theme.label-tracking;
+        font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
         animate color {
