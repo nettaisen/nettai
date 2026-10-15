@@ -146,10 +146,18 @@ struct Picking {
     key: Key,
 }
 
-/// The screen on screen is leaving: the one to show once it has, and when.
+/// The screen on screen is leaving: what to show once it has, and when.
 struct Swap {
-    to: ScreenId,
+    to: Swapped,
     at: Instant,
+}
+
+/// What a swap shows once what was shown has left: a screen, or the ruleset's page opened over the screen shown
+/// (`true`) or closed off it (`false`).
+#[derive(Clone, Copy)]
+enum Swapped {
+    Screen(ScreenId),
+    Page(bool),
 }
 
 /// What a screen asks of the app that is done once the screen has returned.
@@ -559,9 +567,31 @@ impl Shell {
         let Some(swap) = self.swap.take() else { return };
         let ui = self.ui();
         let shell = ui.global::<nettai_ui::Shell>();
-        shell.set_screen(swap.to.view());
+        match swap.to {
+            Swapped::Screen(to) => shell.set_screen(to.view()),
+            Swapped::Page(open) => ui.global::<nettai_ui::RulesetView>().set_open(open),
+        }
         shell.set_leaving(false);
         self.nav.hold(false);
+    }
+
+    /// The ruleset's page opens over the screen shown (`open`), or closes off it, as a screen is gone to: what is
+    /// shown leaves first, its body sliding and fading for the theme's `leave` (closing it, Back's way), and then the
+    /// page is shown, its parts arriving, or the screen under it, arriving (the user: "should ruleset slide in like
+    /// how everything else does instead of this different slide it does?").
+    pub fn swap_page(&mut self, open: bool) {
+        // (A screen that was still leaving is gone at once.)
+        self.finish_swap();
+        let ui = self.ui();
+        ui.global::<Theme>().set_back(!open);
+        let leave = ui.global::<Theme>().get_leave();
+        if leave > 0 {
+            ui.global::<nettai_ui::Shell>().set_leaving(true);
+            self.nav.hold(true);
+            self.swap = Some(Swap { to: Swapped::Page(open), at: crate::clock::now() + std::time::Duration::from_millis(leave as u64) });
+        } else {
+            ui.global::<nettai_ui::RulesetView>().set_open(open);
+        }
     }
 
     // ---- Dialogs and lists of choices --------------------------------------------------------------------
@@ -990,7 +1020,7 @@ impl App {
         if leave > 0 {
             ui.global::<nettai_ui::Shell>().set_leaving(true);
             self.shell.nav.hold(true);
-            self.shell.swap = Some(Swap { to, at: crate::clock::now() + std::time::Duration::from_millis(leave as u64) });
+            self.shell.swap = Some(Swap { to: Swapped::Screen(to), at: crate::clock::now() + std::time::Duration::from_millis(leave as u64) });
         } else {
             ui.global::<nettai_ui::Shell>().set_screen(to.view());
         }
