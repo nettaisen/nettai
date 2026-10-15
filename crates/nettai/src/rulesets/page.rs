@@ -76,7 +76,7 @@ impl Page {
         view.set_back(back.into());
         view.set_search(Default::default());
         page.show(shell);
-        view.set_open(true);
+        shell.swap_page(true);
         shell.nav.open(PREFIX, Key::new("rules.categories", 0));
         if shell.scale.phone {
             shell.nav.focus("rules.category", 0);
@@ -86,7 +86,7 @@ impl Page {
 
     /// Close the page: the focus goes back where it was under it.
     pub fn close(self, shell: &mut Shell) {
-        shell.ui().global::<RulesetView>().set_open(false);
+        shell.swap_page(false);
         shell.nav.close(PREFIX);
     }
 

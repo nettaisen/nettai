@@ -1069,7 +1069,11 @@ Each is settled unless the user changes it.
     ruleset editor?" and "also shouldn't the version names be capitalized in the ruleset editor?"
     - *Opening and closing:* the page's parts arrive as a screen's (`Arrive`, one after another: the row, the
       categories, the category's head and items); closing it, the lobby or the build editor under it comes back from
-      above, fading in (`UnderPage` in app.slint), where both had been shown and hidden at once.
+      above, fading in (`UnderPage` in app.slint), where both had been shown and hidden at once. Then (the user:
+      "should ruleset slide in like how everything else does instead of this different slide it does?") opening and
+      closing it go as going to a screen does (`Shell::swap_page`): what is shown leaves first, its body sliding 16
+      and fading for the theme's `leave` (closing, Back's way), and only then is the page, or the screen under it,
+      shown.
     - *The quick choices in capitals:* a category's version choices read GREGAR, FALZAR, ALL, as ALLOW ALL and ALLOW
       NONE beside them and as a version's tag everywhere.
 68. **What a ruleset holds back can't be added; a build that holds it is in violation** (2026-10-15). The user, of
