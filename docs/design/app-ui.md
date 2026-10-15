@@ -846,7 +846,14 @@ the editors share). Gaps are 8, 12, 16, 24.
 
 **The header** holds, from the left: a Back button naming where it goes (`‹ MENU`, `‹ PLAY`), the screen's title
 with a cyan bar before it, then at the right the game selector (§2.1). Where the game can't change (inside a
-build, the lobby, a replay), the game's name stays in the same place without its arrows.
+build, the lobby, a replay), the game's name stays in the same place without its arrows. The main menu's header
+has the logo in Back's and the title's place: the app's icon, then "nettai" (the user: "maybe no logotype in the
+header, maybe logo then \"nettai\""). The icon (`docs/logo/nettai-icon.svg`) is a retrowave sun setting over the
+battle field, three rows of six panels in perspective, red on the left and blue on the right ("maybe the retrowave
+sun with the perspective battle field looks the best actually"), without the characters ("don't bother with putting
+the characters on it, i feel like the tropical feel already engenders it"). The logotype, 熱帯 in the sunset
+gradient as tall as the t of nettai beside it (`docs/logo/nettai-logotype.svg`, from Corporate Logo and Chakra Petch
+outlined), is for the README, the installers and a site, not the app's screens.
 
 **The footer** holds key hints at the left (key caps or pad buttons, by what was last used) and one short status at
 the right. On a phone there is no footer.
@@ -889,7 +896,8 @@ These answer the user's first paragraph (§1), and a screenshot pass checks them
 Each is in the mockups under the same name.
 
 ### Loading
-- **Starting up:** the logo, one bar 480 wide, "Loading BN6" and a percentage. The game last used loads before the
+- **Starting up:** the logo (the icon, 160 square, 112 on a phone, over "nettai": "you should put it prominently on
+  the loading screen"), one bar 480 wide, "Loading BN6" and a percentage. The game last used loads before the
   menu appears; the others load behind it, and switching to one not ready shows the bar again.
 - **A pack being extracted** (§2.24): the same bar, "Extracting BN6" and a percentage, before "Loading BN6". The
   game last used is extracted first; the others behind the menu, one after the other, and switching to one not

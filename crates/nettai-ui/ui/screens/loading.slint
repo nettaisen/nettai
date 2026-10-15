@@ -1,4 +1,4 @@
-// Loading (docs/design/app-ui.md §6): the logo and one bar while the selected game loads, as the app starts and
+// Loading (docs/design/app-ui.md §6): the logo (the icon over the name) and one bar while the selected game loads, as the app starts and
 // whenever the player steps to a game that isn't ready yet; before that, while its pack is extracted from the
 // Legacy Collection, the bar is the extraction's. The bar has one width and the percentage fixed-width digits, so
 // nothing moves as it fills.
@@ -10,12 +10,25 @@ import { Tween } from "../motion.slint";
 
 export component LoadingScreen inherits Rectangle {
     property <length> column: min(480px, self.width - 2 * Theme.margin);
-    property <length> top: (self.height - 158px) / 2;
+    // The icon, large above the name (the user: "you should put it prominently on the loading screen"), and the
+    // room between them. `top` is the name's: the icon, the name and the bar are centered together.
+    property <length> mark: Theme.phone ? 112px : 160px;
+    property <length> mark-gap: Theme.phone ? 12px : 16px;
+    property <length> top: (self.height - 158px - root.mark - root.mark-gap) / 2 + root.mark + root.mark-gap;
     // No game, and the Legacy Collection not found: its error's line, and the way to its folder.
     property <bool> wants-folder: Shell.no-games && Shell.extracts;
     // The logo settles into place as the app starts.
     arrive := Tween {
         duration: Theme.set-piece;
+    }
+
+    Image {
+        x: (parent.width - self.width) / 2;
+        y: root.top - root.mark - root.mark-gap + (1 - arrive.t) * 10px;
+        width: root.mark;
+        height: root.mark;
+        opacity: arrive.t;
+        source: @image-url("../../../../docs/logo/nettai-icon.svg");
     }
 
     Text {
