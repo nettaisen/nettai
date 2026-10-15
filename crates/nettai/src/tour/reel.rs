@@ -18,8 +18,9 @@
 //!
 //! The walk is the pass's, held still as it is (no settings read or written, its own builds and replays, the
 //! demo battles' seeds fixed), but with motion on and the battles playing: the main menu and its demo battle
-//! through a change of game to each and back; Practice (the entry, the music stepped to a battle theme, START,
-//! the practice menu setting the dummy to fight at Hard, a fight in which the player's side presses by itself);
+//! through a change of game to each and back; Practice (PLAY's PRACTICE, the practice menu open as the battle
+//! starts, the arena and the music stepped there, the dummy set to fight at Hard, a fight in which the player's
+//! side presses by itself);
 //! the builds (Play's; the editor's Folder, NaviCust and Patch cards tabs in EXE6, the Auto battle tab in EXE5);
 //! Play (an invite, a second player joining, the lobby, a few seconds of their match); Replays (the list, a
 //! replay watched, a seek and a speed change); About, from Settings. `reel.txt` in the pass's folder says what
@@ -532,7 +533,6 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
         let view = ui.global::<ReplaysView>();
         view.get_listed() && view.get_still() && slint::Model::iter(&view.get_rows()).all(|row| !row.score.is_empty() || !row.reason.is_empty())
     });
-    add(SETTLE, go(ScreenId::Practice));
     add(SETTLE * 2, go(ScreenId::Menu));
     add(SETTLE, focus("play", 0));
     // (The menu's demo battle under way.)
@@ -546,19 +546,18 @@ fn walk(steps: &mut Vec<(u64, Step)>) {
     add(3000, step_to("exe4"));
     add(3000, step_to("exe6"));
 
-    // 2. Practice: the entry (the builds facing each other, the arena's preview), the arena stepped; the music
-    // stepped to a battle theme, which plays; START, the cards, the battle; the practice menu, the dummy set to
-    // fight at Hard; the fight, the player's side pressing by itself.
-    add(3000, go(ScreenId::Practice));
-    add(2200, focus("arena", 0));
-    add(500, act(Action::Right));
-    add(1500, focus("music", 0));
-    add(500, act(Action::Right));
-    add(3800, focus("start", 0));
+    // 2. Practice: PLAY's PRACTICE, the cards, the battle with the practice menu open over it; the arena stepped
+    // (the set starting over on it behind the menu), the music stepped to a battle theme, which plays; the dummy
+    // set to fight at Hard; the fight, the player's side pressing by itself.
+    add(3000, go(ScreenId::Play));
+    add(1500, focus("practice", 0));
     add(500, act(Action::Confirm));
-    reach(add, |app| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Practice && b.playing()));
-    add(900, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
-    add(700, row(PracticeOption::Action));
+    reach(add, |app| app.shell.battle.as_ref().is_some_and(|b| b.kind == BattleKind::Practice && b.menu_open()));
+    add(1200, row(PracticeOption::Arena));
+    add(500, act(Action::Right));
+    add(1800, row(PracticeOption::Music));
+    add(500, act(Action::Right));
+    add(2500, row(PracticeOption::Action));
     // (Stands still, Moves around, Fights.)
     add(400, act(Action::Right));
     add(350, act(Action::Right));

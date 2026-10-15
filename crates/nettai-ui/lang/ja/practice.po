@@ -4,16 +4,14 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Language: ja\n"
 
-# ---- The entry ----
+# ---- The practice menu's rows ----
 
-msgid "Your build"
-msgstr "あなたの構築"
-
+# The DUMMY group's: the dummy's build, one of the game's builds.
 msgid "Dummy's build"
 msgstr "ダミーの構築"
 
-# The entry's rows (and the menu's Stage rows): where each round is fought. Their choices are the content's
-# arenas and backgrounds, after Random (each round's picked from the seed).
+# The STAGE group's: where each round is fought. Their choices are the content's arenas and backgrounds, after
+# Random (each round's picked from the seed).
 msgid "Arena"
 msgstr "アリーナ"
 
@@ -22,38 +20,6 @@ msgstr "背景"
 
 msgid "Random"
 msgstr "ランダム"
-
-msgid "Set up the dummy from the menu once you're in."
-msgstr "ダミーの設定は、開始後にメニューからできます。"
-
-msgid "START PRACTICE"
-msgstr "練習開始"
-
-msgid "ARENA PREVIEW"
-msgstr "アリーナ プレビュー"
-
-msgid "Change"
-msgstr "変更"
-
-msgid "Open list"
-msgstr "一覧を開く"
-
-# A hint: the build opened in Builds' editor (the dummy's, where the focus is on its row or its EDIT).
-msgid "Edit build"
-msgstr "構築を編集"
-
-# Why practice can't start: the reserved line. {} is the rule the build breaks.
-msgid "Your build can't be used."
-msgstr "あなたの構築は使えません。"
-
-msgid "The dummy's build can't be used."
-msgstr "ダミーの構築は使えません。"
-
-msgid "Your build can't be used: {}."
-msgstr "あなたの構築は使えません: {}。"
-
-msgid "The dummy's build can't be used: {}."
-msgstr "ダミーの構築は使えません: {}。"
 
 # ---- Before the battle, and in it ----
 

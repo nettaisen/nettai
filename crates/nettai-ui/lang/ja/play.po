@@ -60,21 +60,18 @@ msgstr "セーブファイルから…"
 msgid "ONLINE"
 msgstr "オンライン"
 
-msgid "CREATE INVITE"
-msgstr "招待を作る"
-
 msgid "INVITE CODE"
 msgstr "招待コード"
 
 msgid "JOIN"
 msgstr "参加"
 
+msgid "Direct connect…"
+msgstr "直接接続…"
+
 # The dialog of the code's six boxes (a pad can't type one).
 msgid "Invite code"
 msgstr "招待コード"
-
-msgid "DIRECT CONNECT"
-msgstr "直接接続"
 
 msgid "Connecting…"
 msgstr "接続中…"
