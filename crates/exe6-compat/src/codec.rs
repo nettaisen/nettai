@@ -207,9 +207,10 @@ impl<'a> Ids<'a> {
     /// The NaviCust program a part id names (its number, `id >> 2`: an
     /// entry of the game's `navicust_programs`) and its color (the variant,
     /// `id & 3`, the definition's color in that place); none for 0, no part.
-    pub fn navicust_part(&self, id: u8) -> Option<(EntryHandle, u8)> {
+    /// An id no program has is an error, not a panic: the id is a save's.
+    pub fn navicust_part(&self, id: u8) -> Result<Option<(EntryHandle, u8)>, String> {
         if id == 0 {
-            return None;
+            return Ok(None);
         }
         let number = id >> 2;
         let key = self
@@ -219,9 +220,9 @@ impl<'a> Ids<'a> {
             .iter()
             .find(|(_, n)| **n == number)
             .map(|(k, _)| k.as_str())
-            .unwrap_or_else(|| panic!("navicust.toml has no program {number} (part id {id:#x})"));
-        let h = self.content.defs.entry_in(NAVICUST_PROGRAMS, key).unwrap_or_else(|| panic!("the content has no NaviCust program {key:?}"));
-        Some((h, id & 3))
+            .ok_or_else(|| format!("navicust.toml has no program {number} (part id {id:#x})"))?;
+        let h = self.content.defs.entry_in(NAVICUST_PROGRAMS, key).ok_or_else(|| format!("the content has no NaviCust program {key:?}"))?;
+        Ok(Some((h, id & 3)))
     }
 
     /// A placed program's part id.
@@ -523,7 +524,7 @@ pub fn program_colors(content: &Content, program: EntryHandle) -> Vec<&str> {
 pub fn navicust<'c>(list: &[u8], compressed: impl Fn(u8) -> bool, ids: &Ids<'c>) -> Result<Vec<Fact<'c>>, String> {
     let mut parts = Vec::new();
     for e in list.chunks_exact(8) {
-        let Some((program, variant)) = ids.navicust_part(e[0]) else { continue };
+        let Some((program, variant)) = ids.navicust_part(e[0])? else { continue };
         let color = program_colors(ids.content, program)
             .get(variant as usize)
             .copied()
