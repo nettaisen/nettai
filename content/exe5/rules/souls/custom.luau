@@ -345,17 +345,20 @@ function custom_souls.turns(side: number, chaos: boolean): number
     return turns
 end
 
--- The rules' `overview`'s part: a Soul Unison's turns as OK gives them (`custom_souls.turns`), where the NaviCust or
--- the patch cards change them (the stats' bonus), for a navi with souls whose save has any.
+-- The rules' `overview`'s part: a Soul Unison's turns as OK gives them (`custom_souls.turns`), a stat of their own,
+-- with what the NaviCust and the patch cards change them by from the 3, for a navi with souls whose save has any.
 function custom_souls.overview(side: number, out: SetupOverview)
-    if battle.navi(side).soul_turn_bonus == 0 or #souls_of(side) == 0 then
+    if #souls_of(side) == 0 then
         return
     end
     local setup = rules.setup_of(side) :: Setup
     for i = 1, SOUL_PLACES do
         if setup.souls[i] ~= nil then
-            local line: SetupAbility = { name = "soul_time", amount = custom_souls.turns(side, false) }
-            table.insert(out.abilities, line)
+            local turns = custom_souls.turns(side, false)
+            local stat: SetupStat = { name = "soul_time", value = turns, added = turns - TURNS }
+            local stats = out.stats or {}
+            table.insert(stats, stat)
+            out.stats = stats
             return
         end
     end
