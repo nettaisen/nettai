@@ -12,6 +12,7 @@
 import { Theme } from "theme.slint";
 import { Nav, Focusable, NavKind } from "nav.slint";
 import { Shell, Page, PadButton, Hint } from "shell.slint";
+import { Arrive } from "motion.slint";
 import { Button, ButtonKind, Field, Seg, Select, Label, Value, Message, ListView, RowTouch, RowBack, Pill } from "widgets.slint";
 import { VersionTag } from "build.slint";
 
@@ -61,7 +62,7 @@ export global RulesetView {
     in property <string> message;
     in property <bool> message-quiet;
     // ---- Words the app asks for.
-    out property <string> all-word: @tr("All");
+    out property <string> all-word: @tr("ALL");
     out property <string> lobby-word: @tr("LOBBY");
     out property <string> editor-word: @tr("EDITOR");
     out property <string> preset-word: @tr("PRESET");
@@ -207,188 +208,199 @@ export component RulesetPage inherits Page {
     tag: { text: RulesetView.preset ? RulesetView.preset-word : "", tone: Theme.muted };
     hints: root.page-hints;
 
-    // ---- The row: the name, Version exclusives, DUPLICATE and DELETE.
-    Field {
-        x: 0;
-        y: 0;
-        width: Theme.phone ? root.body-width : 360px;
-        nav: "rules.name";
-        text: RulesetView.name;
-        enabled: RulesetView.editable;
-    }
-
-    // (Whether a build keeps to one version's own things, as a cartridge does, or may mix the versions': the user,
-    // "versions: one per build is weird wording, you should make it more understandable". On a phone the word is
-    // over the control, which the width wouldn't hold beside it.)
-    versions-label := Label {
-        x: Theme.phone ? 0px : 384px;
-        y: Theme.phone ? 52px : 0px;
-        width: self.preferred-width;
-        height: Theme.phone ? 16px : 40px;
-        text: @tr("VERSION EXCLUSIVES");
-    }
-
-    Seg {
-        x: Theme.phone ? 0px : versions-label.x + versions-label.width + 12px;
-        y: Theme.phone ? 72px : versions-label.y + 2px;
-        nav: "rules.versions";
-        first: @tr("ONE VERSION");
-        second: @tr("MIX VERSIONS");
-        chosen: RulesetView.versions;
-        enabled: RulesetView.editable;
-    }
-
-    delete := Button {
-        x: root.body-width - self.width;
-        y: Theme.phone ? 128px : 0px;
-        width: self.natural-width;
-        visible: RulesetView.deletable;
-        nav: "rules.delete";
-        text: @tr("DELETE");
-        kind: ButtonKind.ghost;
-        danger: true;
-        enabled: RulesetView.deletable;
-    }
-
-    Button {
-        x: RulesetView.deletable ? delete.x - 8px - self.width : root.body-width - self.width;
-        y: delete.y;
-        width: self.natural-width;
-        nav: "rules.duplicate";
-        text: @tr("DUPLICATE");
-    }
-
-    // ---- The categories: a list, or on a phone a select.
-    if !Theme.phone: categories := ListView {
-        x: 0;
-        y: root.head-y;
-        width: root.list-width;
-        height: root.body-height - root.head-y - root.foot;
-        nav: "rules.categories";
-        count: RulesetView.categories.length;
-        row-height: 40px;
-        chosen: RulesetView.category;
-        for slot in categories.shown: CategoryRow {
-            property <int> at: categories.first + slot;
-            y: self.at * categories.pitch;
-            width: categories.row-width;
-            height: categories.row-height;
-            line: RulesetView.categories[self.at];
-            nav-index: self.at;
-            chosen: self.at == RulesetView.category;
-
-            Rectangle { }  // (Copied in: docs/app.md §14.)
-        }
-    }
-
-    Select {
-        x: 0;
-        y: root.head-y - 52px;
-        width: root.body-width;
-        visible: Theme.phone;
-        focusable: Theme.phone;
-        nav: "rules.category";
-        value: RulesetView.categories[RulesetView.category].name;
-    }
-
-    // ---- The category's head: ALLOW ALL, ALLOW NONE, the quick choices, the search.
-    all := Button {
-        x: root.right-x;
-        y: root.head-y;
-        width: self.natural-width;
-        nav: "rules.all";
-        text: @tr("ALLOW ALL");
-        enabled: RulesetView.editable;
-    }
-
-    none := Button {
-        x: all.x + all.width + 8px;
-        y: root.head-y;
-        width: self.natural-width;
-        nav: "rules.none";
-        text: @tr("ALLOW NONE");
-        enabled: RulesetView.editable;
-    }
-
-    // (A version's own items, as one choice each, and All: each a segment, lit where the items allowed of the
-    // versions' are exactly its.)
-    choices := Rectangle {
-        x: Theme.phone ? root.right-x : none.x + none.width + 16px;
-        y: Theme.phone ? root.head-y + 52px : root.head-y + 2px;
-        width: 360px;
-        height: 36px;
-        for choice[i] in RulesetView.choices: Rectangle {
-            x: i * 112px;
-            y: 0;
-            width: 110px;
-            height: 36px;
-            background: choice.chosen ? Theme.tint : (hit.has-hover ? Theme.tint-hover : Theme.inset);
-            border-width: 1px;
-            border-color: choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : Theme.line;
-            Text {
-                x: 8px;
-                width: parent.width - 16px;
-                text: choice.text;
-                color: choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : (RulesetView.editable ? Theme.text : Theme.dim);
-                font-family: Theme.display;
-                font-size: 12px;
-                font-weight: Theme.display-bold;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-                overflow: elide;
-            }
-
-            hit := Focusable {
-                nav: "rules.set";
-                nav-index: i;
-                enabled: RulesetView.editable;
-            }
-        }
-    }
-
     // (After the quick choices, the rest of the head; on a phone their row's rest.)
     property <length> choices-width: RulesetView.choices.length > 0 ? RulesetView.choices.length * 112px + 14px : 0px;
     property <length> search-x: Theme.phone ? root.right-x + root.choices-width : max(choices.x + root.choices-width, root.body-width - 240px);
-    Field {
-        x: root.search-x;
-        y: Theme.phone ? root.head-y + 52px : root.head-y;
-        width: root.body-width - root.search-x;
-        nav: "rules.search";
-        text: RulesetView.search;
-        placeholder: @tr("Search");
-    }
 
-    // ---- The items.
-    items := ListView {
-        x: root.right-x;
-        y: root.items-y;
-        width: root.right-width;
-        height: root.body-height - root.items-y - root.foot;
-        nav: "rules.items";
-        count: RulesetView.items.length;
-        row-height: Theme.list-row;
-        gap: Theme.list-gap;
-        chosen: self.focused-row;
-        for slot in items.shown: ItemRow {
-            property <int> at: items.first + slot;
-            y: self.at * items.pitch;
-            width: items.row-width;
-            height: items.row-height;
-            line: RulesetView.items[self.at];
-            nav-index: self.at;
+    // (The page's parts arrive as a screen's do, one after another: the row, the categories, the items.)
+    Arrive {
+        order: 0;
+        // ---- The row: the name, Version exclusives, DUPLICATE and DELETE.
+        Field {
+            x: 0;
+            y: 0;
+            width: Theme.phone ? root.body-width : 360px;
+            nav: "rules.name";
+            text: RulesetView.name;
+            enabled: RulesetView.editable;
+        }
 
-            Rectangle { }  // (Copied in: docs/app.md §14.)
+        // (Whether a build keeps to one version's own things, as a cartridge does, or may mix the versions': the user,
+        // "versions: one per build is weird wording, you should make it more understandable". On a phone the word is
+        // over the control, which the width wouldn't hold beside it.)
+        versions-label := Label {
+            x: Theme.phone ? 0px : 384px;
+            y: Theme.phone ? 52px : 0px;
+            width: self.preferred-width;
+            height: Theme.phone ? 16px : 40px;
+            text: @tr("VERSION EXCLUSIVES");
+        }
+
+        Seg {
+            x: Theme.phone ? 0px : versions-label.x + versions-label.width + 12px;
+            y: Theme.phone ? 72px : versions-label.y + 2px;
+            nav: "rules.versions";
+            first: @tr("ONE VERSION");
+            second: @tr("MIX VERSIONS");
+            chosen: RulesetView.versions;
+            enabled: RulesetView.editable;
+        }
+
+        delete := Button {
+            x: root.body-width - self.width;
+            y: Theme.phone ? 128px : 0px;
+            width: self.natural-width;
+            visible: RulesetView.deletable;
+            nav: "rules.delete";
+            text: @tr("DELETE");
+            kind: ButtonKind.ghost;
+            danger: true;
+            enabled: RulesetView.deletable;
+        }
+
+        Button {
+            x: RulesetView.deletable ? delete.x - 8px - self.width : root.body-width - self.width;
+            y: delete.y;
+            width: self.natural-width;
+            nav: "rules.duplicate";
+            text: @tr("DUPLICATE");
         }
     }
 
-    Message {
-        x: 0;
-        y: root.body-height - 18px;
-        width: root.body-width;
-        height: 18px;
-        text: RulesetView.message;
-        tone: RulesetView.message-quiet ? Theme.muted : Theme.bad;
+    Arrive {
+        order: 1;
+        // ---- The categories: a list, or on a phone a select.
+        if !Theme.phone: categories := ListView {
+            x: 0;
+            y: root.head-y;
+            width: root.list-width;
+            height: root.body-height - root.head-y - root.foot;
+            nav: "rules.categories";
+            count: RulesetView.categories.length;
+            row-height: 40px;
+            chosen: RulesetView.category;
+            for slot in categories.shown: CategoryRow {
+                property <int> at: categories.first + slot;
+                y: self.at * categories.pitch;
+                width: categories.row-width;
+                height: categories.row-height;
+                line: RulesetView.categories[self.at];
+                nav-index: self.at;
+                chosen: self.at == RulesetView.category;
 
-        Rectangle { }  // (Copied in: docs/app.md §14.)
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        Select {
+            x: 0;
+            y: root.head-y - 52px;
+            width: root.body-width;
+            visible: Theme.phone;
+            focusable: Theme.phone;
+            nav: "rules.category";
+            value: RulesetView.categories[RulesetView.category].name;
+        }
+    }
+
+    Arrive {
+        order: 2;
+        // ---- The category's head: ALLOW ALL, ALLOW NONE, the quick choices, the search.
+        all := Button {
+            x: root.right-x;
+            y: root.head-y;
+            width: self.natural-width;
+            nav: "rules.all";
+            text: @tr("ALLOW ALL");
+            enabled: RulesetView.editable;
+        }
+
+        none := Button {
+            x: all.x + all.width + 8px;
+            y: root.head-y;
+            width: self.natural-width;
+            nav: "rules.none";
+            text: @tr("ALLOW NONE");
+            enabled: RulesetView.editable;
+        }
+
+        // (A version's own items, as one choice each, and All: each a segment, lit where the items allowed of the
+        // versions' are exactly its.)
+        choices := Rectangle {
+            x: Theme.phone ? root.right-x : none.x + none.width + 16px;
+            y: Theme.phone ? root.head-y + 52px : root.head-y + 2px;
+            width: 360px;
+            height: 36px;
+            for choice[i] in RulesetView.choices: Rectangle {
+                x: i * 112px;
+                y: 0;
+                width: 110px;
+                height: 36px;
+                background: choice.chosen ? Theme.tint : (hit.has-hover ? Theme.tint-hover : Theme.inset);
+                border-width: 1px;
+                border-color: choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : Theme.line;
+                Text {
+                    x: 8px;
+                    width: parent.width - 16px;
+                    text: choice.text;
+                    color: choice.chosen ? (choice.version ? choice.tone : Theme.cursor) : (RulesetView.editable ? Theme.text : Theme.dim);
+                    font-family: Theme.display;
+                    font-size: 12px;
+                    font-weight: Theme.display-bold;
+                    horizontal-alignment: center;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                hit := Focusable {
+                    nav: "rules.set";
+                    nav-index: i;
+                    enabled: RulesetView.editable;
+                }
+            }
+        }
+
+        Field {
+            x: root.search-x;
+            y: Theme.phone ? root.head-y + 52px : root.head-y;
+            width: root.body-width - root.search-x;
+            nav: "rules.search";
+            text: RulesetView.search;
+            placeholder: @tr("Search");
+        }
+
+        // ---- The items.
+        items := ListView {
+            x: root.right-x;
+            y: root.items-y;
+            width: root.right-width;
+            height: root.body-height - root.items-y - root.foot;
+            nav: "rules.items";
+            count: RulesetView.items.length;
+            row-height: Theme.list-row;
+            gap: Theme.list-gap;
+            chosen: self.focused-row;
+            for slot in items.shown: ItemRow {
+                property <int> at: items.first + slot;
+                y: self.at * items.pitch;
+                width: items.row-width;
+                height: items.row-height;
+                line: RulesetView.items[self.at];
+                nav-index: self.at;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+        }
+
+        Message {
+            x: 0;
+            y: root.body-height - 18px;
+            width: root.body-width;
+            height: 18px;
+            text: RulesetView.message;
+            tone: RulesetView.message-quiet ? Theme.muted : Theme.bad;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
     }
 }
