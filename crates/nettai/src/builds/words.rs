@@ -190,8 +190,8 @@ impl Words<'_> {
 
     /// A build's line in a list: its navi and whether it is ready ("MegaMan · ready", "MegaMan · 2 problems"),
     /// and whether that is something wrong.
-    pub fn status(&self, navi: &str, checked: &Checked) -> (String, bool) {
-        match checked.problems.len() {
+    pub fn status(&self, navi: &str, problems: &[Problem]) -> (String, bool) {
+        match problems.len() {
             0 => (self.say().invoke_ready(navi.into()).into(), false),
             n => (self.say().invoke_problems(navi.into(), n as i32).into(), true),
         }
@@ -207,8 +207,8 @@ impl Words<'_> {
 
     /// The reason a build can't be played, for `UserError::BuildUnusable`: its first problem's sentence. None:
     /// nothing is wrong with it.
-    pub fn first_problem(&self, checked: &Checked) -> Option<String> {
-        checked.problems.first().map(|p| self.problem(p))
+    pub fn first_problem(&self, problems: &[Problem]) -> Option<String> {
+        problems.first().map(|p| self.problem(p))
     }
 }
 
@@ -237,16 +237,14 @@ pub fn wrong(shell: &crate::shell::Shell, game: &str, ready: &std::rc::Rc<crate:
     Words { ui: &ui, kit: &kit, names: &names }.wrong(wrong)
 }
 
-/// The first thing wrong with `side` as a build of `kit`'s game, in the language shown: the reason of
-/// `UserError::BuildUnusable` ("This build can't be used: 2 Giga chips, limit 1."), for a screen that starts a
-/// match with a build. None: nothing is wrong with it.
-#[allow(dead_code)] // (The screens that play a build ask it.)
-pub fn first_problem(shell: &crate::shell::Shell, kit: &Kit, side: &nettai_match::Side) -> Option<String> {
+/// The first of `problems` (a build's of `kit`'s game, as a list checked it: `shelf::Shelved::problems`), in the
+/// language shown: the reason of `UserError::BuildUnusable` ("This build can't be used: 2 Giga chips, limit 1."),
+/// for a screen that starts a match with a build. None: nothing is wrong with it.
+pub fn first_problem(shell: &crate::shell::Shell, kit: &Kit, problems: &[Problem]) -> Option<String> {
     let ui = shell.ui();
     let graphics = kit.ready.graphics(shell.lang);
     let names = Names::of(kit.content(), &graphics);
-    let checked = Checked::of(kit.content(), &kit.game, side);
-    Words { ui: &ui, kit, names: &names }.first_problem(&checked)
+    Words { ui: &ui, kit, names: &names }.first_problem(problems)
 }
 
 #[cfg(test)]

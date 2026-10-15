@@ -956,9 +956,13 @@ pub fn open(shell: &mut Shell, game: &str, build: &str) {
 }
 
 /// The game's builds as Practice reads them: as Play lists them (`play::shelved`), or with the screenshot pass's
-/// `tour_files` the builds folder's files.
+/// `tour_files` the builds folder's files; each checked under the ruleset the player plays by, so a build that
+/// can't be played under it can't be practiced either.
 fn listed(shell: &Shell, kit: &builds::Kit) -> Vec<builds::shelf::Shelved> {
-    if shell.practice.tour_files { builds::shelf::load(shell, kit) } else { crate::screens::play::shelved(shell, kit) }
+    match shell.practice.tour_files {
+        true => builds::shelf::played_by(shell, kit, |under| builds::shelf::load(shell, kit, under)),
+        false => crate::screens::play::shelved(shell, kit),
+    }
 }
 
 /// The builds of `listed` the menu's Dummy's build offers: those that can be played.
@@ -1001,7 +1005,7 @@ impl Practice {
         let yours = yours.and_then(|name| named(&name)).or_else(|| listed.iter().position(|b| b.usable())).ok_or(UserError::NoBuild)?;
         let entry = &listed[yours];
         if !entry.usable() {
-            let reason = entry.side().and_then(|side| words::first_problem(shell, &kit, side));
+            let reason = words::first_problem(shell, &kit, &entry.problems);
             return Err(UserError::BuildUnusable { reason: reason.filter(|r| !r.is_empty()) });
         }
         let picks = picks(&listed);
