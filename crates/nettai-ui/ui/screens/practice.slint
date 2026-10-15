@@ -1,29 +1,17 @@
 // Practice (docs/design/app-ui.md §6): you against a dummy set up from a menu while practicing. Its Rust half
 // is src/screens/practice.rs.
 //
-// Three things are here. The entry (`PracticeScreen`): five rows, Your build and Dummy's build (each with EDIT
-// beside it, which opens the build in Builds' editor), Arena, Background and Music (the battle's, the player's
-// pick), and START PRACTICE, with the two builds facing each other and the arena beside them. The practice menu (`PracticeMenu`): Start or Esc in a
-// practice battle, the battle paused behind it; its rows are a model the Rust half makes, so a row is added there
-// and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both sides'
+// Practice has no screen of its own: PLAY's PRACTICE goes straight into its battle, which fills the window. Two
+// things are here. The practice menu (`PracticeMenu`): Start or Esc in a practice battle (and open as one of
+// Practice's own starts), the battle paused behind it; its rows are a model the Rust half makes, so a row is added
+// there and worded here (`PracticeView.label` and `value`). And the input display (`PracticeInputs`): both sides'
 // buttons, lit as they are held, in a corner of the picture.
 
 import { Theme, Audit } from "../theme.slint";
 import { NavKind, Focusable } from "../nav.slint";
-import { Shell, Page, PadButton, Picture } from "../shell.slint";
-import { Button, ButtonKind, Select, Stepper, Label, Note, Message, Value, Pill, PanelBack, MenuItem, GroupTitle, ScrollPage } from "../widgets.slint";
-import { Arrive } from "../motion.slint";
+import { Shell } from "../shell.slint";
+import { Button, ButtonKind, Select, Stepper, MenuItem, GroupTitle, ScrollPage } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
-import { VersionTag } from "../build.slint";
-
-// A build as its card says it: its name, its version's tag (in the version's own color: the app's
-// `builds::version_tag`) and its navi; and whether it can be opened in Builds' editor (its file reads as a build).
-export struct PracticeBuild {
-    name: string,
-    version: VersionTag,
-    navi: string,
-    editable: bool,
-}
 
 // What a row of the practice menu is.
 export enum PracticeOption {
@@ -34,15 +22,20 @@ export enum PracticeOption {
     dummy,
     stage,
     options,
+    // The dummy's build: one of the game's builds that can be played (the row's text is its name), the player's
+    // own at first. A select of them, in a session of Practice's own.
+    dummys-build,
+    // EDIT under it: a button in the controls' column, which opens the dummy's build in Builds' editor.
+    edit-dummy,
     // A label and a value between arrows.
     action,
     // How well the dummy fights: under the Action while it is Fights.
     level,
-    // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen as
-    // the entry's row says it (none: Random).
+    // Their values are the content's arenas and backgrounds after Random: the row's text is the one chosen (an
+    // arena's place, "12 / 47"; a background's name; none: Random).
     arena,
     background,
-    // The battle's music (the player's one pick, the entry's Music row's): the row's text is its name.
+    // The battle's music (the player's one pick for the visit): the row's text is its name.
     music,
     your-hp,
     dummys-hp,
@@ -64,26 +57,6 @@ export struct PracticeRow {
 // What Practice shows: src/screens/practice.rs sets these. (A struct or an enum a property here uses reaches
 // Rust by that use: nothing is added to app.slint for it.)
 export global PracticeView {
-    // ---- The entry.
-    // The two builds chosen.
-    in property <PracticeBuild> yours;
-    in property <PracticeBuild> dummys;
-    // Why a build can't be used (the reserved line), and whether practice can start.
-    in property <string> message;
-    in property <bool> ready;
-    // The arena's picture is there.
-    in property <bool> arena;
-    // The arena and the background chosen, as their rows say them: the arena's place in the list ("12 / 47"),
-    // the background's name (or its place, if it has none); none: Random. And their pictures, as their grids
-    // show them (none: Random, or not drawn yet).
-    in property <string> arena-shown;
-    in property <string> background-shown;
-    in property <image> arena-picture;
-    in property <image> background-picture;
-    // The battle's music the player picked, as its row says it (the game's own, or a battle theme): theirs, one
-    // pick with Play's lobby's.
-    in property <string> music-shown;
-
     // ---- A session.
     // The two builds' names, as the menu's line under its title says them.
     in property <string> session-yours;
@@ -107,13 +80,6 @@ export global PracticeView {
     pure public function round-note(round: int) -> string {
         return @tr("Practice · Round {}", round);
     }
-    // The reserved line: which build can't be used, and the rule it breaks where that is said.
-    pure public function unusable(dummys: bool, reason: string) -> string {
-        if reason == "" {
-            return dummys ? @tr("The dummy's build can't be used.") : @tr("Your build can't be used.");
-        }
-        return dummys ? @tr("The dummy's build can't be used: {}.", reason) : @tr("Your build can't be used: {}.", reason);
-    }
 
     // ---- The menu's words: a row's label (a group's title, in capitals), and what its value says.
     pure public function label(option: PracticeOption) -> string {
@@ -125,6 +91,9 @@ export global PracticeView {
         }
         if option == PracticeOption.options {
             return @tr("OPTIONS");
+        }
+        if option == PracticeOption.dummys-build {
+            return @tr("Dummy's build");
         }
         if option == PracticeOption.action {
             return @tr("Action");
@@ -185,415 +154,34 @@ export global PracticeView {
     }
 }
 
-// ---- The entry ----------------------------------------------------------------------------------------------
-
-// One of the entry's build rows: a label, and the choice in a box that steps through the choices and opens them
-// as a list; beside it EDIT (the user: "you should be able to go to builds screen from the practice screen
-// somehow while having the relevant build displayed"), which opens the build chosen in Builds' editor, as E or
-// the pad's north button does (on the dummy's row, its build). The row is focused, and EDIT apart (`edit`, the
-// row's `index`): Tab goes from one to the other, and Up and Down from EDIT to EDIT. (On a phone it is lower,
-// the five rows over the cards and the arena, and EDIT as tall as the row, for a finger.)
-component EntryRow inherits Rectangle {
-    in property <string> nav;
-    // The build's place in the pair: 0 the player's, 1 the dummy's.
-    in property <int> index;
-    in property <string> label;
-    in property <string> value;
-    in property <bool> enabled: true;
-    in property <bool> editable;
-    property <length> edit: Theme.phone ? 72px : 88px;
-    property <length> row-width: root.width - root.edit - 8px;
-    property <length> box: Theme.phone ? 120px : 180px;
-    property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
-    height: Theme.phone ? 44px : 56px;
-    Rectangle {
-        x: 0;
-        width: root.row-width;
-        background: hit.has-hover ? Theme.raised : Theme.panel;
-        border-width: 1px;
-        border-color: Theme.line;
-    }
-
-    hit := Focusable {
-        x: 0;
-        width: root.row-width;
-        nav: root.nav;
-        kind: NavKind.stepper;
-        enabled: root.enabled;
-    }
-
-    name := Text {
-        x: 16px;
-        width: root.row-width - root.box - 36px;
-        text: root.label;
-        color: Theme.text;
-        font-family: Theme.body;
-        font-size: 14px;
-        font-weight: 600;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    Select {
-        x: root.row-width - root.box - 8px;
-        y: (parent.height - self.height) / 2;
-        width: root.box;
-        height: Theme.phone ? 36px : 40px;
-        nav: root.nav;
-        value: root.value;
-        focusable: false;
-    }
-
-    Button {
-        x: root.width - root.edit;
-        y: (parent.height - self.height) / 2;
-        width: root.edit;
-        height: Theme.phone ? parent.height : 40px;
-        nav: "edit";
-        nav-index: root.index;
-        text: @tr("EDIT");
-        enabled: root.enabled && root.editable;
-    }
-
-    changed over => {
-        if over {
-            Audit.clipped(root.label);
-        }
-    }
-}
-
-// One of the entry's rows of a value among many (Arena, Background, Music): a label, and the value in a box that
-// opens the values (Enter, a click or a tap) and still steps by Left and Right, as the build rows' (the user,
-// "background and music selectors should both be dropdowns like they are in the practice screen"). Arena and
-// Background are `pictured`: the chosen one's picture before its name, and its values open as a grid of their
-// pictures (the user: "arena selector should be like a dropdown that shows previews of all arenas"), the same
-// select as the practice menu's rows of them. The row is what is focused.
-component SelectRow inherits Rectangle {
-    in property <string> nav;
-    in property <string> label;
-    in property <string> value;
-    in property <bool> enabled: true;
-    in property <bool> pictured;
-    in property <image> picture;
-    in property <bool> random;
-    property <length> box: Theme.phone ? 200px : 280px;
-    // (Its value fits itself to the stepper's box, which tells the pass if it can't: docs/app.md §13.)
-    property <bool> over: Theme.audit && name.preferred-width > name.width + 0.5px;
-    height: Theme.phone ? 44px : 56px;
-    Rectangle {
-        background: hit.has-hover ? Theme.raised : Theme.panel;
-        border-width: 1px;
-        border-color: Theme.line;
-    }
-
-    hit := Focusable {
-        nav: root.nav;
-        kind: NavKind.stepper;
-        enabled: root.enabled;
-    }
-
-    name := Text {
-        x: 16px;
-        width: parent.width - root.box - 36px;
-        text: root.label;
-        color: Theme.text;
-        font-family: Theme.body;
-        font-size: 14px;
-        font-weight: 600;
-        vertical-alignment: center;
-        overflow: elide;
-    }
-
-    Select {
-        x: parent.width - root.box - 8px;
-        y: (parent.height - self.height) / 2;
-        width: root.box;
-        height: Theme.phone ? 36px : 40px;
-        nav: root.nav;
-        value: root.value;
-        enabled: root.enabled;
-        focusable: false;
-        pictured: root.pictured;
-        picture: root.picture;
-        random: root.random;
-    }
-
-    changed over => {
-        if over {
-            Audit.clipped(root.label);
-        }
-    }
-}
-
-// A build's card: who brings it, its name and its version's tag, its navi. On a phone the tag is on the navi's
-// line, the card being half as wide.
-component BuildCard inherits Rectangle {
-    in property <string> role;
-    in property <PracticeBuild> build;
-    // 1 or 2: the side's color.
-    in property <int> side;
-    property <length> pad: Theme.phone ? 12px : 16px;
-    height: 92px;
-    PanelBack {
-        side: root.side;
-        accent: false;
-    }
-
-    Label {
-        x: root.pad;
-        y: 12px;
-        width: parent.width - 2 * root.pad;
-        height: 14px;
-        text: root.role;
-    }
-
-    name := Value {
-        x: root.pad;
-        y: 30px;
-        width: min(self.preferred-width, parent.width - 2 * root.pad - (Theme.phone ? 0px : tag.width + 8px));
-        height: 22px;
-        text: root.build.name;
-        font-size: 16px;
-    }
-
-    tag := Pill {
-        x: Theme.phone ? root.pad : name.x + name.width + 8px;
-        y: Theme.phone ? 58px : 30px;
-        text: root.build.version.text;
-        tone: root.build.version.tone;
-    }
-
-    Value {
-        x: root.pad + (Theme.phone && tag.width > 0 ? tag.width + 8px : 0px);
-        y: 58px;
-        width: parent.width - self.x - root.pad;
-        height: 22px;
-        text: root.build.navi;
-        color: Theme.muted;
-        font-size: 12px;
-        font-weight: 400;
-    }
-}
-
-export component PracticeScreen inherits Page {
-    // The rows' column, and beside it (on a phone, under it) the cards over the arena's picture, which is the
-    // battle's at three times; on a phone the arena's box is the window's width, past the page's gutters, as
-    // the battle's is, so the widest whole multiple fits. (On a phone the rows are lower and the line has one
-    // line's room, which the languages' fit, for the five rows to be over the cards and the arena.)
-    property <length> column: Theme.phone ? self.body-width : 460px;
-    property <length> row-step: Theme.phone ? 48px : 68px;
-    property <length> note-y: Theme.phone ? 246px : 340px;
-    property <length> note-height: Theme.phone ? 20px : 40px;
-    property <length> side-width: Theme.phone ? self.body-width : 720px;
-    property <length> side-x: Theme.phone ? 0px : self.column + 24px + (self.body-width - self.column - 24px - self.side-width) / 2;
-    property <length> cards-y: Theme.phone ? self.note-y + self.note-height + 24px : 0px;
-    property <length> card-width: Theme.phone ? (self.body-width - 12px) / 2 : (self.side-width - 56px) / 2;
-    property <length> arena-x: Theme.phone ? -Theme.margin : self.side-x;
-    property <length> arena-width: Theme.phone ? self.body-width + 2 * Theme.margin : self.side-width;
-    property <length> arena-height: self.arena-width * 2 / 3;
-    title: @tr("PRACTICE");
-    back: @tr("PLAY");
-    hints: [
-        { key: "↑↓", pad: PadButton.move, text: @tr("Move") },
-        { key: "←→", text: @tr("Change") },
-        { key: Shell.key-a, pad: Shell.pad-a, text: @tr("Open list") },
-        // (The dummy's build where the focus is on its row or its EDIT; else the player's.)
-        { key: "E", pad: PadButton.north, text: @tr("Edit build") },
-        { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
-        { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Change game") },
-    ];
-    // The column: the five rows, the one line, the reserved line, and START PRACTICE at its foot.
-    Arrive {
-        EntryRow {
-            x: 0;
-            y: 0;
-            width: root.column;
-            nav: "yours";
-            index: 0;
-            label: @tr("Your build");
-            value: PracticeView.yours.name;
-            editable: PracticeView.yours.editable;
-        }
-
-        EntryRow {
-            x: 0;
-            y: root.row-step;
-            width: root.column;
-            nav: "dummys";
-            index: 1;
-            label: @tr("Dummy's build");
-            value: PracticeView.dummys.name;
-            editable: PracticeView.dummys.editable;
-        }
-
-        // (The arena's and the background's choices open as grids of their pictures.)
-        SelectRow {
-            x: 0;
-            y: 2 * root.row-step;
-            width: root.column;
-            nav: "arena";
-            label: @tr("Arena");
-            value: PracticeView.arena-shown == "" ? PracticeView.random : PracticeView.arena-shown;
-            pictured: true;
-            picture: PracticeView.arena-picture;
-            random: PracticeView.arena-shown == "";
-        }
-
-        SelectRow {
-            x: 0;
-            y: 3 * root.row-step;
-            width: root.column;
-            nav: "background";
-            label: @tr("Background");
-            value: PracticeView.background-shown == "" ? PracticeView.random : PracticeView.background-shown;
-            pictured: true;
-            picture: PracticeView.background-picture;
-            random: PracticeView.background-shown == "";
-        }
-
-        // The battle's music: a list, as the build rows'.
-        SelectRow {
-            x: 0;
-            y: 4 * root.row-step;
-            width: root.column;
-            nav: "music";
-            label: @tr("Music");
-            value: PracticeView.music-shown;
-        }
-
-        // (Room for two lines on a desktop, a longer language's.)
-        Note {
-            x: 0;
-            y: root.note-y;
-            width: root.column;
-            height: root.note-height;
-            text: @tr("Set up the dummy from the menu once you're in.");
-            vertical-alignment: top;
-        }
-
-        Message {
-            x: 0;
-            y: root.note-y + root.note-height + 6px;
-            width: root.column;
-            text: PracticeView.message;
-        }
-
-        Button {
-            x: 0;
-            y: root.body-height - 52px;
-            width: root.column;
-            nav: "start";
-            text: @tr("START PRACTICE");
-            kind: ButtonKind.main;
-            big: true;
-            enabled: PracticeView.ready;
-        }
-    }
-
-    // The two builds facing each other.
-    Arrive {
-        order: 1;
-        BuildCard {
-            x: root.side-x;
-            y: root.cards-y;
-            width: root.card-width;
-            role: PracticeView.you;
-            build: PracticeView.yours;
-            side: 1;
-        }
-
-        Text {
-            x: root.side-x + root.card-width;
-            y: root.cards-y;
-            width: 56px;
-            height: 92px;
-            visible: !Theme.phone;
-            text: @tr("VS");
-            color: Theme.dim;
-            font-family: Theme.display;
-            font-size: 28px;
-            font-weight: Theme.display-bold;
-            horizontal-alignment: center;
-            vertical-alignment: center;
-        }
-
-        BuildCard {
-            x: root.side-x + root.side-width - root.card-width;
-            y: root.cards-y;
-            width: root.card-width;
-            role: PracticeView.dummy;
-            build: PracticeView.dummys;
-            side: 2;
-        }
-    }
-
-    // The arena: the round as it opens, the two navis on it.
-    Arrive {
-        order: 2;
-        from-x: Theme.phone ? 0px : 24px;
-        // (Its box is there whether or not the picture is: the picture shows once it is the arena's own, and
-        // never past its box.)
-        Rectangle {
-            x: root.arena-x;
-            y: root.cards-y + 104px;
-            width: root.arena-width;
-            height: root.arena-height;
-            background: Theme.inset;
-            clip: true;
-            Picture {
-                visible: PracticeView.arena && !Shell.leaving;
-                ground: Theme.inset;
-            }
-        }
-
-        Rectangle {
-            x: root.arena-x + 12px;
-            y: root.cards-y + 104px + root.arena-height - 12px - self.height;
-            width: tag.preferred-width + 16px;
-            height: 22px;
-            visible: PracticeView.arena && !Shell.leaving;
-            background: Theme.shade;
-            tag := Text {
-                text: @tr("ARENA PREVIEW");
-                color: Theme.text;
-                font-family: Theme.display;
-                font-size: 11px;
-                font-weight: Theme.display-bold;
-                letter-spacing: Theme.label-tracking;
-                horizontal-alignment: center;
-                vertical-alignment: center;
-            }
-        }
-    }
-}
-
 // ---- The practice menu ------------------------------------------------------------------------------------
 
 // A row of the practice menu, whatever it is: a group's title; a label and a value between arrows, the row
-// focused as a whole (on a phone the label is over the arrows), or for Arena, Background and Music the value in a
-// box that opens the values, as the entry's rows of them (Arena's and Background's a grid of their pictures, the
-// chosen one's before its name); or a row another screen added. Its controls are
-// the entry's height, 40 (36 on a phone), its steppers and selects one column's width so they line up (the
-// user's "option 1", docs/design/app-ui.md §2.44); the row is bare, 52 tall. (One component under the menu's one
-// `for`: its parts are all there, and those the row isn't don't show.)
+// focused as a whole (on a phone the label is over the arrows), or for the Dummy's build, Arena, Background and
+// Music the value in a box that opens the values (Arena's and Background's a grid of their pictures, the chosen
+// one's before its name); EDIT, a button under the Dummy's build in the controls' column; or a row another
+// screen added. Its controls are 40 tall (36 on a phone), its steppers, selects and EDIT one column's width so
+// they line up (the user's "option 1", docs/design/app-ui.md §2.44); the row is bare, 52 tall. (One component
+// under the menu's one `for`: its parts are all there, and those the row isn't don't show.)
 component MenuRow inherits Rectangle {
     in property <PracticeRow> entry;
     in property <int> index;
     property <bool> added: root.entry.option == PracticeOption.added;
     property <bool> title: root.entry.option == PracticeOption.dummy || root.entry.option == PracticeOption.stage || root.entry.option == PracticeOption.options;
-    property <bool> option: !root.added && !root.title;
+    property <bool> edit: root.entry.option == PracticeOption.edit-dummy;
+    property <bool> option: !root.added && !root.title && !root.edit;
     property <bool> pictured: root.entry.option == PracticeOption.arena || root.entry.option == PracticeOption.background;
-    property <bool> select: root.pictured || root.entry.option == PracticeOption.music;
+    property <bool> select: root.pictured || root.entry.option == PracticeOption.music || root.entry.option == PracticeOption.dummys-build;
     property <string> label: PracticeView.label(root.entry.option);
     property <string> value: root.option && root.entry.text != "" ? root.entry.text : PracticeView.value(root.entry.option, root.entry.value);
     // The value's box: sized for the longest value in the longest language (a longer one the stepper fits to it,
     // and tells the pass if it can't); the stepper and the select are as wide as it and their arrows (`box`), and
-    // as tall as the entry's.
+    // 40 tall (36 on a phone).
     property <length> value-width: Theme.phone ? root.width - 72px : 196px;
     property <length> box: root.value-width + 72px;
     property <length> control: Theme.phone ? 36px : 40px;
     property <bool> over: Theme.audit && root.option && name.preferred-width > name.width + 0.5px;
-    height: root.title ? head.height : (root.added ? 48px : (Theme.phone ? 64px : 52px));
+    height: root.title ? head.height : root.added ? 48px : root.edit ? root.control + 12px : (Theme.phone ? 64px : 52px);
     head := GroupTitle {
         x: 0;
         y: 0;
@@ -609,6 +197,20 @@ component MenuRow inherits Rectangle {
         nav: root.added ? "menu.rows.added" : "";
         nav-index: root.index;
         text: root.entry.text;
+    }
+
+    // (The dummy's build in Builds' editor: its Back comes back to the battle, the menu open.)
+    Button {
+        x: Theme.phone ? 0px : parent.width - root.box - 8px;
+        y: 0;
+        width: root.box;
+        height: root.control;
+        visible: root.edit;
+        enabled: root.edit;
+        nav: root.edit ? "menu.rows.option" : "";
+        nav-index: root.index;
+        text: @tr("EDIT");
+        kind: ButtonKind.ghost;
     }
 
     Rectangle {
@@ -720,7 +322,7 @@ export component PracticeMenu inherits MenuOverlay {
         text: @tr("RESTART");
     }
 
-    // (Back to Practice's entry: docs/design/app-ui.md §2.40.)
+    // (Back to Play: docs/design/app-ui.md §2.57.)
     Button {
         x: 0;
         y: root.buttons-y + (Theme.phone ? 96px : 48px);

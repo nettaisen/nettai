@@ -233,7 +233,7 @@ export enum ButtonKind {
     main,
     // A quieter one: no fill.
     ghost,
-    // A minor one, as text: no fill and no line, its words muted (Play's DIRECT CONNECT).
+    // A minor one, as text: no fill and no line, its words muted.
     text,
 }
 
@@ -248,8 +248,11 @@ export component Button inherits Rectangle {
     in property <bool> enabled: true;
     // Its text in the error red (DELETE, LEAVE MATCH).
     in property <bool> danger;
-    // 52 tall (START PRACTICE).
+    // 52 tall (a phone's READY).
     in property <bool> big;
+    // A tile of PLAY's (PRACTICE, HOST): 72 tall, its words at its left in the display face at 20, its corner
+    // cut as a panel's.
+    in property <bool> tile;
     out property <bool> focused: hit.focused;
     // As wide as its text asks (what it is where no `width` is given it: a layout that gives it another on a
     // phone alone reads this for the desktop's).
@@ -266,7 +269,7 @@ export component Button inherits Rectangle {
     property <length> dip: press.v > 0.4 ? 1px : 0px;
     // The main action's sheen: a band of light across it every few seconds.
     property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
-    height: root.big ? 52px : 40px;
+    height: root.tile ? 72px : root.big ? 52px : 40px;
     width: root.natural-width;
     press := Pulse {
         seq: root.presses;
@@ -274,7 +277,7 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: 9px;
+        cut: root.tile ? 12px : 9px;
         background: root.bare ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
         line: root.kind == ButtonKind.text ? transparent : !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
     }
@@ -296,24 +299,24 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: 9px;
+        cut: root.tile ? 12px : 9px;
         background: #ffffff;
         line: transparent;
         opacity: press.v * 0.38;
     }
 
     label := Text {
-        x: 16px;
+        x: root.tile ? 20px : 16px;
         y: root.dip;
-        width: parent.width - 32px;
+        width: parent.width - (root.tile ? 40px : 32px);
         height: parent.height;
         text: root.text;
         color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : root.kind == ButtonKind.text && !hit.has-hover && !hit.focused ? Theme.muted : Theme.text;
         font-family: Theme.display;
-        font-size: root.big ? 16px : 13px;
+        font-size: root.tile ? 20px : root.big ? 16px : 13px;
         font-weight: root.kind == ButtonKind.main ? Theme.display-bold : Theme.display-semibold;
         letter-spacing: Theme.button-tracking;
-        horizontal-alignment: center;
+        horizontal-alignment: root.tile ? left : center;
         vertical-alignment: center;
         overflow: elide;
     }

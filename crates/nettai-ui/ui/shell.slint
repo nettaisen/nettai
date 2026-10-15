@@ -8,8 +8,9 @@ import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Stepper, Chevron, Ro
 import { Tween, Pulse, Shake } from "motion.slint";
 import { VersionTag } from "build.slint";
 
-// The screens a player goes between. Loading, the two cards before a battle and the battle are states of the
-// shell over them (`Shell.loading`, `Shell.versus`, `Shell.battle`).
+// The screens a player goes between (Practice's has no page: its battle fills the window). Loading, the two cards
+// before a battle and the battle are states of the shell over them (`Shell.loading`, `Shell.versus`,
+// `Shell.battle`).
 export enum Screen {
     menu,
     play,

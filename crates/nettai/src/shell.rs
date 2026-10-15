@@ -1498,17 +1498,13 @@ impl App {
             self.call(id, |s, shell| s.frame_end(shell, now));
         }
         self.settle();
-        // The title music plays on the menu screens (not under a battle with music of its own, or under what a
-        // screen plays itself).
-        // (A battle being made ready that will take over the music the menus play, Practice's entry's, keeps it
-        // playing through the cards: `Shell::carried_music`.)
+        // The title music plays on the menu screens (not under a battle with music of its own, nor on the cards
+        // before one).
         let silent = |m: crate::battle::BattleMusic| m == crate::battle::BattleMusic::None;
-        let carried = self.shell.loading.as_ref().and_then(|l| self.shell.carried_music(&l.start)).is_some_and(|key| self.shell.sound.previewing(&key));
         let in_battle = self.shell.battle.as_ref().is_some_and(|b| !silent(b.music))
-            || self.shell.loading.as_ref().is_some_and(|l| !silent(l.start.music) && !carried)
+            || self.shell.loading.as_ref().is_some_and(|l| !silent(l.start.music))
             || (ticks.is_some() && !self.shell.battle.as_ref().is_some_and(|b| silent(b.music)));
-        // (Practice's entry's music plays on while the game it changed to loads: the same song goes on after.)
-        self.shell.sound.want_music(!in_battle && (self.shell.ready().is_some() || self.shell.sound.previews()));
+        self.shell.sound.want_music(!in_battle && self.shell.ready().is_some());
         self.shell.sound.frame(now, ticks, &mut samples);
         // The screen that was leaving has left.
         if self.shell.swap.as_ref().is_some_and(|s| now >= s.at) {
