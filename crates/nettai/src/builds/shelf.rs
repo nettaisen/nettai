@@ -51,7 +51,7 @@ pub fn shelved(words: &Words, listed: Listed, build: Option<Build>) -> Shelved {
     let checked = Checked::of(kit.content(), &kit.game, &build.side);
     let navi = words.names.navi(build.side.navi(kit.content()));
     let (status, bad) = words.status(&navi, &checked);
-    let row = BuildEntry { name: build.name.as_str().into(), status: status.into(), bad, version: kit.version_tag(words.names, &build.side) };
+    let row = BuildEntry { name: build.name.as_str().into(), status: status.into(), bad };
     Shelved { listed, ready: checked.ready(), build: Some(build), row }
 }
 

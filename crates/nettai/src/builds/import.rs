@@ -41,26 +41,26 @@ pub fn side_of_save(content: &Content, builds: &Builds, file: &[u8]) -> Result<I
         Refused::Failed
     };
     let mut side = Side::fresh(content, game).map_err(failed)?;
-    // What the save holds, and its version (the id the game's builds data names it by).
-    let (notes, version) = match game {
+    // What the save holds: its version is the facts it gives (docs/design/versions.md §2.4: the souls or Crosses it
+    // owns, EXE6's Cybeast, a Bass-Cross MegaMan card's variant), which its compat crate states.
+    let notes = match game {
         exe6_compat::ROOT => {
             let save = read(game, file, exe6_compat::import::read)?;
-            (exe6_compat::import::import(content, &mut side, &save).map_err(failed)?, save.version().name())
+            exe6_compat::import::import(content, &mut side, &save).map_err(failed)?
         }
         exe5_compat::ROOT => {
             let save = read(game, file, exe5_compat::import::read)?;
-            (exe5_compat::import::import(content, game, &mut side, &save), save.version().name())
+            exe5_compat::import::import(content, game, &mut side, &save)
         }
         exe4_compat::ROOT => {
             let save = read(game, file, exe4_compat::import::read)?;
-            (exe4_compat::import::import(content, game, &mut side, &save), save.version.name())
+            exe4_compat::import::import(content, game, &mut side, &save)
         }
         other => return Err(failed(format!("{other} has no save import"))),
     };
     for note in notes {
         crate::errors::log(&format!("importing a save of {game}"), &note);
     }
-    builds.take_version(content, &mut side, version).map_err(failed)?;
     let taken = builds.settle(content, &mut side);
     let reset = builds.as_built(content, &mut side);
     if !reset.is_empty() {
@@ -118,9 +118,8 @@ mod tests {
     use nettai_match::facts::Stated;
     use nettai_match::testing::{exe4_content, exe5_content, exe6_content};
 
-    /// A build of each version of EXE4 and EXE5 has the six souls that version's save can have (its compat
-    /// crate's soul flags, by its numbers of the forms): what the version sets is what an import of its save
-    /// gives.
+    /// A build from each version's group of EXE4 and EXE5 has the six souls that version's save can have (its
+    /// compat crate's soul flags, by its numbers of the forms): the forms whose own `version` is the group's.
     #[test]
     fn each_versions_souls_are_its_saves() {
         let souls = |content: &Content, game: &str, version: &str, number: &dyn Fn(&str) -> Option<u8>| {
@@ -146,9 +145,9 @@ mod tests {
         }
     }
 
-    /// A save of the build's game gives a build of its version, with all the version sets; one of another
-    /// game is refused. Its light/dark value takes the preset on its side of the game's line (100: dark), and
-    /// the import says so, typed.
+    /// A save of the build's game gives a build of what it holds (its souls, docs/design/versions.md §2.4); one
+    /// of another game is refused. Its light/dark value takes the preset on its side of the game's line (100:
+    /// dark), and the import says so, typed.
     #[test]
     fn a_save_gives_its_games_build() {
         let mut image = vec![0u8; exe5_compat::save::IMAGE_SIZE];
@@ -161,11 +160,8 @@ mod tests {
         let side = &imported.side;
         assert_eq!((side.facts.get(&five, "karma"), side.facts.get(&five, "hp")), (Some(Stated::Number(0)), Some(Stated::Number(997))));
         assert_eq!(imported.taken, [Taken { choice: "light_dark".into(), preset: "dark".into(), was: Some(100) }]);
-        // (A Team ProtoMan save with no souls: its team's six, as every build of the version.)
-        assert_eq!(builds.version_of(&five, side), Some("protoman"));
-        let souls = side.facts.get(&five, "souls").unwrap().defs();
-        let team: Vec<&str> = souls.iter().map(|&h| nettai_match::ids::local(&five.defs.form(nettai_content_api::FormHandle(h)).key)).collect();
-        assert_eq!(team, ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"]);
+        // (A Team ProtoMan save without Soul Unison: no souls.)
+        assert!(side.facts.get(&five, "souls").unwrap().defs().is_empty());
         // (Its folder is the save's, an empty one: what is wrong with it is the folder's to say.)
         let checked = Checked::of(&five, "exe5", side);
         assert!(checked.problems.iter().all(|p| p.field.as_deref() == Some("folder")), "{:?}", checked.problems);

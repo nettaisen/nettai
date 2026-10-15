@@ -57,13 +57,11 @@ export struct DialogButton {
 }
 
 // A side's card on the screen before a battle: who (YOU, OPPONENT, DUMMY), their name, and what they bring (their
-// build's name, its version's tag in the version's own color: the app's `builds::version_tag`). An opponent's
-// online says their name alone.
+// build's name). An opponent's online says their name alone.
 export struct VersusCard {
     role: string,
     name: string,
     build: string,
-    version: VersionTag,
     navi: string,
     progress: float,
 }
@@ -198,9 +196,6 @@ export global Shell {
     // height, which scrolls where there are more.
     in property <bool> picker;
     in property <[string]> picker-options;
-    // A list of tags (the editor's versions): each choice's color, its text drawn as a tag in it; none, a plain
-    // list.
-    in property <[color]> picker-tones;
     in property <int> picker-chosen;
     // A menu of actions (Play's build menu, its ⋯): the choices are words of buttons, and those from
     // `picker-apart` on (-1: none) are set apart under a line, in the error color (DELETE).
@@ -835,21 +830,16 @@ export component Header inherits Rectangle {
     in property <string> back;
     in property <bool> logo;
     in property <bool> game: true;
-    // A tag after the title (a build's version), and a short state before the game ("✓ Ready to play", in green,
-    // or what is wrong, in the error red). On a phone the tag is at the header's right and the state is left out.
+    // A tag after the title (a ruleset's page's PRESET), and a short state before the game ("✓ Ready to play", in
+    // green, or what is wrong, in the error red). On a phone the tag is at the header's right and the state is left
+    // out.
     in property <VersionTag> tag;
-    // The tag opens a choice where it has a name (the editor's version, docs/design/app-ui.md §2.42, §2.44): a
-    // select in the focus order, the same tag with a small arrow down in it, the hover tint inside it; a click,
-    // a tap or Enter opens the versions as a list under it, Left and Right step it. Its touch (and the cursor's
-    // place) is the tag with room around it; on a phone 44 tall and as wide.
-    in property <string> tag-nav;
     in property <string> state;
     in property <bool> state-good;
     property <length> pad: Theme.margin;
     property <length> back-width: Theme.phone ? 32px : back-text.preferred-width + 37px;
     property <length> title-x: root.pad + root.back-width + (Theme.phone ? 27px : 31px);
     property <length> state-width: root.state == "" || Theme.phone ? 0px : 166px;
-    property <bool> switch: root.tag-nav != "" && root.tag.text != "" && !root.logo;
     property <length> tag-x: Theme.phone ? self.width - root.pad - tag-pill.width - (root.game ? game.width + 12px : 0px) : root.title-x + root.title-width + 16px;
     property <length> tag-width: tag-pill.width == 0 ? 0px : tag-pill.width + 16px;
     // The title's room: what the tag, the state and the game leave of the header.
@@ -953,34 +943,11 @@ export component Header inherits Rectangle {
         }
     }
 
-    // (The select's hover look: the hover tint inside the tag, as the other controls'.)
-    Rectangle {
-        x: root.tag-x;
-        y: (parent.height - tag-pill.height) / 2;
-        width: tag-pill.width;
-        height: tag-pill.height;
-        visible: root.switch;
-        background: tag-hit.pressed ? Theme.line : (tag-hit.has-hover ? Theme.tint : transparent);
-    }
-
     tag-pill := Pill {
         x: root.tag-x;
         text: root.logo ? "" : root.tag.text;
         tone: root.tag.tone;
-        caret: root.switch;
         opacity: arrive.t;
-    }
-
-    // (Its touch, and where the cursor's brackets go: the tag with 6 of room at each side and 4 over and under,
-    // the brackets 5 past that; on a phone 44 by at least 44, inside the header.)
-    tag-hit := Focusable {
-        x: min(parent.width - self.width, root.tag-x - (self.width - tag-pill.width) / 2);
-        y: (parent.height - self.height) / 2;
-        width: max(Theme.phone ? 44px : 0px, tag-pill.width + 12px);
-        height: Theme.phone ? 44px : 30px;
-        nav: root.tag-nav;
-        kind: NavKind.stepper;
-        enabled: root.switch;
     }
 
     Text {
@@ -1216,11 +1183,8 @@ export component Page inherits Rectangle {
     in property <string> back;
     in property <bool> logo;
     in property <bool> game: true;
-    // The header's tag after the title, and its state before the game (a build's version, and whether it is
-    // ready to play).
+    // The header's tag after the title, and its state before the game (whether a build is ready to play).
     in property <VersionTag> tag;
-    // The tag's name in the focus order where it is a switch (the editor's version); none, a plain tag.
-    in property <string> tag-nav;
     in property <string> state;
     in property <bool> state-good;
     in property <[Hint]> hints;
@@ -1234,7 +1198,6 @@ export component Page inherits Rectangle {
         logo: root.logo;
         game: root.game;
         tag: root.tag;
-        tag-nav: root.tag-nav;
         state: root.state;
         state-good: root.state-good;
     }
@@ -1428,13 +1391,10 @@ export component DialogLayer inherits DialogFrame {
     }
 }
 
-// A choice of a select's list: a row of the list, which is what is focused. In a list of tags, its text is a tag
-// in its color (`tagged`, `tone`).
+// A choice of a select's list: a row of the list, which is what is focused.
 component PickRow inherits Rectangle {
     in property <string> text;
     in property <int> nav-index;
-    in property <bool> tagged;
-    in property <color> tone;
     // A menu's action (`Shell.picker-menu`): a button's words; `danger`, set apart under a line, in the error
     // color; `apart`, the first of those, with the line over it.
     in property <bool> menu;
@@ -1459,19 +1419,12 @@ component PickRow inherits Rectangle {
     Value {
         x: 12px;
         width: parent.width - 24px;
-        visible: !root.tagged;
         text: root.text;
         color: root.danger ? Theme.bad : Theme.text;
         font-family: root.menu ? Theme.display : Theme.body;
         font-size: root.menu ? 13px : 14px;
         font-weight: root.menu ? Theme.display-semibold : 400;
         letter-spacing: root.menu ? Theme.button-tracking : 0px;
-    }
-
-    Pill {
-        x: 12px;
-        text: root.tagged ? root.text : "";
-        tone: root.tone;
     }
 
     touch := RowTouch {
@@ -1603,8 +1556,6 @@ export component PickerLayer inherits Rectangle {
                 y: self.at * list.pitch;
                 width: list.row-width;
                 text: Shell.picker-options[self.at];
-                tagged: Shell.picker-tones.length > 0;
-                tone: Shell.picker-tones[self.at];
                 menu: Shell.picker-menu;
                 danger: Shell.picker-menu && Shell.picker-apart >= 0 && self.at >= Shell.picker-apart;
                 apart: Shell.picker-menu && self.at == Shell.picker-apart && self.at > 0;

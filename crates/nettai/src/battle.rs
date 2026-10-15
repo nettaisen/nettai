@@ -711,6 +711,10 @@ mod tests {
             let keys = nettai_battle::input::keys::B * (b.stage.player.ticks() % 2 == 0) as u16;
             frame(&mut b, keys);
         }
+        // (A dimming chip the dummy used is let run out: START is asked for in the fight itself.)
+        while !fighting(&b) {
+            assert!(!frame(&mut b, 0) && b.stage.player.ticks() < 3000);
+        }
         // The player's own START asks for the menu: the host's, nothing of the game's paused.
         let fight = |b: &Battle| {
             let battle = b.stage.player.battle();

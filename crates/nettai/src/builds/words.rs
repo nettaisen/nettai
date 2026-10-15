@@ -7,15 +7,16 @@
 //! ([`Words::refusal`]: "Giga limit reached"), at the end of its library row.
 //!
 //! A problem's sentence says what it is about where the problem names a fact ([`part_of`]): "No navi
-//! chosen", "No version chosen", "Something in the patch cards is there twice", "This navi isn't EXE6's". A kind
+//! chosen", "No form chosen", "Something in the patch cards is there twice", "This navi isn't EXE6's". A kind
 //! alone ([`Words::wrong`], [`wrong`]) has the general sentence.
 
 use crate::builds::Kit;
 use crate::builds::auto::{Holds, LISTS_TABLE};
 use crate::games::Names;
 use nettai_battle::content::{ChipClass, PlayerFact};
-use nettai_content_api::ChipHandle;
+use nettai_content_api::{ChipHandle, Registry};
 use nettai_match::Wrong;
+use nettai_match::ruleset::Item;
 use nettai_match::build::{Checked, EntryRefusal, Extent};
 use nettai_match::check::Problem;
 use nettai_ui::{AppWindow, BuildPart, BuildWords, ChipKind, EditorTab};
@@ -33,20 +34,19 @@ pub fn kind(class: ChipClass) -> ChipKind {
 }
 
 /// The part of a build fact `field` is (a problem's, for its sentence): the navi, its level, the folder (and
-/// its Regular and tag chips), by their roles; the version, by the facts the game's versions set, and the forms
-/// a version brings (the engine's form list: EXE4's and EXE5's souls, EXE6's Crosses); else the editor's tab
-/// whose facts include it. None: no fact, or one with no part a player knows by a word.
-pub fn part_of(content: &nettai_battle::Content, builds: &nettai_match::build::Builds, field: Option<&str>) -> BuildPart {
+/// its Regular and tag chips), by their roles; the forms, by the facts of forms a build chooses (EXE6's Cybeast
+/// and Crosses, EXE4's and EXE5's souls); else the editor's tab whose facts include it. None: no fact, or one with
+/// no part a player knows by a word.
+pub fn part_of(content: &nettai_battle::Content, _builds: &nettai_match::build::Builds, field: Option<&str>) -> BuildPart {
     let Some(field) = field else { return BuildPart::None };
     match nettai_match::facts::role_of(content, field) {
         Some(PlayerFact::Navi) => return BuildPart::Navi,
         Some(PlayerFact::Level) => return BuildPart::Level,
         Some(PlayerFact::Folder | PlayerFact::RegularChip | PlayerFact::TagChips) => return BuildPart::Folder,
-        Some(PlayerFact::FormList) => return BuildPart::Version,
         _ => {}
     }
-    if builds.versions.iter().any(|v| v.sets(field)) {
-        return BuildPart::Version;
+    if nettai_match::facts::form_facts(content).iter().any(|f| f.name == field) {
+        return BuildPart::Forms;
     }
     match crate::screens::builds::editor::tab_of(content, field) {
         Some(EditorTab::Navicust) => BuildPart::Navicust,
@@ -70,11 +70,14 @@ impl Words<'_> {
         self.ui.global::<BuildWords>()
     }
 
-    /// The versions whose saves hold `chip`, by name ("Gregar"; two as "Gregar, Falzar"); none: every
-    /// version's, or the rules don't say whose.
-    fn holders(&self, chip: ChipHandle) -> Option<String> {
-        let ids = self.kit.versions_of(chip).filter(|ids| !ids.is_empty())?;
-        Some(ids.iter().map(|id| self.kit.version_name(self.names, id)).collect::<Vec<_>>().join(", "))
+    /// Item `item` of `registry` (a ruleset's: a definition, or a card's variant) by name: a variant after its
+    /// definition's, its version's name ("Bass-Cross MegaMan (Gregar)").
+    fn item(&self, registry: Registry, item: &Item) -> String {
+        let name = self.names.def(registry, item.def);
+        match &item.variant {
+            Some(v) => self.say().invoke_card_variant(name.into(), self.kit.version_name(self.names, v).into()).into(),
+            None => name,
+        }
     }
 
     /// What is wrong, as a build's problem: its kind's sentence with its numbers, about the part of the build
@@ -116,10 +119,6 @@ impl Words<'_> {
             // (A chip the auto battle data can't hold is one its navi can't play.)
             Wrong::ChipNotAllowed { chip: c } if part == BuildPart::AutoBattle => say.invoke_chip_not_playable(chip(c)),
             Wrong::ChipNotAllowed { chip: c } => say.invoke_chip_not_allowed(chip(c)),
-            Wrong::ChipOfAnotherVersion { chip: c } => match self.holders(*c) {
-                Some(version) => say.invoke_chip_only(chip(c), version.into()),
-                None => say.invoke_chip_other_version(chip(c)),
-            },
             Wrong::ChipCode { chip: c, code } => say.invoke_chip_code(chip(c), code.letter().to_string().into()),
             Wrong::Copies { chip: c, count } => say.invoke_copies(chip(c), n(count.used), n(count.limit)),
             Wrong::Class { class, count } => say.invoke_class_over(kind(*class), n(count.used), n(count.limit)),
@@ -140,14 +139,14 @@ impl Words<'_> {
                 let slot = self.kit.builds.slots.as_ref().and_then(|s| s.name(*own as usize)).map(str::to_string);
                 say.invoke_wrong_slot(self.names.entry(*entry).into(), slot.unwrap_or_else(|| (own + 1).to_string()).into())
             }
-            Wrong::NotAllowed { registry, def } => say.invoke_not_allowed(self.names.def(*registry, *def).into()),
+            Wrong::NotAllowed { registry, item } => say.invoke_not_allowed(self.item(*registry, item).into()),
             Wrong::Mixed { groups, items } => {
                 let name = |id: &String| self.kit.version_name(self.names, id);
                 let versions = match groups.as_slice() {
                     [a, b] => say.invoke_and_of(name(a).into(), name(b).into()).to_string(),
                     many => many.iter().map(name).collect::<Vec<_>>().join(", "),
                 };
-                let things: Vec<String> = items.iter().map(|&(registry, h)| self.names.def(registry, h)).collect();
+                let things: Vec<String> = items.iter().map(|(registry, item)| self.item(*registry, item)).collect();
                 say.invoke_mixed(versions.into(), things.join(", ").into())
             }
             Wrong::Internal => say.invoke_internal(),
@@ -157,13 +156,9 @@ impl Words<'_> {
 
     /// Why a chip can't go into the folder now (`nettai_match::folders::View::refusal`), for the end of its
     /// library row.
-    pub fn refusal(&self, chip: ChipHandle, wrong: &Wrong) -> String {
+    pub fn refusal(&self, _chip: ChipHandle, wrong: &Wrong) -> String {
         let say = self.say();
         let said = match wrong {
-            Wrong::ChipOfAnotherVersion { .. } => match self.holders(chip) {
-                Some(version) => say.invoke_only(version.into()),
-                None => say.invoke_other_version(),
-            },
             Wrong::FolderSize(_) => say.invoke_folder_full(),
             Wrong::Copies { count, .. } => say.invoke_copies_at_most(count.limit as i32),
             Wrong::Class { class, .. } => say.invoke_class_limit(kind(*class)),
@@ -265,10 +260,10 @@ mod tests {
     use nettai_ui::BuildPart;
 
     /// A problem that names its fact is about the part of the build the fact is, which its sentence says
-    /// (the catalog's `BuildWords`: "No navi chosen", "No version chosen", "Something in the patch cards is
-    /// there twice"). A side with no navi is the navi's problem; a new side of EXE6, which states no version,
-    /// the version's; the folder's, the souls' and Crosses' (a version's), a link navi's level, the NaviCust's,
-    /// the patch cards' and the auto battle data's facts are theirs; a problem of no fact is of no part.
+    /// (the catalog's `BuildWords`: "No navi chosen", "No form chosen", "Something in the patch cards is there
+    /// twice"). A side with no navi is the navi's problem; a new side of EXE6, which states no Cybeast, the forms';
+    /// the folder's, the souls' and Crosses' (the forms'), a link navi's level, the NaviCust's, the patch cards' and
+    /// the auto battle data's facts are theirs; a problem of no fact is of no part.
     #[test]
     fn a_problem_is_about_its_part() {
         let six = exe6_content();
@@ -276,7 +271,7 @@ mod tests {
         let mut side = nettai_match::Side::fresh(&six, "exe6").unwrap();
         let first = |side: &nettai_match::Side| side_alone(&six, "exe6", side).into_iter().next().unwrap();
         let p = first(&side);
-        assert_eq!((&p.what, part_of(&six, &builds, p.field.as_deref())), (&Wrong::Unstated, BuildPart::Version), "{p:?}");
+        assert_eq!((&p.what, part_of(&six, &builds, p.field.as_deref())), (&Wrong::Unstated, BuildPart::Forms), "{p:?}");
         side.facts.reset(&six, six.defs.fact_name(PlayerFact::Navi).unwrap());
         let p = first(&side);
         assert_eq!((&p.what, part_of(&six, &builds, p.field.as_deref())), (&Wrong::Missing, BuildPart::Navi), "{p:?}");
@@ -284,13 +279,14 @@ mod tests {
             part_of(content, builds, Some(field))
         }
         assert_eq!(part(&six, &builds, "folder"), BuildPart::Folder);
-        assert_eq!(part(&six, &builds, "crosses"), BuildPart::Version);
+        assert_eq!(part(&six, &builds, "crosses"), BuildPart::Forms);
+        assert_eq!(part(&six, &builds, "cybeast"), BuildPart::Forms);
         assert_eq!(part(&six, &builds, "navicust_programs"), BuildPart::Navicust);
         assert_eq!(part(&six, &builds, "patch_cards"), BuildPart::PatchCards);
         assert_eq!(part_of(&six, &builds, None), BuildPart::None);
         for (content, game) in [(exe5_content(), "exe5"), (exe4_content(), "exe4")] {
             let builds = Builds::of(&content, game).unwrap();
-            assert_eq!(part(&content, &builds, "souls"), BuildPart::Version, "{game}");
+            assert_eq!(part(&content, &builds, "souls"), BuildPart::Forms, "{game}");
             assert_eq!(part(&content, &builds, "auto_battle_places"), BuildPart::AutoBattle, "{game}");
         }
         // (A link navi's level: EXE6's and EXE5's. EXE4 has none, and no such fact.)

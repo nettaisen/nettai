@@ -154,7 +154,6 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         name: name.into(),
         navi: names.navi(navi).into(),
         face,
-        version: kit.version_tag(names, side),
         stats: ModelRc::new(VecModel::from(stats)),
         lines: ModelRc::new(VecModel::from(lines)),
         abilities: abilities.join(", ").into(),

@@ -59,9 +59,6 @@ const CHOOSE_SOURCE: &str = "source.choose";
 /// The most rows a select's list shows at once (`Shell::pick`): more scroll. And a row's height, the theme's.
 const PICKER_ROWS: usize = 10;
 const PICKER_ROW: f32 = 44.0;
-/// The least width of a list of tags (`Shell::pick_tags`): the longest version's tag in the longest language
-/// with the row's room at each side.
-const TAG_LIST: f32 = 168.0;
 /// The width of a menu of actions (`Shell::pick_menu`): its longest words in the longest language, with a row's
 /// room at each side.
 const MENU_WIDTH: f32 = 200.0;
@@ -87,7 +84,6 @@ const GRID_CELL_KEY: &str = "pick.grid.cell";
 /// some) are set apart in the error color, or a grid of the choices' pictures.
 enum Look {
     Select,
-    Tags(Vec<slint::Color>),
     Menu { apart: Option<usize> },
     Grid(ModelRc<slint::Image>),
 }
@@ -633,14 +629,6 @@ impl Shell {
         self.open_picker(Key::new(id, index), at, options, Look::Menu { apart }, -1);
     }
 
-    /// Open a list of tags by a tag that opens a choice (the editor's version), as [`Shell::pick`] does a
-    /// select's: each choice its text as a tag in its color. The list is at least [`TAG_LIST`] wide, the tag
-    /// it opens from being narrower than its choices may be.
-    pub fn pick_tags(&mut self, id: &str, index: i32, tags: Vec<nettai_ui::VersionTag>, chosen: usize) {
-        let (options, tones) = tags.into_iter().map(|tag| (tag.text.to_string(), tag.tone)).unzip();
-        self.open_picker(Key::new(id, index), &Key::new(id, index), options, Look::Tags(tones), chosen as i32);
-    }
-
     /// Open a select's choices as a grid of their pictures by it (Practice's Arena and Background; on a phone, a
     /// sheet from the bottom), as [`Shell::pick`] opens a list: each choice its picture (`pictures`, which may
     /// fill in as they are drawn) over its name, five to a row (a phone's three), as many rows shown as there
@@ -671,7 +659,6 @@ impl Shell {
         let y = if under { by.bottom() + 4.0 } else { by.y - 4.0 - height };
         let (width, x) = match &look {
             Look::Select => (by.w, by.x),
-            Look::Tags(_) => (by.w.max(TAG_LIST), by.x),
             Look::Menu { .. } => (MENU_WIDTH, by.right() - MENU_WIDTH),
             Look::Grid(_) => (grid.map_or(0.0, |g| g.width()), by.x),
         };
@@ -690,10 +677,6 @@ impl Shell {
             Look::Menu { apart: Some(apart) } => *apart as i32,
             _ => -1,
         });
-        shell.set_picker_tones(ModelRc::new(VecModel::from(match look {
-            Look::Tags(tones) => tones,
-            _ => Vec::new(),
-        })));
         shell.set_picker_chosen(chosen);
         // (Inside the window, a list wider than what it opens from.)
         shell.set_picker_x(x.min(window.width - width - 8.0).max(0.0));

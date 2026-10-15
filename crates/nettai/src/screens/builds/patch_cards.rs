@@ -21,6 +21,11 @@
 //! (`ListEdit::Insert`; one that is in already moves there), refused as a click's is. In a game whose cards go in
 //! slots each card's slot is its own: a slot's card dragged goes back to its slot anywhere but onto the library, which
 //! empties the slot, and a library's card let go anywhere over the slots goes in its own, as a click puts it.
+//!
+//! **A card with variants** (one each version's ROM gives effects of its own: Bass-Cross MegaMan, docs/design/versions.md
+//! §2.1) is in the library once for each, as a NaviCust program is once for each of its colors: its name with the
+//! variant's (the group's), its lines that variant's. Putting one in chooses it for the card; the card is in the
+//! build once, so putting the other in while one is chooses the other in its place.
 
 use crate::builds::cards::{self, Line};
 use crate::builds::edit::{self, ListEdit};
@@ -57,6 +62,22 @@ enum Sort {
 }
 const SORTS: [Sort; 3] = [Sort::Number, Sort::Name, Sort::Cost];
 
+/// A card as a row shows it: the card, and its variant where it has them (a version's id).
+type Card = (EntryHandle, Option<String>);
+
+/// Choose `variant` for card `h` in the side's list (none: it has none to choose): whether it took.
+fn with_variant(content: &Content, side: &mut nettai_match::Side, h: EntryHandle, variant: Option<&str>) -> bool {
+    let Some(v) = variant else { return true };
+    let Some(Stated::List(items)) = side.facts.get(content, FIELD) else { return false };
+    let Some(i) = items.iter().position(|x| x.defs().first() == Some(&h.0)) else { return false };
+    edit::variant(content, side, FIELD, i, Some(v))
+}
+
+/// Card `card` as a ruleset holds it back.
+fn item((h, variant): &Card) -> nettai_match::ruleset::Item {
+    nettai_match::ruleset::Item { def: h.0, variant: variant.clone() }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum Described {
     Installed(usize),
@@ -68,8 +89,8 @@ pub struct PatchCards {
     /// The collection the cards are of, and its cards in the library's order.
     collection: String,
     cards: Vec<EntryHandle>,
-    /// The library's rows, as sorted and searched.
-    rows: Vec<EntryHandle>,
+    /// The library's rows, as sorted and searched: each card, in each of its variants.
+    rows: Vec<Card>,
     /// The build's row the cursor was last on (in a game with slots, the slot).
     slot: usize,
     in_library: bool,
@@ -145,15 +166,19 @@ impl PatchCards {
         draft.kit.builds.slots.as_ref().is_some_and(|s| s.field == FIELD)
     }
 
-    /// What the build holds: its cards in order and, while the list has room, an empty row after them; in a game
-    /// with slots, what each slot holds.
-    fn installed(draft: &Draft) -> Vec<Option<EntryHandle>> {
+    /// What the build holds: its cards in order, each with its variant, and, while the list has room, an empty row
+    /// after them; in a game with slots, what each slot holds.
+    fn installed(draft: &Draft) -> Vec<Option<Card>> {
         let content = draft.content();
         if let Some(slots) = draft.kit.builds.slots.as_ref().filter(|s| s.field == FIELD) {
-            return slots.held(content, draft.side());
+            return slots.held(content, draft.side()).into_iter().map(|h| h.map(|h| (h, None))).collect();
         }
-        let mut out: Vec<Option<EntryHandle>> = match draft.side().facts.get(content, FIELD) {
-            Some(Stated::List(items)) => items.iter().filter_map(|i| i.defs().first().map(|&h| Some(EntryHandle(h)))).collect(),
+        let variant = |i: &Stated| match i {
+            Stated::Record(fields) => fields.iter().find(|(n, _)| n == nettai_match::ruleset::VARIANT).and_then(|(_, v)| if let Stated::Variant(v) = v { v.clone() } else { None }),
+            _ => None,
+        };
+        let mut out: Vec<Option<Card>> = match draft.side().facts.get(content, FIELD) {
+            Some(Stated::List(items)) => items.iter().filter_map(|i| i.defs().first().map(|&h| Some((EntryHandle(h), variant(i))))).collect(),
             _ => Vec::new(),
         };
         if out.len() < room_of(content, FIELD) {
@@ -173,8 +198,8 @@ impl PatchCards {
         let content = draft.content();
         let slots = draft.kit.builds.slots.clone();
         let wanted = self.search.to_lowercase();
-        let rows: Vec<EntryHandle> = draft.with_words(shell, |words| {
-            let mut found: Vec<(String, u32, EntryHandle)> = self
+        let rows: Vec<Card> = draft.with_words(shell, |words| {
+            let mut found: Vec<(String, u32, Card)> = self
                 .cards
                 .iter()
                 .filter_map(|&h| {
@@ -185,9 +210,13 @@ impl PatchCards {
                             (_, Some(b)) => b.cost_of(content, h),
                             _ => 0,
                         };
-                        (name, cost, h)
+                        // (Each of its variants, in their order; a card without, itself.)
+                        let variants = nettai_match::ruleset::variants_of(content, Registry::Entry, h.0);
+                        let variants: Vec<Option<String>> = if variants.is_empty() { vec![None] } else { variants.into_iter().map(Some).collect() };
+                        variants.into_iter().map(move |v| (name.clone(), cost, (h, v))).collect::<Vec<_>>()
                     })
                 })
+                .flatten()
                 .collect();
             // (The library's order is the cards' numbers': a sort by name or cost keeps it among equals.)
             match SORTS[self.sort.min(SORTS.len() - 1)] {
@@ -203,27 +232,37 @@ impl PatchCards {
         self.rows = rows;
     }
 
+    /// A card's name as a row and the strip show it: with its variant's, the group's name, where it has one.
+    fn name_of(shell: &Shell, words: &crate::builds::words::Words, (h, variant): &Card) -> slint::SharedString {
+        let name = words.names.entry(*h);
+        match variant {
+            Some(v) => shell.ui().global::<BuildWords>().invoke_card_variant(name.into(), words.kit.version_name(words.names, v).into()),
+            None => name.into(),
+        }
+    }
+
     /// A card as a row shows it (none: an empty row or slot).
-    fn row_of(&self, shell: &Shell, draft: &Draft, card: Option<EntryHandle>, slot: Option<usize>, budget: Option<&Budget>) -> CardRow {
+    fn row_of(&self, shell: &Shell, draft: &Draft, card: Option<&Card>, slot: Option<usize>, budget: Option<&Budget>) -> CardRow {
         let content = draft.content();
         let slots = draft.kit.builds.slots.as_ref().filter(|s| s.field == FIELD);
         let slot_name = |n: usize| slots.and_then(|s| s.name(n)).unwrap_or_default().to_string();
         let ui = shell.ui();
         let say = ui.global::<BuildWords>();
-        let Some(h) = card else { return CardRow { slot: slot.map(slot_name).unwrap_or_default().into(), ..Default::default() } };
+        let Some(card) = card else { return CardRow { slot: slot.map(slot_name).unwrap_or_default().into(), ..Default::default() } };
+        let h = card.0;
         draft.with_words(shell, |words| {
             let named = cards::named_by(words.kit);
-            let lines = cards::lines(words.names, h, draft.version(), &named).unwrap_or_default();
+            let lines = cards::lines(words.names, h, card.1.as_deref(), &named).unwrap_or_default();
             let own = slots.and_then(|s| s.own(content, h));
             CardRow {
                 there: true,
                 number: self.number(draft, h).into(),
-                name: words.names.entry(h).into(),
+                name: PatchCards::name_of(shell, words, card),
                 megabytes: budget.map(|b| say.invoke_megabytes(b.cost_of(content, h) as i32)).unwrap_or_default(),
                 slot: slot.or(own).map(slot_name).unwrap_or_default().into(),
                 lines: ModelRc::new(VecModel::from(row_lines(&lines))),
                 // (One the ruleset the player plays by doesn't allow: its name in the error red.)
-                bad: !draft.allows(FIELD, h.0),
+                bad: !draft.allows_item(FIELD, &item(card)),
                 ..Default::default()
             }
         })
@@ -233,7 +272,7 @@ impl PatchCards {
     fn show_installed(&self, shell: &Shell, draft: &mut Draft, budget: Option<&Budget>) {
         let installed = PatchCards::installed(draft);
         let slotted = PatchCards::slotted(draft);
-        let rows: Vec<CardRow> = installed.iter().enumerate().map(|(i, &c)| self.row_of(shell, draft, c, slotted.then_some(i), budget)).collect();
+        let rows: Vec<CardRow> = installed.iter().enumerate().map(|(i, c)| self.row_of(shell, draft, c.as_ref(), slotted.then_some(i), budget)).collect();
         let ui = shell.ui();
         let view = ui.global::<PatchCardsView>();
         let cards = installed.iter().flatten().count() as i32;
@@ -282,22 +321,26 @@ impl PatchCards {
     fn show_library(&self, shell: &Shell, draft: &Draft, budget: Option<&Budget>) {
         let content = draft.content();
         let slots = draft.kit.builds.slots.as_ref().filter(|s| s.field == FIELD);
-        let held: Vec<Option<EntryHandle>> = PatchCards::installed(draft);
+        let held: Vec<Option<Card>> = PatchCards::installed(draft);
         let rows: Vec<CardRow> = self
             .rows
             .iter()
-            .map(|&h| {
-                let mut row = self.row_of(shell, draft, Some(h), None, budget);
+            .map(|card| {
+                let h = card.0;
+                let mut row = self.row_of(shell, draft, Some(card), None, budget);
+                let is_in = held.contains(&Some(card.clone()));
+                // (Its card in, of another variant: putting this one in chooses it, nothing refuses it.)
+                let other = !is_in && held.iter().flatten().any(|c| c.0 == h);
                 // (A card that is in says so, and isn't greyed: Enter takes it out again. In a game with slots a
                 // card goes in its own slot whatever it holds: no card is refused.)
                 // (One the ruleset the player plays by doesn't allow says so, in the error red, whether it is in or not.)
-                if !draft.allows(FIELD, h.0) {
+                if !draft.allows_item(FIELD, &item(card)) {
                     row.note = shell.ui().global::<BuildWords>().invoke_not_allowed_here();
-                    row.refused = !held.contains(&Some(h));
+                    row.refused = !is_in;
                     row.bad = true;
-                } else if held.contains(&Some(h)) {
+                } else if is_in {
                     row.note = shell.ui().global::<BuildWords>().invoke_installed();
-                } else if slots.is_some() {
+                } else if slots.is_some() || other {
                 } else if let Some(refusal) = budget.and_then(|b| b.refusal(content, draft.side(), h)) {
                     row.note = draft.with_words(shell, |w| w.entry_refusal(refusal)).into();
                     row.refused = true;
@@ -320,8 +363,8 @@ impl PatchCards {
     /// out again).
     fn on_installed(&self, shell: &Shell, draft: &Draft) -> Option<(usize, usize)> {
         let row = shell.nav.focused().filter(|k| k.id == "lib.rows").map(|k| k.index.max(0) as usize)?;
-        let h = *self.rows.get(row)?;
-        PatchCards::installed(draft).iter().position(|c| *c == Some(h)).map(|i| (row, i))
+        let card = self.rows.get(row)?.clone();
+        PatchCards::installed(draft).iter().position(|c| *c == Some(card.clone())).map(|i| (row, i))
     }
 
     /// The strip: the card under the cursor, the build's or the library's.
@@ -333,15 +376,15 @@ impl PatchCards {
         let view = ui.global::<PatchCardsView>();
         let say = ui.global::<BuildWords>();
         let (card, at) = match self.described {
-            Some(Described::Installed(i)) => (installed.get(i).copied().flatten(), Some(i)),
-            Some(Described::Row(r)) => (self.rows.get(r).copied(), None),
+            Some(Described::Installed(i)) => (installed.get(i).cloned().flatten(), Some(i)),
+            Some(Described::Row(r)) => (self.rows.get(r).cloned(), None),
             None => (None, None),
         };
         let detail = draft.with_words(shell, |words| {
             // Why it can't go in (the library's), or what the rules have against it (the build's: its place in the
             // list's records, from 1, as the rules count).
-            let problem = match (card, at) {
-                (Some(h), None) if slots.is_none() => budget.and_then(|b| b.refusal(content, draft.side(), h)).filter(|r| matches!(r, EntryRefusal::Needs { .. })).map(|r| words.entry_refusal(r)),
+            let problem = match (&card, at) {
+                (Some((h, _)), None) if slots.is_none() => budget.and_then(|b| b.refusal(content, draft.side(), *h)).filter(|r| matches!(r, EntryRefusal::Needs { .. })).map(|r| words.entry_refusal(r)),
                 (Some(_), Some(i)) => {
                     let place = installed[..i].iter().flatten().count() + 1;
                     draft.checked.problems.iter().find(|p| p.field.as_deref() == Some(FIELD) && p.entry == Some(place)).map(|p| words.problem(p))
@@ -349,9 +392,10 @@ impl PatchCards {
                 _ => None,
             };
             let problem = self.notice.clone().or(problem).unwrap_or_default();
-            let Some(h) = card else { return CardDetail { problem: problem.into(), ..Default::default() } };
+            let Some(card) = card else { return CardDetail { problem: problem.into(), ..Default::default() } };
+            let h = card.0;
             let named = cards::named_by(words.kit);
-            let lines = cards::lines(words.names, h, draft.version(), &named).unwrap_or_default();
+            let lines = cards::lines(words.names, h, card.1.as_deref(), &named).unwrap_or_default();
             // The two groups: the card screen's, by the lines' groups in their order; a game whose cards have none,
             // what it does and the bugs it adds to or clears.
             let groups: Vec<Option<String>> = lines.iter().map(|l| l.group.clone()).fold(Vec::new(), |mut g, x| {
@@ -380,7 +424,7 @@ impl PatchCards {
             CardDetail {
                 there: true,
                 number: self.number(draft, h).into(),
-                name: words.names.entry(h).into(),
+                name: PatchCards::name_of(shell, words, &card),
                 facts: facts.join(" · ").into(),
                 problem: problem.into(),
                 first_title: titles.0.into(),
@@ -409,16 +453,28 @@ impl PatchCards {
     }
 
     /// Put row `row`'s card in: at the end of the list, or in its own slot in place of what that slot held; one
-    /// already in is taken out again (it flies back to its row). A card the list can't take isn't put in: its row
-    /// shakes, and the strip says why.
+    /// already in is taken out again (it flies back to its row), and one in of another variant is this one now. A
+    /// card the list can't take isn't put in: its row shakes, and the strip says why.
     fn put(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
-        let Some(&h) = self.rows.get(row) else { return };
-        if let Some(i) = PatchCards::installed(draft).iter().position(|c| *c == Some(h)) {
+        let Some(card) = self.rows.get(row).cloned() else { return };
+        let h = card.0;
+        let installed = PatchCards::installed(draft);
+        if let Some(i) = installed.iter().position(|c| *c == Some(card.clone())) {
             let name = draft.with_words(shell, |w| w.names.entry(h));
             shell.fly(("card", i as i32), ("lib.rows", row as i32), slint::Image::default(), &name);
             return self.remove(shell, draft, i);
         }
-        if self.refuse(shell, draft, row, h) {
+        if let Some(i) = installed.iter().position(|c| c.as_ref().is_some_and(|c| c.0 == h)) {
+            if !draft.allows_item(FIELD, &item(&card)) {
+                self.refuse(shell, draft, row, &card);
+                return;
+            }
+            if draft.edit(|content, side| edit::variant(content, side, FIELD, i, card.1.as_deref())) {
+                self.land(shell, draft, row, h, i);
+            }
+            return;
+        }
+        if self.refuse(shell, draft, row, &card) {
             return;
         }
         let slots = draft.kit.builds.slots.clone().filter(|s| s.field == FIELD);
@@ -434,23 +490,24 @@ impl PatchCards {
                     false
                 }
             },
-            None => edit::list(content, side, FIELD, ListEdit::Add(h.0)),
+            None => edit::list(content, side, FIELD, ListEdit::Add(h.0)) && with_variant(content, side, h, card.1.as_deref()),
         });
         if !changed {
             return shell.sound.play(Cue::Refused);
         }
-        let landed = into.unwrap_or_else(|| PatchCards::installed(draft).iter().position(|c| *c == Some(h)).unwrap_or(0));
+        let landed = into.unwrap_or_else(|| PatchCards::installed(draft).iter().position(|c| c.as_ref().is_some_and(|c| c.0 == h)).unwrap_or(0));
         self.land(shell, draft, row, h, landed);
     }
 
     /// Whether the list can't take row `row`'s card `h` (its MB, or no room): if so its row shakes, and the strip says
     /// why. (In a game with slots a card goes in its own slot, whatever it holds: none is refused.)
-    fn refuse(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, h: EntryHandle) -> bool {
+    fn refuse(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, card: &Card) -> bool {
+        let h = card.0;
         let budget = PatchCards::budget(draft);
         let refusal = (!PatchCards::slotted(draft)).then(|| budget.as_ref().and_then(|b| b.refusal(draft.content(), draft.side(), h))).flatten();
         let room = PatchCards::slotted(draft) || PatchCards::installed(draft).iter().flatten().count() < room_of(draft.content(), FIELD);
         // (A card the ruleset the player plays by doesn't allow doesn't go in either: the strip says so.)
-        let allowed = draft.allows(FIELD, h.0);
+        let allowed = draft.allows_item(FIELD, &item(card));
         if refusal.is_none() && room && allowed {
             return false;
         }
@@ -488,9 +545,10 @@ impl PatchCards {
     /// that is in already moves there), refused as a click's is; in a game with slots, in its own slot, as a click puts
     /// it (one that is in already stays).
     fn insert(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, at: usize) {
-        let Some(&h) = self.rows.get(row) else { return };
+        let Some(card) = self.rows.get(row).cloned() else { return };
+        let h = card.0;
         let installed = PatchCards::installed(draft);
-        let held = installed.iter().position(|c| *c == Some(h));
+        let held = installed.iter().position(|c| c.as_ref().is_some_and(|c| c.0 == h));
         if PatchCards::slotted(draft) {
             if held.is_none() {
                 self.put(shell, draft, row);
@@ -499,16 +557,24 @@ impl PatchCards {
         }
         let at = at.min(installed.iter().flatten().count());
         if let Some(i) = held {
+            // (Of another variant: this one is chosen first.)
+            if installed[i].as_ref() != Some(&card) {
+                if !draft.allows_item(FIELD, &item(&card)) {
+                    self.refuse(shell, draft, row, &card);
+                    return;
+                }
+                draft.edit(|content, side| edit::variant(content, side, FIELD, i, card.1.as_deref()));
+            }
             let to = if at > i { at - 1 } else { at };
-            if to != i && self.move_card(shell, draft, i, to) {
+            if to == i || self.move_card(shell, draft, i, to) {
                 self.land(shell, draft, row, h, to);
             }
             return;
         }
-        if self.refuse(shell, draft, row, h) {
+        if self.refuse(shell, draft, row, &card) {
             return;
         }
-        if !draft.edit(|content, side| edit::list(content, side, FIELD, ListEdit::Insert(at, h.0))) {
+        if !draft.edit(|content, side| edit::list(content, side, FIELD, ListEdit::Insert(at, h.0)) && with_variant(content, side, h, card.1.as_deref())) {
             return shell.sound.play(Cue::Refused);
         }
         self.land(shell, draft, row, h, at);
@@ -517,7 +583,7 @@ impl PatchCards {
     /// Take the build's card in row `i` out (in a game with slots, empty the slot).
     fn remove(&mut self, shell: &mut Shell, draft: &mut Draft, i: usize) {
         let installed = PatchCards::installed(draft);
-        if installed.get(i).copied().flatten().is_none() {
+        if installed.get(i).cloned().flatten().is_none() {
             return shell.sound.play(Cue::Refused);
         }
         let slots = draft.kit.builds.slots.clone().filter(|s| s.field == FIELD);
@@ -573,7 +639,7 @@ impl PatchCards {
         let to = editor::list_row(shell, "card", editor::pointer_at(at), installed.len())?;
         let slots = draft.kit.builds.slots.as_ref().filter(|s| s.field == FIELD);
         match slots {
-            Some(s) => s.own(draft.content(), *self.rows.get(row)?).map(|own| (own, true)),
+            Some(s) => s.own(draft.content(), self.rows.get(row)?.0).map(|own| (own, true)),
             None => Some((to.min(installed.iter().flatten().count()), false)),
         }
     }

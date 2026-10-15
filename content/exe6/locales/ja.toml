@@ -772,7 +772,7 @@ language = "ja"
 
 # A build's versions, by name (rules/builds): the Japanese games' own words.
 [builds]
-"versions" = "クロスとギガクラスチップが決まります。"
+"versions" = "そのバージョンのクロスと電脳獣から始まります。"
 "version.gregar" = "グレイガ"
 "version.falzar" = "ファルザー"
 

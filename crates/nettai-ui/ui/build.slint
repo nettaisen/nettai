@@ -1,5 +1,6 @@
 // What any screen shows of a build (docs/design/app-ui.md §6, "The build overview"; docs/app.md §8): a version's
-// tag, a chip's row, a build's row in a list, and the build overview, which the Builds screen, the Play screen and
+// tag (a new build's starting group's: a build itself has none, docs/design/versions.md §3.3), a chip's row, a
+// build's row in a list, and the build overview, which the Builds screen, the Play screen and
 // each player's panel in a match all show. The app fills their models from a build (`crate::builds::overview`,
 // `crate::builds::shelf`); nothing here knows a game.
 //
@@ -9,7 +10,7 @@ import { Theme, Audit } from "theme.slint";
 import { Label, Pill, PanelBack, Mono, RowTouch } from "widgets.slint";
 
 // A version's tag: the version's name as the game's strings have it, in capitals, in the version's own color
-// (the game's builds data states both: `crate::builds::version_tag`). No text: no tag.
+// (the game's builds data's groups state both: `crate::builds::Kit::version_tags`). No text: no tag.
 export struct VersionTag {
     text: string,
     tone: color,
@@ -82,7 +83,6 @@ export struct BuildSheet {
     navi: string,
     // The face the round starts the navi with.
     face: image,
-    version: VersionTag,
     // HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory; then any of the game's rules' own
     // (EXE5's Soul time).
     stats: [StatLine],
@@ -97,14 +97,14 @@ export struct BuildSheet {
 }
 
 // A build in a list: its name, its navi and whether it is ready ("MegaMan · ready", or what is wrong, in the
-// error red), and its version's tag.
-// What part of a build a problem is about, by the fact it names (the app's `builds::words`): the navi, the
-// version (and the forms it brings), the navi's level, the folder, a tab's facts; none where the problem names
-// no fact, or one with no word of its own. A problem's sentence says what it is about by it.
+// error red).
+// What part of a build a problem is about, by the fact it names (the app's `builds::words`): the navi, its forms
+// (its souls, Crosses or Cybeast), the navi's level, the folder, a tab's facts; none where the problem names no
+// fact, or one with no word of its own. A problem's sentence says what it is about by it.
 export enum BuildPart {
     none,
     navi,
-    version,
+    forms,
     level,
     folder,
     navicust,
@@ -116,7 +116,6 @@ export struct BuildEntry {
     name: string,
     status: string,
     bad: bool,
-    version: VersionTag,
 }
 
 // What the builds' views say in words, for the app to ask (`crate::builds::words`): a typed problem's sentence
@@ -174,13 +173,12 @@ export global BuildWords {
     public pure function in-folder(n: int) -> string {
         return @tr("{} in folder", n);
     }
+    // ---- A card with variants (Bass-Cross MegaMan's, each version's: docs/design/versions.md §2.1), its variant's
+    // name after its own.
+    public pure function card-variant(card: string, variant: string) -> string {
+        return @tr("{} ({})", card, variant);
+    }
     // ---- Why a chip can't go into the folder now: the end of its library row.
-    public pure function only(version: string) -> string {
-        return @tr("{} only", version);
-    }
-    public pure function other-version() -> string {
-        return @tr("Another version's");
-    }
     public pure function folder-full() -> string {
         return @tr("Folder full");
     }
@@ -220,12 +218,6 @@ export global BuildWords {
     // strings have it ("Cannon can't be in the Mega list").
     public pure function chip-not-in-list(chip: string, list: string) -> string {
         return @tr("{} can't be in the {} list", chip, list);
-    }
-    public pure function chip-only(chip: string, version: string) -> string {
-        return @tr("{} is {} only", chip, version);
-    }
-    public pure function chip-other-version(chip: string) -> string {
-        return @tr("{} is another version's", chip);
     }
     public pure function chip-code(chip: string, code: string) -> string {
         return @tr("{} has no code {}", chip, code);
@@ -302,7 +294,7 @@ export global BuildWords {
         if part == BuildPart.level {
             return @tr("This navi has no level");
         }
-        if part == BuildPart.version {
+        if part == BuildPart.forms {
             return @tr("This navi doesn't change form");
         }
         if part-name(part) != "" {
@@ -314,8 +306,8 @@ export global BuildWords {
         if part == BuildPart.navi {
             return @tr("No navi chosen");
         }
-        if part == BuildPart.version {
-            return @tr("No version chosen");
+        if part == BuildPart.forms {
+            return @tr("No form chosen");
         }
         if part == BuildPart.level {
             return @tr("No level chosen");
@@ -351,8 +343,8 @@ export global BuildWords {
         if part == BuildPart.navi {
             return @tr("This navi isn't {}'s", game);
         }
-        if part == BuildPart.version {
-            return @tr("This version isn't {}'s", game);
+        if part == BuildPart.forms {
+            return @tr("A form isn't {}'s", game);
         }
         if part == BuildPart.folder {
             return @tr("A chip in the folder isn't {}'s", game);
@@ -366,8 +358,8 @@ export global BuildWords {
         if part == BuildPart.navi {
             return @tr("This navi can't be used");
         }
-        if part == BuildPart.version {
-            return @tr("This version can't be used");
+        if part == BuildPart.forms {
+            return @tr("This form can't be used");
         }
         if part == BuildPart.level {
             return @tr("This level can't be used");
@@ -487,7 +479,7 @@ export component ChipRow inherits Rectangle {
     }
 }
 
-// A build's row in a list, 52 tall: its name over its status, and its version's tag. The list is a `ListView`
+// A build's row in a list, 52 tall: its name over its status. The list is a `ListView`
 // (`row-height: 52px`), which marks the chosen row; a click on the row is the list's row `nav-index` of `nav`.
 // (Its touch is its own. It is in three lists, and smaller shared than copied into each: docs/app.md §14.)
 export component BuildRow inherits Rectangle {
@@ -504,7 +496,7 @@ export component BuildRow inherits Rectangle {
     Text {
         x: 12px;
         y: 8px;
-        width: parent.width - 24px - tag.width - (tag.width > 0 ? 12px : 0px);
+        width: parent.width - 24px;
         height: 20px;
         text: root.build.name;
         color: Theme.text;
@@ -518,7 +510,7 @@ export component BuildRow inherits Rectangle {
     Text {
         x: 12px;
         y: 28px;
-        width: parent.width - 24px - tag.width - (tag.width > 0 ? 12px : 0px);
+        width: parent.width - 24px;
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;
@@ -526,12 +518,6 @@ export component BuildRow inherits Rectangle {
         font-size: 12px;
         vertical-alignment: center;
         overflow: elide;
-    }
-
-    tag := Pill {
-        x: parent.width - 12px - self.width;
-        text: root.build.version.text;
-        tone: root.build.version.tone;
     }
 
     touch := RowTouch {
@@ -674,7 +660,7 @@ export component BuildOverview inherits Rectangle {
         side: root.side;
     }
 
-    // The face, the name over the navi, the version.
+    // The face, the name over the navi.
     Image {
         x: root.pad;
         y: root.pad + 12px;
@@ -687,16 +673,16 @@ export component BuildOverview inherits Rectangle {
     Label {
         x: root.pad;
         y: root.pad;
-        width: root.inner - tag.width - 12px;
+        width: root.inner;
         height: 14px;
         text: root.narrow ? root.build.label : "";
     }
 
-    // (On the wide sheet the version's tag follows the name, 12 after it; the narrow sheet has it at its right.)
+    // (The narrow sheet has the navi at its right.)
     name := Text {
         x: root.narrow ? root.pad : root.pad + 80px;
         y: root.narrow ? root.pad + (root.build.label == "" ? 8px : 16px) : root.pad + 6px;
-        width: root.narrow ? root.inner - tag.width - 12px - root.room - navi.width - 12px : min(self.preferred-width, root.inner - 80px - tag.width - 12px - root.room);
+        width: root.narrow ? root.inner - root.room - navi.width - 12px : min(self.preferred-width, root.inner - 80px - root.room);
         height: 26px;
         text: root.build.name;
         color: Theme.text;
@@ -708,7 +694,7 @@ export component BuildOverview inherits Rectangle {
     }
 
     navi := Text {
-        x: root.narrow ? root.width - root.pad - tag.width - 12px - self.width : root.pad + 80px;
+        x: root.narrow ? root.width - root.pad - root.room - self.width : root.pad + 80px;
         y: root.narrow ? root.pad + 11px : root.pad + 34px;
         width: root.narrow ? min(self.preferred-width, 120px) : root.inner - 80px - root.room;
         height: root.narrow ? 22px : 16px;
@@ -718,13 +704,6 @@ export component BuildOverview inherits Rectangle {
         font-size: 12px;
         vertical-alignment: center;
         overflow: elide;
-    }
-
-    tag := Pill {
-        x: root.narrow ? parent.width - root.pad - root.room - self.width : name.x + name.width + 12px;
-        y: root.narrow ? root.pad + 11px : name.y + (name.height - self.height) / 2;
-        text: root.build.version.text;
-        tone: root.build.version.tone;
     }
 
     // The stats: a column of eight; on the narrow sheet two of four; on a phone's a column again, the sheet wide. Any
