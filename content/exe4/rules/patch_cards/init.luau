@@ -114,7 +114,7 @@ function patch_cards.overview(side: number, out: SetupOverview)
     for _, c in rules.setup_of(side).patch_cards :: { { card: PatchCard, slot: number } } do
         for at, e in c.card.effects :: { PatchCardEffect } do
             if not NUMBERS[e.kind] then
-                local source: SetupAbility = { entry = c.card, effect = at }
+                local source: SetupSource = { entry = c.card, effect = at }
                 table.insert(out.abilities, source)
             end
         end

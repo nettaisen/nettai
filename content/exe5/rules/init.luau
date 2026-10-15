@@ -378,7 +378,7 @@ local rules: Rules = {
         folder_check = folder.check,
         folder_view = folder.view,
         -- What a tool shows of the side's setup that the rules alone know: what gives the navi its abilities, its
-        -- bugs, the patch cards' MB; and a Soul Unison's turns where they change them (./souls/custom).
+        -- bugs, the patch cards' MB; and a Soul Unison's turns, a stat of their own (./souls/custom).
         overview = function(side: number): SetupOverview?
             local out: SetupOverview = { abilities = {}, bugs = {}, lists = {} }
             navicust.overview(side, out)

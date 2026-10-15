@@ -544,7 +544,7 @@ local function overview(side: number, out: SetupOverview)
         if (at_work[i] or (not on_line[i] and p.program.plus)) then
             for _, e in p.program.effects or {} do
                 if not NUMBERS[e.kind] then
-                    local source: SetupAbility = { entry = p.program }
+                    local source: SetupSource = { entry = p.program }
                     table.insert(out.abilities, source)
                     break
                 end
