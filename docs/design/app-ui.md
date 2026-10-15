@@ -1118,6 +1118,24 @@ Each is settled unless the user changes it.
       pad's A) takes it; the footer's Choose says so. Chosen over a segmented pair: they are actions, not a state.
     (§6 Builds; docs/app.md §8.)
 
+70. **CLEAR** (2026-10-15). The user: "you should add clear for navicust/folder/patch cards/abd" (abd: auto battle).
+    - *Where:* one small word, CLEAR (クリア), in the ALL and NONE words' letters (§2.69; `WordButton`), at the right
+      end of a pane's header on each of the four tabs: the folder's (after the counts, its word where they would end;
+      the counts on their own line under the title and CLEAR where the language leaves the one line no room, as
+      before), the patch cards' (after the counts), PROGRAMS' title line (its word where the list's rows end) and the
+      auto battle places' (its title's line). A phone's: at the right end of the folder's and the cards' counts' box's
+      first line, of PROGRAMS' line and of the auto battle places' problem line. Nothing moves for it: it is on a line
+      that was there, the header's title or problem line cut short of it.
+    - *What it does:* empties that part of the build in one change: every folder entry, its Regular and tag marks
+      with it; every placed program (the board kept; a piece in hand dropped); every patch card (EXE4: every slot);
+      every auto battle place. The editor has no undo, so it asks first, as a build's DELETE does: "Clear the
+      folder?", "Clear the NaviCust?", "Clear the patch cards?", "Clear the auto battle data?", CANCEL (focused) and
+      CLEAR in the error red. Dim, and passed by, where the part holds nothing.
+    - *Keys:* a control the arrows reach (`clear`), Enter (the pad's A) takes it; X takes it from anywhere on the
+      tab (not while typing a search, nor with a NaviCust piece in hand), and the footer says "X Clear" (the pad
+      reaches it by the arrows: no button of its own).
+    (§6 Builds; docs/app.md §8.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1519,7 +1537,8 @@ DUPLICATE, RENAME and DELETE.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header its title and Chips 30/30, Mega, Giga, Reg and Tag memory (on a line under the title
-  where the language leaves them no room beside it; one past its limit in the error red); then the overview's own 2
+  where the language leaves them no room beside it; one past its limit in the error red) and CLEAR at its right end,
+  which empties every entry and its marks, asked first (X; §2.70); then the overview's own 2
   by 15 block (a phone's counts' box keeps its last line for what the game's rules have against the folder). Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
   a note, MB, attack, element, code), 15 showing. The pointer on an entry or a row shows its chip in the strip
   (§2.64). Enter on a slot goes to the library; Enter on a row puts it in
@@ -1540,7 +1559,8 @@ DUPLICATE, RENAME and DELETE.
   (the ruleset holds it back; it can be placed, and each placed copy is then red, §2.68); then at the row's right edge
   its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing and taking
   that color's part in hand; its name in the error red where a placed copy has a problem, which the strip's top right
-  says of the program it describes, §2.66; a phone's PROGRAMS' line); Effects and Bugs at
+  says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of PROGRAMS' line,
+  which takes every placed program off the board, asked first (X; §2.70); Effects and Bugs at
   the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
@@ -1560,7 +1580,8 @@ DUPLICATE, RENAME and DELETE.
   board puts it back where it was; a right click puts it away, or takes off the piece under the pointer.
 - **Patch cards** (§2.19, §2.20, §2.64): the folder's shape. EXE5 and EXE6: the installed cards in order in the
   framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header (a phone's
-  with what the game's rules have against the cards after them), and
+  with what the game's rules have against the cards after them) and CLEAR at its right end, which takes every card
+  out (EXE4: empties every slot), asked first (X; §2.70), and
   "Together", what they add up to, at its foot; the library's rows the same, with their note ("Not allowed" quietly
   where the ruleset holds the card back: it goes in, and is then red, §2.68); the strip across the
   top lays the card under the cursor (or the pointer) out: its lines in its two groups, Parameter then Ability, bug
@@ -1586,7 +1607,8 @@ DUPLICATE, RENAME and DELETE.
   on (EXE4: in its own slot, wherever over the slots), refused as a click is; elsewhere, nothing. On a phone, a tap
   opens the library's sheet (its REMOVE takes out) and a held touch drags, to reorder only; the sheet's rows aren't
   dragged.
-- **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
+- **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel, CLEAR at
+  its header's right end emptying every place, asked first (X; §2.70; a phone's at the right end of its problem line). The
   library offers what the place being filled can hold (§2.27): a Mega place the Mega chips, the Giga place the Giga
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
   folder can hold. A Program Advance has no picture and no element, and none is shown ("program advances don't

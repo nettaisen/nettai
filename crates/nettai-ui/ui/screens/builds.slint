@@ -50,6 +50,8 @@ export global BuildsView {
     in property <int> tab-way: 1;
     // ---- Words the app asks for.
     out property <[string]> tab-names: [@tr("NAVI"), @tr("FOLDER"), @tr("NAVICUST"), @tr("PATCH CARDS"), @tr("AUTO BATTLE")];
+    // A tab's CLEAR's dialog's button (docs/design/app-ui.md §2.70).
+    out property <string> clear-word: @tr("CLEAR");
 }
 
 // The editor's body: the tab chosen, arriving from the way it was reached each time it changes. A tab is here by

@@ -14,7 +14,8 @@
 //!
 //! **Enter on a place goes to the library** (on a phone, its sheet); **Enter on a chip puts it in the place and goes
 //! on to the next;** Enter (or Del, or a click) on the chip the place holds already takes it out again. Del empties
-//! the place. **The mouse:** a click on a place marks it (the focus stays on it); a right click empties it, as Del does
+//! the place. **CLEAR** at the right end of the places' header (or **X**; docs/design/app-ui.md §2.70) empties every
+//! place, as one change, asked first (`editor::ask_clear`). **The mouse:** a click on a place marks it (the focus stays on it); a right click empties it, as Del does
 //! (a right click on the library's chip the place holds, too). A place's chip dragged to another place of its list
 //! moves there, the places between shifting toward where it was (`Edit::Move`); to a place of another list, the two
 //! trade what they hold (`Edit::Swap`), unless the rules refuse either there: then nothing changes, the place dragged
@@ -26,7 +27,7 @@
 
 use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds};
 use crate::builds::words::kind;
-use crate::input::Action;
+use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
@@ -449,6 +450,16 @@ impl AutoBattle {
         }
     }
 
+    /// CLEAR, answered: every place emptied, as one change (`Edit::Clear`). The cursor goes to the place being filled.
+    fn clear(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        self.notice = None;
+        if draft.edit(|content, side| auto::update(content, side, Edit::Clear)) {
+            shell.sound.play(Cue::Back);
+        }
+        self.changed(shell, draft);
+        shell.nav.focus("places.place", self.place as i32);
+    }
+
     /// The list place `place` is in (where the game lays out none, all are one).
     fn list_of(draft: &Draft, place: usize) -> Option<usize> {
         draft.kit.auto_layout().and_then(|l| l.lists.iter().position(|list| list.places().contains(&place)))
@@ -592,6 +603,10 @@ impl Tab for AutoBattle {
                 self.leave_library(shell);
             }
             "lib.close" => self.leave_library(shell),
+            "clear" => {
+                let empty = Data::of_side(draft.content(), draft.side()).entries() == 0;
+                editor::ask_clear(shell, view.get_clear_question(), empty);
+            }
             _ => {}
         }
     }
@@ -684,6 +699,15 @@ impl Tab for AutoBattle {
         }
     }
 
+    /// X, CLEAR.
+    fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
+        if editor::clear_key(shell, key) {
+            self.activate(shell, draft, "clear", 0);
+            return true;
+        }
+        false
+    }
+
     /// Delete empties the place.
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
         match (action, AutoBattle::focused_place(shell)) {
@@ -702,5 +726,11 @@ impl Tab for AutoBattle {
             return true;
         }
         false
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) {
+            self.clear(shell, draft);
+        }
     }
 }

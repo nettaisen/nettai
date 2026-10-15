@@ -1420,7 +1420,20 @@ more tabs past it fades.
 
 **The Folder tab's header** has the folder's counts beside its title where the language's words leave them the
 room, and on a line of their own under it where they don't (the header keeps its height; which it is depends
-on the language alone, and the pass is told if the counts don't fit even so).
+on the language alone, and the pass is told if the counts don't fit even so). CLEAR is at the title's line's right
+end, the counts ending before it on that line; its word counts in the room the one line needs.
+
+**CLEAR** (docs/design/app-ui.md §2.70): the Folder, NaviCust, Patch cards and Auto battle tabs each have one small
+word (`WordButton`, a control of its own, `clear`) at the right end of a pane's header: the folder's, the cards',
+PROGRAMS' title line, the places'; a phone's at the right end of the counts' box's first line, PROGRAMS' line, the
+places' problem line. `activate("clear", 0)`, or X on the tab (`editor::clear_key`: not on a text field, not a key
+the menus take; the NaviCust's with no piece in hand), asks first (`editor::ask_clear`: `Shell::ask`, the tag
+`editor::CLEAR`, the tab's `clear-question` and CANCEL focused, CLEAR in the error red), and is refused where the
+part holds nothing (the word is then dim and disabled: the folder's chips, the cards, `NavicustView.clearable`, the
+places filled). The answer is the tab's (`Tab::answered`, `editor::cleared`): one `Draft::edit` each, the folder
+`Folder::EMPTY` (its marks with it), the NaviCust `grid::Edit::Clear` (every placed piece; the piece in hand
+dropped; the board kept), the cards `edit::ListEdit::Clear` (EXE4's slots too, one list of records), the places
+`auto::Edit::Clear`; the cursor goes back to the tab's list.
 
 The five tabs are built. **Adding a tab** is its two files, `lang/ja/builds.po` and a few lines: its place in
 `EditorTab` and its `if` (builds.slint's `EditorBody`, whose one clock brings in whichever tab is chosen), its
