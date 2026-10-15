@@ -641,9 +641,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   opponent." under it), large, in fixed-width type, with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
   is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
   stands still; Practice owns its battle, starts its sets over and hears its menu; the usual practice menu but
-  for Music and EDIT, its choices lasting for the wait), with Play's rows at the top of the practice menu in
-  place of EXIT: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
-  menu, and CANCEL INVITE (STOP HOSTING), each heard as `Screen::answered` by the tag Play gave. The keys are
+  for Music and EDIT, its choices lasting for the wait), with no EXIT in its practice menu and, on a phone only (where
+  the session fills the window), Play's one row at its top, STOP PRACTICE, back to the waiting panel, heard as
+  `Screen::answered` by the tag Play gave; the code (the address) and cancelling are the panel's alone. The keys are
   the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc or Start
   opens the practice menu. The session ends when the other player comes (`practice::end`) or the wait is
   given up.
@@ -794,8 +794,7 @@ before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), 
 - an invite made, and joined by its code; a code no match has, refused by the server; a direct host joined at
   its address; the other player's invite joined by its code, typed in small letters;
 - the wait's practice session: started beside the invite (on a phone, by its button, filling the window), its
-  menu's COPY INVITE CODE, STOP PRACTICE (a phone) and CANCEL INVITE each chosen, and the session ended by the
-  other player coming;
+  menu (on a phone its STOP PRACTICE chosen), and the session ended by the other player coming;
 - the lobby's First to (stepped from 2 to 3, `play-lobby-first-to` and `-3`, a pair, then back to 1 for the
   match played), patch cards and closed builds changed by one player and taken by the other; the input
   delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
@@ -2703,9 +2702,9 @@ those EXIT, as wide as the two (on a phone, the three one over the other): back 
 and "change builds" should just be "exit"": CHANGE BUILDS became EXIT, and QUIT TO MENU went; since §2.57 there
 is no entry, and EXIT goes to Play. In Japanese EXIT is 終了, as a fighting game's training ends
 ("トレーニング終了"). Esc and the pad's Start and back button close the menu as RESUME does, as before; R, F5 and the pad's north
-button restart. A session another screen started (Play's, beside a waiting invite) has no EXIT: its own rows,
-COPY INVITE CODE and CANCEL INVITE (hosting directly, COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE
-between them), are its ways out, over RESUME and RESTART. The
+button restart. A session another screen started (Play's, beside a waiting invite) has no EXIT: the waiting
+panel beside it is the way out (on a phone, where it fills the window, the menu's STOP PRACTICE at the top goes
+back to the panel). The
 menu opens on RESUME every time (the user: "when opening the pause menu in training, focus should always default
 to the resume button"). The dummy's setup, the battle's options and the input display are
 the visit's (`practice::Visit`), as the place and the dummy's build are: each visit starts on their defaults
