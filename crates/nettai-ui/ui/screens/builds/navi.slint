@@ -483,10 +483,17 @@ export component NaviTab inherits Rectangle {
                 vertical-alignment: top;
             }
 
+            // (A line of the note's, unseen: the problem is centered on it, as the note's first line is.)
+            line := Note {
+                visible: false;
+                text: " ";
+            }
+
             ProblemNote {
                 x: 0;
                 y: 0;
                 width: parent.width;
+                height: line.preferred-height;
                 horizontal-alignment: left;
                 text: NaviView.fault;
             }
