@@ -364,10 +364,11 @@ fn mouse_on(place: fn(&Board) -> Option<Point>, click: bool) -> Step {
 
 /// A patch card that brings a bug, put in as Enter on its library row does, where the build's cards bring none yet:
 /// the first of the library's cards the build can take that brings one (by what the cards add up to: Together's
-/// bugs, the build's without its NaviCust). One tried that brings none (its bug line clears one) is taken out again.
-fn bug_card() -> Step {
+/// bugs, the build's without its NaviCust). One tried that brings none is taken out again. Its number is kept in
+/// `put`, for `on_bug_card`.
+fn bug_card(put: Rc<RefCell<Option<slint::SharedString>>>) -> Step {
     use nettai_ui::PatchCardsView;
-    Box::new(|ui, app, tour| {
+    Box::new(move |ui, app, tour| {
         if tour.passing.get() {
             return;
         }
@@ -377,10 +378,11 @@ fn bug_card() -> Step {
         }
         let rows: Vec<nettai_ui::CardRow> = view.get_rows().iter().collect();
         let mut app = app.borrow_mut();
-        for (i, _) in rows.iter().enumerate().filter(|(_, r)| !r.refused && r.lines.iter().any(|l| l.bug)) {
+        for (i, row) in rows.iter().enumerate().filter(|(_, r)| !r.refused && r.note.is_empty()) {
             app.shell.nav.focus("lib.rows", i as i32);
             app.act(Action::Confirm);
             if !view.get_together_bugs().is_empty() {
+                *put.borrow_mut() = Some(row.number.clone());
                 return;
             }
             app.act(Action::Confirm);
@@ -389,15 +391,15 @@ fn bug_card() -> Step {
     })
 }
 
-/// The cursor on the first of the build's cards with a bug line.
-fn on_bug_card() -> Step {
+/// The cursor on the build's card `bug_card` put in.
+fn on_bug_card(put: Rc<RefCell<Option<slint::SharedString>>>) -> Step {
     use nettai_ui::PatchCardsView;
-    Box::new(|ui, app, tour| {
+    Box::new(move |ui, app, tour| {
         if tour.passing.get() {
             return;
         }
         let cards = ui.global::<PatchCardsView>().get_installed();
-        let Some(at) = cards.iter().position(|c| c.there && c.lines.iter().any(|l| l.bug)) else { return };
+        let Some(at) = cards.iter().position(|c| c.there && Some(&c.number) == put.borrow().as_ref()) else { return };
         app.borrow_mut().shell.nav.focus("card", at as i32);
     })
 }
@@ -408,9 +410,10 @@ fn card_bugs(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, to_tab(EditorTab::PatchCards));
     add(SETTLE, focus("card", 0));
     add(SETTLE, library());
-    add(SETTLE, bug_card());
+    let put = Rc::new(RefCell::new(None));
+    add(SETTLE, bug_card(put.clone()));
     add(SETTLE, out_of_library());
-    add(SETTLE, on_bug_card());
+    add(SETTLE, on_bug_card(put));
     shot(add, "tabs-cards-bug", Pair::None);
     add(90, on_tab(EditorTab::PatchCards, "Patch cards"));
     add(SETTLE, to_tab(EditorTab::Navicust));
@@ -953,7 +956,9 @@ fn click_at(point: Point) -> Step {
     })
 }
 
-/// The pointer moved onto control `id`'s `index`, no button held, as the window has it (the control is lit under it).
+/// The pointer moved onto control `id`'s `index`, no button held, as the window has it (the control is lit under it;
+/// a row that describes what it holds is the strip's). The pointer is the last thing used, as a mouse's move makes it
+/// (the pass takes no real pointer: `App::pointer`).
 fn hover(id: &'static str, index: i32) -> Step {
     Box::new(move |ui, app, tour| {
         if tour.passing.get() {
@@ -963,8 +968,90 @@ fn hover(id: &'static str, index: i32) -> Step {
             tour.key_wrong(format!("the pointer moved onto {id} {index}: it isn't on the screen"));
             return;
         };
+        app.borrow_mut().shell.nav.used_pointer();
         ui.window().dispatch_event(slint::platform::WindowEvent::PointerMoved { position });
     })
+}
+
+/// A program of the NaviCust's list with colors to choose from (each program is in the list once: the user, "deduppe
+/// navicust program parts in the list and then have you select by color"): the cursor on its row (the footer's
+/// Color), Right choosing its second color (the row's and the strip's), and Enter taking that color's part in hand,
+/// put away after.
+fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    add(SETTLE, Box::new(|ui, app, tour| {
+        if tour.passing.get() {
+            return;
+        }
+        let rows = ui.global::<NavicustView>().get_programs();
+        let Some(at) = rows.iter().position(|r| r.colors.row_count() > 1) else { return tour.key_wrong("no program has two colors".into()) };
+        app.borrow_mut().shell.nav.focus("programs", at as i32);
+    }));
+    shot(add, "tabs-navicust-colors", Pair::None);
+    add(SETTLE, act(Action::Right));
+    shot(add, "tabs-navicust-color-chosen", Pair::None);
+    add(SETTLE, expect(|ui, app| {
+        let at = app.shell.nav.focused().filter(|k| k.id == "programs").map(|k| k.index)?;
+        let row = ui.global::<NavicustView>().get_programs().row_data(at as usize)?;
+        let detail = ui.global::<NavicustView>().get_detail();
+        (row.color != 1 || detail.color != 1).then(|| format!("Right on a program's row of colors: its color is {}, the strip's {}, not the second", row.color, detail.color))
+    }));
+    add(SETTLE, act(Action::Confirm));
+    shot(add, "tabs-navicust-color-held", Pair::None);
+    add(SETTLE, act(Action::Back));
+}
+
+/// The pointer gone out of the window: nothing is lit under it.
+fn pointer_gone() -> Step {
+    Box::new(move |ui, _, tour| {
+        if !tour.passing.get() {
+            ui.window().dispatch_event(slint::platform::WindowEvent::PointerExited);
+        }
+    })
+}
+
+/// The pointer on a row describes what it holds in the strip, the focus staying where it is (docs/design/app-ui.md
+/// §2.64): a chip of the folder's library, a program of the NaviCust's list, a card of the patch cards' library and
+/// one of the build's (the cursor on the empty row after it); then the pointer gone, the strip the focused row's
+/// again (a desktop's: a phone has no hover).
+fn hovers(add: &mut dyn FnMut(u64, Step), shot: Shot) {
+    use nettai_ui::{FolderView, PatchCardsView};
+    add(SETTLE, to_tab(EditorTab::Folder));
+    add(SETTLE, focus("slot", 0));
+    add(SETTLE, hover("lib.rows", 4));
+    shot(add, "tabs-hover-chip", Pair::None);
+    add(SETTLE, expect(|ui, app| {
+        let (detail, row) = (ui.global::<FolderView>().get_detail(), ui.global::<FolderView>().get_rows().row_data(4));
+        focus_on(app, "slot", 0).or_else(|| (Some(&detail.name) != row.as_ref().map(|r| &r.name)).then(|| format!("the pointer on the library's fifth chip: the strip shows {:?}", detail.name)))
+    }));
+    add(SETTLE, pointer_gone());
+    add(SETTLE, expect(|ui, _| {
+        let (detail, slot) = (ui.global::<FolderView>().get_detail(), ui.global::<FolderView>().get_slots().row_data(0));
+        (Some(&detail.name) != slot.as_ref().map(|s| &s.name)).then(|| format!("the pointer gone: the strip shows {:?}, not the first entry's", detail.name))
+    }));
+    add(SETTLE, to_tab(EditorTab::Navicust));
+    add(SETTLE, focus("programs", 0));
+    add(SETTLE, hover("programs", 3));
+    shot(add, "tabs-hover-program", Pair::None);
+    add(SETTLE, expect(|ui, app| {
+        let (detail, row) = (ui.global::<NavicustView>().get_detail(), ui.global::<NavicustView>().get_programs().row_data(3));
+        focus_on(app, "programs", 0).or_else(|| (Some(&detail.name) != row.as_ref().map(|r| &r.name)).then(|| format!("the pointer on the fourth program: the strip shows {:?}", detail.name)))
+    }));
+    add(SETTLE, pointer_gone());
+    add(SETTLE, to_tab(EditorTab::PatchCards));
+    add(SETTLE, out_of_library());
+    add(SETTLE, focus("card", 0));
+    add(SETTLE, hover("lib.rows", 6));
+    shot(add, "tabs-hover-card", Pair::None);
+    add(SETTLE, expect(|ui, app| {
+        let (detail, row) = (ui.global::<PatchCardsView>().get_detail(), ui.global::<PatchCardsView>().get_rows().row_data(6));
+        focus_on(app, "card", 0).or_else(|| (Some(&detail.number) != row.as_ref().map(|r| &r.number)).then(|| format!("the pointer on the library's seventh card: the strip shows {:?}", detail.name)))
+    }));
+    // (The cursor on the empty row after the build's cards, the pointer on the first.)
+    add(SETTLE, focus("card", 1));
+    add(SETTLE, hover("card", 0));
+    shot(add, "tabs-hover-installed", Pair::None);
+    add(SETTLE, pointer_gone());
 }
 
 /// A key pressed and let go as the window has it (`App::key_of`, the window's hook).
@@ -1518,6 +1605,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: Shot, _lang: &'static 
     auto_battle(add, shot);
     if size == "desktop" {
         clicks(add, shot);
+        hovers(add, shot);
+        program_colors(add, shot);
     }
     drags(add, shot, size == "phone");
     wrong_classes(add, shot);

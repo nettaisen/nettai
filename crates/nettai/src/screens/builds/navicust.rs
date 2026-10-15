@@ -7,6 +7,13 @@
 //! patch cards (`own_overview`; a card's bugs are the Patch cards tab's and the build overview's: the user,
 //! "navicust shouldn't display patch card bugs").
 //!
+//! **The list has each program once** (the user: "deduppe navicust program parts in the list and then have you select
+//! by color"): a program's colors are its definition's (`GridData::colors`), and its row offers them where there is more
+//! than one. Left and Right on the row (the pad's too), or a click or a tap on one of them, choose the color whose part
+//! Enter takes (past the first or the last, the focus moves on as ever); it starts at the color of the copy the build
+//! has placed first, else the first. What the row says (placed, how many copies, out of bounds) is that color's part's;
+//! the strip shows that part.
+//!
 //! **The cursor goes over the board cell by cell.** Enter on a placed piece picks it up by that cell; Enter on a
 //! program of the list takes a new copy of it in hand, its middle on the board's, however many copies are placed
 //! already (no game's rules limit them: the user, "you should allow a navicust part to be placed multiple times").
@@ -17,8 +24,10 @@
 //! key says why, typed as the rules say it), and Back (Esc, B) puts it away into the list, as the game's B does: so
 //! a placed program is taken off by picking it up and putting it away. Del takes the piece under the cursor off at
 //! once, or a program's last copy from the list, or puts the piece in hand away. The strip across the top describes
-//! the program under the cursor, in the game's words. The piece in hand is outlined white where it could be put
-//! down, red where it can't.
+//! the program under the cursor: its shape and, where it compresses into another, its compressed shape, its name in
+//! its color, the game's words for it and the colors it comes in; while the pointer is on a row of the list (and no
+//! piece is in hand), that row's (docs/design/app-ui.md §2.64). The piece in hand is outlined white where it could be
+//! put down, red where it can't.
 //!
 //! **The mouse carries a piece by clicks** (the view's pointer areas, told here as `Tab::choose`'s "drag"; the user:
 //! "dragging navicust piece is confusing because usually it's click to drop"). A click on a placed piece picks it up,
@@ -43,9 +52,10 @@ use nettai_battle::input::keys;
 use nettai_content_api::EntryHandle;
 use nettai_match::Side;
 use nettai_match::build::{Checked, Overview, Stat};
-use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramDetail, ProgramRow, ProgramState};
+use nettai_ui::{BuildWords, CellKind, EditorTab, EffectKind, EffectLine, GridCell, NavicustView, PieceCell, ProgramColor, ProgramDetail, ProgramRow, ProgramState};
 use slint::winit_030::winit::keyboard::KeyCode;
 use slint::{ComponentHandle, ModelRc, VecModel};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 /// The lines each of the effects' and the bugs' panels has room for under its title.
@@ -74,13 +84,18 @@ pub struct Navicust {
     /// The drawn grid: its first row and column on the engine's grid, and how many cells a side.
     first: i32,
     columns: i32,
-    /// The list: each program in each of its colors (the color's place among the program's).
-    rows: Vec<(u16, u8)>,
+    /// The list: each program once; and the color chosen for each, by its place among the program's (one not chosen
+    /// yet: `color`).
+    rows: Vec<u16>,
+    chosen: HashMap<u16, u8>,
     /// The piece in hand, and the cell of the grid the cursor holds it by.
     held: Option<Held>,
     at: (i32, i32),
     /// The cursor is in the list.
     in_list: bool,
+    /// The list's row the pointer is on, which the strip describes in place of what the cursor is on
+    /// (`editor::hover`).
+    hovered: Option<usize>,
     /// The motion's counts: pieces taken up, quarter turns and the last one's way, pieces that couldn't be put
     /// down.
     lifted: i32,
@@ -139,6 +154,14 @@ fn own_overview(content: &Arc<Content>, game: &str, side: &Side, checked: &mut C
 }
 
 /// A color by its name, as the app draws a program in it.
+/// A shape's cells' box, row by row, and how many cells a row (none: a shape with no cells).
+fn boxed(shape: &grid::Shape) -> (Vec<bool>, i32) {
+    let cells: Vec<(usize, usize)> = shape.iter().enumerate().flat_map(|(y, r)| r.iter().enumerate().filter(|(_, c)| **c).map(move |(x, _)| (x, y))).collect();
+    let (Some(left), Some(right)) = (cells.iter().map(|c| c.0).min(), cells.iter().map(|c| c.0).max()) else { return (Vec::new(), 0) };
+    let (top, bottom) = (cells.iter().map(|c| c.1).min().unwrap_or(0), cells.iter().map(|c| c.1).max().unwrap_or(0));
+    ((top..=bottom).flat_map(|y| (left..=right).map(move |x| shape[y][x])).collect(), (right - left + 1) as i32)
+}
+
 fn tone(name: Option<&str>) -> slint::Color {
     let [_, r, g, b] = grid::rgb(name).to_be_bytes();
     slint::Color::from_rgb_u8(r, g, b)
@@ -196,13 +219,48 @@ impl Navicust {
         (y - self.first) * self.columns + (x - self.first)
     }
 
-    /// The list's rows: the game's programs in its library's order, each in each of its colors.
+    /// The list's rows: the game's programs in its library's order, each once.
     fn list(&mut self, draft: &Draft) {
         let Some(d) = self.grid(draft).cloned() else { return self.rows.clear() };
         let content = draft.content();
         let mut programs: Vec<((), EntryHandle)> = content.defs.entries_of(&d.collection).into_iter().map(|h| ((), h)).collect();
         draft.kit.order.entries(content, &d.collection, &mut programs);
-        self.rows = programs.iter().flat_map(|&(_, h)| (0..d.colors.get(&h.0).map_or(1, Vec::len).max(1)).map(move |c| (h.0, c as u8))).collect();
+        self.rows = programs.iter().map(|&(_, h)| h.0).collect();
+    }
+
+    /// The color chosen for `piece` (its place among its colors): the one chosen on its row, else that of the copy
+    /// the build has placed first, else its first.
+    fn color(&self, draft: &Draft, piece: u16) -> u8 {
+        if let Some(&c) = self.chosen.get(&piece) {
+            return c;
+        }
+        let Some(Some(d)) = &self.data else { return 0 };
+        let placed = grid::placed(draft.content(), draft.side()).into_iter().find(|p| p.piece == piece).and_then(|p| p.color);
+        placed.and_then(|name| d.colors.get(&piece)?.iter().position(|c| *c == name)).unwrap_or(0) as u8
+    }
+
+    /// Row `row`'s program in its color chosen.
+    fn row(&self, draft: &Draft, row: usize) -> Option<(u16, u8)> {
+        self.rows.get(row).map(|&piece| (piece, self.color(draft, piece)))
+    }
+
+    /// How many colors `piece` comes in.
+    fn colors(&self, piece: u16) -> usize {
+        match &self.data {
+            Some(Some(d)) => d.colors.get(&piece).map_or(1, Vec::len).max(1),
+            _ => 1,
+        }
+    }
+
+    /// Choose color `color` for row `row`'s program: its row and the strip show it, and the next copy taken is of it.
+    fn choose_color(&mut self, shell: &mut Shell, draft: &Draft, row: usize, color: usize) {
+        let Some(&piece) = self.rows.get(row) else { return };
+        if color >= self.colors(piece) {
+            return;
+        }
+        self.chosen.insert(piece, color as u8);
+        self.show_list(shell, draft);
+        self.show_strip(shell, draft);
     }
 
     /// The board of the build, as the game's data have it.
@@ -281,7 +339,8 @@ impl Navicust {
         view.set_notice(self.notice.clone().unwrap_or_default().into());
     }
 
-    /// The list: each program in each color, where it is, and how many copies of it are placed.
+    /// The list: each program in its color chosen, its colors, where that color's part is and how many copies of it
+    /// are placed.
     fn show_list(&self, shell: &Shell, draft: &Draft) {
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
@@ -292,15 +351,20 @@ impl Navicust {
         let rows: Vec<ProgramRow> = draft.with_words(shell, |words| {
             self.rows
                 .iter()
-                .map(|&(piece, color)| {
+                .map(|&piece| {
+                    let color = self.color(draft, piece);
                     let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
+                    // (The ruleset holds a program back whole: each of its colors' parts with it.)
+                    let allowed = draft.allows(grid::PIECES_FIELD, piece);
+                    let colors: Vec<ProgramColor> = d.colors.get(&piece).into_iter().flatten().map(|c| ProgramColor { tone: tone(Some(c)), not_allowed: !allowed }).collect();
                     let copies: Vec<&grid::Placed> = parts.iter().filter(|p| p.piece == piece && p.color == name).collect();
                     // (A copy over the ring is out of bounds: no error, the rules bug it.)
                     let out = copies.iter().any(|p| board.is_some_and(|b| grid::cells(&d.shape(p.piece, p.compressed, p.rotation), p.x, p.y).iter().any(|&(x, y)| kind_at(b, x, y) == b'f')));
                     let state = match &self.held {
-                        Some(h) if h.piece == piece && h.color == color => ProgramState::Held,
-                        // (One the ruleset the player plays by doesn't allow says so, in the error red.)
-                        _ if !draft.allows(grid::PIECES_FIELD, piece) => ProgramState::NotAllowed,
+                        Some(h) if h.piece == piece => ProgramState::Held,
+                        // (One the ruleset the player plays by doesn't allow, in every color, says so in the error
+                        // red.)
+                        _ if colors.iter().all(|c| c.not_allowed) && !allowed => ProgramState::NotAllowed,
                         _ if out => ProgramState::Out,
                         _ if !copies.is_empty() => ProgramState::Placed,
                         _ => ProgramState::None,
@@ -311,6 +375,8 @@ impl Navicust {
                         plus: d.plus.contains(&piece),
                         state,
                         copies: copies.len() as i32,
+                        colors: ModelRc::new(VecModel::from(colors)),
+                        color: color as i32,
                     }
                 })
                 .collect()
@@ -379,7 +445,7 @@ impl Navicust {
     /// placed: compressed where it compresses, unless a copy already placed in its color says otherwise (a save
     /// compresses every copy of a program in one color alike).
     fn take(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
-        let Some(&(piece, color)) = self.rows.get(row) else { return };
+        let Some((piece, color)) = self.row(draft, row) else { return };
         let Some(Some(d)) = &self.data else { return };
         let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
         // (Compressed, where it compresses (the user: "navicust pieces should default to compressed in the
@@ -463,7 +529,7 @@ impl Navicust {
     /// The last copy on the board of row `row`'s program, in its color.
     fn last_copy(&self, draft: &Draft, row: usize) -> Option<usize> {
         let Some(Some(d)) = &self.data else { return None };
-        let &(piece, color) = self.rows.get(row)?;
+        let (piece, color) = self.row(draft, row)?;
         let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
         grid::placed(draft.content(), draft.side()).iter().rposition(|p| p.piece == piece && p.color == name)
     }
@@ -661,6 +727,11 @@ impl Navicust {
         self.show_strip(shell, draft);
     }
 
+    /// The list's row the cursor is on, if it is on one.
+    fn focused_row(&self, shell: &Shell) -> Option<usize> {
+        shell.nav.focused().filter(|k| k.id == "programs").map(|k| k.index.max(0) as usize)
+    }
+
     /// The cell the cursor is on, if it is on one.
     fn focused_cell(&self, shell: &Shell) -> Option<(i32, i32)> {
         shell.nav.focused().filter(|k| k.id == "cell").map(|k| self.cell_at(k.index))
@@ -682,7 +753,7 @@ impl Navicust {
                 None => (None, false),
             },
             Some(k) if k.id == "programs" => {
-                let row = self.rows.get(k.index.max(0) as usize).copied();
+                let row = self.row(draft, k.index.max(0) as usize);
                 let placed = row.is_some_and(|(piece, color)| {
                     let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
                     parts.iter().any(|p| p.piece == piece && p.color == name)
@@ -693,22 +764,36 @@ impl Navicust {
         }
     }
 
-    /// The strip across the top: the program under the cursor, by its name in its color, and the game's
-    /// description of it; and the footer's hints for a placed piece (or a placed program's row) under the cursor.
+    /// The strip across the top: the program under the cursor (while the pointer is on a row of the list and no piece
+    /// is in hand, that row's), by its shape and compressed shape, its name in its color, the game's description of it
+    /// and the colors it comes in; and the footer's hints for a placed piece (or a placed program's row) under the
+    /// cursor.
     fn show_strip(&self, shell: &Shell, draft: &Draft) {
         let (program, on_piece) = self.under_cursor(shell, draft);
+        let hovered = self.hovered.filter(|_| self.held.is_none()).and_then(|r| self.row(draft, r));
+        let program = hovered.or(program);
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
         view.set_on_piece(on_piece);
+        view.set_on_colors(self.held.is_none() && self.focused_row(shell).and_then(|r| self.rows.get(r)).is_some_and(|&p| self.colors(p) > 1));
         let Some((Some(d), (piece, color))) = self.data.as_ref().zip(program) else { return view.set_detail(ProgramDetail::default()) };
         let detail = draft.with_words(shell, |words| {
-            let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
+            let colors = d.colors.get(&piece).cloned().unwrap_or_default();
+            let (shape, columns) = boxed(&d.shape(piece, false, 0));
+            // (A program of one shape alone has no compressed shape: "there's only one form of it".)
+            let (compressed, compressed_columns) = if d.compresses(piece) { boxed(&d.shape(piece, true, 0)) } else { (Vec::new(), 0) };
             ProgramDetail {
                 there: true,
                 name: words.names.entry(EntryHandle(piece)).into(),
-                tone: tone(name.as_deref()),
+                tone: tone(colors.get(color as usize).map(String::as_str)),
                 plus: d.plus.contains(&piece),
                 description: words.names.description(EntryHandle(piece)).map(|t| crate::games::one_line(&t)).unwrap_or_default().into(),
+                shape: ModelRc::new(VecModel::from(shape)),
+                columns,
+                compressed: ModelRc::new(VecModel::from(compressed)),
+                compressed_columns,
+                colors: ModelRc::new(VecModel::from(colors.iter().map(|c| tone(Some(c))).collect::<Vec<_>>())),
+                color: color as i32,
             }
         });
         view.set_detail(detail);
@@ -745,6 +830,7 @@ impl Tab for Navicust {
     fn hide(&mut self, shell: &mut Shell, draft: &mut Draft) {
         self.let_go(draft);
         self.notice = None;
+        self.hovered = None;
         let _ = shell;
     }
 
@@ -763,14 +849,43 @@ impl Tab for Navicust {
 
     /// The mouse's clicks and moves (the view's pointer areas).
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
-        if id == "drag" {
-            self.pointed(shell, draft, index, choice);
+        match id {
+            "drag" => self.pointed(shell, draft, index, choice),
+            // (A click or a tap on one of a row's colors.)
+            "color" => {
+                shell.sound.play(Cue::Cursor);
+                self.choose_color(shell, draft, index.max(0) as usize, choice.max(0) as usize);
+            }
+            _ => {}
+        }
+    }
+
+    /// Left and Right on a program's row with colors to choose from choose the one before or after; past the first or
+    /// the last, the focus moves on as ever.
+    fn route(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
+        let (Some(row), None) = (self.focused_row(shell), &self.held) else { return false };
+        let Some(&piece) = self.rows.get(row) else { return false };
+        let to = match action {
+            Action::Left => (self.color(draft, piece) as usize).checked_sub(1),
+            Action::Right => Some(self.color(draft, piece) as usize + 1),
+            _ => None,
+        };
+        let Some(to) = to.filter(|&c| c < self.colors(piece)) else { return false };
+        self.choose_color(shell, draft, row, to);
+        true
+    }
+
+    /// The pointer on a row of the list: the strip describes its program.
+    fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
+        if id == "programs" && editor::hover(&mut self.hovered, index.max(0) as usize, on) {
+            self.show_strip(shell, draft);
         }
     }
 
     /// The cursor on a cell: the piece in hand is there. In the list, its title is lit. The strip describes the
-    /// program under the cursor.
+    /// program under the cursor (the focus is the last thing moved, until the pointer goes onto another row).
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        self.hovered = None;
         let in_list = id == "programs";
         if in_list != self.in_list {
             self.in_list = in_list;
