@@ -1,6 +1,8 @@
 # The app's packages (packaging/; docs/app.md, "Packaging"): a Windows installer, a macOS disk image and a Linux
 # AppImage. Run by hand (Actions → Release → Run workflow) for the packages alone, as the run's artifacts; on a
-# tag `v*` also, with a draft release of them, which is never published from here.
+# tag `v*` also, with a draft release of them, which is never published from here. Each package bundles the ffmpeg
+# packaging/ffmpeg.sha256 pins (bigfarts/nettai-ffmpeg-build's release, built by that repository's own workflow),
+# which the packaging scripts download and check.
 name: Release
 
 on:

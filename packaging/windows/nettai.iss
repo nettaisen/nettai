@@ -1,6 +1,7 @@
 ; The Windows installer (Inno Setup 6), compiled by packaging/windows/package.ps1, which defines:
 ;   AppVersion   the version
-;   SourceDir    the staged app: nettai.exe, content\, LICENSE.txt, THIRD-PARTY-NOTICES.txt
+;   SourceDir    the staged app: nettai.exe, ffmpeg.exe, content\, LICENSE.txt, THIRD-PARTY-NOTICES.txt,
+;                ffmpeg-NOTICE.txt
 ;   OutputDir    where the installer is written
 ;   IconFile     (optional) the .ico packaging/icons.sh makes
 ; For the player alone by default (no administrator: %LOCALAPPDATA%\Programs\nettai); the installer offers to

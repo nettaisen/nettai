@@ -3,11 +3,14 @@
 #
 #   packaging/macos/package.sh
 #
-# The bundle: Contents/MacOS/nettai, Contents/Resources/{content/, nettai.icns, LICENSE, THIRD-PARTY-NOTICES.txt}.
-# No ROM and no extracted asset is in it: the app extracts each game's pack from the player's own copy.
+# The bundle: Contents/MacOS/{nettai, ffmpeg}, Contents/Resources/{content/, nettai.icns, LICENSE,
+# THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt}. No ROM and no extracted asset is in it: the app extracts each game's
+# pack from the player's own copy.
 #
 # NETTAI_VERSION         the version (the workflow's, from the tag); else the app crate's
-# NETTAI_UNIVERSAL=1     arm64 and x86_64 in one program (lipo); else the host's alone
+# NETTAI_UNIVERSAL=1     arm64 and x86_64 in one program (lipo), and in one ffmpeg; else the host's alone
+# NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle (for the architectures built); else the release packaging/ffmpeg.sha256
+#                        pins, downloaded and checked
 # NETTAI_ICONS           a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
 # MACOS_SIGN_IDENTITY    a Developer ID Application identity in the keychain to sign with; else signed ad hoc
 # APPLE_ID, APPLE_TEAM_ID, APPLE_APP_PASSWORD
@@ -49,10 +52,31 @@ copy_content "$app/Contents/Resources"
 cp "$root/LICENSE" "$app/Contents/Resources/LICENSE"
 cp "$notices" "$app/Contents/Resources/THIRD-PARTY-NOTICES.txt"
 
+# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg), the release's two
+# slices joined for a universal app; and its notice (GPL: what it is built from, where that source is).
+ffmpeg=$app/Contents/MacOS/ffmpeg
+if [ -n "${NETTAI_BUNDLE_FFMPEG:-}" ]; then
+    cp "$NETTAI_BUNDLE_FFMPEG" "$ffmpeg"
+elif [ "$arch" = universal ]; then
+    fetch_ffmpeg ffmpeg-macos-arm64
+    arm64=$fetched
+    fetch_ffmpeg ffmpeg-macos-x86_64
+    lipo -create -output "$ffmpeg" "$arm64" "$fetched"
+else
+    fetch_ffmpeg "ffmpeg-macos-$arch"
+    cp "$fetched" "$ffmpeg"
+fi
+chmod 755 "$ffmpeg"
+fetch_ffmpeg ffmpeg-NOTICE.txt
+cp "$fetched" "$app/Contents/Resources/ffmpeg-NOTICE.txt"
+
+# (ffmpeg first: the bundle's signature seals the code inside it, which is signed already, as notarizing asks.)
 if [ -n "${MACOS_SIGN_IDENTITY:-}" ]; then
+    codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$ffmpeg"
     codesign --force --options runtime --timestamp --sign "$MACOS_SIGN_IDENTITY" "$app"
 else
     # (Ad hoc: an Apple silicon Mac runs nothing unsigned. Gatekeeper still asks the player to allow it once.)
+    codesign --force --sign - "$ffmpeg"
     codesign --force --sign - "$app"
 fi
 
