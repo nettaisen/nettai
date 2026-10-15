@@ -457,12 +457,20 @@ export component NaviTab inherits Rectangle {
         if NaviView.form-groups.length > 0: Rectangle {
             height: 2 * 17px;
             Note {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
                 visible: NaviView.problems == "";
                 text: root.note;
                 vertical-alignment: top;
             }
 
             Text {
+                x: 0;
+                y: 0;
+                width: parent.width;
+                height: parent.height;
                 visible: NaviView.problems != "";
                 text: NaviView.problems;
                 color: Theme.bad;

@@ -450,6 +450,8 @@ enum Point {
     Middle(&'static str, f32),
     /// The first auto battle place shown that holds a chip.
     Filled,
+    /// The box of color `color` (of `colors`) at program row `row`'s right edge.
+    Color(i32, i32, i32),
 }
 
 /// One of the probe's pointer events: the left button pressed or let go, the pointer moved (no button held unless
@@ -549,6 +551,9 @@ fn locate(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, point: Point) -> Op
             Some(slint::LogicalPosition::new(x0 + x * pitch + a.w / 2.0, y0 + y * pitch + a.h / 2.0))
         }
         Point::Row(r) => rect("programs", r).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
+        // (Each box 14 wide and 18 apart, the last 8 in from the row's right edge: navicust.slint's ProgramRowView.)
+        Point::Color(row, color, colors) => rect("programs", row)
+            .map(|r| slint::LogicalPosition::new(r.x + r.w - 8.0 - (colors * 18 - 4) as f32 + (color * 18) as f32 + 7.0, r.y + r.h / 2.0)),
         Point::Off => rect("programs", 0).map(|r| slint::LogicalPosition::new(r.x + r.w + 150.0, r.y + 200.0)),
         Point::Control(id, i) => rect(id, i).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0)),
         Point::Below(id, i, dy) => rect(id, i).filter(|r| r.h > 0.0).map(|r| slint::LogicalPosition::new(r.x + r.w / 2.0, r.y + r.h / 2.0 + dy)),
@@ -976,7 +981,7 @@ fn hover(id: &'static str, index: i32) -> Step {
 /// A program of the NaviCust's list with colors to choose from (each program is in the list once: the user, "deduppe
 /// navicust program parts in the list and then have you select by color"): the cursor on its row (the footer's
 /// Color), Right choosing its second color (the row's and the strip's), and Enter taking that color's part in hand,
-/// put away after.
+/// put away after; then a click on its last color's box, which chooses it and takes its part (`color-clicked`).
 fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, to_tab(EditorTab::Navicust));
     add(SETTLE, Box::new(|ui, app, tour| {
@@ -998,6 +1003,30 @@ fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     }));
     add(SETTLE, act(Action::Confirm));
     shot(add, "tabs-navicust-color-held", Pair::None);
+    add(SETTLE, act(Action::Back));
+    // A click on the row's last color: it is chosen, and its part taken in hand at once, as a click on the row takes
+    // it (the user: "selecting the color in the ncp editor should also pick up the ncp"); put away after.
+    let at: Rc<RefCell<(i32, i32)>> = Rc::default();
+    let kept = at.clone();
+    add(SETTLE, Box::new(move |ui, app, _| {
+        let row = app.borrow().shell.nav.focused().filter(|k| k.id == "programs").map_or(-1, |k| k.index);
+        let colors = ui.global::<NavicustView>().get_programs().row_data(row.max(0) as usize).map_or(0, |r| r.colors.row_count() as i32);
+        *kept.borrow_mut() = (row, colors);
+    }));
+    for (wait, ev) in [(SETTLE, Ev::Press as fn(Point) -> Ev), (40, Ev::Release)] {
+        let at = at.clone();
+        add(wait, hand_at(move |_, _| {
+            let (row, colors) = *at.borrow();
+            (row >= 0 && colors > 1).then_some(Point::Color(row, colors - 1, colors))
+        }, ev));
+    }
+    shot(add, "tabs-navicust-color-clicked", Pair::None);
+    add(SETTLE, expect(move |ui, _| {
+        let (row, colors) = *at.borrow();
+        let view = ui.global::<NavicustView>();
+        let chosen = view.get_programs().row_data(row.max(0) as usize).map(|r| r.color);
+        (!view.get_holding() || chosen != Some(colors - 1)).then(|| format!("a click on row {row}'s last color: holding {}, its color {chosen:?}", view.get_holding()))
+    }));
     add(SETTLE, act(Action::Back));
 }
 
