@@ -27,7 +27,7 @@
 # n1gp.net, on the same account): in the dashboard, the Worker's Settings >
 # Domains & Routes > Add > Custom domain, or uncomment this and deploy:
 #
-# routes = [{ pattern = "matchmaking.nettai.n1gp.net", custom_domain = true }]
+routes = [{ pattern = "matchmaking.nettai.n1gp.net", custom_domain = true }]
 name = "nettai-signal"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
