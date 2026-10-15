@@ -1,5 +1,5 @@
 # The ffmpeg every package bundles beside the program (docs/app.md §19): the release of
-# https://github.com/bigfarts/nettai-ffmpeg-build named here, and each of its files a package takes by its SHA-256
+# https://github.com/nettaisen/ffmpeg-build named here, and each of its files a package takes by its SHA-256
 # (as sha256sum writes them). packaging/build.sh and packaging/windows/package.ps1 download and check them; to
 # bundle another release, name its tag and copy its files' sums from its .sha256 files.
 # release: ffmpeg-9.0.2-1

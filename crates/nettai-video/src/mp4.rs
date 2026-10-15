@@ -49,7 +49,7 @@
 //! - **Which ffmpeg** is the host's to say ([`Settings::ffmpeg`]);
 //!   [`find_ffmpeg`] is the one nettai's packages bundle, else one
 //!   installed. The bundled one is a minimal build with what this command
-//!   needs and nothing more (bigfarts/nettai-ffmpeg-build).
+//!   needs and nothing more (nettaisen/ffmpeg-build).
 
 use crate::Error;
 use std::ffi::OsString;
@@ -90,7 +90,12 @@ pub struct Settings {
 
 impl Default for Settings {
     fn default() -> Settings {
-        Settings { ffmpeg: "ffmpeg".into(), crf: 16, chroma: Chroma::Half, audio_kbps: 192 }
+        Settings {
+            ffmpeg: "ffmpeg".into(),
+            crf: 16,
+            chroma: Chroma::Half,
+            audio_kbps: 192,
+        }
     }
 }
 
@@ -102,16 +107,48 @@ impl Settings {
             Chroma::Half => "yuv420p",
             Chroma::Full => "yuv444p",
         };
-        let filter = format!("scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format={format},setparams=color_primaries=bt709:color_trc=bt709");
+        let filter = format!(
+            "scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format={format},setparams=color_primaries=bt709:color_trc=bt709"
+        );
         let (crf, audio) = (self.crf.to_string(), format!("{}k", self.audio_kbps));
         let mut args: Vec<OsString> = [
-            "-hide_banner", "-nostdin", "-loglevel", "error",
-            "-f", "nut", "-i", "pipe:0",
-            "-vf", &filter,
-            "-c:v", "libx264", "-preset", "medium", "-tune", "animation", "-crf", &crf,
-            "-colorspace", "bt709", "-color_primaries", "bt709", "-color_trc", "bt709", "-color_range", "tv",
-            "-c:a", "aac", "-b:a", &audio, "-ar", "48000",
-            "-movflags", "+faststart", "-f", "mp4", "-y",
+            "-hide_banner",
+            "-nostdin",
+            "-loglevel",
+            "error",
+            "-f",
+            "nut",
+            "-i",
+            "pipe:0",
+            "-vf",
+            &filter,
+            "-c:v",
+            "libx264",
+            "-preset",
+            "medium",
+            "-tune",
+            "animation",
+            "-crf",
+            &crf,
+            "-colorspace",
+            "bt709",
+            "-color_primaries",
+            "bt709",
+            "-color_trc",
+            "bt709",
+            "-color_range",
+            "tv",
+            "-c:a",
+            "aac",
+            "-b:a",
+            &audio,
+            "-ar",
+            "48000",
+            "-movflags",
+            "+faststart",
+            "-f",
+            "mp4",
+            "-y",
         ]
         .iter()
         .map(OsString::from)
@@ -137,22 +174,49 @@ impl Settings {
 /// which then fails to start ([`Error::NoFfmpeg`]).
 pub fn find_ffmpeg() -> PathBuf {
     let named = std::env::var_os("NETTAI_FFMPEG").filter(|n| !n.is_empty());
-    let beside = std::env::current_exe().ok().and_then(|exe| exe.parent().map(Path::to_path_buf));
-    let usual: &[&str] = if cfg!(unix) { &["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"] } else { &[] };
-    found_ffmpeg(named, beside.as_deref(), &std::env::var_os("PATH").unwrap_or_default(), usual)
+    let beside = std::env::current_exe()
+        .ok()
+        .and_then(|exe| exe.parent().map(Path::to_path_buf));
+    let usual: &[&str] = if cfg!(unix) {
+        &["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"]
+    } else {
+        &[]
+    };
+    found_ffmpeg(
+        named,
+        beside.as_deref(),
+        &std::env::var_os("PATH").unwrap_or_default(),
+        usual,
+    )
 }
 
 /// [`find_ffmpeg`] with what it reads given: the variable, the running
 /// program's folder, the path, and the package managers' folders.
-fn found_ffmpeg(named: Option<OsString>, beside: Option<&Path>, path: &std::ffi::OsStr, usual: &[&str]) -> PathBuf {
+fn found_ffmpeg(
+    named: Option<OsString>,
+    beside: Option<&Path>,
+    path: &std::ffi::OsStr,
+    usual: &[&str],
+) -> PathBuf {
     if let Some(named) = named {
         return named.into();
     }
-    let name = if cfg!(windows) { "ffmpeg.exe" } else { "ffmpeg" };
+    let name = if cfg!(windows) {
+        "ffmpeg.exe"
+    } else {
+        "ffmpeg"
+    };
     let path = std::env::split_paths(path).filter(|dir| dir.is_absolute());
-    let folders = beside.map(Path::to_path_buf).into_iter().chain(path).chain(usual.iter().map(PathBuf::from));
+    let folders = beside
+        .map(Path::to_path_buf)
+        .into_iter()
+        .chain(path)
+        .chain(usual.iter().map(PathBuf::from));
     let mut places = folders.map(|dir| dir.join(name));
-    places.find(|p| p.is_file()).or_else(|| beside.map(|dir| dir.join(name))).unwrap_or_default()
+    places
+        .find(|p| p.is_file())
+        .or_else(|| beside.map(|dir| dir.join(name)))
+        .unwrap_or_default()
 }
 
 /// ffmpeg making an MP4 of the NUT stream written to this. [`Encoder::finish`]
@@ -174,7 +238,15 @@ impl Encoder {
     /// can't be made there ([`Error::Disk`]), and an ffmpeg that can't be
     /// started ([`Error::NoFfmpeg`]).
     pub fn start(to: &Path, settings: &Settings) -> Result<Encoder, Error> {
-        let mut name = to.file_name().ok_or_else(|| Error::Disk(io::Error::new(io::ErrorKind::InvalidInput, format!("{} names no file", to.display()))))?.to_os_string();
+        let mut name = to
+            .file_name()
+            .ok_or_else(|| {
+                Error::Disk(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("{} names no file", to.display()),
+                ))
+            })?
+            .to_os_string();
         name.push(".part");
         let part = to.with_file_name(name);
         // (The file made here first: a place that can't be written is the
@@ -208,7 +280,13 @@ impl Encoder {
             let from = kept.len().saturating_sub(MOST_LOG);
             String::from_utf8_lossy(&kept[from..]).into_owned()
         });
-        Ok(Encoder { child, stdin, log: Some(log), to: to.to_path_buf(), part })
+        Ok(Encoder {
+            child,
+            stdin,
+            log: Some(log),
+            to: to.to_path_buf(),
+            part,
+        })
     }
 
     /// The stream is whole: let ffmpeg finish, and give the file its name.
@@ -220,9 +298,14 @@ impl Encoder {
         let status = self.child.wait();
         let log = self.said();
         let done = match status {
-            Ok(status) if status.success() => std::fs::rename(&self.part, &self.to).map_err(Error::Disk),
+            Ok(status) if status.success() => {
+                std::fs::rename(&self.part, &self.to).map_err(Error::Disk)
+            }
             Ok(status) => Err(failure(status.code(), log)),
-            Err(e) => Err(Error::FfmpegFailed { code: None, log: format!("{e}\n{log}") }),
+            Err(e) => Err(Error::FfmpegFailed {
+                code: None,
+                log: format!("{e}\n{log}"),
+            }),
         };
         if done.is_err() {
             let _ = std::fs::remove_file(&self.part);
@@ -241,7 +324,11 @@ impl Encoder {
     pub fn failed(mut self, error: io::Error) -> Error {
         // (An ffmpeg that ended on its own is let say how.)
         self.stdin = None;
-        let ended = if error.kind() == io::ErrorKind::BrokenPipe { self.child.wait().ok() } else { None };
+        let ended = if error.kind() == io::ErrorKind::BrokenPipe {
+            self.child.wait().ok()
+        } else {
+            None
+        };
         let log = match ended {
             Some(_) => self.said(),
             None => {
@@ -258,7 +345,10 @@ impl Encoder {
 
     /// What ffmpeg said, once it has ended.
     fn said(&mut self) -> String {
-        self.log.take().and_then(|log| log.join().ok()).unwrap_or_default()
+        self.log
+            .take()
+            .and_then(|log| log.join().ok())
+            .unwrap_or_default()
     }
 
     /// Stop the child, wait for it, and remove the part written. (What it

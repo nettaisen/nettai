@@ -59,7 +59,7 @@ function Sign-File([string]$file) {
     if ($LASTEXITCODE -ne 0) { throw "signtool failed on $file" }
 }
 
-# A file of the ffmpeg release packaging\ffmpeg.sha256 pins (bigfarts/nettai-ffmpeg-build's, a minimal static
+# A file of the ffmpeg release packaging\ffmpeg.sha256 pins (nettaisen/ffmpeg-build's, a minimal static
 # build of what the replay export runs), downloaded once into target\package\ffmpeg\<tag>\ and checked: its path.
 function Get-FfmpegFile([string]$file) {
     $pins = Get-Content "$root\packaging\ffmpeg.sha256"
@@ -70,7 +70,7 @@ function Get-FfmpegFile([string]$file) {
     New-Item -ItemType Directory -Force $dir | Out-Null
     $path = "$dir\$file"
     if (-not (Test-Path $path) -or (Get-FileHash -Algorithm SHA256 $path).Hash.ToLower() -ne $sum) {
-        Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/bigfarts/nettai-ffmpeg-build/releases/download/$release/$file" -OutFile $path
+        Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/nettaisen/ffmpeg-build/releases/download/$release/$file" -OutFile $path
         if ((Get-FileHash -Algorithm SHA256 $path).Hash.ToLower() -ne $sum) {
             Remove-Item $path
             throw "$file of $release isn't the one pinned"
