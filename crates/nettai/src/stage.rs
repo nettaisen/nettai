@@ -151,8 +151,19 @@ impl Surface {
         let (w, h) = (WIDTH * fit.density as usize, HEIGHT * fit.density as usize);
         self.buffer.resize(w * h, 0);
         present(&mut self.buffer, w, h);
-        let image = match gl {
-            Some(gl) => gl.write(&mut self.buffer, w as u32, h as u32),
+        // (A texture OpenGL refused, now or before: the picture is an image, made anew, and the log says why once.)
+        let written = match gl {
+            Some(gl) if !gl.broken() => match gl.write(&mut self.buffer, w as u32, h as u32) {
+                Ok(image) => Some(image),
+                Err(why) => {
+                    crate::errors::log("drawing the picture as a texture (an image from now on)", &why);
+                    None
+                }
+            },
+            _ => None,
+        };
+        let image = match written {
+            Some(image) => image,
             None => {
                 let mut pixels = SharedPixelBuffer::<Rgb8Pixel>::new(w as u32, h as u32);
                 for (out, &px) in pixels.make_mut_slice().iter_mut().zip(&self.buffer) {
