@@ -84,6 +84,10 @@ tour = ["dep:png", "nettai-rtc/testing", "dep:i-slint-core", "dep:i-slint-backen
 # What the app is built from, for its About screen (build.rs: `cargo metadata`'s JSON).
 serde_json = "1"
 
+# The Windows program's icon (build.rs: `NETTAI_WINDOWS_ICON`, an .ico packaging/ makes).
+[target.'cfg(windows)'.build-dependencies]
+winresource = "0.1"
+
 [dev-dependencies]
 png = "0.17"
 nettai-rtc = { path = "../nettai-rtc", features = ["testing"] }
