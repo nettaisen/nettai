@@ -530,6 +530,41 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
         }),
     );
     shot(&mut add, "battle-connection", Pair::None);
+    // The link panel the corner opens, with a match's figures: a round trip about 42 ms that wanders and
+    // spikes once, and a gap where the link was down a moment.
+    add(
+        SETTLE,
+        Box::new(|ui, _, _| {
+            let shell = ui.global::<nettai_ui::Shell>();
+            let samples = (0..100u64).map(|i| match i {
+                40..=44 => None,
+                70 => Some(118),
+                _ => Some(36 + (i * 7) % 13),
+            });
+            let net = nettai_frontend::driver::NetStatus {
+                jitter_ms: Some(6.0),
+                loss: 0.004,
+                sent: nettai_frontend::connection::Traffic { datagrams: 5_412, bytes: 381_200 },
+                received: nettai_frontend::connection::Traffic { datagrams: 5_388, bytes: 379_900 },
+                input_delay: 4,
+                last_rollback: 1,
+                max_rollback: 5,
+                rollbacks: 214,
+                waits: 9,
+                skew: 1,
+                lead: 3,
+                reconnects: 1,
+                ..Default::default()
+            };
+            shell.set_link(crate::battle::link::LinkHistory::of(samples).figures(&net));
+            shell.set_connection_open(true);
+        }),
+    );
+    shot(&mut add, "battle-link-panel", Pair::None);
+    add(
+        SETTLE,
+        Box::new(|ui, _, _| ui.global::<nettai_ui::Shell>().set_connection_open(false)),
+    );
     add(
         SETTLE,
         Box::new(|ui, app, _| {

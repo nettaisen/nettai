@@ -33,6 +33,7 @@ use slint::ComponentHandle;
 use std::time::{Duration, Instant};
 
 mod hold;
+pub(crate) mod link;
 
 /// How long the two cards show at the least. A match is ready in a few milliseconds once the game is loaded,
 /// and a screen shown for two frames is a flash; the bars say how far the loading is, not this.
@@ -126,6 +127,8 @@ pub struct Battle {
     /// Under the menu it is held where it stands, its sound and its scenery going on, if it can stop (not an
     /// online match): `battle/hold.rs`.
     hold: hold::Hold,
+    /// Online: the round trip's recent past, for the link panel (`battle/link.rs`).
+    link: link::LinkHistory,
 }
 
 impl Battle {
@@ -296,8 +299,9 @@ impl Shell {
         shell.set_battle_full(start.full);
         shell.set_battle_menu(false);
         shell.set_connection_shown(false);
+        shell.set_connection_open(false);
         self.keys.pressed.clear();
-        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, hold: Default::default() });
+        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, hold: Default::default(), link: Default::default() });
         Some((start.owner, BattleEvent::Started))
     }
 
@@ -397,6 +401,7 @@ impl Shell {
         shell.set_battle(BattleKind::None);
         shell.set_battle_menu(false);
         shell.set_connection_shown(false);
+        shell.set_connection_open(false);
         self.keys.release();
     }
 
@@ -428,6 +433,10 @@ impl Shell {
             shell.set_connection_level(net.quality.map_or(0, |q| q.bars() as i32));
             shell.set_connection_ping(net.ping_ms.map_or(-1, |ms| ms.round() as i32));
             shell.set_connection_down(net.reconnecting.map_or(-1, |r| r.gives_up_in.unwrap_or(r.elapsed).as_secs() as i32));
+            // The link panel's figures, while it is open, at each sample of the round trip.
+            if b.link.sample(now, &net) && shell.get_connection_open() {
+                shell.set_link(b.link.figures(&net));
+            }
         }
         // How it ended, told once.
         let mut event = None;
@@ -561,7 +570,7 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
         let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default() };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default(), link: Default::default() };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
                 assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
@@ -801,7 +810,7 @@ mod tests {
         nettai_frontend::testing::scrolling_background(&mut graphics);
         let audio = nettai_frontend::testing::audio(content);
         let player = Player::with(graphics.renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
-        Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default() }
+        Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default(), link: Default::default() }
     }
 
     /// A practice session of Practice's own, as PLAY's PRACTICE starts one: the menu open before the battle's
