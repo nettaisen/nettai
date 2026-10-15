@@ -141,8 +141,7 @@ in that frame. A screen with nothing of its own shows its `Picture`'s ground. Wh
 nothing presents (the room is still the leaving screen's) and the leaving one keeps what it showed: the menu's
 reel goes with the menu, and a battle that ended took its picture away at once, so a screen leaving after it
 shows none of it. And no picture is drawn past its `Picture`'s box (the box clips it), whatever size it was
-presented at for the room before. Practice's entry keeps its own wait for the arena's room (§15), which this
-doesn't replace. (`stage::tests::the_picture_is_shown_only_in_a_frame_something_was_shown_in`; the screenshot
+presented at for the room before. (`stage::tests::the_picture_is_shown_only_in_a_frame_something_was_shown_in`; the screenshot
 pass's `replays-unreadable` and `replays-watch-failed`, §16, each of which showed the reel before; a screen
 leaving is the motion probe's, §13, whose `screen-to-settings` has the menu leave with its reel and
 `screen-back-to-menu` has it come back with one, and whose `battle-entered` ends on the battle's picture.)
@@ -225,10 +224,8 @@ under its menu, not stopped (§15).
   the game changes. Each game's content names its own (`content/<game>/compat/assets.toml`): the song its start
   screen's first state sets, song 1 in EXE6 and EXE5 and song 0 in EXE4, read from the routine in all twelve
   ROMs. A pack that names no such sound has none: one extracted before the names were given, until it is
-  extracted again. Practice's entry plays in its place the battle's music its session will start, the game's own
-  or the theme picked (below, "The battle's music"), crossfading as the title music does; the session's battle
-  takes it over, so it plays on through the cards into the fight, and back at the entry the entry takes the
-  battle's over, so it plays on there.
+  extracted again. (Practice's entry played the battle's music in its place, and handed it to the battle and back,
+  until the entry went: docs/design/app-ui.md §2.57.)
 - While a battle runs, both are ticked with the battle's ticks and their samples added to the battle's, sample
   for sample; with no battle running they run on their own clock at the same rate. (At first the menus' sound ran
   on its own clock throughout, beside the battle's, at twice the rate the device plays. The queue then sat at
@@ -274,9 +271,8 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
 
   The names shown are the game's name in the language, then the theme's ("BN4 Tournament Battle", "EXE4
   トーナメントバトル"). The app names no song and no game: it lists what the packs' contents state.
-- *The pick* is the player's own and one: Practice's entry and its menu over the battle (§15) show and change the
-  same one (Play's lobby has none: the user, "don't allow bgm select in lobby"). It is kept for one visit to
-  Practice (`practice::Visit`, `Shell::battle_music`; §15) and each visit starts on "Game's own" (the user, "going
+- *The pick* is the player's own and one: the practice menu over the battle (§15) shows and changes it (Play's
+  lobby has none: the user, "don't allow bgm select in lobby"). It is kept for one visit to Practice (`practice::Visit`, `Shell::battle_music`; §15) and each visit starts on "Game's own" (the user, "going
   into practice should reset all the arena settings, there's no reason for it to remember the last settings";
   docs/design/app-ui.md §2.40): nothing of it is in the settings. The list is "Game's own", then the themes of every game whose parts are read
   (`Games::read`: its content and its sound; no runtime is needed), the games in their order; a game whose pack
@@ -302,55 +298,16 @@ bn5 boss battle, bn5 vs nebula gray, bn6 virus battle, bn6 boss battle, bn6 vs c
   and the theme starts again on its own driver.
 - *A difference from the original:* a theme of another game has a mixer of its own, so the battle's effects don't
   take its channels as they take the game's own music's.
-- *Practice's entry plays the battle's music* (the user: "in the practice screen, if the bgm choice changes from
-  game default you should start playing the bgm", then "the practice mode menu should also play the battle music
-  and when it transitions it should play through the transition and not restart"): while the entry shows, the
-  music its session will start plays in place of the menus' title music (`Practice::play_music`,
-  `music::preview`, `Sound::set_preview`), at Settings' Music level: the song the session's first round starts
-  as it opens (`BattleSettings::music`, what `Battle::mode_intro` plays: a link battle's, so the game's own battle
-  music for "Game's own", EXE6's and EXE5's `virus-battle` and EXE4's set's `boss-battle`), as the pick plays it
-  (the theme in its place, on its own pack's bank). It plays on the battle's own sound: a `BattleAudio` of the
-  parts the battle is made with (`music::sound`), started by the music's own cue. Stepping the row crossfades to
-  the next once the row has stayed on it 400 ms (`MUSIC_AFTER`: a run of steps starts one song, the one it stops
-  on, as the arena waits 160 ms before it is drawn). Leaving the entry (to the menu, to Builds through EDIT)
-  brings the title music back as the other menus have it.
-- *A change of game on the entry keeps the same song* (the user: "switching game in practice mode shouldn't
-  restart the music if it's the same music"; docs/design/app-ui.md §2.45): the pick stays (it is the visit's),
-  and the same pack's same song (a theme) goes on where it is on the new game's sound, which its session takes
-  over at START (`BattleAudio::go_on_with`; nettai's `a_game_changed_keeps_the_same_song`); another (Game's own:
-  BN6's, then BN5's) crossfades as before. (A step of the row to the same song goes on too.)
-- *Into the battle it plays on.* START PRACTICE doesn't fade it: while the cards show, the battle being made ready
-  is one that takes it over (`Shell::carried_music`: a battle that plays the pick, whose first round's music and
-  pick are the preview's, by `music::key`), so the menus keep it playing; as the battle begins, the preview's
-  sound is the battle's (`Sound::take_preview`, nettai-frontend's `Player::carry_sound`, before the first tick,
-  the levels given after). The round's start then plays its music cue as ever, and the game's own `PlayMusic`
-  finds that song playing already and does nothing (nettai-audio's `SoundCalls`: "nothing if it's the music
-  already"), so the song goes on from where the entry had it, through the cards, the jack-in and the round's
-  opening (nettai's `the_battle_goes_on_with_the_entrys_music`: the song's clock past the entry's, where a battle
-  of its own starts it from 0, the battle the same by digest). Nothing of the battle changes: its cues are its
-  own, the sound is presentation, and practice has no rollback (a live set's cues are played as they come;
-  netplay's `CueTracker` is not involved). A Music row changed a moment before START is played at START, and the
-  battle takes that one over.
+- *The battle's music starts with the battle* (docs/design/app-ui.md §2.57): a practice session's battle starts
+  its music at its round's start as any battle does, the title music having faded as the battle is made ready,
+  and Play's title music comes back after. (Practice's entry played the session's music before the battle and the
+  battle took it over, and back at the entry the entry took the battle's over, §2.29, §2.40, §2.43 and §2.45; the
+  entry went, and with it the menus' preview of a battle's music, `Sound::set_preview` and the battle's sound
+  carried across, nettai-frontend's `Player::carry_sound` and `take_sound`, nettai-audio's
+  `BattleAudio::go_on_with` and `keep_music_alone`.)
 - *After that, the battle's as ever:* a round's end stops the music (`StopMusic`) and the next round starts it
   from its beginning; RESTART, and a set that ends and starts over, start the set again, whose round start finds
-  the music still playing (on through) or stopped after a round's end (from its beginning), as before.
-- *Back at the entry it plays on* (the user: "also exiting practice mode back into the practice menu should
-  continue the music"; docs/design/app-ui.md §2.43). EXIT (§15), or the battle stopping with the entry shown,
-  hands the battle's sound to the entry, the other way of START's: the session's battle gives up its sound as it
-  ends (nettai-frontend's `Player::take_sound`, `practice::battle_sound`), and the entry's preview is that sound
-  where its music is the song the entry plays (`Sound::set_preview_after`, `music::preview_after`: its
-  `BattleAudio::music_heard` the preview's song, and its music player still playing), so the song goes on from
-  where the battle had it, with no restart and no fade-in (nettai's `the_entry_goes_on_with_the_battles_music`:
-  the song's clock past the battle's, at the music's level at once). The battle plays the pick, as the entry
-  does: a Music changed in the practice menu during the battle switched the battle's song to it (below), and the
-  entry plays the same one. Only the song comes over: nettai-audio's `BattleAudio::keep_music_alone` stops every
-  player but the music's and lets a queued sound effect go, turns BN6's low-HP speed-up off and the music
-  player's volume back to full (a dark chip's hover), and sets the sound's levels to 1, the menus' own (Settings'
-  Music is then applied as the menus apply it, the same level the battle had). The title music doesn't come in
-  between: what the menus played stops, and the preview is set in the same frame the battle ends. Where the
-  battle's music had stopped (a round's end) or another plays (the result's winner or loser music), the entry's
-  starts from its beginning, fading in, as before (nettai's `the_entry_starts_its_music_where_the_battles_stopped`).
-  Nothing of the battle changes: it is over, and only its sound, presentation, goes on.
+  the music still playing (on through) or stopped after a round's end (from its beginning).
 - *The practice menu changes it while the battle runs* (the user: "also you should be able to change the bgm in
   the practice menu"): its Stage rows (Battle rows until docs/design/app-ui.md §2.56) have Music, the same pick. A change switches the battle's music at once
   (`music::retheme`, `Player::set_sound_parts`, nettai-audio's `BattleAudio::set_songs`): where the battle's own
@@ -532,8 +489,8 @@ whatever the player used, a key, a pad or a click, arrives as one of a few calls
 - *Another screen:* `tell(screen, tag, choice)` has that screen hear `answered(tag, choice)` once the caller
   has returned (how Practice tells the screen that added a row to its menu). With `go`, it asks another screen
   for something: `screens::builds::open(shell, from, at)` goes to Builds and tells it which screen opened it and
-  which build to open in its editor (§8); `screens::practice::open(shell, game, file)` has Practice's entry
-  open on a build (§15).
+  which build to open in its editor (§8); `screens::practice::open(shell, game, build)` has Practice go straight
+  into a practice battle on a build (§15).
 - *A replay:* `start_battle` with `Play::Watch(replay, side)` makes its viewer ready behind the same cards and
   hands it over (`BattleEvent::Watching`); the screen shows it in a `Picture` of its own with
   `show_surface(surface, present)` and plays its sound with `play_samples`, having given the viewer the Music
@@ -638,13 +595,15 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 
 **The screen has three parts**, one shown at a time (`PlayView.part`), and two things over a match:
 
-- **The builds** (docs/design/app-ui.md §2.50: Play and the Builds list made one; §2.52: in three zones). + NEW
-  BUILD over the player's builds of the selected game as a list (`builds::shelf::load`, its `BuildRow`s: each
-  read from its file and checked by the game's rules; one that can't be played says how many problems it has, in
-  the error red); the chosen one's overview beside it (the wide sheet, §8) with EDIT and ⋯ in its header
-  (`BuildOverview.tools`, the room it leaves them); and the band under both: PRACTICE under the list, and under
-  the overview the ONLINE group, CREATE INVITE, the code's field with JOIN, DIRECT CONNECT (a text button), the
-  reserved line under them. The chosen build is the one under the list's cursor, remembered by game; the
+- **The builds** (docs/design/app-ui.md §2.50: Play and the Builds list made one; §2.52: in three zones; §2.57:
+  a build and three ways to play it). + NEW BUILD over the player's builds of the selected game as a list
+  (`play::shelved`: `builds::shelf::load`, its `BuildRow`s, each read from its file and checked by the game's
+  rules; one that can't be played says how many problems it has, in the error red); the chosen one's overview
+  beside it (the wide sheet, §8) with EDIT and ⋯ in its header (`BuildOverview.tools`, the room it leaves them);
+  and under both three tiles of one size (`Button`'s `tile`, 72 tall; `JoinTile`): PRACTICE, HOST (the main
+  action, `invite`: an invite, as CREATE INVITE was) and JOIN (the code's field, `code`, its go button, `join`,
+  and under its word the link "Direct connect…", `direct`, to the direct connection's dialog), the reserved line
+  under them. The chosen build is the one under the list's cursor, remembered by game; the
   overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD and RENAME open the
   name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
   (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
@@ -653,13 +612,13 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   click on a row (`row-menu`) open the build's menu (`Shell::pick_menu`, its choice heard as `more`'s): DUPLICATE,
   RENAME and DELETE, or DELETE alone for a build whose file doesn't read; DELETE (and Delete on the list) asks
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
-  at)`), whose Back comes back here with it still chosen; PRACTICE opens Practice's entry on it
-  (`screens::practice::open`, Your build the chosen one's file), whose Back comes back here too (§15). With no
-  build of the game + NEW BUILD is the one main action (CREATE INVITE takes the normal look), the focus is on it,
-  and each of the band's controls says "Make a build first." when pressed (`UserError::NoBuild`). Right from the
-  list goes to EDIT and Tab goes zone by zone (`Screen::route`, §11). On a phone the list is one box of the chosen
-  build, which opens the builds as a sheet, EDIT and ⋯ under it, then the band one under the other, and no
-  overview. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
+  at)`), whose Back comes back here with it still chosen; PRACTICE goes straight into a practice battle on it
+  (`screens::practice::open`, by the build's name), whose EXIT comes back here too (§15). With no build of the
+  game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, and each tile says
+  "Make a build first." when pressed (`UserError::NoBuild`); a build that can't be played, why. Right from the
+  list goes to EDIT and Tab goes in reading order (`Screen::route`, §11). On a phone the list is one box of the
+  chosen build, which opens the builds as a sheet, EDIT and ⋯ under it, then the three tiles one under the other,
+  and no overview. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
   whatever it was typed with (`code_typed`, `code_shown`). A pad can't type: its confirm on the field opens the
   code as six boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through
   a box's characters (the alphabet codes are written in), and a character typed goes into the box and on to
@@ -864,8 +823,8 @@ the window's thread (§1); hiding has none. The same run with the host's timer l
 time, its link read as down from the third second, and its match stood still (0 ticks for six or seven
 seconds); the link and the match both picked up when the window came back.
 
-The signaling server isn't deployed (with none named, CREATE INVITE and JOIN say the server can't be reached,
-and DIRECT CONNECT works). Run it locally:
+The signaling server isn't deployed (with none named, HOST and JOIN say the server can't be reached, and
+JOIN's "Direct connect…" works). Run it locally:
 
     cd signaling && npx wrangler dev        # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
@@ -1713,7 +1672,7 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
 | Component | What it is |
 |---|---|
 | `Cut`, `PanelBack`, `Panel` | The rectangle with one line and its bottom right corner cut (9 on a button, 12 on a panel, 18 on a dialog or a menu); a panel's back with the cyan accent, or a player's color; a panel with something in it |
-| `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused: Play's DIRECT CONNECT), unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
+| `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused), unavailable (`enabled` off: the focus passes it by); `danger`, `big`, `tile` (Play's PRACTICE and HOST: 72 tall, its words at its left at 20, a panel's cut) |
 | `Field` | A text field (§11) |
 | `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`: at most ten rows at once, fewer where the window has less room by the select; more scroll, and it opens with the chosen one in view); `focusable` off where its row is what is focused |
 | `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked`; `focusable` off where its row is what is focused |
@@ -1984,8 +1943,7 @@ own `write` and `compare`) or the screen's own (`screens/play/tour.rs`), with a 
 for the motion probe, each called from `tour::walk` and `tour::motion_walk` with one line
 (`practice::steps(&mut add, lang, size)`; Play's take `walk`'s `add`, a step and the time it is given first,
 and its `shot`, a shot's name and its place in a pair). A pair's second shot may be given more to differ in
-than the two cursors (`practice.rs`'s `Differs::Builds`: where the entry shows the builds chosen; its
-`Differs::Picture`: the game's picture where the practice menu leaves it in view, as the game moves its
+than the two cursors (`practice.rs`'s `Differs::Picture`: the game's picture where the practice menu leaves it in view, as the game moves its
 backgrounds through its pause, each box given exactly so that none of the picture under the panel is let
 differ; `replays.rs`'s `Also::Playback`: the picture, the bar and its two times; `Tour::may_differ`, for the
 next pair of `walk`'s `shot`: the NaviCust's strip, which shows the program under the cursor), found from where
@@ -1995,22 +1953,24 @@ depend on its having come, the walk says when it didn't (`Tour::never_came`, whi
 pass fails on: Play's `reach`), so that a picture of the wrong thing isn't taken for the right one.
 `NETTAI_TOUR_ONLY=replays` walks Replays' steps alone (it has none for the motion probe).
 
-The pass has nothing of the player's to go by: its settings are the defaults, and Practice and Play list a new
-build of each of the game's versions (and one that can't be used) in place of the player's builds. The builds Play lists
+The pass has nothing of the player's to go by: its settings are the defaults, and Play lists builds of its own
+(and one that can't be used) in place of the player's builds, which Practice offers as Play lists them. The builds Play lists
 outside its own walk are the pass's own too, in `<folder>/builds` (`paths::keep_builds_in`), made there through
 Play as a player makes them, and Replays lists replays of the pass's own.
 
-**Practice's steps** (`tour/practice.rs`) walk the entry, the two cards, the battle and the practice menu
-(each Battle row with its value changed, a pair apart; Background's and Music's lists open on the entry and in
-the menu, and a background chosen from the menu's, a step checking the list closed and the place moved on one), and drive the options in the battle as a player would,
-the buttons held as the shell holds them: the dummy shot with Your HP and Dummy's HP on Refills, a shot after
-the hits and one after a rest; the custom gauge full, L, and the custom screen dealing in folder order; the
-dummy's Action Fights with its Level under it. (Before them, the entry with no build of the game, which goes back
-to Play at once: a step checks Play is shown.) Then the way to Builds' editor and back: with the pass's new builds kept as files
-in its own folder (the entry lists them as a player's: `Shared::tour_files`), Your build's EDIT focused, the
-editor it opens on that build's Folder tab, an entry taken out there, and Back, the entry with the build as it
-was left (it can't be used now); a step before each picture checks the walk is where the picture says, and the
-report says so if not. `practice.txt` in the pass's folder says what no picture does at
+**Practice's steps** (`tour/practice.rs`) walk Play's PRACTICE (the two cards, then the battle with the practice
+menu open over it as it starts, the focus on RESUME, a step checking both), the menu's Dummy's build (a value
+apart, the set started over; its list; a list of 24 names, scrolled), the battle, and the practice menu (each
+Battle row with its value changed, a pair apart; the Arena's and Background's grids and Music's list, and a
+background chosen from its grid, a step checking the list closed and the place moved on one), and drive the
+options in the battle as a player would, the buttons held as the shell holds them: the dummy shot with Your HP
+and Dummy's HP on Refills, a shot after the hits and one after a rest; the custom gauge full, L, and the custom
+screen dealing in folder order; the dummy's Action Fights with its Level under it. Then EXIT, a step checking
+Play is shown; and the way to Builds' editor and back: with the pass's new builds kept as files in its own
+folder (Practice lists them as a player's: `Shared::tour_files`), PRACTICE on the first, the Dummy's build
+stepped to the second, its EDIT focused, the editor it opens on that build (‹ PRACTICE), and Back, the practice
+battle again with the menu open and the dummy still on that build; a step before each picture checks the walk
+is where the picture says, and the report says so if not. `practice.txt` in the pass's folder says what no picture does at
 each: both navis' HP, the gauge, the options, and each side's deal beside the top of its folder as saved; that
 is said, not one of the pass's own checks. The pass needs the screen unlocked: a window on a
 locked screen draws no frames, and the practice battle never starts (`practice.txt` says "no battle").
@@ -2144,9 +2104,9 @@ NETTAI_PACKS=data NETTAI_TOUR=/tmp/reel NETTAI_REEL=/tmp/reel/nettai-showreel.mp
 ```
 
 It shows, in about 90 seconds: the main menu with its demo battle and the title music, a change of game to EXE5,
-EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle); Practice's entry (the builds
-facing each other, the arena's preview, the arena stepped), its Music stepped to a battle theme, which plays,
-START, the cards, the practice menu setting the dummy to Fights at Hard, and a fight in which the player's side
+EXE4 and back to EXE6 (the ground sweeping in, each game's music and demo battle); Play's PRACTICE, the cards,
+the practice menu open as the battle starts, the arena stepped there and its Music stepped to a battle theme,
+which plays, the dummy set to Fights at Hard, and a fight in which the player's side
 presses by itself (the custom screen picked through as the bots pick, chips used, a move, a charged shot, the
 custom screen opened once the gauge is full); Play's builds, the editor's Folder tab (a chip put in from the
 library), the NaviCust (two programs taken and put down) and the patch cards (three put in), then EXE5's builds
@@ -2337,7 +2297,8 @@ the practice menu and its rows 0.22, the input display 0.09, the entry's cards a
 stub was. What kept it there: the entry's parts are shown and hidden, not `if`s; the menu's rows are one
 component under one `for`; the input display is in the window throughout and shown when it is on, where an `if`
 was 46 KB more; Practice has no overlay (an empty one under its `if` was 22 KB); a card places its three texts
-itself, where two layouts were 9 KB more; the display's arrows are the text face's, not paths (11 KB).
+itself, where two layouts were 9 KB more; the display's arrows are the text face's, not paths (11 KB). (The entry
+went with docs/design/app-ui.md §2.57: Practice is now the menu and the input display alone.)
 
 The follow-ups after it (the phone's picture edge to edge, a select's list scrolling, a terminate request, a
 game that can't be loaded told; measured the same way, load average 260 to 336) cost 0.06 MB of generated Rust
@@ -2457,44 +2418,75 @@ the components used in one place (given the child, or measured copied in).
 ## 15. Practice
 
 docs/design/app-ui.md §6, "Practice": you against a dummy set up from a menu while practicing. It is
-`src/screens/practice.rs` and `ui/screens/practice.slint`.
+`src/screens/practice.rs` and `ui/screens/practice.slint` (the practice menu and the input display).
 
-**The entry.** Five rows, Your build, Dummy's build, Arena, Background and Music, and START PRACTICE at the
-column's foot; beside them (on a phone, under them) the two builds as cards over the arena.
+**No screen of its own** (docs/design/app-ui.md §2.57: the user, "i feel like the practice button is in a weird
+place", then the whole play/build/practice flow rethought, "sure do that"). Practice's entry is gone (its rows,
+the two builds facing each other, its running arena preview, START PRACTICE, its EDIT and its music). Play's
+PRACTICE checks the chosen build as HOST does (`Play::side`: "Make a build first.", or why it can't be played, in
+Play's reserved line) and calls `practice::open(shell, game, build)`, which starts a visit with that build (by its
+name) and goes to `ScreenId::Practice`. That screen has no page (`Screen.practice` shows nothing in app.slint):
+shown, it starts a session of its own (`Practice::start_own`) whose battle fills the window, after the two cards
+and the jack-in as any battle's. Back (before the battle has the keys) and the menu's EXIT go to Play, whose
+build is still chosen; leaving Practice ends its session (`Practice::hide`). A session that can't start (the
+build gone, or no longer one that can be played) goes back to Play with the failure's dialog.
 
-**A visit** (`practice::Visit`, in `Shell::practice`): from the entry being shown from elsewhere (Play's
-PRACTICE) until a screen other than Practice and Builds is shown. Builds is part of it: EDIT goes there and its
-Back comes back (`Practice::away` keeps the visit through the entry's leaving for it; any
-other screen shown ends it, `Visit::shown`, as Practice leaving for one does). Arena, Background and Music are
-the visit's: each visit starts on Random, Random and "Game's own" (the user: "going into practice should reset
-all the arena settings, there's no reason for it to remember the last settings": docs/design/app-ui.md §2.40),
-and through it the entry, its sessions (the menu's Arena, Background and Music are the same three), the entry
-again after them and the entry back from Builds keep what the player set. None of the three is in the settings.
+- **What it starts on** (`Practice::start_own`): the player's build the visit's (Play's chosen one; shown from
+  elsewhere, the screenshot pass, the one Play remembers, `play::remembered`, else the first that can be
+  played), the dummy on the visit's dummy's build (at first the player's own), the place, the music and the
+  menu's choices the visit's (at first Random, Random, "Game's own", Stands still, Normal, every option normal,
+  the input display off). The builds are read as Play lists them (`play::shelved`), and those that can be played
+  are what the menu's Dummy's build offers (`practice::Pick`: a build and its place among the game's files).
+- **The menu opens as it starts** (the user: "when practice mode starts you should also bring up the menu
+  immediately"): the session's `Start::menu` has `Practice::battle` open the practice menu at `Started`, over the
+  battle in the game's pause (below), its focus on RESUME; the battle steps through its opening under it and waits
+  on its custom screen. RESUME starts the fight. The session beside a waiting invite has no `menu` and starts as
+  before, and RESTART doesn't open it.
+- **The battle's music** starts with the battle, as any battle that plays the pick (§1, "The battle's music"):
+  nothing plays it before, and the title music comes back on Play after.
 
-- Each row is the player's builds of the selected game (`builds::store::list`), stepped with Left and Right or
-  opened as a list with Enter. Both are remembered by game between runs (the settings' `remembered`:
-  `training.build.<game>` and `training.dummy.<game>`, by the build's file); with nothing remembered both are
-  the first build that can be used.
+**A visit** (`practice::Visit`, in `Shell::practice`): from Play's PRACTICE (`Visit::new`) until a screen other
+than Practice and Builds is shown. Builds is part of it: the menu's EDIT goes there and its Back comes back
+(`Practice::away` keeps the visit through Practice's leaving for it; any other screen shown ends it,
+`Visit::shown`, as Practice leaving for one does). The player's build, the dummy's build, Arena, Background,
+Music and the menu's choices are the visit's: each visit starts on the defaults (the user: "going into practice
+should reset all the arena settings, there's no reason for it to remember the last settings":
+docs/design/app-ui.md §2.40; "yes for the practice options, they should all reset to default", "you should also
+not remember the last dummy build either": §2.54), and through it every session, and the session started again
+back from the editor, keeps what the player set. None of it is in the settings.
+
+- **The Dummy's build** (docs/design/app-ui.md §2.57) is the menu's first row, a `Select` of the game's builds
+  that can be played, by name, the player's own at first: Left and Right step it, Enter, a click or a tap opens
+  its list. A change starts the set over with the dummy on it, as Arena's does (`restart_set`: the session's
+  match's side 1 the new build, its set made again from the session's seed and played from its next start, the
+  menu staying open; what the new build draws that the battle wasn't made ready for is loaded as it is first
+  drawn, as for a new arena). The menu's line under its title says the two builds' names.
+- **EDIT** under it, a button in the controls' column (`PracticeOption::EditDummy`), opens the dummy's build in
+  Builds' editor (`screens::builds::open(shell, ScreenId::Practice, at)`, by its place among the game's files;
+  the editor's Back says ‹ PRACTICE). Practice is left (its session ends; `away` keeps the visit), and Back from
+  the editor shows Practice again, which starts a session on the visit's choices with the builds as the edit
+  left them, the menu open (chosen in docs/design/app-ui.md §2.57: an edit changes a build the battle was made of,
+  so the battle starts again, as a change of the Dummy's build starts the set over). A dummy's build that can't
+  be played after the edit is offered no more, and the dummy is on the player's build; where that is the one
+  that can't be played, the session doesn't start, and Play shows with the failure's dialog. A build with no
+  file (the screenshot pass's own) is refused.
 - Arena and Background (the user: "in training mode can you also add arena + background select?") are where
   every round of the session is fought (`practice::Places`, from the content alone): Random first, a
   place picked from the seed each round as a match that names none has it (what practice did before; a
   background from the whole background pool, §1, "The battle's background"), then the game's arenas, the link
   battle stages a match may name (`nettai_match::link_battle_stages`, the rules' `link_pick.match_stages`:
-  EXE6's 96, EXE5's 94, EXE4's 96) each arena once (48 in each game: below), and the background pool, every game's battle backgrounds
-  (`nettai_match::ids::pool_backgrounds`: 70, BN4's, then BN5's, then BN6's, in any game's practice), each in
-  its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Arena was an arrow
-  pager (the user: "the arena names are meaningless so you should just have like a pager widget that goes through
-  them") and Background a dropdown (docs/design/app-ui.md §2.43); since §2.56 ("arena selector should be like a
-  dropdown that shows previews of all arenas. background dropdown should be similar and show preview of all
-  backgrounds. the practice menu and the practice start screen should use the same widgets") both are the same
-  pictured `Select` on the entry and in the menu (`pictured`: the chosen one's picture, fifteen sevenths of the
-  box's height less 12 wide, before its name; Random a question mark), and Enter, a click or a tap opens the grid
-  of every choice's picture (`Shell::pick_grid`, below); Left and Right still step it, around from the last to
-  Random. Each is the
-  visit's (above): Random as a visit starts, kept through it, a choice of another game's entry Random (a match
-  names a background by the name it writes, the game's own by its name in the pack, another game's with its
-  game, `exe4:acdc-area`). Each step draws the arena again after the same 160 ms as a build's, so a run of steps
-  draws once.
+  EXE6's 96, EXE5's 94, EXE4's 96) each arena once (below), and the background pool, every game's battle
+  backgrounds (`nettai_match::ids::pool_backgrounds`: 70, BN4's, then BN5's, then BN6's, in any game's practice),
+  each in its keys' natural order (a run of digits by its number: `netbattle-2` before `netbattle-10`). Arena was
+  an arrow pager (the user: "the arena names are meaningless so you should just have like a pager widget that goes
+  through them") and Background a dropdown (docs/design/app-ui.md §2.43); since §2.56 ("arena selector should be
+  like a dropdown that shows previews of all arenas. background dropdown should be similar and show preview of all
+  backgrounds") both are a pictured `Select` in the menu (`pictured`: the chosen one's picture, fifteen sevenths of
+  the box's height less 12 wide, before its name; Random a question mark), and Enter, a click or a tap opens the
+  grid of every choice's picture (`Shell::pick_grid`, below); Left and Right still step it, around from the last
+  to Random. Each is the visit's (above): Random as a visit starts, kept through it, a choice of another game's
+  Random (a match names a background by the name it writes, the game's own by its name in the pack, another
+  game's with its game, `exe4:acdc-area`).
   - The two are apart in the games' own data: a link battle picks its stage and its background each on its
     own (`link_pick`: EXE6's and EXE5's `PosRNG1` then `PosRNG2`, EXE4's two `PosRNG2` picks), and a stage's
     own background is shown only where the rules list none to pick from. So either is chosen with any of the
@@ -2519,13 +2511,12 @@ again after them and the entry back from Builds keep what the player set. None o
     keeps the original's coin flip of which side goes first. Play's matches and their random pick are as
     they were.
   - Their words: an arena is said by its place in the list, "12 / 48" (a stage is its key in the content,
-    and the user found the keys' names meaningless; its cell in the grid says the same, under its picture); a background by its game's name and what that game's
-    locales call it in the language (`[backgrounds]`, by the area it comes from: `backgrounds::name`), "BN4
-    ACDC Area". Every background of the three games had its name in English and in Japanese already.
-  - A background stepped keeps the arena: with Arena Random the seed picks each round's arena whether the
-    round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`), so the preview is
-    the same arena on the new background, and Random is the same arena each time the entry comes back to it,
-    until a session is over (each entry after a session has a seed of its own); the session opens on it.
+    and the user found the keys' names meaningless; its cell in the grid says the same, under its picture); a
+    background by its game's name and what that game's locales call it in the language (`[backgrounds]`, by the
+    area it comes from: `backgrounds::name`), "BN4 ACDC Area". Every background of the three games had its name
+    in English and in Japanese already.
+  - A background chosen keeps the arena: with Arena Random the seed picks each round's arena whether the
+    round names its background or not (nettai's `a_background_chosen_keeps_the_arenas`).
 - **The grid** (`Shell::pick_grid`, the shell's `PickerLayer` with `picker-grid`; `Look::Grid`): every choice
   as a cell, its picture 120 by 56 (seven fifteenths of the cell's width: the field's band, which a display of
   two pixels a unit shows pixel for pixel) over its name on two lines at most, Random first with a question mark. It
@@ -2541,7 +2532,7 @@ again after them and the entry back from Builds keep what the player set. None o
   first record between two MegaMen (a new build of the game's first version, on both sides: never the player's
   builds, a save or the dummy; the user: "you should just render the arena and megaman only without his hp",
   "you should show the opponent too as megaman on the other side. it should always be megaman as well, don't use
-  the training dummy or saves"), played to its opening's end as the entry's preview is, and drawn by
+  the training dummy or saves"), played to its opening's end (at most 300 ticks, `thumbs::OPENING`), and drawn by
   nettai-render's `still::field`: the field's panels, the two navis, each with its own shadow, and the objects
   the arena places as its round starts (the user: "objects don't seem to be rendered on stage previews"), from
   the local side, and nothing else (no background, no HUD, no other object; clear where nothing is, the cell's
@@ -2553,73 +2544,19 @@ again after them and the entry back from Builds keep what the player set. None o
   (`still::background`). Each is the battle picture's rows 40 to 152, 240 by 112: the tallest thing on the field
   whole, EXE4's flags on the back row reaching up to row 40 and its field's front edge down to row 151 (until the
   objects were drawn the band was rows 56 to 152, 240 by 96, which cut those flags, the cubes on EXE6's back row
-  and the navis of the arenas that start them there). The entry's own preview, a running round, drew the
-  objects already. A game's are made on a thread of their own (`Thumbs::want`) when the entry shows it or a session of
-  it starts: the backgrounds first (they need no runtime), then the content's runtime loaded on that thread, then
-  each arena; in a dev build about 20 ms, 0.25 s and 0.3 s for EXE6's 47, so they are all there some 0.6 s
-  after the entry first shows, and opening a grid never waits (a cell not made yet is empty and fills in as its
-  picture comes, `Thumbs::poll` each frame, which tells the selects their pictures too). They are the same
-  whatever the player's builds, and kept for the session by game (the pool's backgrounds once for all three):
-  nothing is written to disk. The screenshot pass makes them on the window's thread at once.
-- **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions play,
-  the visit's ("Game's own" as a visit starts): a dropdown as Background's, its list "Game's own" then the
+  and the navis of the arenas that start them there). A game's are made on a thread of their own
+  (`Thumbs::want`) when a session of it starts: the backgrounds first (they need no runtime), then the content's
+  runtime loaded on that thread, then each arena; in a dev build about 20 ms, 0.25 s and 0.3 s for EXE6's 47, so
+  they are there well before the cards are done, and opening a grid never waits (a cell not made yet is empty and
+  fills in as its picture comes, `Thumbs::poll` each frame, which tells the selects their pictures too). They are
+  the same whatever the player's builds, and kept for the session by game (the pool's backgrounds once for all
+  three): nothing is written to disk. The screenshot pass makes them on the window's thread at once.
+- **Music** is the battle's music the player picked (§1, "The battle's music"), the one pick Practice's sessions
+  play, the visit's ("Game's own" as a visit starts): a dropdown as Background's, its list "Game's own" then the
   themes, stepped by Left and Right around from the last theme to "Game's own", and Enter, a click or a tap opens
-  its list. It changes nothing drawn (the arena's picture is silent). **The entry plays the battle's music** in
-  place of the title music (the user: "the practice mode menu should also play the battle music and when it
-  transitions it should play through the transition and not restart"): the music its session will start, the
-  game's own battle music for "Game's own", a theme for a theme, changing once the row has stayed on it 400 ms;
-  START PRACTICE doesn't fade it, and the session's battle takes it over, so it plays on through the cards into
-  the fight (§1, "The battle's music"). After a session (EXIT) the entry takes the battle's music over the same
-  way, so it plays on where it is; where the battle's had stopped (a round's end, the result's music), the entry
-  plays its own from its beginning. (On a phone the five rows are 44 tall and 48 apart,
-  where the four were 48 and 56, so that the cards and the arena still end over START PRACTICE.)
-- A card says its build's name, its version's tag and its navi.
-- The arena is the session's first round, the two builds' navis on it: a battle of its own, in a `Picture` at
-  three times (§1), so it is whole pixels as every picture of the battle is. (The window has one texture: the
-  entry's box shows it only once the arena is what is in it, from the second frame the window draws of it.) It
-  is made once the builds and the place chosen have stayed 160 ms (making a round holds the window about 5 to
-  8 ms in a dev build: a step through them doesn't make one each time), on the place chosen, and what the
-  session will be picked from is drawn as the entry lists a game's builds and after each session, so the arena
-  shown (a Random one too) is the one START PRACTICE opens on.
-- **The arena runs** (docs/design/app-ui.md §2.35: "you should also animate the background in the practice setup
-  screen", "you should also run the field a little so it shows stuff like wind fields and panel animations",
-  "you should disable the custom gauge in the arena preview"). Made, the round is played past its opening
-  (52 ticks or so; at most 300) and its first custom screen, both sides pressed straight to OK with no chip
-  (`driver::ok_buttons`; the dummy is an `Opponent` that stands still and picks nothing), through the start
-  banner into its fight: about 280 ticks in all, at most 600 more (`TO_FIGHT`). From there the entry runs it
-  as a battle runs, the ticks due each frame (`Stage::advance`) with nothing pressed, and presents each new
-  picture: the background animates and scrolls on the round's own clock, the panels' palettes cycle, and what
-  the arena's field does goes on (EXE4's wind stages' gusts, EXE6's roads and volcanoes). Nobody presses L or
-  R, so no custom screen opens; a round that leaves its fight all the same (a navi down on a field that hurts,
-  the time up) is made again from its start, in the frame it left, so none of that is shown. Hidden (another
-  screen, a session), it is held, and runs on from there when the entry shows again; a change of arena,
-  background or build makes it anew from its start. It is silent (the player has no audio). The HUD draws no
-  custom gauge: the renderer's `custom_gauge` is off for it (`Renderer::custom_gauge`, presentation only, as
-  `pause_display` is), so neither the bar nor its filling shows; the HP box and the mugshot stay.
-  The screenshot pass holds it as its opening ends, as before (no custom screen yet, so no gauge either): its
-  pictures are the same; its motion probe runs it as the app does. With `NETTAI_PLAY_STATS` the entry prints
-  §5's figures for it: on a 120 Hz display, 117 to 120 frames a second, 59.3 to 60 ticks a second at 35 to 230
-  µs a frame that ran them, each picture (720x480) presented in about 1.5 ms (a dev build; EXE4's wind stage,
-  EXE6's road and volcano stages, EXE5's NebulaGray).
-- **Reached from Play** (docs/design/app-ui.md §2.50): Play's PRACTICE opens the entry with Your build the build
-  chosen there (`practice::open(shell, game, file)`: it remembers that file as the game's Your build, and the entry
-  chooses it as it chooses any remembered one), and the entry's Back (‹ PLAY) goes back to Play, the build still
-  chosen there. The main menu has no PRACTICE. An entry that finds no build of the game (another game chosen in
-  its header, the files gone) goes back to Play at once (`Practice::show`); there is no CREATE A BUILD.
-- **EDIT** beside each build's select (docs/design/app-ui.md §2.28: "you should be able to go to builds screen
-  from the practice screen somehow while having the relevant build displayed") opens it in Builds' editor; so do
-  E and the pad's north button (the dummy's build on its row or its EDIT, else the player's). The build is found
-  among the game's files as they are then by its file (`practice::place_of`), and the two chosen are
-  remembered first, so the entry shows them again as the edit left them: changed, or now one that can't be
-  used, which stays chosen and says why. Back from the editor comes straight back here. A build that doesn't
-  read as one has its EDIT unavailable. (The rows are 180 wide in their box, 120 on a phone, for EDIT's 88 and
-  72 beside them; on a phone EDIT is as tall as its row.)
-- A build is checked as the lobby will check one (`nettai_match::build::Checked`), once for what its file
-  says. One that can't be used says so in the reserved line ("Your build can't be used.", "The dummy's build
-  can't be used."), START PRACTICE is unavailable, no arena is drawn, and the screen opens with the focus on
-  the row to change. *The rule it breaks isn't said yet:*
-  `Wrong`'s kinds are the builds' words to say (§12), and `practice::rule` is where that wording goes, as
-  the line's own `{}`; meanwhile each problem is in the log.
+  its list.
+- A build is checked as the lobby will check one (`nettai_match::build::Checked`, through Play's list), and the
+  match of the two (`nettai_match::check::problems`) as a session starts.
 
 **A session** (its interface is §2's "A practice session, from any screen"). `practice::start` checks the
 match of the two builds (`nettai_match::check::problems`), shows the two cards while the library's `Preload`
@@ -2685,10 +2622,12 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 
 | Row | Values | What it sets |
 |---|---|---|
+| Dummy: Dummy's build (a dropdown; Practice's own sessions) | the game's builds that can be played, the player's own first chosen | the set starts over with the dummy on it, the menu staying open: above |
+| Dummy: EDIT (a button; Practice's own sessions) | | the dummy's build in Builds' editor, and back: above |
 | Dummy: Action | Stands still, Moves around, Fights, A second pad | what the dummy does (the library's `Opponent`), from the next tick: below |
 | Dummy: Level (under Fights alone) | Easy, Normal, Hard | how well it fights (nettai-training's `Level`) |
-| Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once, as on the entry | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
-| Stage: Background (a pictured select) | Random, then the pool's by game and name, as on the entry | the battle goes on where it is, drawn on the new background: below |
+| Stage: Arena (a pictured select) | Random, then "1 / 47" and on, each arena once | the set starts over on the new arena, as RESTART starts it, the menu staying open: below |
+| Stage: Background (a pictured select) | Random, then the pool's by game and name | the battle goes on where it is, drawn on the new background: below |
 | Stage: Music (a dropdown) | Game's own, then the battle themes (§1, "The battle's music") | the pick, the battle's music switched at once (not beside a waiting invite) |
 | Options: Your HP, Dummy's HP | Normal, Refills | the library's `Training::refills`, by side: the navi's HP is full again a second and a half after it last lost any (docs/frontend.md §2) |
 | Options: Custom gauge | Normal, Always full | `Training::full_gauge`: the custom gauge is full whenever it runs |
@@ -2696,10 +2635,11 @@ rows are a model (`PracticeView.rows`: one row component under one `for`), made 
 | Options: Input display | Off, On | the app's own drawing, below |
 
 **Its rows' look** (`MenuRow`): bare, a group's title over each group, the hover tint on a row. Its controls are
-the entry's size (docs/design/app-ui.md §2.44, the user's "option 1"): the steppers and the two selects 40 tall
-(36 on a phone, as the entry's), in one column, the value's box 196 and its arrows' room 72, right-aligned with 8
+the size the entry's were (docs/design/app-ui.md §2.44, the user's "option 1"): the steppers, the selects and
+EDIT 40 tall (36 on a phone), in one column, the value's box 196 and its arrows' room 72, right-aligned with 8
 to spare, so the selects and the steppers line up; a row is 52 tall (it was 44, its steppers 32 and its selects
-32 in a narrower column). On a phone a row is 64, its label over its control (24, then the control at 26, as wide
+32 in a narrower column). EDIT's row is the control's height and 12 (52; 48 on a phone), the button in the
+controls' column, a ghost button with its word alone. On a phone a row is 64, its label over its control (24, then the control at 26, as wide
 as the panel). The menu scrolls a little more for it, and Up and Down go through the whole page first, as before.
 
 Arena changes the field, which a round sets as it starts, so a change starts the set over on the new arena:
@@ -2720,11 +2660,11 @@ change tick for tick, its digest the same but for the background its setup says,
 game's own (nettai's `on_another_background_the_battle_goes_on`); practice is neither online nor recorded, so no digest of it is
 compared with another's.
 
-Music changes the battle's music the player picked, the entry's row's one pick (§1, "The
+Music changes the battle's music the player picked, the visit's one pick (§1, "The
 battle's music"): Left and Right step it, Enter opens its list, and the battle's music switches at once, nothing
 else of it changing (nettai's `a_battle_changes_its_music_as_it_runs`).
 
-Arena, Background and Music are dropdowns in the menu as on the entry (docs/design/app-ui.md §2.43, §2.56): the
+The Dummy's build, Arena, Background and Music are dropdowns (docs/design/app-ui.md §2.43, §2.56, §2.57): the
 row's value is the `Select` box (Arena's and Background's with the chosen one's picture), and Enter, a click or a
 tap opens its list (Arena's and Background's the grid of pictures; the shell's, by the row; open at the value
 chosen, a long one scrolling; on a phone the sheet); a choice from it changes the row as a step to it would, at
@@ -2747,12 +2687,12 @@ there and the engine flags it full once the fight runs again, the folder is put 
 `the_options_act_in_the_games_own_pause`).
 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on, or opens the list of
-Background's and Music's), around from its last value to its first. Under them RESUME and RESTART side by side, and under those EXIT, as wide as the two (on a
-phone, the three one over the other): the entry again, with another arena (`menu.exit`; `practice::MENU_BUTTONS`).
-The user (docs/design/app-ui.md §2.40): "you should also get rid of "quit to menu" and "change builds" should
-just be "exit"": CHANGE BUILDS became EXIT, doing what it did, and QUIT TO MENU went (the entry's Back goes to
-Play, §2.50). In Japanese EXIT is 終了, as a fighting game's training ends ("トレーニング終了"), apart from the
-entry's もどる. Esc and the pad's Start and back button close the menu as RESUME does, as before; R, F5 and the pad's north
+a dropdown's), around from its last value to its first. Under them RESUME and RESTART side by side, and under
+those EXIT, as wide as the two (on a phone, the three one over the other): back to Play (`menu.exit`;
+`practice::MENU_BUTTONS`). The user (docs/design/app-ui.md §2.40): "you should also get rid of "quit to menu"
+and "change builds" should just be "exit"": CHANGE BUILDS became EXIT, and QUIT TO MENU went; since §2.57 there
+is no entry, and EXIT goes to Play. In Japanese EXIT is 終了, as a fighting game's training ends
+("トレーニング終了"). Esc and the pad's Start and back button close the menu as RESUME does, as before; R, F5 and the pad's north
 button restart. A session another screen started (Play's, beside a waiting invite) has no EXIT: its own rows,
 COPY INVITE CODE and CANCEL INVITE (hosting directly, COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE
 between them), are its ways out, over RESUME and RESTART. The
@@ -2761,7 +2701,7 @@ to the resume button"). The dummy's setup, the battle's options and the input di
 the visit's (`practice::Visit`), as the place and the dummy's build are: each visit starts on their defaults
 (Stands still, Normal, every option normal, the input display off, the dummy on the player's own build; the
 user: "yes for the practice options, they should all reset to default", "you should also not remember the last
-dummy build either"), and only the player's build is remembered between runs (`training.build.<game>`); and the entry after the session shows the place the menu left; a session another screen started begins as
+dummy build either"), and the player's build is Play's chosen one; a session another screen started begins as
 that screen says, every battle option at its normal value and the place Random, and keeps nothing of the
 dummy's, the battle's or the place.
 
@@ -2794,7 +2734,7 @@ late). On the web it thinks on the battle's own thread.
 
 *Adding a row*: a value of `PracticeOption` and its words in practice.slint (`label`, `value`; a row whose
 values are the content's names has them as its text, as Arena's), its place in `ROWS`, and what it does in
-`values`, `value` and `Practice::step_option`. A group's title is a row too.
+`values`, `value` and `Practice::change_option`. A group's title is a row too.
 
 **The input display** (`PracticeInputs`) is the app's own: two rows of ten buttons (the directions, A, B, L, R,
 SELECT, START), the player's over the dummy's in their sides' colors, each lit while it is held. It reads what
@@ -2805,15 +2745,12 @@ and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms 
 nothing held: the battle takes no button then but the START that holds it in the game's pause, and the dummy's
 presses go nowhere.
 
-**On a phone** the entry is one column (the four rows, lower than a desktop's, 48, the line, the cards side by
-side, the arena, START PRACTICE at the foot; side by side, two rows would each step with Left and Right and
-the arrows couldn't go from one to the other), the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which on
-a desktop holds them all) and its buttons are one over the other, and in
-battle the line beside MENU says "Practice · Round 1" (`Shell.battle-note`, which a battle's owner sets).
+**On a phone** the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which
+on a desktop holds them all), EDIT is the panel's width, the buttons are one over the other, and in battle the
+line beside MENU says "Practice · Round 1" (`Shell.battle-note`, which a battle's owner sets).
 
 **What isn't there.**
 
-- The rule a build breaks, in the reserved line (above).
 - A real key press: the screenshot pass drives the screens through the same calls a key becomes (`App::act`)
   and holds the battle's buttons directly; the window's own key events were not sent to it.
 
