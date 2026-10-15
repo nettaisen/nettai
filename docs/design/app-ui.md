@@ -641,6 +641,21 @@ Each is settled unless the user changes it.
       to leave out). A battle started with the menu open still steps through its round's opening, as above, and
       is held as its custom screen begins. Practice isn't recorded, so no replay has a hold in it. An online
       match is untouched: its menu says "the match keeps running". (§6 Practice, docs/app.md §15.)
+    - *The waiting practice's menu is the usual one.* The user: "practice menu in the matchmaking waiting screen
+      should be the same as the usual practice menu". The practice battle beside a waiting invite (or a direct
+      host's wait) has the practice menu's groups, rows and widgets, and its hold: DUMMY (Dummy's build, a
+      dropdown of the game's builds that can be played, the player's own at first; Action; Level), STAGE (Arena,
+      Background) and OPTIONS, all of them. Its own rows stay where they were, at the top: COPY INVITE CODE and
+      CANCEL INVITE (a direct host's COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE between them), in
+      place of EXIT. Two rows stay out (chosen here): Music, since its music is the menus' (§2.29, the user: "in
+      the practice mode while the lobby is waiting, don't switch the music", and #36's "it really shouldn't let
+      you change the music because it does nothing"), so the row would change nothing heard; and EDIT, since the
+      editor is another screen and Play gives up its link as it is left (a link nobody polls reads as dropped),
+      so it would cancel the invite or the direct host's listening. What the menu sets there lasts for that
+      wait, a phone's STOP PRACTICE and its PRACTICE again included, and is forgotten when the wait ends; it
+      never carries into a visit to Practice. (Superseding §6's "no Dummy's build or EDIT" beside a waiting
+      invite and the session that "keeps nothing of the dummy's setup".) (§6 Play and Practice, docs/app.md §4
+      and §15.)
     - *HOST and JOIN are the band; PRACTICE is the build's.* The user, of the three tiles: "the visual style is
       so ugly for practice/host/join", and then "well maybe for the play ui host/join should be the primary
       items and then practice like some kind of secondary thing". PRACTICE is a regular button in the chosen
@@ -684,7 +699,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
 | What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
 | The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
-| The dummy while waiting online | A copy of the player's own build, standing still, with the practice menu there to change it |
+| The dummy while waiting online | A copy of the player's own build, standing still, with the practice menu there to change it (since §2.57 the usual menu, its Dummy's build among them) |
 | Practice's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last. (Recording went later: "get rid of recording support, it's so complicated".) |
 | Practice and replays | Practice is not recorded |
 | Text entry on a pad | The invite code has a six-box picker a pad can use; names, addresses and searches need a keyboard |
@@ -931,8 +946,11 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
   a panel beside it: the invite code, large, in fixed-width type, grouped in threes; COPY CODE; "Waiting for
   opponent"; "The lobby opens when they join."; CANCEL. Hosting directly, the panel has YOUR ADDRESS, this
-  machine's address and port, COPY ADDRESS, and "Send this address to your opponent." in the last line's place. Keys go to the battle; Esc or Start opens the practice menu
-  with Copy invite code and Cancel invite added. (It starts as it always did, with no menu over it: §2.57.)
+  machine's address and port, COPY ADDRESS, and "Send this address to your opponent." in the last line's place.
+  Keys go to the battle; Esc or Start opens the practice menu, the usual one (§2.57, "The waiting practice's menu
+  is the usual one"), its rows the same but Music and EDIT, with Copy invite code and Cancel invite (Copy
+  address and Stop hosting) at its top in place of EXIT; what it sets lasts for the wait. (It starts as it
+  always did, with no menu over it: §2.57.)
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
   10, 2 at first: §2.34), Patch cards
@@ -974,8 +992,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     Level (easy, normal, hard: how well it fights) under it while it is Fights. Its custom screen goes with its
     Action. No recording: "get rid of recording support, it's so complicated". The user: "the dummy menu is so
     confusing and has so many redundant options and it's confusing to navigate. you should make it clearer and
-    less redundant". Beside a waiting invite the dummy is a copy of the player's build, and there is no Dummy's
-    build or EDIT.
+    less redundant". Beside a waiting invite the dummy is on the player's own build at first and the Dummy's
+    build offers the same builds; there is no EDIT (§2.57: the editor would leave the wait).
   - Stage: Arena (the game's arenas, by place, "12 / 47") and Background (the background pool, every game's
     battle backgrounds, §2.31, by game and name, "BN4 ACDC Area"), each Random first, a Random background drawn
     from the pool; each a pictured select whose grid opens on Enter, a click or a tap (§2.56); an arena changed
