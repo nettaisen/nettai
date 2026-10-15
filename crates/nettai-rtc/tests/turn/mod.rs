@@ -95,7 +95,7 @@ impl Serve {
         let mut any = false;
         while let Ok((n, from)) = self.socket.recv_from(&mut buf) {
             any = true;
-            self.from_client(from, &buf[..n]);
+            self.client_says(from, &buf[..n]);
         }
         for (client, a) in &self.allocations {
             while let Ok((n, peer)) = a.relay.recv_from(&mut buf) {
@@ -126,7 +126,8 @@ impl Serve {
         any
     }
 
-    fn from_client(&mut self, from: SocketAddr, datagram: &[u8]) {
+    /// What a client sent: channel data, an indication, a request.
+    fn client_says(&mut self, from: SocketAddr, datagram: &[u8]) {
         // Channel data: to the channel's peer.
         if datagram.len() >= 4 && (0x40..0x80).contains(&datagram[0]) {
             let number = u16::from_be_bytes([datagram[0], datagram[1]]);
