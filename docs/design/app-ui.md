@@ -590,7 +590,7 @@ Each is settled unless the user changes it.
     - *PRACTICE goes straight into battle.* Practice's entry is gone: PRACTICE starts a practice battle at once,
       the build chosen in PLAY the player's, the dummy on the same build, Arena Random, Background Random, Music
       the game's own and every option of the menu at its default; and the practice menu is open over the battle
-      as it starts, in the game's pause, the focus on RESUME, so the dummy and the stage can be set before
+      as it starts, the battle held, the focus on RESUME, so the dummy and the stage can be set before
       fighting. RESUME starts the fight. The practice battle beside a waiting invite starts as before, with no
       menu, and RESTART doesn't open it.
     - *Everything is changed from the menu.* Its DUMMY group starts with Dummy's build, a dropdown of the game's
@@ -620,8 +620,27 @@ Each is settled unless the user changes it.
       EXE6) still plays under the menu, since at its first tick the field is black and no music plays, and the
       battle is held as its custom screen begins, before the screen comes in, the dummy and the stage in view
       (chosen here). The same after EDIT's return, a Dummy's build or an arena changed, and RESTART's start over
-      under the menu. Mid-fight START is the game's pause as before: in EXE6 and EXE5 the NaviCust's HP bug
-      waits through it; EXE4's drains through its pause, as the game's does. (docs/app.md §15.)
+      under the menu. Mid-fight START was the game's pause as before (until the next: one hold everywhere): in
+      EXE6 and EXE5 the NaviCust's HP bug waited through it; EXE4's drained through its pause, as the game's
+      does. (docs/app.md §15.)
+    - *One hold, everywhere.* The user: "pause during custom screen vs not custom screen is so janky now".
+      Mid-fight the menu had the game's own pause, the background and the panels moving on; on the custom
+      screen, in a dimming or at a round's end it held the battle, everything still. Of three ways put to them
+      they chose: always hold the battle itself, and keep drawing the background's animation and scroll and the
+      panels' animation on a clock of their own while the menu is up, so it looks like the game's pause on every
+      screen. So wherever the menu opens (mid-fight, the custom screen, a dimming, a round's end, a round's
+      opening) the battle is held where it stands: no tick, no button, no cue, nothing of it changing (EXE4's HP
+      bug, which its own pause drains, waits too), its music going on. The scenery moves on a frame a tick on the
+      picture's own clock, from where it was: the background's animation frames and its scroll (Enhanced's
+      glide with it), and the panels' own animations (their palette cycles), which is what the game's pause
+      moves; the navis and the effects stand, as the game's pause has them (the few effects its pause lets run, a charge's glow or an aura's shimmer, are the battle's own
+      objects, and stand with it). RESUME goes on from the held tick and the scenery from where the hold left
+      it: the frames it moved stay added, so nothing jumps back; they are the picture's alone, never the
+      battle's, its snapshot's or its digest's, and a battle never held draws as before. START in the fight is
+      the host's again, as in a match: it opens the menu, and the game's own pause never runs (no PAUSED banner
+      to leave out). A battle started with the menu open still steps through its round's opening, as above, and
+      is held as its custom screen begins. Practice isn't recorded, so no replay has a hold in it. An online
+      match is untouched: its menu says "the match keeps running". (§6 Practice, docs/app.md §15.)
     - *HOST and JOIN are the band; PRACTICE is the build's.* The user, of the three tiles: "the visual style is
       so ugly for practice/host/join", and then "well maybe for the play ui host/join should be the primary
       items and then practice like some kind of secondary thing". PRACTICE is a regular button in the chosen
@@ -942,9 +961,9 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   first. Nothing plays it before the battle, and PLAY's title music comes back after.
 - **The practice menu** (Start or Esc in a practice battle, and open as one of Practice's own starts), its focus
   on RESUME each time it opens ("focus should always default to the resume button"): a panel on the left, the
-  battle behind it in the game's own pause ("music continues, stuff still animates"), without the game's PAUSED
-  banner, with the dummy in view; where the game's pause can't hold it (its custom screen, a dimming, a round's
-  end) held where it stands, its music going on (§2.57). Rows are a label and a value between arrows, changed at once by Left and
+  battle behind it held where it stands wherever it opens, and looking as the game's own pause does ("music
+  continues, stuff still animates"): its music going on, its background and its panels' animations moving on,
+  no PAUSED banner, the dummy in view (§2.57, "One hold, everywhere"). Rows are a label and a value between arrows, changed at once by Left and
   Right; bare rows under group titles, their steppers, dropdowns and EDIT 40 tall (36 on a phone), in one column
   so they line up, the rows 52 tall (§2.44: "option 1"; on a phone the label over the control):
   - Dummy: Dummy's build (§2.57: a dropdown of the game's builds that can be played, the player's own at first;

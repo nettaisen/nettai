@@ -247,9 +247,12 @@ impl Stage {
                 s.ticking.add(started.elapsed());
             }
         }
-        // (A battle held where it stands sounds its ticks, and its picture is the same.)
-        if ran > 0 && !self.player.held() {
+        // (A battle held where it stands sounds its ticks and draws its scenery on: its picture is new too, but
+        // no key reached it.)
+        if ran > 0 {
             self.surface.stale = true;
+        }
+        if ran > 0 && !self.player.held() {
             if let Some(s) = &mut self.stats {
                 for &at in pressed.iter() {
                     s.key_to_tick.add(at.elapsed());
