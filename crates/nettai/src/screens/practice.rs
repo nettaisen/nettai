@@ -81,6 +81,10 @@ pub struct Start {
     pub from: Option<(ScreenId, &'static str)>,
     /// The rows that screen adds at the top of the practice menu: their texts, in the language shown.
     pub rows: Vec<String>,
+    /// That screen's EXIT: its word, in EXIT's place under RESUME and RESTART (Play's beside an invite, CANCEL
+    /// INVITE; the user: "the stop hosting button should be in the place of the exit button on the regular
+    /// practice menu"), heard as `Screen::answered(tag, `[`EXIT`]`)`; none, no EXIT.
+    pub exit: Option<String>,
     /// The picture fills the window. Else the screen shown has a `Picture` of its own for it, and the session
     /// lasts while that screen is shown.
     pub full: bool,
@@ -119,6 +123,7 @@ impl Start {
             seed: clock_seed(),
             from: None,
             rows: Vec::new(),
+            exit: None,
             full: true,
             cards: true,
             builds: Vec::new(),
@@ -250,8 +255,10 @@ impl Visit {
 
 /// The practice session on.
 struct Session {
-    /// The screen that started it, if not Practice, and the tag it hears of it by.
+    /// The screen that started it, if not Practice, and the tag it hears of it by; whether that screen gave it an
+    /// EXIT.
     from: Option<(ScreenId, &'static str)>,
+    exit: bool,
     /// Its game, the match it plays (the two builds, every round on the place chosen) and the seed its set is
     /// picked from: an Arena or Background row changed plays the match's set again on the new place.
     game: String,
@@ -314,6 +321,9 @@ pub(crate) const ROWS: [PracticeOption; 15] = [
     PracticeOption::ChipDraw,
     PracticeOption::InputDisplay,
 ];
+
+/// What a session's starter hears when its EXIT is chosen ([`Start::exit`]): its rows are heard by their places.
+pub const EXIT: usize = usize::MAX;
 
 /// The practice menu's buttons under its rows (practice.slint's `PracticeMenu`): RESUME, RESTART, and in a session
 /// of Practice's own EXIT, back to Play (the user: "you should also get rid of "quit to menu" and "change
@@ -558,6 +568,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
     let place_labels = places.labels(content);
     let mut session = Session {
         from: start.from,
+        exit: start.exit.is_some(),
         game: start.game.clone(),
         m,
         seed: start.seed,
@@ -587,7 +598,8 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
         .chain(session.rows.iter().map(|o| row(*o, &session, &shell.practice.thumbs)))
         .collect();
     view.set_rows(ModelRc::new(VecModel::from(rows)));
-    view.set_leave(start.from.is_none());
+    view.set_leave(start.from.is_none() || start.exit.is_some());
+    view.set_exit_word(start.exit.clone().unwrap_or_default().into());
     view.set_session_yours(start.you.name.as_str().into());
     view.set_session_dummys(start.dummy.name.as_str().into());
     view.set_inputs(inputs);
@@ -1219,8 +1231,15 @@ impl Screen for Practice {
                     shell.close_menu();
                     restart(shell);
                 }
-                // (A session another screen started has no EXIT.)
-                Some(MenuButton::Exit) if shell.practice.session.as_ref().is_some_and(|s| s.from.is_none()) => shell.go(ScreenId::Play),
+                // (A session another screen started has its EXIT, if it gave one: that screen hears it.)
+                Some(MenuButton::Exit) => match &shell.practice.session {
+                    Some(Session { from: None, .. }) => shell.go(ScreenId::Play),
+                    Some(Session { from: Some((to, tag)), exit: true, .. }) => {
+                        let (to, tag) = (*to, *tag);
+                        shell.tell(to, tag, EXIT);
+                    }
+                    _ => {}
+                },
                 _ => {}
             },
             "menu.rows.option" => self.open_option(shell, index),

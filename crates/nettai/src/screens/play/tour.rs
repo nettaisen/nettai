@@ -651,8 +651,8 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     add(SETTLE, press("direct.cancel"));
 
     // An invite: its code from the server, and a practice session beside it (on a phone, asked for under
-    // it, and filling the window); the practice menu over that, with Play's rows at its top. Copy invite
-    // code closes the menu; on a phone, Stop practice is the way back to the invite.
+    // it, and filling the window); the practice menu over that, the usual one with CANCEL INVITE in EXIT's
+    // place (on a phone with Stop practice at its top, the way back to the invite).
     add(SETTLE, press("invite"));
     reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     if phone {
@@ -664,12 +664,12 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, if phone { "play-waiting-practice" } else { "play-waiting" }, Pair::None);
     add(SETTLE, step(|app| app.shell.open_menu()));
     shot(add, "play-waiting-menu", Pair::None);
-    add(SETTLE, press_at("menu.rows.added", 0));
-    reach(add, |app, _| practicing(app));
     if phone {
-        add(SETTLE, step(|app| app.shell.open_menu()));
-        add(SETTLE, press_at("menu.rows.added", 1));
+        add(SETTLE, press_at("menu.rows.added", 0));
         reach(add, |app, ui| app.shell.battle.is_none() && part(ui) == PlayPart::Waiting);
+    } else {
+        add(SETTLE, step(|app| app.shell.close_menu()));
+        reach(add, |app, _| practicing(app));
     }
 
     // The second player joins by the code: the lobby. The focus a step along; a setting changed under it
