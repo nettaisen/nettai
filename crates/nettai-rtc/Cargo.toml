@@ -17,6 +17,10 @@ datachannel-facade.workspace = true
 # system's randomness (reconnect codes).
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tungstenite = { version = "0.28", features = ["rustls-tls-webpki-roots"] }
+# The WebSocket's TLS needs a crypto backend, which tungstenite doesn't pick:
+# without one rustls panics at the first wss:// connection (the signaling
+# thread ended at once, every time). The rtc crate used to bring ring in.
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
 getrandom = "0.3"
 
 # The web: the browser's WebSocket and randomness.
