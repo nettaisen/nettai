@@ -30,8 +30,9 @@ pub(crate) enum RoomEvent {
     /// and the STUN and TURN servers its connections use (none: the server
     /// gives none).
     Welcome { role: Option<Role>, peer: bool, ice_servers: Vec<IceServer> },
-    /// The other came, or went.
-    Peer(bool),
+    /// The other came, or went; the servers the server gives now that both
+    /// are here (none: those from before).
+    Peer { present: bool, ice_servers: Vec<IceServer> },
     Signal(Signal),
 }
 
@@ -230,9 +231,9 @@ impl Room {
                         let role = if self.invite() { role } else { None };
                         return Ok(Some(RoomEvent::Welcome { role, peer, ice_servers }));
                     }
-                    Ok(FromServer::Peer { present }) => {
+                    Ok(FromServer::Peer { present, ice_servers }) => {
                         self.there = present;
-                        return Ok(Some(RoomEvent::Peer(present)));
+                        return Ok(Some(RoomEvent::Peer { present, ice_servers }));
                     }
                     Ok(FromServer::Signal { data }) => return Ok(Some(RoomEvent::Signal(data))),
                     Ok(FromServer::Error { reason, message }) => {
