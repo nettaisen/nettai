@@ -3,7 +3,8 @@
 **Status (2026-10-02): built.** The user chose crisp text at the window's resolution (option B of §2.1, which §6
 had rejected as the default) with a bundled open-license font, as the default; §9 "As built" says what was built
 and how, and records the decisions; §9.8 (2026-10-13) is the fix of its sizes and of Japanese off its line: one size
-a role, a string narrowed to its box, kana and kanji on the capitals. §10 is the languages built on it
+a role, a string narrowed to its box, kana and kanji on the capitals; §9.10 (2026-10-14) draws the glyphs from
+signed distance fields made once for every size. §10 is the languages built on it
 (`--lang en|ja`) and where display text lives (no definition holds any: `locales/<lang>.toml`). §11 (2026-10-14) is a
 survey of the battle interface's pictures with lettering, and which of them the enhanced text could draw. §0 to §8
 are the investigation as written before it, unchanged.
@@ -628,16 +629,18 @@ the frontend's own status text (`text.rs`).
 - **The squash**: an item's `vscale` is the banners' `n / 256` texture step; the text is scaled vertically by
   256 / n about the box's middle (until 2026-10-14 cut to the box's 16 rows, as the sprite is; no longer: §9.9).
 - **Drawing** (`present.rs`, `vfont.rs`): the window (`app.rs`) and the PNG writer (`headless.rs`) both go through
-  `present`: the frame scaled to the output, then each item laid out and rasterized at the output's scale and
-  blended over it, pixel by pixel through the item's clip and the depth keys of the frame pixel under it.
+  `present`: the frame scaled to the output, then each item laid out and drawn at the output's scale from its
+  glyphs' distance fields (§9.10) and blended over it, pixel by pixel through the item's clip and the depth keys of
+  the frame pixel under it.
 - **The scaling policy**: the picture takes the largest whole multiple of 240x160 that fits the output, centered
   on black, so every frame pixel is the same square whatever the size; only an output smaller than 240x160 gets a
   fractional, shrunk picture. The window is resizable and follows this; text is drawn at the same placement and
   scale. Headless PNGs are `--png-scale` times 240x160, exactly.
 - **The rasterizer**: swash 0.2 (§2.2): shaping with the font's kerning (in the frame's pixels, independent of the
-  output's scale), antialiased outlines (8-bit coverage), variable fonts' axes, hinting for glyphs under 40 pixels
-  an em (1x and 2x; above that the outlines are left as drawn). Glyph images are cached by glyph, size, axes,
-  scales and a quarter-pixel horizontal phase; layouts by string, role and box. Eight packages came with it (swash,
+  output's scale), the outlines at variable fonts' axes. Until 2026-10-14 swash rasterized each glyph at the
+  output's size (8-bit coverage, hinting under 40 pixels an em), cached by glyph, size, axes, scales and a
+  quarter-pixel horizontal phase; since then each glyph is a signed distance field made once from its outline and
+  sampled at every size (§9.10). Layouts are cached by string, role and box. Eight packages came with swash (swash,
   skrifa, read-fonts, font-types, zeno, yazi, bytemuck, bytemuck_derive); cosmic-text wasn't needed.
 
 ### 9.4 Layout
@@ -754,7 +757,8 @@ Murecho (Neil Summerour, Positype; SIL Open Font License 1.1, no Reserved Font N
 
 ### 9.7 Left open
 
-- Text at 1x output is soft, as any vector text at that size (§8); the HUD wants 3x or more.
+- Text at 1x output is soft, as any vector text at that size (§8), and unhinted since §9.10; the HUD wants 3x or
+  more.
 - A HiDPI screen: the window (iced) presents at its size in points, so the text is drawn at that resolution and
   the system scales it up (`NETTAI_PHYSICAL_PIXELS` draws it at the display's density, at four times the cost on a
   Retina display: docs/frontend.md §7).
@@ -896,13 +900,16 @@ deep (`Style::descender`), the shadow (half a frame pixel rounded to output pixe
   (13.74 pixels an em, Murecho's capitals being 0.728 em) that is 3.23 pixels; drawn 1 deep, the factor is
   1 / 3.23 = **0.31**. Every glyph of the role is shortened by it, so its descenders stay alike: g comes out 1.0
   pixel deep, p, q and y 0.95, j 0.87, the comma 0.59, the parentheses 0.50 (before the output's rounding).
-- **Where**: on the outline, between the font's scaling and the rasterizer (`vfont::Shorten`): the glyph's outline
-  is scaled at the output's size, the points under the text's baseline are moved toward it by the factor, and the
-  outline is rasterized as any other (zeno, as swash's `Render` does). So a short descender is as sharp as the rest
-  of the glyph at every scale, not a squashed picture. A glyph's image is cached with its shortening.
+- **Where**: on the outline, between the font's scaling and the rasterizer (`vfont::Shorten`): the points of the
+  glyph's outline under the text's baseline are moved toward it by the factor, and the outline is drawn as any
+  other (since §9.10 its distance field is made from it, in the field's own units, so one field serves every
+  size). So a short descender is as sharp as the rest of the glyph at every scale, not a squashed picture. A
+  glyph's field is cached with its shortening.
 - **Deeper than g**: a glyph that still reaches past the cells with its shadow (Murecho's double low line ‗, 0.34
   em; the cedillas and Ŋ, a hair deeper than g at 0.237 and 0.242) is shortened just as much more as ends it
-  there, so nothing leaves the cells, whatever the string.
+  there, so nothing leaves the cells, whatever the string. Since §9.10 "there" is the cells' last row less the
+  shadow's offset at its most (one frame pixel, 1x's), the same at every size: such a glyph ends where g does, 1
+  pixel under the baseline (it was 1.5 less the shadow's offset in output pixels, 1.0 to 1.4 pixels from 2x up).
 - **Kana and kanji**: on their box (§9.4) most kanji and some kana reach under the baseline, 0.6 pixels for the
   median kanji, 0.9 for the deepest (琴's, 妹's, 舞's feet), the full-width marks further (＠ 1.1, ＿ 1.6). With the
   shadow they all ended in the cells already, except those marks; they are shortened as Latin is, being under
@@ -945,6 +952,78 @@ beside the same frame in `--text original` and the first fit's, in English and J
 Spreadr1, BigBomb and YoYo, EXE5's Spreader, BugBomb and YoYo, EXE4's Spreader and Geddon1), the enemy name (EXE6's
 and EXE5's MegaMan), the hand (the same names), and at 6x the chip window's BigBomb and スプレッドガン1 and the enemy
 name: the capitals and kana on the original's rows, the descenders a row deep, their shadow on the cells' last row.
+
+### 9.10 Distance-field glyphs (2026-10-14)
+
+The user (2026-10-14), of the first custom screen's stutter on a 4K display in the enhanced mode: "can you use
+distance field text?"
+
+**What it was.** Each glyph was rasterized from its outline at the output's size (swash and zeno, 8-bit
+coverage), the image cached by glyph, size, axes, scales and quarter-pixel phase: a glyph was made again at each
+size, each phase and each narrowing, at a cost that grew with its area (13x is 178 pixels an em).
+
+**What it is.** Each glyph is a signed distance field (`sdf.rs`), made once from its outline and drawn at every
+size by sampling it at each output pixel:
+
+- **Made once**: a field is keyed by what changes the outline's shape: the glyph, the variable font's axes and
+  the short descenders (§9.9, now in the field's units, the floor a fixed one frame pixel). Its size, narrowing
+  (`xscale`, a stacked mark's stretch) and squash (`vscale`) are transforms of the sampling, not cache entries.
+  `Made::glyphs` counts fields made, and nettai-frontend's preload makes those of every name and description of
+  both folders and navis ahead (`TextRenderer::prepare`), at no size: a window of any size, or one resized, draws
+  them without making any.
+- **The field**: 128 texels an em (`sdf::RES`), distances held 3 texels either way (`SPREAD`), stored in 256ths
+  of a texel (i16; 10 to 35 KB a glyph). The cell role's glyphs are 13.7 frame pixels an em, so a texel is 1.4
+  output pixels at 13x, 1 at 9x and half one at 5x. It is computed from the outline itself, with no dependency
+  added: the curves cut into segments straying at most a tenth of a texel from them, each texel's sign by the
+  nonzero rule (each row's crossings), its distance the least to a segment within the spread. Murecho's contours
+  overlap (a variable font: e is a bowl and a bar, most kanji are strokes laid over each other); where a row's
+  winding passes from inside to inside, the segments are cut where they cross and only the pieces with the glyph
+  on one side are its edge (without that, the inside of a stroke had distances near 0 and showed faint flecks at
+  13x).
+- **Drawn**: each output pixel's center samples the field bilinearly; the distance in output pixels (across the
+  field's gradient when the glyph is narrowed or squashed, so each direction is antialiased at its own scale) is
+  ramped linearly over one output pixel, the coverage of a straight edge (a smoothstep is sharper than coverage,
+  and the outline's coverage is what it stands in for). The glyph's origin is placed exactly across, so the
+  quarter-pixel phases are gone, and on a whole output row down, as before (the chatbox's baseline is half a frame
+  pixel down: placed exactly, its horizontal strokes straddled two rows at odd scales). Runs of texels deep inside
+  are filled whole and those far outside skipped (`sdf::Runs`, at the depth a size's ramp needs), so only the
+  pixels near an edge are sampled. The shadow pass, the clip, the depth keys, the fades and the button marks'
+  rings are as before.
+- **Why not multi-channel (MSDF)**: a plain field rounds sharp corners by about a texel, which MSDF avoids at a
+  lower resolution. At 128 texels an em the rounding is under 1.4 output pixels at 13x, and against the outline
+  rasterized at the same size (the test `a_field_draws_what_its_outline_covers`, Murecho's e, S, W, g, B, ガ, 熱
+  and 撃 at 5x and 13x) the coverage differs by 0.1 to 0.6% of the ink in all, by more than a quarter at 0 to 0.4%
+  of the ink's pixels (kanji corners), never by more than 0.55. MSDF's edge coloring and error correction are a
+  good deal more code for a difference not visible here; what the resolution costs is the making (below). At 64
+  texels an em the kanji's stroke ends looked rounded at 13x.
+
+**Looked at** (headless, a frame of 19 strings over plain fields: chip names in each role, narrowed ones, a stacked
+mark, a squashed and a stretched telop, deep descenders, two English and two Japanese chatbox lines with a button
+ring), old and new side by side at 1x, 2x, 3x, 5x, 9x and 13x, and zoomed 4 to 6 times at 3x and 13x: the same
+shapes, edges as sharp (the sum of neighbor differences, new over old: 1.003 at 3x, 1.001 at 5x, 0.999 at 9x, 0.998
+at 13x), corners as square to the eye at 9x and 13x (W's, the kanji's stroke ends). Pixels more than 96 levels
+apart: 0.01 to 0.02% from 2x up, nearly all the double low line's new floor (§9.9). What differs: at 1x the text is
+unhinted and its ramp narrower (0.6 pixels: the spread is 0.3 output pixels there), a little more aliased (edge
+energy 1.10; 1x is only the stand-in for a pack with no lettering); a pixel at a sharp corner can be up to half off
+at 9x and up.
+
+**Cost** (release build, a loaded ten-core machine, ranges of repeated runs):
+
+| | Before | After |
+|---|---|---|
+| A glyph made | zeno at 13x: 3 to 9 µs Latin, 10 to 42 µs kana and kanji (less at smaller sizes), again at each size and phase | 8 to 27 µs Latin, 35 to 80 µs kana and kanji, once for every size |
+| The 19-string frame's text drawn, cached (3x, 5x, 9x, 13x) | 0.5, 1.4, 4.1, 10.1 ms | 1.4, 2.7, 5.5, 9.5 to 10.0 ms |
+| Its first drawing, over the cached one | 1.5 to 2.7 ms | 5.4 to 5.7 ms at every size |
+| A match (EXE6, 1,500 ticks, every picture presented at 5x, 9x, 12x, 13x): the average picture | 3.7 to 3.9, 9.9 to 10.6, 16.6 to 17.4, 19.6 to 20.5 ms | the same within the machine's noise: 3.7 to 3.9, 10.1 to 10.4, 16.7 to 17.6, 20.3 to 20.5 ms |
+| Its first custom screen at 13x (79 pictures: the first, the mean) | 18.3 to 18.9, 15.3 to 16.0 ms | 18.3 to 18.8, 16.0 ms |
+| Glyphs made in the match after the preload | 126 to 180 (12 to 14 on the first custom screen), on 27 to 28 pictures | 1 (none on the first custom screen), on 1 picture |
+| The preload | | 4 to 5 ms more in English, 10 to 15 ms in Japanese (the folders' and navis' glyphs) |
+
+So a cached picture's text costs more to draw at small sizes (it is sampled where it was copied), about the same at
+13x, and in a match's pictures, whose text is a few strings, the difference is within the noise. Making a glyph
+costs 2 to 3 times what rasterizing it at 13x did, once instead of at every size; the preload makes the match's
+glyphs ahead, so a match makes almost none. On this machine glyph making was never the stutter: the first custom
+screen made 12 to 14 glyphs, under 0.2 ms, and its pictures were no slower than the rest.
 
 ## 10. Languages and display text (as built, 2026-10-02)
 

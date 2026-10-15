@@ -187,7 +187,7 @@ fn run() -> Result<(), String> {
         player.position()
     );
     println!(
-        "  made late: {} runtimes loaded, {} parts read, {} strings laid out and {} glyphs drawn for the first time",
+        "  made late: {} runtimes loaded, {} parts read, {} strings laid out and {} glyphs made for the first time",
         late.runtimes, late.reads, late.layouts, late.glyphs
     );
     if let Some(why) = player.diverged() {
