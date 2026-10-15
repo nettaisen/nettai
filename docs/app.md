@@ -1249,7 +1249,9 @@ component, and its module fills the model from a side:
 
 The component is framed and takes the size it is given. At 620 wide or more it is the wide sheet, 540 tall: the
 face the round starts with, the name over the navi, the version's tag; Stats, each with what the NaviCust and
-the patch cards added beside it in cyan; Abilities; Bugs, each by its full name and its level or amount, purple;
+the patch cards added beside it in cyan; Abilities (each by what gives it, or a number the rules work out of what
+several entries do together: EXE5's Soul Unison's turns, "Soul Time 4", where the build changes them); Bugs, each
+by its full name and its level or amount, purple;
 and the folder's 30 chips in two columns of 26-tall rows. Narrower, it is the narrow sheet, 650 tall, which a
 player's panel in a match is (430 wide: `label` is YOU or OPPONENT, `name` the player's, `side` 1 or 2 for the
 player's color along its top): the stats in two columns, abilities and bugs a line each, the folder in two.
@@ -1326,8 +1328,8 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   bounds (a placed copy over the ring: no error, and nothing red).
 - *Effects and Bugs*, two panels at the right: what the NaviCust alone comes to, the build's overview without
   its patch cards (`own_overview`: `Side::without_patch_cards`, and `Checked::of` a second time where the build
-  has cards). The effects are each number it changes ("HP +500") and each program at work that gives an
-  ability; the bugs are those it brings, each by its full name and its level or amount, purple. A patch card's
+  has cards). The effects are each number it changes ("HP +500"), each program at work that gives an
+  ability, and EXE5's Soul Unison's turns where SoulT+1 changes them ("Soul Time 4"); the bugs are those it brings, each by its full name and its level or amount, purple. A patch card's
   bugs aren't listed here (the user: "navicust shouldn't display patch card bugs"): they are the Patch cards
   tab's (the card's lines, Together) and the build overview's, which has every bug the build has. A bug that
   wasn't there before the last change pulses purple once.
