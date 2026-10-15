@@ -509,7 +509,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
             app.go_now(ScreenId::Play);
             let Some((game, ready)) = app.shell.ready() else { return };
             let Some(build) = practice::new_builds(ready.content(), &game).ok().and_then(|b| b.into_iter().next()) else { return };
-            let rows = vec!["Stop practice".to_string()];
+            let rows = vec!["Copy invite code".to_string(), "Cancel invite".to_string()];
             let start = practice::Start { full: true, seed: 7, ..practice::Start::beside(&game, build, ScreenId::Play, "tour", rows) };
             let _ = practice::start(&mut app.shell, start);
         }),

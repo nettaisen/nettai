@@ -213,9 +213,17 @@ export global PlayView {
     public pure function delete-title(name: string) -> string {
         return @tr("Delete {}?", name);
     }
-    // The row Play adds to the practice menu while the other player is waited for, where the practice fills the
-    // window (a phone): back to the waiting panel.
-    out property <string> stop-practice: @tr("STOP PRACTICE");
+    // A row Play adds to the practice menu while the other player is waited for (src/screens/play.rs's
+    // `WaitRow`, by its number), with an invite out or this machine hosting directly.
+    public pure function wait-row(row: int, direct: bool) -> string {
+        if row == 0 {
+            return direct ? @tr("COPY ADDRESS") : @tr("COPY INVITE CODE");
+        }
+        if row == 1 {
+            return @tr("STOP PRACTICE");
+        }
+        return direct ? @tr("STOP HOSTING") : @tr("CANCEL INVITE");
+    }
 }
 
 // ---- The builds ------------------------------------------------------------------------------------------
