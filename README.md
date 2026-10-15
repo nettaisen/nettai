@@ -31,8 +31,9 @@ netplay needs.
 - `nettai-netplay`: rollback netplay on [getgud](https://github.com/tangobattle/getgud), its inputs carried by
   [rennet](https://github.com/tangobattle/rennet) over a WebRTC data channel (or any datagram channel), with a
   simulated lossy network.
-- `nettai-rtc`: netplay's transport, WebRTC data channels (native on [rtc](https://github.com/webrtc-rs/rtc), the
-  browser's on wasm32), met in a room of the signaling server or directly, made again when they drop.
+- `nettai-rtc`: netplay's transport, WebRTC data channels on
+  [datachannel-facade](https://github.com/tangobattle/datachannel-facade) (libdatachannel natively, the browser's
+  on wasm32), met in a room of the signaling server or directly, made again when they drop.
 - `nettai-render`: draws a battle into frames: the stage, the objects, the HUD, the custom screen and the text, from
   engine state and the packs' graphics; no window, sound or network.
 - `nettai-frontend`: plays battles for a host app to show, as a library with no window, audio device or command
@@ -91,6 +92,9 @@ at a time, EXE6 or EXE5: a build and a match file name their game and a trace st
 game), and the battle is that game's content on its pack. Then run the app:
 
     cargo run --release -p nettai
+
+(Building it needs CMake, for SDL and for libdatachannel, netplay's WebRTC, and libclang, for libdatachannel's
+bindings: [docs/app.md](docs/app.md) §19.)
 
 nettai ([docs/app.md](docs/app.md)) is the player's program, navigated by the keyboard, a gamepad, the mouse or
 touch. It opens on a main menu, the selected game's battles playing beside it: PLAY, online against another
