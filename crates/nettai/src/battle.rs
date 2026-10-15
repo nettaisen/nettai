@@ -462,7 +462,7 @@ impl Shell {
     /// How the picture fits a room of `width` by `height` display pixels: `stage::fit`, held to the settings'
     /// picture size.
     pub fn fit(&self, width: f32, height: f32) -> stage::Fit {
-        let mut fit = stage::fit(width, height, self.scale.os, self.sharp);
+        let mut fit = stage::fit(width, height, self.scale.os, self.sharp, self.settings.enhanced);
         if self.settings.picture_size > 0 && fit.scale > self.settings.picture_size {
             fit.scale = self.settings.picture_size;
             fit.density = fit.density.min(fit.scale);
