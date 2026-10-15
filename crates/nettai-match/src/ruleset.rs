@@ -594,6 +594,14 @@ mod tests {
         let problems = no_cannon.problems(&r, &content, &gregar);
         assert_eq!(problems.len(), 1);
         assert_eq!((problems[0].entry, &problems[0].what), (Some(0), &Wrong::NotAllowed { registry: Registry::Chip, def: cannon.0 }));
+        // The folder's view under it: Cannon can't go in, and each entry of it is a problem.
+        let mut checked = Checked::under(&content, "exe6", &gregar, &r, &no_cannon);
+        let folder = gregar.folder(&content);
+        let view = checked.folder_view(&content, &folder).unwrap();
+        assert_eq!(view.refusal(cannon), Some(&Wrong::NotAllowed { registry: Registry::Chip, def: cannon.0 }));
+        let cannons: Vec<usize> = folder.chips.iter().enumerate().filter(|(_, c)| c.is_some_and(|c| c.id == cannon)).map(|(i, _)| i).collect();
+        assert!(cannons.len() > 1 && cannons.iter().all(|&i| !view.entry_problems(&content, &folder, i).is_empty()));
+        assert!(!matches!(Checked::of(&content, "exe6", &gregar).folder_view(&content, &folder).unwrap().refusal(cannon), Some(Wrong::NotAllowed { .. })));
         // As names, and back.
         let names = no_cannon.banned_names(&content);
         assert_eq!(names, vec![("folder".to_string(), vec!["cannon".to_string()])]);

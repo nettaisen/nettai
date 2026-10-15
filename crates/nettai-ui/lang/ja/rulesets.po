@@ -1,0 +1,56 @@
+# Japanese: a ruleset's page (ui/ruleset.slint), which the lobby and the build editor open over themselves.
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Language: ja\n"
+
+# Where its Back goes, and the tag a preset's name has.
+msgid "EDITOR"
+msgstr "エディター"
+
+msgid "PRESET"
+msgstr "プリセット"
+
+# Why the ruleset shown can't be changed here.
+msgid "A preset can't be changed. Duplicate it to make your own."
+msgstr "プリセットは変更できません。複製すると自分のルールにできます。"
+
+msgid "This is your opponent's choice. Duplicate it to make your own."
+msgstr "対戦相手が選んだルールです。複製すると自分のルールにできます。"
+
+# How much a category allows.
+msgid "All allowed"
+msgstr "すべて使用可"
+
+msgid "None allowed"
+msgstr "すべて使用不可"
+
+msgid "{} of {} allowed"
+msgstr "{}/{} 使用可"
+
+# The row of the name: Versions, one per build or mixed.
+msgid "VERSIONS"
+msgstr "バージョン"
+
+msgid "ONE PER BUILD"
+msgstr "構築ごとに1つ"
+
+msgid "MIXED"
+msgstr "混在可"
+
+# A category's head: its items all allowed or none, a version's quick choice and All, the search.
+msgid "ALLOW ALL"
+msgstr "すべて許可"
+
+msgid "ALLOW NONE"
+msgstr "すべて禁止"
+
+msgid "All"
+msgstr "すべて"
+
+msgid "Search"
+msgstr "検索"
+
+# The key hint of an item's row.
+msgid "Allow or not"
+msgstr "許可／禁止"
