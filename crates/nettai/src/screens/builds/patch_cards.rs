@@ -266,7 +266,7 @@ impl PatchCards {
                     numbers_view.invoke_stat(i as i32, by.into()).to_string()
                 })
                 .collect();
-            let abilities: Vec<String> = o.abilities.iter().map(|&s| overview::source(words, s)).collect();
+            let abilities: Vec<String> = o.abilities.iter().map(|a| overview::ability(words, a)).collect();
             let bugs: Vec<String> = o.bugs.iter().map(|b| overview::bug(words, b)).map(|(n, e)| if e.is_empty() { n } else { format!("{n} {e}") }).collect();
             (numbers, abilities, bugs)
         });
