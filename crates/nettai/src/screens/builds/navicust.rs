@@ -394,8 +394,9 @@ impl Navicust {
                         Some(h) if h.piece == piece => ProgramState::Held,
                         _ if out => ProgramState::Out,
                         _ if !copies.is_empty() => ProgramState::Placed,
-                        // (One the ruleset the player plays by doesn't allow says so quietly where it isn't placed: it
-                        // can be, and is then the build's problem, its name in the error red.)
+                        // (One the ruleset the player plays by doesn't allow says so in the error red where it isn't
+                        // placed, the row dimmed: it can't be taken. A build that has it placed all the same says
+                        // where, its name in the error red.)
                         _ if !allowed => ProgramState::NotAllowed,
                         _ => ProgramState::None,
                     };
@@ -480,6 +481,13 @@ impl Navicust {
     /// compresses every copy of a program in one color alike).
     fn take(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
         let Some((piece, color)) = self.row(draft, row) else { return };
+        // (One the ruleset the player plays by holds back isn't taken: the strip says so, docs/design/app-ui.md §2.68.)
+        if !draft.allows(grid::PIECES_FIELD, piece) {
+            self.notice = Some(shell.ui().global::<BuildWords>().invoke_not_allowed_here().to_string());
+            shell.sound.play(Cue::Refused);
+            self.show_board(shell, draft);
+            return;
+        }
         let Some(Some(d)) = &self.data else { return };
         let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
         // (Compressed, where it compresses (the user: "navicust pieces should default to compressed in the
@@ -950,6 +958,10 @@ impl Tab for Navicust {
     /// program under the cursor (the focus is the last thing moved, until the pointer goes onto another row).
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         self.hovered = None;
+        // (Why a program wasn't taken is said until the cursor moves.)
+        if self.held.is_none() && self.notice.take().is_some() {
+            self.show_board(shell, draft);
+        }
         let in_list = id == "programs";
         if in_list != self.in_list {
             self.in_list = in_list;

@@ -5,9 +5,10 @@
 //! named in its strings' `auto_battle_lists`; a game whose block states none has its places as one). A build states
 //! the places alone (its pattern records are the rules' default, nothing learned), so a place holds a chip or nothing.
 //! What a place may hold is the rules' (`validate`: a chip its navi can play, and in a list they hold to one class of
-//! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. The ruleset the
-//! player plays by refuses none: a chip its auto battle category (the places' own, apart from the folder's) holds back
-//! goes in, and each place of it is the build's problem, its row saying "Not allowed" quietly. The library offers
+//! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. So is a chip the
+//! ruleset the player plays by holds back in its auto battle category (the places' own, apart from the folder's;
+//! docs/design/app-ui.md §2.68), its row greyed and saying "Not allowed"; a build that holds one all the same has each
+//! place of it as its problem. The library offers
 //! what the place being filled can hold, a row a chip: in a list held to one class (the list's `class`: EXE4's and
 //! EXE5's mega, giga and program advance lists), the game's chips of that class, the Program Advances among them,
 //! which no folder holds; in another, the chips a folder of the build can hold.
@@ -215,9 +216,10 @@ impl AutoBattle {
                 .map(|&chip| {
                     let record = content.chip(chip);
                     let copies = data.places.iter().filter(|e| **e == Entry::Chip(chip)).count() as i32;
-                    // (One the ruleset the player plays by holds back here says so, quietly: it goes in, and is then
-                    // the build's problem.)
-                    let note = if !draft.allows(auto::PLACES_FIELD, chip.0) {
+                    // (One the ruleset the player plays by holds back here is greyed and says so: it can't be put in,
+                    // docs/design/app-ui.md §2.68.)
+                    let banned = !draft.allows(auto::PLACES_FIELD, chip.0);
+                    let note = if banned {
                         say.invoke_not_allowed_here()
                     } else if copies > 0 {
                         view.invoke_in_places(copies)
@@ -229,7 +231,7 @@ impl AutoBattle {
                         name: words.names.chip(chip).into(),
                         kind: kind(record.class),
                         note,
-                        refused: false,
+                        refused: banned,
                         megabytes: say.invoke_megabytes(record.mb as i32),
                         attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
                         element: draft.kit.pictures.chip_element(chip),
@@ -361,10 +363,26 @@ impl AutoBattle {
         self.leave_library(shell);
     }
 
-    /// Put row `row`'s chip in place `place`: whether it went in. A chip the rules refuse there isn't put: its row
-    /// shakes, and the strip says why.
+    /// Put row `row`'s chip in place `place`: whether it went in. A chip the rules refuse there, or the ruleset the
+    /// player plays by, isn't put: its row shakes, and the strip says why.
     fn put_in(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, place: usize) -> bool {
         let Some(&chip) = self.rows.get(row) else { return false };
+        let ui = shell.ui();
+        let view = ui.global::<AutoBattleView>();
+        let refuse = |tab: &mut AutoBattle, shell: &mut Shell, draft: &mut Draft, why: String| {
+            tab.refused += 1;
+            view.set_refused(row as i32);
+            view.set_refused_place(-1);
+            view.set_refused_seq(tab.refused);
+            shell.sound.play(Cue::Refused);
+            tab.notice = Some(why);
+            tab.show_detail(shell, draft);
+        };
+        // (One the ruleset the player plays by holds back here isn't put: docs/design/app-ui.md §2.68.)
+        if !draft.allows(auto::PLACES_FIELD, chip.0) {
+            refuse(self, shell, draft, ui.global::<BuildWords>().invoke_not_allowed_here().to_string());
+            return false;
+        }
         let before = draft.side().clone();
         let field = Some(auto::PLACES_FIELD);
         let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field && p.entry == Some(place)).map(|p| p.text.clone()).collect();
@@ -372,22 +390,16 @@ impl AutoBattle {
             shell.sound.play(Cue::Refused);
             return false;
         }
-        let ui = shell.ui();
-        let view = ui.global::<AutoBattleView>();
-        // (The game's rules alone refuse: a chip the ruleset holds back goes in, and is the build's problem.)
+        // (What the game's rules have against it there: a ruleset's problem is another place's chip's, which this one
+        // didn't bring.)
         let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && p.entry == Some(place) && !p.what.of_ruleset() && !had.contains(&p.text)).cloned();
         if let Some(problem) = against {
             draft.edit(|_, side| {
                 *side = before;
                 true
             });
-            self.refused += 1;
-            view.set_refused(row as i32);
-            view.set_refused_place(-1);
-            view.set_refused_seq(self.refused);
-            shell.sound.play(Cue::Refused);
-            self.notice = Some(draft.with_words(shell, |w| w.problem(&problem)));
-            self.show_detail(shell, draft);
+            let why = draft.with_words(shell, |w| w.problem(&problem));
+            refuse(self, shell, draft, why);
             return false;
         }
         let (icon, name) = draft.with_words(shell, |w| (draft.kit.pictures.icon(chip), w.names.chip(chip)));
