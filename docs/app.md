@@ -163,6 +163,13 @@ falls in, and that pixel always belongs to the right frame pixel, so every frame
 (`stage::tests::every_frame_pixel_is_a_square_at_any_density`). Only the text layer, drawn at the density, is
 scaled by a fraction.
 
+The density has two limits, since the CPU draws what is presented every picture (the user saw the enhanced
+mode stutter on a 4K Windows display, where the picture was presented at 9 to 13 times the frame): the enhanced
+mode's is at most six (`stage::MOST_DENSITY`, 1440 by 960, about a 1080p display's picture; but with
+`NETTAI_PHYSICAL_PIXELS`), the window scaling the rest; and the original mode's is 1, the frame's own 240 by 160,
+since it has nothing finer than the frame's pixels to draw: the window's nearest-pixel scaling makes the same
+picture as the CPU's did.
+
 At 1280x800 points on a Retina display, the battle's picture is 10x (2400 by 1600 of the display's pixels),
 presented at 5x: 1200x800 pixels, presented and written into the texture in about 3.5 ms in a dev build (§5).
 Presented at the display's density, a picture cost the first app 6.4 ms and held it to 60 frames a second.

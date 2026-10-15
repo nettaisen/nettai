@@ -30,20 +30,36 @@ pub struct Fit {
 /// density (the scale over the factor, rounded up), or the display's when
 /// `sharp`.
 ///
+/// What is presented is drawn on the CPU and scaled the rest of the way by
+/// the window, with the nearest pixel. So the `enhanced` mode's density is
+/// held to [`MOST_DENSITY`] (a 1440x960 picture: on a 4K display it was 9
+/// to 13 times the frame, a picture 4 to 7 times the work, every frame), and
+/// the original mode's, which has nothing finer than the frame's pixels to
+/// draw, is 1: the window's scaling is the same picture.
+///
 /// The density needn't divide the scale: drawn with the nearest pixel at
 /// exactly `scale` display pixels a frame pixel, every frame pixel is a
 /// square of `scale` display pixels whatever the density, as each display
 /// pixel samples the presented pixel its center falls in, inside the frame
 /// pixel's square of `density` presented ones. Only the text layer, drawn at
 /// the density, is scaled by a fraction.
-pub fn fit(width: f32, height: f32, factor: f32, sharp: bool) -> Fit {
+pub fn fit(width: f32, height: f32, factor: f32, sharp: bool, enhanced: bool) -> Fit {
     let scale = ((width / WIDTH as f32).min(height / HEIGHT as f32).floor() as u32).max(1);
+    if !enhanced {
+        return Fit { scale, density: 1 };
+    }
     if sharp {
         return Fit { scale, density: scale };
     }
-    let density = ((scale as f32 / factor.max(1.0)).ceil() as u32).clamp(1, scale);
+    let density = ((scale as f32 / factor.max(1.0)).ceil() as u32).clamp(1, scale).min(MOST_DENSITY);
     Fit { scale, density }
 }
+
+/// The densest the enhanced mode's picture is presented (but `sharp`): six
+/// times the frame, 1440x960, about a 1080p display's picture (the user,
+/// on a 4K display's stutter: "do that", of holding it there and letting the
+/// window scale the rest).
+pub const MOST_DENSITY: u32 = 6;
 
 /// What the picture costs and how late it is (`NETTAI_PLAY_STATS`).
 #[derive(Default)]
@@ -374,14 +390,22 @@ mod tests {
     /// point, half the scale (each picture pixel drawn as four).
     #[test]
     fn the_picture_fits_by_whole_pixels() {
-        assert_eq!(fit(1920.0, 1280.0, 2.0, false), Fit { scale: 8, density: 4 });
-        assert_eq!(fit(2200.0, 1500.0, 2.0, false), Fit { scale: 9, density: 5 }, "an odd scale: half of it, rounded up");
-        assert_eq!(fit(1920.0, 1280.0, 2.0, true), Fit { scale: 8, density: 8 });
-        assert_eq!(fit(960.0, 640.0, 1.0, false), Fit { scale: 4, density: 4 });
-        assert_eq!(fit(1440.0, 960.0, 1.5, false), Fit { scale: 6, density: 4 });
-        assert_eq!(fit(2880.0, 1920.0, 3.0, false), Fit { scale: 12, density: 4 });
+        let enhanced = |w, h, factor, sharp| fit(w, h, factor, sharp, true);
+        assert_eq!(enhanced(1920.0, 1280.0, 2.0, false), Fit { scale: 8, density: 4 });
+        assert_eq!(enhanced(2200.0, 1500.0, 2.0, false), Fit { scale: 9, density: 5 }, "an odd scale: half of it, rounded up");
+        assert_eq!(enhanced(1920.0, 1280.0, 2.0, true), Fit { scale: 8, density: 8 });
+        assert_eq!(enhanced(960.0, 640.0, 1.0, false), Fit { scale: 4, density: 4 });
+        assert_eq!(enhanced(1440.0, 960.0, 1.5, false), Fit { scale: 6, density: 4 });
+        assert_eq!(enhanced(2880.0, 1920.0, 3.0, false), Fit { scale: 12, density: 4 });
         // Smaller than the frame: the frame, cropped by the window.
-        assert_eq!(fit(100.0, 100.0, 1.0, false), Fit { scale: 1, density: 1 });
+        assert_eq!(enhanced(100.0, 100.0, 1.0, false), Fit { scale: 1, density: 1 });
+        // A 4K display, at 150% and at 100%: held to six times the frame (but sharp).
+        assert_eq!(enhanced(3840.0, 2160.0, 1.5, false), Fit { scale: 13, density: MOST_DENSITY });
+        assert_eq!(enhanced(3840.0, 2160.0, 1.0, false), Fit { scale: 13, density: MOST_DENSITY });
+        assert_eq!(enhanced(3840.0, 2160.0, 1.0, true), Fit { scale: 13, density: 13 });
+        // The original mode: the frame's own pixels, the window scaling them.
+        assert_eq!(fit(3840.0, 2160.0, 1.5, false, false), Fit { scale: 13, density: 1 });
+        assert_eq!(fit(1920.0, 1280.0, 2.0, true, false), Fit { scale: 8, density: 1 });
     }
 
     /// The window's picture is shown only in a frame in which some surface was: after the menu's reel, a screen
