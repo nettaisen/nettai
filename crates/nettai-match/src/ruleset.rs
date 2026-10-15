@@ -1,10 +1,11 @@
 //! A ruleset: which builds may play a match (docs/design/app-ui.md §2.59;
 //! docs/design/rules-in-luau.md, "Rulesets"; docs/design/versions.md §2.2,
-//! §2.3). Its name, whether the players keep their builds to themselves
-//! (closed builds), whether each build must be one version's (Versions: one
+//! §2.3). Its name, whether each build must be one version's (Versions: one
 //! per build, or mixed), and for each of its game's categories the
-//! definitions it doesn't allow. It says nothing of how a round plays, so
-//! the simulation never reads it.
+//! definitions it doesn't allow: what may be played, and nothing else
+//! (closed builds is the lobby's setting beside it: the user, "i think
+//! closed setup should not be part of the ruleset actually"). It says
+//! nothing of how a round plays, so the simulation never reads it.
 //!
 //! - **The game's categories and presets** ([`Rulesets`], read from the
 //!   game's own data, its rules/rulesets module): a category is a fact of
@@ -116,16 +117,12 @@ impl Name {
     }
 }
 
-/// A ruleset: its name, whether builds are closed, whether each build must
-/// be one group's, and for each category (by its fact's name) the
+/// A ruleset: its name, whether each build must be one group's, and for each category (by its fact's name) the
 /// definitions it doesn't allow, by handle. A category that holds nothing
 /// back isn't in `banned`, so two rulesets that allow the same are equal.
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct Ruleset {
     pub name: Name,
-    /// The players keep their builds to themselves during the match: a host
-    /// shows each player their own build only.
-    pub closed_builds: bool,
     /// Versions, one per build: what each build holds of the groups is one
     /// group's (a cartridge's). Off: mixed, the allowlists alone say what
     /// may be played.
@@ -198,10 +195,9 @@ fn named_by(content: &Content, side: &Side, fact: &str, field: Option<&str>) -> 
 }
 
 impl Ruleset {
-    /// A ruleset that allows everything, named `name`, builds open, versions
-    /// mixed.
+    /// A ruleset that allows everything, named `name`, versions mixed.
     pub fn open(name: Name) -> Ruleset {
-        Ruleset { name, closed_builds: false, one_per_build: false, banned: BTreeMap::new() }
+        Ruleset { name, one_per_build: false, banned: BTreeMap::new() }
     }
 
     /// Whether it allows definition `h` of category `fact`.
@@ -339,8 +335,8 @@ impl Ruleset {
     /// A ruleset of the game of `rulesets` from its names
     /// ([`Ruleset::banned_names`]'s): an error names a fact that is no
     /// category of the game's or a name its registry hasn't.
-    pub fn of_names(rulesets: &Rulesets, content: &Content, name: Name, closed_builds: bool, one_per_build: bool, banned: &[(String, Vec<String>)]) -> Result<Ruleset, String> {
-        let mut out = Ruleset { name, closed_builds, one_per_build, banned: BTreeMap::new() };
+    pub fn of_names(rulesets: &Rulesets, content: &Content, name: Name, one_per_build: bool, banned: &[(String, Vec<String>)]) -> Result<Ruleset, String> {
+        let mut out = Ruleset { name, one_per_build, banned: BTreeMap::new() };
         for (fact, names) in banned {
             let category = rulesets.category(fact).ok_or_else(|| format!("{} has no ruleset category {fact:?}", rulesets.game))?;
             for name in names {
@@ -373,7 +369,6 @@ impl Rulesets {
         for p in items(data.field("presets")) {
             let Data::Str(id) = p.field("id") else { return Err(format!("{module}: a preset has its `id`")) };
             let mut ruleset = Ruleset::open(Name::Preset(id.clone()));
-            ruleset.closed_builds = matches!(p.field("closed_builds"), Data::Bool(true));
             ruleset.one_per_build = match p.field("versions") {
                 Data::Str(v) if v == "one_per_build" => true,
                 Data::Str(v) if v == "mixed" => false,
@@ -602,9 +597,9 @@ mod tests {
         // As names, and back.
         let names = no_cannon.banned_names(&content);
         assert_eq!(names, vec![("folder".to_string(), vec!["cannon".to_string()])]);
-        assert_eq!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, false, &names).unwrap(), no_cannon);
-        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, false, &[("hp".into(), vec![])]).is_err());
-        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, false, &[("folder".into(), vec!["nothing".into()])]).is_err());
+        assert_eq!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &names).unwrap(), no_cannon);
+        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("hp".into(), vec![])]).is_err());
+        assert!(Ruleset::of_names(&r, &content, no_cannon.name.clone(), false, &[("folder".into(), vec!["nothing".into()])]).is_err());
         // Allowed again, it holds nothing back, and equals an open one.
         no_cannon.set_allowed("folder", cannon.0, true);
         assert_eq!(no_cannon, Ruleset::open(Name::Own("No Cannon".into())));
