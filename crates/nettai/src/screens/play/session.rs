@@ -3,9 +3,11 @@
 //!
 //! The link is nettai-rtc's: made in a room of the signaling server (a new room, whose code the server picks:
 //! an invite; or the room of a code typed) or directly (this machine hosting on a UDP port, or the host's
-//! address typed). Making one may wait on the system's resolver (the STUN server's name, a direct host's), so
-//! it is made on a thread of its own, and the session waits for it without waiting ([`Session::feed`]): a
-//! window that waited would draw nothing, and a link nobody polls for three seconds reads as dropped. Once it is open the lobby is made over it, and lasts for as long as the two players stay
+//! address typed). Joining a direct host waits on the system's resolver (the host's name), so that link is
+//! made on a thread of its own, and the session waits for it without waiting ([`Session::feed`]): a window
+//! that waited would draw nothing, and a link nobody polls for three seconds reads as dropped. (A room's link
+//! waits on nothing: the STUN and TURN servers come with the server's welcome, and the link resolves their
+//! names on a thread of its own.) Once it is open the lobby is made over it, and lasts for as long as the two players stay
 //! together: through every match they play, and between them. Each frame, whatever is on screen: every
 //! datagram the link has goes to the lobby ([`Session::feed`], before the battle's ticks), the lobby is polled
 //! ([`Session::poll`], after them), and what it has to say is sent ([`Session::send`]).
@@ -23,6 +25,10 @@ use std::time::{Duration, Instant};
 
 /// The UDP port a direct host listens on.
 pub const DIRECT_PORT: u16 = 47_474;
+
+/// The signaling server players meet through unless `$NETTAI_SIGNAL` names another: signaling/'s Worker, at
+/// the hostname the user gave it ("default signaling server should be matchmaking.nettai.n1gp.net").
+pub const DEFAULT_SIGNAL: &str = "wss://matchmaking.nettai.n1gp.net";
 
 /// How long a lobby hears nothing from the other player before it gives them up: longer than the link's 30
 /// seconds of making a dropped connection again, so that a drop the link mends doesn't end the lobby.
@@ -51,10 +57,12 @@ pub struct Net {
 }
 
 impl Net {
-    /// The player's: the signaling server `$NETTAI_SIGNAL` names (`ws://127.0.0.1:8787` for signaling/ run by
-    /// `npx wrangler dev`), and the link library's own way of connecting.
+    /// The player's: nettai's signaling server ([`DEFAULT_SIGNAL`]), or the one `$NETTAI_SIGNAL` names instead
+    /// (`ws://127.0.0.1:8787` for signaling/ run by `npx wrangler dev`), and the link library's own way of
+    /// connecting.
     pub fn of_environment() -> Net {
-        Net { server: std::env::var("NETTAI_SIGNAL").ok().filter(|s| !s.is_empty()), config: Config::default(), port: DIRECT_PORT }
+        let named = std::env::var("NETTAI_SIGNAL").ok().filter(|s| !s.is_empty());
+        Net { server: Some(named.unwrap_or_else(|| DEFAULT_SIGNAL.into())), config: Config::default(), port: DIRECT_PORT }
     }
 }
 
@@ -105,51 +113,40 @@ pub struct Session {
 }
 
 impl Session {
-    /// Make the link `way` says: at once what can be said at once (no server named, a code that can't be
-    /// one, a port that can't be listened on); the rest on a thread, which [`Session::feed`] hears. An error is
-    /// the link library's: its kind is what the player is told (`UserError::of_link`), its detail goes to the
-    /// log.
+    /// Make the link `way` says: at once, but for a direct host's address, which is resolved on a thread
+    /// ([`Session::feed`] hears it). What can be said at once is (no server named, a code that can't be one,
+    /// a port that can't be listened on). An error is the link library's: its kind is what the player is told
+    /// (`UserError::of_link`), its detail goes to the log.
     pub fn open(way: Way, net: &Net) -> Result<Session, Error> {
         // (With no signaling server named, there is none to reach.)
-        let server = || net.server.clone().ok_or_else(|| Error { kind: ErrorKind::ServerUnreachable, detail: "no signaling server is named ($NETTAI_SIGNAL)".into() });
+        let server = || net.server.clone().ok_or_else(|| Error { kind: ErrorKind::ServerUnreachable, detail: "no signaling server is named".into() });
         let config = net.config.clone();
-        let make: Box<dyn FnOnce() -> Result<Link, Error> + Send> = match &way {
-            Way::Invite => {
-                let server = server()?;
-                Box::new(move || Ok(Link::create_room(&server, config)))
-            }
+        // (In a room nothing waits: the STUN and TURN servers come with the server's welcome, and their names
+        // are the link's to resolve without waiting. Hosting resolves nothing.)
+        match way.clone() {
+            Way::Invite => return Ok(Session::of(Link::create_room(&server()?, config), way)),
             Way::Code(code) => {
                 let server = server()?;
-                if nettai_rtc::signal::normalize_code(code).is_none() {
+                if nettai_rtc::signal::normalize_code(&code).is_none() {
                     return Err(Error { kind: ErrorKind::NoSuchRoom, detail: format!("{code:?} isn't a room's code") });
                 }
-                let code = code.clone();
-                Box::new(move || Link::join_room(&server, &code, config))
+                return Ok(Session::of(Link::join_room(&server, &code, config)?, way));
             }
-            // (Hosting resolves nothing: at once.)
             #[cfg(not(target_arch = "wasm32"))]
             Way::Host => return Ok(Session::of(Link::host(net.port, config)?, way)),
-            #[cfg(not(target_arch = "wasm32"))]
-            Way::Address(address) => {
-                let address = address.clone();
-                Box::new(move || Link::join(&address, config))
-            }
             #[cfg(target_arch = "wasm32")]
             Way::Host | Way::Address(_) => return Err(Error { kind: ErrorKind::Internal, detail: "a direct link needs a socket".into() }),
-        };
-        // (On the web nothing is resolved here: the browser does it.)
-        #[cfg(target_arch = "wasm32")]
-        return Ok(Session::of(make()?, way));
-        #[cfg(not(target_arch = "wasm32"))]
-        {
-            let (tell, making) = std::sync::mpsc::channel();
-            std::thread::Builder::new()
-                .name("nettai-link".into())
-                .spawn(move || {
-                    let _ = tell.send(make());
-                })
-                .map_err(|e| Error { kind: ErrorKind::Internal, detail: format!("can't start the thread a link is made on: {e}") })?;
-            Ok(Session { link: None, making: Some(making), way, lobby: None })
+            #[cfg(not(target_arch = "wasm32"))]
+            Way::Address(address) => {
+                let (tell, making) = std::sync::mpsc::channel();
+                std::thread::Builder::new()
+                    .name("nettai-link".into())
+                    .spawn(move || {
+                        let _ = tell.send(Link::join(&address, config));
+                    })
+                    .map_err(|e| Error { kind: ErrorKind::Internal, detail: format!("can't start the thread a link is made on: {e}") })?;
+                Ok(Session { link: None, making: Some(making), way, lobby: None })
+            }
         }
     }
 
@@ -165,7 +162,7 @@ impl Session {
     }
 
     /// The link, once its thread has made it: Ok(false) while it is being made. An error is why it couldn't
-    /// be (the server's name doesn't resolve, nor the host's address), as the library says it.
+    /// be (the host's address doesn't resolve), as the library says it.
     fn made(&mut self) -> Result<bool, Error> {
         #[cfg(not(target_arch = "wasm32"))]
         if let Some(making) = &self.making {
