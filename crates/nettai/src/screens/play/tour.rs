@@ -803,15 +803,15 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     reach(add, |_, ui| !ui.global::<PlayView>().get_ready() && !ui.global::<PlayView>().get_their_ready());
     shot(add, "play-lobby-again", Pair::None);
 
-    // The host's Ruleset stepped on from the game's first preset (Standard) to the next (Mixed), the focus on it:
-    // the other player's lobby takes it. Then a build the settings can't play, chosen in the lobby: READY is
-    // refused, and the line says why; the first build again.
-    let mixed = || nettai_match::ruleset::Name::Preset("mixed".into());
+    // The host's Ruleset stepped on from the game's first preset (Masters class) to the next (Senior class), the
+    // focus on it: the other player's lobby takes it. Then a build the settings can't play, chosen in the lobby: READY
+    // is refused, and the line says why; the first build again.
+    let senior = || nettai_match::ruleset::Name::Preset("senior".into());
     add(SETTLE, focus("lobby.ruleset", 0));
     shot(add, "play-lobby-ruleset", Pair::First);
     add(SETTLE, act(Action::Right));
-    reach(add, move |_, _| with_rig(|rig| rig.peer.as_ref().and_then(|p| p.lobby.as_ref()).is_some_and(|l| l.settings().ruleset.name == mixed())) == Some(true));
-    shot(add, "play-lobby-ruleset-mixed", Pair::Second);
+    reach(add, move |_, _| with_rig(|rig| rig.peer.as_ref().and_then(|p| p.lobby.as_ref()).is_some_and(|l| l.settings().ruleset.name == senior())) == Some(true));
+    shot(add, "play-lobby-ruleset-senior", Pair::Second);
     add(SETTLE, press("lobby.change"));
     add(SETTLE, press_at("change.builds", BUILDS.len() as i32 - 1));
     reach(add, |_, ui| !ui.global::<PlayView>().get_changing());
