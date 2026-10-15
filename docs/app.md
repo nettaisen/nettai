@@ -36,7 +36,7 @@ data folder: `$NETTAI_DATA`, else the system's (`~/Library/Application Support/n
 `$XDG_DATA_HOME/nettai` or `~/.local/share/nettai` on Linux, `%APPDATA%\nettai` on Windows). There, builds are in
 `builds/<game>/` (`$NETTAI_BUILDS`), sets are recorded to `replays/` (`$NETTAI_REPLAYS`), the settings are
 `settings.toml` (`$NETTAI_SETTINGS`), what playing replays out gave is `replays-played.toml` beside it (§16), and
-the log is `nettai.log` (`$NETTAI_LOG`). For netplay, `$NETTAI_SIGNAL` names the signaling server (§4). Some
+the log is `nettai.log` (`$NETTAI_LOG`). For netplay, the signaling server is `wss://matchmaking.nettai.n1gp.net`, or the one `$NETTAI_SIGNAL` names (§4). Some
 variables are for development:
 
 | Variable | What it does |
@@ -711,12 +711,13 @@ lobby says the build's name, navi and version as the settings would play it (`Lo
 
 A link is made by `Session::open`: an invite (`Link::create_room`: the server picks the code, and the wait
 begins when it has said it), a code typed (`Link::join_room`), a direct host (`Link::host`, UDP port 47474) or
-a direct host's address (`Link::join`). Making a room's link resolves the STUN server's name, and joining an
-address resolves the host's: either may wait on the system's resolver, so the link is made on a thread of its
-own (`Session::open` says at once only what needs no lookup: no server named, a code that can't be one, a port
-that can't be listened on). Meanwhile the space beside JOIN, or the dialog's under CONNECT, says the link is
-being made, and the loop goes on; a host's name that doesn't resolve is that address's error, and a
-signaling server that can't be reached is the server's. A STUN server whose name doesn't resolve is left out,
+a direct host's address (`Link::join`). Joining an address resolves the host's name, which may wait on the
+system's resolver, so that link is made on a thread of its own; the others are made at once (a room's link
+waits on nothing: its STUN and TURN servers come with the server's welcome, and the link resolves their names
+on a thread of its own). `Session::open` says at once what needs no lookup: no server named, a code that can't
+be one, a port that can't be listened on. Meanwhile the space beside JOIN, or the dialog's under CONNECT, says
+the link is being made, and the loop goes on; a host's name that doesn't resolve is that address's error, and a
+signaling server that can't be reached is the server's. A STUN or TURN server whose name doesn't resolve is left out,
 as the link library has it (a link on one network needs none), not a failure. The lobby is made the moment the link is open, in the link's role, with
 a timeout of 45 seconds (longer than the link's 30 of making a dropped connection again), and the practice
 battle ends. From the moment a link is asked for until it is dropped (the wait, the lobby, the loading, a
@@ -835,16 +836,20 @@ the window's thread (§1); hiding has none. The same run with the host's timer l
 time, its link read as down from the third second, and its match stood still (0 ticks for six or seven
 seconds); the link and the match both picked up when the window came back.
 
-The signaling server isn't deployed (with none named, HOST and JOIN say the server can't be reached, and DIRECT
-CONNECT's dialog works). Run it locally:
+The signaling server is `wss://matchmaking.nettai.n1gp.net` (`DEFAULT_SIGNAL` in `session.rs`; the user:
+"default signaling server should be matchmaking.nettai.n1gp.net"), `signaling/`'s Worker once its owner has
+deployed it there (rollback.md §4.8). While it can't be reached, HOST and JOIN say so, and DIRECT CONNECT's
+dialog works. `$NETTAI_SIGNAL` names another instead, such as one run locally:
 
     cd signaling && npx wrangler dev        # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
 
-A room's link finds its way through NATs with nettai-rtc's default STUN server and checks the certificates its
-descriptions name; a direct link authenticates nobody, as plain UDP doesn't. Over the Internet, a direct host
-forwards UDP port 47474 on its router to its machine. No TURN server can be given, so two players whose NATs
-need a relay can't meet (nettai-rtc's `Config` takes one in its `ice_servers`).
+A room's link finds its way through NATs on the STUN and TURN servers the signaling server's welcome gives
+(Cloudflare's STUN server, and its TURN service's with credentials of a few hours, when the Worker has its TURN
+key; the STUN server alone when it hasn't, and then two players whose NATs need a relay can't meet), and checks
+the certificates its descriptions name. A direct link asks no STUN or TURN server (it says no candidate to
+anyone) and authenticates nobody, as plain UDP doesn't. Over the Internet, a direct host forwards UDP port
+47474 on its router to its machine.
 
 ## 5. Latency and smoothness
 
