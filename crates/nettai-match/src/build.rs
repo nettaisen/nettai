@@ -774,7 +774,13 @@ impl Checked {
             giga: stat(|s| s.giga_level as i32),
             regular_memory: stat(|s| s.reg_up as i32),
             tag_memory,
-            abilities: items(answer.field("abilities")).iter().filter_map(source).collect(),
+            abilities: items(answer.field("abilities"))
+                .iter()
+                .filter_map(|d| match (d.field("name"), d.field("amount").int()) {
+                    (Data::Str(key), Some(amount)) => Some(Ability::Named { key: key.clone(), amount }),
+                    _ => source(d).map(Ability::From),
+                })
+                .collect(),
             bugs,
             lists,
         })
@@ -836,6 +842,20 @@ pub enum Source {
     Entry(EntryHandle),
     Effect(EntryHandle, usize),
 }
+
+/// An ability of a build's navi: what gives it (an installed entry, or one
+/// of its effects), or a number the game's rules work out of what several
+/// entries do together, by its name's key in the game's strings'
+/// `abilities` table and its amount (EXE5's Soul Unison's turns: the
+/// NaviCust's and the patch cards' together, as the battle gives them).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Ability {
+    Named { key: String, amount: i64 },
+    From(Source),
+}
+
+/// The strings' text table a named ability's key is of.
+pub const ABILITIES_TABLE: &str = "abilities";
 
 /// A bug of a build's navi: by its name's key in the game's strings' `bugs`
 /// table and how much of it there is, whoever brings it, the NaviCust or a
@@ -937,8 +957,8 @@ pub struct Overview {
     pub regular_memory: Stat,
     /// The tag memory, in MB, in a game whose folders have tag chips.
     pub tag_memory: Option<u32>,
-    /// What gives the navi its abilities.
-    pub abilities: Vec<Source>,
+    /// The navi's abilities: what gives each, or what the rules work out.
+    pub abilities: Vec<Ability>,
     /// The navi's bugs, as the NaviCust and the patch cards together leave
     /// them: a bug that both bring is there once.
     pub bugs: Vec<Bug>,
@@ -1304,8 +1324,8 @@ mod tests {
                     .abilities
                     .iter()
                     .map(|s| match *s {
-                        Source::Effect(h, i) if h == card => kind_at(i),
-                        Source::Effect(..) | Source::Entry(_) => "another's".to_string(),
+                        Ability::From(Source::Effect(h, i)) if h == card => kind_at(i),
+                        _ => "another's".to_string(),
                     })
                     .collect();
                 ((o.hp.value, o.mega.value, abilities), charge)
@@ -1317,10 +1337,11 @@ mod tests {
                 looked(&side).0.0
             };
             // A version's own: Gregar's and Team ProtoMan's HP+200 and SprArmr, Falzar's and Team Colonel's HP+20% and
-            // FlotShoe (and in EXE5 each team's Hub Style, which the card screen doesn't show).
+            // FlotShoe (and in EXE5 each team's Hub Style, which the card screen doesn't show); with no version's
+            // NormBody first.
             let own = |version: &str| -> (i32, i32, Vec<String>) {
                 let (hp, first) = if ["gregar", "protoman"].contains(&version) { (before + 200, "super_armor") } else { (before * 6 / 5, "float_shoes") };
-                let mut abilities: Vec<String> = [first, "b_button", "charged_shot"].map(str::to_string).to_vec();
+                let mut abilities: Vec<String> = ["body", first, "b_button", "charged_shot"].map(str::to_string).to_vec();
                 if game == "exe5" {
                     abilities.push("hub_style".into());
                 }
@@ -1360,7 +1381,7 @@ mod tests {
         let o = overview(&side);
         assert_eq!((o.hp, o.attack), (Stat { base: 1000, value: 1100 }, Stat { base: 1, value: 2 }));
         assert_eq!((o.hp.added(), o.attack.added(), o.mega.added()), (100, 1, 0));
-        assert_eq!(o.abilities, [Source::Entry(program("undersht"))]);
+        assert_eq!(o.abilities, [Ability::From(Source::Entry(program("undersht")))]);
         assert_eq!(o.bugs, Vec::new());
         // UnderSht off the command line: its bug at level 1, and no UnderSht.
         set_navicust(&content, &mut side, &[placed("undersht", "white", 1, 2)], 2);
@@ -1382,7 +1403,7 @@ mod tests {
         };
         let fixed = with("bomboy");
         assert_eq!(fixed.bugs, [Bug::From(Source::Effect(card("bomboy"), 1))]);
-        assert_eq!(fixed.abilities, [Source::Effect(card("bomboy"), 0)]);
+        assert_eq!(fixed.abilities, [Ability::From(Source::Effect(card("bomboy"), 0))]);
         assert_eq!(with("beastman").bugs, [level("step_bug", 1)]);
         // The NaviCust's HP bug (an HP program on the command line) is two
         // bugs: the HP drain in the fight, and a hit's HP bug. A card's
@@ -1419,7 +1440,7 @@ mod tests {
         let budget = o.budget("patch_cards").unwrap().clone();
         assert_eq!((budget.count, budget.once, budget.cost_of(&content, canodumb)), (Count { used: 10, limit: 80 }, true, 10));
         assert_eq!((o.hp, o.attack), (Stat { base: 1000, value: 960 }, Stat { base: 1, value: 2 }));
-        assert!(matches!(o.abilities[..], [Source::Effect(card, _)] if card == canodumb), "{:?}", o.abilities);
+        assert!(matches!(o.abilities[..], [Ability::From(Source::Effect(card, _))] if card == canodumb), "{:?}", o.abilities);
         assert_eq!(budget.refusal(&content, &side, canodumb), Some(EntryRefusal::Installed));
         let other = ids::entry(&content, "exe6", "patch_cards", "amonicul").unwrap();
         assert_eq!(budget.refusal(&content, &side, other), None);
@@ -1507,7 +1528,7 @@ mod tests {
         assert_eq!((with(&clean, "whirly").0, text("panel_trail.water")), (vec![amount("panel_trail.water", 2, Some(8))], Some("Movement Water")));
         // BrushMan's holy trail is no bug: an ability, the card's line.
         let (bugs, abilities) = with(&clean, "brushman");
-        assert_eq!((bugs, abilities.contains(&Source::Effect(card("brushman"), 2))), (Vec::new(), true));
+        assert_eq!((bugs, abilities.contains(&Ability::From(Source::Effect(card("brushman"), 2)))), (Vec::new(), true));
     }
 
     /// Every bug a game has, whoever brings it, has its name in the game's
@@ -1664,7 +1685,7 @@ mod tests {
         assert_eq!(checked.problems, Vec::new());
         let o = checked.overview(&content, &side).unwrap();
         assert_eq!(o.custom.added(), 2);
-        assert_eq!(o.abilities, [Source::Entry(undersht)]);
+        assert_eq!(o.abilities, [Ability::From(Source::Entry(undersht))]);
         assert_eq!(o.bugs, [level("custom", 1)]);
         assert_eq!((o.tag_memory, o.lists.len()), (None, 0));
         // Two cards in one slot: said of the second, typed.
@@ -1685,12 +1706,119 @@ mod tests {
         let mut checked = Checked::of(&content, "exe5", &side);
         assert_eq!(checked.problems, Vec::new());
         let o = checked.overview(&content, &side).unwrap();
-        assert_eq!((&o.abilities, &o.bugs), (&vec![Source::Entry(undersht)], &Vec::new()));
+        assert_eq!((&o.abilities, &o.bugs), (&vec![Ability::From(Source::Entry(undersht))], &Vec::new()));
         assert_eq!(o.budget("patch_cards").map(|b| b.count), Some(Count { used: 0, limit: 80 }));
         // A program off the board: said of its entry, typed.
         set_navicust(&content, &mut side, &[PlacedProgram { program: undersht, color: 0, x: 6, y: 3, rotation: 0, compressed: false }], 2);
         let checked = Checked::of(&content, "exe5", &side);
         assert!(checked.problems.iter().any(|p| (&p.what, p.field.as_deref(), p.entry) == (&Wrong::OffBoard, Some("navicust_programs"), Some(0))), "{:?}", checked.problems);
+    }
+
+    /// EXE5's Soul Unison lasts 3 turns and the bonus the NaviCust's SoulT+1
+    /// and the patch cards' SoulTm+ and SoulTm- leave in the stats (at most
+    /// 9; under 0, 1: rules/souls/custom's `turns`). The overview names it
+    /// once, by the turns together, where something changes them (not
+    /// SoulT+1 by itself, which says nothing of the cards); and each is the
+    /// turns the battle gives a soul at OK: ProtoSoul given for a Sword.
+    #[test]
+    fn exe5s_soul_time_is_the_battles() {
+        use nettai_battle::custom::screen::{OK_SLOT, Phase, SPECIAL_SLOT};
+        use nettai_battle::input::{PlayerTick, keys};
+        let content = exe5_content();
+        let builds = Builds::of(&content, "exe5").unwrap();
+        let mut plain = builds.new_build(&content, "protoman").unwrap();
+        let sword = ids::chip(&content, "exe5", "sword").unwrap();
+        let mut folder = plain.folder(&content);
+        folder.chips = [Some(nettai_battle::custom::FolderChip::new(sword, nettai_battle::content::ChipCode(18))); FOLDER_SIZE];
+        plain.set_folder(&content, &folder).unwrap();
+        let soult = ids::entry(&content, "exe5", "navicust_programs", "soult-1").unwrap();
+        let mut soul_t = plain.clone();
+        set_navicust(&content, &mut soul_t, &[PlacedProgram { program: soult, color: 0, x: 1, y: 2, rotation: 0, compressed: false }], 2);
+        let with = |side: &Side, cards: &str| {
+            let mut side = side.clone();
+            side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe5", cards)).unwrap();
+            side
+        };
+        // The turns the overview names (none: it names none).
+        let named = |side: &Side| {
+            let mut checked = Checked::of(&content, "exe5", side);
+            // (The Swords past the folder's 4 are all that is wrong: the round is played as set up.)
+            assert!(checked.problems.iter().all(|p| p.field.as_deref() == Some("folder")), "{:?}", checked.problems);
+            let o = checked.overview(&content, side).unwrap();
+            let turns: Vec<i64> = o.abilities.iter().filter_map(|a| if let Ability::Named { key, amount } = a { (key == "soul_time").then_some(*amount) } else { None }).collect();
+            assert!(turns.len() <= 1, "{turns:?}");
+            assert!(!o.abilities.contains(&Ability::From(Source::Entry(soult))), "SoulT+1 by itself: {:?}", o.abilities);
+            turns.first().copied()
+        };
+        // The turns the battle gives ProtoSoul at OK, the first Sword given up for it.
+        let given = |side: &Side| {
+            let m = Match::empty(&content, "exe5").unwrap();
+            let m = Match { sides: [side.clone(), plain.clone()], ..m };
+            let mut b = nettai_battle::Battle::new(m.round(&content, 0x5EED), content.clone());
+            let choosing = |b: &nettai_battle::Battle| b.custom.sides[0].screen.is_some_and(|s| s.phase == Phase::Choosing);
+            let press = |b: &mut nettai_battle::Battle, key: u16| {
+                b.tick(&[PlayerTick { held: key }, Default::default()], Default::default());
+                for _ in 0..200 {
+                    b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+                    if choosing(b) {
+                        return;
+                    }
+                }
+                panic!("the screen stays out of choosing");
+            };
+            for _ in 0..400 {
+                if choosing(&b) {
+                    break;
+                }
+                b.tick(&[PlayerTick { held: 0 }, Default::default()], Default::default());
+            }
+            press(&mut b, keys::A);
+            b.custom.sides[0].screen.as_mut().unwrap().cursor = SPECIAL_SLOT;
+            press(&mut b, keys::A);
+            b.custom.sides[0].screen.as_mut().unwrap().cursor = OK_SLOT;
+            b.tick(&[PlayerTick { held: keys::A }, Default::default()], Default::default());
+            let (_, transform) = b.custom.sides[0].built.clone().expect("OK built the hand");
+            assert_eq!(transform.form, ids::form(&content, "exe5", "protosoul"));
+            transform.turns as i64
+        };
+        // Nothing, SoulT+1, MagicMan's SoulTm+2, Bass's SoulTm-2, LaserMan's
+        // SoulTm-1, and together: the line where the turns aren't the 3.
+        for (soul_t_on, cards, turns, line) in [
+            (false, "", 3, None),
+            (true, "", 4, Some(4)),
+            (false, "magicman", 5, Some(5)),
+            (true, "magicman", 6, Some(6)),
+            (false, "bass", 1, Some(1)),
+            (true, "bass", 2, Some(2)),
+            (true, "laserman", 3, None),
+            (false, "laserman", 2, Some(2)),
+        ] {
+            let side = with(if soul_t_on { &soul_t } else { &plain }, cards);
+            assert_eq!((given(&side), named(&side)), (turns, line), "SoulT+1 {soul_t_on}, cards {cards:?}");
+        }
+    }
+
+    /// A patch card's body (its element) is a parameter on its card screen,
+    /// but no number of the overview shows it: the overview lists it with the
+    /// abilities, as the card's line, the later card's where two set it (its
+    /// write is the one that holds), in EXE5 and EXE6.
+    #[test]
+    fn a_cards_body_is_listed() {
+        for (content, game, version) in [(exe5_content(), "exe5", "colonel"), (exe6_content(), "exe6", "falzar")] {
+            let mut clean = Builds::of(&content, game).unwrap().new_build(&content, version).unwrap();
+            set_navicust(&content, &mut clean, &[], 2);
+            let card = |name: &str| ids::entry(&content, game, "patch_cards", name).unwrap();
+            let abilities = |cards: &str| {
+                let mut side = clean.clone();
+                side.set_fact(&content, "patch_cards", &patch_cards(&content, game, cards)).unwrap();
+                Checked::of(&content, game, &side).overview(&content, &side).unwrap().abilities
+            };
+            let body = |name: &str, at: usize| Ability::From(Source::Effect(card(name), at));
+            let (first, second) = if game == "exe5" { (("cloudy", 0), ("elecman", 1)) } else { (("octon", 1), ("kilplant", 0)) };
+            assert!(abilities(first.0).contains(&body(first.0, first.1)), "{game}");
+            let both = abilities(&format!("{}, {}", first.0, second.0));
+            assert!(both.contains(&body(second.0, second.1)) && !both.contains(&body(first.0, first.1)), "{game}: {both:?}");
+        }
     }
 
     /// EXE4's patch cards go in six slots, 0A to 0F, each card in its own:
@@ -1968,3 +2096,4 @@ mod tests {
         assert_eq!(got, [(&Wrong::NotTaken, Some("navicust_programs"))]);
     }
 }
+

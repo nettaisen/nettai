@@ -11,7 +11,7 @@ use crate::builds::{Kit, cards};
 use crate::games::Names;
 use crate::shell::Shell;
 use nettai_content_api::{Data, EntryHandle, Registry};
-use nettai_match::build::{self, Bug, Checked, Overview, Source, Stat};
+use nettai_match::build::{self, Ability, Bug, Checked, Overview, Source, Stat};
 use nettai_match::{Folder, Side};
 use nettai_ui::{BuildSheet, ChipCell, ChipMark, SheetLine, SheetLineKind, StatLine};
 use slint::{ComponentHandle, ModelRc, VecModel};
@@ -65,6 +65,15 @@ pub fn source(words: &Words, source: Source) -> String {
     match source {
         Source::Entry(entry) => words.names.entry(entry),
         Source::Effect(entry, index) => effect_line(words.kit, words.names, entry, index).unwrap_or_else(|| words.names.entry(entry)),
+    }
+}
+
+/// An ability, by name: what gives it ([`source`]), or the rules' number by its name in the game's strings and its
+/// amount ("Soul Time 4").
+pub fn ability(words: &Words, ability: &Ability) -> String {
+    match ability {
+        Ability::Named { key, amount } => format!("{} {amount}", words.names.text(build::ABILITIES_TABLE, key).unwrap_or_else(|| key.clone())),
+        Ability::From(from) => source(words, *from),
     }
 }
 
@@ -124,7 +133,7 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         // (The round doesn't start: nothing is known of its numbers.)
         None => vec![StatLine::default(); 8],
     };
-    let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|&s| source(words, s)).collect();
+    let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|a| ability(words, a)).collect();
     let bugs: Vec<(String, String)> = overview.iter().flat_map(|o| o.bugs.iter()).map(|b| bug(words, b)).collect();
     // The lines under the stats: the bugs keep four of them where both lists are long.
     let ability_lines: Vec<SheetLine> = abilities.iter().map(|a| SheetLine { kind: SheetLineKind::Ability, text: a.into(), ..Default::default() }).collect();
