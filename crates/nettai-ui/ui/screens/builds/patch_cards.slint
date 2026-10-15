@@ -14,7 +14,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal, ProblemNote, WordButton } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
@@ -78,6 +78,7 @@ export global PatchCardsView {
         { key: Shell.key-a, pad: Shell.pad-a, text: self.on-installed ? @tr("Remove") : @tr("Add") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("Remove") },
         { key: "[", key2: "]", pad: PadButton.north, text: @tr("Move up or down") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -85,6 +86,7 @@ export global PatchCardsView {
         { key: "↑↓←→", pad: PadButton.move, text: @tr("Move") },
         { key: Shell.key-a, pad: Shell.pad-a, text: self.on-installed ? @tr("Remove") : @tr("Put in") },
         { key: "Del", pad: Shell.pad-delete, text: @tr("verb" => "Empty") },
+        { key: "X", pad: PadButton.none, text: @tr("Clear") },
         { key: Shell.key-l, key2: Shell.key-r, pad: PadButton.shoulders, text: @tr("Tab") },
         { key: Shell.key-b, pad: Shell.pad-b, text: @tr("Back") },
     ];
@@ -129,6 +131,8 @@ export global PatchCardsView {
     // and a card's own slot.
     out property <string> effects-title: @tr("EFFECTS");
     out property <string> bugs-title: @tr("BUGS");
+    // CLEAR's question (docs/design/app-ui.md §2.71).
+    out property <string> clear-question: @tr("Clear the patch cards?");
     public pure function slot-word(name: string) -> string {
         return @tr("Slot {}", name);
     }
@@ -617,24 +621,35 @@ export component PatchCardsTab inherits Rectangle {
     cards-title := Label {
         x: 12px;
         y: root.pane-y;
-        width: root.pane-width - 24px - counts.width - 12px;
+        width: max(0px, counts.x - 12px - self.x);
         height: 44px;
         visible: !Theme.phone;
         text: @tr("PATCH CARDS");
         color: PatchCardsView.in-library ? Theme.muted : Theme.cursor;
     }
 
-    // (What is wrong with the cards: on a phone's header, after the counts.)
+    // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
+    // card taken out (in a game with slots, every slot emptied), asked first; dim where the build has none. At the
+    // header's right end, after the counts; on a phone at the counts' box's.
+    clear := WordButton {
+        x: (Theme.phone ? parent.width : root.pane-width) - 12px + self.pad - self.width;
+        y: counts.y;
+        nav: "clear";
+        text: @tr("CLEAR");
+        enabled: PatchCardsView.counts.slotted ? PatchCardsView.counts.filled > 0 : PatchCardsView.counts.cards > 0;
+    }
+
+    // (What is wrong with the cards: on a phone's header, after the counts, before CLEAR.)
     ProblemNote {
         x: counts.x + counts.width + 16px;
         y: counts.y;
-        width: max(0px, parent.width - 12px - self.x);
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
         visible: Theme.phone;
         text: PatchCardsView.problems;
     }
 
     counts := HorizontalLayout {
-        x: Theme.phone ? 12px : root.pane-width - 12px - self.width;
+        x: Theme.phone ? 12px : clear.x + clear.pad - 12px - self.width;
         y: Theme.phone ? 14px : root.pane-y + 14px;
         width: self.preferred-width;
         height: 16px;

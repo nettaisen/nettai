@@ -38,10 +38,10 @@
 //!   ([`Wrong::NotAllowed`]: each copy of a chip), and with one version per
 //!   build one where what it holds is more than one group's
 //!   ([`Wrong::Mixed`]), read from what the build holds. Nothing is taken
-//!   out of a build, and nothing is kept out of one: a build may hold what
-//!   the ruleset doesn't allow, which is then its problem (the user: "if
-//!   something is not allowed by the ruleset, it should still be allowed to
-//!   be added but it should be in violation").
+//!   out of a build: one may hold what the ruleset doesn't allow (made under
+//!   another, or the ruleset changed since), which is then its problem. (An
+//!   editor keeps it from being added: the app's, docs/design/app-ui.md
+//!   §2.68.)
 //!
 //! This module names no game, no category, no version and no fact: they are
 //! the game's data, and a fact's definitions are read by its type.

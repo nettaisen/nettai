@@ -986,11 +986,11 @@ Each is settled unless the user changes it.
       | By the ruleset's select | nothing | RULESET, its select and EDIT alone |
       | Strips (every tab's but the Navi tab's, which has none) | at the top right, where nothing was refused, what the build's problems have against the item described, the ruleset's among them: the item's own (a chip's code, a program over another, a card held back, a Giga chip or a card variant of a mix of versions); those of a whole part it counts in (an empty folder entry: the folder's size; a chip: its copies, its class's limit, the dark chips', the tag memory of a tag chip; a card: the cards' MB); then its part's that are about no item and no count, in every item of its pane (a fact a build made by hand states wrong: the fallback) | `Refusal`'s `problem` (`ProblemNote`): the mark and the words, the first and " · +n more"; a refusal ("Needs 70 MB") in its place, red with no mark |
       | Navi tab's fault line | a line under the navi's facts (HP, element), kept whether it says anything or not, in the same place whatever the selector holds (§2.70; a phone's too): of the form under the cursor or the pointer where it has problems, else of the navi where it has, else the note | a form's own problems (the ruleset holds it back, a mix of versions), then its fact's about no form; else the navi's (the ruleset holds it back, its level, its HP) and the build's of no part a tab shows: `ProblemNote` at the left, the mark and the words, the first and " · +n more", in the note's stead |
-      | Rows | an item a problem is about, the ruleset's too | its name in the error red, nothing more; "Not allowed", quietly in the muted color, at the end of a library's row, an unplaced program's or a form's row the ruleset holds back, at the top of a navi's card (§2.68: a note, not a refusal) |
+      | Rows | an item a problem is about, the ruleset's too | its name in the error red, nothing more; "Not allowed" in the error red at the end of a library's row (greyed), an unplaced program's row (dimmed) or a form's row the ruleset holds back, at the top of a navi's card (dimmed): it can't be added (§2.68) |
       | Counts | the folder's Chips, Mega, Giga, Reg and Tag, the cards' MB, past their limit (Chips: not the folder's size) | in the error red, as before |
       | Fact headings (Navi tab) | a fact of forms with a problem | its heading and count in the error red |
-      | A phone's panes (no strip) | the game's rules' problems with the tab's facts, not the ruleset's | the header's line as before: a folder's last line of its counts' box, PROGRAMS' line, the cards' after their counts, a line over the places (the Navi tab: its fault line, as a desktop's) |
-      | Library rows | a chip or card the game's rules keep out (the ruleset keeps nothing out, §2.68) | greyed, why at its end, red, no mark |
+      | A phone's panes (no strip) | the game's rules' problems with the tab's facts, not the ruleset's | the header's line as before: a folder's last line of its counts' box, PROGRAMS' line, the cards' after their counts, a line over the places (the Navi tab: its note's place, as a desktop's) |
+      | Library rows | a chip or card the game's rules keep out, or the ruleset (§2.68) | greyed, why at its end ("Not allowed"), red, no mark |
       | Play's list, phone's build box | how many | "MegaMan · 2 problems", red |
       | Play's line under HOST and JOIN, the lobby, Practice | "This build can't be used: <the first> · +n more." | as before: the mark and the line; the lobby's reserved line; Practice's dialog |
 
@@ -1070,22 +1070,30 @@ Each is settled unless the user changes it.
       above, fading in (`UnderPage` in app.slint), where both had been shown and hidden at once.
     - *The quick choices in capitals:* a category's version choices read GREGAR, FALZAR, ALL, as ALLOW ALL and ALLOW
       NONE beside them and as a version's tag everywhere.
-68. **What a ruleset holds back can be added, and is a violation** (2026-10-15). The user, of the build editor: "if
-    something is not allowed by the ruleset, it should still be allowed to be added but it should be in violation.
-    also it doesn't seem to color all disallowed chips as red, just hte first one. also you should disallow chips and
-    program advances as well, and they should apply to auto battle". Then of the auto battle part: "you should instead
-    have a separate abd rules page" (an auto battle rules page); of the program advances, "stop the program advance
-    from forming during the battle instead", and then "actually nvm don't ban program advances".
-    - *Nothing is refused for the ruleset:* a chip, a NaviCust program, a patch card (or its variant), a navi, a form
-      and an auto battle place's chip the ruleset the player plays by holds back go into the build as any other; once
-      there each is the build's problem (`Wrong::NotAllowed`): its name in the error red on its row, the strip's top
-      right (the Navi tab's note's place) says "Bass isn't allowed", the tab's word has the problem's mark. Before it
-      is added, its library row (the folder's, the patch cards', the auto battle data's), its NaviCust row (where none
-      of it is placed), its form's row and its navi's card say "Not allowed" quietly, in the muted color, with no
-      grey and no shake: a note, not a refusal. Only the game's rules still refuse (a folder that is whole, a chip's
-      copies, a class's limit, the cards' MB, a chip of another class in an auto battle list, a program off the board).
-      The folder's view is the game's rules' alone (`View::hold_to`, which refused a chip the ruleset held back, is
-      gone).
+68. **What a ruleset holds back can't be added; a build that holds it is in violation** (2026-10-15). The user, of
+    the build editor: "if something is not allowed by the ruleset, it should still be allowed to be added but it should
+    be in violation. also it doesn't seem to color all disallowed chips as red, just hte first one. also you should
+    disallow chips and program advances as well, and they should apply to auto battle". Then of the auto battle part:
+    "you should instead have a separate abd rules page" (an auto battle rules page); of the program advances, "stop
+    the program advance from forming during the battle instead", and then "actually nvm don't ban program advances".
+    Adding it anyway was tried, and taken back the same day: "okay actually rulesets should prevent adding unallowed
+    ncps/chips/patch cards/etc".
+    - *What the ruleset holds back is refused where it would be added*, as the game's rules' refusals are: a folder's
+      chip (from the library, or dragged in), a NaviCust program taken from the list (a click on one of its colors
+      too), a patch card or a card's variant (put in, dropped in, or chosen in place of the variant in), an auto
+      battle place's chip (by the places' own category; put in or dragged in), a navi chosen, a form put in (ALL puts
+      in only those allowed: the rest are left out, as for want of room, with the refusal's sound). The row shakes
+      where the tab's rows shake, the refusal's sound plays, and the strip's top right says "Not allowed" (the Navi
+      tab, which has no strip: the sound, and its row or card already says so). Before it is tried, its library row
+      (the folder's, the patch cards', the auto battle data's) is greyed with "Not allowed" at its end in the error
+      red, as a row the game's rules refuse; its NaviCust row (where none of it is placed) is dimmed with "Not allowed"
+      in the error red; its form's row says so in the error red; its navi's card is dimmed with "Not allowed" at its
+      top in the error red. The folder's view stays the game's rules' alone (`View::hold_to` isn't back): the tab
+      asks the ruleset (`Draft::allows`).
+    - *A build may still hold it* (made under another ruleset, or the ruleset changed since): each is the build's
+      problem (`Wrong::NotAllowed`), its name in the error red on its row, the strip's top right (the Navi tab's
+      note's place) saying "Bass isn't allowed", the tab's word marked. Taking it out is never refused (Del, NONE, a
+      card that is in, the build's navi chosen again).
     - *Every copy is marked:* a chip held back in the folder was one problem at the entry that first held it, so the
       first copy alone was red (`ruleset::named_by` kept an item's first entry). The problem is still one for each
       item (one sentence, one count), and is now about every entry that holds it (`Wrong::NotAllowed`'s `entries`,
@@ -1111,7 +1119,7 @@ Each is settled unless the user changes it.
       over and under the head).
     - *What they do:* ALL puts the group's forms in, in the list's order, while the list has room ("CROSSES 5/5"),
       kept in the battle's order; the rest are left out, with the refusal's sound (the tab's refusal: a full list
-      refuses one more). NONE takes the group's forms out. Each is one change (`Builds::choose_forms`; the editor has
+      refuses one more), and so are those the ruleset holds back (§2.68). NONE takes the group's forms out. Each is one change (`Builds::choose_forms`; the editor has
       no undo). A word that would do nothing (ALL with the group in or the list full, NONE with none of it in) is
       dim, and refused if taken.
     - *Controls of their own:* each word is a control the arrows reach as any (`forms-all`, `forms-none`), Enter (the
@@ -1125,6 +1133,24 @@ Each is settled unless the user changes it.
     appears or goes; its place doesn't hang on how long the selector is. What it says is as before (the form under
     the cursor or the pointer's problems, else the navi's); the note under the selector is the note again, always.
     (§5 rule 13; §6 Builds.)
+
+71. **CLEAR** (2026-10-15). The user: "you should add clear for navicust/folder/patch cards/abd" (abd: auto battle).
+    - *Where:* one small word, CLEAR (クリア), in the ALL and NONE words' letters (§2.69; `WordButton`), at the right
+      end of a pane's header on each of the four tabs: the folder's (after the counts, its word where they would end;
+      the counts on their own line under the title and CLEAR where the language leaves the one line no room, as
+      before), the patch cards' (after the counts), PROGRAMS' title line (its word where the list's rows end) and the
+      auto battle places' (its title's line). A phone's: at the right end of the folder's and the cards' counts' box's
+      first line, of PROGRAMS' line and of the auto battle places' problem line. Nothing moves for it: it is on a line
+      that was there, the header's title or problem line cut short of it.
+    - *What it does:* empties that part of the build in one change: every folder entry, its Regular and tag marks
+      with it; every placed program (the board kept; a piece in hand dropped); every patch card (EXE4: every slot);
+      every auto battle place. The editor has no undo, so it asks first, as a build's DELETE does: "Clear the
+      folder?", "Clear the NaviCust?", "Clear the patch cards?", "Clear the auto battle data?", CANCEL (focused) and
+      CLEAR in the error red. Dim, and passed by, where the part holds nothing.
+    - *Keys:* a control the arrows reach (`clear`), Enter (the pad's A) takes it; X takes it from anywhere on the
+      tab (not while typing a search, nor with a NaviCust piece in hand), and the footer says "X Clear" (the pad
+      reaches it by the arrows: no button of its own).
+    (§6 Builds; docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 
@@ -1516,9 +1542,12 @@ DUPLICATE, RENAME and DELETE.
   count (in the error red where it has a problem) over its forms' rows grouped by version; and the note,
   "NaviCust and patch cards are MegaMan only.", as tall as its words. Nothing there moves when a
   problem appears (§2.65, §2.66): a fact's heading in the error red, a chosen form's name a problem is about in it
-  (in a mix of versions, every form of each version the build has), "Not allowed" quietly at the end of a form's
-  row the ruleset holds back (it can still be chosen, §2.68), and on a line kept under the navi's facts (HP, element; §2.70), in the same place whatever the selector
-  holds, what the build's problems have against the form under the cursor or the pointer, else against the navi, the ruleset's among them (the problem's mark, the first and " ·
+  (in a mix of versions, every form of each version the build has), "Not allowed" in the error red at the end of a
+  form's row the ruleset holds back (it isn't put in, and ALL leaves it out; one the build has can be taken out,
+  §2.68; a navi it holds back is dimmed, "Not allowed" at its card's top, and isn't chosen), and on a line kept
+  under the navi's facts (HP, element; §2.70), in the same place whatever the selector holds, what the build's
+  problems have against the form under the cursor or the pointer, else against the navi, the ruleset's among them
+  (the problem's mark, the first and " ·
   +n more"). A list of forms (Crosses, souls; not the Beast Out, one always chosen) has ALL and NONE at the right end
   of each version's head, or of its heading where it shows no versions (§2.69): ALL puts that group's forms in, in
   order, while the list has room, and refuses the rest; NONE takes them out; each one change, dim where it would do
@@ -1527,14 +1556,15 @@ DUPLICATE, RENAME and DELETE.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header its title and Chips 30/30, Mega, Giga, Reg and Tag memory (on a line under the title
-  where the language leaves them no room beside it; one past its limit in the error red); then the overview's own 2
+  where the language leaves them no room beside it; one past its limit in the error red) and CLEAR at its right end,
+  which empties every entry and its marks, asked first (X; §2.71); then the overview's own 2
   by 15 block (a phone's counts' box keeps its last line for what the game's rules have against the folder). Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
   a note, MB, attack, element, code), 15 showing. The pointer on an entry or a row shows its chip in the strip
   (§2.64). Enter on a slot goes to the library; Enter on a row puts it in
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's. One the
-  ruleset holds back is not refused (§2.68): its row says "Not allowed" quietly at its end, it goes in as any other,
-  and every entry of it is then the build's problem, its name red. A mark the
+  ruleset holds back is refused too (§2.68): its row greyed, "Not allowed" at its end; a build that holds it all the
+  same has every entry of it as its problem, its name red. A mark the
   rules refuse is said at the strip's top right (§2.66), and where nothing was, what the build's problems have
   against the entry described (an empty one: the folder's size; a version's Giga chip in a build that mixes versions
   under one version per build: the mix, of which every such chip, form and card variant has its name red); an entry a
@@ -1544,11 +1574,13 @@ DUPLICATE, RENAME and DELETE.
   program of one shape, that one with no word; §2.65), its name in its color, the game's words (the user: "you
   should show ncp descriptions") and its colors; the board framed at the left with a key under it; PROGRAMS, an
   open list, in the middle, each program once (in its color chosen, a cross if a plus part; its chosen color's part
-  Placed, Placed ×2 where more than one copy is, In hand, Out of bounds or, quietly where none is placed, Not allowed
-  (the ruleset holds it back; it can be placed, and each placed copy is then red, §2.68); then at the row's right edge
+  Placed, Placed ×2 where more than one copy is, In hand, Out of bounds or, where none is placed, Not allowed in the
+  error red, the row dimmed (the ruleset holds it back: it isn't taken, the strip's top right saying so; a copy a
+  build has placed all the same is red, §2.68); then at the row's right edge
   its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing and taking
   that color's part in hand; its name in the error red where a placed copy has a problem, which the strip's top right
-  says of the program it describes, §2.66; a phone's PROGRAMS' line); Effects and Bugs at
+  says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of PROGRAMS' line,
+  which takes every placed program off the board, asked first (X; §2.71); Effects and Bugs at
   the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
@@ -1568,9 +1600,11 @@ DUPLICATE, RENAME and DELETE.
   board puts it back where it was; a right click puts it away, or takes off the piece under the pointer.
 - **Patch cards** (§2.19, §2.20, §2.64): the folder's shape. EXE5 and EXE6: the installed cards in order in the
   framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header (a phone's
-  with what the game's rules have against the cards after them), and
-  "Together", what they add up to, at its foot; the library's rows the same, with their note ("Not allowed" quietly
-  where the ruleset holds the card back: it goes in, and is then red, §2.68); the strip across the
+  with what the game's rules have against the cards after them) and CLEAR at its right end, which takes every card
+  out (EXE4: empties every slot), asked first (X; §2.71), and
+  "Together", what they add up to, at its foot; the library's rows the same, with their note ("Not allowed" in the
+  error red, greyed, where the ruleset holds the card or its variant back: it isn't put in nor chosen, §2.68); the
+  strip across the
   top lays the card under the cursor (or the pointer) out: its lines in its two groups, Parameter then Ability, bug
   lines purple, and at its top right why a library's card can't go in ("Needs 70 MB") or wasn't put in (§2.66); an
   installed card a problem is about (a version's variant in a build that mixes versions, one held back) has its name
@@ -1594,7 +1628,8 @@ DUPLICATE, RENAME and DELETE.
   on (EXE4: in its own slot, wherever over the slots), refused as a click is; elsewhere, nothing. On a phone, a tap
   opens the library's sheet (its REMOVE takes out) and a held touch drags, to reorder only; the sheet's rows aren't
   dragged.
-- **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel. The
+- **Auto battle** (EXE4, EXE5): the same shape, its places grouped under their lists in the framed panel, CLEAR at
+  its header's right end emptying every place, asked first (X; §2.71; a phone's at the right end of its problem line). The
   library offers what the place being filled can hold (§2.27): a Mega place the Mega chips, the Giga place the Giga
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
   folder can hold. A Program Advance has no picture and no element, and none is shown ("program advances don't
@@ -1602,7 +1637,8 @@ DUPLICATE, RENAME and DELETE.
   problem of the build, shown as any other: its place's name in the error red, and the strip's top right says why of
   the place it describes ("Cannon can't be in the Mega list"; §2.66; a phone's, a line of its own over the places).
   The ruleset's AUTO BATTLE category holds chips back here apart from the folder's Chips (§2.68): a library row of one
-  says "Not allowed" quietly, it goes in, and each place of it is then red, the strip saying it.
+  is greyed and says "Not allowed", and it isn't put in (its row shakes, the strip says so); a build that holds one
+  all the same has each place of it red, the strip saying it.
 
 ### Replays
 - **The list:** All, Online (and Training only if training is ever recorded) and a search by opponent; rows of the

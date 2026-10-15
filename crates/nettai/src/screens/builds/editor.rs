@@ -26,9 +26,11 @@
 //! **The ruleset the player plays by** (docs/design/app-ui.md §2.59) is the frame's too: a select at the tab bar's
 //! right end (on a phone, at the top of the Navi tab) with EDIT, which opens its page over the editor
 //! (`crate::rulesets::page`). The build is checked under it (`Checked::under`), so what it doesn't allow is among
-//! the build's problems, and each tab marks it where it shows it. No tab refuses it (docs/design/app-ui.md §2.68): it
-//! goes in as anything else and is then a problem about every entry that holds it, red; before that, a library's row,
-//! a navi's card or a form's row says "Not allowed" quietly ([`Draft::allows`]).
+//! the build's problems, and each tab marks it where it shows it. Every tab refuses to add it (docs/design/app-ui.md
+//! §2.68; the user: "okay actually rulesets should prevent adding unallowed ncps/chips/patch cards/etc"): a library's
+//! row, a navi's card or a form's row says "Not allowed" in the error red, dimmed ([`Draft::allows`]), and taking it is
+//! refused as the game's rules' refusals are. A build that holds it all the same (made under another ruleset, or the
+//! ruleset changed since) has it as a problem about every entry that holds it, red; it can be taken out.
 //!
 //! **A tab says which of the build's facts are its own** ([`Tab::fields`]): a problem with one of them marks
 //! its word in the bar; a tab none of whose facts the game's setup takes isn't in the bar (auto battle data:
@@ -145,7 +147,7 @@ impl Draft {
 
     /// Whether the ruleset the player plays by allows definition `h` of the build's fact `fact` (a navi, a chip, a
     /// program, a soul, a Cross, a Cybeast, an auto battle place's chip): where it holds nothing of that fact back, or
-    /// there is none, yes. What it doesn't allow is a quiet note where it is offered, never refused.
+    /// there is none, yes. What it doesn't allow is marked where it is offered, and refused where it would be added.
     pub fn allows(&self, fact: &str, h: u16) -> bool {
         self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows(fact, h))
     }
@@ -298,6 +300,38 @@ pub trait Tab {
 
     /// A dialog the tab asked (`Shell::ask`, by its `tag`) was answered.
     fn answered(&mut self, _shell: &mut Shell, _draft: &mut Draft, _tag: &str, _choice: usize) {}
+}
+
+// ---- CLEAR ------------------------------------------------------------------------------------------------------
+
+/// The question a tab's CLEAR asks (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/
+/// patch cards/abd"): whether its part of the build is emptied. Its answer is the tab's (`Tab::answered`), CLEAR the
+/// second button.
+pub const CLEAR: &str = "builds.clear";
+
+/// CLEAR, at the right end of a pane's header (`clear`), or its key: asked first whether the part of the build is
+/// emptied, `question` its words, Cancel focused (the editor has no undo, as a build's DELETE asks); where the part
+/// holds nothing (`empty`), refused.
+pub fn ask_clear(shell: &mut Shell, question: slint::SharedString, empty: bool) {
+    if empty {
+        return shell.sound.play(crate::sound::Cue::Refused);
+    }
+    let ui = shell.ui();
+    let play = ui.global::<nettai_ui::PlayView>();
+    let button = |text: slint::SharedString, danger: bool| nettai_ui::DialogButton { text, kind: nettai_ui::ButtonKind::Ghost, danger };
+    let clear = ui.global::<BuildsView>().get_clear_word();
+    shell.ask(crate::shell::Dialog { tag: CLEAR, title: question.into(), message: String::new(), buttons: vec![button(play.get_cancel_word(), false), button(clear, true)], focus: 0, cancel: 0 });
+}
+
+/// Whether `key` is CLEAR's (X, as the tabs' hints say; not a letter typed on a text field, nor a key the menus
+/// take: the one bound to L or R, which change the tab).
+pub fn clear_key(shell: &Shell, key: &KeyPress) -> bool {
+    key.code == slint::winit_030::winit::keyboard::KeyCode::KeyX && !key.repeat && !shell.nav.on_field() && crate::input::menu_action(key.code, key.shift, &shell.bindings).is_none()
+}
+
+/// Whether the dialog answered (`tag`, `choice`) said CLEAR.
+pub fn cleared(tag: &str, choice: usize) -> bool {
+    tag == CLEAR && choice == 1
 }
 
 /// The row the strip describes in place of the focused one while the pointer is on it (docs/design/app-ui.md §2.64):

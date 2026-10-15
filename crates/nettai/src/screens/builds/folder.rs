@@ -4,9 +4,10 @@
 //! against them and why each chip can't go in (`folders::View`, asked once for a folder as it stands and read
 //! for every row), what is wrong with an entry (`folders::about_entry`), whether an entry can be the Regular
 //! chip or a tag chip (`Checked::mark_problems`), the library's chips and their sorts (`build::library`,
-//! `build::sorted`). The ruleset the player plays by keeps no chip out: one it holds back goes in as any other, and
-//! each entry of it is the build's problem (`Wrong::NotAllowed`, about every copy), its library row saying "Not
-//! allowed" quietly at its end (docs/design/app-ui.md §2.68).
+//! `build::sorted`). The ruleset the player plays by keeps out a chip it holds back (docs/design/app-ui.md §2.68): its
+//! library row is greyed and says "Not allowed" at its end, and putting it in is refused as the rules' refusals are.
+//! A build that holds one all the same (made under another ruleset) has each entry of it as its problem
+//! (`Wrong::NotAllowed`, about every copy).
 //!
 //! **Enter on an entry goes to the library; Enter on a row puts that chip in the entry and goes on to the next
 //! entry.** A chip put in takes the place of the entry's own, so a row's reason is asked of the folder without
@@ -14,7 +15,9 @@
 //!
 //! **R** makes the entry under the cursor the Regular chip (or no longer), **T** tags it: the first T marks
 //! one entry and the second its pair, and the two are the build's tag chips once the rules take them. **Del**
-//! takes the entry's chip out. A mark the rules refuse isn't made, and the strip says why.
+//! takes the entry's chip out. A mark the rules refuse isn't made, and the strip says why. **CLEAR** at the right end of
+//! the folder's header (or **X**; docs/design/app-ui.md §2.71) empties every entry, the Regular and tag marks with
+//! them, as one change, asked first (`editor::ask_clear`).
 //!
 //! **The mouse:** a click on an entry marks it (the focus stays on it); a right click takes its chip out, as Del does.
 //! An entry dragged to another place moves there, those between shifting toward where it was, its Regular and tag
@@ -208,9 +211,8 @@ impl Folder {
         }
     }
 
-    /// The library's pane: each row with why its chip can't go in (the game's rules'), else "Not allowed" where the
-    /// ruleset the player plays by holds it back (a quiet note: it goes in, and is then the build's problem), else how
-    /// many the folder holds.
+    /// The library's pane: each row with "Not allowed" where the ruleset the player plays by holds its chip back, else
+    /// why its chip can't go in (the game's rules'), greyed either way; else how many the folder holds.
     fn show_library(&self, shell: &Shell, draft: &Draft) {
         let content = draft.content();
         let kit = &draft.kit;
@@ -238,11 +240,11 @@ impl Folder {
                             name: words.names.chip(row.id).into(),
                             kind: kind(record.class),
                             note: match refusal {
+                                _ if banned => say.invoke_not_allowed_here(),
                                 Some(wrong) => words.refusal(row.id, wrong).into(),
-                                None if banned => say.invoke_not_allowed_here(),
                                 None => Default::default(),
                             },
-                            refused: refusal.is_some(),
+                            refused: banned || refusal.is_some(),
                             megabytes: say.invoke_megabytes(record.mb as i32),
                             attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
                             element: kit.pictures.chip_element(row.id),
@@ -387,19 +389,24 @@ impl Folder {
         self.leave_library(shell, to);
     }
 
-    /// Put row `row`'s chip in the entry being filled: whether it went in. A chip the rules keep out isn't put: its row
-    /// shakes, and the strip says why.
+    /// Put row `row`'s chip in the entry being filled: whether it went in. A chip the rules keep out, or the ruleset the
+    /// player plays by, isn't put: its row shakes, and the strip says why.
     fn put_in(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) -> bool {
         let Some(&chip) = self.rows.get(row) else { return false };
         let ui = shell.ui();
         let view = ui.global::<FolderView>();
-        if self.offered.as_ref().is_none_or(|v| v.refusal(chip.id).is_some()) {
+        let fact = draft.content().defs.fact_name(PlayerFact::Folder).unwrap_or_default();
+        let banned = !draft.allows(fact, chip.id.0);
+        if banned || self.offered.as_ref().is_none_or(|v| v.refusal(chip.id).is_some()) {
             shell.sound.play(Cue::Refused);
             self.refused += 1;
             view.set_refused(row as i32);
             view.set_refused_seq(self.refused);
             let wrong = self.offered.as_ref().and_then(|v| v.refusal(chip.id));
-            self.notice = wrong.map(|wrong| draft.with_words(shell, |words| words.refusal(chip.id, wrong)));
+            self.notice = match banned {
+                true => Some(ui.global::<nettai_ui::BuildWords>().invoke_not_allowed_here().to_string()),
+                false => wrong.map(|wrong| draft.with_words(shell, |words| words.refusal(chip.id, wrong))),
+            };
             self.show_detail(shell, draft);
             return false;
         }
@@ -533,6 +540,18 @@ impl Folder {
         }
     }
 
+    /// CLEAR, answered: every entry emptied and its marks with it, as one change (`Folder::EMPTY`). The cursor goes to
+    /// the entry being filled.
+    fn clear(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        self.tagging = None;
+        self.notice = None;
+        if draft.edit(|content, side| side.folder(content) != Chips::EMPTY && side.set_folder(content, &Chips::EMPTY).is_ok()) {
+            shell.sound.play(Cue::Back);
+        }
+        self.changed(shell, draft);
+        shell.nav.focus("slot", self.slot as i32);
+    }
+
     /// Where entry `from` dragged to `at` (the window's point) would land: the entry under the pointer; none off the
     /// folder.
     fn drop_at(shell: &Shell, at: i32) -> Option<usize> {
@@ -651,6 +670,10 @@ impl Tab for Folder {
                 self.leave_library(shell, self.slot);
             }
             "lib.close" => self.leave_library(shell, self.slot),
+            "clear" => {
+                let empty = draft.side().folder(draft.content()).chips().next().is_none();
+                editor::ask_clear(shell, view.get_clear_question(), empty);
+            }
             _ => {}
         }
     }
@@ -742,8 +765,12 @@ impl Tab for Folder {
         }
     }
 
-    /// R and T on an entry.
+    /// R and T on an entry; X, CLEAR.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
+        if editor::clear_key(shell, key) {
+            self.activate(shell, draft, "clear", 0);
+            return true;
+        }
         if let Some(slot) = Folder::focused_slot(shell) {
             match key.code {
                 KeyCode::KeyR if !key.repeat => self.regular(shell, draft, slot),
@@ -783,5 +810,11 @@ impl Tab for Folder {
             return true;
         }
         false
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) {
+            self.clear(shell, draft);
+        }
     }
 }
