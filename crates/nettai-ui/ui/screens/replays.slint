@@ -167,6 +167,10 @@ export global ReplaysView {
     pure public function round-part(round: int, length: string) -> string {
         return @tr("Round {} · {}", round, length);
     }
+    // A round's chapter in an exported video.
+    pure public function chapter(round: int) -> string {
+        return @tr("Round {}", round);
+    }
 }
 
 // ---- The list -------------------------------------------------------------------------------------------

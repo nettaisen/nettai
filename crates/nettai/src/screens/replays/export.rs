@@ -15,7 +15,7 @@ use crate::shell::Shell;
 use nettai_frontend::game::{Loaded, Sound, GraphicsMode};
 use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
-use nettai_video::{Options, Part, Progress, Sides, mp4};
+use nettai_video::{Options, Part, Progress, Sides, Titles, mp4};
 use slint::ComponentHandle;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -64,7 +64,8 @@ pub struct Export {
     summary: Summary,
     size: usize,
     side: u8,
-    /// Both consoles side by side (`side`'s at the left, heard), or `side`'s alone.
+    /// Both consoles side by side (`side`'s at the left, its sound the first track, the other's the second), or
+    /// `side`'s alone.
     both: bool,
     /// The part: 0 the whole match, else that round.
     part: u32,
@@ -343,7 +344,15 @@ impl Export {
             sound: crate::music::sound(&shell.games, &ready, &crate::music::Music::GameOwn).map(|(banks, songs)| Sound { banks, songs, report: Default::default() }),
         };
         let sides = if self.both { Sides::Both } else { Sides::One };
-        let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part: if self.part == 0 { Part::Whole } else { Part::Round(self.part) } };
+        // The chapters ("Round 1"...) and the sound's tracks (each side's player) in the words the window shows.
+        let titles = {
+            let ui = shell.ui();
+            let view = ui.global::<ReplaysView>();
+            let rounds = (1..=self.summary.rounds.len() as i32).map(|n| view.invoke_chapter(n).into()).collect();
+            Titles { rounds, sides: [0, 1].map(|side| name(&view, &self.summary.info, side)) }
+        };
+        let part = if self.part == 0 { Part::Whole } else { Part::Round(self.part) };
+        let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part, titles };
         let encoding = mp4::Settings { ffmpeg: mp4::find_ffmpeg(), ..mp4::Settings::default() };
         let (stop, shared, to) = (Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(Shared::default())), self.to.clone());
         let (stopped, told) = (stop.clone(), shared.clone());
