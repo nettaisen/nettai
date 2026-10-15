@@ -142,14 +142,14 @@ impl Words<'_> {
                 say.invoke_wrong_slot(self.names.entry(*entry).into(), slot.unwrap_or_else(|| (own + 1).to_string()).into())
             }
             Wrong::NotAllowed { registry, item } => say.invoke_not_allowed(self.item(*registry, item).into()),
-            Wrong::Mixed { groups, items } => {
+            // (By the versions alone: every thing of them the build holds is in the mix, and none is the one at fault.)
+            Wrong::Mixed { groups, .. } => {
                 let name = |id: &String| self.kit.version_name(self.names, id);
                 let versions = match groups.as_slice() {
                     [a, b] => say.invoke_and_of(name(a).into(), name(b).into()).to_string(),
                     many => many.iter().map(name).collect::<Vec<_>>().join(", "),
                 };
-                let things: Vec<String> = items.iter().map(|(registry, item)| self.item(*registry, item)).collect();
-                say.invoke_mixed(versions.into(), things.join(", ").into())
+                say.invoke_mixed(versions.into())
             }
             Wrong::Internal => say.invoke_internal(),
         };
@@ -200,7 +200,7 @@ impl Words<'_> {
     }
 
     /// Problems said in one line (docs/design/app-ui.md §2.66): the first's sentence, and how many more there are
-    /// after it ("Mixes Gregar and Falzar: FBeast · +1 more"). Wherever a build's problems are said in a line they are
+    /// after it ("Mixes Gregar and Falzar · +1 more"). Wherever a build's problems are said in a line they are
     /// said so: the editor's (a pane's header, a strip's, the ruleset's select), and the reason a build can't be
     /// played (`UserError::BuildUnusable`: Play's, the lobby's, Practice's). None: there are none.
     pub fn summary<'p>(&self, problems: impl IntoIterator<Item = &'p Problem>) -> Option<String> {
