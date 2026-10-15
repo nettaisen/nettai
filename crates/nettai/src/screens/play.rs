@@ -1482,7 +1482,7 @@ impl Screen for Play {
                 self.copy(shell, &invite);
                 shell.close_menu();
             }
-            Some(WaitRow::Stop) => practice::end(shell),
+            Some(WaitRow::Stop) => practice::stop(shell),
             Some(WaitRow::Cancel) => self.leave(shell),
             None => {}
         }

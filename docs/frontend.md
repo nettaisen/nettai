@@ -502,13 +502,10 @@ every match's setup: `RoundSetup::host_keys`):
   where it may (`Player::set_paused`: live play and replays; a netplay match
   runs on). It is said exactly where the original pauses (the fight running,
   the battle not over, not dimmed: docs/engine/battle-flow.md §3.5), so
-  START on the custom screen is still the cursor's way to OK. (A host may
-  set up a round that leaves the game its START, `HostKeys::pause` off,
-  and hold the battle in the game's own pause under a menu of its own:
-  `Battle::pausable` says whether START would pause the game now,
-  `Battle::paused_by` who holds it paused, both output only; and the
-  renderer's `pause_display` off leaves the HUD's "PAUSE" out of the
-  picture. nettai's Practice does: docs/app.md §15.)
+  START on the custom screen is still the cursor's way to OK. (A round
+  that leaves the game its START, `HostKeys::pause` off, pauses in the
+  game's own pause, as a recording of the original does:
+  `Battle::paused_by` says who holds it paused, output only.)
 - **L on the custom screen** does nothing: nobody runs from a match, and
   the navi's message that says so isn't shown or heard
   (docs/engine/custom-screen.md §3.5). L and R in the fight ask for the
@@ -2376,11 +2373,19 @@ renderer, the enhanced mode's text renderer and the battle's audio:
   its menu and, outside real time, calls `set_paused(true)` until it
   closes. (A paused player runs no ticks and makes no sound; the picture
   stays the last tick's.) `set_held(true)` holds the battle where it
-  stands but keeps its sound: a tick due steps nothing of the battle (no
-  state, no cue, no new picture, `ticks()` the same) and plays a tick's
-  worth of the audio driver, the music and what was sounding going on
-  (nettai's practice menu, where the game's own pause can't hold the
-  battle: its custom screen, a dimming, a round's end). False in real
+  stands but has it look and sound as the game's own pause does: a tick
+  due steps nothing of the battle (no state, no cue, no input, `ticks()`
+  the same), plays a tick's worth of the audio driver (the music and what
+  was sounding going on), and moves the stage's scenery a frame on
+  (`Renderer::scenery_frame`: the background's animation and scroll, the
+  enhanced mode's glide with it, and the panels' own animations, their
+  palette cycles; the sprites stand, as in the game's pause). The frames
+  the scenery moved are the renderer's alone, added to the battle's clock
+  for drawing (`Renderer::stage_clock`, `Player::stage_clock`) and kept
+  after the hold, so nothing jumps back; a new round or a start over
+  forgets them. Nothing of them is in the battle, its snapshot or its
+  digest, and a battle never held draws byte for byte as before. nettai's
+  practice menu holds its battle so wherever it opens. False in real
   time.
 - `opponent()` and `set_opponent(Opponent { in_fight, on_custom_screen })`
   are live play's: what the other navi does, read and changed while the
