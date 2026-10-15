@@ -58,6 +58,18 @@ A build states what it has, not which cartridge it came from:
   one entry, as the user asked on 2026-10-14 ("EXE5's two cards made one"); only which half of it plays moves
   from the build's version to the card.
 
+**The editor chooses them** (the user: "you probably need to have some kind of soul and cross and cybeast selector
+in the editor now right?"). The build editor's Navi tab gets a selector for what the version used to choose:
+
+- **Souls (BN4, BN5) and Crosses (BN6):** which of the game's the build has, both versions' offered, in the order the
+  battle lists them, as many as the battle's own list holds (the original's window: its count is the game's to
+  state, checked against the ROM's, not guessed here), each shown as the Navi tab shows a form today. A ruleset
+  chosen in the editor marks the banned ones, as the ruleset work marks banned chips.
+- **BN6's Cybeast:** Gregar or Falzar, one always chosen, at the head of the selector (where the version's tag was
+  in the header: app-ui §2.42 goes).
+- **A new build** starts from a version's group (§2.2): that version's souls or Crosses and its Cybeast, changed
+  from there.
+
 The setup's `version` goes from EXE5's and EXE6's rules (EXE4 has none already); `exe6.version(side)` is replaced
 by the side's Cybeast where the rules read it (Beast Out, MstrCros).
 
