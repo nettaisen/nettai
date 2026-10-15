@@ -3167,7 +3167,7 @@ any of them, ever: the app extracts each game's pack from the player's own Legac
 **The bundled ffmpeg.** The user: "i think you also need like the equivalent of
 https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with it. it should support whatever
 nettai needs and nothing more so the build is minimal", then "make sure to bundle it with the binary", then "i want
-you to build it with a separate workflow in https://github.com/bigfarts/nettai-ffmpeg-build so you don't have to
+you to build it with a separate workflow in https://github.com/nettaisen/ffmpeg-build so you don't have to
 build ffmpeg everty time". That repository's workflow, run by hand, builds a static `ffmpeg` per platform from
 `--disable-everything` with only what the export's command runs (the NUT demuxer, the raw video and float PCM
 decoders, the pipe and file protocols, swscale's `scale` and `format`, `setparams`, swresample's `aresample` with

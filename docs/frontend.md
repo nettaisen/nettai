@@ -2761,7 +2761,7 @@ package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`,
 never looked in, so an `ffmpeg` in the working directory isn't run; found
 nowhere, it is the bundled one's place, which fails to start (`NoFfmpeg`).
 The bundled ffmpeg is a minimal static build of this command and nothing more
-(bigfarts/nettai-ffmpeg-build); its smoke test runs the command on streams
+(nettaisen/ffmpeg-build); its smoke test runs the command on streams
 this crate's `nut` writer makes.
 
 **Progress, canceling, errors.** `progress` is called before the first frame

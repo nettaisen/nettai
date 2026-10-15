@@ -31,7 +31,7 @@ copy_content() { # <dest-dir>
 }
 
 # The ffmpeg every package bundles beside the program, for the replay export (docs/app.md §19): a release of
-# bigfarts/nettai-ffmpeg-build (a minimal static build of what the export runs), pinned in
+# nettaisen/ffmpeg-build (a minimal static build of what the export runs), pinned in
 # packaging/ffmpeg.sha256 by its tag and each file by its SHA-256. `fetch_ffmpeg <file>` downloads that file of
 # the release once into target/package/ffmpeg/<tag>/, checks it, and sets `fetched` to it.
 ffmpeg_pins=$root/packaging/ffmpeg.sha256
@@ -45,7 +45,7 @@ fetch_ffmpeg() { # <file>
     mkdir -p "$dir"
     if [ "$(sha256_of "$fetched")" != "$sum" ]; then
         curl --fail --location --silent --show-error --output "$fetched" \
-            "https://github.com/bigfarts/nettai-ffmpeg-build/releases/download/$ffmpeg_release/$1"
+            "https://github.com/nettaisen/ffmpeg-build/releases/download/$ffmpeg_release/$1"
         [ "$(sha256_of "$fetched")" = "$sum" ] || { echo "$1 of $ffmpeg_release isn't the one pinned" >&2; rm -f "$fetched"; return 1; }
     fi
 }
