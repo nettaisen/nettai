@@ -195,6 +195,18 @@ msgstr "サイズ"
 msgid "Part"
 msgstr "範囲"
 
+# The consoles a video shows: the view's alone, or both side by side (the view's at the left, heard).
+msgid "Sides"
+msgstr "画面"
+
+msgctxt "sides"
+msgid "One"
+msgstr "片方"
+
+msgctxt "sides"
+msgid "Both"
+msgstr "両方"
+
 msgid "Save as"
 msgstr "保存先"
 

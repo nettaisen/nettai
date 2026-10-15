@@ -548,6 +548,23 @@ impl Viewer {
         nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
     }
 
+    /// The picture `side`'s console shows now, into the host's pixels as [`Viewer::present`]: the console shown's
+    /// own (`present`) or the other's, drawn from the same tick with that side's HUD state (both run every
+    /// tick), so a host can show both consoles at once (a video's two sides; an inset of the other) without
+    /// playing the replay twice. Nothing of what is shown or heard changes: the side shown stays the viewer's.
+    pub fn present_view(&mut self, side: u8, buffer: &mut [u32], width: usize, height: usize) {
+        if side == self.view || side > 1 {
+            return self.present(buffer, width, height);
+        }
+        // (The renderer follows nothing else by side: its stage clock and its graphics are both consoles'.)
+        std::mem::swap(&mut self.renderer.hud_state, &mut self.other_hud);
+        self.session.battle.setup.local_side = side;
+        let frame = self.renderer.render(&self.session.battle);
+        self.session.battle.setup.local_side = self.view;
+        std::mem::swap(&mut self.renderer.hud_state, &mut self.other_hud);
+        nettai_render::present::present(&frame, self.text.as_mut(), buffer, width, height);
+    }
+
     /// The sound of the ticks played since the last call, appended to
     /// `out`: stereo samples at `nettai_audio::SAMPLE_RATE`, about 549 a
     /// tick at the original's speed. Nothing from a silent viewer, and

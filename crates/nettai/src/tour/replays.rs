@@ -1,8 +1,9 @@
 //! The screenshot pass's steps through Replays (docs/app.md §13): the list, the selected replay, a search, a
 //! file that doesn't read (selected as the screen arrives from the menu), the delete question, the export's
 //! dialog (idle, under way, failed), the two cards, the viewer (a focus move and a second of playback apart,
-//! each a pair), the other console, a replay that fails as it is watched, and on a phone the selected replay's
-//! sheet.
+//! each a pair), the other console, the input display with the other console's picture in the corner, the
+//! export's dialog over the viewer (one side, both sides), a replay that fails as it is watched, and on a phone
+//! the selected replay's sheet.
 //!
 //! The pass has replays of its own, made here the first time through (`crate::replays::folder` is the pass's
 //! folder while it runs): three sets of the selected game played by themselves and recorded, written again
@@ -369,8 +370,17 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(SETTLE, activate("builds", 0));
     shot(add, "viewer-builds", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
+    // The input display and the other console's picture in the corner (I and P), on together, then off.
+    add(SETTLE, key(KeyCode::KeyI, 1));
+    add(SETTLE, activate("inset", 0));
+    shot(add, "viewer-overlays", Pair::None, Also::Nothing);
+    add(SETTLE, activate("inputs", 0));
+    add(SETTLE, key(KeyCode::KeyP, 1));
     add(SETTLE, activate("export", 0));
     shot(add, "viewer-export", Pair::None, Also::Nothing);
+    // Both consoles side by side.
+    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().with_screen(ScreenId::Replays, |s, shell| s.choose(shell, "export.sides", 0, 1))));
+    shot(add, "viewer-export-both", Pair::None, Also::Nothing);
     add(SETTLE, act(Action::Back));
     add(SETTLE, act(Action::Back));
     // A closed-builds match's viewer: BUILDS unavailable.

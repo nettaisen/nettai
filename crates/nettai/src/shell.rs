@@ -199,6 +199,8 @@ pub struct Shell {
     pub lang: &'static str,
     /// The window's texture the picture is written into (femtovg's OpenGL); none: a new image each picture.
     pub gl: Option<GlPicture>,
+    /// A second texture, for a small picture over the window's one (the replay viewer's other console: `Shell::show_inset`).
+    pub inset_gl: Option<GlPicture>,
     pub scale: Scale,
     /// Present the picture at the display's density (`NETTAI_PHYSICAL_PIXELS`).
     pub(crate) sharp: bool,
@@ -847,6 +849,7 @@ impl App {
             pad_shown: 0,
             lang,
             gl: None,
+            inset_gl: None,
             scale: Scale { os: 1.0, unit: 1.0, ..Scale::default() },
             sharp: std::env::var_os("NETTAI_PHYSICAL_PIXELS").is_some(),
             showing: Default::default(),

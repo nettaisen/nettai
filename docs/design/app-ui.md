@@ -1151,9 +1151,13 @@ DUPLICATE, RENAME and DELETE.
 - **The viewer:** the picture at three times over a transport: the time, a bar to click or drag with a mark where
   each round begins, the length; then to the round's start, a frame back, play or pause, a frame on, the next
   round; Speed (½, 1, 2, 4); View (P1, P2); EXPORT VIDEO. Space plays, Left and Right seek 5 seconds, comma and
-  period step a frame, the brackets go a round.
+  period step a frame, the brackets go a round. After BUILDS, two toggles, each off at first (the user: "add
+  support for input view and picture in picture in replay viewer"): the input display (I), Practice's, both
+  players' buttons in the picture's top right corner; and the other console's picture (P), small in the bottom
+  right corner of the one shown.
 - **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
-  first), View, Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
+  first), View, Sides (One, or Both side by side, the View's at the left and heard: the user, "add support for two
+  sided side by side export"), Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
   keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
   against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".
   (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.)
