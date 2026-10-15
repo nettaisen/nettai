@@ -3,16 +3,18 @@
 #
 #   packaging/linux/package.sh
 #
-# The AppDir: AppRun, nettai.desktop, nettai.png, usr/lib/nettai/{nettai, content/} (the content beside the
-# program, where the app looks for it), the icons in usr/share/icons/hicolor, and LICENSE and
-# THIRD-PARTY-NOTICES.txt in usr/share/doc/nettai. No ROM and no extracted asset is in it: the app extracts each
+# The AppDir: AppRun, nettai.desktop, nettai.png, usr/lib/nettai/{nettai, ffmpeg, content/} (the content and
+# ffmpeg beside the program, where the app looks for them), the icons in usr/share/icons/hicolor, and LICENSE,
+# THIRD-PARTY-NOTICES.txt and ffmpeg-NOTICE.txt in usr/share/doc/nettai. No ROM and no extracted asset is in it: the app extracts each
 # game's pack from the player's own copy. The system's libraries (glibc, ALSA, fontconfig, OpenGL, X11 or
 # Wayland) are the system's: build it on an old distribution (the workflow's is Ubuntu 22.04) to reach more.
 #
 # NETTAI_VERSION   the version (the workflow's, from the tag); else the app crate's
 # NETTAI_ICONS     a folder packaging/icons.sh made; else it is made here (needs librsvg and ImageMagick)
+# NETTAI_BUNDLE_FFMPEG   the ffmpeg to bundle; else the release packaging/ffmpeg.sha256 pins (a static program)
 #
-# appimagetool and the AppImage runtime are downloaded at pinned versions and checked against their digests.
+# appimagetool and the AppImage runtime are downloaded at pinned versions and checked against their digests, and so
+# is the ffmpeg.
 set -euo pipefail
 # shellcheck source-path=SCRIPTDIR source=../build.sh
 source "$(dirname "$0")/../build.sh"
@@ -54,6 +56,17 @@ strip --strip-debug "$lib/nettai"
 copy_content "$lib"
 cp "$root/LICENSE" "$appdir/usr/share/doc/nettai/LICENSE"
 cp "$notices" "$appdir/usr/share/doc/nettai/THIRD-PARTY-NOTICES.txt"
+# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg); and its notice (GPL:
+# what it is built from, where that source is).
+if [ -n "${NETTAI_BUNDLE_FFMPEG:-}" ]; then
+    cp "$NETTAI_BUNDLE_FFMPEG" "$lib/ffmpeg"
+else
+    fetch_ffmpeg ffmpeg-linux-x86_64
+    cp "$fetched" "$lib/ffmpeg"
+fi
+chmod 755 "$lib/ffmpeg"
+fetch_ffmpeg ffmpeg-NOTICE.txt
+cp "$fetched" "$appdir/usr/share/doc/nettai/ffmpeg-NOTICE.txt"
 
 cp "$root/packaging/linux/AppRun" "$appdir/AppRun"
 chmod +x "$appdir/AppRun"
