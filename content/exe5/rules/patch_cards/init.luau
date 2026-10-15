@@ -6,8 +6,8 @@
 -- then the HP).
 --
 -- The cards (0x08138214): Hub Style (NaviStats +0x4C) cleared, and set with card 111 (0x08137A58: 1, Team
--- Colonel's routine 2, 0x081382FC); a card's effects those of the side's version (its setup's `version`: card 111,
--- Bass-Cross MegaMan, is each team's own, its Hub Style too); the block of slots seeded from the stats (0x08137B56)
+-- Colonel's routine 2, 0x081382FC); a card's effects those of its variant (its setup record's `variant`: card 111,
+-- Bass-Cross MegaMan, is each team's own, its Hub Style too, and a build chooses which it has); the block of slots seeded from the stats (0x08137B56)
 -- and each card's effects run over it in the kinds' order (0x08137B00; the run EXE6's shares, @exelib/patch_cards/apply); the HP the working HP; then the slots a card
 -- wrote copied into the stats (0x081382B8's 39 routines), some of them through tables, BugStop (the card's, at 1)
 -- holding back the bug slots. Their bug count (0x081384D8: the NaviCust's bug bytes, the encounters' and drops' bugs,
@@ -63,9 +63,9 @@ local function bug_count(stats: Navi): number
     return n
 end
 
--- The cards' run (0x08137B00) over `stats`, each card's effects those of the side's version `version`: the copy into
--- them (0x081382B8's routines).
-local function run(stats: Navi, installed: { PatchCard }, version: string?)
+-- The cards' run (0x08137B00) over `stats`, each card's effects those of its variant: the copy into them
+-- (0x081382B8's routines).
+local function run(stats: Navi, installed: { InstalledPatchCard })
     -- The block (0x08137B56): the working HP and the slots, seeded from the stats.
     local slot: { [string]: any } = {
         attack = stats.attack,
@@ -77,7 +77,7 @@ local function run(stats: Navi, installed: { PatchCard }, version: string?)
         soul_time = bit32.band(stats.soul_turn_bonus, 0xFF),
         body = bit32.band(stats.element + 4, 0xFF),
     }
-    local hp, written = apply_cards.run(installed, version, cards.GAME, stats.max_hp, slot)
+    local hp, written = apply_cards.run(installed, cards.GAME, stats.max_hp, slot)
     stats.max_hp = hp
     local bug_stop = written.bug_stopper and slot.bug_stopper == 1
     local function copy(name: string): boolean
@@ -132,7 +132,7 @@ local function run(stats: Navi, installed: { PatchCard }, version: string?)
     end
     -- (BugStop's own byte, NaviStats +0x1F, only the NaviCust's bug compile reads: rules/navicust asks the
     -- cards, ../navicust.)
-    -- 0x08137A58: card 111 (its version's value).
+    -- 0x08137A58: card 111 (its variant's value).
     stats.hub_style = if written.hub_style then slot.hub_style else 0
 end
 
@@ -143,12 +143,12 @@ local function apply(side: number)
         return
     end
     local setup = rules.setup_of(side)
-    local installed: { PatchCard } = setup.patch_cards
+    local installed: { InstalledPatchCard } = setup.patch_cards
     if setup.navicust_expansions == nil and #installed == 0 then
         return
     end
     if #installed > 0 then
-        run(stats, installed, setup.version)
+        run(stats, installed)
         -- 0x081382A2: the cards' bug flag, which the emotion window reads with cards in the list.
         battle.set_emotion_window_glitch(side, bug_count(stats) > 0)
     else
@@ -171,7 +171,7 @@ end
 local function overview(side: number, card_bug: (e: PatchCardEffect) -> SetupBug, out: SetupOverview)
     local applies = battle.navi(side).navi.forms ~= nil
     local setup = rules.setup_of(side)
-    apply_cards.overview(setup.patch_cards, setup.version, LIST_MB, BUG_KINDS, applies, card_bug, out)
+    apply_cards.overview(setup.patch_cards, LIST_MB, BUG_KINDS, applies, card_bug, out)
 end
 
 return {

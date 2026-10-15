@@ -35,6 +35,8 @@ local function fold(side: number, whole: boolean)
 end
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "bluemoon",
     soul = { family = "wood", turns = 3 },
     custom = soul.custom {
         built = function(side: number)

@@ -16,6 +16,8 @@ local CROSS_DIVIDE = navi.strike {
 }
 
 local chip: Chip = {
+    -- The version whose saves hold it (rules/folder; rules/builds' groups).
+    version = "colonel",
     codes = { "C" },
     element = "null",
     family = "null",

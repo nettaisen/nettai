@@ -25,6 +25,8 @@ local NUMBERSOUL_FACE = asset.sprite("numbersoul-face")
 
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "colonel",
     soul = { family = "plus" },
     change = soul_change.action,
     revert = soul_revert.action,

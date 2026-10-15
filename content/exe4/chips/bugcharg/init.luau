@@ -67,6 +67,8 @@ local ACTOR = common_actor.make {
 local CONTROLLER = common_controller.make { id = "bugcharg/controller", actor = ACTOR.spawn }
 
 local chip: Chip = {
+    -- The version whose saves hold it (rules/folder; rules/builds' groups).
+    version = "redsun",
     codes = { "C" },
     element = "null",
     family = "null",

@@ -20,6 +20,8 @@ local soul_image = require("../../../rules/souls/image")
 local soul_revert = require("../../../rules/souls/revert")
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "colonel",
     soul = { family = "invisible" },
     change = soul_change.action,
     revert = soul_revert.action,

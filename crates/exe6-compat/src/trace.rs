@@ -409,9 +409,9 @@ impl Round {
 
     /// A player's installed patch cards, as the trace has them: the rules'
     /// setup's `patch_cards` (none: the trace has no lists).
-    fn patch_cards(&self, side: u8, ids: &Ids) -> Vec<nettai_battle::rules::Fact<'static>> {
+    fn patch_cards(&self, side: u8, ids: &Ids, version: GameVersion) -> Vec<nettai_battle::rules::Fact<'static>> {
         let Some(lists) = &self.setup.patch_cards else { return Vec::new() };
-        codec::patch_cards(&lists[side as usize & 1], ids)
+        codec::patch_cards(&lists[side as usize & 1], ids, version)
     }
 
     /// For a player with patch cards: the stats the engine applies them to
@@ -448,14 +448,10 @@ impl Round {
             }
             let mut ours = codec::navi_stats_bytes(&b.stats[side], &ids);
             let theirs = codec::navi_stats_bytes(&navi_stats(&self.setup.navi_stats[side], &ids), &ids);
-            // (The version byte, +0x20, is the side's version fact's place
-            // among those the rules declare: the battle's start sets it.)
+            // (The version byte, +0x20, is the side's version's, its
+            // Cybeast's: the battle's start sets it.)
             let recorded: [u8; 0x64] = unhex(&self.setup.navi_stats[side]).try_into().expect("a 0x64-byte navi stats block");
-            let place = b.fact(side as u8, nettai_battle::content::PlayerFact::Version).filter(|f| f.stated()).and_then(|f| match f.value() {
-                nettai_content_api::FieldValue::Enum(i) => Some(i),
-                _ => None,
-            });
-            ours[0x20] = place.unwrap_or(0);
+            ours[0x20] = b.version(side as u8).and_then(GameVersion::from_name).map_or(0, GameVersion::stats_byte);
             let theirs = { let mut t = theirs; t[0x20] = recorded[0x20]; t };
             for i in 0..0x64 {
                 if ours[i] != theirs[i] {
@@ -514,7 +510,7 @@ impl Round {
         player.set_fact(ids.content, "navi", &[navi]).unwrap_or_else(|e| panic!("the navi: {e}"));
         // The patch cards, and no NaviCust: a recording's stats are what its
         // NaviCust made.
-        player.set_fact(ids.content, "patch_cards", &self.patch_cards(side, ids)).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"));
+        player.set_fact(ids.content, "patch_cards", &self.patch_cards(side, ids, version)).unwrap_or_else(|e| panic!("the trace's patch cards: {e}"));
         player
             .set_fact(ids.content, "navicust_expansions", &[nettai_battle::rules::Fact::Value(nettai_content_api::Value::Nil)])
             .unwrap_or_else(|e| panic!("no NaviCust: {e}"));

@@ -794,7 +794,7 @@ impl Round {
         let cards_of = |side: usize| -> Result<Vec<Fact<'static>>, String> {
             let Some(lists) = self.setup.patch_cards.as_ref().filter(|_| compiled(side)) else { return Ok(Vec::new()) };
             let list: Vec<(u8, bool)> = lists[side].iter().map(|&b| (b & 0x7F, b & 0x80 == 0)).collect();
-            patch_cards(content, compat, &list)
+            patch_cards(content, compat, &list, d.versions[side])
         };
         let players = [0u8, 1].map(|side| -> Result<PlayerSetup, String> {
             // (BattleState+0x17 is the recording console's Regular chip's
@@ -843,9 +843,6 @@ impl Round {
             // The navi (the engine's navi fact): the recording's.
             let navi = navi_stats(content, compat, &d.navi_stats[side as usize])?.navi;
             player.set_fact(content, "navi", &[Fact::Value(Value::Def(Registry::Navi, navi.0))])?;
-            // The game's version (the rules' `version`): the recording
-            // console's team, or the other console's.
-            player.set_fact(content, "version", &[Fact::Name(d.versions[side as usize].name())])?;
             // The NaviCust and the patch cards: a compiled side's, the
             // recording's; without a recorded NaviCust, none (the stats are
             // the battle's start's: nothing is compiled over them).

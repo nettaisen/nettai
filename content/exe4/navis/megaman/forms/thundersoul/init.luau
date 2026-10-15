@@ -10,6 +10,8 @@ local chip = require("@self/chip").thunsoul
 local soul = require("./soul")
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "redsun",
     soul = { family = "elec", turns = 3 },
     chip = chip,
     change = chip.action,

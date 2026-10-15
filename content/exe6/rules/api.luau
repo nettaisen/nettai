@@ -24,11 +24,13 @@ function exe6.spend_bug_frags(side: number, n: number): boolean
     return true
 end
 
--- The side's game version (its player's setup's `version`): gregar or falzar, which MstrCros picks its Crosses by
--- (the navi's version byte, NaviStats+0x20, the console's own, which a battle's start sets to the player's).
-function exe6.version(side: number): string?
-    local s = rules.setup_of(side) :: { version: string? }?
-    return if s then s.version else nil
+-- The side's Cybeast (its player's setup's `cybeast`: MegaMan's Beast Out form, Gregar's or Falzar's), whose
+-- version MstrCros picks its Crosses by (the original's navi's version byte, NaviStats+0x20, the console's own,
+-- which a battle's start sets to the player's: in the story the version is the Cybeast he took in,
+-- docs/design/versions.md §2.1).
+function exe6.cybeast(side: number): FormDef?
+    local s = rules.setup_of(side) :: { cybeast: FormDef? }?
+    return if s then s.cybeast else nil
 end
 
 -- The level of the navi code the side's save received (0 to 14), or nil

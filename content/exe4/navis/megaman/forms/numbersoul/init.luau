@@ -34,6 +34,8 @@ local function hand(side: number)
 end
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "bluemoon",
     soul = { family = "plus", turns = 3 },
     custom = soul.custom { built = hand },
     chip = chip,

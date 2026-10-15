@@ -99,10 +99,6 @@ local rules: Rules = {
         -- no UNITE button.
         souls = "form[12]",
         double_soul = "bool",
-        -- The Giga chips the save can have (./folder: a folder holds no other): a save's are its version's, as its
-        -- souls are (each version's game gives its own five, and a Giga chip isn't traded; a tool's version presets
-        -- name each version's). A side that states none has every one.
-        giga_chips = "chip[12]",
         -- Their auto battle data as their save holds it (./auto_battle/block: the block's 42 places), which the dark
         -- soul of a dark MegaMan plays of his own player as their console sends it.
         auto_battle_places = schema.list(auto_battle.block.PLACE, auto_battle.block.PLACES),
@@ -133,19 +129,6 @@ local rules: Rules = {
             "woodsoul",
         },
         double_soul = true,
-        giga_chips = {
-            "bass",
-            "bassanly",
-            "blakbarr",
-            "bluemoon",
-            "bugcharg",
-            "bugcurse",
-            "deltaray",
-            "duo",
-            "holydrem",
-            "redsun",
-            "signlred",
-        },
     },
     state = state,
     -- EXE4's fields on its definitions (docs/design/rules-in-luau.md §7.5), which the engine checks and reads none of.
@@ -161,6 +144,10 @@ local rules: Rules = {
             sp = "u16[11]",
             -- The MegaMan who may use it (./light_dark; its record's +0x15): none, anyone.
             megaman = { "light", "dark" },
+            -- The version whose saves hold the chip (a version's own Giga chips: each version's game gives its own
+            -- five, and a Giga chip isn't traded), which a ruleset's groups go by (./builds' `groups`). None: either
+            -- version's (the e-Reader's Duo).
+            version = { "redsun", "bluemoon" },
             -- A chip a save can collect though no library lists it (./folder: an e-Reader card's: Duo, PrixPowr).
             collectible = "bool",
             -- What the auto battle AI reads of it (./auto_battle/place; the record's bytes 13, 14 and 23): how the navi

@@ -417,8 +417,8 @@ pub fn first_navi(content: &Content, game: &str) -> Option<NaviHandle> {
 }
 
 /// The forms a form list of `game` may hold: those of its navi that
-/// changes form's own lists, of every version, in the versions' order
-/// (EXE6's Crosses: Gregar's, then Falzar's).
+/// changes form's own lists, of every version (EXE6's Crosses), in the
+/// lists' order ([`navi_forms`]).
 pub fn listed_forms(content: &Content, game: &str) -> Result<Vec<nettai_content_api::FormHandle>, String> {
     let navi = navis(content, game).into_iter().find(|&n| navi_forms(content, n).is_some_and(|c| !c.is_empty()));
     let navi = navi.ok_or_else(|| format!("{game} has no navi with form lists"))?;
@@ -426,11 +426,15 @@ pub fn listed_forms(content: &Content, game: &str) -> Result<Vec<nettai_content_
 }
 
 /// The forms `navi`'s form list offers, of every version (EXE6's Crosses of
-/// both), in the versions' order as the rules declare them, each version's
-/// in its list's (`NaviForms::by_version`); none: it doesn't change form.
+/// both), in the versions' order (the game's groups', `build::Builds`:
+/// Gregar's, then Falzar's; a list of no group's after them), each
+/// version's in its list's; none: it doesn't change form.
 pub fn navi_forms(content: &Content, navi: NaviHandle) -> Option<Vec<nettai_content_api::FormHandle>> {
     let forms = content.navi(navi).forms.as_ref()?;
-    Some(facts::versions(content).iter().flat_map(|version| forms.listed(version).iter().copied()).collect())
+    let groups = build::group_ids(content);
+    let mut lists: Vec<&(String, Vec<nettai_content_api::FormHandle>)> = forms.lists.iter().collect();
+    lists.sort_by_key(|(name, _)| groups.iter().position(|g| g == name).unwrap_or(usize::MAX));
+    Some(lists.into_iter().flat_map(|(_, list)| list.iter().copied()).collect())
 }
 
 /// What a match is, for the terminal: its game, the seed, the round wins

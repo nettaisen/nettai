@@ -301,7 +301,7 @@ pub struct Ran {
 // or a match file (`--match`).
 
 /// A round to play live on `content` with these battle settings: two
-/// MegaMen of `version` (one of the names the game's rules declare) at
+/// MegaMen of `version` (a version's name: EXE6's Cybeast's) at
 /// their fresh stats with a NaviCust of no programs (as live play picks
 /// them: their rules build the round's stats on them), each bringing their
 /// folder, shuffled from the seed, and of what
@@ -328,7 +328,8 @@ pub fn live_setup(content: &Content, settings: BattleSettings, folders: [SavedFo
         // (The navi, MegaMan; a NaviCust of no programs, the rules' default.)
         let navi = Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Navi, megaman.0));
         player.set_fact(content, PlayerFact::Navi.name(), &[navi]).expect("the rules take the navi");
-        player.set_fact(content, PlayerFact::Version.name(), &[Fact::Name(version)]).expect("the rules take the version");
+        let version_fact = nettai_match::facts::version_fact(content, version).expect("the rules take the version");
+        player.set_fact(content, content.defs.fact_name(PlayerFact::Version).expect("the rules take a version"), &[version_fact]).expect("the rules take the version");
         let own = content.navi(megaman).forms.as_ref().map_or(&[][..], |f| f.listed(version));
         let own: Vec<Fact> = own.iter().map(|f| Fact::Value(nettai_content_api::Value::Def(nettai_content_api::Registry::Form, f.0))).collect();
         if let Some(name) = content.defs.fact_name(PlayerFact::FormList) {
@@ -1695,7 +1696,7 @@ mod tests {
         let settings = BattleSettings { stage, background: Default::default(), effects: content.stage(stage).effects | nettai_match::MATCH_EFFECTS };
         let folder = folder_of(&content, &[("cannon", 0)]);
         let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 5);
-        setup.players[0].set_fact(&content, "version", &[nettai_battle::rules::Fact::Name(version)]).unwrap();
+        setup.players[0].set_fact(&content, "cybeast", &[nettai_match::facts::version_fact(&content, version).unwrap()]).unwrap();
         let megaman = content.navi(setup.navi_stats[0].navi).forms.as_ref().expect("MegaMan's forms");
         let list: Vec<_> = match list {
             Some(list) => list.iter().map(|k| form_fact(form_of(&content, k))).collect(),

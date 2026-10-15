@@ -27,6 +27,8 @@ local CANNON: BodyPart = {
 }
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "protoman",
     soul = { family = "fire" },
     change = soul_change.action,
     revert = soul_revert.action,

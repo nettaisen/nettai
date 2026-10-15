@@ -131,16 +131,42 @@ fn random_rounds(content: &Content, game: &str, picks: &mut Picks, stage: Option
     Ok(places.into_iter().map(|p| RoundSettings::at(content, p)).collect())
 }
 
-/// What a random side states of the enums its rules require (those no
-/// default states: EXE6's version, gregar or falzar): one variant of each,
-/// picked at random, in the facts' order. (A list its rules require is
-/// stated with the side: the form list picked, or the navi's own.)
-fn required(content: &Content, picks: &mut Picks) -> Vec<(String, String)> {
+/// A value a random side states of a fact its rules require: an enum's
+/// variant, by its name, or a form (the version that is one: EXE6's
+/// Cybeast).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Required {
+    Variant(String),
+    Form(FormHandle),
+}
+
+impl Required {
+    /// As the facts' writer takes it.
+    pub fn fact(&self) -> Fact<'_> {
+        match self {
+            Required::Variant(name) => Fact::Name(name),
+            Required::Form(f) => Fact::Value(Value::Def(Registry::Form, f.0)),
+        }
+    }
+}
+
+/// What a random side states of the facts its rules require (those no
+/// default states: EXE6's Cybeast, Gregar's or Falzar's): one of each,
+/// picked at random (an enum's variants, a form fact's forms in the groups'
+/// order), in the facts' order. (A list its rules require is stated with
+/// the side: the form list picked, or the navi's own.)
+fn required(content: &Content, picks: &mut Picks) -> Vec<(String, Required)> {
+    let groups = crate::build::group_ids(content);
     crate::facts::required(content)
         .into_iter()
         .filter_map(|f| match f.ty {
-            nettai_content_api::FieldType::Enum(variants) => Some((f.name.to_string(), variants[picks.below(variants.len())].clone())),
-            _ => None,
+            nettai_content_api::FieldType::Enum(variants) => Some((f.name.to_string(), Required::Variant(variants[picks.below(variants.len())].clone()))),
+            _ => {
+                let mut forms = crate::facts::offered_forms(content, &f).filter(|forms| !forms.is_empty())?;
+                let place = |h: &FormHandle| content.defs.forms[h.index()].record.version.as_ref().and_then(|v| groups.iter().position(|g| g == v));
+                forms.sort_by_key(|h| place(h).unwrap_or(usize::MAX));
+                Some((f.name.to_string(), Required::Form(forms[picks.below(forms.len())])))
+            }
         })
         .collect()
 }
@@ -165,12 +191,11 @@ fn form_list(content: &Content, game: &str, picks: &mut Picks) -> Result<Vec<For
 impl Side {
     /// A live player of `game`: a new match's side (`Side::fresh`:
     /// MegaMan at his fresh stats, a NaviCust with no programs) that states
-    /// `stated` (its rules' required facts, each a variant's name), with
-    /// this folder and form list.
-    pub fn live(content: &Content, game: &str, folder: SavedFolder, forms: &[FormHandle], stated: &[(String, String)]) -> Result<Side, String> {
+    /// `stated` (its rules' required facts), with this folder and form list.
+    pub fn live(content: &Content, game: &str, folder: SavedFolder, forms: &[FormHandle], stated: &[(String, Required)]) -> Result<Side, String> {
         let mut side = Side::fresh(content, game)?;
-        for (field, variant) in stated {
-            side.set_fact(content, field, &[Fact::Name(variant)])?;
+        for (field, value) in stated {
+            side.set_fact(content, field, &[value.fact()])?;
         }
         side.set_folder(content, &folder.into())?;
         let list: Vec<Fact> = forms.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
@@ -213,8 +238,8 @@ fn plain_side(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], pick
         .ok_or_else(|| format!("{game} has no chip with a code"))?;
     let folder = SavedFolder { chips: [FolderChip::new(chip, content.chip(chip).codes[0]); 30], regular: None, tags: None };
     let mut facts = crate::Facts::defaults(content);
-    for (field, variant) in required(content, picks) {
-        facts.set(content, &field, &[Fact::Name(&variant)])?;
+    for (field, value) in required(content, picks) {
+        facts.set(content, &field, &[value.fact()])?;
     }
     // (A list its rules require besides, where it isn't the form list: none
     // of them. No game has one.)
@@ -252,7 +277,7 @@ pub fn plain(content: &Arc<Content>, game: &str, seed: u32, stage: Option<StageH
 /// The battle live players' folders are picked against: two live players
 /// of a match on `rounds` who state these (their folders anything: the
 /// rules read the stats).
-fn rules_battle(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], stated: [&[(String, String)]; 2]) -> Result<Battle, String> {
+fn rules_battle(content: &Arc<Content>, game: &str, rounds: &[RoundSettings], stated: [&[(String, Required)]; 2]) -> Result<Battle, String> {
     let anything = SavedFolder { chips: [FolderChip::new(Default::default(), nettai_battle::content::ChipCode(0)); 30], regular: None, tags: None };
     let side = |stated| Side::live(content, game, anything, &[], stated);
     let m = Match { game: game.to_string(), seed: None, rounds: rounds.to_vec(), sides: [side(stated[0])?, side(stated[1])?], backgrounds: BackgroundPick::Game };
@@ -464,9 +489,9 @@ mod tests {
                 for f in &list {
                     assert!(forms.listed("gregar").contains(f) || forms.listed("falzar").contains(f));
                 }
-                assert_eq!(b.fact(side as u8, PlayerFact::Version).and_then(|f| f.name()), m.sides[side].version(&content));
+                assert_eq!(b.version(side as u8), m.sides[side].version(&content));
                 assert_eq!(m.sides[side].facts.get(&content, "beast_out"), Some(crate::facts::Stated::Flag(true)));
-                // (A picked side states its version and its form list, and
+                // (A picked side states its Cybeast and its form list, and
                 // nothing else: the rest is its rules' defaults.)
                 // (Besides its navi and its folder.)
                 let side_parts = ["navi", "folder", "regular_chip", "tag_chips"];
@@ -475,7 +500,7 @@ mod tests {
                     .map(|f| f.name)
                     .filter(|n| !side_parts.contains(n) && !m.sides[side].facts.is_default(&content, n))
                     .collect();
-                assert_eq!(stated, ["crosses", "version"]);
+                assert_eq!(stated, ["crosses", "cybeast"]);
             }
             assert_eq!(live(&content, "exe6", seed, None).unwrap(), m);
             assert!(crate::check_match(&content, &m).is_empty(), "{:?}", crate::check_match(&content, &m));
@@ -507,20 +532,20 @@ mod tests {
         let m = plain(&content, "exe6", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_ne!(m.sides[0].folder(&content).chips[0], m.sides[0].folder(&content).chips[1], "a picked folder");
-        // (Its sides' versions picked: EXE6's rules take one.)
+        // (Its sides' versions picked: EXE6's rules take one, the Cybeast.)
         assert!(m.sides.iter().all(|s| s.version(&content).is_some()));
         let content = crate::testing::exe5_content();
         let m = live(&content, "exe5", 4, None).unwrap();
         assert_eq!(crate::check_match(&content, &m), Vec::<String>::new());
         assert_eq!(m.game, "exe5");
-        // (Its sides' versions picked: EXE5's rules take one, its team.)
-        assert!(m.sides.iter().all(|s| s.version(&content).is_some()));
+        // (EXE5's rules take no version.)
+        assert!(m.sides.iter().all(|s| s.version(&content).is_none()));
         // (Nothing else: EXE5's rules require no other fact, and a random
         // side's are their defaults, but its navi and its folder: its auto
         // battle data the rules' default, nothing learned.)
         let defaults = crate::Facts::defaults(&content);
         for s in &m.sides {
-            let own = ["navi", "folder", "regular_chip", "tag_chips", "version"];
+            let own = ["navi", "folder", "regular_chip", "tag_chips"];
             for f in crate::facts::fields(&content).into_iter().filter(|f| !own.contains(&f.name)) {
                 assert_eq!(s.facts.get(&content, f.name), defaults.get(&content, f.name), "{}", f.name);
             }

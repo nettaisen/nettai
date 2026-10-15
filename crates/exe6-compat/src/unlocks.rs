@@ -57,10 +57,11 @@ impl Unlocks {
     }
 
     /// Write these into the setup of a player who operates `navi`: each
-    /// fact the game's rules take (EXE6's: the version, the Crosses,
-    /// [`Unlocks::owned_crosses`], and Beast Out).
+    /// fact the game's rules take (EXE6's: the version's Cybeast, the
+    /// Crosses, [`Unlocks::owned_crosses`], and Beast Out).
     pub fn write(&self, content: &Content, navi: NaviHandle, player: &mut PlayerSetup) -> Result<(), String> {
-        player.set_fact(content, "version", &[Fact::Name(self.version.name())])?;
+        let cybeast = crate::codec::cybeast(content, self.version)?;
+        player.set_fact(content, "cybeast", &[Fact::Value(Value::Def(Registry::Form, cybeast.0))])?;
         let crosses: Vec<Fact> = self.owned_crosses(content, navi).iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
         player.set_fact(content, "crosses", &crosses)?;
         player.set_fact(content, "beast_out", &[Fact::Value(Value::Bool(self.beast_out))])?;

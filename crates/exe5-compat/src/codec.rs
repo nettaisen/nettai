@@ -253,18 +253,31 @@ pub fn navicust<'c>(content: &'c Content, compat: &Compat, list: &[u8], compress
 /// A save's patch cards (each card's number and whether it is switched on,
 /// in the list's order: [`crate::save::Save::patch_cards`]) as the rules'
 /// setup's `patch_cards`: the cards switched on, by their numbers
-/// (compat's patch-cards.toml; card 111's effects are the side's version's,
-/// its `version` fact). (A card switched off does nothing in battle:
-/// a side's cards are the ones that apply.)
-pub fn patch_cards(content: &Content, compat: &Compat, list: &[(u8, bool)]) -> Result<Vec<Fact<'static>>, String> {
+/// (compat's patch-cards.toml), each a record of its card and, of card
+/// 111, whose effects are each team's own, the variant of the save's
+/// version (`version`: the team whose ROM the save is of; docs/design/versions.md
+/// §2.4). (A card switched off does nothing in battle: a side's cards are
+/// the ones that apply.)
+pub fn patch_cards(content: &Content, compat: &Compat, list: &[(u8, bool)], version: crate::Version) -> Result<Vec<Fact<'static>>, String> {
     let mut cards = Vec::new();
     for &(n, on) in list {
         let key = compat.patch_card(n)?;
         let card = content.defs.entry_in("patch_cards", key).ok_or_else(|| format!("the content has no patch card {key}"))?;
         if on {
-            cards.push(Fact::Value(Value::Def(Registry::Entry, card.0)));
+            cards.push(patch_card(content, card, version.name()));
         }
     }
     Ok(cards)
+}
+
+/// Card `card` as the rules' setup's `patch_cards` holds it: a record of
+/// the card and, where it has a variant of `version`'s name (card 111's),
+/// that variant (`nettai_match::ruleset::variants_of`).
+pub fn patch_card(content: &Content, card: nettai_content_api::EntryHandle, version: &'static str) -> Fact<'static> {
+    let mut record = vec![("card", Fact::Value(Value::Def(Registry::Entry, card.0)))];
+    if nettai_match::ruleset::variants_of(content, Registry::Entry, card.0).iter().any(|v| v == version) {
+        record.push((nettai_match::ruleset::VARIANT, Fact::Name(version)));
+    }
+    Fact::Record(record)
 }
 

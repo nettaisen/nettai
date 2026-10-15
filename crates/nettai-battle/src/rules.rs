@@ -44,8 +44,9 @@ impl SideRules {
     /// (`setup_defaults`, the rest zero) for a setup that gives none, and
     /// must otherwise be of the rules' layout. An enum of the setup has no
     /// default but its `setup_defaults`': the round doesn't start with one
-    /// the player's setup leaves unstated (EXE6's version: nothing fills in
-    /// gregar or falzar). A list left out is its default, or empty.
+    /// the player's setup leaves unstated, nor with no form for a version
+    /// that is a form (EXE6's Cybeast: nothing fills in Gregar's or
+    /// Falzar's). A list left out is its default, or empty.
     pub fn for_player(content: &Content, player: &mut PlayerSetup) -> SideRules {
         let Some(rules) = content.defs.rules() else {
             assert!(player.rules.is_none(), "a player's setup gives a setup of the rules, and the content has none");
@@ -54,12 +55,13 @@ impl SideRules {
         let setup = player.rules.get_or_insert_with(|| rules.setup_block());
         assert!(setup.id() == rules.setup, "a player's setup gives a setup that isn't of the game's rules");
         let schema = content.defs.schema(rules.setup);
+        let version = content.defs.fact_field(PlayerFact::Version);
         for (i, field) in schema.fields().iter().enumerate() {
-            if setup.stated(schema, i) {
-                continue;
-            }
-            let FieldType::Enum(names) = &field.ty else { continue };
-            let what = names.join(" or ");
+            let what = match &field.ty {
+                FieldType::Enum(names) if !setup.stated(schema, i) => names.join(" or "),
+                FieldType::Ref(nettai_content_api::Registry::Form, _) if Some(i) == version && setup.get(schema, i) == FieldValue::Ref(None) => "a form".to_string(),
+                _ => continue,
+            };
             panic!("a player's setup doesn't state the rules' `{}` ({what}): none is assumed", field.name);
         }
         SideRules { state: Some(Block::new(rules.state, content.defs.schema(rules.state))) }
@@ -135,7 +137,12 @@ fn write_fact(block: &mut Block, place: nettai_content_api::Place, f: &Fact, at:
             Ok(())
         }
         (FieldType::Record(fields), Fact::Record(entries)) => {
+            // (An enum of the record the fact leaves out is none: a patch
+            // card's variant, which a card without variants has none of.)
             block.clear_at(place);
+            for i in 0..fields.fields().len() {
+                block.unstate_at(place.field_at(i));
+            }
             for (name, x) in entries.iter() {
                 let Some(p) = place.field(name) else {
                     let names: Vec<&str> = fields.fields().iter().map(|f| f.name.as_str()).collect();
@@ -296,6 +303,18 @@ impl Battle {
         let index = defs.fact_field(fact)?;
         let schema = defs.schema(defs.rules()?.setup);
         Some(SetupFact { schema, block: self.setup.players[side as usize & 1].rules.as_ref()?, index })
+    }
+
+    /// The version of their game side `side`'s player brought
+    /// ([`PlayerFact::Version`]): the variant's name, or the form's own
+    /// `version` (EXE6's Cybeast's). None: the rules take no version, or
+    /// the side states none.
+    pub fn version(&self, side: u8) -> Option<&str> {
+        let fact = self.fact(side, PlayerFact::Version)?;
+        match fact.value() {
+            nettai_content_api::FieldValue::Ref(Some((nettai_content_api::Registry::Form, h))) => self.content.defs.forms.get(h as usize)?.record.version.as_deref(),
+            _ => fact.name(),
+        }
     }
 
     /// Side `side`'s navi's stat of its game's own that has `role` (the
@@ -1228,12 +1247,13 @@ mod tests {
         fn with_cards(cards: &[&str], tweak: impl FnOnce(&mut NaviStats)) -> Battle {
             let content = scenario::content();
             let mut s = scenario::setup_on(&content);
-            // (The setup's `patch_cards`: a card each.)
+            // (The setup's `patch_cards`: a record of each card, of no
+            // variant.)
             let list: Vec<Fact> = cards
                 .iter()
                 .map(|&key| {
                     let card = content.defs.entry_in("patch_cards", key).unwrap_or_else(|| panic!("no card {key:?}"));
-                    Fact::Value(Value::Def(Registry::Entry, card.0))
+                    Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::Entry, card.0)))])
                 })
                 .collect();
             s.players[0].set_fact(&content, "patch_cards", &list).unwrap();

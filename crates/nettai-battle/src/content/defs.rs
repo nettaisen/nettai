@@ -671,19 +671,6 @@ impl Defs {
         Some(self.schema(rules.setup).field(field).name.as_str())
     }
 
-    /// The versions a side of the game states one of, by the names its
-    /// rules declare, in their order: the names of the engine's version
-    /// fact (`PlayerFact::Version`, an enum of the rules' setup: EXE6's
-    /// "gregar" and "falzar", the original's order). None: the rules take
-    /// no version.
-    pub fn versions(&self) -> &[String] {
-        let (Some(field), Some(rules)) = (self.fact_field(PlayerFact::Version), self.rules()) else { return &[] };
-        match &self.schema(rules.setup).field(field).ty {
-            nettai_content_api::FieldType::Enum(names) => names,
-            _ => &[],
-        }
-    }
-
     /// The game's roles.
     pub fn roles(&self) -> &Roles {
         &self.roles

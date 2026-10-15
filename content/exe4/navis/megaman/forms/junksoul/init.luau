@@ -15,6 +15,8 @@ local soul = require("./soul")
 local statuses = require("../../../rules/status")
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "bluemoon",
     soul = { family = "summon", turns = 3 },
     custom = recycle.custom,
     chip = chip,

@@ -17,14 +17,12 @@ local chip_gate_battle = require("../../lib/chip_gate_battle")
 
 local window = {}
 
--- The rules' setup (rules/init.luau declares it): the
--- player's game, and the Crosses they have: up to five forms of either
--- game, in the window's order, filled from the front
--- (docs/engine/custom-screen.md §4.1). The original's window offers those
--- of its version's five the save owns, by Cross number; a save the game
--- makes owns them in that order, so its list is its window.
+-- The rules' setup (rules/init.luau declares it): the Crosses they have:
+-- up to five forms of either game, in the window's order, filled from the
+-- front (docs/engine/custom-screen.md §4.1). The original's window offers
+-- those of its version's five the save owns, by Cross number; a save the
+-- game makes owns them in that order, so its list is its window.
 export type Setup = {
-    version: "falzar" | "gregar",
     crosses: { FormDef? },
 }
 
@@ -54,6 +52,8 @@ export type State = {
     chosen: number,
 }
 
+-- The Crosses a window offers at most: `sub_8029EC8` counts the five Cross flags of the save's version's table
+-- (`byte_8029F4C`, `cmp r4, #5`), and the setup's list holds as many (rules/init.luau's `form[5]`).
 local CROSSES = 5
 -- The screen's OK slot.
 local OK_SLOT = 10

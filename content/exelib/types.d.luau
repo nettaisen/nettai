@@ -613,14 +613,13 @@ export type NaviCustGame = {
 }
 
 -- What a game's folder rules are made of besides the shared ones (@exelib/folder_rules; each game's rules/folder
--- states its own): a folder's size; whether a folder can ever hold a chip (the chips a save can collect); whether the
--- side's save can hold it (`owned`: a version's own chips, by the side's setup; nil, any); how many copies of a chip a
--- folder holds; the most dark chips (nil: the game's folders hold none); and the tag chips' MB together at most (nil:
--- the game's folders have no tag chips).
+-- states its own): a folder's size; whether a folder can ever hold a chip (the chips a save can collect; a version's
+-- own chips too: a ruleset says whether a build must be one version's, docs/design/versions.md §2.3); how many copies
+-- of a chip a folder holds; the most dark chips (nil: the game's folders hold none); and the tag chips' MB together at
+-- most (nil: the game's folders have no tag chips).
 export type FolderRules = {
     size: number,
     in_pack: (chip: Chip) -> boolean,
-    owned: ((chip: Chip, setup: any) -> boolean)?,
     copies: (chip: Chip) -> number,
     dark: number?,
     tag_memory: number?,
@@ -867,9 +866,10 @@ export type PatchCardEffect = {
     what: string?,
     -- The card shows it as a bug.
     bug: boolean?,
-    -- The version of the game whose card has it (the side's version fact's value, the builds rules' version id): an
-    -- effect of a card each version's ROM gives effects of its own (EXE6's and EXE5's Bass-Cross MegaMan, one number
-    -- and one name), which a side of another version's doesn't have. None: every version's card has it.
+    -- The version of the game whose card has it (a version's id, the builds rules' group's): an effect of a card each
+    -- version's ROM gives effects of its own (EXE6's and EXE5's Bass-Cross MegaMan, one number and one name), which the
+    -- card's other variant doesn't have (the card's variants are the versions its effects name; a side's setup
+    -- chooses one for the card, its record's `variant`). None: every variant has it.
     version: string?,
     -- The group its card screen lists it in, as the effect's constructor says: "parameter" (a stat's change) or
     -- "ability" (the rest, the bugs among them).
@@ -1831,8 +1831,9 @@ export type SupportsLook = {
 -- line on its card screen (`[patch_card_effects]`, by the effect's kind and
 -- its one choice's name). Its effects are in its card screen's order (the
 -- original's effect numbers'), which the content keeps; an effect only one
--- version's card has says its `version`, and a side's card has those of the
--- side's version and those of none (@exelib/patch_cards/apply's `effects`).
+-- version's card has says its `version`, and an installed card has those of
+-- the variant chosen for it and those of none (@exelib/patch_cards/apply's
+-- `effects`).
 export type PatchCardSpec = {
     -- Its id, its key in its collection (`patch_cards.canodumb`): the
     -- loader's to read, never written in the table.
@@ -1841,6 +1842,10 @@ export type PatchCardSpec = {
     effects: { any },
 }
 export type PatchCard = PatchCardSpec
+-- A card as EXE5's and EXE6's setups hold it (their `patch_cards`): the card, and the variant chosen for it, a card
+-- with variants' (the versions its effects name: Bass-Cross MegaMan's), as a NaviCust program's color is chosen;
+-- none for a card without (a variant left out is none).
+export type InstalledPatchCard = { card: PatchCard, variant: string? }
 
 -- A NaviCust program (BN4's, EXE5's and EXE6's Navi Customizer parts;
 -- docs/design/navicust.md): an entry of a game's root's collection

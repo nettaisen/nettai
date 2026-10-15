@@ -109,8 +109,8 @@ local function soul_for(side: number, family: string): FormDef?
     return nil
 end
 
--- The setup's souls' places (./init's `form[16]`).
-local SOUL_PLACES = 16
+-- The setup's souls' places (./init's `form[12]`: the soul button's twelve).
+local SOUL_PLACES = 12
 
 -- The save has `soul` (its flag: it is one of the setup's souls).
 local function owned(soul: FormDef): boolean

@@ -793,6 +793,14 @@ macro_rules! codec_write {
         self.bytes[place.at..place.at + place.ty.size()].fill(0);
     }
 
+    /// Leave the enum at `place` stated by nobody ([`ENUM_UNSTATED`], as
+    /// [`Self::unstate`] does a field); any other part is left as it is.
+    pub fn unstate_at(&mut self, place: Place) {
+        if let FieldType::Enum(_) = place.ty {
+            self.bytes[place.at] = ENUM_UNSTATED;
+        }
+    }
+
     /// Make the list at `place` hold `n` elements: the ones past `n` are
     /// zeroed (so a list's bytes are what its elements say), the ones it
     /// gains zero.

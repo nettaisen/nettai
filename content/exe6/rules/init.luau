@@ -93,8 +93,10 @@ local rules: Rules = {
         regular_chip = "u8?",
         tag_chips = schema.list("u8", 2),
         -- The patch cards they have installed, in their list's order (./patch_cards): each applies (a save's card
-        -- switched off is none of the side's: it does nothing in battle).
-        patch_cards = schema.list("patch_cards", 32),
+        -- switched off is none of the side's: it does nothing in battle). A card each version's ROM gives effects of
+        -- its own (card 117, Bass-Cross MegaMan) has the variant chosen for it, a version's (its effects'
+        -- `variant`s), as a NaviCust program's color is chosen; a card without variants, none (left out).
+        patch_cards = schema.list({ card = "patch_cards", variant = { "gregar", "falzar" } }, 32),
         -- Their NaviCust (./navicust): how far its board has been expanded (none: no NaviCust, the stats as the
         -- setup gives them: a navi but MegaMan's, a recording's), and the programs placed on its 7x7 grid in its
         -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
@@ -108,15 +110,18 @@ local rules: Rules = {
             rotation = "u8",
             compressed = "bool",
         }, 49),
-        -- The game's version: its Beast, its pictures, the Crosses it owns. No default: a side states it, or the
-        -- round doesn't start. The versions come in the original's order (Gregar 0, Falzar 1: the number a navi's
-        -- stats carry, NaviStats+0x20), which tools go by: they list and draw the versions in it, and number them
-        -- by it.
-        version = { "gregar", "falzar" },
-        -- The Crosses they have (./cross/window.luau), up to five, of either version, in the window's order. A side
-        -- that leaves them out has none. A save's are those of its version's five it owns (by Cross number:
-        -- Gregar's event flags 0xE2-0xE6, Falzar's 0xE7-0xEB), which a boundary writes as the list of them. The
-        -- engine's form list (the window's offer).
+        -- Their Cybeast (docs/design/versions.md §2.1): the form Beast Out takes bare MegaMan into, Gregar's or
+        -- Falzar's (one of MegaMan's forms' sets' `cybeast`), which is what a version decides in a battle: in the
+        -- story the version is the Cybeast he took in. It decides Beast Out (./beast/custom.luau) and the Crosses
+        -- MstrCros plays (the original's "his user's game", NaviStats+0x20), whatever the navi; its version's are
+        -- the console's pictures (the engine's version: a form's own `version`). No default: a side states it, or
+        -- the round doesn't start. A save's is its version's (Gregar's ROMs' or Falzar's), which a boundary writes.
+        cybeast = schema.role("version", "form"),
+        -- The Crosses they have (./cross/window.luau), up to five, of either version, in the window's order: as
+        -- many as the window offers (`sub_8029EC8` counts five flags). A side that leaves them out has none. A
+        -- save's are those of its version's five it owns (by Cross number: Gregar's event flags 0xE2-0xE6,
+        -- Falzar's 0xE7-0xEB), which a boundary writes as the list of them. The engine's form list (the window's
+        -- offer).
         crosses = schema.role("form_list", "form[5]"),
         -- Beast Out unlocked (event flag 0xE0).
         beast_out = "bool",

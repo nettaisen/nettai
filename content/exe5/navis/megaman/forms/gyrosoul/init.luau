@@ -37,6 +37,8 @@ local SOUL_PROPELLER: BodyPart = {
 local PRIMED_ANIM = 17
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "protoman",
     soul = { family = "wind" },
     change = soul_change.action,
     revert = soul_revert.action,
