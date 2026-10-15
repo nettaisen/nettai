@@ -1400,8 +1400,12 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         focus_on(app, "slot", 10).or_else(|| (now != want).then(|| format!("{:?} dragged onto entry 11: the entries are {now:?}, not {want:?}", chip.borrow().name)))
     }));
     shot(add, "tabs-folder-dragged-in", Pair::None);
-    // One the rules keep out there (another version's, or one more than the copies allowed) dragged onto entry 11:
-    // refused, its row shakes, the folder is as it was, and the strip says why.
+    // One the rules keep out there dragged onto entry 11: refused, its row shakes, the folder is as it was, and the
+    // strip says why. (Played by the game's first version's preset, its third: Gregar, Red Sun, Team ProtoMan, which
+    // holds the other version's own chips back. A build has no version (docs/design/app-ui.md §2.60), so the folder's
+    // rules alone may refuse nothing the walk's folder could take: one more than the copies allowed, a Giga chip past
+    // the limit, where the folder is at it.)
+    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 2)));
     add(SETTLE, keep(&kept));
     let other = picked.clone();
     add(SETTLE, pick(&picked, move |ui| {
@@ -1420,6 +1424,8 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         (now != was.borrow().0 || said.is_empty()).then(|| format!("{:?}, refused, dragged onto entry 11: the folder changed, or the strip says nothing ({said:?})", chip.borrow().name))
     }));
     shot(add, "tabs-folder-drag-in-refused", Pair::None);
+    // (The game's first preset again, Standard, as the walk plays by.)
+    add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
     // A patch card dragged above the one before it.
     // (Two more cards put in first, the library's first two that can go in: the walk has left one or none.)
     add(SETTLE, to_tab(EditorTab::PatchCards));

@@ -3,8 +3,8 @@
 // choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
 // (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
 // offered, each a row of the editor's lists, checked where it is the build's, under its version's head); then the
-// note of what is the game's own navi's alone, right after whatever is over it. On a phone the panel is over the
-// grid. Its Rust half is src/screens/builds/navi.rs.
+// note of what is the game's own navi's alone, right after whatever is over it (or in its place, while the forms
+// have problems, those, in the error red). On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
@@ -79,6 +79,8 @@ export global NaviView {
     in property <image> element;
     // The selector: each fact of forms the build chooses (none of a list for a navi that doesn't change form).
     in property <[NaviFormGroup]> form-groups;
+    // What is wrong with the forms: the facts' problems in the player's words, each once, a line each.
+    in property <string> problems;
     // The ruleset the player plays by, by its name: on a phone its select is at the top of the tab (a desktop's
     // is at the tab bar's right end).
     in property <string> ruleset;
@@ -293,6 +295,7 @@ export component NaviTab inherits Rectangle {
     property <length> head-gap: 4px;
     property <length> form-head: root.head-lead + 16px + root.head-gap;
     property <length> form-pitch: Theme.list-row + Theme.list-gap;
+    property <string> note: @tr("NaviCust and patch cards are {} only.", NaviView.own);
     for navi[i] in NaviView.navis: NaviCardView {
         x: mod(i, root.columns) * (root.card-width + root.gap);
         y: root.grid-y + floor(i / root.columns) * (root.card-height + root.gap);
@@ -397,8 +400,8 @@ export component NaviTab inherits Rectangle {
         }
 
         for group in NaviView.form-groups: Rectangle {
-            // (Where its rows start: under its heading, and under its problem where it has one.)
-            property <length> top: 16px + (group.problem == "" ? 0px : problem.preferred-height + 4px);
+            // (Where its rows start: under its heading.)
+            property <length> top: 16px;
             property <length> form-width: (self.width - (group.columns - 1) * 8px) / max(1, group.columns);
             height: self.top + group.heads * root.form-head + group.rows * root.form-pitch - Theme.list-gap;
             heading := Text {
@@ -413,22 +416,6 @@ export component NaviTab inherits Rectangle {
                 font-weight: 700;
                 letter-spacing: 1px;
                 vertical-alignment: center;
-            }
-
-            // (What is wrong with the fact, under its heading: its first problem, in the error red, whole: a long
-            // one, as EXE5's mix of the teams' souls, takes as many lines as it needs.)
-            problem := Text {
-                x: 0;
-                y: 18px;
-                width: parent.width;
-                height: group.problem == "" ? 0px : self.preferred-height;
-                visible: group.problem != "";
-                text: group.problem;
-                color: Theme.bad;
-                font-family: Theme.body;
-                font-size: 12px;
-                font-weight: 500;
-                wrap: word-wrap;
             }
 
             // (Each version's group under its name, in its color.)
@@ -458,9 +445,34 @@ export component NaviTab inherits Rectangle {
             }
         }
 
-        Note {
-            text: @tr("NaviCust and patch cards are {} only.", NaviView.own);
+        // (The note. Where the navi chooses forms, its place is two lines tall whether it says one or not, and while
+        // the forms have problems it says them instead, in the error red and whole, each once: so a problem appearing
+        // moves nothing (the user, "error messages for beast form/crosses ends up shifting layout"), and it is read
+        // where the selector ends. EXE6's selector leaves room for no more under it at a desktop's height.)
+        if NaviView.form-groups.length == 0: Note {
+            text: root.note;
             vertical-alignment: top;
+        }
+
+        if NaviView.form-groups.length > 0: Rectangle {
+            height: 2 * 17px;
+            Note {
+                visible: NaviView.problems == "";
+                text: root.note;
+                vertical-alignment: top;
+            }
+
+            Text {
+                visible: NaviView.problems != "";
+                text: NaviView.problems;
+                color: Theme.bad;
+                font-family: Theme.body;
+                font-size: 13px;
+                font-weight: 500;
+                vertical-alignment: top;
+                wrap: word-wrap;
+                overflow: elide;
+            }
         }
     }
 
