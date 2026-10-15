@@ -733,15 +733,19 @@ Each is settled unless the user changes it.
       a build is made of that the game lets a ruleset hold back: Navis (EXE5, EXE6), Chips, NaviCust programs,
       Patch cards, and Crosses (EXE6) or Souls (EXE4, EXE5). The game's content says which categories it has
       and what it offers ready-made; nothing in the app names one (docs/design/rules-in-luau.md, "Rulesets").
-      A category may have sets, named groups of its items that the game's content declares (each version's
-      Crosses or souls, exactly what that cartridge has: the user's quick choices); its page has one quick choice
-      for each set and one for all of them. A set is the content's own list and says nothing of a build's version,
-      which a ruleset never reads (a build's version is being thought over apart: what it is once souls and
-      Crosses can be mixed). A category of chips can have sets the same way (each version's Giga chips), which no
-      game declares yet.
-    - *Presets* are each game's, in its order: Standard (everything allowed, open builds), one for each set of
-      souls or Crosses (named for its version: "Gregar" allows Gregar's Crosses alone), and No patch cards. A preset can't be changed; DUPLICATE makes the player's own copy of it. *The player's own* are
-      named by them and kept as files, one per ruleset, by game (docs/app.md §8), as builds are.
+      *Versions* is a ruleset's setting too (docs/design/versions.md §2.3): one per build (each build is one
+      cartridge's: what it holds of a version's own things, its souls or Crosses and its Giga chips, all one
+      version's) or mixed (the allowlists alone say what may be played). The versions are the game's *groups*
+      (docs/design/versions.md §2.2), read from what a build holds, never from its version: a category's items that
+      are a version's own have that version as a quick choice on the page (Gregar, Falzar, All), and a build of
+      two versions' things under one per build is a problem ("Mixes Gregar and Falzar: TenguCross, Bass").
+    - *Presets* are each game's, in its order. Standard, the cartridges' own rules (the user, of rulesets once the
+      versions were decided: "you should have a standard ruleset for each game that enforces version-specific
+      stuff"): everything allowed, open builds, Versions one per build, both versions allowed; it is a new lobby's,
+      and a player's until they pick another. Then Mixed (everything allowed, Versions mixed), one for each version
+      (named for it: "Gregar" allows Gregar's own things alone, one per build), and No patch cards (Standard with no
+      patch card allowed). A preset can't be changed; DUPLICATE makes the player's own copy of it. *The player's
+      own* are named by them and kept as files, one per ruleset, by game (docs/app.md §8), as builds are.
     - *What a ruleset does to a build:* a build that holds something its ruleset doesn't allow can't be played
       under it. Each thing is a problem of the build as a rule's break is, one for each item ("Bass isn't
       allowed", "TenguCross isn't allowed"): the lobby's line says the first and READY is refused, the build
@@ -750,10 +754,10 @@ Each is settled unless the user changes it.
       without its cards; now a ruleset that allows no patch cards (the No patch cards preset) refuses a build that
       holds any, and the player takes them out, or brings another build. A ruleset that allows some cards and not
       others reads the same way, as the user's "allowed patch cards" asks.
-    - *A build's souls and Crosses are as they were*: its version brings them all, and the build editor has no way
-      to leave one out. So a ruleset that holds back one soul or Cross of a version refuses every build of that
-      version until the design of a build's version (above) says how a build holds them; the sets, which hold back
-      a version's all together, are the way to build to now.
+    - *A build's souls and Crosses are as they were* until docs/design/versions.md §2.1 is built: its version brings
+      them all, and the build editor has no way to leave one out. So a ruleset that holds back one soul or Cross
+      of a version refuses every build of that version for now; a version's quick choice, which holds back its
+      things together, is the way to build to it.
     - *The lobby's row* is First to, Ruleset, Input delay and Ping: Ruleset takes Patch cards' and Closed builds'
       place. The host's is a select of the game's presets and then the player's own by name (Left and Right step
       it, Enter opens it as a list), with EDIT after it, which opens the ruleset's page. The joiner's shows the
@@ -774,18 +778,18 @@ Each is settled unless the user changes it.
     - *The ruleset's page* covers the screen it was opened from (the lobby, or the build editor), which goes on
       under it (the lobby's link with it); its Back (‹ LOBBY, ‹ EDITOR) or Esc comes back to the control it was
       opened from. Header: the ruleset's name, and PRESET as its tag for a preset. Body, in its units: a row of
-      the Name field (360; disabled for a preset, and for a ruleset viewed), Closed builds (OFF, ON) and, at the
-      right, DUPLICATE and DELETE (the player's own alone; it asks once). Under it from 64 the categories at the
+      the Name field (360; disabled for a preset, and for a ruleset viewed), Closed builds (OFF, ON), Versions (ONE
+      PER BUILD, MIXED) and, at the right, DUPLICATE and DELETE (the player's own alone; it asks once). Under it from 64 the categories at the
       left (an open list 300 wide, rows 52: the category's name, and how much it allows, "All allowed", "None
       allowed" or "12 of 380 allowed"), and the chosen one's items at the right: a head of ALLOW ALL, ALLOW
-      NONE, for a category with sets the quick choices (a segmented choice of each set and All, the one lit
-      that the allowed items are exactly), and a search field; then the items as the build editor's
+      NONE, for a category with a version's own items the quick choices (a segmented choice of each version
+      and All, the one lit whose own items alone are allowed of the versions'), and a search field; then the items as the build editor's
       lists show them (chips with their icon in the library's order; navis, souls and Crosses with their faces;
       programs and cards by name), each row a check mark, allowed or not, toggled by Enter, a click or a tap.
       Each change is saved at once, as a build's are. A preset's page, or a ruleset viewed, changes nothing (its
       rows' marks still show) and says so in the reserved line ("A preset can't be changed. Duplicate it to make
       your own."), but DUPLICATE works there: a viewed ruleset duplicated is the joiner's own copy. On a phone
-      one column: the name, Closed builds, the buttons, the category as a select, then its head and items.
+      one column: the name, Closed builds, Versions, the buttons, the category as a select, then its head and items.
     (§6 Play and Builds; docs/app.md §4 and §8; docs/design/rules-in-luau.md, "Rulesets".)
 
 ## 3. Chosen where the user gave no answer

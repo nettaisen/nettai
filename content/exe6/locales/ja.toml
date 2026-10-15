@@ -776,6 +776,19 @@ language = "ja"
 "version.gregar" = "グレイガ"
 "version.falzar" = "ファルザー"
 
+# The rulesets' words (en.toml's `[rulesets]` says what they are). Ours.
+[rulesets]
+"category.navi" = "ナビ"
+"category.folder" = "チップ"
+"category.navicust_programs" = "ナビカスプログラム"
+"category.patch_cards" = "改造カード"
+"category.crosses" = "クロス"
+"preset.standard" = "スタンダード"
+"preset.mixed" = "ミックス"
+"preset.gregar" = "グレイガ"
+"preset.falzar" = "ファルザー"
+"preset.no_patch_cards" = "改造カードなし"
+
 # The two groups of a patch card's effects (en.toml's `[patch_card_groups]` says what they are).
 [patch_card_groups]
 "parameter" = "パラメータ"

@@ -695,6 +695,19 @@ language = "en"
 "light_dark.light" = "Light"
 "light_dark.dark" = "Dark"
 
+# The rulesets' words (rules/rulesets): each category by its fact and each ready-made ruleset by its id,
+# for the lobby and a ruleset's page. Ours.
+[rulesets]
+"category.folder" = "Chips"
+"category.navicust_programs" = "NaviCust programs"
+"category.patch_cards" = "Patch cards"
+"category.souls" = "Souls"
+"preset.standard" = "Standard"
+"preset.mixed" = "Mixed"
+"preset.redsun" = "Red Sun"
+"preset.bluemoon" = "Blue Moon"
+"preset.no_patch_cards" = "No patch cards"
+
 # The auto battle data's lists, by name (rules/auto_battle/block's `LISTS`, EXE5's), for a tool that shows a build's
 # data under them (the build editor's auto battle, which shows no pattern places): what the game writes in each. Ours,
 # as EXE5's.

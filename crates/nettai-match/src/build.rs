@@ -75,6 +75,14 @@ impl Version {
     pub fn sets(&self, name: &str) -> bool {
         fields(&self.set).iter().any(|(n, _)| *n == name)
     }
+
+    /// The names the version states of each fact it sets, by the fact's
+    /// name (EXE5's `souls` and `giga_chips`, each a list of definitions'
+    /// names; a value that names nothing, none): what a save of the version
+    /// can own, which a ruleset's groups read (`ruleset::Rulesets::groups`).
+    pub fn stated_names(&self) -> Vec<(&str, Vec<&str>)> {
+        fields(&self.set).into_iter().map(|(n, v)| (n, items(v).iter().filter_map(Data::str).collect())).collect()
+    }
 }
 
 /// The game's strings' text table that names what a build is made of: each
@@ -673,6 +681,17 @@ impl Checked {
             }
             Err(e) => none(vec![Problem { side: Some(0), field: None, entry: None, what: Wrong::Internal, text: e }]),
         }
+    }
+
+    /// `side` checked as a build of `game` under `ruleset`: [`Checked::of`]'s
+    /// problems, then one for each definition the build holds that the
+    /// ruleset doesn't allow ([`crate::ruleset::Ruleset::problems`]). What a
+    /// lobby asks of a player's build, and a build screen with a ruleset
+    /// picked.
+    pub fn under(content: &Arc<Content>, game: &str, side: &Side, rulesets: &crate::ruleset::Rulesets, ruleset: &crate::ruleset::Ruleset) -> Checked {
+        let mut checked = Checked::of(content, game, side);
+        checked.problems.extend(ruleset.problems(rulesets, content, side));
+        checked
     }
 
     /// Whether the build can be played.
