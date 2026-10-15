@@ -13,13 +13,18 @@ use crate::games::Names;
 use crate::shell::Shell;
 use nettai_content_api::{Data, EntryHandle, Registry};
 use nettai_match::build::{self, Bug, Checked, NamedStat, Overview, Source, Stat};
+use nettai_match::ruleset::Item;
 use nettai_match::{Folder, Side};
-use nettai_ui::{BuildSheet, ChipCell, ChipMark, SheetLine, SheetLineKind, StatLine};
+use nettai_ui::{BuildSheet, ChipCell, ChipMark, SheetForm, SheetLine, SheetLineKind, StatLine};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 /// The lines the overview has room for under its eight stats, the two titles apart: a stat of the game's rules'
 /// own after them takes one (its row is 22 tall, a line 20, and the sheet has 16 to spare under its last line).
 const LINES: usize = 9;
+
+/// The forms to a row of the wide sheet's forms (build.slint's `form-fit`, over the stats' column): each row takes a
+/// line of the abilities and bugs (its 22 against a line's 20; the sheet has 16 to spare).
+const FORMS_TO_A_ROW: usize = 6;
 
 /// A folder's entry `entry` as a row shows it; `flagged`: the folder's rules have something against it.
 pub fn chip_cell(kit: &Kit, names: &Names, folder: &Folder, entry: usize, flagged: bool) -> ChipCell {
@@ -137,9 +142,23 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
     };
     let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|&s| source(words, s)).collect();
     let bugs: Vec<(String, String)> = overview.iter().flat_map(|o| o.bugs.iter()).map(|b| bug(words, b)).collect();
-    // The lines under the stats (a line fewer for each stat after the eight): the bugs keep four of them where
-    // both lists are long.
-    let room = LINES.saturating_sub(stats.len() - 8).max(2);
+    // The build's forms (the user: "is there a way to fit selected crosses and souls and beast form into the stats
+    // view for a build?"): each fact of forms it chooses, in the setup's order (the side's version's form first), in
+    // its own order (the battle's: the Cross window's, the soul button's), each with its version's mark; none for a
+    // navi that doesn't change form.
+    let forms: Vec<SheetForm> = match content.navi(navi).forms.is_some() {
+        true => kit
+            .builds
+            .form_choices(content, side)
+            .iter()
+            .flat_map(|c| kit.builds.chosen_forms(content, side, &c.fact))
+            .map(|f| SheetForm { face: kit.pictures.face(f), version: kit.version_tag_of(names, Registry::Form, &Item::of(f.0)) })
+            .collect(),
+        false => Vec::new(),
+    };
+    // The lines under the stats (a line fewer for each stat after the eight, and for each row of forms): the bugs keep
+    // four of them where both lists are long.
+    let room = LINES.saturating_sub(stats.len() - 8).saturating_sub(forms.len().div_ceil(FORMS_TO_A_ROW)).max(2);
     let ability_lines: Vec<SheetLine> = abilities.iter().map(|a| SheetLine { kind: SheetLineKind::Ability, text: a.into(), ..Default::default() }).collect();
     let bug_lines: Vec<SheetLine> = bugs.iter().map(|(name, extent)| SheetLine { kind: SheetLineKind::Bug, text: name.into(), extent: extent.into() }).collect();
     let room_for_bugs = bug_lines.len().clamp(1, 4.min(room - 1));
@@ -156,6 +175,7 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
         name: name.into(),
         navi: names.navi(navi).into(),
         face,
+        forms: ModelRc::new(VecModel::from(forms)),
         stats: ModelRc::new(VecModel::from(stats)),
         lines: ModelRc::new(VecModel::from(lines)),
         abilities: abilities.join(", ").into(),
