@@ -45,8 +45,8 @@ A build states what it has, not which cartridge it came from:
 
 - **Its souls / Crosses:** the navi's form list, any of the game's (today: a version's list, or EXE4's preset).
 - **Its folder:** any of the game's chips the folder rules allow, Giga chips of both versions included.
-- **BN6's Cyberbeast:** the one choice left that changes a battle on its own. MegaMan holds one Beast, Gregar or
-  Falzar (in the story the version *is* the Cyberbeast he took in), stated as a form in his list like the
+- **BN6's Cybeast:** the one choice left that changes a battle on its own. MegaMan holds one Beast, Gregar or
+  Falzar (in the story the version *is* the Cybeast he took in; "they're called "cybeasts", not "cyberbeasts""), stated as a form in his list like the
   Crosses. It decides bare MegaMan's Beast Out and the five Crosses MstrCros plays (the Beast's version's,
   as the original's "his user's game"). Crossing in Beast Out keeps the original's rule, by each form's own
   version (a Cross's Beast form is its version's), so a build with the other version's Crosses can Cross into
@@ -59,7 +59,7 @@ A build states what it has, not which cartridge it came from:
   from the build's version to the card.
 
 The setup's `version` goes from EXE5's and EXE6's rules (EXE4 has none already); `exe6.version(side)` is replaced
-by the side's Cyberbeast where the rules read it (Beast Out, MstrCros).
+by the side's Cybeast where the rules read it (Beast Out, MstrCros).
 
 ### 2.2 Versions become groups the content declares
 
@@ -76,16 +76,17 @@ version can own, declared once, in the game's rules (where `versions` is now):
 states — each chip's and form's own `version` already says which group it is in, so a group may be just its id,
 color and name, its members found by that field.)
 
-A group is used for three things:
+A group is used for two things:
 
 1. **Rulesets** (the ruleset work under way): "allowed sets of souls/crosses" and the Giga chips' allowlist offer
    each group as one choice (§2.3).
-2. **A build's label:** the editor and the lists show which version a build *fits*, worked out from what it has:
-   "Gregar" (in Gregar's green) when everything version-only in it is Gregar's, "Mixed" when it has both
-   versions' things, none when it has nothing version-only. The header's version tag (app-ui §2.42) becomes this
-   label; BN6's Cyberbeast takes its place as the choice there.
-3. **New builds:** "New build" offers each group as a starting point (its souls or Crosses, and BN6 its Beast),
+2. **New builds:** "New build" offers each group as a starting point (its souls or Crosses, and BN6 its Beast),
    as EXE4's presets do today.
+
+A build shows no version: no tag, no label. Whether a build fits one version is the ruleset's to say, as a problem
+where a ruleset asks for it (the user: "the builds don't have version labels either, they're kind of pointless
+since they correspond to ruleset rules"). The header's version tag (app-ui §2.42) goes; on a BN6 build its place
+is the Cybeast's choice.
 
 ### 2.3 Rulesets represent the cartridges
 
@@ -119,9 +120,10 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
 3. no label 4. one per build".
 
 1. **Bass-Cross MegaMan's variant is the card's own** (§2.1), in BN5 and BN6 alike, chosen in the editor as a
-   program's color is; BN6's Cyberbeast doesn't decide it.
+   program's color is; BN6's Cybeast doesn't decide it.
 2. **Builds saved before this are dropped:** no reading of the old `version`, no conversion; the format changes in
    place (nothing is in production).
-3. **A build with nothing version-only has no label.**
+3. **No build has a version label** (first "no label" for a build with nothing version-only, then none at all: "the
+   builds don't have version labels either, they're kind of pointless since they correspond to ruleset rules").
 4. **The built-in "Standard" ruleset's Versions is "one per build"**: each build one cartridge's, both versions
    allowed, as the original played.
