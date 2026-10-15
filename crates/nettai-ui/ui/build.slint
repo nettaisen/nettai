@@ -141,8 +141,6 @@ export struct BuildSheet {
     chips: [ChipCell],
 }
 
-// A build in a list: its name, its navi and whether it is ready ("MegaMan · ready", or what is wrong, in the
-// error red).
 // What part of a build a problem is about, by the fact it names (the app's `builds::words`): the navi, its forms
 // (its souls, Crosses or Cybeast), the navi's level, the folder, a tab's facts; none where the problem names no
 // fact, or one with no word of its own. A problem's sentence says what it is about by it.
@@ -157,10 +155,30 @@ export enum BuildPart {
     auto-battle,
 }
 
+// A build in a list: its name, its navi and whether it is ready ("MegaMan · ready", or what is wrong, in the
+// error red), and the ruleset it is made for by its name (`ruleset-missing`: one no longer there, which says so).
 export struct BuildEntry {
     name: string,
     status: string,
     bad: bool,
+    ruleset: string,
+    ruleset-missing: bool,
+}
+
+// The ruleset a build is made for, as its row and its box name it at its status line's right end, muted: its name,
+// "(missing)" after one no longer there. As wide as it is, half its line at most.
+export component RulesetNote inherits Text {
+    in property <BuildEntry> build;
+    in property <length> room;
+    width: min(self.preferred-width, root.room / 2);
+    height: 16px;
+    text: root.build.ruleset == "" ? "" : root.build.ruleset-missing ? @tr("{} (missing)", root.build.ruleset) : root.build.ruleset;
+    color: Theme.muted;
+    font-family: Theme.body;
+    font-size: 12px;
+    horizontal-alignment: right;
+    vertical-alignment: center;
+    overflow: elide;
 }
 
 // What the builds' views say in words, for the app to ask (`crate::builds::words`): a typed problem's sentence
@@ -526,7 +544,8 @@ export component ChipRow inherits Rectangle {
     }
 }
 
-// A build's row in a list, 52 tall: its name over its status. The list is a `ListView`
+// A build's row in a list, 52 tall: its name over its status, the ruleset it is made for at the status's right
+// end. The list is a `ListView`
 // (`row-height: 52px`), which marks the chosen row; a click on the row is the list's row `nav-index` of `nav`.
 // (Its touch is its own. It is in three lists, and smaller shared than copied into each: docs/app.md §14.)
 export component BuildRow inherits Rectangle {
@@ -564,7 +583,7 @@ export component BuildRow inherits Rectangle {
     Text {
         x: root.build.bad ? 21px : 12px;
         y: 28px;
-        width: parent.width - 24px - (root.build.bad ? 9px : 0px);
+        width: parent.width - 24px - (root.build.bad ? 9px : 0px) - (made-for.width > 0 ? made-for.width + 12px : 0px);
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;
@@ -572,6 +591,13 @@ export component BuildRow inherits Rectangle {
         font-size: 12px;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    made-for := RulesetNote {
+        x: parent.width - 12px - self.width;
+        y: 28px;
+        build: root.build;
+        room: parent.width - 24px;
     }
 
     touch := RowTouch {

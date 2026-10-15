@@ -1558,7 +1558,7 @@ fn drags(add: &mut dyn FnMut(u64, Step), shot: Shot, phone: bool) {
         (now != was.borrow().0 || said.is_empty()).then(|| format!("{:?}, refused, dragged onto entry 11: the folder changed, or the strip says nothing ({said:?})", chip.borrow().name))
     }));
     shot(add, "tabs-folder-drag-in-refused", Pair::None);
-    // (The game's first preset again, as the walk plays by, and the player's own ruleset gone.)
+    // (The build made for the game's first preset again, as the walk is, and the player's own ruleset gone.)
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
     add(SETTLE, Box::new(move |_, _, _| {
         if let Some(path) = own_file.borrow_mut().take() {

@@ -14,7 +14,7 @@
 //! `[` and `]` (the pad's north button: up) move it in the list's order, which matters (a later card can undo an
 //! earlier one's work). **CLEAR** at the right end of the cards' header (or **X**; docs/design/app-ui.md §2.71) takes
 //! every card out (in a game with slots, empties every slot), as one change, asked first (`editor::ask_clear`). A card,
-//! or a card's variant, the ruleset the player plays by holds back isn't put in nor chosen (docs/design/app-ui.md
+//! or a card's variant, the build's ruleset holds back isn't put in nor chosen (docs/design/app-ui.md
 //! §2.68): its library row is greyed and says "Not allowed" in the error red, and putting it in is refused as the
 //! budget's refusals are; one a build holds all the same can be taken out.
 //!
@@ -358,7 +358,7 @@ impl PatchCards {
                 // card goes in its own slot whatever it holds: no card is refused.)
                 let refusal = if is_in || slots.is_some() || other { None } else { budget.and_then(|b| b.refusal(content, draft.side(), h)) };
                 if !draft.allows_item(FIELD, &item(card)) {
-                    // (One the ruleset the player plays by doesn't allow says so in the error red, greyed where it isn't
+                    // (One the build's ruleset doesn't allow says so in the error red, greyed where it isn't
                     // in: it can't be put in, docs/design/app-ui.md §2.68. One that is in all the same can be taken out.)
                     row.note = shell.ui().global::<BuildWords>().invoke_not_allowed_here();
                     row.refused = !is_in;
@@ -535,7 +535,7 @@ impl PatchCards {
         self.land(shell, draft, row, h, landed);
     }
 
-    /// Whether the list can't take row `row`'s card `h` (the ruleset the player plays by doesn't allow it, its MB, or no
+    /// Whether the list can't take row `row`'s card `h` (the build's ruleset doesn't allow it, its MB, or no
     /// room): if so its row shakes, and the strip says why. (In a game with slots a card goes in its own slot, whatever
     /// it holds: only the ruleset refuses one.)
     fn refuse(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, card: &Card) -> bool {

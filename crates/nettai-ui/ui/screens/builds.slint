@@ -2,7 +2,7 @@
 // builds themselves, + NEW BUILD (and its FROM A SAVE FILE…), and the chosen build's overview with EDIT and its
 // menu of DUPLICATE, RENAME and DELETE are Play's (play.slint).
 //
-// The editor: the build's name in the header; a tab bar, and at its right end the ruleset the player plays by; and under
+// The editor: the build's name in the header; a tab bar, and at its right end the ruleset the build is made for; and under
 // it the tab chosen, which says what the build's problems are where they are, the ruleset's among them
 // (docs/design/app-ui.md §2.66). Each tab is one file in builds/ (its view, the global its Rust module sets,
 // and its component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says
@@ -38,10 +38,12 @@ export global BuildsView {
     // Back goes to Practice, which opened the editor; else to Play: the header says so.
     in property <bool> to-practice;
     in property <string> name;
-    // The ruleset the player plays by, by its name: the build is marked against it, and what it has against the build
+    // The ruleset the build is made for, by its name: the build is marked against it, and what it has against the build
     // (an item it doesn't allow, a mix of versions) is said in the strip of each item it is about (docs/design/app-ui.md
-    // §2.66).
+    // §2.66). `ruleset-missing`: the one it names is no longer there (the player's own, deleted), which the select says
+    // after its name, the build marked against the game's first preset.
     in property <string> ruleset;
+    in property <bool> ruleset-missing;
     in property <[Tab]> tabs;
     // The tab chosen: its place in the bar, and which it is. `tab-way` is the way it was reached (-1 from the
     // right): its body arrives from that side.
@@ -109,7 +111,7 @@ export component BuildsScreen inherits Page {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
-    // (At the bar's right end on a desktop, the ruleset the player plays by, and EDIT: its page. A phone has them at
+    // (At the bar's right end on a desktop, the ruleset the build is made for, and EDIT: its page. A phone has them at
     // the top of the Navi tab.)
     property <length> ruleset-width: Theme.phone ? 0px : ruleset-label.width + 12px + 176px + 8px + rules-edit.width + 16px;
     tab-bar := TabBar {
@@ -141,6 +143,7 @@ export component BuildsScreen inherits Page {
         focusable: !Theme.phone;
         nav: "ruleset";
         value: BuildsView.ruleset;
+        note: BuildsView.ruleset-missing ? @tr("(missing)") : "";
     }
 
     rules-edit := Button {

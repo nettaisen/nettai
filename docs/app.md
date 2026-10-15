@@ -686,8 +686,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   host's ruleset by the preset's name where its rules are a preset's, else as "Host's ruleset" (the game's strings'
   `[rulesets] theirs`): a ruleset's name stays with its player, and the lobby carries its rules alone (the user:
   "ruleset name shouldn't travel to the opponent"; `ruleset::Name::Theirs`, `Rulesets::named_here`). Its VIEW opens
-  the page to read (its DUPLICATE makes the player's own copy, which no longer follows), and the page follows the host's changes as they come (the user: "show live edits of host's ruleset"; `Page::follow`). A host's lobby starts on the ruleset the player plays
-  by (`rulesets::played_by`), and the one the host picks is remembered as it. The lobby checks this
+  the page to read (its DUPLICATE makes the player's own copy, which no longer follows), and the page follows the host's changes as they come (the user: "show live edits of host's ruleset"; `Page::follow`). A host's lobby starts on the ruleset their
+  build is made for (`Shelved::made_for`; else `rulesets::chosen_last`), and the one the host picks is remembered as
+  the player's last choice (what a new build is made for: §8). The lobby checks this
   player's build under the ruleset whenever either changes (`Lobby::problems`, typed); while it
   has a problem READY is refused (`Lobby::set_ready` says so, and the mark is the lobby's answer) and the line
   says what is wrong with it, in the error red. So CHANGE BUILD takes any build whose
@@ -1151,12 +1152,13 @@ Not built. What it would take:
 ## 8. Builds
 
 A **build** is a player's side of one game, named and kept: a TOML file of its own,
-`builds/<game>/<name>.toml` in the data folder (`builds/store.rs`). It names its game and the build, then states
-the side under `[side]` as a match file states one (`nettai_match::file::side_toml`, read back by
-`resolve_side`):
+`builds/<game>/<name>.toml` in the data folder (`builds/store.rs`). It names its game, the build and the ruleset it
+is made for, then states the side under `[side]` as a match file states one (`nettai_match::file::side_toml`, read
+back by `resolve_side`):
 
     game = "exe6"
     name = "Tengu rush"
+    ruleset = "preset:masters"
 
     [side]
     navi = "tenguman"
@@ -1169,6 +1171,16 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
 
 - **The name is the file's alone.** `[side]` is what a match, a lobby and a replay are given, and it holds no
   name (docs/design/app-ui.md §2.16).
+- **The ruleset it is made for** (docs/design/app-ui.md §2.73; the user: "the build in the menu should indicate the
+  ruleset it's for") is the file's alone too: `Build::ruleset`, a preset's id or the player's own ruleset's name by
+  kind (`preset:<id>`, `own:<name>`: `rulesets::name_text`, `name_of_text`). A file that names none (written before;
+  a serde default, no conversion) is made for the game's first preset. Outside a lobby the build is checked under it
+  (`rulesets::made_for`, among `rulesets::pickable`); one it names that is no longer there (the player's own,
+  deleted) is `MadeFor::missing`, shown with "(missing)", the build checked under the game's first preset. The
+  player's own renamed on its page is renamed in each build made for it, their files written again
+  (`rulesets::rename`, `store::rename_ruleset`; the page's `Outcome::Renamed`). A new build (NEW BUILD, an import)
+  is made for the ruleset the player last chose (`rulesets::chosen_last`), DUPLICATE keeps its source's
+  (`Build::made_for`, `named`).
 - **The Builds screen is the editor alone** (docs/design/app-ui.md §2.50): the builds themselves, + NEW BUILD
   (and its FROM A SAVE FILE…), the overview, the build's menu of DUPLICATE, RENAME and DELETE, are Play's (§4),
   and the main menu has no BUILDS.
@@ -1205,8 +1217,8 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   form is at the head, one always chosen, for every navi (MstrCros plays its version's Crosses); the lists are the
   game's own navi's alone. What is wrong with a fact is said by its heading, in the error red, where problems are
   about it (`Draft::facts_of`: the one a problem names, and for a mix of versions, which names none, each fact
-  holding one of its things); the chosen forms it is about have their names in the error red (one the ruleset the
-  player plays by doesn't allow, one of a mix of versions, the entry a problem names), and a form the ruleset holds
+  holding one of its things); the chosen forms it is about have their names in the error red (one the build's
+  ruleset doesn't allow, one of a mix of versions, the entry a problem names), and a form the ruleset holds
   back has "Not allowed" at its row's end in the error red (`NaviForm.banned`): `activate("form", i)` refuses to put it
   in (the refusal's sound; one the build has is taken out as ever), `forms-all` passes it by and counts it left out,
   and a navi the ruleset holds back (`NaviCard.banned`, dimmed) isn't chosen (design §2.68). The tab has no strip (design §2.66: the user, "i don't
@@ -1268,15 +1280,22 @@ A category is named by the fact of a build it holds back (the folder's chips, th
 `patch_cards`, `crosses` or `souls`, EXE4's and EXE5's `auto_battle_places`: the auto battle data's chips, held
 back apart from the folder's), and its items by their names in the game; what a file doesn't name is
 allowed. Closed builds is no ruleset's: it is the lobby's own setting.
-- **The ruleset a player plays by** is one for each game, remembered under `ruleset.<game>` in the settings
-  (`rulesets::played_by`, `remember`: `preset:<id>` or `own:<name>`; the game's first preset where none is, or
-  the one remembered is gone). A host's lobby starts on it, and the build editor checks the build under it, as
-  Play's list and Practice check the game's builds (`builds::shelf::played_by`; docs/design/versions.md §4). In a
-  lobby Play checks them again under the lobby's, the host's (`Play::check_builds`: CHANGE BUILD's list); joining
-  asks only the game's rules of a build (`Shelved::playable`), the lobby checking it under the host's.
-- **The build editor's ruleset**: at the tab bar's right end, RULESET, its select (`ruleset`: the presets, then
-  the player's own) and EDIT (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's
-  panel and the grid. The build is checked under it (`Draft::checked` is `Checked::under`), so what it doesn't
+- **The ruleset a build is made for** (§8, Builds; docs/design/app-ui.md §2.73, taking back §2.59's ruleset a
+  player plays by) is what Play's list and Practice check each build under (`builds::shelf`: `Own`, `Shelved::made_for`;
+  docs/design/versions.md §4), and the list's row names it (`BuildEntry.ruleset`, `ruleset-missing`: build.slint's
+  `RulesetNote` at the status line's right end). In a lobby Play checks them again under the lobby's, the host's
+  (`Play::check_builds`: CHANGE BUILD's list, whose rows still name their own); joining asks only the game's rules of
+  a build (`Shelved::playable`), the lobby checking it under the host's.
+- **The ruleset the player last chose** is one for each game, remembered under `ruleset.<game>` in the settings
+  (`rulesets::chosen_last`, `remember`: `preset:<id>` or `own:<name>`; the game's first preset where none is, or the
+  one remembered is gone): set by the editor's select and a lobby host's pick, it is only what a new build is made
+  for (and what a lobby starts on where no build says).
+- **The build editor's ruleset** is the build's: at the tab bar's right end, RULESET, its select (`ruleset`: the
+  presets, then the player's own; `Select.note` says "(missing)" after one no longer there) and EDIT
+  (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's panel and the grid. Picking one
+  makes the build for it, kept at once (`Editor::make_for`); a copy made on its page (DUPLICATE) or its rename is
+  the build's too; deleted, the build still names it, missing (`Draft::find_ruleset`). The build is checked under it
+  (`Draft::ruleset` is a `MadeFor`; `Draft::checked` is `Checked::under`), so what it doesn't
   allow is among the build's problems: what it has against the build (the problems `Wrong::of_ruleset` says are its,
   an item it doesn't allow and a mix of versions) is said in the strip of each item it is about (the Navi tab's
   note's place), with the game's rules' (`Draft::line`), and by nothing by the select (design §2.66; a phone's pane
@@ -1297,7 +1316,8 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
   shows it in the place of the screen that opened it (the lobby's Play, the editor's Builds), which goes on
   unseen under it; its controls are `rules.`-named, a scope of the focus's, and the screen hands them to it
   (`Page::activate`, `step`, `choose`, `edit`, `focused`, `answered` for DELETE's question) and hears what it did
-  (`Outcome::Changed`: the ruleset shown changed and was saved, or is a copy; `Deleted`). The categories (a list;
+  (`Outcome::Changed`: the ruleset shown changed and was saved, or is a copy; `Renamed`, the player's own named
+  anew, the builds made for it renamed with it; `Deleted`). The categories (a list;
   a phone's select), the chosen one's items with a check each (Enter, a click or a tap), ALLOW ALL, ALLOW NONE,
   the version's quick choices (`rules.set`: each group with items in the category, then All; their rows changed
   in place, so a press on one keeps its focus), the search; the name (saved when confirmed, numbered where
@@ -1409,7 +1429,7 @@ one Slint file and one Rust module**, as a screen is for the shell:
 | `choose_navi(navi)` | The navi changed, with what is kept aside moved |
 | `choose_form(fact, form)` | A form of the Navi tab's selector chosen, or taken out of a list (`Builds::choose_form`) |
 | `choose_forms(fact, forms, on)` | ALL or NONE of a group of the selector's forms, as one change (`Builds::choose_forms`): whether it changed and how many were left out for want of room |
-| `allows(fact, h)`, `allows_item(fact, item)` | Whether the ruleset the player plays by allows a definition, or an item (a card's variant) |
+| `allows(fact, h)`, `allows_item(fact, item)` | Whether the build's ruleset allows a definition, or an item (a card's variant) |
 | `with_words(shell, |words| ...)` | The catalogs' and the game's words in the language shown |
 
 A tab neither saves nor checks. When its call returns, the frame keeps the build's file if the draft changed and
@@ -2178,7 +2198,7 @@ made beside the walk's; `builds-forms-focus`, its first form focused, ready, the
 build has in the error red and the note's place saying the mix the ruleset has against the form focused;
 `builds-forms-back`, the first version's again, ready, the note again; a step after each checks the focus and the
 build's state are as the picture's name says); then a ruleset's page
-(`rulesets`): from the Navi tab EDIT by the ruleset the player plays by (`rulesets-preset`: Masters class, read alone,
+(`rulesets`): from the Navi tab EDIT by the build's ruleset (`rulesets-preset`: Masters class, read alone,
 the reserved line saying so), DUPLICATE (`rulesets-own`), its chips (`rulesets-chips`, chosen by the category's
 select's choice: a phone has no list of them), the first chip held back and the first version's quick choice
 (`rulesets-chips-held`), and Back, the Folder tab marking what the copy holds back (`rulesets-folder-marked`); the

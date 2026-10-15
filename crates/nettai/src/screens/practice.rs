@@ -956,11 +956,11 @@ pub fn open(shell: &mut Shell, game: &str, build: &str) {
 }
 
 /// The game's builds as Practice reads them: as Play lists them (`play::shelved`), or with the screenshot pass's
-/// `tour_files` the builds folder's files; each checked under the ruleset the player plays by, so a build that
-/// can't be played under it can't be practiced either.
+/// `tour_files` the builds folder's files; each checked under the ruleset it is made for, so a build that can't be
+/// played under it can't be practiced either.
 fn listed(shell: &Shell, kit: &builds::Kit) -> Vec<builds::shelf::Shelved> {
     match shell.practice.tour_files {
-        true => builds::shelf::played_by(shell, kit, |under| builds::shelf::load(shell, kit, under)),
+        true => builds::shelf::load(shell, kit),
         false => crate::screens::play::shelved(shell, kit),
     }
 }

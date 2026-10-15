@@ -33,7 +33,7 @@ export struct NaviChoice {
 }
 
 // One of the forms the selector offers: its face, its name, whether the build has it, whether the build's problems are
-// about it (`flagged`: the ruleset the player plays by doesn't allow it, or it is a version's in a build that mixes
+// about it (`flagged`: the build's ruleset doesn't allow it, or it is a version's in a build that mixes
 // versions under one version per build) and whether the ruleset doesn't allow it (`banned`, whether the build has it
 // or not). Its place: its column and row among its fact's rows, and how many groups' heads are over it; `head`, the
 // version's name over it where it is its group's first (the forms are grouped by version, in the groups' order; those
@@ -96,9 +96,10 @@ export global NaviView {
     in property <image> element;
     // The selector: each fact of forms the build chooses (none of a list for a navi that doesn't change form).
     in property <[NaviFormGroup]> form-groups;
-    // The ruleset the player plays by, by its name: on a phone its select is between the panel and the grid (a
-    // desktop's is at the tab bar's right end).
+    // The ruleset the build is made for, by its name (`ruleset-missing`: no longer there, "(missing)" after it): on a
+    // phone its select is between the panel and the grid (a desktop's is at the tab bar's right end).
     in property <string> ruleset;
+    in property <bool> ruleset-missing;
     // What the build's problems have against the form under the cursor or the pointer, the ruleset's among them, else
     // against the navi (and the build where no tab shows what it is about), the first and "+n more": said in the
     // note's place in its stead (docs/design/app-ui.md §2.66). Empty: the note.
@@ -586,7 +587,7 @@ export component NaviTab inherits Rectangle {
         }
     }
 
-    // (On a phone, the ruleset the player plays by and EDIT, between the panel and the grid.)
+    // (On a phone, the build's ruleset and EDIT, between the panel and the grid.)
     Select {
         x: 0;
         y: root.panel-height + 12px;
@@ -596,6 +597,7 @@ export component NaviTab inherits Rectangle {
         focusable: Theme.phone;
         nav: "ruleset";
         value: NaviView.ruleset;
+        note: NaviView.ruleset-missing ? @tr("(missing)") : "";
     }
 
     phone-edit := Button {
