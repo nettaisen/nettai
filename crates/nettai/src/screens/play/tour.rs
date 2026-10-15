@@ -582,8 +582,8 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
         }),
     );
 
-    // The builds, and the tiles: the focus a step along, onto HOST's ▾; the pointer on HOST (a desktop's: a
-    // touch has no hover), with the focus elsewhere; the ▾'s list open.
+    // The builds, and the row: the focus a step along the row; the pointer on HOST (a desktop's: a touch has no
+    // hover), with the focus elsewhere.
     add(SETTLE, focus("invite", 0));
     shot(add, "play", Pair::First);
     add(SETTLE, act(Action::Right));
@@ -595,9 +595,6 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
         add(SETTLE, pointer_on(""));
         add(SETTLE, step(|app| app.shell.nav.show_cursor(true, false)));
     }
-    add(SETTLE, press("host-menu"));
-    shot(add, "play-host-menu", Pair::None);
-    add(SETTLE, act(Action::Back));
     add(SETTLE, focus("code", 0));
     // A code typed, in small letters with a space, as the field keeps it; a code no match has.
     add(SETTLE, act(Action::Confirm));
@@ -636,17 +633,21 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-build-unusable", Pair::None);
     add(SETTLE, choose_build(0));
 
-    // An address in JOIN's field that isn't one (no port).
-    add(SETTLE, focus("code", 0));
+    // A direct connection: the focus a step down; an address that isn't one.
+    add(SETTLE, press("direct"));
+    // (The dialog opens editing the address; Back ends the edit and leaves the dialog open.)
+    shot(add, "play-direct", Pair::None);
+    add(SETTLE, act(Action::Back));
+    shot(add, "play-direct-field", Pair::First);
+    add(SETTLE, act(Action::Right));
+    shot(add, "play-direct-focus", Pair::Second);
+    add(SETTLE, focus("direct.address", 0));
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, typed("192.168.1.20"));
     add(SETTLE, act(Action::Confirm));
-    add(SETTLE, press("join"));
-    shot(add, "play-bad-address", Pair::None);
-    add(SETTLE, focus("code", 0));
-    add(SETTLE, act(Action::Confirm));
-    add(SETTLE, typed(""));
-    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, press("direct.connect"));
+    shot(add, "play-direct-bad-address", Pair::None);
+    add(SETTLE, press("direct.cancel"));
 
     // An invite: its code from the server, and a practice session beside it (on a phone, asked for under
     // it, and filling the window); the practice menu over that, with Play's rows at its top. Copy invite
@@ -851,9 +852,10 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     shot(add, "play-opponent-left", Pair::None);
     add(SETTLE, act(Action::Confirm));
 
-    // The other ways in, run end to end with no shot of their own: the app's player hosts directly (HOST's ▾)
-    // and the other joins its address; then the lobby's own Leave.
-    add(SETTLE, host_directly());
+    // The other ways in, run end to end with no shot of their own: the app's player hosts directly and the
+    // other joins its address; then the lobby's own Leave.
+    add(SETTLE, press("direct"));
+    add(SETTLE, press("direct.host"));
     reach(add, |_, ui| part(ui) == PlayPart::Waiting);
     shot(add, "play-waiting-direct", Pair::None);
     add(SETTLE, step(|app| come(app, Comes::Joining(Brings::New))));
@@ -923,11 +925,6 @@ pub fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, S
     );
 }
 
-/// HOST's ▾, and its second choice: this machine hosts directly.
-fn host_directly() -> Step {
-    step(|app| app.with_screen(ScreenId::Play, |s, shell| s.choose(shell, "host-menu", 0, 1)))
-}
-
 /// How long the window is taken away for, each time ([`apart`]).
 const AWAY: u64 = 8000;
 
@@ -960,16 +957,17 @@ pub fn apart(add: &mut dyn FnMut(u64, Step), hosts: bool) {
             app.go_now(ScreenId::Play);
         }),
     );
+    add(SETTLE, press("direct"));
     if hosts {
-        add(SETTLE, host_directly());
+        add(SETTLE, press("direct.host"));
         add(SETTLE, until(|_, ui| part(ui) == PlayPart::Waiting));
         add(SETTLE, step(|_| crate::errors::log("play apart", &"hosting")));
     } else {
-        add(SETTLE, focus("code", 0));
+        add(SETTLE, focus("direct.address", 0));
         add(SETTLE, act(Action::Confirm));
         add(SETTLE, step(|app| app.input(crate::shell::NavInput::Edited(format!("127.0.0.1:{APART_PORT}").into()))));
         add(SETTLE, act(Action::Confirm));
-        add(SETTLE, press("join"));
+        add(SETTLE, press("direct.connect"));
     }
     // (The other app may still be loading its game: each wait is a minute at most.)
     for _ in 0..5 {

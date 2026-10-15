@@ -3,9 +3,9 @@
 //
 // The screen has three parts, one shown at a time (`PlayView.part`): the player's builds (+ NEW BUILD over them,
 // the chosen one's overview beside them with PRACTICE, EDIT and ⋯, its menu of DUPLICATE, RENAME and DELETE) with
-// the two ways to play it online under them (HOST: an invite, or with its ▾ hosting directly; JOIN: an invite's
-// code or a direct host's address typed); the wait for the other player, a practice battle beside the invite's
-// code; and the lobby, for as long as the two players stay together. The two cards
+// the ways to play it online under them (HOST: an invite; JOIN: an invite's code typed; DIRECT CONNECT: a direct
+// connection's dialog); the wait for the other player, a practice battle beside the invite's code; and the lobby,
+// for as long as the two players stay together. The two cards
 // before a match and the match itself are the shell's (versus.slint, battle.slint); over the match are this
 // file's menu (`MatchMenu`), the two builds shown while Tab is held (`MatchPeek`), and how the match went once its
 // set is over (`MatchResult`).
@@ -13,7 +13,7 @@
 import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
-import { Cut, Label, Note, Message, Value, Mono, Pill, Button, SplitButton, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
+import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
@@ -101,9 +101,8 @@ export global PlayView {
     in property <[VersionTag]> versions;
     in property <int> dialog-version;
     in property <string> version-sets;
-    // What JOIN's field holds (an invite's code or a direct host's address, as typed), and what the reserved line
-    // under the tiles says: a problem, in the error red, or quietly that a link is being made or what an import
-    // made (`message-quiet`).
+    // The code typed, as the app keeps it (capitals, in threes), and what the reserved line under the row says: a
+    // problem, in the error red, or quietly that a link is being made or what an import made (`message-quiet`).
     in property <string> code;
     in property <string> message;
     in property <bool> message-quiet;
@@ -114,12 +113,22 @@ export global PlayView {
     in property <[string]> box-characters;
     in property <int> code-set;
 
+    // ---- A direct connection -----------------------------------------------------------------------------
+    in property <bool> direct;
+    // This machine's address, for the other player; the address typed.
+    in property <string> host-address;
+    in property <string> address;
+    // What went wrong with hosting (in place of the line under the address), and with joining.
+    in property <string> host-message;
+    in property <string> join-message;
+    in property <bool> join-quiet;
+    // It counts the copies: what was copied flashes.
+    in property <int> copied-seq;
+
     // ---- Waiting -----------------------------------------------------------------------------------------
     // What the other player needs: the invite's code in threes, or a direct host's address.
     in property <string> invite;
     in property <bool> invite-direct;
-    // It counts the copies: what was copied flashes.
-    in property <int> copied-seq;
 
     // ---- The lobby ---------------------------------------------------------------------------------------
     in property <string> their-name;
@@ -201,9 +210,6 @@ export global PlayView {
     out property <string> duplicate-word: @tr("DUPLICATE");
     out property <string> rename-word: @tr("RENAME");
     out property <string> save-files: @tr("Save files");
-    // HOST's ▾: how to host.
-    out property <string> host-code-word: @tr("Host with a code");
-    out property <string> host-direct-word: @tr("Host directly");
     public pure function delete-title(name: string) -> string {
         return @tr("Delete {}?", name);
     }
@@ -652,14 +658,15 @@ export component PlayScreen inherits Page {
     ];
     // The builds' part, in three zones read in order (docs/design/app-ui.md §6, "Play"): the builds (+ NEW BUILD
     // over the list, the left column); the chosen build (its overview, the right column, with PRACTICE, EDIT and ⋯
-    // in its header); and the ways to play it online, one row of controls under the overview (HOST with its ▾,
-    // then JOIN's field and JOIN; the reserved line under them). On a phone one column in the same order.
+    // in its header); and the ways to play it online, one row of controls under the overview (HOST, then JOIN's
+    // field and JOIN, and DIRECT CONNECT at its right edge; the reserved line under them). On a phone one column
+    // in the same order.
     property <length> list-width: 400px;
     property <length> side-x: root.list-width + 24px;
     property <length> side-width: self.body-width - root.side-x;
     // The row (the controls' height) and the reserved line under it at the body's foot; the list and the
     // overview grow down to 16 over the row (564 at the reference window: the wide sheet's 540 at least).
-    property <length> message-y: Theme.phone ? 304px : self.body-height - 18px;
+    property <length> message-y: Theme.phone ? 356px : self.body-height - 18px;
     property <length> row-y: Theme.phone ? 188px : root.message-y - 6px - 40px;
     property <length> sheet-height: max(540px, root.row-y - 16px);
     property <length> more-width: 40px;
@@ -828,18 +835,18 @@ export component PlayScreen inherits Page {
 
         // The ways to play it online, one row of the app's controls under the overview, at its left edge: HOST, the
         // main action's button while there is a build (what a player comes to PLAY for, the one that starts a
-        // match by itself), its ▾ offering hosting directly; then JOIN's field, for an invite's code or a direct
-        // host's address, and JOIN. On a phone HOST is the column's width and 52 tall, the field and JOIN a row
-        // under it. The line under them is there whether or not it says anything (with no build they say there why
-        // they can't).
+        // match by itself); then JOIN's field, for an invite's code, and JOIN; and at the overview's right edge
+        // DIRECT CONNECT, a regular button, whose dialog hosts on this machine's address or joins one. On a phone
+        // HOST is the column's width and 52 tall, the field and JOIN a row under it, and DIRECT CONNECT the
+        // column's width under them. The line under them is there whether or not it says anything (with no build
+        // they say there why they can't).
         Arrive {
             order: 2;
-            host := SplitButton {
+            host := Button {
                 x: Theme.phone ? 0px : root.side-x;
                 y: root.row-y;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "invite";
-                menu-nav: "host-menu";
                 text: @tr("HOST");
                 kind: root.none ? ButtonKind.normal : ButtonKind.main;
                 big: Theme.phone;
@@ -848,11 +855,11 @@ export component PlayScreen inherits Page {
             code := Field {
                 x: Theme.phone ? 0px : host.x + host.width + 24px;
                 y: Theme.phone ? host.y + host.height + 12px : root.row-y;
-                // (As wide as a whole IPv6 address with its port, in the code's type; on a phone what JOIN leaves.)
-                width: Theme.phone ? root.body-width - 8px - join.width : 464px;
+                // (A code's six characters in threes, in the code's type; on a phone what JOIN leaves.)
+                width: Theme.phone ? root.body-width - 8px - join.width : 208px;
                 nav: "code";
                 text: PlayView.code;
-                placeholder: @tr("Code or address");
+                placeholder: @tr("Invite code");
                 code: true;
                 error: PlayView.message != "" && !PlayView.message-quiet;
             }
@@ -862,6 +869,14 @@ export component PlayScreen inherits Page {
                 y: code.y;
                 nav: "join";
                 text: @tr("JOIN");
+            }
+
+            Button {
+                x: root.body-width - self.width;
+                y: Theme.phone ? code.y + code.height + 12px : root.row-y;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                nav: "direct";
+                text: @tr("DIRECT CONNECT");
             }
 
             Note {
@@ -1712,7 +1727,7 @@ component NameDialog inherits DialogFrame {
     }
 }
 
-// What opens over Play: a build's name, the code's boxes, and the lobby's list of
+// What opens over Play: a build's name, a direct connection's dialog, the code's boxes, and the lobby's list of
 // builds to change to. It covers the whole window, over the screen and under the shell's own dialogs; empty, it
 // takes no clicks.
 export component PlayOverlay inherits Rectangle {
@@ -1720,6 +1735,127 @@ export component PlayOverlay inherits Rectangle {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
+
+    // A direct connection: host, with this machine's address to send; or join, by the host's address.
+    if PlayView.direct: direct := DialogFrame {
+        // (On a phone each button is under its box: an address needs the dialog's width.)
+        property <length> under: Theme.phone ? 48px : 0px;
+        title: @tr("Direct connection");
+        content-height: 252px + 2 * self.under;
+        Label {
+            x: 0;
+            y: 0;
+            width: direct.inner-width;
+            height: 14px;
+            text: @tr("HOST");
+        }
+
+        // This machine's address: Enter copies it.
+        Rectangle {
+            x: 0;
+            y: 22px;
+            width: Theme.phone ? direct.inner-width : direct.inner-width - host.width - 8px;
+            height: 40px;
+            Rectangle {
+                background: Theme.inset;
+                border-width: 1px;
+                border-color: copy.has-hover ? Theme.muted : Theme.line;
+            }
+
+            Mono {
+                x: 12px;
+                width: parent.width - 36px - word.width;
+                text: PlayView.host-address;
+            }
+
+            word := Label {
+                x: parent.width - 12px - self.width;
+                width: self.preferred-width;
+                text: @tr("COPY");
+            }
+
+            Flash {
+                seq: PlayView.copied-seq;
+
+                Rectangle { }  // (Copied in: docs/app.md §14.)
+            }
+
+            copy := Focusable {
+                nav: "direct.copy";
+            }
+        }
+
+        host := Button {
+            x: direct.inner-width - self.width;
+            y: 22px + direct.under;
+            width: Theme.phone ? direct.inner-width : self.natural-width;
+            nav: "direct.host";
+            text: @tr("HOST");
+            kind: ButtonKind.main;
+        }
+
+        // One line: what to do with the address, or why this machine can't host.
+        Note {
+            x: 0;
+            y: 67px + direct.under;
+            width: direct.inner-width;
+            height: 20px;
+            text: PlayView.host-message != "" ? PlayView.host-message : @tr("Send this address to your opponent.");
+            color: PlayView.host-message != "" ? Theme.bad : Theme.muted;
+            wrap: no-wrap;
+            overflow: elide;
+        }
+
+        Rule {
+            x: 0;
+            y: 100px + direct.under;
+            width: direct.inner-width;
+
+            Rectangle { }  // (Copied in: docs/app.md §14.)
+        }
+
+        Label {
+            x: 0;
+            y: 114px + direct.under;
+            width: direct.inner-width;
+            height: 14px;
+            text: @tr("JOIN");
+        }
+
+        Field {
+            x: 0;
+            y: 136px + direct.under;
+            width: Theme.phone ? direct.inner-width : direct.inner-width - connect.width - 8px;
+            nav: "direct.address";
+            text: PlayView.address;
+            placeholder: @tr("address:port");
+            error: PlayView.join-message != "" && !PlayView.join-quiet;
+        }
+
+        connect := Button {
+            x: direct.inner-width - self.width;
+            y: 136px + 2 * direct.under + (Theme.phone ? 18px : 0px);
+            width: Theme.phone ? direct.inner-width : self.natural-width;
+            nav: "direct.connect";
+            text: @tr("CONNECT");
+        }
+
+        Message {
+            x: 0;
+            y: 180px + direct.under;
+            width: direct.inner-width;
+            text: PlayView.join-message;
+            tone: PlayView.join-quiet ? Theme.muted : Theme.bad;
+        }
+
+        Button {
+            x: direct.inner-width - self.width;
+            y: 212px + 2 * direct.under;
+            nav: "direct.cancel";
+            text: @tr("CANCEL");
+            kind: ButtonKind.ghost;
+        }
+    }
 
     // The code a box a character, for a pad: Up and Down change a box's character, Enter goes to the next.
     if PlayView.boxes: boxes := DialogFrame {
