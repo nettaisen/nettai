@@ -32,7 +32,7 @@ use nettai_ui::{BattleKind, VersusCard};
 use slint::ComponentHandle;
 use std::time::{Duration, Instant};
 
-mod game_pause;
+mod hold;
 
 /// How long the two cards show at the least. A match is ready in a few milliseconds once the game is loaded,
 /// and a screen shown for two frames is a flash; the bars say how far the loading is, not this.
@@ -123,8 +123,9 @@ pub struct Battle {
     covered: bool,
     /// The owner has heard how it ended.
     over: bool,
-    /// Under the menu it is held in the game's own pause, not stopped ([`Battle::pause_in_game`]).
-    game_pause: Option<game_pause::GamePause>,
+    /// Under the menu it is held where it stands, its sound and its scenery going on, if it can stop (not an
+    /// online match): `battle/hold.rs`.
+    hold: hold::Hold,
 }
 
 impl Battle {
@@ -144,25 +145,11 @@ impl Battle {
         if !self.stage.player.restart() {
             return false;
         }
-        if let Some(g) = &mut self.game_pause {
-            g.reset(&mut self.stage.player);
-        }
+        self.hold.reset(&mut self.stage.player);
         self.over = false;
         self.stage.hold();
         self.stage.surface.stale = true;
         true
-    }
-
-    /// Hold it in the game's own pause under the menu, from now on (Practice's: docs/app.md §15): the menu
-    /// opening gives the game the START its player would, and the battle steps on in the game's pause, its
-    /// sound and what the game moves while paused going on; the menu closing gives it START again. The player's
-    /// own START in the fight is the game's, and the menu opens over the pause it makes. Its round must leave
-    /// the game its START (`HostKeys::pause` off). Where the game wouldn't pause (its custom screen, a dimming,
-    /// a round's end) the battle is held where it stands under the menu, nothing of it changing but its sound
-    /// going on; in a round's opening it steps on with no buttons, neither the player's nor the dummy's, until
-    /// its custom screen is up, and is held there (`battle/game_pause.rs`).
-    pub fn pause_in_game(&mut self) {
-        self.game_pause.get_or_insert_with(Default::default);
     }
 }
 
@@ -310,7 +297,7 @@ impl Shell {
         shell.set_battle_menu(false);
         shell.set_connection_shown(false);
         self.keys.pressed.clear();
-        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, game_pause: None });
+        self.battle = Some(Battle { stage, owner: start.owner, kind: start.kind, game: start.game, full: start.full, music: start.music, viewer: start.viewer, menu: false, covered: false, over: false, hold: Default::default() });
         Some((start.owner, BattleEvent::Started))
     }
 
@@ -353,18 +340,14 @@ impl Shell {
         self.battle.as_ref().is_some_and(Battle::playing) && self.dialog.is_none()
     }
 
-    /// Open nettai's menu over the battle. A battle that can stop (practice, a replay) is paused under it; an
-    /// online match keeps running.
+    /// Open nettai's menu over the battle. A battle that can stop (practice) is held under it from the next
+    /// frame, its sound and its scenery going on (`battle/hold.rs`); an online match keeps running.
     pub fn open_menu(&mut self) {
         let Some(b) = &mut self.battle else { return };
         if b.menu || b.over {
             return;
         }
         b.menu = true;
-        // (One held in the game's own pause steps on: `GamePause` pauses it.)
-        if b.game_pause.is_none() {
-            b.stage.player.set_paused(true);
-        }
         self.keys.release();
         self.nav.open("menu.", Key::new("menu.resume", 0));
         self.ui().global::<nettai_ui::Shell>().set_battle_menu(true);
@@ -389,9 +372,6 @@ impl Shell {
             return;
         }
         b.menu = false;
-        if b.game_pause.is_none() {
-            b.stage.player.set_paused(false);
-        }
         b.stage.hold();
         self.keys.release();
         self.nav.close("menu.");
@@ -421,23 +401,16 @@ impl Shell {
     }
 
     /// A frame of the battle: the ticks due with the buttons held, its picture, its samples (into `samples`).
-    /// The ticks that ran, for the menus' sound to keep time with (none: the battle is paused); and what its
-    /// owner should hear.
+    /// The ticks that ran, for the menus' sound to keep time with (a battle held under the menu runs its ticks
+    /// for its sound and its scenery); and what its owner should hear.
     pub(crate) fn run_battle(&mut self, now: Instant, samples: &mut Vec<[f32; 2]>) -> (Option<u32>, Option<(ScreenId, BattleEvent)>) {
         let Some(mut b) = self.battle.take() else { return (None, None) };
-        if let Some(g) = &mut b.game_pause {
-            g.before(b.menu, &mut b.stage.player);
-        }
-        let held = if b.playing() && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
-        let buttons = held | b.game_pause.as_ref().map_or(0, game_pause::GamePause::buttons);
+        b.hold.before(b.menu, &mut b.stage.player);
+        let buttons = if b.playing() && self.dialog.is_none() { self.keys.held | self.pad.held(&self.bindings) | self.touch.held() } else { 0 };
         let ran = b.stage.advance(now, buttons, &mut self.keys.pressed);
-        // (A battle held in the game's own pause steps under the menu, or is held with its sound going on: its
-        // ticks are the sound's.)
-        let ticks = (!b.menu || b.stage.player.real_time() || b.game_pause.is_some()).then_some(ran);
-        let (viewer, menu) = (b.viewer, b.menu);
-        let paused = b.game_pause.as_mut().is_some_and(|g| g.after(ran, &b.stage.player, viewer, menu));
-        // START in the fight: the game's pause is nettai's menu (asked of the host, or the game's own).
-        let asked = (b.stage.player.take_pause_requests()[b.viewer.min(1) as usize] && b.playing()) || paused;
+        let ticks = Some(ran);
+        // START in the fight: the game's pause is nettai's menu (asked of the host: the game's own never runs).
+        let asked = b.stage.player.take_pause_requests()[b.viewer.min(1) as usize] && b.playing();
         std::mem::swap(samples, &mut b.stage.samples);
         b.stage.samples.clear();
         self.show(&mut b.stage);
@@ -588,7 +561,7 @@ mod tests {
         let m = short_set::of(&content, "exe6", 7);
         let driver = LivePlayer::new(Set::of(&content, &m, 7));
         let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, None, Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, game_pause: None };
+        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default() };
         let play_out = |b: &mut Battle| {
             while b.stage.player.tick(short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32)) {
                 assert!(b.stage.player.ticks() < 30_000, "the set doesn't end");
@@ -607,41 +580,78 @@ mod tests {
         assert_eq!(play_out(&mut b), ticks);
     }
 
-    /// A frame of the shell's for a battle held in the game's own pause, as `Shell::run_battle` runs one, a
-    /// tick in it: the player's `keys` (none under the menu), the battle's START given where it is. Whether
-    /// the menu is to open.
+    /// A frame of the shell's, as `Shell::run_battle` runs one, a tick in it: the player's `keys` (none under
+    /// the menu). Whether the menu is to open (the player's START in the fight, asked of the host).
     fn frame(b: &mut Battle, keys: u16) -> bool {
-        b.game_pause.as_mut().expect("held in the game's pause").before(b.menu, &mut b.stage.player);
-        let buttons = if b.playing() { keys } else { 0 } | b.game_pause.as_ref().expect("held").buttons();
-        // (A battle the player holds runs no tick, as `Player::advance` runs none.)
-        let ran = if b.stage.player.paused() { 0 } else { b.stage.player.tick(buttons) as u32 };
-        let (viewer, menu) = (b.viewer, b.menu);
-        b.game_pause.as_mut().expect("held").after(ran, &b.stage.player, viewer, menu)
+        b.hold.before(b.menu, &mut b.stage.player);
+        let buttons = if b.playing() { keys } else { 0 };
+        b.stage.player.tick(buttons);
+        b.stage.player.take_pause_requests()[b.viewer as usize] && b.playing()
     }
 
-    /// The practice menu holds its battle in the game's own pause: the menu opening gives the game its START,
-    /// and the battle steps on in its pause, its sound going on, nothing of the fight moving and none of the
-    /// player's buttons reaching it; closing gives START again and the fight goes on where it was. The player's
-    /// own START is the game's, and asks for the menu. On the custom screen, where the game wouldn't pause, the
-    /// battle is held where it stands: its sound goes on, no tick steps it, and nothing is chosen. Starting over
-    /// leaves nothing held.
+    /// Whether the fight runs, START there the menu's.
+    fn fighting(b: &Battle) -> bool {
+        use nettai_battle::battle::{fight, mode};
+        let battle = b.stage.player.battle();
+        battle.round.mode == mode::FIGHTING && battle.fight.state == fight::FIGHTING && !battle.is_battle_over() && !battle.is_dimmed()
+    }
+
+    /// The clock its stage's scenery is drawn on.
+    fn scenery(b: &Battle) -> nettai_render::stage::StageClock {
+        b.stage.player.stage_clock()
+    }
+
+    /// The menu open over `b` for `frames` frames, the player's `keys` going to the menu: the battle stands
+    /// where it is (its ticks and its digest the same: no tick, no button and no cue reaches it, and the game's
+    /// own pause never runs), its sound comes every frame, and its scenery moves on a frame each, the
+    /// background drawn anew. The ticks it is held at.
+    fn hold_for(b: &mut Battle, frames: u32, keys: u16) -> u64 {
+        b.menu = true;
+        made(b);
+        let (ticks, digest, clock) = (b.stage.player.ticks(), b.stage.player.battle().digest(), scenery(b));
+        let running = (b.stage.player.battle().round.top == nettai_battle::battle::top::RUNNING) as u32;
+        let (mut last, mut drawn_anew) = (b.stage.player.frame().pixels, 0);
+        for n in 1..=frames {
+            frame(b, keys);
+            assert!((548..=549).contains(&made(b)), "frame {n}: the sound goes on");
+            assert_eq!((b.stage.player.ticks(), b.stage.player.battle().digest()), (ticks, digest), "frame {n}: held");
+            let moved = nettai_render::stage::StageClock { background: n, field: n * running };
+            assert_eq!(scenery(b), clock.ahead(moved), "frame {n}: the scenery a frame on");
+            if n <= 60 {
+                let now = b.stage.player.frame().pixels;
+                drawn_anew += (now != last) as u32;
+                last = now;
+            }
+        }
+        assert!(b.stage.player.battle().paused_by().is_none(), "the game's own pause never runs");
+        assert!(drawn_anew >= frames.min(60) / 3, "the background drawn anew ({drawn_anew} of {} frames, mode {:#x})", frames.min(60), b.stage.player.battle().round.mode);
+        ticks
+    }
+
+    /// RESUME after [`hold_for`]: the battle goes on from the tick it was held at, and its background a frame
+    /// on from where the hold left it, no jump back.
+    fn resume(b: &mut Battle) {
+        b.menu = false;
+        let (ticks, clock) = (b.stage.player.ticks(), scenery(b));
+        frame(b, 0);
+        assert_eq!(b.stage.player.ticks(), ticks + 1, "on from the tick it was held at");
+        assert_eq!(scenery(b).background, clock.background + 1, "the background on from where the hold left it");
+    }
+
+    /// The practice menu holds its battle wherever it opens. On the custom screen: no tick steps it, nothing
+    /// is chosen (neither side's), its sound goes on and its scenery moves. Mid-fight the same: the player's
+    /// own START (the host's, the game's own pause never running) asks for the menu, and under it nothing of the
+    /// fight moves while the sound and the scenery go on; RESUME goes on where it was. Starting over leaves
+    /// nothing held.
     #[test]
-    fn a_battle_held_in_the_games_own_pause() {
+    fn a_battle_held_under_the_menu_on_the_custom_screen_and_mid_fight() {
         let content = nettai_match::testing::exe6_content();
         let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
-        let mut first = m.round(&content, 11);
-        first.host_keys.pause = false;
-        let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
-        let set = Set::new(content.clone(), first, folders);
         let opponent = nettai_frontend::driver::Opponent { in_fight: nettai_frontend::driver::InFight::AttacksAtRandom, ..Default::default() };
         use nettai_battle::battle::mode;
-        let driver = LivePlayer::against(set, opponent, 11);
-        let audio = nettai_frontend::testing::audio(&content);
-        let player = Player::with(graphics(&content, 0x7FFF).renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: "exe6".into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, game_pause: None };
-        b.pause_in_game();
-        // Onto the custom screen, a chip picked; the menu opened there: the battle is held, its sound going on,
-        // both screens' cursors and choices as they were (the dummy's presses held too).
+        let mut b = practice(&content, &m, 11, opponent);
+        // Onto the custom screen, a chip picked; the menu opened there: held, both screens' cursors and choices
+        // as they were (the dummy's presses held too).
         let custom = |b: &Battle| nettai_frontend::driver::bot_buttons(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
         let choosing = |b: &Battle| {
             let battle = b.stage.player.battle();
@@ -659,24 +669,13 @@ mod tests {
             battle.custom.sides.each_ref().map(|side| side.screen.as_ref().map(|s| (s.cursor, s.selected, s.slots.iter().map(|slot| slot.state).collect::<Vec<_>>())))
         };
         let before = chosen(&b);
-        b.menu = true;
-        b.stage.player.take_samples(&mut Vec::new());
-        let (ticks, digest, mut made) = (b.stage.player.ticks(), b.stage.player.battle().digest(), 0);
-        for _ in 0..240 {
-            // (The player's buttons are the menu's.)
-            frame(&mut b, nettai_battle::input::keys::A | nettai_battle::input::keys::START);
-            let mut samples = Vec::new();
-            b.stage.player.take_samples(&mut samples);
-            made += samples.len();
-        }
-        assert_eq!((b.stage.player.ticks(), b.stage.player.battle().digest()), (ticks, digest), "held on the custom screen");
-        assert!((240 * 548..=240 * 549).contains(&made), "{made} samples: the sound goes on");
-        assert!(choosing(&b) && b.stage.player.battle().paused_by().is_none(), "no pause there");
+        // (The player's buttons are the menu's.)
+        hold_for(&mut b, 240, nettai_battle::input::keys::A | nettai_battle::input::keys::START);
+        assert!(choosing(&b), "held on the custom screen");
         assert_eq!(chosen(&b), before, "nothing chosen, neither side");
-        b.menu = false;
-        frame(&mut b, 0);
-        assert!(!b.stage.player.paused());
-        while !b.stage.player.battle().pausable() {
+        resume(&mut b);
+        assert!(!b.stage.player.held());
+        while !fighting(&b) {
             let keys = custom(&b);
             assert!(!frame(&mut b, keys) && b.stage.player.ticks() < 3000);
         }
@@ -684,7 +683,7 @@ mod tests {
             let keys = nettai_battle::input::keys::B * (b.stage.player.ticks() % 2 == 0) as u16;
             frame(&mut b, keys);
         }
-        // The menu opens: the game's pause, from the next tick.
+        // The player's own START asks for the menu: the host's, nothing of the game's paused.
         let fight = |b: &Battle| {
             let battle = b.stage.player.battle();
             // (The two navis as they stand, to the field.)
@@ -696,47 +695,25 @@ mod tests {
             });
             (battle.sides.map(|s| s.gauge), battle.round.battle_time, navis)
         };
-        b.menu = true;
-        frame(&mut b, 0);
-        assert_eq!(b.stage.player.battle().paused_by(), Some(0));
+        let asked = (0..3).map(|_| frame(&mut b, nettai_battle::input::keys::START)).any(|asked| asked);
+        assert!(asked && b.stage.player.battle().paused_by().is_none() && fighting(&b));
         let held = fight(&b);
-        let mut samples = Vec::new();
-        b.stage.player.take_samples(&mut samples);
-        samples.clear();
-        let ticks = b.stage.player.ticks();
-        let mut made = 0;
-        for n in 0..300 {
-            // (The player's buttons are the menu's.)
-            frame(&mut b, nettai_battle::input::keys::A | nettai_battle::input::keys::B * (n % 2) as u16);
-            assert_eq!(b.stage.player.battle().paused_by(), Some(0), "tick {n}");
-            b.stage.player.take_samples(&mut samples);
-            made += samples.len();
-            samples.clear();
-        }
-        assert_eq!(b.stage.player.ticks(), ticks + 300, "it steps in the game's pause");
+        hold_for(&mut b, 300, nettai_battle::input::keys::A);
         assert_eq!(fight(&b), held, "nothing of the fight moved");
-        assert!((300 * 548..=300 * 549).contains(&made), "{made} samples: the sound goes on");
-        // The menu closes: the game leaves its pause, and the fight goes on from where it was.
-        b.menu = false;
-        for _ in 0..3 {
-            frame(&mut b, 0);
-        }
-        assert_eq!(b.stage.player.battle().paused_by(), None);
+        // RESUME: the fight goes on from where it was.
+        resume(&mut b);
         for _ in 0..60 {
             frame(&mut b, 0);
         }
         assert_ne!(fight(&b), held, "the fight runs again");
-        // The player's own START pauses the game, and asks for the menu.
-        let asked = (0..3).map(|_| frame(&mut b, nettai_battle::input::keys::START)).any(|asked| asked);
-        assert!(asked && b.stage.player.battle().paused_by() == Some(0));
+        // Starting over from the menu: from its start, nothing held.
         b.menu = true;
         frame(&mut b, 0);
-        assert_eq!(b.stage.player.battle().paused_by(), Some(0));
-        // Starting over from the pause: the game's from its start, nothing held.
+        assert!(b.stage.player.held());
         b.menu = false;
         assert!(b.restart());
-        assert_eq!((b.stage.player.battle().paused_by(), b.stage.player.paused(), b.stage.player.ticks()), (None, false, 0));
-        assert!(!frame(&mut b, 0) && b.game_pause.as_ref().unwrap().buttons() == 0);
+        assert_eq!((b.stage.player.held(), b.stage.player.ticks()), (false, 0));
+        assert!(!frame(&mut b, 0) && b.stage.player.ticks() == 1);
     }
 
     /// A practice set put in place of the one playing (Practice's Arena or Background row changed:
@@ -758,8 +735,7 @@ mod tests {
         let background = nettai_match::ids::backgrounds(&content, "exe6").last().unwrap().to_string();
         let place = nettai_match::RoundSettings { stage: Some(stage), background: Some(background.clone()) };
         m.rounds.iter_mut().for_each(|r| *r = place.clone());
-        let mut first = m.round(&content, 7);
-        first.host_keys.pause = false;
+        let first = m.round(&content, 7);
         let folders = [0, 1].map(|side| m.sides[side].folder(&content).saved().unwrap());
         assert_ne!(b.stage.player.battle().setup.settings.stage, stage, "(another place before)");
         b.stage.player.live_mut().unwrap().play_set(Set::new(content.clone(), first, folders));
@@ -781,8 +757,8 @@ mod tests {
 
     /// Under the menu, a practice battle in its round's opening steps on to its custom screen, and is held as
     /// the screen begins: for ten seconds of frames no tick steps it (its ticks and its digest the same), while
-    /// its sound comes every frame. Then the menu closes, and it goes on from the tick it was held at: the
-    /// screen comes in. The ticks it was held at, and the battle as it was held.
+    /// its sound comes every frame and its scenery moves. Then the menu closes, and it goes on from the tick it
+    /// was held at: the screen comes in. The ticks it was held at, and the battle as it was held.
     fn held_from_its_custom_screen(b: &mut Battle) -> (u64, nettai_battle::battle::Battle) {
         use nettai_battle::battle::mode;
         let up = |b: &Battle| b.stage.player.battle().round.mode == mode::CUSTOM;
@@ -794,21 +770,14 @@ mod tests {
         }
         // (The frame it began on, and the next, which finds it begun.)
         frame(b, 0);
-        made(b);
         let screen = |b: &Battle| b.stage.player.battle().custom.sides[0].screen.as_ref().map(|s| s.phase.chooses());
         assert_ne!(screen(b), Some(true), "held before the screen is in");
-        let (ticks, digest, was) = (b.stage.player.ticks(), b.stage.player.battle().digest(), b.stage.player.battle().clone());
-        for n in 0..600 {
-            // (The player's buttons are the menu's.)
-            frame(b, nettai_battle::input::keys::A | nettai_battle::input::keys::START);
-            assert!((548..=549).contains(&made(b)), "frame {n}: the sound goes on");
-            assert_eq!((b.stage.player.ticks(), b.stage.player.battle().digest()), (ticks, digest), "frame {n}: held");
-        }
-        assert!(up(b) && b.stage.player.battle().paused_by().is_none(), "on the custom screen, the game not paused");
+        let was = b.stage.player.battle().clone();
+        // (The player's buttons are the menu's.)
+        let ticks = hold_for(b, 600, nettai_battle::input::keys::A | nettai_battle::input::keys::START);
+        assert!(up(b), "on the custom screen");
         // RESUME: on from there, the screen coming in.
-        b.menu = false;
-        frame(b, 0);
-        assert_eq!(b.stage.player.ticks(), ticks + 1, "on from the tick it was held at");
+        resume(b);
         for _ in 0..30 {
             frame(b, 0);
         }
@@ -816,19 +785,23 @@ mod tests {
         (ticks, was)
     }
 
-    /// A practice set of `m`'s whose first round `edit` changes (a NaviCust bug given), held in the game's own
-    /// pause, with sound.
+    /// A practice set of `m`'s whose first round `edit` changes (a NaviCust bug given), with sound.
     fn practice_edited(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, edit: impl FnOnce(&mut nettai_battle::setup::RoundSetup)) -> Battle {
         let mut first = m.round(content, seed);
-        first.host_keys.pause = false;
         edit(&mut first);
         let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().unwrap());
         let driver = LivePlayer::against(Set::new(content.clone(), first, folders), Default::default(), seed as u64);
+        battle_of(content, driver)
+    }
+
+    /// A practice battle of what `driver` plays, as the shell has one, with sound, drawn on a background that
+    /// scrolls (`testing::scrolling_background`).
+    fn battle_of(content: &std::sync::Arc<nettai_battle::Content>, driver: LivePlayer) -> Battle {
+        let mut graphics = graphics(content, 0x7FFF);
+        nettai_frontend::testing::scrolling_background(&mut graphics);
         let audio = nettai_frontend::testing::audio(content);
-        let player = Player::with(graphics(content, 0x7FFF).renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, game_pause: None };
-        b.pause_in_game();
-        b
+        let player = Player::with(graphics.renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
+        Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, hold: Default::default() }
     }
 
     /// A practice session of Practice's own, as PLAY's PRACTICE starts one: the menu open before the battle's
@@ -861,42 +834,41 @@ mod tests {
         assert_eq!(held_from_its_custom_screen(&mut b).0, ticks, "the same opening, held at the same tick");
     }
 
-    /// Pressed mid-fight, START (the menu's own opening there) holds the battle in the game's pause, and the
-    /// NaviCust's HP bug, which waits while the game is paused in EXE6, takes nothing under the menu either.
+    /// Mid-fight, START opens the menu and the NaviCust's HP bug takes nothing under it, in EXE6 and in EXE4
+    /// alike (EXE4's own pause drains it: the game's pause no longer holds a practice battle).
     #[test]
     fn under_the_menu_mid_fight_the_hp_bug_waits() {
         use nettai_frontend::driver::bot_buttons;
-        let content = nettai_match::testing::exe6_content();
-        let m = nettai_match::pick::live(&content, "exe6", 11, None).unwrap();
-        let mut b = practice_edited(&content, &m, 11, |first| first.navi_stats[0].bugs.hp_drain = 7);
-        let hp = |b: &Battle| {
-            let battle = b.stage.player.battle();
-            battle.player(0).map(|r| battle.objects.get(r).hp)
-        };
-        while !b.stage.player.battle().pausable() {
-            let keys = bot_buttons(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
-            frame(&mut b, keys);
-            assert!(b.stage.player.ticks() < 3000);
+        for content in [nettai_match::testing::exe6_content(), nettai_match::testing::exe4_content()] {
+            let game = content.game().to_string();
+            let m = nettai_match::pick::live(&content, &game, 11, None).unwrap();
+            let mut b = practice_edited(&content, &m, 11, |first| first.navi_stats[0].bugs.hp_drain = 7);
+            let hp = |b: &Battle| {
+                let battle = b.stage.player.battle();
+                battle.player(0).map(|r| battle.objects.get(r).hp)
+            };
+            while !fighting(&b) {
+                let keys = bot_buttons(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
+                frame(&mut b, keys);
+                assert!(b.stage.player.ticks() < 3000, "{game}");
+            }
+            let fought = hp(&b);
+            for _ in 0..60 {
+                frame(&mut b, 0);
+            }
+            assert!(hp(&b) < fought, "{game}: (it drains in the fight)");
+            // The player's own START: the menu.
+            let asked = (0..3).map(|_| frame(&mut b, nettai_battle::input::keys::START)).any(|asked| asked);
+            assert!(asked, "{game}: START asks for the menu");
+            let held = hp(&b);
+            hold_for(&mut b, 600, nettai_battle::input::keys::A);
+            assert_eq!(hp(&b), held, "{game}: nothing drained under the menu");
+            resume(&mut b);
+            for _ in 0..120 {
+                frame(&mut b, 0);
+            }
+            assert!(hp(&b) < held, "{game}: and drains again after");
         }
-        let fought = hp(&b);
-        for _ in 0..60 {
-            frame(&mut b, 0);
-        }
-        assert!(hp(&b) < fought, "(it drains in the fight)");
-        // The player's own START: the game's pause, and the menu over it.
-        let asked = (0..3).map(|_| frame(&mut b, nettai_battle::input::keys::START)).any(|asked| asked);
-        assert!(asked && b.stage.player.battle().paused_by() == Some(0));
-        b.menu = true;
-        let held = hp(&b);
-        for _ in 0..600 {
-            frame(&mut b, nettai_battle::input::keys::A);
-        }
-        assert_eq!(hp(&b), held, "nothing drained under the menu");
-        b.menu = false;
-        for _ in 0..120 {
-            frame(&mut b, 0);
-        }
-        assert!(hp(&b) < held, "and drains again after");
     }
 
     /// A practice set put on another background (Practice's Background row changed: `Player::set_backgrounds`)
@@ -932,8 +904,7 @@ mod tests {
         // The set on another background, named by every round.
         let mut other = m.clone();
         other.rounds.iter_mut().for_each(|r| r.background = Some(background.to_string()));
-        let mut first = other.round(&content, 11);
-        first.host_keys.pause = false;
+        let first = other.round(&content, 11);
         let folders = [0, 1].map(|side| other.sides[side].folder(&content).saved().unwrap());
         assert!(b.stage.player.set_backgrounds(Set::new(content.clone(), first, folders)));
         let id = nettai_match::ids::background(&content, "exe6", background).unwrap();
@@ -952,17 +923,12 @@ mod tests {
         assert_eq!(seen.digest(), a.stage.player.battle().digest(), "stepped as the battle without the change");
     }
 
-    /// A practice battle of `m`'s (its rounds leaving the game its START), with sound, the dummy as given.
+    /// A practice battle of `m`'s (its START the host's, as Practice's set has it), with sound, the dummy as
+    /// given.
     fn practice(content: &std::sync::Arc<nettai_battle::Content>, m: &nettai_match::Match, seed: u32, opponent: nettai_frontend::driver::Opponent) -> Battle {
-        let mut first = m.round(content, seed);
-        first.host_keys.pause = false;
+        let first = m.round(content, seed);
         let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().unwrap());
-        let driver = LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64);
-        let audio = nettai_frontend::testing::audio(content);
-        let player = Player::with(graphics(content, 0x7FFF).renderer(GraphicsMode::Original, None), None, Some(audio), Box::new(driver));
-        let mut b = Battle { stage: Stage::new(player), owner: ScreenId::Practice, kind: BattleKind::Practice, game: content.game().into(), full: true, music: BattleMusic::Picked, viewer: 0, menu: false, covered: false, over: false, game_pause: None };
-        b.pause_in_game();
-        b
+        battle_of(content, LivePlayer::against(Set::new(content.clone(), first, folders), opponent, seed as u64))
     }
 
     /// The dummy that fights, plugged in as Practice plugs it (its Action Fights, its custom screen the AI's):
@@ -1000,11 +966,11 @@ mod tests {
         samples.len()
     }
 
-    /// The menu opened where START wouldn't pause the fight: the battle is held where it stands, nothing of it
-    /// changing while its sound comes every frame, and goes on from there as the menu closes (a dimming); the
+    /// The menu opened in a dimming: the battle is held where it stands as anywhere, nothing of it changing
+    /// while its sound comes every frame and its scenery moves, and goes on from there as the menu closes; the
     /// same at a round's end, after which the next round's custom screen comes.
     #[test]
-    fn opened_where_the_game_wouldnt_pause_it_is_held() {
+    fn held_in_a_dimming_and_at_a_rounds_end() {
         use nettai_battle::battle::{fight, mode};
         use nettai_frontend::driver::{InFight, OnCustomScreen, Opponent, bot_buttons};
         let content = nettai_match::testing::exe6_content();
@@ -1028,19 +994,9 @@ mod tests {
             let keys = if battle.round.mode == mode::CUSTOM { bot_buttons(battle, 0, tick) } else { pressed(tick) };
             assert!(!frame(&mut b, keys) && tick < 30_000, "no dimming came");
         }
-        b.menu = true;
-        made(&mut b);
-        let held = |b: &mut Battle, frames: usize, keys: u16| {
-            let (ticks, digest) = (b.stage.player.ticks(), b.stage.player.battle().digest());
-            for n in 0..frames {
-                frame(b, keys);
-                assert!((548..=549).contains(&made(b)), "frame {n}: the sound goes on");
-                assert_eq!((b.stage.player.ticks(), b.stage.player.battle().digest()), (ticks, digest), "frame {n}: held");
-            }
-        };
-        held(&mut b, 300, nettai_battle::input::keys::A);
-        assert!(dimmed(&b) && b.stage.player.battle().paused_by().is_none(), "held in the dimming");
-        b.menu = false;
+        hold_for(&mut b, 300, nettai_battle::input::keys::A);
+        assert!(dimmed(&b), "held in the dimming");
+        resume(&mut b);
         let ticks = b.stage.player.ticks();
         let mut frames = 0;
         while dimmed(&b) {
@@ -1055,16 +1011,14 @@ mod tests {
         let mut b = practice(&content, &m, 7, Opponent::default());
         let decided = |b: &Battle| {
             let battle = b.stage.player.battle();
-            battle.round.mode == mode::FIGHTING && battle.is_battle_over() && !battle.pausable()
+            battle.round.mode == mode::FIGHTING && battle.is_battle_over()
         };
         while !decided(&b) {
             let keys = nettai_frontend::testing::short_set::shooter(b.stage.player.battle(), 0, b.stage.player.ticks() as u32);
             assert!(!frame(&mut b, keys) && b.stage.player.ticks() < 5000, "the round wasn't decided");
         }
-        b.menu = true;
-        made(&mut b);
-        held(&mut b, 300, nettai_battle::input::keys::START);
-        b.menu = false;
+        hold_for(&mut b, 300, nettai_battle::input::keys::START);
+        resume(&mut b);
         let mut frames = 0;
         while b.stage.player.battle().round.mode != mode::CUSTOM {
             frame(&mut b, 0);
