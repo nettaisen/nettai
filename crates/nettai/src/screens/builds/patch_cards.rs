@@ -265,8 +265,9 @@ impl PatchCards {
                     let by = if i == 7 { format!("{}{}", if n > 0 { "+" } else { "" }, say.invoke_megabytes(n)) } else { format!("{n:+}") };
                     numbers_view.invoke_stat(i as i32, by.into()).to_string()
                 })
+                .chain(o.stats.iter().filter(|s| s.stat.added() != 0).map(|s| format!("{} {:+}", overview::stat_name(words, s), s.stat.added())))
                 .collect();
-            let abilities: Vec<String> = o.abilities.iter().map(|a| overview::ability(words, a)).collect();
+            let abilities: Vec<String> = o.abilities.iter().map(|&s| overview::source(words, s)).collect();
             let bugs: Vec<String> = o.bugs.iter().map(|b| overview::bug(words, b)).map(|(n, e)| if e.is_empty() { n } else { format!("{n} {e}") }).collect();
             (numbers, abilities, bugs)
         });

@@ -46,8 +46,11 @@ export struct ChipCell {
     flagged: bool,
 }
 
-// A number of the overview: as the build leaves it, and what the build's installed parts added to it.
+// A number of the overview: as the build leaves it, and what the build's installed parts added to it. A stat of the
+// game's rules' own, after the eight, has its name (in the game's strings: "Soul time"); the eight's are the
+// overview's own.
 export struct StatLine {
+    label: string,
     value: string,
     added: string,
 }
@@ -80,7 +83,8 @@ export struct BuildSheet {
     // The face the round starts the navi with.
     face: image,
     version: VersionTag,
-    // HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory.
+    // HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory; then any of the game's rules' own
+    // (EXE5's Soul time).
     stats: [StatLine],
     // The abilities and the bugs, each under its title, as many lines as the sheet has room for.
     lines: [SheetLine],
@@ -615,7 +619,9 @@ component SheetLineRow inherits Rectangle {
 // 792 by 540 on the Builds and Play screens. Narrower than 620 it is the narrow sheet, which a player's panel in a
 // match is (430 wide, 650 tall): the stats in two columns of four, the abilities and the bugs a line each, then
 // the chips, unnumbered. Narrower than 400, a phone's, everything is one column (the stats eight rows, the folder
-// thirty) and it is 1158 tall. `sheet-height` is how tall it is at the width it has. `side` gives it a player's
+// thirty) and it is 1158 tall. A stat of the game's rules' own (EXE5's Soul time) is a row after the eight: on the
+// wide sheet under Regular memory, the abilities and bugs a line fewer; on the narrow sheet a row of its own under
+// the two columns, at the left (a second such stat beside it), the sheet 22 taller; on a phone's the ninth row. `sheet-height` is how tall it is at the width it has. `side` gives it a player's
 // color along its top (1 or 2).
 export component BuildOverview inherits Rectangle {
     in property <BuildSheet> build;
@@ -628,7 +634,9 @@ export component BuildOverview inherits Rectangle {
     // labels whole.)
     out property <bool> single: self.width < 400px;
     property <int> column: root.single ? 30 : 15;
-    property <int> stat-rows: root.single ? 8 : 4;
+    // (The stats after the eight, the game's rules' own: on the narrow sheet two to a row under the columns.)
+    property <int> more-stats: max(0, root.build.stats.length - 8);
+    property <int> stat-rows: root.single ? 8 + root.more-stats : 4 + ceil(root.more-stats / 2);
     // (The narrow sheet's stats, and under them the abilities' line and the bugs'.)
     property <length> narrow-stats: root.stat-rows * 22px + 44px;
     out property <length> sheet-height: !root.narrow ? 540px : 16px + 44px + 12px + root.narrow-stats + 12px + root.column * (Theme.chip-row + 2px) - 2px + 16px;
@@ -703,7 +711,8 @@ export component BuildOverview inherits Rectangle {
         tone: root.build.version.tone;
     }
 
-    // The stats: a column of eight; on the narrow sheet two of four; on a phone's a column again, the sheet wide.
+    // The stats: a column of eight; on the narrow sheet two of four; on a phone's a column again, the sheet wide. Any
+    // after the eight follow: under them, or on the narrow sheet two to a row under the columns.
     Label {
         x: root.pad;
         y: root.pad + 56px + 12px;
@@ -713,18 +722,18 @@ export component BuildOverview inherits Rectangle {
     }
 
     for stat[i] in root.build.stats: StatRow {
-        x: root.narrow && !root.single ? root.pad + floor(i / 4) * (root.inner / 2) : root.pad;
-        y: root.stats-y + (root.narrow && !root.single ? mod(i, 4) : i) * 22px;
+        x: root.narrow && !root.single ? root.pad + (i < 8 ? floor(i / 4) : mod(i - 8, 2)) * (root.inner / 2) : root.pad;
+        y: root.stats-y + (root.narrow && !root.single ? (i < 8 ? mod(i, 4) : 4 + floor((i - 8) / 2)) : i) * 22px;
         width: root.single ? root.inner : root.narrow ? root.inner / 2 - 8px : 240px;
         narrow: root.narrow && !root.single;
-        label: root.narrow && !root.single ? root.narrow-labels[i] : root.stat-labels[i];
+        label: stat.label != "" ? stat.label : root.narrow && !root.single ? root.narrow-labels[i] : root.stat-labels[i];
         stat: stat;
     }
 
     // The abilities and the bugs: lines under the stats, or on the narrow sheet one line each.
     for line[i] in root.build.lines: SheetLineRow {
         x: root.pad;
-        y: root.stats-y + 8 * 22px + 6px + i * 20px;
+        y: root.stats-y + (8 + root.more-stats) * 22px + 6px + i * 20px;
         width: 240px;
         visible: !root.narrow;
         line: line;

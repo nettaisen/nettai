@@ -1,7 +1,8 @@
 //! The build overview's model (docs/design/app-ui.md §6; the UI's `BuildOverview`, build.slint): what a build
 //! comes to, as a round starts it. Every number is the compiled one (`nettai_match::build::Checked::overview`:
-//! the stats as the NaviCust and the patch cards leave them, with what they added), the abilities and the bugs
-//! are named by the game's own strings, and the folder's chips have the pack's own icons.
+//! the stats as the NaviCust and the patch cards leave them, with what they added; after the eight, those the
+//! game's rules give, by their names in the game's strings), the abilities and the bugs are named by the game's
+//! own strings, and the folder's chips have the pack's own icons.
 //!
 //! Any screen shows a build with it: [`sheet`] makes the model of a side, and the screen sets it as the
 //! `build` of a `BuildOverview` (docs/app.md §8).
@@ -11,12 +12,13 @@ use crate::builds::{Kit, cards};
 use crate::games::Names;
 use crate::shell::Shell;
 use nettai_content_api::{Data, EntryHandle, Registry};
-use nettai_match::build::{self, Ability, Bug, Checked, Overview, Source, Stat};
+use nettai_match::build::{self, Bug, Checked, NamedStat, Overview, Source, Stat};
 use nettai_match::{Folder, Side};
 use nettai_ui::{BuildSheet, ChipCell, ChipMark, SheetLine, SheetLineKind, StatLine};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
-/// The lines the overview has room for under its stats, the two titles apart.
+/// The lines the overview has room for under its eight stats, the two titles apart: a stat of the game's rules'
+/// own after them takes one (its row is 22 tall, a line 20, and the sheet has 16 to spare under its last line).
 const LINES: usize = 9;
 
 /// A folder's entry `entry` as a row shows it; `flagged`: the folder's rules have something against it.
@@ -68,13 +70,9 @@ pub fn source(words: &Words, source: Source) -> String {
     }
 }
 
-/// An ability, by name: what gives it ([`source`]), or the rules' number by its name in the game's strings and its
-/// amount ("Soul Time 4").
-pub fn ability(words: &Words, ability: &Ability) -> String {
-    match ability {
-        Ability::Named { key, amount } => format!("{} {amount}", words.names.text(build::ABILITIES_TABLE, key).unwrap_or_else(|| key.clone())),
-        Ability::From(from) => source(words, *from),
-    }
+/// A stat of the game's rules' own, by its name in the game's strings ("Soul time").
+pub fn stat_name(words: &Words, stat: &NamedStat) -> String {
+    words.names.text(build::STATS_TABLE, &stat.key).unwrap_or_else(|| stat.key.clone())
 }
 
 /// A bug, by its full name in the game's strings and its level or amount (a card's drawback that is no bug of its
@@ -126,24 +124,28 @@ pub fn sheet_of(words: &Words, label: &str, name: &str, side: &Side, checked: &m
             let line = |stat: Stat, megabytes: bool| StatLine {
                 value: if megabytes { say.invoke_megabytes(stat.value) } else { stat.value.to_string().into() },
                 added: if stat.added() == 0 { Default::default() } else { format!("{:+}", stat.added()).into() },
+                ..Default::default()
             };
             let Overview { hp, attack, rapid, charge, custom, mega, giga, regular_memory, .. } = *o;
-            [hp, attack, rapid, charge, custom, mega, giga].map(|s| line(s, false)).into_iter().chain([line(regular_memory, true)]).collect()
+            let named = o.stats.iter().map(|s| StatLine { label: stat_name(words, s).into(), ..line(s.stat, false) });
+            [hp, attack, rapid, charge, custom, mega, giga].map(|s| line(s, false)).into_iter().chain([line(regular_memory, true)]).chain(named).collect()
         }
         // (The round doesn't start: nothing is known of its numbers.)
         None => vec![StatLine::default(); 8],
     };
-    let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|a| ability(words, a)).collect();
+    let abilities: Vec<String> = overview.iter().flat_map(|o| o.abilities.iter()).map(|&s| source(words, s)).collect();
     let bugs: Vec<(String, String)> = overview.iter().flat_map(|o| o.bugs.iter()).map(|b| bug(words, b)).collect();
-    // The lines under the stats: the bugs keep four of them where both lists are long.
+    // The lines under the stats (a line fewer for each stat after the eight): the bugs keep four of them where
+    // both lists are long.
+    let room = LINES.saturating_sub(stats.len() - 8).max(2);
     let ability_lines: Vec<SheetLine> = abilities.iter().map(|a| SheetLine { kind: SheetLineKind::Ability, text: a.into(), ..Default::default() }).collect();
     let bug_lines: Vec<SheetLine> = bugs.iter().map(|(name, extent)| SheetLine { kind: SheetLineKind::Bug, text: name.into(), extent: extent.into() }).collect();
-    let room_for_bugs = bug_lines.len().clamp(1, 4);
-    let room_for_abilities = ability_lines.len().clamp(1, LINES - room_for_bugs);
+    let room_for_bugs = bug_lines.len().clamp(1, 4.min(room - 1));
+    let room_for_abilities = ability_lines.len().clamp(1, room - room_for_bugs);
     let mut lines = vec![SheetLine { kind: SheetLineKind::Abilities, ..Default::default() }];
     lines.extend(fitted(words, ability_lines, room_for_abilities));
     lines.push(SheetLine { kind: SheetLineKind::Bugs, ..Default::default() });
-    lines.extend(fitted(words, bug_lines, LINES - room_for_abilities));
+    lines.extend(fitted(words, bug_lines, room - room_for_abilities));
     let face = checked.face().map(|f| kit.pictures.shown(&f)).unwrap_or_else(|| kit.pictures.navi(navi));
     let chips: Vec<ChipCell> = (0..folder.chips.len()).map(|i| chip_cell(kit, names, &folder, i, false)).collect();
     let one_line = |(name, extent): &(String, String)| if extent.is_empty() { name.clone() } else { format!("{name} {extent}") };
