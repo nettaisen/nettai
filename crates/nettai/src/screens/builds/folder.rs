@@ -4,7 +4,9 @@
 //! against them and why each chip can't go in (`folders::View`, asked once for a folder as it stands and read
 //! for every row), what is wrong with an entry (`folders::about_entry`), whether an entry can be the Regular
 //! chip or a tag chip (`Checked::mark_problems`), the library's chips and their sorts (`build::library`,
-//! `build::sorted`).
+//! `build::sorted`). The ruleset the player plays by keeps no chip out: one it holds back goes in as any other, and
+//! each entry of it is the build's problem (`Wrong::NotAllowed`, about every copy), its library row saying "Not
+//! allowed" quietly at its end (docs/design/app-ui.md §2.68).
 //!
 //! **Enter on an entry goes to the library; Enter on a row puts that chip in the entry and goes on to the next
 //! entry.** A chip put in takes the place of the entry's own, so a row's reason is asked of the folder without
@@ -206,11 +208,14 @@ impl Folder {
         }
     }
 
-    /// The library's pane: each row with how many the folder holds, or why its chip can't go in.
+    /// The library's pane: each row with why its chip can't go in (the game's rules'), else "Not allowed" where the
+    /// ruleset the player plays by holds it back (a quiet note: it goes in, and is then the build's problem), else how
+    /// many the folder holds.
     fn show_library(&self, shell: &Shell, draft: &Draft) {
         let content = draft.content();
         let kit = &draft.kit;
         let folder = draft.side().folder(content);
+        let fact = content.defs.fact_name(PlayerFact::Folder).unwrap_or_default();
         let mut copies: HashMap<FolderChip, i32> = HashMap::new();
         for chip in folder.chips() {
             *copies.entry(chip).or_default() += 1;
@@ -227,11 +232,16 @@ impl Folder {
                     let part = parts.entry(row.id).or_insert_with(|| {
                         let record = content.chip(row.id);
                         let refusal = self.offered.as_ref().and_then(|v| v.refusal(row.id));
+                        let banned = !draft.allows(fact, row.id.0);
                         LibraryRow {
                             icon: kit.pictures.icon(row.id),
                             name: words.names.chip(row.id).into(),
                             kind: kind(record.class),
-                            note: refusal.map(|wrong| words.refusal(row.id, wrong)).unwrap_or_default().into(),
+                            note: match refusal {
+                                Some(wrong) => words.refusal(row.id, wrong).into(),
+                                None if banned => say.invoke_not_allowed_here(),
+                                None => Default::default(),
+                            },
                             refused: refusal.is_some(),
                             megabytes: say.invoke_megabytes(record.mb as i32),
                             attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
@@ -243,6 +253,7 @@ impl Folder {
                     let mut line = part.clone();
                     line.code = row.code.letter().to_string().into();
                     if !line.refused
+                        && line.note.is_empty()
                         && let Some(&n) = copies.get(row)
                     {
                         line.note = say.invoke_in_folder(n);

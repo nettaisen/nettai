@@ -5,7 +5,9 @@
 //! named in its strings' `auto_battle_lists`; a game whose block states none has its places as one). A build states
 //! the places alone (its pattern records are the rules' default, nothing learned), so a place holds a chip or nothing.
 //! What a place may hold is the rules' (`validate`: a chip its navi can play, and in a list they hold to one class of
-//! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. The library offers
+//! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. The ruleset the
+//! player plays by refuses none: a chip its auto battle category (the places' own, apart from the folder's) holds back
+//! goes in, and each place of it is the build's problem, its row saying "Not allowed" quietly. The library offers
 //! what the place being filled can hold, a row a chip: in a list held to one class (the list's `class`: EXE4's and
 //! EXE5's mega, giga and program advance lists), the game's chips of that class, the Program Advances among them,
 //! which no folder holds; in another, the chips a folder of the build can hold.
@@ -100,9 +102,10 @@ impl AutoBattle {
         }
     }
 
-    /// The build's problems with place `place` (from 0), the ruleset's among them.
+    /// The build's problems with place `place` (from 0), the ruleset's among them (a chip its auto battle category holds
+    /// back, in each place that holds it).
     fn problems(draft: &Draft, place: usize) -> impl Iterator<Item = &nettai_match::check::Problem> {
-        draft.checked.problems.iter().filter(move |p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(place))
+        draft.checked.problems.iter().filter(move |p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.at(place))
     }
 
     /// The data's problems about no place of it (a fact of it a build made by hand states wrong): every place's strip
@@ -211,11 +214,20 @@ impl AutoBattle {
                 .map(|&chip| {
                     let record = content.chip(chip);
                     let copies = data.places.iter().filter(|e| **e == Entry::Chip(chip)).count() as i32;
+                    // (One the ruleset the player plays by holds back here says so, quietly: it goes in, and is then
+                    // the build's problem.)
+                    let note = if !draft.allows(auto::PLACES_FIELD, chip.0) {
+                        say.invoke_not_allowed_here()
+                    } else if copies > 0 {
+                        view.invoke_in_places(copies)
+                    } else {
+                        Default::default()
+                    };
                     LibraryRow {
                         icon: draft.kit.pictures.icon(chip),
                         name: words.names.chip(chip).into(),
                         kind: kind(record.class),
-                        note: if copies > 0 { view.invoke_in_places(copies) } else { Default::default() },
+                        note,
                         refused: false,
                         megabytes: say.invoke_megabytes(record.mb as i32),
                         attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
@@ -361,7 +373,8 @@ impl AutoBattle {
         }
         let ui = shell.ui();
         let view = ui.global::<AutoBattleView>();
-        let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && p.entry == Some(place) && !had.contains(&p.text)).cloned();
+        // (The game's rules alone refuse: a chip the ruleset holds back goes in, and is the build's problem.)
+        let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && p.entry == Some(place) && !p.what.of_ruleset() && !had.contains(&p.text)).cloned();
         if let Some(problem) = against {
             draft.edit(|_, side| {
                 *side = before;
@@ -481,7 +494,7 @@ impl AutoBattle {
         let view = ui.global::<AutoBattleView>();
         // (Within a list nothing is refused: its places hold the same chips. Across, each place the trade fills is
         // held to what the rules let it hold.)
-        let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && (p.entry == Some(from) || p.entry == Some(to)) && !had.contains(&p.text)).cloned();
+        let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && (p.entry == Some(from) || p.entry == Some(to)) && !p.what.of_ruleset() && !had.contains(&p.text)).cloned();
         if let Some(problem) = against.filter(|_| swap) {
             draft.edit(|_, side| {
                 *side = before;

@@ -15,6 +15,10 @@ return {
         { fact = "navicust_programs" },
         { fact = "patch_cards" },
         { fact = "souls" },
+        -- The auto battle data's places (./auto_battle/block), a page of their own (the user: "you should instead have a
+        -- separate abd rules page"): the chips a folder lists, and the Program Advances besides (`classes`), which the
+        -- program advance list holds and no folder does. What the folder's category holds back is allowed here.
+        { fact = "auto_battle_places", classes = { "program_advance" } },
     },
     -- The rulesets ready-made, the first a player's and a new lobby's until they pick another. `versions`: whether each
     -- build must be one team's (`one_per_build`: what it holds of the teams' own things all one's) or `mixed`; `only`:

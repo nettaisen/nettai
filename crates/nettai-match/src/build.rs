@@ -685,8 +685,6 @@ pub struct Checked {
     /// What is wrong with the build, typed; empty: it can be played.
     pub problems: Vec<Problem>,
     battle: Option<Battle>,
-    /// The ruleset it was checked under ([`Checked::under`]), which the folder's view holds it to too.
-    ruleset: Option<crate::ruleset::Ruleset>,
 }
 
 impl Checked {
@@ -694,7 +692,7 @@ impl Checked {
     /// checks and the game's rules find with it, of any side's and of a
     /// build's.
     pub fn of(content: &Arc<Content>, game: &str, side: &Side) -> Checked {
-        let none = |problems: Vec<Problem>| Checked { game: game.to_string(), problems, battle: None, ruleset: None };
+        let none = |problems: Vec<Problem>| Checked { game: game.to_string(), problems, battle: None };
         let m = match Match::empty(content, game) {
             Ok(m) => Match { sides: [side.clone(), side.clone()], ..m },
             Err(e) => return none(vec![Problem { side: None, field: None, entry: None, what: Wrong::Match, text: e }]),
@@ -707,7 +705,7 @@ impl Checked {
             Ok(mut b) => {
                 let mut problems = check::validated(&mut b, 0);
                 problems.extend(check::built(&mut b, 0));
-                Checked { game: game.to_string(), problems, battle: Some(b), ruleset: None }
+                Checked { game: game.to_string(), problems, battle: Some(b) }
             }
             Err(e) => none(vec![Problem { side: Some(0), field: None, entry: None, what: Wrong::Internal, text: e }]),
         }
@@ -721,7 +719,6 @@ impl Checked {
     pub fn under(content: &Arc<Content>, game: &str, side: &Side, rulesets: &crate::ruleset::Rulesets, ruleset: &crate::ruleset::Ruleset) -> Checked {
         let mut checked = Checked::of(content, game, side);
         checked.problems.extend(ruleset.problems(rulesets, content, side));
-        checked.ruleset = Some(ruleset.clone());
         checked
     }
 
@@ -738,20 +735,11 @@ impl Checked {
 
     /// The folder rules' view of `folder` on the build's limits
     /// ([`View::of`]): asked once for a folder as it stands, then read for
-    /// every row of a list; under a ruleset, held to it too
-    /// ([`View::hold_to`]: a chip it doesn't allow refused, and each entry
-    /// of one a problem). None: the round doesn't start.
+    /// every row of a list: the game's rules' alone (a chip a ruleset
+    /// doesn't allow goes in, and is the build's problem under it:
+    /// [`Checked::under`]). None: the round doesn't start.
     pub fn folder_view(&mut self, content: &Content, folder: &Folder) -> Option<View> {
-        let mut view = View::of(content, &self.game, self.battle.as_mut()?, 0, folder)?;
-        if let (Some(ruleset), Some(fact)) = (&self.ruleset, content.defs.fact_name(PlayerFact::Folder)) {
-            view.hold_to(ruleset, fact, folder);
-        }
-        Some(view)
-    }
-
-    /// The ruleset the build was checked under, if it was ([`Checked::under`]).
-    pub fn ruleset(&self) -> Option<&crate::ruleset::Ruleset> {
-        self.ruleset.as_ref()
+        View::of(content, &self.game, self.battle.as_mut()?, 0, folder)
     }
 
     /// What the rules say of `folder`'s Regular and tag chips
