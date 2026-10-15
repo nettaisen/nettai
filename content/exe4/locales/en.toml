@@ -723,6 +723,7 @@ language = "en"
 "preset.redsun" = "Red Sun"
 "preset.bluemoon" = "Blue Moon"
 "preset.no_patch_cards" = "No patch cards"
+"theirs" = "Host's ruleset"
 
 # The auto battle data's lists, by name (rules/auto_battle/block's `LISTS`, EXE5's), for a tool that shows a build's
 # data under them (the build editor's auto battle, which shows no pattern places): what the game writes in each. Ours,

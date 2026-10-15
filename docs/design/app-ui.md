@@ -1362,11 +1362,14 @@ DUPLICATE, RENAME and DELETE.
   players' buttons in the picture's top right corner; and the other console's picture (P), small in the bottom
   right corner of the one shown.
 - **Export:** a dialog of one size from start to finish: Size (even multiples of 240 by 160: 2, 4 and 6 times, 4
-  first), View, Sides (One, or Both side by side, the View's at the left and heard: the user, "add support for two
-  sided side by side export"), Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
+  first), View, Sides (One, or Both side by side, the View's at the left: the user, "add support for two
+  sided side by side export"; with Both a sound track a side, the left's first: "for 2 sided replays, audio track 1
+  should be left player audio, audio track 2 should be right player audio"), Part, Save as, the progress bar and its line, CANCEL and EXPORT. The sizes are even because an MP4
   keeps its color at half resolution, and at an odd multiple every pixel edge fringes (measured: 25 dB at 3 times
   against 40 and 44 at 2 and 4). The export is an MP4 and nothing else: the user, "don't allow raw .nut export".
-  (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.)
+  (The NUT stream is how `nettai-video` hands the pictures and sound to ffmpeg, never a file the app saves.) Every
+  export has a chapter a round, "Round 1", "Round 2"… in the app's language: the user, "video exports should have
+  chapter info for rounds".
 
 ### In an online match
 - The picture fills the window, with no header or footer.

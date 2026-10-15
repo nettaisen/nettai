@@ -234,6 +234,37 @@ fn the_other_console_is_presented_as_its_own_viewer_presents_it() {
     assert!(huds_differ, "the two consoles' HUDs are alike: nothing was told apart");
 }
 
+/// Each console's sound is had at once, sample for sample as straight
+/// playback from that side makes it: the shown one's by `take_samples` or
+/// `take_samples_of` alike, the other's by `take_samples_of`, from the
+/// start and after a seek; and the two differ.
+#[test]
+fn each_consoles_sound_is_its_own_viewers() {
+    let content = nettai_match::testing::exe6_content();
+    let (replay, ticks) = recorded(&content, "exe6", 7);
+    let sides = [straight(&content, &replay, 0), straight(&content, &replay, 1)];
+    let mut v = viewer(&content, &replay, 0);
+    let mut differ = false;
+    for (from, by) in [(0, 200), (ticks as u32 / 2, 120)] {
+        v.seek(from);
+        for t in from..from + by {
+            assert!(v.step_forward());
+            let (mut shown, mut own, mut other) = (Vec::new(), Vec::new(), Vec::new());
+            v.take_samples_of(1, &mut other);
+            v.take_samples_of(0, &mut own);
+            v.take_samples(&mut shown);
+            assert!(own == sides[0].sounds[t as usize + 1] && shown.is_empty(), "side 0's sound of tick {t}");
+            assert!(other == sides[1].sounds[t as usize + 1], "side 1's sound of tick {t}");
+            differ |= own != other;
+        }
+    }
+    assert!(differ, "the two consoles' sounds are alike: nothing was told apart");
+    // (A side a match hasn't gives nothing.)
+    let mut none = Vec::new();
+    v.take_samples_of(2, &mut none);
+    assert!(none.is_empty());
+}
+
 /// The transport: the length and the rounds are known as the replay opens;
 /// the clock runs the ticks due at each speed and none while paused or at
 /// the end; five seconds on and back, a round on and back, a frame on and

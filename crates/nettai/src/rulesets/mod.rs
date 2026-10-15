@@ -50,6 +50,7 @@ pub fn pickable(kit: &Kit) -> Vec<Pickable> {
 pub fn shown_name(names: &Names, name: &Name) -> String {
     match name {
         Name::Preset(id) => name.text_key().and_then(|k| names.text(TEXT_TABLE, &k)).unwrap_or_else(|| id.clone()),
+        Name::Theirs => name.text_key().and_then(|k| names.text(TEXT_TABLE, &k)).unwrap_or_default(),
         Name::Own(own) => own.clone(),
     }
 }
@@ -59,11 +60,13 @@ fn remembered_key(game: &str) -> String {
     format!("ruleset.{game}")
 }
 
-/// A ruleset's name as the settings remember it: `preset:<id>` or `own:<name>`.
+/// A ruleset's name as the settings remember it: `preset:<id>` or `own:<name>` (the other player's, which no
+/// player picks to play by, `theirs`).
 fn remembered_text(name: &Name) -> String {
     match name {
         Name::Preset(id) => format!("preset:{id}"),
         Name::Own(own) => format!("own:{own}"),
+        Name::Theirs => "theirs".to_string(),
     }
 }
 
