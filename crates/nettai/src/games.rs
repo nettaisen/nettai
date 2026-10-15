@@ -501,6 +501,14 @@ impl<'a> Names<'a> {
         self.pick(&self.content.defs.form(form).key, |s, k| s.form(k).and_then(|n| n.name.clone()))
     }
 
+    /// A form's description (a Cross's, which R shows in the Cross window), its lines as the game's box breaks them;
+    /// none where the strings have none (a Beast's, a soul's).
+    pub fn form_description(&self, form: nettai_content_api::FormHandle) -> Option<String> {
+        let key = &self.content.defs.form(form).key;
+        let get = |s: &Strings| s.form(key).and_then(|f| f.description.clone());
+        self.strings.and_then(get).or_else(|| get(&self.content.strings))
+    }
+
     /// A background's name as a list shows it, any game's (the background pool's): its game's name and its own,
     /// its area's as that game's menus name it ("BN4 ACDC Area": `crate::backgrounds::name`).
     pub fn background(&self, background: nettai_battle::content::BackgroundId) -> String {

@@ -218,27 +218,37 @@ impl View {
         !matches!(self.refused.get(&chip), Some(Wrong::ChipNotAllowed { .. }))
     }
 
-    /// The problems of the folder that are entry `entry`'s: those the rules
-    /// tie to it, and those of the folder as a whole that its chip is part
-    /// of (its copies, its class's limit, the dark chips', the tag memory of
-    /// a tag chip).
+    /// The problems of the folder that are entry `entry`'s ([`about_entry`]).
     pub fn entry_problems<'a>(&'a self, content: &Content, folder: &Folder, entry: usize) -> Vec<&'a Problem> {
-        use nettai_battle::content::ChipFlags;
-        let Some(held) = folder.chips.get(entry).copied().flatten() else { return Vec::new() };
-        let record = content.chip(held.id);
-        let dark = record.flags.has(ChipFlags::DARK);
-        let tagged = folder.tags.is_some_and(|(a, b)| a as usize == entry || b as usize == entry);
-        self.problems
-            .iter()
-            .filter(|p| match (&p.what, p.entry) {
-                (_, Some(e)) => e == entry,
-                (Wrong::Copies { chip, .. }, None) => *chip == held.id,
-                (Wrong::Class { class, .. }, None) => !dark && *class == record.class,
-                (Wrong::Dark(_), None) => dark,
-                (Wrong::TagMemory(_) | Wrong::TagEntries | Wrong::TagRegular, None) => tagged,
-                _ => false,
-            })
-            .collect()
+        self.problems.iter().filter(|p| about_entry(content, folder, entry, p)).collect()
+    }
+}
+
+/// Whether `problem`, one of `folder`'s, is entry `entry`'s: one the rules tie to it; one of the folder as a whole
+/// that its chip is part of (its copies, its class's limit, the dark chips', the tag memory of a tag chip, tags in a
+/// game without); and of an empty entry, the folder's size, and the Regular or tag chip it is marked as. A screen says
+/// it where it says the entry (a folder editor's strip, its name in the error red).
+pub fn about_entry(content: &Content, folder: &Folder, entry: usize, problem: &Problem) -> bool {
+    use nettai_battle::content::ChipFlags;
+    let tagged = folder.tags.is_some_and(|(a, b)| a as usize == entry || b as usize == entry);
+    let Some(held) = folder.chips.get(entry).copied().flatten() else {
+        return match (&problem.what, problem.entry) {
+            (_, Some(e)) => e == entry,
+            (Wrong::FolderSize(_), None) => entry < folder.chips.len(),
+            (Wrong::RegularEntry, None) => folder.regular == Some(entry as u8),
+            (Wrong::TagEntries, None) => tagged,
+            _ => false,
+        };
+    };
+    let record = content.chip(held.id);
+    let dark = record.flags.has(ChipFlags::DARK);
+    match (&problem.what, problem.entry) {
+        (_, Some(e)) => e == entry,
+        (Wrong::Copies { chip, .. }, None) => *chip == held.id,
+        (Wrong::Class { class, .. }, None) => !dark && *class == record.class,
+        (Wrong::Dark(_), None) => dark,
+        (Wrong::TagMemory(_) | Wrong::TagEntries | Wrong::TagRegular | Wrong::NoTags, None) => tagged,
+        _ => false,
     }
 }
 

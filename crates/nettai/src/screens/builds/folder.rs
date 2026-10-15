@@ -2,7 +2,7 @@
 //!
 //! Everything it says of the folder is the game's rules' (nettai-match): the limits and what the folder holds
 //! against them and why each chip can't go in (`folders::View`, asked once for a folder as it stands and read
-//! for every row), what is wrong with an entry (`View::entry_problems`), whether an entry can be the Regular
+//! for every row), what is wrong with an entry (`folders::about_entry`), whether an entry can be the Regular
 //! chip or a tag chip (`Checked::mark_problems`), the library's chips and their sorts (`build::library`,
 //! `build::sorted`).
 //!
@@ -34,7 +34,8 @@ use nettai_battle::content::strings::Strings;
 use nettai_battle::custom::FolderChip;
 use nettai_content_api::{ChipHandle, Registry};
 use nettai_match::build::{self, ChipInfo, Sort};
-use nettai_match::folders::View;
+use nettai_match::check::Problem;
+use nettai_match::folders::{self, View};
 use nettai_match::ruleset::Item;
 use nettai_match::{Folder as Chips, Wrong};
 use nettai_ui::{ChipCell, ChipDetail, ChipMark, EditorTab, FolderCounts, FolderView, LibraryRow};
@@ -93,6 +94,31 @@ fn description(words: &Words, chip: ChipHandle) -> String {
     names.strings.and_then(get).or_else(|| get(&names.content.strings)).map(|d| one_line(&d)).unwrap_or_default()
 }
 
+/// The build's problems that entry `i` of `folder` is part of (`folders::about_entry`: its own, its copies', its class's
+/// limit; an empty one's, the folder's size), the ruleset's among them (a chip it doesn't allow, a Giga chip of
+/// another version's than the build's under one version per build): what the strip says of it, its name in the error
+/// red (docs/design/app-ui.md §2.66). `fields` are the tab's.
+fn entry_problems<'d>(draft: &'d Draft, fields: &[String], folder: &Chips, i: usize) -> Vec<&'d Problem> {
+    let content = draft.content();
+    let chip = folder.chips.get(i).copied().flatten();
+    draft
+        .pane_problems(fields, false)
+        .into_iter()
+        .filter(|p| match &p.what {
+            Wrong::Mixed { items, .. } => chip.is_some_and(|c| items.contains(&(Registry::Chip, Item::of(c.id.0)))),
+            _ => folders::about_entry(content, folder, i, p),
+        })
+        .collect()
+}
+
+/// The folder's problems no entry is part of and no count of its header says (a fact of it a build made by hand
+/// states wrong): every entry's strip says them after its own (docs/design/app-ui.md §2.66).
+fn unplaced<'d>(draft: &'d Draft, fields: &[String], folder: &Chips) -> Vec<&'d Problem> {
+    let counted = |w: &Wrong| matches!(w, Wrong::FolderSize(_) | Wrong::Class { .. } | Wrong::RegularMemory { .. } | Wrong::TagMemory(_));
+    let placed: Vec<&Problem> = (0..folder.chips.len()).flat_map(|i| entry_problems(draft, fields, folder, i)).collect();
+    draft.pane_problems(fields, false).into_iter().filter(|p| !counted(&p.what) && !placed.iter().any(|q| std::ptr::eq(*q, *p))).collect()
+}
+
 impl Folder {
     /// The folder as the tab shows it: the build's, with the entry tagged first marked while it waits.
     fn shown(&self, draft: &Draft) -> Chips {
@@ -131,8 +157,9 @@ impl Folder {
         });
     }
 
-    /// The folder's pane: its entries, each marked where the rules have something against it, its counts, and in its
-    /// header what the game's rules have against the folder or an entry of it (docs/design/app-ui.md §2.66).
+    /// The folder's pane: its entries, each marked where the build's problems are about it, its counts (one past its
+    /// limit in the error red), and in a phone's header what the game's rules have against the folder or an entry of
+    /// it (docs/design/app-ui.md §2.66).
     fn show_folder(&self, shell: &Shell, draft: &Draft) {
         let content = draft.content();
         let folder = self.shown(draft);
@@ -140,12 +167,11 @@ impl Folder {
         let ui = shell.ui();
         let view = ui.global::<FolderView>();
         let megabytes = |entry: u8| folder.chips.get(entry as usize).copied().flatten().map_or(0, |c| content.chip(c.id).mb as i32);
+        let fields = self.fields(content);
         let cells: Vec<ChipCell> = draft.with_words(shell, |words| {
             (0..folder.chips.len())
                 .map(|i| {
-                    // (An entry whose chip is another version's than the build's, under one version per build, too.)
-                    let mixed = folder.chips.get(i).copied().flatten().is_some_and(|c| draft.mixing(Registry::Chip, &Item::of(c.id.0)).is_some());
-                    let flagged = mixed || self.held.as_ref().is_some_and(|v| !v.entry_problems(content, &stood, i).is_empty());
+                    let flagged = stood.chips[i].is_some() && !entry_problems(draft, &fields, &stood, i).is_empty();
                     let mut cell = chip_cell(words.kit, words.names, &folder, i, flagged);
                     // (A chip of one version's own is marked so: a Giga chip's version.)
                     if let Some(chip) = folder.chips.get(i).copied().flatten() {
@@ -160,7 +186,7 @@ impl Folder {
                 .collect()
         });
         view.set_slots(ModelRc::new(VecModel::from(cells)));
-        view.set_problems(draft.pane_line(shell, &self.fields(content), false).into());
+        view.set_problems(draft.pane_line(shell, &fields, false).into());
         view.set_slot(self.slot as i32);
         if let Some(held) = &self.held {
             let tags = stood.tags.map_or(0, |(a, b)| megabytes(a) + megabytes(b));
@@ -251,17 +277,18 @@ impl Folder {
             Some(Described::Row(r)) => self.rows.get(r).copied(),
             None => None,
         };
-        // (What the game's rules have against the entry described, as its pane's header says it too: those the entry is
-        // part of; an empty one's, the folder's size. Said where nothing was refused: docs/design/app-ui.md §2.66.)
+        // (What the build's problems have against the entry described, the ruleset's among them, and after them what is
+        // against the folder and said by none of its entries or counts: said where nothing was refused,
+        // docs/design/app-ui.md §2.66.)
         let fault = match hovered.or(self.described) {
-            Some(Described::Slot(i)) if chip.is_some() => draft.line(shell, self.held.iter().flat_map(|v| v.entry_problems(content, &folder, i))),
-            Some(Described::Slot(_)) => draft.line(shell, draft.checked.problems.iter().filter(|p| matches!(p.what, Wrong::FolderSize(_)))),
+            Some(Described::Slot(i)) => {
+                let fields = self.fields(content);
+                draft.line(shell, entry_problems(draft, &fields, &folder, i).into_iter().chain(unplaced(draft, &fields, &folder)))
+            }
             _ => String::new(),
         };
-        let fault = Draft::unsaid(fault, &draft.pane_line(shell, &self.fields(content), false));
         let detail = draft.with_words(shell, |words| {
-            // (Why the last mark asked of the entry wasn't made: the strip's refusal. What the rules have against the
-            // entry is its pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            // (Why the last mark asked of the entry wasn't made: the strip's refusal, said before what is against it.)
             let problem = notice.unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), fault: fault.into(), ..Default::default() } };
             let record = content.chip(chip.id);

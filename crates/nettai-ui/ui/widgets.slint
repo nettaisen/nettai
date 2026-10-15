@@ -130,8 +130,8 @@ export component Note inherits Text {
 }
 
 // A build's problem's mark (docs/design/app-ui.md §2.66): a square of the error red, as a tab's in the bar. It goes
-// before what says something is wrong with a build as it stands (an item's row, a pane's header, the ruleset's select,
-// a build's line in a list, the lobby's, Play's); a refusal, why what was asked wasn't done, has none.
+// before what says something is wrong with a build as it stands (a strip's top right, a phone's pane's header, a build's
+// line in a list, the lobby's, Play's); a refusal, why what was asked wasn't done, has none.
 export component ProblemMark inherits Rectangle {
     width: 5px;
     height: 5px;
@@ -174,11 +174,11 @@ export component Message inherits Rectangle {
     }
 }
 
-// What is wrong with a build as it stands, said in its editor (docs/design/app-ui.md §2.66): in the header of the pane
-// of the part of the build it is about (an item of it, its name red on its row, or the whole), at a strip's top right
-// of the item it describes, and by the ruleset's select what the ruleset has against the build. One look for all: the
-// problem's mark, then its words in the error red, at the right of the place it has (which is there when it says
-// nothing: nothing moves when it does), cut with an ellipsis where they don't fit.
+// What is wrong with a build as it stands, said in its editor (docs/design/app-ui.md §2.66): at a strip's top right of
+// the item it describes (the ruleset's with the game's rules'), and on a phone, which has no strip, in the header of the
+// pane of the part of the build it is about (the game's rules' alone). One look for both: the problem's mark, then its
+// words in the error red, at the right of the place it has (which is there when it says nothing: nothing moves when it
+// does), cut with an ellipsis where they don't fit.
 export component ProblemNote inherits Message {
     mark: true;
     horizontal-alignment: right;
@@ -186,8 +186,8 @@ export component ProblemNote inherits Message {
 
 // Why what was asked of the item a build editor's strip describes wasn't done, or can't be ("Needs 70 MB", "Giga
 // limit reached", "Overlaps a program"): at the strip's top right in the error red, with no problem's mark (§2.66).
-// Every tab's strip has it in the same place. Where there is none, `problem`, what the game's rules have against the
-// item, said as a problem is (`ProblemNote`): it is its pane's header's to say too.
+// Every tab's strip has it in the same place. Where there is none, `problem`, what the build's problems have against
+// the item (the ruleset's among them), said as a problem is (`ProblemNote`).
 export component Refusal inherits Rectangle {
     in property <string> text;
     in property <string> problem;
