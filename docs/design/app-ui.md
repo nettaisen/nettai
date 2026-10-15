@@ -1140,10 +1140,10 @@ Each is settled unless the user changes it.
     - *Where:* one small word, CLEAR (クリア), in the ALL and NONE words' letters (§2.69; `WordButton`), at the right
       end of a pane's header on each of the four tabs: the folder's (after the counts, its word where they would end;
       the counts on their own line under the title and CLEAR where the language leaves the one line no room, as
-      before), the patch cards' (after the counts), the board's (the right end of the key's first line under it, §2.72;
+      before), the patch cards' (after the counts), the board's pane's header (§2.72;
       PROGRAMS' title line where the game draws no board) and the auto battle places' (its title's line). A phone's:
-      at the right end of the folder's and the cards' counts' box's first line, of the board's key's and of the auto
-      battle places' problem line. Nothing moves for it: it is on a line
+      at the right end of the folder's and the cards' counts' box's first line, of the board's pane's header and of the
+      auto battle places' problem line. Nothing moves for it: it is on a line
       that was there, the header's title or problem line cut short of it.
     - *What it does:* empties that part of the build in one change: every folder entry, its Regular and tag marks
       with it; every placed program (the board kept; a piece in hand dropped); every patch card (EXE4: every slot);
@@ -1159,9 +1159,11 @@ Each is settled unless the user changes it.
     probably go on the tableau and not on the program parts list" and "selecting a color on the palette shouldn't
     pick up the navicust part actually" (taking back §2.65's "selecting the color in the ncp editor should also pick
     up the ncp").
-    - *CLEAR on the board:* at the right end of the key's first line under the board, its word where the board ends;
-      the key takes its two lines where the language leaves the one no room beside CLEAR. Where the game draws no
-      board, at PROGRAMS' title line's right end as before.
+    - *CLEAR on the board, in its pane's header:* first at the right end of the key's first line under the board;
+      then (the user: "clear on the navicust editor should be on the top right in the header which you should add so
+      it matches how it looks everywhere else") the board's pane has a header as the folder's and the cards' panes
+      have, NAVICUST (in the cursor's color while the board has the focus, as FOLDER is), 44 tall (a phone's 36), and
+      CLEAR at its right end where theirs is. Where the game draws no board, at PROGRAMS' title line's right end.
     - *A color's box chooses alone:* a click or a tap on one of a program's color boxes chooses that color, as Left
       and Right do; a click on the row (or Enter) takes the part.
     (§6 Builds; docs/app.md §8.)
@@ -1621,8 +1623,8 @@ DUPLICATE, RENAME and DELETE.
   error red, the row dimmed (the ruleset holds it back: it isn't taken, the strip's top right saying so; a copy a
   build has placed all the same is red, §2.68); then at the row's right edge
   its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing it alone (§2.72); its name in the error red where a placed copy has a problem, which the strip's top right
-  says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of the board's key's first
-  line (§2.72), which takes every placed program off the board, asked first (X; §2.71); Effects and Bugs at
+  says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of the board's pane's
+  header, NAVICUST (§2.72), which takes every placed program off the board, asked first (X; §2.71); Effects and Bugs at
   the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white

@@ -709,10 +709,12 @@ export component NavicustTab inherits Rectangle {
     // (Under the strip, as the folder's panes are; a phone has no strip.)
     property <length> top: -4px;
     property <length> body-y: Theme.phone ? 0px : root.top + 104px + 12px;
-    property <length> key-y: root.body-y + root.board-height + 12px;
+    // The board's pane's header, as the folder's and the cards' panes have: NAVICUST, and CLEAR at its right end.
+    property <length> head-height: NavicustView.board ? (Theme.phone ? 36px : 44px) : 0px;
+    property <length> board-top: root.body-y + root.head-height;
+    property <length> key-y: root.board-top + root.board-height + 12px;
     property <length> key-width: 4 * 20px + 3 * 16px + board-key-word.preferred-width + line-key-word.preferred-width + plus-key-word.preferred-width + (NavicustView.ring ? ring-key-word.preferred-width : -36px);
-    // (CLEAR is at the first line's right end, 16 from the key: the line breaks for it too.)
-    property <int> key-lines: root.key-width + 16px + clear.width - clear.pad > root.board-width ? 2 : 1;
+    property <int> key-lines: root.key-width > root.board-width ? 2 : 1;
     property <length> key-height: root.key-lines == 2 ? 36px : 14px;
     // (The screenshot pass is told if the key doesn't fit even on two lines.)
     property <bool> key-over: Theme.audit && root.key-lines == 2 && max(line-key.x + line-key.width, ring-key.x + ring-key.width) > root.board-width + 0.5px;
@@ -918,13 +920,23 @@ export component NavicustTab inherits Rectangle {
         x: 0;
         y: root.body-y;
         width: root.board-width;
-        height: root.board-height;
+        height: root.head-height + root.board-height;
         visible: NavicustView.board;
+    }
+
+    Label {
+        x: 12px;
+        y: root.body-y;
+        width: max(0px, clear.x + clear.pad - 12px - self.x);
+        height: root.head-height;
+        visible: NavicustView.board;
+        text: @tr("NAVICUST");
+        color: NavicustView.in-list ? Theme.muted : Theme.cursor;
     }
 
     if NavicustView.board: Rectangle {
         x: 0;
-        y: root.body-y;
+        y: root.board-top;
         width: root.board-width;
         height: root.board-height;
         // (EXE6's board, outlined in white within its ring.)
@@ -1155,12 +1167,13 @@ export component NavicustTab inherits Rectangle {
 
     // CLEAR (docs/design/app-ui.md §2.71; the user: "you should add clear for navicust/folder/patch cards/abd"): every
     // placed program taken off the board (the board kept), asked first; dim where none is. With the board, at the
-    // right end of the key's first line under it, its word where the board ends (the user: "navicust clear should
-    // probably go on the tableau and not on the program parts list"); where the game draws none, at the right end of
-    // the programs' title's line.
+    // right end of its pane's header, as the folder's and the cards' are (the user: "navicust clear should probably go
+    // on the tableau and not on the program parts list", then "clear on the navicust editor should be on the top right
+    // in the header which you should add so it matches how it looks everywhere else"); where the game draws none, at
+    // the right end of the programs' title's line.
     clear := WordButton {
-        x: NavicustView.board ? root.board-width + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
-        y: NavicustView.board ? root.key-y - 1px : root.list-y + 2px;
+        x: NavicustView.board ? root.board-width - 12px + self.pad - self.width : root.list-x + root.list-width + self.pad - self.width;
+        y: NavicustView.board ? root.body-y + (root.head-height - self.height) / 2 : root.list-y + 2px;
         nav: "clear";
         text: @tr("CLEAR");
         enabled: NavicustView.clearable;
