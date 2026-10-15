@@ -596,14 +596,20 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 **The screen has three parts**, one shown at a time (`PlayView.part`), and two things over a match:
 
 - **The builds** (docs/design/app-ui.md §2.50: Play and the Builds list made one; §2.52: in three zones; §2.57:
-  a build and three ways to play it). + NEW BUILD over the player's builds of the selected game as a list
+  a build and the ways to play it). + NEW BUILD over the player's builds of the selected game as a list
   (`play::shelved`: `builds::shelf::load`, its `BuildRow`s, each read from its file and checked by the game's
   rules; one that can't be played says how many problems it has, in the error red); the chosen one's overview
-  beside it (the wide sheet, §8) with EDIT and ⋯ in its header (`BuildOverview.tools`, the room it leaves them);
-  and under both three tiles of one size (`Button`'s `tile`, 72 tall; `JoinTile`): PRACTICE, HOST (the main
-  action, `invite`: an invite, as CREATE INVITE was) and JOIN (the code's field, `code`, its go button, `join`,
-  and under its word the link "Direct connect…", `direct`, to the direct connection's dialog), the reserved line
-  under them. The chosen build is the one under the list's cursor, remembered by game; the
+  beside it (the wide sheet, §8) with PRACTICE, EDIT and ⋯ in its header (`BuildOverview.tools`, the room it
+  leaves them); and under both two tiles of one size, 56 tall, in a panel's look (play.slint's `Tile`: the
+  panel's fill and line, the cut corner, the accent, the word in the display face): HOST (`HostTile`, the main
+  action: the main action's color on its line, its accent and its word, a faint tint of it in the fill, a main
+  button's look when pressed or focused) is a split button, HOST itself (`invite`: an invite, as CREATE INVITE
+  was) and its ▾ (`host-menu`, `Shell::pick_menu`: "Host with a code", HOST's own, and "Host directly", this
+  machine listening on `session::DIRECT_PORT`, choices heard as `host-menu`'s); JOIN (`JoinTile`) has one field
+  (`code`) for an invite's code or a direct host's address, and its go arrow (`join`): `play::joining` reads
+  the field, an address (a host or an IP and its port, an IPv6 one in brackets) joining it directly, text
+  without an address's marks (`:`, `.`, `[`) an invite's code, and text with them that isn't an address
+  `UserError::BadAddress`. The reserved line is under the tiles. The chosen build is the one under the list's cursor, remembered by game; the
   overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD and RENAME open the
   name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
   (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
@@ -614,19 +620,19 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   once, Cancel focused; EDIT opens the build in Builds' editor (`screens::builds::open(shell, ScreenId::Play,
   at)`), whose Back comes back here with it still chosen; PRACTICE goes straight into a practice battle on it
   (`screens::practice::open`, by the build's name), whose EXIT comes back here too (§15). With no build of the
-  game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, and each tile says
-  "Make a build first." when pressed (`UserError::NoBuild`); a build that can't be played, why. Right from the
-  list goes to EDIT and Tab goes in reading order (`Screen::route`, §11). On a phone the list is one box of the
-  chosen build, which opens the builds as a sheet, EDIT and ⋯ under it, then the three tiles one under the other,
-  and no overview. The field keeps what is typed as a code: capitals, a code's six characters, shown in threes,
-  whatever it was typed with (`code_typed`, `code_shown`). A pad can't type: its confirm on the field opens the
-  code as six boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through
-  a box's characters (the alphabet codes are written in), and a character typed goes into the box and on to
-  the next. (A box is a list to the app's focus, its rows all in one place: `CodeBox`, `Nav::set_row`.) DIRECT
-  CONNECT opens a dialog (a `DialogFrame` in `PlayOverlay`, its scope `direct.`): this machine's address with
-  COPY, and HOST; an address's field, and CONNECT.
-- **Waiting** for the other player: the invite's code (a direct host's address), large, in fixed-width type,
-  with COPY CODE and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
+  game + NEW BUILD is the one main action (HOST takes the normal look), the focus is on it, PRACTICE, EDIT and ⋯
+  aren't there, and HOST and JOIN say "Make a build first." when pressed (`UserError::NoBuild`); a build that
+  can't be played, why. Right from the list goes to PRACTICE and Tab goes in reading order (`Screen::route`,
+  §11). On a phone the list is one box of the chosen build, which opens the builds as a sheet, PRACTICE, EDIT
+  and ⋯ in a row under it, then the two tiles one under the other, and no overview. The field keeps what is
+  typed as it was typed, without spaces (`field_typed`); a code is taken in capitals, its six characters,
+  whatever it was typed with (`code_typed`). A pad can't type: its confirm on the field opens the code as six
+  boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through a box's
+  characters (the alphabet codes are written in), and a character typed goes into the box and on to the next.
+  (A box is a list to the app's focus, its rows all in one place: `CodeBox`, `Nav::set_row`.) The direct
+  connection's dialog is gone (§2.57): hosting directly is HOST's ▾, joining a host JOIN's field.
+- **Waiting** for the other player: the invite's code (a direct host's address, with "Send this address to your
+  opponent." under it), large, in fixed-width type, with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
   is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
   stands still; Practice owns its battle, starts its sets over and hears its menu), with Play's rows at the
   top of the practice menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
@@ -823,8 +829,8 @@ the window's thread (§1); hiding has none. The same run with the host's timer l
 time, its link read as down from the third second, and its match stood still (0 ticks for six or seven
 seconds); the link and the match both picked up when the window came back.
 
-The signaling server isn't deployed (with none named, HOST and JOIN say the server can't be reached, and
-JOIN's "Direct connect…" works). Run it locally:
+The signaling server isn't deployed (with none named, HOST and a code in JOIN's field say the server can't be
+reached, and "Host directly" on HOST's ▾ and an address in JOIN's field work). Run it locally:
 
     cd signaling && npx wrangler dev        # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
