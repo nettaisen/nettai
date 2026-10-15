@@ -746,14 +746,18 @@ Each is settled unless the user changes it.
       stuff"): everything allowed, Versions one per build, both versions allowed; it is a new lobby's,
       and a player's until they pick another. Then Mixed (everything allowed, Versions mixed), one for each version
       (named for it: "Gregar" allows Gregar's own things alone, one per build), and No patch cards (Standard with no
-      patch card allowed). A preset can't be changed; DUPLICATE makes the player's own copy of it. *The player's
+      patch card allowed). **Since renamed, by the community's names** (2026-10-15; the user: "no patch card rules is
+      known as "senior class". patch card rules is known as "masters class". mixed rules is known as "unrestricted".
+      get rid of version only rules"): Masters class (was Standard; the first), Senior class (was No patch cards),
+      Unrestricted (was Mixed); the presets of one version alone are gone (the page's quick choices still make one).
+      A preset can't be changed; DUPLICATE makes the player's own copy of it. *The player's
       own* are named by them and kept as files, one per ruleset, by game (docs/app.md §8), as builds are.
     - *What a ruleset does to a build:* a build that holds something its ruleset doesn't allow can't be played
       under it. Each thing is a problem of the build as a rule's break is, one for each item ("Bass isn't
       allowed", "TenguCross isn't allowed"): the lobby's line says the first and READY is refused, the build
       editor's header counts them, and the item is marked where the editor shows it. Nothing is taken out of a
       build to play it. **So Patch cards off is gone, and it worked otherwise**: with it off each build was played
-      without its cards; now a ruleset that allows no patch cards (the No patch cards preset) refuses a build that
+      without its cards; now a ruleset that allows no patch cards (Senior class, once No patch cards) refuses a build that
       holds any, and the player takes them out, or brings another build. A ruleset that allows some cards and not
       others reads the same way, as the user's "allowed patch cards" asks.
     - *A build's souls and Crosses* were its version's, all of them, until docs/design/versions.md §2.1 was

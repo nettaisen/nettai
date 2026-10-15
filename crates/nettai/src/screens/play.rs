@@ -952,6 +952,10 @@ impl Play {
             && let Some(ruleset) = &live.ruleset
         {
             self.check_builds(shell, Some(shelf::Under { rulesets: &rulesets, ruleset }));
+            // (A joiner viewing the host's ruleset sees each change as it comes.)
+            if let Some(page) = self.rules.as_mut() {
+                page.follow(shell, ruleset);
+            }
         }
         // (The build's problem in the player's words: the Builds screen's for each kind.)
         if live.problem != self.live.problem || live.ruleset != self.live.ruleset {

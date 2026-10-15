@@ -3530,6 +3530,6 @@ which builds may play it, so the simulation never reads it.
   a card's variant). Nothing is taken out of a build.
   It is nettai-match's, as the rules' `build_check` is beside `validate`: what is held back is the same question for
   every game and every category, so no game's Luau answers it.
-- **Patch cards off** is a ruleset that allows no patch cards (`no_patch_cards`): a build that holds cards is
+- **Patch cards off** is a ruleset that allows no patch cards (the `senior` preset, Senior class): a build that holds cards is
   refused under it, where before it was played without them. `Side::without_patch_cards` stays for the NaviCust
   tab's effects alone.
