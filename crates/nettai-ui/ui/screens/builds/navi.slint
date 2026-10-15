@@ -9,7 +9,7 @@ import { Theme } from "../../theme.slint";
 import { Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Note, Stepper, Select, Button } from "../../widgets.slint";
-import { VersionTag, VersionMark } from "../../build.slint";
+import { VersionTag } from "../../build.slint";
 
 // One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
 // by doesn't allow it (docs/design/app-ui.md §2.59).
@@ -27,15 +27,14 @@ export struct NaviChoice {
     offered: bool,
 }
 
-// One of the forms the selector offers: its face, its name, the version it is one's own (its mark), whether the
-// build has it, and whether the build's problems are about it (the ruleset the player plays by doesn't allow it, or
-// it is another version's under one version per build). Its place: its column and row among its fact's rows, and
+// One of the forms the selector offers: its face, its name, whether the build has it, and whether the build's problems
+// are about it (the ruleset the player plays by doesn't allow it, or it is another version's under one version per
+// build). Its place: its column and row among its fact's rows, and
 // how many groups' heads are over it; `head`, the version's name over it where it is its group's first (the forms
 // are grouped by version, in the groups' order; those of none last, under a head's room with no name).
 export struct NaviForm {
     face: image,
     name: string,
-    version: VersionTag,
     head: VersionTag,
     column: int,
     row: int,
@@ -145,8 +144,8 @@ component NaviCardView inherits Rectangle {
 }
 
 // A form's row in the selector, as tall as the editor's lists' rows (`Theme.list-row`): a check mark (the build's or
-// not), its face, its name, and the mark of the version it is one's own at the right (a square of its color where the
-// row has no room for the name); its name in the error red where the build's problems are about it.
+// not), its face, its name; its name in the error red where the build's problems are about it. (It has no mark of its
+// version: its group's head, in the version's color, says it. The user: "drop the selector's per-row tags".)
 component FormRow inherits Rectangle {
     in property <NaviForm> form;
     in property <int> nav-index;
@@ -183,11 +182,9 @@ component FormRow inherits Rectangle {
         opacity: root.form.chosen ? 1 : 0.45;
     }
 
-    property <length> name-x: face.x + face.width + 8px;
-    property <length> name-room: max(0px, root.width - root.name-x - 8px);
     Text {
-        x: root.name-x;
-        width: max(0px, root.name-room - (version.width > 0 ? version.width + 8px : 0px));
+        x: face.x + face.width + 8px;
+        width: max(0px, root.width - self.x - 8px);
         text: root.form.name;
         color: root.form.flagged ? Theme.bad : root.form.chosen ? Theme.text : Theme.dim;
         font-family: Theme.body;
@@ -195,15 +192,6 @@ component FormRow inherits Rectangle {
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
-    }
-
-    version := VersionMark {
-        x: root.width - 8px - self.width;
-        y: (parent.height - self.height) / 2;
-        tag: root.form.version;
-        // (The name keeps 48 at least.)
-        short: self.natural-width + 8px + 48px > root.name-room;
-        opacity: root.form.chosen ? 1 : 0.6;
     }
 
     hit := Focusable {
@@ -329,7 +317,9 @@ export component NaviTab inherits Rectangle {
         width: root.panel-width - 32px;
         spacing: 8px;
         for group in NaviView.form-groups: Rectangle {
-            height: 20px + group.heads * root.form-head + group.rows * root.form-pitch - Theme.list-gap;
+            // (Where its rows start: under its heading, and under its problem where it has one.)
+            property <length> top: 20px + (group.problem == "" ? 0px : problem.preferred-height + 4px);
+            height: self.top + group.heads * root.form-head + group.rows * root.form-pitch - Theme.list-gap;
             heading := Text {
                 x: 0;
                 y: 0;
@@ -344,26 +334,26 @@ export component NaviTab inherits Rectangle {
                 vertical-alignment: center;
             }
 
-            // (What is wrong with the fact, by its heading: its first problem, in the error red.)
-            Text {
-                x: heading.width + 12px;
-                y: 0;
-                width: max(0px, parent.width - self.x);
-                height: 16px;
+            // (What is wrong with the fact, under its heading: its first problem, in the error red, whole: a long
+            // one, as EXE5's mix of the teams' souls, takes as many lines as it needs.)
+            problem := Text {
+                x: 0;
+                y: 18px;
+                width: parent.width;
+                height: group.problem == "" ? 0px : self.preferred-height;
+                visible: group.problem != "";
                 text: group.problem;
                 color: Theme.bad;
                 font-family: Theme.body;
                 font-size: 12px;
                 font-weight: 500;
-                horizontal-alignment: right;
-                vertical-alignment: center;
-                overflow: elide;
+                wrap: word-wrap;
             }
 
             // (Each version's group under its name, in its color.)
             for form in group.forms: Text {
                 x: 8px;
-                y: 20px + (form.heads - 1) * root.form-head + form.row * root.form-pitch;
+                y: parent.top + (form.heads - 1) * root.form-head + form.row * root.form-pitch;
                 width: parent.width - 16px;
                 height: root.form-head - 2px;
                 visible: form.head.text != "";
@@ -379,7 +369,7 @@ export component NaviTab inherits Rectangle {
 
             for form[j] in group.forms: FormRow {
                 x: form.column * (root.form-width + 8px);
-                y: 20px + form.heads * root.form-head + form.row * root.form-pitch;
+                y: parent.top + form.heads * root.form-head + form.row * root.form-pitch;
                 width: root.form-width;
                 height: Theme.list-row;
                 form: form;
