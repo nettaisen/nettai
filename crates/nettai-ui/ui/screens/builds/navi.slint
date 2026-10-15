@@ -2,11 +2,12 @@
 // beside it the build's navi: the face its round starts with, its HP and its element; under them the build's other
 // choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
 // (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
-// offered, each a row of the editor's lists, checked where it is the build's, under its version's head); then the
-// note of what is the game's own navi's alone, right after whatever is over it. What is wrong with the build is said
-// where it is (docs/design/app-ui.md §2.66): a fact's heading and a form a problem is about in the error red, and in
-// the note's place, kept for it, what the build's problems have against the form under the cursor or the pointer,
-// else against the navi. On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
+// offered, each a row of the editor's lists, checked where it is the build's, under its version's head, a list's ALL
+// and NONE at its heads' right end); then the note of what is the game's own navi's alone, right after whatever is
+// over it. What is wrong with the build is said where it is (docs/design/app-ui.md §2.66): a fact's heading and a form
+// a problem is about in the error red, and in the note's place, kept for it, what the build's problems have against
+// the form under the cursor or the pointer, else against the navi. On a phone the panel is over the grid. Its Rust
+// half is src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
@@ -47,6 +48,13 @@ export struct NaviForm {
     chosen: bool,
     flagged: bool,
     banned: bool,
+    // Its group's ALL and NONE, on its head, where it is its group's first in a list grouped by version (`set`, their
+    // focus keys' index; -1, none), how many columns its head spans, and whether ALL would put a form in (`all`) and
+    // NONE take one out (`none`).
+    set: int,
+    span: int,
+    all: bool,
+    none: bool,
 }
 
 // A fact of forms the build chooses: its name in capitals ("CROSSES"), how many it has of its room ("3/5"; none for
@@ -64,6 +72,11 @@ export struct NaviFormGroup {
     heads: int,
     forms: [NaviForm],
     at: int,
+    // The list's ALL and NONE on its heading's line, where its forms aren't grouped by version (`set`; -1, none), and
+    // whether each would do anything.
+    set: int,
+    all: bool,
+    none: bool,
 }
 
 // What the tab shows: src/screens/builds/navi.rs sets these.
@@ -225,6 +238,70 @@ component FormRow inherits Rectangle {
         nav: "form";
         nav-index: root.nav-index;
         describes: true;
+    }
+}
+
+// A list of forms' ALL and NONE (docs/design/app-ui.md §2.69; the user: "the souls/crosses should be able to select
+// all/none"): two words in the version heads' letters at the right end of the line they are on, a hairline between,
+// each its own control (`forms-all`, `forms-none`, of `set`); muted, dim where it would do nothing, the cursor's color
+// under the pointer. Each takes a little more than its line, a phone's more to be tapped, and nothing moves for it.
+component FormPicks inherits Rectangle {
+    in property <int> set: -1;
+    in property <bool> all;
+    in property <bool> none;
+    property <length> reach: Theme.phone ? 6px : 2px;
+    property <length> pad: 6px;
+    height: 16px;
+    width: all-word.preferred-width + none-word.preferred-width + 4 * root.pad + 1px;
+    visible: root.set >= 0;
+    all-word := Text {
+        x: root.pad;
+        width: self.preferred-width;
+        text: @tr("ALL");
+        color: all-hit.has-hover ? Theme.cursor : root.all ? Theme.muted : Theme.dim;
+        font-family: Theme.display;
+        font-size: 10px;
+        font-weight: Theme.display-bold;
+        letter-spacing: 0.8px;
+        vertical-alignment: center;
+    }
+
+    Rectangle {
+        x: all-word.preferred-width + 2 * root.pad;
+        y: 3px;
+        width: 1px;
+        height: 10px;
+        background: Theme.line;
+    }
+
+    none-word := Text {
+        x: all-word.preferred-width + 3 * root.pad + 1px;
+        width: self.preferred-width;
+        text: @tr("NONE");
+        color: none-hit.has-hover ? Theme.cursor : root.none ? Theme.muted : Theme.dim;
+        font-family: Theme.display;
+        font-size: 10px;
+        font-weight: Theme.display-bold;
+        letter-spacing: 0.8px;
+        vertical-alignment: center;
+    }
+
+    all-hit := Focusable {
+        x: 0;
+        y: -root.reach;
+        width: all-word.preferred-width + 2 * root.pad;
+        height: 16px + 2 * root.reach;
+        nav: root.set >= 0 ? "forms-all" : "";
+        nav-index: root.set;
+    }
+
+    none-hit := Focusable {
+        x: all-hit.width + 1px;
+        y: -root.reach;
+        width: none-word.preferred-width + 2 * root.pad;
+        height: 16px + 2 * root.reach;
+        nav: root.set >= 0 ? "forms-none" : "";
+        nav-index: root.set;
     }
 }
 
@@ -441,21 +518,42 @@ export component NaviTab inherits Rectangle {
                 vertical-alignment: center;
             }
 
-            // (Each version's group under its name, in its color.)
-            for form in group.forms: Text {
-                x: form.column * (parent.form-width + 8px) + 8px;
+            // (A list whose forms aren't grouped by version: its ALL and NONE at its heading's right end.)
+            whole := FormPicks {
+                x: parent.width - self.width - 2px;
+                y: 0;
+                set: group.set;
+                all: group.all;
+                none: group.none;
+            }
+
+            // (Each version's group under its name, in its color; a list's ALL and NONE of the group at its head's right
+            // end, the head as wide as the columns the group is in.)
+            for form in group.forms: Rectangle {
+                x: form.column * (parent.form-width + 8px);
                 y: parent.top + (form.heads - 1) * root.form-head + root.head-lead + form.row * root.form-pitch;
-                width: parent.form-width - 16px;
+                width: form.span * (parent.form-width + 8px) - 8px;
                 height: 16px;
-                visible: form.head.text != "";
-                text: form.head.text;
-                color: form.head.tone;
-                font-family: Theme.display;
-                font-size: 10px;
-                font-weight: Theme.display-bold;
-                letter-spacing: 0.8px;
-                vertical-alignment: center;
-                overflow: elide;
+                Text {
+                    x: 8px;
+                    width: max(0px, (form.set >= 0 ? picks.x - 8px : parent.width - 8px) - self.x);
+                    visible: form.head.text != "";
+                    text: form.head.text;
+                    color: form.head.tone;
+                    font-family: Theme.display;
+                    font-size: 10px;
+                    font-weight: Theme.display-bold;
+                    letter-spacing: 0.8px;
+                    vertical-alignment: center;
+                    overflow: elide;
+                }
+
+                picks := FormPicks {
+                    x: parent.width - self.width - 2px;
+                    set: form.set;
+                    all: form.all;
+                    none: form.none;
+                }
             }
 
             for form[j] in group.forms: FormRow {

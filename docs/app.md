@@ -1220,7 +1220,13 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   strip of each of them, or the note's place, says it. Enter, a click or a tap is `activate("form", i)`:
   `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a list takes it out, or puts it in where the list
   has room (the Cross window's five, the soul button's twelve: the setup's `form[5]` and `form[12]`), in the
-  battle's order; a full list refuses one more.
+  battle's order; a full list refuses one more. A list (not the one form always chosen) has ALL and NONE (design
+  §2.69): two small words at the right end of each version's head where its forms are grouped by version, a group of
+  none's head too, else of the fact's heading (`NaviForm.set`, `NaviFormGroup.set`: the index of `Navi::sets`, the
+  fact and the group's forms), each a control of its own (`forms-all`, `forms-none`), dim where it would do nothing
+  (`all`, `none`). `activate("forms-all", i)` is `Draft::choose_forms` (`Builds::choose_forms`, one change): the
+  group's forms put in in order while the list has room, the rest left out and refused (the refusal's sound; the Pick
+  sound where all went in); `forms-none` takes the group's out.
 - **The overview's forms** (docs/design/app-ui.md §2.62): `BuildSheet::forms`, each fact of forms the build
   chooses in the setup's order and each in the build's own (the battle's), a face and its version's tag (a bar in
   its color under the face); none for a navi that doesn't change form. The wide sheet's abilities and bugs are a
@@ -1393,6 +1399,7 @@ one Slint file and one Rust module**, as a screen is for the shell:
 | `edit(|content, side| -> bool)` | **How a tab changes the build.** The closure says whether it did; the draft is checked again at once |
 | `choose_navi(navi)` | The navi changed, with what is kept aside moved |
 | `choose_form(fact, form)` | A form of the Navi tab's selector chosen, or taken out of a list (`Builds::choose_form`) |
+| `choose_forms(fact, forms, on)` | ALL or NONE of a group of the selector's forms, as one change (`Builds::choose_forms`): whether it changed and how many were left out for want of room |
 | `allows(fact, h)`, `allows_item(fact, item)` | Whether the ruleset the player plays by allows a definition, or an item (a card's variant) |
 | `with_words(shell, |words| ...)` | The catalogs' and the game's words in the language shown |
 

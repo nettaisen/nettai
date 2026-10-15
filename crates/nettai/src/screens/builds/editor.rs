@@ -120,6 +120,19 @@ impl Draft {
         self.edit(|content, side| kit.builds.choose_form(content, side, fact, form))
     }
 
+    /// Put forms `forms` of the build's list `fact` of forms all in (`on`: ALL), or take them all out (NONE), as one
+    /// change (`Builds::choose_forms`). Whether it changed, and how many were left out for want of room.
+    pub fn choose_forms(&mut self, fact: &str, forms: &[nettai_content_api::FormHandle], on: bool) -> (bool, usize) {
+        let kit = self.kit.clone();
+        let mut left = 0;
+        let changed = self.edit(|content, side| {
+            let (changed, l) = kit.builds.choose_forms(content, side, fact, forms, on);
+            left = l;
+            changed
+        });
+        (changed, left)
+    }
+
     fn recheck(&mut self) {
         self.check();
         self.changed = true;
