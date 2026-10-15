@@ -469,10 +469,8 @@ impl Settings {
     }
 
     /// The settings as the lobby carries them: the game; whether builds are
-    /// closed; the ruleset (its name: a byte, 0 a preset's id and 1 a
-    /// player's own name, then the text; one version per build; then each
-    /// category it
-    /// holds anything back of, by its fact's name, with the names of what it
+    /// closed; the ruleset (not its name, which stays with the player: one
+    /// version per build; then each category it holds anything back of, by its fact's name, with the names of what it
     /// doesn't allow); whether a background left to the seed is the pool's;
     /// the round wins the set is first to (`n`, a byte), then each of its
     /// `2n − 1` rounds' stage and background by name (empty: from the seed;
@@ -482,12 +480,6 @@ impl Settings {
         let mut w = Writer(&mut out);
         w.put(&self.game);
         w.put(&self.closed_builds);
-        let (kind, name) = match &self.ruleset.name {
-            RulesetName::Preset(id) => (0u8, id),
-            RulesetName::Own(name) => (1u8, name),
-        };
-        w.put(&kind);
-        w.put(name);
         w.put(&self.ruleset.one_per_build);
         let banned = self.ruleset.banned_names(content);
         w.uvarint(banned.len() as u64);
@@ -518,13 +510,6 @@ impl Settings {
         let mut r = Reader::new(bytes);
         let game: String = r.get().map_err(bad)?;
         let closed_builds: bool = r.get().map_err(bad)?;
-        let kind: u8 = r.get().map_err(bad)?;
-        let name: String = r.get().map_err(bad)?;
-        let name = match kind {
-            0 => RulesetName::Preset(name),
-            1 => RulesetName::Own(name),
-            k => return Err(format!("a ruleset's name of kind {k}: 0 is a preset's, 1 a player's own")),
-        };
         let one_per_build: bool = r.get().map_err(bad)?;
         let count = r.uvarint().map_err(bad)?;
         let mut banned = Vec::new();
@@ -562,7 +547,8 @@ impl Settings {
         if content.game() != game || rulesets.game() != game {
             return Err(format!("a match of {game}, and this side has {}'s content", content.game()));
         }
-        let ruleset = Ruleset::of_names(rulesets, content, name, one_per_build, &banned)?;
+        // (Named as this side names its rules: a preset's, else the other player's.)
+        let ruleset = rulesets.named_here(Ruleset::of_names(rulesets, content, RulesetName::Theirs, one_per_build, &banned)?);
         // (The rounds as a match's checks hold them: a stage stated is a
         // link battle's, and one left is the rules' to pick.)
         if let Some(problem) = nettai_match::check::check_rounds(content, &game, &rounds).into_iter().next() {
@@ -1323,10 +1309,15 @@ impl Lobby {
         // (The other is in its lobby: whatever match was played, it has
         // ended it, and needs no more of it.)
         self.tail = None;
-        let settings = match Settings::from_bytes(&self.content, &self.rulesets, settings) {
+        let mut settings = match Settings::from_bytes(&self.content, &self.rulesets, settings) {
             Ok(settings) => settings,
             Err(why) => return self.fail(Failure { reason: Reason::Protocol, detail: format!("can't play: the other side's settings don't read here: {why}") }, true),
         };
+        // (The ruleset comes without its name: where its rules are the ones
+        // this side holds, it keeps this side's name for them.)
+        if settings.ruleset.same_rules(&self.mine.ruleset) {
+            settings.ruleset.name = self.mine.ruleset.name.clone();
+        }
         // The settings are the match's: theirs of a higher stamp are
         // adopted, and of the same stamp where they differ, by the joiner.
         // (The ruleset is the host's: a joiner's change made before it
@@ -1899,16 +1890,26 @@ mod tests {
             hashes.insert(with.hash(&content));
         }
         assert_eq!(hashes.len(), r.presets.len());
-        // A player's own, by its name, holding back a chip and a card by theirs.
+        // A player's own, holding back a chip and a card by their names: its
+        // name stays with the player, and the other side holds it as theirs.
         let mut own = Ruleset::open(RulesetName::Own("Tournament".into()));
         own.one_per_build = true;
         own.set_allowed("folder", &nettai_match::ruleset::Item::of(nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0), false);
         own.set_allowed("patch_cards", &nettai_match::ruleset::Item::of(nettai_match::ids::entry(&content, "exe6", nettai_match::facts::PATCH_CARDS, "starman").unwrap().0), false);
         let owned = Settings { ruleset: own.clone(), ..s.clone() };
-        assert_eq!(read(&owned).unwrap(), owned);
+        let theirs = read(&owned).unwrap();
+        assert_eq!(theirs.ruleset.name, RulesetName::Theirs);
+        assert!(theirs.ruleset.same_rules(&own));
+        assert_eq!(Settings { ruleset: own.clone(), ..theirs.clone() }, owned);
+        assert_eq!(theirs.hash(&content), owned.hash(&content), "both commit to the same");
         let bytes = owned.to_bytes(&content);
         let text = String::from_utf8_lossy(&bytes);
-        assert!(text.contains("Tournament") && text.contains("bass") && text.contains("starman"), "by name: {text}");
+        assert!(!text.contains("Tournament"), "the name doesn't travel: {text}");
+        assert!(text.contains("bass") && text.contains("starman"), "by name: {text}");
+        // (A player's own whose rules are a preset's is that preset there.)
+        let mut like_standard = standard();
+        like_standard.name = RulesetName::Own("Mine".into());
+        assert_eq!(read(&Settings { ruleset: like_standard, ..s.clone() }).unwrap().ruleset, standard());
         let blank = settings(3);
         assert_eq!(read(&blank).unwrap(), blank);
         assert_eq!(settings(1).rounds, vec![RoundSettings::default()]);
@@ -1921,18 +1922,16 @@ mod tests {
         let mut other = s.clone();
         other.game = "exe5".into();
         assert!(read(&other).unwrap_err().contains("no stage"));
-        // (Open builds, and the ruleset as written: a preset's, one per build, nothing held back.)
-        let ruleset = |w: &mut Writer, name: &str| {
+        // (Open builds, and the ruleset as written: one per build, nothing held back.)
+        let ruleset = |w: &mut Writer| {
             w.put(&false);
-            w.put(&0u8);
-            w.put(&name.to_string());
             w.put(&true);
             w.uvarint(0);
         };
         let mut bytes = Vec::new();
         let mut w = Writer(&mut bytes);
         w.put(&"exe6".to_string());
-        ruleset(&mut w, "standard");
+        ruleset(&mut w);
         w.put(&false);
         w.put(&1u8);
         w.put(&"no-such-stage".to_string());
@@ -1943,8 +1942,6 @@ mod tests {
         let mut w = Writer(&mut bytes);
         w.put(&"exe6".to_string());
         w.put(&false);
-        w.put(&1u8);
-        w.put(&"Mine".to_string());
         w.put(&false);
         w.uvarint(1);
         w.put(&"folder".to_string());
@@ -1957,7 +1954,7 @@ mod tests {
         assert!(Settings::from_bytes(&content, &r, &bytes).unwrap_err().contains("no-such-chip"));
         // (What the set is first to is the byte after the game, closed
         // builds, the ruleset and the pool's switch.)
-        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + "mixed".len() + 1 + 1 + 1;
+        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + 1;
         assert_eq!(blank.to_bytes(&content)[first_to], 3);
         for wins in [0, nettai_match::MAX_FIRST_TO + 1] {
             let mut none = blank.to_bytes(&content);
@@ -2225,7 +2222,12 @@ mod tests {
         assert!(lobbies[1].problems().is_empty() && lobbies[1].ready());
         assert!(lobbies[0].set_ruleset(no_chip.clone()));
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        assert_eq!((lobbies[1].settings(), lobbies[1].ready()), (&under, false));
+        // (The joiner holds the host's ruleset without its name: theirs.)
+        let held_there = under.clone();
+        assert_eq!(lobbies[1].settings().ruleset.name, RulesetName::Theirs, "the host's name for it doesn't travel");
+        assert!(lobbies[1].settings().ruleset.same_rules(&no_chip) && !lobbies[1].ready());
+        assert_eq!(Settings { ruleset: no_chip.clone(), ..lobbies[1].settings().clone() }, held_there);
+        assert_eq!(lobbies[0].settings().ruleset.name, no_chip.name, "the host keeps its own name for it");
         assert_eq!(whats(lobbies[1].problems()), [banned.clone()]);
         assert_eq!(lobbies[1].problems()[0].side, Some(0), "this player's own");
         assert_eq!(lobbies[1].side(), &joiner, "nothing is taken out of it");

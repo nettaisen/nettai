@@ -5,7 +5,7 @@
 //! line
 //!
 //! ```text
-//! ffmpeg -hide_banner -nostdin -loglevel error -f nut -i pipe:0
+//! ffmpeg -hide_banner -nostdin -loglevel error -f nut -i pipe:0 -map 0
 //!        -vf scale=out_color_matrix=bt709:out_range=tv:flags=accurate_rnd+full_chroma_int+area,format=yuv420p,setparams=color_primaries=bt709:color_trc=bt709
 //!        -c:v libx264 -preset medium -tune animation -crf 16
 //!        -colorspace bt709 -color_primaries bt709 -color_trc bt709 -color_range tv
@@ -38,7 +38,17 @@
 //!   the stream's RGB gives none, and with `-color_primaries` and
 //!   `-color_trc` alone the MP4 said "unknown" for both.)
 //! - **The sound** is AAC at 192 kb/s, resampled to 48 kHz: the GBA's
-//!   32768 Hz is no rate AAC has.
+//!   32768 Hz is no rate AAC has. Every track of the stream is a track of
+//!   the MP4, in its order (`-map 0`: by itself ffmpeg takes one sound),
+//!   with the titles and the default the stream says (its info packets:
+//!   ffmpeg keeps a stream's metadata and disposition, and the MP4 has the
+//!   title as the track's name and its handler's, the first track enabled
+//!   and the others its alternates).
+//! - **The chapters** the stream says are the MP4's (ffmpeg keeps the
+//!   chapters of its input by default), written both ways players read an
+//!   MP4's chapters: a chapter text track every other track refers to
+//!   (QuickTime's), and Nero's `chpl` box. Nothing more is asked of ffmpeg for them than the
+//!   NUT reader and the MP4 writer it has already.
 //! - **The file** is written beside its place as `NAME.part` and takes its
 //!   name when ffmpeg has ended well, with its index at the front
 //!   (`+faststart`). Canceled, failed or dropped, the child is stopped and
@@ -120,6 +130,8 @@ impl Settings {
             "nut",
             "-i",
             "pipe:0",
+            "-map",
+            "0",
             "-vf",
             &filter,
             "-c:v",

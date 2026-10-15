@@ -135,20 +135,25 @@ impl Group {
     }
 }
 
-/// A ruleset's name: a preset's id (worded in each player's language), or
-/// the name a player gave their own.
+/// A ruleset's name: a preset's id (worded in each player's language), the
+/// name a player gave their own, or the other player's (a lobby's host's,
+/// which the joiner holds: a ruleset's name doesn't go over the wire, the
+/// user: "ruleset name shouldn't travel to the opponent"; where its rules
+/// are a preset's, it is that preset).
 #[derive(Clone, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum Name {
     Preset(String),
     Own(String),
+    Theirs,
 }
 
 impl Name {
-    /// A preset's key in the game's strings' [`TEXT_TABLE`] (none of a
-    /// player's own).
+    /// A preset's key in the game's strings' [`TEXT_TABLE`], or the other
+    /// player's (`theirs`: "Host's ruleset"); none of a player's own.
     pub fn text_key(&self) -> Option<String> {
         match self {
             Name::Preset(id) => Some(format!("preset.{id}")),
+            Name::Theirs => Some("theirs".to_string()),
             Name::Own(_) => None,
         }
     }
@@ -296,6 +301,12 @@ impl Ruleset {
     /// A ruleset that allows everything, named `name`, versions mixed.
     pub fn open(name: Name) -> Ruleset {
         Ruleset { name, one_per_build: false, banned: BTreeMap::new() }
+    }
+
+    /// Whether it allows what `other` does: the same Versions and the same
+    /// items held back, whatever either is named.
+    pub fn same_rules(&self, other: &Ruleset) -> bool {
+        self.one_per_build == other.one_per_build && self.banned == other.banned
     }
 
     /// Whether it allows item `item` of category `fact`.
@@ -587,6 +598,14 @@ impl Rulesets {
     /// The preset named `id`.
     pub fn preset(&self, id: &str) -> Option<&Ruleset> {
         self.presets.iter().find(|p| p.name == Name::Preset(id.to_string()))
+    }
+
+    /// `ruleset` named as this side names its rules: the preset whose rules
+    /// they are, else the other player's ([`Name::Theirs`]). (A lobby's
+    /// ruleset comes over the wire without its name.)
+    pub fn named_here(&self, mut ruleset: Ruleset) -> Ruleset {
+        ruleset.name = self.presets.iter().find(|p| p.same_rules(&ruleset)).map_or(Name::Theirs, |p| p.name.clone());
+        ruleset
     }
 
     /// The first preset: a player's until they pick another.
