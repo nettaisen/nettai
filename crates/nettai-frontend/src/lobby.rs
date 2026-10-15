@@ -759,7 +759,7 @@ pub struct Lobby {
     /// it, typed: checked again whenever the side or the settings change.
     problems: Vec<Problem>,
     /// The nonces this peer draws from (a fresh one each time it reveals).
-    nonces: SplitMix64,
+    nonces: Nonces,
     nonce: u64,
     phase: Phase,
     /// A Hello or a Reveal of the other's that came before this peer could
@@ -803,14 +803,15 @@ pub struct Lobby {
 
 impl Lobby {
     /// A peer's lobby in `role` on `content`, holding `settings` (not ready
-    /// yet) with this player's `side`, its nonces drawn from `entropy`; it
+    /// yet) with this player's `side`, its nonces drawn from `entropy` (the
+    /// system's randomness in play: [`Nonces`] says why it must be secret); it
     /// fails if nothing comes from the other peer for `timeout`. (A joiner's
     /// settings last until it hears the host's, which it adopts.) A host
     /// makes it once its link to the other player is open, with a timeout
     /// longer than its link takes to give a dropped connection up: the
     /// lobby hears nothing while the link is down.
     pub fn new(role: Role, content: &Arc<Content>, settings: Settings, side: Side, entropy: u64, timeout: Duration) -> Lobby {
-        let mut nonces = SplitMix64::new(entropy);
+        let mut nonces = Nonces { entropy, count: 0 };
         let nonce = nonces.next_u64();
         let problems = settings.checked(content, &side).problems;
         Lobby {
@@ -1572,9 +1573,25 @@ pub fn seed(host: u64, join: u64) -> u32 {
     SplitMix64::new(SplitMix64::new(host).next_u64() ^ join).next_u64() as u32
 }
 
-/// A nonce's entropy for a peer: the clock and the process.
-pub fn entropy() -> u64 {
-    std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos() as u64).unwrap_or(0) ^ (std::process::id() as u64) << 32
+/// The nonces a peer reveals, one after another: SHA-256 of its entropy and
+/// how many came before. One revealed says nothing of the next, so the other
+/// peer can't pick its own nonce, before it commits, to make the seed it
+/// wants (a SplitMix64's next output follows from its last). The entropy
+/// must be secret too, and so random (the system's), not the clock's.
+struct Nonces {
+    entropy: u64,
+    count: u64,
+}
+
+impl Nonces {
+    fn next_u64(&mut self) -> u64 {
+        let mut h = Sha256::new();
+        h.update(b"nettai lobby nonce");
+        h.update(self.entropy.to_le_bytes());
+        h.update(self.count.to_le_bytes());
+        self.count += 1;
+        u64::from_le_bytes(h.finalize()[..8].try_into().expect("eight bytes"))
+    }
 }
 
 /// Two peers' lobbies agreeing a match in memory, for tests: what each says
