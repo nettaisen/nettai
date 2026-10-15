@@ -18,6 +18,10 @@ msgstr[0] "{} · 問題 {n}件"
 msgid "Can't be read"
 msgstr "読み込めません"
 
+# The ruleset a build is made for, at its row's right end, where it is no longer there (the player's own, deleted).
+msgid "{} (missing)"
+msgstr "{}（見つかりません）"
+
 # A save made a build: the preset it was put on, then the navi ("Imported as Dark MegaMan").
 msgid "Imported as {} {}"
 msgstr "{}{}として読み込みました"
@@ -603,10 +607,14 @@ msgstr "使えないものが含まれています"
 msgid "It couldn't be checked. Details are in the log file"
 msgstr "チェックできませんでした。詳細はログファイルにあります"
 
-# ---- The ruleset the player plays by (docs/design/app-ui.md §2.59): the editor's select, and what it doesn't allow.
+# ---- The ruleset the build is made for (docs/design/app-ui.md §2.59, §2.73): the editor's select (its note where the
+# ruleset is no longer there), and what it doesn't allow.
 
 msgid "RULESET"
 msgstr "ルール"
+
+msgid "(missing)"
+msgstr "（見つかりません）"
 
 msgid "{} isn't allowed"
 msgstr "{}は使用できません"

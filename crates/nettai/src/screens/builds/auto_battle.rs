@@ -6,7 +6,7 @@
 //! the places alone (its pattern records are the rules' default, nothing learned), so a place holds a chip or nothing.
 //! What a place may hold is the rules' (`validate`: a chip its navi can play, and in a list they hold to one class of
 //! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. So is a chip the
-//! ruleset the player plays by holds back in its auto battle category (the places' own, apart from the folder's;
+//! build's ruleset holds back in its auto battle category (the places' own, apart from the folder's;
 //! docs/design/app-ui.md §2.68), its row greyed and saying "Not allowed"; a build that holds one all the same has each
 //! place of it as its problem. The library offers
 //! what the place being filled can hold, a row a chip: in a list held to one class (the list's `class`: EXE4's and
@@ -216,7 +216,7 @@ impl AutoBattle {
                 .map(|&chip| {
                     let record = content.chip(chip);
                     let copies = data.places.iter().filter(|e| **e == Entry::Chip(chip)).count() as i32;
-                    // (One the ruleset the player plays by holds back here is greyed and says so: it can't be put in,
+                    // (One the build's ruleset holds back here is greyed and says so: it can't be put in,
                     // docs/design/app-ui.md §2.68.)
                     let banned = !draft.allows(auto::PLACES_FIELD, chip.0);
                     let note = if banned {
@@ -363,8 +363,8 @@ impl AutoBattle {
         self.leave_library(shell);
     }
 
-    /// Put row `row`'s chip in place `place`: whether it went in. A chip the rules refuse there, or the ruleset the
-    /// player plays by, isn't put: its row shakes, and the strip says why.
+    /// Put row `row`'s chip in place `place`: whether it went in. A chip the rules refuse there, or the build's
+    /// ruleset, isn't put: its row shakes, and the strip says why.
     fn put_in(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, place: usize) -> bool {
         let Some(&chip) = self.rows.get(row) else { return false };
         let ui = shell.ui();
@@ -378,7 +378,7 @@ impl AutoBattle {
             tab.notice = Some(why);
             tab.show_detail(shell, draft);
         };
-        // (One the ruleset the player plays by holds back here isn't put: docs/design/app-ui.md §2.68.)
+        // (One the build's ruleset holds back here isn't put: docs/design/app-ui.md §2.68.)
         if !draft.allows(auto::PLACES_FIELD, chip.0) {
             refuse(self, shell, draft, ui.global::<BuildWords>().invoke_not_allowed_here().to_string());
             return false;

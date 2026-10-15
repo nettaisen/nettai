@@ -42,6 +42,12 @@ pub(super) enum Naming {
     Rename { name: String },
 }
 
+/// The ruleset a new build of `kit`'s game is made for (NEW BUILD's, an import's): the one the player last chose
+/// (`rulesets::chosen_last`), else the game's first preset.
+fn made_for_new(shell: &Shell, kit: &Kit) -> Option<nettai_match::ruleset::Name> {
+    crate::rulesets::chosen_last(shell, kit).map(|p| p.ruleset.name)
+}
+
 impl Play {
     /// The chosen build, if it reads as one.
     fn chosen_build(&self) -> Option<(&Path, &Build)> {
@@ -223,12 +229,13 @@ impl Play {
         self.reload(shell, Some(build.name.clone()));
     }
 
-    /// A new build from the game's `version`th group (its version's forms), named `name`.
+    /// A new build from the game's `version`th group (its version's forms), named `name`, made for the ruleset the
+    /// player last chose ([`made_for_new`]).
     fn create(&mut self, shell: &mut Shell, kit: &Kit, name: &str, version: usize) {
         let Some(version) = kit.builds.groups.get(version) else { return };
         self.notice.clear();
         match kit.builds.new_build(kit.content(), &version.id) {
-            Ok(side) => self.add(shell, kit, &Build::new(kit.content(), name, side)),
+            Ok(side) => self.add(shell, kit, &Build::new(kit.content(), name, side).made_for(made_for_new(shell, kit))),
             Err(why) => {
                 crate::errors::log("making a new build", &why);
                 shell.fail(UserError::Other);
@@ -279,7 +286,7 @@ impl Play {
         };
         let stem = path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default();
         let name = store::new_name(store::clean_name(&stem).trim_end(), &self.taken());
-        let mut build = Build::new(kit.content(), &name, imported.side);
+        let mut build = Build::new(kit.content(), &name, imported.side).made_for(made_for_new(shell, &kit));
         build.settle(kit.content(), &kit.builds, &crate::screens::builds::editor::navi_only_fields(kit.content()));
         // What the save was put on, where that changed what it held: "Imported as Dark MegaMan".
         let ui = shell.ui();
@@ -320,7 +327,7 @@ impl Play {
         }
     }
 
-    /// DUPLICATE: a copy of the chosen build, named for it.
+    /// DUPLICATE: a copy of the chosen build, named for it, made for its ruleset.
     pub(super) fn duplicate(&mut self, shell: &mut Shell) {
         let (Some(kit), Some((_, build))) = (builds::kit(shell), self.chosen_build()) else { return };
         let copy = build.named(&store::new_name(&build.name, &self.taken()));

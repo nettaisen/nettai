@@ -32,6 +32,9 @@ pub enum Outcome {
     /// The ruleset shown changed and was saved, or is another (a duplicate, now the player's own): it is the one
     /// the player picked, as it now stands.
     Changed(Pickable),
+    /// The ruleset shown (the player's own) was renamed `to` from `from`, and saved: the builds made for it are made
+    /// for it by its new name already (`rulesets::rename`), on disk; it is the one the player picked.
+    Renamed { from: Name, to: Pickable },
     /// The ruleset shown was deleted, and the page closed.
     Deleted,
 }
@@ -410,7 +413,14 @@ impl Page {
                     return Outcome::Nothing;
                 }
                 let name = crate::builds::store::new_name(name, &self.taken());
-                self.change(shell, |r, _| r.name = Name::Own(name))
+                let from = self.shown.ruleset.name.clone();
+                match self.change(shell, |r, _| r.name = Name::Own(name)) {
+                    Outcome::Changed(to) => {
+                        crate::rulesets::rename(shell, &self.kit, &from, &to.ruleset.name);
+                        Outcome::Renamed { from, to }
+                    }
+                    outcome => outcome,
+                }
             }
             _ => Outcome::Nothing,
         }

@@ -394,7 +394,7 @@ fn choose_other(other: bool) -> Step {
 }
 
 /// A ruleset's page over the editor (docs/design/app-ui.md §2.59), on the build `switched` left: from the Navi tab,
-/// EDIT by the ruleset the player plays by (the game's first preset, Standard: `rulesets-preset`, read alone, the
+/// EDIT by the build's ruleset (the game's first preset, Masters class: `rulesets-preset`, read alone, the
 /// reserved line saying so); DUPLICATE, the player's own copy (`rulesets-own`); its category of chips
 /// (`rulesets-chips`); the first chip held back and the first version's quick choice (`rulesets-chips-held`); and
 /// Back, the editor marking what the copy holds back (`rulesets-folder-marked`: the Folder tab, the library's rows).
@@ -416,7 +416,7 @@ fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     add(SETTLE, press("tab", 1));
     add(SETTLE, focus("slot", 0));
     shot(add, "rulesets-folder-marked", Pair::None);
-    // (The player plays by the game's first preset again: the walk in the next language is as this one was.)
+    // (The build is made for the game's first preset again: the walk in the next language is as this one was.)
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
 }
 

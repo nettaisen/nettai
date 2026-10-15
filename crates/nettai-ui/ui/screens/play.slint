@@ -16,7 +16,7 @@ import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "
 import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage, ProblemMark } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
-import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
+import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview, RulesetNote } from "../build.slint";
 
 // The part of Play shown.
 export enum PlayPart {
@@ -247,7 +247,7 @@ component BuildBox inherits Rectangle {
     Text {
         x: root.build.bad ? 25px : 16px;
         y: 42px;
-        width: parent.width - 68px - (root.build.bad ? 9px : 0px);
+        width: parent.width - 68px - (root.build.bad ? 9px : 0px) - (made-for.width > 0 ? made-for.width + 12px : 0px);
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;
@@ -262,6 +262,14 @@ component BuildBox inherits Rectangle {
         x: 16px;
         y: 42px + 5.5px;
         visible: root.build.bad;
+    }
+
+    // (The ruleset it is made for, at the status line's right end.)
+    made-for := RulesetNote {
+        x: parent.width - 52px - self.width;
+        y: 42px;
+        build: root.build;
+        room: parent.width - 68px;
     }
 
     ArrowDown {

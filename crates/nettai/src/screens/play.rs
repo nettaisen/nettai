@@ -125,29 +125,28 @@ pub(crate) fn remembered(shell: &Shell, game: &str) -> Option<String> {
     shell.settings.remembered.get(&remembered_build(game)).cloned()
 }
 
-/// The selected game's builds (`builds::shelf`: its builds folder's files), each checked under the ruleset the
-/// player plays by (`rulesets::played_by`; a lobby checks them again under the host's: `Play::check_builds`), as
-/// Play lists them and Practice's Dummy's build offers them. The screenshot pass lists builds of its own, which
+/// The selected game's builds (`builds::shelf`: its builds folder's files), each checked under the ruleset it is
+/// made for (`rulesets::made_for`; a lobby checks them again under the host's: `Play::check_builds`), as Play lists
+/// them and Practice's Dummy's build offers them. The screenshot pass lists builds of its own, which
 /// have no file: its pictures don't depend on what the player keeps.
 pub(crate) fn shelved(shell: &Shell, kit: &builds::Kit) -> Vec<shelf::Shelved> {
-    shelf::played_by(shell, kit, |under| {
-        let Some(made) = tour::builds(shell.still, kit.content(), &kit.game) else { return shelf::load(shell, kit, under) };
-        let ui = shell.ui();
-        let graphics = kit.ready.graphics(shell.lang);
-        let names = Names::of(kit.content(), &graphics);
-        let words = words::Words { ui: &ui, kit, names: &names };
-        made.into_iter()
-            .map(|(name, side)| {
-                let listed = builds::store::Listed { path: Default::default(), name: name.clone(), text: String::new() };
-                shelf::shelved(&words, listed, Some(builds::store::Build::new(kit.content(), &name, side)), under)
-            })
-            .collect()
-    })
+    let Some(made) = tour::builds(shell.still, kit.content(), &kit.game) else { return shelf::load(shell, kit) };
+    let ui = shell.ui();
+    let graphics = kit.ready.graphics(shell.lang);
+    let names = Names::of(kit.content(), &graphics);
+    let words = words::Words { ui: &ui, kit, names: &names };
+    let own = shelf::Own::of(kit);
+    made.into_iter()
+        .map(|(name, side)| {
+            let listed = builds::store::Listed { path: Default::default(), name: name.clone(), text: String::new() };
+            shelf::shelved(&words, listed, Some(builds::store::Build::new(kit.content(), &name, side)), own.as_ref())
+        })
+        .collect()
 }
 
 /// The settings a lobby of `game` opens with: a set first to `wins` round wins, each place picked from the match's
 /// seed, its background from the background pool, every game's (docs/app.md §1, "The battle's background"), shared
-/// by both players as the round's settings are, under `ruleset` (the one the player plays by: `rulesets::played_by`).
+/// by both players as the round's settings are, under `ruleset` (the one the player's build is made for).
 pub(crate) fn settings(game: &str, wins: u8, ruleset: nettai_match::ruleset::Ruleset) -> Settings {
     Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins, ruleset) }
 }
@@ -451,8 +450,8 @@ impl Play {
 
     /// The chosen build's side, if it can be played; else the space beside the control says it can't (or that
     /// there is no build), and nothing is made. It is played under the ruleset the list checked it under (the one
-    /// the player plays by, what a lobby they host starts on); `joining` another player's lobby, by the game's
-    /// rules alone, as that lobby's ruleset is the host's and the lobby checks the build under it.
+    /// it is made for, what a lobby they host starts on); `joining` another player's lobby, by the game's rules
+    /// alone, as that lobby's ruleset is the host's and the lobby checks the build under it.
     fn side(&self, shell: &Shell, joining: bool) -> Result<Side, UserError> {
         match self.build() {
             None => Err(UserError::NoBuild),
@@ -610,8 +609,10 @@ impl Play {
         let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side(shell, self.joining())) else {
             return self.ended(shell, Some(UserError::Other));
         };
-        // (A lobby starts on the ruleset this player plays by: what the other player adopts if this one hosts.)
-        let Some((rulesets, played)) = builds::kit(shell).and_then(|kit| Some((kit.rulesets()?, rulesets::played_by(shell, &kit)?))) else {
+        // (A lobby starts on the ruleset this player's build is made for, which it was checked under (else the one
+        // they last chose): what the other player adopts if this one hosts.)
+        let made_for = self.build().and_then(|b| b.made_for()).map(|made| made.pick.clone());
+        let Some((rulesets, played)) = builds::kit(shell).and_then(|kit| Some((kit.rulesets()?, made_for.or_else(|| rulesets::chosen_last(shell, &kit))?))) else {
             return self.ended(shell, Some(UserError::Other));
         };
         let first_to = shell.settings.remembered.get(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
@@ -793,8 +794,8 @@ impl Play {
         self.ended = None;
     }
 
-    /// The host picks the match's ruleset (a joiner's lobby changes nothing): it is the one this player plays
-    /// by, remembered.
+    /// The host picks the match's ruleset (a joiner's lobby changes nothing): it is the one this player last chose,
+    /// remembered (the one a new build is made for).
     fn set_ruleset(&mut self, shell: &mut Shell, picked: &Pickable) {
         if let Some(game) = shell.game().map(str::to_string) {
             rulesets::remember(shell, &game, &picked.ruleset.name);
@@ -854,11 +855,18 @@ impl Play {
     }
 
     /// What the ruleset's page did: the ruleset it shows changed, or is another (a copy), and is the match's
-    /// (the host's) and the one the player plays by; or it was deleted, and the game's first preset is.
+    /// (the host's) and the one the player last chose; renamed, the builds made for it are by its new name (their
+    /// files are already); or it was deleted, and the game's first preset is.
     fn ruleset_outcome(&mut self, shell: &mut Shell, outcome: Outcome) {
         match outcome {
             Outcome::Nothing => {}
             Outcome::Changed(picked) => self.set_ruleset(shell, &picked),
+            Outcome::Renamed { from, to } => {
+                for build in &mut self.builds {
+                    build.follow_rename(&from, &to);
+                }
+                self.set_ruleset(shell, &to);
+            }
             Outcome::Deleted => {
                 self.rules = None;
                 if let Some(first) = builds::kit(shell).and_then(|kit| rulesets::pickable(&kit).into_iter().next()) {

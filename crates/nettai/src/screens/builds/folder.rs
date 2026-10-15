@@ -4,7 +4,7 @@
 //! against them and why each chip can't go in (`folders::View`, asked once for a folder as it stands and read
 //! for every row), what is wrong with an entry (`folders::about_entry`), whether an entry can be the Regular
 //! chip or a tag chip (`Checked::mark_problems`), the library's chips and their sorts (`build::library`,
-//! `build::sorted`). The ruleset the player plays by keeps out a chip it holds back (docs/design/app-ui.md §2.68): its
+//! `build::sorted`). The build's ruleset keeps out a chip it holds back (docs/design/app-ui.md §2.68): its
 //! library row is greyed and says "Not allowed" at its end, and putting it in is refused as the rules' refusals are.
 //! A build that holds one all the same (made under another ruleset) has each entry of it as its problem
 //! (`Wrong::NotAllowed`, about every copy).
@@ -211,7 +211,7 @@ impl Folder {
         }
     }
 
-    /// The library's pane: each row with "Not allowed" where the ruleset the player plays by holds its chip back, else
+    /// The library's pane: each row with "Not allowed" where the build's ruleset holds its chip back, else
     /// why its chip can't go in (the game's rules'), greyed either way; else how many the folder holds.
     fn show_library(&self, shell: &Shell, draft: &Draft) {
         let content = draft.content();
@@ -389,8 +389,8 @@ impl Folder {
         self.leave_library(shell, to);
     }
 
-    /// Put row `row`'s chip in the entry being filled: whether it went in. A chip the rules keep out, or the ruleset the
-    /// player plays by, isn't put: its row shakes, and the strip says why.
+    /// Put row `row`'s chip in the entry being filled: whether it went in. A chip the rules keep out, or the build's
+    /// ruleset, isn't put: its row shakes, and the strip says why.
     fn put_in(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) -> bool {
         let Some(&chip) = self.rows.get(row) else { return false };
         let ui = shell.ui();

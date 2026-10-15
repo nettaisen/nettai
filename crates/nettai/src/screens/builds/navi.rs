@@ -138,7 +138,7 @@ impl Tab for Navi {
         let offered = kit.builds.choices_of(&content, draft.side());
         draft.with_words(shell, |words| {
             let names = words.names;
-            // (A navi the ruleset the player plays by doesn't allow is marked: the navi fact's category.)
+            // (A navi the build's ruleset doesn't allow is marked: the navi fact's category.)
             let navi_fact = content.defs.fact_name(PlayerFact::Navi).unwrap_or_default();
             let cards: Vec<NaviCard> =
                 self.navis.iter().map(|&n| NaviCard { name: names.navi(n).into(), face: kit.pictures.navi(n), chosen: n == chosen, banned: !draft.allows(navi_fact, n.0) }).collect();
@@ -267,8 +267,9 @@ impl Tab for Navi {
         });
         self.sets = sets;
         view.set_form_groups(ModelRc::new(VecModel::from(groups)));
-        let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
-        view.set_ruleset(ruleset.unwrap_or_default().into());
+        let (ruleset, missing) = draft.ruleset_shown(shell);
+        view.set_ruleset(ruleset.into());
+        view.set_ruleset_missing(missing);
         view.set_face(face);
         view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
@@ -304,7 +305,7 @@ impl Tab for Navi {
 
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
         match id {
-            // (A navi the ruleset the player plays by doesn't allow is refused: docs/design/app-ui.md §2.68.)
+            // (A navi the build's ruleset doesn't allow is refused: docs/design/app-ui.md §2.68.)
             "navi" => {
                 let Some(&navi) = self.navis.get(index.max(0) as usize) else { return };
                 let navi_fact = Navi::navi_fact(draft.content());
