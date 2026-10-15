@@ -69,8 +69,10 @@ pub struct Folder {
     tagging: Option<usize>,
     /// Why the last mark wasn't made, until the cursor moves.
     notice: Option<String>,
-    /// The chip the strip describes: an entry's, or a row's.
+    /// The chip the strip describes: an entry's, or a row's; and the entry or row the pointer is on, which it
+    /// describes in its place (`editor::hover`).
     described: Option<Described>,
+    hovered: Option<Described>,
     landed: i32,
     refused: i32,
     /// The library's chip being dragged into the folder, as its ghost shows it.
@@ -228,7 +230,7 @@ impl Folder {
         view.set_in_library(self.in_library);
     }
 
-    /// The strip: the chip under the cursor, an entry's or a row's.
+    /// The strip: the chip under the cursor, an entry's or a row's; while the pointer is on one, that one.
     fn show_detail(&self, shell: &Shell, draft: &Draft) {
         let content = draft.content();
         let kit = &draft.kit;
@@ -236,7 +238,13 @@ impl Folder {
         let ui = shell.ui();
         let view = ui.global::<FolderView>();
         let say = ui.global::<nettai_ui::BuildWords>();
-        let (chip, slot) = match self.described {
+        let hovered = self.hovered.filter(|h| match *h {
+            Described::Slot(i) => i < folder.chips.len(),
+            Described::Row(r) => r < self.rows.len(),
+        });
+        // (Why the last mark wasn't made is the focused entry's.)
+        let notice = if hovered.is_some_and(|h| Some(h) != self.described) { None } else { self.notice.clone() };
+        let (chip, slot) = match hovered.or(self.described) {
             Some(Described::Slot(i)) => (folder.chips.get(i).copied().flatten(), Some(i)),
             Some(Described::Row(r)) => (self.rows.get(r).copied(), None),
             None => (None, None),
@@ -249,7 +257,7 @@ impl Folder {
                 let of_size = || draft.checked.problems.iter().find(|p| matches!(p.what, Wrong::FolderSize(_))).map(|p| words.problem(p));
                 of_entry.or_else(|| chip.is_none().then(of_size).flatten())
             });
-            let problem = self.notice.clone().or(problem).unwrap_or_default();
+            let problem = notice.or(problem).unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), ..Default::default() } };
             let record = content.chip(chip.id);
             let held = folder.chips().filter(|c| *c == chip).count() as i32;
@@ -554,6 +562,7 @@ impl Tab for Folder {
         // (A tag waiting for its pair is dropped; a phone's sheet shuts.)
         self.tagging = None;
         self.notice = None;
+        self.hovered = None;
         let ui = shell.ui();
         if ui.global::<FolderView>().get_sheet() {
             ui.global::<FolderView>().set_sheet(false);
@@ -652,7 +661,23 @@ impl Tab for Folder {
         shell.nav.list_to_top(&ui, "lib.rows");
     }
 
+    /// The pointer on an entry or a row of the library: the strip describes its chip.
+    fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
+        let what = match id {
+            "slot" => Described::Slot(index.max(0) as usize),
+            "lib.rows" => Described::Row(index.max(0) as usize),
+            _ => return,
+        };
+        if editor::hover(&mut self.hovered, what, on) {
+            self.show_detail(shell, draft);
+        }
+    }
+
+    /// (The strip follows the focus, the last thing moved, until the pointer goes onto another row.)
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        if self.hovered.take().is_some() && !matches!(id, "slot" | "lib.rows") {
+            self.show_detail(shell, draft);
+        }
         let ui = shell.ui();
         let view = ui.global::<FolderView>();
         match id {

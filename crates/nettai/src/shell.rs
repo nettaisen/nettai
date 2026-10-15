@@ -778,6 +778,8 @@ pub enum NavInput {
     Choose(String, i32, i32),
     /// The pointer went down on a control.
     Point(String, i32),
+    /// The pointer came onto a row that describes what it holds (true), or left it.
+    Hover(String, i32, bool),
     /// A field's edit began with this text, changed to this text, ended on this text.
     EditBegan(String),
     Edited(String),
@@ -1201,7 +1203,7 @@ impl App {
     /// What the UI's callbacks say: a click, an arrow, a field's edit.
     pub fn input(&mut self, input: NavInput) {
         // (A click on a screen that is leaving is on nothing: its controls are going.)
-        if self.shell.swap.is_some() && matches!(input, NavInput::Activate(..) | NavInput::Step(..) | NavInput::Choose(..) | NavInput::Point(..)) {
+        if self.shell.swap.is_some() && matches!(input, NavInput::Activate(..) | NavInput::Step(..) | NavInput::Choose(..) | NavInput::Point(..) | NavInput::Hover(..)) {
             return;
         }
         let ui = self.shell.ui();
@@ -1219,6 +1221,14 @@ impl App {
                 self.shell.nav.used_pointer();
                 let did = self.shell.nav.pointed(&id, index);
                 self.did(did);
+            }
+            // (A phone has no hover: a tap's touch isn't one. A row that comes under a pointer left still, as the
+            // keys scroll its list, isn't one the pointer went to: the keys were used last.)
+            NavInput::Hover(id, index, on) => {
+                if !self.shell.scale.phone && (!on || self.shell.nav.pointing()) {
+                    let hearer = self.hearer_of(&id);
+                    self.call(hearer, |s, shell| s.hovered(shell, &id, index, on));
+                }
             }
             NavInput::EditBegan(text) => {
                 let did = self.shell.nav.edit_began(&text);

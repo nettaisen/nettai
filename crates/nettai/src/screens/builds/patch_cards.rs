@@ -22,6 +22,11 @@
 //! slots each card's slot is its own: a slot's card dragged goes back to its slot anywhere but onto the library, which
 //! empties the slot, and a library's card let go anywhere over the slots goes in its own, as a click puts it.
 //!
+//! **The strip** describes the card under the cursor, the build's or the library's: its number, name, MB or slot,
+//! and its lines in its card screen's two groups. A row shows the card's number, name and MB alone (the user: "the
+//! name isn't very visible on the patch cards view"); while the pointer is on a row, the strip describes that one, and
+//! the focused one again once it has left (docs/design/app-ui.md §2.64).
+//!
 //! **A card with variants** (one each version's ROM gives effects of its own: Bass-Cross MegaMan, docs/design/versions.md
 //! §2.1) is in the library once for each, as a NaviCust program is once for each of its colors: its name with the
 //! variant's (the group's), its lines that variant's. Putting one in chooses it for the card; the card is in the
@@ -99,6 +104,8 @@ pub struct PatchCards {
     sort: usize,
     descending: bool,
     described: Option<Described>,
+    /// The row the pointer is on, which the strip describes in its place (`editor::hover`).
+    hovered: Option<Described>,
     landed: i32,
     refused: i32,
     /// Why the last card wasn't put in, until the cursor moves.
@@ -129,22 +136,6 @@ fn room_of(content: &Content, name: &str) -> usize {
         Some(FieldType::Array(_, n)) => *n as usize,
         _ => 0,
     }
-}
-
-/// A card's lines as a row shows them, each after its lead: a bar where its card screen's group changes, else a dot.
-fn row_lines(lines: &[Line]) -> Vec<CardLine> {
-    lines
-        .iter()
-        .enumerate()
-        .map(|(i, l)| {
-            let lead = match i {
-                0 => "",
-                _ if l.group.is_some() && l.group != lines[i - 1].group => "  |  ",
-                _ => " · ",
-            };
-            CardLine { text: l.text.as_str().into(), bug: l.bug, lead: lead.into() }
-        })
-        .collect()
 }
 
 impl PatchCards {
@@ -252,8 +243,6 @@ impl PatchCards {
         let Some(card) = card else { return CardRow { slot: slot.map(slot_name).unwrap_or_default().into(), ..Default::default() } };
         let h = card.0;
         draft.with_words(shell, |words| {
-            let named = cards::named_by(words.kit);
-            let lines = cards::lines(words.names, h, card.1.as_deref(), &named).unwrap_or_default();
             let own = slots.and_then(|s| s.own(content, h));
             CardRow {
                 there: true,
@@ -263,7 +252,6 @@ impl PatchCards {
                 version: words.kit.version_tag_of(words.names, Registry::Entry, &item(card)),
                 megabytes: budget.map(|b| say.invoke_megabytes(b.cost_of(content, h) as i32)).unwrap_or_default(),
                 slot: slot.or(own).map(slot_name).unwrap_or_default().into(),
-                lines: ModelRc::new(VecModel::from(row_lines(&lines))),
                 // (One the ruleset the player plays by doesn't allow, or another version's than the build's under one
                 // version per build: its name in the error red.)
                 bad: !draft.allows_item(FIELD, &item(card)) || draft.mixing(Registry::Entry, &item(card)).is_some(),
@@ -371,7 +359,7 @@ impl PatchCards {
         PatchCards::installed(draft).iter().position(|c| *c == Some(card.clone())).map(|i| (row, i))
     }
 
-    /// The strip: the card under the cursor, the build's or the library's.
+    /// The strip: the card under the cursor, the build's or the library's; while the pointer is on a row, that one.
     fn show_detail(&self, shell: &Shell, draft: &Draft, budget: Option<&Budget>) {
         let content = draft.content();
         let installed = PatchCards::installed(draft);
@@ -379,7 +367,13 @@ impl PatchCards {
         let ui = shell.ui();
         let view = ui.global::<PatchCardsView>();
         let say = ui.global::<BuildWords>();
-        let (card, at) = match self.described {
+        let hovered = self.hovered.filter(|h| match *h {
+            Described::Installed(i) => i < installed.len(),
+            Described::Row(r) => r < self.rows.len(),
+        });
+        // (Why the focused card wasn't put in is the focused card's.)
+        let notice = if hovered.is_some_and(|h| Some(h) != self.described) { None } else { self.notice.clone() };
+        let (card, at) = match hovered.or(self.described) {
             Some(Described::Installed(i)) => (installed.get(i).cloned().flatten(), Some(i)),
             Some(Described::Row(r)) => (self.rows.get(r).cloned(), None),
             None => (None, None),
@@ -395,7 +389,7 @@ impl PatchCards {
                 }
                 _ => None,
             };
-            let problem = self.notice.clone().or(problem).unwrap_or_default();
+            let problem = notice.or(problem).unwrap_or_default();
             let Some(card) = card else { return CardDetail { problem: problem.into(), ..Default::default() } };
             let h = card.0;
             let named = cards::named_by(words.kit);
@@ -417,9 +411,9 @@ impl PatchCards {
                 (lines.iter().filter(|l| !l.bug).collect(), lines.iter().filter(|l| l.bug).collect(), (view.get_effects_title().into(), view.get_bugs_title().into()))
             };
             let fit = |ls: Vec<&Line>| -> Vec<CardLine> {
-                let mut out: Vec<CardLine> = ls.iter().take(if ls.len() > GROUP_LINES { GROUP_LINES - 1 } else { GROUP_LINES }).map(|l| CardLine { text: l.text.as_str().into(), bug: l.bug, lead: "".into() }).collect();
+                let mut out: Vec<CardLine> = ls.iter().take(if ls.len() > GROUP_LINES { GROUP_LINES - 1 } else { GROUP_LINES }).map(|l| CardLine { text: l.text.as_str().into(), bug: l.bug }).collect();
                 if ls.len() > GROUP_LINES {
-                    out.push(CardLine { text: say.invoke_more((ls.len() - (GROUP_LINES - 1)) as i32), bug: false, lead: "".into() });
+                    out.push(CardLine { text: say.invoke_more((ls.len() - (GROUP_LINES - 1)) as i32), bug: false });
                 }
                 out
             };
@@ -709,6 +703,7 @@ impl Tab for PatchCards {
 
     fn hide(&mut self, shell: &mut Shell, _draft: &mut Draft) {
         self.notice = None;
+        self.hovered = None;
         let ui = shell.ui();
         if ui.global::<PatchCardsView>().get_sheet() {
             ui.global::<PatchCardsView>().set_sheet(false);
@@ -813,7 +808,25 @@ impl Tab for PatchCards {
         shell.nav.list_to_top(&ui, "lib.rows");
     }
 
+    /// The pointer on one of the build's cards or the library's: the strip describes it.
+    fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
+        let what = match id {
+            "card" => Described::Installed(index.max(0) as usize),
+            "lib.rows" => Described::Row(index.max(0) as usize),
+            _ => return,
+        };
+        if editor::hover(&mut self.hovered, what, on) {
+            let budget = PatchCards::budget(draft);
+            self.show_detail(shell, draft, budget.as_ref());
+        }
+    }
+
+    /// (The strip follows the focus, the last thing moved, until the pointer goes onto another row.)
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        if self.hovered.take().is_some() && !matches!(id, "card" | "lib.rows") {
+            let budget = PatchCards::budget(draft);
+            self.show_detail(shell, draft, budget.as_ref());
+        }
         let ui = shell.ui();
         let view = ui.global::<PatchCardsView>();
         match id {

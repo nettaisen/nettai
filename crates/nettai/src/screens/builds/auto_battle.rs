@@ -65,7 +65,10 @@ pub struct AutoBattle {
     chips: Vec<ChipInfo>,
     chips_for: Option<Holds>,
     rows: Vec<ChipHandle>,
+    /// The chip the strip describes, a place's or a row's; and the place or row the pointer is on, which it describes
+    /// in its place (`editor::hover`).
     described: Option<Described>,
+    hovered: Option<Described>,
     landed: i32,
     refused: i32,
     /// Why the last chip wasn't put in, until the cursor moves.
@@ -222,11 +225,18 @@ impl AutoBattle {
         view.set_on_placed(self.on_placed(shell, draft));
     }
 
-    /// The strip: the chip under the cursor, a place's or a row's, and what the rules have against a place.
+    /// The strip: the chip under the cursor, a place's or a row's, and what the rules have against a place; while the
+    /// pointer is on one, that one.
     fn show_detail(&self, shell: &Shell, draft: &Draft) {
         let content = draft.content();
         let data = Data::of_side(content, draft.side());
-        let (chip, place) = match self.described {
+        let hovered = self.hovered.filter(|h| match *h {
+            Described::Place(i) => i < data.places.len(),
+            Described::Row(r) => r < self.rows.len(),
+        });
+        // (Why the last chip wasn't put in is the focused place's.)
+        let notice = if hovered.is_some_and(|h| Some(h) != self.described) { None } else { self.notice.clone() };
+        let (chip, place) = match hovered.or(self.described) {
             Some(Described::Place(i)) => (match data.places.get(i) {
                 Some(Entry::Chip(c)) => Some(*c),
                 _ => None,
@@ -238,7 +248,7 @@ impl AutoBattle {
         let say = ui.global::<BuildWords>();
         let detail = draft.with_words(shell, |words| {
             let problem = place.and_then(|i| draft.checked.problems.iter().find(|p| p.field.as_deref() == Some(auto::PLACES_FIELD) && p.entry == Some(i)).map(|p| words.problem(p)));
-            let problem = self.notice.clone().or(problem).unwrap_or_default();
+            let problem = notice.or(problem).unwrap_or_default();
             let Some(chip) = chip else { return ChipDetail { problem: problem.into(), ..Default::default() } };
             let record = content.chip(chip);
             let dark = record.flags.has(nettai_battle::content::ChipFlags::DARK);
@@ -514,6 +524,7 @@ impl Tab for AutoBattle {
 
     fn hide(&mut self, shell: &mut Shell, _draft: &mut Draft) {
         self.notice = None;
+        self.hovered = None;
         let ui = shell.ui();
         if ui.global::<AutoBattleView>().get_sheet() {
             ui.global::<AutoBattleView>().set_sheet(false);
@@ -605,7 +616,23 @@ impl Tab for AutoBattle {
         }
     }
 
+    /// The pointer on a place or a row of the library: the strip describes its chip.
+    fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
+        let what = match id {
+            "places.place" => Described::Place(index.max(0) as usize),
+            "lib.rows" => Described::Row(index.max(0) as usize),
+            _ => return,
+        };
+        if editor::hover(&mut self.hovered, what, on) {
+            self.show_detail(shell, draft);
+        }
+    }
+
+    /// (The strip follows the focus, the last thing moved, until the pointer goes onto another row.)
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        if self.hovered.take().is_some() && !matches!(id, "places.place" | "lib.rows") {
+            self.show_detail(shell, draft);
+        }
         let ui = shell.ui();
         let view = ui.global::<AutoBattleView>();
         match id {

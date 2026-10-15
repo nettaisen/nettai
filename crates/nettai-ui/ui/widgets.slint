@@ -933,6 +933,19 @@ export component RowTouch inherits TouchArea {
     // A right click on it opens its menu (Play's builds: `Nav.choose("row-menu", row, 0)`, once the press has
     // brought the focus to it).
     in property <bool> menu;
+    // The pointer over it describes what it holds, as the focus on it does (`Nav.hover`); a row of a list that
+    // scrolls under the pointer is another row, and says so.
+    in property <bool> describes;
+    changed has-hover => {
+        if root.describes {
+            Nav.hover(nav, nav-index, self.has-hover);
+        }
+    }
+    changed nav-index => {
+        if root.describes && self.has-hover {
+            Nav.hover(nav, nav-index, true);
+        }
+    }
     clicked => {
         Drag.clicked(root.drag, nav, nav-index);
     }

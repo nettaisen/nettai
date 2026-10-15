@@ -355,6 +355,8 @@ fn wire(ui: &AppWindow, app: &Rc<RefCell<App>>) {
     let a = app.clone();
     nav.on_point(move |id, index| tell(&a, NavInput::Point(id.into(), index)));
     let a = app.clone();
+    nav.on_hover(move |id, index, on| tell(&a, NavInput::Hover(id.into(), index, on)));
+    let a = app.clone();
     nav.on_edit_began(move |_, _, text| tell(&a, NavInput::EditBegan(text.into())));
     let a = app.clone();
     nav.on_edited(move |_, _, text| tell(&a, NavInput::Edited(text.into())));
