@@ -45,7 +45,7 @@ msgid "VERSION"
 msgstr "バージョン"
 
 # After what a new build of a version starts with, in the game's own words ("Starts with the version's Crosses and
-# Cybeast.").
+# Beast form.").
 msgid "{} They can be changed later in the editor."
 msgstr "{} あとから編集画面で変えられます。"
 

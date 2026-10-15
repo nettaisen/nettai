@@ -39,6 +39,8 @@ pub fn chip_cell(kit: &Kit, names: &Names, folder: &Folder, entry: usize, flagge
         element: kit.pictures.chip_element(chip.id),
         code: chip.code.letter().to_string().into(),
         flagged,
+        // (The editor marks a version's own chips: the overview doesn't.)
+        version: Default::default(),
     }
 }
 

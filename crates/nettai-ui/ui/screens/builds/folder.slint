@@ -13,7 +13,7 @@ import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ArrowDown } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
-import { ChipCell, ChipKind, ChipRow } from "../../build.slint";
+import { ChipCell, ChipKind, ChipRow, VersionTag, VersionMark } from "../../build.slint";
 
 // The chip under the cursor, for the strip: its picture, its name and code, the game's description of it, its
 // element's icon, its facts (its class, its MB, its attack, how many the folder holds), and what the folder's
@@ -42,6 +42,8 @@ export struct LibraryRow {
     attack: string,
     element: image,
     code: string,
+    // The version its chip is one's own (a Giga chip's), marked after its name.
+    version: VersionTag,
 }
 
 // What the folder holds against its limits. `tags`: the game's folders have tag chips.
@@ -327,9 +329,11 @@ component LibraryRowView inherits Rectangle {
         opacity: root.line.refused ? 0.5 : 1;
     }
 
-    Text {
+    // (The chip's version's mark follows its name: a square of its color where the two don't fit.)
+    property <length> name-room: max(0px, root.note-x - 8px - 32px);
+    name := Text {
         x: 32px + root.dx;
-        width: max(0px, root.note-x - 8px - 32px);
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
         text: root.line.name;
         color: root.line.kind == ChipKind.mega ? Theme.mega : root.line.kind == ChipKind.giga ? Theme.giga : (root.line.refused ? Theme.dim : Theme.text);
         opacity: root.line.refused && root.line.kind != ChipKind.standard ? 0.5 : 1;
@@ -338,6 +342,14 @@ component LibraryRowView inherits Rectangle {
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    version := VersionMark {
+        x: name.x + min(name.width, name.preferred-width) + 6px;
+        y: (parent.height - self.height) / 2;
+        tag: root.line.version;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
+        opacity: root.line.refused ? 0.5 : 1;
     }
 
     Text {
@@ -516,7 +528,7 @@ component LibraryPane inherits Rectangle {
         height: parent.height - 52px;
         nav: "lib.rows";
         count: FolderView.rows.length;
-        row-height: Theme.phone ? 40px : Theme.chip-row;
+        row-height: Theme.list-row;
         chosen: self.focused-row;
         // (A mouse's drag on a row takes its chip into the folder: the wheel scrolls.)
         mouse-pan: Theme.phone;

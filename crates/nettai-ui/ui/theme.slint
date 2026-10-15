@@ -154,6 +154,11 @@ export global Theme {
     out property <length> control: 40px;
     out property <length> row: 44px;
     out property <length> chip-row: 26px;
+    // A row of the build editor's lists (the folder's library, the NaviCust's programs, the patch cards', the auto
+    // battle data's, the Navi tab's forms): a chip's row, a phone's 40 to be tapped; `list-gap` apart (a
+    // `ListView`'s own gap).
+    out property <length> list-row: phone ? 40px : chip-row;
+    out property <length> list-gap: 2px;
 
     // Motion (docs/design/app-ui.md §4, "Motion"; docs/app.md §10). Everything moves, briefly, and nothing
     // waits on it; motion is offsets, opacity and overlays, never a size. These are the only durations there

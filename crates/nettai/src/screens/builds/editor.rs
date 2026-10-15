@@ -37,7 +37,9 @@ use crate::shell::Shell;
 use nettai_battle::Content;
 use nettai_content_api::NaviHandle;
 use nettai_match::Side;
+use nettai_match::Wrong;
 use nettai_match::build::Checked;
+use nettai_match::check::Problem;
 use nettai_ui::{BuildsView, EditorTab};
 use slint::{ComponentHandle, ModelRc, VecModel};
 use std::path::PathBuf;
@@ -127,6 +129,29 @@ impl Draft {
     /// §2.1).
     pub fn allows_item(&self, fact: &str, item: &nettai_match::ruleset::Item) -> bool {
         self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows_item(fact, item))
+    }
+
+    /// The build's facts problem `problem` is about: the one it names; a mix of versions (which names none), each
+    /// fact that holds something of its list (the ruleset categories' whose items have it: the folder's Giga chips,
+    /// the forms' facts, the patch cards). None: it is about no fact (the first tab's, then).
+    pub fn facts_of(&self, problem: &Problem) -> Vec<String> {
+        if let Some(field) = &problem.field {
+            return vec![field.clone()];
+        }
+        let (Wrong::Mixed { items, .. }, Some(rulesets)) = (&problem.what, self.kit.rulesets()) else { return Vec::new() };
+        rulesets
+            .categories
+            .iter()
+            .filter(|c| items.iter().any(|(registry, item)| c.registry == *registry && c.items.contains(item)))
+            .map(|c| c.fact.clone())
+            .collect()
+    }
+
+    /// The build's mix of versions (a ruleset of one version per build's problem) where item `item` of `registry`
+    /// is among what it holds of the versions but its own (a Giga chip in the folder, a form, a card's variant):
+    /// where a tab shows the item, it is marked, and says so.
+    pub fn mixing(&self, registry: nettai_content_api::Registry, item: &nettai_match::ruleset::Item) -> Option<&Problem> {
+        self.checked.problems.iter().find(|p| matches!(&p.what, Wrong::Mixed { items, .. } if items.iter().any(|(r, i)| *r == registry && i == item)))
     }
 
     /// The catalogs' and the game's words, in the language shown.
@@ -398,10 +423,14 @@ impl Editor {
             .iter()
             .enumerate()
             .map(|(i, tab)| {
-                // A problem is its field's tab's; one of a fact no tab says is its own, or of none, the first's.
-                let flagged = problems.iter().any(|p| match p.field.as_deref() {
-                    Some(field) if owned(field) => fields[i].iter().any(|x| x == field),
-                    _ => i == 0,
+                // A problem is its facts' tabs' (a mix of versions', each tab that shows something of it: the Navi tab
+                // for a form); one of facts no tab says are its own, or of none, the first's.
+                let flagged = problems.iter().any(|p| {
+                    let facts: Vec<String> = self.draft.facts_of(p).into_iter().filter(|f| owned(f)).collect();
+                    match facts.is_empty() {
+                        true => i == 0,
+                        false => facts.iter().any(|f| fields[i].contains(f)),
+                    }
                 });
                 let word = slint::Model::row_data(&names, tab.id() as usize).unwrap_or_default();
                 nettai_ui::Tab { text: word, enabled: self.enabled(i), flagged }

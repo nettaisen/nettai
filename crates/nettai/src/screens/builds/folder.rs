@@ -32,9 +32,10 @@ use nettai_battle::Content;
 use nettai_battle::content::PlayerFact;
 use nettai_battle::content::strings::Strings;
 use nettai_battle::custom::FolderChip;
-use nettai_content_api::ChipHandle;
+use nettai_content_api::{ChipHandle, Registry};
 use nettai_match::build::{self, ChipInfo, Sort};
 use nettai_match::folders::View;
+use nettai_match::ruleset::Item;
 use nettai_match::{Folder as Chips, Wrong};
 use nettai_ui::{ChipCell, ChipDetail, ChipMark, EditorTab, FolderCounts, FolderView, LibraryRow};
 use slint::winit_030::winit::keyboard::KeyCode;
@@ -139,8 +140,14 @@ impl Folder {
         let cells: Vec<ChipCell> = draft.with_words(shell, |words| {
             (0..folder.chips.len())
                 .map(|i| {
-                    let flagged = self.held.as_ref().is_some_and(|v| !v.entry_problems(content, &stood, i).is_empty());
+                    // (An entry whose chip is another version's than the build's, under one version per build, too.)
+                    let mixed = folder.chips.get(i).copied().flatten().is_some_and(|c| draft.mixing(Registry::Chip, &Item::of(c.id.0)).is_some());
+                    let flagged = mixed || self.held.as_ref().is_some_and(|v| !v.entry_problems(content, &stood, i).is_empty());
                     let mut cell = chip_cell(words.kit, words.names, &folder, i, flagged);
+                    // (A chip of one version's own is marked so: a Giga chip's version.)
+                    if let Some(chip) = folder.chips.get(i).copied().flatten() {
+                        cell.version = words.kit.version_tag_of(words.names, Registry::Chip, &Item::of(chip.id.0));
+                    }
                     // (The entry tagged first, waiting for its pair.)
                     if self.tagging == Some(i) {
                         cell.mark = ChipMark::Tag1;
@@ -200,6 +207,7 @@ impl Folder {
                             attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
                             element: kit.pictures.chip_element(row.id),
                             code: Default::default(),
+                            version: kit.version_tag_of(words.names, Registry::Chip, &Item::of(row.id.0)),
                         }
                     });
                     let mut line = part.clone();
@@ -237,6 +245,7 @@ impl Folder {
             // What the rules have against the entry; of an empty one, against the folder's size.
             let problem = slot.and_then(|i| {
                 let of_entry = self.held.as_ref().and_then(|v| v.entry_problems(content, &folder, i).first().map(|p| words.problem(p)));
+                let of_entry = of_entry.or_else(|| chip.and_then(|c| draft.mixing(Registry::Chip, &Item::of(c.id.0))).map(|p| words.problem(p)));
                 let of_size = || draft.checked.problems.iter().find(|p| matches!(p.what, Wrong::FolderSize(_))).map(|p| words.problem(p));
                 of_entry.or_else(|| chip.is_none().then(of_size).flatten())
             });
@@ -386,6 +395,7 @@ impl Folder {
             kind: kind(content.chip(chip.id).class),
             element: words.kit.pictures.chip_element(chip.id),
             code: chip.code.letter().to_string().into(),
+            version: words.kit.version_tag_of(words.names, Registry::Chip, &Item::of(chip.id.0)),
             ..Default::default()
         });
         shell.ui().global::<FolderView>().set_ghost(cell);
