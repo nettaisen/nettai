@@ -1066,7 +1066,7 @@ fn hover(id: &'static str, index: i32) -> Step {
 /// A program of the NaviCust's list with colors to choose from (each program is in the list once: the user, "deduppe
 /// navicust program parts in the list and then have you select by color"): the cursor on its row (the footer's
 /// Color), Right choosing its second color (the row's and the strip's), and Enter taking that color's part in hand,
-/// put away after; then a click on its last color's box, which chooses it and takes its part (`color-clicked`).
+/// put away after; then a click on its last color's box, which chooses it alone (`color-clicked`).
 fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, to_tab(EditorTab::Navicust));
     // (The row, and how many colors it has.)
@@ -1093,8 +1093,8 @@ fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
     add(SETTLE, act(Action::Confirm));
     shot(add, "tabs-navicust-color-held", Pair::None);
     add(SETTLE, act(Action::Back));
-    // A click on the row's last color: it is chosen, and its part taken in hand at once, as a click on the row takes
-    // it (the user: "selecting the color in the ncp editor should also pick up the ncp"); put away after.
+    // A click on the row's last color: it is chosen, and nothing taken (the user: "selecting a color on the palette
+    // shouldn't pick up the navicust part actually").
     for (wait, ev) in [(SETTLE, Ev::Press as fn(Point) -> Ev), (40, Ev::Release)] {
         let at = at.clone();
         add(wait, hand_at(move |_, _| {
@@ -1107,7 +1107,7 @@ fn program_colors(add: &mut dyn FnMut(u64, Step), shot: Shot) {
         let (row, colors) = *at.borrow();
         let view = ui.global::<NavicustView>();
         let chosen = view.get_programs().row_data(row.max(0) as usize).map(|r| r.color);
-        (!view.get_holding() || chosen != Some(colors - 1)).then(|| format!("a click on row {row}'s last color: holding {}, its color {chosen:?}", view.get_holding()))
+        (view.get_holding() || chosen != Some(colors - 1)).then(|| format!("a click on row {row}'s last color: holding {}, its color {chosen:?}", view.get_holding()))
     }));
     // (Put away: Back with nothing in hand would leave the editor.)
     add(SETTLE, Box::new(|ui, app, _| {

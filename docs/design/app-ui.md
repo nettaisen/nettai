@@ -925,8 +925,8 @@ Each is settled unless the user changes it.
     color", "isntead of shape/compressed it should be compressed/uncompressed (in that order)", "error messages for
     beast form/crosses ends up shifting layout" and "versions: one per build is weird wording, you should make it
     more understandable"; then "instead of "beast form" it should say "beast out"".
-    - *A color's box takes its part:* a click or a tap on one of a program's color boxes chooses that color and
-      takes its part in hand, as Enter on the row (or a click on it) does: the piece goes onto the board under the
+    - *A color's box takes its part (taken back, §2.72):* a click or a tap on one of a program's color boxes chose
+      that color and took its part in hand, as Enter on the row (or a click on it) does: the piece goes onto the board under the
       cursor. Left and Right still choose the color alone (chosen so): taking a part puts the cursor on the board,
       so a key that took one would leave no way to step on to the next color, and Enter is a key away.
     - *The row's state before its colors:* Placed, Placed ×2, In hand, Not allowed or Out of bounds comes before the
@@ -1138,9 +1138,10 @@ Each is settled unless the user changes it.
     - *Where:* one small word, CLEAR (クリア), in the ALL and NONE words' letters (§2.69; `WordButton`), at the right
       end of a pane's header on each of the four tabs: the folder's (after the counts, its word where they would end;
       the counts on their own line under the title and CLEAR where the language leaves the one line no room, as
-      before), the patch cards' (after the counts), PROGRAMS' title line (its word where the list's rows end) and the
-      auto battle places' (its title's line). A phone's: at the right end of the folder's and the cards' counts' box's
-      first line, of PROGRAMS' line and of the auto battle places' problem line. Nothing moves for it: it is on a line
+      before), the patch cards' (after the counts), the board's (the right end of the key's first line under it, §2.72;
+      PROGRAMS' title line where the game draws no board) and the auto battle places' (its title's line). A phone's:
+      at the right end of the folder's and the cards' counts' box's first line, of the board's key's and of the auto
+      battle places' problem line. Nothing moves for it: it is on a line
       that was there, the header's title or problem line cut short of it.
     - *What it does:* empties that part of the build in one change: every folder entry, its Regular and tag marks
       with it; every placed program (the board kept; a piece in hand dropped); every patch card (EXE4: every slot);
@@ -1150,6 +1151,17 @@ Each is settled unless the user changes it.
     - *Keys:* a control the arrows reach (`clear`), Enter (the pad's A) takes it; X takes it from anywhere on the
       tab (not while typing a search, nor with a NaviCust piece in hand), and the footer says "X Clear" (the pad
       reaches it by the arrows: no button of its own).
+    (§6 Builds; docs/app.md §8.)
+
+72. **The NaviCust's CLEAR on the board; a color's box chooses alone** (2026-10-15). The user: "navicust clear should
+    probably go on the tableau and not on the program parts list" and "selecting a color on the palette shouldn't
+    pick up the navicust part actually" (taking back §2.65's "selecting the color in the ncp editor should also pick
+    up the ncp").
+    - *CLEAR on the board:* at the right end of the key's first line under the board, its word where the board ends;
+      the key takes its two lines where the language leaves the one no room beside CLEAR. Where the game draws no
+      board, at PROGRAMS' title line's right end as before.
+    - *A color's box chooses alone:* a click or a tap on one of a program's color boxes chooses that color, as Left
+      and Right do; a click on the row (or Enter) takes the part.
     (§6 Builds; docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
@@ -1577,10 +1589,9 @@ DUPLICATE, RENAME and DELETE.
   Placed, Placed ×2 where more than one copy is, In hand, Out of bounds or, where none is placed, Not allowed in the
   error red, the row dimmed (the ruleset holds it back: it isn't taken, the strip's top right saying so; a copy a
   build has placed all the same is red, §2.68); then at the row's right edge
-  its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing and taking
-  that color's part in hand; its name in the error red where a placed copy has a problem, which the strip's top right
-  says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of PROGRAMS' line,
-  which takes every placed program off the board, asked first (X; §2.71); Effects and Bugs at
+  its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing it alone (§2.72); its name in the error red where a placed copy has a problem, which the strip's top right
+  says of the program it describes, §2.66; a phone's PROGRAMS' line), and CLEAR at the right end of the board's key's first
+  line (§2.72), which takes every placed program off the board, asked first (X; §2.71); Effects and Bugs at
   the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
