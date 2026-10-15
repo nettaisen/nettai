@@ -1195,7 +1195,7 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   and cross and cybeast selector in the editor now right?"; its look as docs/design/app-ui.md §2.61 has it). Beside
   the navi's face its facts, and under them each fact of forms the build chooses (`Builds::form_choices`,
   nettai-match's: the setup's one form that is the side's version, and its arrays of forms), named as the game's
-  rulesets name it ("BEAST FORM", "CROSSES 5/5", "SOULS 6/12": the content's `category.<fact>`), its forms in the
+  rulesets name it ("BEAST OUT", "CROSSES 5/5", "SOULS 6/12": the content's `category.<fact>`), its forms in the
   battle's order, both versions' (`facts::offered_forms`: the navi that changes form's sets hold them under the
   fact's name, or for the engine's form list every set's list; sorted by the groups, each version's under a head of
   its name in its color, those of none last: the app places each row, `column`, `row` and `heads`), each a row of the editor's
@@ -1203,10 +1203,12 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   its face, its name (the locales' `[forms]`: the ROMs' names, EXE6's Beast forms GBeast and FBeast by their
   NameIDs), and at the right its version's mark (`VersionMark`, in build.slint: `Kit::version_tag_of`). EXE6's Beast
   form is at the head, one always chosen, for every navi (MstrCros plays its version's Crosses); the lists are the
-  game's own navi's alone. What is wrong with a fact is said by its heading, in the error red: the first of the
-  problems about it (`Draft::facts_of`: the one a problem names, and for a mix of versions, which names none, each
-  fact holding one of its things) in `Words::problem`'s sentence, "+n more" after it; and the rows it is about have
-  their names in the error red (a form the ruleset the player plays by doesn't allow, one of a mix of versions, the
+  game's own navi's alone. What is wrong with a fact is said by its heading, in the error red, where problems are
+  about it (`Draft::facts_of`: the one a problem names, and for a mix of versions, which names none, each fact
+  holding one of its things); in `Words::problem`'s sentences in the note's place under the selector, which is two
+  lines tall for a navi that chooses forms and says them in the note's stead while there are any (`NaviView.problems`:
+  each problem once, a line each, past two the first and "+n more"; design §2.65: nothing moves when one appears);
+  and the rows it is about have their names in the error red (a form the ruleset the player plays by doesn't allow, one of a mix of versions, the
   entry a problem names). The same facts flag the tab bar's words, so a mix of versions marks the tabs that hold its
   things (a Beast form's the Navi tab, a Giga chip's the Folder tab, where its entry is red and the strip says the
   sentence; a card's variant's the Patch cards tab). Enter, a click or a tap is `activate("form", i)`:
