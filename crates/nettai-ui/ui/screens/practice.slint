@@ -61,9 +61,11 @@ export global PracticeView {
     // The two builds' names, as the menu's line under its title says them.
     in property <string> session-yours;
     in property <string> session-dummys;
-    // The menu's rows, and whether it has EXIT (a session Practice started itself).
+    // The menu's rows, and whether it has EXIT (a session Practice started itself, or one another screen gave its
+    // own, `exit-word`: Play's CANCEL INVITE).
     in property <[PracticeRow]> rows;
     in property <bool> leave;
+    in property <string> exit-word;
     // The input display: shown, and the buttons each side holds (the GBA's bits).
     in property <bool> inputs;
     in property <int> held-yours;
@@ -330,7 +332,7 @@ export component PracticeMenu inherits MenuOverlay {
         visible: PracticeView.leave;
         enabled: PracticeView.leave;
         nav: "menu.exit";
-        text: @tr("EXIT");
+        text: PracticeView.exit-word != "" ? PracticeView.exit-word : @tr("EXIT");
         kind: ButtonKind.ghost;
     }
 }
