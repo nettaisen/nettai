@@ -198,6 +198,17 @@ function newCode(): string {
 	return code;
 }
 
+/** Say `text` on another client's socket, unless it has closed since (its
+ * close is on its way to the room): what it misses no longer matters to it,
+ * and the room's own work goes on. */
+function tell(ws: WebSocket, text: string): void {
+	try {
+		ws.send(text);
+	} catch {
+		// (Closed already.)
+	}
+}
+
 /** Refuse a client on a WebSocket of its own, which says why and closes (a
  * browser's WebSocket is told nothing of an HTTP refusal). */
 function refuse(reason: Reason, message: string): Response {
@@ -320,7 +331,7 @@ export class Room extends DurableObject<Env> {
 			kind === "invite" ? { type: "welcome", role, peer: there.length > 0, code, iceServers: ice } : { type: "welcome", peer: there.length > 0, iceServers: ice };
 		server.send(JSON.stringify(welcome));
 		for (const ws of there) {
-			ws.send(JSON.stringify({ type: "peer", present: true }));
+			tell(ws, JSON.stringify({ type: "peer", present: true }));
 		}
 		return new Response(null, { status: 101, webSocket: client });
 	}
@@ -339,7 +350,7 @@ export class Room extends DurableObject<Env> {
 		if (said.type === "signal") {
 			const relayed = JSON.stringify({ type: "signal", data: said.data });
 			for (const them of this.ctx.getWebSockets(other(role))) {
-				them.send(relayed);
+				tell(them, relayed);
 			}
 		} else if (said.type === "leave") {
 			// (The places read and written with nothing else between: the two
@@ -382,7 +393,7 @@ export class Room extends DurableObject<Env> {
 		ws.serializeAttachment({ role, kind, replaced: true } satisfies Attachment);
 		if (!replaced) {
 			for (const them of this.ctx.getWebSockets(other(role))) {
-				them.send(JSON.stringify({ type: "peer", present: false }));
+				tell(them, JSON.stringify({ type: "peer", present: false }));
 			}
 		}
 		const open = this.ctx.getWebSockets().filter((s) => s !== ws && s.readyState === WebSocket.OPEN);

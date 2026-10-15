@@ -567,11 +567,12 @@ host calls, in order:
   makes no room: it is refused (`ErrorKind::NoSuchRoom`), as a room with two
   players is (`RoomFull`). The connection finds its
   way through NATs: each side offers its addresses and the one a STUN server
-  sees (nettai-rtc's `Config`: by default `stun:stun.l.google.com:19302`),
-  and relays through a TURN server, where one is configured, when no direct
-  path is found. The signaling server is `signaling/`, a Cloudflare Worker
+  sees, and relays through a TURN server when no direct path is found, on
+  the servers the signaling server's welcome gives (Cloudflare's STUN server,
+  and its TURN service's with short-lived credentials; docs/design/rollback.md
+  §4.8). The signaling server is `signaling/`, a Cloudflare Worker
   (`npx wrangler dev` there runs it locally, at `ws://127.0.0.1:8787`;
-  deploying it, `npx wrangler deploy`, is on your own account). A room's
+  deploying it, `npx wrangler deploy`, is its owner's step). A room's
   connection checks the certificates its descriptions name.
 - **Directly**, one player hosts on a UDP port of every IPv4 interface and
   waits; the other joins its address. On a LAN that is the host's machine's;
