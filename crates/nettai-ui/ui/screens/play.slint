@@ -2,9 +2,10 @@
 // is src/screens/play.rs, which sets `PlayView` and hears the controls by their names.
 //
 // The screen has three parts, one shown at a time (`PlayView.part`): the player's builds (+ NEW BUILD over them,
-// the chosen one's overview beside them with EDIT and ⋯, its menu of DUPLICATE, RENAME and DELETE) with the band
-// that practices with it or makes a link (an invite, a code typed, a direct connection); the wait for the other player, a practice
-// battle beside the invite's code; and the lobby, for as long as the two players stay together. The two cards
+// the chosen one's overview beside them with EDIT and ⋯, its menu of DUPLICATE, RENAME and DELETE) with the three
+// ways to play it under them (PRACTICE, HOST: an invite, JOIN: a code typed, or a direct connection); the wait for
+// the other player, a practice battle beside the invite's code; and the lobby, for as long as the two players stay
+// together. The two cards
 // before a match and the match itself are the shell's (versus.slint, battle.slint); over the match are this
 // file's menu (`MatchMenu`), the two builds shown while Tab is held (`MatchPeek`), and how the match went once its
 // set is over (`MatchResult`).
@@ -12,7 +13,7 @@
 import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
-import { Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
+import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
@@ -226,6 +227,109 @@ export global PlayView {
 }
 
 // ---- The builds ------------------------------------------------------------------------------------------
+
+// A minor way, as a link: its words alone, small and muted until the pointer or the cursor is on it (JOIN's
+// "Direct connect…"). As wide as its words.
+component Link inherits Rectangle {
+    in property <string> text;
+    in property <string> nav;
+    property <bool> over: Theme.audit && label.preferred-width > label.width + 0.5px;
+    out property <length> natural-width: label.preferred-width;
+    width: root.natural-width;
+    height: 18px;
+    label := Text {
+        width: parent.width;
+        text: root.text;
+        color: hit.has-hover || hit.focused ? Theme.text : Theme.muted;
+        font-family: Theme.display;
+        font-size: 12px;
+        font-weight: Theme.display-semibold;
+        letter-spacing: Theme.label-tracking;
+        vertical-alignment: center;
+        overflow: elide;
+        animate color {
+            duration: Theme.quick;
+        }
+    }
+
+    hit := Focusable {
+        nav: root.nav;
+    }
+
+    changed over => {
+        if over {
+            Audit.clipped(root.text);
+        }
+    }
+}
+
+// JOIN's tile: a tile's frame (not itself a button), the word, and under it the link to a direct connection; at
+// its right the code's field and its go button. The word sits where PRACTICE's and HOST's do.
+component JoinTile inherits Rectangle {
+    in property <string> code;
+    in property <bool> error;
+    property <length> pad: 20px;
+    // (The word and the link share a column as wide as the wider, at most 150: the code's field has the rest.)
+    property <length> left: min(150px, max(word.preferred-width, link.natural-width));
+    height: 72px;
+    Cut {
+        cut: 12px;
+        background: Theme.raised;
+        line: Theme.line;
+    }
+
+    word := Text {
+        x: root.pad;
+        y: 0;
+        width: root.left;
+        height: parent.height;
+        text: @tr("JOIN");
+        color: Theme.text;
+        font-family: Theme.display;
+        font-size: 20px;
+        font-weight: Theme.display-semibold;
+        letter-spacing: Theme.button-tracking;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    link := Link {
+        x: root.pad;
+        y: 49px;
+        width: root.left;
+        nav: "direct";
+        text: @tr("Direct connect…");
+    }
+
+    Field {
+        x: root.pad + root.left + 16px;
+        y: 16px;
+        width: go.x - 8px - self.x;
+        nav: "code";
+        text: root.code;
+        placeholder: @tr("INVITE CODE");
+        code: true;
+        error: root.error;
+    }
+
+    go := Button {
+        x: parent.width - 16px - self.width;
+        y: 16px;
+        width: 40px;
+        nav: "join";
+        text: "";
+    }
+
+    // (Its arrow, over it.)
+    Path {
+        x: go.x + 17px;
+        y: go.y + 14px;
+        width: 7px;
+        height: 12px;
+        fill: Theme.text;
+        commands: "M 0 0 L 7 6 L 0 12 Z";
+    }
+}
 
 // The chosen build in one box, on a phone: Left and Right step through the builds, Enter opens them as a sheet.
 component BuildBox inherits Rectangle {
@@ -657,16 +761,20 @@ export component PlayScreen inherits Page {
     ];
     // The builds' part, in three zones read in order (docs/design/app-ui.md §6, "Play"): the builds (+ NEW BUILD
     // over the list, the left column); the chosen build (its overview, the right column, with EDIT and ⋯ in its
-    // header); and what is done with it, the band at the foot (PRACTICE under the list; ONLINE under the
-    // overview: CREATE INVITE, the code with JOIN, DIRECT CONNECT; the reserved line under them). On a phone one
-    // column in the same order.
+    // header); and what is done with it, three tiles across the foot (PRACTICE, HOST, JOIN; the reserved line
+    // under them). On a phone one column in the same order, the tiles one under another.
     property <length> list-width: 400px;
     property <length> side-x: root.list-width + 24px;
     property <length> side-width: self.body-width - root.side-x;
-    // The overview's height (the wide sheet's), and the band under it: its label and its row.
+    // The overview's height (the wide sheet's), and the tiles under it: three of one width, 16 apart (on a phone
+    // the column's width, 12 apart), and the reserved line under them.
     property <length> sheet-height: 540px;
-    property <length> label-y: Theme.phone ? 264px : root.sheet-height + 16px;
-    property <length> row-y: Theme.phone ? 286px : root.label-y + 22px;
+    property <length> tile-height: 72px;
+    property <length> tile-width: Theme.phone ? self.body-width : (self.body-width - 32px) / 3;
+    property <length> tiles-y: Theme.phone ? 200px : root.sheet-height + 12px;
+    property <length> tile-step: Theme.phone ? root.tile-height + 12px : 0px;
+    property <length> tile-x-step: Theme.phone ? 0px : root.tile-width + 16px;
+    property <length> message-y: Theme.phone ? root.tiles-y + 3 * root.tile-step : root.tiles-y + root.tile-height + 2px;
     property <length> more-width: 40px;
     property <bool> none: PlayView.builds.length == 0;
     property <bool> usable: PlayView.chosen >= 0 && !root.none && PlayView.readable;
@@ -821,68 +929,43 @@ export component PlayScreen inherits Page {
             }
         }
 
-        // What is done with it: PRACTICE under the list; ONLINE under the overview, one group: CREATE INVITE (the
-        // main action while there is a build), the code with JOIN, and DIRECT CONNECT as text at the right. The
-        // line under them is there whether or not it says anything (with no build they say there why they can't).
+        // What is done with it: three tiles, the three ways to play it, the words alone. PRACTICE goes straight
+        // into a practice battle; HOST makes an invite (the main action while there is a build: what a player comes
+        // to PLAY for, the one that starts a match by itself); JOIN has the code's field and its go button, and
+        // under its word the way to a direct connection. The line under them is there whether or not it says
+        // anything (with no build they say there why they can't).
         Arrive {
             order: 2;
-            // (Practice's entry, on the build chosen.)
             Button {
                 x: 0;
-                y: Theme.phone ? 200px : root.row-y;
-                width: Theme.phone ? root.body-width : self.natural-width;
+                y: root.tiles-y;
+                width: root.tile-width;
                 nav: "practice";
                 text: @tr("PRACTICE");
-            }
-
-            Label {
-                x: Theme.phone ? 0px : root.side-x;
-                y: root.label-y;
-                width: Theme.phone ? root.body-width : root.side-width;
-                height: 14px;
-                text: @tr("ONLINE");
-            }
-
-            invite := Button {
-                x: Theme.phone ? 0px : root.side-x;
-                y: root.row-y;
-                width: Theme.phone ? root.body-width : self.natural-width;
-                nav: "invite";
-                text: @tr("CREATE INVITE");
-                kind: root.none ? ButtonKind.normal : ButtonKind.main;
-                big: Theme.phone;
-            }
-
-            code := Field {
-                x: Theme.phone ? 0px : invite.x + invite.width + 12px;
-                y: Theme.phone ? root.row-y + 64px : root.row-y;
-                width: Theme.phone ? root.body-width - join.width - 8px : 208px;
-                nav: "code";
-                text: PlayView.code;
-                placeholder: @tr("INVITE CODE");
-                code: true;
-                error: PlayView.message != "" && !PlayView.message-quiet;
-            }
-
-            join := Button {
-                x: code.x + code.width + 8px;
-                y: code.y;
-                nav: "join";
-                text: @tr("JOIN");
+                tile: true;
             }
 
             Button {
-                x: root.body-width - self.width;
-                y: Theme.phone ? code.y + 52px : root.row-y;
-                width: Theme.phone ? root.body-width : self.natural-width;
-                nav: "direct";
-                text: @tr("DIRECT CONNECT");
-                kind: ButtonKind.text;
+                x: root.tile-x-step;
+                y: root.tiles-y + root.tile-step;
+                width: root.tile-width;
+                nav: "invite";
+                text: @tr("HOST");
+                kind: root.none ? ButtonKind.normal : ButtonKind.main;
+                tile: true;
+            }
+
+            JoinTile {
+                x: 2 * root.tile-x-step;
+                y: root.tiles-y + 2 * root.tile-step;
+                width: root.tile-width;
+                code: PlayView.code;
+                error: PlayView.message != "" && !PlayView.message-quiet;
             }
 
             Note {
                 x: 0;
-                y: Theme.phone ? code.y + 104px : root.row-y + 48px;
+                y: root.message-y;
                 width: root.body-width;
                 height: Theme.phone ? 40px : 18px;
                 text: PlayView.message;

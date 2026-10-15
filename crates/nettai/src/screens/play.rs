@@ -128,6 +128,29 @@ fn remembered_build(game: &str) -> String {
     format!("play.build.{game}")
 }
 
+/// The name of `game`'s build Play last had chosen, if it remembers one (what Practice opens on where it is
+/// shown with none from Play).
+pub(crate) fn remembered(shell: &Shell, game: &str) -> Option<String> {
+    shell.settings.remembered.get(&remembered_build(game)).cloned()
+}
+
+/// The selected game's builds (`builds::shelf`: its builds folder's files), each checked by the game's rules, as
+/// Play lists them and Practice's Dummy's build offers them. The screenshot pass lists builds of its own, which
+/// have no file: its pictures don't depend on what the player keeps.
+pub(crate) fn shelved(shell: &Shell, kit: &builds::Kit) -> Vec<shelf::Shelved> {
+    let Some(made) = tour::builds(shell.still, kit.content(), &kit.game) else { return shelf::load(shell, kit) };
+    let ui = shell.ui();
+    let graphics = kit.ready.graphics(shell.lang);
+    let names = Names::of(kit.content(), &graphics);
+    let words = words::Words { ui: &ui, kit, names: &names };
+    made.into_iter()
+        .map(|(name, side)| {
+            let listed = builds::store::Listed { path: Default::default(), name: name.clone(), text: String::new() };
+            shelf::shelved(&words, listed, Some(builds::store::Build::new(kit.content(), &name, side)))
+        })
+        .collect()
+}
+
 /// The settings a lobby of `game` opens with: a set first to `wins` round wins, each place picked from the match's
 /// seed, its background from the background pool, every game's (docs/app.md §1, "The battle's background"), shared
 /// by both players as the round's settings are.
@@ -326,30 +349,14 @@ impl Play {
 
     // ---- The builds --------------------------------------------------------------------------------------
 
-    /// Read the selected game's builds (`builds::shelf`), each checked by the game's rules: the one chosen before
-    /// chosen again, else the one remembered.
+    /// Read the selected game's builds ([`shelved`]): the one chosen before chosen again, else the one remembered.
     fn read_builds(&mut self, shell: &Shell, game: &str) {
-        let before = self.build().map(|b| b.name().to_string()).or_else(|| shell.settings.remembered.get(&remembered_build(game)).cloned());
+        let before = self.build().map(|b| b.name().to_string()).or_else(|| remembered(shell, game));
         let Some(kit) = builds::kit(shell) else {
             self.builds = Vec::new();
             return;
         };
-        // (The screenshot pass lists builds of its own: its pictures don't depend on what the player keeps.)
-        self.builds = match tour::builds(shell.still, kit.content(), game) {
-            Some(made) => {
-                let ui = shell.ui();
-                let graphics = kit.ready.graphics(shell.lang);
-                let names = Names::of(kit.content(), &graphics);
-                let words = words::Words { ui: &ui, kit: &kit, names: &names };
-                made.into_iter()
-                    .map(|(name, side)| {
-                        let listed = builds::store::Listed { path: Default::default(), name: name.clone(), text: String::new() };
-                        shelf::shelved(&words, listed, Some(builds::store::Build::new(kit.content(), &name, side)))
-                    })
-                    .collect()
-            }
-            None => shelf::load(shell, &kit),
-        };
+        self.builds = shelved(shell, &kit);
         self.builds_of = Some(game.to_string());
         self.chosen = before.and_then(|name| self.builds.iter().position(|b| b.name() == name)).unwrap_or(0);
     }

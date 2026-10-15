@@ -1,10 +1,11 @@
-//! Play's builds (docs/design/app-ui.md §6, "Play"): what is done with the selected game's builds beside the band
-//! that practices with one or makes a link. + NEW BUILD makes one of the game's own
+//! Play's builds (docs/design/app-ui.md §6, "Play"): what is done with the selected game's builds over the tiles
+//! that practice with one or make a link. + NEW BUILD makes one of the game's own
 //! (`nettai_match::build::Builds::new_build`: its own navi, the version chosen, the folder a new save starts
 //! with; there are no random builds), or, by its dialog's FROM A SAVE FILE…, one of a save file chosen in the
 //! system's dialog (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens the chosen
 //! build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen;
-//! PRACTICE opens Practice's entry on it (`crate::screens::practice::open`), whose Back comes back here too; the
+//! PRACTICE goes straight into a practice battle with it (`crate::screens::practice::open`), whose EXIT comes
+//! back here too; the
 //! build's menu (⋯, or a right click on its row: `Shell::pick_menu`) has DUPLICATE, RENAME and, apart, DELETE
 //! (which asks once, Cancel focused).
 
@@ -302,24 +303,20 @@ impl Play {
         crate::screens::builds::open(shell, ScreenId::Play, self.chosen);
     }
 
-    /// PRACTICE: Practice's entry, Your build the chosen one (`practice::open`), whose Back comes back here. With no
-    /// build, or one whose file doesn't read, the space beside JOIN says why, as CREATE INVITE's does.
+    /// PRACTICE: straight into a practice battle, the player's build the chosen one (`practice::open`), whose EXIT
+    /// comes back here with it still chosen. With no build, or one that can't be played, the reserved line says
+    /// why, as HOST's does.
     pub(super) fn practice(&mut self, shell: &mut Shell) {
-        let file = match self.build() {
-            None => Err(UserError::NoBuild),
-            Some(entry) if entry.build.is_none() => Err(UserError::BuildUnusable { reason: None }),
-            Some(entry) => Ok(entry.listed.path.file_stem().map(|s| s.to_string_lossy().into_owned()).unwrap_or_default()),
-        };
-        match (file, self.builds_of.clone()) {
-            (Ok(file), Some(game)) => {
+        match (self.side(shell), self.builds_of.clone(), self.build().map(|b| b.name().to_string())) {
+            (Ok(_), Some(game), Some(name)) => {
                 self.notice.clear();
-                crate::screens::practice::open(shell, &game, &file);
+                crate::screens::practice::open(shell, &game, &name);
             }
-            (Ok(_), None) => {}
-            (Err(problem), _) => {
+            (Err(problem), _, _) => {
                 self.problem = Some(problem);
                 self.refuse_or_show(shell);
             }
+            _ => {}
         }
     }
 
