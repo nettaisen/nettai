@@ -15,8 +15,8 @@ msgstr "プリセット"
 msgid "A preset can't be changed. Duplicate it to make your own."
 msgstr "プリセットは変更できません。複製すると自分のルールにできます。"
 
-msgid "This is the host's ruleset. Only the host can change it."
-msgstr "ホストのルールです。変更できるのはホストだけです。"
+msgid "This is your opponent's choice. Duplicate it to make your own."
+msgstr "対戦相手が選んだルールです。複製すると自分のルールにできます。"
 
 # How much a category allows.
 msgid "All allowed"
