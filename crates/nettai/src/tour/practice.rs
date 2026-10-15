@@ -1,26 +1,25 @@
-//! The screenshot pass's steps for Practice (docs/app.md §13): the entry (with no build it goes back to Play; with
-//! builds, the focus a control apart, a build changed, the builds' list, a list of more builds than it shows at once, a build that
-//! can't be used, the arena and the background stepped, the arena around its end, the arena's and the background's
-//! grids of pictures, the music stepped and its list), the two cards, the battle, the practice menu (a value
-//! changed, the focus a row apart, the dummy that fights (its Action, and its Level under it), the arena's grid,
-//! the arena, the background and the music changed under it, each
-//! Battle row a value apart, the input display, the rows another screen adds), the way to Builds' editor and back
-//! (EDIT's editor, a build edited there), and the motion probe's bursts of what Practice moves.
+//! The screenshot pass's steps for Practice (docs/app.md §13): PLAY's PRACTICE (the two cards, the battle with the
+//! practice menu open over it as it starts), the menu's Dummy's build (a value apart, its list, a list of more
+//! choices than it shows at once), the battle, the practice menu (a value changed, the focus a row apart, the
+//! dummy that fights (its Action, and its Level under it), the arena's grid, the arena, the background and the
+//! music changed under it, each Battle row a value apart, the input display, the rows another screen adds), EXIT
+//! back to Play, the way to Builds' editor and back (the Dummy's build's EDIT), and the motion probe's bursts of
+//! what Practice moves.
 //!
-//! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): the
-//! entry lists a new build of each of the game's versions and one that can't be used
-//! (`crate::screens::practice`, while the app is held still). For the way to Builds it keeps those as files in
-//! its own builds folder, which the entry then lists as a player's (`Shared::tour_files`).
+//! The pass has no builds of the player's to go by (its pictures don't depend on what they have made): Play lists
+//! builds of its own (`crate::screens::play::shelved`, while the app is held still). For the way to Builds it
+//! keeps a new build of each version as files in its own builds folder, which Practice then lists as a player's
+//! (`Shared::tour_files`).
 
 use super::{Burst, SETTLE, Step, Tour, compare, flush_burst, write};
 use crate::input::Action;
-use crate::nav::{Key, Rect};
+use crate::nav::Rect;
 use crate::screens::ScreenId;
 use crate::screens::practice;
 use crate::shell::App;
 use nettai_battle::input::keys;
 use crate::builds::store;
-use nettai_ui::{AppWindow, BuildsView, PracticeOption, PracticeView, Theme};
+use nettai_ui::{AppWindow, BuildsView, PracticeOption, Theme};
 use slint::ComponentHandle;
 use std::time::Instant;
 
@@ -29,19 +28,16 @@ use std::time::Instant;
 enum Differs {
     /// It isn't compared.
     Unheld,
-    /// Inside the control the cursor was on and the one it is on.
-    Cursors,
-    /// That, and what shows the builds and the place chosen: the cards and the arena.
-    Builds,
-    /// The cursors, and the game's own picture where the practice menu leaves it in view: the battle is in the
-    /// game's pause behind the menu, and the game moves its backgrounds through its pause.
+    /// Inside the control the cursor was on and the one it is on, and the game's own picture where the practice
+    /// menu leaves it in view: the battle is in the game's pause behind the menu, and the game moves its
+    /// backgrounds through its pause.
     Picture,
 }
 
 /// Where the game's picture is in view beside the practice menu's panel, each box given exactly (`compare` lets a
 /// pair differ 12 around each box it is given: these are 12 inside), in the UI's units. The panel is the menu's
 /// (`MenuOverlay`, at the side: the theme's margin from the left, 24 from the top and bottom, at most 500 wide),
-/// over everything under it: none of the picture under the panel is let differ.
+/// over everything under it: none of the picture under the panel is let differ, but where its cut corner shows it.
 fn picture_beside_menu(ui: &AppWindow) -> Vec<Option<Rect>> {
     let shell = ui.global::<nettai_ui::Shell>();
     let picture = Rect {
@@ -64,21 +60,9 @@ fn picture_beside_menu(ui: &AppWindow) -> Vec<Option<Rect>> {
         exactly(l.max(panel.right()), t, r, b),
         exactly(inner_l, t, inner_r, b.min(panel.y)),
         exactly(inner_l, t.max(panel.bottom()), inner_r, b),
+        // (And through the panel's cut corner, 18 at its bottom right: a dialog's or a menu's.)
+        exactly(panel.right() - 18.0, panel.bottom() - 18.0, panel.right(), panel.bottom()),
     ]
-}
-
-/// Where the entry shows the builds and the place chosen, apart from its rows: beside the rows' column, or on a
-/// phone between the rows and START PRACTICE (in the UI's units, from where those controls are).
-fn builds_shown(app: &App) -> Option<Rect> {
-    let registry = app.shell.nav.registry();
-    let registry = registry.borrow();
-    let (start, dummys, last) = (registry.rect(&Key::new("start", 0))?, registry.rect(&Key::new("dummys", 0))?, registry.rect(&Key::new("music", 0))?);
-    // (`compare` lets a pair differ 12 around each: these stop 13 short of the controls.)
-    Some(if app.shell.scale.phone {
-        Rect { x: 0.0, y: last.bottom() + 13.0, w: 10_000.0, h: start.y - last.bottom() - 26.0 }
-    } else {
-        Rect { x: start.right() + 13.0, y: dummys.y - 56.0, w: 10_000.0, h: start.bottom() - dummys.y + 56.0 }
-    })
 }
 
 /// A shot, as `tour::walk`'s: the texts' check started again, the picture written; compared with the shot kept
@@ -104,10 +88,8 @@ fn shot(add: &mut dyn FnMut(u64, Step), name: &'static str, lang: &'static str, 
                 && let Some((first, before, was)) = tour.first.borrow_mut().take()
             {
                 let mut allowed = vec![was, cursor];
-                match differs {
-                    Differs::Builds => allowed.push(builds_shown(&app.borrow())),
-                    Differs::Picture => allowed.extend(picture_beside_menu(ui)),
-                    _ => {}
+                if differs == Differs::Picture {
+                    allowed.extend(picture_beside_menu(ui));
                 }
                 compare(ui, tour, &first, &before, &tag, &picture, &allowed);
             }
@@ -197,123 +179,82 @@ fn expect(is: impl Fn(&App, &AppWindow) -> bool + 'static, what: &'static str) -
     })
 }
 
-/// What the pass has changed of Practice's remembered choices, forgotten, and the visit over: each walk starts from
-/// none, on the entry's defaults.
+/// What the pass has changed of Practice's choices, forgotten, and the visit over: each walk starts from none, on
+/// the defaults.
 pub(super) fn forget(app: &mut App) {
-    app.shell.settings.remembered.retain(|key, _| !key.starts_with("training."));
     app.shell.practice.visit.leave();
+}
+
+/// PLAY's PRACTICE pressed, the cards held: Play shown, its first build chosen (the pass's own, or with `files` the
+/// builds folder's), and PRACTICE confirmed.
+fn practice_from_play(app: &mut App, files: bool) {
+    forget(app);
+    app.shell.practice.tour_files = files;
+    app.go_now(ScreenId::Play);
+    app.shell.nav.show_cursor(true, false);
+    app.shell.hold_cards = true;
+    app.shell.nav.focus("practice", 0);
+    app.act(Action::Confirm);
 }
 
 /// Practice's steps of one language at one size.
 pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'static str) {
-    // The entry with no build of the game: it goes back to Play at once.
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            forget(&mut app);
-            app.shell.practice.tour_no_builds = true;
-            app.go_now(ScreenId::Practice);
-            app.shell.nav.show_cursor(true, false);
-        }),
-    );
-    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Play, "Play, the entry having no build"));
-
-    // The entry: the focus a control up from START PRACTICE; the dummy's build stepped to the next; the builds'
-    // list; a build that can't be used; the arena stepped to the next, and around from Random to the last; the
-    // background stepped.
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            app.shell.practice.tour_no_builds = false;
-            app.go_now(ScreenId::Practice);
-            app.shell.nav.focus("start", 0);
-        }),
-    );
-    shot(add, "practice-entry", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Up));
-    shot(add, "practice-entry-focus", lang, size, Differs::Cursors, true);
-    add(SETTLE, focus("dummys", 0));
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-entry-dummy", lang, size, Differs::Builds, false);
-    add(SETTLE, act(Action::Confirm));
-    shot(add, "practice-entry-list", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Back));
-    // A list of more choices than it shows at once (the shell's, for any select: twenty-four names where the
-    // builds' three were): it opens with the chosen one in view, the focus moves a row without the list
-    // moving, and its last row is scrolled to in a list of the same height.
-    add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.pick("dummys", 0, (1..=24).map(|n| format!("Build {n:02}")).collect(), 17)));
-    shot(add, "practice-entry-long-list", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Up));
-    shot(add, "practice-entry-long-list-focus", lang, size, Differs::Cursors, false);
-    add(SETTLE, act(Action::End));
-    shot(add, "practice-entry-long-list-end", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-entry-unusable", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Left));
-    // (The arena drawn again on each place, as for a build.)
-    add(SETTLE, focus("arena", 0));
-    shot(add, "practice-entry-places", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-entry-arena", lang, size, Differs::Builds, false);
-    add(SETTLE, act(Action::Left));
-    add(SETTLE, act(Action::Left));
-    shot(add, "practice-entry-arena-around", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Right));
-    add(SETTLE, act(Action::Right));
-    // Its grid (the user: "arena selector should be like a dropdown that shows previews of all arenas"), open at
-    // the arena chosen; and the cursor a cell on.
-    add(SETTLE, act(Action::Confirm));
-    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker_grid(), "the arena's grid"));
-    shot(add, "practice-entry-arena-grid", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-entry-arena-grid-focus", lang, size, Differs::Cursors, false);
-    add(SETTLE, act(Action::Back));
-    // (Two on: one other than the round's own pick from the pass's seed, whatever that is.)
-    add(SETTLE, focus("background", 0));
-    add(SETTLE, act(Action::Right));
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-entry-background", lang, size, Differs::Builds, false);
-    // Its grid (a dropdown of the backgrounds' pictures, as the arena's: the user, "background dropdown should be
-    // similar and show preview of all backgrounds"), open at the background chosen.
-    add(SETTLE, act(Action::Confirm));
-    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker_grid(), "the background's grid"));
-    shot(add, "practice-entry-background-grid", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Back));
-    // The battle's music: the row, a step along (the first theme), and its list open, every game's themes in it
-    // once each game's parts are read; then the game's own again.
-    add(SETTLE, Box::new(|_, _, tour| tour.wait_until(|app| app.shell.games.playable().iter().all(|id| app.shell.games.read(id).is_some()))));
-    add(SETTLE, focus("music", 0));
-    shot(add, "practice-entry-music", lang, size, Differs::Unheld, true);
-    add(SETTLE, act(Action::Right));
-    shot(add, "practice-entry-music-next", lang, size, Differs::Cursors, false);
-    add(SETTLE, act(Action::Confirm));
-    shot(add, "practice-entry-music-list", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, act(Action::Left));
-
-    // START PRACTICE: the two cards, then the battle.
-    add(SETTLE, focus("start", 0));
-    add(
-        SETTLE,
-        Box::new(|_, app, _| {
-            let mut app = app.borrow_mut();
-            app.shell.hold_cards = true;
-            app.act(Action::Confirm);
-        }),
-    );
+    // PLAY's PRACTICE: straight into a practice battle on the build chosen there, the two cards first; then the
+    // battle with the practice menu open over it as it starts, the focus on RESUME.
+    add(SETTLE, Box::new(|_, app, _| practice_from_play(&mut app.borrow_mut(), false)));
+    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Practice && practice::running(&app.shell), "Practice, its session on, from PLAY's PRACTICE"));
     shot(add, "practice-versus", lang, size, Differs::Unheld, false);
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.hold_cards = false));
     add(4000, Box::new(|_, _, _| {}));
+    add(
+        SETTLE,
+        expect(
+            |app, _| app.shell.battle.as_ref().is_some_and(|b| b.menu_open()) && app.shell.nav.focused().is_some_and(|k| k.id == "menu.resume"),
+            "the practice menu open as the battle starts, on RESUME",
+        ),
+    );
+    shot(add, "practice-menu-start", lang, size, Differs::Unheld, false);
+
+    // The Dummy's build: its row, a step along (the set starts over with the dummy on the next build, the menu
+    // staying open), its list, and back to the player's own. A list of more choices than it shows at once (the
+    // shell's, for any select: twenty-four names where the builds' few were): it opens with the chosen one in view,
+    // the focus moves a row without the list moving, and its last row is scrolled to in a list of the same height.
+    add(SETTLE, focus_row(PracticeOption::DummysBuild));
+    shot(add, "practice-menu-dummys-build", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Right));
+    add(2500, Box::new(|_, _, _| {}));
+    shot(add, "practice-menu-dummys-build-value", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the Dummy's build's list"));
+    shot(add, "practice-menu-dummys-build-list", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
+    add(SETTLE, act(Action::Left));
+    add(
+        SETTLE,
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            let at = practice::row_of(&app.shell, PracticeOption::DummysBuild).expect("the Dummy's build's row");
+            app.shell.pick("menu.rows.option", at, (1..=24).map(|n| format!("Build {n:02}")).collect(), 17);
+        }),
+    );
+    shot(add, "practice-menu-long-list", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Up));
+    shot(add, "practice-menu-long-list-focus", lang, size, Differs::Picture, false);
+    add(SETTLE, act(Action::End));
+    shot(add, "practice-menu-long-list-end", lang, size, Differs::Unheld, false);
+    add(SETTLE, act(Action::Back));
+
+    // RESUME: the battle.
+    add(SETTLE, focus("menu.resume", 0));
+    add(SETTLE, act(Action::Confirm));
+    add(2500, Box::new(|_, _, _| {}));
     shot(add, "practice-battle", lang, size, Differs::Unheld, false);
 
     // The practice menu: a value changed under the focus, the focus a row down, the input display turned on. (The
     // game's picture beside the menu may differ in each pair: it is in the game's pause, which moves its
     // backgrounds.)
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
-    // (It opens on RESUME: the focus is put on its first row.)
+    // (It opens on RESUME: the focus is put on a row.)
     add(SETTLE, focus_row(PracticeOption::Action));
     shot(add, "practice-menu", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
@@ -337,10 +278,13 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     // open (the battle through the round's opening to its custom screen, where it waits).
     add(SETTLE, focus_row(PracticeOption::Arena));
     shot(add, "practice-menu-arena", lang, size, Differs::Unheld, false);
-    // Its grid, as the entry's.
+    // Its grid (the user: "arena selector should be like a dropdown that shows previews of all arenas"), open at
+    // the arena chosen; and the cursor a cell on.
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker_grid(), "the menu's arena grid"));
-    shot(add, "practice-menu-arena-grid", lang, size, Differs::Unheld, false);
+    shot(add, "practice-menu-arena-grid", lang, size, Differs::Unheld, true);
+    add(SETTLE, act(Action::Right));
+    shot(add, "practice-menu-arena-grid-focus", lang, size, Differs::Picture, false);
     add(SETTLE, act(Action::Back));
     add(SETTLE, act(Action::Right));
     add(2500, Box::new(|_, _, _| {}));
@@ -369,13 +313,14 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
     shot(add, "practice-menu-background-chosen", lang, size, Differs::Unheld, false);
     // The Music row, and its value changed: the battle's music switched at once (nothing drawn changes but the
-    // row's value); then the game's own again.
+    // row's value); then the game's own again. Its list, open at the game's own, every game's themes in it once
+    // each game's parts are read.
+    add(SETTLE, Box::new(|_, _, tour| tour.wait_until(|app| app.shell.games.playable().iter().all(|id| app.shell.games.read(id).is_some()))));
     add(SETTLE, focus_row(PracticeOption::Music));
     shot(add, "practice-menu-music", lang, size, Differs::Unheld, true);
     add(SETTLE, act(Action::Right));
     shot(add, "practice-menu-music-value", lang, size, Differs::Picture, false);
     add(SETTLE, act(Action::Left));
-    // Its list, open at the game's own.
     add(SETTLE, act(Action::Confirm));
     add(SETTLE, expect(|_, ui| ui.global::<nettai_ui::Shell>().get_picker(), "the menu's music list"));
     shot(add, "practice-menu-music-list", lang, size, Differs::Unheld, false);
@@ -475,22 +420,25 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     add(150, hold(0));
     add(2000, tell(lang, size, "the fight again"));
 
-    // EXIT: the entry again.
+    // EXIT: Play again, the build still chosen.
     add(
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             app.shell.keys.held = 0;
             app.shell.open_menu();
-            app.with_screen(ScreenId::Practice, |screen, shell| screen.activate(shell, "menu.exit", 0));
         }),
     );
-    shot(add, "practice-entry-again", lang, size, Differs::Unheld, false);
+    // (The menu's controls are there a step after it opens.)
+    add(SETTLE, focus("menu.exit", 0));
+    add(SETTLE, act(Action::Confirm));
+    add(SETTLE, expect(|app, _| app.shell.screen() == ScreenId::Play && !practice::running(&app.shell), "Play, back from Practice's EXIT"));
+    shot(add, "practice-exit", lang, size, Differs::Unheld, false);
 
-    // EDIT: the entry listing the pass's own files (a new build of each version, kept as a player's are), Your
-    // build's EDIT focused; the Builds editor it opens on that build, on its Folder tab, Back saying PRACTICE; an
-    // entry taken out of the folder there; and Back, Practice again with the build as it was left (it can't be
-    // used now, and the reserved line says so).
+    // EDIT under the Dummy's build: the builds folder listing the pass's own files (a new build of each version,
+    // kept as a player's are), PLAY's PRACTICE on the first; the dummy on the second; its EDIT focused; the Builds
+    // editor it opens on that build, Back saying PRACTICE; and Back, the practice battle again with the menu open
+    // over it, the dummy still on that build.
     add(
         SETTLE,
         Box::new(|_, app, _| {
@@ -504,36 +452,48 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
                     crate::errors::log("keeping the pass's build", &why);
                 }
             }
+            let first = store::list(&game).first().map(|b| b.name.clone()).unwrap_or_default();
             forget(&mut app);
             app.shell.practice.tour_files = true;
-            app.with_screen(ScreenId::Practice, |screen, shell| screen.show(shell));
-            app.shell.nav.focus("edit", 0);
+            app.shell.hold_cards = false;
+            practice::open(&mut app.shell, &game, &first);
+            app.go_now(ScreenId::Practice);
         }),
     );
-    shot(add, "practice-entry-edit", lang, size, Differs::Unheld, false);
+    add(4000, Box::new(|_, _, _| {}));
+    add(SETTLE, focus_row(PracticeOption::DummysBuild));
+    add(SETTLE, act(Action::Right));
+    add(2500, Box::new(|_, _, _| {}));
+    add(SETTLE, focus_row(PracticeOption::EditDummy));
+    shot(add, "practice-menu-edit", lang, size, Differs::Unheld, false);
     add(SETTLE, act(Action::Confirm));
     add(
         SETTLE,
         expect(
             |app, ui| {
                 let view = ui.global::<BuildsView>();
-                app.shell.screen() == ScreenId::Builds && view.get_to_practice() && view.get_name() == ui.global::<PracticeView>().get_yours().name
+                let second = app.shell.game().and_then(|game| store::list(game).get(1).map(|b| b.name.clone())).unwrap_or_default();
+                app.shell.screen() == ScreenId::Builds && view.get_to_practice() && view.get_name() == second.as_str()
             },
-            "Builds' editor on Your build, Back going to Practice",
+            "Builds' editor on the dummy's build, Back going to Practice",
         ),
     );
-    add(SETTLE, focus("tab", 1));
-    add(SETTLE, act(Action::Confirm));
-    add(SETTLE, focus("slot", 4));
     shot(add, "practice-builds-editor", lang, size, Differs::Unheld, false);
-    add(SETTLE, act(Action::Delete));
     add(SETTLE, act(Action::Back));
-    add(SETTLE, expect(|app, ui| app.shell.screen() == ScreenId::Practice && !ui.global::<PracticeView>().get_ready(), "Practice, back from the editor, the build as it was left"));
-    shot(add, "practice-entry-edited", lang, size, Differs::Unheld, false);
+    add(4000, Box::new(|_, _, _| {}));
+    add(
+        SETTLE,
+        expect(
+            |app, _| app.shell.screen() == ScreenId::Practice && app.shell.battle.as_ref().is_some_and(|b| b.menu_open()) && practice::dummys_build(&app.shell) == Some(1),
+            "the practice battle again, back from the editor, the menu open, the dummy on its build",
+        ),
+    );
+    shot(add, "practice-menu-edited", lang, size, Differs::Unheld, false);
     add(
         SETTLE,
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
+            app.go_now(ScreenId::Play);
             clear_builds(&app);
             forget(&mut app);
             app.shell.practice.tour_files = false;
@@ -570,8 +530,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     );
 }
 
-/// The motion probe's bursts of what Practice moves: the entry arriving, a build stepped (the arena follows a
-/// moment after), the battle entered from START PRACTICE, the practice menu sliding in, a row's value sliding.
+/// The motion probe's bursts of what Practice moves: the battle entered from PLAY's PRACTICE (the cards, the
+/// jack-in, the menu sliding in as it starts), the practice menu closing and opening, a row's value sliding.
 pub(super) fn motion(add: &mut dyn FnMut(u64, Step)) {
     // (A burst, as `tour::motion_walk`'s: `trigger` starts something moving, and a shot is taken at each of
     // `at`, milliseconds after it.)
@@ -604,28 +564,17 @@ pub(super) fn motion(add: &mut dyn FnMut(u64, Step)) {
         Box::new(|_, app, _| {
             let mut app = app.borrow_mut();
             forget(&mut app);
-            app.go_now(ScreenId::Menu);
+            app.go_now(ScreenId::Play);
             app.shell.nav.show_cursor(true, false);
+            app.shell.nav.focus("practice", 0);
         }),
     );
-    burst(add, "practice-arrives", &[0, 40, 80, 130, 170, 220, 300, 450], Box::new(|_, app, _| app.borrow_mut().go_now(ScreenId::Practice)));
-    add(SETTLE, focus("dummys", 0));
-    burst(add, "practice-build-steps", &[0, 40, 90, 150, 200, 260, 400], act(Action::Right));
-    // (A long list: opening on a row far down it, then scrolled to its last.)
-    burst(
-        add,
-        "practice-list-opens",
-        &[0, 40, 90, 150, 220, 320],
-        Box::new(|_, app, _| app.borrow_mut().shell.pick("dummys", 0, (1..=24).map(|n| format!("Build {n:02}")).collect(), 17)),
-    );
-    burst(add, "practice-list-scrolls", &[0, 40, 90, 150, 220], act(Action::End));
-    add(SETTLE, act(Action::Back));
-    add(SETTLE, focus("start", 0));
-    burst(add, "practice-entered", &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100], act(Action::Confirm));
+    burst(add, "practice-entered", &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100, 1400, 1700], act(Action::Confirm));
     add(1500, Box::new(|_, _, _| {}));
-    burst(add, "practice-menu-opens", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
-    burst(add, "practice-menu-value", &[0, 30, 60, 100, 180], act(Action::Right));
     burst(add, "practice-menu-closes", &[0, 40, 90, 160], act(Action::Back));
+    burst(add, "practice-menu-opens", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
+    add(SETTLE, focus_row(PracticeOption::Action));
+    burst(add, "practice-menu-value", &[0, 30, 60, 100, 180], act(Action::Right));
     add(
         SETTLE,
         Box::new(|_, app, _| {

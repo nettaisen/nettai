@@ -186,7 +186,7 @@ pub fn starter_match(content: &std::sync::Arc<nettai_battle::Content>, game: &st
 }
 
 /// A silent player of `driver`, drawn as the settings say.
-pub fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
+fn player(shell: &Shell, ready: &Ready, driver: Box<dyn Driver>) -> Player {
     let mode = shell.settings.graphics();
     let graphics = ready.graphics(shell.lang);
     let font = ready.loaded.font.clone().filter(|_| mode == GraphicsMode::Enhanced);
