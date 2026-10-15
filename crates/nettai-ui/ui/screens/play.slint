@@ -876,6 +876,8 @@ export component PlayScreen inherits Page {
                 y: Theme.phone ? code.y + code.height + 12px : root.row-y;
                 width: Theme.phone ? root.body-width : self.natural-width;
                 nav: "direct";
+                // (Less than HOST and JOIN: the user, "direct connect should be deemphasized".)
+                kind: ButtonKind.text;
                 text: @tr("DIRECT CONNECT");
             }
 
