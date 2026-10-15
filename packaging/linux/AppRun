@@ -1,0 +1,4 @@
+#!/bin/sh
+# The AppImage's entry: the program, which finds its content/ beside itself.
+here=$(dirname "$(readlink -f "$0")")
+exec "$here/usr/lib/nettai/nettai" "$@"
