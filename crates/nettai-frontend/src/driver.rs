@@ -16,7 +16,7 @@ use nettai_battle::{Battle, BattleResult, PlayerTick, Rng, TickEvents, TickInput
 use nettai_match::{After, Set};
 use nettai_netplay::standin::Masher;
 
-use crate::connection::{Quality, Reconnecting};
+use crate::connection::{Quality, Reconnecting, Traffic};
 #[cfg(any(test, feature = "testing"))]
 use std::sync::Arc;
 
@@ -222,7 +222,8 @@ impl Stop {
 /// (`Driver::net_status`, `Player::net_status`): what a host shows of them
 /// is its own to compose. An indicator of four bars shows `quality` (and
 /// `ping_ms` beside it), or, while `reconnecting` is some, that and its
-/// countdown instead.
+/// countdown instead; a fuller view of the link (the app's link panel) has
+/// the rest.
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct NetStatus {
     /// The ping: the smoothed round trip, in milliseconds; none until one
@@ -236,8 +237,15 @@ pub struct NetStatus {
     /// (`crate::connection::Quality::of`, which documents the levels); none
     /// until a round trip is measured.
     pub quality: Option<Quality>,
+    /// The latest round trip as it was measured, not smoothed, in
+    /// milliseconds: what a graph of the round trip over time plots. None
+    /// until one is.
+    pub rtt_ms: Option<u64>,
     /// The share of the other player's datagrams lost, 0 to 1.
     pub loss: f64,
+    /// What went to the other player and what came from them.
+    pub sent: Traffic,
+    pub received: Traffic,
     /// The player's input delay, in ticks: how many the frame shown is
     /// behind their newest input (`crate::netplay::NetOptions`).
     pub input_delay: u32,
@@ -248,6 +256,19 @@ pub struct NetStatus {
     pub rollbacks: u64,
     /// Frames the battle waited on the other player (stalled or parked).
     pub waits: u64,
+    /// Clock sync's skew, in ticks, as the last frame read it (getgud's
+    /// `skew`): about 0 while the two players run in step, positive while
+    /// this one runs ahead of the other (and stalls a frame now and then to
+    /// let them catch up), negative while the other runs ahead.
+    pub skew: i32,
+    /// The lead, in ticks: this player's inputs the other's haven't matched
+    /// yet (getgud's local queue), as the last frame read it. About the
+    /// one-way trip while the two run in step; it climbs while the other
+    /// player's input is late, up to the stall guard.
+    pub lead: u32,
+    /// How many times in this match the connection went down and was made
+    /// again (one that is down now among them).
+    pub reconnects: u32,
     /// The connection is down and its transport is making it again (the
     /// battle waits meanwhile): for how long so far, and how long the
     /// transport has left; none while it is up.
