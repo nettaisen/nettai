@@ -56,6 +56,11 @@ pub fn keep_builds_in(dir: PathBuf) {
     }
 }
 
+/// The player's own rulesets, a folder per game: `$NETTAI_RULESETS`, else `rulesets`.
+pub fn rulesets() -> PathBuf {
+    folder("NETTAI_RULESETS", "rulesets")
+}
+
 /// The replays recorded and listed: `$NETTAI_REPLAYS`, else `replays`.
 pub fn replays() -> PathBuf {
     folder("NETTAI_REPLAYS", "replays")

@@ -10,7 +10,7 @@
 import { Theme } from "../theme.slint";
 import { Nav } from "../nav.slint";
 import { Shell, Page, PadButton, Hint } from "../shell.slint";
-import { TabBar, Tab, Rule } from "../widgets.slint";
+import { TabBar, Tab, Rule, Label, Select, Button } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 import { VersionTag } from "../build.slint";
 import { NaviView, NaviTab } from "builds/navi.slint";
@@ -38,6 +38,8 @@ export global BuildsView {
     in property <bool> to-practice;
     in property <string> name;
     in property <VersionTag> version;
+    // The ruleset the player plays by, by its name: the build is marked against it.
+    in property <string> ruleset;
     // "✓ Ready to play", or how many problems.
     in property <string> state;
     in property <bool> state-good;
@@ -118,15 +120,48 @@ export component BuildsScreen inherits Page {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
+    // (At the bar's right end on a desktop, the ruleset the player plays by, and EDIT: its page. A phone has them at
+    // the top of the Navi tab.)
+    property <length> ruleset-width: Theme.phone ? 0px : ruleset-label.width + 12px + 176px + 8px + rules-edit.width + 16px;
     TabBar {
         x: Theme.phone ? -8px : 0px;
         y: root.bar-y;
-        width: root.body-width + (Theme.phone ? 16px : 0px);
+        width: root.body-width + (Theme.phone ? 16px : 0px) - root.ruleset-width;
         nav: "tab";
         tabs: BuildsView.tabs;
         chosen: BuildsView.tab;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
+    ruleset-label := Label {
+        x: root.body-width - root.ruleset-width + 16px;
+        y: root.bar-y;
+        width: self.preferred-width;
+        height: 36px;
+        visible: !Theme.phone;
+        text: @tr("RULESET");
+    }
+
+    Select {
+        x: ruleset-label.x + ruleset-label.width + 12px;
+        y: root.bar-y;
+        width: 176px;
+        height: 36px;
+        visible: !Theme.phone;
+        focusable: !Theme.phone;
+        nav: "ruleset";
+        value: BuildsView.ruleset;
+    }
+
+    rules-edit := Button {
+        x: root.body-width - self.width;
+        y: root.bar-y;
+        width: max(72px, self.natural-width - 48px);
+        height: 36px;
+        visible: !Theme.phone;
+        nav: Theme.phone ? "" : "ruleset-edit";
+        text: @tr("EDIT");
     }
 
     EditorBody {

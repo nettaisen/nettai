@@ -299,6 +299,8 @@ impl Navicust {
                     let out = copies.iter().any(|p| board.is_some_and(|b| grid::cells(&d.shape(p.piece, p.compressed, p.rotation), p.x, p.y).iter().any(|&(x, y)| kind_at(b, x, y) == b'f')));
                     let state = match &self.held {
                         Some(h) if h.piece == piece && h.color == color => ProgramState::Held,
+                        // (One the ruleset the player plays by doesn't allow says so, in the error red.)
+                        _ if !draft.allows(grid::PIECES_FIELD, piece) => ProgramState::NotAllowed,
                         _ if out => ProgramState::Out,
                         _ if !copies.is_empty() => ProgramState::Placed,
                         _ => ProgramState::None,
