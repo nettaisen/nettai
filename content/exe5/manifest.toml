@@ -13,4 +13,4 @@ depends = ["exelib"]
 # (rules/auto_battle/block's `LISTS`); `battle_themes`, each battle theme's name, by its song's asset name
 # (rules/battle_themes); `stats`, the stats the rules' overview gives beyond the eight every game's have (a Soul
 # Unison's turns, rules/souls/custom).
-text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "auto_battle_lists", "battle_themes", "stats"]
+text = ["game", "patch_card_effects", "patch_card_groups", "bugs", "builds", "auto_battle_lists", "battle_themes", "stats", "rulesets"]

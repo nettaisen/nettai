@@ -67,9 +67,11 @@ fn exe6_forms_agree_with_their_kinds() {
             let Some(set) = set else { continue };
             let ok = set.crosses.iter().all(|&f| forms::kind(&c, f) == Some(Kind::Cross))
                 && set.beast_out.is_none_or(|f| forms::kind(&c, f) == Some(Kind::Beast))
-                && set.beast_over.is_none_or(|f| forms::kind(&c, f) == Some(Kind::BeastOver));
+                && set.beast_over.is_none_or(|f| forms::kind(&c, f) == Some(Kind::BeastOver))
+                // (A set that beasts out also beasts over, and the other way: the set's `cybeast` read by its name.)
+                && set.beast_out.is_some() == set.beast_over.is_some();
             if !ok {
-                problems.push(format!("{}: its forms' `crosses` are Crosses, `beast_out` a Beast and `beast_over` a Beast Over", n.key));
+                problems.push(format!("{}: its forms' `crosses` are Crosses, `cybeast` a Beast and `beast_over` a Beast Over, both or neither", n.key));
             }
             // A game's set is of that game's forms (a Cross's number in
             // the Cross window is its place in the set).
@@ -87,8 +89,9 @@ fn exe6_forms_agree_with_their_kinds() {
 }
 
 /// The Crosses' strings: what the Cross window shows (their names and
-/// descriptions) the own language's table has for every EXE6 Cross, and the
-/// table names no other EXE6 form (nothing shows another form's).
+/// descriptions) the own language's table has for every EXE6 Cross; and the
+/// table names no other EXE6 form but the Beast forms, whose names the build
+/// editor's selector shows (GBeast, FBeast: nothing shows another form's).
 #[test]
 fn exe6_crosses_have_their_strings() {
     let c = exe6_content();
@@ -104,6 +107,7 @@ fn exe6_crosses_have_their_strings() {
     }
     for key in c.strings.forms.keys() {
         let f = c.defs.form_by_key(key).unwrap_or_else(|| panic!("{key}: no form has this key"));
-        assert!(crosses.contains(&f), "{key}: not a Cross (nothing shows another form's strings)");
+        let shown = crosses.contains(&f) || forms::kind(&c, f) == Some(Kind::Beast) && c.defs.form(f).record.version.is_some();
+        assert!(shown, "{key}: not a Cross or a Beast form (nothing shows another form's strings)");
     }
 }
