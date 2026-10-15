@@ -189,6 +189,16 @@ impl Problem {
         Problem { side, what: Wrong::of_rules(content, &p.kind, &p.data), field: p.field, entry: p.entry, text: p.text }
     }
 
+    /// Whether it is about entry `entry` (from 0) of its field's list: the entry it names, or of an item a ruleset
+    /// doesn't allow, any of the entries that hold it ([`Wrong::NotAllowed`]'s `entries`: every copy of a chip, every
+    /// placed copy of a program).
+    pub fn at(&self, entry: usize) -> bool {
+        match &self.what {
+            Wrong::NotAllowed { entries, .. } => entries.contains(&entry),
+            _ => self.entry == Some(entry),
+        }
+    }
+
     /// The problem as [`check_match`] says it: its side first.
     pub fn said(&self) -> String {
         match self.side {

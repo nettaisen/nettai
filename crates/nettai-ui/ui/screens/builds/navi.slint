@@ -117,8 +117,8 @@ component NaviCardView inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    // (Not allowed by the ruleset: a line in the error red at its top, as a library's row says why at its end; the
-    // build's navi, its name in the error red too, as an item of the build's with a problem.)
+    // (Not allowed by the ruleset: a quiet line at its top, as a library's row says so at its end; it can still be
+    // chosen. The build's navi, its name in the error red, as an item of the build's with a problem.)
     Text {
         x: root.pad;
         y: root.pad - 4px;
@@ -126,7 +126,7 @@ component NaviCardView inherits Rectangle {
         height: 16px;
         visible: root.navi.banned;
         text: @tr("Not allowed");
-        color: Theme.bad;
+        color: Theme.muted;
         font-family: Theme.body;
         font-size: 11px;
         font-weight: 600;
@@ -141,7 +141,7 @@ component NaviCardView inherits Rectangle {
         width: parent.width - 2 * root.pad;
         height: 16px;
         text: root.navi.name;
-        color: root.navi.banned ? (root.navi.chosen ? Theme.bad : Theme.dim) : Theme.text;
+        color: root.navi.banned && root.navi.chosen ? Theme.bad : Theme.text;
         font-family: Theme.body;
         font-size: 13px;
         font-weight: 600;
@@ -158,8 +158,8 @@ component NaviCardView inherits Rectangle {
 
 // A form's row in the selector, as tall as the editor's lists' rows (`Theme.list-row`): a check mark (the build's or
 // not), its face, its name; its name in the error red where the build's problems are about it, and "Not allowed" at
-// its end in the error red where the ruleset holds it back, as an item and a library's row are marked on every tab
-// (docs/design/app-ui.md §2.66). (It has no mark of its version: its group's head, in the version's color, says it.
+// its end, quietly, where the ruleset holds it back (it can still be chosen), as a library's row is marked on every
+// tab (docs/design/app-ui.md §2.66, §2.68). (It has no mark of its version: its group's head, in the version's color, says it.
 // The user: "drop the selector's per-row tags".)
 component FormRow inherits Rectangle {
     in property <NaviForm> form;
@@ -214,7 +214,7 @@ component FormRow inherits Rectangle {
         width: self.preferred-width;
         visible: root.form.banned;
         text: @tr("Not allowed");
-        color: Theme.bad;
+        color: Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
         horizontal-alignment: right;

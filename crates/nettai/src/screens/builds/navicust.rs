@@ -348,7 +348,7 @@ impl Navicust {
         let parts = grid::placed(draft.content(), draft.side());
         let at: Vec<usize> = parts.iter().enumerate().filter(|(_, p)| p.piece == piece).map(|(i, _)| i).collect();
         let mixed = draft.mixing(Registry::Entry, &Item::of(piece)).filter(|_| !at.is_empty());
-        let own = draft.checked.problems.iter().filter(|p| p.field.as_deref() == Some(grid::PIECES_FIELD) && p.entry.is_some_and(|e| at.contains(&e)));
+        let own = draft.checked.problems.iter().filter(|p| p.field.as_deref() == Some(grid::PIECES_FIELD) && at.iter().any(|&e| p.at(e)));
         own.chain(mixed).collect()
     }
 
@@ -389,11 +389,11 @@ impl Navicust {
                     let out = copies.iter().any(|p| board.is_some_and(|b| grid::cells(&d.shape(p.piece, p.compressed, p.rotation), p.x, p.y).iter().any(|&(x, y)| kind_at(b, x, y) == b'f')));
                     let state = match &self.held {
                         Some(h) if h.piece == piece => ProgramState::Held,
-                        // (One the ruleset the player plays by doesn't allow says so in the error red, placed or not:
-                        // placed, its name is in it too.)
-                        _ if !allowed => ProgramState::NotAllowed,
                         _ if out => ProgramState::Out,
                         _ if !copies.is_empty() => ProgramState::Placed,
+                        // (One the ruleset the player plays by doesn't allow says so quietly where it isn't placed: it
+                        // can be, and is then the build's problem, its name in the error red.)
+                        _ if !allowed => ProgramState::NotAllowed,
                         _ => ProgramState::None,
                     };
                     ProgramRow {

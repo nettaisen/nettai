@@ -2162,7 +2162,7 @@ mod tests {
             for side in &with {
                 let problems = none.checked(&content, &rulesets, side).problems;
                 assert_eq!(problems.len(), 1, "{game}");
-                assert_eq!((&problems[0].what, problems[0].field.as_deref(), problems[0].entry), (&Wrong::NotAllowed { registry: Registry::Entry, item: nettai_match::ruleset::Item::of(card.0) }, Some(PATCH_CARDS), Some(0)), "{game}");
+                assert_eq!((&problems[0].what, problems[0].field.as_deref(), problems[0].entry), (&Wrong::NotAllowed { registry: Registry::Entry, item: nettai_match::ruleset::Item::of(card.0), entries: vec![0] }, Some(PATCH_CARDS), Some(0)), "{game}");
             }
             // In the lobby: neither can ready, and nothing is agreed.
             let now = Instant::now();
@@ -2209,7 +2209,7 @@ mod tests {
         let mut no_chip = Ruleset::open(RulesetName::Own("No chip".into()));
         no_chip.one_per_build = true;
         no_chip.set_allowed("folder", &nettai_match::ruleset::Item::of(held.0), false);
-        let banned = Wrong::NotAllowed { registry: Registry::Chip, item: nettai_match::ruleset::Item::of(held.0) };
+        let banned = Wrong::NotAllowed { registry: Registry::Chip, item: nettai_match::ruleset::Item::of(held.0), entries: vec![first] };
         let whats = |problems: &[Problem]| -> Vec<Wrong> { problems.iter().map(|p| p.what.clone()).collect() };
         let under = Settings { ruleset: no_chip.clone(), ..settings(1) };
         assert_eq!(under.checked(&content, &r, &joiner).problems, Checked::under(&content, "exe6", &joiner, &r, &no_chip).problems);

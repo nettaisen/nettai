@@ -1257,7 +1257,8 @@ of its own, `rulesets/<game>/<name>.toml` in the data folder (`rulesets/store.rs
     patch_cards = ["starman"]
 
 A category is named by the fact of a build it holds back (the folder's chips, the navi, `navicust_programs`,
-`patch_cards`, `crosses` or `souls`), and its items by their names in the game; what a file doesn't name is
+`patch_cards`, `crosses` or `souls`, EXE4's and EXE5's `auto_battle_places`: the auto battle data's chips, held
+back apart from the folder's), and its items by their names in the game; what a file doesn't name is
 allowed. Closed builds is no ruleset's: it is the lobby's own setting.
 - **The ruleset a player plays by** is one for each game, remembered under `ruleset.<game>` in the settings
   (`rulesets::played_by`, `remember`: `preset:<id>` or `own:<name>`; the game's first preset where none is, or
@@ -1271,10 +1272,12 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
   allow is among the build's problems: what it has against the build (the problems `Wrong::of_ruleset` says are its,
   an item it doesn't allow and a mix of versions) is said in the strip of each item it is about (the Navi tab's
   note's place), with the game's rules' (`Draft::line`), and by nothing by the select (design §2.66; a phone's pane
-  headers say the game's rules' alone). Each tab marks what it is about (`Draft::allows`): a navi's card ("Not allowed" in
-  the error red), the folder's library rows ("Not allowed", refused) and entries (the folder's view held to the
-  ruleset: `View::hold_to`), a NaviCust program's row (`ProgramState::NotAllowed`), a patch card's library row
-  and installed card (refused, in the error red), a soul's or Cross's face (a red ring).
+  headers say the game's rules' alone). It refuses nothing (design §2.68): what it holds back goes into the build as
+  anything else, and is then a problem about every entry that holds it (`Wrong::NotAllowed`'s `entries`,
+  `Problem::at`: each copy of a chip, each placed program, each auto battle place), its name in the error red. Before
+  that each tab says "Not allowed" quietly, in the muted color (`Draft::allows`): a navi's card, a form's row, the
+  folder's, the patch cards' and the auto battle data's library rows, a NaviCust program's row where none of it is
+  placed (`ProgramState::NotAllowed`). The folder's view is the game's rules' alone.
 - **A ruleset's page** (`rulesets/page.rs`, `ui/ruleset.slint`'s `RulesetPage` and `RulesetView`): app.slint
   shows it in the place of the screen that opened it (the lobby's Play, the editor's Builds), which goes on
   unseen under it; its controls are `rules.`-named, a scope of the focus's, and the screen hands them to it
