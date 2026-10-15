@@ -3477,3 +3477,47 @@ the default chips for an empty save for the game". No screen is in this step.
   them (`Wrong::Slot`: the card, the slot it is in, its own). `rules/builds`' `slots` names the list and its slots,
   and `build::Slots` gives a card's own slot and its name, what each slot of a build holds, and puts a card in its
   own slot in place of what was there.
+
+### Rulesets (2026-10-15, branch worktree-agent-a41eedac9b1a54bf6)
+
+For nettai's rulesets (docs/design/app-ui.md §2.59), by the user's words: "instead of just closed setup and patch
+cards on/off there should be an entire ruleset configuration thing like: - closed setups - allowed navicust pieces -
+allowed patch cards - allowed chips - allowed navis - allowed sets of souls/crosses (should be able to represent
+game)". A ruleset is what a match is played under beside its rounds; it says nothing of how a round plays, only
+which builds may play it, so the simulation never reads it.
+
+- **A game's ruleset categories are its data** (`content/<game>/rules/rulesets.luau`, which the rules load and none
+  of them reads, as rules/builds is; nettai-match's `ruleset::Rulesets` reads it with
+  `behavior::content_module_data`). A category is one fact of the rules' setup, by its name, that names
+  definitions: what a ruleset may hold back of it is those definitions. Its items, its registry and what each of a
+  build's values names are the fact's type's, so the category states none of them:
+  - the registry is the fact's (a `navi`; a list of `patch_cards`; a list of records whose one field of a
+    registry names the definition: the folder's `chip`, the NaviCust's `program`, EXE4's card's `card`);
+  - its items are the game's definitions of that registry a build can hold: the navis a side can play
+    (`nettai_match::navis`), the chips a folder lists (the folder rules' view: every chip of the game but those no
+    folder holds), the forms the fact offers (`facts::offered`: EXE6's Crosses of MegaMan's lists, EXE4's and EXE5's
+    souls of the rules' default), else the registry's definitions of the game (an entry of the list's collection),
+    in the order a build's lists show them.
+  A category may have **sets**: named groups of its items, each a list of the items' names (EXE6's Crosses of
+  Gregar and of Falzar, EXE5's souls of Team ProtoMan and of Team Colonel, EXE4's of Red Sun and of Blue Moon: what
+  each cartridge has). A set is the content's own list: it reads no build's version (how a build holds its version,
+  once souls and Crosses can be mixed, is being designed apart). A category of chips can have sets the same way
+  (each version's Giga chips), which none declares yet.
+- **Presets** are the game's rulesets ready-made, in order, each by an id: what each category allows `only` (a
+  set's id, or a list of items' names, `{}` none; a category it doesn't name allows everything) and whether builds
+  are `closed_builds`. Each game's: `standard` (everything), one per set of souls or Crosses, `no_patch_cards`. The
+  first is a player's until they pick another: nothing guesses a game.
+- **Names** are the game's strings (its locales' text table `rulesets`): `category.<fact>` ("Chips", "Crosses"),
+  `preset.<id>`, `set.<id>`.
+- **A ruleset** (`ruleset::Ruleset`): its name (a preset's id, or the player's own name), `closed_builds`, and for
+  each category the items it doesn't allow (`banned`, by handle; as text, by name). What it doesn't name is
+  allowed, so what a game gains later is allowed by every ruleset until one holds it back. Rust names no category:
+  it reads a fact by the category's name and the definitions it names by the fact's type.
+- **A build under a ruleset** (`build::Checked::under`): the build's check (`Checked::of`) and, for each
+  category, a problem for each definition the build's fact names that the ruleset doesn't allow (`Wrong::NotAllowed
+  { registry, def }`, its field the fact and its entry the first that names it). Nothing is taken out of a build.
+  It is nettai-match's, as the rules' `build_check` is beside `validate`: what is held back is the same question for
+  every game and every category, so no game's Luau answers it.
+- **Patch cards off** is a ruleset that allows no patch cards (`no_patch_cards`): a build that holds cards is
+  refused under it, where before it was played without them. `Side::without_patch_cards` stays for the NaviCust
+  tab's effects alone.
