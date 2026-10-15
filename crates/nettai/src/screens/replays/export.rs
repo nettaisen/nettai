@@ -15,7 +15,7 @@ use crate::shell::Shell;
 use nettai_frontend::game::{Loaded, Sound, GraphicsMode};
 use nettai_frontend::player::time_of;
 use nettai_ui::{ExportState, ReplaysView};
-use nettai_video::{Options, Part, Progress, mp4};
+use nettai_video::{Options, Part, Progress, Sides, mp4};
 use slint::ComponentHandle;
 use std::ops::ControlFlow;
 use std::path::{Path, PathBuf};
@@ -64,6 +64,8 @@ pub struct Export {
     summary: Summary,
     size: usize,
     side: u8,
+    /// Both consoles side by side (`side`'s at the left, heard), or `side`'s alone.
+    both: bool,
     /// The part: 0 the whole match, else that round.
     part: u32,
     to: PathBuf,
@@ -118,6 +120,7 @@ impl Export {
             summary: summary.clone(),
             size: FIRST_SIZE,
             side: side.min(1),
+            both: false,
             part: 0,
             to: PathBuf::new(),
             placed: false,
@@ -168,8 +171,9 @@ impl Export {
         }
     }
 
-    fn size_label(size: u32) -> String {
-        format!("{} × {} ({size}×)", 240 * size, 160 * size)
+    /// A size as the video's pixels and the multiple of the frame: with both sides, twice as wide.
+    fn size_label(size: u32, both: bool) -> String {
+        format!("{} × {} ({size}×)", 240 * size * (1 + both as u32), 160 * size)
     }
 
     /// Name the file, unless the player chose its place: the day it was played, the opponent and the part, in
@@ -187,6 +191,9 @@ impl Export {
         if self.part > 0 {
             stem.push_str(&format!(" round {}", self.part));
         }
+        if self.both {
+            stem.push_str(" both sides");
+        }
         self.to = (1..).map(|n| folder.join(if n == 1 { format!("{stem}.mp4") } else { format!("{stem} ({n}).mp4") })).find(|p| !p.exists()).expect("some number is free");
     }
 
@@ -194,8 +201,9 @@ impl Export {
     pub fn show(&mut self, shell: &mut Shell) {
         let ui = shell.ui();
         let view = ui.global::<ReplaysView>();
-        view.set_export_size(Export::size_label(SIZES[self.size]).into());
+        view.set_export_size(Export::size_label(SIZES[self.size], self.both).into());
         view.set_export_view(self.side as i32);
+        view.set_export_sides(self.both as i32);
         view.set_export_part(self.part_label(&view, self.part).into());
         view.set_export_path(shown(&self.to, shell.scale.phone).into());
         view.set_export_state(self.state);
@@ -222,12 +230,19 @@ impl Export {
         self.show(shell);
     }
 
+    /// Both consoles side by side, or the view's alone (the file's name says which).
+    fn set_both(&mut self, shell: &mut Shell, both: bool) {
+        self.both = both;
+        self.name(shell);
+        self.show(shell);
+    }
+
     /// Enter or a click on one of its controls (its name after `export.`). True: the dialog is to close.
     pub fn activate(&mut self, shell: &mut Shell, what: &str) -> bool {
         match what {
             "cancel" => return self.back(shell),
             "go" => self.start(shell),
-            "size" if self.open_to_change() => shell.pick("export.size", 0, SIZES.iter().map(|&s| Export::size_label(s)).collect(), self.size),
+            "size" if self.open_to_change() => shell.pick("export.size", 0, SIZES.iter().map(|&s| Export::size_label(s, self.both)).collect(), self.size),
             "part" if self.open_to_change() => {
                 let ui = shell.ui();
                 let view = ui.global::<ReplaysView>();
@@ -238,6 +253,7 @@ impl Export {
                 self.side ^= 1;
                 self.show(shell);
             }
+            "sides" if self.open_to_change() => self.set_both(shell, !self.both),
             "path" if self.open_to_change() => {
                 let kind = shell.ui().global::<ReplaysView>().get_video_kind();
                 if let Some(mut to) = choose(&kind, &self.to) {
@@ -261,6 +277,7 @@ impl Export {
         match what {
             "size" => self.size = (self.size as i32 + by).clamp(0, SIZES.len() as i32 - 1) as usize,
             "view" => self.side = (by > 0) as u8,
+            "sides" => return self.set_both(shell, by > 0),
             "part" => return self.set_part(shell, (self.part as i32 + by).clamp(0, self.parts() as i32) as u32),
             _ => {}
         }
@@ -275,6 +292,7 @@ impl Export {
         match what {
             "size" => self.size = choice.clamp(0, SIZES.len() as i32 - 1) as usize,
             "view" => self.side = choice.clamp(0, 1) as u8,
+            "sides" => return self.set_both(shell, choice > 0),
             "part" => return self.set_part(shell, choice.max(0) as u32),
             _ => {}
         }
@@ -324,7 +342,8 @@ impl Export {
             // (With the game's own music, as the replay plays in the viewer: the pick is Practice's alone.)
             sound: crate::music::sound(&shell.games, &ready, &crate::music::Music::GameOwn).map(|(banks, songs)| Sound { banks, songs, report: Default::default() }),
         };
-        let options = Options { scale: SIZES[self.size], view: Some(self.side), part: if self.part == 0 { Part::Whole } else { Part::Round(self.part) } };
+        let sides = if self.both { Sides::Both } else { Sides::One };
+        let options = Options { scale: SIZES[self.size], view: Some(self.side), sides, part: if self.part == 0 { Part::Whole } else { Part::Round(self.part) } };
         let encoding = mp4::Settings { ffmpeg: mp4::find_ffmpeg(), ..mp4::Settings::default() };
         let (stop, shared, to) = (Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(Shared::default())), self.to.clone());
         let (stopped, told) = (stop.clone(), shared.clone());
@@ -450,6 +469,7 @@ mod tests {
     fn the_sizes_are_even() {
         assert!(SIZES.iter().all(|s| s % 2 == 0));
         assert_eq!(SIZES[FIRST_SIZE], 4);
-        assert_eq!(Export::size_label(4), "960 × 640 (4×)");
+        assert_eq!(Export::size_label(4, false), "960 × 640 (4×)");
+        assert_eq!(Export::size_label(4, true), "1920 × 640 (4×)");
     }
 }

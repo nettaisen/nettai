@@ -1,0 +1,153 @@
+// The input display (docs/design/app-ui.md §6): two sides' buttons, lit as they are held, each row in its side's
+// color. Practice shows it over its battle (`PracticeInputs`: yours over the dummy's), and the replay viewer over
+// the replay (the console shown's player's over the other's), each placing it where it goes.
+
+import { Theme } from "theme.slint";
+
+// A button of the input display: lit while it is held. (In the fixed-width face, which has the arrows.)
+component InputKey inherits Rectangle {
+    in property <bool> lit;
+    in property <string> text;
+    in property <color> tone;
+    width: 16px;
+    height: 16px;
+    Rectangle {
+        background: root.lit ? root.tone : Theme.inset;
+        border-width: 1px;
+        border-color: root.lit ? root.tone : Theme.line;
+    }
+
+    Text {
+        text: root.text;
+        color: root.lit ? Theme.inset : Theme.dim;
+        font-family: Theme.mono;
+        font-size: root.width > 16px ? 9px : 11px;
+        font-weight: 700;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
+// A side's buttons in a row, its color before them: the directions, A and B, L and R, SELECT and START (the
+// GBA's own names for them).
+component InputRow inherits Rectangle {
+    // The buttons held, as the GBA's bits (A 0, B 1, SELECT 2, START 3, right 4, left 5, up 6, down 7, R 8,
+    // L 9).
+    in property <int> held;
+    in property <color> tone;
+    pure function on(bit: int) -> bool {
+        return Math.mod(Math.floor(root.held / Math.pow(2, bit)), 2) > 0.5;
+    }
+    width: 243px;
+    height: 16px;
+    Rectangle {
+        x: 0;
+        width: 3px;
+        background: root.tone;
+    }
+
+    InputKey {
+        x: 9px;
+        text: "←";
+        lit: root.on(5);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 27px;
+        text: "↑";
+        lit: root.on(6);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 45px;
+        text: "↓";
+        lit: root.on(7);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 63px;
+        text: "→";
+        lit: root.on(4);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 87px;
+        text: "A";
+        lit: root.on(0);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 105px;
+        text: "B";
+        lit: root.on(1);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 129px;
+        text: "L";
+        lit: root.on(9);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 147px;
+        text: "R";
+        lit: root.on(8);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 171px;
+        width: 38px;
+        text: "SELECT";
+        lit: root.on(2);
+        tone: root.tone;
+    }
+
+    InputKey {
+        x: 211px;
+        width: 32px;
+        text: "START";
+        lit: root.on(3);
+        tone: root.tone;
+    }
+}
+
+// The input display: one side's buttons over the other's, in a box 259 by 52 that its user places. It takes no
+// clicks.
+export component InputDisplay inherits Rectangle {
+    // The buttons each row's side holds (the GBA's bits), and its color.
+    in property <int> held-top;
+    in property <int> held-bottom;
+    in property <color> tone-top: Theme.p1;
+    in property <color> tone-bottom: Theme.p2;
+    width: 259px;
+    height: 52px;
+    Rectangle {
+        background: Theme.shade;
+        border-width: 1px;
+        border-color: Theme.line;
+        // (Drawn into a layer, which is what each frame shows: its forty boxes and twenty letters are drawn
+        // anew only when a button changes.)
+        cache-rendering-hint: true;
+        InputRow {
+            x: 8px;
+            y: 8px;
+            held: root.held-top;
+            tone: root.tone-top;
+        }
+
+        InputRow {
+            x: 8px;
+            y: 28px;
+            held: root.held-bottom;
+            tone: root.tone-bottom;
+        }
+    }
+}
