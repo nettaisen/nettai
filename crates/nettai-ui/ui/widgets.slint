@@ -250,9 +250,6 @@ export component Button inherits Rectangle {
     in property <bool> danger;
     // 52 tall (a phone's READY).
     in property <bool> big;
-    // A tile of PLAY's (PRACTICE, HOST): 72 tall, its words at its left in the display face at 20, its corner
-    // cut as a panel's.
-    in property <bool> tile;
     out property <bool> focused: hit.focused;
     // As wide as its text asks (what it is where no `width` is given it: a layout that gives it another on a
     // phone alone reads this for the desktop's).
@@ -269,7 +266,7 @@ export component Button inherits Rectangle {
     property <length> dip: press.v > 0.4 ? 1px : 0px;
     // The main action's sheen: a band of light across it every few seconds.
     property <float> sheen: Theme.motion && root.kind == ButtonKind.main && root.enabled ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
-    height: root.tile ? 72px : root.big ? 52px : 40px;
+    height: root.big ? 52px : 40px;
     width: root.natural-width;
     press := Pulse {
         seq: root.presses;
@@ -277,7 +274,7 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: root.tile ? 12px : 9px;
+        cut: 9px;
         background: root.bare ? root.fill-ghost : (root.kind == ButtonKind.main ? root.fill-main : root.fill-normal);
         line: root.kind == ButtonKind.text ? transparent : !root.enabled ? Theme.dim : (root.kind == ButtonKind.main ? Theme.action : Theme.line);
     }
@@ -299,24 +296,24 @@ export component Button inherits Rectangle {
 
     Cut {
         y: root.dip;
-        cut: root.tile ? 12px : 9px;
+        cut: 9px;
         background: #ffffff;
         line: transparent;
         opacity: press.v * 0.38;
     }
 
     label := Text {
-        x: root.tile ? 20px : 16px;
+        x: 16px;
         y: root.dip;
-        width: parent.width - (root.tile ? 40px : 32px);
+        width: parent.width - 32px;
         height: parent.height;
         text: root.text;
         color: !root.enabled ? Theme.dim : root.kind == ButtonKind.main ? Theme.action-ink : root.danger ? Theme.bad : root.kind == ButtonKind.text && !hit.has-hover && !hit.focused ? Theme.muted : Theme.text;
         font-family: Theme.display;
-        font-size: root.tile ? 20px : root.big ? 16px : 13px;
+        font-size: root.big ? 16px : 13px;
         font-weight: root.kind == ButtonKind.main ? Theme.display-bold : Theme.display-semibold;
         letter-spacing: Theme.button-tracking;
-        horizontal-alignment: root.tile ? left : center;
+        horizontal-alignment: center;
         vertical-alignment: center;
         overflow: elide;
     }
@@ -814,17 +811,18 @@ export component Field inherits Rectangle {
         enabled: root.enabled;
     }
 
-    // What it holds, while it isn't edited.
+    // What it holds, while it isn't edited. (A code's field says what goes in it in words: the body face.)
     Text {
+        property <bool> as-code: root.code && root.text != "";
         x: 12px;
         width: parent.width - 24px;
         visible: !root.editing;
         text: root.text == "" ? root.placeholder : root.text;
         color: root.text == "" || !root.enabled ? Theme.dim : Theme.text;
-        font-family: root.code ? Theme.mono : Theme.body;
-        font-size: root.code ? 16px : 14px;
-        font-weight: root.code ? 700 : 400;
-        letter-spacing: root.code ? 1.3px : 0px;
+        font-family: self.as-code ? Theme.mono : Theme.body;
+        font-size: self.as-code ? 16px : 14px;
+        font-weight: self.as-code ? 700 : 400;
+        letter-spacing: self.as-code ? 1.3px : 0px;
         vertical-alignment: center;
         overflow: elide;
     }
