@@ -200,11 +200,12 @@ impl Player {
     /// What the player made on the way since it was made, because nothing
     /// had made it ready (`crate::preload`): content runtimes loaded on
     /// this thread, parts of a pack read from disk on it, and its text's
-    /// strings laid out and glyphs drawn for the first time. A player a
-    /// [`crate::preload::Preload`] made, on the thread that stepped it,
-    /// has loaded no runtime and read nothing however long it plays; the
-    /// text's counts go up as new strings show (a chip's name, a number),
-    /// each a part of a millisecond. For a host's debug line or its log,
+    /// strings laid out and glyphs' fields made for the first time. A
+    /// player a [`crate::preload::Preload`] made, on the thread that
+    /// stepped it, has loaded no runtime and read nothing however long it
+    /// plays; the text's counts go up as new strings show (a chip's name in
+    /// a box, a number), each a part of a millisecond, and as a glyph the
+    /// preload didn't make shows. For a host's debug line or its log,
     /// and for the tests that hold the preload to it.
     pub fn late(&self) -> Late {
         let now = made_so_far(&self.renderer, self.text.as_ref());
