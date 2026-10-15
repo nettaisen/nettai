@@ -4,9 +4,9 @@
 //! The player's builds of the selected game are here (`list`: + NEW BUILD over them, whose dialog also starts one
 //! from a save file; the chosen one's overview beside them with EDIT, which opens it in Builds' editor, and ⋯, its
 //! menu of DUPLICATE, RENAME and DELETE). The player picks one and practices with it (PRACTICE, beside EDIT), or
-//! makes a link with it: HOST makes an invite (a room of the signaling server, whose code the server picks), or
-//! with its ▾ hosts directly (this machine listening on a UDP port); JOIN's field takes an invite's code or a
-//! direct host's address. While they wait for the other player a practice session runs beside the invite's code (`crate::screens::practice`'s, with
+//! makes a link with it: HOST makes an invite (a room of the signaling server, whose code the server picks), JOIN
+//! joins one by the code typed, and DIRECT CONNECT's dialog hosts directly (this machine listening on a UDP port)
+//! or joins a direct host by its address. While they wait for the other player a practice session runs beside the invite's code (`crate::screens::practice`'s, with
 //! this screen's rows in its menu). Once the link is open the two are in
 //! the lobby (`session`: one `Lobby` a link, for as long as they stay together): the match's shared settings,
 //! each one's ready mark, the connection's quality. Both ready, the match is agreed and made ready behind the
@@ -159,6 +159,15 @@ pub(crate) fn settings(game: &str, wins: u8) -> Settings {
     Settings { backgrounds: nettai_match::BackgroundPick::Pool, ..Settings::new(game, wins) }
 }
 
+/// A direct connection's dialog.
+#[derive(Default)]
+struct Direct {
+    host_address: String,
+    address: String,
+    host_problem: Option<UserError>,
+    join_problem: Option<UserError>,
+}
+
 /// What the match's loading says across the shell's gate: how far this side is, how far the other, and the
 /// match's driver once the lobby says it starts (the battle begins when it is there).
 #[derive(Default)]
@@ -229,10 +238,10 @@ pub struct Play {
     /// (quietly, in the space beside JOIN).
     naming: Option<Naming>,
     notice: String,
-    /// What JOIN's field holds as typed (an invite's code or a direct host's address: [`joining`]), and what the
-    /// reserved line under the tiles says.
+    /// The code typed (its characters alone), and what the reserved line under the row says.
     code: String,
     problem: Option<UserError>,
+    direct: Option<Direct>,
     /// The code's six boxes are open (a pad can't type): the character each is on, by its place in the
     /// alphabet codes are written in.
     boxes: Option<[usize; CODE_LENGTH]>,
@@ -271,6 +280,7 @@ impl Default for Play {
             notice: String::new(),
             code: String::new(),
             problem: None,
+            direct: None,
             boxes: None,
             changing: false,
             session: None,
@@ -296,27 +306,22 @@ fn code_box(at: usize) -> String {
     format!("boxes.{at}")
 }
 
-/// What JOIN's field keeps of what was typed: the text without spaces or control characters, at most 80
-/// characters (an address is longer than a code).
-fn field_typed(text: &str) -> String {
+/// What the direct connection's address field keeps of what was typed: the text without spaces or control
+/// characters, at most 80 characters.
+fn address_typed(text: &str) -> String {
     text.chars().filter(|c| !c.is_control() && !c.is_whitespace()).take(80).collect()
 }
 
-/// How JOIN's field's text joins (the user: "direct connect is in a weird place", and of the ways put to them,
-/// the field taking either): an address (a host or an IP and a port, an IPv6 one in brackets: `[::1]:47474`)
-/// joins that host directly; text with none of an address's marks (`:`, `.`, `[`) is an invite's code. Text with
-/// them that isn't an address (no port, say) is refused as one.
-fn joining(text: &str) -> Result<Way, UserError> {
+/// The direct connection's address, as its CONNECT takes it: a host or an IP and a port, an IPv6 one in
+/// brackets (`[::1]:47474`). One without a port is no address, whatever it resolves to.
+fn direct_address(text: &str) -> Result<String, UserError> {
     let text = text.trim();
-    if !text.contains([':', '.', '[']) {
-        return Ok(Way::Code(code_typed(text)));
-    }
     let (host, port) = match text.strip_prefix('[') {
         Some(rest) => rest.split_once("]:").ok_or(UserError::BadAddress)?,
         None => text.rsplit_once(':').filter(|(host, _)| !host.contains(':')).ok_or(UserError::BadAddress)?,
     };
     match !host.is_empty() && port.parse::<u16>().is_ok_and(|p| p > 0) {
-        true => Ok(Way::Address(text.to_string())),
+        true => Ok(text.to_string()),
         false => Err(UserError::BadAddress),
     }
 }
@@ -509,6 +514,8 @@ impl Play {
         }
         self.session = None;
         self.drop_session(shell);
+        self.direct = None;
+        shell.nav.close("direct.");
         self.show(shell);
         if let Some(error) = error {
             let button = shell.ui().global::<PlayView>().get_back_to_play();
@@ -516,12 +523,16 @@ impl Play {
         }
     }
 
-    /// The link failed before the other player came: the reserved line under the tiles says why.
+    /// The link failed before the other player came: the control that asked for it says why.
     fn not_met(&mut self, shell: &mut Shell, error: UserError) {
+        let direct = self.session.as_ref().is_some_and(|s| matches!(s.way, Way::Address(_)));
         self.session = None;
         self.drop_session(shell);
         shell.sound.play(Cue::Refused);
-        self.problem = Some(error);
+        match &mut self.direct {
+            Some(dialog) if direct => dialog.join_problem = Some(error),
+            _ => self.problem = Some(error),
+        }
         self.show(shell);
     }
 
@@ -531,6 +542,8 @@ impl Play {
     /// session starts beside it. (On a phone it starts when the player asks: there it fills the window.)
     fn wait(&mut self, shell: &mut Shell) {
         self.stage = Stage::Waiting;
+        self.direct = None;
+        shell.nav.close("direct.");
         self.show(shell);
         if !shell.scale.phone {
             self.train(shell);
@@ -584,6 +597,8 @@ impl Play {
             shell.nav.used_keys(pad);
         }
         self.stage = Stage::Lobby;
+        self.direct = None;
+        shell.nav.close("direct.");
         self.problem = None;
         self.live = Live::default();
         self.show_card(shell);
@@ -919,7 +934,7 @@ impl Play {
     /// has none, or one no code is written in).
     fn open_boxes(&mut self, shell: &mut Shell) {
         let mut rows = [0; CODE_LENGTH];
-        for (row, c) in rows.iter_mut().zip(code_typed(&self.code).chars()) {
+        for (row, c) in rows.iter_mut().zip(self.code.chars()) {
             *row = ALPHABET.find(c).unwrap_or(0);
         }
         // (The focus comes to each box on the character it shows, not the one it last left it on.)
@@ -963,6 +978,26 @@ impl Play {
     /// The box the focus is on.
     fn box_focused(shell: &Shell) -> Option<usize> {
         shell.nav.focused().and_then(|k| k.id.strip_prefix("boxes.")).and_then(|at| at.parse().ok())
+    }
+
+    // ---- The direct connection's dialog ------------------------------------------------------------------
+
+    fn open_direct(&mut self, shell: &mut Shell) {
+        self.direct = Some(Direct { host_address: session::host_address(session::DIRECT_PORT), ..Direct::default() });
+        self.problem = None;
+        shell.nav.open_editing("direct.", Key::new("direct.address", 0));
+        self.show(shell);
+    }
+
+    fn close_direct(&mut self, shell: &mut Shell) {
+        // (A join under way is given up with its dialog.)
+        if matches!(self.stage, Stage::Meeting) && self.session.as_ref().is_some_and(|s| matches!(s.way, Way::Address(_))) {
+            self.session = None;
+            self.drop_session(shell);
+        }
+        self.direct = None;
+        shell.nav.close("direct.");
+        self.show(shell);
     }
 }
 
@@ -1041,16 +1076,30 @@ impl Screen for Play {
             self.show_versions(shell, &kit);
         }
         self.show_dialog(shell);
-        view.set_code(self.code.as_str().into());
+        view.set_code(code_shown(&self.code).into());
         self.show_boxes(shell);
-        // The reserved line under the tiles: a problem, or that a link is being made, or what an import made.
+        // The reserved line under the row: a problem, or that a link is being made, or what an import made.
         let meeting = matches!(self.stage, Stage::Meeting);
+        let asked_directly = self.session.as_ref().is_some_and(|s| matches!(s.way, Way::Address(_)));
         view.set_message(match &self.problem {
             Some(problem) => problem.line(&ui).into(),
-            None if meeting => view.get_connecting(),
+            None if meeting && !asked_directly => view.get_connecting(),
             None => self.notice.as_str().into(),
         });
         view.set_message_quiet(self.problem.is_none());
+        // The direct connection's dialog.
+        view.set_direct(self.direct.is_some());
+        if let Some(direct) = &self.direct {
+            view.set_host_address(direct.host_address.as_str().into());
+            view.set_address(direct.address.as_str().into());
+            view.set_host_message(direct.host_problem.as_ref().map(|p| p.line(&ui)).unwrap_or_default().into());
+            view.set_join_message(match &direct.join_problem {
+                Some(problem) => problem.line(&ui).into(),
+                None if meeting && asked_directly => view.get_connecting(),
+                None => Default::default(),
+            });
+            view.set_join_quiet(direct.join_problem.is_none());
+        }
         // Waiting, and the lobby.
         view.set_invite(self.invite().into());
         view.set_invite_direct(self.session.as_ref().is_some_and(|s| s.way == Way::Host));
@@ -1068,6 +1117,8 @@ impl Screen for Play {
             session.leave();
         }
         self.drop_session(shell);
+        self.direct = None;
+        shell.nav.close("direct.");
         self.boxes = None;
         shell.nav.close("boxes.");
         self.close_dialog(shell);
@@ -1080,9 +1131,10 @@ impl Screen for Play {
         // (A control of a part that isn't shown any more does nothing: a press may come as the part changes.)
         let part = self.part();
         let of_its_part = match id {
-            "builds" | "build" | "new" | "edit" | "more" | "invite" | "host-menu" | "practice" | "join" => part == PlayPart::Builds,
+            "builds" | "build" | "new" | "edit" | "more" | "invite" | "practice" | "join" | "direct" => part == PlayPart::Builds,
             "wait.copy" | "wait.cancel" | "wait.train" => part == PlayPart::Waiting,
             _ if id.starts_with("name.") => self.naming.is_some(),
+            _ if id.starts_with("direct.") => self.direct.is_some(),
             _ if id.starts_with("boxes.") => self.boxes.is_some(),
             _ if id.starts_with("lobby.") || id.starts_with("change.") => matches!(self.stage, Stage::Lobby),
             _ => true,
@@ -1118,17 +1170,11 @@ impl Screen for Play {
                 self.problem = self.connect(shell, Way::Invite).err();
                 self.refuse_or_show(shell);
             }
-            // HOST's ▾: how to host, HOST's invite first.
-            "host-menu" => {
-                let ui = shell.ui();
-                let view = ui.global::<PlayView>();
-                let words = vec![view.get_host_code_word().to_string(), view.get_host_direct_word().to_string()];
-                shell.pick_menu("host-menu", 0, &Key::new("host-menu", 0), words, None);
-            }
             "join" => {
-                self.problem = joining(&self.code).and_then(|way| self.connect(shell, way)).err();
+                self.problem = self.connect(shell, Way::Code(self.code.clone())).err();
                 self.refuse_or_show(shell);
             }
+            "direct" => self.open_direct(shell),
             // ---- The code's boxes: Enter on one goes to the next, and from the last to JOIN.
             "boxes.join" => {
                 self.close_boxes(shell);
@@ -1143,6 +1189,31 @@ impl Screen for Play {
                 }
                 _ => shell.nav.focus("boxes.join", 0),
             },
+            // ---- The direct connection's dialog.
+            "direct.copy" => {
+                let address = self.direct.as_ref().map(|d| d.host_address.clone()).unwrap_or_default();
+                self.copy(shell, &address);
+            }
+            "direct.host" => {
+                let problem = self.connect(shell, Way::Host).err();
+                if let Some(direct) = &mut self.direct {
+                    (direct.host_problem, direct.join_problem) = (problem, None);
+                    shell.sound.play(Cue::Refused);
+                    self.show(shell);
+                }
+            }
+            "direct.connect" => {
+                let address = self.direct.as_ref().map(|d| d.address.clone()).unwrap_or_default();
+                let problem = direct_address(&address).and_then(|address| self.connect(shell, Way::Address(address))).err();
+                if let Some(direct) = &mut self.direct {
+                    if problem.is_some() {
+                        shell.sound.play(Cue::Refused);
+                    }
+                    (direct.join_problem, direct.host_problem) = (problem, None);
+                }
+                self.show(shell);
+            }
+            "direct.cancel" => self.close_direct(shell),
             // ---- Waiting.
             "wait.copy" => {
                 let invite = self.invite();
@@ -1237,12 +1308,6 @@ impl Screen for Play {
     fn choose(&mut self, shell: &mut Shell, id: &str, index: i32, choice: i32) {
         match id {
             "build" => self.choose_build(shell, choice.max(0) as usize),
-            // HOST's ▾: an invite (HOST's own), or this machine hosting directly.
-            "host-menu" if self.part() == PlayPart::Builds => {
-                let way = if choice == 1 { Way::Host } else { Way::Invite };
-                self.problem = self.connect(shell, way).err();
-                self.refuse_or_show(shell);
-            }
             // The build's menu: from ⋯, or a right click on a row of the list (the press chose that build).
             "more" if self.part() == PlayPart::Builds => self.menu_chosen(shell, choice),
             "row-menu" if self.part() == PlayPart::Builds && self.naming.is_none() => self.open_menu(shell, &Key::new("builds", index)),
@@ -1260,8 +1325,8 @@ impl Screen for Play {
         let view = ui.global::<PlayView>();
         match id {
             "code" => {
-                self.code = field_typed(text);
-                view.set_code(self.code.as_str().into());
+                self.code = code_typed(text);
+                view.set_code(code_shown(&self.code).into());
                 // (What was wrong with the code before is no more.)
                 if self.problem.take().is_some() {
                     view.set_message(self.notice.as_str().into());
@@ -1269,6 +1334,15 @@ impl Screen for Play {
                 }
             }
             "name.name" => self.edit_name(shell, text, done),
+            "direct.address" => {
+                if let Some(direct) = &mut self.direct {
+                    direct.address = address_typed(text);
+                    view.set_address(direct.address.as_str().into());
+                    if direct.join_problem.take().is_some() {
+                        view.set_join_message(Default::default());
+                    }
+                }
+            }
             _ => {}
         }
     }
@@ -1306,17 +1380,17 @@ impl Screen for Play {
 
     /// The builds' part on a desktop: Right from the list goes past the overview (no control) to PRACTICE, or EDIT
     /// or ⋯ where it can't be used; Tab goes through the zones in their order, the builds (+ NEW BUILD, the list),
-    /// the chosen build (PRACTICE, EDIT, ⋯), then the ways to play it online (HOST, its ▾, JOIN's field, its go
-    /// arrow). (On a phone the one column is that order already.)
+    /// the chosen build (PRACTICE, EDIT, ⋯), then the ways to play it online (HOST, the code, JOIN, DIRECT
+    /// CONNECT). (On a phone the one column is that order already.)
     fn route(&mut self, shell: &mut Shell, action: Action) -> bool {
-        if self.part() != PlayPart::Builds || shell.scale.phone || self.naming.is_some() || self.boxes.is_some() {
+        if self.part() != PlayPart::Builds || shell.scale.phone || self.naming.is_some() || self.direct.is_some() || self.boxes.is_some() {
             return false;
         }
         let ui = shell.ui();
         match action {
             Action::Right if shell.nav.focused().is_some_and(|k| k.id == "builds") => shell.nav.focus_first(&ui, &["practice", "edit", "more"]),
             Action::NextFocus | Action::PreviousFocus => {
-                shell.nav.tab_in(&ui, action == Action::PreviousFocus, &["new", "builds", "practice", "edit", "more", "invite", "host-menu", "code", "join"]);
+                shell.nav.tab_in(&ui, action == Action::PreviousFocus, &["new", "builds", "practice", "edit", "more", "invite", "code", "join", "direct"]);
                 true
             }
             _ => false,
@@ -1356,6 +1430,8 @@ impl Screen for Play {
             self.close_dialog(shell);
         } else if self.boxes.is_some() {
             self.close_boxes(shell);
+        } else if self.direct.is_some() {
+            self.close_direct(shell);
         } else if self.changing {
             self.close_change(shell);
         } else if matches!(self.stage, Stage::Lobby) {
@@ -1414,7 +1490,7 @@ impl Screen for Play {
 
     /// A save dropped on the builds is made a build.
     fn dropped(&mut self, shell: &mut Shell, path: &std::path::Path) {
-        if self.part() == PlayPart::Builds && self.naming.is_none() && self.boxes.is_none() {
+        if self.part() == PlayPart::Builds && self.naming.is_none() && self.direct.is_none() && self.boxes.is_none() {
             self.import(shell, path);
         }
     }
@@ -1634,30 +1710,37 @@ mod tests {
         assert_eq!(nettai_rtc::signal::normalize_code(&code_shown(&code_typed("k7m 2qx"))), Some("K7M2QX".to_string()));
     }
 
-    /// JOIN's field takes an invite's code (as typed, in any case, with a hyphen) or a direct host's address (a
-    /// host or an IP with its port, an IPv6 one in brackets); text that has an address's marks but isn't one is
-    /// refused as an address, not tried as a code.
+    /// JOIN's field takes an invite's code alone: whatever is typed is kept as a code's characters (capitals,
+    /// at most six), so an address typed there is no address (the user: "the box with the combined code and
+    /// address sucks"; addresses are the direct connection's dialog's).
     #[test]
-    fn joins_field_takes_a_code_or_an_address() {
-        let code = |c: &str| Ok(Way::Code(c.to_string()));
-        let address = |a: &str| Ok(Way::Address(a.to_string()));
-        assert_eq!(joining("k7m2qx"), code("K7M2QX"));
-        assert_eq!(joining("K7M-2QX"), code("K7M2QX"));
-        assert_eq!(joining(&field_typed(" k7m 2qx ")), code("K7M2QX"));
-        // (A code that can't be one is the room's to refuse: no match with it.)
-        assert_eq!(joining("zz9"), code("ZZ9"));
-        assert_eq!(joining(""), code(""));
-        assert_eq!(joining("192.168.1.20:47474"), address("192.168.1.20:47474"));
-        assert_eq!(joining(" 127.0.0.1:7000 "), address("127.0.0.1:7000"));
-        assert_eq!(joining("my-host.local:47474"), address("my-host.local:47474"));
-        assert_eq!(joining("localhost:47474"), address("localhost:47474"));
-        assert_eq!(joining("[::1]:47474"), address("[::1]:47474"));
-        assert_eq!(joining("[fe80::1%en0]:9000"), address("[fe80::1%en0]:9000"));
-        for bad in ["192.168.1.20", "192.168.1.20:", ":47474", "host:port", "host:0", "host:70000", "::1:47474", "[::1]", "[::1]47474", "[]:47474", "a.b"] {
-            assert_eq!(joining(bad), Err(UserError::BadAddress), "{bad:?}");
+    fn joins_field_takes_a_code_only() {
+        assert_eq!(code_typed("k7m2qx"), "K7M2QX");
+        assert_eq!(code_typed("K7M-2QX"), "K7M2QX");
+        assert_eq!(code_typed(" k7m 2qx "), "K7M2QX");
+        assert_eq!(code_typed("k7m2qxyz"), "K7M2QX");
+        assert_eq!(code_shown(&code_typed("k7m2qx")), "K7M-2QX");
+        // (An address typed there is cut to a code's characters, not joined as an address.)
+        assert_eq!(code_typed("192.168.1.20:47474"), "192168");
+        assert_eq!(code_typed("[::1]:47474"), "147474");
+    }
+
+    /// The direct connection's dialog's JOIN takes a host's address: a host or an IP with its port, an IPv6 one
+    /// in brackets; anything else is refused as an address.
+    #[test]
+    fn directs_join_takes_an_address() {
+        let address = |a: &str| Ok(a.to_string());
+        assert_eq!(direct_address("192.168.1.20:47474"), address("192.168.1.20:47474"));
+        assert_eq!(direct_address(" 127.0.0.1:7000 "), address("127.0.0.1:7000"));
+        assert_eq!(direct_address("my-host.local:47474"), address("my-host.local:47474"));
+        assert_eq!(direct_address("localhost:47474"), address("localhost:47474"));
+        assert_eq!(direct_address("[::1]:47474"), address("[::1]:47474"));
+        assert_eq!(direct_address("[fe80::1%en0]:9000"), address("[fe80::1%en0]:9000"));
+        for bad in ["", "k7m2qx", "192.168.1.20", "192.168.1.20:", ":47474", "host:port", "host:0", "host:70000", "::1:47474", "[::1]", "[::1]47474", "[]:47474"] {
+            assert_eq!(direct_address(bad), Err(UserError::BadAddress), "{bad:?}");
         }
         // (What the field keeps: no spaces, 80 characters at most.)
-        assert_eq!(field_typed("192.168.1.20 :47474\n"), "192.168.1.20:47474");
-        assert_eq!(field_typed(&"a".repeat(100)).len(), 80);
+        assert_eq!(address_typed("192.168.1.20 :47474\n"), "192.168.1.20:47474");
+        assert_eq!(address_typed(&"a".repeat(100)).len(), 80);
     }
 }

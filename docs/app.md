@@ -600,15 +600,12 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   (`play::shelved`: `builds::shelf::load`, its `BuildRow`s, each read from its file and checked by the game's
   rules; one that can't be played says how many problems it has, in the error red); the chosen one's overview
   beside it (the wide sheet, §8) with PRACTICE, EDIT and ⋯ in its header (`BuildOverview.tools`, the room it
-  leaves them); and under the overview, at its left edge, one row of the app's controls (40 tall): HOST
-  (widgets.slint's `SplitButton`, the main action's look while there is a build) is a split button, HOST itself
-  (`invite`: an invite, as CREATE INVITE was) and its ▾ (`host-menu`, `Shell::pick_menu`: "Host with a code",
-  HOST's own, and "Host directly", this machine listening on `session::DIRECT_PORT`, choices heard as
-  `host-menu`'s); then one field (`code`, 464 wide) for an invite's code or a direct host's address, and JOIN
-  (`join`): `play::joining` reads the field, an address (a host or an IP and its port, an IPv6 one in brackets)
-  joining it directly, text without an address's marks (`:`, `.`, `[`) an invite's code, and text with them
-  that isn't an address `UserError::BadAddress`. The reserved line is under the row, and the list and the
-  overview grow down to it (564 at the reference window). The chosen build is the one under the list's cursor, remembered by game; the
+  leaves them); and under the overview, one row of the app's controls (40 tall): at its left edge HOST
+  (`invite`, the main action's look while there is a build: an invite, as CREATE INVITE was), then the code's
+  field (`code`, 208 wide, "Invite code") and JOIN (`join`), and at the overview's right edge DIRECT CONNECT
+  (`direct`, a regular button), the direct connection's dialog (§2.57: the user found the field taking a code
+  or an address worse). The reserved line is under the row, and the list and the overview grow down to it (564
+  at the reference window). The chosen build is the one under the list's cursor, remembered by game; the
   overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD and RENAME open the
   name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
   (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
@@ -623,14 +620,17 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   aren't there, and HOST and JOIN say "Make a build first." when pressed (`UserError::NoBuild`); a build that
   can't be played, why. Right from the list goes to PRACTICE and Tab goes in reading order (`Screen::route`,
   §11). On a phone the list is one box of the chosen build, which opens the builds as a sheet, PRACTICE, EDIT
-  and ⋯ in a row under it, then HOST the column's width (52 tall), the field and JOIN under it, and no
-  overview. The field keeps what is
-  typed as it was typed, without spaces (`field_typed`); a code is taken in capitals, its six characters,
-  whatever it was typed with (`code_typed`). A pad can't type: its confirm on the field opens the code as six
-  boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through a box's
-  characters (the alphabet codes are written in), and a character typed goes into the box and on to the next.
-  (A box is a list to the app's focus, its rows all in one place: `CodeBox`, `Nav::set_row`.) The direct
-  connection's dialog is gone (§2.57): hosting directly is HOST's ▾, joining a host JOIN's field.
+  and ⋯ in a row under it, then HOST the column's width (52 tall), the field and JOIN under it, DIRECT CONNECT
+  the column's width under them, and no overview. The field keeps what is typed as a code: capitals, a code's
+  six characters, shown in threes, whatever it was typed with (`code_typed`, `code_shown`). A pad can't type:
+  its confirm on the field opens the code as six boxes (docs/design/app-ui.md §3), where Left and Right go
+  between the boxes, Up and Down through a box's characters (the alphabet codes are written in), and a
+  character typed goes into the box and on to the next. (A box is a list to the app's focus, its rows all in
+  one place: `CodeBox`, `Nav::set_row`.) DIRECT CONNECT opens a dialog (a `DialogFrame` in `PlayOverlay`, its
+  scope `direct.`, opened with the address edited): this machine's address with COPY, and HOST (this machine
+  listening on `session::DIRECT_PORT`); an address's field, and CONNECT, which takes a host or an IP and its
+  port, an IPv6 one in brackets (`play::direct_address`; anything else `UserError::BadAddress`, said under
+  the field).
 - **Waiting** for the other player: the invite's code (a direct host's address, with "Send this address to your
   opponent." under it), large, in fixed-width type, with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
   is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
@@ -829,8 +829,8 @@ the window's thread (§1); hiding has none. The same run with the host's timer l
 time, its link read as down from the third second, and its match stood still (0 ticks for six or seven
 seconds); the link and the match both picked up when the window came back.
 
-The signaling server isn't deployed (with none named, HOST and a code in JOIN's field say the server can't be
-reached, and "Host directly" on HOST's ▾ and an address in JOIN's field work). Run it locally:
+The signaling server isn't deployed (with none named, HOST and JOIN say the server can't be reached, and DIRECT
+CONNECT's dialog works). Run it locally:
 
     cd signaling && npx wrangler dev        # http://127.0.0.1:8787
     NETTAI_SIGNAL=ws://127.0.0.1:8787 cargo run --release -p nettai
@@ -1679,7 +1679,6 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
 |---|---|
 | `Cut`, `PanelBack`, `Panel` | The rectangle with one line and its bottom right corner cut (9 on a button, 12 on a panel, 18 on a dialog or a menu); a panel's back with the cyan accent, or a player's color; a panel with something in it |
 | `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused), unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
-| `SplitButton` | A `Button` (its kinds, its sheen, hover and press) with a ▾ part at its right behind a line, a control of its own (`menu-nav`) that opens a short list (Play's HOST) |
 | `Field` | A text field (§11); `code`, a code's (fixed-width type, larger, tracked; what goes in it, while it is empty, in the body face) |
 | `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`: at most ten rows at once, fewer where the window has less room by the select; more scroll, and it opens with the chosen one in view); `focusable` off where its row is what is focused |
 | `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked`; `focusable` off where its row is what is focused |

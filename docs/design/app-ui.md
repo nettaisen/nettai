@@ -190,7 +190,7 @@ Each is settled unless the user changes it.
     the chips and the field stay the arena game's. (§6, docs/app.md §1, "The battle's background".)
 32. **A dialog's text field is ready to type in** (2026-10-13): "you should auto focus the primary text field on
     dialogs that pop up". A dialog that asks for text (a build's name, new or renamed; a direct connection's
-    address, until §2.57 took that dialog away) opens with the field edited and its text selected.
+    address) opens with the field edited and its text selected.
 33. **A search starts its list from the top** (2026-10-13): "when a search box is changed, it should reset
     scroll". Each change to a search field shows its list from its first row.
 34. **First to, not rounds** (2026-10-13): "instead of "rounds" you should have "first to" then you should be able
@@ -456,8 +456,8 @@ Each is settled unless the user changes it.
       that no row of buttons sits under it, CREATE INVITE in the normal look while there is no build (+ NEW BUILD
       is the one main action then), and the save's build named for its file whatever the dialog's name field
       says.
-    (The band became three tiles, PRACTICE, HOST and JOIN, and then one row of controls, HOST and JOIN, PRACTICE
-    beside EDIT and DIRECT CONNECT folded into them: §2.57.) (§6, docs/app.md §4.)
+    (The band became three tiles, PRACTICE, HOST and JOIN, and then one row of controls, HOST, JOIN and DIRECT
+    CONNECT, PRACTICE beside EDIT: §2.57.) (§6, docs/app.md §4.)
 53. **About is in Settings** (2026-10-14). The user: "the about screen should be moved as a subscreen of the
     settings dialog and removed from the main menu".
     - *Settings' About group,* the last in the list at its left as before, has under Version and Your files a row
@@ -631,13 +631,14 @@ Each is settled unless the user changes it.
     - *No tiles: one row of the app's controls.* The tiles were restyled as panels 56 tall (HOST's main action
       on its line, accent and word), and the user, of that: "the JOIN and HOST buttons are so big omg". The band
       is one row of normal controls at the controls' height (40), under the overview at its left edge: HOST, the
-      main action's button as every main button is (its amber, its sheen), at its natural width, with its ▾ as a
-      split part; then, 24 on, JOIN's field (464 wide: a whole IPv6 address with its port, in the code's type)
-      and JOIN, a regular button with its word. No panel and no label over it. The reserved line stays under the
+      main action's button as every main button is (its amber, its sheen), at its natural width; then, 24 on,
+      JOIN's field and JOIN, a regular button with its word. No panel and no label over it. (HOST's ▾ and the
+      field's 464 for an address went with the next two decisions.) The reserved line stays under the
       row. The list and the overview have the room back: they grow down to 16 over the row (564 tall), the
       overview no shorter than its 540. On a phone HOST is the column's width and 52 tall, as a phone's main
       buttons are, and the field and JOIN are a row under it.
-    - *Direct connect is in HOST and JOIN.* The user: "direct connect is in a weird place"; of the ways put to
+    - *Direct connect was in HOST and JOIN* (superseded by the next). The user: "direct connect is in a weird
+      place"; of the ways put to
       them they chose folding it into HOST and JOIN, with no control of its own. JOIN's field takes an invite's
       code or a direct host's address ("Code or address"): an address (a host or an IP and its port, an IPv6 one
       in brackets) joins that host directly, other text is a code; text with an address's marks that isn't one
@@ -647,8 +648,20 @@ Each is settled unless the user changes it.
       showing this machine's address with COPY ADDRESS and "Send this address to your opponent.". The direct
       connection's dialog is gone, and "Direct connect…" with it. (The port stays what it was: 47474, never a
       setting.)
+    - *Direct connect is separate again.* The user, of the field taking either: "can you make the direct connect
+      separate again? the box with the combined code and address sucks". JOIN's field takes an invite's code
+      alone again ("Invite code" in it while empty; what is typed kept as a code's six characters, capitals, in
+      threes; a code no match has says so in the reserved line), 208 wide. HOST is a plain main button: its ▾
+      and its list ("Host with a code", "Host directly") are gone. The direct connection's dialog is back as it
+      was before: Host (this machine's address with COPY, and HOST; "Send this address to your opponent.") and
+      Join (an address field and CONNECT; an address that isn't one says so under it). Its way in is DIRECT
+      CONNECT, a regular button (40 tall, the regular kind, not text), at the row's right end, its right edge
+      the overview's (chosen here: the place the user had not called weird, §2.52's, as a button and not
+      text). On a phone it is a row of its own under the field and JOIN, the column's width as the phone's
+      other secondary buttons (+ NEW BUILD) are. A direct host still waits in the waiting panel, its address
+      shown with COPY ADDRESS and "Send this address to your opponent.".
     - *What these supersede:* the three tiles, PRACTICE's among them, and their restyle as panels; JOIN's link
-      and the direct connection's dialog (§2.52's DIRECT CONNECT before them).
+      (§2.52's DIRECT CONNECT text button before it); HOST's ▾ and JOIN's field taking an address.
     (§6 Play and Practice, docs/app.md §1, §4 and §15.)
 
 ## 3. Chosen where the user gave no answer
@@ -873,23 +886,21 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
   build whose file doesn't read has an empty frame, PRACTICE and EDIT unavailable and DELETE alone in its menu;
   with no build, none of the three is there.
-- **The ways to play it online** (§2.57), one row of the app's controls at the body's foot, under the overview at
-  its left edge (from 424), at 580, 40 tall, no panel and no label over it:
-  - **HOST**, a split button, the main action's while there is a build (an online match is what PLAY is for,
-    and HOST is the way that starts one by itself; with no build it has the normal look and + NEW BUILD is the
-    one main action): the main button's amber and its sheen, as wide as its word, and at its right behind a line
-    its ▾ (36 wide), a control of its own. HOST makes an invite, its code from the server, and the wait (what
-    CREATE INVITE was). The ▾ opens a short list (the build menu's look, under it): "Host with a code", as HOST,
-    and "Host directly": this machine listens on its port (47474) and waits as for an invite, its address in
-    the waiting panel.
-  - 24 after it **JOIN's field** (464 wide: a whole IPv6 address with its port in the code's type; "Code or
-    address" in it while it is empty) and 8 after that **JOIN**, a regular button. The field takes an invite's
-    code (as typed, in any case, a hyphen or none) or a direct host's address (a host or an IP with its port,
-    an IPv6 one in brackets): an address joins that host directly, other text is a code.
+- **The ways to play it online** (§2.57), one row of the app's controls at the body's foot, under the overview
+  (from 424 to its right edge), at 580, 40 tall, no panel and no label over it:
+  - **HOST**, the main action's button while there is a build (an online match is what PLAY is for, and HOST is
+    the way that starts one by itself; with no build it has the normal look and + NEW BUILD is the one main
+    action): the main button's amber and its sheen, as wide as its word. HOST makes an invite, its code from
+    the server, and the wait (what CREATE INVITE was).
+  - 24 after it **JOIN's field** (208 wide; "Invite code" in it while it is empty) and 8 after that **JOIN**, a
+    regular button. The field takes an invite's code: what is typed is kept as its six characters, capitals, in
+    threes (a hyphen or a space typed or not).
+  - **DIRECT CONNECT**, a regular button as wide as its words, at the row's right end, its right edge the
+    overview's. It opens the direct connection's dialog (below).
   Under them at 626 the reserved line (18 tall, as wide as the overview, 12). Pressed with no build, PRACTICE,
-  HOST and JOIN say there "Make a build first." (§7); with a build that can't be played, why; an address that
-  isn't one, "That isn't an address. Use host:port.". The list and the overview grow down to 16 over the row:
-  both end at 564 (the overview's wide sheet is 540 at least).
+  HOST and JOIN say there "Make a build first." (§7); with a build that can't be played, why; a code no match
+  has, "No match with that code.". The list and the overview grow down to 16 over the row: both end at 564 (the
+  overview's wide sheet is 540 at least).
 - **+ NEW BUILD** opens its dialog: a name and the version, CANCEL and CREATE BUILD, and under them, below a line,
   FROM A SAVE FILE…, which closes it and opens the system's file dialog for a save; the build is made of the save
   and named for its file (Builds, below).
@@ -899,16 +910,19 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
 - The focus opens on the chosen build in the list (with none, on + NEW BUILD), and Enter there goes to HOST. The
   arrows walk by where things are: Down from + NEW BUILD into the list and from its last row to HOST, Right from
   any row of the list to PRACTICE (past the overview, which takes no focus; to EDIT or ⋯ where it can't be used),
-  along the header PRACTICE, EDIT, ⋯, Down from them to the row; along the row Right goes HOST, its ▾, the
-  field, JOIN. Tab goes in reading order: + NEW BUILD, the list, PRACTICE, EDIT, ⋯, HOST, its ▾, the field,
-  JOIN. A control that isn't there is passed by.
+  along the header PRACTICE, EDIT, ⋯, Down from them to the row; along the row Right goes HOST, the field, JOIN,
+  DIRECT CONNECT. Tab goes in reading order: + NEW BUILD, the list, PRACTICE, EDIT, ⋯, HOST, the field, JOIN,
+  DIRECT CONNECT. A control that isn't there is passed by.
 - **On a phone** one column in the same order (358 wide): + NEW BUILD the column's width; at 52 the chosen build
   in a box, 72 tall (Left and Right step it, Enter opens the builds as a sheet); at 136 PRACTICE (as wide as its
   word, 120 at least), EDIT (the rest) and ⋯ (40) in a row, 8 apart; at 188 HOST the column's width and 52 tall,
-  as a phone's main buttons are; at 252 the field (what JOIN leaves) and JOIN, 8 apart; at 304 the reserved line
-  (two lines, 40). The overview isn't shown there (the editor shows the build whole).
-- **There is no direct connection's dialog** (§2.57): hosting directly is HOST's ▾, joining a direct host JOIN's
-  field.
+  as a phone's main buttons are; at 252 the field (what JOIN leaves) and JOIN, 8 apart; at 304 DIRECT CONNECT
+  the column's width; at 356 the reserved line (two lines, 40). The overview isn't shown there (the editor shows
+  the build whole).
+- **Direct connection** is a dialog (§2.57): Host (this machine's address with COPY, and HOST: this machine
+  listens on its port, 47474, and waits as for an invite; "Send this address to your opponent.", or why it
+  can't host) and Join (an address field, a host or an IP with its port, an IPv6 one in brackets, and CONNECT;
+  an address that isn't one says so under it); CANCEL. It opens with the address field edited (§2.32).
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
   a panel beside it: the invite code, large, in fixed-width type, grouped in threes; COPY CODE; "Waiting for
   opponent"; "The lobby opens when they join."; CANCEL. Hosting directly, the panel has YOUR ADDRESS, this
@@ -1134,7 +1148,7 @@ A fixed enum, each with a catalog string; the raw error goes to the log only. Th
 | the opponent left the lobby or the match | Your opponent left. |
 | the opponent never answered | No answer from your opponent. |
 | a link couldn't be made | Couldn't connect to your opponent. |
-| an address in JOIN's field is malformed (an address's marks, but no port) | That isn't an address. Use host:port. |
+| a direct connection's address is malformed (no port) | That isn't an address. Use host:port. |
 | the port to host on is taken | That port is already in use. |
 | a save is another game's | Not a BN6 save. |
 | a game's pack is there and can't be loaded | BN6's data is out of date. Extract it again. |
