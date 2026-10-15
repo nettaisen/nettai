@@ -20,7 +20,7 @@ use crate::vfont::Role;
 use nettai_assets::{Bundle, ButtonPictures, ButtonSets, CustomScreen, Hud, MapEntry, Palette, Picture, Tiles, VersionPictures};
 use nettai_battle::{Battle, Content};
 use nettai_battle::battle::{FadeMode, mode};
-use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, PlayerFact, VariableDamageShows, WindowView};
+use nettai_battle::content::{ButtonView, ChipFlags, ChipTraits, VariableDamageShows, WindowView};
 use nettai_battle::rules::Flight;
 use nettai_battle::custom::screen::{HiddenStage, OK_SLOT, SPECIAL_SLOT};
 use nettai_battle::custom::{ButtonCell, FolderChip, Phase, Screen, Side, SlotKind, SlotState};
@@ -611,10 +611,10 @@ pub fn button_pictures<'a>(b: &Battle, a: &'a CustomScreen, side: u8) -> &'a Ver
 
 /// The version of their game a side's player brought, by the name the
 /// game's pack keeps a version's pictures under (`Versioned`):
-/// `PlayerFact::Version` (EXE6's "gregar" or "falzar"); none for a game
-/// whose players bring none.
+/// `PlayerFact::Version`'s (EXE6's Cybeast's, "gregar" or "falzar":
+/// `Battle::version`); none for a game whose players bring none.
 pub fn version_name(b: &Battle, side: u8) -> Option<&str> {
-    b.fact(side, PlayerFact::Version)?.name()
+    b.version(side)
 }
 
 /// The version a side's console is of, by that name: what the frontend

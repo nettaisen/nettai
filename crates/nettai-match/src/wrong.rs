@@ -38,7 +38,7 @@ pub enum Wrong {
     Match,
     /// The side's facts are another game's rules'.
     OtherGame,
-    /// A fact the game's rules require is not stated (EXE6's version: none
+    /// A fact the game's rules require is not stated (EXE6's Cybeast: none
     /// is assumed).
     Unstated,
     /// A definition the match's game hasn't (a navi, a chip, a form of
@@ -50,9 +50,6 @@ pub enum Wrong {
     FolderSize(Count),
     /// A chip no folder holds.
     ChipNotAllowed { chip: ChipHandle },
-    /// A chip the saves of another version of the game hold, not this
-    /// side's ([`crate::build::Builds::version_chips`] says whose it is).
-    ChipOfAnotherVersion { chip: ChipHandle },
     /// A chip in a code it doesn't come in.
     ChipCode { chip: ChipHandle, code: ChipCode },
     /// `used` copies of a chip, where a folder holds `limit`. (As why a
@@ -97,16 +94,16 @@ pub enum Wrong {
     /// catalog slot: [`crate::build::Slots`] names the slots). A build's
     /// alone: a match's checks leave it be.
     Slot { entry: EntryHandle, slot: u32, own: u32 },
-    /// A definition the match's ruleset doesn't allow (`def` of `registry`,
-    /// by handle: a chip, a navi, a form, a patch card), held by the fact the
-    /// problem's field names ([`crate::ruleset::Ruleset::problems`]). A
+    /// What the match's ruleset doesn't allow (`item` of `registry`: a chip,
+    /// a navi, a form, a patch card, or a card's variant), held by the fact
+    /// the problem's field names ([`crate::ruleset::Ruleset::problems`]). A
     /// build's under a ruleset alone: no game's rules say it.
-    NotAllowed { registry: Registry, def: u16 },
+    NotAllowed { registry: Registry, item: crate::ruleset::Item },
     /// Under a ruleset of one version per build, what the build holds is
     /// more than one version's (docs/design/versions.md §2.3): the groups it
     /// holds things of (`ruleset::Group` ids, in order) and the things it
     /// holds of the groups but the one it holds most of.
-    Mixed { groups: Vec<String>, items: Vec<(Registry, u16)> },
+    Mixed { groups: Vec<String>, items: Vec<(Registry, crate::ruleset::Item)> },
     /// Anything else no save holds.
     Invalid,
 
@@ -135,7 +132,6 @@ impl Wrong {
             Some(match kind {
                 "folder_size" => Wrong::FolderSize(count()?),
                 "chip_not_allowed" => Wrong::ChipNotAllowed { chip: chip()? },
-                "chip_of_another_version" => Wrong::ChipOfAnotherVersion { chip: chip()? },
                 "chip_code" => {
                     let Data::Str(code) = data.field("code") else { return None };
                     let mut letters = code.chars();
@@ -167,10 +163,9 @@ impl Wrong {
 
     /// The kinds of the rules' problems this crate types (what a game's
     /// rules may name a problem: core.d.luau's `SetupProblem`).
-    pub const RULES_KINDS: [&'static str; 23] = [
+    pub const RULES_KINDS: [&'static str; 22] = [
         "folder_size",
         "chip_not_allowed",
-        "chip_of_another_version",
         "chip_code",
         "copies",
         "mega",
@@ -269,7 +264,7 @@ mod tests {
             }
         }
         // (The folder's kinds and the others are all said somewhere.)
-        for kind in ["folder_size", "chip_of_another_version", "copies", "mega", "giga", "dark", "tag_memory", "range", "budget", "overlap"] {
+        for kind in ["folder_size", "copies", "mega", "giga", "dark", "tag_memory", "range", "budget", "overlap"] {
             assert!(seen.iter().any(|k| k == kind), "no problem of kind {kind} in the content");
         }
     }

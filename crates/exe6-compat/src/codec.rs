@@ -487,13 +487,34 @@ pub fn navi_stats_bytes(s: &NaviStats, ids: &Ids) -> [u8; 0x64] {
 
 /// A Japanese save's card list (its bytes: the number, bit 7 when switched
 /// off) as the rules' setup's `patch_cards`: the cards switched on, in the
-/// list's order. (A card switched off does nothing in battle, and a side's
-/// cards are the ones that apply. The original's emotion window counts it
-/// as installed: a save whose every card is off reads the cards' bug flag
-/// where a side without cards reads the NaviCust's; a recording carries the
-/// glitch its console showed.)
-pub fn patch_cards(list: &[u8], ids: &Ids) -> Vec<Fact<'static>> {
-    list.iter().filter(|&&b| b & 0x80 == 0).map(|&b| Fact::Value(Value::Def(Registry::Entry, ids.patch_card(b & 0x7F).0))).collect()
+/// list's order, each a record of its card and, of card 117, whose effects
+/// are each version's own, the variant of the save's version (`version`:
+/// docs/design/versions.md §2.4). (A card switched off does nothing in
+/// battle, and a side's cards are the ones that apply. The original's
+/// emotion window counts it as installed: a save whose every card is off
+/// reads the cards' bug flag where a side without cards reads the
+/// NaviCust's; a recording carries the glitch its console showed.)
+pub fn patch_cards(list: &[u8], ids: &Ids, version: crate::GameVersion) -> Vec<Fact<'static>> {
+    list.iter().filter(|&&b| b & 0x80 == 0).map(|&b| patch_card(ids.content, ids.patch_card(b & 0x7F), version)).collect()
+}
+
+/// Card `card` as the rules' setup's `patch_cards` holds it: a record of
+/// the card and, where it has a variant of `version`'s name (card 117's),
+/// that variant (`nettai_match::ruleset::variants_of`).
+pub fn patch_card(content: &Content, card: EntryHandle, version: crate::GameVersion) -> Fact<'static> {
+    let mut record = vec![("card", Fact::Value(Value::Def(Registry::Entry, card.0)))];
+    if nettai_match::ruleset::variants_of(content, Registry::Entry, card.0).iter().any(|v| v == version.name()) {
+        record.push((nettai_match::ruleset::VARIANT, Fact::Name(version.name())));
+    }
+    Fact::Record(record)
+}
+
+/// The Cybeast of a save of `version` (the rules' `cybeast`, the side's
+/// version: docs/design/versions.md §2.4): its Beast Out form,
+/// `gregar-beast` or `falzar-beast`.
+pub fn cybeast(content: &Content, version: crate::GameVersion) -> Result<nettai_content_api::FormHandle, String> {
+    let key = format!("{}-beast", version.name());
+    nettai_match::ids::form(content, "exe6", &key).ok_or_else(|| format!("the content has no form {key}"))
 }
 
 // ---- The NaviCust -------------------------------------------------------------------

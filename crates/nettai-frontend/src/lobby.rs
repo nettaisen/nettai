@@ -1902,8 +1902,8 @@ mod tests {
         // A player's own, by its name, holding back a chip and a card by theirs.
         let mut own = Ruleset::open(RulesetName::Own("Tournament".into()));
         own.one_per_build = true;
-        own.set_allowed("folder", nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0, false);
-        own.set_allowed("patch_cards", nettai_match::ids::entry(&content, "exe6", nettai_match::facts::PATCH_CARDS, "starman").unwrap().0, false);
+        own.set_allowed("folder", &nettai_match::ruleset::Item::of(nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0), false);
+        own.set_allowed("patch_cards", &nettai_match::ruleset::Item::of(nettai_match::ids::entry(&content, "exe6", nettai_match::facts::PATCH_CARDS, "starman").unwrap().0), false);
         let owned = Settings { ruleset: own.clone(), ..s.clone() };
         assert_eq!(read(&owned).unwrap(), owned);
         let bytes = owned.to_bytes(&content);
@@ -2165,7 +2165,7 @@ mod tests {
             for side in &with {
                 let problems = none.checked(&content, &rulesets, side).problems;
                 assert_eq!(problems.len(), 1, "{game}");
-                assert_eq!((&problems[0].what, problems[0].field.as_deref(), problems[0].entry), (&Wrong::NotAllowed { registry: Registry::Entry, def: card.0 }, Some(PATCH_CARDS), Some(0)), "{game}");
+                assert_eq!((&problems[0].what, problems[0].field.as_deref(), problems[0].entry), (&Wrong::NotAllowed { registry: Registry::Entry, item: nettai_match::ruleset::Item::of(card.0) }, Some(PATCH_CARDS), Some(0)), "{game}");
             }
             // In the lobby: neither can ready, and nothing is agreed.
             let now = Instant::now();
@@ -2211,8 +2211,8 @@ mod tests {
         assert!(Checked::under(&content, "exe6", &joiner, &r, &standard()).ready());
         let mut no_chip = Ruleset::open(RulesetName::Own("No chip".into()));
         no_chip.one_per_build = true;
-        no_chip.set_allowed("folder", held.0, false);
-        let banned = Wrong::NotAllowed { registry: Registry::Chip, def: held.0 };
+        no_chip.set_allowed("folder", &nettai_match::ruleset::Item::of(held.0), false);
+        let banned = Wrong::NotAllowed { registry: Registry::Chip, item: nettai_match::ruleset::Item::of(held.0) };
         let whats = |problems: &[Problem]| -> Vec<Wrong> { problems.iter().map(|p| p.what.clone()).collect() };
         let under = Settings { ruleset: no_chip.clone(), ..settings(1) };
         assert_eq!(under.checked(&content, &r, &joiner).problems, Checked::under(&content, "exe6", &joiner, &r, &no_chip).problems);
@@ -2243,12 +2243,12 @@ mod tests {
         let falzar = r.group_items(crosses, r.group("falzar").unwrap());
         let mut mixed = nettai_match::build::Builds::of(&content, "exe6").unwrap().new_build(&content, "gregar").unwrap();
         let forms: Vec<nettai_battle::rules::Fact> =
-            gregar[..3].iter().chain(&falzar[..2]).map(|&h| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(Registry::Form, h))).collect();
+            gregar[..3].iter().chain(&falzar[..2]).map(|h| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(Registry::Form, h.def))).collect();
         mixed.set_fact(&content, "crosses", &forms).unwrap();
         lobbies[1].set_side(mixed.clone());
         assert!(lobbies[0].set_ruleset(standard()));
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        assert_eq!(whats(lobbies[1].problems()), [Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: falzar[..2].iter().map(|&h| (Registry::Form, h)).collect() }]);
+        assert_eq!(whats(lobbies[1].problems()), [Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: falzar[..2].iter().map(|h| (Registry::Form, h.clone())).collect() }]);
         assert!(lobbies[0].set_ruleset(r.preset("mixed").unwrap().clone()));
         run(&mut lobbies, now, 6, &mut |_, _| {});
         assert!(lobbies[1].problems().is_empty());

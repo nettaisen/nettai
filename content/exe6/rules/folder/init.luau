@@ -13,7 +13,8 @@
 -- - A save of one version holds none of the other's own chips (the chip's `version`: five of each version's Giga
 --   chips, and Gregar and Falzar themselves, which the Japanese game gave out). Each version's ROM gives the library
 --   flag to its own five Giga chips and not to the other's (the four ROMs' chip records; the content keeps one record
---   of each chip, the Falzar ROM's), each version's traders and rewards give its own, and a Giga chip isn't traded.
+--   of each chip, the Falzar ROM's), each version's traders and rewards give its own, and a Giga chip isn't traded. A
+--   build may hold either's: a ruleset says whether it must be one version's (docs/design/versions.md §2.3).
 -- - Copies of one chip, in any codes, by its MB: up to 19 MB five, 20-29 four, 30-39 three, 40-49 two, 50 and up one
 --   (`sub_8135500`).
 -- - The Regular chip's MB is at most the navi's Regular memory (+0x09: the editor drops a Regular chip past it,
@@ -39,10 +40,6 @@ local RULES: FolderRules = {
             and c.codes ~= nil
             and #c.codes > 0
             and (has(c.flags, "library") or (c :: any).version ~= nil or (c :: any).collectible == true)
-    end,
-    owned = function(c: Chip, setup: any): boolean
-        local version: string? = (c :: any).version
-        return version == nil or version == setup.version
     end,
     copies = function(c: Chip): number
         local mb = c.mb or 0

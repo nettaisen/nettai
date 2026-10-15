@@ -34,9 +34,11 @@ local function megaman(side: number): boolean
 end
 
 -- The rules' setup (rules/init.luau declares it): the
--- player's game, and Beast Out unlocked (event flag 0xE0).
+-- player's Cybeast (the Beast Out form of its version, Gregar's or
+-- Falzar's: the original's player's game), and Beast Out unlocked (event
+-- flag 0xE0).
 type Setup = {
-    version: "falzar" | "gregar",
+    cybeast: FormDef?,
     beast_out: boolean,
 }
 
@@ -50,18 +52,19 @@ end
 -- the base form is its own version's (a Cross's, or a Beast form of one:
 -- the other game's when the player's Crosses hold one of its, which a
 -- save's never do; docs/engine/custom-screen.md §4.1), and the base form
--- the player's.
+-- the player's Cybeast's.
 local function beast_game(side: number): "gregar" | "falzar"
     local form = battle.navi(side).form
     if form.version ~= nil and not form.base then
         return form.version :: "gregar" | "falzar"
     end
-    return (rules.setup() :: Setup).version
+    local cybeast = (rules.setup() :: Setup).cybeast
+    return if cybeast ~= nil and cybeast.version == "gregar" then "gregar" else "falzar"
 end
 
 -- The form Beast Out takes the navi to (`sub_802937A`, `sub_802A040`): when
 -- `tired`, Beast Over (of `beast_game`'s game); from the base form the
--- version's Beast Out; from a Cross that Cross's form in Beast Out.
+-- player's Cybeast; from a Cross that Cross's form in Beast Out.
 local function beast_form(side: number, tired: boolean): FormDef?
     local stats = battle.navi(side)
     local forms = stats.navi.forms
@@ -75,8 +78,7 @@ local function beast_form(side: number, tired: boolean): FormDef?
         local set = of(beast_game(side))
         return if set ~= nil then set.beast_over else nil
     elseif stats.form.base then
-        local set = of((rules.setup() :: Setup).version)
-        return if set ~= nil then set.beast_out else nil
+        return (rules.setup() :: Setup).cybeast
     end
     return stats.form.beast
 end

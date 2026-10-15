@@ -2722,8 +2722,7 @@ export type Status = StatusDef
 -- tool's side of them is nettai-match's `Wrong`):
 --
 -- - of a folder: `folder_size` (it holds `used` chips, a folder is `limit`); `chip_not_allowed` (`chip` is none a
---   folder holds); `chip_of_another_version` (`chip` is one the saves of another version of the game hold, not this
---   side's); `chip_code` (`chip` doesn't come in `code`); `copies` (`used` copies of `chip`, `limit` at most);
+--   folder holds); `chip_code` (`chip` doesn't come in `code`); `copies` (`used` copies of `chip`, `limit` at most);
 --   `mega`, `giga`, `dark` (`used` chips of the class, the navi's `limit`); `regular_memory` (the Regular chip
 --   `chip` is `used` MB, the Regular memory `limit`); `tag_memory` (the tag chips are `used` MB together, the tag
 --   memory `limit`); `regular_entry` and `tag_entries` (the Regular chip, the tag chips, aren't entries with a chip,
@@ -2766,8 +2765,8 @@ export type CheckedFolder = {
 -- What a side's folder rules allow of a folder (the rules' `folder_view`): a folder's size and the chips the folder
 -- holds; the Mega, Giga and dark chips it holds against the navi's limits (`dark` nil where the game's folders hold
 -- none); the Regular memory, and the tag memory (nil where the game's folders have no tag chips); and each chip
--- offered that can't go into it now, with why: a problem (`chip_not_allowed`, `chip_of_another_version`, `copies`,
--- `mega`, `giga`, `dark`, `folder_size`), its `used` what the folder holds now.
+-- offered that can't go into it now, with why: a problem (`chip_not_allowed`, `copies`, `mega`, `giga`, `dark`,
+-- `folder_size`), its `used` what the folder holds now.
 export type FolderCount = { used: number, limit: number }
 export type FolderView = {
     size: number,

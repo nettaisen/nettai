@@ -116,8 +116,10 @@ pub enum PlayerFact {
     /// Their two tag chips, entries of the folder (from 0), dealt next to
     /// each other (EXE6's); an empty list: none.
     TagChips,
-    /// The version of the game they play, one of the names its field lists
-    /// (EXE6's "gregar" or "falzar": the version's own pictures).
+    /// The version of the game they play: one of the names its field lists,
+    /// or a form whose own `version` it is (EXE6's Cybeast, `gregar-beast`
+    /// or `falzar-beast`: docs/design/versions.md §2.1). The version's own
+    /// pictures ([`crate::Battle::version`]).
     Version,
     /// The forms they have for their form list, in its order: the forms a
     /// form list window offers (EXE6's Crosses, up to five of either
@@ -185,7 +187,7 @@ impl PlayerFact {
             },
             PlayerFact::RegularChip => matches!(ty, FieldType::OptionalU8),
             PlayerFact::TagChips => matches!(ty, FieldType::List(e, 2) if matches!(**e, FieldType::U8)),
-            PlayerFact::Version => matches!(ty, FieldType::Enum(_)),
+            PlayerFact::Version => matches!(ty, FieldType::Enum(_) | FieldType::Ref(Registry::Form, _)),
             PlayerFact::FormList => matches!(ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))),
             PlayerFact::Level => matches!(ty, FieldType::OptionalU8),
             PlayerFact::BaseHp => matches!(ty, FieldType::U16),
@@ -198,7 +200,7 @@ impl PlayerFact {
             PlayerFact::Folder => "a list of { chip = \"chip\", code = \"code\" }",
             PlayerFact::RegularChip => "a u8? (an entry of the folder, or none)",
             PlayerFact::TagChips => "a list of two u8 (entries of the folder)",
-            PlayerFact::Version => "a list of the versions' names",
+            PlayerFact::Version => "a list of the versions' names, or a form",
             PlayerFact::FormList => "an array of forms",
             PlayerFact::Level => "a u8? (a level, or none)",
             PlayerFact::BaseHp => "a u16",

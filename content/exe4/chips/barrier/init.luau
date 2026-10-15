@@ -75,6 +75,8 @@ local lifeaura: Chip = {
 
 -- BlakBarr (EXE4 chip 0x134, Red Sun's): a barrier of 150 HP, back whole 180 ticks after it is worn down (type 4).
 local blakbarr: Chip = {
+    -- The version whose saves hold it (rules/folder; rules/builds' groups).
+    version = "redsun",
     codes = { "A" },
     element = "null",
     family = "null",

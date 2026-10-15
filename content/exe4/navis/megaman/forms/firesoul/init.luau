@@ -18,6 +18,8 @@ local FLAMES = asset.sprite("firesoul-flame")
 local overlay = soul.overlay(FLAMES)
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "redsun",
     soul = { family = "fire", turns = 3 },
     chip = chip,
     change = chip.action,

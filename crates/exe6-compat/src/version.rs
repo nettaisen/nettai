@@ -1,12 +1,14 @@
 //! Which version of EXE6 a player plays, as the original tells them apart:
 //! what its saves, its traces and its link data say (Gregar 0, Falzar 1).
-//! The engine has no such type. It and the content know a version by the
-//! name the game's rules declare (`version = { "gregar", "falzar" }` in the
-//! rules' setup), and a match's side holds that name;
-//! this is those names at compat's boundary.
+//! The engine has no such type. It and the content know a version by its
+//! name, a form's `version` (the side's Cybeast's, `gregar-beast`'s
+//! "gregar": docs/design/versions.md §2.1), and a match's side holds its
+//! Cybeast; this is those names at compat's boundary, where a save's or a
+//! trace's version becomes the facts it gives (§2.4).
 
-/// A version of EXE6: it decides a player's Crosses and Beast form. Neither
-/// is a default: whoever makes a player says which.
+/// A version of EXE6: it decides a save's Crosses and Cybeast, and its
+/// Bass-Cross MegaMan card's variant. Neither is a default: whoever makes a
+/// player says which.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, serde::Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GameVersion {
@@ -18,8 +20,8 @@ impl GameVersion {
     /// Both, in the original's order (0 Gregar, 1 Falzar).
     pub const ALL: [GameVersion; 2] = [GameVersion::Gregar, GameVersion::Falzar];
 
-    /// The name EXE6's rules declare for it (their setups' `version`, a
-    /// form's `version`, a navi's `forms`).
+    /// The name EXE6's content knows it by (a form's `version`, a navi's
+    /// `forms`, a patch card's variant, a group of rules/builds).
     pub fn name(self) -> &'static str {
         match self {
             GameVersion::Gregar => "gregar",

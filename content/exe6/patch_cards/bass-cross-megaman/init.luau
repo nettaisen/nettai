@@ -3,7 +3,9 @@
 -- versions' card tables differ in: the same number, name and MB, and each version's ROM its own effects (JP Gregar's
 -- card table, 0x08144778, and JP Falzar's, 0x081429B0). Both have NormBody, TriBustr and a MegFldr-2 bug; Gregar's
 -- has HP+200, SprArmr and the rapid buster (routine 0x92, BassBX's), Falzar's HP+20%, FlotShoe and the seeking
--- whirlwind (routine 0x93). In the card screen's order, each version's.
+-- whirlwind (routine 0x93). In the card screen's order, each version's. So it has two variants, Gregar's and
+-- Falzar's (the versions its effects name), of which a build chooses one for the card, as a NaviCust program's color is
+-- chosen (docs/design/versions.md §2.1, §3.1): each the group's of its name (../../rules/builds).
 
 local cards = require("../rules/patch_cards/cards")
 local charge = require("@self/charge")

@@ -112,18 +112,16 @@ local rules: Rules = {
         -- The navi they play: the round's stats are its (`Battle::new` holds them to it). No default: a side states
         -- it.
         navi = "navi",
-        -- The game's version, its team: the patch cards' effects that are each team's own (./patch_cards: card 111,
-        -- Bass-Cross MegaMan, each team's ROMs their own). No default: a side states it, or the round doesn't start.
-        -- The versions come in the builds' order (Team ProtoMan, then Team Colonel), which tools go by.
-        version = { "protoman", "colonel" },
         -- Their folder as the save keeps it, an entry with no chip empty (a folder being made); the Regular chip, an
         -- entry of it (from 0), dealt first. (EXE5's folders have no tag chips.) A tool deals the round's battle folder
         -- from them; ./folder checks them (`validate`).
         folder = schema.list({ chip = "chip", code = "code" }, 30),
         regular_chip = "u8?",
         -- The patch cards they have installed, in their list's order (./patch_cards): each applies (a save's card
-        -- switched off is none of the side's: it does nothing in battle).
-        patch_cards = schema.list("patch_cards", 32),
+        -- switched off is none of the side's: it does nothing in battle). A card each team's ROMs give effects of
+        -- their own (card 111, Bass-Cross MegaMan) has the variant chosen for it, a team's (its effects' `variant`s),
+        -- as a NaviCust program's color is chosen; a card without variants, none (left out).
+        patch_cards = schema.list({ card = "patch_cards", variant = { "protoman", "colonel" } }, 32),
         -- Their NaviCust (./navicust): how far its board has been expanded (none: no NaviCust, the stats as the
         -- setup gives them: a navi but MegaMan's, a recording's), and the programs placed on its 7x7 grid in its
         -- list's order, each in one of its colors (its definition's `colors`), its center at (x, y), turned
@@ -151,15 +149,12 @@ local rules: Rules = {
         -- MegaMan's light/dark value (NaviStats +0x44, ./light_dark).
         karma = "u16",
         -- The souls the save has (./souls; a match's side's `souls`, a recording's its version's), which the custom
-        -- screen's soul button may offer, as the save's soul flags (0x08024BF0's, one a soul; any souls of the game,
-        -- either version's): none, no soul button, as a save without Soul Unison (event flag 0) has; and Chaos Unison
-        -- (event flag 0x236: a dark chip's soul).
-        souls = "form[16]",
+        -- screen's soul button may offer, as the save's soul flags (any souls of the game, either version's): as many
+        -- as the button's list holds, twelve (0x08024B28 goes through the twelve families of 0x08024BE0, its soul
+        -- flags 0x08024BF0's, one a soul: `cmp r6, #13`); none, no soul button, as a save without Soul Unison (event
+        -- flag 0) has; and Chaos Unison (event flag 0x236: a dark chip's soul).
+        souls = "form[12]",
         chaos_unison = "bool",
-        -- The Giga chips the save can have (./folder: a folder holds no other): a save's are its version's, as its
-        -- souls are (each version's library lists its own six, and a Giga chip isn't traded; a tool's version presets
-        -- name each version's). A side that states none has every one.
-        giga_chips = "chip[16]",
         -- How long the save took to delete each SP navi (./sp_chips: the save's 0x02002670, a battle's copy
         -- 0x0203E560), by its SP chip, in frames.
         sp_times = schema.list({ chip = "chip", frames = "u16" }, 18),
@@ -193,21 +188,6 @@ local rules: Rules = {
             "tomahawksoul",
         },
         chaos_unison = true,
-        giga_chips = {
-            "bass",
-            "bassanly",
-            "bighook",
-            "bugcharg",
-            "bugcurse",
-            "chaoslrd",
-            "crossdiv",
-            "deltaray",
-            "dethphnx",
-            "holydrem",
-            "metrknuk",
-            "omegarkt",
-            "phoenix",
-        },
         -- Every SP navi deleted in no time (its chip's best damage), in the save's order.
         sp_times = {
             { chip = "protomn-sp", frames = 0 },
@@ -257,6 +237,10 @@ local rules: Rules = {
             -- A chip a save can collect though its record has no library flag (./folder: the Giga chips Team Colonel's
             -- library lists, and the Japanese game's gifts, LeadRaid and ChaosLrd).
             collectible = "bool",
+            -- The version whose saves hold the chip (a team's own Giga chips: each version's library lists its own
+            -- six, and a Giga chip isn't traded), which a ruleset's groups go by (./builds' `groups`). None: either
+            -- team's (ChaosLrd, which both Japanese games gave out).
+            version = { "protoman", "colonel" },
             auto_battle = {
                 class = {
                     "into_reach", "to_front", "spot_test", "landing_ahead", "behind_target", "three_ahead_near_enemy",

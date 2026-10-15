@@ -266,9 +266,10 @@ local function bring(me: Object, entry: Entry, i: number): Object?
     return o
 end
 
--- The user's game's table (its version: NaviStats+0x20, 0 Gregar, else Falzar).
+-- The user's game's table (its version: NaviStats+0x20, 0 Gregar, else Falzar): the version of the user's Cybeast.
 local function game(me: Object): string
-    return if exe6.version(me.alliance) == "gregar" then "gregar" else "falzar"
+    local cybeast = exe6.cybeast(me.alliance)
+    return if cybeast ~= nil and cybeast.version == "gregar" then "gregar" else "falzar"
 end
 
 -- `sub_80BE8AE`: the first wave, all in one tick: each Cross beside his

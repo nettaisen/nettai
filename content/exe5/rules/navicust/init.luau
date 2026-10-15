@@ -143,8 +143,8 @@ local EXE5: NaviCustGame = {
     bug_stop = function(side: number): boolean?
         local value: number? = nil
         local setup = rules.setup_of(side)
-        for _, c in setup.patch_cards :: { PatchCard } do
-            for _, e in apply_cards.effects(c, setup.version) do
+        for _, c in setup.patch_cards :: { InstalledPatchCard } do
+            for _, e in apply_cards.effects(c.card, c.variant) do
                 if e.kind == "bug_stopper" then
                     value = e.amount
                     break
