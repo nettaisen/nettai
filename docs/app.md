@@ -23,8 +23,9 @@ the command line with no window, for frames, audits and checks (docs/tools.md).
     cargo run --release -p nettai
     NETTAI_PACKS=<packs> cargo run --release -p nettai
 
-The app extracts each game's pack itself, as it starts, from the player's Battle Network Legacy Collection Vol. 2
-(Steam's), into its data folder's `packs/`, and again when another version of nettai made it (§17). With
+The app extracts each game's pack itself, the first time the game is loaded, from the player's Battle Network Legacy
+Collection Vol. 2 (Steam's), into its data folder's `packs/`, and again when another version of nettai made it
+(§17). With
 `$NETTAI_PACKS` set, the packs are that folder's, found as nettai-tool finds them (each pack by the game it says;
 written by `nettai-extract <exe4|exe5|exe6> <pack-dir> [ROM ...]`), and nothing is looked for or extracted: for
 development and the screenshot pass. The game's content (its rules and data in Luau, docs/design/content-model-v2.md
@@ -2962,8 +2963,9 @@ holds the collection's own art and is passed over), wherever in an archive they 
 its header, and the extractor says whose it is (`nettai_extract::recognize`: the app names no game); a second
 copy of one game code is passed over. Steam isn't asked when no pack is wanted.
 
-**When a pack is extracted.** As the app starts, for each of the content's games whose pack is missing, or was
-made by another build: each pack is stamped (`stamp.toml` in it) with what made it,
+**When a pack is extracted.** When the game is first loaded (the user: "you should lazily extract games on first
+load"; before, every game wanted was extracted as the app started), for each of the content's games whose pack is
+missing, or was made by another build: each pack is stamped (`stamp.toml` in it) with what made it,
 
     nettai = "0.1.0"
     assets = "1f3eed2364479361"
@@ -3000,16 +3002,19 @@ files are the extractor's, as `nettai-extract` writes them from the same ROMs (c
 one file more. Each game's end goes to the log, with how long each stretch took.
 
 **What the player sees.** The loading screen's bar is the extraction's first, "EXTRACTING BN6" and its
-percentage, then the load's, "LOADING BN6". A game is playable as its pack lands: the menu shows once the game it
-opens on is loaded, and the others are extracted behind it, each loaded as it lands; stepping to one not extracted
-yet shows its bar.
+percentage, then the load's, "LOADING BN6". As the app starts, the collection is found and each game it has the
+ROMs of can be stepped to (`games::State::Extractable`), but only the game opened on is extracted: the one last
+played, or the first time BN6 ("you should default to bn6 as the first game though"; `Games::first_choice`). The
+others are extracted when the player first steps to one, its bar the extraction's (the user: "it doesn't correctly
+show that it's extracting each game" of extracting them all at once, behind a bar that showed only the game
+shown). Stepping to a second while one is extracted waits for the first to land.
 
 **When there is nothing to extract from.** A game with no pack, and no collection found, is
 `UserError::NoLegacyCollection`: "nettai needs Battle Network Legacy Collection Vol. 2. Install it from Steam, or
 choose its folder." (in Japanese by the collection's Japanese name, ロックマンエグゼ アドバンスドコレクション
 Vol.2). Where some game can be played, it is a dialog, once, with CHOOSE FOLDER and OK; where none can, the loading
 screen shows the line and CHOOSE FOLDER. Either opens the system's folder dialog: a folder that holds the
-collection is kept in the settings, and the packs wanted are extracted from it; one that doesn't says the error
+collection is kept in the settings, and the games it has can be extracted from it, each as it is first loaded; one that doesn't says the error
 again, and nothing is kept. A game whose pack another build made is loaded as it is while there is nothing to
 make it again from; if it doesn't load, that is the same error. A failure while reading the archives or
 extracting is `UserError::ExtractFailed` ("BN6's data couldn't be extracted. Details are in the log file."), the

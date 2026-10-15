@@ -31,6 +31,9 @@ use std::sync::Arc;
 pub enum State {
     /// No asset pack of it is found (and none is being extracted).
     NoPack,
+    /// Its pack is missing, or another build's, and the Legacy Collection found has its ROMs: it is extracted
+    /// when the game is first loaded (the user: "you should lazily extract games on first load").
+    Extractable,
     /// Its pack is being extracted, or waits to be: how far it is, 0 to 1.
     Extracting(f32),
     NotLoaded,
@@ -40,6 +43,9 @@ pub enum State {
     /// It couldn't be loaded (why is in the log).
     Failed,
 }
+
+/// The game the app opens on the first time, when it can be played.
+const FIRST_GAME: &str = "exe6";
 
 /// How much of the bar the parts read on the game's thread are; the rest is the runtime's.
 const READ: f32 = 0.8;
@@ -106,20 +112,21 @@ pub struct Games {
     stale: Vec<String>,
     /// A Legacy Collection was found at start-up, or chosen since.
     pub found_source: bool,
-    /// The extraction, once the window's loop runs ([`Games::start`]); the jobs found before it does.
+    /// The Legacy Collection the packs are extracted from, once one is found or chosen.
+    source: Option<Install>,
+    /// The extraction, once the window's loop runs ([`Games::start`]); the jobs asked for before it does.
     extractor: Option<Extractor>,
     waiting: Vec<Job>,
 }
 
 impl Games {
     /// The content's games, each with its asset pack if one is found. With the app's own packs (`extracts`), a
-    /// game whose pack is missing or another build's is to be extracted from the Legacy Collection, in the
-    /// folder `chosen` (the settings') or through Steam: `first` first. Nothing is extracted until
-    /// [`Games::start`].
-    pub fn find(chosen: Option<&Path>, first: Option<&str>, may_extract: bool) -> Games {
+    /// game whose pack is missing or another build's can be extracted from the Legacy Collection, in the folder
+    /// `chosen` (the settings') or through Steam: it is, when it is first loaded ([`Games::extract`]).
+    pub fn find(chosen: Option<&Path>, may_extract: bool) -> Games {
         let (packs, own) = packs::dir();
         let mut games =
-            Games { list: Vec::new(), notices: Vec::new(), packs, extracts: own && may_extract, stale: Vec::new(), found_source: false, extractor: None, waiting: Vec::new() };
+            Games { list: Vec::new(), notices: Vec::new(), packs, extracts: own && may_extract, stale: Vec::new(), found_source: false, source: None, extractor: None, waiting: Vec::new() };
         if games.extracts {
             packs::tidy(&games.packs);
         }
@@ -163,8 +170,7 @@ impl Games {
         }
         match Install::find(chosen) {
             Some(install) => {
-                games.found_source = true;
-                games.extract_from(&install, first);
+                games.found(install);
             }
             None => crate::errors::log("finding the Legacy Collection", &"not found through Steam, nor in the folder chosen"),
         }
@@ -188,32 +194,54 @@ impl Games {
             .collect()
     }
 
-    /// Extract the packs wanted from `install`: each game whose ROMs it has, after those waiting, `first`
-    /// first. How many there are. (Until [`Games::start`], they wait for it.)
-    pub fn extract_from(&mut self, install: &Install, first: Option<&str>) -> usize {
+    /// The Legacy Collection `install` is where the packs wanted come from: each game whose ROMs it has can be
+    /// extracted ([`State::Extractable`]) when it is first loaded. How many there are.
+    pub fn found(&mut self, install: Install) -> usize {
         let roms = install.roms();
-        let mut jobs: Vec<Job> = Vec::new();
+        let mut count = 0;
         for (id, game) in self.wanted() {
-            let roms: Vec<_> = roms.iter().filter(|r| r.game == game).cloned().collect();
-            if roms.is_empty() {
+            if !roms.iter().any(|r| r.game == game) {
                 crate::errors::log(&format!("extracting {id}"), &format_args!("{} has no ROM of it", install.data.display()));
                 continue;
             }
             if let Some(entry) = self.list.iter_mut().find(|e| e.id == id) {
-                entry.state = State::Extracting(0.0);
+                entry.state = State::Extractable;
+                count += 1;
             }
-            jobs.push(Job { id, game, roms });
         }
-        jobs.sort_by_key(|j| Some(j.id.as_str()) != first);
-        let count = jobs.len();
         if count > 0 {
             self.found_source = true;
-        }
-        match &self.extractor {
-            Some(extractor) => extractor.add(jobs),
-            None => self.waiting.extend(jobs),
+            self.source = Some(install);
         }
         count
+    }
+
+    /// Extract game `id`'s pack, if it is [`State::Extractable`]: it is being loaded for the first time. (Until
+    /// [`Games::start`], it waits for the extraction's thread.)
+    pub fn extract(&mut self, id: &str) {
+        let (Some(install), Some(game)) = (&self.source, nettai_extract::Game::named(id)) else { return };
+        let Some(entry) = self.list.iter_mut().find(|e| e.id == id) else { return };
+        if !matches!(entry.state, State::Extractable) {
+            return;
+        }
+        entry.state = State::Extracting(0.0);
+        let roms: Vec<_> = install.roms().into_iter().filter(|r| r.game == game).collect();
+        let job = Job { id: id.to_string(), game, roms };
+        match &self.extractor {
+            Some(extractor) => extractor.add(vec![job]),
+            None => self.waiting.push(job),
+        }
+    }
+
+    /// The game to open on: `remembered` (the settings') if it can be played, else BN6 (the user: "you should
+    /// default to bn6 as the first game though"), else the first that can.
+    pub fn first_choice(&self, remembered: Option<&str>) -> Option<String> {
+        let games = self.playable();
+        remembered
+            .filter(|g| games.iter().any(|p| p == g))
+            .or_else(|| games.iter().map(String::as_str).find(|g| *g == FIRST_GAME))
+            .or_else(|| games.first().map(String::as_str))
+            .map(str::to_string)
     }
 
     /// Start the extraction of the packs found wanted, now that the window's loop runs: each game's progress
@@ -288,7 +316,7 @@ impl Games {
                 state: State::Ready(Rc::new(Ready { loaded, graphics: Default::default(), runtime: false.into() })),
             })
             .collect();
-        Games { list, notices: Vec::new(), packs: PathBuf::new(), extracts: false, stale: Vec::new(), found_source: false, extractor: None, waiting: Vec::new() }
+        Games { list, notices: Vec::new(), packs: PathBuf::new(), extracts: false, stale: Vec::new(), found_source: false, source: None, extractor: None, waiting: Vec::new() }
     }
 
     /// Game `id`, if its parts are read (its runtime may yet be to load: [`Games::load_runtime`]).
@@ -551,8 +579,24 @@ mod tests {
     impl Games {
         /// Games of `list`, their own packs in `packs`, with no extraction under way.
         fn of(list: Vec<Entry>, packs: PathBuf) -> Games {
-            Games { list, notices: Vec::new(), packs, extracts: true, stale: Vec::new(), found_source: false, extractor: None, waiting: Vec::new() }
+            Games { list, notices: Vec::new(), packs, extracts: true, stale: Vec::new(), found_source: false, source: None, extractor: None, waiting: Vec::new() }
         }
+    }
+
+    /// The game opened on is the one remembered if it can be played, else BN6, else the first that can; a game
+    /// that can be extracted can be played (it is extracted as it is first loaded), one with no pack can't, and
+    /// nothing is extracted with no collection found.
+    #[test]
+    fn the_first_game_is_the_remembered_one_else_bn6() {
+        let entry = |id: &str, state: State| Entry { id: id.to_string(), state };
+        let mut games = Games::of(vec![entry("exe4", State::NotLoaded), entry("exe5", State::Extractable), entry("exe6", State::Extractable)], PathBuf::new());
+        assert_eq!(games.first_choice(None).as_deref(), Some("exe6"));
+        assert_eq!(games.first_choice(Some("exe5")).as_deref(), Some("exe5"));
+        assert_eq!(games.first_choice(Some("exe3")).as_deref(), Some("exe6"));
+        games.extract("exe6");
+        assert!(matches!(games.get("exe6").unwrap().state, State::Extractable), "no collection: nothing to extract from");
+        games.list[2].state = State::NoPack;
+        assert_eq!(games.first_choice(None).as_deref(), Some("exe4"));
     }
 
     /// A game whose pack is extracted can be stepped to, its bar the extraction's, and loads once its pack lands;
