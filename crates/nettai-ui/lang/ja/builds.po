@@ -588,9 +588,9 @@ msgstr "{}は使用できません"
 msgid "Not allowed"
 msgstr "使用不可"
 
-# A build of two versions' things under one version per build: the versions, and what it holds of all but one.
-msgid "Mixes {}: {}"
-msgstr "{}が混在しています: {}"
+# A build of two versions' things under one version per build: the versions ("Gregar and Falzar"), no thing of them.
+msgid "Mixes {}"
+msgstr "{}が混在しています"
 
 msgid "{} and {}"
 msgstr "{}と{}"

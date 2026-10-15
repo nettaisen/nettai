@@ -301,10 +301,10 @@ export global BuildWords {
     public pure function not-allowed-here() -> string {
         return @tr("Not allowed");
     }
-    // A build of two versions' things under one version per build: the versions ("Gregar and Falzar") and what
-    // it holds of all but one ("TenguCross, Bass").
-    public pure function mixed(versions: string, things: string) -> string {
-        return @tr("Mixes {}: {}", versions, things);
+    // A build of two versions' things under one version per build: the versions ("Gregar and Falzar"). It names no
+    // thing of them: every one is in the mix, and marked where it is (docs/design/app-ui.md §2.66).
+    public pure function mixed(versions: string) -> string {
+        return @tr("Mixes {}", versions);
     }
     public pure function and-of(first: string, second: string) -> string {
         return @tr("{} and {}", first, second);

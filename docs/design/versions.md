@@ -112,8 +112,9 @@ So "BN6 as the game was" is: Versions one per build, both groups allowed, everyt
 tournament: one per build, Falzar's group alone. An open format: mixed. The per-soul and per-Cross toggles the user
 asked for sit under the groups, as the ruleset work already has them.
 
-A build breaking it is the lobby's usual typed problem: "Mixes Gregar's and Falzar's" (listing what), as a banned
-chip is.
+A build breaking it is the lobby's usual typed problem: "Mixes Gregar and Falzar", as a banned chip is. It is about
+every thing of either version the build holds (`Wrong::Mixed`'s list), none taken for the build's own version, and
+the editor marks each (app-ui §2.66: the user, "guessing which versio nthe user intends is confusing").
 
 (The app words it for a player as **Version exclusives**, ONE VERSION | MIX VERSIONS (app-ui §2.65: the user, "one
 per build is weird wording"); the ruleset files keep `versions = "one_per_build"` or `"mixed"`.)
@@ -196,6 +197,6 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
 - **Play's build list and Practice** check builds under a ruleset (`Checked::under`'s problems: nettai's
   `builds::shelf`), as the lobby and the build editor do: outside a lobby the one the player plays by, so a build
   that mixes versions under Standard is "2 problems" in the list and PRACTICE and HOST refuse it with the first
-  ("Mixes Gregar and Falzar: …"); in a lobby CHANGE BUILD's list is checked again under the lobby's, the host's,
+  ("Mixes Gregar and Falzar"); in a lobby CHANGE BUILD's list is checked again under the lobby's, the host's,
   as it changes. Joining (an invite's code, an address) asks only the game's rules of a build, as the lobby it
   joins is under the host's ruleset and checks the build under it.

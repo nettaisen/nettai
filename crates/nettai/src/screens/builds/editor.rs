@@ -157,8 +157,9 @@ impl Draft {
     }
 
     /// The build's mix of versions (a ruleset of one version per build's problem) where item `item` of `registry`
-    /// is among what it holds of the versions but its own (a Giga chip in the folder, a form, a card's variant):
-    /// where a tab shows the item, it is marked, and says so.
+    /// is among what it holds of the versions mixed, every one of which is (a Giga chip in the folder, a form, a
+    /// card's variant: none is taken for the build's own version): where a tab shows the item, it is marked, and
+    /// says so.
     pub fn mixing(&self, registry: nettai_content_api::Registry, item: &nettai_match::ruleset::Item) -> Option<&Problem> {
         self.checked.problems.iter().find(|p| matches!(&p.what, Wrong::Mixed { items, .. } if items.iter().any(|(r, i)| *r == registry && i == item)))
     }

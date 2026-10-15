@@ -395,8 +395,8 @@ impl Ruleset {
     /// What is wrong with `side` under this ruleset: for each category, a
     /// problem for each item the side's fact names that it doesn't allow, at
     /// the entry that first names it; and with one version per build, one
-    /// where what the side holds is more than one group's. None: the ruleset
-    /// lets the side play.
+    /// where what the side holds is more than one group's, about all it holds
+    /// of them. None: the ruleset lets the side play.
     pub fn problems(&self, rulesets: &Rulesets, content: &Content, side: &Side) -> Vec<Problem> {
         let mut out = Vec::new();
         let mut held: Vec<(Registry, Item)> = Vec::new();
@@ -411,9 +411,9 @@ impl Ruleset {
             }
         }
         if self.one_per_build {
-            // (Each group with what the side holds of it; the one it holds
-            // most of, the first in order where two tie, is the build's, and
-            // what it holds of the others is listed.)
+            // (Each group with what the side holds of it: where it holds
+            // things of more than one, every one of them is in the mix, none
+            // taken for the build's own.)
             let of: Vec<(&Group, Vec<(Registry, Item)>)> = rulesets
                 .groups
                 .iter()
@@ -421,9 +421,8 @@ impl Ruleset {
                 .filter(|(_, items)| !items.is_empty())
                 .collect();
             if of.len() > 1 {
-                let most = of.iter().enumerate().max_by_key(|(i, (_, items))| (items.len(), std::cmp::Reverse(*i))).map(|(i, _)| i).unwrap_or(0);
                 let groups: Vec<String> = of.iter().map(|(g, _)| g.id.clone()).collect();
-                let items: Vec<(Registry, Item)> = of.iter().enumerate().filter(|(i, _)| *i != most).flat_map(|(_, (_, items))| items.iter().cloned()).collect();
+                let items: Vec<(Registry, Item)> = of.iter().flat_map(|(_, items)| items.iter().cloned()).collect();
                 let listed: Vec<String> = items.iter().map(|(r, h)| shown(content, *r, h)).collect();
                 let text = format!("mixes the versions {} ({})", groups.join(" and "), listed.join(", "));
                 out.push(Problem { side: Some(0), field: None, entry: None, what: Wrong::Mixed { groups, items }, text });
@@ -817,35 +816,59 @@ mod tests {
     }
 
     /// With one version per build, a build holding two groups' things is a
-    /// problem that lists what is the other group's, read from what it holds:
-    /// its Crosses, its Cybeast, its Bass-Cross MegaMan card's variant;
-    /// mixed lets it be.
+    /// problem about everything it holds of either, read from what it holds:
+    /// its Crosses, its Cybeast, its Bass-Cross MegaMan card's variant (none
+    /// is taken for the build's own version); mixed lets it be.
     #[test]
     fn one_version_per_build_refuses_a_build_of_two_groups() {
         let content = exe6_content();
         let r = Rulesets::of(&content, "exe6").unwrap();
         let builds = Builds::of(&content, "exe6").unwrap();
-        let mut side = builds.new_build(&content, "gregar").unwrap();
-        // Two of Falzar's Crosses in place of Gregar's last two.
+        let groups = vec!["gregar".to_string(), "falzar".to_string()];
         let crosses = r.category("crosses").unwrap();
         let falzar = r.group_items(crosses, r.group("falzar").unwrap());
         let gregar = r.group_items(crosses, r.group("gregar").unwrap());
+        let form = |key: &str| (Registry::Form, Item::of(crate::ids::form(&content, "exe6", key).unwrap().0));
+        let forms = |items: &[Item]| items.iter().map(|h| (Registry::Form, h.clone())).collect::<BTreeSet<_>>();
+        let of_falzar = |(registry, item): &(Registry, Item)| r.group("falzar").unwrap().has(*registry, item);
+        // What the one problem is about, as a set: its list is in the groups' order, Gregar's then Falzar's.
+        let mix = |side: &Side| -> BTreeSet<(Registry, Item)> {
+            match &r.first().problems(&r, &content, side)[..] {
+                [p] => match &p.what {
+                    Wrong::Mixed { groups: g, items } if *g == groups => {
+                        let first = items.iter().position(of_falzar).unwrap();
+                        assert!(first > 0 && items[first..].iter().all(of_falzar), "{items:?}");
+                        items.iter().cloned().collect()
+                    }
+                    other => panic!("{other:?}"),
+                },
+                other => panic!("{other:?}"),
+            }
+        };
+        // Two of Falzar's Crosses in place of Gregar's last two: those, Gregar's three and the Gregar Beast.
+        let mut side = builds.new_build(&content, "gregar").unwrap();
         let mixed: Vec<Fact> = gregar[..3].iter().chain(&falzar[..2]).map(|h| Fact::Value(Value::Def(Registry::Form, h.def))).collect();
         side.set_fact(&content, "crosses", &mixed).unwrap();
-        let problems = r.first().problems(&r, &content, &side);
-        assert_eq!(problems.len(), 1);
-        assert_eq!(problems[0].what, Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: falzar[..2].iter().map(|h| (Registry::Form, h.clone())).collect() });
+        let mut all = forms(&gregar[..3]);
+        all.extend(forms(&falzar[..2]));
+        all.insert(form("gregar-beast"));
+        assert_eq!(mix(&side), all);
         assert!(r.preset("unrestricted").unwrap().problems(&r, &content, &side).is_empty());
-        // Gregar's Crosses alone with Falzar's Cybeast: it mixes them.
+        // Gregar's Crosses alone with Falzar's Cybeast: every one of them.
         let mut beast = builds.new_build(&content, "gregar").unwrap();
         beast.set_fact(&content, "cybeast", &[crate::facts::version_fact(&content, "falzar").unwrap()]).unwrap();
-        let falzar_beast = crate::ids::form(&content, "exe6", "falzar-beast").unwrap().0;
-        assert!(matches!(&r.first().problems(&r, &content, &beast)[..], [p] if p.what == Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: vec![(Registry::Form, Item::of(falzar_beast))] }));
-        // And Falzar's card with a Gregar build.
+        let mut all: BTreeSet<_> = builds.chosen_forms(&content, &beast, "crosses").iter().map(|f| (Registry::Form, Item::of(f.0))).collect();
+        assert!(!all.is_empty());
+        all.insert(form("falzar-beast"));
+        assert_eq!(mix(&beast), all);
+        // And Falzar's card with a Gregar build: the card, and the build's Gregar Beast and Crosses.
         let mut card = builds.new_build(&content, "gregar").unwrap();
         card.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/falzar")).unwrap();
         let h = crate::ids::entry(&content, "exe6", crate::facts::PATCH_CARDS, "bass-cross-megaman").unwrap().0;
-        assert!(matches!(&r.first().problems(&r, &content, &card)[..], [p] if p.what == Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: vec![(Registry::Entry, Item { def: h, variant: Some("falzar".into()) })] }));
+        let mut all: BTreeSet<_> = builds.chosen_forms(&content, &card, "crosses").iter().map(|f| (Registry::Form, Item::of(f.0))).collect();
+        all.insert(form("gregar-beast"));
+        all.insert((Registry::Entry, Item { def: h, variant: Some("falzar".into()) }));
+        assert_eq!(mix(&card), all);
         card.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/gregar")).unwrap();
         assert!(r.first().problems(&r, &content, &card).is_empty());
     }

@@ -343,7 +343,7 @@ impl Navicust {
     }
 
     /// The build's problems about a placed copy of program `piece` (its place in the list, from 0), the ruleset's among
-    /// them (a program it holds back, or of another version's than the build's under one version per build).
+    /// them (a program it holds back, or a version's in a build that mixes versions under one version per build).
     fn problems<'d>(draft: &'d Draft, piece: u16) -> Vec<&'d nettai_match::check::Problem> {
         let parts = grid::placed(draft.content(), draft.side());
         let at: Vec<usize> = parts.iter().enumerate().filter(|(_, p)| p.piece == piece).map(|(i, _)| i).collect();

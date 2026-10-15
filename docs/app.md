@@ -1207,18 +1207,17 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   about it (`Draft::facts_of`: the one a problem names, and for a mix of versions, which names none, each fact
   holding one of its things); the chosen forms it is about have their names in the error red (one the ruleset the
   player plays by doesn't allow, one of a mix of versions, the entry a problem names), and a form the ruleset holds
-  back has "Not allowed" at its row's end (`NaviForm.banned`). The sentences are said where they are (design §2.66),
-  as every tab's are: in the tab's strip (`NaviView.detail`, `NaviDetail`), across the top of the grid's side, 104
-  tall as every tab's, which describes the form under the cursor or the pointer (its face, its name and version's
-  mark, a Cross's description, its element, its fact's name), else the build's navi (the face its round starts with,
-  its name, element and HP); at its top right, what the build's problems have against it, the ruleset's among them (a
-  form's own, then its fact's about no form of it; the navi's, and the build's of no part a tab shows). A phone has no
-  strip: what the game's rules have against a fact (a form of it, or the whole) is on its heading's line
-  (`NaviFormGroup.problem`), against the navi on its name's line (`NaviView.problems`), each in a place that is there
-  when empty, so nothing moves when a problem appears. The same facts flag the tab bar's words
-  (`Editor::tabs_of`), so a mix of versions marks the tabs that hold its things (a Beast form's the Navi tab, a Giga
-  chip's the Folder tab, where its entry's name is red; a card's variant's the Patch cards tab), and the strip of each
-  of its things says it. Enter, a click or a tap is `activate("form", i)`:
+  back has "Not allowed" at its row's end (`NaviForm.banned`). The tab has no strip (design §2.66: the user, "i don't
+  like having an info thing on the navi view, it's redundant"): the sentences are said in the note's place under the
+  selector, in the note's stead (`NaviView.fault`, `Navi::show_fault`): what the build's problems have against the
+  form under the pointer or the cursor (`Tab::hovered`, `Tab::focused`), the ruleset's among them (a form's own, then
+  its fact's about no form of it), else against the navi (and the build's of no part a tab shows), as
+  `Words::summary` says them; the note where neither has any. The place is as tall as the note and a line at least
+  whether it says anything or not, so nothing moves when a problem appears; a phone's the same. The same facts flag
+  the tab bar's words (`Editor::tabs_of`), so a mix of versions marks the tabs that hold its things (a Beast form's
+  the Navi tab, a Giga chip's the Folder tab, a card's variant's the Patch cards tab), every thing of each version
+  the build holds has its name red (`Wrong::Mixed`'s `items`: none is taken for the build's own version), and the
+  strip of each of them, or the note's place, says it. Enter, a click or a tap is `activate("form", i)`:
   `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a list takes it out, or puts it in where the list
   has room (the Cross window's five, the soul button's twelve: the setup's `form[5]` and `form[12]`), in the
   battle's order; a full list refuses one more.
@@ -1270,9 +1269,9 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
   the player's own) and EDIT (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's
   panel and the grid. The build is checked under it (`Draft::checked` is `Checked::under`), so what it doesn't
   allow is among the build's problems: what it has against the build (the problems `Wrong::of_ruleset` says are its,
-  an item it doesn't allow and a mix of versions) is said in the strip of each item it is about, with the game's
-  rules' (`Draft::line`), and by nothing by the select (design §2.66; a phone's pane headers say the game's rules'
-  alone). Each tab marks what it is about (`Draft::allows`): a navi's card ("Not allowed" in
+  an item it doesn't allow and a mix of versions) is said in the strip of each item it is about (the Navi tab's
+  note's place), with the game's rules' (`Draft::line`), and by nothing by the select (design §2.66; a phone's pane
+  headers say the game's rules' alone). Each tab marks what it is about (`Draft::allows`): a navi's card ("Not allowed" in
   the error red), the folder's library rows ("Not allowed", refused) and entries (the folder's view held to the
   ruleset: `View::hold_to`), a NaviCust program's row (`ProgramState::NotAllowed`), a patch card's library row
   and installed card (refused, in the error red), a soul's or Cross's face (a red ring).
@@ -1313,7 +1312,7 @@ line needs the content to name each navi's.
 | What is wrong with a build, in the player's words | the catalog's `BuildWords` | `builds::words::Words::problem(&Problem)`: the kind's sentence with its numbers and names, about the part of the build its fact is (`words::wrong(.., &Wrong)` for a kind alone: the general sentence). `words::summary(shell, kit, problems)` words a build's problems as one line, the first and " · +n more" (`Words::summary`, design §2.66), for `UserError::BuildUnusable`; `words::problems(shell, game, ready, &[Problem])` the same for the lobby's line. `builds::words::Words` (`problem`, `summary`, `refusal`, `status`) where many are worded at once |
 
 **A problem's sentence** has no full stop and is whole by itself: "2 Giga chips, limit 1", "Mixes Gregar and
-Falzar: HeatCross", "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
+Falzar" (the versions alone: every thing of them the build holds is marked), "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
 after a colon in another's sentence, which ends it (Practice's reserved line: "Your build can't be used: 31
 chips, a folder has 30."; the shell's "This build can't be used: {}."). `problem` words any
 `nettai_match::check::Problem`, whichever screen is shown; its kinds are matched with no catch-all, so a kind
@@ -1364,11 +1363,15 @@ build, and its height on the width and the stats after the eight. Every number i
 problems: each tab says them where they are, design §2.66), the tab bar with the ruleset's select, and the tab
 chosen. A tab's strip says at its top right, where nothing was refused, what the build's problems have against the
 item it describes, the ruleset's among them (`Draft::line`: `ChipDetail.fault`, `CardDetail.fault`,
-`NavicustView.fault`, `NaviDetail.fault`; `Refusal`'s `problem`): the item's own, those of a whole part it counts in
+`NavicustView.fault`; `Refusal`'s `problem`; the Navi tab, which has no strip, in its note's place: `NaviView.fault`):
+the item's own, those of a whole part it counts in
 (the folder's size in an empty entry, a class's limit in each of its chips, the cards' MB in each card; the count in
 the error red too), and those of its part that are about no item and no count, in every item of the pane
-(`Draft::pane_problems`). An item a problem is about has its name red on its row. A phone, which has no strip, says
-the game's rules' problems with a tab's facts in its pane's header (`Draft::pane_line`; not the ruleset's). **A tab is
+(`Draft::pane_problems`). An item a problem is about has its name red on its row. The top right is the strip's
+own: a name on its line ends at the strip's middle, where it begins, and the Patch cards strip's two groups of lines
+end a column before it (the strip's right of the card's name is three columns as wide). A phone, which has no strip,
+says the game's rules' problems with a tab's facts in its pane's header (`Draft::pane_line`; not the ruleset's; the
+Navi tab's note's place as a desktop's). **A tab is
 one Slint file and one Rust module**, as a screen is for the shell:
 
 - `ui/screens/builds/<tab>.slint` has `<Tab>View`, a global the module sets (with `hints`, the footer's key
@@ -2135,13 +2138,14 @@ other preset of the game's choice, and the Folder tab (an entry, the library, it
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,
 the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out
 (`builds-folder-short`: the empty entry's strip says the folder's size, Chips in the error red), the entry of the
-other version's Giga chip put in before (`builds-folder-mixed`: its name red, its strip saying the mix), the
+other version's Giga chip put in before (`builds-folder-mixed`: its name red with every thing of either version
+the build holds, its strip saying the mix), the
 sort's list), then the tab after it; last, the selector of forms (`switched`: a build of the game's first version
-made beside the walk's; `builds-forms-focus`, its first form focused, ready, the strip describing it;
-`builds-forms-mixed`, the other version's first form of the first fact chosen, the strip saying the mix the
-ruleset has against it; `builds-forms-back`, the first version's again, ready; `builds-forms-third`, the third form
-focused, EXE6's first Cross with its description; a step after the first three checks the focus and the build's
-state are as the picture's name says); then a ruleset's page
+made beside the walk's; `builds-forms-focus`, its first form focused, ready, the note under the selector;
+`builds-forms-mixed`, the other version's first form of the first fact chosen, every form of either version the
+build has in the error red and the note's place saying the mix the ruleset has against the form focused;
+`builds-forms-back`, the first version's again, ready, the note again; a step after each checks the focus and the
+build's state are as the picture's name says); then a ruleset's page
 (`rulesets`): from the Navi tab EDIT by the ruleset the player plays by (`rulesets-preset`: Masters class, read alone,
 the reserved line saying so), DUPLICATE (`rulesets-own`), its chips (`rulesets-chips`, chosen by the category's
 select's choice: a phone has no list of them), the first chip held back and the first version's quick choice

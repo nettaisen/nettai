@@ -598,10 +598,11 @@ export component FolderTab inherits Rectangle {
         image-rendering: pixelated;
     }
 
+    // (The name and code end where the strip's top right, the refusal's and the problem's, begins.)
     HorizontalLayout {
         x: 120px;
         y: root.top + 19px;
-        width: parent.width - 136px;
+        width: max(0px, parent.width / 2 - 120px - 8px);
         height: 20px;
         visible: !Theme.phone;
         spacing: 6px;
@@ -613,6 +614,7 @@ export component FolderTab inherits Rectangle {
             font-size: 16px;
             font-weight: 700;
             vertical-alignment: center;
+            overflow: elide;
         }
 
         Text {
