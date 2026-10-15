@@ -222,6 +222,8 @@ impl PatchCards {
                 megabytes: budget.map(|b| say.invoke_megabytes(b.cost_of(content, h) as i32)).unwrap_or_default(),
                 slot: slot.or(own).map(slot_name).unwrap_or_default().into(),
                 lines: ModelRc::new(VecModel::from(row_lines(&lines))),
+                // (One the ruleset the player plays by doesn't allow: its name in the error red.)
+                bad: !draft.allows(FIELD, h.0),
                 ..Default::default()
             }
         })
@@ -288,7 +290,12 @@ impl PatchCards {
                 let mut row = self.row_of(shell, draft, Some(h), None, budget);
                 // (A card that is in says so, and isn't greyed: Enter takes it out again. In a game with slots a
                 // card goes in its own slot whatever it holds: no card is refused.)
-                if held.contains(&Some(h)) {
+                // (One the ruleset the player plays by doesn't allow says so, in the error red, whether it is in or not.)
+                if !draft.allows(FIELD, h.0) {
+                    row.note = shell.ui().global::<BuildWords>().invoke_not_allowed_here();
+                    row.refused = !held.contains(&Some(h));
+                    row.bad = true;
+                } else if held.contains(&Some(h)) {
                     row.note = shell.ui().global::<BuildWords>().invoke_installed();
                 } else if slots.is_some() {
                 } else if let Some(refusal) = budget.and_then(|b| b.refusal(content, draft.side(), h)) {
@@ -442,7 +449,9 @@ impl PatchCards {
         let budget = PatchCards::budget(draft);
         let refusal = (!PatchCards::slotted(draft)).then(|| budget.as_ref().and_then(|b| b.refusal(draft.content(), draft.side(), h))).flatten();
         let room = PatchCards::slotted(draft) || PatchCards::installed(draft).iter().flatten().count() < room_of(draft.content(), FIELD);
-        if refusal.is_none() && room {
+        // (A card the ruleset the player plays by doesn't allow doesn't go in either: the strip says so.)
+        let allowed = draft.allows(FIELD, h.0);
+        if refusal.is_none() && room && allowed {
             return false;
         }
         let ui = shell.ui();
@@ -451,7 +460,10 @@ impl PatchCards {
         view.set_refused(row as i32);
         view.set_refused_seq(self.refused);
         shell.sound.play(Cue::Refused);
-        self.notice = refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r)));
+        self.notice = match allowed {
+            false => Some(shell.ui().global::<BuildWords>().invoke_not_allowed_here().to_string()),
+            true => refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r))),
+        };
         self.show_detail(shell, draft, budget.as_ref());
         true
     }

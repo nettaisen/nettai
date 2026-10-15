@@ -191,6 +191,28 @@ impl View {
         self.refused.get(&chip)
     }
 
+    /// The view held to `ruleset`, whose category `fact` is the folder's: a
+    /// chip it doesn't allow can't go in ([`Wrong::NotAllowed`], a chip no
+    /// folder holds left as it is), and each entry of `folder` that holds
+    /// one has that problem.
+    pub fn hold_to(&mut self, ruleset: &crate::ruleset::Ruleset, fact: &str, folder: &Folder) {
+        use nettai_content_api::Registry;
+        for h in ruleset.banned(fact) {
+            let chip = ChipHandle(h);
+            if !matches!(self.refused.get(&chip), Some(Wrong::ChipNotAllowed { .. })) {
+                self.refused.insert(chip, Wrong::NotAllowed { registry: Registry::Chip, def: h });
+            }
+        }
+        for (entry, held) in folder.chips.iter().enumerate() {
+            if let Some(held) = held
+                && !ruleset.allows(fact, held.id.0)
+            {
+                let what = Wrong::NotAllowed { registry: Registry::Chip, def: held.id.0 };
+                self.problems.push(Problem { side: Some(0), field: Some(fact.to_string()), entry: Some(entry), what, text: format!("the ruleset doesn't allow the chip of entry {entry}") });
+            }
+        }
+    }
+
     /// Whether a library lists `chip` for this side at all: every chip but
     /// those no folder holds (another version's chip is listed, and
     /// refused).

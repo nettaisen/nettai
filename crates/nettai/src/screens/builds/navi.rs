@@ -64,7 +64,10 @@ impl Tab for Navi {
         let offered = kit.builds.choices_of(&content, draft.side());
         draft.with_words(shell, |words| {
             let names = words.names;
-            let cards: Vec<NaviCard> = self.navis.iter().map(|&n| NaviCard { name: names.navi(n).into(), face: kit.pictures.navi(n), chosen: n == chosen }).collect();
+            // (A navi the ruleset the player plays by doesn't allow is marked: the navi fact's category.)
+            let navi_fact = content.defs.fact_name(PlayerFact::Navi).unwrap_or_default();
+            let cards: Vec<NaviCard> =
+                self.navis.iter().map(|&n| NaviCard { name: names.navi(n).into(), face: kit.pictures.navi(n), chosen: n == chosen, banned: !draft.allows(navi_fact, n.0) }).collect();
             view.set_navis(ModelRc::new(VecModel::from(cards)));
             view.set_name(names.navi(chosen).into());
             // Each of the game's choices: the preset the build is on, by its name in the game's strings.
@@ -89,6 +92,11 @@ impl Tab for Navi {
         };
         let faces: Vec<slint::Image> = forms.iter().map(|&f| kit.pictures.face(f)).collect();
         view.set_forms(ModelRc::new(VecModel::from(faces)));
+        // (A form the ruleset doesn't allow, in whichever of the build's facts names forms: the souls, the Crosses.)
+        let banned: Vec<bool> = forms.iter().map(|&f| draft.ruleset.as_ref().is_some_and(|p| kit.rulesets().is_some_and(|r| r.categories.iter().any(|c| c.registry == nettai_content_api::Registry::Form && !p.ruleset.allows(&c.fact, f.0))))).collect();
+        view.set_forms_banned(ModelRc::new(VecModel::from(banned)));
+        let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
+        view.set_ruleset(ruleset.unwrap_or_default().into());
         view.set_face(face);
         view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
