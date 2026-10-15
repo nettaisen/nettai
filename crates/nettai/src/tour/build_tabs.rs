@@ -170,7 +170,7 @@ fn put_now(ui: &nettai_ui::AppWindow, app: &Rc<RefCell<App>>, spot: Spot) {
 
 /// The next pair's second shot may differ in the strip too (the program under the cursor, which a focus move
 /// changes), on a desktop: it is the tab's top, above the board, 104 tall and 12 above the board's panel, whose
-/// cells start 16 into it. (A phone has no strip.)
+/// cells start 16 under its header, 44 tall. (A phone has no strip.)
 fn strip_may_differ() -> Step {
     Box::new(|ui, app, tour| {
         let app = app.borrow();
@@ -182,7 +182,7 @@ fn strip_may_differ() -> Step {
         let registry = registry.borrow();
         // (The board's top, from any of its cells: they are 3 apart.)
         let Some(top) = (0..n * n).find_map(|k| registry.rect(&crate::nav::Key::new("cell", k)).map(|r| r.y - (k / n) as f32 * (r.h + 3.0))) else { return };
-        let bottom = top - 16.0 - 12.0;
+        let bottom = top - 16.0 - 44.0 - 12.0;
         // (`compare` lets a pair differ 12 around what it is given: this stops 13 short of the strip's bottom.)
         tour.may_differ(crate::nav::Rect { x: 0.0, y: bottom - 104.0, w: 10_000.0, h: 104.0 - 13.0 });
     })
