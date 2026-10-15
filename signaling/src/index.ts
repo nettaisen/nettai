@@ -32,6 +32,17 @@
 //   invite room and {"type":"welcome","peer":BOOL} in a reconnect room (the
 //   client's place, whether the other is there, the invite's code), then
 //   {"type":"peer","present":BOOL} whenever the other comes or goes.
+// - Every welcome has "iceServers":[...] too: the STUN and TURN servers the
+//   client's connections use, exactly those (as the browser's RTCIceServer:
+//   {"urls":[...],"username":...,"credential":...}). The user's words: "the
+//   signaling server should return stun and turn server credentials". With
+//   its TURN key (the secrets TURN_KEY_ID and TURN_KEY_API_TOKEN), the server
+//   asks Cloudflare's TURN service for credentials for this client, which
+//   last TURN_TTL_SECONDS, and gives what it answers: its STUN server and its
+//   TURN servers. Without the key, or when the service fails or doesn't
+//   answer within TURN_API_WAIT_MS, Cloudflare's public STUN server alone
+//   (STUN), and the failure is logged here, never the secrets; a room never
+//   waits on it longer.
 // - {"type":"signal","data":...} from one client goes to the other as it is
 //   (dropped if the other isn't there); {"type":"leave"} gives the
 //   client's place up.
@@ -53,6 +64,20 @@ import { DurableObject } from "cloudflare:workers";
 
 export interface Env {
 	ROOMS: DurableObjectNamespace<Room>;
+	/** The Cloudflare Realtime TURN key's ID, a secret (`npx wrangler secret
+	 * put TURN_KEY_ID`): none, no TURN. */
+	TURN_KEY_ID?: string;
+	/** The TURN key's API token, a secret (`npx wrangler secret put
+	 * TURN_KEY_API_TOKEN`). */
+	TURN_KEY_API_TOKEN?: string;
+}
+
+/** A STUN or TURN server, as the browser's RTCIceServer (and nettai-rtc's
+ * IceServer) has it. */
+interface IceServer {
+	urls: string[];
+	username?: string;
+	credential?: string;
 }
 
 type Role = "host" | "join";
@@ -84,6 +109,73 @@ const FORGET_AFTER_MS: Record<Kind, number> = { invite: 10 * 60 * 1000, reconnec
 /** How many codes a new room tries before the server says it is busy (a
  * code in use is one in some 887 million a room). */
 const CODE_TRIES = 8;
+
+/** Cloudflare's public STUN server: what a welcome gives when there are no
+ * TURN credentials. */
+const STUN: IceServer[] = [{ urls: ["stun:stun.cloudflare.com:3478"] }];
+/** How long a welcome's TURN credentials last: a long sitting of matches
+ * with one opponent and its reconnections (nettai-rtc's
+ * signal::TURN_CREDENTIALS_LAST). */
+const TURN_TTL_SECONDS = 4 * 60 * 60;
+/** How long a welcome waits on Cloudflare's TURN service before it gives
+ * STUN alone. */
+const TURN_API_WAIT_MS = 3000;
+
+/** The STUN and TURN servers for a client's welcome (the comment at the
+ * top): Cloudflare's TURN service's, with credentials made for it, or STUN
+ * alone. Never fails, and never says a secret: a failure's log is its kind
+ * or its HTTP status. */
+async function iceServers(env: Env): Promise<IceServer[]> {
+	if (!env.TURN_KEY_ID || !env.TURN_KEY_API_TOKEN) {
+		return STUN;
+	}
+	try {
+		const url = `https://rtc.live.cloudflare.com/v1/turn/keys/${encodeURIComponent(env.TURN_KEY_ID)}/credentials/generate-ice-servers`;
+		const response = await fetch(url, {
+			method: "POST",
+			headers: { Authorization: `Bearer ${env.TURN_KEY_API_TOKEN}`, "Content-Type": "application/json" },
+			body: JSON.stringify({ ttl: TURN_TTL_SECONDS }),
+			signal: AbortSignal.timeout(TURN_API_WAIT_MS),
+		});
+		if (!response.ok) {
+			console.error(`no TURN credentials: Cloudflare's TURN service answered ${response.status}`);
+			return STUN;
+		}
+		const servers = serversOf(await response.json());
+		if (servers.length === 0) {
+			console.error("no TURN credentials: Cloudflare's TURN service gave no servers");
+			return STUN;
+		}
+		return servers;
+	} catch (e) {
+		console.error(`no TURN credentials: ${e instanceof Error ? e.name : "an error"} asking Cloudflare's TURN service`);
+		return STUN;
+	}
+}
+
+/** The servers of Cloudflare's answer ({"iceServers":[...]}), each as an
+ * IceServer: its URLs a list (a string is one), and those that aren't
+ * servers left out. */
+function serversOf(answer: unknown): IceServer[] {
+	const list = (answer as { iceServers?: unknown } | null)?.iceServers;
+	if (!Array.isArray(list)) {
+		return [];
+	}
+	const servers: IceServer[] = [];
+	for (const s of list as { urls?: unknown; username?: unknown; credential?: unknown }[]) {
+		const urls = (typeof s?.urls === "string" ? [s.urls] : Array.isArray(s?.urls) ? s.urls : []).filter((u): u is string => typeof u === "string");
+		if (urls.length === 0) {
+			continue;
+		}
+		const server: IceServer = { urls };
+		if (typeof s.username === "string" && typeof s.credential === "string") {
+			server.username = s.username;
+			server.credential = s.credential;
+		}
+		servers.push(server);
+	}
+	return servers;
+}
 
 /** The WebSocket close code of each refusal. */
 const CLOSE: Record<Reason, number> = { full: 4000, "version": 4002, "bad-request": 4003, "not-found": 4004, busy: 4005 };
@@ -213,6 +305,8 @@ export class Room extends DurableObject<Env> {
 			return taken;
 		}
 		const role = taken;
+		// The servers the welcome gives (never failing, nor waiting long).
+		const ice = await iceServers(this.env);
 		const [client, server] = Object.values(new WebSocketPair());
 		// The client's socket from before, if it is still here, goes.
 		for (const old of this.ctx.getWebSockets(role)) {
@@ -222,7 +316,8 @@ export class Room extends DurableObject<Env> {
 		this.ctx.acceptWebSocket(server, [role]);
 		server.serializeAttachment({ role, kind } satisfies Attachment);
 		const there = this.ctx.getWebSockets(other(role));
-		const welcome = kind === "invite" ? { type: "welcome", role, peer: there.length > 0, code } : { type: "welcome", peer: there.length > 0 };
+		const welcome =
+			kind === "invite" ? { type: "welcome", role, peer: there.length > 0, code, iceServers: ice } : { type: "welcome", peer: there.length > 0, iceServers: ice };
 		server.send(JSON.stringify(welcome));
 		for (const ws of there) {
 			ws.send(JSON.stringify({ type: "peer", present: true }));
