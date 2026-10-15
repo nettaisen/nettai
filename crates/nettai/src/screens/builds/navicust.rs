@@ -17,8 +17,10 @@
 //! key says why, typed as the rules say it), and Back (Esc, B) puts it away into the list, as the game's B does: so
 //! a placed program is taken off by picking it up and putting it away. Del takes the piece under the cursor off at
 //! once, or a program's last copy from the list, or puts the piece in hand away. The strip across the top describes
-//! the program under the cursor, in the game's words. The piece in hand is outlined white where it could be put
-//! down, red where it can't.
+//! the program under the cursor: its shape and, where it compresses into another, its compressed shape, its name in
+//! its color, the game's words for it and the colors it comes in; while the pointer is on a row of the list (and no
+//! piece is in hand), that row's (docs/design/app-ui.md §2.63). The piece in hand is outlined white where it could be
+//! put down, red where it can't.
 //!
 //! **The mouse carries a piece by clicks** (the view's pointer areas, told here as `Tab::choose`'s "drag"; the user:
 //! "dragging navicust piece is confusing because usually it's click to drop"). A click on a placed piece picks it up,
@@ -81,6 +83,9 @@ pub struct Navicust {
     at: (i32, i32),
     /// The cursor is in the list.
     in_list: bool,
+    /// The list's row the pointer is on, which the strip describes in place of what the cursor is on
+    /// (`editor::hover`).
+    hovered: Option<usize>,
     /// The motion's counts: pieces taken up, quarter turns and the last one's way, pieces that couldn't be put
     /// down.
     lifted: i32,
@@ -139,6 +144,14 @@ fn own_overview(content: &Arc<Content>, game: &str, side: &Side, checked: &mut C
 }
 
 /// A color by its name, as the app draws a program in it.
+/// A shape's cells' box, row by row, and how many cells a row (none: a shape with no cells).
+fn boxed(shape: &grid::Shape) -> (Vec<bool>, i32) {
+    let cells: Vec<(usize, usize)> = shape.iter().enumerate().flat_map(|(y, r)| r.iter().enumerate().filter(|(_, c)| **c).map(move |(x, _)| (x, y))).collect();
+    let (Some(left), Some(right)) = (cells.iter().map(|c| c.0).min(), cells.iter().map(|c| c.0).max()) else { return (Vec::new(), 0) };
+    let (top, bottom) = (cells.iter().map(|c| c.1).min().unwrap_or(0), cells.iter().map(|c| c.1).max().unwrap_or(0));
+    ((top..=bottom).flat_map(|y| (left..=right).map(move |x| shape[y][x])).collect(), (right - left + 1) as i32)
+}
+
 fn tone(name: Option<&str>) -> slint::Color {
     let [_, r, g, b] = grid::rgb(name).to_be_bytes();
     slint::Color::from_rgb_u8(r, g, b)
@@ -693,22 +706,35 @@ impl Navicust {
         }
     }
 
-    /// The strip across the top: the program under the cursor, by its name in its color, and the game's
-    /// description of it; and the footer's hints for a placed piece (or a placed program's row) under the cursor.
+    /// The strip across the top: the program under the cursor (while the pointer is on a row of the list and no piece
+    /// is in hand, that row's), by its shape and compressed shape, its name in its color, the game's description of it
+    /// and the colors it comes in; and the footer's hints for a placed piece (or a placed program's row) under the
+    /// cursor.
     fn show_strip(&self, shell: &Shell, draft: &Draft) {
         let (program, on_piece) = self.under_cursor(shell, draft);
+        let hovered = self.hovered.filter(|_| self.held.is_none()).and_then(|r| self.rows.get(r).copied());
+        let program = hovered.or(program);
         let ui = shell.ui();
         let view = ui.global::<NavicustView>();
         view.set_on_piece(on_piece);
         let Some((Some(d), (piece, color))) = self.data.as_ref().zip(program) else { return view.set_detail(ProgramDetail::default()) };
         let detail = draft.with_words(shell, |words| {
-            let name = d.colors.get(&piece).and_then(|c| c.get(color as usize)).cloned();
+            let colors = d.colors.get(&piece).cloned().unwrap_or_default();
+            let (shape, columns) = boxed(&d.shape(piece, false, 0));
+            // (A program of one shape alone has no compressed shape: "there's only one form of it".)
+            let (compressed, compressed_columns) = if d.compresses(piece) { boxed(&d.shape(piece, true, 0)) } else { (Vec::new(), 0) };
             ProgramDetail {
                 there: true,
                 name: words.names.entry(EntryHandle(piece)).into(),
-                tone: tone(name.as_deref()),
+                tone: tone(colors.get(color as usize).map(String::as_str)),
                 plus: d.plus.contains(&piece),
                 description: words.names.description(EntryHandle(piece)).map(|t| crate::games::one_line(&t)).unwrap_or_default().into(),
+                shape: ModelRc::new(VecModel::from(shape)),
+                columns,
+                compressed: ModelRc::new(VecModel::from(compressed)),
+                compressed_columns,
+                colors: ModelRc::new(VecModel::from(colors.iter().map(|c| tone(Some(c))).collect::<Vec<_>>())),
+                color: color as i32,
             }
         });
         view.set_detail(detail);
@@ -745,6 +771,7 @@ impl Tab for Navicust {
     fn hide(&mut self, shell: &mut Shell, draft: &mut Draft) {
         self.let_go(draft);
         self.notice = None;
+        self.hovered = None;
         let _ = shell;
     }
 
@@ -768,9 +795,17 @@ impl Tab for Navicust {
         }
     }
 
+    /// The pointer on a row of the list: the strip describes its program.
+    fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
+        if id == "programs" && editor::hover(&mut self.hovered, index.max(0) as usize, on) {
+            self.show_strip(shell, draft);
+        }
+    }
+
     /// The cursor on a cell: the piece in hand is there. In the list, its title is lit. The strip describes the
-    /// program under the cursor.
+    /// program under the cursor (the focus is the last thing moved, until the pointer goes onto another row).
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
+        self.hovered = None;
         let in_list = id == "programs";
         if in_list != self.in_list {
             self.in_list = in_list;
