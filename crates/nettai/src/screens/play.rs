@@ -524,12 +524,19 @@ impl Play {
 
     // ---- Waiting -----------------------------------------------------------------------------------------
 
-    /// The other player is waited for: the invite's code (or this machine's address) shows, and a practice
-    /// session starts beside it. (On a phone it starts when the player asks: there it fills the window.)
+    /// The other player is waited for: the invite's code (or this machine's address) shows, copied already
+    /// (the user: "you should automatically copy the invite code when hosting starts"; COPY CODE flashes as
+    /// though pressed), and a practice session starts beside it. (On a phone it starts when the player asks:
+    /// there it fills the window.)
     fn wait(&mut self, shell: &mut Shell) {
         self.stage = Stage::Waiting;
         self.direct = None;
         shell.nav.close("direct.");
+        // (Not in the screenshot pass: it leaves the player's clipboard alone.)
+        let invite = self.invite();
+        if !invite.is_empty() && !shell.still {
+            self.copy(shell, &invite);
+        }
         self.show(shell);
         if !shell.scale.phone {
             self.train(shell);
