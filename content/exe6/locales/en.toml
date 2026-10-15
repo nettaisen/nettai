@@ -800,6 +800,7 @@ language = "en"
 "preset.gregar" = "Gregar"
 "preset.falzar" = "Falzar"
 "preset.no_patch_cards" = "No patch cards"
+"theirs" = "Host's ruleset"
 
 # The two groups a patch card's screen lists its effects in, by the effects' `group` (@exelib/patch_cards/effects),
 # for a tool that lays a card out as its screen does (the build editor's patch cards).

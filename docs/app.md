@@ -682,8 +682,11 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   select of the game's presets and then the player's own rulesets by name (`LobbyFacts`' `lobby.ruleset`,
   `rulesets::pickable`; Left and Right step it, Enter opens it as a list; `Lobby::set_ruleset`), with EDIT
   (`lobby.rules`), which opens the ruleset's page over the lobby (§8, "Rulesets"; the lobby and its link go on
-  under it, and a change made there is the match's at once). The joiner's select can't be changed and shows the
-  host's ruleset by name; its VIEW opens the page to read. A host's lobby starts on the ruleset the player plays
+  under it, and a change made there is the match's at once). The joiner's select can't be changed; it shows the
+  host's ruleset by the preset's name where its rules are a preset's, else as "Host's ruleset" (the game's strings'
+  `[rulesets] theirs`): a ruleset's name stays with its player, and the lobby carries its rules alone (the user:
+  "ruleset name shouldn't travel to the opponent"; `ruleset::Name::Theirs`, `Rulesets::named_here`). Its VIEW opens
+  the page to read. A host's lobby starts on the ruleset the player plays
   by (`rulesets::played_by`), and the one the host picks is remembered as it. The lobby checks this
   player's build under the ruleset whenever either changes (`Lobby::problems`, typed); while it
   has a problem READY is refused (`Lobby::set_ready` says so, and the mark is the lobby's answer) and the line

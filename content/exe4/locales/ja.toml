@@ -710,6 +710,7 @@ language = "ja"
 "preset.redsun" = "レッドサン"
 "preset.bluemoon" = "ブルームーン"
 "preset.no_patch_cards" = "改造カードなし"
+"theirs" = "ホストのルール"
 
 # The auto battle data's lists (en.toml's `[auto_battle_lists]` says what they are). Ours, as EXE5's.
 [auto_battle_lists]

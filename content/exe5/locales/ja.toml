@@ -770,6 +770,7 @@ language = "ja"
 "preset.protoman" = "チーム オブ ブルース"
 "preset.colonel" = "チーム オブ カーネル"
 "preset.no_patch_cards" = "改造カードなし"
+"theirs" = "ホストのルール"
 
 # The two groups of a patch card's effects (en.toml's `[patch_card_groups]` says what they are).
 [patch_card_groups]
