@@ -63,7 +63,7 @@ use nettai_netplay::protocol::BUTTONS;
 use nettai_netplay::standin::StandInBattle;
 use nettai_netplay::{BattleWorld, Game, Observer, Peer, PeerConfig};
 
-use crate::connection::{Quality, Reconnecting};
+use crate::connection::{Quality, Reconnecting, Traffic};
 use crate::driver::{Driver, NetStatus, Ran, Step, Stop, StopReason, result_text};
 
 /// The input delay a player has who never chose one, in ticks
@@ -317,6 +317,14 @@ pub struct NetPlayer<C: Channel> {
     /// Recording: the set's ticks before this round's, and the settled
     /// ticks the session hasn't taken.
     recording: Option<(u64, Vec<nettai_replay::Tick>)>,
+    /// Clock sync's skew and the lead, as the last frame read them before
+    /// it decided (`NetStatus::skew`, `NetStatus::lead`).
+    skew: i32,
+    lead: u32,
+    /// The channel was down at the last frame, and the times it went down
+    /// in this match.
+    down: bool,
+    reconnects: u32,
 }
 
 impl<C: Channel> NetPlayer<C> {
@@ -328,7 +336,7 @@ impl<C: Channel> NetPlayer<C> {
         let config = PeerConfig::new(options.input_delay, options.max_lead);
         let world = BattleWorld::with_observer(StandInBattle::new(set.start()), side, Watch::new(side as u8, None));
         let start = Instant::now();
-        NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None, recording: None }
+        NetPlayer { channel, side, peer: Peer::new(world, config), heard: 0, last_frame: start, set, options, start, over: None, recording: None, skew: 0, lead: 0, down: false, reconnects: 0 }
     }
 
     /// The side this player plays.
@@ -411,13 +419,20 @@ impl<C: Channel> NetPlayer<C> {
         }
         // (The channel is being made again: its transport gives up, not
         // this.)
-        if self.channel.reconnecting().is_some() {
+        let down = self.channel.reconnecting().is_some();
+        if down {
             self.last_frame = Instant::now();
         }
+        self.reconnects += u32::from(down && !self.down);
+        self.down = down;
         if self.over.is_none() && self.last_frame.elapsed() > self.options.timeout {
             return Err(Stop::new(StopReason::ConnectionLost, format!("nothing from the other player for {} seconds: the connection is lost", self.options.timeout.as_secs())));
         }
         let mut ran = Ran::default();
+        // (Read before the frame decides, as clock sync reads the skew:
+        // after, it counts this frame's input too.)
+        let session = self.peer.session();
+        (self.skew, self.lead) = (session.skew(), session.local_queue_length() as u32);
         let decided = self.over.is_none() && self.peer.wait().is_none();
         if decided {
             self.peer.decide(keys & BUTTONS);
@@ -530,12 +545,18 @@ impl<C: Channel> Driver for NetPlayer<C> {
             ping_ms: l.srtt,
             jitter_ms: l.rttvar,
             quality: l.srtt.zip(l.rttvar).map(|(ping, jitter)| Quality::of(ping, jitter)),
+            rtt_ms: l.rtt,
             loss: l.loss(),
+            sent: Traffic { datagrams: l.sent, bytes: l.sent_bytes },
+            received: Traffic { datagrams: l.received, bytes: l.received_bytes },
             input_delay: self.options.input_delay,
             last_rollback: s.last_rollback,
             max_rollback: s.max_rollback,
             rollbacks: s.rollbacks,
             waits: s.stalls + s.parked,
+            skew: self.skew,
+            lead: self.lead,
+            reconnects: self.reconnects,
             reconnecting: self.channel.reconnecting(),
         })
     }
@@ -968,7 +989,8 @@ mod tests {
             let status = player.net_status().expect("a netplay match");
             assert!(player.ticks() > 100, "side {i} played {} ticks", player.ticks());
             assert_eq!(status.input_delay, [4, 2][i]);
-            assert!(status.quality.is_some() && status.ping_ms.is_some() && status.jitter_ms.is_some() && status.reconnecting.is_none(), "side {i}: {status:?}");
+            assert!(status.quality.is_some() && status.ping_ms.is_some() && status.jitter_ms.is_some() && status.rtt_ms.is_some() && status.reconnecting.is_none(), "side {i}: {status:?}");
+            assert!(status.sent.datagrams > 100 && status.sent.bytes > status.sent.datagrams && status.received.datagrams > 100 && status.reconnects == 0, "side {i}: {status:?}");
             let late = player.late();
             assert_eq!((late.runtimes, late.reads), (0, 0), "side {i} loaded nothing late");
         }
@@ -1278,6 +1300,10 @@ mod tests {
         let cut = cut.expect("round one was fought");
         eprintln!("the cut came {:?} in; the set ended {:?} after it, generations {:?}", cut.duration_since(start), cut.elapsed(), links.each_ref().map(|l| l.borrow().generation()));
         assert_eq!(seen_down, [true, true], "both saw the connection down");
+        for (side, s) in playing.iter().enumerate() {
+            let reconnects = s.driver.net_status().map(|n| n.reconnects);
+            assert!(reconnects.is_some_and(|n| n >= 1), "side {side} counted {reconnects:?} reconnects");
+        }
         assert!(links.iter().all(|l| l.borrow().generation() > 1 && l.borrow().down_for().is_none()));
         assert_eq!(playing.iter().map(|s| s.driver.result()).collect::<Vec<_>>(), [Some(BattleResult::Won), Some(BattleResult::Lost)]);
         drop(playing);
