@@ -4,23 +4,23 @@
 //! - the files ([`store`]: a build's name, its side, what is kept aside while its navi takes none of it), and
 //!   a game's builds listed and checked for a list ([`shelf`]);
 //! - a build from a save ([`import`]);
-//! - what a screen shows of one: the overview's model ([`overview`]), a version's tag ([`version_tag`]), the
-//!   pictures of what it holds ([`pictures`]), and a typed problem in the player's words ([`words`]);
+//! - what a screen shows of one: the overview's model ([`overview`]), the pictures of what it holds
+//!   ([`pictures`]), and a typed problem in the player's words ([`words`]); a build has no version
+//!   (docs/design/versions.md §3.3: a new build's starting group has its tag, [`Kit::version_tags`]);
 //! - a game's kit for all of that ([`Kit`], [`kit`]): its builds data (`nettai_match::build::Builds`), its
 //!   pictures and its library's order, made once a game;
 //! - its edits ([`edit`]: the folder's, a list's), the library's order ([`order`]), and the views of the tabs to
 //!   come, kept from the first app's creator: the NaviCust's grid ([`grid`]), a patch card's lines ([`cards`]),
 //!   the auto battle data ([`auto`]).
 //!
-//! What a game says of its builds (its versions in the order every list shows them, a new build, a build
-//! checked with its problems typed, its overview, a chip's row and its sorts) is nettai-match's `build`.
+//! What a game says of its builds (its versions as groups in the order every list shows them, a new build from
+//! one, the forms a build chooses, a build checked with its problems typed, its overview, a chip's row and its
+//! sorts) is nettai-match's `build`.
 
 use crate::games::{Names, Ready};
 use crate::shell::Shell;
 use nettai_battle::Content;
-use nettai_content_api::ChipHandle;
-use nettai_match::Side;
-use nettai_match::build::{Builds, TEXT_TABLE, Version};
+use nettai_match::build::{Builds, Group, TEXT_TABLE};
 use nettai_match::ruleset::Rulesets;
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
@@ -52,8 +52,6 @@ pub struct Kit {
     pub builds: Builds,
     pub pictures: pictures::Pictures,
     pub order: order::Order,
-    /// The chips only some versions' saves hold, each with those versions' ids (asked of the rules once).
-    version_chips: OnceCell<HashMap<ChipHandle, Vec<String>>>,
     /// The auto battle data's lists (read of the rules once).
     auto_layout: OnceCell<Option<auto::Layout>>,
     /// The game's rulesets (read of its rules once).
@@ -63,18 +61,6 @@ pub struct Kit {
 impl Kit {
     pub fn content(&self) -> &Arc<Content> {
         self.ready.content()
-    }
-
-    /// The versions whose saves hold `chip`, where it is only some versions' (their ids, in the versions'
-    /// order); none: every version's.
-    pub fn versions_of(&self, chip: ChipHandle) -> Option<&[String]> {
-        let chips = self.version_chips.get_or_init(|| {
-            self.builds.version_chips(self.content()).unwrap_or_else(|why| {
-                crate::errors::log(&format!("asking {} which chips are a version's", self.game), &why);
-                HashMap::new()
-            })
-        });
-        chips.get(&chip).map(Vec::as_slice)
     }
 
     /// The auto battle data's lists, as the game's rules lay them out (`auto::Layout`: their `MODULE`); none where
@@ -97,27 +83,22 @@ impl Kit {
             .clone()
     }
 
-    /// A version's name, as the game's strings have it in `names`' language (its id where they have none).
+    /// A version's (a group's) name, as the game's strings have it in `names`' language (its id where they have
+    /// none).
     pub fn version_name(&self, names: &Names, id: &str) -> String {
-        let key = self.builds.version(id).map(|v| v.text_key());
+        let key = self.builds.group(id).map(|g| g.text_key());
         key.and_then(|k| names.text(TEXT_TABLE, &k)).unwrap_or_else(|| id.to_string())
     }
 
-    /// The tag of the version `side` is a build of: the version's name in capitals, in the version's own
-    /// color (the game's builds data states both). A side of no version has no tag.
-    pub fn version_tag(&self, names: &Names, side: &Side) -> nettai_ui::VersionTag {
-        let Some(version) = self.builds.version_of(self.content(), side).and_then(|id| self.builds.version(id)) else { return Default::default() };
-        self.tag_of(names, version)
-    }
-
-    /// Every version's tag, in the game's order (the editor's list of them).
+    /// Every version's tag (a group's: its name in capitals, in its own color), in the game's order: what a new
+    /// build starts from (Play's NEW BUILD).
     pub fn version_tags(&self, names: &Names) -> Vec<nettai_ui::VersionTag> {
-        self.builds.versions.iter().map(|version| self.tag_of(names, version)).collect()
+        self.builds.groups.iter().map(|group| self.tag_of(names, group)).collect()
     }
 
-    fn tag_of(&self, names: &Names, version: &Version) -> nettai_ui::VersionTag {
-        let [_, r, g, b] = version.color.to_be_bytes();
-        nettai_ui::VersionTag { text: self.version_name(names, &version.id).to_uppercase().into(), tone: slint::Color::from_rgb_u8(r, g, b) }
+    fn tag_of(&self, names: &Names, group: &Group) -> nettai_ui::VersionTag {
+        let [_, r, g, b] = group.color.to_be_bytes();
+        nettai_ui::VersionTag { text: self.version_name(names, &group.id).to_uppercase().into(), tone: slint::Color::from_rgb_u8(r, g, b) }
     }
 }
 
@@ -150,19 +131,11 @@ pub fn kit_of(game: &str, ready: &Rc<Ready>) -> Option<Rc<Kit>> {
         builds,
         pictures: pictures::Pictures::new(ready.clone()),
         order: order::Order::load(&ready.loaded.game.dir, game),
-        version_chips: OnceCell::new(),
         auto_layout: OnceCell::new(),
         rulesets: OnceCell::new(),
     });
     KITS.with(|kits| kits.borrow_mut().insert(game.to_string(), kit.clone()));
     Some(kit)
-}
-
-/// A side's version's tag ([`Kit::version_tag`]) in the language shown, for a screen that has no kit at hand.
-/// A game that says nothing of its builds has no tag.
-pub fn version_tag(shell: &Shell, game: &str, ready: &Rc<Ready>, side: &Side) -> nettai_ui::VersionTag {
-    let graphics = ready.graphics(shell.lang);
-    kit_of(game, ready).map(|kit| kit.version_tag(&Names::of(ready.content(), &graphics), side)).unwrap_or_default()
 }
 
 /// What module `name` of `game`'s rules returned as the content loaded, as data (a function in it left out,

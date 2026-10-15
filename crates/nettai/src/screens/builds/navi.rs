@@ -1,8 +1,15 @@
 //! The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as cards, the build's
-//! navi beside them (the face its round starts with, its HP then, its element), the forms the build's version
-//! brings the game's own navi under them while that navi is the build's (EXE6's Crosses, EXE4's and EXE5's souls:
-//! `Builds::forms_of`; the version is switched by the header's tag, the editor's: `Editor::step_version`), and the
-//! build's other choices as steppers (the game's builds data's: Light or Dark, of the game's own navi alone).
+//! navi beside them (the face its round starts with, its HP then, its element), under it the selector of the
+//! forms the build has (docs/design/versions.md §2.1; the user: "you probably need to have some kind of soul and
+//! cross and cybeast selector in the editor now right?": `Builds::form_choices`), and the build's other choices
+//! as steppers (the game's builds data's: Light or Dark, of the game's own navi alone).
+//!
+//! The selector: each fact of forms the build chooses, its forms' faces in the battle's order, both versions'
+//! (EXE6's Cybeast at its head, Gregar's or Falzar's, one always chosen; then its Crosses, as many as the Cross
+//! window offers; EXE4's and EXE5's souls, as many as the soul button's list). A face lit is the build's; Enter, a
+//! click or a tap on one chooses it, or takes it out of a list (`Builds::choose_form`). A face the ruleset the
+//! player plays by doesn't allow has a ring in the error red. The lists are the game's own navi's alone; the
+//! Cybeast is every navi's (MstrCros plays its version's Crosses).
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
 //! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
@@ -11,15 +18,17 @@ use crate::screens::builds::editor::{Draft, Tab};
 use crate::shell::Shell;
 use nettai_battle::Content;
 use nettai_battle::content::{Element, PlayerFact};
-use nettai_content_api::NaviHandle;
+use nettai_content_api::{FormHandle, NaviHandle};
 use nettai_match::build::TEXT_TABLE;
-use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviView};
+use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 #[derive(Default)]
 pub struct Navi {
     /// The game's navis, as the grid has them.
     navis: Vec<NaviHandle>,
+    /// The selector's forms, each with the fact it is of, in the focus order.
+    forms: Vec<(String, FormHandle)>,
 }
 
 /// The chip family whose icon the game shows for `element`: the family of the element's name, a navi of no
@@ -41,9 +50,10 @@ impl Tab for Navi {
         EditorTab::Navi
     }
 
-    /// The navi, and what the build's choices set.
+    /// The navi, and the forms the build chooses.
     fn fields(&self, content: &Content) -> Vec<String> {
-        content.defs.fact_name(PlayerFact::Navi).map(str::to_string).into_iter().collect()
+        let navi = content.defs.fact_name(PlayerFact::Navi).map(str::to_string);
+        navi.into_iter().chain(nettai_match::facts::form_facts(content).iter().map(|f| f.name.to_string())).collect()
     }
 
     fn main(&self) -> &'static str {
@@ -85,23 +95,33 @@ impl Tab for Navi {
             let own = nettai_match::first_navi(&content, &kit.game).map(|n| names.navi(n)).unwrap_or_default();
             view.set_own(own.into());
         });
-        // What the build's version brings the game's own navi, while that is the build's.
-        let forms = match (kit.builds.version_of(&content, draft.side()), draft.build.own_navi(&content)) {
-            (Some(v), true) => kit.builds.forms_of(&content, v).unwrap_or_default(),
-            _ => Vec::new(),
-        };
-        let faces: Vec<slint::Image> = forms.iter().map(|&f| kit.pictures.face(f)).collect();
-        view.set_forms(ModelRc::new(VecModel::from(faces)));
-        // (A form the ruleset doesn't allow, in whichever of the build's facts names forms: the souls, the Crosses.)
-        let banned: Vec<bool> = forms.iter().map(|&f| draft.ruleset.as_ref().is_some_and(|p| kit.rulesets().is_some_and(|r| r.categories.iter().any(|c| c.registry == nettai_content_api::Registry::Form && !p.ruleset.allows(&c.fact, f.0))))).collect();
-        view.set_forms_banned(ModelRc::new(VecModel::from(banned)));
+        // The selector: each fact of forms the build chooses, named as the game's rulesets name it ("CROSSES"), with how
+        // many it has of its room (none said of the one always chosen), its forms lit where they are the build's.
+        let choices = kit.builds.form_choices(&content, draft.side());
+        self.forms = choices.iter().flat_map(|c| c.forms.iter().map(|&f| (c.fact.clone(), f))).collect();
+        let groups: Vec<NaviFormGroup> = draft.with_words(shell, |words| {
+            let mut at = 0;
+            choices
+                .iter()
+                .map(|c| {
+                    let chosen = kit.builds.chosen_forms(&content, draft.side(), &c.fact);
+                    let forms: Vec<NaviForm> = c.forms.iter().map(|&f| NaviForm { face: kit.pictures.face(f), chosen: chosen.contains(&f), banned: !draft.allows(&c.fact, f.0) }).collect();
+                    let name = words.names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{}", c.fact)).unwrap_or_else(|| c.fact.clone());
+                    let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
+                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), forms: ModelRc::new(VecModel::from(forms)), at };
+                    at += c.forms.len() as i32;
+                    group
+                })
+                .collect()
+        });
+        view.set_form_groups(ModelRc::new(VecModel::from(groups)));
         let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
         view.set_face(face);
         view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
         // (The focus starts on the build's navi's card.)
-        if shell.nav.focused().is_none_or(|k| !["navi", "version", "choice", "tab", "ruleset", "ruleset-edit"].contains(&k.id.as_str()))
+        if shell.nav.focused().is_none_or(|k| !["navi", "form", "choice", "tab", "ruleset", "ruleset-edit"].contains(&k.id.as_str()))
             && let Some(at) = self.navis.iter().position(|&n| n == chosen)
         {
             shell.nav.focus("navi", at as i32);
@@ -114,6 +134,16 @@ impl Tab for Navi {
                 let Some(&navi) = self.navis.get(index.max(0) as usize) else { return };
                 if draft.choose_navi(navi) {
                     self.show(shell, draft);
+                }
+            }
+            // (A form of the selector: chosen, or in a list taken out.)
+            "form" => {
+                let Some((fact, form)) = self.forms.get(index.max(0) as usize).cloned() else { return };
+                if draft.choose_form(&fact, form) {
+                    shell.sound.play(crate::sound::Cue::Pick);
+                    self.show(shell, draft);
+                } else {
+                    shell.sound.play(crate::sound::Cue::Refused);
                 }
             }
             // (Enter on a choice takes its next preset, as Right does.)

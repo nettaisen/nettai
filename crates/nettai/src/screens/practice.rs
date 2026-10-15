@@ -560,7 +560,7 @@ pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
     let view = ui.global::<PracticeView>();
     let cards = start.cards.then(|| {
         // (The dummy has no name: its build is who it is.)
-        let mut cards = [card(shell, &start.game, &ready, view.get_you(), &shell.settings.name, &start.you), card(shell, &start.game, &ready, view.get_dummy(), "", &start.dummy)];
+        let mut cards = [card(shell, &ready, view.get_you(), &shell.settings.name, &start.you), card(shell, &ready, view.get_dummy(), "", &start.dummy)];
         cards[1].name = std::mem::take(&mut cards[1].build);
         cards
     });
@@ -753,9 +753,9 @@ fn want_pictures(shell: &mut Shell, game: &str) {
     shell.practice.thumbs.want(game, ready.content(), &ready.loaded.graphics, now);
 }
 
-/// A build's card before the battle, `role` (YOU, DUMMY) over `name`: the build's name, its version's tag and
-/// its navi's name in the language shown.
-fn card(shell: &Shell, game: &str, ready: &Rc<Ready>, role: slint::SharedString, name: &str, build: &Build) -> VersusCard {
+/// A build's card before the battle, `role` (YOU, DUMMY) over `name`: the build's name and its navi's name in the
+/// language shown.
+fn card(shell: &Shell, ready: &Rc<Ready>, role: slint::SharedString, name: &str, build: &Build) -> VersusCard {
     let content = ready.content();
     let graphics = ready.graphics(shell.lang);
     let names = Names::of(content, &graphics);
@@ -763,7 +763,6 @@ fn card(shell: &Shell, game: &str, ready: &Rc<Ready>, role: slint::SharedString,
         role,
         name: name.into(),
         build: build.name.as_str().into(),
-        version: crate::builds::version_tag(shell, game, ready, &build.side),
         navi: names.navi(build.side.navi(content)).into(),
         progress: 0.0,
     }
@@ -785,11 +784,11 @@ pub fn start_development_battle(shell: &mut Shell, seed: u32, options: Options) 
     let _ = self::start(shell, start);
 }
 
-/// A new build of each of `game`'s versions, named for its version.
+/// A new build from each of `game`'s groups (its versions), named for its version.
 pub fn new_builds(content: &std::sync::Arc<nettai_battle::Content>, game: &str) -> Result<Vec<Build>, String> {
     let builds = Builds::of(content, game)?;
     builds
-        .versions
+        .groups
         .iter()
         // (A name to tell them by: the version's id, as a title.)
         .map(|v| Ok(Build { name: as_title(&v.id), side: builds.new_build(content, &v.id)? }))

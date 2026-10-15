@@ -324,15 +324,12 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
     );
 }
 
-/// A build's version switched by the header's tag (docs/app.md §8, docs/design/app-ui.md §2.42): a build of the
-/// game's first version made beside the walk's, with a Giga chip of that version's alone in its folder's first
-/// entry; on the Navi tab, the tag focused, the forms the version brings the game's own navi under the navi
-/// (`builds-version-focus`: the cursor on the tag, the footer's Switch version); Right, the next version
-/// (`builds-version-switched`: the tag's name and color, its forms, the header's count, the Folder tab marked, the
-/// focus still on the tag); the Folder tab, the entry in the error red and the strip saying why
-/// (`builds-folder-switched`); and Enter on the tag there, the first version again with nothing wrong
-/// (`builds-folder-switched-back`). A step after each picture checks the focus and the build's state are as it
-/// says.
+/// The selector of a build's forms (docs/app.md §8, docs/design/versions.md §2.1): a build of the game's first
+/// version made beside the walk's; on the Navi tab the selector's first form focused (`builds-forms-focus`: EXE6's
+/// Cybeast, EXE4's and EXE5's first soul; the build ready); the other version's first form of the selector's first
+/// fact chosen (`builds-forms-mixed`: EXE6's other Cybeast, an EXE4 or EXE5 build's other version's soul too; under
+/// the Standard ruleset, one version per build, the build mixes the versions); and the first version's again
+/// (`builds-forms-back`: ready). A step after each picture checks the focus and the build's state are as it says.
 fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
     const NAME: &str = "Switched";
     add(
@@ -341,16 +338,8 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
             let mut app = app.borrow_mut();
             let Some(kit) = crate::builds::kit(&app.shell) else { return };
             let content = kit.content().clone();
-            let Some(first) = kit.builds.versions.first().map(|v| v.id.clone()) else { return };
-            let Ok(mut side) = kit.builds.new_build(&content, &first) else { return };
-            let own = (0..content.defs.chips.len() as u16)
-                .map(nettai_content_api::ChipHandle)
-                .find(|&c| kit.versions_of(c).is_some_and(|v| v == [first.clone()]) && !content.chip(c).codes.is_empty());
-            if let Some(chip) = own {
-                let mut folder = side.folder(&content);
-                folder.chips[0] = Some(nettai_battle::custom::FolderChip::new(chip, content.chip(chip).codes[0]));
-                let _ = side.set_folder(&content, &folder);
-            }
+            let Some(first) = kit.builds.groups.first().map(|v| v.id.clone()) else { return };
+            let Ok(side) = kit.builds.new_build(&content, &first) else { return };
             let build = crate::builds::store::Build::new(&content, NAME, side);
             let _ = crate::builds::store::write(&crate::builds::store::new_path(&kit.game, NAME), &content, &kit.game, &build);
             leave(&mut app);
@@ -360,25 +349,41 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     );
     add(SETTLE, press("edit", 0));
     add(SETTLE, press("tab", 0));
-    add(SETTLE, focus("version", 0));
-    shot(add, "builds-version-focus", Pair::None);
+    add(SETTLE, focus("form", 0));
+    shot(add, "builds-forms-focus", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
-    add(0, state("builds-version-focus", true, true));
-    add(SETTLE, act(Action::Right));
-    shot(add, "builds-version-switched", Pair::None);
+    add(0, state("builds-forms-focus", true, true));
+    add(SETTLE, choose_other(true));
+    shot(add, "builds-forms-mixed", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
-    add(0, state("builds-version-switched", true, false));
-    add(SETTLE, press("tab", 1));
-    add(SETTLE, focus("slot", 0));
-    shot(add, "builds-folder-switched", Pair::None);
-    add(90, on_tab(EditorTab::Folder, "Folder"));
-    add(0, state("builds-folder-switched", false, false));
-    // (Back by Left on the tag, which steps it without opening its list.)
-    add(SETTLE, focus("version", 0));
-    add(SETTLE, act(Action::Left));
-    shot(add, "builds-folder-switched-back", Pair::None);
-    add(90, on_tab(EditorTab::Folder, "Folder"));
-    add(0, state("builds-folder-switched-back", true, true));
+    add(0, state("builds-forms-mixed", true, false));
+    add(SETTLE, choose_other(false));
+    shot(add, "builds-forms-back", Pair::None);
+    add(90, on_tab(EditorTab::Navi, "Navi"));
+    add(0, state("builds-forms-back", true, true));
+}
+
+/// Choose on the selector the first form of its first fact that is the other version's (`other`), or, of a fact of
+/// one form, the first version's again (a list's other version's form is taken out by choosing it again).
+fn choose_other(other: bool) -> Step {
+    Box::new(move |_, app, _| {
+        let mut app = app.borrow_mut();
+        let Some(kit) = crate::builds::kit(&app.shell) else { return };
+        let content = kit.content().clone();
+        let Some(first) = kit.builds.groups.first().map(|v| v.id.clone()) else { return };
+        let Ok(side) = kit.builds.new_build(&content, &first) else { return };
+        let Some(choice) = kit.builds.form_choices(&content, &side).into_iter().next() else { return };
+        let version = |f: &nettai_content_api::FormHandle| content.defs.forms[f.index()].record.version.clone();
+        let theirs = choice.forms.iter().position(|f| version(f).is_some_and(|v| v != first));
+        let at = match (other, choice.one) {
+            (false, true) => choice.forms.iter().position(|f| version(f).as_deref() == Some(first.as_str())),
+            _ => theirs,
+        };
+        if let Some(at) = at {
+            app.shell.nav.focus("form", at as i32);
+            app.act(Action::Confirm);
+        }
+    })
 }
 
 /// A ruleset's page over the editor (docs/design/app-ui.md §2.59), on the build `switched` left: from the Navi tab,
@@ -408,14 +413,14 @@ fn rulesets(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     add(SETTLE, screen(|s, shell| s.choose(shell, "ruleset", 0, 0)));
 }
 
-/// The walk's version switch is as picture `name` says: the focus on the header's tag or not, and the build ready
-/// or not (its one problem, the other version's Giga chip). If not, the report says so, as `on_tab` does.
-fn state(name: &'static str, on_tag: bool, ready: bool) -> Step {
+/// The walk's selector is as picture `name` says: the focus on a form or not, and the build ready or not (under the
+/// Standard ruleset: its one problem, two versions' forms). If not, the report says so, as `on_tab` does.
+fn state(name: &'static str, on_form: bool, ready: bool) -> Step {
     Box::new(move |ui, app, _| {
-        let tagged = app.borrow().shell.nav.focused().is_some_and(|k| k.id == "version");
+        let tagged = app.borrow().shell.nav.focused().is_some_and(|k| k.id == "form");
         let good = ui.global::<BuildsView>().get_state_good();
-        if tagged != on_tag || good != ready {
-            let why = format!("(at {name} the focus is {}on the version's tag and the build is {}ready)", if tagged { "" } else { "not " }, if good { "" } else { "not " });
+        if tagged != on_form || good != ready {
+            let why = format!("(at {name} the focus is {}on a form and the build is {}ready)", if tagged { "" } else { "not " }, if good { "" } else { "not " });
             ui.global::<nettai_ui::Audit>().invoke_clipped(why.into());
         }
     })

@@ -1,8 +1,8 @@
 --!strict
 -- The patch card Bass-Cross MegaMan (111, フォルテクロス ロックマン in the Japanese games), 70 MB. The one card the two teams' card
 -- tables differ in: the same number, name and MB, and each team's ROMs their own effects, an effect only one team's
--- card has marked by its version. Switched on, MegaMan is in Hub Style (0x08137A58), each team's routine writing its
--- own value.
+-- card has marked by its version: its two variants, of which a build chooses one for the card (docs/design/versions.md
+-- §2.1). Switched on, MegaMan is in Hub Style (0x08137A58), each team's routine writing its own value.
 
 local cards = require("../rules/patch_cards/cards")
 local buster = require("../navis/megaman/weapons/buster")

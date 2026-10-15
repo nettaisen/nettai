@@ -39,17 +39,10 @@ component Card inherits Rectangle {
         y: root.pad + 66px;
         width: parent.width - 2 * root.pad;
         height: 22px;
-        // (A card with no build's name, a dummy's, has its tag at the card's edge.)
-        spacing: root.card.build == "" ? 0px : 8px;
         alignment: start;
         Value {
             text: root.card.build;
             font-size: 16px;
-        }
-
-        Pill {
-            text: root.card.version.text;
-            tone: root.card.version.tone;
         }
     }
 

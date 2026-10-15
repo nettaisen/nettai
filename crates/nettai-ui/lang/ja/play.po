@@ -44,9 +44,10 @@ msgstr "名前"
 msgid "VERSION"
 msgstr "バージョン"
 
-# After what a version sets, in the game's own words ("Sets the Crosses and Giga chips.").
-msgid "{} It can be switched later in the editor."
-msgstr "{} あとから編集画面で切り替えられます。"
+# After what a new build of a version starts with, in the game's own words ("Starts with the version's Crosses and
+# Cybeast.").
+msgid "{} They can be changed later in the editor."
+msgstr "{} あとから編集画面で変えられます。"
 
 msgid "CREATE BUILD"
 msgstr "構築を作成"

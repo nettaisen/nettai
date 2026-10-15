@@ -902,7 +902,7 @@ fn wrong_classes(add: &mut dyn FnMut(u64, Step), shot: Shot) {
             let mut app = app.borrow_mut();
             let Some(kit) = crate::builds::kit(&app.shell) else { return };
             let content = kit.content().clone();
-            let Some(side) = kit.builds.versions.first().and_then(|v| kit.builds.new_build(&content, &v.id).ok()) else { return };
+            let Some(side) = kit.builds.groups.first().and_then(|v| kit.builds.new_build(&content, &v.id).ok()) else { return };
             let mut build = store::Build::new(&content, NAME, side);
             let folder = build.side.folder(&content);
             for list in kit.auto_layout().map(|l| l.lists.clone()).unwrap_or_default() {

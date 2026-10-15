@@ -678,7 +678,7 @@ language = "ja"
 
 # A build's versions and its choices' presets, by name (rules/builds): the Japanese games' own words.
 [builds]
-"versions" = "ソウルとギガクラスチップが決まります。"
+"versions" = "そのバージョンのソウルから始まります。"
 "version.redsun" = "レッドサン"
 "version.bluemoon" = "ブルームーン"
 "light_dark.light" = "ライト"

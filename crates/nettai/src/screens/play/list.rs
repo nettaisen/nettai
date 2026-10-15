@@ -1,6 +1,6 @@
 //! Play's builds (docs/design/app-ui.md §6, "Play"): what is done with the selected game's builds over the tiles
 //! that practice with one or make a link. + NEW BUILD makes one of the game's own
-//! (`nettai_match::build::Builds::new_build`: its own navi, the version chosen, the folder a new save starts
+//! (`nettai_match::build::Builds::new_build`: its own navi, the forms of the version chosen, the folder a new save starts
 //! with; there are no random builds), or, by its dialog's FROM A SAVE FILE…, one of a save file chosen in the
 //! system's dialog (as a save dropped on the window makes one: `crate::builds::import`); EDIT opens the chosen
 //! build in Builds' editor (`crate::screens::builds::open`), whose Back comes back here with it still chosen;
@@ -152,7 +152,7 @@ impl Play {
 
     /// The new build's version stepped by `by`, around.
     pub(super) fn step_version(&mut self, shell: &Shell, by: i32) {
-        let count = builds::kit(shell).map_or(1, |kit| kit.builds.versions.len().max(1)) as i32;
+        let count = builds::kit(shell).map_or(1, |kit| kit.builds.groups.len().max(1)) as i32;
         if let Some(Naming::New { version, .. }) = &mut self.naming {
             *version = (*version as i32 + by).rem_euclid(count) as usize;
             self.show_dialog(shell);
@@ -223,9 +223,9 @@ impl Play {
         self.reload(shell, Some(build.name.clone()));
     }
 
-    /// A new build of version `version`, named `name`.
+    /// A new build from the game's `version`th group (its version's forms), named `name`.
     fn create(&mut self, shell: &mut Shell, kit: &Kit, name: &str, version: usize) {
-        let Some(version) = kit.builds.versions.get(version) else { return };
+        let Some(version) = kit.builds.groups.get(version) else { return };
         self.notice.clear();
         match kit.builds.new_build(kit.content(), &version.id) {
             Ok(side) => self.add(shell, kit, &Build::new(kit.content(), name, side)),

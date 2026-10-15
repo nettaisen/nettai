@@ -123,7 +123,8 @@ pub fn fact_of(value: &Stated) -> Fact<'_> {
         Stated::Def(r, Some(h)) => Fact::Value(Value::Def(*r, *h)),
         Stated::Optional(Some(n)) => Fact::Value(Value::Int(*n)),
         Stated::List(items) => Fact::List(items.iter().map(fact_of).collect()),
-        Stated::Record(fields) => Fact::Record(fields.iter().map(|(n, v)| (n.as_str(), fact_of(v))).collect()),
+        // (An enum of a record nothing states is left out: the record's writer leaves it none.)
+        Stated::Record(fields) => Fact::Record(fields.iter().filter(|(_, v)| *v != Stated::Variant(None)).map(|(n, v)| (n.as_str(), fact_of(v))).collect()),
         Stated::Code(Some(c)) => Fact::Value(Value::Code(*c as u8)),
         Stated::Variant(None) | Stated::Def(_, None) | Stated::Optional(None) | Stated::Code(None) | Stated::Other => Fact::Value(Value::Nil),
     }

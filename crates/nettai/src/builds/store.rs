@@ -9,7 +9,7 @@
 //!
 //! [side]
 //! navi = "tenguman"
-//! version = "falzar"
+//! cybeast = "falzar-beast"
 //! folder = [...]
 //!
 //! [aside]
@@ -26,8 +26,10 @@
 //! outside the side (the rules refuse a NaviCust on a navi that compiles none, and a side states nothing that
 //! isn't its navi's), and they are put back when the game's own navi is chosen again ([`Build::set_navi`]).
 //!
-//! A build made new is `nettai_match::build::Builds::new_build` (the game's own navi, a version, the folder a
-//! new save starts with); there are no random builds.
+//! A build made new is `nettai_match::build::Builds::new_build` (the game's own navi, a version's group's forms, the
+//! folder a new save starts with); there are no random builds. A build states no version (docs/design/versions.md
+//! §2.1): a file written before it did (its `version`) is no build now, and the list says it can't be read (§3.2:
+//! old builds are dropped, not converted).
 
 use nettai_battle::Content;
 use nettai_match::build::Builds;
@@ -123,8 +125,8 @@ impl Build {
         moved
     }
 
-    /// Choose the build's navi, as a build is ([`Builds::set_navi`]: its level at its last, its own forms of
-    /// the build's version, its choices settled), each of `fields` kept aside or put back as the navi takes it
+    /// Choose the build's navi, as a build is ([`Builds::set_navi`]: its level at its last, its form list kept or
+    /// none, its choices settled), each of `fields` kept aside or put back as the navi takes it
     /// ([`Build::settle_aside`]).
     pub fn set_navi(&mut self, content: &Content, builds: &Builds, navi: NaviHandle, fields: &[String]) -> Result<(), String> {
         let mut made = self.clone();
@@ -135,19 +137,6 @@ impl Build {
         builds.set_navi(content, &mut made.side, navi)?;
         *self = made;
         Ok(())
-    }
-
-    /// Switch the build to version `version` (docs/app.md §8, "A build's version"; the user: "you should allow
-    /// switching a save between game versions actually"): the facts the version sets are the new version's
-    /// (`Builds::take_version`: EXE6's version, and its MegaMan's Crosses with it; EXE4's and EXE5's souls and the
-    /// Giga chips a save of it can have), and everything else is kept as it is: the navi, the folder, the
-    /// NaviCust, the patch cards, the auto battle data, the choices, what is kept aside. What no longer fits (the
-    /// other version's Giga chips in the folder) stays, and is the build's problem as any rule's break is.
-    /// Whether it changed.
-    pub fn set_version(&mut self, content: &Content, builds: &Builds, version: &str) -> Result<bool, String> {
-        let before = self.side.clone();
-        builds.take_version(content, &mut self.side, version)?;
-        Ok(self.side != before)
     }
 
     /// Set the build to what every build is ([`Builds::as_built`]: the facts no build states back at the
@@ -306,20 +295,33 @@ mod tests {
         assert!(!side.contains("Falzar") && !side.contains("name"), "the side a match is given says no name: {side}");
     }
 
-    /// A new build is its game's own navi's, of the version asked for, with the folder a new save starts
-    /// with, and nothing wrong with it.
+    /// A new build is its game's own navi's, from the group asked for, with the folder a new save starts with,
+    /// and nothing wrong with it.
     #[test]
     fn a_new_build_is_ready() {
         for (content, game) in [(exe6_content(), "exe6"), (exe5_content(), "exe5")] {
             let builds = Builds::of(&content, game).unwrap();
-            for version in &builds.versions {
-                let build = Build::new(&content, "New", builds.new_build(&content, &version.id).unwrap());
+            for group in &builds.groups {
+                let build = Build::new(&content, "New", builds.new_build(&content, &group.id).unwrap());
                 assert!(build.own_navi(&content));
-                assert_eq!(builds.version_of(&content, &build.side), Some(version.id.as_str()));
                 assert_eq!(build.side.folder(&content), builds.new_folder);
                 assert!(Checked::of(&content, game, &build.side).ready());
             }
         }
+    }
+
+    /// A build file written before builds stated no version (its side's `version`, a card a name and no record)
+    /// is no build: it can't be read, and says why; nothing stops (docs/design/versions.md §3.2).
+    #[test]
+    fn a_stale_build_is_unreadable() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let text = text(&content, "exe6", &Build::new(&content, "Old", builds.new_build(&content, "falzar").unwrap()));
+        let old = text.replacen("cybeast = \"falzar-beast\"", "version = \"falzar\"", 1);
+        assert_ne!(old, text);
+        assert!(read(&content, "exe6", &old).unwrap_err().contains("version"));
+        let cards = text.replacen("[side]\n", "[side]\npatch_cards = [\"canodumb\"]\n", 1);
+        assert!(read(&content, "exe6", &cards).is_err());
     }
 
     /// While another navi is chosen, the game's own navi's NaviCust and patch cards are kept aside, outside
@@ -379,92 +381,28 @@ mod tests {
         assert!(!build.settle(&content, &builds, &fields()), "once is enough");
     }
 
-    /// A folder's first entry made `chip` (in its first code).
-    fn with_first(content: &Content, side: &mut Side, chip: nettai_content_api::ChipHandle) {
-        let mut folder = side.folder(content);
-        folder.chips[0] = Some(nettai_battle::custom::FolderChip::new(chip, content.chip(chip).codes[0]));
-        side.set_folder(content, &folder).unwrap();
-    }
-
-    /// The forms a side states of `fact`, by their keys.
-    fn forms(content: &Content, side: &Side, fact: &str) -> Vec<String> {
-        let list = side.facts.get(content, fact).map(|v| v.defs()).unwrap_or_default();
-        list.iter().map(|&h| nettai_match::ids::local(&content.defs.form(nettai_content_api::FormHandle(h)).key).to_string()).collect()
-    }
-
-    /// EXE6: a Gregar build with Gregar's own Giga chip (ColForce) switched to Falzar keeps its folder, its
-    /// NaviCust and its patch cards; its Crosses are Falzar's (the version's own, as a new Falzar build's); the
-    /// Giga chip stays, and is the build's one problem, the folder's first entry's. Switched back, it is as it
-    /// was, with nothing wrong. A build of another navi switches too, its Crosses none and what is aside kept,
-    /// and a switched build's file reads back as it.
+    /// The selector's choices keep the rest of the build: EXE6's Cybeast changed, the build keeps its Crosses, its
+    /// folder, its NaviCust and its patch cards (a card's variant its own), and its file reads back as it.
     #[test]
-    fn exe6_a_version_switch_keeps_the_build() {
+    fn a_chosen_form_keeps_the_build() {
         let content = exe6_content();
         let builds = Builds::of(&content, "exe6").unwrap();
         let mut side = builds.new_build(&content, "gregar").unwrap();
-        let colforce = nettai_match::ids::chip(&content, "exe6", "colforce").unwrap();
-        with_first(&content, &mut side, colforce);
         let program = nettai_match::ids::entry(&content, "exe6", "navicust_programs", "suprarmr").unwrap();
         set_navicust(&content, &mut side, &[PlacedProgram { program, color: 0, x: 3, y: 3, rotation: 0, compressed: true }], 2);
-        side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "skarab")).unwrap();
+        side.set_fact(&content, "patch_cards", &patch_cards(&content, "exe6", "skarab,bass-cross-megaman/gregar")).unwrap();
         let gregar = Build::new(&content, "Gregar", side);
-        assert!(Checked::of(&content, "exe6", &gregar.side).ready());
-
         let mut build = gregar.clone();
-        assert_eq!(build.set_version(&content, &builds, "falzar"), Ok(true));
-        assert_eq!(builds.version_of(&content, &build.side), Some("falzar"));
-        assert_eq!(forms(&content, &build.side, "crosses"), forms(&content, &builds.new_build(&content, "falzar").unwrap(), "crosses"));
-        for kept in ["navi", "folder", "navicust_programs", "navicust_expansions", "patch_cards", "bug_frags", "beast_out"] {
+        let falzar_beast = nettai_match::ids::form(&content, "exe6", "falzar-beast").unwrap();
+        assert!(builds.choose_form(&content, &mut build.side, "cybeast", falzar_beast));
+        assert_eq!(build.side.version(&content), Some("falzar"));
+        for kept in ["navi", "folder", "crosses", "navicust_programs", "navicust_expansions", "patch_cards", "bug_frags", "beast_out"] {
             assert_eq!(build.side.facts.get(&content, kept), gregar.side.facts.get(&content, kept), "{kept} is kept");
         }
-        let problems = Checked::of(&content, "exe6", &build.side).problems;
-        assert_eq!(problems.len(), 1, "{problems:?}");
-        assert_eq!((&problems[0].what, problems[0].entry, problems[0].field.as_deref()), (&Wrong::ChipOfAnotherVersion { chip: colforce }, Some(0), Some("folder")));
         assert_eq!(read(&content, "exe6", &text(&content, "exe6", &build)), Ok(build.clone()));
-        assert_eq!(build.set_version(&content, &builds, "falzar"), Ok(false), "the same version changes nothing");
-        assert_eq!(build.set_version(&content, &builds, "gregar"), Ok(true));
+        let gregar_beast = nettai_match::ids::form(&content, "exe6", "gregar-beast").unwrap();
+        assert!(builds.choose_form(&content, &mut build.side, "cybeast", gregar_beast));
         assert_eq!(build, gregar, "back as it was");
-        assert!(build.set_version(&content, &builds, "nowhere").is_err());
-
-        // Another navi's build: the version alone, what is aside kept aside.
-        let tenguman = nettai_match::ids::navi(&content, "exe6", "tenguman").unwrap();
-        build.set_navi(&content, &builds, tenguman, &fields()).unwrap();
-        let aside = build.clone();
-        assert_eq!(build.set_version(&content, &builds, "falzar"), Ok(true));
-        assert!(forms(&content, &build.side, "crosses").is_empty() && build.keeps_aside(&content, "patch_cards"));
-        assert_eq!(build.side.folder(&content), aside.side.folder(&content));
-        assert!(Checked::of(&content, "exe6", &build.side).problems.iter().all(|p| p.what == Wrong::ChipOfAnotherVersion { chip: colforce }));
-    }
-
-    /// EXE5 and EXE4: a build of one version with its own Giga chip and a dark MegaMan switched to the other has
-    /// the other's souls and Giga chips, keeps its folder, its navi and its light or dark; its Giga chip stays,
-    /// the build's one problem. Switched back, it is as it was.
-    #[test]
-    fn exe5_and_exe4_a_version_switch_keeps_the_build() {
-        let four = nettai_match::testing::exe4_content();
-        for (content, game, [from, to], giga) in [(exe5_content(), "exe5", ["protoman", "colonel"], "dethphnx"), (four, "exe4", ["redsun", "bluemoon"], "redsun")] {
-            let builds = Builds::of(&content, game).unwrap();
-            let mut side = builds.new_build(&content, from).unwrap();
-            let chip = nettai_match::ids::chip(&content, game, giga).unwrap();
-            with_first(&content, &mut side, chip);
-            builds.take_preset(&content, &mut side, "light_dark", "dark").unwrap();
-            let before = Build::new(&content, "Team", side);
-            assert!(Checked::of(&content, game, &before.side).ready(), "{game}");
-
-            let mut build = before.clone();
-            assert_eq!(build.set_version(&content, &builds, to), Ok(true));
-            let fresh = builds.new_build(&content, to).unwrap();
-            assert_eq!(builds.version_of(&content, &build.side), Some(to), "{game}");
-            assert_eq!(forms(&content, &build.side, "souls"), forms(&content, &fresh, "souls"), "{game}");
-            assert_eq!(build.side.facts.get(&content, "giga_chips"), fresh.facts.get(&content, "giga_chips"), "{game}");
-            assert_eq!(build.side.folder(&content), before.side.folder(&content), "{game}");
-            assert_eq!(builds.preset_of(&content, &build.side, "light_dark").map(|p| p.id.as_str()), Some("dark"), "{game}");
-            let problems = Checked::of(&content, game, &build.side).problems;
-            assert_eq!(problems.len(), 1, "{game}: {problems:?}");
-            assert_eq!((&problems[0].what, problems[0].entry), (&Wrong::ChipOfAnotherVersion { chip }, Some(0)), "{game}");
-            assert_eq!(build.set_version(&content, &builds, from), Ok(true));
-            assert_eq!(build, before, "{game}: back as it was");
-        }
     }
 
     #[test]

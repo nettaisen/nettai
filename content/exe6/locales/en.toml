@@ -779,8 +779,8 @@ language = "en"
 # What a build is made of, by name, for a tool that makes and lists builds (rules/builds; nettai-match's `build`): each
 # version a build is one of, `version.<id>`.
 [builds]
-# What a version sets, for a tool that asks which a new build is of.
-"versions" = "Sets the Crosses and Giga chips."
+# What a new build of a version starts with, for a tool that asks which version's a new build starts from.
+"versions" = "Starts with the version's Crosses and Cybeast."
 "version.gregar" = "Gregar"
 "version.falzar" = "Falzar"
 
