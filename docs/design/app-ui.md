@@ -862,6 +862,38 @@ Each is settled unless the user changes it.
     has it over its stats, six to a row, and is taller by it; a phone's as many to a row as its width takes.
     (§6 Builds; docs/app.md §8.)
 
+63. **The editor's rows: names first, details on hover, a program once** (2026-10-15). The user, of the Patch cards
+    tab: "the name isn't very visible on the patch cards view. i think you should get rid of the effects list inline
+    with the list in the patch cards view. then also show chip/patch card/ncp details on list item hover"; then
+    "deduppe navicust program parts in the list and then have you select by color".
+    - *A patch card's row* is the folder's: its number, its name (12, a phone's 14), its version's mark, its MB (EXE4:
+      its slot's box before it, or its slot at the library row's end), the name in the error red where the rules
+      have something against it; a list row's height (26, a phone's 40), in the build's list and the library alike.
+      A card's lines are the strip's alone: its card screen's two groups, bugs purple.
+    - *Hover drives the strip* (chosen over a card floating by the row: every tab already has a strip that describes
+      the focused row, so the hover reuses it whole, nothing new to draw or to keep from covering the rows beside it,
+      and a flat panel that changes in place is the HUD's way): while the pointer is on a row of the folder, the
+      chip library, the NaviCust's list, the patch cards, their library, or the auto battle's places and library, the
+      strip describes that row; the keyboard's focus and the chosen row's mark stay where they were. The pointer gone
+      off the rows, or a key that moves the focus, and the strip is the focused row's again. A refusal's reason is the
+      focused row's: the strip keeps it, and the row a drag was let go over isn't a hover until the pointer goes on.
+      With a piece in hand the NaviCust's strip stays on it. A phone has no hover: a tap is as it was.
+    - *What the strip shows* (the details asked for): a chip, its picture, name, code, description, element, class,
+      MB, attack and how many the folder holds (as it was; a row is one chip in one code, so its code is that one); a
+      program, its shape and, where it compresses into another, its compressed shape, each a small grid in its color
+      over its word (SHAPE, COMPRESSED; 形, 圧縮時), its name in its color, the game's description, and its colors
+      (Colors, カラー) with the chosen one outlined; a card, its number, name, MB or slot, and its lines, bugs purple.
+      No game's data has a description of a patch card (the cards' screens list their effects), so a card has none.
+    - *A program once:* the NaviCust's list has each program once, in its color chosen; where it has more than one
+      color, its row shows them as small boxes before its state, the chosen one outlined (the footer: ←→ Color). Left
+      and Right on the row (the pad's too) choose the one before or after, and past the first or the last the focus
+      moves on as ever; a click or a tap on a box chooses it. Enter (a click on the row) takes that color's part. The
+      choice starts at the color of the copy the build has placed first, else the program's first. The row's state
+      (Placed ×2, In hand, Out of bounds), Del's last copy and the strip are the chosen color's part's. A ruleset holds
+      a program back whole (its items are programs, not their colors): each of its boxes has the error red's ring, and
+      the row reads Not allowed.
+    (§6 Builds; docs/app.md §13.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1239,13 +1271,16 @@ DUPLICATE, RENAME and DELETE.
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header holding Chips 30/30, Mega, Giga, Reg and Tag memory, then the overview's own 2 by
   15 block. Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
-  a note, MB, attack, element, code), 15 showing. Enter on a slot goes to the library; Enter on a row puts it in
+  a note, MB, attack, element, code), 15 showing. The pointer on an entry or a row shows its chip in the strip
+  (§2.63). Enter on a slot goes to the library; Enter on a row puts it in
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's.
-- **NaviCust** (§2.10, §2.26): a strip across the top describes the program under the cursor, in the game's words
-  (the user: "you should show ncp descriptions"); the board framed at the left with a key under it; PROGRAMS, an
-  open list, in the middle (each with its color, a cross if a plus part, and Placed, Placed ×2 where more than one
-  copy is, In hand or Out of bounds); Effects and Bugs at the right, what the NaviCust does and the bugs it brings
+- **NaviCust** (§2.10, §2.26, §2.63): a strip across the top describes the program under the cursor (or the
+  pointer, on a row of the list): its shape and compressed shape, its name in its color, the game's words (the user:
+  "you should show ncp descriptions") and its colors; the board framed at the left with a key under it; PROGRAMS,
+  an open list, in the middle, each program once (in its color chosen, a cross if a plus part; its colors as small
+  boxes where it has more than one, Left and Right or a click choosing; and its chosen color's part Placed, Placed
+  ×2 where more than one copy is, In hand or Out of bounds); Effects and Bugs at the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
   outline at its edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and
@@ -1262,15 +1297,17 @@ DUPLICATE, RENAME and DELETE.
   from a program's row, the piece follows the pointer with no button held, and a click puts it down; a click on the
   list puts it away (the list shows CLICK TO PUT AWAY while the pointer is over it), a click anywhere else off the
   board puts it back where it was; a right click puts it away, or takes off the piece under the pointer.
-- **Patch cards** (§2.19, §2.20): the folder's shape. EXE5 and EXE6: the installed cards in order in the framed
-  panel (number, name, MB, then every line the card writes, Parameter lines then Ability lines, bug lines purple),
-  Cards and MB used in its header, and "Together", what they add up to, at its foot; the library's rows show the
-  same lines, and the strip across the top lays the card under the cursor out in its two groups. EXE4: six slots
+- **Patch cards** (§2.19, §2.20, §2.63): the folder's shape. EXE5 and EXE6: the installed cards in order in the
+  framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header, and
+  "Together", what they add up to, at its foot; the library's rows the same, with their note; the strip across the
+  top lays the card under the cursor (or the pointer) out: its lines in its two groups, Parameter then Ability, bug
+  lines purple. EXE4: six slots
   named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
   puts it there, in place of the card that slot held; so does a drag of it onto the slots, and a slot's card dragged
   onto the library is taken out (it can move to no other slot). A two-part card says where its other half must be; a card
   shows its effect and the bugs it adds to or clears.
-- **The mouse on the build's lists** (§2.37, §2.38): a click marks a row (a folder's entry, a patch card or slot, an
+- **The mouse on the build's lists** (§2.37, §2.38, §2.63): the pointer on a row shows what it holds in the strip,
+  the focus staying where it is; a click marks a row (a folder's entry, a patch card or slot, an
   auto battle place) and removes nothing; a right click takes out what it holds; a row
   is dragged to another place (a folder's entry with its marks, a patch card in the list's order, a place's chip in
   its list or traded with another list's); dragged back onto the library and let go there, what it holds is taken
