@@ -35,7 +35,7 @@ use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::rc::Rc;
 use std::time::{Duration, Instant};
-use viewer::Watching;
+use viewer::{Overlays, Watching};
 
 /// The viewer's view: its focus is remembered apart from the list's.
 const VIEWER: &str = "replays.viewer";
@@ -144,6 +144,9 @@ pub struct Replays {
     hash: Option<(String, u64)>,
     still: Still,
     watching: Option<Watching>,
+    /// What was on over the last replay's picture (the input display, the other console's picture): the next
+    /// one watched has them too, while the app runs. Off at first.
+    overlays: Overlays,
     /// The replay being made ready to watch (the two cards show), and its two sides where its builds may be
     /// shown (the match's weren't closed).
     opening: Option<PathBuf>,
@@ -436,9 +439,8 @@ impl Replays {
 
     /// Leave the viewer for the list.
     fn stop_watching(&mut self, shell: &mut Shell) {
-        if self.watching.take().is_none() {
-            return;
-        }
+        let Some(w) = self.watching.take() else { return };
+        self.overlays = w.overlays();
         shell.lock_game(false);
         shell.ui().global::<ReplaysView>().set_watching(false);
         shell.ui().global::<ReplaysView>().set_builds_shown(false);
@@ -565,7 +567,8 @@ impl Screen for Replays {
             e.close(shell);
         }
         self.close_sheet(shell);
-        if self.watching.take().is_some() {
+        if let Some(w) = self.watching.take() {
+            self.overlays = w.overlays();
             shell.ui().global::<ReplaysView>().set_watching(false);
         }
         self.opening = None;
@@ -588,6 +591,8 @@ impl Screen for Replays {
                 "frame-back" => w.step(-1),
                 "frame-on" => w.step(1),
                 "builds" | "builds.sheet" => w.toggle_builds(shell),
+                "inputs" => w.toggle_inputs(shell),
+                "inset" => w.toggle_inset(shell),
                 "speed" => w.set_speed(index),
                 "view" => w.set_view(shell, index),
                 "export" => {
@@ -703,7 +708,11 @@ impl Screen for Replays {
                 KeyCode::BracketRight if !key.repeat => w.round(1),
                 KeyCode::BracketLeft | KeyCode::BracketRight => {}
                 KeyCode::KeyB if !key.repeat => w.toggle_builds(shell),
-                KeyCode::KeyB => {}
+                // (I for the input display; P for the other console's picture in the corner: a picture in the
+                // picture.)
+                KeyCode::KeyI if !key.repeat => w.toggle_inputs(shell),
+                KeyCode::KeyP if !key.repeat => w.toggle_inset(shell),
+                KeyCode::KeyB | KeyCode::KeyI | KeyCode::KeyP => {}
                 _ => return false,
             }
             return true;
@@ -811,7 +820,7 @@ impl Screen for Replays {
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         let BattleEvent::Watching(viewer) = event else { return };
         let Some(path) = self.opening.take() else { return };
-        self.watching = Some(Watching::new(viewer, path, self.sides.take()));
+        self.watching = Some(Watching::new(viewer, path, self.sides.take(), self.overlays));
         // (`show` sets the viewer's view.)
         shell.refresh();
     }

@@ -9,6 +9,7 @@ import { Shell, Page, PadButton, Picture, DialogFrame } from "../shell.slint";
 import { Cut, Label, Note, Value, Mono, Button, ButtonKind, Field, Select, Seg, Stepper, ListView, RowBack, RowTouch, PanelBack, Bar, ScrollPage } from "../widgets.slint";
 import { Arrive, Tween, Pulse } from "../motion.slint";
 import { BuildSheet, BuildOverview } from "../build.slint";
+import { InputDisplay } from "../inputs.slint";
 
 // A replay's row in the list.
 export struct ReplayRow {
@@ -86,11 +87,26 @@ export global ReplaysView {
     in property <bool> builds-shown;
     in property <BuildSheet> left-build;
     in property <BuildSheet> right-build;
+    // The input display is on (both players' buttons over the picture: the console shown's player's over the
+    // other's), and the buttons each holds (the GBA's bits).
+    in property <bool> inputs;
+    in property <int> held-shown;
+    in property <int> held-other;
+    // The other console's picture is on, small in the corner of the one shown: its image (a texture of its own,
+    // written in place), and its place and size in the picture's room, on the display's pixels.
+    in property <bool> inset-on;
+    in property <image> inset;
+    in property <length> inset-x;
+    in property <length> inset-y;
+    in property <length> inset-width;
+    in property <length> inset-height;
 
     // ---- The export's dialog ----
     in property <bool> exporting;
     in property <string> export-size;
     in property <int> export-view;
+    // 0 the console of the view alone, 1 both side by side.
+    in property <int> export-sides;
     in property <string> export-part;
     in property <string> export-path;
     in property <ExportState> export-state;
@@ -573,7 +589,7 @@ component IconButton inherits Rectangle {
     property <int> key-press: Nav.press-seq;
     property <bool> down: hit.pressed;
     property <length> dip: press.v > 0.4 ? 1px : 0px;
-    width: Theme.phone ? 48px : 40px;
+    width: 40px;
     height: Theme.phone ? 44px : 40px;
     press := Pulse {
         seq: root.presses;
@@ -742,7 +758,8 @@ component SeekBar inherits Rectangle {
 }
 
 // The buttons of the transport: to the round's start, a frame back, play or pause, a frame on, the next round;
-// and, `apart` further on, both builds (where the match's weren't closed). `pitch` is how far apart they are.
+// and, `apart` further on, both builds (where the match's weren't closed), the input display and the other
+// console's picture in the corner, each lit while it is shown. `pitch` is how far apart they are.
 component TransportButtons inherits Rectangle {
     in property <length> pitch: 52px;
     in property <length> apart: 12px;
@@ -784,6 +801,22 @@ component TransportButtons inherits Rectangle {
         icon: "M 1 3 h 6 v 10 h -6 Z M 2.5 4.5 v 7 h 3 v -7 Z M 9 3 h 6 v 10 h -6 Z M 10.5 4.5 v 7 h 3 v -7 Z";
         enabled: ReplaysView.builds-open;
         lit: ReplaysView.builds-shown;
+    }
+
+    // (A pad's cross and two buttons.)
+    IconButton {
+        x: 6 * root.pitch + root.apart;
+        nav: "inputs";
+        icon: "M 1 7 h 2.5 v -2.5 h 2 v 2.5 h 2.5 v 2 h -2.5 v 2.5 h -2 v -2.5 h -2.5 Z M 10 8.5 h 2.5 v 2.5 h -2.5 Z M 12.5 5 h 2.5 v 2.5 h -2.5 Z";
+        lit: ReplaysView.inputs;
+    }
+
+    // (A screen, hollow, with a small one in its corner.)
+    IconButton {
+        x: 7 * root.pitch + root.apart;
+        nav: "inset";
+        icon: "M 1 3 h 14 v 10 h -14 Z M 2.5 4.5 v 7 h 11 v -7 Z M 8 7.5 h 4.5 v 3 h -4.5 Z";
+        lit: ReplaysView.inset-on;
     }
 }
 
@@ -829,18 +862,18 @@ component Transport inherits Rectangle {
     TransportButtons {
         x: root.edge;
         y: root.phone ? 48px : 52px;
-        width: root.phone ? root.inner : 312px;
+        width: root.phone ? root.inner : 416px;
         height: root.phone ? 44px : 40px;
-        pitch: root.phone ? (root.inner - 48px) / 5 : 52px;
+        pitch: root.phone ? (root.inner - 40px) / 7 : 52px;
         apart: root.phone ? 0px : 12px;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     Text {
-        x: 344px;
+        x: 448px;
         y: 52px;
-        width: 150px;
+        width: max(0px, speed-label.x - 12px - self.x);
         height: 40px;
         visible: !root.phone;
         text: @tr("Round {} of {}", ReplaysView.round, ReplaysView.rounds);
@@ -935,7 +968,7 @@ component Transport inherits Rectangle {
         enabled: !root.phone;
     }
 
-    Label {
+    speed-label := Label {
         x: speed-half.x - 8px - self.width;
         y: 52px;
         width: self.preferred-width;
@@ -1046,6 +1079,36 @@ export component ReplaysScreen inherits Rectangle {
     if ReplaysView.watching: ViewerPage {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
+    // Over the viewer's picture, each while it is on (and there throughout, shown by `visible`: an `if` would be a
+    // component of its own): the other console's picture in the bottom right corner of the one shown, a line
+    // around it; and the input display in its top right corner, under the line the battle's own text takes there
+    // (its top eighth), as Practice's is. Both are placed by the picture's room (`Picture`: in the window's
+    // coordinates, as this screen's are) and take no clicks.
+    Rectangle {
+        visible: ReplaysView.watching && ReplaysView.inset-on && Shell.picture-shown;
+        x: Shell.picture-room-x + ReplaysView.inset-x - 1px;
+        y: Shell.picture-room-y + ReplaysView.inset-y - 1px;
+        width: ReplaysView.inset-width + 2px;
+        height: ReplaysView.inset-height + 2px;
+        border-width: 1px;
+        border-color: Theme.line;
+        Image {
+            x: 1px;
+            y: 1px;
+            width: ReplaysView.inset-width;
+            height: ReplaysView.inset-height;
+            source: ReplaysView.inset;
+            image-rendering: pixelated;
+        }
+    }
+
+    InputDisplay {
+        visible: ReplaysView.watching && ReplaysView.inputs && Shell.picture-shown;
+        x: Shell.picture-room-x + Shell.picture-x + Shell.picture-width - self.width - 12px;
+        y: Shell.picture-room-y + Shell.picture-y + Shell.picture-height / 8 + 8px;
+        held-top: ReplaysView.held-shown;
+        held-bottom: ReplaysView.held-other;
+    }
 }
 
 // ---- The export -----------------------------------------------------------------------------------------
@@ -1096,7 +1159,7 @@ component ExportDialog inherits DialogFrame {
     property <length> control-width: self.inner-width - self.control-x;
     property <bool> busy: ReplaysView.export-state == ExportState.running;
     title: @tr("Export video");
-    content-height: 336px;
+    content-height: 392px;
     Value {
         x: 0;
         y: 0;
@@ -1132,20 +1195,22 @@ component ExportDialog inherits DialogFrame {
         enabled: !root.busy;
     }
 
+    // (Both: the view's console at the left, heard, and the other's at the right.)
     Value {
         x: 0;
         y: 112px;
         width: root.label-width;
         height: 40px;
-        text: @tr("Part");
+        text: @tr("Sides");
     }
 
-    Select {
+    Seg {
         x: root.control-x;
-        y: 112px;
-        width: root.control-width;
-        nav: "export.part";
-        value: ReplaysView.export-part;
+        y: 114px;
+        nav: "export.sides";
+        first: @tr("sides" => "One");
+        second: @tr("sides" => "Both");
+        chosen: ReplaysView.export-sides;
         enabled: !root.busy;
     }
 
@@ -1154,12 +1219,29 @@ component ExportDialog inherits DialogFrame {
         y: 168px;
         width: root.label-width;
         height: 40px;
+        text: @tr("Part");
+    }
+
+    Select {
+        x: root.control-x;
+        y: 168px;
+        width: root.control-width;
+        nav: "export.part";
+        value: ReplaysView.export-part;
+        enabled: !root.busy;
+    }
+
+    Value {
+        x: 0;
+        y: 224px;
+        width: root.label-width;
+        height: 40px;
         text: @tr("Save as");
     }
 
     PathBox {
         x: root.control-x;
-        y: 168px;
+        y: 224px;
         width: root.control-width;
         nav: "export.path";
         value: ReplaysView.export-path;
@@ -1170,14 +1252,14 @@ component ExportDialog inherits DialogFrame {
 
     Bar {
         x: 0;
-        y: 226px;
+        y: 282px;
         width: root.inner-width;
         value: ReplaysView.export-state == ExportState.done ? 1 : (root.busy ? ReplaysView.export-progress : 0);
     }
 
     Note {
         x: 0;
-        y: 238px;
+        y: 294px;
         width: root.inner-width;
         height: 36px;
         text: root.busy ? @tr("Exporting round {} of {} · {}%", ReplaysView.export-round, ReplaysView.export-rounds, round(ReplaysView.export-progress * 100)) : ReplaysView.export-state == ExportState.done ? @tr("Saved.") : ReplaysView.export-state == ExportState.canceled ? @tr("Export canceled.") : ReplaysView.export-state == ExportState.failed ? ReplaysView.export-error : "";
@@ -1188,7 +1270,7 @@ component ExportDialog inherits DialogFrame {
 
     HorizontalLayout {
         x: 0;
-        y: 296px;
+        y: 352px;
         width: root.inner-width;
         height: 40px;
         spacing: 12px;
