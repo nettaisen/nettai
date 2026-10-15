@@ -21,9 +21,9 @@ async fn sleep(ms: i32) {
     wasm_bindgen_futures::JsFuture::from(promise).await.unwrap();
 }
 
-/// No STUN server: the two are in one page.
+/// No STUN server (none by default): the two are in one page.
 fn config() -> Config {
-    Config { ice_servers: Vec::new(), ..Config::default() }
+    Config::default()
 }
 
 #[wasm_bindgen_test]

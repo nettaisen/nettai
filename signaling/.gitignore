@@ -1,2 +1,4 @@
 node_modules/
 .wrangler/
+# Local secrets for `wrangler dev` (the TURN key): never committed.
+.dev.vars

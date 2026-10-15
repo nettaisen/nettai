@@ -1,8 +1,33 @@
 # nettai's signaling server (src/index.ts): rooms where two players meet and
-# trade their WebRTC offer, answer and candidates. Run it here with
-# `npx wrangler dev` (http://127.0.0.1:8787; nettai with NETTAI_SIGNAL=
-# ws://127.0.0.1:8787). Deploying it is `npx wrangler deploy`, on your own
-# Cloudflare account.
+# trade their WebRTC offer, answer and candidates, and the STUN and TURN
+# servers their connections use. Run it here with `npx wrangler dev`
+# (http://127.0.0.1:8787; nettai with NETTAI_SIGNAL=ws://127.0.0.1:8787).
+# Deploying it is `npx wrangler deploy`, on your own Cloudflare account: the
+# owner's step, as is everything below.
+#
+# TURN (docs/design/rollback.md §4.8). The Worker hands each client
+# short-lived credentials for Cloudflare's TURN service (Cloudflare Realtime),
+# asked for with a TURN key of the owner's, which two secrets hold:
+#
+#   1. Make a TURN key: in the Cloudflare dashboard, Realtime > TURN Server >
+#      Create (or the API: POST /accounts/{account_id}/calls/turn_keys). It
+#      shows the key's ID (the "Turn Token ID") and its API token, once.
+#   2. Give them to the Worker as secrets (never in this file or the repo):
+#        npx wrangler secret put TURN_KEY_ID
+#        npx wrangler secret put TURN_KEY_API_TOKEN
+#      For `wrangler dev`, the same two lines in signaling/.dev.vars
+#      (TURN_KEY_ID=... and TURN_KEY_API_TOKEN=...), which git ignores.
+#
+# Without them the Worker still runs: each welcome gives Cloudflare's public
+# STUN server alone, and two players whose networks need a relay can't meet.
+#
+# The app's default server is wss://matchmaking.nettai.n1gp.net
+# (crates/nettai/src/screens/play/session.rs, DEFAULT_SIGNAL). To serve it
+# from this Worker, give the Worker that hostname as a custom domain (its zone,
+# n1gp.net, on the same account): in the dashboard, the Worker's Settings >
+# Domains & Routes > Add > Custom domain, or uncomment this and deploy:
+#
+# routes = [{ pattern = "matchmaking.nettai.n1gp.net", custom_domain = true }]
 name = "nettai-signal"
 main = "src/index.ts"
 compatibility_date = "2025-10-01"
