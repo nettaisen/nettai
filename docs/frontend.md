@@ -626,21 +626,33 @@ host calls, in order:
     rounds (`Settings::rounds`, `2n − 1` of them: each round's stage and
     background stated, or left to the seed; `backgrounds`, whether a
     background left to the seed is the game's link pick's or the
-    background pool's, nettai's Play the pool), whether patch cards apply
-    (`patch_cards`, on unless a player turns them off) and whether builds
-    are closed (`closed_builds`). Either player changes them
-    (`Lobby::set_first_to`, `set_patch_cards`, `set_closed_builds`, or
-    `propose` for the whole), the other's lobby takes the change, both
-    show the same (`Lobby::settings`), and both ready marks clear; a
-    joiner coming into the lobby takes the host's. They are agreed when
-    both players are ready on the same.
-  - **Patch cards off**: neither player's cards apply in the match. Each
-    side plays as it is without them, on both peers alike (the match is
-    made of the sides so, and a recording holds them so:
-    `Agreement::sides` and `Agreement::m` are the sides as played, and
-    `Agreement::patch_cards()` says which way it was). A build is checked
-    as it will be played, so one that keeps a rule only by a card of its
-    own (a sixth Mega chip a card allowed) can't be played without cards:
+    background pool's, nettai's Play the pool), the ruleset
+    (`ruleset`: `nettai_match::ruleset::Ruleset`, which builds may play)
+    and whether builds are closed (`closed_builds`, beside the ruleset and
+    not of it: the user, "i think closed setup should not be part of the
+    ruleset actually"). Either player changes First to and closed builds
+    (`Lobby::set_first_to`, `set_closed_builds`, or `propose` for the
+    whole), the host alone the ruleset (`Lobby::set_ruleset`, false for a
+    joiner; a joiner's `propose` keeps the ruleset it holds, and a
+    joiner's change that crosses the host's new ruleset is taken with the
+    host's), the other's lobby takes the change, both show the same
+    (`Lobby::settings`), and both ready marks clear; a joiner coming into
+    the lobby takes the host's. They are agreed when both players are
+    ready on the same. A lobby is made with the game's rulesets
+    (`Lobby::new(role, &content, rulesets, settings, ...)`,
+    `nettai_match::ruleset::Rulesets::of`), which the settings' ruleset is
+    read by (on the wire by names: the preset's id or the player's own
+    name, one version per build, and what each category holds back by its
+    items' names) and checked by.
+  - **A build under the ruleset** (docs/design/app-ui.md §2.59): a build
+    that holds what the ruleset doesn't allow (a chip, a navi, a NaviCust
+    program, a patch card, a soul or a Cross: one problem each,
+    `Wrong::NotAllowed`), or two versions' things under one version per
+    build (`Wrong::Mixed`), can't be played. Nothing is taken out of a
+    build: a match is played of the sides as they are, and a ruleset that
+    allows no patch cards (each game's `no_patch_cards` preset) refuses a
+    build that holds any, where the lobby's Patch cards off used to play
+    each build without its cards.
     - `lobby.problems()` is what is wrong with this player's build as the
       settings stand, typed (`nettai_match::check::Problem`: its `what`
       is a `nettai_match::Wrong`, the kind and its numbers, to word from
@@ -649,28 +661,23 @@ host calls, in order:
       the build can be played.
     - `lobby.set_ready(true)` says false while there are problems, and
       the mark stays clear: the status line says why, from `problems()`.
-    - **To show a build as it will be played** (the player's own card in
-      the lobby, the overview with its numbers): `lobby.side_as_played()`
-      is the side, and `lobby.settings().checked(&content, &side)` a
-      build's check of any side as these settings play it
-      (`nettai_match::build::Checked`: its `overview`, `folder_view`,
-      `face` and `problems`, as the build screens use them; the same
-      check, so the lobby and a build screen never give two answers of
-      one build). `settings.as_played(&content, &side)` is the side alone.
-      In a match and after it, show `agreement.sides`: they are as
-      played already.
-    The cards themselves are nothing Rust names but for the list they are
-    kept in (the setup's `patch_cards`, in all three games; EXE4's holds a
-    card with its slot): `nettai_match::Side::without_patch_cards`.
+    - **To show a build** (the player's own card in the lobby, the
+      overview with its numbers): `lobby.side()` is the side, and
+      `lobby.settings().checked(&content, &rulesets, &side)` a build's
+      check of any side under these settings' ruleset
+      (`nettai_match::build::Checked::under`: its `overview`,
+      `folder_view` (held to the ruleset), `face` and `problems`, as the
+      build screens use them; the same check, so the lobby and a build
+      screen with the same ruleset never give two answers of one build).
+      In a match and after it, show `agreement.sides`.
   - **The handshake.** Each commits (a Hello: SHA-256 of the agreed
     settings' hash and what it will reveal) before either reveals its half
     of the seed and its side (in nettai-match's binary against the content
     both play, `nettai_match::binary`: the side's facts in the order of the
     game's rules' setup, each definition by its handle, which the content
-    hash pins; the side as the match will play it, so cards that are off
-    aren't sent), and each checks the other's Reveal against its commitment
+    hash pins), and each checks the other's Reveal against its commitment
     and the other's side as it checks its own player's (a build's check
-    of the side as played, `Settings::checked`; a side that fails it ends
+    under the agreed ruleset, `Settings::checked`; a side that fails it ends
     both lobbies, `Reason::TheirBuild { problems }` here and
     `Reason::YourBuild { problems }` there). The battle's RNG comes from both
     halves, and each part the rounds leave is picked from it alike on both.
@@ -683,9 +690,8 @@ host calls, in order:
     makes a netplay match's recorder of the agreement
     (`Recorder::of_agreement`, §8), so the replay's info says the builds
     were closed and whoever shows it again hides both. (The recorder
-    records the agreement's match, whose sides are as played: a replay of
-    a match without patch cards holds the sides without them, and needs no
-    word of the setting to play back.)
+    records the agreement's match; a ruleset changes no side, so a replay
+    needs no word of it to play back.)
   - **Loaded before the first tick.** Agreed, the lobby says
     `Status::Loading` with the agreement, and the host makes the match
     ready: a `preload::Preload` of the agreement's set for this player's

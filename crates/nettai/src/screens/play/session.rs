@@ -206,16 +206,16 @@ impl Session {
         self.lobby.as_mut()
     }
 
-    /// The link is open: the lobby over it, in the link's role, holding `settings` (a joiner's last until it
+    /// The link is open: the lobby over it, in the link's role, on the game's `rulesets`, holding `settings` (a joiner's last until it
     /// hears the host's) and bringing `side`, this player named `name`, its nonces drawn from `entropy`. False
     /// while the link has no role.
-    pub fn make_lobby(&mut self, content: &Arc<Content>, settings: Settings, side: Side, name: &str, entropy: u64) -> bool {
+    pub fn make_lobby(&mut self, content: &Arc<Content>, rulesets: Arc<nettai_match::ruleset::Rulesets>, settings: Settings, side: Side, name: &str, entropy: u64) -> bool {
         let role = match self.link.as_ref().and_then(Link::role) {
             Some(nettai_rtc::Role::Host) => Role::Host,
             Some(nettai_rtc::Role::Join) => Role::Join,
             None => return false,
         };
-        let mut lobby = Lobby::new(role, content, settings, side, entropy, LOBBY_TIMEOUT);
+        let mut lobby = Lobby::new(role, content, rulesets, settings, side, entropy, LOBBY_TIMEOUT);
         lobby.set_name(name);
         self.lobby = Some(lobby);
         true

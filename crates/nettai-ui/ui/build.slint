@@ -263,6 +263,22 @@ export global BuildWords {
     public pure function no-tags() -> string {
         return @tr("This game has no tag chips");
     }
+    // A thing the ruleset doesn't allow (docs/design/app-ui.md §2.59): a chip, a navi, a program, a card, a soul.
+    public pure function not-allowed(thing: string) -> string {
+        return @tr("{} isn't allowed", thing);
+    }
+    // ... and why it can't go into the build now: the end of its library row, its card's line.
+    public pure function not-allowed-here() -> string {
+        return @tr("Not allowed");
+    }
+    // A build of two versions' things under one version per build: the versions ("Gregar and Falzar") and what
+    // it holds of all but one ("TenguCross, Bass").
+    public pure function mixed(versions: string, things: string) -> string {
+        return @tr("Mixes {}: {}", versions, things);
+    }
+    public pure function and-of(first: string, second: string) -> string {
+        return @tr("{} and {}", first, second);
+    }
     public pure function range(value: int, least: int, most: int) -> string {
         return @tr("{} is outside {} to {}", value, least, most);
     }

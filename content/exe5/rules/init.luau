@@ -25,6 +25,8 @@ local souls = require("@self/souls")
 -- What the tools read of the game's builds, as data (./builds: the versions, a new save's folder): loaded with the
 -- rules, which read none of it.
 require("@self/builds")
+-- And what a ruleset may hold back of a build, and the game's ready-made rulesets (./rulesets), likewise.
+require("@self/rulesets")
 
 -- The auto battle AI's state (./auto_battle/ai.luau's `State`): a navi's it drives (Dark MegaMan's, AIData +0x80 on),
 -- and a side's own drive's under DarkInvs (AIData +0xF0 on), in the side's state.

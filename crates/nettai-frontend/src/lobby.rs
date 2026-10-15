@@ -25,13 +25,14 @@
 //!    so at once; the match's settings ([`Settings`]: the game, the round
 //!    wins its set is first to, each of its rounds' stage and background by
 //!    name, stated or left to the seed, what a background left to the seed
-//!    is drawn from, whether patch cards apply and whether builds are
-//!    closed) with their stamp; whether the peer is ready to play them; its
+//!    is drawn from, the ruleset, [`Settings::ruleset`], and whether builds
+//!    are closed) with their stamp; whether the peer is ready to play them; its
 //!    player's name ([`player_name`]: shown, never taken for who they are);
 //!    and a clock to time the round trip by ([`Lobby::ping`]).
 //!
 //!    **The settings are the match's, not a player's.** Either player
-//!    changes them ([`Lobby::propose`]); the other peer adopts the change,
+//!    changes them ([`Lobby::propose`]), the ruleset the host alone
+//!    ([`Lobby::set_ruleset`]); the other peer adopts the change,
 //!    so both show the same, and both players' ready marks clear. A change
 //!    carries a stamp one above every stamp its peer has seen, and a peer
 //!    adopts settings of a higher stamp than its own; where both changed at
@@ -40,15 +41,16 @@
 //!    lobby. The settings are agreed when both players are ready on the
 //!    same, of the same stamp.
 //!
-//!    **A build is checked as the settings will play it.** With patch
-//!    cards off, neither player's cards apply: each side plays without
-//!    them ([`Settings::as_played`]), so a build that keeps a rule only by
-//!    a card of its own breaks it in this match. A peer checks its own
-//!    player's build so ([`Lobby::problems`], typed), again whenever the
-//!    build or the settings change, and a player whose build can't be
-//!    played as the settings stand can't be ready ([`Lobby::set_ready`]).
-//!    The check is a build's (`nettai_match::build::Checked`): the answer a
-//!    build screen has of the same side.
+//!    **A build is checked under the settings' ruleset.** A build that
+//!    holds what the ruleset doesn't allow (a chip, a navi, a patch card, a
+//!    soul), or two versions' things under one version per build, can't be
+//!    played; nothing is taken out of it (a ruleset that allows no patch
+//!    cards refuses a build that holds any). A peer checks its own player's
+//!    build so ([`Lobby::problems`], typed), again whenever the build or the
+//!    settings change, and a player whose build can't be played as the
+//!    settings stand can't be ready ([`Lobby::set_ready`]). The check is a
+//!    build's (`nettai_match::build::Checked::under`): the answer a build
+//!    screen with the same ruleset has of the same side.
 //! 2. **Hello** — once a peer sees the settings agreed: the compatibility
 //!    fields, the lobby revisions it agrees to and the round wins the set
 //!    is first to, in the clear, and one commitment: SHA-256 of the agreed settings' hash
@@ -56,9 +58,8 @@
 //!    before it has the other's Hello.
 //! 3. **Reveal** — the lobby revisions it is of (as its Hello said them),
 //!    a peer's half of the seed (a nonce) and its side as the match will
-//!    play it (its player's setup, in nettai-match's binary; without its
-//!    patch cards where they are off, so cards that don't apply never
-//!    cross). Each peer checks the other's side as it checks its own, and
+//!    play it (its player's setup, in nettai-match's binary, as it is).
+//!    Each peer checks the other's side as it checks its own, and
 //!    stops on one that breaks a rule ([`Reason::TheirBuild`] here,
 //!    [`Reason::YourBuild`] there, each with the problems typed). A Reveal of other revisions is of an
 //!    agreement that was taken back, come late: it is left. Each peer
@@ -132,6 +133,7 @@ use std::time::{Duration, Instant};
 use nettai_battle::content::{Content, ContentHash};
 use nettai_match::build::Checked;
 use nettai_match::check::Problem;
+use nettai_match::ruleset::{Name as RulesetName, Ruleset, Rulesets};
 use nettai_match::{BackgroundPick, Match, RoundSettings, Set, Side};
 use nettai_netplay::protocol;
 use nettai_netplay::rng::SplitMix64;
@@ -398,10 +400,10 @@ impl Compat {
 /// What a match is played as, that both peers agree: its game (a match is
 /// of one), the round wins its set is first to and each of its rounds'
 /// stage and background stated or left to the seed, what a background left
-/// to the seed is drawn from, whether patch cards apply, and whether the
-/// builds are closed.
-/// They are the match's, not a player's: either player changes them in the
-/// lobby and both see the same ([`Lobby::propose`]).
+/// to the seed is drawn from, the ruleset it is played under (which builds
+/// may play it), and whether the builds are closed.
+/// They are the match's, not a player's: both see the same, and a change
+/// clears both ready marks ([`Lobby::propose`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Settings {
     pub game: String,
@@ -414,16 +416,19 @@ pub struct Settings {
     /// game picks a link battle's (`BackgroundPick::Game`, a match's own
     /// way), or the background pool, every game's (`Pool`: nettai's Play).
     pub backgrounds: BackgroundPick,
-    /// Whether the players' patch cards apply. On (a match's own way): each
-    /// build plays as it is. Off: neither player's cards apply, and each
-    /// side plays as it is without them ([`Settings::as_played`]): the match
-    /// is set up from the sides so, a build is checked so, and a recording
-    /// holds them so.
-    pub patch_cards: bool,
+    /// The ruleset (`nettai_match::ruleset`): what each build may hold, so
+    /// each is checked under it ([`Settings::checked`]) and one that holds
+    /// what it doesn't allow can't be played (nothing is taken out of a
+    /// build: a ruleset that allows no patch cards refuses a build with
+    /// any), and whether each build must be one version's. The host's alone
+    /// to choose ([`Lobby::set_ruleset`]).
+    pub ruleset: Ruleset,
     /// The players keep their builds to themselves during the match: a host
     /// shows each player their own build only, where with open builds it
     /// may show both. (It is the host's to honor: each peer has the other's
-    /// side from the Reveal on, as the simulation needs it.)
+    /// side from the Reveal on, as the simulation needs it.) Beside the
+    /// ruleset, not of it (the user: "i think closed setup should not be
+    /// part of the ruleset actually").
     pub closed_builds: bool,
 }
 
@@ -436,15 +441,11 @@ fn put_name(w: &mut Writer, name: Option<&str>) {
 impl Settings {
     /// A match of `game` whose set is first to `wins` round wins (1 to
     /// [`nettai_match::MAX_FIRST_TO`]), every place left to the seed as the
-    /// game picks a link battle's, with patch cards and open builds.
-    pub fn new(game: &str, wins: u8) -> Settings {
-        Settings {
-            game: game.to_string(),
-            rounds: vec![RoundSettings::default(); nettai_match::rounds_for(wins.clamp(1, nettai_match::MAX_FIRST_TO))],
-            backgrounds: BackgroundPick::Game,
-            patch_cards: true,
-            closed_builds: false,
-        }
+    /// game picks a link battle's, under `ruleset` (a new lobby's: the
+    /// game's first preset, `Rulesets::first`, or the one the player plays
+    /// by), with open builds.
+    pub fn new(game: &str, wins: u8, ruleset: Ruleset) -> Settings {
+        Settings { game: game.to_string(), rounds: rounds_of(wins), backgrounds: BackgroundPick::Game, ruleset, closed_builds: false }
     }
 
     /// The round wins the set is first to.
@@ -453,45 +454,50 @@ impl Settings {
     }
 
     /// A match file's: its game, its rounds and what their backgrounds are
-    /// drawn from, with patch cards and open builds.
-    pub fn of_match(m: &Match) -> Settings {
-        Settings { game: m.game.clone(), rounds: m.rounds.clone(), backgrounds: m.backgrounds, patch_cards: true, closed_builds: false }
+    /// drawn from, under `ruleset`, with open builds.
+    pub fn of_match(m: &Match, ruleset: Ruleset) -> Settings {
+        Settings { game: m.game.clone(), rounds: m.rounds.clone(), backgrounds: m.backgrounds, ruleset, closed_builds: false }
     }
 
-    /// `side` as a match of these settings plays it: as it is with patch
-    /// cards on, and without its patch cards with them off
-    /// (`nettai_match::Side::without_patch_cards`: the list its game's
-    /// rules keep them in, empty). This is the one place the settings change
-    /// a side: the match is set up from the sides so ([`netplay_setup`]),
-    /// a build is checked so ([`Settings::checked`]) and revealed so.
-    ///
-    /// [`netplay_setup`]: crate::netplay::netplay_setup
-    pub fn as_played(&self, content: &Content, side: &Side) -> Side {
-        if self.patch_cards { side.clone() } else { side.without_patch_cards(content) }
+    /// `side` checked as a build under these settings' ruleset: a build's
+    /// check (`nettai_match::build::Checked::under`, the one a build screen
+    /// with the same ruleset asks), whose `problems` are what is wrong,
+    /// typed (none: the build can be played in this match). The side is
+    /// played as it is.
+    pub fn checked(&self, content: &Arc<Content>, rulesets: &Rulesets, side: &Side) -> Checked {
+        Checked::under(content, &self.game, side, rulesets, &self.ruleset)
     }
 
-    /// `side` checked as a match of these settings plays it: a build's check
-    /// (`nettai_match::build::Checked::of`, the one a build screen asks) of
-    /// [`Settings::as_played`]'s side. Its `problems` are what is wrong,
-    /// typed (none: the build can be played in this match), and its
-    /// overview, folder view and face are the build's as this match plays
-    /// it.
-    pub fn checked(&self, content: &Arc<Content>, side: &Side) -> Checked {
-        Checked::of(content, &self.game, &self.as_played(content, side))
-    }
-
-    /// The settings as the lobby carries them: the game, whether builds are
-    /// closed, whether patch cards apply, whether a background left to the
-    /// seed is the pool's, the round wins the set is first to (`n`, a byte),
-    /// then each of its `2n − 1` rounds' stage and background by name
-    /// (empty: from the seed; another game's background with its game,
-    /// `exe4:acdc-area`).
+    /// The settings as the lobby carries them: the game; whether builds are
+    /// closed; the ruleset (its name: a byte, 0 a preset's id and 1 a
+    /// player's own name, then the text; one version per build; then each
+    /// category it
+    /// holds anything back of, by its fact's name, with the names of what it
+    /// doesn't allow); whether a background left to the seed is the pool's;
+    /// the round wins the set is first to (`n`, a byte), then each of its
+    /// `2n − 1` rounds' stage and background by name (empty: from the seed;
+    /// another game's background with its game, `exe4:acdc-area`).
     pub fn to_bytes(&self, content: &Content) -> Vec<u8> {
         let mut out = Vec::new();
         let mut w = Writer(&mut out);
         w.put(&self.game);
         w.put(&self.closed_builds);
-        w.put(&self.patch_cards);
+        let (kind, name) = match &self.ruleset.name {
+            RulesetName::Preset(id) => (0u8, id),
+            RulesetName::Own(name) => (1u8, name),
+        };
+        w.put(&kind);
+        w.put(name);
+        w.put(&self.ruleset.one_per_build);
+        let banned = self.ruleset.banned_names(content);
+        w.uvarint(banned.len() as u64);
+        for (fact, names) in &banned {
+            w.put(fact);
+            w.uvarint(names.len() as u64);
+            for n in names {
+                w.put(n);
+            }
+        }
         w.put(&(self.backgrounds == BackgroundPick::Pool));
         w.put(&self.first_to());
         for r in &self.rounds {
@@ -501,17 +507,33 @@ impl Settings {
         out
     }
 
-    /// Settings from the lobby's bytes, on `content`: refused, with why,
-    /// where their set is first to none or more than
-    /// [`nettai_match::MAX_FIRST_TO`], they name a stage or a background
-    /// the content hasn't, a round a match of the game can't be fought on,
-    /// or a game other than the content's.
-    pub fn from_bytes(content: &Content, bytes: &[u8]) -> Result<Settings, String> {
+    /// Settings from the lobby's bytes, on `content` and its game's
+    /// `rulesets`: refused, with why, where their set is first to none or
+    /// more than [`nettai_match::MAX_FIRST_TO`], they name a stage or a
+    /// background the content hasn't, a round a match of the game can't be
+    /// fought on, a ruleset's category or item the game hasn't, or a game
+    /// other than the content's.
+    pub fn from_bytes(content: &Content, rulesets: &Rulesets, bytes: &[u8]) -> Result<Settings, String> {
         let bad = |e: std::io::Error| format!("the settings don't decode ({e})");
         let mut r = Reader::new(bytes);
         let game: String = r.get().map_err(bad)?;
         let closed_builds: bool = r.get().map_err(bad)?;
-        let patch_cards: bool = r.get().map_err(bad)?;
+        let kind: u8 = r.get().map_err(bad)?;
+        let name: String = r.get().map_err(bad)?;
+        let name = match kind {
+            0 => RulesetName::Preset(name),
+            1 => RulesetName::Own(name),
+            k => return Err(format!("a ruleset's name of kind {k}: 0 is a preset's, 1 a player's own")),
+        };
+        let one_per_build: bool = r.get().map_err(bad)?;
+        let count = r.uvarint().map_err(bad)?;
+        let mut banned = Vec::new();
+        for _ in 0..count.min(256) {
+            let fact: String = r.get().map_err(bad)?;
+            let n = r.uvarint().map_err(bad)?;
+            let names = (0..n.min(4096)).map(|_| r.get::<String>().map_err(bad)).collect::<Result<Vec<_>, _>>()?;
+            banned.push((fact, names));
+        }
         let backgrounds = if r.get::<bool>().map_err(bad)? { BackgroundPick::Pool } else { BackgroundPick::Game };
         let first_to: u8 = r.get().map_err(bad)?;
         if first_to == 0 || first_to > nettai_match::MAX_FIRST_TO {
@@ -537,15 +559,16 @@ impl Settings {
             rounds.push(RoundSettings { stage, background });
         }
         r.finish().map_err(bad)?;
-        if content.game() != game {
+        if content.game() != game || rulesets.game() != game {
             return Err(format!("a match of {game}, and this side has {}'s content", content.game()));
         }
+        let ruleset = Ruleset::of_names(rulesets, content, name, one_per_build, &banned)?;
         // (The rounds as a match's checks hold them: a stage stated is a
         // link battle's, and one left is the rules' to pick.)
         if let Some(problem) = nettai_match::check::check_rounds(content, &game, &rounds).into_iter().next() {
             return Err(problem);
         }
-        Ok(Settings { game, rounds, backgrounds, patch_cards, closed_builds })
+        Ok(Settings { game, rounds, backgrounds, ruleset, closed_builds })
     }
 
     /// The settings' hash, of their bytes.
@@ -554,10 +577,15 @@ impl Settings {
     }
 }
 
-/// The match both peers agreed: the settings (its rounds, whether patch
-/// cards apply, and whether the builds are closed), the seed (from both
-/// peers' nonces), both sides as the match plays them (by side: the host's,
-/// then the joiner's; without their patch cards where those are off), this
+/// The rounds of a set first to `wins` round wins (clamped to 1 to
+/// [`nettai_match::MAX_FIRST_TO`]), each place left to the seed.
+fn rounds_of(wins: u8) -> Vec<RoundSettings> {
+    vec![RoundSettings::default(); nettai_match::rounds_for(wins.clamp(1, nettai_match::MAX_FIRST_TO))]
+}
+
+/// The match both peers agreed: the settings (its rounds and its ruleset),
+/// the seed (from both peers' nonces), both sides (by side: the host's,
+/// then the joiner's), this
 /// peer's side, the set they play and its match (every round's place stated, as the seed picks those
 /// the settings leave: what a replay keeps); both players' names as their
 /// lobbies said them last (by side); and this peer's Reveal as sent, which
@@ -576,14 +604,6 @@ pub struct Agreement {
 }
 
 impl Agreement {
-    /// Whether the players' patch cards apply in this match. Where they
-    /// don't, `sides` and the match (`m`, what a recording keeps) hold each
-    /// side without its cards, as it is played: a host shows a build from
-    /// them, never from what the player brought.
-    pub fn patch_cards(&self) -> bool {
-        self.settings.patch_cards
-    }
-
     /// Whether the players agreed to keep their builds to themselves: the
     /// host then shows this player their own build only (`sides[side]`),
     /// during the match and wherever the match is shown again (a recording
@@ -745,6 +765,9 @@ const LOADING_PARTS: f32 = 255.0;
 /// One peer's lobby and handshake.
 pub struct Lobby {
     content: Arc<Content>,
+    /// The game's rulesets: what the settings' ruleset is read and checked
+    /// by.
+    rulesets: Arc<Rulesets>,
     compat: Compat,
     /// The match's settings as this peer holds them, and their stamp.
     mine: Settings,
@@ -809,13 +832,16 @@ impl Lobby {
     /// settings last until it hears the host's, which it adopts.) A host
     /// makes it once its link to the other player is open, with a timeout
     /// longer than its link takes to give a dropped connection up: the
-    /// lobby hears nothing while the link is down.
-    pub fn new(role: Role, content: &Arc<Content>, settings: Settings, side: Side, entropy: u64, timeout: Duration) -> Lobby {
+    /// lobby hears nothing while the link is down. `rulesets` are the
+    /// game's (`nettai_match::ruleset::Rulesets::of`), which the settings'
+    /// ruleset is one of the game's by.
+    pub fn new(role: Role, content: &Arc<Content>, rulesets: Arc<Rulesets>, settings: Settings, side: Side, entropy: u64, timeout: Duration) -> Lobby {
         let mut nonces = Nonces { entropy, count: 0 };
         let nonce = nonces.next_u64();
-        let problems = settings.checked(content, &side).problems;
+        let problems = settings.checked(content, &rulesets, &side).problems;
         Lobby {
             content: content.clone(),
+            rulesets,
             compat: Compat::new(content, role),
             mine: settings,
             stamp: 0,
@@ -890,7 +916,7 @@ impl Lobby {
     /// The side this player brings, from now (another build). Nothing of it
     /// is said to the other peer; a ready player is no longer ready (their
     /// ready mark was for the side they had), which takes back an agreement
-    /// not yet revealed. It is checked as the settings would play it
+    /// not yet revealed. It is checked under the settings' ruleset
     /// ([`Lobby::problems`]).
     pub fn set_side(&mut self, side: Side) {
         if side != self.side && !self.settled() {
@@ -902,28 +928,34 @@ impl Lobby {
         }
     }
 
-    /// What is wrong with this player's build as the match's settings would
-    /// play it, typed (`nettai_match::Wrong`, with the setup field and the
-    /// entry each is of), for a host to word in its player's language; none:
-    /// it can be played. With patch cards off it is the build without its
-    /// cards that is checked. A player whose build has problems can't be
-    /// ready. It is checked again whenever the build ([`Lobby::set_side`])
+    /// What is wrong with this player's build under the match's settings,
+    /// typed (`nettai_match::Wrong`, with the setup field and the entry each
+    /// is of), for a host to word in its player's language; none: it can be
+    /// played. What the ruleset doesn't allow is among them (one problem for
+    /// each item, `Wrong::NotAllowed`; a build of two versions under one
+    /// version per build, `Wrong::Mixed`). A player whose build has problems
+    /// can't be ready. It is checked again whenever the build ([`Lobby::set_side`])
     /// or the settings (a change of this player's, or one of the other's
     /// adopted) change.
     pub fn problems(&self) -> &[Problem] {
         &self.problems
     }
 
-    /// This player's build as the match's settings would play it: what a
-    /// host shows of it in the lobby ([`Settings::as_played`] of the side
-    /// brought).
-    pub fn side_as_played(&self) -> Side {
-        self.mine.as_played(&self.content, &self.side)
+    /// This player's build, as the match plays it: what a host shows of it
+    /// in the lobby.
+    pub fn side(&self) -> &Side {
+        &self.side
+    }
+
+    /// The game's rulesets, which the settings' ruleset is one of the game's
+    /// by.
+    pub fn rulesets(&self) -> &Arc<Rulesets> {
+        &self.rulesets
     }
 
     /// Check this player's build as the settings stand.
     fn check(&mut self) {
-        self.problems = self.mine.checked(&self.content, &self.side).problems;
+        self.problems = self.mine.checked(&self.content, &self.rulesets, &self.side).problems;
     }
 
     /// Say this player's name ([`player_name`] of it) to the other peer.
@@ -940,27 +972,36 @@ impl Lobby {
     /// Change the match's settings: the other peer adopts them, both
     /// players' ready marks clear, and an agreement not yet revealed is
     /// taken back. (Where the other player changed them at the same time,
-    /// the host's change stands.)
-    pub fn propose(&mut self, settings: Settings) {
-        if settings != self.mine && !self.settled() {
-            self.mine = settings;
-            self.check();
-            self.stamp = self.stamp.max(self.theirs.as_ref().map_or(0, |t| t.stamp)) + 1;
-            // (The other's mark clears when it adopts them; until it says
-            // so, it isn't ready for these.)
-            if let Some(t) = &mut self.theirs {
-                t.ready = false;
-            }
-            self.change(false);
+    /// the host's change stands.) The ruleset is the host's alone: a
+    /// joiner's proposal keeps the one it holds ([`Lobby::set_ruleset`]).
+    pub fn propose(&mut self, mut settings: Settings) {
+        if self.compat.role == Role::Join {
+            settings.ruleset = self.mine.ruleset.clone();
         }
+        if settings != self.mine && !self.settled() {
+            self.put(settings);
+        }
+    }
+
+    /// Hold `settings` as this peer's change, of a stamp above every one
+    /// seen: [`Lobby::propose`]'s, once it is a change.
+    fn put(&mut self, settings: Settings) {
+        self.mine = settings;
+        self.check();
+        self.stamp = self.stamp.max(self.theirs.as_ref().map_or(0, |t| t.stamp)) + 1;
+        // (The other's mark clears when it adopts them; until it says so, it
+        // isn't ready for these.)
+        if let Some(t) = &mut self.theirs {
+            t.ready = false;
+        }
+        self.change(false);
     }
 
     /// Change the round wins the match's set is first to (1 to
     /// [`nettai_match::MAX_FIRST_TO`]; each place left to the seed):
     /// [`Lobby::propose`] of the settings with that.
     pub fn set_first_to(&mut self, wins: u8) {
-        let rounds = Settings::new(&self.mine.game, wins).rounds;
-        self.propose(Settings { rounds, ..self.mine.clone() });
+        self.propose(Settings { rounds: rounds_of(wins), ..self.mine.clone() });
     }
 
     /// Change whether the match's builds are closed: [`Lobby::propose`] of
@@ -969,12 +1010,16 @@ impl Lobby {
         self.propose(Settings { closed_builds, ..self.mine.clone() });
     }
 
-    /// Change whether the players' patch cards apply in the match:
-    /// [`Lobby::propose`] of the settings with that. This player's build is
-    /// checked again as the match would now play it ([`Lobby::problems`]),
-    /// and so is the other's by its own peer.
-    pub fn set_patch_cards(&mut self, patch_cards: bool) {
-        self.propose(Settings { patch_cards, ..self.mine.clone() });
+    /// Change the match's ruleset, the host alone (false, and nothing
+    /// changes, for a joiner: it plays the host's): [`Lobby::propose`] of
+    /// the settings with it. This player's build is checked again under it
+    /// ([`Lobby::problems`]), and so is the other's by its own peer.
+    pub fn set_ruleset(&mut self, ruleset: Ruleset) -> bool {
+        if self.compat.role == Role::Join {
+            return false;
+        }
+        self.propose(Settings { ruleset, ..self.mine.clone() });
+        true
     }
 
     /// Ready (or not) to play the settings as they stand. A player whose
@@ -1278,14 +1323,18 @@ impl Lobby {
         // (The other is in its lobby: whatever match was played, it has
         // ended it, and needs no more of it.)
         self.tail = None;
-        let settings = match Settings::from_bytes(&self.content, settings) {
+        let settings = match Settings::from_bytes(&self.content, &self.rulesets, settings) {
             Ok(settings) => settings,
             Err(why) => return self.fail(Failure { reason: Reason::Protocol, detail: format!("can't play: the other side's settings don't read here: {why}") }, true),
         };
         // The settings are the match's: theirs of a higher stamp are
         // adopted, and of the same stamp where they differ, by the joiner.
+        // (The ruleset is the host's: a joiner's change made before it
+        // heard the host's ruleset is taken with the host's ruleset, as the
+        // host's own change, which the joiner adopts in turn.)
         let adopts = stamp > self.stamp || (stamp == self.stamp && settings != self.mine && self.compat.role == Role::Join);
-        if adopts {
+        let keeps_ruleset = adopts && self.compat.role == Role::Host && settings.ruleset != self.mine.ruleset;
+        if adopts && !keeps_ruleset {
             let differ = settings != self.mine;
             self.stamp = stamp;
             self.mine = settings.clone();
@@ -1297,7 +1346,11 @@ impl Lobby {
             // player who was ready was ready for the settings before.)
             self.change(self.ready && !differ);
         }
-        self.theirs = Some(Theirs { revision, stamp, settings, ready, name: player_name(&name) });
+        self.theirs = Some(Theirs { revision, stamp, settings: settings.clone(), ready, name: player_name(&name) });
+        if keeps_ruleset && !self.settled() {
+            let ruleset = self.mine.ruleset.clone();
+            self.put(Settings { ruleset, ..settings });
+        }
         // (A commitment stands while the other's state is the one agreed.)
         if let Phase::Hello(c) | Phase::Reveal(c, _) = &self.phase
             && !(ready && c.revisions.1 == revision)
@@ -1496,9 +1549,7 @@ impl Lobby {
         w.put(&self.revision);
         w.put(&theirs);
         w.put(&self.nonce);
-        // (The side as the match will play it: cards that don't apply
-        // aren't said.)
-        w.bytes(&nettai_match::binary::side_bytes(&self.content, &self.mine.as_played(&self.content, &self.side)));
+        w.bytes(&nettai_match::binary::side_bytes(&self.content, &self.side));
         let mut hello = vec![Kind::Hello as u8];
         let mut w = Writer(&mut hello);
         self.compat.write(&mut w);
@@ -1523,9 +1574,9 @@ impl Lobby {
         let side_bytes = r.bytes().map_err(bad)?;
         r.finish().map_err(bad)?;
         let side = nettai_match::binary::read_side(&self.content, side_bytes).map_err(|e| failed(Reason::Protocol, format!("the other player's side doesn't decode ({e})")))?;
-        // Their build, checked as this peer checks its own player's: as
-        // the match will play it, by a build's check.
-        let problems = c.settings.checked(&self.content, &side).problems;
+        // Their build, checked as this peer checks its own player's: under
+        // the agreed ruleset, by a build's check.
+        let problems = c.settings.checked(&self.content, &self.rulesets, &side).problems;
         if !problems.is_empty() {
             let said: Vec<&str> = problems.iter().map(|p| p.text.as_str()).collect();
             let detail = format!("the other player's side breaks the rules: {}", said.join("; "));
@@ -1631,9 +1682,10 @@ pub(crate) mod testing {
     pub fn pair(content: &Arc<Content>, settings: [Settings; 2], sides: [Side; 2]) -> [Lobby; 2] {
         let [s0, s1] = settings;
         let [d0, d1] = sides;
+        let rulesets = nettai_match::testing::rulesets(content.game());
         let mut lobbies = [
-            Lobby::new(Role::Host, content, s0, d0, 0x1111, Duration::from_secs(10)),
-            Lobby::new(Role::Join, content, s1, d1, 0x2222, Duration::from_secs(10)),
+            Lobby::new(Role::Host, content, rulesets.clone(), s0, d0, 0x1111, Duration::from_secs(10)),
+            Lobby::new(Role::Join, content, rulesets, s1, d1, 0x2222, Duration::from_secs(10)),
         ];
         for l in &mut lobbies {
             l.set_ready(true);
@@ -1695,9 +1747,33 @@ mod tests {
         other
     }
 
-    /// EXE6's settings of a set first to `wins`.
+    /// EXE6's settings of a set first to `wins`, under its Mixed ruleset,
+    /// which holds nothing back: the random sides these tests bring may hold
+    /// both versions' Crosses, which Standard (a new lobby's) refuses.
     fn settings(wins: u8) -> Settings {
-        Settings::new("exe6", wins)
+        Settings::new("exe6", wins, rulesets().preset("mixed").unwrap().clone())
+    }
+
+    /// A new EXE6 build of `version`: one version's things alone, so it plays
+    /// under Standard.
+    fn built(content: &Arc<Content>, version: &str) -> Side {
+        nettai_match::build::Builds::of(content, "exe6").unwrap().new_build(content, version).unwrap()
+    }
+
+    /// EXE6's rulesets.
+    fn rulesets() -> Arc<Rulesets> {
+        nettai_match::testing::rulesets("exe6")
+    }
+
+    /// EXE6's Standard ruleset: everything allowed, one version per build,
+    /// open builds.
+    fn standard() -> Ruleset {
+        rulesets().first().clone()
+    }
+
+    /// `s` with its builds closed.
+    fn closed(s: Settings) -> Settings {
+        Settings { closed_builds: true, ..s }
     }
 
     /// Why a lobby failed.
@@ -1799,64 +1875,104 @@ mod tests {
         }
     }
 
-    /// Settings go by name and read back, closed builds with them, and what
-    /// the set is first to (one round's wins, a triple battle's, four's);
-    /// ones this content can't play are refused with why.
+    /// Settings go by name and read back, closed builds and the ruleset with
+    /// them (a preset, a player's own with what it holds back by name, one
+    /// version per build or mixed), and what the set is first to (one
+    /// round's wins, a triple battle's, four's); ones this content can't
+    /// play are refused with why.
     #[test]
     fn settings_go_by_name() {
         let content = nettai_match::testing::exe6_content();
+        let r = rulesets();
+        let read = |s: &Settings| Settings::from_bytes(&content, &r, &s.to_bytes(&content));
         let m = nettai_match::pick::live(&content, "exe6", 9, None).unwrap();
-        let s = Settings::of_match(&m);
-        assert_eq!(Settings::from_bytes(&content, &s.to_bytes(&content)).unwrap(), s);
-        let closed = Settings { closed_builds: true, ..s.clone() };
-        assert_eq!(Settings::from_bytes(&content, &closed.to_bytes(&content)).unwrap(), closed);
-        assert_ne!(closed.hash(&content), s.hash(&content), "what both commit to says whether builds are closed");
-        // Patch cards apply unless the settings say they don't, which both
-        // commit to as well.
-        assert!(s.patch_cards && settings(TRIPLE_BATTLE).patch_cards);
-        let bare = Settings { patch_cards: false, ..s.clone() };
-        assert_eq!(Settings::from_bytes(&content, &bare.to_bytes(&content)).unwrap(), bare);
-        assert!(bare.hash(&content) != s.hash(&content) && bare.hash(&content) != closed.hash(&content));
+        let s = Settings::of_match(&m, standard());
+        assert_eq!(read(&s).unwrap(), s);
+        let shut = closed(s.clone());
+        assert_eq!(read(&shut).unwrap(), shut);
+        assert_ne!(shut.hash(&content), s.hash(&content), "what both commit to says whether builds are closed");
+        // Every preset reads back, and both commit to which.
+        let mut hashes = std::collections::BTreeSet::new();
+        for preset in &r.presets {
+            let with = Settings { ruleset: preset.clone(), ..s.clone() };
+            assert_eq!(read(&with).unwrap(), with);
+            hashes.insert(with.hash(&content));
+        }
+        assert_eq!(hashes.len(), r.presets.len());
+        // A player's own, by its name, holding back a chip and a card by theirs.
+        let mut own = Ruleset::open(RulesetName::Own("Tournament".into()));
+        own.one_per_build = true;
+        own.set_allowed("folder", nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0, false);
+        own.set_allowed("patch_cards", nettai_match::ids::entry(&content, "exe6", nettai_match::facts::PATCH_CARDS, "starman").unwrap().0, false);
+        let owned = Settings { ruleset: own.clone(), ..s.clone() };
+        assert_eq!(read(&owned).unwrap(), owned);
+        let bytes = owned.to_bytes(&content);
+        let text = String::from_utf8_lossy(&bytes);
+        assert!(text.contains("Tournament") && text.contains("bass") && text.contains("starman"), "by name: {text}");
         let blank = settings(3);
-        assert_eq!(Settings::from_bytes(&content, &blank.to_bytes(&content)).unwrap(), blank);
+        assert_eq!(read(&blank).unwrap(), blank);
         assert_eq!(settings(1).rounds, vec![RoundSettings::default()]);
         for (wins, rounds) in [(1, 1), (TRIPLE_BATTLE, 3), (4, 7), (nettai_match::MAX_FIRST_TO, 19)] {
             let set = settings(wins);
             assert_eq!((set.first_to(), set.rounds.len()), (wins, rounds));
-            let back = Settings::from_bytes(&content, &set.to_bytes(&content)).unwrap();
+            let back = read(&set).unwrap();
             assert_eq!((back.first_to(), &back), (wins, &set));
         }
         let mut other = s.clone();
         other.game = "exe5".into();
-        assert!(Settings::from_bytes(&content, &other.to_bytes(&content)).unwrap_err().contains("no stage"));
+        assert!(read(&other).unwrap_err().contains("no stage"));
+        // (Open builds, and the ruleset as written: a preset's, one per build, nothing held back.)
+        let ruleset = |w: &mut Writer, name: &str| {
+            w.put(&false);
+            w.put(&0u8);
+            w.put(&name.to_string());
+            w.put(&true);
+            w.uvarint(0);
+        };
         let mut bytes = Vec::new();
         let mut w = Writer(&mut bytes);
         w.put(&"exe6".to_string());
-        w.put(&false);
-        w.put(&true);
+        ruleset(&mut w, "standard");
         w.put(&false);
         w.put(&1u8);
         w.put(&"no-such-stage".to_string());
         w.put(&String::new());
-        assert_eq!(Settings::from_bytes(&content, &bytes).unwrap_err(), "round 1: no stage no-such-stage in exe6");
-        // (What the set is first to is the byte after the game and the three
-        // switches.)
-        let first_to = 1 + "exe6".len() + 3;
+        assert_eq!(Settings::from_bytes(&content, &r, &bytes).unwrap_err(), "round 1: no stage no-such-stage in exe6");
+        // A ruleset of a category or an item the game hasn't is refused.
+        let mut bytes = Vec::new();
+        let mut w = Writer(&mut bytes);
+        w.put(&"exe6".to_string());
+        w.put(&false);
+        w.put(&1u8);
+        w.put(&"Mine".to_string());
+        w.put(&false);
+        w.uvarint(1);
+        w.put(&"folder".to_string());
+        w.uvarint(1);
+        w.put(&"no-such-chip".to_string());
+        w.put(&false);
+        w.put(&1u8);
+        w.put(&String::new());
+        w.put(&String::new());
+        assert!(Settings::from_bytes(&content, &r, &bytes).unwrap_err().contains("no-such-chip"));
+        // (What the set is first to is the byte after the game, closed
+        // builds, the ruleset and the pool's switch.)
+        let first_to = 1 + "exe6".len() + 1 + 1 + 1 + "mixed".len() + 1 + 1 + 1;
         assert_eq!(blank.to_bytes(&content)[first_to], 3);
         for wins in [0, nettai_match::MAX_FIRST_TO + 1] {
             let mut none = blank.to_bytes(&content);
             none[first_to] = wins;
-            assert_eq!(Settings::from_bytes(&content, &none).unwrap_err(), format!("first to {wins}: a set is first to 1 to 10"));
+            assert_eq!(Settings::from_bytes(&content, &r, &none).unwrap_err(), format!("first to {wins}: a set is first to 1 to 10"));
         }
         // Backgrounds from the pool, one round on another game's: both read back, and both commit to the pick.
         let pool = Settings { backgrounds: BackgroundPick::Pool, ..blank.clone() };
-        assert_eq!(Settings::from_bytes(&content, &pool.to_bytes(&content)).unwrap(), pool);
+        assert_eq!(read(&pool).unwrap(), pool);
         assert_ne!(pool.hash(&content), blank.hash(&content));
         let mut foreign = pool.clone();
         foreign.rounds[1].background = Some("exe4:acdc-area".into());
-        assert_eq!(Settings::from_bytes(&content, &foreign.to_bytes(&content)).unwrap(), foreign);
+        assert_eq!(read(&foreign).unwrap(), foreign);
         foreign.rounds[1].background = Some("exe4:nowhere".into());
-        assert_eq!(Settings::from_bytes(&content, &foreign.to_bytes(&content)).unwrap_err(), "round 2: no background exe4:nowhere in the background pool");
+        assert_eq!(read(&foreign).unwrap_err(), "round 2: no background exe4:nowhere in the background pool");
     }
 
     /// With the backgrounds from the pool, both peers draw each round's from it alike, by the seed from both
@@ -1911,10 +2027,14 @@ mod tests {
     }
 
     /// The settings are the match's: a joiner coming into the lobby takes
-    /// the host's; either player changes them and the other's lobby shows
-    /// the same, both ready marks cleared; where both change them at once
-    /// the host's change stands; and what both then ready on is what is
-    /// agreed, closed builds reaching both hosts with the agreement.
+    /// the host's; either player changes First to and closed builds and the
+    /// other's lobby shows the same, both ready marks cleared; the ruleset is
+    /// the host's
+    /// alone (a joiner's can't change it, and a joiner's change made before
+    /// it heard the host's ruleset keeps the host's); where both change them
+    /// at once the host's change stands; and what both then ready on is
+    /// what is agreed, the ruleset and closed builds reaching both hosts with
+    /// the agreement.
     #[test]
     fn the_settings_are_shared() {
         let content = nettai_match::testing::exe6_content();
@@ -1924,7 +2044,7 @@ mod tests {
         // The joiner last played single battles; the host's lobby is a
         // triple battle. The joiner's shows the host's once it hears it,
         // and its player isn't ready for settings they hadn't seen.
-        let mut lobbies = pair(&content, [settings(TRIPLE_BATTLE), settings(1)], [side(&content, 3), side(&content, 4)]);
+        let mut lobbies = pair(&content, [settings(TRIPLE_BATTLE), settings(1)], [built(&content, "gregar"), built(&content, "falzar")]);
         run(&mut lobbies, now, 4, &mut |_, _| {});
         assert_eq!(both(&lobbies), [settings(TRIPLE_BATTLE), settings(TRIPLE_BATTLE)]);
         assert_eq!(marks(&lobbies), [true, false, false, true], "the joiner readied on other settings");
@@ -1937,9 +2057,15 @@ mod tests {
         run(&mut lobbies, now, 4, &mut |_, _| {});
         assert_eq!(both(&lobbies), [settings(1), settings(1)]);
         assert_eq!(marks(&lobbies), [false; 4]);
-        // Both ready; the joiner closes the builds as the agreement is
-        // under way: it is taken back, both show closed builds, both marks
-        // are clear again.
+        // The joiner can't choose the ruleset, nor change it by proposing
+        // settings with another.
+        assert!(!lobbies[1].set_ruleset(standard()));
+        lobbies[1].propose(Settings { ruleset: standard(), ..settings(1) });
+        run(&mut lobbies, now, 4, &mut |_, _| {});
+        assert_eq!(both(&lobbies), [settings(1), settings(1)]);
+        // Both ready; the joiner closes the builds as the agreement is under
+        // way: it is taken back, both show closed builds, both marks are
+        // clear again.
         lobbies[0].set_ready(true);
         lobbies[1].set_ready(true);
         for from in [0, 1, 0] {
@@ -1950,8 +2076,8 @@ mod tests {
         }
         lobbies[1].set_closed_builds(true);
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        let closed = Settings { closed_builds: true, ..settings(1) };
-        assert_eq!(both(&lobbies), [closed.clone(), closed.clone()]);
+        let shut = closed(settings(1));
+        assert_eq!(both(&lobbies), [shut.clone(), shut.clone()]);
         assert_eq!(marks(&lobbies), [false; 4]);
         assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)));
         // Both change them at once (neither has heard the other's change):
@@ -1959,20 +2085,34 @@ mod tests {
         lobbies[0].set_first_to(TRIPLE_BATTLE);
         lobbies[1].set_first_to(3);
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        let agreed = Settings { closed_builds: true, ..settings(TRIPLE_BATTLE) };
-        assert_eq!(both(&lobbies), [agreed.clone(), agreed.clone()]);
-        // Patch cards are the match's too: both ready, the joiner turns
-        // them off; both show that, and both marks are clear. The host turns
-        // them on again, the same.
-        for on in [false, true] {
-            assert!(lobbies[0].set_ready(true) && lobbies[1].set_ready(true));
-            lobbies[on as usize ^ 1].set_patch_cards(on);
+        assert_eq!(both(&lobbies), [closed(settings(TRIPLE_BATTLE)), closed(settings(TRIPLE_BATTLE))]);
+        // The host changes the ruleset as the joiner changes First to, neither
+        // having heard the other: the joiner's change is taken with the
+        // host's ruleset, on both. Then the host picks each preset in turn:
+        // both show it, and both marks are clear.
+        lobbies[0].set_ruleset(standard());
+        lobbies[1].set_first_to(4);
+        lobbies[1].set_first_to(TRIPLE_BATTLE);
+        run(&mut lobbies, now, 8, &mut |_, _| {});
+        let both_now = both(&lobbies);
+        assert_eq!(both_now[0], both_now[1]);
+        assert_eq!(both_now[0].ruleset.name, RulesetName::Preset("standard".into()), "the host's ruleset stands");
+        for preset in rulesets().presets.iter().rev() {
+            // (Under one version's preset the other's build can't be ready.)
+            lobbies[0].set_ready(true);
+            lobbies[1].set_ready(true);
+            lobbies[0].set_ruleset(preset.clone());
             run(&mut lobbies, now, 6, &mut |_, _| {});
-            let with = Settings { patch_cards: on, ..agreed.clone() };
-            assert_eq!(both(&lobbies), [with.clone(), with], "patch cards {on}");
-            assert_eq!(marks(&lobbies), [false; 4], "patch cards {on}");
+            let with = Settings { ruleset: preset.clone(), ..both(&lobbies)[0].clone() };
+            assert_eq!(both(&lobbies), [with.clone(), with], "{:?}", preset.name);
+            assert_eq!(marks(&lobbies), [false; 4], "{:?}", preset.name);
             assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)));
         }
+        lobbies[0].set_ruleset(settings(1).ruleset);
+        lobbies[0].set_first_to(TRIPLE_BATTLE);
+        run(&mut lobbies, now, 6, &mut |_, _| {});
+        let agreed = closed(settings(TRIPLE_BATTLE));
+        assert_eq!(both(&lobbies), [agreed.clone(), agreed.clone()]);
         // One ready isn't an agreement; both are, on what both show.
         lobbies[0].set_ready(true);
         run(&mut lobbies, now, 6, &mut |_, _| {});
@@ -1984,107 +2124,20 @@ mod tests {
         for l in &mut lobbies {
             let a = started(l, now);
             assert_eq!(a.settings, agreed);
-            assert!(a.closed_builds() && a.patch_cards() && a.m.first_to() == TRIPLE_BATTLE);
+            assert!(a.closed_builds() && a.m.first_to() == TRIPLE_BATTLE);
         }
     }
 
-    /// EXE6's patch cards by their names, as a side's list holds them.
-    fn cards(content: &Arc<Content>, list: &str) -> Vec<nettai_battle::rules::Fact<'static>> {
-        nettai_match::testing::patch_cards(content, "exe6", list)
-    }
-
-    /// With patch cards off, neither player's cards apply: the match two
-    /// peers agree of builds with cards is the match of the same builds with
-    /// their cards taken out by hand, agreed with patch cards on (the same
-    /// seed, the same sides, the same first round by its digest, and the
-    /// same battle tick for tick on the same buttons), and not the match of
-    /// the builds as they are. The agreement says which way it is played
-    /// and holds the sides as played, as the match a recording keeps does;
-    /// and with cards off a peer reveals its side without them, so cards
-    /// that don't apply never cross.
+    /// In each of the three games, a ruleset that allows no patch cards (the
+    /// No patch cards preset) refuses a build that holds any, each card a
+    /// problem of its own at its entry, where before such a build was
+    /// played without them; the same builds play under Standard as they
+    /// are, cards and all; and without their cards they play under it.
     #[test]
-    fn with_patch_cards_off_a_match_is_played_without_them() {
-        use nettai_battle::PlayerTick;
-        let content = nettai_match::testing::exe6_content();
-        // Canodumb's card takes 40 HP and adds an attack level and a charged
-        // shot; StarMan's takes two attack levels and adds a Mega chip.
-        let carded = |seed: u32, list: &str| {
-            let mut s = side(&content, seed);
-            s.set_fact(&content, "patch_cards", &cards(&content, list)).unwrap();
-            assert_eq!(Checked::of(&content, "exe6", &s).problems, [], "{list}");
-            s
-        };
-        let with = [carded(3, "canodumb"), carded(4, "starman,canodumb")];
-        let bare = with.each_ref().map(|s| {
-            let mut s = s.clone();
-            s.set_fact(&content, "patch_cards", &[]).unwrap();
-            s
-        });
-        assert_ne!(with, bare);
-        let (on, off) = (settings(1), Settings { patch_cards: false, ..settings(1) });
-        assert_eq!([off.as_played(&content, &with[0]), on.as_played(&content, &with[0])], [bare[0].clone(), with[0].clone()]);
-        // The same two peers (the same nonces) agree three matches.
-        let [played, joiner] = agree(&content, &off, with.clone());
-        let [by_hand, _] = agree(&content, &on, bare.clone());
-        let [as_they_are, _] = agree(&content, &on, with.clone());
-        assert_eq!((played.seed, by_hand.seed), (as_they_are.seed, as_they_are.seed));
-        assert_eq!([played.patch_cards(), by_hand.patch_cards(), as_they_are.patch_cards()], [false, true, true]);
-        // The sides as played, on both peers, and in the match a recording
-        // keeps.
-        assert_eq!((&played.sides, &played.m.sides, &joiner.sides, &joiner.m), (&bare, &bare, &bare, &played.m));
-        assert_eq!((&by_hand.sides, &as_they_are.sides, &as_they_are.m.sides), (&bare, &with, &with));
-        assert_eq!(played.m.sides, by_hand.m.sides);
-        // A recording of it (a recorder made of the agreement) holds them
-        // so: the sides as they were played, no card among them.
-        let sink = crate::testing::Shared::default();
-        drop(crate::replay::Recorder::of_agreement(Box::new(sink.clone()), &content, &played, 0).unwrap());
-        let replay = nettai_replay::Replay::read(&sink.bytes()).unwrap();
-        assert_eq!(nettai_match::binary::read_match(&content, &replay.match_bytes).unwrap().sides, bare);
-        // The first round, by its digest: the one both peers say as they
-        // load.
-        let digest = |a: &Agreement| a.set.start().digest();
-        assert_eq!((digest(&played), digest(&joiner)), (digest(&by_hand), digest(&by_hand)));
-        assert_ne!(digest(&played), digest(&as_they_are), "the cards change the round");
-        let (a, c) = (played.set.start(), as_they_are.set.start());
-        assert_eq!((a.stats[0].max_hp, a.stats[0].attack), (c.stats[0].max_hp + 40, c.stats[0].attack - 1), "Canodumb's card isn't applied");
-        // Played: the same buttons, tick for tick, the same battle.
-        let (mut x, mut y) = (played.set.start(), by_hand.set.start());
-        let mut masher = nettai_netplay::standin::Masher::new(7);
-        for tick in 0..1500u32 {
-            let mashed = masher.buttons();
-            let held = [0, 1].map(|s| if x.round.mode == nettai_battle::battle::mode::CUSTOM { crate::driver::bot_buttons(&x, s, tick) } else if s == 0 { mashed } else { 0 });
-            let input = held.map(|held| PlayerTick { held });
-            x.tick(&input, Default::default());
-            y.tick(&input, Default::default());
-            assert_eq!(x.digest(), y.digest(), "tick {tick}");
-        }
-        assert!(x.round.turn >= 1, "the fight ran");
-        // What a peer reveals with patch cards off is its side without its
-        // cards: the Reveal of the build with them is the Reveal of the
-        // build with them taken out.
-        let reveals = |sides: [Side; 2]| -> Vec<Vec<u8>> {
-            let mut lobbies = pair(&content, [off.clone(), off.clone()], sides);
-            let mut said = Vec::new();
-            run(&mut lobbies, Instant::now(), 20, &mut |from, d| {
-                if from == 0 && d[0] == Kind::Reveal as u8 {
-                    said.push(d.clone());
-                }
-            });
-            said
-        };
-        let (carded, by_hand) = (reveals(with.clone()), reveals(bare.clone()));
-        assert!(!carded.is_empty() && carded == by_hand);
-    }
-
-    /// The same in each of the three games, whatever a patch card is there
-    /// (EXE4's goes in a slot): two new builds with a card each agree a
-    /// match with patch cards off, and it is the match of the builds
-    /// without their cards (the same sides, the same first round by its
-    /// digest), not the match of the builds as they are.
-    #[test]
-    fn in_each_game_a_match_without_patch_cards_is_of_the_builds_without_them() {
+    fn in_each_game_a_ruleset_allowing_no_patch_cards_refuses_a_build_with_cards() {
         use nettai_battle::rules::Fact;
         use nettai_content_api::{Registry, Value};
+        use nettai_match::Wrong;
         use nettai_match::facts::PATCH_CARDS;
         use nettai_match::testing::{exe4_content, exe5_content, exe6_content, patch_cards};
         for (content, game, versions, card) in [
@@ -2092,119 +2145,143 @@ mod tests {
             (exe5_content(), "exe5", ["protoman", "colonel"], "quaker"),
             (exe6_content(), "exe6", ["gregar", "falzar"], "canodumb"),
         ] {
+            let rulesets = nettai_match::testing::rulesets(game);
             let builds = nettai_match::build::Builds::of(&content, game).unwrap();
+            let card = nettai_match::ids::entry(&content, game, PATCH_CARDS, card).unwrap();
             let with = versions.map(|version| {
                 let mut side = builds.new_build(&content, version).unwrap();
                 // (EXE4's list holds a card with the slot it is in.)
                 let cards = if game == "exe4" {
-                    let card = nettai_match::ids::entry(&content, game, PATCH_CARDS, card).unwrap();
                     vec![Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::Entry, card.0))), ("slot", Fact::Value(Value::Int(0)))])]
                 } else {
-                    patch_cards(&content, game, card)
+                    patch_cards(&content, game, nettai_match::ids::name_of(&content, Registry::Entry, card.0).unwrap())
                 };
                 side.set_fact(&content, PATCH_CARDS, &cards).unwrap();
                 side
             });
             let bare = with.each_ref().map(|side| side.without_patch_cards(&content));
-            assert_ne!(with, bare, "{game}");
-            let on = Settings::new(game, 1);
-            let off = Settings { patch_cards: false, ..on.clone() };
-            let [played, joiner] = agree(&content, &off, with.clone());
-            let [by_hand, _] = agree(&content, &on, bare.clone());
-            let [as_they_are, _] = agree(&content, &on, with.clone());
-            assert_eq!((&played.sides, &played.m, &joiner.m), (&bare, &by_hand.m, &by_hand.m), "{game}");
-            assert_eq!(as_they_are.sides, with, "{game}");
-            let digest = |a: &Agreement| a.set.start().digest();
-            assert_eq!((digest(&played), digest(&joiner)), (digest(&by_hand), digest(&by_hand)), "{game}");
-            assert_ne!(digest(&played), digest(&as_they_are), "{game}: the cards change the round");
+            let none = Settings::new(game, 1, rulesets.preset("no_patch_cards").unwrap().clone());
+            let standard = Settings::new(game, 1, rulesets.first().clone());
+            for side in &with {
+                let problems = none.checked(&content, &rulesets, side).problems;
+                assert_eq!(problems.len(), 1, "{game}");
+                assert_eq!((&problems[0].what, problems[0].field.as_deref(), problems[0].entry), (&Wrong::NotAllowed { registry: Registry::Entry, def: card.0 }, Some(PATCH_CARDS), Some(0)), "{game}");
+            }
+            // In the lobby: neither can ready, and nothing is agreed.
+            let now = Instant::now();
+            let mut lobbies = pair(&content, [none.clone(), none.clone()], with.clone());
+            assert!(lobbies.iter().all(|l| !l.ready() && l.problems().len() == 1), "{game}");
+            run(&mut lobbies, now, 6, &mut |_, _| {});
+            assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)), "{game}");
+            // Under Standard they are played as they are; without their cards, under none too.
+            let [as_they_are, _] = agree(&content, &standard, with.clone());
+            assert_eq!((&as_they_are.sides, &as_they_are.m.sides), (&with, &with), "{game}");
+            let [bare_none, _] = agree(&content, &none, bare.clone());
+            assert_eq!(bare_none.sides, bare, "{game}");
         }
     }
 
-    /// A build is checked as the match will play it. One legal only by a
-    /// card of its own (six Mega chips, the sixth by StarMan's card) can be
-    /// readied with patch cards on. Turned off by the other player, the
-    /// settings are adopted and the build checked again: it has a problem,
-    /// typed (six Mega chips, five at most), and its player can't be ready
-    /// until the cards are on again. The check is a build's, the one a
-    /// build screen asks. A program that readies and reveals such a build
-    /// anyway is refused: the other is told their build breaks a rule, and
-    /// it is told its own does, each with the problem.
+    /// A build is checked under the agreed ruleset. One that holds a chip the
+    /// host's ruleset doesn't allow can be readied under Standard; when the
+    /// host picks that ruleset, the joiner's lobby adopts it and checks its
+    /// own build again: it has a problem, typed (the chip isn't allowed, at
+    /// its first entry), and its player can't be ready until the host picks
+    /// another; the check is a build's, the one a build screen asks. A build
+    /// of two versions' things is refused under one version per build and
+    /// played under Mixed. A program that readies and reveals a refused
+    /// build anyway is refused: the other is told their build breaks a rule,
+    /// and it is told its own does, each with the problem. And a ruleset
+    /// agreed reaches both with the match, the builds as they are.
     #[test]
-    fn a_build_legal_only_by_its_cards_cant_be_played_without_them() {
-        use nettai_battle::content::ChipClass;
-        use nettai_battle::custom::folder::FOLDER_SIZE;
-        use nettai_battle::custom::{FolderChip, SavedFolder};
-        use nettai_match::{Count, Folder, Wrong};
+    fn a_build_holding_what_the_ruleset_bans_cant_be_played() {
+        use nettai_content_api::Registry;
+        use nettai_match::Wrong;
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let chip = |key: &str| {
-            let id = content.defs.chip_by_key(key).unwrap_or_else(|| panic!("no chip {key}"));
-            FolderChip::new(id, content.chip(id).codes[0])
-        };
-        let mut chips = [chip("recov10"); FOLDER_SIZE];
-        let mut plain = ["cannon", "airshot", "vulcan1", "spreadr1", "minibomb", "sword"].iter().cycle();
-        for c in chips.iter_mut().skip(5) {
-            *c = chip(plain.next().unwrap());
-        }
-        for (i, key) in ["roll", "roll2", "heatman", "elecman", "slashman", "eraseman"].iter().enumerate() {
-            chips[10 + i] = chip(key);
-        }
-        let mut build = side(&content, 3);
-        build.set_folder(&content, &Folder::from(SavedFolder { chips, regular: None, tags: None })).unwrap();
-        build.set_fact(&content, "patch_cards", &cards(&content, "starman")).unwrap();
-        let six_megas = Wrong::Class { class: ChipClass::Mega, count: Count { used: 6, limit: 5 } };
-        let (on, off) = (settings(1), Settings { patch_cards: false, ..settings(1) });
+        let r = rulesets();
+        // The joiner's build holds a Spreader at its fourth entry, which the
+        // host's (a new save's folder) doesn't; the host's own ruleset holds it
+        // back.
+        let mut joiner = built(&content, "falzar");
+        let held = content.defs.chip_by_key("spreadr1").unwrap();
+        let first = 3;
+        let mut folder = joiner.folder(&content);
+        folder.chips[first] = Some(nettai_battle::custom::FolderChip::new(held, content.chip(held).codes[0]));
+        joiner.set_folder(&content, &folder).unwrap();
+        assert!(Checked::under(&content, "exe6", &joiner, &r, &standard()).ready());
+        let mut no_chip = Ruleset::open(RulesetName::Own("No chip".into()));
+        no_chip.one_per_build = true;
+        no_chip.set_allowed("folder", held.0, false);
+        let banned = Wrong::NotAllowed { registry: Registry::Chip, def: held.0 };
         let whats = |problems: &[Problem]| -> Vec<Wrong> { problems.iter().map(|p| p.what.clone()).collect() };
-        // The settings' check is a build's, of the side as played.
-        assert_eq!(on.checked(&content, &build).problems, Checked::of(&content, "exe6", &build).problems);
-        assert_eq!(off.checked(&content, &build).problems, Checked::of(&content, "exe6", &build.without_patch_cards(&content)).problems);
-        assert_eq!((whats(&on.checked(&content, &build).problems), whats(&off.checked(&content, &build).problems)), (vec![], vec![six_megas.clone()]));
+        let under = Settings { ruleset: no_chip.clone(), ..settings(1) };
+        assert_eq!(under.checked(&content, &r, &joiner).problems, Checked::under(&content, "exe6", &joiner, &r, &no_chip).problems);
+        assert_eq!(whats(&under.checked(&content, &r, &joiner).problems), [banned.clone()]);
+        assert_eq!(under.checked(&content, &r, &joiner).problems[0].entry, Some(first));
 
-        // In the lobby: ready with cards on; the joiner turns them off.
-        let mut lobbies = pair(&content, [on.clone(), on.clone()], [build.clone(), side(&content, 4)]);
-        assert!(lobbies[0].problems().is_empty() && lobbies[0].ready());
-        assert_eq!(lobbies[0].side_as_played(), build);
-        lobbies[1].set_patch_cards(false);
+        // In the lobby: both ready under Standard; the host picks its own.
+        let standard_one = Settings { ruleset: standard(), ..settings(1) };
+        let mut lobbies = pair(&content, [standard_one.clone(), standard_one.clone()], [built(&content, "gregar"), joiner.clone()]);
+        assert!(lobbies[1].problems().is_empty() && lobbies[1].ready());
+        assert!(lobbies[0].set_ruleset(no_chip.clone()));
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        assert_eq!((lobbies[0].settings(), lobbies[0].ready()), (&off, false));
-        assert_eq!(whats(lobbies[0].problems()), [six_megas.clone()]);
-        assert_eq!(lobbies[0].problems()[0].side, Some(0), "this player's own");
-        assert_eq!(lobbies[0].side_as_played(), build.without_patch_cards(&content));
-        assert!(lobbies[1].problems().is_empty(), "the joiner's build has no cards to miss");
-        // It can't be ready so; the joiner can, and nothing is agreed.
-        assert!(!lobbies[0].set_ready(true) && !lobbies[0].ready());
-        assert!(lobbies[1].set_ready(true));
+        assert_eq!((lobbies[1].settings(), lobbies[1].ready()), (&under, false));
+        assert_eq!(whats(lobbies[1].problems()), [banned.clone()]);
+        assert_eq!(lobbies[1].problems()[0].side, Some(0), "this player's own");
+        assert_eq!(lobbies[1].side(), &joiner, "nothing is taken out of it");
+        // It can't be ready so; the host can, and nothing is agreed.
+        assert!(!lobbies[1].set_ready(true) && !lobbies[1].ready());
+        assert!(lobbies[0].set_ready(true));
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)) && !lobbies[1].their_ready());
-        // Another build is checked the same way; this one again, the same.
-        lobbies[0].set_side(side(&content, 9));
-        assert!(lobbies[0].problems().is_empty());
-        lobbies[0].set_side(build.clone());
-        assert_eq!(whats(lobbies[0].problems()), [six_megas.clone()]);
-        // The host turns them on again: the build can be played, both
-        // ready, and the match is of the build with its card.
-        lobbies[0].set_patch_cards(true);
-        assert!(lobbies[0].problems().is_empty());
+        assert!(lobbies.iter_mut().all(|l| matches!(l.poll(now), Status::Pending)) && !lobbies[0].their_ready());
+
+        // A build of two versions' things: two of Falzar's Crosses with
+        // three of Gregar's. Refused under Standard (one per build), played
+        // under Mixed.
+        let crosses = r.category("crosses").unwrap();
+        let gregar = r.group_items(crosses, r.group("gregar").unwrap());
+        let falzar = r.group_items(crosses, r.group("falzar").unwrap());
+        let mut mixed = nettai_match::build::Builds::of(&content, "exe6").unwrap().new_build(&content, "gregar").unwrap();
+        let forms: Vec<nettai_battle::rules::Fact> =
+            gregar[..3].iter().chain(&falzar[..2]).map(|&h| nettai_battle::rules::Fact::Value(nettai_content_api::Value::Def(Registry::Form, h))).collect();
+        mixed.set_fact(&content, "crosses", &forms).unwrap();
+        lobbies[1].set_side(mixed.clone());
+        assert!(lobbies[0].set_ruleset(standard()));
+        run(&mut lobbies, now, 6, &mut |_, _| {});
+        assert_eq!(whats(lobbies[1].problems()), [Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: falzar[..2].iter().map(|&h| (Registry::Form, h)).collect() }]);
+        assert!(lobbies[0].set_ruleset(r.preset("mixed").unwrap().clone()));
+        run(&mut lobbies, now, 6, &mut |_, _| {});
+        assert!(lobbies[1].problems().is_empty());
+
+        // The host picks Standard again and the joiner brings its first
+        // build: both ready, and the ruleset is agreed with the match.
+        assert!(lobbies[0].set_ruleset(standard()));
+        lobbies[0].set_closed_builds(true);
+        lobbies[1].set_side(joiner.clone());
         run(&mut lobbies, now, 6, &mut |_, _| {});
         assert!(lobbies[0].set_ready(true) && lobbies[1].set_ready(true));
         run(&mut lobbies, now, 20, &mut |_, _| {});
         load(&mut lobbies, now);
-        let a = started(&mut lobbies[1], now);
-        assert!(a.patch_cards() && a.sides[0] == build);
+        for l in &mut lobbies {
+            let a = started(l, now);
+            assert_eq!(a.settings, closed(standard_one.clone()));
+            assert!(a.closed_builds() && a.sides[1] == joiner);
+        }
 
-        // A program that doesn't hold its own player to the check: with
-        // cards off, the host's peer readies all the same.
-        let mut lobbies = pair(&content, [off.clone(), off.clone()], [build.clone(), side(&content, 4)]);
+        // A program that doesn't hold its own player to the check: under the
+        // ruleset, the host's peer readies all the same with the build it
+        // holds back.
+        let mut lobbies = pair(&content, [under.clone(), under.clone()], [joiner.clone(), built(&content, "gregar")]);
         assert!(!lobbies[0].ready());
         (lobbies[0].ready, lobbies[0].changed) = (true, true);
         lobbies[0].revision += 1;
         run(&mut lobbies, now, 20, &mut |_, _| {});
         let [h, j] = [0, 1].map(|i| failed(&mut lobbies[i], now));
         let Reason::TheirBuild { problems } = &j.reason else { panic!("{j:?}") };
-        assert_eq!(whats(problems), [six_megas.clone()]);
+        assert_eq!(whats(problems), [banned.clone()]);
         assert!(j.detail.starts_with("can't play: the other player's side breaks the rules: "), "{j:?}");
         let Reason::YourBuild { problems } = &h.reason else { panic!("{h:?}") };
-        assert_eq!(whats(problems), [six_megas]);
+        assert_eq!(whats(problems), [banned]);
         assert!(h.detail.starts_with("the other side refused: can't play: the other player's side breaks the rules: "), "{h:?}");
     }
 
@@ -2372,7 +2449,7 @@ mod tests {
         assert!(matches!(&j.reason, Reason::TheirBuild { .. } | Reason::Protocol), "{j:?}");
         // Nobody answers.
         let timeout = Duration::from_secs(10);
-        let mut alone = Lobby::new(Role::Join, &content, s, side(&content, 3), 7, timeout);
+        let mut alone = Lobby::new(Role::Join, &content, rulesets(), s, side(&content, 3), 7, timeout);
         assert!(matches!(alone.poll(now), Status::Pending));
         assert!(matches!(alone.poll(now + RESEND / 2), Status::Pending));
         assert!(matches!(alone.poll(now + RESEND), Status::Pending));
@@ -2426,7 +2503,7 @@ mod tests {
     fn a_lobby_goes_on_after_a_match() {
         let content = nettai_match::testing::exe6_content();
         let now = Instant::now();
-        let s = Settings { closed_builds: true, ..settings(1) };
+        let s = closed(settings(1));
         let sides = [side(&content, 3), side(&content, 4)];
         let mut lobbies = pair(&content, [s.clone(), s.clone()], sides.clone());
         // (There is no lobby to go back to before a match, and no channel.)
@@ -2637,7 +2714,7 @@ mod tests {
         lobbies[1].receive(now, &frame_datagram(seed, &[0, 0, 0]));
         assert_eq!(starts(&mut lobbies), [true, true]);
         // (A frame before the match is agreed starts nothing.)
-        let mut early = Lobby::new(Role::Join, &content, s, side(&content, 3), 7, Duration::from_secs(10));
+        let mut early = Lobby::new(Role::Join, &content, rulesets(), s, side(&content, 3), 7, Duration::from_secs(10));
         early.receive(now, &frame_datagram(seed, &[0, 0, 0]));
         assert!(matches!(early.poll(now), Status::Pending) && !early.their_loaded());
     }
@@ -2654,7 +2731,7 @@ mod tests {
             let mut said = vec![kind as u8];
             Writer(&mut said).put(&other);
             said.extend_from_slice(b"laid out as that version lays it");
-            let mut lobby = Lobby::new(Role::Host, &content, settings(TRIPLE_BATTLE), side(&content, 3), 7, Duration::from_secs(10));
+            let mut lobby = Lobby::new(Role::Host, &content, rulesets(), settings(TRIPLE_BATTLE), side(&content, 3), 7, Duration::from_secs(10));
             lobby.set_ready(true);
             lobby.receive(now, &said);
             let failure = failed(&mut lobby, now);

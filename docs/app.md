@@ -665,8 +665,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   its menu was left at). The other player coming ends it for the lobby as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
-  nothing of a build), one row of settings (First to, Patch cards and Closed builds are the match's: either
-  player changes them, both see it, and both ready marks clear; Input delay is the player's own, and is the
+  nothing of a build), one row of settings (First to, Ruleset and Closed builds are the match's: both see
+  them, and a change clears both ready marks; either player changes First to and Closed builds, the host alone
+  the Ruleset; Input delay is the player's own, and is the
   Settings' value, kept as it is changed; no music: the battle's music is picked in Practice, §1; no
   background either: every round's is drawn from the background pool by the match's seed, alike for both
   players, §1, "The battle's background") with the
@@ -677,9 +678,14 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   the names beside them, as the mockup has three, six cells don't fit the window in a language a third longer
   than English. On a phone each is a line, its name at the left. Left and Right change a setting, so the row
   can't be walked with them: Tab does, and in the lobby so do the shoulders and the keys bound to L and R
-  (`Screen::action`). Patch cards is the lobby's own setting (`Lobby::set_patch_cards`, on at first; off,
-  neither player's cards apply and each build plays without them: docs/frontend.md §2). The lobby checks this
-  player's build as the settings would play it whenever either changes (`Lobby::problems`, typed); while it
+  (`Screen::action`). **The Ruleset** (docs/design/app-ui.md §2.59; it took Patch cards' place) is the host's
+  select of the game's presets and then the player's own rulesets by name (`LobbyFacts`' `lobby.ruleset`,
+  `rulesets::pickable`; Left and Right step it, Enter opens it as a list; `Lobby::set_ruleset`), with EDIT
+  (`lobby.rules`), which opens the ruleset's page over the lobby (§8, "Rulesets"; the lobby and its link go on
+  under it, and a change made there is the match's at once). The joiner's select can't be changed and shows the
+  host's ruleset by name; its VIEW opens the page to read. A host's lobby starts on the ruleset the player plays
+  by (`rulesets::played_by`), and the one the host picks is remembered as it. The lobby checks this
+  player's build under the ruleset whenever either changes (`Lobby::problems`, typed); while it
   has a problem READY is refused (`Lobby::set_ready` says so, and the mark is the lobby's answer) and the line
   says what is wrong with it, in the error red. So CHANGE BUILD takes any build whose
   file reads, and the lobby is what says one can't be played. **First to** (the user: "instead of "rounds" you
@@ -716,7 +722,7 @@ the sheet at the reference size, so it scrolls: by the wheel and a drag, and by 
 chips' rows), Page Up and Down, Home and End, the pad's too, which the screen takes before the focus would
 move (`Screen::scroll`: the page has no control in it to move to, Back is under it). On a phone a sheet is a column taller than the window: the menu's page scrolls it, and with Tab held each
 of the two is half the window, its top (the navi, its stats, abilities and bugs). This player's card in the
-lobby says the build's name, navi and version as the settings would play it (`Lobby::side_as_played`).
+lobby says the build's name, navi and version (`Lobby::side`).
 
 **The link and the lobby** are one `Session` (`session.rs`), and the screen runs the library's one loop over it
 (docs/design/rollback.md §4.7, "What a host does") in its two frame halves, whatever is on screen:
@@ -816,18 +822,19 @@ before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), 
   menu's STOP PRACTICE (a phone) chosen, and the session ended by the
   other player coming;
 - the lobby's First to (stepped from 2 to 3, `play-lobby-first-to` and `-3`, a pair, then back to 1 for the
-  match played), patch cards and closed builds changed by one player and taken by the other; the input
+  match played), the host's Ruleset stepped from Standard to Mixed (`play-lobby-ruleset`, `-mixed`) and closed
+  builds changed, each taken by the other player; the input
   delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
   saying why), and the first again;
 - the link dropped for six seconds in the lobby and in a match, and made again;
 - a match agreed, loaded with the other side held at 74%, and played to its end (the game's own "WIN" banner,
-  then the lobby again, nobody ready); a second match on the same link with patch cards off and closed builds,
+  then the lobby again, nobody ready); a second match on the same link under Mixed and with closed builds,
   left by the other player; a match as the joiner, on the right navi's console, left by LEAVE MATCH;
 - the other player bringing a build that breaks a rule (its lobby won't make it ready, and this player waits,
   ready); the other player leaving the lobby; this player leaving it.
 
-The three matches of a pass, recorded by their agreements (a set played to its end, a match with patch cards
-off the other player left, a match this one left as the joiner), were played back by nettai-tool
+The three matches of a pass, recorded by their agreements (a set played to its end, a match with closed builds
+the other player left, a match this one left as the joiner), were played back by nettai-tool
 (`--replay`): each reproduces. A
 recording holds the two players' names as the lobby had them, and no build's. Only written, never run: a pad (its SELECT held, its shoulders in the lobby; the code's boxes were drawn and walked
 by the pass, opened as a pad's confirm opens them); the signaling server's other refusals (a full room,
@@ -1226,6 +1233,43 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   (`Builds::settle`, which says which it took, typed: the list says "Imported as Dark MegaMan") and the facts
   no build states at the rules' defaults (`Builds::as_built`). A file that is no save of the game is the typed
   "Not a BN6 save"; what the readers say in words goes to the log.
+
+**Rulesets** (docs/design/app-ui.md §2.59; `crates/nettai/src/rulesets/`). What may be played: the game's
+presets (its rules/rulesets: Standard, the cartridges' own rules, first) and the player's own, each a TOML file
+of its own, `rulesets/<game>/<name>.toml` in the data folder (`rulesets/store.rs`, as builds are kept):
+
+    game = "exe6"
+    name = "Tournament"
+    versions = "one_per_build"
+
+    [banned]
+    folder = ["bass", "deltaray"]
+    patch_cards = ["starman"]
+
+A category is named by the fact of a build it holds back (the folder's chips, the navi, `navicust_programs`,
+`patch_cards`, `crosses` or `souls`), and its items by their names in the game; what a file doesn't name is
+allowed. Closed builds is no ruleset's: it is the lobby's own setting.
+- **The ruleset a player plays by** is one for each game, remembered under `ruleset.<game>` in the settings
+  (`rulesets::played_by`, `remember`: `preset:<id>` or `own:<name>`; the game's first preset where none is, or
+  the one remembered is gone). A host's lobby starts on it, and the build editor checks the build under it.
+- **The build editor's ruleset**: at the tab bar's right end, RULESET, its select (`ruleset`: the presets, then
+  the player's own) and EDIT (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's
+  panel and the grid. The build is checked under it (`Draft::checked` is `Checked::under`), so what it doesn't
+  allow is among the header's problems, and each tab marks it (`Draft::allows`): a navi's card ("Not allowed" in
+  the error red), the folder's library rows ("Not allowed", refused) and entries (the folder's view held to the
+  ruleset: `View::hold_to`), a NaviCust program's row (`ProgramState::NotAllowed`), a patch card's library row
+  and installed card (refused, in the error red), a soul's or Cross's face (a red ring).
+- **A ruleset's page** (`rulesets/page.rs`, `ui/ruleset.slint`'s `RulesetPage` and `RulesetView`): app.slint
+  shows it in the place of the screen that opened it (the lobby's Play, the editor's Builds), which goes on
+  unseen under it; its controls are `rules.`-named, a scope of the focus's, and the screen hands them to it
+  (`Page::activate`, `step`, `choose`, `edit`, `focused`, `answered` for DELETE's question) and hears what it did
+  (`Outcome::Changed`: the ruleset shown changed and was saved, or is a copy; `Deleted`). The categories (a list;
+  a phone's select), the chosen one's items with a check each (Enter, a click or a tap), ALLOW ALL, ALLOW NONE,
+  the version's quick choices (`rules.set`: each group with items in the category, then All; their rows changed
+  in place, so a press on one keeps its focus), the search; the name (saved when confirmed, numbered where
+  another of the player's own has it), Versions, DUPLICATE (named after the ruleset, numbered past the presets'
+  names and the player's own) and DELETE (asked once). Each change is saved at once. A preset, or the host's
+  ruleset a joiner views, changes nothing, and the reserved line says why.
 
 What the screens ask of the game is nettai-match's `build` (docs/frontend.md §6): the game's versions in the
 order every list shows them, a build checked with its problems typed (`Checked`, `nettai_match::Wrong`), its
@@ -2043,7 +2087,12 @@ of the game's first version made beside the walk's, a Giga chip of that version'
 footer's Switch version; `builds-version-switched`, Right: the next version's tag, its forms, the header's one
 problem, the Folder tab marked, the focus still on the tag; `builds-folder-switched`, the entry in the error red
 and the strip saying why; `builds-folder-switched-back`, Left on the tag there: the first version again, ready;
-a step after each checks the focus and the build's state are as the picture's name says). A game may have one navi or thirteen, a choice or none, four tabs or five:
+a step after each checks the focus and the build's state are as the picture's name says); then a ruleset's page
+(`rulesets`): from the Navi tab EDIT by the ruleset the player plays by (`rulesets-preset`: Standard, read alone,
+the reserved line saying so), DUPLICATE (`rulesets-own`), its chips (`rulesets-chips`, chosen by the category's
+select's choice: a phone has no list of them), the first chip held back and the first version's quick choice
+(`rulesets-chips-held`), and Back, the Folder tab marking what the copy holds back (`rulesets-folder-marked`); the
+game's first preset is picked again after, so the next language's walk is as this one. A game may have one navi or thirteen, a choice or none, four tabs or five:
 a step names the control it is for and does nothing where the game has none. The probe's bursts are the
 editor's body arriving as the tab changes, a chip the rules refuse (its row shakes) and a chip put in (it flies
 to its entry, the entry flashes, a count that changed ticks).

@@ -75,6 +75,14 @@ impl Version {
     pub fn sets(&self, name: &str) -> bool {
         fields(&self.set).iter().any(|(n, _)| *n == name)
     }
+
+    /// The names the version states of each fact it sets, by the fact's
+    /// name (EXE5's `souls` and `giga_chips`, each a list of definitions'
+    /// names; a value that names nothing, none): what a save of the version
+    /// can own, which a ruleset's groups read (`ruleset::Rulesets::groups`).
+    pub fn stated_names(&self) -> Vec<(&str, Vec<&str>)> {
+        fields(&self.set).into_iter().map(|(n, v)| (n, items(v).iter().filter_map(Data::str).collect())).collect()
+    }
 }
 
 /// The game's strings' text table that names what a build is made of: each
@@ -649,6 +657,8 @@ pub struct Checked {
     /// What is wrong with the build, typed; empty: it can be played.
     pub problems: Vec<Problem>,
     battle: Option<Battle>,
+    /// The ruleset it was checked under ([`Checked::under`]), which the folder's view holds it to too.
+    ruleset: Option<crate::ruleset::Ruleset>,
 }
 
 impl Checked {
@@ -656,7 +666,7 @@ impl Checked {
     /// checks and the game's rules find with it, of any side's and of a
     /// build's.
     pub fn of(content: &Arc<Content>, game: &str, side: &Side) -> Checked {
-        let none = |problems: Vec<Problem>| Checked { game: game.to_string(), problems, battle: None };
+        let none = |problems: Vec<Problem>| Checked { game: game.to_string(), problems, battle: None, ruleset: None };
         let m = match Match::empty(content, game) {
             Ok(m) => Match { sides: [side.clone(), side.clone()], ..m },
             Err(e) => return none(vec![Problem { side: None, field: None, entry: None, what: Wrong::Match, text: e }]),
@@ -669,10 +679,22 @@ impl Checked {
             Ok(mut b) => {
                 let mut problems = check::validated(&mut b, 0);
                 problems.extend(check::built(&mut b, 0));
-                Checked { game: game.to_string(), problems, battle: Some(b) }
+                Checked { game: game.to_string(), problems, battle: Some(b), ruleset: None }
             }
             Err(e) => none(vec![Problem { side: Some(0), field: None, entry: None, what: Wrong::Internal, text: e }]),
         }
+    }
+
+    /// `side` checked as a build of `game` under `ruleset`: [`Checked::of`]'s
+    /// problems, then one for each definition the build holds that the
+    /// ruleset doesn't allow ([`crate::ruleset::Ruleset::problems`]). What a
+    /// lobby asks of a player's build, and a build screen with a ruleset
+    /// picked.
+    pub fn under(content: &Arc<Content>, game: &str, side: &Side, rulesets: &crate::ruleset::Rulesets, ruleset: &crate::ruleset::Ruleset) -> Checked {
+        let mut checked = Checked::of(content, game, side);
+        checked.problems.extend(ruleset.problems(rulesets, content, side));
+        checked.ruleset = Some(ruleset.clone());
+        checked
     }
 
     /// Whether the build can be played.
@@ -688,9 +710,20 @@ impl Checked {
 
     /// The folder rules' view of `folder` on the build's limits
     /// ([`View::of`]): asked once for a folder as it stands, then read for
-    /// every row of a list. None: the round doesn't start.
+    /// every row of a list; under a ruleset, held to it too
+    /// ([`View::hold_to`]: a chip it doesn't allow refused, and each entry
+    /// of one a problem). None: the round doesn't start.
     pub fn folder_view(&mut self, content: &Content, folder: &Folder) -> Option<View> {
-        View::of(content, &self.game, self.battle.as_mut()?, 0, folder)
+        let mut view = View::of(content, &self.game, self.battle.as_mut()?, 0, folder)?;
+        if let (Some(ruleset), Some(fact)) = (&self.ruleset, content.defs.fact_name(PlayerFact::Folder)) {
+            view.hold_to(ruleset, fact, folder);
+        }
+        Some(view)
+    }
+
+    /// The ruleset the build was checked under, if it was ([`Checked::under`]).
+    pub fn ruleset(&self) -> Option<&crate::ruleset::Ruleset> {
+        self.ruleset.as_ref()
     }
 
     /// What the rules say of `folder`'s Regular and tag chips

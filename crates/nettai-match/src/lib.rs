@@ -18,6 +18,7 @@ pub mod binary;
 pub mod build;
 pub mod check;
 pub mod pick;
+pub mod ruleset;
 pub mod facts;
 pub mod file;
 pub mod folders;

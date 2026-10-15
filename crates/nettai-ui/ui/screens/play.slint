@@ -13,7 +13,7 @@
 import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
-import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
+import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Select, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
@@ -142,9 +142,11 @@ export global PlayView {
     in property <int> ready-seq;
     in property <int> their-ready-seq;
     // The match's settings, both players': the round wins its set is first to (1: a single battle; 2: the
-    // original's triple battle, best of 3), whether the patch cards apply, and closed builds.
+    // original's triple battle, best of 3), the ruleset by its name (the host's to choose: `host`), and closed
+    // builds.
     in property <int> first-to: 2;
-    in property <bool> patch-cards: true;
+    in property <string> ruleset;
+    in property <bool> host;
     in property <bool> closed;
     // The player's own.
     in property <int> input-delay;
@@ -473,15 +475,16 @@ component LobbyCard inherits Rectangle {
     }
 }
 
-// The match's settings and the connection: one row, or on a phone a row each. First to, Patch cards and Closed
-// builds are the match's (either player changes them, and both see it); the input delay is the player's own.
+// The match's settings and the connection: one row, or on a phone a row each. First to, the Ruleset and Closed
+// builds are the match's (both see them; the Ruleset the host alone chooses, with EDIT after it, and the joiner
+// VIEWs it); the input delay is the player's own.
 component LobbyFacts inherits Rectangle {
     // The one row: each setting's name over its control, a cell as wide as the wider of the two, so five fit
     // whatever the language. Where each cell starts, and the row's width.
     property <length> gap: 41px;
     property <length> x1: 24px;
     property <length> x2: self.x1 + max(first-to-label.width, first-to.width) + self.gap;
-    property <length> x3: self.x2 + max(cards-label.width, cards.width) + self.gap;
+    property <length> x3: self.x2 + max(ruleset-label.width, ruleset.width + 8px + rules.width) + self.gap;
     property <length> x4: self.x3 + max(closed-label.width, closed.width) + self.gap;
     property <length> x5: self.x4 + max(delay-label.width, delay.width) + self.gap;
     out property <length> natural-width: self.x5 + max(ping-label.width, bars.width + 10px + ping.width) + 24px;
@@ -526,22 +529,34 @@ component LobbyFacts inherits Rectangle {
         background: Theme.line;
     }
 
-    // Patch cards: the match's, as First to and Closed builds are. Off, neither player's cards apply.
-    cards-label := Value {
+    // The Ruleset: the match's, by its name (docs/design/app-ui.md §2.59). The host's is a select of the game's
+    // presets and their own, with EDIT, which opens its page; the joiner's can't be changed, and VIEW opens its
+    // page to read.
+    ruleset-label := Value {
         x: Theme.phone ? 0px : root.x2;
         y: Theme.phone ? root.line : root.name-y;
         height: Theme.phone ? root.line : root.name-height;
-        text: @tr("Patch cards");
+        text: @tr("Ruleset");
         color: root.name-color;
     }
 
-    cards := Seg {
-        x: Theme.phone ? parent.width - self.width : root.x2;
+    ruleset := Select {
+        x: Theme.phone ? parent.width - rules.width - 8px - self.width : root.x2;
         y: Theme.phone ? root.line + (root.line - self.height) / 2 : root.control-y;
-        nav: "lobby.cards";
-        first: @tr("ON");
-        second: @tr("OFF");
-        chosen: PlayView.patch-cards ? 0 : 1;
+        width: 176px;
+        height: 36px;
+        nav: "lobby.ruleset";
+        value: PlayView.ruleset;
+        enabled: PlayView.host;
+    }
+
+    rules := Button {
+        x: Theme.phone ? parent.width - self.width : root.x2 + ruleset.width + 8px;
+        y: ruleset.y;
+        width: self.natural-width;
+        height: 36px;
+        nav: "lobby.rules";
+        text: PlayView.host ? @tr("EDIT") : @tr("ruleset" => "VIEW");
     }
 
     Rectangle {

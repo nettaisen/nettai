@@ -21,6 +21,7 @@ use nettai_battle::Content;
 use nettai_content_api::ChipHandle;
 use nettai_match::Side;
 use nettai_match::build::{Builds, TEXT_TABLE, Version};
+use nettai_match::ruleset::Rulesets;
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -55,6 +56,8 @@ pub struct Kit {
     version_chips: OnceCell<HashMap<ChipHandle, Vec<String>>>,
     /// The auto battle data's lists (read of the rules once).
     auto_layout: OnceCell<Option<auto::Layout>>,
+    /// The game's rulesets (read of its rules once).
+    rulesets: OnceCell<Option<Arc<Rulesets>>>,
 }
 
 impl Kit {
@@ -78,6 +81,20 @@ impl Kit {
     /// its setup takes no such data.
     pub fn auto_layout(&self) -> Option<&auto::Layout> {
         self.auto_layout.get_or_init(|| auto::Layout::read(self.content(), module_data(self.content(), &self.game, auto::MODULE).as_ref())).as_ref()
+    }
+
+    /// The game's ruleset categories, groups and presets (`nettai_match::ruleset::Rulesets`); none where it says
+    /// nothing of its rulesets (why is in the log).
+    pub fn rulesets(&self) -> Option<Arc<Rulesets>> {
+        self.rulesets
+            .get_or_init(|| match Rulesets::of(self.content(), &self.game) {
+                Ok(r) => Some(Arc::new(r)),
+                Err(why) => {
+                    crate::errors::log(&format!("reading {}'s rulesets", self.game), &why);
+                    None
+                }
+            })
+            .clone()
     }
 
     /// A version's name, as the game's strings have it in `names`' language (its id where they have none).
@@ -135,6 +152,7 @@ pub fn kit_of(game: &str, ready: &Rc<Ready>) -> Option<Rc<Kit>> {
         order: order::Order::load(&ready.loaded.game.dir, game),
         version_chips: OnceCell::new(),
         auto_layout: OnceCell::new(),
+        rulesets: OnceCell::new(),
     });
     KITS.with(|kits| kits.borrow_mut().insert(game.to_string(), kit.clone()));
     Some(kit)
