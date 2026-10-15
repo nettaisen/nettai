@@ -258,6 +258,7 @@ impl Folder {
             Some(Described::Slot(_)) => draft.line(shell, draft.checked.problems.iter().filter(|p| matches!(p.what, Wrong::FolderSize(_)))),
             _ => String::new(),
         };
+        let fault = Draft::unsaid(fault, &draft.pane_line(shell, &self.fields(content), false));
         let detail = draft.with_words(shell, |words| {
             // (Why the last mark asked of the entry wasn't made: the strip's refusal. What the rules have against the
             // entry is its pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
