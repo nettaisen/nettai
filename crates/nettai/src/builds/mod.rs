@@ -20,8 +20,9 @@
 use crate::games::{Names, Ready};
 use crate::shell::Shell;
 use nettai_battle::Content;
+use nettai_content_api::Registry;
 use nettai_match::build::{Builds, Group, TEXT_TABLE};
-use nettai_match::ruleset::Rulesets;
+use nettai_match::ruleset::{Item, Rulesets};
 use std::cell::{OnceCell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
@@ -94,6 +95,15 @@ impl Kit {
     /// build starts from (Play's NEW BUILD).
     pub fn version_tags(&self, names: &Names) -> Vec<nettai_ui::VersionTag> {
         self.builds.groups.iter().map(|group| self.tag_of(names, group)).collect()
+    }
+
+    /// The tag of the version item `item` of `registry` is one's own (a Giga chip, a soul, a Cross, a Beast form: a
+    /// definition whose `version` names a group; a card's variant), for its mark in the build editor's rows; none
+    /// (no text) where it is no version's.
+    pub fn version_tag_of(&self, names: &Names, registry: Registry, item: &Item) -> nettai_ui::VersionTag {
+        let rulesets = self.rulesets();
+        let id = rulesets.as_ref().and_then(|r| r.group_of(registry, item)).map(|g| g.id.clone());
+        id.and_then(|id| self.builds.group(&id)).map(|g| self.tag_of(names, g)).unwrap_or_default()
     }
 
     fn tag_of(&self, names: &Names, group: &Group) -> nettai_ui::VersionTag {

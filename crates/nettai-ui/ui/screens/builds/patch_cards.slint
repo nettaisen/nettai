@@ -16,6 +16,7 @@ import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
+import { VersionTag, VersionMark } from "../../build.slint";
 
 // One line a card writes, and what comes before it in a row of them: nothing, a dot between two of one group, a bar
 // between the groups.
@@ -38,6 +39,8 @@ export struct CardRow {
     note: string,
     refused: bool,
     bad: bool,
+    // The version its variant is (Bass-Cross MegaMan's), or the card is one's own, marked after its name.
+    version: VersionTag,
 }
 
 // The card under the cursor, for the strip: its number, name and facts (its MB, its slot), why it can't go in, and its
@@ -212,6 +215,9 @@ component InstalledRowView inherits Rectangle {
     // (Lifted over the library: let go, it is taken out. Its line is in the error color.)
     in property <bool> removing;
     property <length> lead: root.slotted ? 8px + 34px + 8px : 8px;
+    // (The name's room, its MB after it. The version's mark follows the name: a square of its color where the two
+    // don't fit.)
+    property <length> name-room: max(0px, root.width - root.lead - 30px - 8px - 8px - 56px - 8px);
     // (Lifted: raised, a little larger, with a shadow and a line in the cursor's color.)
     Rectangle {
         visible: root.lifted;
@@ -269,10 +275,10 @@ component InstalledRowView inherits Rectangle {
             vertical-alignment: center;
         }
 
-        Text {
+        name := Text {
             x: root.lead + 30px + 8px;
             y: 4px;
-            width: parent.width - self.x - 8px - 56px - 8px;
+            width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
             height: 20px;
             text: root.card.there ? root.card.name : @tr("Empty");
             color: !root.card.there ? Theme.dim : root.card.bad ? Theme.bad : Theme.text;
@@ -281,6 +287,13 @@ component InstalledRowView inherits Rectangle {
             font-weight: root.card.there ? 600 : 400;
             vertical-alignment: center;
             overflow: elide;
+        }
+
+        version := VersionMark {
+            x: name.x + min(name.width, name.preferred-width) + 6px;
+            y: name.y + (name.height - self.height) / 2;
+            tag: root.card.version;
+            short: name.preferred-width + 6px + self.natural-width > root.name-room;
         }
 
         Text {
@@ -342,9 +355,11 @@ component CardLibraryRowView inherits Rectangle {
         vertical-alignment: center;
     }
 
-    Text {
+    // (The version's mark follows the name, the lines after it where the two take more than the name's column;
+    // a square of its color where they'd leave the lines no room.)
+    name := Text {
         x: 8px + 30px + 8px + root.dx;
-        width: root.name-width;
+        width: min(root.name-width, self.preferred-width);
         text: root.card.name;
         color: root.card.refused ? Theme.dim : Theme.text;
         font-family: Theme.body;
@@ -354,8 +369,16 @@ component CardLibraryRowView inherits Rectangle {
         overflow: elide;
     }
 
+    version := VersionMark {
+        x: name.x + name.width + 6px;
+        y: (parent.height - self.height) / 2;
+        tag: root.card.version;
+        short: name.width + 6px + self.natural-width > root.name-width + 72px;
+        opacity: root.card.refused ? 0.5 : 1;
+    }
+
     CardLinesView {
-        x: 8px + 30px + 8px + root.name-width + 8px + root.dx;
+        x: max(8px + 30px + 8px + root.name-width + root.dx, version.width > 0 ? version.x + version.width : 0px) + 8px;
         width: max(0px, root.note-x - 8px - self.x);
         height: parent.height;
         lines: root.card.lines;
@@ -424,7 +447,7 @@ component CardsLibraryPane inherits Rectangle {
         height: parent.height - 52px;
         nav: "lib.rows";
         count: PatchCardsView.rows.length;
-        row-height: Theme.phone ? 40px : Theme.chip-row;
+        row-height: Theme.list-row;
         chosen: self.focused-row;
         // (A mouse's drag on a row takes its card into the build's: the wheel scrolls.)
         mouse-pan: Theme.phone;

@@ -4,12 +4,18 @@
 //! cross and cybeast selector in the editor now right?": `Builds::form_choices`), and the build's other choices
 //! as steppers (the game's builds data's: Light or Dark, of the game's own navi alone).
 //!
-//! The selector: each fact of forms the build chooses, its forms' faces in the battle's order, both versions'
-//! (EXE6's Cybeast at its head, Gregar's or Falzar's, one always chosen; then its Crosses, as many as the Cross
-//! window offers; EXE4's and EXE5's souls, as many as the soul button's list). A face lit is the build's; Enter, a
-//! click or a tap on one chooses it, or takes it out of a list (`Builds::choose_form`). A face the ruleset the
-//! player plays by doesn't allow has a ring in the error red. The lists are the game's own navi's alone; the
-//! Cybeast is every navi's (MstrCros plays its version's Crosses).
+//! The selector: each fact of forms the build chooses, by its name in the game's rulesets' words (EXE6's "Beast
+//! form", the user: "instead of "Cybeasts" in bn6 it should really be just "Beast form""), its forms in the battle's
+//! order, both versions' (EXE6's Cybeast at its head, Gregar's or Falzar's, one always chosen; then its Crosses, as
+//! many as the Cross window offers; EXE4's and EXE5's souls, as many as the soul button's list), each a row of the
+//! editor's lists (the user: "the rows in the editor are too tall, they should match the height of the regular
+//! editor"): checked where it is the build's, its face, its name, and the mark of the version it is one's own (the
+//! user: "you should indicate in the editor version exclusives"). Enter, a click or a tap on one chooses it, or takes
+//! it out of a list (`Builds::choose_form`). What is wrong with a fact is said by its heading, its first problem in
+//! the player's words, and the rows it is about are in the error red (the user: "if there's a problem with e.g.
+//! crosses or souls there's nowhere in the ui that shows it"): a form the ruleset the player plays by doesn't allow,
+//! another version's under one version per build, one past the fact's room or not the navi's. The lists are the
+//! game's own navi's alone; the Cybeast is every navi's (MstrCros plays its version's Crosses).
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
 //! navi's alone kept aside in the build's file); a choice's preset is `Builds::take_preset`.
@@ -18,8 +24,11 @@ use crate::screens::builds::editor::{Draft, Tab};
 use crate::shell::Shell;
 use nettai_battle::Content;
 use nettai_battle::content::{Element, PlayerFact};
-use nettai_content_api::{FormHandle, NaviHandle};
+use nettai_content_api::{FormHandle, NaviHandle, Registry};
+use nettai_match::Wrong;
 use nettai_match::build::TEXT_TABLE;
+use nettai_match::check::Problem;
+use nettai_match::ruleset::Item;
 use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
@@ -43,6 +52,16 @@ fn family(content: &Content, element: Element) -> nettai_battle::content::ChipFa
         Element::Wood => families.by_name("wood"),
     };
     named.unwrap_or(families.non_elemental)
+}
+
+/// Whether problem `problem` of the build's fact `fact` of forms (`chosen`, in order) is about form `form`: a form the
+/// ruleset doesn't allow, one of another version's than the build's (a mix of versions), or the entry it names.
+fn about(problem: &Problem, fact: &str, chosen: &[FormHandle], form: FormHandle) -> bool {
+    match &problem.what {
+        Wrong::NotAllowed { registry: Registry::Form, item } => item.def == form.0,
+        Wrong::Mixed { items, .. } => items.contains(&(Registry::Form, Item::of(form.0))),
+        _ => problem.field.as_deref() == Some(fact) && problem.entry.and_then(|e| chosen.get(e)) == Some(&form),
+    }
 }
 
 impl Tab for Navi {
@@ -96,7 +115,9 @@ impl Tab for Navi {
             view.set_own(own.into());
         });
         // The selector: each fact of forms the build chooses, named as the game's rulesets name it ("CROSSES"), with how
-        // many it has of its room (none said of the one always chosen), its forms lit where they are the build's.
+        // many it has of its room (none said of the one always chosen) and the first of its problems, its forms checked
+        // where they are the build's, marked where they are one version's, in the error red where a problem is
+        // about them.
         let choices = kit.builds.form_choices(&content, draft.side());
         self.forms = choices.iter().flat_map(|c| c.forms.iter().map(|&f| (c.fact.clone(), f))).collect();
         let groups: Vec<NaviFormGroup> = draft.with_words(shell, |words| {
@@ -105,10 +126,27 @@ impl Tab for Navi {
                 .iter()
                 .map(|c| {
                     let chosen = kit.builds.chosen_forms(&content, draft.side(), &c.fact);
-                    let forms: Vec<NaviForm> = c.forms.iter().map(|&f| NaviForm { face: kit.pictures.face(f), chosen: chosen.contains(&f), banned: !draft.allows(&c.fact, f.0) }).collect();
+                    let problems: Vec<&Problem> = draft.checked.problems.iter().filter(|p| draft.facts_of(p).contains(&c.fact)).collect();
+                    let forms: Vec<NaviForm> = c
+                        .forms
+                        .iter()
+                        .map(|&f| NaviForm {
+                            face: kit.pictures.face(f),
+                            name: words.names.form(f).into(),
+                            version: kit.version_tag_of(words.names, Registry::Form, &Item::of(f.0)),
+                            chosen: chosen.contains(&f),
+                            flagged: !draft.allows(&c.fact, f.0) || problems.iter().any(|p| about(p, &c.fact, &chosen, f)),
+                        })
+                        .collect();
                     let name = words.names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{}", c.fact)).unwrap_or_else(|| c.fact.clone());
                     let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
-                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), forms: ModelRc::new(VecModel::from(forms)), at };
+                    // (Its first problem; how many more there are after it.)
+                    let problem = match problems.split_first() {
+                        Some((first, [])) => words.problem(first),
+                        Some((first, rest)) => format!("{} {}", words.problem(first), shell.ui().global::<nettai_ui::BuildWords>().invoke_more(rest.len() as i32)),
+                        None => String::new(),
+                    };
+                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), problem: problem.into(), forms: ModelRc::new(VecModel::from(forms)), at };
                     at += c.forms.len() as i32;
                     group
                 })

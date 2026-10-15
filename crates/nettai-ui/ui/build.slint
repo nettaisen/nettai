@@ -16,6 +16,38 @@ export struct VersionTag {
     tone: color,
 }
 
+// The mark of a thing that is one version's own (docs/design/versions.md §4: a Giga chip, a soul, a Cross, a Beast
+// form, a card's variant), in a row of the build editor: its version's tag, small (16 tall), the name framed in its
+// color; `short`, where the row has no room for the name, a square of the color alone. No text: no mark, and no
+// room taken. `natural-width` is what the name takes.
+export component VersionMark inherits Rectangle {
+    in property <VersionTag> tag;
+    in property <bool> short;
+    out property <length> natural-width: label.preferred-width + 10px;
+    width: root.tag.text == "" ? 0px : root.short ? 8px : root.natural-width;
+    height: root.short ? 8px : 16px;
+    Rectangle {
+        visible: root.tag.text != "";
+        background: root.short ? root.tag.tone : transparent;
+        border-width: 1px;
+        border-color: root.tag.tone;
+    }
+
+    label := Text {
+        x: 5px;
+        width: max(0px, parent.width - 10px);
+        visible: !root.short;
+        text: root.tag.text;
+        color: root.tag.tone;
+        font-family: Theme.display;
+        font-size: 9px;
+        font-weight: Theme.display-bold;
+        letter-spacing: 0.6px;
+        horizontal-alignment: center;
+        vertical-alignment: center;
+    }
+}
+
 // What colors a chip's name: its class, which has no column of its own (a Program Advance's colors it as a Standard
 // chip's: its class is the strip's word for it, in the auto battle data's).
 export enum ChipKind {
@@ -45,6 +77,8 @@ export struct ChipCell {
     code: string,
     // The folder's rules have something against the entry: its row is marked.
     flagged: bool,
+    // The version its chip is one's own (a Giga chip's), marked after its name; none (no text) outside the editor.
+    version: VersionTag,
 }
 
 // A number of the overview: as the build leaves it, and what the build's installed parts added to it. A stat of the
@@ -431,10 +465,12 @@ export component ChipRow inherits Rectangle {
         }
     }
 
-    Text {
+    // (A name has the mark's room too where the entry has no mark: nothing beside it moves. Its version's mark
+    // follows it, a square of its color where the name and the mark's name don't both fit.)
+    property <length> name-room: max(0px, (root.chip.mark == ChipMark.none ? root.element-x : root.mark-x) - root.gap - name.x);
+    name := Text {
         x: root.icon-x + 16px + root.gap;
-        // (A name has the mark's room too where the entry has no mark: nothing beside it moves.)
-        width: max(0px, (root.chip.mark == ChipMark.none ? root.element-x : root.mark-x) - root.gap - self.x);
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
         text: root.chip.name;
         color: root.chip.flagged ? Theme.bad : root.chip.kind == ChipKind.mega ? Theme.mega : root.chip.kind == ChipKind.giga ? Theme.giga : Theme.text;
         font-family: Theme.body;
@@ -442,6 +478,13 @@ export component ChipRow inherits Rectangle {
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    version := VersionMark {
+        x: name.x + min(name.width, name.preferred-width) + 6px;
+        y: (parent.height - self.height) / 2;
+        tag: root.chip.version;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
     }
 
     Text {

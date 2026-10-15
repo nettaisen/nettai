@@ -327,12 +327,13 @@ component CodeBox inherits Rectangle {
     }
 }
 
-// The two versions a new build is one of: Left and Right choose, a click takes one.
+// The versions a new build starts from: Left and Right choose, a click takes one. A control's height (the user: "the
+// version selector in new build is really tall for no reason").
 component VersionChoice inherits Rectangle {
     in property <[VersionTag]> versions;
     in property <int> chosen;
     property <length> box: (self.width - (root.versions.length - 1) * 12px) / max(1, root.versions.length);
-    height: 64px;
+    height: Theme.control;
     for version[i] in root.versions: Rectangle {
         x: i * (root.box + 12px);
         width: root.box;
@@ -343,7 +344,7 @@ component VersionChoice inherits Rectangle {
             text: version.text;
             color: version.tone;
             font-family: Theme.display;
-            font-size: 16px;
+            font-size: 14px;
             font-weight: Theme.display-bold;
             letter-spacing: 0.6px;
             horizontal-alignment: center;
@@ -1641,7 +1642,10 @@ export component MatchResult inherits Rectangle {
 // file dialog (the build is made of the save, named for its file).
 component NameDialog inherits DialogFrame {
     property <bool> versions: PlayView.dialog == BuildDialog.new-build;
-    property <length> buttons-y: root.versions ? 226px : 78px;
+    // (A new build's: its name, its version and the version's note, each under its label, then the buttons.)
+    property <length> version-y: 100px;
+    property <length> note-y: root.version-y + Theme.control + 8px;
+    property <length> buttons-y: root.versions ? root.note-y + 38px + 16px : 78px;
     title: root.versions ? @tr("NEW BUILD") : @tr("RENAME");
     content-height: root.buttons-y + (root.versions ? 120px : 40px);
     Label {
@@ -1671,7 +1675,7 @@ component NameDialog inherits DialogFrame {
 
     if root.versions: VersionChoice {
         x: 0;
-        y: 100px;
+        y: root.version-y;
         width: root.inner-width;
         versions: PlayView.versions;
         chosen: PlayView.dialog-version;
@@ -1681,7 +1685,7 @@ component NameDialog inherits DialogFrame {
 
     Note {
         x: 0;
-        y: 172px;
+        y: root.note-y;
         width: root.inner-width;
         height: 38px;
         visible: root.versions;
