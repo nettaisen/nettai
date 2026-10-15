@@ -10,6 +10,8 @@ local collision = require("../rules/collision")
 local common = require("@exelib/bugcurse")
 
 local chip: Chip = {
+    -- The version whose saves hold it (rules/folder; rules/builds' groups).
+    version = "bluemoon",
     codes = { "C" },
     element = "null",
     family = "null",

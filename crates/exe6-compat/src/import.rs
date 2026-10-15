@@ -50,7 +50,8 @@ pub fn import(content: &Content, side: &mut Side, save: &Save) -> Result<Vec<Str
     let link_navi = !content.navi(navi).changes_form();
     let level = save.navi_level()?;
     let unlocks = save.unlocks();
-    side.set_fact(content, "version", &[Fact::Name(save.version().name())])?;
+    let cybeast = crate::codec::cybeast(content, save.version())?;
+    side.set_fact(content, "cybeast", &[Fact::Value(Value::Def(Registry::Form, cybeast.0))])?;
     side.set_fact(content, "beast_out", &[Fact::Value(Value::Bool(unlocks.beast_out))])?;
     let owned: Vec<Fact> = unlocks.owned_crosses(content, navi).iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
     side.set_fact(content, "crosses", &owned)?;
@@ -95,7 +96,7 @@ pub fn import(content: &Content, side: &mut Side, save: &Save) -> Result<Vec<Str
         for &b in save.patch_cards().iter().filter(|&&b| b & 0x80 == 0) {
             let key = compat.patch_cards.iter().find(|(_, n)| **n == b & 0x7F).map(|(k, _)| k.as_str());
             match key.and_then(|k| content.defs.entry_in(crate::codec::PATCH_CARDS, k)) {
-                Some(card) => cards.push(Fact::Value(Value::Def(Registry::Entry, card.0))),
+                Some(card) => cards.push(crate::codec::patch_card(content, card, save.version())),
                 None => notes.push(format!("the save's patch card {} is none exe6 has: left out", b & 0x7F)),
             }
         }

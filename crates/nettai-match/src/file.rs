@@ -24,9 +24,9 @@
 //! [left]                             # you, side 0; then [right]: the side's facts, what its game's rules take,
 //! navi = "megaman"                   # each under its setup field's name (crate::facts); one left out is the
 //! level = 7                          # rules' default. The navi (which a side states), the navi code's level (0-14;
-//! version = "falzar"                 # else the navi's last: a link navi's 14, MegaMan's none), EXE6's version
-//! crosses = ["heatcross", "spoutcross"]   # (gregar or falzar, which a side states) and crosses (up to five, of
-//! beast_out = false                  # either version; [] none), beast_out (else unlocked), bug_frags (else 0),
+//! cybeast = "falzar-beast"           # else the navi's last: a link navi's 14, MegaMan's none), EXE6's cybeast
+//! crosses = ["heatcross", "spoutcross"]   # (gregar-beast or falzar-beast, which a side states) and crosses (up to five,
+//! beast_out = false                  # of either version; [] none), beast_out (else unlocked), bug_frags (else 0),
 //! bug_frags = 9                      # what the save brings to the stats: the base HP (else 1000), the Regular
 //! hp = 1000                          # memory (else 50), the sun (else true); the rules derive the rest
 //! reg_up = 50
@@ -36,7 +36,10 @@
 //! ]
 //! regular_chip = 4                   # the Regular chip's entry, from 0 (else none)
 //! tag_chips = [5, 6]                 # the tag chips' entries (else none)
-//! patch_cards = ["canodumb", "shadow"]  # in the order they apply (else none)
+//! patch_cards = [                   # in the order they apply (else none); a card each version's ROM gives
+//!     { card = "canodumb" },         # effects of its own (Bass-Cross MegaMan) with its variant, a version
+//!     { card = "bass-cross-megaman", variant = "gregar" },
+//! ]
 //! sp_times = [                       # SP navi deletion times, by SP chip, in frames (else every SP navi in no time)
 //!     { chip = "heatman-sp", frames = 741 },
 //! ]
@@ -99,7 +102,7 @@ pub struct RoundFile {
 
 /// A side as a file states it: each key a fact of the game's rules, under
 /// its setup field's name (`crate::facts`: the navi, the folder, EXE6's
-/// version, EXE5's auto battle data...; a key the rules' setup doesn't
+/// Cybeast, EXE5's auto battle data...; a key the rules' setup doesn't
 /// declare is refused when the side is resolved, with the facts the game
 /// takes).
 #[derive(Clone, Debug, Default, PartialEq, Serialize, Deserialize)]
@@ -708,12 +711,13 @@ mod tests {
         assert!(problems.iter().any(|p| p.starts_with("left: no field \"auto_battle_places\"")), "{problems:?}");
     }
 
-    /// A version is stated where the game's rules take one: a new EXE6
+    /// A version is stated where the game's rules take one, as its Cybeast
+    /// (EXE6's `cybeast`, a form: docs/design/versions.md §2.1): a new EXE6
     /// match's sides have none until each is given its own (the checks
-    /// refuse the match: none is assumed), a random one's are picked and
-    /// written; an EXE5 match's likewise (its version its team, whose patch
-    /// card Bass-Cross MegaMan is its own). EXE6's Crosses are a list
-    /// a side states, none when it states none.
+    /// refuse the match, and so does the engine: none is assumed), a random
+    /// one's are picked and written. EXE5's rules take none (a Bass-Cross
+    /// MegaMan card's variant is the card's). EXE6's Crosses are a list a
+    /// side states, none when it states none.
     #[test]
     fn a_version_is_stated_where_the_game_takes_one() {
         let has = |problems: Vec<String>, said: &str| assert!(problems.iter().any(|p| p.contains(said)), "{said}: {problems:?}");
@@ -722,42 +726,37 @@ mod tests {
         assert!(new.sides.iter().all(|s| s.version(&six).is_none()));
         let problems = crate::check_match(&six, &new);
         for side in ["left", "right"] {
-            has(problems.clone(), &format!("{side}: no version: a side of exe6 states its own (gregar or falzar); none is assumed"));
+            has(problems.clone(), &format!("{side}: no cybeast: a side of exe6 states its own (a form); none is assumed"));
         }
         assert!(!problems.iter().any(|p| p.contains("crosses")), "no Crosses is none: {problems:?}");
-        assert!(!write(&six, &new).contains("version") && !write(&six, &new).contains("crosses"));
+        assert!(!write(&six, &new).contains("cybeast") && !write(&six, &new).contains("crosses"));
         // (Nor does the engine set its round up, even undealt, its folders
-        // being made: a player's setup states the
-        // version, and nothing fills one in.)
-        let refused = crate::check::set_up(&six, &new).err().expect("no round without the versions");
-        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the rules' `version` (gregar or falzar): none is assumed");
+        // being made: a player's setup states the Cybeast, and nothing fills
+        // one in.)
+        let refused = crate::check::set_up(&six, &new).err().expect("no round without the Cybeasts");
+        assert_eq!(refused, "the round doesn't start: a player's setup doesn't state the rules' `cybeast` (a form): none is assumed");
         let picked = write(&six, &crate::pick::live(&six, "exe6", 1, None).unwrap());
-        assert_eq!(picked.matches("\nversion = \"falzar\"\n").count() + picked.matches("\nversion = \"gregar\"\n").count(), 2, "{picked}");
-        // A version is its name, one of those the game's rules declare
-        // (their `version` field's, in its order): a side made in code
-        // takes no other, as a file's doesn't.
-        // (EXE6's come in the original's order, which numbers them: the
-        // byte a navi's stats carry is the version's place.)
-        assert_eq!(crate::facts::versions(&six), ["gregar", "falzar"]);
-        // (EXE6's rules require one fact: the one enum no default states.)
-        assert_eq!(crate::facts::required(&six).iter().map(|f| f.name).collect::<Vec<_>>(), ["version"]);
+        assert_eq!(picked.matches("\ncybeast = \"falzar-beast\"\n").count() + picked.matches("\ncybeast = \"gregar-beast\"\n").count(), 2, "{picked}");
+        // (EXE6's rules require one fact: the Cybeast.)
+        assert_eq!(crate::facts::required(&six).iter().map(|f| f.name).collect::<Vec<_>>(), ["cybeast"]);
         let live = crate::pick::live(&six, "exe6", 1, None).unwrap();
-        assert!(live.sides.iter().all(|s| crate::facts::versions(&six).iter().any(|v| Some(v.as_str()) == s.version(&six))));
+        assert!(live.sides.iter().all(|s| ["gregar", "falzar"].iter().any(|v| Some(*v) == s.version(&six))));
+        // A Cybeast is one of the forms the fact offers: a Cross is none.
         let mut odd = live.clone();
-        let refused = odd.sides[0].set_fact(&six, "version", &[Fact::Name("azure")]).unwrap_err();
-        assert_eq!(refused, "setup field `version` has no variant \"azure\"");
-        assert_eq!(odd, live);
+        let heat = ids::form(&six, "exe6", "heatcross").unwrap();
+        odd.sides[0].set_fact(&six, "cybeast", &[Fact::Value(Value::Def(nettai_content_api::Registry::Form, heat.0))]).unwrap();
+        has(crate::check_match(&six, &odd), "left: cybeast: HeatCross is none of the forms it names");
         // The Crosses: left out, the round starts with none, and a file
         // leaves them out.
         let mut none = new.clone();
+        let falzar = crate::facts::version_fact(&six, "falzar").unwrap();
         for s in &mut none.sides {
-            s.set_fact(&six, "version", &[Fact::Name("falzar")]).unwrap();
+            s.set_fact(&six, "cybeast", std::slice::from_ref(&falzar)).unwrap();
         }
-        // (The navi's version is the side's version fact, which the round
-        // carries: NaviStats+0x20 is compat's to write from it.)
+        // (The side's version is its Cybeast's, which the round carries:
+        // NaviStats+0x20 is compat's to write from it.)
         let b = crate::check::set_up(&six, &none).unwrap();
-        let version = |side: u8| b.fact(side, nettai_battle::content::PlayerFact::Version).and_then(|f| f.name().map(str::to_string));
-        assert_eq!((version(0), version(1)), (Some("falzar".to_string()), Some("falzar".to_string())));
+        assert_eq!((b.version(0), b.version(1)), (Some("falzar"), Some("falzar")));
         assert!(!write(&six, &none).contains("crosses"));
         // (And a side's own of its version, as a tool fills them in: the
         // version's five.)
@@ -765,26 +764,18 @@ mod tests {
         let own: Vec<&str> = none.sides[0].facts.form_list(&six).iter().map(|&f| ids::local(&six.defs.form(f).key)).collect();
         assert_eq!(own, ["spoutcross", "tomahawkcross", "tengucross", "groundcross", "dustcross"]);
         assert!(!new.sides[0].clone().state_own_forms(&six), "no version yet: nothing to go by");
-        // EXE5: its version is its team (the patch card Bass-Cross MegaMan's
-        // effects are each team's own), stated as EXE6's is.
+        // EXE5: no version (its versions play alike but for a card's
+        // variant, which the card states).
         let five = crate::testing::exe5_content();
-        assert_eq!(crate::facts::versions(&five), ["protoman", "colonel"]);
-        assert_eq!(crate::facts::required(&five).iter().map(|f| f.name).collect::<Vec<_>>(), ["version"]);
-        let new = Match::empty(&five, "exe5").unwrap();
-        has(crate::check_match(&five, &new), "left: no version: a side of exe5 states its own (protoman or colonel); none is assumed");
+        assert!(crate::facts::required(&five).is_empty() && !crate::Side::takes_version(&five));
         let m = crate::pick::live(&five, "exe5", 1, None).unwrap();
-        let text = write(&five, &m);
-        assert_eq!(text.matches("\nversion = \"protoman\"\n").count() + text.matches("\nversion = \"colonel\"\n").count(), 2, "{text}");
-        let mut odd = m.clone();
-        let refused = odd.sides[1].set_fact(&five, "version", &[Fact::Name("gregar")]).unwrap_err();
-        assert_eq!(refused, "setup field `version` has no variant \"gregar\"");
+        assert!(!write(&five, &m).contains("version"));
+        assert!(crate::check_match(&five, &m).is_empty());
         // (Nor are another game's facts a side's: an EXE6 side in an EXE5
         // match is said.)
+        let mut odd = m.clone();
         odd.sides[1].facts = live.sides[1].facts.clone();
         has(crate::check_match(&five, &odd), "right: the side's facts aren't exe5's rules'");
-        // (The round an EXE5 match starts brings its players their versions.)
-        let b = crate::check::start(&five, &m).unwrap();
-        assert_eq!(b.fact(0, nettai_battle::content::PlayerFact::Version).and_then(|f| f.name()), m.sides[0].version(&five));
     }
 
     /// What a file can get wrong is said, with where it is.
@@ -811,16 +802,16 @@ mod tests {
         // game takes.)
         has(
             bad("navi = \"megaman\"", "navi = \"megaman\"\nemotion_window_glitch = true"),
-            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips, version)",
+            "left: no field \"emotion_window_glitch\" (a side of exe6 takes beast_out, bug_frags, crosses, cybeast, folder, hp, level, navi, navicust_expansions, navicust_programs, patch_cards, reg_up, regular_chip, sp_times, sun, tag_chips)",
         );
         let stage = good.lines().find(|l| l.starts_with("stage = ")).unwrap();
         has(bad(stage, "stage = \"moon\""), "round 1: no stage \"moon\" in exe6");
         has(bad(stage, "stage = \"netbattle-43\"\nmoon = 1"), "unknown field `moon`");
         has(bad("game = \"exe6\"", "game = \"bn7\""), "no game \"bn7\"");
-        // The version: one of the game's two, stated (none is assumed).
-        let version = good.lines().find(|l| l.starts_with("version = ")).unwrap();
-        has(bad(version, "version = \"azure\""), "left: version: no \"azure\" (gregar or falzar)");
-        has(bad(version, "version = 1"), "left: version: no 1 (gregar or falzar)");
+        // The Cybeast: one of the game's two, stated (none is assumed).
+        let version = good.lines().find(|l| l.starts_with("cybeast = ")).unwrap();
+        has(bad(version, "cybeast = \"azure\""), "left: cybeast: no form \"azure\" in exe6");
+        has(bad(version, "cybeast = \"heatcross\""), "left: cybeast: HeatCross is none of the forms it names");
         // A fact's value is its field's type's: a flag, a whole number in
         // its range, a name of the game's, a list no longer than it holds.
         let stated = |line: &str| bad("navi = \"megaman\"", &format!("navi = \"megaman\"\n{line}"));
@@ -843,7 +834,7 @@ mod tests {
         let none = parse(&content, &good.replacen(&format!("{list}\n"), "", 1)).unwrap();
         assert!(none.sides[0].facts.form_list(&content).is_empty());
         has(bad(list, "crosses = [\"\", \"heatcross\"]"), "left: crosses: an empty entry before HeatCross (a list is filled from the front)");
-        has(bad(&format!("{version}\n"), ""), "left: no version: a side of exe6 states its own (gregar or falzar); none is assumed");
+        has(bad(&format!("{version}\n"), ""), "left: no cybeast: a side of exe6 states its own (a form); none is assumed");
         // Thirty copies of a chip.
         let mut m = picked.clone();
         { let mut f = m.sides[0].folder(&content); f.chips = [m.sides[0].folder(&content).chips[0]; 30]; m.sides[0].set_folder(&content, &f).unwrap(); }

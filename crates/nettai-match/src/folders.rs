@@ -119,9 +119,9 @@ pub fn problems(b: &mut Battle, side: u8, folder: &Folder) -> Vec<Problem> {
 }
 
 /// Whether a problem says its chip is none the side's folders hold at all
-/// (no folder's, or another version's).
+/// (no folder's).
 fn never(what: &Wrong) -> bool {
-    matches!(what, Wrong::ChipNotAllowed { .. } | Wrong::ChipOfAnotherVersion { .. })
+    matches!(what, Wrong::ChipNotAllowed { .. })
 }
 
 /// What a side's folder rules allow of a folder as it stands (the rules'
@@ -181,8 +181,7 @@ impl View {
     }
 
     /// Why `chip` can't go into the folder now, in any of its codes: no
-    /// folder holds it ([`Wrong::ChipNotAllowed`]), it is another version's
-    /// ([`Wrong::ChipOfAnotherVersion`]), the folder is whole
+    /// folder holds it ([`Wrong::ChipNotAllowed`]), the folder is whole
     /// ([`Wrong::FolderSize`]), the folder has its copies of it
     /// ([`Wrong::Copies`], `used` what it holds), or its class's limit is
     /// reached ([`Wrong::Class`], [`Wrong::Dark`]). None: it can. A lookup:
@@ -197,25 +196,24 @@ impl View {
     /// one has that problem.
     pub fn hold_to(&mut self, ruleset: &crate::ruleset::Ruleset, fact: &str, folder: &Folder) {
         use nettai_content_api::Registry;
-        for h in ruleset.banned(fact) {
-            let chip = ChipHandle(h);
+        for item in ruleset.banned(fact) {
+            let chip = ChipHandle(item.def);
             if !matches!(self.refused.get(&chip), Some(Wrong::ChipNotAllowed { .. })) {
-                self.refused.insert(chip, Wrong::NotAllowed { registry: Registry::Chip, def: h });
+                self.refused.insert(chip, Wrong::NotAllowed { registry: Registry::Chip, item: item.clone() });
             }
         }
         for (entry, held) in folder.chips.iter().enumerate() {
             if let Some(held) = held
                 && !ruleset.allows(fact, held.id.0)
             {
-                let what = Wrong::NotAllowed { registry: Registry::Chip, def: held.id.0 };
+                let what = Wrong::NotAllowed { registry: Registry::Chip, item: crate::ruleset::Item::of(held.id.0) };
                 self.problems.push(Problem { side: Some(0), field: Some(fact.to_string()), entry: Some(entry), what, text: format!("the ruleset doesn't allow the chip of entry {entry}") });
             }
         }
     }
 
     /// Whether a library lists `chip` for this side at all: every chip but
-    /// those no folder holds (another version's chip is listed, and
-    /// refused).
+    /// those no folder holds.
     pub fn lists(&self, chip: ChipHandle) -> bool {
         !matches!(self.refused.get(&chip), Some(Wrong::ChipNotAllowed { .. }))
     }
@@ -465,9 +463,8 @@ mod tests {
         for (i, key) in ["recov10", "recov10", "recov10", "recov10", "recov10", "roll", "roll2", "heatman", "elecman", "slashman"].iter().enumerate() {
             f.chips[i] = chip(key);
         }
-        // (A Giga chip of the side's own version, whichever it drew.)
-        let gregar = crate::Facts::of_block(b.setup.players[0].rules.clone().unwrap()).version(&content) == Some("gregar");
-        f.chips[10] = chip(if gregar { "bass" } else { "bassanly" });
+        // (A Giga chip: a build may hold either version's.)
+        f.chips[10] = chip("bass");
         let v = View::of(&content, "exe6", &mut b, 0, &f).unwrap();
         assert_eq!((v.size, v.chips, v.mega, v.giga, v.dark), (30, 11, Count { used: 5, limit: 5 }, Count { used: 1, limit: 1 }, None));
         assert_eq!((v.regular_memory, v.tag_memory), (b.stats[0].reg_up as u32, Some(60)));
@@ -477,15 +474,12 @@ mod tests {
         assert_eq!(v.refusal(id("eraseman")), Some(&Wrong::Class { class: ChipClass::Mega, count: Count { used: 5, limit: 5 } }));
         assert_eq!(v.refusal(id("drksword")), Some(&Wrong::ChipNotAllowed { chip: id("drksword") }));
         assert!(!v.lists(id("drksword")) && !v.lists(id("puncharm")) && v.lists(id("cannon")));
-        // A Giga chip: the folder has its one copy of its own, and the
-        // other is the other version's. Another of its own version's is
-        // past the Giga limit.
-        for key in ["bass", "bassanly"] {
+        // A Giga chip: the folder has its one copy of it, and any other,
+        // of either version, is past the Giga limit.
+        assert!(v.lists(id("bass")) && matches!(v.refusal(id("bass")), Some(Wrong::Copies { .. })));
+        for key in ["bassanly", "bighook", "metrknuk"] {
             assert!(v.lists(id(key)));
-            assert!(matches!(v.refusal(id(key)), Some(Wrong::Copies { .. } | Wrong::ChipOfAnotherVersion { .. })), "{key}");
-        }
-        for key in ["bighook", "metrknuk"] {
-            assert!(matches!(v.refusal(id(key)), Some(Wrong::Class { class: ChipClass::Giga, .. } | Wrong::ChipOfAnotherVersion { .. })), "{key}");
+            assert!(matches!(v.refusal(id(key)), Some(Wrong::Class { class: ChipClass::Giga, .. })), "{key}");
         }
         // A whole folder takes none.
         let mut whole = f;

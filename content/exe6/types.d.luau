@@ -551,7 +551,8 @@ export type Exe6NaviFields = {
 }
 
 -- A navi's forms by game: the Crosses by their number on the custom
--- screen (the engine's form list, `form_list`), Beast Out and Beast Over
--- (its `forms.gregar`, `forms.falzar`), which EXE6's rules and exe6-compat
--- read.
-export type FormSet = { form_list: { FormDef }, beast_out: FormDef?, beast_over: FormDef? }
+-- screen (the engine's form list, `form_list`), the Cybeast (the form Beast
+-- Out takes the base form into: a side's setup's `cybeast` names one of the
+-- sets') and Beast Over (its `forms.gregar`, `forms.falzar`), which EXE6's
+-- rules and exe6-compat read.
+export type FormSet = { form_list: { FormDef }, cybeast: FormDef?, beast_over: FormDef? }

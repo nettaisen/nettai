@@ -13,8 +13,8 @@
 --   game gave out and no library lists; each with a code. That leaves out the soul modes' chips (CannMode to FinalGun:
 --   their records have no library flag, and Tango's saves' packs hold none, though the pack's own list would keep one,
 --   the record's extra flag 0x20), the BatCans (after the pack's last chip, Death Phoenix) and the Program Advances.
--- - A save of one team holds none of the other's Giga chips: its setup's `giga_chips` are the Giga chips it can have
---   (its version's six and ChaosLrd, which a tool's version presets name; a side that states none has every one).
+-- - A save of one team holds none of the other's Giga chips (the chip's `version`). A build may hold either's: a
+--   ruleset says whether it must be one version's (docs/design/versions.md §2.3).
 -- - Copies of one chip, in any codes: four of a Standard chip, one of a Mega or of a Giga chip, one of a dark chip
 --   (the editor's check as a chip goes in, 0x081325B4: its table 0x081326B8 by class, a dark chip's last). EXE6
 --   counts them by MB instead.
@@ -45,17 +45,6 @@ local RULES: FolderRules = {
             and c.codes ~= nil
             and #c.codes > 0
             and (has(c.flags, "library") or has(c.flags, "dark") or (c :: any).collectible == true)
-    end,
-    owned = function(c: Chip, setup: any): boolean
-        if c.class ~= "giga" then
-            return true
-        end
-        for _, held in setup.giga_chips do
-            if held == c then
-                return true
-            end
-        end
-        return false
     end,
     copies = function(c: Chip): number
         if has(c.flags, "dark") then

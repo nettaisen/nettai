@@ -146,8 +146,6 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
             left_out.push(format!("the save's {field} is left out: {e}"));
         }
     };
-    // The game's version (the rules' `version`), the save's team.
-    state(side, "version", &[Fact::Name(save.version().name())]);
     state(side, "karma", &[Fact::Value(Value::Int(save.light_dark() as i64))]);
     state(side, "chaos_unison", &[Fact::Value(Value::Bool(save.chaos_unison()))]);
     // (A save's souls are by the original's number: compat names each
@@ -189,7 +187,7 @@ pub fn import(content: &Content, game: &str, side: &mut Side, save: &Save) -> Ve
             Ok(programs) => state(side, "navicust_programs", &programs),
             Err(e) => notes.push(format!("the save's NaviCust is left out: {e}")),
         }
-        match crate::codec::patch_cards(content, compat, &save.patch_cards()) {
+        match crate::codec::patch_cards(content, compat, &save.patch_cards(), save.version()) {
             Ok(cards) => state(side, "patch_cards", &cards),
             Err(e) => notes.push(format!("the save's patch cards are left out: {e}")),
         }
@@ -311,8 +309,8 @@ mod tests {
         assert_eq!(nettai_match::ids::local(&content.defs.navi(s.navi(&content)).key), "megaman");
         assert!(nettai_match::ids::in_game(&content, "exe5", &content.defs.navi(s.navi(&content)).key));
         use nettai_match::facts::Stated;
-        // (Its version, its team: Team ProtoMan's.)
-        assert_eq!(s.version(&content), Some("protoman"));
+        // (No version: its team's are its souls, and a Bass-Cross MegaMan card's variant.)
+        assert_eq!(s.version(&content), None);
         assert_eq!(s.facts.get(&content, "karma"), Some(Stated::Number(100)));
         let listed = s.facts.get(&content, "souls").unwrap().defs();
         let souls: Vec<&str> = listed.iter().map(|&f| nettai_match::ids::local(&content.defs.form(nettai_content_api::FormHandle(f)).key)).collect();
@@ -330,11 +328,9 @@ mod tests {
         let expansions = |s: &nettai_match::Side| nettai_match::testing::navicust_expansions(&content, s);
         assert_eq!((expansions(s), expansions(&m.sides[1])), (Some(1), Some(2)));
         // More ExpMemry than the board has sizes: the side states it, and the
-        // rules' `validate` says it is past the boards (the other side given
-        // its version, for the round to be set up).
+        // rules' `validate` says it is past the boards.
         image[0x3DB0 + 0x61] = 3;
         import_file(&content, &mut m, 0, &image).unwrap();
-        m.sides[1].set_fact(&content, "version", &[Fact::Name("colonel")]).unwrap();
         assert_eq!(nettai_match::testing::navicust_expansions(&content, &m.sides[0]), Some(3));
         let problems = nettai_match::check_match(&content, &m);
         assert!(problems.iter().any(|p| p.contains("a NaviCust with 3 expansions")), "{problems:?}");

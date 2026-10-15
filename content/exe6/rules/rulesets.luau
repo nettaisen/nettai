@@ -4,8 +4,9 @@
 -- docs/design/versions.md §2.3). The simulation reads none of it: a ruleset says which builds may play a match, never
 -- how its rounds play. A category is a fact of the setup (../init.luau's `setup`) that names definitions, by the
 -- fact's name; what it ranges over is the fact's type's. The groups a ruleset offers as quick choices and holds a build
--- to are the versions (./builds), each with the chips and forms whose own `version` names it (each version's Giga
--- chips, Crosses and Beast). Names are the locales' ([rulesets], `category.<fact>`, `preset.<id>`).
+-- to are the versions (./builds' `groups`), each with the chips and forms whose own `version` names it (each version's
+-- Giga chips, Crosses and Beast forms) and the Bass-Cross MegaMan card's variant of its name. Names are the locales'
+-- ([rulesets], `category.<fact>`, `preset.<id>`).
 
 return {
     -- In the order a ruleset's page lists them.
@@ -14,6 +15,7 @@ return {
         { fact = "folder" },
         { fact = "navicust_programs" },
         { fact = "patch_cards" },
+        { fact = "cybeast" },
         { fact = "crosses" },
     },
     -- The rulesets ready-made, the first a player's and a new lobby's until they pick another. `versions`: whether

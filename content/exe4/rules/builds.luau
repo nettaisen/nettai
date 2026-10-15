@@ -4,30 +4,18 @@
 -- its setup field's name (../init.luau's `setup`).
 
 return {
-    -- The versions a build is one of, in the order every list shows them: Red Sun, then Blue Moon. EXE4's rules have no
-    -- version (it is the save's, and the two play alike), so a version is what its saves can have, which a build's
-    -- version sets as it is made: its six souls (0x08020018, the UNITE button's table: Red Sun's souls 1 to 6, Blue
-    -- Moon's 7 to 12, by compat's numbers; exe4-compat's `Version::soul_flag`), and its Giga chips (./folder: its
-    -- game's five, and the e-Reader's Duo, which either version's save can have). A version's `color` (0xRRGGBB) is the
-    -- color a tool draws its tag in: Red Sun's red, Blue Moon's blue. Its name is the locales' ([builds],
+    -- The versions, as groups (docs/design/versions.md §2.2): what a save of each can own that the other's can't, in the
+    -- order every list shows them, Red Sun then Blue Moon. EXE4's rules have no version (it is the save's, and the two
+    -- play alike), so a build states what it has (its souls, of either version, its folder), and a ruleset says
+    -- whether it must be one version's. A group's members are the definitions whose own `version` names it: its six
+    -- souls (0x08020018, the UNITE button's table: Red Sun's souls 1 to 6, Blue Moon's 7 to 12, by compat's numbers;
+    -- exe4-compat's `Version::soul_flag`) and its five Giga chips (./folder; the e-Reader's Duo, which either version's
+    -- save can have, is neither's). A new build starts from a group: the souls of its version. A group's `color`
+    -- (0xRRGGBB) is the color a tool draws it in: Red Sun's red, Blue Moon's blue. Its name is the locales' ([builds],
     -- `version.<id>`).
-    versions = {
-        {
-            id = "redsun",
-            color = 0xFF5D50,
-            set = {
-                souls = { "rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul" },
-                giga_chips = { "bass", "redsun", "holydrem", "blakbarr", "bugcharg", "duo" },
-            },
-        },
-        {
-            id = "bluemoon",
-            color = 0x4A93FF,
-            set = {
-                souls = { "protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul" },
-                giga_chips = { "deltaray", "bugcurse", "signlred", "bassanly", "bluemoon", "duo" },
-            },
-        },
+    groups = {
+        { id = "redsun", color = 0xFF5D50 },
+        { id = "bluemoon", color = 0x4A93FF },
     },
     -- A build's other choices, each of a few presets that set their facts together, the first a new build's. EXE4's
     -- one is MegaMan light or dark, as Tango's EXE4 netplay saves have him (tango-gamesupport-bn4's src/saves/*.raw:
@@ -62,7 +50,7 @@ return {
     -- defaults (the most Regular memory, the sun, Double Soul, the rival wins at the 100 RedSun's and BlueMoon's damage
     -- counts).
     at_defaults = { "reg_up", "sun", "double_soul", "rival_wins" },
-    -- A new build is its version and each choice's first preset (a light MegaMan), with this.
+    -- A new build is its group's souls and each choice's first preset (a light MegaMan), with this.
     new = {
         -- The folder a new save starts with: the first folder of the ROM's folder table, which the new game routine
         -- copies into the save's first folder (Red Sun US's table 0x08017CC8, copied by 0x080190E0 from the new game

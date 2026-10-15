@@ -9,9 +9,9 @@
 --   (the record's flags 0x40), each with a code, and the e-Reader's chips no library lists (`collectible`: Duo and
 --   PrixPowr). EXE4's dark chips have no library flag: the custom screen offers them in battle, and no folder holds
 --   one.
--- - A save of one version holds none of the other's Giga chips: its setup's `giga_chips` are the Giga chips it can have
---   (its version's five and the e-Reader's Duo, which a tool's version presets name; a side that states none has every
---   one).
+-- - A save of one version holds none of the other's Giga chips (each version's game gives its own five, and a Giga chip
+--   isn't traded; the chip's `version`). A build may hold either's: a ruleset says whether it must be one version's
+--   (docs/design/versions.md §2.3).
 -- - Copies of one chip, in any codes: four of a Standard chip (0x080314F0: the folder's count of it against 4), one of
 --   a Mega or of a Giga chip (0x0803153C, 0x080315BC).
 -- - The Mega and Giga chips are at most the navi's Mega and Giga levels (the editor's counts, +0x18 and +0x19 of its
@@ -35,17 +35,6 @@ local RULES: FolderRules = {
             and c.codes ~= nil
             and #c.codes > 0
             and (has(c.flags, "library") or (c :: any).collectible == true)
-    end,
-    owned = function(c: Chip, setup: any): boolean
-        if c.class ~= "giga" then
-            return true
-        end
-        for _, held in setup.giga_chips do
-            if held == c then
-                return true
-            end
-        end
-        return false
     end,
     copies = function(c: Chip): number
         return COPIES[c.class or ""] or 0

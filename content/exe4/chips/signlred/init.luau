@@ -35,6 +35,8 @@ local controller = new.kind {
 }
 
 local chip: Chip = {
+    -- The version whose saves hold it (rules/folder; rules/builds' groups).
+    version = "bluemoon",
     codes = { "S" },
     element = "null",
     family = "summon",

@@ -14,9 +14,10 @@
 -- counted. A card that lists one effect twice applies the first only. The
 -- cards' run over the block is the one EXE5's shares
 -- (@exelib/patch_cards/apply); EXE6's are its seed, its copy and its count.
--- A card's effects are those of the side's version (its setup's `version`):
+-- A card's effects are those of its variant (its setup record's `variant`):
 -- the one card the two versions' card tables differ in, Bass-Cross MegaMan
--- (117), states each version's.
+-- (117), states each version's, and a build chooses which it has
+-- (docs/design/versions.md §2.1).
 
 local apply_cards = require("@exelib/patch_cards/apply")
 local cards = require("@self/cards")
@@ -60,7 +61,7 @@ end
 -- routine, and the flag is as the stats are.
 local function apply(side: number)
     local setup = rules.setup_of(side)
-    local installed: { PatchCard } = setup.patch_cards
+    local installed: { InstalledPatchCard } = setup.patch_cards
     if #installed == 0 then
         return
     end
@@ -82,7 +83,7 @@ local function apply(side: number)
         body = bit32.band(stats.element + 4, 0xFF),
     }
     local written: { [string]: boolean }
-    hp, written = apply_cards.run(installed, setup.version, cards.GAME, hp, slot)
+    hp, written = apply_cards.run(installed, cards.GAME, hp, slot)
 
     -- The copy (`sub_8142230`): the HP, then each slot a card wrote.
     stats.max_hp = hp
@@ -163,7 +164,7 @@ end
 local function overview(side: number, card_bug: (e: PatchCardEffect) -> SetupBug, out: SetupOverview)
     local applies = battle.navi(side).navi.forms ~= nil
     local setup = rules.setup_of(side)
-    apply_cards.overview(setup.patch_cards, setup.version, LIST_MB, BUG_KINDS, applies, card_bug, out)
+    apply_cards.overview(setup.patch_cards, LIST_MB, BUG_KINDS, applies, card_bug, out)
 end
 
 return {

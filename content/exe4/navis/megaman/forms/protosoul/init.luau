@@ -12,6 +12,8 @@ local reflect = require("@self/reflect")
 local soul = require("./soul")
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "bluemoon",
     soul = { family = "sword", turns = 3 },
     chip = chip,
     change = chip.action,

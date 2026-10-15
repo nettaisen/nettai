@@ -60,11 +60,11 @@ local navi: NaviDef = {
             { hp = 300, attack = 3, rapid = 3, charge = 3, custom_level = 2, mega_level = 2 },
         },
     },
-    -- His forms, by game: the Crosses by their number on the custom screen, Beast Out and
-    -- Beast Over.
+    -- His forms, by game: the Crosses by their number on the custom screen, the Cybeast (the
+    -- form Beast Out takes him into: a build's `cybeast` names one of these) and Beast Over.
     forms = {
-        gregar = { form_list = { heatcross, eleccross, slashcross, erasecross, chargecross }, beast_out = gregar_beast, beast_over = gregar_beast_over },
-        falzar = { form_list = { spoutcross, tomahawkcross, tengucross, groundcross, dustcross }, beast_out = falzar_beast, beast_over = falzar_beast_over },
+        gregar = { form_list = { heatcross, eleccross, slashcross, erasecross, chargecross }, cybeast = gregar_beast, beast_over = gregar_beast_over },
+        falzar = { form_list = { spoutcross, tomahawkcross, tengucross, groundcross, dustcross }, cybeast = falzar_beast, beast_over = falzar_beast_over },
     },
     identity = new.identity {
         class = "player",

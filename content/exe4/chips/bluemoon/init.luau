@@ -12,6 +12,8 @@ local sun_and_moon = require("../lib/sun_and_moon")
 local CONTROLLER = sun_and_moon.make { id = "bluemoon/controller", name = "BlueMoon", attack = moon.spawn }
 
 local chip: Chip = {
+    -- The version whose saves hold it (rules/folder; rules/builds' groups).
+    version = "bluemoon",
     codes = { "B" },
     element = "null",
     family = "null",

@@ -4,34 +4,20 @@
 -- its setup field's name (../init.luau's `setup`).
 
 return {
-    -- The versions a build is one of, in the order every list shows them: Team ProtoMan, then Team Colonel. A build's
-    -- version sets, as it is made: the game's version (the setup's `version`: the two play alike but for card 111,
-    -- Bass-Cross MegaMan, whose effects are each team's own, ./patch_cards), and what its saves can have, its six
-    -- souls (0x08024BF0, the soul button's table: Team ProtoMan's souls 1 to 6, Team Colonel's 7 to 12, by compat's
-    -- numbers; exe5-compat's `Version::soul_flag`), and its Giga chips (./folder: the six its ROM's chip records give
-    -- the library flag, and ChaosLrd, which both versions' Japanese games gave out).
-    -- A version's `color` (0xRRGGBB) is the color a tool draws its tag in: Team ProtoMan's red, Team Colonel's green
-    -- (the user: "team colonel should be green instead of blue").
-    -- Its name is the locales' ([builds], `version.<id>`).
-    versions = {
-        {
-            id = "protoman",
-            color = 0xFF5D50,
-            set = {
-                version = "protoman",
-                souls = { "protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul" },
-                giga_chips = { "bass", "deltaray", "bugcurse", "holydrem", "bighook", "dethphnx", "chaoslrd" },
-            },
-        },
-        {
-            id = "colonel",
-            color = 0x45E0A0,
-            set = {
-                version = "colonel",
-                souls = { "colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul" },
-                giga_chips = { "metrknuk", "omegarkt", "bassanly", "crossdiv", "bugcharg", "phoenix", "chaoslrd" },
-            },
-        },
+    -- The versions, as groups (docs/design/versions.md §2.2): what a save of each team can own that the other's can't,
+    -- in the order every list shows them, Team ProtoMan then Team Colonel. A build is of no version: it states what it
+    -- has (its souls, of either team, its folder, its cards), and a ruleset says whether it must be one version's. A
+    -- group's members are the definitions whose own `version` names it: its six souls (the soul button's table,
+    -- 0x08024BF0: Team ProtoMan's souls 1 to 6, Team Colonel's 7 to 12, by compat's numbers; exe5-compat's
+    -- `Version::soul_flag`) and its six Giga chips (./folder: those its ROM's chip records give the library flag;
+    -- ChaosLrd, which both versions' Japanese games gave out, is neither's), and the Bass-Cross MegaMan card's variant of
+    -- its name (../patch_cards/bass-cross-megaman: card 111's effects are each team's own). A new build starts from a
+    -- group: the souls of its version. A group's `color` (0xRRGGBB) is the color a tool draws it in: Team ProtoMan's
+    -- red, Team Colonel's green (the user: "team colonel should be green instead of blue"). Its name is the locales'
+    -- ([builds], `version.<id>`).
+    groups = {
+        { id = "protoman", color = 0xFF5D50 },
+        { id = "colonel", color = 0x45E0A0 },
     },
     -- A build's other choices, each of a few presets that set their facts together, the first a new build's. EXE5's
     -- one is MegaMan light or dark, the two kinds of save Tango's EXE5 netplay saves are (tango-gamesupport-bn5's
@@ -58,7 +44,7 @@ return {
     -- defaults (the most Regular memory, the sun, a team navi's last level, every SP navi deleted in no time, the auto
     -- battle data's pattern records as nothing learned, Chaos Unison).
     at_defaults = { "reg_up", "sun", "level", "sp_times", "auto_battle_records", "chaos_unison" },
-    -- A new build is its version and each choice's first preset (a light MegaMan), with this.
+    -- A new build is its group's souls and each choice's first preset (a light MegaMan), with this.
     new = {
         -- The folder a new save starts with: the first folder of the ROM's folder table, which the new game routine
         -- copies into the save's first folder (Team ProtoMan US's table 0x0801D818, copied by 0x0801DF20 from the new

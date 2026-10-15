@@ -206,17 +206,26 @@ pub fn navicust_expansions(content: &Content, side: &crate::Side) -> Option<u8> 
 }
 
 /// Patch cards of `game` from a list of their names, comma-separated, in
-/// the order they apply (`canodumb,shadow`), as the rules' `patch_cards`
-/// take them.
-pub fn patch_cards(content: &Content, game: &str, list: &str) -> Vec<nettai_battle::rules::Fact<'static>> {
+/// the order they apply (`canodumb,shadow`; a card's variant after its
+/// name, `bass-cross-megaman/gregar`), as the rules' `patch_cards` take
+/// them: a record of each card and its variant (none said: none).
+pub fn patch_cards<'a>(content: &Content, game: &str, list: &'a str) -> Vec<nettai_battle::rules::Fact<'a>> {
     use nettai_battle::rules::Fact;
     use nettai_content_api::{Registry, Value};
     list.split(',')
         .map(str::trim)
         .filter(|s| !s.is_empty())
-        .map(|name| {
+        .map(|named| {
+            let (name, variant) = match named.split_once('/') {
+                Some((n, v)) => (n, Some(v)),
+                None => (named, None),
+            };
             let card = crate::ids::entry(content, game, "patch_cards", name).unwrap_or_else(|| panic!("no patch card {name:?} in {game}"));
-            Fact::Value(Value::Def(Registry::Entry, card.0))
+            let mut record = vec![("card", Fact::Value(Value::Def(Registry::Entry, card.0)))];
+            if let Some(v) = variant {
+                record.push((crate::ruleset::VARIANT, Fact::Name(v)));
+            }
+            Fact::Record(record)
         })
         .collect()
 }

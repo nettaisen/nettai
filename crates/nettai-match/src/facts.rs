@@ -1,8 +1,8 @@
 //! What a side brings that its game's rules take: its facts.
 //!
 //! A fact is a field of the setup of the game's rules, as the
-//! content declares it (`setup = { version = { "gregar", "falzar" },
-//! crosses = "form[5]" }`, `setup = { karma = "u16" }`): its name, its
+//! content declares it (`setup = { cybeast = schema.role("version",
+//! "form"), crosses = "form[5]" }`, `setup = { karma = "u16" }`): its name, its
 //! type, its default (`setup_defaults`; zero without one, and an enum or a
 //! list of definitions unstated). A side holds its facts as those systems' setup blocks
 //! ([`Facts`]), which the round's setup hands the engine as they are. A
@@ -11,18 +11,18 @@
 //! This crate names no game's fact. Which facts there are, what a side
 //! that says nothing has, and which a round can't start without (an enum
 //! or a list of definitions nothing states: no variant is assumed, and an
-//! empty list is a statement) are the content's; a match file states a fact under its
+//! empty list is a statement; the version, where it is a form) are the content's; a match file states a fact under its
 //! field's name, and the build creator shows one by its type. Three the engine
 //! itself knows by role (`PlayerFact`: the version, Beast Out, the form
-//! list), and where this crate needs one of those (the version's place in a
-//! navi's stats, the forms a navi's list may hold) it asks by the role.
+//! list), and where this crate needs one of those (the side's version, the
+//! forms a navi's list may hold) it asks by the role.
 //! One field it names by the field's own name, `patch_cards`
 //! ([`PATCH_CARDS`]): the list a game with patch cards keeps a side's in,
 //! which a build's NaviCust overview leaves empty
 //! ([`Side::without_patch_cards`]). What a card is, and what it does, are
 //! the game's.
 //!
-//! The games' own (EXE6's `version`, `crosses`, `beast_out`,
+//! The games' own (EXE6's `cybeast`, `crosses`, `beast_out`,
 //! `bug_frags`; EXE5's `karma`, `souls`, `chaos_unison`) are
 //! documented where they are declared: content/exe6/rules and
 //! content/exe5/rules. What a save brings to the stats is at its highest
@@ -101,12 +101,13 @@ pub enum Stated {
 }
 
 impl Stated {
-    /// The definitions a list holds (or the one a field names), by their
-    /// handles, in order, its holes left out.
+    /// The definitions a list holds (or the one a field names, or a
+    /// record's fields), by their handles, in order, its holes left out.
     pub fn defs(&self) -> Vec<u16> {
         match self {
             Stated::Def(_, Some(h)) => vec![*h],
             Stated::List(items) => items.iter().flat_map(Stated::defs).collect(),
+            Stated::Record(fields) => fields.iter().flat_map(|(_, v)| v.defs()).collect(),
             _ => Vec::new(),
         }
     }
@@ -294,11 +295,15 @@ impl Facts {
         self.fact(content, content.defs.fact_name(role)?)
     }
 
-    /// The side's version of the game, by the name its rules declare: the
-    /// engine's version fact, where the rules take one and the side states
-    /// it.
+    /// The side's version of the game, by its name: the engine's version
+    /// fact's variant, or the form it names' own `version` (EXE6's
+    /// Cybeast's), where the rules take one and the side states it.
     pub fn version<'a>(&'a self, content: &'a Content) -> Option<&'a str> {
-        self.role(content, PlayerFact::Version)?.name()
+        let fact = self.role(content, PlayerFact::Version)?;
+        match fact.value() {
+            FieldValue::Ref(Some((Registry::Form, h))) => content.defs.forms.get(h as usize)?.record.version.as_deref(),
+            _ => fact.name(),
+        }
     }
 
     /// The forms the side has for its form list (the engine's form list
@@ -332,14 +337,74 @@ pub fn no_field(content: &Content, field: &str) -> String {
     format!("no field {field:?} (a side of {} takes {})", content.game(), names_phrase(content))
 }
 
-/// The versions a side of the game states one of, by the names its rules
-/// declare, in their order: the names of the engine's version fact
-/// (`PlayerFact::Version`, an enum of the rules' setup: EXE6's cross
-/// part's "gregar" and "falzar", the original's order; EXE5's teams,
-/// "protoman" and "colonel"). None: the rules take no version (EXE4's). Tools go by the order: a version's place is its number
-/// in a navi's stats (`crate::version_byte`).
-pub fn versions(content: &Content) -> &[String] {
-    content.defs.versions()
+/// Whether fact `field` is one form the engine knows as the side's version
+/// (EXE6's Cybeast: `PlayerFact::Version` of a form), which a side states
+/// as it does an enum: none is assumed.
+pub fn is_version_form(content: &Content, field: &Field) -> bool {
+    matches!(field.ty, FieldType::Ref(Registry::Form, _)) && content.defs.fact_name(PlayerFact::Version) == Some(field.name)
+}
+
+/// Version `version` (by its name) as the engine's version fact states it:
+/// the variant of that name, or the form the fact offers whose own version
+/// it is (EXE6's "falzar": `falzar-beast`). None: the rules take no version,
+/// or none of that name.
+pub fn version_fact<'v>(content: &Content, version: &'v str) -> Option<Fact<'v>> {
+    let f = field(content, content.defs.fact_name(PlayerFact::Version)?)?;
+    match f.ty {
+        FieldType::Enum(names) => names.iter().any(|n| n == version).then_some(Fact::Name(version)),
+        _ => offered_forms(content, &f)?
+            .into_iter()
+            .find(|&h| content.defs.forms.get(h.index()).and_then(|d| d.record.version.as_deref()) == Some(version))
+            .map(|h| Fact::Value(Value::Def(Registry::Form, h.0))),
+    }
+}
+
+/// The facts of the game's rules that name forms a player chooses: one
+/// form (the side's version, EXE6's Cybeast), and arrays of forms (EXE6's
+/// Crosses, EXE4's and EXE5's souls), the version first, then in the
+/// facts' order. (A build's selector of them: `crate::build::Builds::form_choices`.)
+pub fn form_facts(content: &Content) -> Vec<Field<'_>> {
+    let mut out: Vec<Field> = fields(content)
+        .into_iter()
+        .filter(|f| is_version_form(content, f) || matches!(f.ty, FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _))))
+        .collect();
+    out.sort_by_key(|f| !is_version_form(content, f));
+    out
+}
+
+/// The forms fact `field` of forms may name, as the game's navi that
+/// changes form holds them (its definition's `forms`, sets by name): for
+/// one form, each set's form named as the fact (EXE6's MegaMan's
+/// `cybeast` of each version's set); for the engine's form list, every
+/// set's list (EXE6's ten Crosses); for another array, the list of the set
+/// named as the fact (EXE4's and EXE5's `souls`, the soul button's
+/// twelve), in its order. The sets in the engine's order (by name). None:
+/// the fact names no forms, or the game has no navi that changes form.
+pub fn offered_forms(content: &Content, field: &Field) -> Option<Vec<FormHandle>> {
+    let navi = content.form_changing_navi()?;
+    let forms = content.navi(navi).forms.as_ref()?;
+    match field.ty {
+        FieldType::Ref(Registry::Form, _) => {
+            let def = content.defs.definitions.get(Registry::Navi, &content.defs.navi(navi).key)?;
+            let nettai_content_api::Data::Map(sets) = def.spec.field("forms") else { return None };
+            Some(
+                sets.iter()
+                    .filter_map(|(_, set)| match set.field(field.name) {
+                        nettai_content_api::Data::Ref(Registry::Form, key) => content.defs.form_by_key(key),
+                        _ => None,
+                    })
+                    .collect(),
+            )
+        }
+        FieldType::Array(e, _) if matches!(**e, FieldType::Ref(Registry::Form, _)) => {
+            if content.defs.fact_name(PlayerFact::FormList) == Some(field.name) {
+                Some(forms.lists.iter().flat_map(|(_, list)| list.iter().copied()).collect())
+            } else {
+                Some(forms.listed(field.name).to_vec())
+            }
+        }
+        _ => None,
+    }
 }
 
 /// How many forms a side's form list has room for (the engine's form list
@@ -352,13 +417,19 @@ pub fn form_list_capacity(content: &Content) -> usize {
     }
 }
 
-/// What a round can't start without, of the game's facts: the enums and
-/// the lists of definitions no default states (EXE6's `version`, one of two
-/// names, and its `crosses`, a list that may be empty), in the facts'
-/// order.
+/// What a round can't start without, of the game's facts: the enums no
+/// default states, and the version where it is a form none states (EXE6's
+/// `cybeast`, one of two forms), in the facts' order.
 pub fn required(content: &Content) -> Vec<Field<'_>> {
     let defaults = Facts::defaults(content);
-    fields(content).into_iter().filter(|f| defaults.get(content, f.name) == Some(Stated::Variant(None))).collect()
+    fields(content)
+        .into_iter()
+        .filter(|f| match defaults.get(content, f.name) {
+            Some(Stated::Variant(None)) => true,
+            Some(Stated::Def(Registry::Form, None)) => is_version_form(content, f),
+            _ => false,
+        })
+        .collect()
 }
 
 /// What a required fact may be stated as, for a message: an enum's
@@ -413,6 +484,12 @@ pub fn problems(content: &Content, game: &str, side: &Side) -> Vec<FactProblem> 
         match &value {
             Stated::Variant(None) => {
                 say(Wrong::Unstated, f.name, format!("no {}: a side of {game} states its own ({}); none is assumed", f.name, may_be(&f)));
+            }
+            Stated::Def(Registry::Form, None) if is_version_form(content, &f) => {
+                say(Wrong::Unstated, f.name, format!("no {}: a side of {game} states its own (a form); none is assumed", f.name));
+            }
+            Stated::Def(Registry::Form, Some(h)) if is_version_form(content, &f) && !offered_forms(content, &f).unwrap_or_default().contains(&FormHandle(*h)) => {
+                say(Wrong::Invalid, f.name, format!("{}: {} is none of the forms it names", f.name, crate::names::form(content, FormHandle(*h))));
             }
             Stated::Def(registry, Some(h)) if !of_game(*registry, *h) => say(Wrong::Foreign, f.name, format!("{}: a {registry} {game} hasn't", f.name)),
             Stated::List(items) => {
@@ -668,11 +745,11 @@ impl Side {
     }
 
     /// Whether a side takes a version (the engine's version fact: EXE6's
-    /// cross and rules/beast `version`, gregar or falzar; EXE5's team, whose
-    /// patch card Bass-Cross MegaMan is its own). EXE4's rules don't: its
-    /// two versions play alike, and a match of it states none.
+    /// Cybeast, whose version decides Beast Out and MstrCros). EXE4's and
+    /// EXE5's rules don't: their versions play alike (a version's Bass-Cross
+    /// MegaMan is the card's variant), and a match of them states none.
     pub fn takes_version(content: &Content) -> bool {
-        !versions(content).is_empty()
+        content.defs.fact_name(PlayerFact::Version).is_some()
     }
 
     /// Whether the side's navi takes a level: its definition says what a
@@ -694,8 +771,10 @@ pub fn role_of(content: &Content, name: &str) -> Option<PlayerFact> {
 /// - the engine's form list (`PlayerFact::FormList`): the forms of the
 ///   side's navi's own lists, of every version (EXE6's ten Crosses; none
 ///   for a navi that doesn't change form);
-/// - else what the rules' default lists (what a side that says nothing
-///   has: EXE5's twelve souls), and after them any other the side's list
+/// - else a list of forms the navi that changes form holds under the
+///   fact's name ([`offered_forms`]: EXE4's and EXE5's twelve souls, in the
+///   soul button's order), or what the rules' default lists (what a side
+///   that says nothing has), and after them any other the side's list
 ///   holds;
 /// - a list whose default holds nothing: the game's definitions of the
 ///   registry (an entry of its collection).
@@ -708,7 +787,10 @@ pub fn offered(content: &Content, game: &str, side: &Side, field: &Field) -> Opt
     if role_of(content, field.name) == Some(PlayerFact::FormList) {
         return Some(crate::navi_forms(content, side.navi(content)).unwrap_or_default().into_iter().map(|f| f.0).collect());
     }
-    let mut out = Facts::defaults(content).get(content, field.name).map(|v| v.defs()).unwrap_or_default();
+    let mut out: Vec<u16> = offered_forms(content, field).unwrap_or_default().into_iter().map(|f| f.0).collect();
+    if out.is_empty() {
+        out = Facts::defaults(content).get(content, field.name).map(|v| v.defs()).unwrap_or_default();
+    }
     if out.is_empty() {
         out = ids::all_of(content, registry, of.as_deref())
             .into_iter()

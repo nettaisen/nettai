@@ -72,8 +72,10 @@ function effects.bug(e: PatchCardEffect): PatchCardEffect
     return effect(copy)
 end
 
--- An effect only version `version`'s card has (the side's version fact's value, the builds rules' version id): of a
--- card each version's ROM gives effects of its own (EXE6's and EXE5's Bass-Cross MegaMan, one number and one name).
+-- An effect only version `version`'s card has (a version's id, the builds rules' group's): of a card each version's ROM
+-- gives effects of its own (EXE6's and EXE5's Bass-Cross MegaMan, one number and one name). The card's variants are
+-- the versions its effects name, in the order they first come, of which a build chooses one for the card, as a
+-- NaviCust program's color is chosen (its setup record's `variant`: docs/design/versions.md §2.1).
 function effects.version(version: string, e: PatchCardEffect): PatchCardEffect
     local copy = table.clone(e)
     copy.version = version

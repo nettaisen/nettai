@@ -2,7 +2,7 @@
 -- The folder rules EXE4, EXE5 and EXE6 share, as each game's folder editor enforces them and a link battle checks them
 -- again before it starts: a tool's questions (a match's checks, netplay's offer, the build screens), never the
 -- simulation's. Each game's rules/folder states what is its own (`FolderRules`, types.d.luau: which chips a folder can
--- hold, which a save of the side's version can, how many copies, its dark chips, its tag chips) and cites its
+-- hold, how many copies, its dark chips, its tag chips) and cites its
 -- routines. The limits are the navi's stats as the round set them up (the NaviCust's and the patch cards' work: the
 -- reload's, which the editor and the link battle read).
 --
@@ -11,7 +11,6 @@
 --
 -- - `folder_size`: a folder is its size in chips (of a whole folder).
 -- - `chip_not_allowed`: a chip no folder holds.
--- - `chip_of_another_version`: a chip the side's save can't hold (another version's).
 -- - `chip_code`: each chip in one of its codes (a battle counts any other as the invalid chip).
 -- - `copies`: of one chip, in any codes.
 -- - `mega`, `giga`: at most the navi's Mega and Giga levels (NaviStats +0x0B, +0x0C). A dark chip counts as dark alone.
@@ -87,13 +86,6 @@ function folder_rules.problems(game: FolderRules, stats: Navi, setup: any, f: Ch
                 entry = i,
                 chip = c,
                 text = string.format("entry %d: %s is no chip a folder can hold", i - 1, name(c)),
-            })
-        elseif game.owned ~= nil and not game.owned(c, setup) then
-            say({
-                kind = "chip_of_another_version",
-                entry = i,
-                chip = c,
-                text = string.format("entry %d: %s is a chip of another version's saves", i - 1, name(c)),
             })
         end
         if not has(c.codes, e.code) then
@@ -206,7 +198,7 @@ end
 -- What `game`'s rules allow of folder `f` (the chips so far), the limits `stats`' and the save `setup`'s: the folder's
 -- size and its chips, its Mega, Giga and dark chips against their limits, the Regular and tag memory, and each chip
 -- offered (`f.offered`) that can't go into it now with why (the first rule one more copy would break: no folder holds
--- it, another version's, the folder is whole, its copies, its class's limit), `used` what the folder holds now.
+-- it, the folder is whole, its copies, its class's limit), `used` what the folder holds now.
 function folder_rules.view(game: FolderRules, stats: Navi, setup: any, f: CheckedFolder): FolderView
     local counts = count(f.chips)
     local full = #f.chips >= game.size
@@ -216,12 +208,6 @@ function folder_rules.view(game: FolderRules, stats: Navi, setup: any, f: Checke
         local dark_limit = game.dark
         if not game.in_pack(c) then
             return { kind = "chip_not_allowed", chip = c, text = string.format("%s is no chip a folder can hold", name(c)) }
-        elseif game.owned ~= nil and not game.owned(c, setup) then
-            return {
-                kind = "chip_of_another_version",
-                chip = c,
-                text = string.format("%s is a chip of another version's saves", name(c)),
-            }
         elseif full then
             return {
                 kind = "folder_size",

@@ -12,6 +12,8 @@ local shuffle = require("@self/shuffle")
 local soul = require("./soul")
 
 local form: FormDef = {
+    -- The version whose saves own it (rules/builds' groups).
+    version = "redsun",
     soul = { family = "invisible", turns = 3 },
     custom = shuffle.custom,
     chip = chip,

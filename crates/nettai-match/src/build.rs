@@ -3,10 +3,14 @@
 //! here, with no screen's code and no word a player reads:
 //!
 //! - **The game's builds** ([`Builds`], read from the game's own data, its
-//!   rules/builds module): the versions a build is one of, in the order
-//!   every list shows them, and what each sets of a side; a new build of a
-//!   version ([`Builds::new_build`]: the game's navi that changes form, the
-//!   version, the folder a new save of the game starts with); a build's
+//!   rules/builds module): the game's versions as groups ([`Group`],
+//!   docs/design/versions.md §2.2: a build is of none, and what each group
+//!   holds is the rulesets' to read), in the order every list shows them; a
+//!   new build from a group ([`Builds::new_build`]: the game's navi that
+//!   changes form, the forms its facts offer of the group's version, the
+//!   folder a new save of the game starts with); the facts of forms a build
+//!   chooses ([`Builds::form_choices`]: EXE6's Cybeast and Crosses, EXE4's
+//!   and EXE5's souls, of either version); a build's
 //!   other choices, each of a few presets that set their facts together
 //!   ([`Choice`]: EXE4's and EXE5's light or dark MegaMan; a navi the choice
 //!   isn't of has none of it); a list whose entries go in slots ([`Slots`]:
@@ -31,8 +35,8 @@
 //!   shows as its element), class, MB, attack, codes and place in the
 //!   library's order; rows of a chip in a code, sorted ([`sorted`]).
 //!
-//! This module names no game and no game's fact: the versions, the facts
-//! they set and the folder are the game's data; the numbers are the engine's
+//! This module names no game and no game's fact: the groups, the facts of
+//! forms and the folder are the game's data; the numbers are the engine's
 //! stats; a name is a key into the content's strings.
 
 use crate::check::{self, Problem};
@@ -49,44 +53,46 @@ use nettai_content_api::{ChipHandle, Data, DataKey, EntryHandle, FieldType, Form
 use std::collections::HashMap;
 use std::sync::Arc;
 
-/// A version of a game a build is one of (EXE6's Gregar, EXE5's Team
-/// ProtoMan, EXE4's Red Sun): its id, by which a screen words it (the game's
-/// strings' text table [`TEXT_TABLE`] names it: [`Version::text_key`]), the
-/// color a screen draws its tag in (0xRRGGBB: the version's own, Red Sun's
-/// red and Blue Moon's blue), and the facts it sets of a side.
+/// A version of a game as a group the content declares (docs/design/versions.md
+/// §2.2: EXE6's Gregar, EXE5's Team ProtoMan, EXE4's Red Sun): its id, by
+/// which a screen words it (the game's strings' text table [`TEXT_TABLE`]
+/// names it: [`Group::text_key`]), and the color a screen draws it in
+/// (0xRRGGBB: the version's own, Red Sun's red and Blue Moon's blue). A
+/// build is of none: what a group holds (the definitions whose own
+/// `version` names it) is a ruleset's to read (`ruleset::Rulesets`), and a
+/// new build starts from one ([`Builds::new_build`]).
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Version {
+pub struct Group {
     pub id: String,
     pub color: u32,
-    set: Data,
-    /// The forms a tool shows ahead of the version's own ([`Builds::forms_of`]): the rules' `shown_first`, by id.
-    shown_first: Vec<String>,
 }
 
-impl Version {
-    /// The key of the version's name in the game's strings' text table
+impl Group {
+    /// The key of the group's name in the game's strings' text table
     /// [`TEXT_TABLE`].
     pub fn text_key(&self) -> String {
         format!("version.{}", self.id)
     }
+}
 
-    /// Whether the version sets fact `name` of a side (a problem with that
-    /// fact is the version's: EXE6's `version`, EXE4's and EXE5's souls).
-    pub fn sets(&self, name: &str) -> bool {
-        fields(&self.set).iter().any(|(n, _)| *n == name)
-    }
-
-    /// The names the version states of each fact it sets, by the fact's
-    /// name (EXE5's `souls` and `giga_chips`, each a list of definitions'
-    /// names; a value that names nothing, none): what a save of the version
-    /// can own, which a ruleset's groups read (`ruleset::Rulesets::groups`).
-    pub fn stated_names(&self) -> Vec<(&str, Vec<&str>)> {
-        fields(&self.set).into_iter().map(|(n, v)| (n, items(v).iter().filter_map(Data::str).collect())).collect()
-    }
+/// A fact of forms a build chooses (the build editor's selector,
+/// docs/design/versions.md §2.1): the fact, the forms it may name in the
+/// battle's order (each group's in the groups' order: EXE6's Crosses
+/// Gregar's then Falzar's, its Cybeasts likewise; EXE4's and EXE5's
+/// twelve souls in the soul button's), how many it holds (as many as the
+/// battle's own list: the Cross window's five, the soul button's twelve),
+/// and whether it is one form a side always states (the side's version:
+/// EXE6's Cybeast).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct FormChoice {
+    pub fact: String,
+    pub forms: Vec<FormHandle>,
+    pub room: usize,
+    pub one: bool,
 }
 
 /// The game's strings' text table that names what a build is made of: each
-/// version (`version.<id>`) and each preset of each choice
+/// group, a version (`version.<id>`), and each preset of each choice
 /// (`<choice>.<preset>`).
 pub const TEXT_TABLE: &str = "builds";
 
@@ -100,7 +106,7 @@ pub struct Preset {
     set: Data,
 }
 
-/// A choice a build makes beside its version, of a few presets, each of
+/// A choice a build makes beside its forms, of a few presets, each of
 /// which sets its facts together (EXE4's and EXE5's light or dark MegaMan:
 /// the light/dark value and the base HP): its id, by which a screen words
 /// it, and its presets in the order a screen offers them, the first a new
@@ -246,8 +252,8 @@ impl Slots {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Builds {
     game: String,
-    /// The versions, in the order every list shows them.
-    pub versions: Vec<Version>,
+    /// The groups (the versions), in the order every list shows them.
+    pub groups: Vec<Group>,
     /// A build's other choices, each of a few presets (none in a game
     /// without: EXE6).
     pub choices: Vec<Choice>,
@@ -267,6 +273,16 @@ const MODULE: &str = "rules/builds";
 fn fields(d: &Data) -> Vec<(&str, &Data)> {
     match d {
         Data::Map(entries) => entries.iter().filter_map(|(k, v)| if let DataKey::Str(k) = k { Some((k.as_str(), v)) } else { None }).collect(),
+        _ => Vec::new(),
+    }
+}
+
+/// The ids of `content`'s game's groups (its builds data's `groups`), in
+/// order; none where it states none.
+pub fn group_ids(content: &Content) -> Vec<String> {
+    let module = format!("{}:{MODULE}", content.game());
+    match nettai_battle::behavior::content_module_data(content, &module) {
+        Some(Ok(data)) => items(data.field("groups")).iter().filter_map(|g| g.field("id").str().map(str::to_string)).collect(),
         _ => Vec::new(),
     }
 }
@@ -333,20 +349,15 @@ impl Builds {
         crate::playable(content, game)?;
         let module = format!("{game}:{MODULE}");
         let data = nettai_battle::behavior::content_module_data(content, &module).ok_or_else(|| format!("{game} says nothing of its builds (no module {MODULE})"))??;
-        let versions: Vec<Version> = items(data.field("versions"))
+        let groups: Vec<Group> = items(data.field("groups"))
             .iter()
-            .map(|v| match (v.field("id"), v.field("color").int().and_then(|c| u32::try_from(c).ok()).filter(|c| *c <= 0xFF_FFFF)) {
-                (Data::Str(id), Some(color)) => Ok(Version {
-                    id: id.clone(),
-                    color,
-                    set: v.field("set").clone(),
-                    shown_first: items(v.field("shown_first")).iter().filter_map(|f| f.str().map(str::to_string)).collect(),
-                }),
-                _ => Err(format!("{module}: a version has its `id` and its `color` (0xRRGGBB)")),
+            .map(|g| match (g.field("id"), g.field("color").int().and_then(|c| u32::try_from(c).ok()).filter(|c| *c <= 0xFF_FFFF)) {
+                (Data::Str(id), Some(color)) => Ok(Group { id: id.clone(), color }),
+                _ => Err(format!("{module}: a group has its `id` and its `color` (0xRRGGBB)")),
             })
             .collect::<Result<_, _>>()?;
-        if versions.is_empty() {
-            return Err(format!("{module}: no `versions`"));
+        if groups.is_empty() {
+            return Err(format!("{module}: no `groups`"));
         }
         let mut choices: Vec<Choice> = Vec::new();
         for c in items(data.field("choices")) {
@@ -398,7 +409,7 @@ impl Builds {
             let code = code.chars().next().and_then(ChipCode::from_letter).ok_or_else(|| format!("{module}: {code:?} is no chip code"))?;
             *slot = Some(FolderChip::new(id, code));
         }
-        Ok(Builds { game: game.to_string(), versions, choices, slots, at_defaults, new_set: new.field("set").clone(), new_folder })
+        Ok(Builds { game: game.to_string(), groups, choices, slots, at_defaults, new_set: new.field("set").clone(), new_folder })
     }
 
     /// The game these are the builds of.
@@ -406,66 +417,99 @@ impl Builds {
         &self.game
     }
 
-    /// The version named `id`.
-    pub fn version(&self, id: &str) -> Option<&Version> {
-        self.versions.iter().find(|v| v.id == id)
+    /// The group named `id`.
+    pub fn group(&self, id: &str) -> Option<&Group> {
+        self.groups.iter().find(|g| g.id == id)
     }
 
-    /// Make `side` a build of version `version`: the facts the version sets
-    /// (its souls, its Giga chips, the game's own version fact), and the
-    /// side's navi's own forms of it where the game's rules list a navi's
-    /// forms by version (the engine's form list). An error: no such version,
-    /// or a fact its game's rules don't take.
-    pub fn take_version(&self, content: &Content, side: &mut Side, version: &str) -> Result<(), String> {
-        let v = self.version(version).ok_or_else(|| {
-            let known: Vec<&str> = self.versions.iter().map(|v| v.id.as_str()).collect();
-            format!("{} has no version {version:?} (its are {})", self.game, known.join(", "))
-        })?;
+    /// The place of the group of form `f`'s own version among the groups
+    /// (past them: of none), which the battle's order of a fact's forms goes
+    /// by.
+    fn group_place(&self, content: &Content, f: FormHandle) -> usize {
+        let version = content.defs.forms.get(f.index()).and_then(|d| d.record.version.as_deref());
+        version.and_then(|v| self.groups.iter().position(|g| g.id == v)).unwrap_or(usize::MAX)
+    }
+
+    /// The facts of forms `side`'s build chooses, the side's version (one
+    /// form, EXE6's Cybeast) first: each fact with the forms it may name in
+    /// the battle's order, both versions' ([`FormChoice`]). A list of forms
+    /// is its navi's that changes form alone (EXE6's Crosses, the souls): a
+    /// build of another navi has none of it.
+    pub fn form_choices(&self, content: &Content, side: &Side) -> Vec<FormChoice> {
+        let changes_form = content.navi(side.navi(content)).forms.is_some();
+        facts::form_facts(content)
+            .into_iter()
+            .filter_map(|f| {
+                let one = facts::is_version_form(content, &f);
+                if !one && !changes_form {
+                    return None;
+                }
+                let mut forms = facts::offered_forms(content, &f)?;
+                forms.sort_by_key(|&h| self.group_place(content, h));
+                let room = match f.ty {
+                    FieldType::Array(_, n) => *n as usize,
+                    FieldType::List(_, n) => *n as usize,
+                    _ => 1,
+                };
+                Some(FormChoice { fact: f.name.to_string(), forms, room, one })
+            })
+            .collect()
+    }
+
+    /// The forms `side` states of fact `fact` of forms, in order.
+    pub fn chosen_forms(&self, content: &Content, side: &Side, fact: &str) -> Vec<FormHandle> {
+        side.facts.get(content, fact).map(|v| form_defs(&v)).unwrap_or_default()
+    }
+
+    /// Choose form `form` for `side`'s fact `fact` of forms
+    /// ([`Builds::form_choices`]): the one form of a fact of one (the
+    /// Cybeast); in a list, taken out where it is in, else put in where
+    /// the list has room, in the battle's order. Whether it changed.
+    pub fn choose_form(&self, content: &Content, side: &mut Side, fact: &str, form: FormHandle) -> bool {
+        let Some(choice) = self.form_choices(content, side).into_iter().find(|c| c.fact == fact) else { return false };
+        if !choice.forms.contains(&form) {
+            return false;
+        }
+        let mut chosen = self.chosen_forms(content, side, fact);
+        if choice.one {
+            if chosen == [form] {
+                return false;
+            }
+            chosen = vec![form];
+        } else if let Some(at) = chosen.iter().position(|&f| f == form) {
+            chosen.remove(at);
+        } else if chosen.len() < choice.room {
+            chosen.push(form);
+            chosen.sort_by_key(|f| choice.forms.iter().position(|x| x == f).unwrap_or(usize::MAX));
+        } else {
+            return false;
+        }
+        let values: Vec<Fact> = chosen.iter().map(|f| Fact::Value(Value::Def(Registry::Form, f.0))).collect();
+        side.set_fact(content, fact, &values).is_ok()
+    }
+
+    /// Make `side`'s forms group `group`'s: each fact of forms it chooses
+    /// ([`Builds::form_choices`]) the forms it offers of the group's version
+    /// (EXE6's version's Cybeast and five Crosses, EXE4's and EXE5's six
+    /// souls of it). What a new build starts from. An error: no such group.
+    pub fn take_group(&self, content: &Content, side: &mut Side, group: &str) -> Result<(), String> {
+        if self.group(group).is_none() {
+            let known: Vec<&str> = self.groups.iter().map(|g| g.id.as_str()).collect();
+            return Err(format!("{} has no version {group:?} (its are {})", self.game, known.join(", ")));
+        }
         let mut made = side.clone();
-        state(content, &self.game, &mut made, &v.set)?;
-        made.state_own_forms(content);
+        for choice in self.form_choices(content, side) {
+            let own: Vec<Fact> = choice
+                .forms
+                .iter()
+                .filter(|&&f| content.defs.forms.get(f.index()).and_then(|d| d.record.version.as_deref()) == Some(group))
+                .take(choice.room)
+                .map(|f| Fact::Value(Value::Def(Registry::Form, f.0)))
+                .collect();
+            made.set_fact(content, &choice.fact, &own)?;
+        }
         *side = made;
         Ok(())
-    }
-
-    /// The forms version `version` brings the game's own navi, in order: of
-    /// a new build of it, those of its form list (EXE6's five Crosses, its
-    /// MegaMan's own of the version) and those of the facts the version sets
-    /// (EXE4's and EXE5's six souls), each once. What a screen shows of a
-    /// version beside its choice. An error: no such version.
-    pub fn forms_of(&self, content: &Content, version: &str) -> Result<Vec<FormHandle>, String> {
-        let side = self.new_build(content, version)?;
-        let v = self.version(version).expect("a new build's version is one");
-        let mut forms: Vec<FormHandle> = Vec::new();
-        for id in &v.shown_first {
-            forms.push(crate::ids::form(content, &self.game, id).ok_or_else(|| format!("version {version}: `shown_first` names no form {id:?}"))?);
-        }
-        forms.extend(side.facts.form_list(content));
-        for (name, _) in fields(&v.set) {
-            if let Some(value) = side.facts.get(content, name) {
-                forms.extend(form_defs(&value));
-            }
-        }
-        let mut once = Vec::new();
-        for f in forms {
-            if !once.contains(&f) {
-                once.push(f);
-            }
-        }
-        Ok(once)
-    }
-
-    /// The version `side` is a build of: the first whose facts are all the
-    /// side's; none where it is of none (a side no version made, a file's
-    /// with another's mix).
-    pub fn version_of(&self, content: &Content, side: &Side) -> Option<&str> {
-        self.versions
-            .iter()
-            .find(|v| {
-                let mut as_it = side.clone();
-                state(content, &self.game, &mut as_it, &v.set).is_ok() && fields(&v.set).iter().all(|(name, _)| as_it.facts.get(content, name) == side.facts.get(content, name))
-            })
-            .map(|v| v.id.as_str())
     }
 
     /// The choice named `id`.
@@ -588,58 +632,42 @@ impl Builds {
     }
 
     /// Make `side` a build of navi `navi`, as a build is: its level at its
-    /// last, its form list its own of the side's version (none for a navi
-    /// without), and its choices settled (one that isn't this navi's back at
-    /// the rules' defaults: a team navi is neither light nor dark, and its
-    /// HP its story's). What the side has installed stays as it is.
+    /// last, its form list none for a navi that doesn't change form (and, for
+    /// one that does, the list it holds, else its own of the side's version:
+    /// EXE6's Cybeast's five Crosses), and its choices settled (one that isn't
+    /// this navi's back at the rules' defaults: a team navi is neither light
+    /// nor dark, and its HP its story's). What the side has installed stays
+    /// as it is.
     pub fn set_navi(&self, content: &Content, side: &mut Side, navi: NaviHandle) -> Result<(), String> {
         let mut made = side.clone();
         made.set_navi(content, navi)?;
-        made.state_own_forms(content);
+        if content.navi(navi).forms.is_none() || made.facts.form_list(content).is_empty() {
+            made.state_own_forms(content);
+        }
         self.as_built(content, &mut made);
         *side = made;
         Ok(())
     }
 
-    /// A new build of version `version`: the game's navi that changes form
-    /// (MegaMan), the version, the folder a new save of the game starts
-    /// with (no Regular or tag chip, as a new save's), the first preset of
-    /// each of its choices (a light MegaMan), what the game says a new build
-    /// states besides, and every other fact the rules' default (an empty
-    /// NaviCust on the largest board, no patch cards). It keeps its game's
-    /// rules ([`Checked::of`] finds nothing wrong with it).
-    pub fn new_build(&self, content: &Content, version: &str) -> Result<Side, String> {
+    /// A new build from group `group`: the game's navi that changes form
+    /// (MegaMan), the forms its facts offer of the group's version
+    /// ([`Builds::take_group`]: EXE6's Cybeast and Crosses, EXE4's and
+    /// EXE5's souls), the folder a new save of the game starts with (no
+    /// Regular or tag chip, as a new save's), the first preset of each of
+    /// its choices (a light MegaMan), what the game says a new build states
+    /// besides, and every other fact the rules' default (an empty NaviCust
+    /// on the largest board, no patch cards). It keeps its game's rules
+    /// ([`Checked::of`] finds nothing wrong with it).
+    pub fn new_build(&self, content: &Content, group: &str) -> Result<Side, String> {
         let mut side = Side::fresh(content, &self.game)?;
         state(content, &self.game, &mut side, &self.new_set)?;
-        self.take_version(content, &mut side, version)?;
+        self.take_group(content, &mut side, group)?;
         for c in self.choices_of(content, &side) {
             state(content, &self.game, &mut side, &c.presets[0].set)?;
         }
         side.set_folder(content, &self.new_folder)?;
         self.as_built(content, &mut side);
         Ok(side)
-    }
-
-    /// The chips only some versions' saves hold, each with those versions
-    /// (ids, in the versions' order): what a screen says of a chip the
-    /// folder's rules refuse as another version's ("Gregar only"). Asked of
-    /// the rules, a new build of each version at a time.
-    pub fn version_chips(&self, content: &Arc<Content>) -> Result<HashMap<ChipHandle, Vec<String>>, String> {
-        let mut holders: HashMap<ChipHandle, Vec<String>> = HashMap::new();
-        let mut exclusive: Vec<ChipHandle> = Vec::new();
-        for v in &self.versions {
-            let side = self.new_build(content, &v.id)?;
-            let mut checked = Checked::of(content, &self.game, &side);
-            let view = checked.folder_view(content, &Folder::EMPTY).ok_or_else(|| format!("{}'s rules give no view of a folder", self.game))?;
-            for id in (0..content.defs.chips.len() as u16).map(ChipHandle).filter(|&id| view.lists(id)) {
-                match view.refusal(id) {
-                    Some(Wrong::ChipOfAnotherVersion { .. }) => exclusive.push(id),
-                    _ => holders.entry(id).or_default().push(v.id.clone()),
-                }
-            }
-        }
-        holders.retain(|id, _| exclusive.contains(id));
-        Ok(holders)
     }
 }
 
@@ -1141,25 +1169,25 @@ mod tests {
         Bug::Named { key: key.into(), extent: Extent::Amount { amount, of } }
     }
 
-    /// The three games, each with its versions in the order every list shows
-    /// them.
+    /// The three games, each with its groups (its versions) in the order
+    /// every list shows them.
     fn games() -> [(Arc<Content>, &'static str, [&'static str; 2]); 3] {
         [(exe4_content(), "exe4", ["redsun", "bluemoon"]), (exe5_content(), "exe5", ["protoman", "colonel"]), (exe6_content(), "exe6", ["gregar", "falzar"])]
     }
 
-    /// Each game's versions are listed in the user's order, and a new build
-    /// of each is MegaMan of that version with the folder a new save starts
-    /// with, at the most its game allows; nothing is wrong with it.
+    /// Each game's groups are listed in the user's order, and a new build
+    /// from each is MegaMan with that version's forms and the folder a new
+    /// save starts with, at the most its game allows; nothing is wrong with
+    /// it.
     #[test]
-    fn a_new_build_of_each_version_is_ready() {
+    fn a_new_build_of_each_group_is_ready() {
         for (content, game, versions) in games() {
             let builds = Builds::of(&content, game).unwrap();
-            assert_eq!(builds.versions.iter().map(|v| v.id.as_str()).collect::<Vec<_>>(), versions, "{game}");
+            assert_eq!(builds.groups.iter().map(|v| v.id.as_str()).collect::<Vec<_>>(), versions, "{game}");
             assert_eq!(builds.new_folder.chips().count(), FOLDER_SIZE, "{game}");
             for version in versions {
                 let side = builds.new_build(&content, version).unwrap();
                 assert_eq!(Some(side.navi(&content)), crate::first_navi(&content, game), "{game} {version}");
-                assert_eq!(builds.version_of(&content, &side), Some(version), "{game}");
                 assert_eq!(side.folder(&content), builds.new_folder, "{game} {version}");
                 let mut checked = Checked::of(&content, game, &side);
                 assert_eq!(checked.problems, Vec::new(), "{game} {version}");
@@ -1235,17 +1263,18 @@ mod tests {
         }
     }
 
-    /// A build of one version holds none of the other's Giga chips: the
-    /// rules refuse one in its folder as another version's, and a build made
-    /// the other version takes it.
+    /// A build may hold either version's Giga chips (docs/design/versions.md
+    /// §2.1): the folder rules take the other version's, and a ruleset of
+    /// one version per build says the build mixes them.
     #[test]
-    fn a_version_holds_its_own_giga_chips() {
+    fn a_build_holds_either_versions_giga_chips() {
         for (content, game, versions, own) in [
             (exe4_content(), "exe4", ["redsun", "bluemoon"], ["redsun", "bluemoon"]),
             (exe5_content(), "exe5", ["protoman", "colonel"], ["dethphnx", "phoenix"]),
             (exe6_content(), "exe6", ["gregar", "falzar"], ["colforce", "hubbatc"]),
         ] {
             let builds = Builds::of(&content, game).unwrap();
+            let rulesets = crate::ruleset::Rulesets::of(&content, game).unwrap();
             let chip = |key: &str| ids::chip(&content, game, key).unwrap();
             for (v, version) in versions.iter().enumerate() {
                 let mut side = builds.new_build(&content, version).unwrap();
@@ -1253,97 +1282,100 @@ mod tests {
                 let theirs = chip(own[1 - v]);
                 folder.chips[0] = Some(FolderChip::new(theirs, content.chip(theirs).codes[0]));
                 side.set_folder(&content, &folder).unwrap();
-                let checked = Checked::of(&content, game, &side);
-                assert_eq!(checked.problems.len(), 1, "{game} {version}: {:?}", checked.problems);
-                let p = &checked.problems[0];
-                assert_eq!((&p.what, p.entry, p.field.as_deref()), (&Wrong::ChipOfAnotherVersion { chip: theirs }, Some(0), Some("folder")), "{game} {version}");
-                // The other version, with the same folder, takes it.
-                builds.take_version(&content, &mut side, versions[1 - v]).unwrap();
                 assert_eq!(Checked::of(&content, game, &side).problems, Vec::new(), "{game} {version}");
-                assert_eq!(builds.version_of(&content, &side), Some(versions[1 - v]));
+                let under = Checked::under(&content, game, &side, &rulesets, rulesets.first()).problems;
+                assert!(matches!(&under[..], [p] if matches!(&p.what, Wrong::Mixed { items, .. } if items.contains(&(Registry::Chip, crate::ruleset::Item::of(theirs.0))))), "{game} {version}: {under:?}");
             }
         }
     }
 
-    /// A version's forms are its own: a new build of each has its version's
-    /// souls (EXE4's and EXE5's, which the version sets) or Crosses (EXE6's,
-    /// MegaMan's own forms of the version), and is told by them as that
-    /// version; made the other version, it has the other's. A side with some
-    /// souls of each, or every soul (the rules' default, a fresh side's), is
-    /// of no version (EXE4's rules take none; EXE5's version goes with its
-    /// souls); in EXE6 the version is the rules' own fact, whatever the
-    /// Crosses.
+    /// The facts of forms a build chooses (the editor's selector,
+    /// docs/design/versions.md §2.1): EXE6's Cybeast (one of two, always
+    /// one, at the head) and Crosses (up to the Cross window's five of
+    /// MegaMan's ten), EXE4's and EXE5's souls (up to the soul button's
+    /// twelve), each in the battle's order, both versions' offered. A new
+    /// build from a group has its version's; one chosen in or out keeps the
+    /// battle's order, a full list takes no more, and the Cybeast is the
+    /// side's version (EXE6's: its rules' own fact).
     #[test]
-    fn each_version_has_its_own_forms() {
+    fn a_build_chooses_its_forms() {
         let red = ["rollsoul", "gutssoul", "windsoul", "searchsoul", "firesoul", "thundersoul"];
         let blue = ["protosoul", "numbersoul", "metalsoul", "junksoul", "aquasoul", "woodsoul"];
         let protoman = ["protosoul", "gyrosoul", "searchsoul", "napalmsoul", "magnetsoul", "meddysoul"];
         let colonel = ["colonelsoul", "shadowsoul", "numbersoul", "tomahawksoul", "knightsoul", "toadsoul"];
         let gregar = ["heatcross", "eleccross", "slashcross", "erasecross", "chargecross"];
         let falzar = ["spoutcross", "tomahawkcross", "tengucross", "groundcross", "dustcross"];
-        // (The game, the fact that lists the forms, the versions and each one's forms.)
-        let games: [(Arc<Content>, &str, &str, [&str; 2], [&[&str]; 2]); 3] = [
-            (exe4_content(), "exe4", "souls", ["redsun", "bluemoon"], [&red, &blue]),
-            (exe5_content(), "exe5", "souls", ["protoman", "colonel"], [&protoman, &colonel]),
-            (exe6_content(), "exe6", "crosses", ["gregar", "falzar"], [&gregar, &falzar]),
+        // (The game, the fact that lists the forms, its room, the versions and each one's forms.)
+        let games: [(Arc<Content>, &str, &str, usize, [&str; 2], [&[&str]; 2]); 3] = [
+            (exe4_content(), "exe4", "souls", 12, ["redsun", "bluemoon"], [&red, &blue]),
+            (exe5_content(), "exe5", "souls", 12, ["protoman", "colonel"], [&protoman, &colonel]),
+            (exe6_content(), "exe6", "crosses", 5, ["gregar", "falzar"], [&gregar, &falzar]),
         ];
-        for (content, game, fact, versions, forms) in games {
+        for (content, game, fact, room, versions, forms) in games {
             let builds = Builds::of(&content, game).unwrap();
-            let listed = |side: &Side| side.facts.get(&content, fact).map(|v| v.defs()).unwrap_or_default();
-            let names = |side: &Side| {
-                let mut names: Vec<String> = listed(side).iter().map(|&h| ids::local(&content.defs.form(FormHandle(h)).key).to_string()).collect();
-                names.sort();
-                names
-            };
-            let sorted = |list: &[&str]| {
-                let mut list: Vec<String> = list.iter().map(|s| s.to_string()).collect();
-                list.sort();
-                list
-            };
-            for (v, version) in versions.iter().enumerate() {
-                let mut side = builds.new_build(&content, version).unwrap();
-                assert_eq!(names(&side), sorted(forms[v]), "{game} {version}");
-                // (What a screen shows of the version: the same forms, in the list's order, after those the rules show
-                // first: EXE6's Beast Out.)
-                let shown: Vec<&str> = builds.forms_of(&content, version).unwrap().iter().map(|&f| ids::local(&content.defs.form(f).key)).collect();
-                let first: Vec<String> = if game == "exe6" { vec![format!("{version}-beast")] } else { Vec::new() };
-                let expected: Vec<&str> = first.iter().map(String::as_str).chain(forms[v].iter().copied()).collect();
-                assert_eq!(shown, expected, "{game} {version}");
-                assert_eq!(builds.version_of(&content, &side), Some(*version), "{game}");
-                assert_eq!(side.version(&content), (game != "exe4").then_some(*version), "{game}: the rules' own version");
-                builds.take_version(&content, &mut side, versions[1 - v]).unwrap();
-                assert_eq!(names(&side), sorted(forms[1 - v]), "{game} {version} made {}", versions[1 - v]);
-                assert_eq!(builds.version_of(&content, &side), Some(versions[1 - v]), "{game}");
-            }
-            // Some of each version's: of neither.
-            let mut mixed = builds.new_build(&content, versions[0]).unwrap();
-            let mut list = listed(&mixed);
-            list[0] = ids::form(&content, game, forms[1][0]).unwrap().0;
-            let list: Vec<Fact> = list.iter().map(|&h| Fact::Value(Value::Def(Registry::Form, h))).collect();
-            mixed.set_fact(&content, fact, &list).unwrap();
+            let names = |list: &[FormHandle]| list.iter().map(|&h| ids::local(&content.defs.form(h).key).to_string()).collect::<Vec<_>>();
+            let of = |list: &[&str]| list.iter().map(|s| s.to_string()).collect::<Vec<_>>();
+            let mut side = builds.new_build(&content, versions[0]).unwrap();
+            let choices = builds.form_choices(&content, &side);
+            let facts: Vec<(&str, usize, bool)> = choices.iter().map(|c| (c.fact.as_str(), c.room, c.one)).collect();
+            let all: Vec<String> = [forms[0], forms[1]].concat().iter().map(|s| s.to_string()).collect();
             if game == "exe6" {
-                // (EXE6's version is its rules' own fact, not its Crosses.)
-                assert_eq!(builds.version_of(&content, &mixed), Some(versions[0]), "{game}: a mix of Crosses");
+                assert_eq!(facts, [("cybeast", 1, true), ("crosses", 5, false)], "{game}");
+                assert_eq!(names(&choices[0].forms), ["gregar-beast", "falzar-beast"], "{game}");
             } else {
-                assert_eq!(builds.version_of(&content, &mixed), None, "{game}: a mix of souls");
-                assert_eq!(builds.version_of(&content, &Side::fresh(&content, game).unwrap()), None, "{game}: every soul");
+                assert_eq!(facts, [(fact, room, false)], "{game}");
+            }
+            let list = choices.iter().find(|c| c.fact == fact).unwrap();
+            assert_eq!(names(&list.forms), all, "{game}: both versions', in the battle's order");
+            for (v, version) in versions.iter().enumerate() {
+                let new = builds.new_build(&content, version).unwrap();
+                assert_eq!(names(&builds.chosen_forms(&content, &new, fact)), of(forms[v]), "{game} {version}");
+                assert_eq!(new.version(&content), (game == "exe6").then_some(*version), "{game}: the Cybeast's version");
+            }
+            // One of the other version's chosen in goes in its place in the battle's order; taken out again, the
+            // version's own are left.
+            let theirs = ids::form(&content, game, forms[1][0]).unwrap();
+            let mine = ids::form(&content, game, forms[0][0]).unwrap();
+            if room == 5 {
+                assert!(!builds.choose_form(&content, &mut side, fact, theirs), "{game}: the window's five are full");
+                assert!(builds.choose_form(&content, &mut side, fact, mine));
+            }
+            assert!(builds.choose_form(&content, &mut side, fact, theirs), "{game}");
+            let chosen = names(&builds.chosen_forms(&content, &side, fact));
+            assert_eq!(chosen.last().map(String::as_str), Some(forms[1][0]), "{game}");
+            assert_eq!(Checked::of(&content, game, &side).problems, Vec::new(), "{game}: a build may mix them");
+            assert!(builds.choose_form(&content, &mut side, fact, theirs));
+            if game == "exe6" {
+                // The Cybeast: one always, the side's version.
+                let falzar_beast = ids::form(&content, game, "falzar-beast").unwrap();
+                assert!(builds.choose_form(&content, &mut side, "cybeast", falzar_beast));
+                assert!(!builds.choose_form(&content, &mut side, "cybeast", falzar_beast), "already chosen");
+                assert_eq!((side.version(&content), builds.chosen_forms(&content, &side, "cybeast")), (Some("falzar"), vec![falzar_beast]));
+                assert!(!builds.choose_form(&content, &mut side, "cybeast", theirs), "a Cross is no Cybeast");
+                // No Cybeast: the round doesn't start.
+                side.set_fact(&content, "cybeast", &[Fact::Value(Value::Nil)]).unwrap();
+                assert_eq!(Checked::of(&content, game, &side).problems.iter().map(|p| &p.what).collect::<Vec<_>>(), [&Wrong::Unstated]);
             }
         }
     }
 
-    /// The Bass-Cross MegaMan card is one card whose effects are its build's version's (EXE6's card 117, EXE5's 111:
-    /// each version's ROM its own card table's entry; the user: "it's actually just the same card, but with different
-    /// effects depending on version of the game"). A build of either version holds it with nothing wrong, and has the
-    /// effects of no version's (NormBody, TriBustr, the MegFld-2 bug) and its version's own: Gregar's and Team
-    /// ProtoMan's HP+200, SprArmr and the rapid buster, Falzar's and Team Colonel's HP+20%, FlotShoe and their own
-    /// charged shot. Switched to the other version, the build keeps the card where it was and has the other's effects.
+    /// The Bass-Cross MegaMan card is one card with a variant of each version (EXE6's card 117, EXE5's 111: each
+    /// version's ROM its own card table's entry; the user: "it's actually just the same card, but with different
+    /// effects depending on version of the game"), which a build chooses for the card (docs/design/versions.md §2.1,
+    /// §3.1). A build holds either with nothing wrong, and has the effects of no version's (NormBody, TriBustr, the
+    /// MegFld-2 bug) and its variant's own: Gregar's and Team ProtoMan's HP+200, SprArmr and the rapid buster,
+    /// Falzar's and Team Colonel's HP+20%, FlotShoe and their own charged shot, whatever its forms. Its variant
+    /// changed, the card stays where it was and has the other's effects.
     #[test]
-    fn bass_cross_megamans_effects_are_the_versions() {
+    fn bass_cross_megamans_effects_are_its_variants() {
         for (content, game, versions) in [(exe6_content(), "exe6", ["gregar", "falzar"]), (exe5_content(), "exe5", ["protoman", "colonel"])] {
             let builds = Builds::of(&content, game).unwrap();
             let card = ids::entry(&content, game, facts::PATCH_CARDS, "bass-cross-megaman").unwrap();
             let other = ids::entry(&content, game, facts::PATCH_CARDS, if game == "exe6" { "canodumb" } else { "billy" }).unwrap();
-            let entry = |h: EntryHandle| Fact::Value(Value::Def(Registry::Entry, h.0));
+            assert_eq!(crate::ruleset::variants_of(&content, Registry::Entry, card.0), versions, "{game}");
+            assert!(crate::ruleset::variants_of(&content, Registry::Entry, other.0).is_empty(), "{game}");
+            let other_name = ids::name_of(&content, Registry::Entry, other.0).unwrap();
+            let cards = |variant: &str| format!("{other_name},bass-cross-megaman/{variant}");
             // The kind of the card's effect at place `i` of its list.
             let kind_at = |i: usize| {
                 let d = content.defs.definitions.get(Registry::Entry, &content.defs.entry(card).key).unwrap();
@@ -1370,7 +1402,7 @@ mod tests {
             // The HP the other card leaves (the card before it in the list).
             let before = {
                 let mut side = builds.new_build(&content, versions[0]).unwrap();
-                side.set_fact(&content, facts::PATCH_CARDS, &[entry(other)]).unwrap();
+                side.set_fact(&content, facts::PATCH_CARDS, &patch_cards(&content, game, other_name)).unwrap();
                 looked(&side).0.0
             };
             // A version's own: Gregar's and Team ProtoMan's HP+200 and SprArmr, Falzar's and Team Colonel's HP+20% and
@@ -1385,12 +1417,13 @@ mod tests {
                 (hp, 3, abilities)
             };
             for (v, version) in versions.iter().enumerate() {
-                let mut side = builds.new_build(&content, version).unwrap();
-                side.set_fact(&content, facts::PATCH_CARDS, &[entry(other), entry(card)]).unwrap();
+                // (Of the other group's forms: the card's variant alone decides.)
+                let mut side = builds.new_build(&content, versions[1 - v]).unwrap();
+                side.set_fact(&content, facts::PATCH_CARDS, &patch_cards(&content, game, &cards(version))).unwrap();
                 let (seen, charge) = looked(&side);
                 assert_eq!(seen, own(version), "{game} {version}");
                 let switched = versions[1 - v];
-                builds.take_version(&content, &mut side, switched).unwrap();
+                side.set_fact(&content, facts::PATCH_CARDS, &patch_cards(&content, game, &cards(switched))).unwrap();
                 assert_eq!(side.facts.get(&content, facts::PATCH_CARDS).map(|l| l.defs()), Some(vec![other.0, card.0]), "{game}: the card stays");
                 let (seen, switched_charge) = looked(&side);
                 assert_eq!(seen, own(switched), "{game} {version} made {switched}");
@@ -1600,7 +1633,7 @@ mod tests {
                 let mut side = clean.clone();
                 match &builds.slots {
                     Some(slots) => drop(slots.put(&content, &mut side, card).unwrap()),
-                    None => side.set_fact(&content, "patch_cards", &[Fact::Value(Value::Def(Registry::Entry, card.0))]).unwrap(),
+                    None => side.set_fact(&content, "patch_cards", &[Fact::Record(vec![("card", Fact::Value(Value::Def(Registry::Entry, card.0)))])]).unwrap(),
                 }
                 let o = Checked::of(&content, game, &side).overview(&content, &side).unwrap();
                 let named: Vec<&String> = o.bugs.iter().filter_map(|b| if let Bug::Named { key, .. } = b { Some(key) } else { None }).collect();
@@ -1658,8 +1691,8 @@ mod tests {
         let chips = library(&content, "exe6", &view, &rank);
         assert!(chips.len() > 250 && chips.iter().all(|c| view.lists(c.chip)));
         assert_eq!(chips[..3].iter().map(|c| c.chip).collect::<Vec<_>>(), [chip("cannon"), chip("hicannon"), chip("m-cannon")]);
-        // The other version's Giga chips are listed (and refused).
-        assert!(chips.iter().any(|c| c.chip == chip("falzar")) && matches!(view.refusal(chip("falzar")), Some(Wrong::ChipOfAnotherVersion { .. })));
+        // The other version's Giga chips are listed (and a build may hold them).
+        assert!(chips.iter().any(|c| c.chip == chip("falzar")), "{:?}", view.refusal(chip("falzar")));
         let name = |c: ChipHandle| crate::names::chip(&content, c).to_string();
         let rows = sorted(&content, &chips, Sort::Library, false, &name);
         assert_eq!(rows[..4].iter().map(|c| (c.id, c.code.letter())).collect::<Vec<_>>(), [(chip("cannon"), 'A'), (chip("cannon"), 'B'), (chip("cannon"), 'C'), (chip("cannon"), '*')]);
@@ -2031,7 +2064,7 @@ mod tests {
             let builds = Builds::of(&content, game).unwrap();
             assert_eq!(builds.choices.iter().map(|c| c.id.as_str()).collect::<Vec<_>>(), ["light_dark"], "{game}");
             assert_eq!(builds.choices[0].presets.iter().map(|p| p.id.as_str()).collect::<Vec<_>>(), ["light", "dark"], "{game}");
-            let mut side = builds.new_build(&content, &builds.versions[0].id.clone()).unwrap();
+            let mut side = builds.new_build(&content, &builds.groups[0].id.clone()).unwrap();
             let facts = |side: &Side| (number(&content, side, "karma").unwrap(), number(&content, side, "hp").unwrap());
             let on = |side: &Side| builds.preset_of(&content, side, "light_dark").map(|p| p.id.clone());
             assert_eq!((on(&side).as_deref(), facts(&side)), (Some("light"), light), "{game}");
@@ -2073,7 +2106,7 @@ mod tests {
     fn a_value_between_takes_its_side_of_the_line() {
         for (content, game, line, dark) in [(exe5_content(), "exe5", 470, (0, 997)), (exe4_content(), "exe4", 500, (460, 997))] {
             let builds = Builds::of(&content, game).unwrap();
-            let new = builds.new_build(&content, &builds.versions[1].id.clone()).unwrap();
+            let new = builds.new_build(&content, &builds.groups[1].id.clone()).unwrap();
             let settled = |value: i64| {
                 let mut side = new.clone();
                 side.set_fact(&content, "karma", &[Fact::Value(Value::Int(value))]).unwrap();
@@ -2119,8 +2152,8 @@ mod tests {
         assert!(side.facts.is_default(&content, "karma") && side.facts.is_default(&content, "hp"));
         assert!(builds.take_preset(&content, &mut side, "light_dark", "dark").unwrap_err().contains("no choice of the side's navi"));
         assert_eq!(side.level(&content), crate::play_level(&content, protoman));
-        // (Its version stays: the team's souls and Giga chips are the save's.)
-        assert_eq!(builds.version_of(&content, &side), Some("protoman"));
+        // (Its souls stay: they are the save's.)
+        assert_eq!(builds.chosen_forms(&content, &side, "souls").len(), 6);
         let mut checked = Checked::of(&content, "exe5", &side);
         assert_eq!(checked.problems, Vec::new());
         assert_eq!(checked.face(), Some(Face::Navi(protoman)));

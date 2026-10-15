@@ -27,7 +27,7 @@ local GAME: NaviCustBugTable = {
         [0x60] = { name = "chip_shuffle", as = "flag" },
         [0x61] = { name = "number_open", as = "one" },
     },
-    unheld = { [0x20] = "the version (a side's fact, rules/api's `exe6.version`)" },
+    unheld = { [0x20] = "the version (a side's fact: its Cybeast's, rules/api's `exe6.cybeast`)" },
     drain_by_flags = false,
     specials = {
         [0xFF] = { kind = "blanks" },

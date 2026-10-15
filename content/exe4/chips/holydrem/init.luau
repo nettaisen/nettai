@@ -12,6 +12,8 @@ local stand_in = require("@self/stand_in")
 local CONTROLLER = common.make { id = "holydrem/controller", stand_in = stand_in.spawn, side_only = true }
 
 local chip: Chip = {
+    -- The version whose saves hold it (rules/folder; rules/builds' groups).
+    version = "redsun",
     codes = { "H" },
     element = "null",
     family = "null",

@@ -5,7 +5,7 @@
 -- is 4 and the custom level 5; the mood is 0x99 (a round's start sets its own); the Beast Out counter is 3 turns.
 -- The block is zeroed first, and the zero at +0x44, the weapon of the A button in battle mode 9, names weapon
 -- routine 0: MegaMan's buster, whatever the navi. (The version byte, +0x20, is the console's own, 0 in a Gregar ROM
--- and 1 in a Falzar one: the side's, which a battle's start sets.)
+-- and 1 in a Falzar one: the side's, which a battle's start sets; nettai's side states its Cybeast instead.)
 
 local buster = require("../navis/megaman/weapons/buster")
 
