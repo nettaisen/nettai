@@ -88,12 +88,13 @@ souls.windows = windows
 
 -- What a side keeps of Double Soul through a round: the soul's turns (./turns: AIData +0x18 counted up toward +0x19,
 -- which the emotion window counts down from: the offer view's roles), the souls given this round (0x0203BF88: a soul
--- given is one the save has, of its six), and the custom screen's (./custom): the UNITE button's offer (the screen's
--- +0x0D; once given, the soul given) and the soul's choice's step and count; and what each soul's screen keeps.
+-- given is one the save has, of its six; a build has as many as setup's `souls` holds, twelve, of both versions),
+-- and the custom screen's (./custom): the UNITE button's offer (the screen's +0x0D; once given, the soul given) and
+-- the soul's choice's step and count; and what each soul's screen keeps.
 souls.state = {
     soul_turns = schema.role("form_offer.turns", "u8"),
     soul_turn_limit = schema.role("form_offer.turn_limit", "u8"),
-    souls_used = schema.list("form", 6),
+    souls_used = schema.list("form", 12),
     offer = schema.role("form_offer.form", "form"),
     unite_step = schema.role("offer_flight.step", "u8"),
     unite_count = schema.role("offer_flight.count", "u8"),
