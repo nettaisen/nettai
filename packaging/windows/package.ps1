@@ -1,20 +1,24 @@
 # The Windows installer, and the same app in a .zip, on Windows:
 # target\package\windows\nettai-<version>-windows-x64-setup.exe and nettai-<version>-windows-x64.zip.
 #
-#   pwsh packaging\windows\package.ps1 [-Version <version>] [-Icon <nettai.ico>]
+#   pwsh packaging\windows\package.ps1 [-Version <version>] [-Icon <nettai.ico>] [-Ffmpeg <ffmpeg.exe>]
 #
-# The app: nettai.exe, content\, LICENSE.txt, THIRD-PARTY-NOTICES.txt. No ROM and no extracted asset is in it: the
+# The app: nettai.exe, ffmpeg.exe, content\, LICENSE.txt, THIRD-PARTY-NOTICES.txt, ffmpeg-NOTICE.txt. No ROM and no
+# extracted asset is in it: the
 # app extracts each game's pack from the player's own copy. The installer is Inno Setup's (nettai.iss): ISCC.exe
 # on the PATH or in Inno Setup 6's folder (`winget install JRSoftware.InnoSetup` or `choco install innosetup`).
 #
 # -Version   the version (the workflow's, from the tag); else $env:NETTAI_VERSION, else the app crate's
 # -Icon      the .ico packaging/icons.sh makes, for the program and the installer; without it neither has one
+# -Ffmpeg    the ffmpeg.exe to bundle; else $env:NETTAI_BUNDLE_FFMPEG, else the release packaging\ffmpeg.sha256
+#            pins, downloaded and checked (a static program that needs no DLL)
 # $env:WINDOWS_CERTIFICATE_PATH, $env:WINDOWS_CERTIFICATE_PASSWORD
 #            a code-signing certificate (.pfx) to sign the program and the installer with (signtool, from the
 #            Windows SDK); else neither is signed
 param(
     [string]$Version = $env:NETTAI_VERSION,
-    [string]$Icon
+    [string]$Icon,
+    [string]$Ffmpeg = $env:NETTAI_BUNDLE_FFMPEG
 )
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
@@ -55,11 +59,37 @@ function Sign-File([string]$file) {
     if ($LASTEXITCODE -ne 0) { throw "signtool failed on $file" }
 }
 
+# A file of the ffmpeg release packaging\ffmpeg.sha256 pins (bigfarts/nettai-ffmpeg-build's, a minimal static
+# build of what the replay export runs), downloaded once into target\package\ffmpeg\<tag>\ and checked: its path.
+function Get-FfmpegFile([string]$file) {
+    $pins = Get-Content "$root\packaging\ffmpeg.sha256"
+    $release = ($pins | Select-String -Pattern '^# release: (.*)$' | Select-Object -First 1).Matches[0].Groups[1].Value
+    $sum = $pins | ForEach-Object { if ($_ -match "^([0-9a-f]{64})  $([regex]::Escape($file))$") { $Matches[1] } } | Select-Object -First 1
+    if (-not $sum) { throw "packaging\ffmpeg.sha256 pins no $file" }
+    $dir = "$root\target\package\ffmpeg\$release"
+    New-Item -ItemType Directory -Force $dir | Out-Null
+    $path = "$dir\$file"
+    if (-not (Test-Path $path) -or (Get-FileHash -Algorithm SHA256 $path).Hash.ToLower() -ne $sum) {
+        Invoke-WebRequest -UseBasicParsing -Uri "https://github.com/bigfarts/nettai-ffmpeg-build/releases/download/$release/$file" -OutFile $path
+        if ((Get-FileHash -Algorithm SHA256 $path).Hash.ToLower() -ne $sum) {
+            Remove-Item $path
+            throw "$file of $release isn't the one pinned"
+        }
+    }
+    return $path
+}
+
 Copy-Item $program "$app\nettai.exe"
 Sign-File "$app\nettai.exe"
+# ffmpeg beside the program, where the export looks first (nettai_video::mp4::find_ffmpeg); and its notice (GPL: what
+# it is built from, where that source is).
+if (-not $Ffmpeg) { $Ffmpeg = Get-FfmpegFile 'ffmpeg-windows-x86_64.exe' }
+Copy-Item $Ffmpeg "$app\ffmpeg.exe"
+Sign-File "$app\ffmpeg.exe"
 Copy-Item -Recurse "$root\content" "$app\content"
 Copy-Item "$root\LICENSE" "$app\LICENSE.txt"
 Copy-Item $notices "$app\THIRD-PARTY-NOTICES.txt"
+Copy-Item (Get-FfmpegFile 'ffmpeg-NOTICE.txt') "$app\ffmpeg-NOTICE.txt"
 
 Compress-Archive -Path $app -DestinationPath "$out\nettai-$Version-windows-x64.zip"
 

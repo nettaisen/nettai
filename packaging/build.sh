@@ -29,3 +29,29 @@ copy_content() { # <dest-dir>
     mkdir -p "$1"
     cp -R "$root/content" "$1/"
 }
+
+# The ffmpeg every package bundles beside the program, for the replay export (docs/app.md §19): a release of
+# bigfarts/nettai-ffmpeg-build (a minimal static build of what the export runs), pinned in
+# packaging/ffmpeg.sha256 by its tag and each file by its SHA-256. `fetch_ffmpeg <file>` downloads that file of
+# the release once into target/package/ffmpeg/<tag>/, checks it, and sets `fetched` to it.
+ffmpeg_pins=$root/packaging/ffmpeg.sha256
+ffmpeg_release=$(sed -n 's/^# release: //p' "$ffmpeg_pins")
+fetch_ffmpeg() { # <file>
+    local sum dir
+    sum=$(awk -v file="$1" '$2 == file { print $1 }' "$ffmpeg_pins")
+    [ -n "$sum" ] || { echo "packaging/ffmpeg.sha256 pins no $1" >&2; return 1; }
+    dir=$root/target/package/ffmpeg/$ffmpeg_release
+    fetched=$dir/$1
+    mkdir -p "$dir"
+    if [ "$(sha256_of "$fetched")" != "$sum" ]; then
+        curl --fail --location --silent --show-error --output "$fetched" \
+            "https://github.com/bigfarts/nettai-ffmpeg-build/releases/download/$ffmpeg_release/$1"
+        [ "$(sha256_of "$fetched")" = "$sum" ] || { echo "$1 of $ffmpeg_release isn't the one pinned" >&2; rm -f "$fetched"; return 1; }
+    fi
+}
+
+# A file's SHA-256 (nothing for no file): sha256sum on Linux, shasum on macOS.
+sha256_of() { # <file>
+    [ -f "$1" ] || return 0
+    if command -v sha256sum >/dev/null; then sha256sum "$1"; else shasum -a 256 "$1"; fi | cut -d ' ' -f 1
+}

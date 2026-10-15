@@ -2930,8 +2930,10 @@ found, the file not written, anything else with the log named). The app keeps aw
   folder's `nettai`), with a number after it where that name is taken; Save as asks for another place in the
   system's dialog. It takes its name only once it is whole: stopped or failed, nothing is left (the library's
   `mp4::Encoder`).
-- *ffmpeg* is the one on the path, or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`,
-  `/opt/local/bin`: an app started from the desktop has a short path), or `$NETTAI_FFMPEG`.
+- *ffmpeg* is `$NETTAI_FFMPEG`, else the one beside the program, which every package bundles (§19), else one on
+  the path or where a package manager puts it (`/opt/homebrew/bin`, `/usr/local/bin`, `/opt/local/bin`: an app
+  started from the desktop has a short path). The path's relative folders (`.`, an empty entry) are passed by, so
+  an `ffmpeg` in the working directory is never run (nettai-video's `mp4::find_ffmpeg`, docs/frontend.md §8).
 
 **The main menu's reel** takes its replays from `crate::replays::Reel`: the selected game's latest five, found
 and read on a thread as the menu shows, then given one after another, around. One that doesn't play here is
@@ -3142,8 +3144,9 @@ the pictures looked at; since, the steps are type-checked and not yet walked.
 The user: "start working on github actions workflows to make an installer for windows and i dunno dmg for macos
 and appimage for linux".
 
-A package is the program, the content (`content/`, as the repository has it), the license (LICENSE) and the
-third-party notices (THIRD-PARTY-NOTICES.txt, build.rs's `licenses.txt`, §18). No ROM and no extracted asset is in
+A package is the program, the content (`content/`, as the repository has it), the license (LICENSE), the
+third-party notices (THIRD-PARTY-NOTICES.txt, build.rs's `licenses.txt`, §18), and `ffmpeg` beside the program
+with its notice (ffmpeg-NOTICE.txt; below). No ROM and no extracted asset is in
 any of them, ever: the app extracts each game's pack from the player's own Legacy Collection into its data folder
 (§17). Each platform's script is in `packaging/`, runs on that platform alone, and writes to
 `target/package/<platform>/`:
@@ -3160,6 +3163,29 @@ any of them, ever: the app extracts each game's pack from the player's own Legac
 - **Linux** (`packaging/linux/package.sh`, `AppRun`, `nettai.desktop`): `nettai-<version>-linux-x86_64.AppImage`,
   made by appimagetool with the type 2 runtime, both downloaded at pinned versions and checked against their
   digests. The program needs the glibc it was built against or a later one, so it is built on an old distribution.
+
+**The bundled ffmpeg.** The user: "i think you also need like the equivalent of
+https://github.com/tangobattle/ffmpeg-build for encoding and bundle ffmpeg with it. it should support whatever
+nettai needs and nothing more so the build is minimal", then "make sure to bundle it with the binary", then "i want
+you to build it with a separate workflow in https://github.com/bigfarts/nettai-ffmpeg-build so you don't have to
+build ffmpeg everty time". That repository's workflow, run by hand, builds a static `ffmpeg` per platform from
+`--disable-everything` with only what the export's command runs (the NUT demuxer, the raw video and float PCM
+decoders, the pipe and file protocols, swscale's `scale` and `format`, `setparams`, swresample's `aresample` with
+`aformat`, `null` and `anull`, libx264 and the native AAC encoder, the MP4 muxer: its README traces each to the
+command), smoke-tests it with that command on streams nettai-video's own NUT writer makes, decodes the MP4s with a
+full ffmpeg, and publishes a release `ffmpeg-<version>-<revision>`. `packaging/ffmpeg.sha256` pins the release a
+package takes by its tag and each file by its SHA-256; the scripts download them once into
+`target/package/ffmpeg/<tag>/` and check them (or bundle the ffmpeg `NETTAI_BUNDLE_FFMPEG`, `-Ffmpeg` on Windows,
+names). Where it goes: `ffmpeg.exe` beside `nettai.exe` (the installer and the .zip), `Contents/MacOS/ffmpeg` in
+the app (the release's arm64 and x86_64 programs joined by lipo for the universal app, the host's alone otherwise;
+signed before the app, as the app is), `usr/lib/nettai/ffmpeg` in the AppImage (beside the program, which is there
+too). The app looks beside itself first (§16).
+
+The binary is GPL: FFmpeg built with `--enable-gpl` and linked with x264 (GPL-2.0-or-later) is licensed
+GPL-2.0-or-later as a whole. Each package ships `ffmpeg-NOTICE.txt` from the release (beside THIRD-PARTY-NOTICES.txt:
+beside the program on Windows, in `Contents/Resources` on macOS, in `usr/share/doc/nettai` in the AppImage): what
+the program is built from, its license, the license texts, and where its complete source is, which is the release
+itself: the FFmpeg and x264 source tarballs it was built from and the build scripts at the commit that built it.
 
 The icons are made from `docs/logo/nettai-icon.svg` by `packaging/icons.sh` (rsvg-convert and ImageMagick):
 PNGs, the Windows .ico, and macOS's icon set, the artwork on Apple's grid (824 of 1024, centered) so that it is no
