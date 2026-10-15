@@ -825,7 +825,7 @@ before a link (`words::first_problem`, as `UserError::BuildUnusable`'s reason), 
   menu's STOP PRACTICE (a phone) chosen, and the session ended by the
   other player coming;
 - the lobby's First to (stepped from 2 to 3, `play-lobby-first-to` and `-3`, a pair, then back to 1 for the
-  match played), the host's Ruleset stepped from Standard to Mixed (`play-lobby-ruleset`, `-mixed`) and closed
+  match played), the host's Ruleset stepped from Masters class to Senior class (`play-lobby-ruleset`, `-senior`) and closed
   builds changed, each taken by the other player; the input
   delay changed; another build chosen in the lobby that the settings can't play (READY refused, the line
   saying why), and the first again;
@@ -1236,7 +1236,8 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   "Not a BN6 save"; what the readers say in words goes to the log.
 
 **Rulesets** (docs/design/app-ui.md §2.59; `crates/nettai/src/rulesets/`). What may be played: the game's
-presets (its rules/rulesets: Standard, the cartridges' own rules, first) and the player's own, each a TOML file
+presets (its rules/rulesets: Masters class, the cartridges' own rules, first; Senior class, without patch cards;
+Unrestricted, the versions mixed) and the player's own, each a TOML file
 of its own, `rulesets/<game>/<name>.toml` in the data folder (`rulesets/store.rs`, as builds are kept):
 
     game = "exe6"
@@ -2117,7 +2118,7 @@ footer's Switch version; `builds-version-switched`, Right: the next version's ta
 problem, the Folder tab marked, the focus still on the tag; `builds-folder-switched`, the entry in the error red
 and the strip saying why; `builds-folder-switched-back`, Left on the tag there: the first version again, ready;
 a step after each checks the focus and the build's state are as the picture's name says); then a ruleset's page
-(`rulesets`): from the Navi tab EDIT by the ruleset the player plays by (`rulesets-preset`: Standard, read alone,
+(`rulesets`): from the Navi tab EDIT by the ruleset the player plays by (`rulesets-preset`: Masters class, read alone,
 the reserved line saying so), DUPLICATE (`rulesets-own`), its chips (`rulesets-chips`, chosen by the category's
 select's choice: a phone has no list of them), the first chip held back and the first version's quick choice
 (`rulesets-chips-held`), and Back, the Folder tab marking what the copy holds back (`rulesets-folder-marked`); the
