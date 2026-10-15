@@ -9,6 +9,13 @@
 //! Both builds may be shown over it, where the match's weren't closed: the narrow sheets a match shows its
 //! players' builds in, the console shown's player's at the left; a closed-builds match's sides aren't kept.
 //!
+//! Two things more may be on over the picture, each off at first and toggled by its transport button or a key
+//! ([`Overlays`]): the input display, both players' buttons as the tick shown holds them (Practice's display,
+//! the console shown's player's row over the other's); and the other console's picture, small in the picture's
+//! corner, presented from the same tick as the one shown (the library's `Viewer::present_view`: the replay is
+//! played once) into a texture of its own (`Shell::show_inset`). Each follows the replay wherever it goes,
+//! playing, paused, stepped or sought, since each is drawn from the tick the picture is.
+//!
 //! Its sound is at the levels Settings has (the shell's `battle_levels`: Music is the replay's music too). And
 //! it stands still while the window isn't drawn (minimized, hidden, covered: the frames the shell's timer runs
 //! then): nothing of a replay has to go on unseen, and the player finds it where they left it.
@@ -36,6 +43,21 @@ const BUILDS: &str = "builds.";
 
 /// The samples a tick's sound is, at the device's rate: 4389/8.
 const TICK_SAMPLES: f64 = 548.625;
+
+/// What is on over the picture, besides the builds: the input display, and the other console's picture in the
+/// corner. Off at first; the screen keeps them from one replay to the next while the app runs.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+pub struct Overlays {
+    pub inputs: bool,
+    pub inset: bool,
+}
+
+/// The other console's picture is a whole multiple of the frame about this part of the shown one's width (a
+/// third), at least the frame itself, in the display's pixels.
+const INSET_PART: f32 = 3.0;
+
+/// How far the other console's picture is in from the shown one's bottom right corner, in the game's pixels.
+const INSET_MARGIN: f32 = 4.0;
 
 /// What the view was last told, so that it is told only what changed.
 #[derive(Default, PartialEq)]
@@ -142,20 +164,30 @@ pub struct Watching {
     /// The match's two sides, where its builds may be shown; and whether they are.
     sides: Option<Box<[Side; 2]>>,
     builds: bool,
+    /// What else is on over the picture; the other console's picture (its own texture); and the buttons the
+    /// input display was last told each side holds.
+    overlays: Overlays,
+    inset: Surface,
+    held: Option<[u16; 2]>,
 }
 
 impl Watching {
     /// A viewer made ready, of the replay at `path`: playing from its start (the screenshot pass holds it
-    /// still, a little way into its second round where it has one).
-    pub fn new(mut viewer: Box<Viewer>, path: PathBuf, sides: Option<Box<[Side; 2]>>) -> Watching {
+    /// still, a little way into its second round where it has one), with `overlays` on over its picture.
+    pub fn new(mut viewer: Box<Viewer>, path: PathBuf, sides: Option<Box<[Side; 2]>>, overlays: Overlays) -> Watching {
         if let Some(speed) = std::env::var("NETTAI_REPLAY_SPEED").ok().and_then(|s| ["half", "1", "2", "4"].iter().position(|name| *name == s)) {
             viewer.set_speed(Speed::ALL[speed]);
         }
-        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false }
+        Watching { viewer, surface: Surface::new(), path, last: None, queue: Vec::new(), quiet: 0.0, pending: None, drag: None, slice: 16, whole: false, told: None, stats: std::env::var_os("NETTAI_PLAY_STATS").map(|_| Stats::default()), probe: Probe::of_env(), asked: None, sides, builds: false, overlays, inset: Surface::new(), held: None }
     }
 
     pub fn path(&self) -> &Path {
         &self.path
+    }
+
+    /// What is on over the picture besides the builds.
+    pub fn overlays(&self) -> Overlays {
+        self.overlays
     }
 
     /// The side whose console is shown.
@@ -208,6 +240,9 @@ impl Watching {
             }
         }
         self.surface.refresh();
+        self.inset.refresh();
+        self.held = None;
+        self.show_overlays(&view);
         let length = self.viewer.length().max(1) as f32;
         let marks: Vec<f32> = self.viewer.rounds().iter().skip(1).map(|&start| start as f32 / length).collect();
         view.set_marks(ModelRc::new(VecModel::from(marks)));
@@ -355,6 +390,25 @@ impl Watching {
         }
     }
 
+    /// The input display on, or off.
+    pub fn toggle_inputs(&mut self, shell: &mut Shell) {
+        self.overlays.inputs = !self.overlays.inputs;
+        self.held = None;
+        self.show_overlays(&shell.ui().global::<ReplaysView>());
+    }
+
+    /// The other console's picture in the corner on, or off.
+    pub fn toggle_inset(&mut self, shell: &mut Shell) {
+        self.overlays.inset = !self.overlays.inset;
+        self.inset.refresh();
+        self.show_overlays(&shell.ui().global::<ReplaysView>());
+    }
+
+    fn show_overlays(&self, view: &ReplaysView) {
+        view.set_inputs(self.overlays.inputs);
+        view.set_inset_on(self.overlays.inset);
+    }
+
     /// Show both builds, or put them away (a closed-builds match: refused).
     pub fn toggle_builds(&mut self, shell: &mut Shell) {
         if self.sides.is_none() {
@@ -499,14 +553,58 @@ impl Watching {
         self.viewer.take_samples(&mut self.queue);
         self.measure_sound(had);
         self.hand_sound(shell, elapsed, playing);
-        let Watching { viewer, surface, stats, .. } = self;
+        let Watching { viewer, surface, inset, .. } = self;
         let (stale, began) = (surface.stale, Instant::now());
+        // (The other console's picture is of the same tick: out of date when this one is.)
+        inset.stale |= stale;
         shell.show_surface(surface, |buffer, width, height| viewer.present(buffer, width, height));
-        if let (Some(s), true) = (stats.as_mut(), stale) {
+        if self.overlays.inset {
+            self.show_inset(shell);
+        }
+        if let (Some(s), true) = (self.stats.as_mut(), stale) {
             add(&mut s.pictures, began.elapsed());
         }
-        self.tell(&shell.ui().global::<ReplaysView>());
+        let ui = shell.ui();
+        let view = ui.global::<ReplaysView>();
+        self.show_held(&view);
+        self.tell(&view);
         self.report(now, elapsed);
+    }
+
+    /// The other console's picture, small in the shown one's bottom right corner: a whole multiple of the frame
+    /// about a third of its width, a few of the game's pixels in from its corner, on the display's pixels.
+    fn show_inset(&mut self, shell: &mut Shell) {
+        let Some(fit) = self.surface.fit() else { return };
+        let multiple = ((fit.scale as f32 / INSET_PART).round() as u32).max(1);
+        let other = self.viewer.view() ^ 1;
+        let viewer = &mut self.viewer;
+        let Some((image, width, height)) = shell.show_inset(&mut self.inset, multiple, |buffer, w, h| viewer.present_view(other, buffer, w, h)) else { return };
+        let ui = shell.ui();
+        let (view, picture) = (ui.global::<ReplaysView>(), ui.global::<nettai_ui::Shell>());
+        if let Some(image) = image {
+            view.set_inset(image);
+        }
+        let margin = INSET_MARGIN * fit.scale as f32 / ui.window().scale_factor();
+        view.set_inset_x(picture.get_picture_x() + picture.get_picture_width() - width - margin);
+        view.set_inset_y(picture.get_picture_y() + picture.get_picture_height() - height - margin);
+        view.set_inset_width(width);
+        view.set_inset_height(height);
+    }
+
+    /// The input display's buttons: each side's as the tick shown holds them (the battle's own, as Practice's
+    /// are), the console shown's player's first. Told where they changed.
+    fn show_held(&mut self, view: &ReplaysView) {
+        if !self.overlays.inputs {
+            return;
+        }
+        let shown = self.viewer.view() as usize;
+        let joypads = &self.viewer.battle().custom.sides;
+        let held = [joypads[shown].joypad.held, joypads[shown ^ 1].joypad.held];
+        if self.held != Some(held) {
+            self.held = Some(held);
+            view.set_held_shown(held[0] as i32);
+            view.set_held_other(held[1] as i32);
+        }
     }
 
     /// A frame the window doesn't draw (the shell's timer runs it: the window is minimized, hidden or covered):
