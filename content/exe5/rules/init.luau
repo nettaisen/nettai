@@ -378,11 +378,12 @@ local rules: Rules = {
         folder_check = folder.check,
         folder_view = folder.view,
         -- What a tool shows of the side's setup that the rules alone know: what gives the navi its abilities, its
-        -- bugs, the patch cards' MB.
+        -- bugs, the patch cards' MB; and a Soul Unison's turns where they change them (./souls/custom).
         overview = function(side: number): SetupOverview?
             local out: SetupOverview = { abilities = {}, bugs = {}, lists = {} }
             navicust.overview(side, out)
             patch_cards.overview(side, navicust.card_bug, out)
+            souls.custom.overview(side, out)
             return out
         end,
         -- What is wrong with a side's setup, which tools ask (the simulation never does): what the save brings, the
