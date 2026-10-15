@@ -776,3 +776,7 @@ language = "ja"
 "virus-battle" = "ウイルスバトル"
 "boss-battle" = "ボスバトル"
 "final-battle" = "VS ネビュラグレイ"
+
+# What the rules' overview names of what several entries do together (en.toml's `[abilities]` says what they are). Ours.
+[abilities]
+"soul_time" = "ソウルタイム"

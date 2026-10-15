@@ -127,14 +127,23 @@ end
 -- The most an HP drain's level is (each game's copy: `min(stat + n, 7)`).
 local DRAIN_MOST = 7
 
--- A game's `overview`'s part: of the cards `installed`, into `out`, what its card screen lists under their abilities
--- (an effect's `group`): the abilities, each as its card's effect; and the bugs. A bug effect (`bug_kinds`, the
--- game's bug slots) that the card marks as a bug is listed as the bug it is, by the same name the NaviCust's would
--- have, with its level or its amount (`card_bug`, the game's: its rules/navicust knows the bugs' levels); any other
--- effect a card marks as a bug (an ordinary one that is a drawback: Super Armor off, a lost shield) as its card's
--- effect, the card's own line; and a bug slot's value that is neither a bug nor its fix (a holy trail) is an ability. Of two cards' effects of one kind the later is listed, as its write is the one that holds. And the list
--- itself: its cards' MB together against the most a list holds (`mb`), a card once. A card's effects are those the
--- side's version has (`version`, `apply.has`); an effect is named by its place in the card's list.
+-- Whether an overview lists effect `e` among the navi's abilities and bugs: what the card screen lists under its
+-- abilities (its `group`), and of its parameters the body's element, which no number of the overview shows (the
+-- others are the stats', and EXE5's soul turns its rules' own line: rules/souls/custom).
+local function listed(e: PatchCardEffect): boolean
+    return e.group == "ability" or e.kind == "body"
+end
+
+-- A game's `overview`'s part: of the cards `installed`, into `out`, what its card screen lists under their
+-- abilities (an effect's `group`) and the body's element (`listed`): the abilities, each as its card's effect; and
+-- the bugs. A bug effect (`bug_kinds`, the game's bug slots) that the card marks as a bug is listed as the bug it
+-- is, by the same name the NaviCust's would have, with its level or its amount (`card_bug`, the game's: its
+-- rules/navicust knows the bugs' levels); any other effect a card marks as a bug (an ordinary one that is a
+-- drawback: Super Armor off, a lost shield) as its card's effect, the card's own line; and a bug slot's value that
+-- is neither a bug nor its fix (a holy trail) is an ability. Of two cards' effects of one kind the later is listed,
+-- as its write is the one that holds. And the list itself: its cards' MB together against the most a list holds
+-- (`mb`), a card once. A card's effects are those the side's version has (`version`, `apply.has`); an effect is
+-- named by its place in the card's list.
 --
 -- The cards' effects are listed only where the cards apply (`applies`: the navi that changes form, as each game's
 -- `apply` has it), and their bug effects only where no card's BugStop holds them back (the copy's `bug_stop`). Where
@@ -159,7 +168,7 @@ function apply.overview(
     for i, c in installed do
         total += c.mb or 0
         for _, e in apply.effects(c, version) do
-            if e.group == "ability" then
+            if listed(e) then
                 last[e.kind] = i
                 held[e.kind] = e
             end
@@ -191,8 +200,8 @@ function apply.overview(
     end
     for i, c in installed do
         for at, e in c.effects :: { PatchCardEffect } do
-            if apply.has(e, version) and e.group == "ability" and last[e.kind] == i and not (stopped and bug_kinds[e.kind]) then
-                local line: SetupSource = { entry = c, effect = at }
+            if apply.has(e, version) and listed(e) and last[e.kind] == i and not (stopped and bug_kinds[e.kind]) then
+                local line: SetupAbility = { entry = c, effect = at }
                 if not bug_kinds[e.kind] then
                     if e.bug then
                         local drawback: SetupBug = { entry = c, effect = at }
