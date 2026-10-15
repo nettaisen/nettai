@@ -1167,7 +1167,8 @@ DUPLICATE, RENAME and DELETE.
   where the link was down), then two columns: the link (round trip, jitter, loss, reconnects, clock sync's skew,
   the lead) and the rollback (input delay, rollbacks, the last one's depth, the deepest, frames waited), and under
   them the packets and KB sent and received. A figure that says the link is doing badly is amber, then red, as the
-  bars. Clicking the corner again, or anywhere else on the battle, closes it; it takes no keys (the match has them,
+  bars. Clicking the corner again closes it, and nothing else does ("telemetry window should not dismiss on click
+  outside, it should only be dismissed if the ping indicator is clicked again"); it takes no keys (the match has them,
   and Tab and Esc keep their jobs), and the match keeps running under it. On a phone it sits as near the top as it
   has to.
 - **Both builds:** holding Tab (Select on a pad) shows the player's build on their side and the opponent's on
