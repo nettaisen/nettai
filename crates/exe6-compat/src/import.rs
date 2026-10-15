@@ -237,6 +237,21 @@ mod tests {
         assert_eq!(m.sides[0].facts.get(&content, "crosses").map(|v| v.defs()), Some(Vec::new()));
     }
 
+    /// A save whose NaviCust holds a part id no program has (a save is
+    /// anyone's file): the import says why it can't be read, and doesn't
+    /// panic.
+    #[test]
+    fn a_save_with_an_unknown_navicust_part() {
+        let content = exe6_content();
+        let compat = crate::Compat::exe6();
+        let mut m = nettai_match::pick::live(&content, "exe6", 1, None).unwrap();
+        let number = (1..64u8).find(|n| !compat.navicust.programs.values().any(|p| p == n)).expect("a number no program has");
+        let list = [number << 2, 0, 0, 2, 2, 0, 0, 0];
+        let save = file_with(GameVersion::Falzar, false, [false; 5], 0, None, &[0; 20], &[(NAVICUST, &list)]);
+        let e = import_file(&content, &mut m.sides[0], &save).unwrap_err();
+        assert!(e.contains("navicust.toml has no program"), "{e}");
+    }
+
     /// A save operating ProtoMan from his level-5 code: the side is
     /// ProtoMan at level 5, with no Crosses, NaviCust or patch cards (they
     /// are MegaMan's); without a code, he keeps the side's level, and his
