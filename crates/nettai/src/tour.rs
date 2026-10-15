@@ -395,8 +395,6 @@ fn walk(steps: &mut Vec<(u64, Step)>, lang: &'static str, size: &'static str) {
     shot(&mut add, "menu-pointer", Pair::None);
 
     // The screens to be built.
-    add(SETTLE, go(ScreenId::Practice));
-    shot(&mut add, "practice", Pair::None);
     taking.set(walks("practice"));
     practice::steps(&mut add, lang, size);
 
@@ -713,12 +711,15 @@ fn motion_walk(steps: &mut Vec<(u64, Step)>) {
     taking.set(walks("play"));
     crate::screens::play::tour::motion(&mut add, &burst);
     taking.set(walks("shell"));
-    add(SETTLE, go(ScreenId::Practice));
     burst(
         &mut add,
         "battle-entered",
         &[0, 40, 90, 160, 300, 480, 560, 640, 720, 800, 900, 1100],
-        Box::new(|_, app, _| crate::screens::practice::start_development_battle(&mut app.borrow_mut().shell, 7, Default::default())),
+        Box::new(|_, app, _| {
+            let mut app = app.borrow_mut();
+            app.go_now(ScreenId::Practice);
+            crate::screens::practice::start_development_battle(&mut app.shell, 7, Default::default());
+        }),
     );
     add(1500, Box::new(|_, _, _| {}));
     burst(&mut add, "menu-over-battle", &[0, 40, 90, 160, 260], Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));

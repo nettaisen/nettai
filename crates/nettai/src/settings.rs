@@ -42,7 +42,7 @@ pub struct Settings {
     /// The keys and the pad buttons bound, by the GBA button's name; one left out is the default.
     pub keys: BTreeMap<String, String>,
     pub pad: BTreeMap<String, String>,
-    /// What screens remember, by their own keys (`training.build`).
+    /// What screens remember, by their own keys (`play.build.<game>`).
     pub remembered: BTreeMap<String, String>,
 }
 
@@ -174,7 +174,7 @@ mod tests {
             legacy_collection: Some("Steam Library/Legacy Collection Vol. 2".into()),
             ..Settings::default()
         };
-        s.remembered.insert("training.build".into(), "Falzar heat".into());
+        s.remembered.insert("play.build.exe6".into(), "Falzar heat".into());
         s.keys.insert("a".into(), "KeyJ".into());
         let text = toml::to_string(&s).unwrap();
         assert_eq!(toml::from_str::<Settings>(&text).unwrap(), s);
