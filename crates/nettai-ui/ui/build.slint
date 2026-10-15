@@ -108,6 +108,13 @@ export struct SheetLine {
     extent: string,
 }
 
+// One of the forms a build has, as the overview's row of them shows it: its face, and the version it is one's own
+// (its color, the mark under the face).
+export struct SheetForm {
+    face: image,
+    version: VersionTag,
+}
+
 // A build, as the overview shows it.
 export struct BuildSheet {
     // Over the name, where the sheet is a player's in a match: YOU, OPPONENT. Else none.
@@ -117,6 +124,9 @@ export struct BuildSheet {
     navi: string,
     // The face the round starts the navi with.
     face: image,
+    // The forms it has, in its facts' order and each fact's own (EXE6's Beast form, then its Crosses; EXE4's and
+    // EXE5's souls); none for a navi that doesn't change form.
+    forms: [SheetForm],
     // HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory; then any of the game's rules' own
     // (EXE5's Soul time).
     stats: [StatLine],
@@ -664,7 +674,10 @@ component SheetLineRow inherits Rectangle {
 // 792 by 540 on the Builds and Play screens. Narrower than 620 it is the narrow sheet, which a player's panel in a
 // match is (430 wide, 650 tall): the stats in two columns of four, the abilities and the bugs a line each, then
 // the chips, unnumbered. Narrower than 400, a phone's, everything is one column (the stats eight rows, the folder
-// thirty) and it is 1158 tall. A stat of the game's rules' own (EXE5's Soul time) is a row after the eight: on the
+// thirty) and it is 1158 tall. The build's forms are a row of their faces under the header, each with its version's
+// mark under it (a bar in its color): on the wide sheet over the stats' column, six to a row, the abilities and bugs
+// a line fewer for each row; on the narrow sheet six to a row over the stats, the sheet taller by them; on a phone's
+// as many as the width takes. A stat of the game's rules' own (EXE5's Soul time) is a row after the eight: on the
 // wide sheet under Regular memory, the abilities and bugs a line fewer; on the narrow sheet a row of its own under
 // the two columns, at the left (a second such stat beside it), the sheet 22 taller; on a phone's the ninth row. `sheet-height` is how tall it is at the width it has. `side` gives it a player's
 // color along its top (1 or 2).
@@ -684,7 +697,12 @@ export component BuildOverview inherits Rectangle {
     property <int> stat-rows: root.single ? 8 + root.more-stats : 4 + ceil(root.more-stats / 2);
     // (The narrow sheet's stats, and under them the abilities' line and the bugs'.)
     property <length> narrow-stats: root.stat-rows * 22px + 44px;
-    out property <length> sheet-height: !root.narrow ? 540px : 16px + 44px + 12px + root.narrow-stats + 12px + root.column * (Theme.chip-row + 2px) - 2px + 16px;
+    // The forms' row: faces at their size (32 by 16), 6 apart, the version's mark 2 under each; six to a row (the
+    // stats' column's width on the wide sheet), a phone's as many as fit; rows 22 apart, and 4 after the last.
+    property <int> form-fit: root.single ? max(1, floor((root.inner + 6px) / 38px)) : 6;
+    property <int> form-rows: ceil(root.build.forms.length / root.form-fit);
+    property <length> forms-height: root.form-rows == 0 ? 0px : root.form-rows * 22px + 4px;
+    out property <length> sheet-height: !root.narrow ? 540px : 16px + 44px + 12px + root.forms-height + root.narrow-stats + 12px + root.column * (Theme.chip-row + 2px) - 2px + 16px;
     property <[string]> stat-labels: [@tr("HP"), @tr("Attack"), @tr("Rapid"), @tr("Charge"), @tr("Custom"), @tr("Mega chips"), @tr("Giga chips"), @tr("Regular memory")];
     // (Two columns of stats have a shorter label for the last: its column is 108.)
     property <[string]> narrow-labels: [@tr("HP"), @tr("Attack"), @tr("Rapid"), @tr("Charge"), @tr("Custom"), @tr("Mega chips"), @tr("Giga chips"), @tr("Regular")];
@@ -694,9 +712,11 @@ export component BuildOverview inherits Rectangle {
     // (The stats' column is 240 and the gap 24, where the mockups have 200 and 32: a label 40% longer than
     // "Regular memory" has to fit beside its number.)
     property <length> chips-x: root.narrow ? root.pad : root.pad + 264px;
-    property <length> chips-y: root.narrow ? root.pad + 44px + 12px + root.narrow-stats + 12px : root.pad + 56px + 12px + 22px;
+    property <length> chips-y: root.narrow ? root.pad + 44px + 12px + root.forms-height + root.narrow-stats + 12px : root.pad + 56px + 12px + 22px;
     property <length> chip-width: root.single ? root.inner : ((root.narrow ? root.inner : root.inner - 264px) - 12px) / 2;
-    property <length> stats-y: root.narrow ? root.pad + 56px : root.pad + 56px + 12px + 22px;
+    property <length> stats-y: root.narrow ? root.pad + 56px + root.forms-height : root.pad + 56px + root.forms-height + 12px + 22px;
+    // Where the forms' row is: under the header (on the wide sheet over the stats' column).
+    property <length> forms-y: root.narrow ? root.pad + 56px : root.pad + 58px;
     // The narrow sheet's two lines under its stats.
     property <length> lines-y: root.stats-y + root.stat-rows * 22px;
     PanelBack {
@@ -749,11 +769,34 @@ export component BuildOverview inherits Rectangle {
         overflow: elide;
     }
 
+    // The forms: their faces, each with its version's mark under it.
+    for form[i] in root.build.forms: Rectangle {
+        x: root.pad + mod(i, root.form-fit) * 38px;
+        y: root.forms-y + floor(i / root.form-fit) * 22px;
+        width: 32px;
+        height: 20px;
+        Image {
+            x: 0;
+            y: 0;
+            width: 32px;
+            height: 16px;
+            source: form.face;
+            image-rendering: pixelated;
+        }
+
+        Rectangle {
+            y: 18px;
+            height: 2px;
+            visible: form.version.text != "";
+            background: form.version.tone;
+        }
+    }
+
     // The stats: a column of eight; on the narrow sheet two of four; on a phone's a column again, the sheet wide. Any
     // after the eight follow: under them, or on the narrow sheet two to a row under the columns.
     Label {
         x: root.pad;
-        y: root.pad + 56px + 12px;
+        y: root.pad + 56px + root.forms-height + 12px;
         width: 200px;
         height: 14px;
         text: root.narrow ? "" : @tr("STATS");

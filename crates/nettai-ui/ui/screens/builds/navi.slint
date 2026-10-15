@@ -29,23 +29,32 @@ export struct NaviChoice {
 
 // One of the forms the selector offers: its face, its name, the version it is one's own (its mark), whether the
 // build has it, and whether the build's problems are about it (the ruleset the player plays by doesn't allow it, or
-// it is another version's under one version per build).
+// it is another version's under one version per build). Its place: its column and row among its fact's rows, and
+// how many groups' heads are over it; `head`, the version's name over it where it is its group's first (the forms
+// are grouped by version, in the groups' order; those of none last, under a head's room with no name).
 export struct NaviForm {
     face: image,
     name: string,
     version: VersionTag,
+    head: VersionTag,
+    column: int,
+    row: int,
+    heads: int,
     chosen: bool,
     flagged: bool,
 }
 
 // A fact of forms the build chooses: its name in capitals ("CROSSES"), how many it has of its room ("3/5"; none for
 // the one form always chosen, EXE6's Beast form), what is wrong with it (the first of its problems, in the player's
-// words; none: nothing), its forms in the battle's order, both versions', and its first's place among the selector's
-// (the focus order's).
+// words; none: nothing), its forms in the battle's order, both versions' (grouped by version), and its first's place
+// among the selector's (the focus order's).
 export struct NaviFormGroup {
     name: string,
     count: string,
     problem: string,
+    // How many rows its forms take, and how many heads of their groups.
+    rows: int,
+    heads: int,
     forms: [NaviForm],
     at: int,
 }
@@ -217,10 +226,12 @@ export component NaviTab inherits Rectangle {
     // Where the panel's facts are: beside the face (the selector has the room under them).
     property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 128px);
     property <length> facts-y: Theme.phone ? 16px : 12px;
-    property <length> forms-y: Theme.phone ? 72px : 96px;
+    property <length> forms-y: Theme.phone ? 72px : 88px;
     // The selector: each fact's name and count (and what is wrong with it) over its forms' rows, the editor's lists'
-    // rows: one column on a desktop, two on a phone.
+    // rows: one column on a desktop, two on a phone (the app places them: its `column` and `row`), each version's
+    // under its name (a head 16 tall).
     property <int> form-columns: Theme.phone ? 2 : 1;
+    property <length> form-head: 16px;
     property <length> form-width: (root.panel-width - 32px - (root.form-columns - 1) * 8px) / root.form-columns;
     property <length> form-pitch: Theme.list-row + Theme.list-gap;
     property <length> forms-height: NaviView.form-groups.length == 0 ? 0px : selector.preferred-height + 8px;
@@ -318,8 +329,7 @@ export component NaviTab inherits Rectangle {
         width: root.panel-width - 32px;
         spacing: 8px;
         for group in NaviView.form-groups: Rectangle {
-            property <int> rows: ceil(group.forms.length / root.form-columns);
-            height: 20px + self.rows * root.form-pitch - Theme.list-gap;
+            height: 20px + group.heads * root.form-head + group.rows * root.form-pitch - Theme.list-gap;
             heading := Text {
                 x: 0;
                 y: 0;
@@ -350,9 +360,26 @@ export component NaviTab inherits Rectangle {
                 overflow: elide;
             }
 
+            // (Each version's group under its name, in its color.)
+            for form in group.forms: Text {
+                x: 8px;
+                y: 20px + (form.heads - 1) * root.form-head + form.row * root.form-pitch;
+                width: parent.width - 16px;
+                height: root.form-head - 2px;
+                visible: form.head.text != "";
+                text: form.head.text;
+                color: form.head.tone;
+                font-family: Theme.display;
+                font-size: 10px;
+                font-weight: Theme.display-bold;
+                letter-spacing: 0.8px;
+                vertical-alignment: center;
+                overflow: elide;
+            }
+
             for form[j] in group.forms: FormRow {
-                x: mod(j, root.form-columns) * (root.form-width + 8px);
-                y: 20px + floor(j / root.form-columns) * root.form-pitch;
+                x: form.column * (root.form-width + 8px);
+                y: 20px + form.heads * root.form-head + form.row * root.form-pitch;
                 width: root.form-width;
                 height: Theme.list-row;
                 form: form;
