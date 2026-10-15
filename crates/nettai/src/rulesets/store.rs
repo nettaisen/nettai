@@ -144,7 +144,7 @@ mod tests {
         let r = rulesets("exe6");
         let mut own = r.preset("gregar").unwrap().clone();
         own.name = Name::Own("Gregar \"cup\"".into());
-        own.set_allowed("folder", nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0, false);
+        own.set_allowed("folder", &nettai_match::ruleset::Item::of(nettai_match::ids::chip(&content, "exe6", "bass").unwrap().0), false);
         let text = text(&content, "exe6", &own);
         assert!(text.contains("versions = \"one_per_build\"") && text.contains("bass"), "{text}");
         assert!(text.contains("tengucross"), "Falzar's Crosses are held back by name: {text}");

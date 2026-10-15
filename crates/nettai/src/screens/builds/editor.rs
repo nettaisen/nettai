@@ -73,11 +73,6 @@ impl Draft {
         &self.build.side
     }
 
-    /// The version the build is of (`Builds::version_of`), by its id; none: of none.
-    pub fn version(&self) -> Option<&str> {
-        self.kit.builds.version_of(self.content(), self.side())
-    }
-
     /// Change the build's side: `change` says whether it did. The build is checked again at once; the frame
     /// saves it when the tab's call returns.
     pub fn edit(&mut self, change: impl FnOnce(&Content, &mut Side) -> bool) -> bool {
@@ -105,21 +100,11 @@ impl Draft {
         true
     }
 
-    /// Switch the build's version (`Build::set_version`: what the version sets is the new one's, the rest kept).
-    /// Whether it changed.
-    pub fn choose_version(&mut self, version: &str) -> bool {
+    /// Choose form `form` for the build's fact `fact` of forms (the Navi tab's selector: `Builds::choose_form`, its
+    /// Cybeast, a soul or a Cross in or out). Whether it changed.
+    pub fn choose_form(&mut self, fact: &str, form: nettai_content_api::FormHandle) -> bool {
         let kit = self.kit.clone();
-        match self.build.set_version(kit.content(), &kit.builds, version) {
-            Ok(true) => {
-                self.recheck();
-                true
-            }
-            Ok(false) => false,
-            Err(why) => {
-                crate::errors::log("switching a build's version", &why);
-                false
-            }
-        }
+        self.edit(|content, side| kit.builds.choose_form(content, side, fact, form))
     }
 
     fn recheck(&mut self) {
@@ -133,9 +118,15 @@ impl Draft {
     }
 
     /// Whether the ruleset the player plays by allows definition `h` of the build's fact `fact` (a navi, a
-    /// program, a card, a soul or a Cross): where it holds nothing of that fact back, or there is none, yes.
+    /// program, a soul, a Cross, a Cybeast): where it holds nothing of that fact back, or there is none, yes.
     pub fn allows(&self, fact: &str, h: u16) -> bool {
         self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows(fact, h))
+    }
+
+    /// Whether it allows item `item` of the build's fact `fact` (a card's variant too: docs/design/versions.md
+    /// §2.1).
+    pub fn allows_item(&self, fact: &str, item: &nettai_match::ruleset::Item) -> bool {
+        self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows_item(fact, item))
     }
 
     /// The catalogs' and the game's words, in the language shown.
@@ -393,7 +384,7 @@ impl Editor {
         (self.tabs[self.at].as_mut(), &mut self.draft)
     }
 
-    /// The header and the tab bar: the build's name, its version's tag, whether it is ready, the tabs.
+    /// The header and the tab bar: the build's name, whether it is ready, the tabs.
     fn show_frame(&self, shell: &Shell) {
         let ui = shell.ui();
         let view = ui.global::<BuildsView>();
@@ -417,11 +408,9 @@ impl Editor {
             })
             .collect();
         let (state, good) = self.draft.with_words(shell, |words| words.header(&self.draft.checked));
-        let version = self.draft.with_words(shell, |words| words.kit.version_tag(words.names, self.draft.side()));
         let ruleset = self.draft.with_words(shell, |words| self.draft.ruleset.as_ref().map(|p| rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
         view.set_name(self.draft.build.name.as_str().into());
-        view.set_version(version);
         view.set_state(state.into());
         view.set_state_good(good);
         view.set_tabs(ModelRc::new(VecModel::from(tabs)));
@@ -499,35 +488,6 @@ impl Editor {
         self.go(shell, to as usize, by.signum());
     }
 
-    /// The build's version's place in the game's order; none: a build of none.
-    fn version_at(&self) -> Option<usize> {
-        let versions = &self.draft.kit.builds.versions;
-        self.draft.kit.builds.version_of(self.draft.content(), self.draft.side()).and_then(|v| versions.iter().position(|x| x.id == v))
-    }
-
-    /// The header's version tag stepped (`by`: Left -1, Right 1): the build's version is the one `by` from its own
-    /// in the game's order, around (a build of none takes the first).
-    fn step_version(&mut self, shell: &mut Shell, by: i32) {
-        let count = self.draft.kit.builds.versions.len() as i32;
-        if count == 0 {
-            return;
-        }
-        let next = self.version_at().map_or(0, |at| (at as i32 + by).rem_euclid(count) as usize);
-        self.switch_version(shell, next);
-    }
-
-    /// The build's version made the game's `at`th, and the tab shown shows what follows (the Navi tab's forms, the
-    /// Folder tab's entries the version no longer allows).
-    fn switch_version(&mut self, shell: &mut Shell, at: usize) {
-        let kit = self.draft.kit.clone();
-        let Some(version) = kit.builds.versions.get(at) else { return };
-        if self.draft.choose_version(&version.id) {
-            let (tab, draft) = self.tab();
-            tab.show(shell, draft);
-            self.after(shell);
-        }
-    }
-
     /// The ruleset the player plays by made `picked` (remembered for the game): the build is checked under it, and
     /// the frame and the tab shown show its marks.
     fn play_by(&mut self, shell: &mut Shell, picked: Pickable) {
@@ -601,15 +561,6 @@ impl Editor {
             let way = if index as usize >= self.at { 1 } else { -1 };
             return self.go(shell, index.max(0) as usize, way);
         }
-        // (The header's version tag opens the game's versions as a list of their tags, open at the build's: one
-        // chosen comes back as `choose`.)
-        if id == "version" {
-            let tags = self.draft.with_words(shell, |words| words.kit.version_tags(words.names));
-            if !tags.is_empty() {
-                shell.pick_tags(id, index, tags, self.version_at().unwrap_or(0));
-            }
-            return;
-        }
         let (tab, draft) = self.tab();
         tab.activate(shell, draft, id, index);
         // (A click on one of the build's own rows, an entry, a card, a slot or a place, chooses it as Enter does,
@@ -632,9 +583,6 @@ impl Editor {
         }
         if id == "ruleset" {
             return self.ruleset_control(shell, id, index, Some(by));
-        }
-        if id == "version" {
-            return self.step_version(shell, by);
         }
         let (tab, draft) = self.tab();
         tab.step(shell, draft, id, index, by);
@@ -664,11 +612,6 @@ impl Editor {
                 self.play_by(shell, picked);
             }
             return;
-        }
-        // (A version chosen from the tag's list: the focus back on the tag first, so the tab shown keeps it there.)
-        if id == "version" {
-            shell.nav.focus(id, index);
-            return self.switch_version(shell, choice.max(0) as usize);
         }
         if id == "remove" {
             let (tab, draft) = self.tab();

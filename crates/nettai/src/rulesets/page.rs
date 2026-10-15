@@ -13,7 +13,7 @@ use crate::rulesets::{NAME_LENGTH, Pickable, shown_name, store};
 use crate::shell::{Dialog, Shell};
 use crate::sound::Cue;
 use nettai_content_api::{ChipHandle, EntryHandle, FormHandle, NaviHandle, Registry};
-use nettai_match::ruleset::{Category, Name, Rulesets};
+use nettai_match::ruleset::{Category, Item, Name, Rulesets};
 use nettai_ui::{ButtonKind, DialogButton, RulesetCategory, RulesetChoice, RulesetItem, RulesetView};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 use std::rc::Rc;
@@ -47,7 +47,7 @@ pub struct Page {
     category: usize,
     search: String,
     /// The items listed of the category shown, by handle, in its list's order.
-    rows: Vec<u16>,
+    rows: Vec<Item>,
     /// The quick choices' rows, changed in place where their count stays (their controls made again would drop the
     /// focus a press on one left there).
     choices: Rc<VecModel<RulesetChoice>>,
@@ -166,45 +166,59 @@ impl Page {
         } else {
             self.choices.set_vec(choices);
         }
-        // The items in their lists' order: the chips the library's, the entries their collection's.
+        // The items in their lists' order: the chips the library's, the entries their collection's (a card's variants
+        // together, in their order).
         let content = kit.content();
-        let mut items: Vec<u16> = category.items.clone();
+        let mut items: Vec<Item> = category.items.clone();
+        let place = |sorted: Vec<u16>| move |i: &Item| sorted.iter().position(|&h| h == i.def).unwrap_or(usize::MAX);
         match category.registry {
             Registry::Chip => {
-                let mut sorted: Vec<((), ChipHandle)> = items.iter().map(|&h| ((), ChipHandle(h))).collect();
+                let mut sorted: Vec<((), ChipHandle)> = items.iter().map(|i| ((), ChipHandle(i.def))).collect();
                 kit.order.chips(content, &mut sorted);
-                items = sorted.into_iter().map(|(_, h)| h.0).collect();
+                items.sort_by_key(place(sorted.into_iter().map(|(_, h)| h.0).collect()));
             }
             Registry::Entry => {
                 if let Some(of) = &category.of {
-                    let mut sorted: Vec<((), EntryHandle)> = items.iter().map(|&h| ((), EntryHandle(h))).collect();
+                    let mut sorted: Vec<((), EntryHandle)> = items.iter().map(|i| ((), EntryHandle(i.def))).collect();
+                    sorted.dedup();
                     kit.order.entries(content, of, &mut sorted);
-                    items = sorted.into_iter().map(|(_, h)| h.0).collect();
+                    items.sort_by_key(place(sorted.into_iter().map(|(_, h)| h.0).collect()));
                 }
             }
             // (The game's own navi first, as the Navi tab has them.)
-            Registry::Navi => items.sort_by_key(|&h| !content.navi(NaviHandle(h)).changes_form()),
+            Registry::Navi => items.sort_by_key(|i| !content.navi(NaviHandle(i.def)).changes_form()),
             _ => {}
         }
         let search = self.search.to_lowercase();
-        let rows: Vec<(u16, String)> =
-            items.into_iter().map(|h| (h, names.def(category.registry, h))).filter(|(_, name)| search.is_empty() || name.to_lowercase().contains(&search)).collect();
+        // (A card's variant by its card's name and its version's: "Bass-Cross MegaMan (Gregar)".)
+        let shown = |i: &Item| {
+            let name = names.def(category.registry, i.def);
+            match &i.variant {
+                Some(v) => shell.ui().global::<nettai_ui::BuildWords>().invoke_card_variant(name.into(), kit.version_name(names, v).into()).to_string(),
+                None => name,
+            }
+        };
+        let rows: Vec<(Item, String)> = items.into_iter().map(|i| {
+            let name = shown(&i);
+            (i, name)
+        }).filter(|(_, name)| search.is_empty() || name.to_lowercase().contains(&search)).collect();
         let lines: Vec<RulesetItem> = rows
             .iter()
-            .map(|(h, name)| {
+            .map(|(item, name)| {
+                let h = item.def;
                 let picture = match category.registry {
-                    Registry::Chip => kit.pictures.icon(ChipHandle(*h)),
-                    Registry::Navi => kit.pictures.navi(NaviHandle(*h)),
-                    Registry::Form => kit.pictures.face(FormHandle(*h)),
+                    Registry::Chip => kit.pictures.icon(ChipHandle(h)),
+                    Registry::Navi => kit.pictures.navi(NaviHandle(h)),
+                    Registry::Form => kit.pictures.face(FormHandle(h)),
                     _ => Default::default(),
                 };
-                let group = rulesets.group_of(category.registry, *h);
+                let group = rulesets.group_of(category.registry, item);
                 RulesetItem {
                     picture,
                     name: name.as_str().into(),
                     note: group.map(|g| kit.version_name(names, &g.id).to_uppercase()).unwrap_or_default().into(),
                     tone: group.map(|g| tone(g.color)).unwrap_or_default(),
-                    allowed: ruleset.allows(&category.fact, *h),
+                    allowed: ruleset.allows_item(&category.fact, item),
                 }
             })
             .collect();
@@ -287,11 +301,11 @@ impl Page {
                 Outcome::Nothing
             }
             "rules.items" => {
-                let Some(&h) = self.rows.get(index.max(0) as usize) else { return Outcome::Nothing };
+                let Some(item) = self.rows.get(index.max(0) as usize).cloned() else { return Outcome::Nothing };
                 let fact = self.category().fact.clone();
                 self.change(shell, |r, _| {
-                    let allowed = r.allows(&fact, h);
-                    r.set_allowed(&fact, h, !allowed);
+                    let allowed = r.allows_item(&fact, &item);
+                    r.set_allowed(&fact, &item, !allowed);
                 })
             }
             "rules.all" | "rules.none" => {

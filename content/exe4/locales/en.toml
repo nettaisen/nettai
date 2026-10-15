@@ -688,8 +688,8 @@ language = "en"
 # What a build is made of, by name, for a tool that makes and lists builds (rules/builds; nettai-match's `build`): each
 # version a build is one of, `version.<id>`, and each preset of a choice, `<choice>.<preset>` (MegaMan light or dark).
 [builds]
-# What a version sets, for a tool that asks which a new build is of.
-"versions" = "Sets the souls and Giga chips."
+# What a new build of a version starts with, for a tool that asks which version's a new build starts from.
+"versions" = "Starts with the version's souls."
 "version.redsun" = "Red Sun"
 "version.bluemoon" = "Blue Moon"
 "light_dark.light" = "Light"

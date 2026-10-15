@@ -180,7 +180,7 @@ pub fn starter_match(content: &std::sync::Arc<nettai_battle::Content>, game: &st
     let builds = nettai_match::build::Builds::of(content, game)?;
     let mut m = nettai_match::pick::live(content, game, seed, None)?;
     for (i, side) in m.sides.iter_mut().enumerate() {
-        *side = builds.new_build(content, &builds.versions[i % builds.versions.len()].id)?;
+        *side = builds.new_build(content, &builds.groups[i % builds.groups.len()].id)?;
     }
     Ok(m)
 }

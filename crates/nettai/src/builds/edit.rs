@@ -1,8 +1,9 @@
 //! A build's edits, each through the facts' own writer (`nettai_match`): an edit a fact doesn't take changes
 //! nothing. The folder's ([`folder`]: a chip put in an entry or taken out, the Regular chip, the tag chips),
-//! and a list of definitions' ([`list`]: the patch cards').
+//! and a list of definitions' ([`list`]: the patch cards', each a record of its card and the variant chosen for it,
+//! [`variant`]).
 //!
-//! What a build's version, its navi and its choices set is nettai-match's (`build::Builds`), not an edit here.
+//! What a build's forms, its navi and its choices set is nettai-match's (`build::Builds`), not an edit here.
 
 use nettai_battle::content::{ChipCode, Content, PlayerFact};
 use nettai_battle::custom::FolderChip;
@@ -51,14 +52,36 @@ pub fn moved(i: usize, from: usize, to: usize) -> usize {
     }
 }
 
-/// Apply `edit` to the side's list `name`: whether it changed.
+/// An element of a list of type `ty` that names definition `h`: the definition, or of a list of records the record
+/// of its one field that names a definition, the rest none (a patch card of no variant yet).
+fn naming(ty: &FieldType, h: u16) -> Option<Stated> {
+    match element(ty) {
+        FieldType::Ref(registry, _) => Some(Stated::Def(*registry, Some(h))),
+        FieldType::Record(fields) => fields.fields().iter().find_map(|f| match &f.ty {
+            FieldType::Ref(registry, _) => Some(Stated::Record(vec![(f.name.clone(), Stated::Def(*registry, Some(h)))])),
+            _ => None,
+        }),
+        _ => None,
+    }
+}
+
+/// Apply `edit` to the side's list `name` (of definitions, or of records each naming one; a definition is in it
+/// once): whether it changed.
 pub fn list(content: &Content, side: &mut Side, name: &str, edit: ListEdit) -> bool {
     let Some(field) = facts::field(content, name) else { return false };
     let Some(Stated::List(mut items)) = side.facts.get(content, name) else { return false };
-    let FieldType::Ref(registry, _) = *element(field.ty) else { return false };
+    let full = items.len() >= room(field.ty);
+    let held = |h: u16| items.iter().any(|x| x.defs().first() == Some(&h));
     match edit {
-        ListEdit::Add(h) if items.len() < room(field.ty) && !items.iter().any(|x| x.defs() == [h]) => items.push(Stated::Def(registry, Some(h))),
-        ListEdit::Insert(at, h) if items.len() < room(field.ty) && !items.iter().any(|x| x.defs() == [h]) => items.insert(at.min(items.len()), Stated::Def(registry, Some(h))),
+        ListEdit::Add(h) | ListEdit::Insert(_, h) if full || held(h) => return false,
+        ListEdit::Add(h) => match naming(field.ty, h) {
+            Some(x) => items.push(x),
+            None => return false,
+        },
+        ListEdit::Insert(at, h) => match naming(field.ty, h) {
+            Some(x) => items.insert(at.min(items.len()), x),
+            None => return false,
+        },
         ListEdit::Remove(i) if i < items.len() => {
             items.remove(i);
         }
@@ -67,6 +90,20 @@ pub fn list(content: &Content, side: &mut Side, name: &str, edit: ListEdit) -> b
             items.insert(to, item);
         }
         _ => return false,
+    }
+    write(content, side, name, &Stated::List(items))
+}
+
+/// Choose the variant of the record in place `i` of the side's list `name` (a patch card's, its `variant`: a
+/// version's id; none, none): whether it changed.
+pub fn variant(content: &Content, side: &mut Side, name: &str, i: usize, variant: Option<&str>) -> bool {
+    let Some(Stated::List(mut items)) = side.facts.get(content, name) else { return false };
+    let Some(Stated::Record(fields)) = items.get_mut(i) else { return false };
+    let value = Stated::Variant(variant.map(str::to_string));
+    match fields.iter_mut().find(|(n, _)| n == nettai_match::ruleset::VARIANT) {
+        Some((_, v)) if *v == value => return false,
+        Some((_, v)) => *v = value,
+        None => fields.push((nettai_match::ruleset::VARIANT.to_string(), value)),
     }
     write(content, side, name, &Stated::List(items))
 }

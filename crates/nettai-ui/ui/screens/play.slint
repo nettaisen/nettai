@@ -64,12 +64,10 @@ export enum MatchPage {
     settings,
 }
 
-// This player's build as the lobby's card names it (as the match's settings would play it): its name, its navi
-// and its version's tag.
+// This player's build as the lobby's card names it (as the match's settings would play it): its name and its navi.
 export struct PlayBuild {
     name: string,
     navi: string,
-    version: VersionTag,
 }
 
 // An action of the battle with what is bound to it: a key's cap; a pad's face button, drawn by its place, or a
@@ -236,7 +234,7 @@ component BuildBox inherits Rectangle {
     Value {
         x: 16px;
         y: 14px;
-        width: parent.width - 68px - tag.width;
+        width: parent.width - 68px;
         height: 24px;
         text: root.build.name;
         font-size: 18px;
@@ -246,7 +244,7 @@ component BuildBox inherits Rectangle {
     Text {
         x: 16px;
         y: 42px;
-        width: parent.width - 68px - tag.width;
+        width: parent.width - 68px;
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;
@@ -254,13 +252,6 @@ component BuildBox inherits Rectangle {
         font-size: 12px;
         vertical-alignment: center;
         overflow: elide;
-    }
-
-    tag := Pill {
-        x: parent.width - 40px - self.width;
-        y: (parent.height - self.height) / 2;
-        text: root.build.version.text;
-        tone: root.build.version.tone;
     }
 
     ArrowDown {
@@ -426,11 +417,6 @@ component LobbyCard inherits Rectangle {
         Value {
             text: root.build.name;
             font-size: Theme.phone ? 14px : 16px;
-        }
-
-        Pill {
-            text: root.build.version.text;
-            tone: root.build.version.tone;
         }
     }
 
@@ -1699,7 +1685,7 @@ component NameDialog inherits DialogFrame {
         width: root.inner-width;
         height: 38px;
         visible: root.versions;
-        text: @tr("{} It can be switched later in the editor.", PlayView.version-sets);
+        text: @tr("{} They can be changed later in the editor.", PlayView.version-sets);
     }
 
     confirm := Button {

@@ -114,14 +114,6 @@ msgid "{n} problem"
 msgid_plural "{n} problems"
 msgstr[0] "問題 {n}件"
 
-# The key hints while the header's version tag is focused: Left and Right switch the build's version, Enter opens
-# the versions as a list to choose from.
-msgid "Switch version"
-msgstr "バージョン切替"
-
-msgid "Choose version"
-msgstr "バージョンを選ぶ"
-
 # ---- The Navi tab.
 
 msgid "Choose"
@@ -412,12 +404,9 @@ msgstr "フォルダに{}枚"
 
 # ---- Why a chip can't go into the folder now: the end of its library row.
 
-# A version's name goes in ("Gregar only").
-msgid "{} only"
-msgstr "{}のみ"
-
-msgid "Another version's"
-msgstr "別バージョンのチップ"
+# A card with variants: the card's name, then its variant's, a version's ("Bass-Cross MegaMan (Gregar)").
+msgid "{} ({})"
+msgstr "{}（{}）"
 
 msgid "Folder full"
 msgstr "フォルダがいっぱい"
@@ -446,12 +435,6 @@ msgstr "チップが{}枚 (フォルダは{}枚)"
 msgid "{} can't be in a folder"
 msgstr "{}はフォルダに入れられません"
 
-# A chip's name, then a version's ("BigHook is Gregar only").
-msgid "{} is {} only"
-msgstr "{}は{}のみ"
-
-msgid "{} is another version's"
-msgstr "{}は別バージョンのチップです"
 
 msgid "{} has no code {}"
 msgstr "{}にコード{}はありません"
@@ -542,8 +525,8 @@ msgstr "このナビは{}を使えません"
 msgid "No navi chosen"
 msgstr "ナビが選ばれていません"
 
-msgid "No version chosen"
-msgstr "バージョンが選ばれていません"
+msgid "No form chosen"
+msgstr "フォームが選ばれていません"
 
 msgid "No level chosen"
 msgstr "レベルが選ばれていません"
@@ -557,8 +540,8 @@ msgstr "{}に同じものが2つあります"
 msgid "This navi isn't {}'s"
 msgstr "{}のナビではありません"
 
-msgid "This version isn't {}'s"
-msgstr "{}のバージョンではありません"
+msgid "A form isn't {}'s"
+msgstr "{}のフォームではないものがあります"
 
 msgid "A chip in the folder isn't {}'s"
 msgstr "フォルダに{}にないチップがあります"
@@ -572,8 +555,8 @@ msgstr "{}にないものが含まれています"
 msgid "This navi can't be used"
 msgstr "このナビは使えません"
 
-msgid "This version can't be used"
-msgstr "このバージョンは使えません"
+msgid "This form can't be used"
+msgstr "このフォームは使えません"
 
 msgid "This level can't be used"
 msgstr "このレベルは使えません"

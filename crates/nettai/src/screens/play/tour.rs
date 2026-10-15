@@ -186,7 +186,7 @@ pub fn builds(still: bool, content: &Arc<Content>, game: &str) -> Option<Vec<(St
         let builds = nettai_match::build::Builds::of(content, game)?;
         let mut out = Vec::new();
         for (i, name) in BUILDS.iter().enumerate() {
-            let mut side = builds.new_build(content, &builds.versions[(i + 1) % builds.versions.len()].id)?;
+            let mut side = builds.new_build(content, &builds.groups[(i + 1) % builds.groups.len()].id)?;
             if i + 1 == BUILDS.len() {
                 // (Two of its folder's entries are empty: no folder a save holds.)
                 let mut folder = side.folder(content);
@@ -413,7 +413,7 @@ fn come(app: &App, comes: Comes) {
     let invite = app.shell.ui().global::<PlayView>().get_invite().to_string();
     let made = (|| -> Result<Peer, String> {
         let builds = nettai_match::build::Builds::of(content, &game)?;
-        let mut side = builds.new_build(content, &builds.versions[0].id)?;
+        let mut side = builds.new_build(content, &builds.groups[0].id)?;
         match comes {
             Comes::Joining(Brings::Weak) => side.set_fact(content, PlayerFact::BaseHp.name(), &[Fact::Value(Value::Int(1))])?,
             Comes::Joining(Brings::Broken) => {

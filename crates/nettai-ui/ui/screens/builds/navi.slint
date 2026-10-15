@@ -1,8 +1,8 @@
 // The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as a grid of cards, and
-// beside it the build's navi: the face its round starts with, its HP and its element; for the game's own navi the
-// faces of the forms the build's version brings it (EXE6's Crosses, EXE4's and EXE5's souls: the version is
-// switched by the header's tag, docs/design/app-ui.md §2.42), and the build's other choices, each a stepper (Light
-// or Dark). On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
+// beside it the build's navi: the face its round starts with, its HP and its element; the selector of the forms the
+// build has (docs/design/versions.md §2.1: EXE6's Cybeast, then its Crosses; EXE4's and EXE5's souls; both versions'
+// offered, each face lit where it is the build's), and the build's other choices, each a stepper (Light or Dark). On
+// a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Focusable } from "../../nav.slint";
@@ -25,6 +25,24 @@ export struct NaviChoice {
     offered: bool,
 }
 
+// One of the forms the selector offers: its face, whether the build has it, and whether the ruleset the player plays
+// by doesn't allow it.
+export struct NaviForm {
+    face: image,
+    chosen: bool,
+    banned: bool,
+}
+
+// A fact of forms the build chooses: its name in capitals ("CROSSES"), how many it has of its room ("3/5"; none for
+// the one form always chosen, EXE6's Cybeast), its forms in the battle's order, both versions', and its first's place
+// among the selector's (the focus order's).
+export struct NaviFormGroup {
+    name: string,
+    count: string,
+    forms: [NaviForm],
+    at: int,
+}
+
 // What the tab shows: src/screens/builds/navi.rs sets these.
 export global NaviView {
     out property <[Hint]> hints: [
@@ -40,11 +58,8 @@ export global NaviView {
     in property <image> face;
     in property <string> hp;
     in property <image> element;
-    // The faces of the forms the build's version brings the game's own navi while that is the build's (none for
-    // another navi, or a build of no version).
-    in property <[image]> forms;
-    // Which of them the ruleset the player plays by doesn't allow (a red ring), by their places.
-    in property <[bool]> forms-banned;
+    // The selector: each fact of forms the build chooses (none of a list for a navi that doesn't change form).
+    in property <[NaviFormGroup]> form-groups;
     // The ruleset the player plays by, by its name: on a phone its select is at the top of the tab (a desktop's
     // is at the tab bar's right end).
     in property <string> ruleset;
@@ -128,13 +143,11 @@ export component NaviTab inherits Rectangle {
     property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 16px);
     property <length> facts-y: Theme.phone ? 16px : 80px;
     property <length> forms-y: Theme.phone ? 72px : root.facts-y + 84px;
-    // The version's forms: their faces twice their size, in as few rows as the panel's width needs, as even as
-    // they go (EXE6's five Crosses 3 and 2, six souls 3 and 3 on a desktop).
+    // The selector: each fact's name and count over its faces, twice their size, as many to a row as the panel's
+    // width takes (four on a desktop: EXE6's ten Crosses 4, 4 and 2, twelve souls three rows of 4).
     property <length> form-gap: 4px;
     property <int> form-fit: max(1, floor((root.panel-width - 32px + root.form-gap) / (64px + root.form-gap)));
-    property <int> form-rows: ceil(NaviView.forms.length / root.form-fit);
-    property <int> form-columns: root.form-rows == 0 ? 1 : ceil(NaviView.forms.length / root.form-rows);
-    property <length> forms-height: root.form-rows == 0 ? 0px : root.form-rows * (32px + root.form-gap) + 8px;
+    property <length> forms-height: NaviView.form-groups.length == 0 ? 0px : selector.preferred-height + 8px;
     property <length> choices-y: root.forms-y + root.forms-height;
     for navi[i] in NaviView.navis: NaviCardView {
         x: mod(i, root.columns) * (root.card-width + root.gap);
@@ -223,22 +236,59 @@ export component NaviTab inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    for form[i] in NaviView.forms: Rectangle {
-        x: root.panel-x + 16px + mod(i, root.form-columns) * (64px + root.form-gap);
-        y: root.forms-y + floor(i / root.form-columns) * (32px + root.form-gap);
-        width: 64px;
-        height: 32px;
-        // (Not allowed by the ruleset: a ring in the error red.)
-        border-width: NaviView.forms-banned[i] ? 2px : 0px;
-        border-color: Theme.bad;
-        Image {
-            x: 0;
-            y: 0;
-            width: parent.width;
-            height: parent.height;
-            source: form;
-            image-rendering: pixelated;
-            opacity: NaviView.forms-banned[i] ? 0.6 : 1;
+    selector := VerticalLayout {
+        x: root.panel-x + 16px;
+        y: root.forms-y;
+        width: root.panel-width - 32px;
+        spacing: 8px;
+        for group in NaviView.form-groups: Rectangle {
+            property <int> rows: ceil(group.forms.length / root.form-fit);
+            height: 20px + self.rows * (32px + root.form-gap);
+            Text {
+                x: 0;
+                y: 0;
+                height: 16px;
+                text: group.count == "" ? group.name : group.name + "  " + group.count;
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 11px;
+                font-weight: 700;
+                letter-spacing: 1px;
+                vertical-alignment: center;
+            }
+
+            for form[j] in group.forms: Rectangle {
+                x: mod(j, root.form-fit) * (64px + root.form-gap);
+                y: 20px + floor(j / root.form-fit) * (32px + root.form-gap);
+                width: 64px;
+                height: 32px;
+                background: form.chosen ? Theme.raised : transparent;
+                // (The build's: a line in the cursor's color under it. Not allowed by the ruleset: a ring in the
+                // error red.)
+                border-width: form.banned ? 2px : 0px;
+                border-color: Theme.bad;
+                Image {
+                    x: 0;
+                    y: 0;
+                    width: parent.width;
+                    height: parent.height;
+                    source: form.face;
+                    image-rendering: pixelated;
+                    opacity: form.chosen ? (form.banned ? 0.6 : 1) : 0.3;
+                }
+
+                Rectangle {
+                    y: parent.height - 2px;
+                    height: 2px;
+                    visible: form.chosen && !form.banned;
+                    background: Theme.cursor;
+                }
+
+                Focusable {
+                    nav: "form";
+                    nav-index: group.at + j;
+                }
+            }
         }
     }
 

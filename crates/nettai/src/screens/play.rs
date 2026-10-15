@@ -395,10 +395,10 @@ impl Play {
     /// This player's card in the lobby: the build they bring, as the match plays it.
     fn show_card(&mut self, shell: &Shell) {
         let side = self.session.as_mut().and_then(Session::lobby).map(|lobby| lobby.side().clone());
-        let (Some(side), Some((game, ready)), Some(build)) = (side, shell.ready(), self.build()) else { return };
+        let (Some(side), Some((_, ready)), Some(build)) = (side, shell.ready(), self.build()) else { return };
         let graphics = ready.graphics(shell.lang);
         let names = Names::of(ready.content(), &graphics);
-        let card = PlayBuild { name: build.name().into(), navi: names.navi(side.navi(ready.content())).into(), version: builds::version_tag(shell, &game, &ready, &side) };
+        let card = PlayBuild { name: build.name().into(), navi: names.navi(side.navi(ready.content())).into() };
         shell.ui().global::<PlayView>().set_card(card);
     }
 
@@ -619,7 +619,7 @@ impl Play {
         let view = ui.global::<PlayView>();
         let mine = view.get_card();
         let cards = [
-            VersusCard { role: view.get_you(), name: shell.settings.name.as_str().into(), build: mine.name.clone(), version: mine.version.clone(), navi: mine.navi.clone(), progress: 0.0 },
+            VersusCard { role: view.get_you(), name: shell.settings.name.as_str().into(), build: mine.name.clone(), navi: mine.navi.clone(), progress: 0.0 },
             // (The other player's card carries their name alone.)
             VersusCard { role: view.get_opponent(), name: agreed.names[other].as_str().into(), ..VersusCard::default() },
         ];
