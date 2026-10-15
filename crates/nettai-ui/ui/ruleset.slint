@@ -48,6 +48,9 @@ export global RulesetView {
     // It can be changed (the player's own; not a preset, not the host's ruleset viewed), and deleted.
     in property <bool> editable;
     in property <bool> deletable;
+    // Whether DUPLICATE is offered: not on the host's ruleset a joiner views (the user: "duplicate button when
+    // viewing host's ruleset makes no sense").
+    in property <bool> duplicable: true;
     in property <string> name;
     // Versions: 0 one per build, 1 mixed.
     in property <int> versions;
@@ -65,7 +68,7 @@ export global RulesetView {
     out property <string> editor-word: @tr("EDITOR");
     out property <string> preset-word: @tr("PRESET");
     out property <string> fixed-preset: @tr("A preset can't be changed. Duplicate it to make your own.");
-    out property <string> fixed-viewed: @tr("This is your opponent's choice. Duplicate it to make your own.");
+    out property <string> fixed-viewed: @tr("This is the host's ruleset. Only the host can change it.");
     public pure function allowed(n: int, of: int) -> string {
         if n == of {
             return @tr("All allowed");
@@ -250,6 +253,8 @@ export component RulesetPage inherits Page {
         x: RulesetView.deletable ? delete.x - 8px - self.width : root.body-width - self.width;
         y: delete.y;
         width: self.natural-width;
+        visible: RulesetView.duplicable;
+        enabled: RulesetView.duplicable;
         nav: "rules.duplicate";
         text: @tr("DUPLICATE");
     }
