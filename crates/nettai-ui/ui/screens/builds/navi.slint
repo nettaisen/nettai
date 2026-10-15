@@ -5,8 +5,8 @@
 // offered, each a row of the editor's lists, checked where it is the build's, under its version's head, a list's ALL
 // and NONE at its heads' right end); then the note of what is the game's own navi's alone, right after whatever is
 // over it. What is wrong with the build is said where it is (docs/design/app-ui.md §2.66): a fact's heading and a form
-// a problem is about in the error red, and in the note's place, kept for it, what the build's problems have against
-// the form under the cursor or the pointer, else against the navi. On a phone the panel is over the grid. Its Rust
+// a problem is about in the error red, and on a line kept for it under the navi's facts, what the build's problems
+// have against the form under the cursor or the pointer, else against the navi. On a phone the panel is over the grid. Its Rust
 // half is src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
@@ -384,7 +384,11 @@ export component NaviTab inherits Rectangle {
     // Where the panel's facts are: beside the face; and under them, `pad` below, what else the panel shows.
     property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 128px);
     property <length> facts-y: Theme.phone ? 16px : 12px;
-    property <length> body-y: Theme.phone ? 76px : 96px;
+    // Under the facts, a line kept for what the build's problems have against the form under the cursor or the
+    // pointer, else against the navi: in the same place whatever the selector holds (the user, of it in the note's
+    // place: "the error message placement on the navi tab is janky as hell").
+    property <length> fault-y: Theme.phone ? 68px : 90px;
+    property <length> body-y: Theme.phone ? 96px : 118px;
     // Between the choices, the facts of forms and the note: room enough that each reads as its own.
     property <length> fact-gap: 20px;
     // The selector: each fact's name and count over its forms' rows, the editor's lists' rows: one column on a
@@ -483,6 +487,14 @@ export component NaviTab inherits Rectangle {
         image-rendering: pixelated;
     }
 
+    ProblemNote {
+        x: root.panel-x + root.pad;
+        y: root.fault-y;
+        width: root.panel-width - 2 * root.pad;
+        horizontal-alignment: left;
+        text: NaviView.fault;
+    }
+
     // Under the navi's facts, one after the other: the choices (the user: "the light/dark switcher should be above the
     // souls"), the selector's facts of forms, and the note's place.
     body := VerticalLayout {
@@ -566,35 +578,9 @@ export component NaviTab inherits Rectangle {
             }
         }
 
-        // (The note's place, as tall as its words and a line at least, and kept so: what the build's problems have
-        // against the form under the cursor or the pointer, else against the navi, is said there in the note's stead,
-        // so nothing moves when one appears.)
-        Rectangle {
-            height: max(16px, note.preferred-height);
-            note := Note {
-                x: 0;
-                y: 0;
-                width: parent.width;
-                height: self.preferred-height;
-                visible: NaviView.fault == "";
-                text: root.note;
-                vertical-alignment: top;
-            }
-
-            // (A line of the note's, unseen: the problem is centered on it, as the note's first line is.)
-            line := Note {
-                visible: false;
-                text: " ";
-            }
-
-            ProblemNote {
-                x: 0;
-                y: 0;
-                width: parent.width;
-                height: line.preferred-height;
-                horizontal-alignment: left;
-                text: NaviView.fault;
-            }
+        Note {
+            text: root.note;
+            vertical-alignment: top;
         }
     }
 
