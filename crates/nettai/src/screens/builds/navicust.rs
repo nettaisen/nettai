@@ -794,7 +794,8 @@ impl Navicust {
         let view = ui.global::<NavicustView>();
         view.set_on_piece(on_piece);
         view.set_on_colors(self.held.is_none() && self.focused_row(shell).and_then(|r| self.rows.get(r)).is_some_and(|&p| self.colors(p) > 1));
-        view.set_fault(program.map(|(piece, _)| draft.line(shell, Navicust::problems(draft, piece))).unwrap_or_default().into());
+        let fault = program.map(|(piece, _)| draft.line(shell, Navicust::problems(draft, piece))).unwrap_or_default();
+        view.set_fault(Draft::unsaid(fault, &draft.pane_line(shell, &self.fields(draft.content()), false)).into());
         let Some((Some(d), (piece, color))) = self.data.as_ref().zip(program) else { return view.set_detail(ProgramDetail::default()) };
         let detail = draft.with_words(shell, |words| {
             let colors = d.colors.get(&piece).cloned().unwrap_or_default();
