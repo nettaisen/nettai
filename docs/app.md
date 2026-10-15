@@ -528,7 +528,13 @@ screen may start one beside something of its own (Play, while an invite waits fo
   the battle's (its name begins `menu.`) or the battle fills the window (`App::hearer_of`).
 - A session started from outside has no EXIT: its starter's rows are the ways out.
   Choosing an added row tells the starter and leaves the menu as it is (the starter closes it with
-  `shell.close_menu()` if it wants, or ends the session). It keeps nothing of the dummy's setup.
+  `shell.close_menu()` if it wants, or ends the session). Its menu is otherwise the usual one (the user:
+  "practice menu in the matchmaking waiting screen should be the same as the usual practice menu"): `start`
+  gives it the game's builds that can be played for the Dummy's build, the dummy on the player's own at first;
+  it has no Music (its music is the menus') and no EDIT (the editor would leave the starter's screen, and Play
+  gives up its link as it is left: `shown_rows`). What its menu sets is kept for the starter's wait, never for a
+  visit to Practice: `practice::stop` ends the session for a while keeping it (a phone's STOP PRACTICE), the
+  next session the same screen starts begins on it, and `practice::end` (the wait over) forgets it.
 - One shown in the starter's own `Picture` (`full` off) lasts while that screen is shown: it ends by itself if
   another screen is gone to, and when another battle starts in its place. The keys and a gamepad are the
   battle's there as anywhere; the phone's pad is drawn by the battle's own screen, which only a battle that
@@ -634,8 +640,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 - **Waiting** for the other player: the invite's code (a direct host's address, with "Send this address to your
   opponent." under it), large, in fixed-width type, with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
   is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
-  stands still; Practice owns its battle, starts its sets over and hears its menu), with Play's rows at the
-  top of the practice menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
+  stands still; Practice owns its battle, starts its sets over and hears its menu; the usual practice menu but
+  for Music and EDIT, its choices lasting for the wait), with Play's rows at the top of the practice menu in
+  place of EXIT: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
   menu, and CANCEL INVITE (STOP HOSTING), each heard as `Screen::answered` by the tag Play gave. The keys are
   the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc or Start
   opens the practice menu. The session ends when the other player comes (`practice::end`) or the wait is
@@ -643,8 +650,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   *On a phone* a battle has its pad only where it fills the window (§2), and a battle to watch is no practice:
   so there the session isn't started with the wait. The invite shows with a PRACTICE button under it; the
   session then fills the window, pad and MENU under the picture as in any battle, and its menu has a third
-  row of Play's, STOP PRACTICE, which goes back to the invite. The other player coming ends it for the lobby
-  as on the desktop.
+  row of Play's, STOP PRACTICE, which goes back to the invite (`practice::stop`: PRACTICE again starts on what
+  its menu was left at). The other player coming ends it for the lobby as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
   nothing of a build), one row of settings (First to, Patch cards and Closed builds are the match's: either
@@ -2706,8 +2713,8 @@ the visit's (`practice::Visit`), as the place and the dummy's build are: each vi
 (Stands still, Normal, every option normal, the input display off, the dummy on the player's own build; the
 user: "yes for the practice options, they should all reset to default", "you should also not remember the last
 dummy build either"), and the player's build is Play's chosen one; a session another screen started begins as
-that screen says, every battle option at its normal value and the place Random, and keeps nothing of the
-dummy's, the battle's or the place.
+that screen says, the dummy on the player's own build, every battle option at its normal value and the place
+Random, and keeps what its menu sets for that screen's wait alone (§4, "Waiting"), not for a visit.
 
 **The dummy's rows.** One row says what the dummy does, its Action, and its Level comes under it while it is
 Fights (`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it,
