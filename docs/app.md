@@ -600,16 +600,15 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   (`play::shelved`: `builds::shelf::load`, its `BuildRow`s, each read from its file and checked by the game's
   rules; one that can't be played says how many problems it has, in the error red); the chosen one's overview
   beside it (the wide sheet, §8) with PRACTICE, EDIT and ⋯ in its header (`BuildOverview.tools`, the room it
-  leaves them); and under both two tiles of one size, 56 tall, in a panel's look (play.slint's `Tile`: the
-  panel's fill and line, the cut corner, the accent, the word in the display face): HOST (`HostTile`, the main
-  action: the main action's color on its line, its accent and its word, a faint tint of it in the fill, a main
-  button's look when pressed or focused) is a split button, HOST itself (`invite`: an invite, as CREATE INVITE
-  was) and its ▾ (`host-menu`, `Shell::pick_menu`: "Host with a code", HOST's own, and "Host directly", this
-  machine listening on `session::DIRECT_PORT`, choices heard as `host-menu`'s); JOIN (`JoinTile`) has one field
-  (`code`) for an invite's code or a direct host's address, and its go arrow (`join`): `play::joining` reads
-  the field, an address (a host or an IP and its port, an IPv6 one in brackets) joining it directly, text
-  without an address's marks (`:`, `.`, `[`) an invite's code, and text with them that isn't an address
-  `UserError::BadAddress`. The reserved line is under the tiles. The chosen build is the one under the list's cursor, remembered by game; the
+  leaves them); and under the overview, at its left edge, one row of the app's controls (40 tall): HOST
+  (widgets.slint's `SplitButton`, the main action's look while there is a build) is a split button, HOST itself
+  (`invite`: an invite, as CREATE INVITE was) and its ▾ (`host-menu`, `Shell::pick_menu`: "Host with a code",
+  HOST's own, and "Host directly", this machine listening on `session::DIRECT_PORT`, choices heard as
+  `host-menu`'s); then one field (`code`, 464 wide) for an invite's code or a direct host's address, and JOIN
+  (`join`): `play::joining` reads the field, an address (a host or an IP and its port, an IPv6 one in brackets)
+  joining it directly, text without an address's marks (`:`, `.`, `[`) an invite's code, and text with them
+  that isn't an address `UserError::BadAddress`. The reserved line is under the row, and the list and the
+  overview grow down to it (564 at the reference window). The chosen build is the one under the list's cursor, remembered by game; the
   overview follows it. What is done with the builds is `screens/play/list.rs`: + NEW BUILD and RENAME open the
   name's dialog (`NameDialog` in `PlayOverlay`, its scope `name.`), a new build being the game's own
   (`Builds::new_build`); the new build's dialog's FROM A SAVE FILE… (`name.save`) closes it and makes a build of
@@ -624,7 +623,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   aren't there, and HOST and JOIN say "Make a build first." when pressed (`UserError::NoBuild`); a build that
   can't be played, why. Right from the list goes to PRACTICE and Tab goes in reading order (`Screen::route`,
   §11). On a phone the list is one box of the chosen build, which opens the builds as a sheet, PRACTICE, EDIT
-  and ⋯ in a row under it, then the two tiles one under the other, and no overview. The field keeps what is
+  and ⋯ in a row under it, then HOST the column's width (52 tall), the field and JOIN under it, and no
+  overview. The field keeps what is
   typed as it was typed, without spaces (`field_typed`); a code is taken in capitals, its six characters,
   whatever it was typed with (`code_typed`). A pad can't type: its confirm on the field opens the code as six
   boxes (docs/design/app-ui.md §3), where Left and Right go between the boxes, Up and Down through a box's
@@ -1678,8 +1678,9 @@ defaults (BN6's), and one whose file doesn't read is too, with the reason in the
 | Component | What it is |
 |---|---|
 | `Cut`, `PanelBack`, `Panel` | The rectangle with one line and its bottom right corner cut (9 on a button, 12 on a panel, 18 on a dialog or a menu); a panel's back with the cyan accent, or a player's color; a panel with something in it |
-| `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused), unavailable (`enabled` off: the focus passes it by); `danger`, `big`, `tile` (Play's PRACTICE and HOST: 72 tall, its words at its left at 20, a panel's cut) |
-| `Field` | A text field (§11) |
+| `Button` | Default, the main action (amber), ghost, text (no fill and no line, its words muted until hovered or focused), unavailable (`enabled` off: the focus passes it by); `danger`, `big` |
+| `SplitButton` | A `Button` (its kinds, its sheen, hover and press) with a ▾ part at its right behind a line, a control of its own (`menu-nav`) that opens a short list (Play's HOST) |
+| `Field` | A text field (§11); `code`, a code's (fixed-width type, larger, tracked; what goes in it, while it is empty, in the body face) |
 | `Select` | A value box whose choices step with Left and Right and open as a list (`Shell::pick`: at most ten rows at once, fewer where the window has less room by the select; more scroll, and it opens with the chosen one in view); `focusable` off where its row is what is focused |
 | `Stepper` | A value between two arrows, in a box of a set width; `numeric`, `locked`; `focusable` off where its row is what is focused |
 | `Seg` | One of two |

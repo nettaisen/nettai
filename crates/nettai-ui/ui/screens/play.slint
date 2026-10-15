@@ -13,7 +13,7 @@
 import { Theme, Audit } from "../theme.slint";
 import { Nav, NavKind, Focusable } from "../nav.slint";
 import { Shell, Page, PadButton, Hint, Picture, DialogFrame, FaceButton } from "../shell.slint";
-import { Cut, Label, Note, Message, Value, Mono, Pill, Button, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
+import { Cut, Label, Note, Message, Value, Mono, Pill, Button, SplitButton, ButtonKind, Field, Stepper, Seg, Slider, MenuItem, RowBack, RowTouch, ListView, PanelBack, Rule, Bars, ArrowDown, ScrollPage } from "../widgets.slint";
 import { MenuOverlay } from "battle.slint";
 import { Arrive, Tween, Pulse, Flash, Count } from "../motion.slint";
 import { VersionTag, BuildEntry, BuildSheet, BuildRow, BuildOverview } from "../build.slint";
@@ -221,214 +221,6 @@ export global PlayView {
 }
 
 // ---- The builds ------------------------------------------------------------------------------------------
-
-// A tile of PLAY's (HOST, JOIN): a panel's look, 56 tall: its fill and its 1-unit line, the corner cut at the
-// bottom right (12, a panel's), the short accent at the top left drawing in as it arrives, and its word at its left
-// in the display face, tracked as a title. `main` is the main action's tile: the main action's color on its line,
-// its accent and its word, a faint tint of it in the fill; `lit` (pressed, or the focus on it) brightens it to a
-// main button's look, its sheen with it. A tile that is a button (`hover`, a press's `presses`) takes a button's
-// hover fill and its press: the fill flashes and dips 1. The controls are the screen's, over it.
-component Tile inherits Rectangle {
-    in property <string> text;
-    in property <bool> main;
-    in property <bool> hover;
-    in property <bool> lit;
-    in property <int> presses;
-    out property <length> word-width: word.preferred-width;
-    out property <length> dip: press.v > 0.4 ? 1px : 0px;
-    property <bool> solid: root.main && root.lit;
-    property <float> sheen: Theme.motion && root.solid ? clamp(mod(animation-tick(), 3.6s) / 0.9s, 0, 1) : 0;
-    property <bool> over: Theme.audit && word.preferred-width > word.width + 0.5px;
-    // How wide its word may be.
-    in property <length> word-room: root.width - 40px;
-    draw := Tween {
-        delay: 60ms;
-        duration: Theme.settle;
-    }
-
-    press := Pulse {
-        seq: root.presses;
-    }
-
-    Cut {
-        y: root.dip;
-        cut: 12px;
-        background: root.solid ? (root.hover ? Theme.action.brighter(12%) : Theme.action) : root.hover ? Theme.raised : Theme.panel;
-        line: root.main ? Theme.action : Theme.line;
-        animate background {
-            duration: Theme.quick;
-        }
-    }
-
-    // (The main action's tint, over the fill: from its word's side, fading across, so the panel's blue stays.)
-    Cut {
-        y: root.dip;
-        cut: 12px;
-        visible: root.main && !root.solid;
-        background: @linear-gradient(90deg, Theme.action.with-alpha(root.hover ? 0.18 : 0.1) 0%, Theme.action.with-alpha(root.hover ? 0.05 : 0.02) 70%);
-        line: transparent;
-    }
-
-    // (The sheen is kept off the cut corner, where it fades to nothing anyway.)
-    Rectangle {
-        x: 1px;
-        y: 1px + root.dip;
-        width: parent.width - 14px;
-        height: parent.height - 2px;
-        clip: true;
-        visible: root.solid;
-        Rectangle {
-            x: root.sheen * (parent.width + 48px) - 48px;
-            width: 48px;
-            background: @linear-gradient(90deg, #ffffff00 0%, #ffffff 50%, #ffffff00 100%);
-            opacity: 0.32 * sin(root.sheen * 180deg);
-        }
-    }
-
-    Cut {
-        y: root.dip;
-        cut: 12px;
-        background: #ffffff;
-        line: transparent;
-        opacity: press.v * 0.38;
-    }
-
-    // The accent: the cursor's color, the main action's on its tile (the ink on the lit one).
-    Rectangle {
-        x: 0;
-        y: root.dip;
-        width: 72px * draw.t;
-        height: 2px;
-        background: root.solid ? @linear-gradient(90deg, Theme.action-ink 0%, Theme.action-ink.with-alpha(0) 100%) : root.main ? @linear-gradient(90deg, Theme.action 0%, Theme.action.with-alpha(0) 100%) : @linear-gradient(90deg, Theme.cursor 0%, Theme.clear 100%);
-    }
-
-    word := Text {
-        x: 20px;
-        y: root.dip;
-        width: min(self.preferred-width, root.word-room);
-        height: parent.height;
-        text: root.text;
-        color: root.solid ? Theme.action-ink : root.main ? Theme.action : Theme.text;
-        font-family: Theme.display;
-        font-size: Theme.phone ? 16px : 18px;
-        font-weight: Theme.display-bold;
-        letter-spacing: Theme.phone ? min(1.6px, Theme.title-tracking) : Theme.title-tracking;
-        vertical-alignment: center;
-        overflow: elide;
-        animate color {
-            duration: Theme.quick;
-        }
-    }
-
-    changed over => {
-        if over {
-            Audit.clipped(root.text);
-        }
-    }
-}
-
-// HOST's tile, a split button: HOST itself (an invite: the main action while there is a build), and at its right
-// edge its ▾, a control of its own behind a line, which opens how to host (with a code, as HOST does, or directly).
-// Either part focused or pressed lights the tile; the cursor's brackets say which.
-component HostTile inherits Rectangle {
-    in property <bool> main;
-    property <length> menu-width: 52px;
-    property <int> presses;
-    property <int> key-press: Nav.press-seq;
-    property <bool> down: host.pressed || menu.pressed;
-    height: 56px;
-    tile := Tile {
-        text: @tr("HOST");
-        main: root.main;
-        hover: host.has-hover || menu.has-hover;
-        lit: host.focused || menu.focused || host.pressed || menu.pressed;
-        presses: root.presses;
-        // (Its word ends short of the ▾.)
-        word-room: root.width - root.menu-width - 32px;
-    }
-
-    // (The ▾'s line, inside the tile, 14 from its top and its foot.)
-    Rectangle {
-        x: root.width - root.menu-width;
-        y: 14px + (tile.dip);
-        width: 1px;
-        height: root.height - 28px;
-        background: root.main ? (host.focused || menu.focused ? Theme.action-ink.with-alpha(0.35) : Theme.action.with-alpha(0.6)) : Theme.line;
-    }
-
-    Path {
-        x: root.width - root.menu-width / 2 - 4px - 3px;
-        y: (root.height - 6px) / 2 + tile.dip;
-        width: 10px;
-        height: 6px;
-        fill: !root.main ? Theme.text : host.focused || menu.focused || host.pressed || menu.pressed ? Theme.action-ink : Theme.action;
-        commands: "M 0 0 L 10 0 L 5 6 Z";
-    }
-
-    host := Focusable {
-        x: 0;
-        width: root.width - root.menu-width;
-        nav: "invite";
-    }
-
-    menu := Focusable {
-        x: root.width - root.menu-width;
-        width: root.menu-width;
-        nav: "host-menu";
-    }
-
-    changed key-press => {
-        if host.focused || menu.focused {
-            root.presses += 1;
-        }
-    }
-    changed down => {
-        if root.down {
-            root.presses += 1;
-        }
-    }
-}
-
-// JOIN's tile: a tile that is a frame, not itself a button: the word, then the field (an invite's code or a direct
-// host's address) and its go arrow, 8 in from the tile's top and foot.
-component JoinTile inherits Rectangle {
-    in property <string> code;
-    in property <bool> error;
-    property <length> left: tile.word-width + 40px;
-    height: 56px;
-    tile := Tile {
-        text: @tr("JOIN");
-    }
-
-    Field {
-        x: root.left;
-        y: 8px;
-        width: go.x - 8px - self.x;
-        nav: "code";
-        text: root.code;
-        placeholder: @tr("Code or address");
-        code: true;
-        error: root.error;
-    }
-
-    go := Button {
-        x: parent.width - 12px - self.width;
-        y: 8px;
-        width: 40px;
-        nav: "join";
-        text: "";
-    }
-
-    // (Its arrow, over it.)
-    Path {
-        x: go.x + 17px;
-        y: go.y + 14px;
-        width: 7px;
-        height: 12px;
-        fill: Theme.text;
-        commands: "M 0 0 L 7 6 L 0 12 Z";
-    }
-}
 
 // The chosen build in one box, on a phone: Left and Right step through the builds, Enter opens them as a sheet.
 component BuildBox inherits Rectangle {
@@ -860,20 +652,16 @@ export component PlayScreen inherits Page {
     ];
     // The builds' part, in three zones read in order (docs/design/app-ui.md §6, "Play"): the builds (+ NEW BUILD
     // over the list, the left column); the chosen build (its overview, the right column, with PRACTICE, EDIT and ⋯
-    // in its header); and the ways to play it online, two tiles across the foot (HOST and JOIN; the reserved line
-    // under them). On a phone one column in the same order, the tiles one under another.
+    // in its header); and the ways to play it online, one row of controls under the overview (HOST with its ▾,
+    // then JOIN's field and JOIN; the reserved line under them). On a phone one column in the same order.
     property <length> list-width: 400px;
     property <length> side-x: root.list-width + 24px;
     property <length> side-width: self.body-width - root.side-x;
-    // The overview's height (the wide sheet's), and the tiles under it: two of one width, 16 apart (on a phone
-    // the column's width, 12 apart), and the reserved line under them.
-    property <length> sheet-height: 540px;
-    property <length> tile-height: 56px;
-    property <length> tile-width: Theme.phone ? self.body-width : (self.body-width - 16px) / 2;
-    property <length> tiles-y: Theme.phone ? 188px : root.sheet-height + 16px;
-    property <length> tile-step: Theme.phone ? root.tile-height + 12px : 0px;
-    property <length> tile-x-step: Theme.phone ? 0px : root.tile-width + 16px;
-    property <length> message-y: Theme.phone ? root.tiles-y + 2 * root.tile-step : root.tiles-y + root.tile-height + 6px;
+    // The row (the controls' height) and the reserved line under it at the body's foot; the list and the
+    // overview grow down to 16 over the row (564 at the reference window: the wide sheet's 540 at least).
+    property <length> message-y: Theme.phone ? 304px : self.body-height - 18px;
+    property <length> row-y: Theme.phone ? 188px : root.message-y - 6px - 40px;
+    property <length> sheet-height: max(540px, root.row-y - 16px);
     property <length> more-width: 40px;
     property <bool> none: PlayView.builds.length == 0;
     property <bool> usable: PlayView.chosen >= 0 && !root.none && PlayView.readable;
@@ -974,7 +762,7 @@ export component PlayScreen inherits Page {
                 y: 0;
                 // (On a phone it isn't shown, and is given the wide sheet's least width: its texts fit there.)
                 width: Theme.phone ? 620px : root.side-width;
-                height: self.sheet-height;
+                height: Theme.phone ? self.sheet-height : root.sheet-height;
                 visible: !Theme.phone && root.usable && PlayView.sheet.name != "";
                 build: PlayView.sheet;
                 tools: train.width + 8px + edit.width + 8px + root.more-width;
@@ -1038,32 +826,48 @@ export component PlayScreen inherits Page {
             }
         }
 
-        // The ways to play it online: two tiles, the words alone. HOST makes an invite (the main action while there
-        // is a build: what a player comes to PLAY for, the one that starts a match by itself), and its ▾ offers
-        // hosting directly; JOIN has the field for an invite's code or a direct host's address, and its go arrow.
-        // The line under them is there whether or not it says anything (with no build they say there why they
-        // can't).
+        // The ways to play it online, one row of the app's controls under the overview, at its left edge: HOST, the
+        // main action's button while there is a build (what a player comes to PLAY for, the one that starts a
+        // match by itself), its ▾ offering hosting directly; then JOIN's field, for an invite's code or a direct
+        // host's address, and JOIN. On a phone HOST is the column's width and 52 tall, the field and JOIN a row
+        // under it. The line under them is there whether or not it says anything (with no build they say there why
+        // they can't).
         Arrive {
             order: 2;
-            HostTile {
-                x: 0;
-                y: root.tiles-y;
-                width: root.tile-width;
-                main: !root.none;
+            host := SplitButton {
+                x: Theme.phone ? 0px : root.side-x;
+                y: root.row-y;
+                width: Theme.phone ? root.body-width : self.natural-width;
+                nav: "invite";
+                menu-nav: "host-menu";
+                text: @tr("HOST");
+                kind: root.none ? ButtonKind.normal : ButtonKind.main;
+                big: Theme.phone;
             }
 
-            JoinTile {
-                x: root.tile-x-step;
-                y: root.tiles-y + root.tile-step;
-                width: root.tile-width;
-                code: PlayView.code;
+            code := Field {
+                x: Theme.phone ? 0px : host.x + host.width + 24px;
+                y: Theme.phone ? host.y + host.height + 12px : root.row-y;
+                // (As wide as a whole IPv6 address with its port, in the code's type; on a phone what JOIN leaves.)
+                width: Theme.phone ? root.body-width - 8px - join.width : 464px;
+                nav: "code";
+                text: PlayView.code;
+                placeholder: @tr("Code or address");
+                code: true;
                 error: PlayView.message != "" && !PlayView.message-quiet;
             }
 
+            join := Button {
+                x: code.x + code.width + 8px;
+                y: code.y;
+                nav: "join";
+                text: @tr("JOIN");
+            }
+
             Note {
-                x: 0;
+                x: Theme.phone ? 0px : root.side-x;
                 y: root.message-y;
-                width: root.body-width;
+                width: Theme.phone ? root.body-width : root.side-width;
                 height: Theme.phone ? 40px : 18px;
                 text: PlayView.message;
                 color: PlayView.message-quiet ? Theme.muted : Theme.bad;

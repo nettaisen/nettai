@@ -456,8 +456,8 @@ Each is settled unless the user changes it.
       that no row of buttons sits under it, CREATE INVITE in the normal look while there is no build (+ NEW BUILD
       is the one main action then), and the save's build named for its file whatever the dialog's name field
       says.
-    (The band became three tiles, PRACTICE, HOST and JOIN, and then two, HOST and JOIN, PRACTICE beside EDIT and
-    DIRECT CONNECT folded into them: §2.57.) (§6, docs/app.md §4.)
+    (The band became three tiles, PRACTICE, HOST and JOIN, and then one row of controls, HOST and JOIN, PRACTICE
+    beside EDIT and DIRECT CONNECT folded into them: §2.57.) (§6, docs/app.md §4.)
 53. **About is in Settings** (2026-10-14). The user: "the about screen should be moved as a subscreen of the
     settings dialog and removed from the main menu".
     - *Settings' About group,* the last in the list at its left as before, has under Version and Your files a row
@@ -624,29 +624,31 @@ Each is settled unless the user changes it.
       waits through it; EXE4's drains through its pause, as the game's does. (docs/app.md §15.)
     - *HOST and JOIN are the band; PRACTICE is the build's.* The user, of the three tiles: "the visual style is
       so ugly for practice/host/join", and then "well maybe for the play ui host/join should be the primary
-      items and then practice like some kind of secondary thing". The band holds two tiles of one width, HOST
-      and JOIN; PRACTICE is a regular button in the chosen build's header, before EDIT and ⋯ (something done
-      with the build), and on a phone in a row with them under the build's box. (The header was chosen over the
-      band's left: it holds PRACTICE, EDIT and ⋯ beside the name and the version's tag in the pseudo-locale.)
-    - *The tiles are panels.* Each tile has a panel's look, not a flat block: the panel's fill and its 1-unit
-      line, the corner cut at the bottom right (12), the short accent at its top left, and its word at its left
-      in the display face at 18 (16 on a phone), tracked as the titles are; 56 tall, so the band is lighter.
-      HOST, the main action, isn't a solid amber slab: the main action's color is on its line, its accent and its
-      word, with a faint tint of it in the fill; pressed or focused it brightens to the main button's look (the
-      amber fill, its ink, its sheen). A tile takes a button's hover (the raised fill), the cursor's brackets
-      and the press's flash. (The theme has no main-action look without a fill, so the tile is its own.)
+      items and then practice like some kind of secondary thing". PRACTICE is a regular button in the chosen
+      build's header, before EDIT and ⋯ (something done with the build), and on a phone in a row with them under
+      the build's box. (The header was chosen over the band's left: it holds PRACTICE, EDIT and ⋯ beside the
+      name and the version's tag in the pseudo-locale.)
+    - *No tiles: one row of the app's controls.* The tiles were restyled as panels 56 tall (HOST's main action
+      on its line, accent and word), and the user, of that: "the JOIN and HOST buttons are so big omg". The band
+      is one row of normal controls at the controls' height (40), under the overview at its left edge: HOST, the
+      main action's button as every main button is (its amber, its sheen), at its natural width, with its ▾ as a
+      split part; then, 24 on, JOIN's field (464 wide: a whole IPv6 address with its port, in the code's type)
+      and JOIN, a regular button with its word. No panel and no label over it. The reserved line stays under the
+      row. The list and the overview have the room back: they grow down to 16 over the row (564 tall), the
+      overview no shorter than its 540. On a phone HOST is the column's width and 52 tall, as a phone's main
+      buttons are, and the field and JOIN are a row under it.
     - *Direct connect is in HOST and JOIN.* The user: "direct connect is in a weird place"; of the ways put to
       them they chose folding it into HOST and JOIN, with no control of its own. JOIN's field takes an invite's
       code or a direct host's address ("Code or address"): an address (a host or an IP and its port, an IPv6 one
       in brackets) joins that host directly, other text is a code; text with an address's marks that isn't one
       (no port) says so in the reserved line ("That isn't an address. Use host:port."). HOST is a split button:
-      its ▾, a control of its own at the tile's right edge, opens a short list, "Host with a code" (HOST's own)
-      and "Host directly", which hosts on this machine's port and waits as an invite does, the panel showing
-      this machine's address with COPY ADDRESS and "Send this address to your opponent.". The direct
+      its ▾, a control of its own at the button's right edge, opens a short list, "Host with a code" (HOST's
+      own) and "Host directly", which hosts on this machine's port and waits as an invite does, the panel
+      showing this machine's address with COPY ADDRESS and "Send this address to your opponent.". The direct
       connection's dialog is gone, and "Direct connect…" with it. (The port stays what it was: 47474, never a
       setting.)
-    - *What these supersede:* the three tiles, PRACTICE's among them; HOST as a solid tile; JOIN's link and the
-      direct connection's dialog (§2.52's DIRECT CONNECT before them).
+    - *What these supersede:* the three tiles, PRACTICE's among them, and their restyle as panels; JOIN's link
+      and the direct connection's dialog (§2.52's DIRECT CONNECT before them).
     (§6 Play and Practice, docs/app.md §1, §4 and §15.)
 
 ## 3. Chosen where the user gave no answer
@@ -845,24 +847,24 @@ Each is in the mockups under the same name.
   a column 416 wide, rows 96 tall 8 apart, centered in the body's height, about as tall as the reel beside
   them; nothing under them (About is in Settings, §2.53). The longest word the languages have (the
   pseudo-locale's REPLAYS) fits the column's 384 for text. On a phone the words are 32 on rows 68, under the reel. Practice is
-  a tile of Play's and the builds are Play's (§2.50, §2.57).
+  a button of Play's and the builds are Play's (§2.50, §2.57).
 - Right: the demo reel, the battle picture at three times (720 by 480), with no caption under it ("don't show the
   caption text").
 - The selected game's title music plays across the menu screens and fades out as a battle starts.
 
 ### Play
 The builds and the ways to play one, on one screen (§2.50), built around "pick a build, then what to do with it"
-(§2.57): the builds, the chosen build (PRACTICE, EDIT and ⋯ in its header), and two tiles for playing it online,
-read in that order. In the body's units (1216 by 644 at the reference window):
+(§2.57): the builds, the chosen build (PRACTICE, EDIT and ⋯ in its header), and a row of controls for playing it
+online, read in that order. In the body's units (1216 by 644 at the reference window):
 - **The builds**, the left column, 400 wide: + NEW BUILD at the top (as wide as its words; the main action while
-  the game has no build), and under it from 52 the player's builds of the game, an open list down to 540 (rows
+  the game has no build), and under it from 52 the player's builds of the game, an open list down to 564 (rows
   52: the name, then "MegaMan · ready" or what is wrong, and the version's tag at the row's right: tried after
   the name, the user took it back, "move it back to the right, it's so cramped"). The row the cursor is on is the
   build chosen, remembered by game. A save dropped on the window is made a build ("Imported as Dark MegaMan"
   quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as the
   menu's DELETE does; a right click on a row opens the build's menu there.
-- **The chosen build**, the right column, from 424, 792 wide: its overview (Builds, below; the wide sheet, 540
-  tall), framed, with PRACTICE, EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24
+- **The chosen build**, the right column, from 424, 792 wide: its overview (Builds, below; the wide sheet, 564
+  tall here, 540 at least), framed, with PRACTICE, EDIT and ⋯ (40 by 40) in its header at the right, 16 in from the frame and 24
   down, 8 apart (PRACTICE and EDIT regular buttons, as wide as their words); the version's tag follows the
   build's name, 12 after it (the user: "the version indiactor should be next to the build name in the play
   screen i think"). ⋯ opens **the build's menu**, the selects' list (§2.43) 200 wide
@@ -871,30 +873,23 @@ read in that order. In the body's units (1216 by 644 at the reference window):
   first row; Enter, a click or a tap chooses, Esc or the pad's B closes it. DELETE asks once, Cancel focused. A
   build whose file doesn't read has an empty frame, PRACTICE and EDIT unavailable and DELETE alone in its menu;
   with no build, none of the three is there.
-- **The two ways to play it online** (§2.57), tiles of one size across the body's foot: at 556, 56 tall, each
-  half the body's width less the gap (600), 16 apart. Each is a panel (§4, "Shapes"): the panel's fill and its
-  1-unit line, the corner cut at the bottom right (12), the cursor-colored accent at the top left (72 by 2,
-  drawing in as it arrives), and its word at its left, 20 in, in the display face at 18, bold, tracked as the
-  page's title (2.8; Japanese nearly not). The words alone (no line under them: "maybe there's too much
-  explanatory text in your mockup").
-  - **HOST**, a split button, the main action while there is a build (an online match is what PLAY is for, and
-    HOST is the way that starts one by itself; with no build it has a tile's normal look and + NEW BUILD is the
-    one main action). As the main action the main action's color is on its line, its accent and its word, and
-    the fill has a faint tint of it (0.06; 0.12 hovered); pressed or focused (either part) it brightens to a main
-    button's look: the amber fill, its ink for the word, the accent and the ▾, and its sheen. HOST itself makes an
-    invite, its code from the server, and the wait (what CREATE INVITE was). At its right edge, behind a line
-    (1 unit, 14 from the tile's top and foot), its ▾ (52 wide), a control of its own, opens a short list (the
-    build menu's look, its right edge at the tile's): "Host with a code", as HOST, and "Host directly": this
-    machine listens on its port (47474) and waits as for an invite, its address in the waiting panel.
-  - **JOIN**, a tile that is a frame, not itself a button: the word, and 20 after it the field (40 tall, 8 in
-    from the tile's top and foot, its width what the tile leaves; "Code or address" in it while it is empty)
-    and its go arrow (40 by 40, 12 in). The field takes an invite's code (as typed, in any case, a hyphen or
-    none) or a direct host's address (a host or an IP with its port, an IPv6 one in brackets): an address joins
-    that host directly, other text is a code.
-  A tile that is a button takes a button's hover (the raised fill), the cursor's brackets and the press's flash
-  (its fill flashes and dips 1). Under them at 618 the reserved line (18 tall, the body's width, 12). Pressed with
-  no build, PRACTICE, HOST and JOIN say there "Make a build first." (§7); with a build that can't be played, why;
-  an address that isn't one, "That isn't an address. Use host:port.".
+- **The ways to play it online** (§2.57), one row of the app's controls at the body's foot, under the overview at
+  its left edge (from 424), at 580, 40 tall, no panel and no label over it:
+  - **HOST**, a split button, the main action's while there is a build (an online match is what PLAY is for,
+    and HOST is the way that starts one by itself; with no build it has the normal look and + NEW BUILD is the
+    one main action): the main button's amber and its sheen, as wide as its word, and at its right behind a line
+    its ▾ (36 wide), a control of its own. HOST makes an invite, its code from the server, and the wait (what
+    CREATE INVITE was). The ▾ opens a short list (the build menu's look, under it): "Host with a code", as HOST,
+    and "Host directly": this machine listens on its port (47474) and waits as for an invite, its address in
+    the waiting panel.
+  - 24 after it **JOIN's field** (464 wide: a whole IPv6 address with its port in the code's type; "Code or
+    address" in it while it is empty) and 8 after that **JOIN**, a regular button. The field takes an invite's
+    code (as typed, in any case, a hyphen or none) or a direct host's address (a host or an IP with its port,
+    an IPv6 one in brackets): an address joins that host directly, other text is a code.
+  Under them at 626 the reserved line (18 tall, as wide as the overview, 12). Pressed with no build, PRACTICE,
+  HOST and JOIN say there "Make a build first." (§7); with a build that can't be played, why; an address that
+  isn't one, "That isn't an address. Use host:port.". The list and the overview grow down to 16 over the row:
+  both end at 564 (the overview's wide sheet is 540 at least).
 - **+ NEW BUILD** opens its dialog: a name and the version, CANCEL and CREATE BUILD, and under them, below a line,
   FROM A SAVE FILE…, which closes it and opens the system's file dialog for a save; the build is made of the save
   and named for its file (Builds, below).
@@ -904,14 +899,14 @@ read in that order. In the body's units (1216 by 644 at the reference window):
 - The focus opens on the chosen build in the list (with none, on + NEW BUILD), and Enter there goes to HOST. The
   arrows walk by where things are: Down from + NEW BUILD into the list and from its last row to HOST, Right from
   any row of the list to PRACTICE (past the overview, which takes no focus; to EDIT or ⋯ where it can't be used),
-  along the header PRACTICE, EDIT, ⋯, Down from them to the tiles; along the tiles Right goes HOST, its ▾, the
-  field, its go arrow. Tab goes in reading order: + NEW BUILD, the list, PRACTICE, EDIT, ⋯, HOST, its ▾, the
-  field, the go arrow. A control that isn't there is passed by.
+  along the header PRACTICE, EDIT, ⋯, Down from them to the row; along the row Right goes HOST, its ▾, the
+  field, JOIN. Tab goes in reading order: + NEW BUILD, the list, PRACTICE, EDIT, ⋯, HOST, its ▾, the field,
+  JOIN. A control that isn't there is passed by.
 - **On a phone** one column in the same order (358 wide): + NEW BUILD the column's width; at 52 the chosen build
   in a box, 72 tall (Left and Right step it, Enter opens the builds as a sheet); at 136 PRACTICE (as wide as its
-  word, 120 at least), EDIT (the rest) and ⋯ (40) in a row, 8 apart; from 188 the two tiles one under another,
-  each the column's width and 56 tall, 12 apart (HOST at 188, JOIN at 256), their words at 16; at 324 the
-  reserved line (two lines, 40). The overview isn't shown there (the editor shows the build whole).
+  word, 120 at least), EDIT (the rest) and ⋯ (40) in a row, 8 apart; at 188 HOST the column's width and 52 tall,
+  as a phone's main buttons are; at 252 the field (what JOIN leaves) and JOIN, 8 apart; at 304 the reserved line
+  (two lines, 40). The overview isn't shown there (the editor shows the build whole).
 - **There is no direct connection's dialog** (§2.57): hosting directly is HOST's ▾, joining a direct host JOIN's
   field.
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
