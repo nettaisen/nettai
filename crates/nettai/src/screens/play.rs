@@ -125,21 +125,24 @@ pub(crate) fn remembered(shell: &Shell, game: &str) -> Option<String> {
     shell.settings.remembered.get(&remembered_build(game)).cloned()
 }
 
-/// The selected game's builds (`builds::shelf`: its builds folder's files), each checked by the game's rules, as
+/// The selected game's builds (`builds::shelf`: its builds folder's files), each checked under the ruleset the
+/// player plays by (`rulesets::played_by`; a lobby checks them again under the host's: `Play::check_builds`), as
 /// Play lists them and Practice's Dummy's build offers them. The screenshot pass lists builds of its own, which
 /// have no file: its pictures don't depend on what the player keeps.
 pub(crate) fn shelved(shell: &Shell, kit: &builds::Kit) -> Vec<shelf::Shelved> {
-    let Some(made) = tour::builds(shell.still, kit.content(), &kit.game) else { return shelf::load(shell, kit) };
-    let ui = shell.ui();
-    let graphics = kit.ready.graphics(shell.lang);
-    let names = Names::of(kit.content(), &graphics);
-    let words = words::Words { ui: &ui, kit, names: &names };
-    made.into_iter()
-        .map(|(name, side)| {
-            let listed = builds::store::Listed { path: Default::default(), name: name.clone(), text: String::new() };
-            shelf::shelved(&words, listed, Some(builds::store::Build::new(kit.content(), &name, side)))
-        })
-        .collect()
+    shelf::played_by(shell, kit, |under| {
+        let Some(made) = tour::builds(shell.still, kit.content(), &kit.game) else { return shelf::load(shell, kit, under) };
+        let ui = shell.ui();
+        let graphics = kit.ready.graphics(shell.lang);
+        let names = Names::of(kit.content(), &graphics);
+        let words = words::Words { ui: &ui, kit, names: &names };
+        made.into_iter()
+            .map(|(name, side)| {
+                let listed = builds::store::Listed { path: Default::default(), name: name.clone(), text: String::new() };
+                shelf::shelved(&words, listed, Some(builds::store::Build::new(kit.content(), &name, side)), under)
+            })
+            .collect()
+    })
 }
 
 /// The settings a lobby of `game` opens with: a set first to `wins` round wins, each place picked from the match's
@@ -374,6 +377,22 @@ impl Play {
         self.chosen = before.and_then(|name| self.builds.iter().position(|b| b.name() == name)).unwrap_or(0);
     }
 
+    /// The builds checked again under `under` (a lobby's ruleset: the host's), and the rows shown with them. Their
+    /// files aren't read again.
+    fn check_builds(&mut self, shell: &Shell, under: Option<shelf::Under>) {
+        let Some(kit) = builds::kit(shell) else { return };
+        let ui = shell.ui();
+        let graphics = kit.ready.graphics(shell.lang);
+        let names = Names::of(kit.content(), &graphics);
+        let words = words::Words { ui: &ui, kit: &kit, names: &names };
+        for build in &mut self.builds {
+            build.check_under(&words, under);
+        }
+        let view = ui.global::<PlayView>();
+        view.set_builds(ModelRc::new(VecModel::from(self.builds.iter().map(|b| b.row.clone()).collect::<Vec<_>>())));
+        view.set_build(self.build().map(|b| b.row.clone()).unwrap_or_default());
+    }
+
     /// The chosen build's overview, beside the list (made again only when the build or the language shown
     /// changed: the builds are read each time the screen is shown), and whether it reads as one.
     fn show_sheet(&mut self, shell: &Shell) {
@@ -431,17 +450,25 @@ impl Play {
     }
 
     /// The chosen build's side, if it can be played; else the space beside the control says it can't (or that
-    /// there is no build), and nothing is made.
-    fn side(&self, shell: &Shell) -> Result<Side, UserError> {
+    /// there is no build), and nothing is made. It is played under the ruleset the list checked it under (the one
+    /// the player plays by, what a lobby they host starts on); `joining` another player's lobby, by the game's
+    /// rules alone, as that lobby's ruleset is the host's and the lobby checks the build under it.
+    fn side(&self, shell: &Shell, joining: bool) -> Result<Side, UserError> {
         match self.build() {
             None => Err(UserError::NoBuild),
-            Some(build) if build.usable() => Ok(build.side().cloned().expect("a usable build has its side")),
-            // (What is wrong, in the player's words: the editor's for each kind.)
+            Some(build) if build.usable() || (joining && build.playable()) => Ok(build.side().cloned().expect("a usable build has its side")),
+            // (What is wrong, in the player's words: the editor's for each kind. The game's rules' problems come
+            // before the ruleset's.)
             Some(build) => {
-                let reason = build.side().and_then(|side| builds::kit(shell).and_then(|kit| words::first_problem(shell, &kit, side)));
+                let reason = builds::kit(shell).and_then(|kit| words::first_problem(shell, &kit, &build.problems));
                 Err(UserError::BuildUnusable { reason: reason.filter(|r| !r.is_empty()) })
             }
         }
+    }
+
+    /// Whether the link is made by joining another player's (by a code or an address).
+    fn joining(&self) -> bool {
+        self.session.as_ref().is_some_and(|s| matches!(s.way, Way::Code(_) | Way::Address(_)))
     }
 
     // ---- Making a link -----------------------------------------------------------------------------------
@@ -450,7 +477,7 @@ impl Play {
     fn connect(&mut self, shell: &mut Shell, way: Way) -> Result<(), UserError> {
         self.drop_session(shell);
         self.notice.clear();
-        self.side(shell)?;
+        self.side(shell, matches!(way, Way::Code(_) | Way::Address(_)))?;
         let doing = match &way {
             Way::Invite => "making an invite",
             Way::Code(_) => "joining by a code",
@@ -555,7 +582,7 @@ impl Play {
     /// invite, in the screen's `Picture`. On a phone a battle has its pad only where it fills the window, so
     /// there it does, and a row of the menu stops it for the invite again.
     fn train(&mut self, shell: &mut Shell) {
-        let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side(shell)) else { return };
+        let (Some(game), Ok(side)) = (shell.game().map(str::to_string), self.side(shell, false)) else { return };
         let name = self.builds.get(self.chosen).map(|b| b.name().to_string()).unwrap_or_default();
         // The menu's way out of the wait is in EXIT's place, CANCEL INVITE (STOP HOSTING), and the code (the
         // address) is the waiting panel's to copy (the user: "the stop hosting button should be in the place of the
@@ -580,7 +607,7 @@ impl Play {
 
     /// The link is open: the lobby over it, the practice battle ended.
     fn enter_lobby(&mut self, shell: &mut Shell) {
-        let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side(shell)) else {
+        let (Some((game, ready)), Ok(side)) = (shell.ready(), self.side(shell, self.joining())) else {
             return self.ended(shell, Some(UserError::Other));
         };
         // (A lobby starts on the ruleset this player plays by: what the other player adopts if this one hosts.)
@@ -871,6 +898,7 @@ impl Play {
         // (The screenshot pass shows one round trip: what two players of one process measure moves about.)
         let steady = tour::steady_ping(shell.still).filter(|_| ping.is_some());
         let Some(lobby) = session.lobby() else { return };
+        let rulesets = lobby.rulesets().clone();
         let (ready, their_ready) = (lobby.ready(), lobby.their_ready());
         let live = Live {
             their_present: lobby.their_present(),
@@ -918,6 +946,12 @@ impl Play {
         if let (Some(ruleset), Some((_, ready))) = (&live.ruleset, shell.ready()) {
             let graphics = ready.graphics(shell.lang);
             view.set_ruleset(rulesets::shown_name(&Names::of(ready.content(), &graphics), &ruleset.name).into());
+        }
+        // The builds CHANGE BUILD offers are checked under the lobby's ruleset, the host's, where it changed.
+        if live.ruleset != self.live.ruleset
+            && let Some(ruleset) = &live.ruleset
+        {
+            self.check_builds(shell, Some(shelf::Under { rulesets: &rulesets, ruleset }));
         }
         // (The build's problem in the player's words: the Builds screen's for each kind.)
         if live.problem != self.live.problem || live.ruleset != self.live.ruleset {

@@ -174,5 +174,9 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
 - **Random matches** (nettai-match's `pick`): a picked side states a random Cybeast where the rules require one
   (`pick::Required`), from the same stream as the version before; random folders may hold either version's Giga
   chips.
-- **Play's build list and Practice** still check builds without a ruleset (`Checked::of`), as before: a build that
-  mixes versions is ready there, and refused in a lobby whose ruleset is one per build.
+- **Play's build list and Practice** check builds under a ruleset (`Checked::under`'s problems: nettai's
+  `builds::shelf`), as the lobby and the build editor do: outside a lobby the one the player plays by, so a build
+  that mixes versions under Standard is "2 problems" in the list and PRACTICE and HOST refuse it with the first
+  ("Mixes Gregar and Falzar: …"); in a lobby CHANGE BUILD's list is checked again under the lobby's, the host's,
+  as it changes. Joining (an invite's code, an address) asks only the game's rules of a build, as the lobby it
+  joins is under the host's ruleset and checks the build under it.
