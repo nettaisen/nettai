@@ -16,7 +16,8 @@
 //! the build still chosen. A [`Visit`] is the time from PRACTICE to back on Play: what the menu sets lasts
 //! through it, and the next starts on the defaults.
 //!
-//! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle paused behind it. Its
+//! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle held behind it, its music
+//! going on and its scenery moving as the game's pause shows them (`battle/hold.rs`). Its
 //! rows are a label and a value between arrows, changed at once by Left and Right (Dummy's build, Arena,
 //! Background and Music a dropdown: Enter opens its list, Arena's and Background's a grid of pictures): [`ROWS`]
 //! lists them, and a row is added there. EDIT, under the Dummy's build, opens it in Builds' editor, whose
@@ -566,13 +567,11 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     Ok(())
 }
 
-/// The set a practice session plays: the match's, its rounds leaving the game its START (`HostKeys::pause`
-/// off), so the practice menu holds the battle in the game's own pause (`Battle::pause_in_game`). The rest of
-/// the round is as any match's. (A match's every round has the host answer START, for both players of an
-/// online one and its replay; practice is neither online nor recorded.)
+/// The set a practice session plays: the match's, its rounds' START the host's as every match's
+/// (`HostKeys::pause`): START in the fight opens the practice menu, which holds the battle (`battle/hold.rs`),
+/// and the game's own pause never runs. (Practice is neither online nor recorded.)
 fn set_of(content: &std::sync::Arc<nettai_battle::Content>, m: &Match, seed: u32) -> Set {
-    let mut first = m.round(content, seed);
-    first.host_keys.pause = false;
+    let first = m.round(content, seed);
     let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().expect("a checked match's folder is whole"));
     Set::new(content.clone(), first, folders)
 }
@@ -627,7 +626,7 @@ fn restart(shell: &mut Shell) -> bool {
 /// The session's set again from its start on the arena and with the dummy's build it has now (the Arena row
 /// changed, or the Dummy's build: a round's field and its navis are set as it starts), as RESTART starts it
 /// over, the menu staying open: the battle behind it steps through the round's opening and is held as its
-/// custom screen begins, as ever under the menu (`battle/game_pause.rs`). (What a new build or arena draws that the battle
+/// custom screen begins, as ever under the menu (`battle/hold.rs`). (What a new build or arena draws that the battle
 /// wasn't made ready for is loaded as it is first drawn.)
 fn restart_set(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
@@ -1203,18 +1202,14 @@ impl Screen for Practice {
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match event {
-            // Under the practice menu the battle is in the game's own pause (the user: "the training pause should
-            // actually just use the game's pause behavior: music continues, stuff still animates. but don't
-            // show the PAUSED banner in the middle of the screen"): its HUD's pause display is left out. A session
-            // of Practice's own opens with the menu over it (the user: "when practice mode starts you should also
-            // bring up the menu immediately"), before its first tick, as Esc there would: the battle steps through
-            // its opening under it and is held as its custom screen begins, nothing of it changing until RESUME
-            // ("pause at start doesn't seem to stop custom hp drain": `battle/game_pause.rs`).
+            // Under the practice menu the battle is held, wherever the menu opens, and looks as the game's own
+            // pause does: its music goes on and its scenery moves, no PAUSED banner (`battle/hold.rs`; the user:
+            // "pause during custom screen vs not custom screen is so janky now"). A session of Practice's own opens
+            // with the menu over it (the user: "when practice mode starts you should also bring up the menu
+            // immediately"), before its first tick, as Esc there would: the battle steps through its opening under
+            // it and is held as its custom screen begins, nothing of it changing until RESUME ("pause at start
+            // doesn't seem to stop custom hp drain").
             BattleEvent::Started => {
-                if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
-                    b.pause_in_game();
-                    b.stage.player.renderer().pause_display = false;
-                }
                 if shell.practice.session.as_mut().is_some_and(|s| std::mem::take(&mut s.menu_at_start)) {
                     shell.open_menu();
                 }
@@ -1303,8 +1298,7 @@ impl Screen for Practice {
         let battle = b.stage.player.battle();
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
-        // (Under the menu the battle takes no button but the START that holds it in the game's pause, and the
-        // dummy's go nowhere: nothing is shown held.)
+        // (Under the menu the battle takes no button, and the dummy's go nowhere: nothing is shown held.)
         let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {

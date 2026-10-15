@@ -1024,18 +1024,6 @@ impl Battle {
         (self.round.mode == mode::FIGHTING && self.fight.state == fight::PAUSE).then_some(self.fight.pausing_player & 1)
     }
 
-    /// Whether START pressed on the next tick would pause the fight as the game's own START does: the fight
-    /// running, the battle not over and not dimmed (`sub_800A046`), in a round that pauses itself (not one
-    /// whose host answers the pause: `HostKeys::pause`). For a host that holds a battle in the game's own
-    /// pause under a menu of its own. Output only.
-    pub fn pausable(&self) -> bool {
-        !self.setup.host_keys.pause
-            && self.round.mode == mode::FIGHTING
-            && self.fight.state == fight::FIGHTING
-            && !self.is_battle_over()
-            && !self.is_dimmed()
-    }
-
     /// One battle tick (one frame of the running battle). A battle the
     /// engine stopped ([`RoundEnd::Error`]) doesn't tick: it stays as it is,
     /// silent.
@@ -2615,34 +2603,26 @@ mod tests {
         assert!(!b.paused);
     }
 
-    /// What a host that holds a battle in the game's own pause reads: whether START would pause it now, and
-    /// who holds it paused. Neither is state: a battle asked is the battle it was.
+    /// Who holds a battle in the game's own pause, read as output: not state, a battle asked is the battle it
+    /// was.
     #[test]
-    fn a_host_reads_the_games_own_pause() {
+    fn who_holds_the_games_own_pause_is_read_alone() {
         let mut b = fighting(crate::setup::HostKeys::NONE);
         let digest = b.digest();
-        assert!(b.pausable() && b.paused_by().is_none());
+        assert!(b.paused_by().is_none());
         assert_eq!(b.digest(), digest, "asked, nothing changes");
         held(&mut b, [keys::START, 0]);
-        assert_eq!((b.paused_by(), b.pausable()), (Some(0), false));
+        assert_eq!(b.paused_by(), Some(0));
         // Held there, it goes on ticking in the game's pause, and comes out of it on the same player's START.
         for _ in 0..30 {
             held(&mut b, [0, 0]);
             assert_eq!(b.paused_by(), Some(0));
         }
         held(&mut b, [keys::START, 0]);
-        assert_eq!((b.paused_by(), b.pausable()), (None, true));
-        // Not where START wouldn't pause it: a round whose host answers the pause, a dimmed battle, one over,
-        // and the custom screen.
-        assert!(!fighting(crate::setup::HostKeys { pause: true, run: false }).pausable());
-        let mut dimmed = b.clone();
-        dimmed.set_flags(battle_flags::DIMMED);
-        assert!(!dimmed.pausable());
-        let mut over = b.clone();
-        over.round.time_up = 1;
-        assert!(!over.pausable());
+        assert_eq!(b.paused_by(), None);
+        // Nobody on the custom screen.
         let custom = Battle::new(RoundSetup { host_keys: crate::setup::HostKeys::NONE, ..crate::scenario::setup() }, crate::scenario::content());
-        assert!(!custom.pausable() && custom.paused_by().is_none());
+        assert!(custom.paused_by().is_none());
     }
 
     /// In a round whose host answers the pause (`HostKeys::pause`), START

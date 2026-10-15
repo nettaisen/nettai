@@ -620,8 +620,7 @@ fn transform_hides(b: &Battle, state: &HudState) -> (bool, bool) {
 
 /// Draw the HUD layer and queue the HUD sprites. What the HUD needs and
 /// the pack or the content doesn't have (a chip's icon, a character of its
-/// name, a banner's glyphs) goes to `problems`. Without `pause_display`
-/// the pause display is left out (`Renderer::pause_display`); without
+/// name, a banner's glyphs) goes to `problems`. Without
 /// `custom_gauge`, the custom gauge (`Renderer::custom_gauge`). `smooth`
 /// is the enhanced mode's motion: the gauge's fill drawn between whole
 /// pixels.
@@ -632,7 +631,6 @@ pub fn draw<'a>(
     packs: &crate::packs::Packs<'a>,
     state: &HudState,
     shared: &'a SharedGlyphs,
-    pause_display: bool,
     custom_gauge: bool,
     smooth: Smooth,
     layer: &mut Layer,
@@ -983,7 +981,7 @@ pub fn draw<'a>(
     // "PAUSE" in the middle while a player holds the battle (`sub_801C9E4`:
     // a 32x16 and an 8x16 sprite at its place, EXE6's (100, 63), in the
     // opponents' HP digits' palette).
-    if pause_display && b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
+    if b.round.mode == mode::FIGHTING && b.fight.state == fight::PAUSE {
         let (x, y) = (hud.layout.pause.0 as i32, hud.layout.pause.1 as i32);
         let group = (0..5).map(|k| glyph(&hud.pause, k, hud.enemy_palette, x + 8 * k as i32, y, 0, None)).collect();
         list.insert_at(FRONT_LAYER, NAME_BUCKET, group);

@@ -29,8 +29,8 @@ enum Differs {
     /// It isn't compared.
     Unheld,
     /// Inside the control the cursor was on and the one it is on, and the game's own picture where the practice
-    /// menu leaves it in view: the battle is in the game's pause behind the menu, and the game moves its
-    /// backgrounds through its pause.
+    /// menu leaves it in view: the battle is held behind the menu, and its scenery (the background, the
+    /// panels' own animations) moves on through the hold as the game's pause moves it.
     Picture,
 }
 
@@ -251,8 +251,7 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
     shot(add, "practice-battle", lang, size, Differs::Unheld, false);
 
     // The practice menu: a value changed under the focus, the focus a row down, the input display turned on. (The
-    // game's picture beside the menu may differ in each pair: it is in the game's pause, which moves its
-    // backgrounds.)
+    // game's picture beside the menu may differ in each pair: it is held, and its scenery moves on.)
     add(SETTLE, Box::new(|_, app, _| app.borrow_mut().shell.open_menu()));
     // (It opens on RESUME: the focus is put on a row.)
     add(SETTLE, focus_row(PracticeOption::Action));
@@ -383,8 +382,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), lang: &'static str, size: &'
         }),
     );
 
-    // Through the custom screen to the fight (START to OK, A on it), and the menu opened there: the battle in
-    // the game's own pause behind it, its pause display left out, and a moment later still in it.
+    // Through the custom screen to the fight (START to OK, A on it), and the menu opened there: the battle held
+    // behind it, no PAUSED banner, and a moment later still held, its background moved on.
     for n in 0..16 {
         add(150, Box::new(move |_, app, _| app.borrow_mut().shell.keys.held = if n % 2 == 0 { keys::START } else { keys::A }));
     }
