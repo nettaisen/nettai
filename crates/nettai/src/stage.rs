@@ -247,7 +247,8 @@ impl Stage {
                 s.ticking.add(started.elapsed());
             }
         }
-        if ran > 0 {
+        // (A battle held where it stands sounds its ticks, and its picture is the same.)
+        if ran > 0 && !self.player.held() {
             self.surface.stale = true;
             if let Some(s) = &mut self.stats {
                 for &at in pressed.iter() {

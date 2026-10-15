@@ -55,7 +55,8 @@ msgstr "構築を作成"
 msgid "FROM A SAVE FILE…"
 msgstr "セーブファイルから…"
 
-# The band under the builds: PRACTICE, and the online group under its label.
+# The band under the builds: HOST (its ▾: how to host) and JOIN, whose field takes an invite's code or a
+# direct host's address.
 
 msgid "ONLINE"
 msgstr "オンライン"
@@ -63,11 +64,20 @@ msgstr "オンライン"
 msgid "INVITE CODE"
 msgstr "招待コード"
 
+msgid "HOST"
+msgstr "ホスト"
+
+msgid "Host with a code"
+msgstr "コードでホスト"
+
+msgid "Host directly"
+msgstr "直接ホスト"
+
 msgid "JOIN"
 msgstr "参加"
 
-msgid "Direct connect…"
-msgstr "直接接続…"
+msgid "Code or address"
+msgstr "コードかアドレス"
 
 # The dialog of the code's six boxes (a pad can't type one).
 msgid "Invite code"
@@ -79,30 +89,14 @@ msgstr "接続中…"
 msgid "Choose"
 msgstr "選ぶ"
 
-# ---- A direct connection ----
-
-msgid "Direct connection"
-msgstr "直接接続"
-
-msgid "HOST"
-msgstr "ホスト"
-
-msgid "COPY"
-msgstr "コピー"
-
-msgid "Send this address to your opponent."
-msgstr "このアドレスを対戦相手に伝えてください。"
-
-msgid "address:port"
-msgstr "アドレス:ポート"
-
-msgid "CONNECT"
-msgstr "接続"
-
 msgid "CANCEL"
 msgstr "キャンセル"
 
 # ---- Waiting for the other player ----
+
+# Under a direct host's address while it waits.
+msgid "Send this address to your opponent."
+msgstr "このアドレスを対戦相手に伝えてください。"
 
 msgid "WAITING FOR OPPONENT"
 msgstr "対戦相手を待っています"

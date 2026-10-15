@@ -7,14 +7,21 @@
 //!
 //! - The menu opens (Esc, the pad's Guide, MENU) where START would pause the game (`Battle::pausable`): the
 //!   battle is given START for a frame's ticks, and is in the game's pause from that tick.
-//! - Where START wouldn't pause it, the battle steps on with no buttons ([`Phase::Waiting`]): on its custom
-//!   screen, which waits for the player, nothing but time changes (its music, the screen's own animation), and
-//!   it stays there; through a dimming or a round's end, until START would pause the fight, and then into the
-//!   game's pause (or onto the next round's custom screen, and it waits there).
+//! - Where START wouldn't pause it, the battle is held where it stands ([`Phase::Holding`],
+//!   `Player::set_held`): no tick steps it, so nothing of it changes (the custom screen's HP drain, its cursor,
+//!   a dimming's chip, a round's end), and only its sound goes on, the music and what was sounding. (The user:
+//!   "pause at start doesn't seem to stop custom hp drain": it stepped on there with no buttons.) Pressing START
+//!   there in the game does nothing; nettai's menu holds the battle all the same, and it goes on from there.
+//! - Opened in a round's opening (its fade in, its navis' arrival and its banner), the battle steps on through
+//!   it with no buttons ([`Phase::Opening`]), and is held as its custom screen begins, before the screen comes
+//!   in: at a round's first tick nothing is drawn yet and no music plays, and the menu is there to set the dummy
+//!   and the stage up with them in view. Nothing in the opening is the fight's: no gauge fills and no HP
+//!   changes. (Practice's own sessions open the menu as the battle starts, and an arena changed under the
+//!   menu starts the set over: each steps through its opening so.)
 //! - The player's own START in the fight pauses the game as the game's START does, and the menu opens over
 //!   it ([`GamePause::after`] says so).
 //! - The menu closes: from the game's pause the battle is given START again, and the game leaves it as it does
-//!   at its player's START; from waiting, it goes on as it is.
+//!   at its player's START; held, it goes on from the tick it was held at.
 //!
 //! While the menu is open neither the player's buttons nor the dummy's reach the battle: it is given START
 //! from here and nothing else.
@@ -29,8 +36,11 @@ enum Phase {
     /// It runs, the menu closed.
     #[default]
     Running,
-    /// The menu is open where START wouldn't pause the game: it steps on with no buttons.
-    Waiting,
+    /// The menu is open in a round's opening: it steps on with no buttons until its custom screen begins (then
+    /// held) or START would pause it.
+    Opening,
+    /// The menu is open where START wouldn't pause the game: held where it stands, its sound going on.
+    Holding,
     /// The menu opened (or waiting found the fight pausable): START is given until a tick takes it.
     Entering,
     /// In the game's pause.
@@ -56,17 +66,17 @@ impl GamePause {
             self.held = menu;
             player.hold_opponent(menu);
         }
-        let pausable = player.battle().pausable();
+        let battle = player.battle();
+        let (pausable, opening) = (battle.pausable(), opening(battle));
         self.phase = match (self.phase, menu) {
-            (Phase::Running, true) if pausable => Phase::Entering,
-            (Phase::Running, true) => Phase::Waiting,
-            // (Waiting: into the game's pause once START would pause it; never on the custom screen, which waits
-            // for the player.)
-            (Phase::Waiting, true) if pausable && player.battle().round.mode != mode::CUSTOM => Phase::Entering,
-            (Phase::Waiting, false) => Phase::Running,
+            (Phase::Running | Phase::Opening, true) if pausable => Phase::Entering,
+            (Phase::Running | Phase::Opening, true) if opening => Phase::Opening,
+            (Phase::Running | Phase::Opening, true) => Phase::Holding,
+            (Phase::Opening | Phase::Holding, false) => Phase::Running,
             (Phase::Paused, false) => Phase::Leaving,
             (phase, _) => phase,
         };
+        player.set_held(self.phase == Phase::Holding);
     }
 
     /// The buttons the battle is given this frame, besides the player's (who has none while the menu is open).
@@ -81,8 +91,8 @@ impl GamePause {
         let (phase, open) = match self.phase {
             _ if ran == 0 => (self.phase, false),
             Phase::Entering if paused => (Phase::Paused, false),
-            // (START reached a battle that didn't pause: it waits again, and tries once START would.)
-            Phase::Entering => (if menu { Phase::Waiting } else { Phase::Running }, false),
+            // (START reached a battle that didn't pause: the next frame finds where it is.)
+            Phase::Entering => (Phase::Running, false),
             Phase::Leaving if paused => (Phase::Releasing, false),
             Phase::Leaving | Phase::Releasing if !paused => (Phase::Running, false),
             Phase::Releasing => (Phase::Paused, false),
@@ -94,8 +104,15 @@ impl GamePause {
     }
 
     /// The battle starts over: it is the game's from its start, and nothing holds it (but the dummy's presses,
-    /// while the menu is open).
-    pub fn reset(&mut self) {
+    /// while the menu is open: under it the new set steps through its opening and is held as its custom screen begins).
+    pub fn reset(&mut self, player: &mut Player) {
         self.phase = Phase::Running;
+        player.set_held(false);
     }
+}
+
+/// Whether `battle` is in a round's opening: its fade in, its navis' arrival and its banner, before its custom
+/// screen (which is held as it begins to come in: its HP bug drains from the screen's first tick).
+fn opening(battle: &nettai_battle::battle::Battle) -> bool {
+    matches!(battle.round.mode, mode::INTRO | mode::BANNER) && battle.round.top == nettai_battle::battle::top::RUNNING
 }
