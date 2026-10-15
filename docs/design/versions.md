@@ -1,6 +1,6 @@
 # Game versions, builds and rulesets
 
-**Status: proposal (2026-10-15), for the user's review.** Nothing here is built yet.
+**Status: decided (2026-10-15), not built yet.** The user's answers to the proposal's open choices are §3.
 
 The user, as rulesets came in ("allowed sets of souls/crosses (should be able to represent game)"): "i think then
 you might want to rethink version selection for saves if you can mix and match souls/crosses. it's kind of
@@ -113,13 +113,15 @@ as EXE4 does already):
   (Beast, card variant), so every battle the original plays is the one nettai plays: the verify gates see no
   difference.
 
-## 3. Open choices
+## 3. Decided
 
-1. **Bass-Cross MegaMan's variant: on the card (proposed) or follow BN6's Cyberbeast?** On the card treats BN5 and
-   BN6 alike and lets a mixed build choose; following the Beast is closer to "one cartridge" but leaves BN5 with
-   nothing to follow.
-2. **Builds saved now** state a `version`: changed in place (nothing is in production), the version read once as
-   the Beast and card variant, or simply dropped and the user's builds made again?
-3. **The label for a build with nothing version-only:** none (proposed), or "Both"?
-4. **Versions "one per build" as a ruleset's default** for the built-in "Standard" preset (the cartridges, the
-   original's way), or Mixed?
+The user, of the four open choices: "1. bass cross variant on the card 2. drop them, ignore backward compatibility
+3. no label 4. one per build".
+
+1. **Bass-Cross MegaMan's variant is the card's own** (§2.1), in BN5 and BN6 alike, chosen in the editor as a
+   program's color is; BN6's Cyberbeast doesn't decide it.
+2. **Builds saved before this are dropped:** no reading of the old `version`, no conversion; the format changes in
+   place (nothing is in production).
+3. **A build with nothing version-only has no label.**
+4. **The built-in "Standard" ruleset's Versions is "one per build"**: each build one cartridge's, both versions
+   allowed, as the original played.
