@@ -96,7 +96,7 @@ pub struct Stage<'a> {
 }
 
 /// Frame counters that drive the stage's animations.
-#[derive(Clone, Copy, Debug, Default)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct StageClock {
     /// Frames the background has scrolled and animated for.
     pub background: u32,
@@ -118,6 +118,23 @@ impl StageClock {
     pub fn of(b: &Battle) -> StageClock {
         let head_start = (b.setup.score.round == 0 && !b.game_rules().flow.intro_steps_on_init) as u32;
         StageClock { background: b.round.frames.wrapping_add(head_start), field: b.round.ticks }
+    }
+
+    /// This clock moved on by `by`'s frames, each counter wrapping as the
+    /// battle's do.
+    pub fn ahead(self, by: StageClock) -> StageClock {
+        StageClock { background: self.background.wrapping_add(by.background), field: self.field.wrapping_add(by.field) }
+    }
+
+    /// A frame more, as a tick of `b` would have moved [`StageClock::of`]
+    /// with nothing else of it changing: the background's frame, and the
+    /// field's where the round runs (in a round's end state the battle's
+    /// ticks stand still, `round.ticks`, and its field's clock with them).
+    pub fn step(&mut self, b: &Battle) {
+        self.background = self.background.wrapping_add(1);
+        if b.round.top == nettai_battle::battle::top::RUNNING {
+            self.field = self.field.wrapping_add(1);
+        }
     }
 }
 

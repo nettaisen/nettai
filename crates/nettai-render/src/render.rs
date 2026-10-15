@@ -134,11 +134,14 @@ pub struct Renderer {
     /// Make only the frame's lookups (`--audit`): nothing is drawn or
     /// composed, and `render` returns an empty frame.
     lookups_only: bool,
-    /// The HUD draws its pause display while a player holds the fight in
-    /// the game's own pause (the default, as the game does); off, it is
-    /// left out, and nothing else of the frame changes: a host that shows
-    /// a menu of its own over the game's pause.
-    pub pause_display: bool,
+    /// How far the stage's scenery (the background's animation and scroll,
+    /// the panels' own animations) is drawn ahead of the battle's clock: the
+    /// frames it moved on while a host held the battle where it stands
+    /// ([`Renderer::scenery_frame`]). Kept after the hold, so nothing jumps
+    /// back; forgotten as a round or a battle starts ([`Renderer::reset`]).
+    /// Drawing alone: the battle never sees it. None (zero) for a battle
+    /// never held, whose frames are the clock's alone.
+    scenery: StageClock,
     /// The HUD draws the custom gauge where the game does (the default);
     /// off, it is left out, full or filling, and nothing else of the frame
     /// changes: a host's picture of a fight no one plays (Practice's
@@ -180,7 +183,7 @@ impl Renderer {
             stand_in: None,
             strings: None,
             lookups_only: false,
-            pause_display: true,
+            scenery: StageClock::default(),
             custom_gauge: true,
             reduce_motion: false,
         }
@@ -259,9 +262,27 @@ impl Renderer {
         self.hud_state.tick(b);
     }
 
-    /// Forget presentation state (a new battle starts).
+    /// Forget presentation state (a new battle or round starts): the HUD's,
+    /// and how far the scenery was ahead of the battle's clock.
     pub fn reset(&mut self) {
         self.hud_state = HudState::default();
+        self.scenery = StageClock::default();
+    }
+
+    /// A frame of a battle held where it stands (a host's menu over it: no
+    /// tick steps it): the stage's scenery moves on a frame as the battle's
+    /// tick would have moved it, the background's animation and its scroll
+    /// (the enhanced mode's glide with it) and the panels' own animations,
+    /// as the game's own pause shows them; nothing else of the frame moves.
+    /// Drawing alone: `b` is read for where its round is, never changed.
+    pub fn scenery_frame(&mut self, b: &Battle) {
+        self.scenery.step(b);
+    }
+
+    /// The clock `b`'s stage is drawn on: its own ([`StageClock::of`]), and
+    /// the frames its scenery moved on while it was held.
+    pub fn stage_clock(&self, b: &Battle) -> StageClock {
+        StageClock::of(b).ahead(self.scenery)
     }
 
     /// The view a battle is seen from: the local player's console's, whose
@@ -349,7 +370,8 @@ impl Renderer {
         let flash = objects::palette_flash(b);
         let flash_order = b.content.rules().effects.palette_flash_order;
         let flashed = flash.is_some() && flash_order == PaletteFlashOrder::BeforeFades;
-        let stage = draw.then(|| Stage::new(&packs, &b.content, background, StageClock::of(b), flashed));
+        let clock = self.stage_clock(b);
+        let stage = draw.then(|| Stage::new(&packs, &b.content, background, clock, flashed));
         match &stage {
             Some(stage) => {
                 self.background.clear();
@@ -414,7 +436,7 @@ impl Renderer {
         if let Some(c) = chatbox.as_ref().filter(|_| draw) {
             crate::chatbox::draw(c, own_game, &mut self.dialogue, &mut list, &mut text);
         }
-        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.pause_display, self.custom_gauge, smooth, &mut self.hud, &mut list, &mut text, &mut self.problems);
+        crate::hud::draw(b, own_game, &packs, &self.hud_state, &shared, self.custom_gauge, smooth, &mut self.hud, &mut list, &mut text, &mut self.problems);
         let Some(stage) = stage else {
             note_missing_strings(&mut text, &mut self.problems);
             return Frame::default();
