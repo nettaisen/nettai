@@ -12,7 +12,7 @@ import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, ScrollPage } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
-import { ChipCell, ChipKind, ChipRow } from "../../build.slint";
+import { ChipCell, ChipKind, ChipRow, VersionMark } from "../../build.slint";
 import { ChipDetail, LibraryRow, LibraryHead, DropGap, LiftedRow, RemoveTarget } from "folder.slint";
 
 // A line of the places: a list's title (over both columns), or one of its places (its chip, by its place in its list
@@ -171,9 +171,11 @@ component AutoLibraryRowView inherits Rectangle {
         opacity: root.row-data.refused ? 0.5 : 1;
     }
 
-    Text {
+    // (The chip's version's mark follows its name: a square of its color where the two don't fit.)
+    property <length> name-room: max(0px, root.note-x - 8px - 32px);
+    name := Text {
         x: 32px + root.dx;
-        width: max(0px, root.note-x - 8px - 32px);
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
         text: root.row-data.name;
         color: root.row-data.kind == ChipKind.mega ? Theme.mega : root.row-data.kind == ChipKind.giga ? Theme.giga : (root.row-data.refused ? Theme.dim : Theme.text);
         opacity: root.row-data.refused && root.row-data.kind != ChipKind.standard ? 0.5 : 1;
@@ -182,6 +184,14 @@ component AutoLibraryRowView inherits Rectangle {
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    version := VersionMark {
+        x: name.x + min(name.width, name.preferred-width) + 6px;
+        y: (parent.height - self.height) / 2;
+        tag: root.row-data.version;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
+        opacity: root.row-data.refused ? 0.5 : 1;
     }
 
     Text {
@@ -265,7 +275,7 @@ component ChipsPane inherits Rectangle {
         height: parent.height - 52px;
         nav: "lib.rows";
         count: AutoBattleView.chips.length;
-        row-height: Theme.phone ? 40px : Theme.chip-row;
+        row-height: Theme.list-row;
         chosen: self.focused-row;
         // (A mouse's drag on a row takes its chip into a place: the wheel scrolls.)
         mouse-pan: Theme.phone;
@@ -290,7 +300,7 @@ export component AutoBattleTab inherits Rectangle {
     property <length> pane-height: Theme.phone ? self.height : 482px;
     property <int> columns: Theme.phone ? 1 : 2;
     property <length> place-width: (root.pane-width - 24px - 12px - (root.columns - 1) * 12px) / root.columns;
-    property <length> pitch: (Theme.phone ? 40px : Theme.chip-row) + 2px;
+    property <length> pitch: Theme.list-row + Theme.list-gap;
     property <bool> has-element: AutoBattleView.detail.there && AutoBattleView.detail.element.width > 0;
     // ---- The strip: the chip under the cursor.
     PanelBack {

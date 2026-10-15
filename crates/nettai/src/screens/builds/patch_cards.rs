@@ -232,7 +232,8 @@ impl PatchCards {
         self.rows = rows;
     }
 
-    /// A card's name as a row and the strip show it: with its variant's, the group's name, where it has one.
+    /// A card's name as the strip shows it: with its variant's, the group's name, where it has one (a row shows the
+    /// card's own and the version's mark).
     fn name_of(shell: &Shell, words: &crate::builds::words::Words, (h, variant): &Card) -> slint::SharedString {
         let name = words.names.entry(*h);
         match variant {
@@ -257,12 +258,15 @@ impl PatchCards {
             CardRow {
                 there: true,
                 number: self.number(draft, h).into(),
-                name: PatchCards::name_of(shell, words, card),
+                // (Its variant's version is its mark, after the card's own name: the strip says both in words.)
+                name: words.names.entry(h).into(),
+                version: words.kit.version_tag_of(words.names, Registry::Entry, &item(card)),
                 megabytes: budget.map(|b| say.invoke_megabytes(b.cost_of(content, h) as i32)).unwrap_or_default(),
                 slot: slot.or(own).map(slot_name).unwrap_or_default().into(),
                 lines: ModelRc::new(VecModel::from(row_lines(&lines))),
-                // (One the ruleset the player plays by doesn't allow: its name in the error red.)
-                bad: !draft.allows_item(FIELD, &item(card)),
+                // (One the ruleset the player plays by doesn't allow, or another version's than the build's under one
+                // version per build: its name in the error red.)
+                bad: !draft.allows_item(FIELD, &item(card)) || draft.mixing(Registry::Entry, &item(card)).is_some(),
                 ..Default::default()
             }
         })

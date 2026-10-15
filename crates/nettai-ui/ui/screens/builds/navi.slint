@@ -1,13 +1,15 @@
 // The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as a grid of cards, and
 // beside it the build's navi: the face its round starts with, its HP and its element; the selector of the forms the
-// build has (docs/design/versions.md §2.1: EXE6's Cybeast, then its Crosses; EXE4's and EXE5's souls; both versions'
-// offered, each face lit where it is the build's), and the build's other choices, each a stepper (Light or Dark). On
-// a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
+// build has (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both
+// versions' offered, each a row of the editor's lists, checked where it is the build's, with its version's mark), and
+// the build's other choices, each a stepper (Light or Dark). On a phone the panel is over the grid. Its Rust half is
+// src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
 import { Cut, PanelBack, Note, Stepper, Select, Button } from "../../widgets.slint";
+import { VersionTag, VersionMark } from "../../build.slint";
 
 // One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
 // by doesn't allow it (docs/design/app-ui.md §2.59).
@@ -25,20 +27,25 @@ export struct NaviChoice {
     offered: bool,
 }
 
-// One of the forms the selector offers: its face, whether the build has it, and whether the ruleset the player plays
-// by doesn't allow it.
+// One of the forms the selector offers: its face, its name, the version it is one's own (its mark), whether the
+// build has it, and whether the build's problems are about it (the ruleset the player plays by doesn't allow it, or
+// it is another version's under one version per build).
 export struct NaviForm {
     face: image,
+    name: string,
+    version: VersionTag,
     chosen: bool,
-    banned: bool,
+    flagged: bool,
 }
 
 // A fact of forms the build chooses: its name in capitals ("CROSSES"), how many it has of its room ("3/5"; none for
-// the one form always chosen, EXE6's Cybeast), its forms in the battle's order, both versions', and its first's place
-// among the selector's (the focus order's).
+// the one form always chosen, EXE6's Beast form), what is wrong with it (the first of its problems, in the player's
+// words; none: nothing), its forms in the battle's order, both versions', and its first's place among the selector's
+// (the focus order's).
 export struct NaviFormGroup {
     name: string,
     count: string,
+    problem: string,
     forms: [NaviForm],
     at: int,
 }
@@ -128,6 +135,74 @@ component NaviCardView inherits Rectangle {
     }
 }
 
+// A form's row in the selector, as tall as the editor's lists' rows (`Theme.list-row`): a check mark (the build's or
+// not), its face, its name, and the mark of the version it is one's own at the right (a square of its color where the
+// row has no room for the name); its name in the error red where the build's problems are about it.
+component FormRow inherits Rectangle {
+    in property <NaviForm> form;
+    in property <int> nav-index;
+    property <length> face-height: Theme.phone ? 32px : 16px;
+    Rectangle {
+        background: hit.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
+    }
+
+    Rectangle {
+        x: 8px;
+        y: (parent.height - 16px) / 2;
+        width: 16px;
+        height: 16px;
+        background: root.form.chosen ? Theme.cursor : Theme.inset;
+        border-width: 1px;
+        border-color: root.form.flagged ? Theme.bad : root.form.chosen ? Theme.cursor : Theme.line;
+        Path {
+            width: 10px;
+            height: 8px;
+            visible: root.form.chosen;
+            stroke: Theme.action-ink;
+            stroke-width: 2px;
+            commands: "M 1 4 L 3.75 6.75 L 9 1.25";
+        }
+    }
+
+    face := Image {
+        x: 32px;
+        y: (parent.height - self.height) / 2;
+        width: 2 * root.face-height;
+        height: root.face-height;
+        source: root.form.face;
+        image-rendering: pixelated;
+        opacity: root.form.chosen ? 1 : 0.45;
+    }
+
+    property <length> name-x: face.x + face.width + 8px;
+    property <length> name-room: max(0px, root.width - root.name-x - 8px);
+    Text {
+        x: root.name-x;
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 8px : 0px));
+        text: root.form.name;
+        color: root.form.flagged ? Theme.bad : root.form.chosen ? Theme.text : Theme.dim;
+        font-family: Theme.body;
+        font-size: Theme.phone ? 14px : 12px;
+        font-weight: 600;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    version := VersionMark {
+        x: root.width - 8px - self.width;
+        y: (parent.height - self.height) / 2;
+        tag: root.form.version;
+        // (The name keeps 48 at least.)
+        short: self.natural-width + 8px + 48px > root.name-room;
+        opacity: root.form.chosen ? 1 : 0.6;
+    }
+
+    hit := Focusable {
+        nav: "form";
+        nav-index: root.nav-index;
+    }
+}
+
 export component NaviTab inherits Rectangle {
     property <int> columns: Theme.phone ? 3 : 4;
     property <length> gap: Theme.phone ? 8px : 12px;
@@ -139,14 +214,15 @@ export component NaviTab inherits Rectangle {
     property <length> grid-width: Theme.phone ? self.width : self.width - 360px - 24px;
     property <length> card-width: (root.grid-width - (root.columns - 1) * root.gap) / root.columns;
     property <length> card-height: Theme.phone ? 84px : 140px;
-    // Where the panel's facts are: under the face, or on a phone beside it.
-    property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 16px);
-    property <length> facts-y: Theme.phone ? 16px : 80px;
-    property <length> forms-y: Theme.phone ? 72px : root.facts-y + 84px;
-    // The selector: each fact's name and count over its faces, twice their size, as many to a row as the panel's
-    // width takes (four on a desktop: EXE6's ten Crosses 4, 4 and 2, twelve souls three rows of 4).
-    property <length> form-gap: 4px;
-    property <int> form-fit: max(1, floor((root.panel-width - 32px + root.form-gap) / (64px + root.form-gap)));
+    // Where the panel's facts are: beside the face (the selector has the room under them).
+    property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 128px);
+    property <length> facts-y: Theme.phone ? 16px : 12px;
+    property <length> forms-y: Theme.phone ? 72px : 96px;
+    // The selector: each fact's name and count (and what is wrong with it) over its forms' rows, the editor's lists'
+    // rows: one column on a desktop, two on a phone.
+    property <int> form-columns: Theme.phone ? 2 : 1;
+    property <length> form-width: (root.panel-width - 32px - (root.form-columns - 1) * 8px) / root.form-columns;
+    property <length> form-pitch: Theme.list-row + Theme.list-gap;
     property <length> forms-height: NaviView.form-groups.length == 0 ? 0px : selector.preferred-height + 8px;
     property <length> choices-y: root.forms-y + root.forms-height;
     for navi[i] in NaviView.navis: NaviCardView {
@@ -242,14 +318,15 @@ export component NaviTab inherits Rectangle {
         width: root.panel-width - 32px;
         spacing: 8px;
         for group in NaviView.form-groups: Rectangle {
-            property <int> rows: ceil(group.forms.length / root.form-fit);
-            height: 20px + self.rows * (32px + root.form-gap);
-            Text {
+            property <int> rows: ceil(group.forms.length / root.form-columns);
+            height: 20px + self.rows * root.form-pitch - Theme.list-gap;
+            heading := Text {
                 x: 0;
                 y: 0;
+                width: self.preferred-width;
                 height: 16px;
                 text: group.count == "" ? group.name : group.name + "  " + group.count;
-                color: Theme.muted;
+                color: group.problem == "" ? Theme.muted : Theme.bad;
                 font-family: Theme.body;
                 font-size: 11px;
                 font-weight: 700;
@@ -257,37 +334,29 @@ export component NaviTab inherits Rectangle {
                 vertical-alignment: center;
             }
 
-            for form[j] in group.forms: Rectangle {
-                x: mod(j, root.form-fit) * (64px + root.form-gap);
-                y: 20px + floor(j / root.form-fit) * (32px + root.form-gap);
-                width: 64px;
-                height: 32px;
-                background: form.chosen ? Theme.raised : transparent;
-                // (The build's: a line in the cursor's color under it. Not allowed by the ruleset: a ring in the
-                // error red.)
-                border-width: form.banned ? 2px : 0px;
-                border-color: Theme.bad;
-                Image {
-                    x: 0;
-                    y: 0;
-                    width: parent.width;
-                    height: parent.height;
-                    source: form.face;
-                    image-rendering: pixelated;
-                    opacity: form.chosen ? (form.banned ? 0.6 : 1) : 0.3;
-                }
+            // (What is wrong with the fact, by its heading: its first problem, in the error red.)
+            Text {
+                x: heading.width + 12px;
+                y: 0;
+                width: max(0px, parent.width - self.x);
+                height: 16px;
+                text: group.problem;
+                color: Theme.bad;
+                font-family: Theme.body;
+                font-size: 12px;
+                font-weight: 500;
+                horizontal-alignment: right;
+                vertical-alignment: center;
+                overflow: elide;
+            }
 
-                Rectangle {
-                    y: parent.height - 2px;
-                    height: 2px;
-                    visible: form.chosen && !form.banned;
-                    background: Theme.cursor;
-                }
-
-                Focusable {
-                    nav: "form";
-                    nav-index: group.at + j;
-                }
+            for form[j] in group.forms: FormRow {
+                x: mod(j, root.form-columns) * (root.form-width + 8px);
+                y: 20px + floor(j / root.form-columns) * root.form-pitch;
+                width: root.form-width;
+                height: Theme.list-row;
+                form: form;
+                nav-index: group.at + j;
             }
         }
     }

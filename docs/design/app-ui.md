@@ -803,7 +803,7 @@ Each is settled unless the user changes it.
       Falzar: …"). The header's tag after a title stays a page's own (a ruleset's PRESET).
     - *The Navi tab's selector*, under the navi's facts where §2.41's faces were: each fact of forms the build
       chooses, by the game's rulesets' name for it and how many it has of its room ("CROSSES 5/5"), its faces
-      twice their size in the battle's order, both versions' (EXE6's Cybeast at the head, Gregar's then Falzar's,
+      twice their size in the battle's order (rows since §2.61), both versions' (EXE6's Cybeast at the head, Gregar's then Falzar's,
       one always chosen, for every navi; then the ten Crosses, up to the Cross window's five; EXE4's and EXE5's
       twelve souls, up to the soul button's twelve: the lists are the game's own navi's alone). The build's are
       lit with a line in the cursor's color under them, the others dim; one the ruleset the player plays by
@@ -822,6 +822,27 @@ Each is settled unless the user changes it.
       that can't be read.
     (§6 Builds; docs/app.md §8.) §2.41, §2.42, §2.44 and §2.46 (the version's switch and faces) and §2.48's
     effects by the build's version are gone with it.
+
+61. **The editor's versions, reviewed** (2026-10-15). The user, of the forms' selector (§2.60): "instead of
+    "Cybeasts" in bn6 it should really be just "Beast form"", "you should indicate in the editor version
+    exclusives", "there's missing translation strings for souls and beast forms", "the rows in the editor are too
+    tall, they should match the height of the regular editor", "also the version selector in new build is really
+    tall for no reason" and "also if there's a problem with e.g. crosses or souls there's nowhere in the ui that
+    shows it".
+    - *Beast form:* EXE6's fact of the Cybeast is shown as "Beast form" (its heading, the ruleset category, the new
+      build's note), the Japanese 獣化, the games' word; the field stays `cybeast`. The forms are named by the
+      ROMs' names for them: GBeast and FBeast (Gビースト, Fビースト), EXE4's souls their chips' (AquaSoul,
+      アクアソウル), EXE6's Crosses in Japanese the game's (キラークロス, アクアクロス).
+    - *Rows:* the selector's forms are rows of the editor's lists, 26 tall (a phone's 40, the lists' own), a check
+      mark, the face at its size, the name and the version's mark; the navi's facts sit beside its face to give
+      them the room.
+    - *Version marks:* everything one version's own has its version's tag after its name or at its row's end,
+      small, in the version's color: a Giga chip's entry and library row, a form's row, a card's variant (the row
+      then shows the card's own name).
+    - *Problems:* a fact's problem is said by its heading in the error red, and its rows are red; a mix of versions
+      marks each tab that holds its things.
+    - *NEW BUILD's versions* are a control's height (40), as the dialogs' other controls.
+    (§6 Builds; docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
 

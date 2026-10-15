@@ -1189,17 +1189,32 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   A build file written before (its `version`, its cards as names) is no build now: the list shows it as one that
   can't be read (docs/design/versions.md §3.2: old builds are dropped, not converted).
 - **The Navi tab's selector** (docs/design/versions.md §2.1; the user: "you probably need to have some kind of soul
-  and cross and cybeast selector in the editor now right?"). Under the navi's facts, each fact of forms the build
-  chooses (`Builds::form_choices`, nettai-match's: the setup's one form that is the side's version, and its arrays
-  of forms), named as the game's rulesets name it ("CYBEASTS", "CROSSES 5/5", "SOULS 6/12"), its forms' faces twice
-  their size, four to a row on a desktop, in the battle's order, both versions' (`facts::offered_forms`: the navi
-  that changes form's sets hold them under the fact's name, or for the engine's form list every set's list; sorted
-  by the groups). EXE6's Cybeast is at the head, one always chosen, for every navi (MstrCros plays its version's
-  Crosses); the lists are the game's own navi's alone. A face is lit where the build has it (a line in the cursor's
-  color under it; the others dim), ringed in the error red where the ruleset the player plays by doesn't allow it.
-  Enter, a click or a tap is `activate("form", i)`: `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a
-  list takes it out, or puts it in where the list has room (the Cross window's five, the soul button's twelve: the
-  setup's `form[5]` and `form[12]`), in the battle's order; a full list refuses one more.
+  and cross and cybeast selector in the editor now right?"; its look as docs/design/app-ui.md §2.61 has it). Beside
+  the navi's face its facts, and under them each fact of forms the build chooses (`Builds::form_choices`,
+  nettai-match's: the setup's one form that is the side's version, and its arrays of forms), named as the game's
+  rulesets name it ("BEAST FORM", "CROSSES 5/5", "SOULS 6/12": the content's `category.<fact>`), its forms in the
+  battle's order, both versions' (`facts::offered_forms`: the navi that changes form's sets hold them under the
+  fact's name, or for the engine's form list every set's list; sorted by the groups), each a row of the editor's
+  lists (`Theme.list-row`, 26 tall, a phone's 40; one column, a phone's two): a check mark where the build has it,
+  its face, its name (the locales' `[forms]`: the ROMs' names, EXE6's Beast forms GBeast and FBeast by their
+  NameIDs), and at the right its version's mark (`VersionMark`, in build.slint: `Kit::version_tag_of`). EXE6's Beast
+  form is at the head, one always chosen, for every navi (MstrCros plays its version's Crosses); the lists are the
+  game's own navi's alone. What is wrong with a fact is said by its heading, in the error red: the first of the
+  problems about it (`Draft::facts_of`: the one a problem names, and for a mix of versions, which names none, each
+  fact holding one of its things) in `Words::problem`'s sentence, "+n more" after it; and the rows it is about have
+  their names in the error red (a form the ruleset the player plays by doesn't allow, one of a mix of versions, the
+  entry a problem names). The same facts flag the tab bar's words, so a mix of versions marks the tabs that hold its
+  things (a Beast form's the Navi tab, a Giga chip's the Folder tab, where its entry is red and the strip says the
+  sentence; a card's variant's the Patch cards tab). Enter, a click or a tap is `activate("form", i)`:
+  `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a list takes it out, or puts it in where the list
+  has room (the Cross window's five, the soul button's twelve: the setup's `form[5]` and `form[12]`), in the
+  battle's order; a full list refuses one more.
+- **A version's own things are marked** in the editor's rows, by the same `VersionMark` (the version's name in its
+  color, framed, 16 tall; a square of the color where the row has no room for the name): the folder's entries and
+  the library's rows of a Giga chip (and the auto battle data's), the selector's forms, and a card's variants (the
+  Patch cards tab's rows show the card's own name with its variant's mark; the strip says "Bass-Cross MegaMan
+  (Gregar)"). Membership is the groups' (`Rulesets::group_of`: a definition's own `version`, a card's variant), so
+  any game the content gives groups has the marks; the overview and Play's sheets show none.
 - **What is kept aside.** A NaviCust, patch cards and auto battle data are the game's own navi's alone, the one
   that changes form. While a build's navi is another, the facts of the editor's tabs that are that navi's
   (`screens::builds::editor::navi_only_fields`) are kept under `[aside]`, outside the side (the rules refuse a

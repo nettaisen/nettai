@@ -30,8 +30,9 @@ use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
 use nettai_battle::content::ChipCode;
-use nettai_content_api::ChipHandle;
+use nettai_content_api::{ChipHandle, Registry};
 use nettai_match::build::{self, ChipInfo, Sort};
+use nettai_match::ruleset::Item;
 use nettai_ui::{AutoBattleView, BuildWords, ChipCell, ChipDetail, EditorTab, LibraryRow, PlaceLine};
 use slint::{ComponentHandle, Model, ModelRc, VecModel};
 
@@ -91,6 +92,7 @@ impl AutoBattle {
             kind: kind(record.class),
             element: draft.kit.pictures.chip_element(chip),
             flagged,
+            version: draft.kit.version_tag_of(words.names, Registry::Chip, &Item::of(chip.0)),
             ..Default::default()
         }
     }
@@ -207,6 +209,7 @@ impl AutoBattle {
                         attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
                         element: draft.kit.pictures.chip_element(chip),
                         code: Default::default(),
+                        version: draft.kit.version_tag_of(words.names, Registry::Chip, &Item::of(chip.0)),
                     }
                 })
                 .collect()

@@ -924,7 +924,7 @@ export component NavicustTab inherits Rectangle {
         // (A mouse's drag of a row takes its program to the board; the wheel scrolls the list.)
         mouse-pan: false;
         count: NavicustView.programs.length;
-        row-height: Theme.phone ? 40px : Theme.chip-row;
+        row-height: Theme.list-row;
         chosen: self.focused-row;
         for slot in list.shown: ProgramRowView {
             property <int> at: list.first + slot;
