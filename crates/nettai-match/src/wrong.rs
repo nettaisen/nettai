@@ -96,9 +96,12 @@ pub enum Wrong {
     Slot { entry: EntryHandle, slot: u32, own: u32 },
     /// What the match's ruleset doesn't allow (`item` of `registry`: a chip,
     /// a navi, a form, a patch card, or a card's variant), held by the fact
-    /// the problem's field names ([`crate::ruleset::Ruleset::problems`]). A
-    /// build's under a ruleset alone: no game's rules say it.
-    NotAllowed { registry: Registry, item: crate::ruleset::Item },
+    /// the problem's field names ([`crate::ruleset::Ruleset::problems`]), at
+    /// each of `entries` of its list (from 0, in order: every copy of a chip
+    /// in the folder, every placed copy of a program; none where the fact is
+    /// one value), the problem's entry the first of them. A build's under a
+    /// ruleset alone: no game's rules say it.
+    NotAllowed { registry: Registry, item: crate::ruleset::Item, entries: Vec<usize> },
     /// Under a ruleset of one version per build, what the build holds is
     /// more than one version's (docs/design/versions.md §2.3): the groups it
     /// holds things of (`ruleset::Group` ids, in order) and every thing it

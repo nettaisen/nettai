@@ -34,10 +34,14 @@
 //!   [`Ruleset::of_names`]).
 //! - **A build under it** ([`Ruleset::problems`]; `build::Checked::under`):
 //!   one problem for each item a category's fact of the build names that
-//!   the ruleset doesn't allow ([`Wrong::NotAllowed`]), and with one version
-//!   per build one where what it holds is more than one group's
+//!   the ruleset doesn't allow, about every entry that names it
+//!   ([`Wrong::NotAllowed`]: each copy of a chip), and with one version per
+//!   build one where what it holds is more than one group's
 //!   ([`Wrong::Mixed`]), read from what the build holds. Nothing is taken
-//!   out of a build.
+//!   out of a build, and nothing is kept out of one: a build may hold what
+//!   the ruleset doesn't allow, which is then its problem (the user: "if
+//!   something is not allowed by the ruleset, it should still be allowed to
+//!   be added but it should be in violation").
 //!
 //! This module names no game, no category, no version and no fact: they are
 //! the game's data, and a fact's definitions are read by its type.
@@ -46,7 +50,9 @@ use crate::build::Builds;
 use crate::check::Problem;
 use crate::facts::{self, Stated};
 use crate::{Side, Wrong, ids};
-use nettai_battle::content::{Content, PlayerFact};
+use nettai_battle::content::{ChipClass, Content, PlayerFact};
+use serde::Deserialize;
+use serde::de::IntoDeserializer;
 use nettai_content_api::{ChipHandle, Data, DataKey, FieldType, FormHandle, Registry};
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
@@ -96,7 +102,9 @@ pub struct Category {
     pub registry: Registry,
     pub of: Option<String>,
     /// The items a build can hold of it: the navis a side can play, the
-    /// chips a folder lists, the forms the fact offers, else the registry's
+    /// chips a folder lists (and the game's chips of the classes the category
+    /// names besides: the Program Advances EXE4's and EXE5's auto battle data
+    /// holds, which no folder does), the forms the fact offers, else the registry's
     /// definitions of the game; a definition with variants, where the fact's
     /// record chooses one, each of its variants in its place.
     pub items: Vec<Item>,
@@ -268,11 +276,11 @@ pub fn shown(content: &Content, registry: Registry, item: &Item) -> String {
     }
 }
 
-/// The items `side`'s fact `fact` names, each with the entry of its list it
-/// is first at (none: the fact is one value), in order, each once: a
-/// definition, or where the record chooses its definition's variant and the
-/// definition has variants, the variant chosen.
-fn named_by(content: &Content, side: &Side, fact: &str, field: Option<&str>, registry: Registry) -> Vec<(Item, Option<usize>)> {
+/// The items `side`'s fact `fact` names, each with the entries of its list it
+/// is at, in order (none: the fact is one value), the items in the order they
+/// first come, each once: a definition, or where the record chooses its
+/// definition's variant and the definition has variants, the variant chosen.
+fn named_by(content: &Content, side: &Side, fact: &str, field: Option<&str>, registry: Registry) -> Vec<(Item, Vec<usize>)> {
     let Some(value) = side.facts.get(content, fact) else { return Vec::new() };
     let one = |v: &Stated| -> Option<Item> {
         match (v, field) {
@@ -293,8 +301,18 @@ fn named_by(content: &Content, side: &Side, fact: &str, field: Option<&str>, reg
         Stated::List(list) => list.iter().enumerate().filter_map(|(i, v)| one(v).map(|h| (h, Some(i)))).collect(),
         v => one(v).map(|h| (h, None)).into_iter().collect(),
     };
-    let mut seen = BTreeSet::new();
-    found.into_iter().filter(|(h, _)| seen.insert(h.clone())).collect()
+    let mut out: Vec<(Item, Vec<usize>)> = Vec::new();
+    for (item, entry) in found {
+        let at = match out.iter().position(|(h, _)| *h == item) {
+            Some(at) => at,
+            None => {
+                out.push((item, Vec::new()));
+                out.len() - 1
+            }
+        };
+        out[at].1.extend(entry);
+    }
+    out
 }
 
 impl Ruleset {
@@ -393,8 +411,9 @@ impl Ruleset {
     }
 
     /// What is wrong with `side` under this ruleset: for each category, a
-    /// problem for each item the side's fact names that it doesn't allow, at
-    /// the entry that first names it; and with one version per build, one
+    /// problem for each item the side's fact names that it doesn't allow,
+    /// about every entry that names it (each copy of a chip, the problem's
+    /// entry the first); and with one version per build, one
     /// where what the side holds is more than one group's, about all it holds
     /// of them. None: the ruleset lets the side play.
     pub fn problems(&self, rulesets: &Rulesets, content: &Content, side: &Side) -> Vec<Problem> {
@@ -402,11 +421,12 @@ impl Ruleset {
         let mut held: Vec<(Registry, Item)> = Vec::new();
         for category in &rulesets.categories {
             let Some((registry, _, field)) = definitions_of(content, &category.fact) else { continue };
-            for (item, entry) in named_by(content, side, &category.fact, field.as_deref(), registry) {
+            for (item, entries) in named_by(content, side, &category.fact, field.as_deref(), registry) {
                 held.push((registry, item.clone()));
                 if !self.allows_item(&category.fact, &item) {
                     let text = format!("{} isn't allowed ({})", shown(content, registry, &item), category.fact);
-                    out.push(Problem { side: Some(0), field: Some(category.fact.clone()), entry, what: Wrong::NotAllowed { registry, item }, text });
+                    let entry = entries.first().copied();
+                    out.push(Problem { side: Some(0), field: Some(category.fact.clone()), entry, what: Wrong::NotAllowed { registry, item, entries }, text });
                 }
             }
         }
@@ -493,7 +513,11 @@ impl Rulesets {
         for c in items(data.field("categories")) {
             let Data::Str(fact) = c.field("fact") else { return Err(format!("{module}: a category names its `fact`")) };
             let (registry, of, _) = definitions_of(content, fact).ok_or_else(|| format!("{module}: {fact} is no fact of {game}'s that names definitions"))?;
-            let defs = category_items(content, game, &builds, fact, registry, of.as_deref())?;
+            let classes: Vec<ChipClass> = items(c.field("classes"))
+                .iter()
+                .map(|n| n.str().and_then(|n| ChipClass::deserialize(IntoDeserializer::<serde::de::value::Error>::into_deserializer(n)).ok()).ok_or_else(|| format!("{module}: {fact}: {n:?} is no chip class")))
+                .collect::<Result<_, String>>()?;
+            let defs = category_items(content, game, &builds, fact, registry, of.as_deref(), &classes)?;
             let variants = chooses_variants(content, fact);
             let items = defs
                 .into_iter()
@@ -630,17 +654,22 @@ fn groups(content: &Content, game: &str, builds: &Builds) -> Vec<Group> {
 }
 
 /// A category's definitions: those of `registry` a build of `game` can
-/// hold in fact `fact`.
-fn category_items(content: &Arc<Content>, game: &str, builds: &Builds, fact: &str, registry: Registry, of: Option<&str>) -> Result<Vec<u16>, String> {
+/// hold in fact `fact` (of chips, the game's of `classes` too).
+fn category_items(content: &Arc<Content>, game: &str, builds: &Builds, fact: &str, registry: Registry, of: Option<&str>, classes: &[ChipClass]) -> Result<Vec<u16>, String> {
     Ok(match registry {
         Registry::Navi => crate::navis(content, game).into_iter().map(|n| n.0).collect(),
         // (The chips a folder lists: every chip of the game but those no
-        // folder holds, as the folder rules' view of a new build says.)
+        // folder holds, as the folder rules' view of a new build says; and
+        // the game's chips of the classes the category names besides.)
         Registry::Chip => {
             let side = builds.new_build(content, &builds.groups[0].id)?;
             let mut checked = crate::build::Checked::of(content, game, &side);
             let view = checked.folder_view(content, &crate::Folder::EMPTY).ok_or_else(|| format!("{game}'s rules have no folder view"))?;
-            (0..content.defs.chips.len() as u16).filter(|&h| ids::in_game(content, game, &content.defs.chip(ChipHandle(h)).key) && view.lists(ChipHandle(h))).collect()
+            (0..content.defs.chips.len() as u16)
+                .map(ChipHandle)
+                .filter(|&h| ids::in_game(content, game, &content.defs.chip(h).key) && (view.lists(h) || classes.contains(&content.chip(h).class)))
+                .map(|h| h.0)
+                .collect()
         }
         // (The forms a fact of forms offers, in the battle's order: the
         // build's choices of them.)
@@ -674,8 +703,8 @@ mod tests {
     fn each_game_has_its_categories_groups_and_presets() {
         for (content, game, facts, forms, groups) in [
             (exe6_content(), "exe6", vec!["navi", "folder", "navicust_programs", "patch_cards", "cybeast", "crosses"], "crosses", ["gregar", "falzar"]),
-            (exe5_content(), "exe5", vec!["navi", "folder", "navicust_programs", "patch_cards", "souls"], "souls", ["protoman", "colonel"]),
-            (exe4_content(), "exe4", vec!["folder", "navicust_programs", "patch_cards", "souls"], "souls", ["redsun", "bluemoon"]),
+            (exe5_content(), "exe5", vec!["navi", "folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["protoman", "colonel"]),
+            (exe4_content(), "exe4", vec!["folder", "navicust_programs", "patch_cards", "souls", "auto_battle_places"], "souls", ["redsun", "bluemoon"]),
         ] {
             let r = Rulesets::of(&content, game).unwrap();
             assert_eq!(r.categories.iter().map(|c| c.fact.as_str()).collect::<Vec<_>>(), facts, "{game}");
@@ -758,21 +787,35 @@ mod tests {
         assert_eq!(problems.len(), 6);
         assert!(problems.iter().all(|p| ["crosses", "cybeast"].contains(&p.field.as_deref().unwrap()) && matches!(p.what, Wrong::NotAllowed { registry: Registry::Form, .. })));
         assert_eq!(problems.iter().map(|p| p.entry).collect::<Vec<_>>(), [None].into_iter().chain((0..5).map(Some)).collect::<Vec<_>>());
-        // A chip held back: one problem however many copies, at the first.
+        // A chip held back: one problem however many copies, about every one of them (each is marked, not only the
+        // first), at the first.
         let cannon = crate::ids::chip(&content, "exe6", "cannon").unwrap();
+        let folder = gregar.folder(&content);
+        let entries_of = |chip: ChipHandle| -> Vec<usize> { folder.chips.iter().enumerate().filter(|(_, c)| c.is_some_and(|c| c.id == chip)).map(|(i, _)| i).collect() };
+        let cannons = entries_of(cannon);
+        assert!(cannons.len() > 1);
         let mut no_cannon = Ruleset::open(Name::Own("No Cannon".into()));
         no_cannon.set_allowed("folder", &Item::of(cannon.0), false);
         let problems = no_cannon.problems(&r, &content, &gregar);
         assert_eq!(problems.len(), 1);
-        assert_eq!((problems[0].entry, &problems[0].what), (Some(0), &Wrong::NotAllowed { registry: Registry::Chip, item: Item::of(cannon.0) }));
-        // The folder's view under it: Cannon can't go in, and each entry of it is a problem.
+        assert_eq!((problems[0].entry, &problems[0].what), (Some(cannons[0]), &Wrong::NotAllowed { registry: Registry::Chip, item: Item::of(cannon.0), entries: cannons.clone() }));
+        assert!((0..folder.chips.len()).all(|i| problems[0].at(i) == cannons.contains(&i)));
+        assert!(cannons.iter().all(|&i| crate::folders::about_entry(&content, &folder, i, &problems[0])));
+        // Two chips held back: each copy of either is marked, by its own chip's problem.
+        let other = folder.chips.iter().flatten().map(|c| c.id).find(|&c| c != cannon).unwrap();
+        let mut two = no_cannon.clone();
+        two.set_allowed("folder", &Item::of(other.0), false);
+        let problems = two.problems(&r, &content, &gregar);
+        assert_eq!(problems.len(), 2);
+        for (chip, p) in [(cannon, &problems[0]), (other, &problems[1])] {
+            let at = entries_of(chip);
+            assert!(at.iter().all(|&i| p.at(i)) && (0..folder.chips.len()).filter(|&i| p.at(i)).count() == at.len(), "{:?}", p.what);
+        }
+        // The folder's view under it is the game's rules' alone: Cannon goes in (and is the build's problem).
         let mut checked = Checked::under(&content, "exe6", &gregar, &r, &no_cannon);
-        let folder = gregar.folder(&content);
         let view = checked.folder_view(&content, &folder).unwrap();
-        assert_eq!(view.refusal(cannon), Some(&Wrong::NotAllowed { registry: Registry::Chip, item: Item::of(cannon.0) }));
-        let cannons: Vec<usize> = folder.chips.iter().enumerate().filter(|(_, c)| c.is_some_and(|c| c.id == cannon)).map(|(i, _)| i).collect();
-        assert!(cannons.len() > 1 && cannons.iter().all(|&i| !view.entry_problems(&content, &folder, i).is_empty()));
-        assert!(!matches!(Checked::of(&content, "exe6", &gregar).folder_view(&content, &folder).unwrap().refusal(cannon), Some(Wrong::NotAllowed { .. })));
+        assert!(!matches!(view.refusal(cannon), Some(Wrong::NotAllowed { .. })));
+        assert_eq!(view, Checked::of(&content, "exe6", &gregar).folder_view(&content, &folder).unwrap());
         // As names, and back.
         let names = no_cannon.banned_names(&content);
         assert_eq!(names, vec![("folder".to_string(), vec!["cannon".to_string()])]);
@@ -810,7 +853,7 @@ mod tests {
         let mut side = builds.new_build(&content, "gregar").unwrap();
         side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/gregar")).unwrap();
         let problems = ruleset.problems(&r, &content, &side);
-        assert_eq!(problems.iter().map(|p| &p.what).collect::<Vec<_>>(), [&Wrong::NotAllowed { registry: Registry::Entry, item: gregars.clone() }]);
+        assert_eq!(problems.iter().map(|p| &p.what).collect::<Vec<_>>(), [&Wrong::NotAllowed { registry: Registry::Entry, item: gregars.clone(), entries: vec![0] }]);
         side.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "bass-cross-megaman/falzar")).unwrap();
         assert!(ruleset.problems(&r, &content, &side).is_empty());
     }
@@ -886,6 +929,46 @@ mod tests {
         ruleset.allow_only(navis, &navis.items.iter().filter(|n| n.def != navi.0).cloned().collect::<Vec<_>>());
         let problems = ruleset.problems(&r, &content, &side);
         assert_eq!(problems.len(), 1);
-        assert_eq!((problems[0].field.as_deref(), problems[0].entry, &problems[0].what), (Some("navi"), None, &Wrong::NotAllowed { registry: Registry::Navi, item: Item::of(navi.0) }));
+        assert_eq!((problems[0].field.as_deref(), problems[0].entry, &problems[0].what), (Some("navi"), None, &Wrong::NotAllowed { registry: Registry::Navi, item: Item::of(navi.0), entries: Vec::new() }));
+    }
+
+    /// The auto battle data's places are a category of their own (EXE4's and EXE5's): the chips a folder lists and the
+    /// Program Advances, which no folder holds. A chip it holds back is a problem about each place that holds it; the
+    /// folder's category holding the same chip back says nothing of the places, nor the places' of the folder.
+    #[test]
+    fn the_auto_battle_places_are_a_category_of_their_own() {
+        for (content, game, version) in [(exe5_content(), "exe5", "protoman"), (exe4_content(), "exe4", "redsun")] {
+            let r = Rulesets::of(&content, game).unwrap();
+            let places = r.category("auto_battle_places").unwrap();
+            let folder = r.category("folder").unwrap();
+            assert_eq!(places.registry, Registry::Chip, "{game}");
+            let advance = |i: &Item| content.chip(ChipHandle(i.def)).class == ChipClass::ProgramAdvance;
+            assert!(places.items.iter().any(advance) && !folder.items.iter().any(advance), "{game}");
+            assert!(folder.items.iter().all(|i| places.items.contains(i)), "{game}");
+            // Cannon in two places.
+            let cannon = crate::ids::chip(&content, game, "cannon").unwrap();
+            let place = |chip: Option<ChipHandle>| {
+                let mut fields = vec![("pattern", Fact::Value(Value::Int(0))), ("zero", Fact::Value(Value::Bool(false)))];
+                if let Some(c) = chip {
+                    fields.insert(0, ("chip", Fact::Value(Value::Def(Registry::Chip, c.0))));
+                }
+                Fact::Record(fields)
+            };
+            let mut side = Builds::of(&content, game).unwrap().new_build(&content, version).unwrap();
+            let stated = vec![place(Some(cannon)), place(None), place(None), place(Some(cannon))];
+            side.set_fact(&content, "auto_battle_places", &stated).unwrap();
+            let mut ruleset = Ruleset::open(Name::Own("No Cannon in auto battle".into()));
+            ruleset.set_allowed("auto_battle_places", &Item::of(cannon.0), false);
+            let problems = ruleset.problems(&r, &content, &side);
+            assert_eq!(problems.len(), 1, "{game}");
+            assert_eq!((problems[0].field.as_deref(), problems[0].entry), (Some("auto_battle_places"), Some(0)), "{game}");
+            assert!(problems[0].at(0) && problems[0].at(3) && !problems[0].at(1), "{game}");
+            let names = ruleset.banned_names(&content);
+            assert_eq!(Ruleset::of_names(&r, &content, ruleset.name.clone(), false, &names).unwrap(), ruleset, "{game}");
+            // Held back in the folder alone: the places' Cannon is let be.
+            let mut in_folder = Ruleset::open(Name::Own("No Cannon".into()));
+            in_folder.set_allowed("folder", &Item::of(cannon.0), false);
+            assert!(in_folder.problems(&r, &content, &side).iter().all(|p| p.field.as_deref() == Some("folder")), "{game}");
+        }
     }
 }

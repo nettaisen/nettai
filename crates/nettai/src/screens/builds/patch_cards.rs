@@ -253,9 +253,6 @@ impl PatchCards {
                 version: words.kit.version_tag_of(words.names, Registry::Entry, &item(card)),
                 megabytes: budget.map(|b| say.invoke_megabytes(b.cost_of(content, h) as i32)).unwrap_or_default(),
                 slot: slot.or(own).map(slot_name).unwrap_or_default().into(),
-                // (One the ruleset the player plays by doesn't allow, or a version's variant in a build that mixes
-                // versions under one version per build: its name in the error red.)
-                bad: !draft.allows_item(FIELD, &item(card)) || draft.mixing(Registry::Entry, &item(card)).is_some(),
                 ..Default::default()
             }
         })
@@ -267,7 +264,7 @@ impl PatchCards {
     fn problems<'d>(draft: &'d Draft, installed: &[Option<Card>], i: usize) -> Vec<&'d nettai_match::check::Problem> {
         let Some(Some(card)) = installed.get(i) else { return Vec::new() };
         let place = installed[..i].iter().flatten().count();
-        let own = draft.checked.problems.iter().filter(|p| p.field.as_deref() == Some(FIELD) && (p.entry == Some(place) || matches!(p.what, Wrong::Budget(_))));
+        let own = draft.checked.problems.iter().filter(|p| p.field.as_deref() == Some(FIELD) && (p.at(place) || matches!(p.what, Wrong::Budget(_))));
         own.chain(draft.mixing(Registry::Entry, &item(card))).collect()
     }
 
@@ -355,21 +352,19 @@ impl PatchCards {
                 let other = !is_in && held.iter().flatten().any(|c| c.0 == h);
                 // (A card that is in says so, and isn't greyed: Enter takes it out again. In a game with slots a
                 // card goes in its own slot whatever it holds: no card is refused.)
-                // (One the ruleset the player plays by doesn't allow says so, in the error red, whether it is in or not.)
-                if !draft.allows_item(FIELD, &item(card)) {
-                    row.note = shell.ui().global::<BuildWords>().invoke_not_allowed_here();
-                    row.refused = !is_in;
-                    row.bad = true;
-                } else if is_in {
+                let refusal = if is_in || slots.is_some() || other { None } else { budget.and_then(|b| b.refusal(content, draft.side(), h)) };
+                if is_in {
                     // (Its note says no reason: the build's card a problem is about is marked in the build's list, its
                     // name in the error red, docs/design/app-ui.md §2.66.)
                     row.note = shell.ui().global::<BuildWords>().invoke_installed();
-                    row.bad = false;
-                } else if slots.is_some() || other {
-                } else if let Some(refusal) = budget.and_then(|b| b.refusal(content, draft.side(), h)) {
+                } else if let Some(refusal) = refusal {
                     row.note = draft.with_words(shell, |w| w.entry_refusal(refusal)).into();
                     row.refused = true;
                     row.bad = matches!(refusal, EntryRefusal::Needs { .. });
+                } else if !draft.allows_item(FIELD, &item(card)) {
+                    // (One the ruleset the player plays by doesn't allow says so quietly: it goes in, and is then the
+                    // build's problem, docs/design/app-ui.md §2.68.)
+                    row.note = shell.ui().global::<BuildWords>().invoke_not_allowed_here();
                 }
                 row
             })
@@ -498,10 +493,6 @@ impl PatchCards {
             return self.remove(shell, draft, i);
         }
         if let Some(i) = installed.iter().position(|c| c.as_ref().is_some_and(|c| c.0 == h)) {
-            if !draft.allows_item(FIELD, &item(&card)) {
-                self.refuse(shell, draft, row, &card);
-                return;
-            }
             if draft.edit(|content, side| edit::variant(content, side, FIELD, i, card.1.as_deref())) {
                 self.land(shell, draft, row, h, i);
             }
@@ -539,9 +530,7 @@ impl PatchCards {
         let budget = PatchCards::budget(draft);
         let refusal = (!PatchCards::slotted(draft)).then(|| budget.as_ref().and_then(|b| b.refusal(draft.content(), draft.side(), h))).flatten();
         let room = PatchCards::slotted(draft) || PatchCards::installed(draft).iter().flatten().count() < room_of(draft.content(), FIELD);
-        // (A card the ruleset the player plays by doesn't allow doesn't go in either: the strip says so.)
-        let allowed = draft.allows_item(FIELD, &item(card));
-        if refusal.is_none() && room && allowed {
+        if refusal.is_none() && room {
             return false;
         }
         let ui = shell.ui();
@@ -550,10 +539,7 @@ impl PatchCards {
         view.set_refused(row as i32);
         view.set_refused_seq(self.refused);
         shell.sound.play(Cue::Refused);
-        self.notice = match allowed {
-            false => Some(shell.ui().global::<BuildWords>().invoke_not_allowed_here().to_string()),
-            true => refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r))),
-        };
+        self.notice = refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r)));
         self.show_detail(shell, draft, budget.as_ref());
         true
     }
@@ -592,10 +578,6 @@ impl PatchCards {
         if let Some(i) = held {
             // (Of another variant: this one is chosen first.)
             if installed[i].as_ref() != Some(&card) {
-                if !draft.allows_item(FIELD, &item(&card)) {
-                    self.refuse(shell, draft, row, &card);
-                    return;
-                }
                 draft.edit(|content, side| edit::variant(content, side, FIELD, i, card.1.as_deref()));
             }
             let to = if at > i { at - 1 } else { at };

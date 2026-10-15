@@ -54,7 +54,8 @@ export enum ProgramState {
     placed,
     held,
     out,
-    // The ruleset the player plays by doesn't allow it (docs/design/app-ui.md §2.59).
+    // Not placed, and the ruleset the player plays by doesn't allow it: a quiet note, as it can still be placed
+    // (docs/design/app-ui.md §2.59, §2.68).
     not-allowed,
 }
 
@@ -499,7 +500,7 @@ component ProgramRowView inherits Rectangle {
         x: root.state-right - self.width;
         width: 110px;
         text: root.program.state == ProgramState.placed ? (root.program.copies > 1 ? @tr("Placed ×{}", root.program.copies) : @tr("Placed")) : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : root.program.state == ProgramState.not-allowed ? @tr("Not allowed") : "";
-        color: root.program.state == ProgramState.held ? Theme.cursor : root.program.state == ProgramState.not-allowed ? Theme.bad : Theme.muted;
+        color: root.program.state == ProgramState.held ? Theme.cursor : Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
         horizontal-alignment: right;

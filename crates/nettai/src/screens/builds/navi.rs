@@ -67,7 +67,7 @@ fn family(content: &Content, element: Element) -> nettai_battle::content::ChipFa
 /// ruleset doesn't allow, one of a version's in a build that mixes versions, or the entry it names.
 fn about(problem: &Problem, fact: &str, chosen: &[FormHandle], form: FormHandle) -> bool {
     match &problem.what {
-        Wrong::NotAllowed { registry: Registry::Form, item } => item.def == form.0,
+        Wrong::NotAllowed { registry: Registry::Form, item, .. } => item.def == form.0,
         Wrong::Mixed { items, .. } => items.contains(&(Registry::Form, Item::of(form.0))),
         _ => problem.field.as_deref() == Some(fact) && problem.entry.and_then(|e| chosen.get(e)) == Some(&form),
     }

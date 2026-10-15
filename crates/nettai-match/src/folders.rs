@@ -190,28 +190,6 @@ impl View {
         self.refused.get(&chip)
     }
 
-    /// The view held to `ruleset`, whose category `fact` is the folder's: a
-    /// chip it doesn't allow can't go in ([`Wrong::NotAllowed`], a chip no
-    /// folder holds left as it is), and each entry of `folder` that holds
-    /// one has that problem.
-    pub fn hold_to(&mut self, ruleset: &crate::ruleset::Ruleset, fact: &str, folder: &Folder) {
-        use nettai_content_api::Registry;
-        for item in ruleset.banned(fact) {
-            let chip = ChipHandle(item.def);
-            if !matches!(self.refused.get(&chip), Some(Wrong::ChipNotAllowed { .. })) {
-                self.refused.insert(chip, Wrong::NotAllowed { registry: Registry::Chip, item: item.clone() });
-            }
-        }
-        for (entry, held) in folder.chips.iter().enumerate() {
-            if let Some(held) = held
-                && !ruleset.allows(fact, held.id.0)
-            {
-                let what = Wrong::NotAllowed { registry: Registry::Chip, item: crate::ruleset::Item::of(held.id.0) };
-                self.problems.push(Problem { side: Some(0), field: Some(fact.to_string()), entry: Some(entry), what, text: format!("the ruleset doesn't allow the chip of entry {entry}") });
-            }
-        }
-    }
-
     /// Whether a library lists `chip` for this side at all: every chip but
     /// those no folder holds.
     pub fn lists(&self, chip: ChipHandle) -> bool {
@@ -224,7 +202,8 @@ impl View {
     }
 }
 
-/// Whether `problem`, one of `folder`'s, is entry `entry`'s: one the rules tie to it; one of the folder as a whole
+/// Whether `problem`, one of `folder`'s, is entry `entry`'s: one the rules tie to it (or a ruleset: each entry of a
+/// chip it doesn't allow, `check::Problem::at`); one of the folder as a whole
 /// that its chip is part of (its copies, its class's limit, the dark chips', the tag memory of a tag chip, tags in a
 /// game without); and of an empty entry, the folder's size, and the Regular or tag chip it is marked as. A screen says
 /// it where it says the entry (a folder editor's strip, its name in the error red).
@@ -233,7 +212,7 @@ pub fn about_entry(content: &Content, folder: &Folder, entry: usize, problem: &P
     let tagged = folder.tags.is_some_and(|(a, b)| a as usize == entry || b as usize == entry);
     let Some(held) = folder.chips.get(entry).copied().flatten() else {
         return match (&problem.what, problem.entry) {
-            (_, Some(e)) => e == entry,
+            (_, Some(_)) => problem.at(entry),
             (Wrong::FolderSize(_), None) => entry < folder.chips.len(),
             (Wrong::RegularEntry, None) => folder.regular == Some(entry as u8),
             (Wrong::TagEntries, None) => tagged,
@@ -243,7 +222,7 @@ pub fn about_entry(content: &Content, folder: &Folder, entry: usize, problem: &P
     let record = content.chip(held.id);
     let dark = record.flags.has(ChipFlags::DARK);
     match (&problem.what, problem.entry) {
-        (_, Some(e)) => e == entry,
+        (_, Some(_)) => problem.at(entry),
         (Wrong::Copies { chip, .. }, None) => *chip == held.id,
         (Wrong::Class { class, .. }, None) => !dark && *class == record.class,
         (Wrong::Dark(_), None) => dark,

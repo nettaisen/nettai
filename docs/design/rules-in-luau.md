@@ -3496,7 +3496,9 @@ which builds may play it, so the simulation never reads it.
     registry names the definition: the folder's `chip`, the NaviCust's `program`, EXE4's card's `card`);
   - its items are the game's definitions of that registry a build can hold: the navis a side can play
     (`nettai_match::navis`), the chips a folder lists (the folder rules' view: every chip of the game but those no
-    folder holds), the forms the fact offers (`facts::offered`: EXE6's Crosses of MegaMan's lists, EXE4's and EXE5's
+    folder holds; and the game's chips of the classes the category names, `classes`: EXE4's and EXE5's
+    `auto_battle_places`, a category of its own apart from the folder's (the user: "you should instead have a
+    separate abd rules page"), with `classes = { "program_advance" }` for the program advance list), the forms the fact offers (`facts::offered`: EXE6's Crosses of MegaMan's lists, EXE4's and EXE5's
     souls of the rules' default), else the registry's definitions of the game (an entry of the list's collection),
     in the order a build's lists show them.
 - **Groups** (docs/design/versions.md §2.2): the game's versions as what only a save of each can own. A group is one
@@ -3524,10 +3526,16 @@ which builds may play it, so the simulation never reads it.
   it reads a fact by the category's name and the definitions it names by the fact's type.
 - **A build under a ruleset** (`build::Checked::under`): the build's check (`Checked::of`) and, for each
   category, a problem for each item the build's fact names that the ruleset doesn't allow (`Wrong::NotAllowed
-  { registry, item }`, its field the fact and its entry the first that names it), and under one version per build
+  { registry, item, entries }`, its field the fact, about every entry that names it, `Problem::at`, its entry the
+  first: each copy of a chip is marked, where only the first was, app-ui §2.68), and under one version per build
   one where what it holds of the categories is more than one group's (`Wrong::Mixed { groups, items }`: the
   groups, and what it holds of all but the one it holds most of: its souls or Crosses, its Cybeast, its Giga chips,
-  a card's variant). Nothing is taken out of a build.
+  a card's variant). Nothing is taken out of a build, and nothing is kept out of one: the editor adds what a ruleset
+  holds back as anything else, which is then the build's problem (the user: "if something is not allowed by the
+  ruleset, it should still be allowed to be added but it should be in violation"). Program advances were asked for as
+  a category, first as a build's problem and then as a ban the battle would keep from forming ("stop the program
+  advance from forming during the battle instead"), and dropped ("actually nvm don't ban program advances"): the
+  simulation still reads nothing of a ruleset.
   It is nettai-match's, as the rules' `build_check` is beside `validate`: what is held back is the same question for
   every game and every category, so no game's Luau answers it.
 - **Patch cards off** is a ruleset that allows no patch cards (the `senior` preset, Senior class): a build that holds cards is

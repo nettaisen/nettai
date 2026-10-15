@@ -141,7 +141,7 @@ impl Words<'_> {
                 let slot = self.kit.builds.slots.as_ref().and_then(|s| s.name(*own as usize)).map(str::to_string);
                 say.invoke_wrong_slot(self.names.entry(*entry).into(), slot.unwrap_or_else(|| (own + 1).to_string()).into())
             }
-            Wrong::NotAllowed { registry, item } => say.invoke_not_allowed(self.item(*registry, item).into()),
+            Wrong::NotAllowed { registry, item, .. } => say.invoke_not_allowed(self.item(*registry, item).into()),
             // (By the versions alone: every thing of them the build holds is in the mix, and none is the one at fault.)
             Wrong::Mixed { groups, .. } => {
                 let name = |id: &String| self.kit.version_name(self.names, id);
@@ -165,7 +165,6 @@ impl Words<'_> {
             Wrong::Copies { count, .. } => say.invoke_copies_at_most(count.limit as i32),
             Wrong::Class { class, .. } => say.invoke_class_limit(kind(*class)),
             Wrong::Dark(_) => say.invoke_dark_limit(),
-            Wrong::NotAllowed { .. } => say.invoke_not_allowed_here(),
             // (No other kind is a reason of a library's row: said as the problem it is.)
             other => return self.wrong(other),
         };
