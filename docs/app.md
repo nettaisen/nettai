@@ -638,7 +638,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   port, an IPv6 one in brackets (`play::direct_address`; anything else `UserError::BadAddress`, said under
   the field).
 - **Waiting** for the other player: the invite's code (a direct host's address, with "Send this address to your
-  opponent." under it), large, in fixed-width type, with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
+  opponent." under it), large, in fixed-width type, copied to the clipboard as the wait starts (COPY CODE
+  flashing as though pressed; not in the screenshot pass), with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
   is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
   stands still; Practice owns its battle, starts its sets over and hears its menu; the usual practice menu but
   for Music and EDIT, its choices lasting for the wait), with no EXIT in its practice menu and, on a phone only (where

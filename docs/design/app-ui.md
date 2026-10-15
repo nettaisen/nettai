@@ -972,7 +972,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   can't host) and Join (an address field, a host or an IP with its port, an IPv6 one in brackets, and CONNECT;
   an address that isn't one says so under it); CANCEL. It opens with the address field edited (§2.32).
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
-  a panel beside it: the invite code, large, in fixed-width type, grouped in threes; COPY CODE; "Waiting for
+  a panel beside it: the invite code, large, in fixed-width type, grouped in threes, copied to the clipboard as it
+  comes ("you should automatically copy the invite code when hosting starts"; a direct host's address too); COPY CODE; "Waiting for
   opponent"; "The lobby opens when they join."; CANCEL. Hosting directly, the panel has YOUR ADDRESS, this
   machine's address and port, COPY ADDRESS, and "Send this address to your opponent." in the last line's place.
   Keys go to the battle; Esc or Start opens the practice menu, the usual one (§2.57, "The waiting practice's menu
