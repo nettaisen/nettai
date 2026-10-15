@@ -316,9 +316,9 @@ impl Navicust {
         view.set_programs(ModelRc::new(VecModel::from(rows)));
     }
 
-    /// What the NaviCust does and the bugs it brings (`own_overview`: each number it changes, the programs at work
-    /// that give an ability, each bug by its full name and its level or amount); a patch card's bugs aren't its.
-    /// A bug that wasn't there before pulses.
+    /// What the NaviCust does and the bugs it brings (`own_overview`: each number it changes, the rules' own stats
+    /// among them ("Soul time +1"), the programs at work that give an ability, each bug by its full name and its
+    /// level or amount); a patch card's bugs aren't its. A bug that wasn't there before pulses.
     fn show_effects(&mut self, shell: &Shell, draft: &mut Draft) {
         let content = draft.content().clone();
         let side = draft.side().clone();
@@ -339,7 +339,8 @@ impl Navicust {
                     view.invoke_stat(i as i32, by.into()).to_string()
                 })
                 .collect();
-            effects.extend(alone.iter().flat_map(|o| o.abilities.iter()).map(|a| overview::ability(words, a)));
+            effects.extend(alone.iter().flat_map(|o| o.stats.iter()).filter(|s| s.stat.added() != 0).map(|s| format!("{} {:+}", overview::stat_name(words, s), s.stat.added())));
+            effects.extend(alone.iter().flat_map(|o| o.abilities.iter()).map(|&s| overview::source(words, s)));
             let bugs: Vec<(String, String)> = alone.iter().flat_map(|o| o.bugs.iter()).map(|b| overview::bug(words, b)).collect();
             (effects, bugs)
         });

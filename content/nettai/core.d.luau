@@ -2789,9 +2789,7 @@ export type FolderView = {
 
 -- What a side's setup comes to, of what the rules alone know (the rules' `overview`): what gives the navi its
 -- abilities, each the entry of one of the game's collections that does (a NaviCust program at work, a patch card) and,
--- where the entry lists its effects, which of them (`effect`, a place in its `effects`, from 1), or a number the
--- rules work out of what several entries do together (`name`, its name in the game's locales' `abilities` table, and
--- its `amount`: EXE5's Soul Unison's turns); and the navi's bugs,
+-- where the entry lists its effects, which of them (`effect`, a place in its `effects`, from 1); and the navi's bugs,
 -- each by its name in the game's locales' `bugs` table, whoever brings it, the NaviCust or a patch card, with how
 -- much of it there is: its level (where what it writes is what a level of the bug writes), or else its amount (the
 -- number it writes: a damage; or, with what it is `of`, the blank shots of the buster's 16, the steps in 8 that leave
@@ -2800,8 +2798,11 @@ export type FolderView = {
 -- a tool reads nothing of;
 -- and each list of the setup whose entries cost against a budget (the patch cards' MB): its setup field, the field of
 -- its entries' data that is an entry's cost, what the list's entries cost together and the most they may, and
--- whether an entry goes into it once.
-export type SetupAbility = { entry: any?, effect: number?, name: string?, amount: number? }
+-- whether an entry goes into it once; and the stats the game's setups have beyond the eight every game's do (HP,
+-- the buster's three, the custom screen's chips, the Mega and Giga limits, the Regular memory), which a tool shows
+-- after them (none: those eight alone): each by its name in the game's locales' `stats` table, its `value` as the
+-- setup leaves it and what the setup `added` to it (EXE5's Soul Unison's turns).
+export type SetupSource = { entry: any, effect: number? }
 export type SetupBug = {
     name: string?,
     level: number?,
@@ -2812,10 +2813,12 @@ export type SetupBug = {
     card: string?,
 }
 export type SetupList = { field: string, cost: string, used: number, limit: number, once: boolean }
+export type SetupStat = { name: string, value: number, added: number }
 export type SetupOverview = {
-    abilities: { SetupAbility },
+    abilities: { SetupSource },
     bugs: { SetupBug },
     lists: { SetupList },
+    stats: { SetupStat }?,
 }
 
 -- What an object is taken for (§3.2): the original's NameID record. A
