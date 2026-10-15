@@ -254,6 +254,15 @@ pub fn reconnect_url(server: &str, code: &str, peer: &str) -> String {
 mod tests {
     use super::*;
 
+    /// The signaling WebSocket's TLS has a crypto backend: a client's config is made as tungstenite makes it for
+    /// a wss:// server, without a panic (the tests' own server is plain ws://, which never reaches TLS).
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn a_wss_server_can_be_reached() {
+        // (The builder is what panics with no backend: it takes the process's default provider.)
+        let _ = rustls::ClientConfig::builder().with_root_certificates(rustls::RootCertStore::empty()).with_no_client_auth();
+    }
+
     /// The messages are the JSON the Worker reads and writes.
     #[test]
     fn messages_are_the_workers_json() {
