@@ -1,8 +1,9 @@
 //! The text layer's font and its drawing: a TrueType or OpenType outline
 //! font, static or variable, laid out in the frame's pixels (shaped with
-//! the font's kerning) and rasterized with antialiasing at the output's
-//! resolution, over the scaled frame (swash). docs/design/text-rendering.md,
-//! "As built".
+//! the font's kerning) and drawn with antialiasing at the output's
+//! resolution, over the scaled frame, from each glyph's signed distance
+//! field, made once whatever the output's size (swash's outlines, `sdf`).
+//! docs/design/text-rendering.md, "As built".
 //!
 //! The bundled font is Murecho (fonts/murecho, SIL Open Font License 1.1):
 //! a sans with Latin, Greek, Cyrillic, kana and some 2,300 kanji, in one
@@ -13,14 +14,14 @@
 
 use crate::compose::{HEIGHT, WIDTH, apply_fade, to_rgb};
 use crate::present::Placement;
+use crate::sdf::{Paint, RES, Sdf};
 use crate::textlayer::{Align, Rect, TextItem};
 use std::borrow::Cow;
 use std::collections::HashMap;
 use std::path::Path;
-use swash::scale::image::{Content, Image};
-use swash::scale::{Render, ScaleContext, Source};
+use swash::scale::ScaleContext;
 use swash::shape::ShapeContext;
-use swash::zeno::{Format, Mask, Origin, Transform, Vector};
+use swash::zeno::Vector;
 use swash::{CacheKey, FontRef, GlyphId, Setting};
 
 /// Murecho, its variable cut (weights 100 to 900; 1.4 MB): the font file,
@@ -59,10 +60,12 @@ const STACK_WEIGHT: f32 = 100.0;
 /// The shadow's offset, right and down, in frame pixels (the original's
 /// is one pixel).
 const SHADOW: f32 = 0.5;
-/// Glyphs smaller than this (pixels an em at the output) are hinted.
-const HINT_BELOW: u32 = 40;
-/// Glyph images kept before the cache starts over.
-const CACHE_GLYPHS: usize = 4096;
+/// The most the shadow's offset is once rounded to output pixels (at
+/// least one), in frame pixels: one, at 1x.
+const SHADOW_MOST: f32 = 1.0;
+/// The bytes of glyph fields kept before the cache starts over (a glyph's
+/// is 10 to 35 KB).
+const CACHE_BYTES: usize = 64 << 20;
 
 /// What a string is drawn as: which of the original's fonts it stands in
 /// for, which sets its size, its place in its box and its weight. A role's
@@ -114,19 +117,21 @@ struct Style {
     /// shorter, measured from the font's deepest descender ([`Shorten`]).
     /// None: the font's descenders, whole.
     descender: Option<f32>,
+    /// The rows of the original's box for a string (its cells, a line).
+    rows: f32,
 }
 
 impl Role {
     fn style(self) -> Style {
         match self {
-            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None },
+            Role::Cell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: None, rows: 16.0 },
             // The original's descenders take row 14, their shadow row 15:
             // Murecho's g, 3.2 pixels deep at this size, is drawn 1 deep
             // (the test `a_fitted_cells_descenders_end_in_its_cells`).
-            Role::FittedCell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: Some(1.0) },
+            Role::FittedCell => Style { cap: 10.0, baseline: 14.0, weight: 700.0, margin: 1.0, descender: Some(1.0), rows: 16.0 },
             // (The chatbox's lines are cut where its sprites end, which
             // leaves a third line's descenders room: `chatbox::draw`.)
-            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0, descender: None },
+            Role::Dialogue => Style { cap: 9.0, baseline: 10.5, weight: 300.0, margin: 0.0, descender: None, rows: 12.0 },
         }
     }
 }
@@ -309,18 +314,33 @@ struct Layout {
     shorten: Option<f32>,
 }
 
-/// A glyph image's cache key: sizes in 64ths of an output pixel, axes in
-/// 16ths, scales in 1024ths, the pen's subpixel place in quarters.
+/// A glyph field's cache key: what changes its outline's shape (the
+/// variable font's axes, in 16ths, and the short descenders). Its size,
+/// its narrowing and its squash are the drawing's ([`Sdf::draw`]), so one
+/// field draws the glyph at every size.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct GlyphKey {
     id: GlyphId,
-    size: u32,
     width: i32,
     weight: i32,
-    xscale: i32,
-    yscale: i32,
-    sub: u8,
     shorten: Option<Shorten>,
+}
+
+impl GlyphKey {
+    /// A laid out glyph's, squashed `k` times, its role's short descenders
+    /// `shorten` reaching at most `floor` frame pixels under the text's
+    /// baseline.
+    fn of(g: &Placed, shorten: Option<f32>, k: f32, floor: f32) -> GlyphKey {
+        // The text's baseline and its floor, in the glyph's outline's
+        // texels, up from its origin.
+        let texels = |frame: f32| (frame / (g.size * k) * RES * 64.0).round() as i32;
+        GlyphKey {
+            id: g.id,
+            width: g.width.map_or(0, |w| (w * 16.0).round() as i32),
+            weight: g.weight.map_or(0, |w| (w * 16.0).round() as i32),
+            shorten: shorten.map(|f| Shorten { factor: (f * 1024.0).round() as i32, baseline: texels(-g.y * k), floor: texels(-g.y * k - floor) }),
+        }
+    }
 }
 
 /// Short descenders (a role's `Style::descender`): the part of a glyph's
@@ -330,16 +350,16 @@ struct GlyphKey {
 /// from the font's deepest descender ([`DESCENDERS`]), so its descenders
 /// stay alike; a glyph that reaches deeper still (a cedilla, the low line)
 /// is shortened just as far as ends it in the box's rows, its shadow
-/// included. Done to the outline before it is rasterized, so the glyph is
-/// as sharp as any at every scale. Output pixels, up from the glyph's
-/// origin, in 64ths; the factor in 1024ths.
+/// included. Done to the outline before its field is made, so the glyph
+/// is as sharp as any at every scale. In the field's texels ([`RES`] an
+/// em), up from the glyph's origin, in 64ths; the factor in 1024ths.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 struct Shorten {
     factor: i32,
     /// The text's baseline.
     baseline: i32,
     /// The lowest the outline may reach: the box's last row's bottom, less
-    /// the shadow's offset.
+    /// the shadow's offset at its most ([`SHADOW_MOST`]).
     floor: i32,
 }
 
@@ -361,13 +381,15 @@ impl Shorten {
 }
 
 /// Lays out and draws text items at the output's resolution, keeping the
-/// layouts and glyph images it made.
+/// layouts and glyph fields it made.
 pub struct TextRenderer {
     font: std::sync::Arc<VectorFont>,
     scaler: ScaleContext,
     shaper: ShapeContext,
     layouts: HashMap<(String, Role, i32), Layout>,
-    glyphs: HashMap<GlyphKey, Option<Image>>,
+    glyphs: HashMap<GlyphKey, Option<Sdf>>,
+    /// The bytes the fields in `glyphs` take.
+    glyph_bytes: usize,
     /// The font's kana box by weight (16ths), once measured (none: the
     /// font has no kana).
     faces: HashMap<i32, Option<Face>>,
@@ -379,12 +401,12 @@ pub struct TextRenderer {
 
 /// What a text renderer has made so far that it didn't have: each is the
 /// work of the first time a string is drawn in a box of some width, or a
-/// glyph at some size. A string drawn again costs neither.
+/// glyph in some weight (at any size). A string drawn again costs neither.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Made {
     /// Strings laid out (shaped and fitted to their box).
     pub layouts: u64,
-    /// Glyph images drawn from the font's outlines.
+    /// Glyphs' signed distance fields made from the font's outlines.
     pub glyphs: u64,
 }
 
@@ -396,6 +418,7 @@ impl TextRenderer {
             shaper: ShapeContext::new(),
             layouts: HashMap::new(),
             glyphs: HashMap::new(),
+            glyph_bytes: 0,
             faces: HashMap::new(),
             descenders: HashMap::new(),
             made: Made::default(),
@@ -409,6 +432,29 @@ impl TextRenderer {
     /// What it has made so far.
     pub fn made(&self) -> Made {
         self.made
+    }
+
+    /// Make the fields of the glyphs `text` is drawn with in `role` (in a
+    /// box of the role's rows, unsquashed), if the font draws it: what the
+    /// first picture to show it would make, made ahead (a host's loading,
+    /// nettai-frontend's `preload`). One field draws its glyph at every
+    /// size, so what is made here serves any window. Its lines are made
+    /// one by one; a string the font can't draw whole is drawn in the
+    /// game's font, and has none.
+    pub fn prepare(&mut self, text: &str, role: Role) {
+        if !self.font.covers(text) {
+            return;
+        }
+        let st = role.style();
+        let shorten = self.shorten(role);
+        let floor = st.rows - st.baseline - SHADOW_MOST;
+        for line in text.lines() {
+            // (Fitted to no box: narrowing makes no other glyphs.)
+            let layout = self.fit(line, role, f32::INFINITY);
+            for g in layout.glyphs.iter().filter(|g| g.id != 0) {
+                self.glyph(GlyphKey::of(g, shorten, 1.0, floor));
+            }
+        }
     }
 
     /// The width a string takes, in frame pixels, once fitted into a box
@@ -635,10 +681,12 @@ impl TextRenderer {
         out
     }
 
-    fn glyph(&mut self, key: GlyphKey) -> Option<&Image> {
+    /// A glyph's field, made the first time it is wanted.
+    fn glyph(&mut self, key: GlyphKey) -> Option<&Sdf> {
         if !self.glyphs.contains_key(&key) {
-            if self.glyphs.len() >= CACHE_GLYPHS {
+            if self.glyph_bytes >= CACHE_BYTES {
                 self.glyphs.clear();
+                self.glyph_bytes = 0;
             }
             let font = self.font.font();
             let mut settings: Vec<Setting<f32>> = Vec::new();
@@ -648,33 +696,16 @@ impl TextRenderer {
             if self.font.weight.is_some() {
                 settings.push(("wght", key.weight as f32 / 16.0).into());
             }
-            let mut scaler = self.scaler.builder(font).size(key.size as f32 / 64.0).hint(key.size < HINT_BELOW * 64).variations(settings).build();
-            let (xs, ys) = (key.xscale as f32 / 1024.0, key.yscale as f32 / 1024.0);
-            let transform = ((xs, ys) != (1.0, 1.0)).then(|| Transform::scale(xs, ys));
-            let offset = Vector::new(key.sub as f32 / 4.0, 0.0);
-            let image = match key.shorten {
-                None => Render::new(&[Source::Outline]).format(Format::Alpha).offset(offset).transform(transform).render(&mut scaler, key.id),
-                // As `Render` draws an outline, shortened between.
-                Some(shorten) => scaler.scale_outline(key.id).map(|mut outline| {
-                    if let Some(t) = &transform {
-                        outline.transform(t);
-                    }
+            let mut scaler = self.scaler.builder(font).size(RES).variations(settings).build();
+            let field = scaler.scale_outline(key.id).and_then(|mut outline| {
+                if let Some(shorten) = key.shorten {
                     shorten.apply(outline.points_mut());
-                    // (`inspect` first: `Mask::render` places a bottom-left
-                    // mask's top wrongly, by its height.)
-                    let mut data = Vec::new();
-                    let placement = Mask::new(outline.path())
-                        .format(Format::Alpha)
-                        .origin(Origin::BottomLeft)
-                        .offset(offset)
-                        .render_offset(offset)
-                        .inspect(|format, w, h| data.resize(format.buffer_size(w, h), 0))
-                        .render_into(&mut data, None);
-                    Image { source: Source::Outline, content: Content::Mask, placement, data }
-                }),
-            };
+                }
+                Sdf::of(outline.points(), outline.verbs())
+            });
+            self.glyph_bytes += field.as_ref().map_or(0, Sdf::size);
             self.made.glyphs += 1;
-            self.glyphs.insert(key, image);
+            self.glyphs.insert(key, field);
         }
         self.glyphs[&key].as_ref()
     }
@@ -682,12 +713,16 @@ impl TextRenderer {
     /// Draw a frame's text items over its scaled picture in `out` (0RGB,
     /// `out_w` pixels a row), each where the frame's depth keys let it.
     pub fn draw(&mut self, items: &[TextItem], depth: &[u32], place: &Placement, out: &mut [u32], out_w: usize) {
+        // The frame pixel each output column and row of the picture shows.
+        let columns: Vec<i32> = (0..place.width).map(|dx| place.frame_pixel(place.x + dx, place.y).map_or(0, |p| p.0)).collect();
+        let rows: Vec<i32> = (0..place.height).map(|dy| place.frame_pixel(place.x, place.y + dy).map_or(0, |p| p.1)).collect();
+        let frame = FrameMap { x: place.x, y: place.y, columns: &columns, rows: &rows };
         for item in items {
-            self.draw_item(item, depth, place, out, out_w);
+            self.draw_item(item, depth, place, &frame, out, out_w);
         }
     }
 
-    fn draw_item(&mut self, item: &TextItem, depth: &[u32], place: &Placement, out: &mut [u32], out_w: usize) {
+    fn draw_item(&mut self, item: &TextItem, depth: &[u32], place: &Placement, frame: &FrameMap, out: &mut [u32], out_w: usize) {
         let layout = self.layout(&item.text, item.role, item.rect.w).clone();
         if layout.glyphs.is_empty() {
             return;
@@ -717,42 +752,33 @@ impl TextRenderer {
         }
         let shown = item.shown.unwrap_or(usize::MAX);
         let color = |c: u16| to_rgb(apply_fade(apply_fade(c, item.fades[0]), item.fades[1]));
-        let mut target = Target { depth, place, out, out_w, clip, key: item.depth };
+        let mut target = Target { depth, frame, out, out_w, clip, key: item.depth };
         let offset = (SHADOW * s).round().max(1.0) as i32;
-        // Short descenders: the text's baseline and how low its ink may
-        // reach (the box's bottom, less the shadow's offset), in output rows.
-        let shorten = layout.shorten.map(|k| (k, place.y as f32 + baseline * s, place.y as f32 + (item.rect.y + item.rect.h) as f32 * s - offset as f32));
+        // The output pixels the clip shows (a pixel more each way: `Target`
+        // tests each against the clip's frame pixels).
+        let bounds = (
+            place.x + (clip.x as f32 * s).floor() as i32 - 1,
+            place.y + (clip.y as f32 * s).floor() as i32 - 1,
+            place.x + ((clip.x + clip.w) as f32 * s).ceil() as i32 + 1,
+            place.y + ((clip.y + clip.h) as f32 * s).ceil() as i32 + 1,
+        );
+        // Short descenders: how far under the text's baseline its ink may
+        // reach (the box's bottom, less the shadow's offset at its most),
+        // in frame pixels.
+        let floor = (item.rect.y + item.rect.h) as f32 - (item.rect.y as f32 + st.baseline) - SHADOW_MOST;
         let passes: Vec<(u32, i32)> = item.shadow.map(|c| (color(c), offset)).into_iter().chain([(color(item.face), 0)]).collect();
         for (rgb, off) in passes {
             for g in layout.glyphs.iter().filter(|g| g.unit < shown) {
-                let gx = place.x as f32 + (x0 + g.x) * s;
-                let gy = place.y as f32 + (baseline - g.y * k) * s;
-                let ix = gx.floor();
-                let sub = (((gx - ix) * 4.0) as u8).min(3);
-                let origin = gy.round();
-                let up = |row: f32| ((origin - row) * 64.0).round() as i32;
-                let shorten = shorten.map(|(k, baseline, floor)| Shorten { factor: (k * 1024.0).round() as i32, baseline: up(baseline), floor: up(floor) });
-                let key = GlyphKey {
-                    id: g.id,
-                    size: (g.size * s * 64.0).round() as u32,
-                    width: g.width.map_or(0, |w| (w * 16.0).round() as i32),
-                    weight: g.weight.map_or(0, |w| (w * 16.0).round() as i32),
-                    xscale: (layout.xscale * g.stretch * 1024.0).round() as i32,
-                    yscale: (k * 1024.0).round() as i32,
-                    sub,
-                    shorten,
-                };
-                let Some(image) = self.glyph(key) else { continue };
-                let (w, h) = (image.placement.width as i32, image.placement.height as i32);
-                let (left, top) = (ix as i32 + image.placement.left + off, origin as i32 - image.placement.top + off);
-                for y in 0..h {
-                    for x in 0..w {
-                        let a = image.data[(y * w + x) as usize];
-                        if a != 0 {
-                            target.blend(left + x, top + y, rgb, a);
-                        }
-                    }
-                }
+                let Some(field) = self.glyph(GlyphKey::of(g, layout.shorten, k, floor)) else { continue };
+                // The glyph's origin, and a texel's size, in output pixels:
+                // across, where the layout puts it; down, on a whole output
+                // row, so that the baseline and what stands on it are on a
+                // pixel's edge (the chatbox's baseline is half a frame pixel
+                // down, a kana's a part of one).
+                let ox = place.x as f32 + (x0 + g.x) * s + off as f32;
+                let oy = (place.y as f32 + (baseline - g.y * k) * s).round() + off as f32;
+                let (sx, sy) = (g.size * s * layout.xscale * g.stretch / RES, g.size * s * k / RES);
+                field.draw(ox, oy, sx, sy, bounds, &mut Pen { target: &mut target, rgb });
             }
             // A button mark's ring: antialiased, its stroke inside its
             // outer edge, narrowed and squashed with the text.
@@ -803,11 +829,20 @@ fn letter_glyphs(shaper: &mut ShapeContext, font: FontRef, letter: char, size: f
     (glyphs, pen)
 }
 
+/// The frame pixel each output column and row of the picture shows
+/// (`Placement::frame_pixel`), from the picture's top left corner.
+struct FrameMap<'f> {
+    x: i32,
+    y: i32,
+    columns: &'f [i32],
+    rows: &'f [i32],
+}
+
 /// Where an item's pixels go: the output, through its clip and the frame's
 /// depth keys.
 struct Target<'o> {
     depth: &'o [u32],
-    place: &'o Placement,
+    frame: &'o FrameMap<'o>,
     out: &'o mut [u32],
     out_w: usize,
     clip: Rect,
@@ -816,7 +851,8 @@ struct Target<'o> {
 
 impl Target<'_> {
     fn blend(&mut self, x: i32, y: i32, rgb: u32, a: u8) {
-        let Some((fx, fy)) = self.place.frame_pixel(x, y) else { return };
+        let (dx, dy) = ((x - self.frame.x) as usize, (y - self.frame.y) as usize);
+        let (Some(&fx), Some(&fy)) = (self.frame.columns.get(dx), self.frame.rows.get(dy)) else { return };
         if fx < self.clip.x || fx >= self.clip.x + self.clip.w || fy < self.clip.y || fy >= self.clip.y + self.clip.h {
             return;
         }
@@ -826,12 +862,53 @@ impl Target<'_> {
         debug_assert!((fy as usize) < HEIGHT);
         let i = y as usize * self.out_w + x as usize;
         let Some(o) = self.out.get_mut(i) else { return };
+        if a == 255 {
+            *o = rgb;
+            return;
+        }
         let a = a as u32;
         let mix = |shift: u32| {
             let (c, b) = ((rgb >> shift) & 0xFF, (*o >> shift) & 0xFF);
             ((c * a + b * (255 - a) + 127) / 255) << shift
         };
         *o = mix(16) | mix(8) | mix(0);
+    }
+
+    /// Output pixels `xa` to one before `xb` of row `y`, in `rgb` whole.
+    fn fill(&mut self, y: i32, xa: i32, xb: i32, rgb: u32) {
+        let f = self.frame;
+        let Some(&fy) = f.rows.get((y - f.y) as usize) else { return };
+        if fy < self.clip.y || fy >= self.clip.y + self.clip.h {
+            return;
+        }
+        // (A frame without depth keys hides nothing.)
+        let depth = self.depth.get(fy as usize * WIDTH..(fy as usize + 1) * WIDTH);
+        let row = y as usize * self.out_w;
+        let (xa, xb) = (xa.max(f.x), xb.min(f.x + f.columns.len() as i32));
+        let (clip0, clip1) = (self.clip.x, self.clip.x + self.clip.w);
+        for (x, &fx) in (xa..xb).zip(&f.columns[(xa - f.x).max(0) as usize..]) {
+            if fx >= clip0 && fx < clip1 && depth.is_none_or(|d| d[fx as usize] >= self.key)
+                && let Some(o) = self.out.get_mut(row + x as usize)
+            {
+                *o = rgb;
+            }
+        }
+    }
+}
+
+/// A target in a color: what a glyph's field paints.
+struct Pen<'t, 'o> {
+    target: &'t mut Target<'o>,
+    rgb: u32,
+}
+
+impl Paint for Pen<'_, '_> {
+    fn pixel(&mut self, x: i32, y: i32, a: u8) {
+        self.target.blend(x, y, self.rgb, a);
+    }
+
+    fn span(&mut self, y: i32, xa: i32, xb: i32) {
+        self.target.fill(y, xa, xb, self.rgb);
     }
 }
 
@@ -1095,5 +1172,76 @@ mod tests {
         let l = r.layout("熱斗", Role::Dialogue, 192).clone();
         assert_eq!(l.glyphs.len(), 2);
         assert!(l.glyphs.iter().all(|g| g.id != 0));
+    }
+
+    /// A glyph's field draws what its outline covers: at 5x and 13x, Latin,
+    /// kana and kanji (Murecho's e and kanji are overlapping contours),
+    /// each pixel's coverage is the outline's rasterized (zeno's), but for
+    /// a little at corners.
+    #[test]
+    fn a_field_draws_what_its_outline_covers() {
+        let r = renderer();
+        let font = r.font.font();
+        let mut context = ScaleContext::new();
+        for scale in [5.0f32, 13.0] {
+            let size = Role::Cell.style().cap / r.font.cap * scale;
+            let mut fields = context.builder(font).size(RES).variations([("wght", 700.0f32)]).build();
+            let outlines: Vec<_> = "eSWgBガ熱撃".chars().map(|c| fields.scale_outline(font.charmap().map(c)).unwrap()).collect();
+            let mut zeno = context.builder(font).size(size).variations([("wght", 700.0f32)]).build();
+            for (outline, c) in outlines.iter().zip("eSWgBガ熱撃".chars()) {
+                let field = Sdf::of(outline.points(), outline.verbs()).unwrap();
+                let (w, h) = (400usize, 400usize);
+                let mut ours = vec![0u8; w * h];
+                field.draw(100.0, 300.0, size / RES, size / RES, (0, 0, w as i32, h as i32), &mut |x: i32, y: i32, a| ours[y as usize * w + x as usize] = a);
+                let image = swash::scale::Render::new(&[swash::scale::Source::Outline])
+                    .format(swash::zeno::Format::Alpha)
+                    .render(&mut zeno, font.charmap().map(c))
+                    .unwrap();
+                let mut theirs = vec![0u8; w * h];
+                let p = image.placement;
+                for y in 0..p.height as usize {
+                    for x in 0..p.width as usize {
+                        theirs[(300 - p.top + y as i32) as usize * w + (100 + p.left + x as i32) as usize] = image.data[y * p.width as usize + x];
+                    }
+                }
+                let diffs: Vec<i32> = ours.iter().zip(&theirs).map(|(&a, &b)| (a as i32 - b as i32).abs()).filter(|&d| d > 0).collect();
+                let inked = theirs.iter().filter(|&&a| a > 0).count();
+                let (most, total) = (diffs.iter().copied().max().unwrap_or(0), diffs.iter().sum::<i32>());
+                let far = diffs.iter().filter(|&&d| d > 64).count();
+                // Off by under 1% of the ink in all (measured: 0.1 to
+                // 0.6%); more than a quarter off at a few pixels of a
+                // corner (at most 0.4% of the ink, 撃 at 5x), none by
+                // more than 0.55.
+                assert!((total as f32) < 0.01 * 255.0 * inked as f32, "{c} at {scale}x: {total} over {inked} inked");
+                assert!(far * 200 <= inked && most < 160, "{c} at {scale}x: {far} pixels a quarter off, the most {most}");
+            }
+        }
+    }
+
+    /// A string's glyphs made ahead draw it at every size: drawing it in
+    /// its role's box, narrowed or not, with its shadow, makes no more.
+    #[test]
+    fn prepared_glyphs_serve_every_size() {
+        let mut r = renderer();
+        let strings = [("BigBomb", Role::FittedCell), ("スプレッドガン1", Role::FittedCell), ("ComingRd", Role::Cell), ("敵に当たると\nダメージ gjpqy", Role::Dialogue)];
+        for (text, role) in strings {
+            r.prepare(text, role);
+        }
+        let made = r.made().glyphs;
+        assert!(made > 20);
+        let mut items = Vec::new();
+        for (n, (text, role)) in strings.into_iter().enumerate() {
+            for (k, line) in text.lines().enumerate() {
+                let rows = role.style().rows as i32;
+                items.push(TextItem::new(line, role, Rect::new(8, 8 + 16 * (n + k) as i32, 40, rows), 0x7FFF, Some(0x2108)));
+            }
+        }
+        for scale in [1, 3, 7] {
+            let frame = crate::render::Frame { pixels: vec![0; WIDTH * HEIGHT], depth: vec![u32::MAX; WIDTH * HEIGHT], text: items.clone(), glide: None, ..crate::render::Frame::default() };
+            let (w, h) = (WIDTH * scale, HEIGHT * scale);
+            let mut out = vec![0u32; w * h];
+            crate::present::present(&frame, Some(&mut r), &mut out, w, h);
+            assert_eq!(r.made().glyphs, made, "{scale}x");
+        }
     }
 }
