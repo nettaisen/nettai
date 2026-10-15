@@ -120,6 +120,8 @@ impl Tab for Navi {
         // about them.
         let choices = kit.builds.form_choices(&content, draft.side());
         self.forms = choices.iter().flat_map(|c| c.forms.iter().map(|&f| (c.fact.clone(), f))).collect();
+        // (One column of rows on a desktop, two on a phone.)
+        let columns = if shell.scale.phone { 2 } else { 1 };
         let groups: Vec<NaviFormGroup> = draft.with_words(shell, |words| {
             let mut at = 0;
             choices
@@ -127,17 +129,40 @@ impl Tab for Navi {
                 .map(|c| {
                     let chosen = kit.builds.chosen_forms(&content, draft.side(), &c.fact);
                     let problems: Vec<&Problem> = draft.checked.problems.iter().filter(|p| draft.facts_of(p).contains(&c.fact)).collect();
-                    let forms: Vec<NaviForm> = c
-                        .forms
-                        .iter()
-                        .map(|&f| NaviForm {
+                    // (Grouped by version, in the groups' order, the battle's within each, as `form_choices` sorts
+                    // them, those of none last: each group headed by its version's name, its rows from a row of
+                    // their own, in the columns the panel has.)
+                    let mut forms: Vec<NaviForm> = Vec::new();
+                    let (mut rows, mut heads, mut first_row, mut place) = (0, 0, 0, 0);
+                    let mut last: Option<Option<String>> = None;
+                    for &f in &c.forms {
+                        let version = content.defs.forms.get(f.index()).and_then(|d| d.record.version.clone());
+                        let tag = kit.version_tag_of(words.names, Registry::Form, &Item::of(f.0));
+                        let starts = last.as_ref() != Some(&version);
+                        if starts {
+                            // (A group of none after the versions' has a head's room, and no name.)
+                            if version.is_some() || last.is_some() {
+                                heads += 1;
+                            }
+                            first_row = rows;
+                            place = 0;
+                            last = Some(version);
+                        }
+                        let row = first_row + place / columns;
+                        rows = rows.max(row + 1);
+                        forms.push(NaviForm {
                             face: kit.pictures.face(f),
                             name: words.names.form(f).into(),
-                            version: kit.version_tag_of(words.names, Registry::Form, &Item::of(f.0)),
+                            head: if starts { tag.clone() } else { Default::default() },
+                            version: tag,
+                            column: place % columns,
+                            row,
+                            heads,
                             chosen: chosen.contains(&f),
                             flagged: !draft.allows(&c.fact, f.0) || problems.iter().any(|p| about(p, &c.fact, &chosen, f)),
-                        })
-                        .collect();
+                        });
+                        place += 1;
+                    }
                     let name = words.names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{}", c.fact)).unwrap_or_else(|| c.fact.clone());
                     let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
                     // (Its first problem; how many more there are after it.)
@@ -146,7 +171,7 @@ impl Tab for Navi {
                         Some((first, rest)) => format!("{} {}", words.problem(first), shell.ui().global::<nettai_ui::BuildWords>().invoke_more(rest.len() as i32)),
                         None => String::new(),
                     };
-                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), problem: problem.into(), forms: ModelRc::new(VecModel::from(forms)), at };
+                    let group = NaviFormGroup { name: name.to_uppercase().into(), count: count.into(), problem: problem.into(), rows, heads, forms: ModelRc::new(VecModel::from(forms)), at };
                     at += c.forms.len() as i32;
                     group
                 })

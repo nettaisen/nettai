@@ -845,6 +845,21 @@ Each is settled unless the user changes it.
     - *Problems:* a fact's problem is said by its heading in the error red, and its rows are red; a mix of versions
       marks each tab that holds its things.
     - *NEW BUILD's versions* are a control's height (40), as the dialogs' other controls.
+    - *Grouped by version* (the user: "you should also group souls/crosses by version i think"): each fact's rows
+      are its forms by version, in the groups' order (the battle's order within each), each version's under a
+      small head of its name in its color; forms of no version last, under a head's room with no name. The focus
+      goes through them as drawn.
+    (§6 Builds; docs/app.md §8.)
+
+62. **The overview shows the build's forms** (2026-10-15). The user: "is there a way to fit selected crosses and
+    souls and beast form into the stats view for a build?", then "yes add the forms row". Under the header (the
+    face, the name, the navi) a row of the forms the build has, their faces at their size (32 by 16) 6 apart, each
+    with its version's mark under it (a bar 2 tall in the version's color, so a build that mixes them shows it):
+    EXE6's Beast form first, then its Crosses; EXE4's and EXE5's souls; in the build's own order (the order the
+    battle lists them in: the Cross window's, the soul button's, which the editor keeps grouped by version). A
+    navi that doesn't change form has no row. The wide sheet has it over the stats' column, six to a row, and
+    takes its room as Soul time did (§2.58): each row a line fewer of the abilities and bugs. The narrow sheet
+    has it over its stats, six to a row, and is taller by it; a phone's as many to a row as its width takes.
     (§6 Builds; docs/app.md §8.)
 
 ## 3. Chosen where the user gave no answer
@@ -1191,8 +1206,8 @@ DUPLICATE, RENAME and DELETE.
 - **Opened by Play or Practice:** Play's EDIT, and the practice menu's EDIT under Dummy's build, open the build in
   the editor, whose Back (‹ PLAY or ‹ PRACTICE in the header) goes straight back to the screen that opened it
   (§2.28; §2.57: Practice's battle starts again, the menu open).
-- **The build overview** (also Play's, and each player's panel in a match): the build's name, navi and version;
-  Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
+- **The build overview** (also Play's, and each player's panel in a match): the build's name and navi; the forms it
+  has, a row of their faces with their versions' marks (§2.62); Stats (HP, Attack, Rapid, Charge, Custom, Mega chips, Giga chips, Regular memory, each with what the NaviCust and
   patch cards added beside it in cyan; then any stat the game's rules give besides, by its name in the game's
   strings: EXE5's Soul time, the turns a Soul Unison lasts, for a navi with souls, §2.58); Abilities; Bugs, each by
   name and level, purple; then the folder's 30 chips in two columns of 26-tall rows: number, icon, name, REG or

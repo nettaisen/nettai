@@ -1194,7 +1194,8 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   nettai-match's: the setup's one form that is the side's version, and its arrays of forms), named as the game's
   rulesets name it ("BEAST FORM", "CROSSES 5/5", "SOULS 6/12": the content's `category.<fact>`), its forms in the
   battle's order, both versions' (`facts::offered_forms`: the navi that changes form's sets hold them under the
-  fact's name, or for the engine's form list every set's list; sorted by the groups), each a row of the editor's
+  fact's name, or for the engine's form list every set's list; sorted by the groups, each version's under a head of
+  its name in its color, those of none last: the app places each row, `column`, `row` and `heads`), each a row of the editor's
   lists (`Theme.list-row`, 26 tall, a phone's 40; one column, a phone's two): a check mark where the build has it,
   its face, its name (the locales' `[forms]`: the ROMs' names, EXE6's Beast forms GBeast and FBeast by their
   NameIDs), and at the right its version's mark (`VersionMark`, in build.slint: `Kit::version_tag_of`). EXE6's Beast
@@ -1209,6 +1210,10 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a list takes it out, or puts it in where the list
   has room (the Cross window's five, the soul button's twelve: the setup's `form[5]` and `form[12]`), in the
   battle's order; a full list refuses one more.
+- **The overview's forms** (docs/design/app-ui.md §2.62): `BuildSheet::forms`, each fact of forms the build
+  chooses in the setup's order and each in the build's own (the battle's), a face and its version's tag (a bar in
+  its color under the face); none for a navi that doesn't change form. The wide sheet's abilities and bugs are a
+  line fewer for each row of six (`overview::FORMS_TO_A_ROW`).
 - **A version's own things are marked** in the editor's rows, by the same `VersionMark` (the version's name in its
   color, framed, 16 tall; a square of the color where the row has no room for the name): the folder's entries and
   the library's rows of a Giga chip (and the auto battle data's), the selector's forms, and a card's variants (the
