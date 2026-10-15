@@ -203,8 +203,8 @@ from a practice battle, on SIGTERM and on SIGINT. Windows has no such signals an
 **START never pauses the game.** In a fight the library reports START and doesn't act on it
 (`Player::take_pause_requests`: docs/frontend.md §2), and what it opens is nettai's menu (`Shell::open_menu`):
 the battle's owner's own, the practice menu or the match menu (§2). A battle that can stop is paused under the
-menu; an online match keeps running, as the menu says. A practice battle is held in **the game's own pause**
-under its menu, not stopped (§15).
+menu; an online match keeps running, as the menu says. A practice battle is held under its menu, its music
+going on and its scenery moving as the game's pause moves it (§15).
 
 **The sound** is nettai-audio's `Output`, fed one stream at the battle's rate (`sound.rs`):
 
@@ -528,7 +528,13 @@ screen may start one beside something of its own (Play, while an invite waits fo
   the battle's (its name begins `menu.`) or the battle fills the window (`App::hearer_of`).
 - A session started from outside has no EXIT: its starter's rows are the ways out.
   Choosing an added row tells the starter and leaves the menu as it is (the starter closes it with
-  `shell.close_menu()` if it wants, or ends the session). It keeps nothing of the dummy's setup.
+  `shell.close_menu()` if it wants, or ends the session). Its menu is otherwise the usual one (the user:
+  "practice menu in the matchmaking waiting screen should be the same as the usual practice menu"): `start`
+  gives it the game's builds that can be played for the Dummy's build, the dummy on the player's own at first;
+  it has no Music (its music is the menus') and no EDIT (the editor would leave the starter's screen, and Play
+  gives up its link as it is left: `shown_rows`). What its menu sets is kept for the starter's wait, never for a
+  visit to Practice: `practice::stop` ends the session for a while keeping it (a phone's STOP PRACTICE), the
+  next session the same screen starts begins on it, and `practice::end` (the wait over) forgets it.
 - One shown in the starter's own `Picture` (`full` off) lasts while that screen is shown: it ends by itself if
   another screen is gone to, and when another battle starts in its place. The keys and a gamepad are the
   battle's there as anywhere; the phone's pad is drawn by the battle's own screen, which only a battle that
@@ -634,8 +640,9 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
 - **Waiting** for the other player: the invite's code (a direct host's address, with "Send this address to your
   opponent." under it), large, in fixed-width type, with COPY CODE (COPY ADDRESS) and CANCEL, and a practice session beside it in a `Picture` of the screen's own. The session
   is Practice's (`practice::start` with `Start::beside`, §2: the player's build against a copy of it that
-  stands still; Practice owns its battle, starts its sets over and hears its menu), with Play's rows at the
-  top of the practice menu: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
+  stands still; Practice owns its battle, starts its sets over and hears its menu; the usual practice menu but
+  for Music and EDIT, its choices lasting for the wait), with Play's rows at the top of the practice menu in
+  place of EXIT: COPY INVITE CODE (COPY ADDRESS for a direct host), which copies and closes the
   menu, and CANCEL INVITE (STOP HOSTING), each heard as `Screen::answered` by the tag Play gave. The keys are
   the battle's, so the cursor is on none of the panel's buttons (the pointer clicks them), and Esc or Start
   opens the practice menu. The session ends when the other player comes (`practice::end`) or the wait is
@@ -643,8 +650,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   *On a phone* a battle has its pad only where it fills the window (§2), and a battle to watch is no practice:
   so there the session isn't started with the wait. The invite shows with a PRACTICE button under it; the
   session then fills the window, pad and MENU under the picture as in any battle, and its menu has a third
-  row of Play's, STOP PRACTICE, which goes back to the invite. The other player coming ends it for the lobby
-  as on the desktop.
+  row of Play's, STOP PRACTICE, which goes back to the invite (`practice::stop`: PRACTICE again starts on what
+  its menu was left at). The other player coming ends it for the lobby as on the desktop.
 - **The lobby**, for as long as the two players stay together: the two cards (this player's says their build;
   the other's says their name and whether they are ready, and nothing else: the lobby's protocol carries
   nothing of a build), one row of settings (First to, Patch cards and Closed builds are the match's: either
@@ -1016,7 +1023,7 @@ cost what they did in the others, and the windows around it ran 115 to 119: the 
 
 **With the practice menu open** (2026-10-13, the same Mac, window and variables, the menu opened 22 seconds in
 with the battle in its fight; two runs each, back to back, load average 109 to 161): before, the battle held
-still under the menu; now, in the game's own pause (§15).
+still under the menu; then, in the game's own pause (since, held again with its scenery moving: §15).
 
 | nettai, `dev`, a practice battle | Menu closed | Menu open, before | Menu open, in the game's pause |
 |---|---|---|---|
@@ -2445,7 +2452,7 @@ build gone, or no longer one that can be played) goes back to Play with the fail
   are what the menu's Dummy's build offers (`practice::Pick`: a build and its place among the game's files).
 - **The menu opens as it starts** (the user: "when practice mode starts you should also bring up the menu
   immediately"): the session's `Start::menu` has `Practice::battle` open the practice menu at `Started`, over the
-  battle in the game's pause (below), its focus on RESUME; the battle steps through its opening under it and waits
+  battle held (below), its focus on RESUME; the battle steps through its opening under it and waits
   on its custom screen. RESUME starts the fight. The session beside a waiting invite has no `menu` and starts as
   before, and RESTART doesn't open it.
 - **The battle's music** starts with the battle, as any battle that plays the pick (§1, "The battle's music"):
@@ -2568,62 +2575,50 @@ back from the editor, keeps what the player set. None of it is in the settings.
 match of the two builds (`nettai_match::check::problems`), shows the two cards while the library's `Preload`
 makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)`. It isn't recorded.
 
-- **Its pause is the game's.** The user: "the training pause should actually just use the game's pause
-  behavior: music continues, stuff still animates. but don't show the PAUSED banner in the middle of the
-  screen". A practice set's rounds leave the game its START (`HostKeys::pause` off: `practice::set_of`; every
-  match's other rounds keep it the host's), and its battle is held under the menu by `Battle::pause_in_game`
-  (`battle/game_pause.rs`), which does nothing that pausing does: it gives the game the START its player
-  would, and reads the game's state.
-  - The menu opens (Esc, the pad's Guide, MENU, as for any battle) where START would pause the game
-    (`nettai_battle::Battle::pausable`: the fight running, not dimmed, not over): the battle is given START
-    for that frame's ticks and is in the game's pause from that tick, and steps on in it under the menu. Its
-    music plays and what the game moves while paused moves (the backgrounds), by the game's own code; the
-    fight itself, the dummy with it, is held as the game holds it. The game's pause sound plays as it pauses
-    and as it goes on, as at the game's own START.
-  - The player's START in the fight is the game's own: it pauses the game, and the menu opens over that pause
-    (`Battle::paused_by`). While the menu is open the player's buttons reach neither the game nor the dummy:
-    the battle is given START and nothing else.
-  - The menu closes (RESUME, Esc, the pad's Start): the battle is given START again and leaves the pause as
-    the game does at its player's START, the fight going on where it was. RESTART and EXIT work from the pause
-    as from anywhere.
-  - Where START wouldn't pause the game (its custom screen, a dimming, a round's end, a round's start banner),
-    the battle is held where it stands under the menu (`Player::set_held`): no tick steps it, so nothing of it
-    changes, neither side's custom screen (its cursor, the chips chosen, its HP bug's drain), a dimming's chip
-    or a round's end, and the dummy's presses reach nothing (`Player::hold_opponent`). Its sound goes on: the
-    audio driver plays on a tick's worth each tick due, the music and what was sounding going on, with no cue
-    new; the picture stays as it was. The menu closed, it goes on from the tick it was held at. (The user:
-    "pause at start doesn't seem to stop custom hp drain". Until then the battle stepped on there with no
-    buttons, waiting on its custom screen and stepping through a dimming or a round's end into the game's
-    pause; on the custom screen the NaviCust's custom HP bug drained HP all the while, as it does while that
-    screen is up.) Pressing START in those places in the game does nothing; nettai's menu holds the battle all
-    the same.
-    - In a round's opening (its fade in from white, its navis' arrival and its banner), the battle steps on
-      under the menu with no buttons, and is held as its custom screen begins, before the screen comes in
-      (`Phase::Opening`): at a round's first tick the field is black and no music plays yet, and the menu
-      over a practice battle as it starts (Practice's own sessions, and an arena or the Dummy's build changed
-      under it, which starts the set over) is there to set the dummy and the stage up with them in view.
-      Nothing in the opening is the fight's: no gauge fills, no HP changes. In EXE6 the opening is 136 ticks
-      (2.3 s).
-    - Mid-fight, the player's START (or the menu's) is the game's pause, above, and what the game's pause
-      holds is held: in EXE6 and EXE5 the NaviCust's HP bug waits while paused (`HpDrainRule::
-      stops_while_paused`); EXE4's drains through its pause, as the game's does.
-  - **The game's pause display is not drawn:** the HUD's "PAUSE" (what the HUD draws while the fight is in its
-    pause state, `nettai_render::Renderer::pause_display`, on by default) is turned off for a practice battle's
-    renderer alone. The game's pause state is simulated as the game has it; only that drawing is left out.
-  - Nothing else changes: a battle never paused, every online match and every replay steps, sounds and draws
-    as before (the engine's two calls are output only; the same hash over 2,194,500 samples and the same
-    digest after 4,000 ticks of each game before and after; nettai-frontend's
-    `the_pause_display_is_left_out_alone`, nettai's `a_battle_held_in_the_games_own_pause`,
-    `opened_where_the_game_wouldnt_pause_it_is_held`, `a_practice_opened_with_its_menu_is_held_from_its_custom_screen`
-    and `under_the_menu_mid_fight_the_hp_bug_waits`).
-  - Checked on each game's packs by stepping a battle as the menu holds it (a scratch program, not kept):
-    ten seconds in the pause, samples came at 32,972 a second, the music's level steady (EXE6 0.15 to 0.22 RMS,
-    EXE5 0.17 to 0.18, EXE4 0.20 to 0.22); 390, 320 and 173 of the 600 frames differed from the one before
-    (the backgrounds move); a frame with the pause display drawn differed from one without in 463 to 550
-    pixels, every one inside "PAUSE"'s box; and the battle went on from where it was at START. The frames
-    were looked at (before, 300 and 330 ticks into the pause, with the display, after); nobody listened. In
-    the app, with the menu open, the battle ran 59.5 to 60.0 ticks a second and the stream's peak stayed at
-    0.36 to 0.67 (§5).
+- **Its menu holds it, wherever it opens.** The user, of the menu as it was (the game's own pause mid-fight,
+  the battle held still elsewhere): "pause during custom screen vs not custom screen is so janky now"; of three
+  ways put to them they chose to always hold the battle itself and keep drawing the background's animation and
+  scroll and the panels' animation on a clock of their own while the menu is up, so it looks like the game's
+  pause on every screen (docs/design/app-ui.md §2.57, "One hold, everywhere"). Before that the user had asked
+  for the game's pause ("the training pause should actually just use the game's pause behavior: music
+  continues, stuff still animates. but don't show the PAUSED banner in the middle of the screen"), and it held
+  the fight alone. `battle/hold.rs` does it now:
+  - A practice set's rounds have the host answer START, as every match's (`HostKeys::pause`:
+    `practice::set_of`): START in the fight is reported (`Player::take_pause_requests`) and opens the menu, and
+    the game's own pause never runs (so there is no PAUSED banner to leave out).
+  - Under the menu (opened by Esc, the pad's Guide, MENU or START), mid-fight, on the custom screen, in a
+    dimming, at a round's end or in a round's opening, the battle is held where it stands (`Player::set_held`):
+    no tick steps it, so nothing of it changes (neither side's custom screen, its cursor, the chips chosen, its
+    HP bug's drain; the fight, EXE4's HP bug with it, which its own pause drains; a dimming's chip; a round's
+    end), no button reaches it and the dummy's presses reach nothing (`Player::hold_opponent`). Its sound goes
+    on: the audio driver plays on a tick's worth each tick due, the music and what was sounding going on, no
+    cue new.
+  - **Its scenery moves on** as the game's pause moves it: each held tick the renderer moves the stage's clock a
+    frame on (`Renderer::scenery_frame`), the background's animation frames and its scroll (Enhanced's glide
+    with it) and the panels' own animations (their palette cycles), and the picture is
+    drawn anew. That is what the game's own pause moves mid-fight (its tick goes on counting the round's frames
+    and ticks, which the background and the panels are drawn on; the panels' own state, a crack's timer, waits).
+    The navis and the effects stand: the game's pause runs only the few objects marked to (a charge's glow, an
+    aura's shimmer, afterimages), which are the battle's own and stand with it.
+  - The frames the scenery moved are the renderer's alone (`Renderer::stage_clock`: the battle's clock and
+    them), kept after the hold, so as the menu closes the background goes on from where the hold left it, a
+    frame a tick, with no jump back; a new round or a start over forgets them. Nothing of them is in the
+    battle, its snapshot or its digest, and a battle never held (every online match, every replay) draws byte
+    for byte as before. The menu closed, the battle goes on from the tick it was held at.
+  - **A battle started with the menu open** (Practice's own sessions, and an arena or the Dummy's build changed
+    under the menu, which starts the set over) steps through its round's opening (its fade in from white, its
+    navis' arrival and its banner) with no buttons, and is held as its custom screen begins, before the screen
+    comes in (`Phase::Opening`): at a round's first tick the field is black and no music plays yet, and the menu
+    is there to set the dummy and the stage up with them in view. Nothing in the opening is the fight's: no
+    gauge fills, no HP changes. In EXE6 the opening is 136 ticks (2.3 s). The menu opened in an opening already
+    under way holds it there, as anywhere.
+  - Practice isn't recorded, so no replay holds a hold. The tests: nettai-frontend's
+    `held_the_battle_stands_and_its_scenery_moves_on` (held, the digest and the ticks the same and the
+    background drawn anew; after, digest for digest the battle never held, the scenery a frame a tick from the
+    hold's; held for no tick, and started over, byte for byte), nettai's
+    `a_battle_held_under_the_menu_on_the_custom_screen_and_mid_fight`, `held_in_a_dimming_and_at_a_rounds_end`,
+    `a_practice_opened_with_its_menu_is_held_from_its_custom_screen` and `under_the_menu_mid_fight_the_hp_bug_waits`
+    (EXE6 and EXE4).
 - It has no end: when the set is decided the shell says `Finished` and Practice starts the battle over
   (`Battle::restart`), as RESTART does, and R or F5 on the keyboard and the pad's north button without opening
   the menu (unless the player bound them to a button).
@@ -2631,8 +2626,8 @@ makes it ready, and plays the set with `LivePlayer::against(set, opponent, seed)
   `practice::end`, by a battle another screen started in its place, or, shown in another screen's `Picture`,
   by that screen being left.
 
-**The practice menu** (Start or Esc; the battle in the game's own pause behind it, the dummy in view beside the
-panel). Its
+**The practice menu** (Start or Esc; the battle held behind it, its music going on and its scenery moving, the
+dummy in view beside the panel). Its
 rows are a model (`PracticeView.rows`: one row component under one `for`), made from one list,
 `practice::ROWS`:
 
@@ -2697,10 +2692,9 @@ the menu): host-side options a practice session sets between ticks, applied to t
 of the simulation. With them at their normal values the battle is
 the set's as it was before they existed, tick for tick by digest (the library's test of it, docs/frontend.md
 §2), and every online match and replay is untouched: only live play has them. They act on the battle as it
-steps behind the menu in the game's own pause, or held still where the game wouldn't pause, and change
-nothing of the pause: a refill shows there (the HP rolls back up under the menu), the gauge's value is full
-there and the engine flags it full once the fight runs again, the folder is put in order there (the library's
-`the_options_act_in_the_games_own_pause`).
+is held behind the menu, and change nothing of the hold: a refill shows there (the HP rolls back up under the
+menu), the gauge's value is full there and the engine flags it full once the fight runs again, the folder is
+put in order there.
 
 A row is focused as a whole and changed at once by Left and Right (Enter steps it on, or opens the list of
 a dropdown's), around from its last value to its first. Under them RESUME and RESTART side by side, and under
@@ -2718,8 +2712,8 @@ the visit's (`practice::Visit`), as the place and the dummy's build are: each vi
 (Stands still, Normal, every option normal, the input display off, the dummy on the player's own build; the
 user: "yes for the practice options, they should all reset to default", "you should also not remember the last
 dummy build either"), and the player's build is Play's chosen one; a session another screen started begins as
-that screen says, every battle option at its normal value and the place Random, and keeps nothing of the
-dummy's, the battle's or the place.
+that screen says, the dummy on the player's own build, every battle option at its normal value and the place
+Random, and keeps what its menu sets for that screen's wait alone (§4, "Waiting"), not for a visit.
 
 **The dummy's rows.** One row says what the dummy does, its Action, and its Level comes under it while it is
 Fights (`shown_rows`; `lay_out_rows` puts the row in or takes it out as the Action changes, the rows above it,
@@ -2734,7 +2728,7 @@ went, from the menu and from the library.
 **A second pad.** With the dummy's Action "A second pad", the second gamepad used (the pads are known in the
 order each was first pressed, `input::Pad`) is the dummy's: what it holds is the dummy's buttons, in the fight
 and on its custom screen (the library's `LivePlayer::set_second_pad`, each frame before the ticks; its START
-reaches the battle on the custom screen alone, the game's pause being the player's), and its
+reaches the battle on the custom screen alone, the menu being the player's), and its
 presses are neither the player's nor the menus' (`Pad::apart`). With one pad or none the dummy stands still and
 its custom screen picks the first chip it can. Any other Action gives the pads back to the player.
 
@@ -2758,8 +2752,7 @@ each side's custom screen reads (`Battle::custom.sides[n].joypad.held`: this tic
 delayed ones) after the frame's ticks, and tells the UI only when they change. It is in the picture's top right
 corner, under the eighth the battle's own text takes there; on a phone, under MENU. It is drawn into a layer
 and drawn anew only when a button changes (§5: drawn each frame it cost 0.3 ms a frame). Under the menu it shows
-nothing held: the battle takes no button then but the START that holds it in the game's pause, and the dummy's
-presses go nowhere.
+nothing held: the battle takes no button then, and the dummy's presses go nowhere.
 
 **On a phone** the menu's rows have their label over their arrows and scroll (a `ScrollPage`, `menu.rows`, which
 on a desktop holds them all), EDIT is the panel's width, the buttons are one over the other, and in battle the

@@ -90,6 +90,27 @@ pub fn graphics(content: &Content, color: u16) -> Graphics {
     }
 }
 
+/// `graphics` with a background on every number a round may draw, which
+/// scrolls half a pixel left and a quarter up a frame, its columns colored
+/// by their x: a picture that shows where its scenery is.
+pub fn scrolling_background(graphics: &mut Graphics) {
+    use nettai_assets::{Background, MapEntry, Tiles};
+    let entry = |tile| MapEntry { tile, hflip: false, vflip: false, palette: 0 };
+    let background = Background {
+        tiles: Tiles { pixels: (0..2 * Tiles::TILE).map(|i| (1 + (i / 64) * 7 + i % 8) as u8).collect() },
+        first_tile: 0x200,
+        map: (0..32 * 32).map(|i| entry(0x200 + (i % 2) as u16)).collect(),
+        map_width: 32,
+        map_height: 32,
+        palette: Some(std::array::from_fn(|i| i as u16 * 0x421)),
+        scroll: (-8, -4),
+        ..Background::default()
+    };
+    let mut bundle = (*graphics.bundles[0]).clone();
+    bundle.backgrounds = vec![Some(background); 256];
+    graphics.bundles[0] = Arc::new(bundle);
+}
+
 /// A battle's sound that makes a sound of every cue: a bank with a song
 /// for each of `content`'s sounds, by its handle. Every fourth is a held
 /// note on the music player (it goes on until another replaces it, as

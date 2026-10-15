@@ -590,7 +590,7 @@ Each is settled unless the user changes it.
     - *PRACTICE goes straight into battle.* Practice's entry is gone: PRACTICE starts a practice battle at once,
       the build chosen in PLAY the player's, the dummy on the same build, Arena Random, Background Random, Music
       the game's own and every option of the menu at its default; and the practice menu is open over the battle
-      as it starts, in the game's pause, the focus on RESUME, so the dummy and the stage can be set before
+      as it starts, the battle held, the focus on RESUME, so the dummy and the stage can be set before
       fighting. RESUME starts the fight. The practice battle beside a waiting invite starts as before, with no
       menu, and RESTART doesn't open it.
     - *Everything is changed from the menu.* Its DUMMY group starts with Dummy's build, a dropdown of the game's
@@ -620,8 +620,42 @@ Each is settled unless the user changes it.
       EXE6) still plays under the menu, since at its first tick the field is black and no music plays, and the
       battle is held as its custom screen begins, before the screen comes in, the dummy and the stage in view
       (chosen here). The same after EDIT's return, a Dummy's build or an arena changed, and RESTART's start over
-      under the menu. Mid-fight START is the game's pause as before: in EXE6 and EXE5 the NaviCust's HP bug
-      waits through it; EXE4's drains through its pause, as the game's does. (docs/app.md §15.)
+      under the menu. Mid-fight START was the game's pause as before (until the next: one hold everywhere): in
+      EXE6 and EXE5 the NaviCust's HP bug waited through it; EXE4's drained through its pause, as the game's
+      does. (docs/app.md §15.)
+    - *One hold, everywhere.* The user: "pause during custom screen vs not custom screen is so janky now".
+      Mid-fight the menu had the game's own pause, the background and the panels moving on; on the custom
+      screen, in a dimming or at a round's end it held the battle, everything still. Of three ways put to them
+      they chose: always hold the battle itself, and keep drawing the background's animation and scroll and the
+      panels' animation on a clock of their own while the menu is up, so it looks like the game's pause on every
+      screen. So wherever the menu opens (mid-fight, the custom screen, a dimming, a round's end, a round's
+      opening) the battle is held where it stands: no tick, no button, no cue, nothing of it changing (EXE4's HP
+      bug, which its own pause drains, waits too), its music going on. The scenery moves on a frame a tick on the
+      picture's own clock, from where it was: the background's animation frames and its scroll (Enhanced's
+      glide with it), and the panels' own animations (their palette cycles), which is what the game's pause
+      moves; the navis and the effects stand, as the game's pause has them (the few effects its pause lets run, a charge's glow or an aura's shimmer, are the battle's own
+      objects, and stand with it). RESUME goes on from the held tick and the scenery from where the hold left
+      it: the frames it moved stay added, so nothing jumps back; they are the picture's alone, never the
+      battle's, its snapshot's or its digest's, and a battle never held draws as before. START in the fight is
+      the host's again, as in a match: it opens the menu, and the game's own pause never runs (no PAUSED banner
+      to leave out). A battle started with the menu open still steps through its round's opening, as above, and
+      is held as its custom screen begins. Practice isn't recorded, so no replay has a hold in it. An online
+      match is untouched: its menu says "the match keeps running". (§6 Practice, docs/app.md §15.)
+    - *The waiting practice's menu is the usual one.* The user: "practice menu in the matchmaking waiting screen
+      should be the same as the usual practice menu". The practice battle beside a waiting invite (or a direct
+      host's wait) has the practice menu's groups, rows and widgets, and its hold: DUMMY (Dummy's build, a
+      dropdown of the game's builds that can be played, the player's own at first; Action; Level), STAGE (Arena,
+      Background) and OPTIONS, all of them. Its own rows stay where they were, at the top: COPY INVITE CODE and
+      CANCEL INVITE (a direct host's COPY ADDRESS and STOP HOSTING; on a phone STOP PRACTICE between them), in
+      place of EXIT. Two rows stay out (chosen here): Music, since its music is the menus' (§2.29, the user: "in
+      the practice mode while the lobby is waiting, don't switch the music", and #36's "it really shouldn't let
+      you change the music because it does nothing"), so the row would change nothing heard; and EDIT, since the
+      editor is another screen and Play gives up its link as it is left (a link nobody polls reads as dropped),
+      so it would cancel the invite or the direct host's listening. What the menu sets there lasts for that
+      wait, a phone's STOP PRACTICE and its PRACTICE again included, and is forgotten when the wait ends; it
+      never carries into a visit to Practice. (Superseding §6's "no Dummy's build or EDIT" beside a waiting
+      invite and the session that "keeps nothing of the dummy's setup".) (§6 Play and Practice, docs/app.md §4
+      and §15.)
     - *HOST and JOIN are the band; PRACTICE is the build's.* The user, of the three tiles: "the visual style is
       so ugly for practice/host/join", and then "well maybe for the play ui host/join should be the primary
       items and then practice like some kind of secondary thing". PRACTICE is a regular button in the chosen
@@ -678,7 +712,7 @@ are the defaults; each is easy to reverse and is listed for review.
 | The opponent's navi in the lobby | Hidden, with the build's name and version |
 | What "export" makes | An MP4. A `nettai-video` crate writes a NUT stream (raw frames and PCM) that the app pipes to ffmpeg; the app never saves the `.nut` (the user: "don't allow raw .nut export") |
 | The demo reel | The player's latest replays of the selected game; with none, the two versions' starter builds on autopilot |
-| The dummy while waiting online | A copy of the player's own build, standing still, with the practice menu there to change it |
+| The dummy while waiting online | A copy of the player's own build, standing still, with the practice menu there to change it (since §2.57 the usual menu, its Dummy's build among them) |
 | Practice's options | The menu first, with what the dummy can already do; then refilling HP, the always-full custom gauge, and recording, in that order; folder-order draws and a second pad last. (Recording went later: "get rid of recording support, it's so complicated".) |
 | Practice and replays | Practice is not recorded |
 | Text entry on a pad | The invite code has a six-box picker a pad can use; names, addresses and searches need a keyboard |
@@ -927,8 +961,11 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
 - **Waiting for an opponent:** a practice battle starts at once (the picture at three times, tagged PRACTICE), with
   a panel beside it: the invite code, large, in fixed-width type, grouped in threes; COPY CODE; "Waiting for
   opponent"; "The lobby opens when they join."; CANCEL. Hosting directly, the panel has YOUR ADDRESS, this
-  machine's address and port, COPY ADDRESS, and "Send this address to your opponent." in the last line's place. Keys go to the battle; Esc or Start opens the practice menu
-  with Copy invite code and Cancel invite added. (It starts as it always did, with no menu over it: §2.57.)
+  machine's address and port, COPY ADDRESS, and "Send this address to your opponent." in the last line's place.
+  Keys go to the battle; Esc or Start opens the practice menu, the usual one (§2.57, "The waiting practice's menu
+  is the usual one"), its rows the same but Music and EDIT, with Copy invite code and Cancel invite (Copy
+  address and Stop hosting) at its top in place of EXIT; what it sets lasts for the wait. (It starts as it
+  always did, with no menu over it: §2.57.)
 - **The lobby:** the two players' cards (yours shows your build; theirs shows their name and whether they are
   ready, nothing else), then one row of settings: First to (a stepper of the round wins that take the set, 1 to
   10, 2 at first: §2.34), Patch cards
@@ -957,9 +994,9 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   first. Nothing plays it before the battle, and PLAY's title music comes back after.
 - **The practice menu** (Start or Esc in a practice battle, and open as one of Practice's own starts), its focus
   on RESUME each time it opens ("focus should always default to the resume button"): a panel on the left, the
-  battle behind it in the game's own pause ("music continues, stuff still animates"), without the game's PAUSED
-  banner, with the dummy in view; where the game's pause can't hold it (its custom screen, a dimming, a round's
-  end) held where it stands, its music going on (§2.57). Rows are a label and a value between arrows, changed at once by Left and
+  battle behind it held where it stands wherever it opens, and looking as the game's own pause does ("music
+  continues, stuff still animates"): its music going on, its background and its panels' animations moving on,
+  no PAUSED banner, the dummy in view (§2.57, "One hold, everywhere"). Rows are a label and a value between arrows, changed at once by Left and
   Right; bare rows under group titles, their steppers, dropdowns and EDIT 40 tall (36 on a phone), in one column
   so they line up, the rows 52 tall (§2.44: "option 1"; on a phone the label over the control):
   - Dummy: Dummy's build (§2.57: a dropdown of the game's builds that can be played, the player's own at first;
@@ -970,8 +1007,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     Level (easy, normal, hard: how well it fights) under it while it is Fights. Its custom screen goes with its
     Action. No recording: "get rid of recording support, it's so complicated". The user: "the dummy menu is so
     confusing and has so many redundant options and it's confusing to navigate. you should make it clearer and
-    less redundant". Beside a waiting invite the dummy is a copy of the player's build, and there is no Dummy's
-    build or EDIT.
+    less redundant". Beside a waiting invite the dummy is on the player's own build at first and the Dummy's
+    build offers the same builds; there is no EDIT (§2.57: the editor would leave the wait).
   - Stage: Arena (the game's arenas, by place, "12 / 47") and Background (the background pool, every game's
     battle backgrounds, §2.31, by game and name, "BN4 ACDC Area"), each Random first, a Random background drawn
     from the pool; each a pictured select whose grid opens on Enter, a click or a tap (§2.56); an arena changed

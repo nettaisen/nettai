@@ -138,7 +138,7 @@ pub struct Player {
     /// The sound of the ticks run since the host last took it.
     samples: Vec<[f32; 2]>,
     paused: bool,
-    /// Held where it stands, its sound going on ([`Player::set_held`]).
+    /// Held where it stands, its sound and its scenery going on ([`Player::set_held`]).
     held: bool,
     speed: usize,
     clock: Clock,
@@ -274,7 +274,8 @@ impl Player {
     /// when the battle can't go on.
     pub fn tick(&mut self, buttons: u16) -> bool {
         if self.held && self.session.stopped.is_none() {
-            // (Held: the sound of a tick, and nothing of the battle's.)
+            // (Held: the sound of a tick and a frame of the stage's scenery, and nothing of the battle's.)
+            self.renderer.scenery_frame(&self.session.battle);
             if let Some(audio) = &mut self.audio {
                 audio.tick(&mut self.samples);
                 if self.samples.len() > MOST_SAMPLES {
@@ -329,11 +330,16 @@ impl Player {
         self.paused
     }
 
-    /// Hold the battle where it stands, or let it go on (a host's menu over a battle, where the game's own pause
-    /// can't hold it: its custom screen, a dimming, a round's end). Held, a tick ([`Player::tick`],
-    /// [`Player::advance`]) steps nothing of the battle (no state, no cue, no new picture: its ticks don't
-    /// count), but its sound goes on: the music and what was sounding play on as the ticks due would have them,
-    /// no cue new. Unlike a pause, the clock runs, for the sound's sake. False (and nothing changes) in real time.
+    /// Hold the battle where it stands, or let it go on (a host's menu over a battle: nettai's practice menu,
+    /// wherever it opens). Held, a tick ([`Player::tick`], [`Player::advance`]) steps nothing of the battle (no
+    /// state, no cue, no input reaches it: its ticks don't count), but it looks and sounds as the game's own
+    /// pause does: its sound goes on (the music and what was sounding play on as the ticks due would have them,
+    /// no cue new), and the stage's scenery moves on a frame a tick on a clock of the picture's own
+    /// (`Renderer::scenery_frame`: the background's animation and scroll, the panels' own animations), from
+    /// where it was and on from there after the hold, so nothing jumps back. Unlike a pause, the clock runs,
+    /// for the sound's and the scenery's sake. The scenery's frames are the renderer's alone: nothing of them is
+    /// in the battle, its snapshot or its digest, and a battle never held draws as it always has. False (and
+    /// nothing changes) in real time.
     pub fn set_held(&mut self, held: bool) -> bool {
         if self.real_time() {
             return false;
@@ -600,6 +606,12 @@ impl Player {
     /// The battle as it stands.
     pub fn battle(&self) -> &Battle {
         &self.session.battle
+    }
+
+    /// The clock the stage's scenery is drawn on now: the battle's own, and
+    /// the frames it moved on while held ([`Player::set_held`]).
+    pub fn stage_clock(&self) -> nettai_render::stage::StageClock {
+        self.renderer.stage_clock(&self.session.battle)
     }
 
     // ---- The parts, for a host that needs one ------------------------------
@@ -993,52 +1005,66 @@ mod tests {
         assert!(overlaid >= lifted, "the sprites on the field slide with it ({overlaid} frames)");
     }
 
-    /// The renderer's pause display: drawn while a player holds the fight in the game's own pause, as the
-    /// game draws it (the default), and left out with `pause_display` off, which changes nothing else of the
-    /// frame; out of the pause the two draw alike. (A round that leaves the game its START: its own pause.)
+    /// A battle held where it stands (`set_held`: a host's menu over it) steps nothing, while its stage's
+    /// scenery moves on a frame a tick as the game's own pause shows it: the background scrolls on, drawn
+    /// anew. Let go, the battle goes on from the tick it was held at, as one never held does, digest for
+    /// digest, and the scenery goes on from where the hold left it, a frame a tick, nothing jumping back.
+    /// A battle never held, or held for no tick, draws byte for byte as before; and starting over forgets
+    /// the hold's frames.
     #[test]
-    fn the_pause_display_is_left_out_alone() {
+    fn held_the_battle_stands_and_its_scenery_moves_on() {
         use crate::driver::bot_buttons;
-        use nettai_battle::input::keys;
         let content = testing::content();
         let mut graphics = crate::testing::graphics(&content, 0x001F);
-        // (A HUD with tiles, so it is drawn, and "PAUSE" in a color of its own.)
-        let mut bundle = (*graphics.bundles[0]).clone();
-        bundle.hud.tiles = nettai_assets::Tiles { pixels: vec![0; 0x40 * nettai_assets::Tiles::TILE] };
-        bundle.hud.pause = nettai_assets::Tiles { pixels: vec![1; 10 * nettai_assets::Tiles::TILE] };
-        bundle.hud.enemy_palette[1] = 0x7FFF;
-        graphics.bundles[0] = Arc::new(bundle);
+        crate::testing::scrolling_background(&mut graphics);
         let settings = nettai_battle::BattleSettings::on(&content, content.stage_by_key(testing::LINK_BATTLE));
         let folder = folder_of(&content, &[("gundels3", 13)]);
-        let mut setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
-        setup.host_keys.pause = false;
+        let setup = live_setup(&content, settings, [folder, folder], "falzar", 1);
         let set = || Box::new(LivePlayer::new(nettai_match::Set::new(content.clone(), setup.clone(), [folder, folder])));
-        let mut on = Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
-        let mut off = Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
-        off.renderer().pause_display = false;
-        let (mut tick, mut fought) = (0, 0);
-        while fought < 30 {
-            let k = bot_buttons(on.battle(), 0, tick);
-            assert!(on.tick(k) && off.tick(k) && tick < 3000);
-            tick += 1;
-            fought += on.battle().pausable() as u32;
-            assert_eq!(on.frame().pixels, off.frame().pixels, "tick {tick}: out of the pause, alike");
+        let player = || Player::with(Renderer::with_packs(graphics.packs()), None, None, set());
+        let (mut never, mut held) = (player(), player());
+        let both = |never: &mut Player, held: &mut Player, tick: u32| {
+            let k = bot_buttons(never.battle(), 0, tick);
+            assert!(never.tick(k) && held.tick(k));
+        };
+        // Held for no tick: nothing of the frame changes.
+        for tick in 0..120 {
+            assert!(held.set_held(true) && held.set_held(false));
+            both(&mut never, &mut held, tick);
+            assert_eq!(never.frame().pixels, held.frame().pixels, "tick {tick}: never held and held for no tick, alike");
         }
-        assert!(on.tick(keys::START) && off.tick(keys::START));
-        assert_eq!(on.battle().paused_by(), Some(0));
-        let (with, without) = (on.frame().pixels, off.frame().pixels);
-        let differ: Vec<usize> = (0..with.len()).filter(|&i| with[i] != without[i]).collect();
-        assert!(!differ.is_empty(), "the pause display is drawn by default");
-        let (x, y) = bundle_pause(&graphics);
-        for i in differ {
-            let (px, py) = (i % 240, i / 240);
-            assert!((x..x + 40).contains(&px) && (y..y + 16).contains(&py), "({px}, {py}) differs, outside the pause display");
+        assert_eq!(held.stage_clock(), nettai_render::stage::StageClock::of(held.battle()), "(no frames ahead)");
+        // Held: no tick of the battle's, the scenery a frame on each, drawn anew.
+        let (ticks, digest, clock) = (held.ticks(), held.battle().digest(), held.stage_clock());
+        assert!(held.set_held(true));
+        let mut last = held.frame().pixels;
+        let mut drawn_anew = 0;
+        for n in 1..=60u32 {
+            // (The player's buttons reach nothing.)
+            assert!(held.tick(nettai_battle::input::keys::A));
+            assert_eq!((held.ticks(), held.battle().digest()), (ticks, digest), "frame {n}: held");
+            assert_eq!(held.stage_clock().background, clock.background + n, "frame {n}: the background a frame on");
+            let now = held.frame().pixels;
+            drawn_anew += (now != last) as u32;
+            last = now;
         }
-    }
-
-    /// Where the HUD draws "PAUSE".
-    fn bundle_pause(graphics: &Graphics) -> (usize, usize) {
-        let (x, y) = graphics.bundles[0].hud.layout.pause;
-        (x as usize, y as usize)
+        assert!(drawn_anew >= 30, "the background scrolls on, drawn anew ({drawn_anew} of 60 frames)");
+        // Let go: on from the tick it was held at, as the battle never held, the scenery on from the hold's.
+        assert!(held.set_held(false));
+        let ahead = held.stage_clock().background - nettai_render::stage::StageClock::of(held.battle()).background;
+        assert_eq!(ahead, 60);
+        for tick in 120..300 {
+            let before = held.stage_clock();
+            both(&mut never, &mut held, tick);
+            assert_eq!(held.battle().digest(), never.battle().digest(), "tick {tick}: stepped as the battle never held");
+            assert_eq!(held.stage_clock().background, before.background + 1, "tick {tick}: no jump");
+            assert_eq!(held.stage_clock(), never.stage_clock().ahead(nettai_render::stage::StageClock { background: 60, field: 60 }));
+        }
+        // Started over: the hold's frames forgotten, the frames byte for byte the never held battle's.
+        assert!(never.restart() && held.restart());
+        for tick in 0..60 {
+            both(&mut never, &mut held, tick);
+            assert_eq!(never.frame().pixels, held.frame().pixels, "tick {tick}: started over, alike");
+        }
     }
 }

@@ -3,7 +3,7 @@
 //!
 //! **A practice session** is a battle against a dummy with the practice menu over it, and any screen may start
 //! one ([`start`]): Practice does when PLAY's PRACTICE opens it, and Play does beside a waiting invite, with rows
-//! of its own at the top of the menu. It has no end and is not recorded: a set that ends starts over. The session
+//! of its own at the top of the menu in place of EXIT, the menu otherwise the same (but for Music and EDIT). It has no end and is not recorded: a set that ends starts over. The session
 //! is held by the shell (`Shell::practice`) and its battle is always this screen's (`ScreenId::Practice` owns
 //! it), so this module hears its menu and its events whatever screen is shown.
 //!
@@ -16,7 +16,8 @@
 //! the build still chosen. A [`Visit`] is the time from PRACTICE to back on Play: what the menu sets lasts
 //! through it, and the next starts on the defaults.
 //!
-//! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle paused behind it. Its
+//! **The practice menu** (Start or Esc; the game's own pause never runs) has the battle held behind it, its music
+//! going on and its scenery moving as the game's pause shows them (`battle/hold.rs`). Its
 //! rows are a label and a value between arrows, changed at once by Left and Right (Dummy's build, Arena,
 //! Background and Music a dropdown: Enter opens its list, Arena's and Background's a grid of pictures): [`ROWS`]
 //! lists them, and a row is added there. EDIT, under the Dummy's build, opens it in Builds' editor, whose
@@ -75,7 +76,8 @@ pub struct Start {
     pub seed: u32,
     /// The screen that starts it, if not Practice itself, and the tag it hears of it by: a row it added was
     /// chosen (`Screen::answered(tag, row)`, the row's place in `rows`). Its session has no EXIT (the
-    /// screen's own rows are the ways out), and keeps nothing of the dummy's setup.
+    /// screen's own rows are the ways out), no Music and no EDIT ([`shown_rows`]), and what its menu sets lasts
+    /// for that screen's wait ([`stop`]), not for a visit to Practice.
     pub from: Option<(ScreenId, &'static str)>,
     /// The rows that screen adds at the top of the practice menu: their texts, in the language shown.
     pub rows: Vec<String>,
@@ -85,7 +87,8 @@ pub struct Start {
     /// The two cards show while it is made ready.
     pub cards: bool,
     /// The builds the menu's Dummy's build offers, and the one the dummy is on (its place among them): a session
-    /// of Practice's own has them (none: the menu has no Dummy's build).
+    /// of Practice's own has them, and [`start`] gives one another screen started the game's (none: the menu has
+    /// no Dummy's build).
     pub builds: Vec<Pick>,
     pub dummys: usize,
     /// The practice menu opens over the battle as it starts (PLAY's PRACTICE, and back from the editor).
@@ -125,9 +128,10 @@ impl Start {
     }
 
     /// A session screen `from` shows beside something of its own while the player waits (Play, by an invite's
-    /// code): the dummy a copy of the player's own build, standing still, every option at its normal value and
-    /// the places Random; the picture in the screen's own `Picture`, with no cards before it; `rows` at the top
-    /// of the practice menu, each heard by `tag`.
+    /// code): the dummy on the player's own build, standing still, every option at its normal value and the
+    /// places Random (or, started again in the same wait, as the last session's menu was left); the picture in
+    /// the screen's own `Picture`, with no cards before it; `rows` at the top of the practice menu, each heard by
+    /// `tag`, in place of EXIT.
     pub fn beside(game: &str, build: Build, from: ScreenId, tag: &'static str, rows: Vec<String>) -> Start {
         Start { from: Some((from, tag)), rows, full: false, cards: false, ..Start::new(game, build.clone(), build) }
     }
@@ -145,6 +149,19 @@ pub struct Shared {
     pub visit: Visit,
     /// The places' pictures, for the Arena and Background grids: made as they are needed, kept for the session.
     thumbs: thumbs::Thumbs,
+    /// What the menu of a session another screen started was left at when that screen stopped it for a while
+    /// ([`stop`]: a phone's STOP PRACTICE): its next session in the same wait starts on it. [`end`] forgets it.
+    waiting: Option<Kept>,
+}
+
+/// A session's choices, kept from one to the next of the same wait ([`Shared::waiting`]).
+struct Kept {
+    from: ScreenId,
+    opponent: Opponent,
+    level: usize,
+    options: Options,
+    place: [usize; 2],
+    dummys: Option<String>,
 }
 
 /// A visit to Practice: from PLAY's PRACTICE until Play, or any screen other than Practice and Builds' editor,
@@ -369,16 +386,19 @@ fn row(option: PracticeOption, session: &Session, thumbs: &thumbs::Thumbs) -> Pr
 }
 
 /// The menu's rows shown with the dummy's Action `in_fight`: [`ROWS`], but for the Level (with Fights alone),
-/// for the Music where the session plays none of its own (`beside`: the practice beside a waiting invite, whose
-/// music is the menus': the user, "in the waiting for opponent screen, it really shouldn't let you change the
-/// music because it does nothing"), and for the Dummy's build and its EDIT where the session offers no builds
-/// (`builds`: a session of Practice's own does; the one beside a waiting invite keeps nothing of the dummy's).
+/// for the Dummy's build and its EDIT where the session offers no builds (`builds`), and beside a waiting invite
+/// (`beside`, the user: "practice menu in the matchmaking waiting screen should be the same as the usual
+/// practice menu") for two rows that would do nothing there or drop the wait: the Music, its music being the
+/// menus' (the user: "in the waiting for opponent screen, it really shouldn't let you change the music because
+/// it does nothing"), and EDIT, whose editor would leave the screen that holds the invite (Play leaves its link
+/// as it is hidden).
 fn shown_rows(in_fight: InFight, beside: bool, builds: bool) -> Vec<PracticeOption> {
     ROWS.into_iter()
         .filter(|o| match o {
             PracticeOption::Level => in_fight == InFight::Ai,
             PracticeOption::Music => !beside,
-            PracticeOption::DummysBuild | PracticeOption::EditDummy => builds,
+            PracticeOption::DummysBuild => builds,
+            PracticeOption::EditDummy => builds && !beside,
             _ => true,
         })
         .collect()
@@ -478,7 +498,31 @@ fn kept_options(shell: &Shell) -> Options {
 /// Start a practice session: the two cards while it is made ready (if it has them), then the battle, with the
 /// practice menu behind Start and Esc. A session already on ends first. Err: why it can't start, as the player
 /// reads it (what the code said is in the log).
-pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
+pub fn start(shell: &mut Shell, mut start: Start) -> Result<(), UserError> {
+    // A session another screen started (Play's, beside a waiting invite) has the usual menu: the Dummy's build
+    // offers the game's builds that can be played, the dummy on the player's own at first; and one started
+    // again in the same wait goes on with what the last was left at.
+    let kept = start.from.and_then(|(from, _)| shell.practice.waiting.take().filter(|k| k.from == from));
+    if start.from.is_some()
+        && start.builds.is_empty()
+        && let Some(kit) = builds::kit(shell).filter(|kit| kit.game == start.game)
+    {
+        start.builds = picks(&listed(shell, &kit));
+        let named = |name: &str| start.builds.iter().position(|p| p.build.name == name);
+        let dummys = kept.as_ref().and_then(|k| k.dummys.as_deref()).and_then(named);
+        match (dummys, named(&start.you.name)) {
+            (Some(at), _) => {
+                start.dummys = at;
+                start.dummy = start.builds[at].build.clone();
+            }
+            (None, Some(at)) => start.dummys = at,
+            // (The player's own isn't among them: the menu offers none.)
+            (None, None) => start.builds.clear(),
+        }
+    }
+    if let Some(k) = &kept {
+        (start.opponent, start.level, start.options) = (k.opponent, k.level, k.options);
+    }
     let Some(ready) = shell.games.ready(&start.game) else {
         crate::errors::log("starting practice", &format_args!("{} isn't ready", start.game));
         return Err(UserError::Other);
@@ -490,7 +534,10 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     })?;
     m.sides = [start.you.side.clone(), start.dummy.side.clone()];
     let places = Places::of(content, &start.game);
-    let place = places.chosen(content, &start.round);
+    let place = match &kept {
+        Some(k) => [ARENA, BACKGROUND].map(|part| if k.place[part] < places.len(part) { k.place[part] } else { 0 }),
+        None => places.chosen(content, &start.round),
+    };
     want_pictures(shell, &start.game);
     places.put(&mut m, place);
     // (A set is made of a checked match: both folders whole.)
@@ -566,20 +613,20 @@ pub fn start(shell: &mut Shell, start: Start) -> Result<(), UserError> {
     Ok(())
 }
 
-/// The set a practice session plays: the match's, its rounds leaving the game its START (`HostKeys::pause`
-/// off), so the practice menu holds the battle in the game's own pause (`Battle::pause_in_game`). The rest of
-/// the round is as any match's. (A match's every round has the host answer START, for both players of an
-/// online one and its replay; practice is neither online nor recorded.)
+/// The set a practice session plays: the match's, its rounds' START the host's as every match's
+/// (`HostKeys::pause`): START in the fight opens the practice menu, which holds the battle (`battle/hold.rs`),
+/// and the game's own pause never runs. (Practice is neither online nor recorded.)
 fn set_of(content: &std::sync::Arc<nettai_battle::Content>, m: &Match, seed: u32) -> Set {
-    let mut first = m.round(content, seed);
-    first.host_keys.pause = false;
+    let first = m.round(content, seed);
     let folders = [0, 1].map(|side| m.sides[side].folder(content).saved().expect("a checked match's folder is whole"));
     Set::new(content.clone(), first, folders)
 }
 
 /// End the practice session on, if one is: its battle (or the cards before it) goes, and the screen shown is
-/// what shows. What starts a session from outside calls this when its wait is over (an opponent joined).
+/// what shows. What starts a session from outside calls this when its wait is over (an opponent joined, the
+/// invite canceled): what its menu was left at is forgotten.
 pub fn end(shell: &mut Shell) {
+    shell.practice.waiting = None;
     if shell.practice.session.take().is_none() {
         return;
     }
@@ -590,6 +637,19 @@ pub fn end(shell: &mut Shell) {
         shell.end_battle();
     }
     forget(shell);
+}
+
+/// End the practice session another screen started for a while, its wait going on (a phone's STOP PRACTICE):
+/// its next session in the same wait starts where its menu was left (the Dummy's build, the dummy's Action and
+/// Level, the place and the battle's options).
+pub fn stop(shell: &mut Shell) {
+    let kept = shell.practice.session.as_ref().and_then(|s| {
+        let (from, _) = s.from?;
+        let dummys = s.builds.get(s.dummys).map(|p| p.build.name.clone());
+        Some(Kept { from, opponent: s.opponent, level: s.level, options: s.options, place: s.place, dummys })
+    });
+    end(shell);
+    shell.practice.waiting = kept;
 }
 
 /// Whether a practice session is on (being made ready, or running).
@@ -627,7 +687,7 @@ fn restart(shell: &mut Shell) -> bool {
 /// The session's set again from its start on the arena and with the dummy's build it has now (the Arena row
 /// changed, or the Dummy's build: a round's field and its navis are set as it starts), as RESTART starts it
 /// over, the menu staying open: the battle behind it steps through the round's opening and is held as its
-/// custom screen begins, as ever under the menu (`battle/game_pause.rs`). (What a new build or arena draws that the battle
+/// custom screen begins, as ever under the menu (`battle/hold.rs`). (What a new build or arena draws that the battle
 /// wasn't made ready for is loaded as it is first drawn.)
 fn restart_set(shell: &mut Shell, session: &mut Session) {
     let Some(ready) = shell.games.ready(&session.game) else { return };
@@ -890,6 +950,20 @@ fn listed(shell: &Shell, kit: &builds::Kit) -> Vec<builds::shelf::Shelved> {
     if shell.practice.tour_files { builds::shelf::load(shell, kit) } else { crate::screens::play::shelved(shell, kit) }
 }
 
+/// The builds of `listed` the menu's Dummy's build offers: those that can be played.
+fn picks(listed: &[builds::shelf::Shelved]) -> Vec<Pick> {
+    listed
+        .iter()
+        .enumerate()
+        .filter_map(|(at, b)| {
+            let side = b.side().filter(|_| b.usable())?.clone();
+            // (The screenshot pass's own have no file.)
+            let file = (!b.listed.path.as_os_str().is_empty()).then_some(at);
+            Some(Pick { build: Build { name: b.name().to_string(), side }, file })
+        })
+        .collect()
+}
+
 /// Practice: no page of its own, its session's battle filling the window. Shown, it starts a session of its own on
 /// the visit ([`Practice::start_own`]); EXIT or Back goes back to Play.
 #[derive(Default)]
@@ -919,16 +993,7 @@ impl Practice {
             let reason = entry.side().and_then(|side| words::first_problem(shell, &kit, side));
             return Err(UserError::BuildUnusable { reason: reason.filter(|r| !r.is_empty()) });
         }
-        let picks: Vec<Pick> = listed
-            .iter()
-            .enumerate()
-            .filter_map(|(at, b)| {
-                let side = b.side().filter(|_| b.usable())?.clone();
-                // (The screenshot pass's own have no file.)
-                let file = (!b.listed.path.as_os_str().is_empty()).then_some(at);
-                Some(Pick { build: Build { name: b.name().to_string(), side }, file })
-            })
-            .collect();
+        let picks = picks(&listed);
         let at = |name: &str| picks.iter().position(|p| p.build.name == name);
         let you = at(entry.name()).ok_or(UserError::Other)?;
         let dummys = shell.practice.visit.build(&game, 1).and_then(at).unwrap_or(you);
@@ -1012,7 +1077,10 @@ impl Practice {
             if next != session.dummys {
                 session.dummys = next;
                 let build = session.builds[next].build.clone();
-                shell.practice.visit.dummys_build = Some((session.game.clone(), build.name.clone()));
+                // (A session another screen started keeps its choices for its wait, not the visit's.)
+                if session.from.is_none() {
+                    shell.practice.visit.dummys_build = Some((session.game.clone(), build.name.clone()));
+                }
                 session.m.sides[1] = build.side;
                 restart_set(shell, &mut session);
                 shell.ui().global::<PracticeView>().set_session_dummys(build.name.as_str().into());
@@ -1026,7 +1094,7 @@ impl Practice {
                 Change::By(by) => (value(option, session.opponent, session.level, session.options, session.inputs, session.place) as i32 + by).rem_euclid(values(option, &session.places) as i32) as usize,
                 Change::To(at) => at.min(values(option, &session.places) - 1),
             };
-            // (A session another screen started keeps nothing of the dummy's setup, or of the place.)
+            // (A session another screen started keeps its choices for its wait alone, not for the visit.)
             let keep = session.from.is_none();
             match option {
                 // Arena: the set again from its start on the new arena, as RESTART starts it, the menu staying open.
@@ -1203,18 +1271,14 @@ impl Screen for Practice {
 
     fn battle(&mut self, shell: &mut Shell, event: BattleEvent) {
         match event {
-            // Under the practice menu the battle is in the game's own pause (the user: "the training pause should
-            // actually just use the game's pause behavior: music continues, stuff still animates. but don't
-            // show the PAUSED banner in the middle of the screen"): its HUD's pause display is left out. A session
-            // of Practice's own opens with the menu over it (the user: "when practice mode starts you should also
-            // bring up the menu immediately"), before its first tick, as Esc there would: the battle steps through
-            // its opening under it and is held as its custom screen begins, nothing of it changing until RESUME
-            // ("pause at start doesn't seem to stop custom hp drain": `battle/game_pause.rs`).
+            // Under the practice menu the battle is held, wherever the menu opens, and looks as the game's own
+            // pause does: its music goes on and its scenery moves, no PAUSED banner (`battle/hold.rs`; the user:
+            // "pause during custom screen vs not custom screen is so janky now"). A session of Practice's own opens
+            // with the menu over it (the user: "when practice mode starts you should also bring up the menu
+            // immediately"), before its first tick, as Esc there would: the battle steps through its opening under
+            // it and is held as its custom screen begins, nothing of it changing until RESUME ("pause at start
+            // doesn't seem to stop custom hp drain").
             BattleEvent::Started => {
-                if let Some(b) = shell.battle.as_mut().filter(|b| b.owner == ScreenId::Practice) {
-                    b.pause_in_game();
-                    b.stage.player.renderer().pause_display = false;
-                }
                 if shell.practice.session.as_mut().is_some_and(|s| std::mem::take(&mut s.menu_at_start)) {
                     shell.open_menu();
                 }
@@ -1303,8 +1367,7 @@ impl Screen for Practice {
         let battle = b.stage.player.battle();
         // (The round's number is counted as the round opens: before its first tick it is the one before.)
         let round = battle.round.round.max(1);
-        // (Under the menu the battle takes no button but the START that holds it in the game's pause, and the
-        // dummy's go nowhere: nothing is shown held.)
+        // (Under the menu the battle takes no button, and the dummy's go nowhere: nothing is shown held.)
         let held = if session.inputs && !b.menu_open() { [0, 1].map(|side| battle.custom.sides[side].joypad.held) } else { [0; 2] };
         let (new_round, pressed) = (session.round != Some(round), session.held != held);
         if !new_round && !pressed {
@@ -1388,9 +1451,11 @@ mod tests {
         let (none, one) = (ROWS.len() - 1, ROWS.len());
         assert_eq!(under(InFight::StandsStill), (none, Some(PracticeOption::Stage)));
         assert_eq!(shown_rows(InFight::StandsStill, false, true)[..4], [PracticeOption::Dummy, PracticeOption::DummysBuild, PracticeOption::EditDummy, PracticeOption::Action]);
-        let beside = shown_rows(InFight::StandsStill, true, false);
-        assert!(!beside.contains(&PracticeOption::Music), "beside a waiting invite");
-        assert!(!beside.contains(&PracticeOption::DummysBuild) && !beside.contains(&PracticeOption::EditDummy), "beside a waiting invite");
+        // Beside a waiting invite the usual menu, but for its Music and EDIT.
+        let beside = shown_rows(InFight::StandsStill, true, true);
+        let usual: Vec<PracticeOption> = shown_rows(InFight::StandsStill, false, true).into_iter().filter(|o| !matches!(o, PracticeOption::Music | PracticeOption::EditDummy)).collect();
+        assert_eq!(beside, usual, "beside a waiting invite");
+        assert!(beside.contains(&PracticeOption::DummysBuild));
         assert_eq!(shown_rows(InFight::StandsStill, false, false).len(), none - 2, "no builds offered: no Dummy's build, no EDIT");
         assert_eq!(under(InFight::MovesAround), (none, Some(PracticeOption::Stage)));
         assert_eq!(under(InFight::Ai), (one, Some(PracticeOption::Level)));
