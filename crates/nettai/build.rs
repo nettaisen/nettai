@@ -41,6 +41,15 @@ fn license_files(dir: &Path) -> Vec<PathBuf> {
             inner.sort();
             let all = name.eq_ignore_ascii_case("LICENSES");
             found.extend(inner.into_iter().filter(|p| all || p.file_name().is_some_and(|n| is_license_file(&n.to_string_lossy()))));
+            // (And the libraries that library vendors in its `deps`, built into it too: libdatachannel's ICE,
+            // SCTP and logging, in libdatachannel-sys.)
+            let mut vendored: Vec<PathBuf> = std::fs::read_dir(path.join("deps")).into_iter().flatten().flatten().map(|e| e.path()).filter(|p| p.is_dir()).collect();
+            vendored.sort();
+            for dep in vendored {
+                let mut files: Vec<PathBuf> = std::fs::read_dir(&dep).into_iter().flatten().flatten().map(|e| e.path()).collect();
+                files.sort();
+                found.extend(files.into_iter().filter(|p| p.is_file() && p.file_name().is_some_and(|n| is_license_file(&n.to_string_lossy()))));
+            }
         }
     }
     found
