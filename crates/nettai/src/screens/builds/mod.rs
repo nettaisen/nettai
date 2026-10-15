@@ -116,6 +116,12 @@ impl Screen for Builds {
         }
     }
 
+    fn hovered(&mut self, shell: &mut Shell, id: &str, index: i32, on: bool) {
+        if let Some(editor) = &mut self.editor {
+            editor.hovered(shell, id, index, on);
+        }
+    }
+
     fn key(&mut self, shell: &mut Shell, key: &KeyPress) -> bool {
         self.editor.as_mut().is_some_and(|editor| editor.key(shell, key))
     }

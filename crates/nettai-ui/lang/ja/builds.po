@@ -267,6 +267,16 @@ msgstr "コマンドライン"
 msgid "Plus part"
 msgstr "プラスパーツ"
 
+# The strip: the program's shape, and its compressed shape, each over its word; then the colors it comes in.
+msgid "SHAPE"
+msgstr "形"
+
+msgid "COMPRESSED"
+msgstr "圧縮時"
+
+msgid "Colors"
+msgstr "カラー"
+
 # ---- The Patch cards tab.
 
 msgid "Add"

@@ -212,6 +212,7 @@ component SlotView inherits Rectangle {
         nav-index: root.index;
         drag: "slot";
         removable: true;
+        describes: true;
     }
 }
 
@@ -418,6 +419,7 @@ component LibraryRowView inherits Rectangle {
         nav: "lib.rows";
         nav-index: root.nav-index;
         drag: Theme.phone ? "" : "lib.rows";
+        describes: true;
     }
 }
 

@@ -206,6 +206,10 @@ pub trait Tab {
 
     fn focused(&mut self, _shell: &mut Shell, _draft: &mut Draft, _id: &str, _index: i32) {}
 
+    /// The pointer came onto one of the tab's rows (`on`) or left it: the strip describes that row while the pointer
+    /// is on it, and the focused one's again after (`hover`).
+    fn hovered(&mut self, _shell: &mut Shell, _draft: &mut Draft, _id: &str, _index: i32, _on: bool) {}
+
     /// A key the tab may want for itself (a letter that acts on the focused row). True if it was the tab's.
     fn key(&mut self, _shell: &mut Shell, _draft: &mut Draft, _key: &KeyPress) -> bool {
         false
@@ -227,6 +231,23 @@ pub trait Tab {
 
     /// A dialog the tab asked (`Shell::ask`, by its `tag`) was answered.
     fn answered(&mut self, _shell: &mut Shell, _draft: &mut Draft, _tag: &str, _choice: usize) {}
+}
+
+/// The row the strip describes in place of the focused one while the pointer is on it (docs/design/app-ui.md §2.63):
+/// `what`, the pointer come onto it (`on`) or gone off it, becomes `hovered` (none: the focused row again). Whether
+/// it changed: the strip is shown anew. (Going from one row to the next, the next's coming may be told before the
+/// last's going: a row left that isn't the one hovered changes nothing.)
+pub fn hover<D: PartialEq>(hovered: &mut Option<D>, what: D, on: bool) -> bool {
+    let now = match on {
+        true => Some(what),
+        false if hovered.as_ref() == Some(&what) => None,
+        false => return false,
+    };
+    if *hovered == now {
+        return false;
+    }
+    *hovered = now;
+    true
 }
 
 // ---- A row dragged to another place ---------------------------------------------------------------------------
@@ -380,6 +401,8 @@ pub struct Editor {
     at: usize,
     /// The ruleset's page, open over the editor.
     rules: Option<RulesPage>,
+    /// The row a drag was let go over, which the pointer rests on (`hovered`).
+    rest: Option<crate::nav::Key>,
 }
 
 
@@ -394,7 +417,7 @@ impl Editor {
         let checked = checked(&kit, &build.side, ruleset.as_ref());
         let tabs: Vec<Box<dyn Tab>> = all().into_iter().filter(|t| has(&content, t.as_ref())).collect();
         let draft = Draft { kit, build, checked, ruleset, path, navi_only, changed: settled };
-        let mut editor = Editor { draft, tabs, at: 0, rules: None };
+        let mut editor = Editor { draft, tabs, at: 0, rules: None, rest: None };
         editor.save(shell);
         editor
     }
@@ -499,6 +522,7 @@ impl Editor {
         }
         let (tab, draft) = self.tab();
         tab.hide(shell, draft);
+        self.rest = None;
         self.at = to;
         shell.ui().global::<BuildsView>().set_tab_way(way);
         self.show(shell);
@@ -630,6 +654,9 @@ impl Editor {
             "drag-drop" if from_library(shell) => "drag-in-drop",
             id => id,
         };
+        if matches!(id, "drag-drop" | "drag-in-drop") {
+            self.rest = shell.nav.registry().borrow().at(pointer_at(choice));
+        }
         if RulesPage::owns(id) {
             let outcome = self.rules.as_mut().map_or(Outcome::Nothing, |page| page.choose(shell, id, index, choice));
             return self.ruleset_outcome(shell, outcome);
@@ -660,6 +687,26 @@ impl Editor {
         let (tab, draft) = self.tab();
         tab.edit(shell, draft, id, index, text, done);
         self.after(shell);
+    }
+
+    /// The pointer on one of the tab's rows, or gone off it (a ruleset's page has no strip).
+    /// (The row a drag was let go over isn't one the pointer went to: the strip keeps the focused row, and why the
+    /// drop was refused, until the pointer goes on to another.)
+    pub fn hovered(&mut self, shell: &mut Shell, id: &str, index: i32, on: bool) {
+        if self.rules.is_some() {
+            return;
+        }
+        let key = crate::nav::Key::new(id, index);
+        if self.rest.as_ref() == Some(&key) {
+            if on {
+                return;
+            }
+            self.rest = None;
+        } else if on {
+            self.rest = None;
+        }
+        let (tab, draft) = self.tab();
+        tab.hovered(shell, draft, id, index, on);
     }
 
     pub fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {

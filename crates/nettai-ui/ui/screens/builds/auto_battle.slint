@@ -143,6 +143,7 @@ component PlaceView inherits Rectangle {
         nav-index: root.line.place;
         drag: root.line.title || !root.line.chip.there ? "" : "places.";
         removable: !root.line.title;
+        describes: !root.line.title;
     }
 }
 
@@ -248,6 +249,7 @@ component AutoLibraryRowView inherits Rectangle {
         nav-index: root.nav-index;
         removable: true;
         drag: Theme.phone ? "" : "lib.rows";
+        describes: true;
     }
 }
 

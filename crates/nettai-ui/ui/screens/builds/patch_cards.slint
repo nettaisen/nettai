@@ -1,11 +1,12 @@
-// The Patch cards tab of a build's editor (docs/design/app-ui.md §6, "Patch cards"; §2 items 19 and 20): the folder's
-// shape. A strip across the top lays the card under the cursor out, from either pane: its number, its name, its MB
-// or its slot, why it can't go in (in the error red), and its lines in its card screen's two groups (a game whose
-// cards have none: what it does, and the bugs it adds to or clears). Under it, framed, what the build holds: its
-// cards in their order (a game with slots: each slot by its name, with its card or Empty), each with its number, its
-// name, its MB and every line it writes, a bug's purple; their count and MB in the header, and what they add up to at
-// the foot. Beside it the library, an open list, with a search and a sort. No pictures (cards have none), and no
-// on and off (nettai can't turn a card off). A card that can't go in stays, greyed, with why.
+// The Patch cards tab of a build's editor (docs/design/app-ui.md §6, "Patch cards"; §2 items 19, 20 and 63): the
+// folder's shape. A strip across the top lays the card under the cursor (or the pointer) out, from either pane: its
+// number, its name, its MB or its slot, why it can't go in (in the error red), and its lines in its card screen's two
+// groups (a game whose cards have none: what it does, and the bugs it adds to or clears), a bug's purple. Under it,
+// framed, what the build holds: its cards in their order (a game with slots: each slot by its name, with its card or
+// Empty), each a row as the folder's entries are, its number, its name and its MB (its lines are the strip's: the
+// user, "the name isn't very visible"); their count and MB in the header, and what they add up to at the foot. Beside
+// it the library, an open list, with a search and a sort. No pictures (cards have none), and no on and off (nettai
+// can't turn a card off). A card that can't go in stays, greyed, with why.
 //
 // On a phone the cards are one column under their counts, and the library opens as a sheet from the bottom
 // (`PatchCardsOverlay`), with what a card's keys do as buttons. Its Rust half is src/screens/builds/patch_cards.rs.
@@ -18,24 +19,21 @@ import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
 
-// One line a card writes, and what comes before it in a row of them: nothing, a dot between two of one group, a bar
-// between the groups.
+// One line a card writes, a bug's purple.
 export struct CardLine {
     text: string,
     bug: bool,
-    lead: string,
 }
 
 // A card, as a row shows it: its number and name, its MB (none in a game without), the slot it belongs in (a game
-// with slots), its lines; in the library, a note (it is in, or why it can't go in: `refused` greys the row, `bad`
-// puts the note in the error red). `there` off: a slot or a place with no card.
+// with slots); in the library, a note (it is in, or why it can't go in: `refused` greys the row, `bad` puts the note
+// in the error red). `there` off: a slot or a place with no card.
 export struct CardRow {
     there: bool,
     number: string,
     name: string,
     megabytes: string,
     slot: string,
-    lines: [CardLine],
     note: string,
     refused: bool,
     bad: bool,
@@ -129,47 +127,6 @@ export global PatchCardsView {
     }
 }
 
-// A card's lines on one line, each after its lead, a bug's purple. Cut where they run past its width, which fades.
-component CardLinesView inherits Rectangle {
-    in property <[CardLine]> lines;
-    in property <bool> dim;
-    // It is drawn over a panel's fill: where its lines run past it, they fade into it (else they are cut).
-    in property <bool> on-panel: true;
-    in property <length> font-size: 12px;
-    clip: true;
-    row := HorizontalLayout {
-        x: 0;
-        width: max(root.width, self.preferred-width);
-        alignment: start;
-        for line in root.lines: HorizontalLayout {
-            Text {
-                text: line.lead;
-                color: Theme.dim;
-                font-family: Theme.body;
-                font-size: root.font-size;
-                vertical-alignment: center;
-            }
-
-            Text {
-                text: line.text;
-                color: line.bug ? Theme.bug : Theme.text;
-                opacity: root.dim ? 0.5 : 1;
-                font-family: Theme.body;
-                font-size: root.font-size;
-                font-weight: 600;
-                vertical-alignment: center;
-            }
-        }
-    }
-
-    Rectangle {
-        x: parent.width - self.width;
-        width: 28px;
-        visible: root.on-panel && row.preferred-width > root.width + 0.5px;
-        background: @linear-gradient(90deg, Theme.panel.with-alpha(0) 0%, Theme.panel 100%);
-    }
-}
-
 // A slot's name in a box (EXE4's 0A to 0F).
 component SlotName inherits Rectangle {
     in property <string> text;
@@ -200,8 +157,8 @@ global CardDrag {
     }
 }
 
-// One of the build's cards (or slots): its slot's name, its number, its name and its MB over its lines; Empty where
-// it holds none. A drag takes its card to another place in the list, or onto the library (in a game with slots, the
+// One of the build's cards (or slots), a row as the folder's entries are: its slot's name, its number, its name with
+// its version's mark, and its MB; Empty where it holds none. The pointer over it shows it in the strip. A drag takes its card to another place in the list, or onto the library (in a game with slots, the
 // library alone: a card's slot is its own) (`dy`: where it is shifted to while another is dragged; the one dragged
 // is drawn under the pointer, `gone` here). `lifted`: it is that one, drawn under the pointer.
 component InstalledRowView inherits Rectangle {
@@ -255,7 +212,7 @@ component InstalledRowView inherits Rectangle {
 
         SlotName {
             x: 8px;
-            y: 5px;
+            y: (parent.height - self.height) / 2;
             visible: root.slotted;
             text: root.card.slot;
 
@@ -264,9 +221,7 @@ component InstalledRowView inherits Rectangle {
 
         Text {
             x: root.lead;
-            y: 4px;
             width: 30px;
-            height: 20px;
             text: root.card.number;
             color: Theme.dim;
             font-family: Theme.mono;
@@ -277,13 +232,11 @@ component InstalledRowView inherits Rectangle {
 
         name := Text {
             x: root.lead + 30px + 8px;
-            y: 4px;
             width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
-            height: 20px;
             text: root.card.there ? root.card.name : @tr("Empty");
             color: !root.card.there ? Theme.dim : root.card.bad ? Theme.bad : Theme.text;
             font-family: Theme.body;
-            font-size: 13px;
+            font-size: Theme.phone ? 14px : 12px;
             font-weight: root.card.there ? 600 : 400;
             vertical-alignment: center;
             overflow: elide;
@@ -298,9 +251,7 @@ component InstalledRowView inherits Rectangle {
 
         Text {
             x: parent.width - 8px - 56px;
-            y: 4px;
             width: 56px;
-            height: 20px;
             text: root.card.megabytes;
             color: Theme.muted;
             font-family: Theme.mono;
@@ -309,16 +260,6 @@ component InstalledRowView inherits Rectangle {
             horizontal-alignment: right;
             vertical-alignment: center;
         }
-
-        CardLinesView {
-            x: root.lead + 30px + 8px;
-            y: 24px;
-            width: parent.width - self.x - 8px;
-            height: 16px;
-            lines: root.card.lines;
-            // (A phone's cards are over the ground.)
-            on-panel: !Theme.phone;
-        }
     }
 
     touch := RowTouch {
@@ -326,11 +267,13 @@ component InstalledRowView inherits Rectangle {
         nav-index: root.nav-index;
         drag: !root.card.there || root.nav-index < 0 ? "" : "card";
         removable: root.nav-index >= 0;
+        describes: root.nav-index >= 0;
     }
 }
 
-// A card of the library: its number, its name, its lines, a note (it is in; or why it can't go in, in the error red,
-// the row greyed), its MB or the slot it belongs in. `dx` shakes it.
+// A card of the library: its number, its name with its version's mark, a note (it is in; or why it can't go in, in the
+// error red, the row greyed), its MB or the slot it belongs in. `dx` shakes it. The pointer over it shows it in the
+// strip.
 component CardLibraryRowView inherits Rectangle {
     in property <CardRow> card;
     in property <int> nav-index;
@@ -339,7 +282,9 @@ component CardLibraryRowView inherits Rectangle {
     property <length> end-x: self.width - 8px - root.end-width;
     property <length> note-width: Theme.phone ? 96px : 104px;
     property <length> note-x: root.end-x - (Theme.phone ? 0px : 8px) - root.note-width;
-    property <length> name-width: Theme.phone ? 108px : (PatchCardsView.counts.slotted ? 196px : 128px);
+    // (The name's room, up to the note; the version's mark follows the name, a square of its color where the two don't
+    // fit.)
+    property <length> name-room: max(0px, root.note-x - 8px - (8px + 30px + 8px));
     Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
@@ -355,11 +300,9 @@ component CardLibraryRowView inherits Rectangle {
         vertical-alignment: center;
     }
 
-    // (The version's mark follows the name, the lines after it where the two take more than the name's column;
-    // a square of its color where they'd leave the lines no room.)
     name := Text {
         x: 8px + 30px + 8px + root.dx;
-        width: min(root.name-width, self.preferred-width);
+        width: max(0px, root.name-room - (version.width > 0 ? version.width + 6px : 0px));
         text: root.card.name;
         color: root.card.refused ? Theme.dim : Theme.text;
         font-family: Theme.body;
@@ -370,21 +313,11 @@ component CardLibraryRowView inherits Rectangle {
     }
 
     version := VersionMark {
-        x: name.x + name.width + 6px;
+        x: name.x + min(name.width, name.preferred-width) + 6px;
         y: (parent.height - self.height) / 2;
         tag: root.card.version;
-        short: name.width + 6px + self.natural-width > root.name-width + 72px;
+        short: name.preferred-width + 6px + self.natural-width > root.name-room;
         opacity: root.card.refused ? 0.5 : 1;
-    }
-
-    CardLinesView {
-        x: max(8px + 30px + 8px + root.name-width + root.dx, version.width > 0 ? version.x + version.width : 0px) + 8px;
-        width: max(0px, root.note-x - 8px - self.x);
-        height: parent.height;
-        lines: root.card.lines;
-        dim: root.card.refused;
-        // (The library is over the ground on a desktop, and over its sheet's panel on a phone.)
-        on-panel: Theme.phone;
     }
 
     Text {
@@ -419,6 +352,7 @@ component CardLibraryRowView inherits Rectangle {
         nav-index: root.nav-index;
         removable: true;
         drag: Theme.phone ? "" : "lib.rows";
+        describes: true;
     }
 }
 
@@ -719,7 +653,7 @@ export component PatchCardsTab inherits Rectangle {
         height: Theme.phone ? parent.height - self.y - root.together-height : root.pane-height - 44px - root.together-height;
         nav: "card";
         count: PatchCardsView.installed.length;
-        row-height: Theme.phone ? 48px : 44px;
+        row-height: Theme.list-row;
         // (A mouse's drag on a card moves it: the wheel scrolls.)
         mouse-pan: false;
         for at in cards.shown: InstalledRowView {
@@ -853,7 +787,7 @@ export component PatchCardsOverlay inherits Rectangle {
             x: 8px;
             y: 8px;
             width: parent.width - 16px;
-            height: 44px;
+            height: Theme.list-row;
             card: PatchCardsView.installed[PatchCardsView.slot];
             nav-index: -1;
             slotted: root.slotted;
@@ -862,7 +796,7 @@ export component PatchCardsOverlay inherits Rectangle {
         // (Moving it up or down, a list's alone, over taking it out.)
         Button {
             x: 16px;
-            y: 60px;
+            y: 56px;
             width: (parent.width - 44px) / 2;
             visible: !root.slotted;
             enabled: !root.slotted && root.there;
@@ -872,7 +806,7 @@ export component PatchCardsOverlay inherits Rectangle {
 
         Button {
             x: 16px + (parent.width - 44px) / 2 + 12px;
-            y: 60px;
+            y: 56px;
             width: (parent.width - 44px) / 2;
             visible: !root.slotted;
             enabled: !root.slotted && root.there;
@@ -882,7 +816,7 @@ export component PatchCardsOverlay inherits Rectangle {
 
         Button {
             x: 16px;
-            y: root.slotted ? 60px : 108px;
+            y: root.slotted ? 56px : 104px;
             width: parent.width - 32px;
             enabled: root.there;
             nav: "lib.remove";
@@ -893,7 +827,7 @@ export component PatchCardsOverlay inherits Rectangle {
 
         CardsLibraryPane {
             x: 16px;
-            y: (root.slotted ? 60px : 108px) + 40px + 12px;
+            y: (root.slotted ? 56px : 104px) + 40px + 12px;
             width: parent.width - 32px;
             height: parent.height - self.y - 8px;
         }

@@ -84,14 +84,21 @@ export struct EffectLine {
     fresh: bool,
 }
 
-// The program under the cursor, for the strip: its name in its color (a plus part's crossed), and the game's
-// description of it.
+// The program under the cursor (or the pointer), for the strip: its name in its color (a plus part's crossed), the
+// game's description of it, its shape (its cells' box row by row, `columns` a row) and, where it compresses into
+// another, its compressed shape (else none), and the colors it comes in (`color`: the row's among them).
 export struct ProgramDetail {
     there: bool,
     name: string,
     tone: color,
     plus: bool,
     description: string,
+    shape: [bool],
+    columns: int,
+    compressed: [bool],
+    compressed-columns: int,
+    colors: [color],
+    color: int,
 }
 
 // What the tab shows: src/screens/builds/navicust.rs sets these.
@@ -386,6 +393,11 @@ component ProgramRowView inherits Rectangle {
     in property <ProgramRow> program;
     in property <int> nav-index;
     in property <bool> big;
+    changed nav-index => {
+        if touch.has-hover {
+            Nav.hover("programs", root.nav-index, true);
+        }
+    }
     Rectangle {
         background: touch.has-hover ? @linear-gradient(90deg, Theme.tint-hover 0%, Theme.clear 85%) : transparent;
     }
@@ -430,8 +442,12 @@ component ProgramRowView inherits Rectangle {
 
     // (A click, as the button goes down: it takes a new copy of the program, or puts the piece in hand away. The
     // pointer's moves with a piece in hand and its release are told too, where it is (`Pointer`): over the list, the
-    // list shows that a click puts the piece away.)
+    // list shows that a click puts the piece away. The pointer over it shows its program in the strip, as the cursor
+    // on it does: `Nav.hover`, a row that scrolls under the pointer another.)
     touch := TouchArea {
+        changed has-hover => {
+            Nav.hover("programs", root.nav-index, self.has-hover);
+        }
         pointer-event(e) => {
             if e.kind == PointerEventKind.move && !self.pressed && NavicustView.holding {
                 Nav.choose("drag", 7, Pointer.at(self.absolute-position, self.mouse-x, self.mouse-y));
@@ -447,6 +463,31 @@ component ProgramRowView inherits Rectangle {
                 Nav.point("programs", root.nav-index);
                 Nav.choose("remove", root.nav-index, 0);
             }
+        }
+    }
+}
+
+// A program's shape in the strip: its cells' box, each cell of it the program's color (a plus part's crossed) or the
+// board's empty cell, in the middle of a box five cells a side, the most any program's shape takes.
+component ShapeView inherits Rectangle {
+    in property <[bool]> cells;
+    in property <int> columns;
+    in property <color> tone;
+    in property <bool> plus;
+    property <length> cell: 10px;
+    property <length> pitch: 12px;
+    property <int> rows: root.columns > 0 ? ceil(root.cells.length / root.columns) : 0;
+    property <length> left: (self.width - (root.columns * root.pitch - 2px)) / 2;
+    property <length> top: (self.height - (root.rows * root.pitch - 2px)) / 2;
+    for filled[i] in root.cells: Rectangle {
+        x: root.left + mod(i, root.columns) * root.pitch;
+        y: root.top + floor(i / root.columns) * root.pitch;
+        width: root.cell;
+        height: root.cell;
+        background: filled ? root.tone : Theme.inset;
+        Cross {
+            visible: filled && root.plus;
+            bar: 1.5px;
         }
     }
 }
@@ -646,7 +687,11 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    // ---- The strip: the program under the cursor, its name in its color and the game's description of it.
+    // ---- The strip: the program under the cursor (or the pointer): its shape and, where it compresses into another,
+    // its compressed shape, each over its word; its name in its color, the game's description of it, and the colors it
+    // comes in, the row's outlined.
+    property <length> shape-width: 100px;
+    property <length> words-x: 16px + 2 * root.shape-width + 8px + 16px;
     PanelBack {
         x: 0;
         y: root.top;
@@ -654,8 +699,56 @@ export component NavicustTab inherits Rectangle {
         visible: !Theme.phone;
     }
 
+    if !Theme.phone && NavicustView.detail.there: Rectangle {
+        x: 0;
+        y: root.top;
+        width: root.words-x;
+        height: 104px;
+        ShapeView {
+            x: 16px;
+            y: 12px;
+            width: root.shape-width;
+            height: 62px;
+            cells: NavicustView.detail.shape;
+            columns: NavicustView.detail.columns;
+            tone: NavicustView.detail.tone;
+            plus: NavicustView.detail.plus;
+        }
+
+        Label {
+            x: 16px;
+            y: 78px;
+            width: root.shape-width;
+            height: 14px;
+            text: @tr("SHAPE");
+            horizontal-alignment: center;
+        }
+
+        ShapeView {
+            x: 16px + root.shape-width + 8px;
+            y: 12px;
+            width: root.shape-width;
+            height: 62px;
+            visible: NavicustView.detail.compressed-columns > 0;
+            cells: NavicustView.detail.compressed;
+            columns: NavicustView.detail.compressed-columns;
+            tone: NavicustView.detail.tone;
+            plus: NavicustView.detail.plus;
+        }
+
+        Label {
+            x: 16px + root.shape-width + 8px;
+            y: 78px;
+            width: root.shape-width;
+            height: 14px;
+            visible: NavicustView.detail.compressed-columns > 0;
+            text: @tr("COMPRESSED");
+            horizontal-alignment: center;
+        }
+    }
+
     Rectangle {
-        x: 18px;
+        x: root.words-x;
         y: root.top + 21px;
         width: 16px;
         height: 16px;
@@ -668,9 +761,9 @@ export component NavicustTab inherits Rectangle {
     }
 
     Text {
-        x: 44px;
+        x: root.words-x + 26px;
         y: root.top + 19px;
-        width: parent.width - 60px;
+        width: parent.width - self.x - 16px;
         height: 20px;
         visible: !Theme.phone;
         text: NavicustView.detail.name;
@@ -683,9 +776,9 @@ export component NavicustTab inherits Rectangle {
     }
 
     Text {
-        x: 18px;
-        y: root.top + 47px;
-        width: parent.width - 36px;
+        x: root.words-x;
+        y: root.top + 43px;
+        width: parent.width - self.x - 16px;
         height: 18px;
         visible: !Theme.phone;
         text: NavicustView.detail.description;
@@ -694,6 +787,41 @@ export component NavicustTab inherits Rectangle {
         font-size: 13px;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    HorizontalLayout {
+        x: root.words-x;
+        y: root.top + 69px;
+        width: parent.width - self.x - 16px;
+        height: 16px;
+        visible: !Theme.phone && NavicustView.detail.there;
+        spacing: 6px;
+        alignment: start;
+        Text {
+            text: @tr("Colors");
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+
+        Rectangle {
+            width: 2px;
+        }
+
+        for tone[i] in NavicustView.detail.colors: Rectangle {
+            width: 16px;
+            height: 16px;
+            border-width: i == NavicustView.detail.color ? 1px : 0px;
+            border-color: Theme.text;
+            Rectangle {
+                x: 3px;
+                y: 3px;
+                width: 10px;
+                height: 10px;
+                background: tone;
+            }
+        }
     }
 
     // ---- The board, framed.
