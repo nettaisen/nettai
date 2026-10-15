@@ -280,8 +280,20 @@ pub(crate) fn secure_random<const N: usize>() -> Result<[u8; N], Error> {
     Ok(bytes)
 }
 
-/// A peer's random id, and a direct joiner's nonce.
-pub(crate) fn random_u64() -> u64 {
+/// A random number from the system's cryptographic randomness (the
+/// browser's `crypto.getRandomValues` on the web): a peer's id (all that
+/// gives a player its place in a room back), a direct joiner's nonce, and
+/// the app's lobby's entropy (its nonces must be past guessing). Only when
+/// the system gives none, a weaker one (the clock's, hashed; the browser's
+/// `Math.random`).
+pub fn random_u64() -> u64 {
+    match secure_random::<8>() {
+        Ok(bytes) => u64::from_le_bytes(bytes),
+        Err(_) => clock_random_u64(),
+    }
+}
+
+fn clock_random_u64() -> u64 {
     #[cfg(not(target_arch = "wasm32"))]
     {
         use std::hash::{BuildHasher, Hasher};

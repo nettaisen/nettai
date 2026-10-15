@@ -566,7 +566,7 @@ impl Play {
         };
         let first_to = shell.settings.remembered.get(REMEMBERED_FIRST_TO).and_then(|r| r.parse().ok()).filter(|n| FIRST_TO.contains(n)).unwrap_or(nettai_match::TRIPLE_BATTLE);
         // (The screenshot pass's matches are the same from run to run.)
-        let entropy = tour::entropy().unwrap_or_else(nettai_frontend::lobby::entropy);
+        let entropy = tour::entropy().unwrap_or_else(nettai_rtc::random_u64);
         let made = self.session.as_mut().is_some_and(|s| s.make_lobby(ready.content(), settings(&game, first_to), side, &shell.settings.name, entropy));
         if !made {
             return;
