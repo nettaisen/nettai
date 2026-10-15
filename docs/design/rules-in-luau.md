@@ -3530,9 +3530,10 @@ which builds may play it, so the simulation never reads it.
   first: each copy of a chip is marked, where only the first was, app-ui §2.68), and under one version per build
   one where what it holds of the categories is more than one group's (`Wrong::Mixed { groups, items }`: the
   groups, and what it holds of all but the one it holds most of: its souls or Crosses, its Cybeast, its Giga chips,
-  a card's variant). Nothing is taken out of a build, and nothing is kept out of one: the editor adds what a ruleset
-  holds back as anything else, which is then the build's problem (the user: "if something is not allowed by the
-  ruleset, it should still be allowed to be added but it should be in violation"). Program advances were asked for as
+  a card's variant). Nothing is taken out of a build: one may hold what a ruleset holds back (made under another, or
+  the ruleset changed since), which is then its problem. The editor keeps it from being added (app-ui §2.68: adding
+  it anyway, "it should still be allowed to be added but it should be in violation", was tried and taken back, "okay
+  actually rulesets should prevent adding unallowed ncps/chips/patch cards/etc"). Program advances were asked for as
   a category, first as a build's problem and then as a ban the battle would keep from forming ("stop the program
   advance from forming during the battle instead"), and dropped ("actually nvm don't ban program advances"): the
   simulation still reads nothing of a ruleset.
