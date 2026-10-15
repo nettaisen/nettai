@@ -195,7 +195,7 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
   ProtoSoul on Team ProtoMan's: exact but at the replay's known shift, the flight's frames among them, its outline Team Colonel's gray and Team ProtoMan's
   teal; souls/06-recovery/capsule-soul, MeddySoul's capsule, exact but at the replay's known shift).
 - **Play's build list and Practice** check builds under a ruleset (`Checked::under`'s problems: nettai's
-  `builds::shelf`), as the lobby and the build editor do: outside a lobby the one the player plays by, so a build
+  `builds::shelf`), as the lobby and the build editor do: outside a lobby the one it is made for (app-ui §2.73), so a build
   that mixes versions under Standard is "2 problems" in the list and PRACTICE and HOST refuse it with the first
   ("Mixes Gregar and Falzar"); in a lobby CHANGE BUILD's list is checked again under the lobby's, the host's,
   as it changes. Joining (an invite's code, an address) asks only the game's rules of a build, as the lobby it

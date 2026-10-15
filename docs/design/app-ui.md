@@ -769,8 +769,10 @@ Each is settled unless the user changes it.
       host's ruleset by its name, can't be stepped or opened, and has VIEW after it, which opens the page
       read-only. A ruleset chosen, or the one chosen changed on its page, clears both ready marks as any shared
       setting does. Each player checks their own build against it, and their peer checks the other's. A host's
-      lobby starts on the ruleset that player plays by (below).
-    - *The ruleset a player plays by* is one choice for each game, remembered: the one the lobby starts on when
+      lobby starts on the ruleset that player plays by (below; since §2.73 the one their build is made for).
+    - *The ruleset a player plays by* (**taken back, §2.73**: each build is made for a ruleset of its own, which
+      the editor's select changes; the choice remembered by game is only what a new build is made for) is one
+      choice for each game, remembered: the one the lobby starts on when
       they host, the one the build editor marks builds against, and the one Play's list and Practice check builds
       under (a build it doesn't allow is "2 problems" there, and PRACTICE and HOST say its first; in a lobby the
       list CHANGE BUILD opens is checked under the host's; JOIN asks only the game's rules, as the lobby it joins
@@ -1164,6 +1166,30 @@ Each is settled unless the user changes it.
       and Right do; a click on the row (or Enter) takes the part.
     (§6 Builds; docs/app.md §8.)
 
+73. **A build is made for a ruleset** (2026-10-15). The user: "the build in the menu should indicate the ruleset
+    it's for". It takes back §2.59's ruleset a player plays by, one for each game: each build is made for one.
+    - *The build's file names it* (docs/app.md §8): a preset's id or the player's own ruleset's name, by kind
+      (`ruleset = "preset:masters"`, `"own:Spring cup"`). A file that names none (written before) is made for the
+      game's first preset (Masters class): builds already kept load as they were.
+    - *The editor's RULESET select* (and a phone's on the Navi tab) is the build's: picking one there makes the
+      build for it, kept at once, and the build is checked and marked under it as before (§2.66, §2.68). EDIT
+      opens its page; a copy made there (DUPLICATE) is what the build is made for after.
+    - *A new build* (+ NEW BUILD, FROM A SAVE FILE…, a save dropped on the window) is made for the ruleset the
+      player last chose in that game (in an editor's select, or as a lobby's host), else the game's first preset;
+      DUPLICATE keeps its source's.
+    - *Play's list* names each build's ruleset at its row's status line's right end, muted ("MegaMan · ready" at
+      the left, "Masters class" at the right; half the line at most, cut short with an ellipsis before the build's
+      name or its status is), and so does a phone's box of the chosen build; "MegaMan · 2 problems" counts the
+      build's problems under its own ruleset, as PRACTICE and HOST check it, and Practice's Dummy's build offers
+      those that can be played under theirs.
+    - *A ruleset no longer there* (the player's own, deleted): the build still names it, and says so, "Spring cup
+      (missing)" in the list and "(missing)", muted, after its name in the editor's select; it is checked under the
+      game's first preset meanwhile. The player's own renamed on its page is renamed in every build made for it.
+    - *Matches:* a lobby has its ruleset as before, the host's, and checks each build under it (CHANGE BUILD's list
+      too, whose rows still name the builds' own); a build made for another is played if that one allows it. A
+      host's lobby starts on the ruleset of the build they host with.
+    (§6 Play and Builds; docs/app.md §8.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1394,8 +1420,9 @@ The builds and the ways to play one, on one screen (§2.50), built around "pick 
 online, read in that order. In the body's units (1216 by 644 at the reference window):
 - **The builds**, the left column, 400 wide: + NEW BUILD at the top (as wide as its words; the main action while
   the game has no build), and under it from 52 the player's builds of the game, an open list down to 564 (rows
-  52: the name, then "MegaMan · ready" or what is wrong, and the version's tag at the row's right: tried after
-  the name, the user took it back, "move it back to the right, it's so cramped"). The row the cursor is on is the
+  52: the name, then "MegaMan · ready" or how many problems it has under its own ruleset, and at that line's right
+  end, muted, the ruleset it is made for, "Masters class", or "Spring cup (missing)" for one no longer there: §2.73).
+  (The version's tag once at the row's right went with the build's version: §2.60.) The row the cursor is on is the
   build chosen, remembered by game. A save dropped on the window is made a build ("Imported as Dark MegaMan"
   quietly in the reserved line where the save's preset changed what it held). Delete on the list asks as the
   menu's DELETE does; a right click on a row opens the build's menu there.
@@ -1438,7 +1465,8 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
   DIRECT CONNECT. Tab goes in reading order: + NEW BUILD, the list, PRACTICE, EDIT, ⋯, HOST, the field, JOIN,
   DIRECT CONNECT. A control that isn't there is passed by.
 - **On a phone** one column in the same order (358 wide): + NEW BUILD the column's width; at 52 the chosen build
-  in a box, 72 tall (Left and Right step it, Enter opens the builds as a sheet); at 136 PRACTICE (as wide as its
+  in a box, 72 tall, its ruleset at its status line's right end as a row's (Left and Right step it, Enter opens
+  the builds as a sheet); at 136 PRACTICE (as wide as its
   word, 120 at least), EDIT (the rest) and ⋯ (40) in a row, 8 apart; at 188 HOST the column's width and 52 tall,
   as a phone's main buttons are; at 252 the field (what JOIN leaves) and JOIN, 8 apart; at 304 DIRECT CONNECT
   the column's width; at 356 the reserved line (two lines, 40). The overview isn't shown there (the editor shows
@@ -1539,7 +1567,10 @@ DUPLICATE, RENAME and DELETE.
   entry, a class's limit in each chip of the class, the cards' MB in each card), whose count is in the error red too;
   and its part's that are about no item. The item's name is red on its row. Each is the problem's mark and the error
   red's words, the first and " · +n more", in a place that is there when it says nothing. The ruleset's select and the
-  panes' headers say nothing of them; a phone, which has no strip, says the game's rules' in its panes' headers (the
+  panes' headers say nothing of them (the select is **the build's RULESET** at the tab bar's right end, "RULESET",
+  the select, EDIT; a phone's between the Navi tab's panel and grid: the ruleset the build is made for, which
+  picking another changes, kept at once, and which the build is checked and marked under; one no longer there by its
+  name, "(missing)" muted after it, the build checked under the game's first preset; §2.73); a phone, which has no strip, says the game's rules' in its panes' headers (the
   Navi tab's fault line as a desktop's). No version's tag: a build has none (§2.60). Its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
   them); the editor opens on NAVI every time, whichever tab was last used (the user: "don't remember the tab"). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file

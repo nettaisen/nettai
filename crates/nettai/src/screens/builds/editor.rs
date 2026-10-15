@@ -23,9 +23,12 @@
 //! straight after (`draft.checked`); and when the tab's call returns the frame saves the build's file and
 //! shows the header and the tabs' marks anew. A tab neither saves nor checks.
 //!
-//! **The ruleset the player plays by** (docs/design/app-ui.md §2.59) is the frame's too: a select at the tab bar's
-//! right end (on a phone, at the top of the Navi tab) with EDIT, which opens its page over the editor
-//! (`crate::rulesets::page`). The build is checked under it (`Checked::under`), so what it doesn't allow is among
+//! **The ruleset the build is made for** (docs/design/app-ui.md §2.59, §2.73; `Build::ruleset`) is the frame's too: a
+//! select at the tab bar's right end (on a phone, at the top of the Navi tab) with EDIT, which opens its page over the
+//! editor (`crate::rulesets::page`). The select changes the build's ruleset (and the one a new build is made for: the
+//! last chosen, `rulesets::remember`); one it names that is no longer there (the player's own, deleted) is named with
+//! "(missing)", and the build is checked under the game's first preset. The build is checked under it
+//! (`Checked::under`), so what it doesn't allow is among
 //! the build's problems, and each tab marks it where it shows it. Every tab refuses to add it (docs/design/app-ui.md
 //! §2.68; the user: "okay actually rulesets should prevent adding unallowed ncps/chips/patch cards/etc"): a library's
 //! row, a navi's card or a form's row says "Not allowed" in the error red, dimmed ([`Draft::allows`]), and taking it is
@@ -45,7 +48,7 @@ use crate::errors::UserError;
 use crate::games::Names;
 use crate::input::{Action, KeyPress};
 use crate::rulesets::page::{self as rules_page, Outcome, Page as RulesPage};
-use crate::rulesets::{self, Pickable};
+use crate::rulesets::{self, MadeFor, Pickable};
 use crate::shell::Shell;
 use nettai_battle::Content;
 use nettai_content_api::NaviHandle;
@@ -67,9 +70,9 @@ pub struct Draft {
     /// The build checked: what is wrong with it, and its round set up (the stats it starts with, the
     /// folder's view, the navi's first face). Made again at each change.
     pub checked: Checked,
-    /// The ruleset the player plays by (`rulesets::played_by`), which the build is checked under; none where
-    /// the game says nothing of its rulesets.
-    pub ruleset: Option<Pickable>,
+    /// The ruleset the build is made for (`rulesets::made_for`), which it is checked under; none where the game
+    /// says nothing of its rulesets.
+    pub ruleset: Option<MadeFor>,
     /// Where the build is kept.
     path: PathBuf,
     /// The facts that are the game's own navi's alone (the tabs say which).
@@ -140,22 +143,38 @@ impl Draft {
         self.changed = true;
     }
 
-    /// Check the build as it stands, under the ruleset the player plays by.
+    /// Check the build as it stands, under the ruleset it is made for.
     fn check(&mut self) {
-        self.checked = checked(&self.kit, &self.build.side, self.ruleset.as_ref());
+        self.checked = checked(&self.kit, &self.build.side, self.under());
     }
 
-    /// Whether the ruleset the player plays by allows definition `h` of the build's fact `fact` (a navi, a chip, a
-    /// program, a soul, a Cross, a Cybeast, an auto battle place's chip): where it holds nothing of that fact back, or
-    /// there is none, yes. What it doesn't allow is marked where it is offered, and refused where it would be added.
+    /// The ruleset the build is checked under: the one it is made for, else (that one missing) the game's first
+    /// preset.
+    pub fn under(&self) -> Option<&Pickable> {
+        self.ruleset.as_ref().map(|made| &made.pick)
+    }
+
+    /// The build's ruleset as the select names it, in the language shown, and whether it is missing.
+    pub fn ruleset_shown(&self, shell: &Shell) -> (String, bool) {
+        self.with_words(shell, |words| self.ruleset.as_ref().map(|made| made.shown(words.names))).unwrap_or_default()
+    }
+
+    /// Whether the build's ruleset allows definition `h` of the build's fact `fact` (a navi, a chip, a program, a
+    /// soul, a Cross, a Cybeast, an auto battle place's chip): where it holds nothing of that fact back, or there is
+    /// none, yes. What it doesn't allow is marked where it is offered, and refused where it would be added.
     pub fn allows(&self, fact: &str, h: u16) -> bool {
-        self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows(fact, h))
+        self.under().is_none_or(|p| p.ruleset.allows(fact, h))
     }
 
     /// Whether it allows item `item` of the build's fact `fact` (a card's variant too: docs/design/versions.md
     /// §2.1).
     pub fn allows_item(&self, fact: &str, item: &nettai_match::ruleset::Item) -> bool {
-        self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows_item(fact, item))
+        self.under().is_none_or(|p| p.ruleset.allows_item(fact, item))
+    }
+
+    /// The build's ruleset found again among those the player can pick (one may have gone: it is missing).
+    fn find_ruleset(&mut self) {
+        self.ruleset = rulesets::made_for(&rulesets::pickable(&self.kit), self.build.ruleset.as_ref());
     }
 
     /// The build's facts problem `problem` is about: the one it names; a mix of versions (which names none), each
@@ -513,8 +532,8 @@ impl Editor {
         let content = kit.content().clone();
         let navi_only = navi_only_fields(&content);
         let settled = build.settle(&content, &kit.builds, &navi_only);
-        let ruleset = rulesets::played_by(shell, &kit);
-        let checked = checked(&kit, &build.side, ruleset.as_ref());
+        let ruleset = rulesets::made_for(&rulesets::pickable(&kit), build.ruleset.as_ref());
+        let checked = checked(&kit, &build.side, ruleset.as_ref().map(|made| &made.pick));
         let tabs: Vec<Box<dyn Tab>> = all().into_iter().filter(|t| has(&content, t.as_ref())).collect();
         let draft = Draft { kit, build, checked, ruleset, path, navi_only, changed: settled };
         let mut editor = Editor { draft, tabs, at: 0, rules: None, rest: None };
@@ -562,8 +581,9 @@ impl Editor {
                 nettai_ui::Tab { text: word, enabled: self.enabled(i), flagged }
             })
             .collect();
-        let ruleset = self.draft.with_words(shell, |words| self.draft.ruleset.as_ref().map(|p| rulesets::shown_name(words.names, &p.ruleset.name)));
-        view.set_ruleset(ruleset.unwrap_or_default().into());
+        let (ruleset, missing) = self.draft.ruleset_shown(shell);
+        view.set_ruleset(ruleset.into());
+        view.set_ruleset_missing(missing);
         view.set_name(self.draft.build.name.as_str().into());
         view.set_tabs(ModelRc::new(VecModel::from(tabs)));
         view.set_tab(self.at as i32);
@@ -641,13 +661,20 @@ impl Editor {
         self.go(shell, to as usize, by.signum());
     }
 
-    /// The ruleset the player plays by made `picked` (remembered for the game): the build is checked under it, and
-    /// the frame and the tab shown show its marks.
-    fn play_by(&mut self, shell: &mut Shell, picked: Pickable) {
+    /// The build made for `picked` (remembered for the game, the ruleset a new build is made for): it is checked under
+    /// it and kept, and the frame and the tab shown show its marks.
+    fn make_for(&mut self, shell: &mut Shell, picked: Pickable) {
         let game = self.draft.kit.game.clone();
         rulesets::remember(shell, &game, &picked.ruleset.name);
-        self.draft.ruleset = Some(picked);
-        self.draft.check();
+        self.draft.build.ruleset = Some(picked.ruleset.name.clone());
+        self.draft.ruleset = Some(MadeFor { pick: picked, missing: None });
+        self.draft.recheck();
+        self.save(shell);
+        self.show_marks(shell);
+    }
+
+    /// The frame and the tab shown, after the build's ruleset changed or was found again.
+    fn show_marks(&mut self, shell: &mut Shell) {
         self.show_frame(shell);
         // (Under the ruleset's page the tab is shown again as the page closes: its focus is the page's meanwhile.)
         if self.rules.is_none() {
@@ -656,24 +683,25 @@ impl Editor {
         }
     }
 
-    /// The rulesets the player can pick, and which of them they play by.
+    /// The rulesets the player can pick, and which of them the build is checked under.
     fn ruleset_choices(&self) -> (Vec<Pickable>, usize) {
         let picks = rulesets::pickable(&self.draft.kit);
-        let at = self.draft.ruleset.as_ref().and_then(|now| picks.iter().position(|p| p.ruleset.name == now.ruleset.name)).unwrap_or(0);
+        let at = self.draft.under().and_then(|now| picks.iter().position(|p| p.ruleset.name == now.ruleset.name)).unwrap_or(0);
         (picks, at)
     }
 
-    /// What the ruleset's page did: the ruleset it shows is changed or another (a copy), and is the one the player
-    /// plays by; or it was deleted, and the game's first preset is.
+    /// What the ruleset's page did: the ruleset it shows is changed, renamed or another (a copy), and is the one the
+    /// build is made for; or it was deleted, and the build still names it, missing (checked under the game's first
+    /// preset).
     fn ruleset_outcome(&mut self, shell: &mut Shell, outcome: Outcome) {
         match outcome {
             Outcome::Nothing => {}
-            Outcome::Changed(picked) => self.play_by(shell, picked),
+            Outcome::Changed(picked) | Outcome::Renamed { to: picked, .. } => self.make_for(shell, picked),
             Outcome::Deleted => {
                 self.rules = None;
-                if let Some(first) = rulesets::pickable(&self.draft.kit).into_iter().next() {
-                    self.play_by(shell, first);
-                }
+                self.draft.find_ruleset();
+                self.draft.check();
+                self.show_marks(shell);
             }
         }
     }
@@ -687,14 +715,14 @@ impl Editor {
         match (id, by) {
             ("ruleset", Some(by)) => {
                 let next = picks[(at as i32 + by).rem_euclid(picks.len() as i32) as usize].clone();
-                self.play_by(shell, next);
+                self.make_for(shell, next);
             }
             ("ruleset", None) => {
                 let names = self.draft.with_words(shell, |words| picks.iter().map(|p| rulesets::shown_name(words.names, &p.ruleset.name)).collect());
                 shell.pick(id, index, names, at);
             }
             _ => {
-                let Some(shown) = self.draft.ruleset.clone() else { return };
+                let Some(shown) = self.draft.under().cloned() else { return };
                 let back = shell.ui().global::<nettai_ui::RulesetView>().get_editor_word().to_string();
                 shell.sound.play(crate::sound::Cue::Pick);
                 self.rules = RulesPage::open(shell, self.draft.kit.clone(), shown, false, &back);
@@ -765,7 +793,7 @@ impl Editor {
         if id == "ruleset" {
             let (picks, _) = self.ruleset_choices();
             if let Some(picked) = picks.into_iter().nth(choice.max(0) as usize) {
-                self.play_by(shell, picked);
+                self.make_for(shell, picked);
             }
             return;
         }

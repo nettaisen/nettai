@@ -394,7 +394,7 @@ impl Navicust {
                         Some(h) if h.piece == piece => ProgramState::Held,
                         _ if out => ProgramState::Out,
                         _ if !copies.is_empty() => ProgramState::Placed,
-                        // (One the ruleset the player plays by doesn't allow says so in the error red where it isn't
+                        // (One the build's ruleset doesn't allow says so in the error red where it isn't
                         // placed, the row dimmed: it can't be taken. A build that has it placed all the same says
                         // where, its name in the error red.)
                         _ if !allowed => ProgramState::NotAllowed,
@@ -481,7 +481,7 @@ impl Navicust {
     /// compresses every copy of a program in one color alike).
     fn take(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize) {
         let Some((piece, color)) = self.row(draft, row) else { return };
-        // (One the ruleset the player plays by holds back isn't taken: the strip says so, docs/design/app-ui.md §2.68.)
+        // (One the build's ruleset holds back isn't taken: the strip says so, docs/design/app-ui.md §2.68.)
         if !draft.allows(grid::PIECES_FIELD, piece) {
             self.notice = Some(shell.ui().global::<BuildWords>().invoke_not_allowed_here().to_string());
             shell.sound.play(Cue::Refused);

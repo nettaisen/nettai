@@ -6,6 +6,7 @@
 //! ```toml
 //! game = "exe6"
 //! name = "Tengu rush"
+//! ruleset = "preset:masters"
 //!
 //! [side]
 //! navi = "tenguman"
@@ -19,6 +20,13 @@
 //!
 //! **The name is the player's own.** It is the file's alone: `[side]` is what a match, a lobby and a replay are
 //! given, and it holds no name.
+//!
+//! **The ruleset it is made for** (the user: "the build in the menu should indicate the ruleset it's for"): a
+//! preset's id or the player's own ruleset's name, by kind (`preset:<id>`, `own:<name>`: `crate::rulesets::name_text`),
+//! what it is checked under outside a lobby (`crate::rulesets::made_for`). It is the file's alone too, as the name
+//! is. A file that names none (written before builds named theirs) is made for the game's first preset; one that
+//! names a ruleset no longer there says it is missing, and is checked under that preset. The player's own renamed
+//! is renamed in the builds made for it ([`rename_ruleset`]).
 //!
 //! **What is kept aside.** Some of a build's facts are its game's own navi's alone, the one that changes form
 //! (MegaMan's NaviCust, his patch cards, his auto battle data: the editor's tabs say which facts are theirs,
@@ -35,6 +43,7 @@ use nettai_battle::Content;
 use nettai_match::build::Builds;
 use nettai_match::facts::{Stated, fact_of};
 use nettai_match::file::SideFile;
+use nettai_match::ruleset::Name;
 use nettai_match::{Facts, Side};
 use nettai_content_api::NaviHandle;
 use serde::{Deserialize, Serialize};
@@ -49,15 +58,21 @@ struct BuildFile {
     game: String,
     name: String,
     #[serde(default)]
+    ruleset: Option<String>,
+    #[serde(default)]
     side: SideFile,
     #[serde(default)]
     aside: SideFile,
 }
 
-/// A build: its name, the side a match is handed, and the facts kept aside while its navi takes none of them.
+/// A build: its name, the ruleset it is made for, the side a match is handed, and the facts kept aside while its
+/// navi takes none of them.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Build {
     pub name: String,
+    /// The ruleset it is made for, by name (`crate::rulesets::made_for`). None: the game's first preset (a file
+    /// that names none).
+    pub ruleset: Option<Name>,
     pub side: Side,
     /// The facts kept aside, stated; every other one the rules' default.
     aside: Facts,
@@ -81,9 +96,14 @@ fn values(value: &Stated) -> Vec<nettai_battle::rules::Fact<'_>> {
 }
 
 impl Build {
-    /// A build named `name` of `side`, nothing kept aside.
+    /// A build named `name` of `side`, made for the game's first preset, nothing kept aside.
     pub fn new(content: &Content, name: &str, side: Side) -> Build {
-        Build { name: name.to_string(), side, aside: Facts::defaults(content) }
+        Build { name: name.to_string(), ruleset: None, side, aside: Facts::defaults(content) }
+    }
+
+    /// The build made for ruleset `ruleset` (none: the game's first preset).
+    pub fn made_for(self, ruleset: Option<Name>) -> Build {
+        Build { ruleset, ..self }
     }
 
     /// The build under another name.
@@ -164,7 +184,12 @@ pub fn folder(game: &str) -> PathBuf {
 /// Game `game`'s builds, by name: each file of its folder that is a build of it (a file that isn't one is
 /// left out).
 pub fn list(game: &str) -> Vec<Listed> {
-    let Ok(dir) = std::fs::read_dir(folder(game)) else { return Vec::new() };
+    list_in(&folder(game), game)
+}
+
+/// [`list`] of folder `dir`.
+fn list_in(dir: &Path, game: &str) -> Vec<Listed> {
+    let Ok(dir) = std::fs::read_dir(dir) else { return Vec::new() };
     let mut out: Vec<Listed> = dir
         .flatten()
         .map(|e| e.path())
@@ -200,8 +225,12 @@ pub fn read(content: &Content, game: &str, text: &str) -> Result<Build, String> 
     let mut problems = Vec::new();
     let side = nettai_match::file::resolve_side(content, game, &f.side, "the build", &mut problems);
     let aside = nettai_match::file::resolve_facts(content, game, &f.aside, "what the build keeps aside", &mut problems);
+    let ruleset = match f.ruleset {
+        Some(text) => Some(crate::rulesets::name_of_text(&text).ok_or_else(|| format!("ruleset {text:?}: \"preset:<id>\" or \"own:<name>\""))?),
+        None => None,
+    };
     match (side, aside) {
-        (Some(side), Some(aside)) => Ok(Build { name: f.name, side, aside }),
+        (Some(side), Some(aside)) => Ok(Build { name: f.name, ruleset, side, aside }),
         _ => Err(problems.join("; ")),
     }
 }
@@ -212,8 +241,11 @@ pub fn text(content: &Content, game: &str, build: &Build) -> String {
     struct Header<'a> {
         game: &'a str,
         name: &'a str,
+        #[serde(skip_serializing_if = "Option::is_none")]
+        ruleset: Option<String>,
     }
-    let head = toml::to_string(&Header { game, name: &build.name }).expect("a header serializes");
+    let ruleset = build.ruleset.as_ref().map(crate::rulesets::name_text);
+    let head = toml::to_string(&Header { game, name: &build.name, ruleset }).expect("a header serializes");
     let mut text = format!("# A nettai build (docs/app.md §8).\n\n{head}\n{}", nettai_match::file::side_toml(content, "side", &build.side));
     if build.aside != Facts::defaults(content) {
         text.push_str("\n# Kept while the build's navi takes none of it.\n");
@@ -228,6 +260,29 @@ pub fn write(path: &Path, content: &Content, game: &str, build: &Build) -> Resul
         std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
     }
     std::fs::write(path, text(content, game, build)).map_err(|e| format!("{}: {e}", path.display()))
+}
+
+/// Ruleset `from` renamed `to` in each of game `game`'s builds made for it: its file read on `content` and written
+/// again. Each file that names it and couldn't be, with why (it doesn't read as a build on this content, or
+/// can't be written).
+pub fn rename_ruleset(content: &Content, game: &str, from: &Name, to: &Name) -> Vec<(PathBuf, String)> {
+    rename_ruleset_in(&folder(game), content, game, from, to)
+}
+
+/// [`rename_ruleset`] in folder `dir`.
+fn rename_ruleset_in(dir: &Path, content: &Content, game: &str, from: &Name, to: &Name) -> Vec<(PathBuf, String)> {
+    let mut failed = Vec::new();
+    for listed in list_in(dir, game) {
+        let named = toml::from_str::<BuildFile>(&listed.text).ok().and_then(|f| f.ruleset).and_then(|r| crate::rulesets::name_of_text(&r));
+        if named.as_ref() != Some(from) {
+            continue;
+        }
+        let renamed = read(content, game, &listed.text).and_then(|b| write(&listed.path, content, game, &b.made_for(Some(to.clone()))));
+        if let Err(why) = renamed {
+            failed.push((listed.path, why));
+        }
+    }
+    failed
 }
 
 /// A path for a new build of `game` named `name` that no file has: the name's letters and digits
@@ -427,6 +482,46 @@ mod tests {
         assert_eq!(builds.chosen_forms(&content, &side, "crosses"), [&gregar[4..], &falzar[..4]].concat());
         let cybeast = builds.chosen_forms(&content, &side, "cybeast");
         assert_eq!(builds.choose_forms(&content, &mut side, "cybeast", &cybeast, false), (false, 0), "one form is no list");
+    }
+
+    /// A build names the ruleset it is made for in its file, by kind, and reads back made for it; a file that names
+    /// none (written before builds named theirs) reads as made for the game's first preset (none named), and one
+    /// that names it in no known way isn't a build.
+    #[test]
+    fn a_build_names_its_ruleset() {
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let plain = Build::new(&content, "Heat", builds.new_build(&content, "falzar").unwrap());
+        let text_of = |b: &Build| text(&content, "exe6", b);
+        assert!(!text_of(&plain).contains("ruleset"), "{}", text_of(&plain));
+        assert_eq!(read(&content, "exe6", &text_of(&plain)).unwrap().ruleset, None);
+        for name in [Name::Preset("senior".into()), Name::Own("Gregar \"cup\"".into())] {
+            let build = plain.clone().made_for(Some(name.clone()));
+            let text = text_of(&build);
+            assert!(text.contains("\nruleset = ") && text.contains(&crate::rulesets::name_text(&name)), "{text}");
+            assert_eq!(read(&content, "exe6", &text), Ok(build.clone()));
+            assert_eq!(read(&content, "exe6", &text).unwrap().named("Copy").ruleset, Some(name), "a duplicate keeps it");
+        }
+        let senior = text_of(&plain.clone().made_for(Some(Name::Preset("senior".into()))));
+        assert!(read(&content, "exe6", &senior.replacen("preset:senior", "senior", 1)).unwrap_err().contains("ruleset"));
+    }
+
+    /// The player's own ruleset renamed is renamed in the files of the builds made for it, and in no other.
+    #[test]
+    fn a_renamed_ruleset_is_followed() {
+        let dir = tempfile::tempdir().unwrap();
+        let content = exe6_content();
+        let builds = Builds::of(&content, "exe6").unwrap();
+        let side = builds.new_build(&content, "gregar").unwrap();
+        let (cup, renamed, other) = (Name::Own("Cup".into()), Name::Own("Spring cup".into()), Name::Own("Other".into()));
+        let made = [("For the cup", Some(cup.clone())), ("For another", Some(other.clone())), ("For the first", None)];
+        for (at, (name, ruleset)) in made.iter().enumerate() {
+            let build = Build::new(&content, name, side.clone()).made_for(ruleset.clone());
+            write(&dir.path().join(format!("{at}.toml")), &content, "exe6", &build).unwrap();
+        }
+        assert!(rename_ruleset_in(dir.path(), &content, "exe6", &cup, &renamed).is_empty());
+        let now: Vec<(String, Option<Name>)> = list_in(dir.path(), "exe6").iter().map(|l| (l.name.clone(), read(&content, "exe6", &l.text).unwrap().ruleset)).collect();
+        assert_eq!(now, [("For another".into(), Some(other)), ("For the cup".into(), Some(renamed)), ("For the first".into(), None)]);
     }
 
     #[test]
