@@ -1,17 +1,20 @@
-// The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): the game's navis as a grid of cards, and
-// beside it the build's navi: the face its round starts with, its HP and its element; under them the build's other
-// choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
-// (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
-// offered, each a row of the editor's lists, checked where it is the build's, under its version's head); then the
-// note of what is the game's own navi's alone, right after whatever is over it. What is wrong with the build is said
-// where it is (docs/design/app-ui.md §2.66): a fact of forms' (a form of it, or the whole) on its heading's line, the
-// navi's on its name's line; a form a problem is about has its name red. On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
+// The Navi tab of a build's editor (docs/design/app-ui.md §6, "Navi"): a strip across the top, as every tab has, that
+// describes the form under the cursor or the pointer, else the build's navi; under it the
+// game's navis as a grid of cards, and beside them the build's navi: the face its round starts with, its HP and its
+// element; under them the build's other choices, each a segmented control of its presets (LIGHT | DARK); then the
+// selector of the forms the build has (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and
+// EXE5's souls; both versions' offered, each a row of the editor's lists, checked where it is the build's, under its
+// version's head); then the note of what is the game's own navi's alone, right after whatever is over it. What is wrong
+// with the build is said where it is (docs/design/app-ui.md §2.66): at the strip's top right, of what it describes; a
+// fact's heading and a form a problem is about in the error red. On a phone there is no strip, the panel is over the
+// grid, and what the game's rules have against a fact is on its heading's line, against the navi on its name's line.
+// Its Rust half is src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Note, Select, Button, ProblemNote } from "../../widgets.slint";
-import { VersionTag } from "../../build.slint";
+import { Cut, PanelBack, Note, Select, Button, ProblemNote, Refusal } from "../../widgets.slint";
+import { VersionTag, VersionMark } from "../../build.slint";
 
 // One of the game's navis: its name, its face, whether it is the build's, and whether the ruleset the player plays
 // by doesn't allow it (docs/design/app-ui.md §2.59).
@@ -50,7 +53,7 @@ export struct NaviForm {
 
 // A fact of forms the build chooses: its name in capitals ("CROSSES"), how many it has of its room ("3/5"; none for
 // the one form always chosen, EXE6's Beast form), whether it has problems (its heading in the error red) and what the
-// game's rules have against it (a form of it, or the whole: `problem`, said on its heading's line), its forms in the battle's order,
+// game's rules have against it (a form of it, or the whole: `problem`, said on a phone's heading's line), its forms in the battle's order,
 // both versions' (grouped by version), and its first's place among the selector's (the focus order's).
 export struct NaviFormGroup {
     name: string,
@@ -64,6 +67,22 @@ export struct NaviFormGroup {
     heads: int,
     forms: [NaviForm],
     at: int,
+}
+
+// What the strip describes: a form (its face, its name and its version's mark, its description where it has one, a
+// Cross's; its element, and the fact it is of: `kind`), or the build's navi (the face its round starts with, its name,
+// its element, the HP its round starts with), and what the build's problems have against it (`fault`:
+// docs/design/app-ui.md §2.66).
+export struct NaviDetail {
+    there: bool,
+    face: image,
+    name: string,
+    version: VersionTag,
+    description: string,
+    element: image,
+    hp: string,
+    kind: string,
+    fault: string,
 }
 
 // What the tab shows: src/screens/builds/navi.rs sets these.
@@ -83,15 +102,14 @@ export global NaviView {
     in property <image> element;
     // The selector: each fact of forms the build chooses (none of a list for a navi that doesn't change form).
     in property <[NaviFormGroup]> form-groups;
-    // The ruleset the player plays by, by its name: on a phone its select is at the top of the tab (a desktop's
-    // is at the tab bar's right end).
+    // The ruleset the player plays by, by its name: on a phone its select is between the panel and the grid (a
+    // desktop's is at the tab bar's right end).
     in property <string> ruleset;
-    // What the ruleset has against the build (the first and "+n more"): on a phone, under its select (a desktop's is
-    // beside it, in the tab bar: docs/design/app-ui.md §2.66).
-    in property <string> ruleset-problems;
-    // What the game's rules have against the navi, or against the build where it is about no part a tab shows: on the
-    // navi's name's line.
+    // What the game's rules have against the navi, or against the build where it is about no part a tab shows: on a
+    // phone's navi's name's line (a desktop's strip says it).
     in property <string> problems;
+    // The strip.
+    in property <NaviDetail> detail;
     // The game's choices the build's navi has (none in a game without, or for a navi without).
     in property <[NaviChoice]> choices;
     // The game's own navi's name: the one a NaviCust and patch cards are of.
@@ -226,6 +244,7 @@ component FormRow inherits Rectangle {
     hit := Focusable {
         nav: "form";
         nav-index: root.nav-index;
+        describes: true;
     }
 }
 
@@ -294,22 +313,28 @@ component ChoiceSeg inherits Rectangle {
 export component NaviTab inherits Rectangle {
     property <int> columns: Theme.phone ? 3 : 4;
     property <length> gap: Theme.phone ? 8px : 12px;
-    // The build's navi's panel: beside the grid, or on a phone over it, as tall as what it shows.
+    // (On a desktop the tab starts 4 nearer the tab bar, as every tab with a strip does: the strip across the top of
+    // the grid's side, 104 tall as theirs, the grid under it, and the panel beside both. A phone has no strip.)
+    property <length> top: Theme.phone ? 0px : -4px;
+    property <length> strip-height: Theme.phone ? 0px : 104px;
+    // The build's navi's panel: beside the strip and the grid, or on a phone over the grid, as tall as what it shows.
     property <length> panel-width: Theme.phone ? self.width : 360px;
-    property <length> panel-height: Theme.phone ? root.body-y + body.preferred-height + root.pad : self.height;
+    property <length> panel-height: Theme.phone ? root.body-y + body.preferred-height + root.pad : self.height - root.top;
     property <length> panel-x: Theme.phone ? 0px : self.width - 360px;
-    // (On a phone the ruleset's select is between the panel and the grid, with a line under it for what the ruleset
-    // has against the build.)
-    property <length> grid-y: Theme.phone ? root.panel-height + 12px + 52px + 24px : 0px;
+    // (On a phone the ruleset's select is between the panel and the grid.)
+    property <length> grid-y: Theme.phone ? root.panel-height + 12px + 52px : root.top + root.strip-height + 12px;
     property <length> grid-width: Theme.phone ? self.width : self.width - 360px - 24px;
     property <length> card-width: (root.grid-width - (root.columns - 1) * root.gap) / root.columns;
-    property <length> card-height: Theme.phone ? 84px : 140px;
+    // (A desktop's cards are 140 tall where the grid's rows leave them that, else as tall as its rows fit under the
+    // strip: EXE5's thirteen navis are four rows.)
+    property <int> card-rows: max(1, ceil(NaviView.navis.length / root.columns));
+    property <length> card-height: Theme.phone ? 84px : min(140px, (self.height - root.grid-y - (root.card-rows - 1) * root.gap) / root.card-rows);
     // The panel's padding: 16 around what it shows, as the editor's strips and the NaviCust's effects have.
     property <length> pad: 16px;
     // Where the panel's facts are: beside the face; and under them, `pad` below, what else the panel shows.
     property <length> facts-x: root.panel-x + (Theme.phone ? 96px : 128px);
-    property <length> facts-y: Theme.phone ? 16px : 12px;
-    property <length> body-y: Theme.phone ? 76px : 96px;
+    property <length> facts-y: root.top + (Theme.phone ? 16px : 12px);
+    property <length> body-y: root.top + (Theme.phone ? 76px : 96px);
     // Between the choices, the facts of forms and the note: room enough that each reads as its own.
     property <length> fact-gap: 20px;
     // The selector: each fact's name and count (and what is wrong with it) over its forms' rows, the editor's lists'
@@ -321,6 +346,120 @@ export component NaviTab inherits Rectangle {
     property <length> form-head: root.head-lead + 16px + root.head-gap;
     property <length> form-pitch: Theme.list-row + Theme.list-gap;
     property <string> note: @tr("NaviCust and patch cards are {} only.", NaviView.own);
+    // ---- The strip: the form under the cursor (or the pointer), else the build's navi, as every tab's strip describes its item:
+    // its face, its name and its version's mark, its description, its element and HP or its fact; at its top right
+    // what the build's problems have against it (docs/design/app-ui.md §2.66).
+    PanelBack {
+        x: 0;
+        y: root.top;
+        width: root.grid-width;
+        height: root.strip-height;
+        visible: !Theme.phone;
+    }
+
+    Image {
+        x: 12px;
+        y: root.top + (root.strip-height - self.height) / 2;
+        width: 96px;
+        height: 48px;
+        visible: !Theme.phone;
+        source: NaviView.detail.face;
+        image-rendering: pixelated;
+    }
+
+    HorizontalLayout {
+        x: 120px;
+        y: root.top + 19px;
+        width: max(0px, root.grid-width / 2 - 120px - 8px);
+        height: 20px;
+        visible: !Theme.phone;
+        spacing: 8px;
+        alignment: start;
+        Text {
+            text: NaviView.detail.name;
+            color: Theme.text;
+            font-family: Theme.body;
+            font-size: 16px;
+            font-weight: 700;
+            vertical-alignment: center;
+            overflow: elide;
+        }
+
+        VerticalLayout {
+            alignment: center;
+            VersionMark {
+                tag: NaviView.detail.version;
+            }
+        }
+    }
+
+    // (What the build's problems have against what it describes: the place every tab's strip has a refusal; the Navi
+    // tab refuses nothing in words.)
+    Refusal {
+        x: root.grid-width / 2;
+        y: root.top + 19px;
+        width: root.grid-width / 2 - 16px;
+        visible: !Theme.phone;
+        problem: NaviView.detail.fault;
+    }
+
+    Text {
+        x: 120px;
+        y: root.top + 43px;
+        width: max(0px, root.grid-width - 136px);
+        height: 18px;
+        visible: !Theme.phone;
+        text: NaviView.detail.description;
+        color: Theme.muted;
+        font-family: Theme.body;
+        font-size: 13px;
+        vertical-alignment: center;
+        overflow: elide;
+    }
+
+    HorizontalLayout {
+        x: 120px;
+        y: root.top + 69px;
+        width: max(0px, root.grid-width - 136px);
+        height: 16px;
+        visible: !Theme.phone;
+        spacing: 16px;
+        alignment: start;
+        Image {
+            width: NaviView.detail.there ? 16px : 0px;
+            height: 16px;
+            source: NaviView.detail.element;
+            image-rendering: pixelated;
+        }
+
+        if NaviView.detail.hp != "": HorizontalLayout {
+            spacing: 6px;
+            Text {
+                text: @tr("HP");
+                color: Theme.muted;
+                font-family: Theme.body;
+                font-size: 12px;
+                vertical-alignment: center;
+            }
+
+            Text {
+                text: NaviView.detail.hp;
+                color: Theme.text;
+                font-family: Theme.mono;
+                font-size: 12px;
+                font-weight: 700;
+                vertical-alignment: center;
+            }
+        }
+        if NaviView.detail.kind != "": Text {
+            text: NaviView.detail.kind;
+            color: Theme.muted;
+            font-family: Theme.body;
+            font-size: 12px;
+            vertical-alignment: center;
+        }
+    }
+
     for navi[i] in NaviView.navis: NaviCardView {
         x: mod(i, root.columns) * (root.card-width + root.gap);
         y: root.grid-y + floor(i / root.columns) * (root.card-height + root.gap);
@@ -334,26 +473,26 @@ export component NaviTab inherits Rectangle {
 
     PanelBack {
         x: root.panel-x;
-        y: 0;
+        y: root.top;
         width: root.panel-width;
         height: root.panel-height;
     }
 
     Image {
         x: root.panel-x + root.pad;
-        y: root.pad;
+        y: root.top + root.pad;
         width: Theme.phone ? 64px : 96px;
         height: self.width / 2;
         source: NaviView.face;
         image-rendering: pixelated;
     }
 
-    // (The navi's name, and on its line what the game's rules have against the navi: the name keeps half the line.)
+    // (The navi's name, and on a phone's line what the game's rules have against the navi: the name keeps half the line.)
     property <length> name-room: root.panel-x + root.panel-width - root.pad - root.facts-x;
     Text {
         x: root.facts-x;
         y: root.facts-y;
-        width: NaviView.problems == "" ? root.name-room : min(self.preferred-width, root.name-room / 2);
+        width: !Theme.phone || NaviView.problems == "" ? root.name-room : min(self.preferred-width, root.name-room / 2);
         height: 20px;
         text: NaviView.name;
         color: Theme.text;
@@ -368,6 +507,7 @@ export component NaviTab inherits Rectangle {
         x: root.facts-x + root.name-room / 2 + 8px;
         y: root.facts-y + 2px;
         width: root.name-room / 2 - 8px;
+        visible: Theme.phone;
         text: NaviView.problems;
     }
 
@@ -452,11 +592,12 @@ export component NaviTab inherits Rectangle {
                 vertical-alignment: center;
             }
 
-            // (What the game's rules have against the fact, a form of it or the whole, on its heading's line.)
+            // (A phone's: what the game's rules have against the fact, a form of it or the whole, on its heading's line.)
             ProblemNote {
                 x: heading.width + 16px;
                 y: 0;
                 width: max(0px, parent.width - self.x);
+                visible: Theme.phone;
                 text: group.problem;
             }
 
@@ -487,11 +628,11 @@ export component NaviTab inherits Rectangle {
             }
         }
 
-        // (The note, as tall as its words: what is wrong with the forms is said on their rows' and headings' lines,
-        // so nothing here moves when a problem appears.)
+        // (The note, as tall as its words: what is wrong with the forms is said in the strip, and on a phone on their
+        // headings' lines, so nothing here moves when a problem appears.)
         Note {
             text: root.note;
-            vertical-alignment: top;
+            vertical-alignment: TextVerticalAlignment.top;
         }
     }
 
@@ -505,15 +646,6 @@ export component NaviTab inherits Rectangle {
         focusable: Theme.phone;
         nav: "ruleset";
         value: NaviView.ruleset;
-    }
-
-    ProblemNote {
-        x: 0;
-        y: root.panel-height + 12px + 40px + 6px;
-        width: root.width;
-        visible: Theme.phone;
-        horizontal-alignment: left;
-        text: NaviView.ruleset-problems;
     }
 
     phone-edit := Button {

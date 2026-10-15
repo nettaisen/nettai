@@ -47,9 +47,9 @@ export global AutoBattleView {
     in property <[PlaceLine]> lines;
     in property <int> rows;
     in property <int> place;
-    // What the game's rules have against the data (a place's chip, or the whole), the first and "+n more": said in its
-    // header (a phone's line over the places; docs/design/app-ui.md §2.66). A place a problem is about has its name
-    // red.
+    // What the game's rules have against the data (a place's chip, or the whole), the first and "+n more": said on a
+    // phone's line over the places (docs/design/app-ui.md §2.66; a desktop's strip says them of the place it describes).
+    // A place a problem is about has its name red.
     in property <string> problems;
     out property <int> marked: (self.in-library || Nav.id == "places.place") ? self.place : -1;
     // Where the place a chip just went into is (its column and row), counted: it flashes.
@@ -414,11 +414,12 @@ export component AutoBattleTab inherits Rectangle {
         color: AutoBattleView.in-library ? Theme.muted : Theme.cursor;
     }
 
-    // (What is wrong with the data: on the title's line; a phone's, a line of its own over the places.)
+    // (What is wrong with the data: a phone's line of its own over the places.)
     ProblemNote {
-        x: Theme.phone ? 0px : places-title.x + places-title.preferred-width + 16px;
-        y: Theme.phone ? 0px : root.pane-y + (44px - self.height) / 2;
-        width: Theme.phone ? root.pane-width : root.pane-width - 12px - self.x;
+        x: 0px;
+        y: 0px;
+        width: root.pane-width;
+        visible: Theme.phone;
         text: AutoBattleView.problems;
     }
 

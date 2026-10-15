@@ -100,8 +100,8 @@ export global PatchCardsView {
     out property <int> marked: (self.in-library || Nav.id == "card") ? self.slot : -1;
     in property <CardCounts> counts;
     // What the game's rules have against the cards (one of them, or all: "90 MB, the most is 80"), the first and "+n
-    // more": said in the header, before the counts (docs/design/app-ui.md §2.66). A card a problem is about has its name
-    // red.
+    // more": said in a phone's header, after the counts (docs/design/app-ui.md §2.66; a desktop's strip says them of the
+    // card it describes). A card a problem is about has its name red.
     in property <string> problems;
     // What the cards add up to: the numbers they change, what they give, their bugs.
     in property <string> together-numbers;
@@ -620,11 +620,12 @@ export component PatchCardsTab inherits Rectangle {
         color: PatchCardsView.in-library ? Theme.muted : Theme.cursor;
     }
 
-    // (What is wrong with the cards: on the title's line, up to the counts; a phone's, after them.)
+    // (What is wrong with the cards: on a phone's header, after the counts.)
     ProblemNote {
-        x: Theme.phone ? counts.x + counts.width + 16px : cards-title.x + min(cards-title.width, cards-title.preferred-width) + 16px;
+        x: counts.x + counts.width + 16px;
         y: counts.y;
-        width: max(0px, Theme.phone ? parent.width - 12px - self.x : counts.x - 16px - self.x);
+        width: max(0px, parent.width - 12px - self.x);
+        visible: Theme.phone;
         text: PatchCardsView.problems;
     }
 

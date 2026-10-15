@@ -42,6 +42,7 @@ use crate::shell::Shell;
 use crate::sound::Cue;
 use nettai_battle::Content;
 use nettai_content_api::{EntryHandle, FieldType, Registry};
+use nettai_match::Wrong;
 use nettai_match::build::{Budget, Checked, EntryRefusal};
 use nettai_match::facts::Stated;
 use nettai_ui::{BuildWords, CardCounts, CardDetail, CardLine, CardRow, EditorTab, NavicustView, PatchCardsView};
@@ -260,16 +261,27 @@ impl PatchCards {
         })
     }
 
-    /// The game's rules' problems with the build's card at `i` of `installed` (none: an empty slot): by its place in the
-    /// list's records, from 1, as they count. (What the ruleset has against it, `row_of` marks.)
-    fn problems<'d>(draft: &'d Draft, installed: &[Option<Card>], i: usize) -> impl Iterator<Item = &'d nettai_match::check::Problem> + 'd {
-        let place = installed.get(i).is_some_and(Option::is_some).then(|| installed[..i].iter().flatten().count() + 1);
-        draft.checked.problems.iter().filter(move |p| place.is_some() && !p.what.of_ruleset() && p.field.as_deref() == Some(FIELD) && p.entry == place)
+    /// The build's problems with its card at `i` of `installed` (none: an empty slot), the ruleset's among them (a card
+    /// or a variant it holds back, another version's variant under one version per build): its own, by its place in the
+    /// list's records, from 0; and the cards' MB past the list's, which every card counts in.
+    fn problems<'d>(draft: &'d Draft, installed: &[Option<Card>], i: usize) -> Vec<&'d nettai_match::check::Problem> {
+        let Some(Some(card)) = installed.get(i) else { return Vec::new() };
+        let place = installed[..i].iter().flatten().count();
+        let own = draft.checked.problems.iter().filter(|p| p.field.as_deref() == Some(FIELD) && (p.entry == Some(place) || matches!(p.what, Wrong::Budget(_))));
+        own.chain(draft.mixing(Registry::Entry, &item(card))).collect()
     }
 
-    /// The build's cards (or slots), each marked where the rules have something against it, their counts and in the
-    /// header what the game's rules have against them (one, or all), and what they add up to (docs/design/app-ui.md
-    /// §2.66).
+    /// The cards' problems about no card of the build's (a fact of them a build made by hand states wrong): every card's
+    /// strip says them after its own (docs/design/app-ui.md §2.66).
+    fn unplaced<'d>(draft: &'d Draft, installed: &[Option<Card>]) -> Vec<&'d nettai_match::check::Problem> {
+        let cards = installed.iter().flatten().count();
+        let placed = |p: &nettai_match::check::Problem| matches!(p.what, Wrong::Budget(_) | Wrong::Mixed { .. }) || p.entry.is_some_and(|e| e < cards);
+        draft.pane_problems(&[FIELD.to_string()], false).into_iter().filter(|p| !placed(p)).collect()
+    }
+
+    /// The build's cards (or slots), each marked where the build's problems are about it, their counts (the MB past the
+    /// list's in the error red) and in a phone's header what the game's rules have against them (one, or all), and what
+    /// they add up to (docs/design/app-ui.md §2.66).
     fn show_installed(&self, shell: &Shell, draft: &mut Draft, budget: Option<&Budget>) {
         let installed = PatchCards::installed(draft);
         let slotted = PatchCards::slotted(draft);
@@ -278,7 +290,7 @@ impl PatchCards {
             .enumerate()
             .map(|(i, c)| {
                 let mut row = self.row_of(shell, draft, c.as_ref(), slotted.then_some(i), budget);
-                row.bad |= PatchCards::problems(draft, &installed, i).next().is_some();
+                row.bad |= !PatchCards::problems(draft, &installed, i).is_empty();
                 row
             })
             .collect();
@@ -399,13 +411,14 @@ impl PatchCards {
             Some(Described::Row(r)) => (self.rows.get(r).cloned(), None),
             None => (None, None),
         };
-        // (What the game's rules have against the build's card described, as the pane's header says it too: said where
-        // nothing was refused, docs/design/app-ui.md §2.66.)
-        let fault = at.map(|i| draft.line(shell, PatchCards::problems(draft, &installed, i))).unwrap_or_default();
-        let fault = Draft::unsaid(fault, &draft.pane_line(shell, &[FIELD.to_string()], false));
+        // (What the build's problems have against its card described, the ruleset's among them, then what is against the
+        // cards and about none of them: said where nothing was refused, docs/design/app-ui.md §2.66.)
+        let fault = at
+            .filter(|&i| installed.get(i).is_some_and(Option::is_some))
+            .map(|i| draft.line(shell, PatchCards::problems(draft, &installed, i).into_iter().chain(PatchCards::unplaced(draft, &installed))))
+            .unwrap_or_default();
         let detail = draft.with_words(shell, |words| {
-            // Why a library's card can't go in, the strip's refusal. (What the rules have against a card of the
-            // build's is the pane's header's to say, and its name in the error red: docs/design/app-ui.md §2.66.)
+            // Why a library's card can't go in, the strip's refusal, said before what is against it.
             let problem = match (&card, at) {
                 (Some((h, _)), None) if slots.is_none() => budget.and_then(|b| b.refusal(content, draft.side(), *h)).filter(|r| matches!(r, EntryRefusal::Needs { .. })).map(|r| words.entry_refusal(r)),
                 _ => None,

@@ -1208,13 +1208,17 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   holding one of its things); the chosen forms it is about have their names in the error red (one the ruleset the
   player plays by doesn't allow, one of a mix of versions, the entry a problem names), and a form the ruleset holds
   back has "Not allowed" at its row's end (`NaviForm.banned`). The sentences are said where they are (design §2.66),
-  as every tab's are: what the game's rules have against a fact (a form of it, or the whole) on its heading's line
+  as every tab's are: in the tab's strip (`NaviView.detail`, `NaviDetail`), across the top of the grid's side, 104
+  tall as every tab's, which describes the form under the cursor or the pointer (its face, its name and version's
+  mark, a Cross's description, its element, its fact's name), else the build's navi (the face its round starts with,
+  its name, element and HP); at its top right, what the build's problems have against it, the ruleset's among them (a
+  form's own, then its fact's about no form of it; the navi's, and the build's of no part a tab shows). A phone has no
+  strip: what the game's rules have against a fact (a form of it, or the whole) is on its heading's line
   (`NaviFormGroup.problem`), against the navi on its name's line (`NaviView.problems`), each in a place that is there
-  when empty, so nothing moves when a problem appears; what the ruleset has against them is the ruleset's select's to
-  say. The same facts flag the tab bar's words
+  when empty, so nothing moves when a problem appears. The same facts flag the tab bar's words
   (`Editor::tabs_of`), so a mix of versions marks the tabs that hold its things (a Beast form's the Navi tab, a Giga
-  chip's the Folder tab, where its entry's name is red; a card's variant's the Patch cards tab), and the ruleset's
-  select says it on each. Enter, a click or a tap is `activate("form", i)`:
+  chip's the Folder tab, where its entry's name is red; a card's variant's the Patch cards tab), and the strip of each
+  of its things says it. Enter, a click or a tap is `activate("form", i)`:
   `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a list takes it out, or puts it in where the list
   has room (the Cross window's five, the soul button's twelve: the setup's `form[5]` and `form[12]`), in the
   battle's order; a full list refuses one more.
@@ -1265,10 +1269,10 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
 - **The build editor's ruleset**: at the tab bar's right end, RULESET, its select (`ruleset`: the presets, then
   the player's own) and EDIT (`ruleset-edit`); on a phone a row at the top of the Navi tab, between the navi's
   panel and the grid. The build is checked under it (`Draft::checked` is `Checked::under`), so what it doesn't
-  allow is among the build's problems, and what it has against the build (`Draft::ruleset_problems`: the problems
-  `Wrong::of_ruleset` says are its, an item it doesn't allow and a mix of versions) is said beside the select, the
-  first and " · +n more" (`BuildsView.ruleset-problems`; a phone's under the select, `NaviView.ruleset-problems`,
-  design §2.66). Each tab marks what it is about (`Draft::allows`): a navi's card ("Not allowed" in
+  allow is among the build's problems: what it has against the build (the problems `Wrong::of_ruleset` says are its,
+  an item it doesn't allow and a mix of versions) is said in the strip of each item it is about, with the game's
+  rules' (`Draft::line`), and by nothing by the select (design §2.66; a phone's pane headers say the game's rules'
+  alone). Each tab marks what it is about (`Draft::allows`): a navi's card ("Not allowed" in
   the error red), the folder's library rows ("Not allowed", refused) and entries (the folder's view held to the
   ruleset: `View::hold_to`), a NaviCust program's row (`ProgramState::NotAllowed`), a patch card's library row
   and installed card (refused, in the error red), a soul's or Cross's face (a red ring).
@@ -1358,11 +1362,14 @@ build, and its height on the width and the stats after the eight. Every number i
 
 **The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name (nothing of the build's
 problems: each tab says them where they are, design §2.66), the tab bar with the ruleset's select, and the tab
-chosen. A tab says the game's rules' problems with its facts in its pane's header, on the title's line
-(`Draft::pane_line`: an item's, its name red on its row, and the whole's), and the item its strip describes at the
-strip's top right where nothing was refused (`Draft::line`: `ChipDetail.fault`, `CardDetail.fault`,
-`NavicustView.fault`; `Refusal`'s `problem`). **A tab is one Slint file and one
-Rust module**, as a screen is for the shell:
+chosen. A tab's strip says at its top right, where nothing was refused, what the build's problems have against the
+item it describes, the ruleset's among them (`Draft::line`: `ChipDetail.fault`, `CardDetail.fault`,
+`NavicustView.fault`, `NaviDetail.fault`; `Refusal`'s `problem`): the item's own, those of a whole part it counts in
+(the folder's size in an empty entry, a class's limit in each of its chips, the cards' MB in each card; the count in
+the error red too), and those of its part that are about no item and no count, in every item of the pane
+(`Draft::pane_problems`). An item a problem is about has its name red on its row. A phone, which has no strip, says
+the game's rules' problems with a tab's facts in its pane's header (`Draft::pane_line`; not the ruleset's). **A tab is
+one Slint file and one Rust module**, as a screen is for the shell:
 
 - `ui/screens/builds/<tab>.slint` has `<Tab>View`, a global the module sets (with `hints`, the footer's key
   hints while the tab shows, and `status`, its one short status), and `<Tab>Tab`, a component the frame places
@@ -1555,8 +1562,8 @@ a list held to one) isn't put: its row shakes and the strip says why, worded for
 "{chip} can't be played in auto battle"; in a list held to another class, "{chip} can't be in the {list} list",
 the list's name as the game's strings have it). A build that holds such a chip already (a build file or a save
 made by hand) has the problem as any other: Play's list counts it, the tab is flagged, the place's name is in
-the error red (`flagged`, as a folder's entry), and AUTO BATTLE's line says why (`AutoBattleView.problems`; design
-§2.66), as the strip's top right does of the place it describes where nothing was refused.
+the error red (`flagged`, as a folder's entry), and the strip's top right says why of the place it describes where
+nothing was refused (design §2.66; a phone's line over the places, `AutoBattleView.problems`).
 
 **A click chooses** one of the build's rows (a folder's entry, a patch card or an EXE4 slot, an auto battle place)
 as Enter does, but where the library is beside it the focus stays on what was clicked (the editor's `activate`
@@ -2126,14 +2133,15 @@ the build's menu open (`builds-menu`), a build's rename and the question before 
 menu (the same steps on a phone, whose page has the same buttons), the editor opened by EDIT: the Navi tab with the focus a card on, with another navi chosen and with the
 other preset of the game's choice, and the Folder tab (an entry, the library, its controls a focus move apart,
 the library by MB so that what can't go in says why, a chip the rules refuse asked for, a chip put in, a search,
-the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out, the
-sort's list), then the tab after it; last, a build's version switched by the header's tag (`switched`: a build
-of the game's first version made beside the walk's, a Giga chip of that version's alone in its first entry;
-`builds-version-focus`, the tag focused on the Navi tab with the version's Crosses or souls under the navi and the
-footer's Switch version; `builds-version-switched`, Right: the next version's tag, its forms, the header's one
-problem, the Folder tab marked, the focus still on the tag; `builds-folder-switched`, the entry in the error red
-and the strip saying why; `builds-folder-switched-back`, Left on the tag there: the first version again, ready;
-a step after each checks the focus and the build's state are as the picture's name says); then a ruleset's page
+the Regular chip and two tag chips marked, a mark the rules refuse with its reason, a chip taken out
+(`builds-folder-short`: the empty entry's strip says the folder's size, Chips in the error red), the entry of the
+other version's Giga chip put in before (`builds-folder-mixed`: its name red, its strip saying the mix), the
+sort's list), then the tab after it; last, the selector of forms (`switched`: a build of the game's first version
+made beside the walk's; `builds-forms-focus`, its first form focused, ready, the strip describing it;
+`builds-forms-mixed`, the other version's first form of the first fact chosen, the strip saying the mix the
+ruleset has against it; `builds-forms-back`, the first version's again, ready; `builds-forms-third`, the third form
+focused, EXE6's first Cross with its description; a step after the first three checks the focus and the build's
+state are as the picture's name says); then a ruleset's page
 (`rulesets`): from the Navi tab EDIT by the ruleset the player plays by (`rulesets-preset`: Masters class, read alone,
 the reserved line saying so), DUPLICATE (`rulesets-own`), its chips (`rulesets-chips`, chosen by the category's
 select's choice: a phone has no list of them), the first chip held back and the first version's quick choice
@@ -2164,11 +2172,11 @@ on to another row (`tabs-folder-clicked`,
 `tabs-cards-clicked`, `tabs-auto-clicked`: the cursor hidden, the row clicked marked, the other lit by the
 pointer), and the keys after the clicks (`clicks`); last, a new build made beside the walk's with a chip of
 another class in each list held to one (`wrong_classes`: `tabs-auto-wrong-list`, Play's list counting its
-problems; `tabs-auto-wrong`, its tab flagged, the places' names red, the pane's title line and the strip saying
+problems; `tabs-auto-wrong`, its tab flagged, the places' names red, the strip saying
 why), then two builds of their own with a problem on another tab (design §2.66): the walk's build with its first
-program placed again over itself (`overlap`: `tabs-navicust-overlap`, PROGRAMS' line and the strip saying it), and a new build of the first version
-given the other version's variant of a card (`card_mix`: `tabs-cards-mixed`, the card's name red and the ruleset's
-select saying the mix); on a
+program placed again over itself (`overlap`: `tabs-navicust-overlap`, the program's name red and the strip saying it), and a new build of the first version
+given the other version's variant of a card (`card_mix`: `tabs-cards-mixed`, the card's name red and its strip
+saying the mix); on a
 desktop, the pointer on a row
 describing it in the strip, the focus where it was (`hovers`: `tabs-hover-chip`, `tabs-hover-program`,
 `tabs-hover-card`, `tabs-hover-installed`, a step after each checking the strip is the row's and the focus

@@ -965,58 +965,77 @@ Each is settled unless the user changes it.
     it, "do you really need "ready to play" if the problems are indicated elsewhere already?". The sentences were then
     put at the end of the rows they were about, and of that: "putting the error inline in the list makes it
     unreadable". Earlier, of the Navi tab: "if there's a problem with e.g. crosses or souls there's nowhere in the ui
-    that shows it" and "error messages for beast form/crosses ends up shifting layout".
+    that shows it" and "error messages for beast form/crosses ends up shifting layout". Of the panes' headers and the
+    ruleset's line that followed (*What was tried*): "you should show the error for an item on the top right of the
+    info box for everywhere it is relevant, including ruleset violations. you should get rid of the ruleset violation
+    message at the top and rely on the violation issue per info box. but it doesn't really have a good place to put
+    errors for crosses/souls/beast outs", then "the message on the top right of the folder pane is redundant too if
+    the error is going to be moved into the info box", and "panel header doesn't need to show ruleset violation".
     - *Where each is said now:*
 
       | Place | What it shows | How |
       |---|---|---|
       | Editor header | nothing of the build's problems | the build's name and the game alone |
       | Tab bar | a tab with a problem (`Editor::tabs_of`) | the problem's mark, a red square 5 by 5, at its word's upper right |
-      | By the ruleset's select | what the ruleset has against the build (`Wrong::of_ruleset`: an item it doesn't allow, a mix of versions), the build's, on every tab | the mark and the words, the first and " · +n more", right-aligned against RULESET, from the tabs' end (EXE5's five tabs leave about 280); a phone's under its select on the Navi tab, left-aligned, a line kept for it |
-      | Navi tab | the game's rules' against a fact of forms (a form of it, or the whole): its heading's line, after its count; against the navi (and a problem of no part a tab shows): the navi's name's line | the mark and the words; a form's name and a fact's heading in the error red; "Not allowed" at the end of a form's row the ruleset holds back |
-      | Folder tab | the game's rules' against the folder (an entry's chip, its size, copies, a class's limit, the memories): the header's title line, over the counts | an entry a problem is about has its name red, and nothing more on its row; the header is two lines in every language now, the title and the problems over the counts (EXE6's five counts leave the title's line no room in English); a phone's counts' box keeps a last line for them |
-      | NaviCust tab | the game's rules' against the NaviCust (a placed program, two over each other, or the whole): PROGRAMS' line | a program a problem is about has its name red; "Not allowed" for one the ruleset holds back |
-      | Patch cards tab | the game's rules' against the cards (one of them, or their MB): the title's line, up to the counts (a phone's after them) | a card a problem is about has its name red |
-      | Auto battle tab | the game's rules' against the data (a place's chip, or the whole): AUTO BATTLE's line (a phone's, a line of its own over the places) | a place a problem is about has its name red |
-      | Strips | a refusal: why what was asked of the item wasn't done ("Needs 70 MB", "Giga limit reached", a piece over another); where there is none, what the game's rules have against the item described (an entry, a place, a card of the build's, a program), as its pane's header says it too; an empty entry's, the folder's size | the strip's top right: a refusal red with no mark, a problem with the mark (a phone has no strip, and its NaviCust's refusal is under the key) |
+      | By the ruleset's select | nothing | RULESET, its select and EDIT alone |
+      | Strips (every tab's, the Navi tab's too) | at the top right, where nothing was refused, what the build's problems have against the item described, the ruleset's among them: the item's own (a chip's code, a program over another, a card held back, another version's form, Giga chip or card variant); those of a whole part it counts in (an empty folder entry: the folder's size; a chip: its copies, its class's limit, the dark chips', the tag memory of a tag chip; a card: the cards' MB); then its part's that are about no item and no count, in every item of its pane (a fact a build made by hand states wrong: the fallback) | `Refusal`'s `problem` (`ProblemNote`): the mark and the words, the first and " · +n more"; a refusal ("Needs 70 MB") in its place, red with no mark |
+      | Navi tab's strip | across the top of the grid's side, 104 tall as every tab's: the form under the cursor or the pointer (its face, its name and version's mark, a Cross's description, its element, its fact's name), else the build's navi (the face its round starts with, its name, element and HP) | a form's own problems (the ruleset holds it back, a mix of versions), then its fact's about no form; the navi's (the ruleset holds it back, its level, its HP), and the build's of no part a tab shows |
+      | Rows | an item a problem is about, the ruleset's too | its name in the error red, nothing more; "Not allowed" at the end of a program's or a form's row the ruleset holds back, at the top of a navi's card |
+      | Counts | the folder's Chips, Mega, Giga, Reg and Tag, the cards' MB, past their limit (Chips: not the folder's size) | in the error red, as before |
+      | Fact headings (Navi tab) | a fact of forms with a problem | its heading and count in the error red |
+      | A phone's panes (no strip) | the game's rules' problems with the tab's facts, not the ruleset's | the header's line as before: a folder's last line of its counts' box, PROGRAMS' line, the cards' after their counts, a line over the places; a fact's heading's line, the navi's name's line |
       | Library rows, navi cards | a chip, card or navi that can't be taken | greyed, why at its end (a navi's card, at its top), red, no mark |
       | Play's list, phone's build box | how many | "MegaMan · 2 problems", red |
       | Play's line under HOST and JOIN, the lobby, Practice | "This build can't be used: <the first> · +n more." | as before: the mark and the line; the lobby's reserved line; Practice's dialog |
 
+    - *Every kind has a place:* each kind the content's rules or nettai-match say of a part a tab shows lands in the
+      strip of an item, or has a count, or both: the folder's ChipNotAllowed, ChipCode, RegularMemory (with Reg),
+      NotAllowed, Mixed on their entry; Copies, Class (with Mega and Giga), Dark, TagMemory (with Tag), TagEntries,
+      TagRegular on the entries they count; FolderSize (with Chips) and RegularEntry (the Regular chip an empty entry)
+      on the empty entries; the NaviCust's Overlap, OffBoard, Range and Invalid (a turn, a color) and NotAllowed on the
+      program; the cards' Twice, Range, Slot (EXE4), NotAllowed and Mixed on the card, Budget (with MB) on every card;
+      the auto battle data's ChipNotAllowed, Range and Invalid on the place; a form's NotAllowed and Mixed on the form;
+      the navi's NotAllowed, a level's or the HP's (NotTaken, Range, Missing), and what is of no fact (Internal) on the
+      navi. Only these have neither: what nettai-match's facts check says of a fact a build made by hand states wrong
+      (Foreign, Unstated, Invalid, Twice, NotTaken of a form list), a NaviCust on a navi that compiles none (NotTaken,
+      which the editor's builds never have: it keeps them aside) or a board size past the game's (Range), and a
+      Regular chip past the folder (RegularEntry). Each is said in every item's strip of its pane after the item's
+      own (`unplaced`), and a fact of forms' in every form of it.
     - *Which are the ruleset's:* `Wrong::of_ruleset` (nettai-match), the two kinds `Checked::under` adds to what the
       game's rules say (`Wrong::NotAllowed`, `Wrong::Mixed`), which no game's rules say; every other kind is the game's
-      rules'. The editor reads that, not the sentence (`Draft::ruleset_problems`, `Draft::pane_line`, `Draft::line`).
-    - *The game's rules', in the pane's header:* each tab's pane has one slot for them, on its title's line, the same
-      place on every tab (a fact of forms' heading line on the Navi tab, which has no pane of its own), there whether it
-      says anything or not, so nothing moves when one appears; the first and " · +n more", cut with an ellipsis past
-      its room. A problem about an item is said there too, with the item's name in it ("Cannon can't be in the Mega
-      list"), the item's row only red: a row's sentence ("■ Can't be in the Meg…" beside a chip's name in a 246 wide
-      entry) was cut where it said anything, and it crowded the row it was on. (Tried and taken back the same day:
-      a row's sentence at its end, in the place its state or its mark, element and code had.)
-    - *And the strip:* the item a strip describes (the focused one, or the one under the pointer) has its problem at
-      the strip's top right, the place a refusal has, where nothing was refused: the strip's top right is empty
-      otherwise, so nothing moves, and a cut sentence in the header can be read whole there. Not when its pane's
-      header already says it first (`Draft::unsaid`): the same sentence twice on one screen ("Two pieces overlap" by
-      PROGRAMS and again in the strip; an empty entry's "29 chips, a folder has 30") said nothing more.
-    - *The ruleset's, by the ruleset:* said by its select, the same place on every tab: the ruleset is the frame's, and
-      what it has against the build is the build's, whichever tab is shown. The items it is about (a Giga chip, a form,
-      a card's variant, a program it holds back) are marked where they are, red, without the sentence again.
-    - *What it replaced:* the header's line (the shown tab's problems, the first's sentence and " · +n more") and its
-      caret, which opened a 720 wide list of every problem ("PATCH CARDS · sentence", a phone's sheet; choosing one
-      went to its tab), are gone, with the list and the sheet; so are "✓ Ready to play" and "n problems", which the
-      tabs' marks, the panes' words and the ruleset's line already say.
+      rules'. A strip says both (`Draft::line`); a phone's pane says the game's rules' alone (`Draft::pane_line`); the
+      tab bar marks both.
+    - *The strip's top right:* the place a refusal has, empty otherwise, so nothing moves when a problem appears, on
+      every tab the same; a long sentence is cut there with an ellipsis. The item's problems are said there whether or
+      not they are said elsewhere (`Draft::unsaid`, which kept the strip from saying again what its pane's header said
+      first, is gone with the headers' lines).
+    - *The Navi tab's strip* (the user: "it doesn't really have a good place to put errors for
+      crosses/souls/beast outs"): the tab's grid of navi cards is under a strip as every tab's panes are, the panel of
+      the build's navi beside both, from the strip's top to the page's foot (the panel has no room for a strip over
+      it: EXE6's Beast Out and ten Crosses fill it at a desktop's 800). The cards are 140 tall where the grid's rows
+      leave them that and shorter where they don't (EXE5's thirteen navis, four rows). A navi's card focused describes
+      the build's navi, not the card's: the strip is of the build's items, and a card says itself. Chosen over a form's
+      sentence on its fact's heading's line, which the strip replaces on a desktop: a heading has 200 of room, and
+      EXE5's "Mixes Team ProtoMan and Team Colonel: ColSoul" didn't fit it.
+    - *The folder's header* is its title and counts on one line where the language leaves them room, as before the
+      headers said problems (the English EXE6's does), else the counts under the title.
     - *A problem, and a refusal:* both in the one error red (`Theme.bad`). A problem (the rules or the ruleset have
       something against the build as it stands) carries the problem's mark before its words, wherever it is said; a
       refusal (why what was asked wasn't done, or can't be) has none, and is said by what was asked of, with the row's
       shake and the refusal's sound: the strip's top right, a library row's end.
     - *One look:* `ProblemNote` (widgets.slint: `Message` with the mark, right-aligned) for every problem the editor
-      says, the panes', a strip's (`Refusal`'s `problem`) and the ruleset's line; `ProblemMark` for the tab bar's and the
-      lists'; `Refusal` for a strip's refusal. One wording: `Words::problem`'s sentences, several in a place as
+      says, a strip's (`Refusal`'s `problem`) and a phone's panes'; `ProblemMark` for the tab bar's and the lists';
+      `Refusal` for a strip's refusal. One wording: `Words::problem`'s sentences, several in a place as
       `Words::summary` says them.
     - *What was tried* (2026-10-15, the same day): the header's top right said the shown tab's problems, the first and
       " · +n more", and opened them all as a list; it replaced a strip that said the focused item's problem (so a tab
       with problems and the cursor elsewhere said nothing), a NaviCust that said none, the Navi tab's two lines under its
-      selector, and three marks for an item (a ring, a red row, a red name), now one, the red name.
+      selector, and three marks for an item (a ring, a red row, a red name), now one, the red name. Then the header's
+      line and list went, with "✓ Ready to play": each pane's header said the game's rules' problems with its part on
+      its title's line (the folder's header two lines in every language for it), a fact of forms' on its heading's
+      line, the navi's on its name's line, and the strip the described item's game's rules' problem where its pane's
+      header didn't say it first; the ruleset's select said what the ruleset had against the build, beside it on every
+      tab (a phone's on a line kept under it). Those lines are a phone's alone now, without the ruleset's.
     (§5 rule 13; §6 Builds, Play; §7.)
 
 ## 3. Chosen where the user gave no answer
@@ -1201,13 +1220,14 @@ These answer the user's first paragraph (§1), and a screenshot pass checks them
     title lit.
 12. **Errors are a fixed list** (§8.4). A reason something can't be done is shown in the error red at the end of its
     row or in the field's reserved line; a failure that ends what the player was doing is a dialog.
-13. **A build's problems are one system, said where they are** (§2.66). What the game's rules have against a part of
-    the build (an item of it, or the whole) in its pane's header on the title's line, and the item a strip describes
-    at the strip's top right; what the ruleset has against the build by its select; each after the problem's mark (the
-    tab bar's red square), the first and " · +n more", in a place reserved for it (nothing moves when one appears).
-    The editor's header says nothing of them, and a row nothing but its name in the error red where a problem is about
-    its item. A refusal (why what was asked wasn't done) has no mark and is said by what was asked of: a strip's top
-    right, a library row's end.
+13. **A build's problems are one system, said where they are** (§2.66). What the build's problems have against an
+    item, the ruleset's with the game's rules', at the top right of the strip that describes it (every tab's, the Navi
+    tab's too): its own, those of a whole it counts in (whose count is in the error red too), and those of its part
+    that are about no item; after the problem's mark (the tab bar's red square), the first and " · +n more", in a place
+    reserved for it (nothing moves when one appears). The editor's header, the ruleset's select and a pane's header
+    say nothing of them (a phone, which has no strip, says the game's rules' in its panes' headers), and a row nothing
+    but its name in the error red where a problem is about its item. A refusal (why what was asked wasn't done) has no
+    mark and is said by what was asked of: a strip's top right, a library row's end.
 
 ## 6. The screens
 
@@ -1382,41 +1402,46 @@ DUPLICATE, RENAME and DELETE.
   button) closes it and opens the system's file dialog: the save's build is named for its file, its version and
   everything else the save's (§2.52).
 - **The editor's** header has the build's name and nothing of its problems (§2.66): they are said where they are.
-  A tab with problems has the problem's mark by its word. What the game's rules have against a part of the build (an
-  item of it, a folder's entry, a form, a placed program, a patch card, an auto battle place, its name red on its row;
-  or the whole: "29 chips, a folder has 30", the cards' MB) is said in the header of its pane, on the title's line;
-  what the ruleset has against the build (an item it doesn't allow, a mix of versions) by the ruleset's select, at the
-  tab bar's right end before RULESET on every tab (a phone's under the select on the Navi tab), the items it is about
-  only marked. Each is the problem's mark and the error red's words, the first and " · +n more", in a place that is
-  there when it says nothing. A tab's strip says a refusal at its top right, or else what the game's rules have
-  against the item it describes. No version's tag: a build has none (§2.60). Its tabs
+  A tab with problems has the problem's mark by its word. What the build's problems have against an item (a folder's
+  entry, a form, a placed program, a patch card, an auto battle place, the navi), the ruleset's (an item it doesn't
+  allow, a mix of versions) with the game's rules', is said at the top right of the tab's strip while it describes the
+  item, where nothing was refused: the item's own; a whole's it counts in ("29 chips, a folder has 30" in an empty
+  entry, a class's limit in each chip of the class, the cards' MB in each card), whose count is in the error red too;
+  and its part's that are about no item. The item's name is red on its row. Each is the problem's mark and the error
+  red's words, the first and " · +n more", in a place that is there when it says nothing. The ruleset's select and the
+  panes' headers say nothing of them; a phone, which has no strip, says the game's rules' in its panes' headers. No
+  version's tag: a build has none (§2.60). Its tabs
   are NAVI, FOLDER, NAVICUST, PATCH CARDS and, in EXE4 and EXE5, AUTO BATTLE (the pad's shoulders or A and S switch
   them); the editor opens on NAVI every time, whichever tab was last used (the user: "don't remember the tab"). With a navi other than MegaMan the last three stay in place, greyed, and keep their contents: the build's file
   keeps MegaMan's NaviCust, cards and auto battle data aside, outside the side it hands to a match (the rules
   refuse a NaviCust on a navi that compiles none), and puts them back when MegaMan is chosen again.
-- **Navi:** the game's navis as a grid of cards; the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
+- **Navi:** a strip across the top of the grid's side, as every tab's (§2.66): the form under the cursor or the
+  pointer (its face, its name and version's mark, a Cross's description, its element, its fact's name), else the
+  build's navi (its face, name, element and HP), and at its top right what the build's problems have against it.
+  Under it the game's navis as a grid of cards (140 tall, shorter where four rows don't fit: EXE5's); the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
   user chose to leave it out), the face the round starts it with. Under them, one after the other with nothing
   reserved (§2.63): in EXE4 and EXE5 MegaMan's Light or Dark, a segmented control (LIGHT | DARK) as tall as the
   editor's rows; the selector of the build's forms (§2.60, §2.61): EXE6's Beast Out (BEAST OUT: GBeast and FBeast
   side by side under their versions' heads) and Crosses, EXE4's and EXE5's souls, each fact's heading with its count
   (in the error red where it has a problem) over its forms' rows grouped by version; and "NaviCust and patch cards
   are MegaMan only.", as tall as its words; nothing there moves when a problem appears (§2.65, §2.66): a fact's
-  heading in the error red, what the game's rules have against the fact (a form of it, or the whole) on its heading's
-  line, a chosen form's name a problem is about in it, "Not allowed" at the end of a form's row the ruleset holds
-  back, and what the rules have against the navi on its name's line. On a phone the panel is over the
-  grid, as tall as what it shows, the selector's rows two to a row, and the ruleset's select between them with a line
-  under it for what the ruleset has against the build.
+  heading in the error red, a chosen form's name a problem is about in it, "Not allowed" at the end of a form's row
+  the ruleset holds back, and the sentences in the strip. The panel is beside the strip and the grid, from the
+  strip's top. On a phone (no strip) the panel is over the grid, as tall as what it shows, the selector's rows two to
+  a row, what the game's rules have against a fact on its heading's line and against the navi on its name's line,
+  and the ruleset's select between the panel and the grid.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
-  the framed folder, its header its title and on its line what the rules have against the folder or an entry of it
-  ("29 chips, a folder has 30"), then Chips 30/30, Mega, Giga, Reg and Tag memory on a line under them; then the overview's
-  own 2 by 15 block (a phone's counts' box keeps its last line for the folder's problems). Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
+  the framed folder, its header its title and Chips 30/30, Mega, Giga, Reg and Tag memory (on a line under the title
+  where the language leaves them no room beside it; one past its limit in the error red); then the overview's own 2
+  by 15 block (a phone's counts' box keeps its last line for what the game's rules have against the folder). Right: LIBRARY, a search field, Sort and its direction, then rows of one chip in one code (icon, name,
   a note, MB, attack, element, code), 15 showing. The pointer on an entry or a row shows its chip in the strip
   (§2.64). Enter on a slot goes to the library; Enter on a row puts it in
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's. A mark the
-  rules refuse is said at the strip's top right (§2.66), and where nothing was, what the rules have against the
-  entry described; an entry a problem is about has its name in the error red, and the folder's header says why.
+  rules refuse is said at the strip's top right (§2.66), and where nothing was, what the build's problems have
+  against the entry described (an empty one: the folder's size; a Giga chip of the other version's under one version
+  per build: the mix); an entry a problem is about has its name in the error red.
 - **NaviCust** (§2.10, §2.26, §2.64): a strip across the top describes the program under the cursor (or the
   pointer, on a row of the list): its compressed shape then its whole one over COMPRESSED and UNCOMPRESSED (a
   program of one shape, that one with no word; §2.65), its name in its color, the game's words (the user: "you
@@ -1424,9 +1449,8 @@ DUPLICATE, RENAME and DELETE.
   open list, in the middle, each program once (in its color chosen, a cross if a plus part; its chosen color's part
   Placed, Placed ×2 where more than one copy is, In hand, Not allowed or Out of bounds; then at the row's right edge
   its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing and taking
-  that color's part in hand; its name in the error red where a placed copy has a problem, which PROGRAMS' line says,
-  with what the rules have against the NaviCust as a whole, and the strip's top right of the program it describes,
-  §2.66); Effects and Bugs at
+  that color's part in hand; its name in the error red where a placed copy has a problem, which the strip's top right
+  says of the program it describes, §2.66; a phone's PROGRAMS' line); Effects and Bugs at
   the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
@@ -1445,14 +1469,14 @@ DUPLICATE, RENAME and DELETE.
   list puts it away (the list shows CLICK TO PUT AWAY while the pointer is over it), a click anywhere else off the
   board puts it back where it was; a right click puts it away, or takes off the piece under the pointer.
 - **Patch cards** (§2.19, §2.20, §2.64): the folder's shape. EXE5 and EXE6: the installed cards in order in the
-  framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header (what the
-  rules have against the cards as a whole on the title's line before them, a phone's after them), and
+  framed panel, rows as the folder's (number, name, its version's mark, MB), Cards and MB used in its header (a phone's
+  with what the game's rules have against the cards after them), and
   "Together", what they add up to, at its foot; the library's rows the same, with their note; the strip across the
   top lays the card under the cursor (or the pointer) out: its lines in its two groups, Parameter then Ability, bug
   lines purple, and at its top right why a library's card can't go in ("Needs 70 MB") or wasn't put in (§2.66); an
   installed card a problem is about (another version's variant, one held back) has its name in the error red, and
-  what the game's rules have against it is said on the title's line and, where nothing was refused, at the strip's
-  top right of the card it describes. EXE4:
+  what the build's problems have against it (the mix, the cards' MB past the list's, MB in the error red) is said,
+  where nothing was refused, at the strip's top right of the card it describes (a phone's after the counts). EXE4:
   six slots
   named 0A to 0F, each with its card or Empty. A card belongs in one slot, which its library row names, and Enter
   puts it there, in place of the card that slot held; so does a drag of it onto the slots, and a slot's card dragged
@@ -1474,9 +1498,8 @@ DUPLICATE, RENAME and DELETE.
   chips, the Program Advance place the Program Advances (which no folder holds), any other place the chips a
   folder can hold. A Program Advance has no picture and no element, and none is shown ("program advances don't
   have elements or chip art, so don't show those"). A chip of another class in one of those three lists (a build or save made by hand) is a
-  problem of the build, shown as any other: its place's name in the error red, and AUTO BATTLE's line says why
-  ("Cannon can't be in the Mega list"; §2.66; a phone's, a line of its own over the places), as the strip's top right
-  does of the place it describes.
+  problem of the build, shown as any other: its place's name in the error red, and the strip's top right says why of
+  the place it describes ("Cannon can't be in the Mega list"; §2.66; a phone's, a line of its own over the places).
 
 ### Replays
 - **The list:** All, Online (and Training only if training is ever recorded) and a search by opponent; rows of the

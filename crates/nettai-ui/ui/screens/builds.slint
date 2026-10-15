@@ -2,16 +2,16 @@
 // builds themselves, + NEW BUILD (and its FROM A SAVE FILE…), and the chosen build's overview with EDIT and its
 // menu of DUPLICATE, RENAME and DELETE are Play's (play.slint).
 //
-// The editor: the build's name in the header; a tab bar, and at its right end the ruleset the player plays by, with
-// what it has against the build beside it; and under it the tab chosen, which says what the game's rules have against
-// the build where it is (docs/design/app-ui.md §2.66). Each tab is one file in builds/ (its view, the global its Rust module sets,
+// The editor: the build's name in the header; a tab bar, and at its right end the ruleset the player plays by; and under
+// it the tab chosen, which says what the build's problems are where they are, the ruleset's among them
+// (docs/design/app-ui.md §2.66). Each tab is one file in builds/ (its view, the global its Rust module sets,
 // and its component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says
 // how a tab is added and what it is given. Its Rust half is src/screens/builds/mod.rs.
 
 import { Theme } from "../theme.slint";
 import { Nav } from "../nav.slint";
 import { Shell, Page, PadButton, Hint } from "../shell.slint";
-import { TabBar, Tab, Rule, Label, Select, Button, ProblemNote } from "../widgets.slint";
+import { TabBar, Tab, Rule, Label, Select, Button } from "../widgets.slint";
 import { Tween } from "../motion.slint";
 import { VersionTag } from "../build.slint";
 import { NaviView, NaviTab } from "builds/navi.slint";
@@ -38,11 +38,10 @@ export global BuildsView {
     // Back goes to Practice, which opened the editor; else to Play: the header says so.
     in property <bool> to-practice;
     in property <string> name;
-    // The ruleset the player plays by, by its name: the build is marked against it. What it has against the build (an
-    // item it doesn't allow, a mix of versions), the first and "+n more": beside its select, on every tab
-    // (docs/design/app-ui.md §2.66; a phone's is under its select, on the Navi tab).
+    // The ruleset the player plays by, by its name: the build is marked against it, and what it has against the build
+    // (an item it doesn't allow, a mix of versions) is said in the strip of each item it is about (docs/design/app-ui.md
+    // §2.66).
     in property <string> ruleset;
-    in property <string> ruleset-problems;
     in property <[Tab]> tabs;
     // The tab chosen: its place in the bar, and which it is. `tab-way` is the way it was reached (-1 from the
     // right): its body arrives from that side.
@@ -120,15 +119,6 @@ export component BuildsScreen inherits Page {
         chosen: BuildsView.tab;
 
         Rectangle { }  // (Copied in: docs/app.md §14.)
-    }
-
-    // (What the ruleset has against the build: between the tabs and its word, against its word.)
-    ProblemNote {
-        x: tab-bar.x + tab-bar.tabs-width + 24px;
-        y: root.bar-y + (36px - self.height) / 2;
-        width: max(0px, ruleset-label.x - 16px - self.x);
-        visible: !Theme.phone;
-        text: BuildsView.ruleset-problems;
     }
 
     ruleset-label := Label {
