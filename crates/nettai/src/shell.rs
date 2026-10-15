@@ -829,7 +829,7 @@ impl App {
         sound.set_levels(settings.music, settings.effects);
         let bindings = settings.bindings();
         // (The screenshot pass extracts nothing: it keeps nothing of its own in the player's data folder.)
-        let games = Games::find(settings.legacy_collection.as_deref(), settings.game.as_deref(), !still);
+        let games = Games::find(settings.legacy_collection.as_deref(), !still);
         let looks = crate::look::Looks::new(ui, games.list.iter().map(|g| g.id.as_str()));
         let shell = Shell {
             ui: ui.as_weak(),
@@ -901,8 +901,7 @@ impl App {
         self.shell.apply_motion();
         self.shell.show_bindings();
         self.shell.name_games();
-        let games = self.shell.games.playable();
-        let first = self.shell.settings.game.clone().filter(|g| games.contains(g)).or_else(|| games.first().cloned());
+        let first = self.shell.games.first_choice(self.shell.settings.game.as_deref());
         match first {
             Some(id) => {
                 self.shell.game = Some(id.clone());
@@ -1078,9 +1077,8 @@ impl App {
         let Some(folder) = rfd::FileDialog::new().pick_folder() else { return };
         #[cfg(target_arch = "wasm32")]
         let Some(folder) = None::<std::path::PathBuf> else { return };
-        let first = self.shell.game.clone();
         let extracting = match crate::bnlc::Install::at(&folder) {
-            Some(install) => self.shell.games.extract_from(&install, first.as_deref()),
+            Some(install) => self.shell.games.found(install),
             None => 0,
         };
         if extracting == 0 {
@@ -1628,9 +1626,9 @@ impl App {
             return;
         }
         let Some(id) = self.shell.game.clone() else {
-            // (A game that can be played since: a pack being extracted from a folder just chosen.)
-            match self.shell.games.playable().first() {
-                Some(first) => self.shell.select_game(&first.clone()),
+            // (A game that can be played since: a pack to extract from a folder just chosen.)
+            match self.shell.games.first_choice(self.shell.settings.game.as_deref()) {
+                Some(first) => self.shell.select_game(&first),
                 None => {
                     shell.set_no_games(true);
                     shell.set_loading(true);
@@ -1638,8 +1636,15 @@ impl App {
             }
             return;
         };
-        shell.set_extracting(matches!(self.shell.games.get(&id).map(|e| &e.state), Some(State::Extracting(_))));
+        shell.set_extracting(matches!(self.shell.games.get(&id).map(|e| &e.state), Some(State::Extracting(_) | State::Extractable)));
         match self.shell.games.get(&id).map(|e| &e.state) {
+            // Loaded for the first time with no pack of its own yet: its pack is extracted now, the others' when
+            // they are first loaded.
+            Some(State::Extractable) => {
+                self.shell.games.extract(&id);
+                shell.set_loading(true);
+                shell.set_loading_progress(0.0);
+            }
             Some(State::Extracting(_)) => {
                 shell.set_loading(true);
                 shell.set_loading_progress(self.shell.games.progress(&id));
