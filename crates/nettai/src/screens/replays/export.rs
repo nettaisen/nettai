@@ -88,18 +88,6 @@ fn videos() -> PathBuf {
     found.unwrap_or_default()
 }
 
-/// The `ffmpeg` to run: `$NETTAI_FFMPEG`, else the one on the path or where a package manager puts it (an app
-/// started from the desktop has a short path), else the name alone.
-fn ffmpeg() -> PathBuf {
-    if let Some(named) = std::env::var_os("NETTAI_FFMPEG") {
-        return named.into();
-    }
-    let name = if cfg!(target_os = "windows") { "ffmpeg.exe" } else { "ffmpeg" };
-    let path = std::env::var_os("PATH").unwrap_or_default();
-    let usual = ["/opt/homebrew/bin", "/usr/local/bin", "/opt/local/bin"].map(PathBuf::from);
-    std::env::split_paths(&path).chain(usual.into_iter().filter(|_| cfg!(unix))).map(|dir| dir.join(name)).find(|p| p.is_file()).unwrap_or_else(|| name.into())
-}
-
 /// `text` as a file's name may hold it.
 fn file_safe(text: &str) -> String {
     let kept: String = text.chars().map(|c| if c.is_control() || "/\\:*?\"<>|".contains(c) { ' ' } else { c }).collect();
@@ -337,7 +325,7 @@ impl Export {
             sound: crate::music::sound(&shell.games, &ready, &crate::music::Music::GameOwn).map(|(banks, songs)| Sound { banks, songs, report: Default::default() }),
         };
         let options = Options { scale: SIZES[self.size], view: Some(self.side), part: if self.part == 0 { Part::Whole } else { Part::Round(self.part) } };
-        let encoding = mp4::Settings { ffmpeg: ffmpeg(), ..mp4::Settings::default() };
+        let encoding = mp4::Settings { ffmpeg: mp4::find_ffmpeg(), ..mp4::Settings::default() };
         let (stop, shared, to) = (Arc::new(AtomicBool::new(false)), Arc::new(Mutex::new(Shared::default())), self.to.clone());
         let (stopped, told) = (stop.clone(), shared.clone());
         let thread = std::thread::Builder::new().name("export".into()).spawn(move || {

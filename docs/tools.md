@@ -85,7 +85,8 @@ Everything the tool says goes to standard error (a line every tenth of the way, 
 carries the stream alone. The stream is raw: 115 KB a frame at the frame's own size, 7 MB a second, and sixteen
 times that at `--scale 4`; a long replay at a large size is for the pipe, not for a file.
 
-`--replay FILE --mp4 OUT` writes an MP4 instead, by running `ffmpeg` (which must be installed) on that stream, with
+`--replay FILE --mp4 OUT` writes an MP4 instead, by running `ffmpeg` on that stream (`$NETTAI_FFMPEG`, else one
+beside nettai-tool, else one on the path: nettai-video's `mp4::find_ffmpeg`, docs/frontend.md §8), with
 the settings the app's export is to use (nettai-video's `mp4`: H.264 at CRF 16 in 4:2:0, AAC at 48 kHz, the pixels
 not scaled by ffmpeg). `OUT` is there only once it is whole; a failure says whether ffmpeg wasn't found, ffmpeg failed
 (with what it said) or the file couldn't be written.
