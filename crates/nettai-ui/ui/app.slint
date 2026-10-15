@@ -40,6 +40,8 @@ export component AppWindow inherits Window {
     property <bool> in-battle: Shell.battle != BattleKind.none && Shell.battle-full;
     property <bool> covered: Shell.loading || Shell.versus || root.in-battle;
     title: "nettai";
+    // (The taskbar's and the title bar's, where the system draws one: macOS takes the app bundle's.)
+    icon: @image-url("../../../docs/logo/nettai-icon.svg");
     preferred-width: 1280px;
     preferred-height: 800px;
     background: Theme.ground-bottom;
