@@ -920,6 +920,43 @@ Each is settled unless the user changes it.
       the row reads Not allowed.
     (§6 Builds; docs/app.md §13.)
 
+65. **The editor's wording and places, reviewed** (2026-10-15). The user, of the build editor: "selecting the color
+    in the ncp editor should also pick up the ncp from the palette. the error message should go to the left of the
+    color", "isntead of shape/compressed it should be compressed/uncompressed (in that order)", "error messages for
+    beast form/crosses ends up shifting layout" and "versions: one per build is weird wording, you should make it
+    more understandable"; then "instead of "beast form" it should say "beast out"".
+    - *A color's box takes its part:* a click or a tap on one of a program's color boxes chooses that color and
+      takes its part in hand, as Enter on the row (or a click on it) does: the piece goes onto the board under the
+      cursor. Left and Right still choose the color alone (chosen so): taking a part puts the cursor on the board,
+      so a key that took one would leave no way to step on to the next color, and Enter is a key away.
+    - *The row's state before its colors:* Placed, Placed ×2, In hand, Not allowed or Out of bounds comes before the
+      color boxes, which are at the row's right edge. The state's column ends where the list's most colors begin
+      (EXE6's three boxes), so the states line up whatever each row's colors; a row's name runs up to its state.
+    - *COMPRESSED, then UNCOMPRESSED:* the strip shows a program that compresses as its compressed shape first,
+      over COMPRESSED (圧縮), then its whole shape, over UNCOMPRESSED (非圧縮; no game's text names either, and the
+      app's Compress is 圧縮 already). A program of one shape shows that one, first, with no word under it: it is
+      neither ("there's only one form of it"). The shapes' boxes are 120 wide, which UNCOMPRESSED needs.
+    - *The forms' problems move nothing:* a fact's heading and the rows a problem is about are still in the error
+      red, and the sentences are no longer a wrapped line under the heading (it pushed the rows down). They are in
+      the note's place under the selector, which for a navi that chooses forms is two lines tall whether it says
+      anything or not, and while the forms have problems says them instead of the note, whole, each once (a mix of
+      versions is each of its facts'), a line each; past two, the first and "+n more". Chosen over a place of its own
+      under the note: EXE6's selector (Beast Out and ten Crosses) leaves the panel room for two lines under it at a
+      desktop's 800, not for the note and two more; over shorter words by the heading or the whole on hover: EXE5's
+      "Mixes Team ProtoMan and Team Colonel: ColSoul" doesn't fit by its heading, and a keyboard or a phone has no
+      hover. The note is said again once the problems are gone.
+    - *Version exclusives:* the ruleset's setting is VERSION EXCLUSIVES, ONE VERSION | MIX VERSIONS (バージョン限定:
+      1バージョンのみ | 混在可), where it was VERSIONS, ONE PER BUILD | MIXED: whether a build may hold both versions'
+      own things (Gregar's and Falzar's Crosses and Giga chips) or keeps to one version's, as a cartridge does. Chosen
+      over a MIX VERSIONS toggle of OFF and ON: both segments say what they do. On a phone the word is over its
+      control, which its width wouldn't hold beside it (the rows under it 24 lower). The files keep `versions =
+      "one_per_build"` or `"mixed"`; the lobby shows the ruleset by name alone, and the problem's sentence ("Mixes
+      Gregar and Falzar: FBeast") names no setting, so neither changes.
+    - *Beast Out:* EXE6's fact of the Beast form is shown as "Beast Out" (BEAST OUT on the selector, the ruleset's
+      category, NEW BUILD's note "Starts with the version's Crosses and Beast Out."), the game's name for it; the
+      Japanese stays 獣化, the Japanese game's, and the field stays `cybeast`.
+    (§6 Builds; docs/app.md §8, §13; docs/design/versions.md §2.3.)
+
 ## 3. Chosen where the user gave no answer
 
 These were put to the user as questions with a stated default and got no reply before "start implementing". They
@@ -1291,10 +1328,12 @@ DUPLICATE, RENAME and DELETE.
 - **Navi:** the game's navis as a grid of cards; the chosen one's HP and element beside it (no charge shot: no game's content names a navi's, and the
   user chose to leave it out), the face the round starts it with. Under them, one after the other with nothing
   reserved (§2.63): in EXE4 and EXE5 MegaMan's Light or Dark, a segmented control (LIGHT | DARK) as tall as the
-  editor's rows; the selector of the build's forms (§2.60, §2.61): EXE6's Beast form (GBeast and FBeast side by
-  side under their versions' heads) and Crosses, EXE4's and EXE5's souls, each fact's heading with its count and
-  problem over its forms' rows grouped by version; and "NaviCust and patch cards are MegaMan only." On a phone the
-  panel is over the grid, as tall as what it shows, the selector's rows two to a row.
+  editor's rows; the selector of the build's forms (§2.60, §2.61): EXE6's Beast Out (BEAST OUT: GBeast and FBeast
+  side by side under their versions' heads) and Crosses, EXE4's and EXE5's souls, each fact's heading with its count
+  (in the error red where it has a problem) over its forms' rows grouped by version; and "NaviCust and patch cards
+  are MegaMan only.", whose place under a selector is two lines tall and, while the forms have problems, says them
+  instead, whole and in the error red, so nothing moves when one appears (§2.65). On a phone the panel is over the
+  grid, as tall as what it shows, the selector's rows two to a row.
 - **Folder** (§2.11 to §2.14): a strip across the top describes the chip under the cursor from either pane (its
   art, name and code, the game's description, element, class, MB, attack, how many are in the folder). Below, left:
   the framed folder, its header holding Chips 30/30, Mega, Giga, Reg and Tag memory, then the overview's own 2 by
@@ -1304,11 +1343,13 @@ DUPLICATE, RENAME and DELETE.
   the slot and returns to the next slot. R sets the Regular chip, T tags. A chip that can't be added stays, greyed,
   with the reason in red ("Gregar only", "Giga limit reached", "4 copies at most"); the rules are Tango's.
 - **NaviCust** (§2.10, §2.26, §2.64): a strip across the top describes the program under the cursor (or the
-  pointer, on a row of the list): its shape and compressed shape, its name in its color, the game's words (the user:
-  "you should show ncp descriptions") and its colors; the board framed at the left with a key under it; PROGRAMS,
-  an open list, in the middle, each program once (in its color chosen, a cross if a plus part; its colors as small
-  boxes where it has more than one, Left and Right or a click choosing; and its chosen color's part Placed, Placed
-  ×2 where more than one copy is, In hand or Out of bounds); Effects and Bugs at the right, what the NaviCust does and the bugs it brings
+  pointer, on a row of the list): its compressed shape then its whole one over COMPRESSED and UNCOMPRESSED (a
+  program of one shape, that one with no word; §2.65), its name in its color, the game's words (the user: "you
+  should show ncp descriptions") and its colors; the board framed at the left with a key under it; PROGRAMS, an
+  open list, in the middle, each program once (in its color chosen, a cross if a plus part; its chosen color's part
+  Placed, Placed ×2 where more than one copy is, In hand, Not allowed or Out of bounds; then at the row's right edge
+  its colors as small boxes where it has more than one, Left and Right choosing, a click or a tap choosing and taking
+  that color's part in hand); Effects and Bugs at the right, what the NaviCust does and the bugs it brings
   (not a patch card's). The command line is marked three ways: a line above and below its whole row that runs over
   placed pieces, an arrow at each end outside the grid, and a tint in its empty cells. EXE6's board has a white
   outline at its edge, a hatched ring outside it, and no cells at the corners. Arrows move the piece in hand, A and

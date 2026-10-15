@@ -460,7 +460,8 @@ component ProgramRowView inherits Rectangle {
 
     Text {
         x: 32px;
-        width: max(0px, root.state-right - 110px - 8px - 32px);
+        // (Up to its state's words, where it has any: a name is cut only where they meet.)
+        width: max(0px, root.state-right - (state.text == "" ? 0px : min(110px, state.preferred-width) + 8px) - 32px);
         text: root.program.name;
         color: Theme.text;
         font-family: Theme.body;
