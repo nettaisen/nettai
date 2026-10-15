@@ -842,8 +842,8 @@ units (1216 by 644 at the reference window):
     look and + NEW BUILD is the one main action): an invite, its code from the server, and the wait (what CREATE
     INVITE was).
   - **JOIN**, a tile that is a frame of the raised look, not itself a button: the word where the others' are, and
-    under it "Direct connect…", a link (12, muted until the pointer or the cursor is on it) that opens the direct
-    connection's dialog; at its right the code's field (40 tall, its width what the tile leaves) and its go
+    under it "Direct connect…", a link (body text at 12, muted until the pointer or the cursor is on it) that
+    opens the direct connection's dialog; at its right the code's field (40 tall, its width what the tile leaves) and its go
     button (40 by 40, an arrow), 16 in. The word and the link share a column as wide as the wider, at most 150.
   Under them at 626 the reserved line (18 tall, the body's width, 12). Pressed with no build, each says there
   "Make a build first." (§7); with a build that can't be played, PRACTICE, HOST and JOIN say why there.
