@@ -75,6 +75,12 @@ impl<'a> Enter<'a> {
         let prev_rules = RULES.with(|c| c.replace(rules));
         Enter { prev, prev_rules, _borrow: PhantomData }
     }
+
+    /// A call made while another content call runs (from an engine call of
+    /// its: a hook the engine runs for it).
+    pub fn nested(&self) -> bool {
+        self.prev.is_some()
+    }
 }
 
 impl Drop for Enter<'_> {

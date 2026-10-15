@@ -817,7 +817,7 @@ mod tests {
     /// bringing its side (the host's, then the joiner's). The seats, and the
     /// room's code.
     fn meet(content: &Arc<Content>, server: &nettai_rtc::testing::Server, settings: [Settings; 2], sides: [Side; 2]) -> ([Seat; 2], String) {
-        use crate::lobby::{Lobby, Role, entropy};
+        use crate::lobby::{Lobby, Role};
         let config = nettai_rtc::Config { loopback: true, ..nettai_rtc::Config::default() };
         let mut host = nettai_rtc::Link::create_room(&server.url(), config.clone());
         let start = Instant::now();
@@ -840,8 +840,8 @@ mod tests {
         let [host_settings, join_settings] = settings;
         let [host_side, join_side] = sides;
         let mut seats = [
-            Seat { link: host, lobby: Lobby::new(Role::Host, content, host_settings, host_side, entropy(), timeout), player: None },
-            Seat { link: join, lobby: Lobby::new(Role::Join, content, join_settings, join_side, entropy() ^ 1, timeout), player: None },
+            Seat { link: host, lobby: Lobby::new(Role::Host, content, host_settings, host_side, 0x1111, timeout), player: None },
+            Seat { link: join, lobby: Lobby::new(Role::Join, content, join_settings, join_side, 0x2222, timeout), player: None },
         ];
         seats[0].lobby.set_name("Lan");
         seats[1].lobby.set_name("Chaud");
