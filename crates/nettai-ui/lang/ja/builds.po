@@ -123,6 +123,13 @@ msgstr "属性"
 msgid "NaviCust and patch cards are {} only."
 msgstr "ナビカスと改造カードは{}専用です。"
 
+# A list of forms' (souls, Crosses) put all in, or take all out: a version's group's, at its head's end.
+msgid "ALL"
+msgstr "すべて"
+
+msgid "NONE"
+msgstr "なし"
+
 # ---- The Folder tab.
 
 msgid "Slot {} of {}"
