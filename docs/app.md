@@ -608,7 +608,8 @@ Play is the netplay UI (docs/design/app-ui.md §6: "Play", "In an online match",
   beside it (the wide sheet, §8) with PRACTICE, EDIT and ⋯ in its header (`BuildOverview.tools`, the room it
   leaves them); and under the overview, one row of the app's controls (40 tall): at its left edge HOST
   (`invite`, the main action's look while there is a build: an invite, as CREATE INVITE was), then the code's
-  field (`code`, 208 wide, "Invite code") and JOIN (`join`), and at the overview's right edge DIRECT CONNECT
+  field (`code`, 208 wide, "Invite code"; Enter in it joins, as JOIN does, and Enter in the direct connection's
+  address connects: `Screen::submitted`) and JOIN (`join`), and at the overview's right edge DIRECT CONNECT
   (`direct`, a regular button), the direct connection's dialog (§2.57: the user found the field taking a code
   or an address worse). The reserved line is under the row, and the list and the overview grow down to it (564
   at the reference window). The chosen build is the one under the list's cursor, remembered by game; the

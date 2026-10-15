@@ -1336,6 +1336,16 @@ impl Screen for Play {
         }
     }
 
+    /// Enter in the code's field joins with it, as JOIN does (the user: "pressing enter in the link code dialog
+    /// box should confirm and connect"), and in the direct connection's address connects, as CONNECT does.
+    fn submitted(&mut self, shell: &mut Shell, id: &str, index: i32) {
+        match id {
+            "code" => self.activate(shell, "join", index),
+            "direct.address" => self.activate(shell, "direct.connect", index),
+            _ => {}
+        }
+    }
+
     fn focused(&mut self, shell: &mut Shell, id: &str, index: i32) {
         // The list's row under the cursor is the build chosen: the overview beside it follows.
         if id == "builds" {

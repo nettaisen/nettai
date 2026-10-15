@@ -1243,7 +1243,14 @@ impl App {
             NavInput::EditDone(text) => {
                 self.shell.nav.edited(&text);
                 let did = self.shell.nav.end_edit(true);
+                let entered = if let Did::Edit { key, .. } = &did { Some(key.clone()) } else { None };
                 self.did(did);
+                // (Enter, which is what ends an edit here: the field's purpose follows.)
+                if let Some(key) = entered {
+                    let hearer = self.hearer_of(&key.id);
+                    self.call(hearer, |s, shell| s.submitted(shell, &key.id, key.index));
+                    self.settle();
+                }
             }
             // (The mouse on the on-screen pad: one pointer, through the UI. Fingers come by `touched`.)
             NavInput::Touch(bit, down) => {
