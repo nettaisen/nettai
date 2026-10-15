@@ -1,6 +1,6 @@
 # Game versions, builds and rulesets
 
-**Status: decided (2026-10-15), not built yet.** The user's answers to the proposal's open choices are §3.
+**Status: decided (2026-10-15), built (2026-10-15: §4).** The user's answers to the proposal's open choices are §3.
 
 The user, as rulesets came in ("allowed sets of souls/crosses (should be able to represent game)"): "i think then
 you might want to rethink version selection for saves if you can mix and match souls/crosses. it's kind of
@@ -139,3 +139,40 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
    builds don't have version labels either, they're kind of pointless since they correspond to ruleset rules").
 4. **The built-in "Standard" ruleset's Versions is "one per build"**: each build one cartridge's, both versions
    allowed, as the original played.
+
+## 4. As built (2026-10-15)
+
+- **The groups** are each game's rules/builds `groups` (`{ id, color }`, named `builds.version.<id>`), in the order
+  every list shows them. Their members are found by the definitions' own `version` (nettai-match's
+  `ruleset::Rulesets`): EXE6's Crosses, Beast forms and Giga chips said theirs already; EXE4's and EXE5's souls (the
+  engine's form field) and Giga chips (a `version` each game's rules now extend chips with) say theirs too; ChaosLrd
+  and Duo say none. A Bass-Cross MegaMan card's variant is the group of its name. The versions' `set` records,
+  EXE6's `shown_first` and the place-in-the-list reading of an EXE5 soul's version (the render's soul icons now read
+  the form's `version`) are gone.
+- **No version on a build.** EXE5's setup has no `version`; EXE4's and EXE5's `giga_chips` and the folder rules'
+  `owned` (the `chip_of_another_version` problem, nettai-match's `Wrong::ChipOfAnotherVersion`) are gone: a folder
+  may hold either version's Giga chips, and a ruleset of one version per build refuses a build that mixes them.
+- **EXE6's Cybeast** is the setup's `cybeast`, the engine's version fact as a form (`schema.role("version",
+  "form")`: the side's version is the form's own `version`, `Battle::version`; a side states it or the round
+  doesn't start, as an enum's). Its forms are MegaMan's sets' `cybeast` (the Beast Out forms, Gregar's and
+  Falzar's: `facts::offered_forms`). Beast Out from the base form takes the navi into the Cybeast, Beast Over and
+  the roar are the Cybeast's version's (rules/beast/custom.luau), and MstrCros plays the Cybeast's version's five
+  Crosses (`exe6.cybeast(side)` in place of `exe6.version`). The custom screen's version pictures go by it too. Its
+  ruleset category is `cybeast`.
+- **The counts.** EXE6's Crosses: `form[5]`, the Cross window's (`sub_8029EC8` counts five flags of
+  `byte_8029F4C`). EXE5's souls: `form[12]` (it was 16), the soul button's list (0x08024B28 goes through twelve
+  families of 0x08024BE0, `cmp r6, #13`, with their flags at 0x08024BF0: Team ProtoMan's ROM's six and six 0xFF).
+  EXE4's: `form[12]` as before (0x08020018's twelve flags after 0x08020008's twelve families).
+- **The card's variant** is its setup record's: EXE5's and EXE6's `patch_cards` are lists of `{ card, variant }`,
+  `variant` an enum of the game's versions that a card without variants leaves out (the engine leaves a record's
+  enum that a fact leaves out unstated; the rules see it as nil). A card's variants are the versions its effects
+  name (`version`, as before); @exelib/patch_cards/apply runs each installed card with its own variant.
+- **The compat boundary** (§2.4): exe6-compat's save import and trace setup state the save's version's Cybeast
+  (`codec::cybeast`) and each card's variant of the save's version (`codec::patch_card`); exe5-compat's the card's
+  variant (the version fact is gone); the version byte NaviStats+0x20 is compared as the Cybeast's
+  (`GameVersion::stats_byte`). The app's import keeps the forms the save owns.
+- **Random matches** (nettai-match's `pick`): a picked side states a random Cybeast where the rules require one
+  (`pick::Required`), from the same stream as the version before; random folders may hold either version's Giga
+  chips.
+- **Play's build list and Practice** still check builds without a ruleset (`Checked::of`), as before: a build that
+  mixes versions is ready there, and refused in a lobby whose ruleset is one per build.

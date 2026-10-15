@@ -1157,7 +1157,7 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
 
     [side]
     navi = "tenguman"
-    version = "falzar"
+    cybeast = "falzar-beast"
     folder = [ ... ]
 
     [aside]
@@ -1175,61 +1175,39 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   Back goes straight back to that screen, which leaving the editor closes, the build kept; the header's Back says
   where (‹ PLAY, or ‹ PRACTICE: `BuildsView.to-practice`). Play's EDIT and Practice's open it so (§4, §15). A build
   that no longer reads as one is refused, and the screen goes straight back.
-- **A build made new** is `Builds::new_build(content, version)`: the game's own navi, that version, the folder a
-  new save of the game starts with. There are no random builds.
-- **A build's version is switched** by the editor's header's tag (docs/design/app-ui.md §2.41, §2.42; the user:
-  "you should allow switching a save between game versions actually", and of where: "header please"), for any
-  build, made new or from a save: `Draft::choose_version`,
-  `Build::set_version`, which is `Builds::take_version`. What the game's builds data says a version sets becomes
-  the new version's, and nothing else of the build changes:
-  - *EXE6:* the `version` fact, and with it the build's MegaMan's Crosses (the `crosses` form list, MegaMan's own
-    list of the version: the content's rules for a fresh build of it, as rules/builds says "the navi's own Crosses of
-    the version follow it"; none for another navi). Beast Out follows the version at play.
-  - *EXE5:* the `version` fact (its team), and the six souls (`souls`) and the Giga chips a save can have
-    (`giga_chips`) are the new team's.
-  - *EXE4:* the same, Red Sun's or Blue Moon's six souls and Giga chips.
-  - *Kept, in every game:* the navi, the folder with its Regular and tag chips, the NaviCust, the patch cards, the
-    auto battle data, Light or Dark, and what is kept aside. What no longer fits is the build's problem, shown as any
-    rule's break is, not changed: the other version's Giga chips in the folder (the rules' `ChipOfAnotherVersion`,
-    "Bass is Team ProtoMan only", the entry in the error red, the Folder tab marked and the header counting it). The
-    rest is held to no version by any game's rules (the auto battle's Giga place takes any Giga chip), so it stays
-    and is no problem. The Bass-Cross MegaMan card (EXE6's 117, EXE5's 111) is one card of either version whose
-    effects are the build's version's (§2.48: each version's ROM has its own card table's entry for it), so it
-    stays where it is in the list and does the new version's: its lines in the library and the build's list, the
-    overview and the round change with the switch. Switched back, the build is as it was. A build file's format is
-    unchanged: it states the version's facts as before (EXE5's now with its `version`).
-- **The header's version tag is the switch** (§2.42), on every tab and for every navi (the version decides the
-  folder's Giga chips whatever the navi), and it reads as a tag that opens a choice (§2.44: the user, "i just
-  don't like how the version changer looks it feels weird and out of place"). The shell's `Header` makes its tag a
-  select where the page names it (`Page.tag-nav`; Builds names it `version`, and only while the editor shows does
-  the tag have text, so enabled): a `Focusable` of the stepper kind over the tag, so a click, a tap, Enter or the
-  pad's A is `activate("version")` and Left and Right are `step("version", ∓1)`, as any select's. The tag is the
-  other headers' `Pill`, in the same place (16 after the title, centered in the header as theirs), its name and
-  color the version's, with a small `ArrowDown` in the tag's color after its name inside the pill (`Pill.caret`);
-  the hover tint (Theme.tint, pressed Theme.line) fills the pill. Its touch, and so the cursor's brackets, is the
-  pill with 6 at each side and 4 over and under, 30 tall, the brackets 5 past that; on a phone 44 tall and at
-  least 44 wide, inside the header. `activate` opens the game's versions as a list under the tag
-  (`Shell::pick_tags`, `Kit::version_tags`: the select's list, `PickerLayer`, each row's text a `Pill` in the
-  version's color through `Shell.picker-tones`, the list at least 168 wide and kept inside the window; on a phone
-  the sheet from the bottom), open at the build's version; a row chosen is `choose("version", 0, choice)`, which
-  puts the focus back on the tag and switches to that version (`Editor::switch_version`). Left and Right step it
-  without opening (`Editor::step_version`: the next or previous version in the game's order, around; a build of
-  none takes the first). Either switches through `Draft::choose_version`, shows the tab anew and then the header.
-  While it is focused the footer is `BuildsScreen.version-hints` (←→ Switch version, Enter Choose version).
-  Other pages name no tag switch: their tags are plain, with no caret.
-- **The Navi tab's forms.** While the game's own navi is the build's, the faces of the forms the version brings
-  him are under the navi's facts (`Builds::forms_of`: of a new build of the version, its form list's and the forms
-  of the facts the version sets: EXE6's five Crosses, EXE4's and EXE5's six souls), twice their size, in rows as
-  even as they go (three and two, three and three); for another navi none. They change as the header's tag
-  switches the version. The NEW BUILD dialog's choice stays the two names alone, its note the game's words with
-  "It can be switched later in the editor."
+- **A build made new** is `Builds::new_build(content, group)`: the game's own navi, the forms its facts offer of
+  that version (docs/design/versions.md §2.2: EXE6's five Crosses and its Cybeast, EXE4's and EXE5's six souls), the
+  folder a new save of the game starts with. There are no random builds. The NEW BUILD dialog offers the game's
+  versions (its builds data's `groups`, each its tag in its color: `Kit::version_tags`) as what a new build starts
+  from, its note the game's words ("Starts with the version's Crosses and Cybeast.") and "They can be changed later
+  in the editor."
+- **A build has no version** (docs/design/versions.md §2.1, §3.3; the user: "the builds don't have version labels
+  either, they're kind of pointless since they correspond to ruleset rules"). It states what it has: its forms, its
+  folder (Giga chips of both versions included: no game's folder rules hold a build to one version, the ruleset's
+  Versions setting does, §8's Rulesets), its cards (a Bass-Cross MegaMan card's variant its own). No list, sheet,
+  card or header shows a version's tag; the header's tag after the title is a page's own (a ruleset's PRESET).
+  A build file written before (its `version`, its cards as names) is no build now: the list shows it as one that
+  can't be read (docs/design/versions.md §3.2: old builds are dropped, not converted).
+- **The Navi tab's selector** (docs/design/versions.md §2.1; the user: "you probably need to have some kind of soul
+  and cross and cybeast selector in the editor now right?"). Under the navi's facts, each fact of forms the build
+  chooses (`Builds::form_choices`, nettai-match's: the setup's one form that is the side's version, and its arrays
+  of forms), named as the game's rulesets name it ("CYBEASTS", "CROSSES 5/5", "SOULS 6/12"), its forms' faces twice
+  their size, four to a row on a desktop, in the battle's order, both versions' (`facts::offered_forms`: the navi
+  that changes form's sets hold them under the fact's name, or for the engine's form list every set's list; sorted
+  by the groups). EXE6's Cybeast is at the head, one always chosen, for every navi (MstrCros plays its version's
+  Crosses); the lists are the game's own navi's alone. A face is lit where the build has it (a line in the cursor's
+  color under it; the others dim), ringed in the error red where the ruleset the player plays by doesn't allow it.
+  Enter, a click or a tap is `activate("form", i)`: `Draft::choose_form` (`Builds::choose_form`) chooses it, or in a
+  list takes it out, or puts it in where the list has room (the Cross window's five, the soul button's twelve: the
+  setup's `form[5]` and `form[12]`), in the battle's order; a full list refuses one more.
 - **What is kept aside.** A NaviCust, patch cards and auto battle data are the game's own navi's alone, the one
   that changes form. While a build's navi is another, the facts of the editor's tabs that are that navi's
   (`screens::builds::editor::navi_only_fields`) are kept under `[aside]`, outside the side (the rules refuse a
   NaviCust on a navi that compiles none), and put back when the game's own navi is chosen again
   (`Build::set_navi`, `Build::settle_aside`).
-- **A build from a save** (`builds/import.rs`): each game's compat crate reads its own saves; then the save's
-  version with all a version sets (`Builds::take_version`), each choice on the preset the save is on
+- **A build from a save** (`builds/import.rs`): each game's compat crate reads its own saves, its version giving
+  the facts it holds (docs/design/versions.md §2.4: the souls or Crosses it owns, EXE6's Cybeast, a Bass-Cross
+  MegaMan card's variant); then each choice on the preset the save is on
   (`Builds::settle`, which says which it took, typed: the list says "Imported as Dark MegaMan") and the facts
   no build states at the rules' defaults (`Builds::as_built`). A file that is no save of the game is the typed
   "Not a BN6 save"; what the readers say in words goes to the log.
@@ -1271,12 +1249,12 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
   names and the player's own) and DELETE (asked once). Each change is saved at once. A preset, or the host's
   ruleset a joiner views, changes nothing, and the reserved line says why.
 
-What the screens ask of the game is nettai-match's `build` (docs/frontend.md §6): the game's versions in the
-order every list shows them, a build checked with its problems typed (`Checked`, `nettai_match::Wrong`), its
-overview, the folder's view and the chips' rows and sorts. The game's builds data
-(content/<game>/rules/builds) states each version's color beside it, and the game's strings name what a build is
-made of (the text table `builds`: `version.<id>`, `<choice>.<preset>`, and `versions`, what a version sets).
-Rust and Slint name no version, and hold no color of one.
+What the screens ask of the game is nettai-match's `build` (docs/frontend.md §6): the game's versions as groups
+in the order every list shows them, the forms a build chooses, a build checked with its problems typed (`Checked`,
+`nettai_match::Wrong`), its overview, the folder's view and the chips' rows and sorts. The game's builds data
+(content/<game>/rules/builds' `groups`) states each version's color beside it, and the game's strings name what a
+build is made of (the text table `builds`: `version.<id>`, `<choice>.<preset>`, and `versions`, what a new build of
+a version starts with). Rust and Slint name no version, and hold no color of one.
 
 **A navi's charge shot** isn't on the Navi tab: none of the three games' content names one (a navi's
 locale entry has its name and a run message; EXE6's `patch_card_effects` names the kinds of charge shot a patch
@@ -1288,14 +1266,14 @@ line needs the content to name each navi's.
 | What | The UI's | The app's |
 |---|---|---|
 | A game's kit: its builds data, its pictures, its library's order, made once | | `builds::kit(shell)` (`Kit`) |
-| A version's tag, in the version's own color | `VersionTag`, drawn by a `Pill` | `builds::version_tag(shell, game, ready, side)`, `Kit::version_tag` |
+| A version's tag, in the version's own color (a new build's starting group's; a build has none) | `VersionTag`, drawn by a `Pill` | `Kit::version_tags` |
 | The build overview | `BuildOverview { build: <BuildSheet>; }` | `builds::overview::sheet(shell, kit, label, name, side)` |
 | A game's builds for a list | `BuildRow { build: <BuildEntry>; nav: "builds"; nav-index: at; }` under a `ListView` of 52-tall rows (the row holds its own touch) | `builds::shelf::load(shell, kit)` (`Shelved`: the file, the build, whether it is ready, its row) |
 | A chip's row | `ChipRow { chip: <ChipCell>; number: 1; }` | `builds::overview::chip_cell` |
 | What is wrong with a build, in the player's words | the catalog's `BuildWords` | `builds::words::problem(shell, game, ready, &Problem)`: the kind's sentence with its numbers and names, about the part of the build its fact is (`words::wrong(.., &Wrong)` for a kind alone: the general sentence). `words::first_problem(shell, kit, side)` checks a side and words its first problem, for `UserError::BuildUnusable`. `builds::words::Words` (`problem`, `refusal`, `status`) where many are worded at once |
 
-**A problem's sentence** has no full stop and is whole by itself: "2 Giga chips, limit 1", "Gregar is Gregar
-only", "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
+**A problem's sentence** has no full stop and is whole by itself: "2 Giga chips, limit 1", "Mixes Gregar and
+Falzar: HeatCross", "The Regular chip's slot is empty". It stands alone on a line of its own (the folder editor's strip) and
 after a colon in another's sentence, which ends it (Practice's reserved line: "Your build can't be used: 31
 chips, a folder has 30."; the shell's "This build can't be used: {}."). `problem` words any
 `nettai_match::check::Problem`, whichever screen is shown; its kinds are matched with no catch-all, so a kind
@@ -1303,14 +1281,14 @@ added to nettai-match doesn't compile until it has its sentence.
 
 **It says what it is about.** A problem names the fact it is about (`Problem::field`, the setup field's name),
 and `words::part_of` says which part of a build that is (the UI's `BuildPart`): the navi, its level and the
-folder by the engine's roles of their facts, the version by the facts the game's versions set and the forms
-they bring (souls, Crosses), else the editor's tab whose facts include it (the NaviCust, the patch cards, the
-auto battle data). A kind that would otherwise say "something" says the part: "No navi chosen", "No version
-chosen", "This navi isn't EXE6's", "Something in the patch cards is there twice", "This navi can't use the
-NaviCust". A problem that names no fact, or one with no part, keeps the general sentence ("Something isn't
-chosen"). `words::tests::a_problem_is_about_its_part` holds the parts to the facts (a side with no navi, a new
-EXE6 side with no version); the sentences are the catalog's, seen in Practice's reserved line ("The dummy's
-build can't be used: No version chosen.").
+folder by the engine's roles of their facts, the forms by the facts of forms a build chooses (souls, Crosses, the
+Cybeast), else the editor's tab whose facts include it (the NaviCust, the patch cards, the auto battle data). A
+kind that would otherwise say "something" says the part: "No navi chosen", "No form chosen", "This navi isn't
+EXE6's", "Something in the patch cards is there twice", "This navi can't use the NaviCust". A problem that names
+no fact, or one with no part, keeps the general sentence ("Something isn't chosen").
+`words::tests::a_problem_is_about_its_part` holds the parts to the facts (a side with no navi, a new EXE6 side with
+no Cybeast); the sentences are the catalog's, seen in Practice's reserved line ("The dummy's build can't be used:
+No form chosen.").
 
 **The overview on another screen.** A screen's view has a property of the model, its Slint places the
 component, and its module fills the model from a side:
@@ -1325,7 +1303,7 @@ component, and its module fills the model from a side:
     view.set_build(crate::builds::overview::sheet(shell, &kit, "", &build.name, &build.side));
 
 The component is framed and takes the size it is given. At 620 wide or more it is the wide sheet, 540 tall: the
-face the round starts with, the name over the navi, the version's tag; Stats, each with what the NaviCust and
+face the round starts with, the name over the navi; Stats, each with what the NaviCust and
 the patch cards added beside it in cyan, signed; after the eight, any stat the game's rules give besides
 (`Overview::stats`, from the rules' `overview`'s `stats`: each by its name in the game's `stats` strings, its value
 and what the build added; the row's `StatLine.label`), EXE5's Soul time for a navi with souls, the turns a Soul
@@ -1342,8 +1320,8 @@ columns at the left (a second one beside it), the sheet 22 taller (672); on a ph
 build, and its height on the width and the stats after the eight. Every number is the compiled one
 (`Checked::overview`).
 
-**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name, version (its tag
-the version's switch, the frame's whichever tab shows) and "✓ Ready to play" (or how many problems), the tab bar,
+**The editor's tabs** (`screens/builds/editor.rs`). The editor is a frame: the header's name and "✓ Ready to
+play" (or how many problems), the tab bar,
 and the tab chosen. **A tab is one Slint file and one
 Rust module**, as a screen is for the shell:
 
@@ -1362,7 +1340,8 @@ Rust module**, as a screen is for the shell:
 | `checked` | The build checked (`nettai_match::build::Checked`): its problems, its round's stats, the folder's view, the navi's first face, of its round set up with no folder dealt (`check::set_up`: a folder being made is checked as it is, with no stand-in chips). Made again at each change |
 | `edit(|content, side| -> bool)` | **How a tab changes the build.** The closure says whether it did; the draft is checked again at once |
 | `choose_navi(navi)` | The navi changed, with what is kept aside moved |
-| `choose_version(version)` | The version switched (`Build::set_version`), the rest kept: the header's tag's, through the frame |
+| `choose_form(fact, form)` | A form of the Navi tab's selector chosen, or taken out of a list (`Builds::choose_form`) |
+| `allows(fact, h)`, `allows_item(fact, item)` | Whether the ruleset the player plays by allows a definition, or an item (a card's variant) |
 | `with_words(shell, |words| ...)` | The catalogs' and the game's words in the language shown |
 
 A tab neither saves nor checks. When its call returns, the frame keeps the build's file if the draft changed and
@@ -1471,10 +1450,15 @@ order lists the cards by number, one card a number), its MB the field the rules'
 (`Overview::budget`), its slot `Slots::own` and `name`, its lines `builds::cards` (each effect's line from the
 strings' `patch_card_effects`, a bug's marked by the effect's `bug`, the card screen's group by its `group`, an
 effect that holds effects of its own followed by theirs, and a line's names put in as the screen shows them:
-`cards::named_by`, a slot by its name, a card by its number). An effect that says its `version` is that version's
-alone (`cards::of_version`, by the build's version, `Draft::version`): the Bass-Cross MegaMan card, one card whose
-effects each version's ROM gives its own (§2.48), shows the build's version's lines in the strip, the build's list
-and the library, and they change as the header's tag switches the version.
+`cards::named_by`, a slot by its name, a card by its number). An effect that says its `version` is that variant's
+alone (`cards::of_version`, by the card's variant): the Bass-Cross MegaMan card, one card whose effects each
+version's ROM gives its own (§2.48), has a variant of each version (docs/design/versions.md §2.1, §3.1: the
+versions its effects name, `ruleset::variants_of`), which a build chooses for the card as the NaviCust's program's
+color is chosen. The library lists the card once for each variant, its name with the variant's ("Bass-Cross
+MegaMan (Gregar)", `BuildWords.card-variant`) and its lines that variant's; putting one in installs the card of
+that variant (a record of the card and its `variant`: `edit::list`, `edit::variant`), and putting the other in
+while it is chooses the other in its place. The build's list and the strip show the installed card's variant's
+lines. A ruleset can hold one variant back (its item `bass-cross-megaman/gregar`): that row is "Not allowed".
 
 - *The strip* lays the card under the cursor out: its number, name, MB or slot, why it can't go in (in the
   error red: the typed `EntryRefusal`, worded by `Words::entry_refusal`: "Needs 24 MB"; of one of the build's,
