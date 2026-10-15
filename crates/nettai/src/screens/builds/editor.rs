@@ -26,9 +26,11 @@
 //! **The ruleset the player plays by** (docs/design/app-ui.md §2.59) is the frame's too: a select at the tab bar's
 //! right end (on a phone, at the top of the Navi tab) with EDIT, which opens its page over the editor
 //! (`crate::rulesets::page`). The build is checked under it (`Checked::under`), so what it doesn't allow is among
-//! the build's problems, and each tab marks it where it shows it. No tab refuses it (docs/design/app-ui.md §2.68): it
-//! goes in as anything else and is then a problem about every entry that holds it, red; before that, a library's row,
-//! a navi's card or a form's row says "Not allowed" quietly ([`Draft::allows`]).
+//! the build's problems, and each tab marks it where it shows it. Every tab refuses to add it (docs/design/app-ui.md
+//! §2.68; the user: "okay actually rulesets should prevent adding unallowed ncps/chips/patch cards/etc"): a library's
+//! row, a navi's card or a form's row says "Not allowed" in the error red, dimmed ([`Draft::allows`]), and taking it is
+//! refused as the game's rules' refusals are. A build that holds it all the same (made under another ruleset, or the
+//! ruleset changed since) has it as a problem about every entry that holds it, red; it can be taken out.
 //!
 //! **A tab says which of the build's facts are its own** ([`Tab::fields`]): a problem with one of them marks
 //! its word in the bar; a tab none of whose facts the game's setup takes isn't in the bar (auto battle data:
@@ -145,7 +147,7 @@ impl Draft {
 
     /// Whether the ruleset the player plays by allows definition `h` of the build's fact `fact` (a navi, a chip, a
     /// program, a soul, a Cross, a Cybeast, an auto battle place's chip): where it holds nothing of that fact back, or
-    /// there is none, yes. What it doesn't allow is a quiet note where it is offered, never refused.
+    /// there is none, yes. What it doesn't allow is marked where it is offered, and refused where it would be added.
     pub fn allows(&self, fact: &str, h: u16) -> bool {
         self.ruleset.as_ref().is_none_or(|p| p.ruleset.allows(fact, h))
     }

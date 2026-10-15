@@ -1207,7 +1207,9 @@ the side under `[side]` as a match file states one (`nettai_match::file::side_to
   about it (`Draft::facts_of`: the one a problem names, and for a mix of versions, which names none, each fact
   holding one of its things); the chosen forms it is about have their names in the error red (one the ruleset the
   player plays by doesn't allow, one of a mix of versions, the entry a problem names), and a form the ruleset holds
-  back has "Not allowed" at its row's end (`NaviForm.banned`). The tab has no strip (design §2.66: the user, "i don't
+  back has "Not allowed" at its row's end in the error red (`NaviForm.banned`): `activate("form", i)` refuses to put it
+  in (the refusal's sound; one the build has is taken out as ever), `forms-all` passes it by and counts it left out,
+  and a navi the ruleset holds back (`NaviCard.banned`, dimmed) isn't chosen (design §2.68). The tab has no strip (design §2.66: the user, "i don't
   like having an info thing on the navi view, it's redundant"): the sentences are said in the note's place under the
   selector, in the note's stead (`NaviView.fault`, `Navi::show_fault`): what the build's problems have against the
   form under the pointer or the cursor (`Tab::hovered`, `Tab::focused`), the ruleset's among them (a form's own, then
@@ -1278,12 +1280,19 @@ allowed. Closed builds is no ruleset's: it is the lobby's own setting.
   allow is among the build's problems: what it has against the build (the problems `Wrong::of_ruleset` says are its,
   an item it doesn't allow and a mix of versions) is said in the strip of each item it is about (the Navi tab's
   note's place), with the game's rules' (`Draft::line`), and by nothing by the select (design §2.66; a phone's pane
-  headers say the game's rules' alone). It refuses nothing (design §2.68): what it holds back goes into the build as
-  anything else, and is then a problem about every entry that holds it (`Wrong::NotAllowed`'s `entries`,
-  `Problem::at`: each copy of a chip, each placed program, each auto battle place), its name in the error red. Before
-  that each tab says "Not allowed" quietly, in the muted color (`Draft::allows`): a navi's card, a form's row, the
-  folder's, the patch cards' and the auto battle data's library rows, a NaviCust program's row where none of it is
-  placed (`ProgramState::NotAllowed`). The folder's view is the game's rules' alone.
+  headers say the game's rules' alone). What it holds back isn't added (design §2.68; the user, "okay actually rulesets
+  should prevent adding unallowed ncps/chips/patch cards/etc", after adding it anyway was tried): each tab asks it
+  (`Draft::allows`, `allows_item`) where something would go in and refuses as the game's rules' refusals are, the row
+  shaking where rows shake, the refusal's sound, "Not allowed" at the strip's top right (`BuildWords.not-allowed-here`):
+  the folder's `put_in` (a click, Enter, a drag in), the NaviCust's `take` (a row, one of its colors), the patch
+  cards' `refuse` (put in, dropped in, a variant chosen), the auto battle's `put_in` (by its own category,
+  `auto_battle_places`), the Navi tab's navi and forms. Before that, it is marked unavailable: the folder's, the
+  patch cards' and the auto battle data's library rows greyed (`refused`) with "Not allowed" in the error red, a
+  NaviCust program's row where none of it is placed dimmed (`ProgramState::NotAllowed`), a form's row and a navi's card
+  (dimmed) with "Not allowed" in the error red. The folder's view stays the game's rules' alone (no `View::hold_to`).
+  A build that holds it all the same (made under another ruleset, or the ruleset changed) has it as a problem about
+  every entry that holds it (`Wrong::NotAllowed`'s `entries`, `Problem::at`: each copy of a chip, each placed
+  program, each auto battle place), its name in the error red; taking it out is never refused.
 - **A ruleset's page** (`rulesets/page.rs`, `ui/ruleset.slint`'s `RulesetPage` and `RulesetView`): app.slint
   shows it in the place of the screen that opened it (the lobby's Play, the editor's Builds), which goes on
   unseen under it; its controls are `rules.`-named, a scope of the focus's, and the screen hands them to it

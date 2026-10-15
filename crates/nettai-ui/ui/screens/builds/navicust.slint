@@ -54,8 +54,8 @@ export enum ProgramState {
     placed,
     held,
     out,
-    // Not placed, and the ruleset the player plays by doesn't allow it: a quiet note, as it can still be placed
-    // (docs/design/app-ui.md §2.59, §2.68).
+    // Not placed, and the ruleset the player plays by doesn't allow it: it can't be taken, its row dimmed and saying so
+    // in the error red (docs/design/app-ui.md §2.59, §2.68).
     not-allowed,
 }
 
@@ -436,9 +436,9 @@ component DropFlash inherits Rectangle {
 }
 
 // A program of the list: its color chosen (a plus part's crossed), its name, where that color's part is (placed, how
-// many copies where more than one), and at the row's right edge the colors to choose from where it has more than one
-// (the one chosen outlined, one the ruleset doesn't allow ringed in the error red): the user, "the error message
-// should go to the left of the color". The state's column ends where the list's most colors start, so the states line
+// many copies where more than one; or, dimmed, that the ruleset doesn't allow it, in the error red), and at the row's
+// right edge the colors to choose from where it has more than one (the one chosen outlined): the user, "the error
+// message should go to the left of the color". The state's column ends where the list's most colors start, so the states line
 // up whatever each row's colors.
 component ProgramRowView inherits Rectangle {
     in property <ProgramRow> program;
@@ -467,6 +467,7 @@ component ProgramRowView inherits Rectangle {
         width: 14px;
         height: 14px;
         background: root.program.tone;
+        opacity: root.program.state == ProgramState.not-allowed ? 0.5 : 1;
         Cross {
             visible: root.program.plus;
             bar: 1.5px;
@@ -480,7 +481,7 @@ component ProgramRowView inherits Rectangle {
         // (Up to its state's words, where it has any: a name is cut only where they meet.)
         width: max(0px, root.state-right - (state.text == "" ? 0px : min(110px, state.preferred-width) + 8px) - 32px);
         text: root.program.name;
-        color: root.program.flagged ? Theme.bad : Theme.text;
+        color: root.program.flagged ? Theme.bad : root.program.state == ProgramState.not-allowed ? Theme.dim : Theme.text;
         font-family: Theme.body;
         font-size: root.big ? 14px : 12px;
         font-weight: 600;
@@ -509,7 +510,7 @@ component ProgramRowView inherits Rectangle {
         x: root.state-right - self.width;
         width: 110px;
         text: root.program.state == ProgramState.placed ? (root.program.copies > 1 ? @tr("Placed ×{}", root.program.copies) : @tr("Placed")) : root.program.state == ProgramState.held ? @tr("In hand") : root.program.state == ProgramState.out ? @tr("Out of bounds") : root.program.state == ProgramState.not-allowed ? @tr("Not allowed") : "";
-        color: root.program.state == ProgramState.held ? Theme.cursor : Theme.muted;
+        color: root.program.state == ProgramState.held ? Theme.cursor : root.program.state == ProgramState.not-allowed ? Theme.bad : Theme.muted;
         font-family: Theme.body;
         font-size: 12px;
         horizontal-alignment: right;
