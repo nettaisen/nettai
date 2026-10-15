@@ -101,8 +101,11 @@ pub enum Wrong {
     NotAllowed { registry: Registry, item: crate::ruleset::Item },
     /// Under a ruleset of one version per build, what the build holds is
     /// more than one version's (docs/design/versions.md §2.3): the groups it
-    /// holds things of (`ruleset::Group` ids, in order) and the things it
-    /// holds of the groups but the one it holds most of.
+    /// holds things of (`ruleset::Group` ids, in order) and every thing it
+    /// holds of them, in the groups' order: none is taken for the build's
+    /// own version and the rest for the mistake (the user: "if mixing and
+    /// matching occurs and is not permitted you should just mark everything
+    /// that's mixed and matched as an error").
     Mixed { groups: Vec<String>, items: Vec<(Registry, crate::ruleset::Item)> },
     /// Anything else no save holds.
     Invalid,

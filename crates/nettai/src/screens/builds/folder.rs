@@ -95,8 +95,8 @@ fn description(words: &Words, chip: ChipHandle) -> String {
 }
 
 /// The build's problems that entry `i` of `folder` is part of (`folders::about_entry`: its own, its copies', its class's
-/// limit; an empty one's, the folder's size), the ruleset's among them (a chip it doesn't allow, a Giga chip of
-/// another version's than the build's under one version per build): what the strip says of it, its name in the error
+/// limit; an empty one's, the folder's size), the ruleset's among them (a chip it doesn't allow, a version's Giga chip
+/// in a build that mixes versions under one version per build): what the strip says of it, its name in the error
 /// red (docs/design/app-ui.md §2.66). `fields` are the tab's.
 fn entry_problems<'d>(draft: &'d Draft, fields: &[String], folder: &Chips, i: usize) -> Vec<&'d Problem> {
     let content = draft.content();

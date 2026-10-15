@@ -2250,7 +2250,12 @@ mod tests {
         lobbies[1].set_side(mixed.clone());
         assert!(lobbies[0].set_ruleset(standard()));
         run(&mut lobbies, now, 6, &mut |_, _| {});
-        assert_eq!(whats(lobbies[1].problems()), [Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: falzar[..2].iter().map(|h| (Registry::Form, h.clone())).collect() }]);
+        // (Every thing it holds of either version: none is taken for the build's own.)
+        let held: std::collections::BTreeSet<_> = match whats(lobbies[1].problems()).as_slice() {
+            [Wrong::Mixed { groups, items }] if *groups == ["gregar", "falzar"] => items.iter().cloned().collect(),
+            other => panic!("{other:?}"),
+        };
+        assert!(gregar[..3].iter().chain(&falzar[..2]).all(|h| held.contains(&(Registry::Form, h.clone()))), "{held:?}");
         assert!(lobbies[0].set_ruleset(r.preset("unrestricted").unwrap().clone()));
         run(&mut lobbies, now, 6, &mut |_, _| {});
         assert!(lobbies[1].problems().is_empty());

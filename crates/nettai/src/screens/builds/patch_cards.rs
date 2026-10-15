@@ -253,8 +253,8 @@ impl PatchCards {
                 version: words.kit.version_tag_of(words.names, Registry::Entry, &item(card)),
                 megabytes: budget.map(|b| say.invoke_megabytes(b.cost_of(content, h) as i32)).unwrap_or_default(),
                 slot: slot.or(own).map(slot_name).unwrap_or_default().into(),
-                // (One the ruleset the player plays by doesn't allow, or another version's than the build's under one
-                // version per build: its name in the error red.)
+                // (One the ruleset the player plays by doesn't allow, or a version's variant in a build that mixes
+                // versions under one version per build: its name in the error red.)
                 bad: !draft.allows_item(FIELD, &item(card)) || draft.mixing(Registry::Entry, &item(card)).is_some(),
                 ..Default::default()
             }
@@ -262,8 +262,8 @@ impl PatchCards {
     }
 
     /// The build's problems with its card at `i` of `installed` (none: an empty slot), the ruleset's among them (a card
-    /// or a variant it holds back, another version's variant under one version per build): its own, by its place in the
-    /// list's records, from 0; and the cards' MB past the list's, which every card counts in.
+    /// or a variant it holds back, a version's variant in a build that mixes versions under one version per build): its
+    /// own, by its place in the list's records, from 0; and the cards' MB past the list's, which every card counts in.
     fn problems<'d>(draft: &'d Draft, installed: &[Option<Card>], i: usize) -> Vec<&'d nettai_match::check::Problem> {
         let Some(Some(card)) = installed.get(i) else { return Vec::new() };
         let place = installed[..i].iter().flatten().count();

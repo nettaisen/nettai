@@ -12,16 +12,15 @@
 //! editor's lists (the user: "the rows in the editor are too tall, they should match the height of the regular
 //! editor"): checked where it is the build's, its face, its name, and the mark of the version it is one's own (the
 //! user: "you should indicate in the editor version exclusives"). Enter, a click or a tap on one chooses it, or takes
-//! it out of a list (`Builds::choose_form`). A strip across the top, as every tab has (docs/design/app-ui.md §2.66; the
-//! user: "it doesn't really have a good place to put errors for crosses/souls/beast outs"), describes the form under
-//! the cursor or the pointer (its face, its name and version, its description, its element and its fact), else the
-//! build's navi (its face, name, element and HP); and at its top right what the build's problems have against it, the
-//! ruleset's among them: a form's own (one the ruleset holds back, another version's than the build's under one version
-//! per build), then its fact's about no form of it; the navi's, and the build's about no part a tab shows. A fact's
-//! heading is in the error red where it has a problem, and a form of the build's a problem is about, its name; a form
-//! the ruleset doesn't allow says so at its row's end, as a library's row does. Nothing moves when one appears (the
-//! user: "error messages for beast form/crosses ends up shifting layout"). A phone has no strip: what the game's rules
-//! have against a fact is said on its heading's line, against the navi on its name's line. The lists are the game's
+//! it out of a list (`Builds::choose_form`). What is wrong with the build is marked where it is (docs/design/app-ui.md
+//! §2.66; the user: "if there's a problem with e.g. crosses or souls there's nowhere in the ui that shows it"): a
+//! fact's heading in the error red where it has a problem, and a form of the build's a problem is about, its name; a
+//! form the ruleset doesn't allow says so at its row's end, as a library's row does. The tab has no strip (the user:
+//! "i don't like having an info thing on the navi view, it's redundant"): what the build's problems have against the
+//! form under the cursor or the pointer, the ruleset's among them (its own: one the ruleset holds back, a version's
+//! in a build that mixes versions; then its fact's about no form of it), else against the navi (and the build where
+//! no tab shows what it is about), is said in the note's place under the selector, kept for it, so nothing moves when
+//! one appears (the user: "error messages for beast form/crosses ends up shifting layout"). The lists are the game's
 //! own navi's alone; the Cybeast is every navi's (MstrCros plays its version's Crosses).
 //!
 //! Choosing a navi is `Draft::choose_navi` (nettai-match's `Builds::set_navi`, with what is the game's own
@@ -36,7 +35,7 @@ use nettai_match::Wrong;
 use nettai_match::build::TEXT_TABLE;
 use nettai_match::check::Problem;
 use nettai_match::ruleset::Item;
-use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviDetail, NaviForm, NaviFormGroup, NaviView};
+use nettai_ui::{EditorTab, NaviCard, NaviChoice, NaviForm, NaviFormGroup, NaviView};
 use slint::{ComponentHandle, ModelRc, VecModel};
 
 #[derive(Default)]
@@ -45,8 +44,8 @@ pub struct Navi {
     navis: Vec<NaviHandle>,
     /// The selector's forms, each with the fact it is of, in the focus order.
     forms: Vec<(String, FormHandle)>,
-    /// The form the pointer is on (its place in the focus order), which the strip describes in place of the focused one
-    /// (`editor::hover`).
+    /// The form the pointer is on (its place in the focus order), whose problems the note's place says in place of the
+    /// focused one's (`editor::hover`).
     hovered: Option<usize>,
 }
 
@@ -65,7 +64,7 @@ fn family(content: &Content, element: Element) -> nettai_battle::content::ChipFa
 }
 
 /// Whether problem `problem` of the build's fact `fact` of forms (`chosen`, in order) is about form `form`: a form the
-/// ruleset doesn't allow, one of another version's than the build's (a mix of versions), or the entry it names.
+/// ruleset doesn't allow, one of a version's in a build that mixes versions, or the entry it names.
 fn about(problem: &Problem, fact: &str, chosen: &[FormHandle], form: FormHandle) -> bool {
     match &problem.what {
         Wrong::NotAllowed { registry: Registry::Form, item } => item.def == form.0,
@@ -80,60 +79,26 @@ impl Navi {
         content.defs.fact_name(PlayerFact::Navi).map(str::to_string).into_iter().collect()
     }
 
-    /// The strip (docs/design/app-ui.md §2.66): the form under the pointer or the cursor, else the build's navi; at its top
-    /// right what the build's problems have against it, the ruleset's among them.
-    fn show_detail(&self, shell: &Shell, draft: &Draft) {
-        let content = draft.content().clone();
-        let kit = draft.kit.clone();
-        let chosen = draft.side().navi(&content);
+    /// What the note's place says in the note's stead (docs/design/app-ui.md §2.66): what the build's problems have
+    /// against the form under the pointer or the cursor, the ruleset's among them, where they have anything; else
+    /// against the navi, and the build where no tab shows what it is about. Empty: the note.
+    fn show_fault(&self, shell: &Shell, draft: &Draft) {
+        let content = draft.content();
         let focused = shell.nav.focused().filter(|k| k.id == "form").map(|k| k.index.max(0) as usize);
-        let detail = draft.with_words(shell, |words| {
-            let names = words.names;
-            if let Some(i) = self.hovered.or(focused)
-                && let Some((fact, form)) = self.forms.get(i)
-            {
-                let form = *form;
-                let record = &content.defs.forms[form.index()].record;
-                let picked = kit.builds.chosen_forms(&content, draft.side(), fact);
+        let of_form: Vec<&Problem> = match self.hovered.or(focused).and_then(|i| self.forms.get(i)) {
+            Some((fact, form)) => {
+                let picked = draft.kit.builds.chosen_forms(content, draft.side(), fact);
                 // (Its own problems, then its fact's that are about no form of it: a fact a build made by hand states
                 // wrong, which every form of it says.)
                 let of_fact: Vec<&Problem> = draft.checked.problems.iter().filter(|p| draft.facts_of(p).contains(fact)).collect();
-                let own = of_fact.iter().copied().filter(|p| about(p, fact, &picked, form));
+                let own = of_fact.iter().copied().filter(|p| about(p, fact, &picked, *form));
                 let unplaced = of_fact.iter().copied().filter(|p| !picked.iter().any(|&f| about(p, fact, &picked, f)));
-                // (On one line, a space between its box's lines: "Buster \nAttk" one.)
-                let description = names.form_description(form).map(|d| crate::games::one_line(&d).split(' ').filter(|w| !w.is_empty()).collect::<Vec<_>>().join(" "));
-                let description = description.unwrap_or_default();
-                let kind = names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{fact}")).unwrap_or_else(|| fact.clone());
-                return NaviDetail {
-                    there: true,
-                    face: kit.pictures.face(form),
-                    name: names.form(form).into(),
-                    version: kit.version_tag_of(names, Registry::Form, &Item::of(form.0)),
-                    description: description.into(),
-                    element: kit.pictures.element(family(&content, record.element)),
-                    hp: Default::default(),
-                    kind: kind.into(),
-                    fault: draft.line(shell, own.chain(unplaced)).into(),
-                };
+                own.chain(unplaced).collect()
             }
-            // (The build's navi: the face its round starts with and its HP then, and what is against it and against the build
-            // where no tab shows what it is about.)
-            let face = draft.checked.face().map(|f| kit.pictures.shown(&f)).unwrap_or_else(|| kit.pictures.navi(chosen));
-            let hp = draft.checked.stats().map(|s| s.max_hp.to_string()).unwrap_or_default();
-            let fault = draft.line(shell, draft.pane_problems(&Navi::navi_fact(&content), true));
-            NaviDetail {
-                there: true,
-                face,
-                name: names.navi(chosen).into(),
-                version: Default::default(),
-                description: Default::default(),
-                element: kit.pictures.element(family(&content, content.navi(chosen).element)),
-                hp: hp.into(),
-                kind: Default::default(),
-                fault: fault.into(),
-            }
-        });
-        shell.ui().global::<NaviView>().set_detail(detail);
+            None => Vec::new(),
+        };
+        let problems = if of_form.is_empty() { draft.pane_problems(&Navi::navi_fact(content), true) } else { of_form };
+        shell.ui().global::<NaviView>().set_fault(draft.line(shell, problems).into());
     }
 }
 
@@ -250,13 +215,10 @@ impl Tab for Navi {
                     let name = words.names.text(nettai_match::ruleset::TEXT_TABLE, &format!("category.{}", c.fact)).unwrap_or_else(|| c.fact.clone());
                     let count = if c.one { String::new() } else { format!("{}/{}", chosen.len(), c.room) };
                     let columns = if side_by_side { 2 } else { columns };
-                    // (A phone's heading line: the game's rules' alone.)
-                    let problem = draft.line(shell, problems.iter().copied().filter(|p| !p.what.of_ruleset()));
                     let group = NaviFormGroup {
                         name: name.to_uppercase().into(),
                         count: count.into(),
                         flagged: !problems.is_empty(),
-                        problem: problem.into(),
                         columns,
                         rows,
                         heads,
@@ -271,9 +233,6 @@ impl Tab for Navi {
         view.set_form_groups(ModelRc::new(VecModel::from(groups)));
         let ruleset = draft.with_words(shell, |words| draft.ruleset.as_ref().map(|p| crate::rulesets::shown_name(words.names, &p.ruleset.name)));
         view.set_ruleset(ruleset.unwrap_or_default().into());
-        // (A phone's: what the game's rules have against the navi, or against the build where no tab shows what it is
-        // about, on the navi's name's line.)
-        view.set_problems(draft.pane_line(shell, &Navi::navi_fact(&content), true).into());
         view.set_face(face);
         view.set_hp(hp.into());
         view.set_element(kit.pictures.element(family(&content, content.navi(chosen).element)));
@@ -283,27 +242,28 @@ impl Tab for Navi {
         {
             shell.nav.focus("navi", at as i32);
         }
-        self.show_detail(shell, draft);
+        self.show_fault(shell, draft);
     }
 
     fn hide(&mut self, _shell: &mut Shell, _draft: &mut Draft) {
         self.hovered = None;
     }
 
-    /// The pointer came onto a form's row, or left it: the strip describes the form while the pointer is on it.
+    /// The pointer came onto a form's row, or left it: the note's place says the form's problems while the pointer is
+    /// on it.
     fn hovered(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, on: bool) {
         if id != "form" {
             return;
         }
         if editor::hover(&mut self.hovered, index.max(0) as usize, on) {
-            self.show_detail(shell, draft);
+            self.show_fault(shell, draft);
         }
     }
 
-    /// (The strip follows the focus, the last thing moved, until the pointer goes onto another form.)
+    /// (The note's place follows the focus, the last thing moved, until the pointer goes onto another form.)
     fn focused(&mut self, shell: &mut Shell, draft: &mut Draft, _id: &str, _index: i32) {
         self.hovered = None;
-        self.show_detail(shell, draft);
+        self.show_fault(shell, draft);
     }
 
     fn activate(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32) {
