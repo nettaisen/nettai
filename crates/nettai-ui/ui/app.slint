@@ -7,7 +7,7 @@
 import { Theme, Audit } from "theme.slint";
 import { Nav, NavKind } from "nav.slint";
 import { Shell, Screen, BattleKind, Backdrop, Cursor, DialogLayer, PickerLayer, Fx, JackIn } from "shell.slint";
-import { Pulse } from "motion.slint";
+import { Pulse, Tween } from "motion.slint";
 import { LoadingScreen } from "screens/loading.slint";
 import { MenuScreen } from "screens/menu.slint";
 import { SettingsScreen, SettingsOverlay } from "screens/settings.slint";
@@ -37,6 +37,29 @@ export { AboutView } from "screens/settings/about.slint";
 // A ruleset's page, which the lobby and the build editor open over themselves.
 export { RulesetView, RulesetCategory, RulesetItem, RulesetChoice } from "ruleset.slint";
 
+// A screen a ruleset's page opens over (the lobby, the build editor): unseen while the page is open, the screen
+// going on under it; when the page closes, the screen comes back as Back's way arrives (from above, fading in), not
+// at once, as the page's parts arrived over it.
+component UnderPage inherits Rectangle {
+    property <int> seq;
+    visible: !RulesetView.open;
+    changed visible => {
+        if self.visible {
+            root.seq += 1;
+        }
+    }
+    tw := Tween {
+        seq: root.seq;
+        settled: root.seq == 0;
+    }
+
+    Rectangle {
+        y: (1 - tw.t) * -12px;
+        opacity: tw.t;
+        @children
+    }
+}
+
 export component AppWindow inherits Window {
     // What is shown in place of a menu screen: the bar while the game loads, the two cards before a battle,
     // the battle.
@@ -63,9 +86,9 @@ export component AppWindow inherits Window {
     if !root.covered && Shell.screen == Screen.menu: MenuScreen {
         Rectangle { }  // (Copied in: docs/app.md §14.)
     }
-    // (While a ruleset's page is open over the lobby or the build editor, the screen goes on under it unseen.)
-    if !root.covered && Shell.screen == Screen.play: Rectangle {
-        visible: !RulesetView.open;
+    // (While a ruleset's page is open over the lobby or the build editor, the screen goes on under it unseen:
+    // `UnderPage`.)
+    if !root.covered && Shell.screen == Screen.play: UnderPage {
         PlayScreen {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
@@ -73,8 +96,7 @@ export component AppWindow inherits Window {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }
     }
-    if !root.covered && Shell.screen == Screen.builds: Rectangle {
-        visible: !RulesetView.open;
+    if !root.covered && Shell.screen == Screen.builds: UnderPage {
         BuildsScreen {
             Rectangle { }  // (Copied in: docs/app.md §14.)
         }

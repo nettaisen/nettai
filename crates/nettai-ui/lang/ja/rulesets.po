@@ -45,7 +45,7 @@ msgstr "すべて許可"
 msgid "ALLOW NONE"
 msgstr "すべて禁止"
 
-msgid "All"
+msgid "ALL"
 msgstr "すべて"
 
 msgid "Search"
