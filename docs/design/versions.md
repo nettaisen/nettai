@@ -140,8 +140,8 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
    place (nothing is in production).
 3. **No build has a version label** (first "no label" for a build with nothing version-only, then none at all: "the
    builds don't have version labels either, they're kind of pointless since they correspond to ruleset rules").
-4. **The built-in "Standard" ruleset's Versions is "one per build"**: each build one cartridge's, both versions
-   allowed, as the original played.
+4. **The built-in "Standard" ruleset's (now Masters class, docs/design/app-ui.md §2.59) Versions is "one per
+   build"**: each build one cartridge's, both versions allowed, as the original played.
 
 ## 4. As built (2026-10-15)
 
