@@ -174,5 +174,25 @@ The user, of the four open choices: "1. bass cross variant on the card 2. drop t
 - **Random matches** (nettai-match's `pick`): a picked side states a random Cybeast where the rules require one
   (`pick::Required`), from the same stream as the version before; random folders may hold either version's Giga
   chips.
-- **Play's build list and Practice** still check builds without a ruleset (`Checked::of`), as before: a build that
-  mixes versions is ready there, and refused in a lobby whose ruleset is one per build.
+- **EXE5's soul icon** (the soul button's icon as it flies to the picked column, sprite palette 13: Team Colonel's
+  ROM's outline, color 9, is another than Team ProtoMan's, 0x0874BDBC against 0x0874AAB8). The original loads its
+  cartridge's palette (state 9, 0x0802330C), so every soul's icon is in the console's version's outline. With no
+  version on a build the icon follows **the soul it shows**: the soul offered (a Soul Unison's, a Chaos Unison's)
+  and, for a MeddySoul capsule's mix, the soul the side is in, each in its form's own `version`'s outline (nettai-
+  render's `icon_palette_row`, the pack's `icon_versions`). Why that rule: a cartridge holds its own team's souls
+  alone, so for every build the original can make the soul's version is the cartridge's and the icon is the
+  original's on its own console; it needs nothing a build doesn't state already (no field: the form's `version`
+  is the one a ruleset's groups read), and a mixed build (a Mixed ruleset's) shows each soul as its own cartridge
+  would, where a rule by the souls the build holds would have to pick one team's outline for both. Rust names no
+  soul or version: the render reads the form's `version` and the pack's palettes by that name, and no console's
+  version (a recording's names one only to mark the other team's soul on it as known, `OTHER_VERSIONS_ICON`), so
+  a live battle draws what a recording does. Checked frame for frame against mGBA (2026-10-15, chip lab's
+  souls/07-obstacle/unison-own-console, ColonelSoul on a Team Colonel console, and souls/01-sword/unison,
+  ProtoSoul on Team ProtoMan's: exact but at the replay's known shift, the flight's frames among them, its outline Team Colonel's gray and Team ProtoMan's
+  teal; souls/06-recovery/capsule-soul, MeddySoul's capsule, exact but at the replay's known shift).
+- **Play's build list and Practice** check builds under a ruleset (`Checked::under`'s problems: nettai's
+  `builds::shelf`), as the lobby and the build editor do: outside a lobby the one the player plays by, so a build
+  that mixes versions under Standard is "2 problems" in the list and PRACTICE and HOST refuse it with the first
+  ("Mixes Gregar and Falzar: …"); in a lobby CHANGE BUILD's list is checked again under the lobby's, the host's,
+  as it changes. Joining (an invite's code, an address) asks only the game's rules of a build, as the lobby it
+  joins is under the host's ruleset and checks the build under it.
