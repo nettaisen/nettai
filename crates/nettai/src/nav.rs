@@ -1013,24 +1013,25 @@ mod tests {
             at("practice", 932.0, 112.0, 124.0, 40.0),
             at("edit", 1064.0, 112.0, 120.0, 40.0),
             at("more", 1192.0, 112.0, 40.0, 40.0),
-            at("builds", 32.0, 140.0, 400.0, 488.0),
-            at("invite", 32.0, 644.0, 548.0, 56.0),
-            at("host-menu", 580.0, 644.0, 52.0, 56.0),
-            at("code", 743.0, 652.0, 433.0, 40.0),
-            at("join", 1196.0, 652.0, 40.0, 40.0),
+            at("builds", 32.0, 140.0, 400.0, 496.0),
+            at("invite", 456.0, 652.0, 120.0, 40.0),
+            at("code", 600.0, 652.0, 208.0, 40.0),
+            at("join", 816.0, 652.0, 120.0, 40.0),
+            at("direct", 1090.0, 652.0, 158.0, 40.0),
         ];
         let reading: Vec<String> = reading_order(play.clone()).into_iter().map(|k| k.id).collect();
         assert_eq!(reading[..5], ["new", "practice", "edit", "more", "builds"]);
-        let zones = ["new", "builds", "practice", "edit", "more", "invite", "host-menu", "code", "join"];
+        let zones = ["new", "builds", "practice", "edit", "more", "invite", "code", "join", "direct"];
         let order: Vec<String> = in_zones(reading_order(play.clone()), &zones).into_iter().map(|k| k.id).collect();
         assert_eq!(order, zones);
         assert_eq!(from(&play, "new", Direction::Down).as_deref(), Some("builds"));
         assert_eq!(from(&play, "practice", Direction::Right).as_deref(), Some("edit"));
         assert_eq!(from(&play, "edit", Direction::Right).as_deref(), Some("more"));
         assert_eq!(from(&play, "builds", Direction::Down).as_deref(), Some("invite"));
-        assert_eq!(from(&play, "invite", Direction::Right).as_deref(), Some("host-menu"));
-        assert_eq!(from(&play, "host-menu", Direction::Right).as_deref(), Some("code"));
+        assert_eq!(from(&play, "invite", Direction::Right).as_deref(), Some("code"));
         assert_eq!(from(&play, "code", Direction::Right).as_deref(), Some("join"));
+        assert_eq!(from(&play, "join", Direction::Right).as_deref(), Some("direct"));
+        assert_eq!(from(&play, "direct", Direction::Left).as_deref(), Some("join"));
         assert_eq!(from(&play, "invite", Direction::Up).as_deref(), Some("builds"));
     }
 
