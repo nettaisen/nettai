@@ -3,8 +3,9 @@
 // choices, each a segmented control of its presets (LIGHT | DARK); then the selector of the forms the build has
 // (docs/design/versions.md §2.1: EXE6's Beast form, then its Crosses; EXE4's and EXE5's souls; both versions'
 // offered, each a row of the editor's lists, checked where it is the build's, under its version's head); then the
-// note of what is the game's own navi's alone, right after whatever is over it (or in its place, while the forms
-// have problems, those, in the error red). On a phone the panel is over the grid. Its Rust half is src/screens/builds/navi.rs.
+// note of what is the game's own navi's alone, right after whatever is over it. What is wrong with the build is the
+// header's to say (docs/design/app-ui.md §2.66). On a phone the panel is over the grid. Its Rust half is
+// src/screens/builds/navi.rs.
 
 import { Theme } from "../../theme.slint";
 import { Nav, NavKind, Focusable } from "../../nav.slint";
@@ -29,9 +30,10 @@ export struct NaviChoice {
     index: int,
 }
 
-// One of the forms the selector offers: its face, its name, whether the build has it, and whether the build's problems
-// are about it (the ruleset the player plays by doesn't allow it, or it is another version's under one version per
-// build). Its place: its column and row among its fact's rows, and
+// One of the forms the selector offers: its face, its name, whether the build has it, whether the build's problems are
+// about it (`flagged`: the ruleset the player plays by doesn't allow it, or it is another version's under one version
+// per build) and whether the ruleset doesn't allow it (`banned`, whether the build has it or not). Its place: its
+// column and row among its fact's rows, and
 // how many groups' heads are over it; `head`, the version's name over it where it is its group's first (the forms
 // are grouped by version, in the groups' order; those of none last, under a head's room with no name).
 export struct NaviForm {
@@ -43,16 +45,17 @@ export struct NaviForm {
     heads: int,
     chosen: bool,
     flagged: bool,
+    banned: bool,
 }
 
 // A fact of forms the build chooses: its name in capitals ("CROSSES"), how many it has of its room ("3/5"; none for
-// the one form always chosen, EXE6's Beast form), what is wrong with it (the first of its problems, in the player's
-// words; none: nothing), its forms in the battle's order, both versions' (grouped by version), and its first's place
-// among the selector's (the focus order's).
+// the one form always chosen, EXE6's Beast form), whether it has problems (its heading in the error red), its forms in
+// the battle's order, both versions' (grouped by version), and its first's place among the selector's (the focus
+// order's).
 export struct NaviFormGroup {
     name: string,
     count: string,
-    problem: string,
+    flagged: bool,
     // How many columns its rows are in (each version's group a column of its own where each of two has one form, as
     // EXE6's Beast form's), how many rows its forms take, and how many heads of their groups over them.
     columns: int,
@@ -79,8 +82,6 @@ export global NaviView {
     in property <image> element;
     // The selector: each fact of forms the build chooses (none of a list for a navi that doesn't change form).
     in property <[NaviFormGroup]> form-groups;
-    // What is wrong with the forms: the facts' problems in the player's words, each once, a line each.
-    in property <string> problems;
     // The ruleset the player plays by, by its name: on a phone its select is at the top of the tab (a desktop's
     // is at the tab bar's right end).
     in property <string> ruleset;
@@ -111,7 +112,8 @@ component NaviCardView inherits Rectangle {
         image-rendering: pixelated;
     }
 
-    // (Not allowed by the ruleset: a line in the error red at its top.)
+    // (Not allowed by the ruleset: a line in the error red at its top, as a library's row says why at its end; the
+    // build's navi, its name in the error red too, as an item of the build's with a problem.)
     Text {
         x: root.pad;
         y: root.pad - 4px;
@@ -134,7 +136,7 @@ component NaviCardView inherits Rectangle {
         width: parent.width - 2 * root.pad;
         height: 16px;
         text: root.navi.name;
-        color: root.navi.banned ? Theme.dim : Theme.text;
+        color: root.navi.banned ? (root.navi.chosen ? Theme.bad : Theme.dim) : Theme.text;
         font-family: Theme.body;
         font-size: 13px;
         font-weight: 600;
@@ -150,8 +152,10 @@ component NaviCardView inherits Rectangle {
 }
 
 // A form's row in the selector, as tall as the editor's lists' rows (`Theme.list-row`): a check mark (the build's or
-// not), its face, its name; its name in the error red where the build's problems are about it. (It has no mark of its
-// version: its group's head, in the version's color, says it. The user: "drop the selector's per-row tags".)
+// not), its face, its name; its name in the error red where the build's problems are about it, and "Not allowed" at
+// its end in the error red where the ruleset holds it back, as an item and a library's row are marked on every tab
+// (docs/design/app-ui.md §2.66). (It has no mark of its version: its group's head, in the version's color, says it.
+// The user: "drop the selector's per-row tags".)
 component FormRow inherits Rectangle {
     in property <NaviForm> form;
     in property <int> nav-index;
@@ -167,7 +171,7 @@ component FormRow inherits Rectangle {
         height: 16px;
         background: root.form.chosen ? Theme.cursor : Theme.inset;
         border-width: 1px;
-        border-color: root.form.flagged ? Theme.bad : root.form.chosen ? Theme.cursor : Theme.line;
+        border-color: root.form.chosen ? Theme.cursor : Theme.line;
         Path {
             width: 10px;
             height: 8px;
@@ -190,7 +194,7 @@ component FormRow inherits Rectangle {
 
     Text {
         x: face.x + face.width + 8px;
-        width: max(0px, root.width - self.x - 8px);
+        width: max(0px, root.width - self.x - 8px - (root.form.banned ? banned.width + 8px : 0px));
         text: root.form.name;
         color: root.form.flagged ? Theme.bad : root.form.chosen ? Theme.text : Theme.dim;
         font-family: Theme.body;
@@ -198,6 +202,18 @@ component FormRow inherits Rectangle {
         font-weight: 600;
         vertical-alignment: center;
         overflow: elide;
+    }
+
+    banned := Text {
+        x: root.width - 8px - self.width;
+        width: self.preferred-width;
+        visible: root.form.banned;
+        text: @tr("Not allowed");
+        color: Theme.bad;
+        font-family: Theme.body;
+        font-size: 12px;
+        horizontal-alignment: right;
+        vertical-alignment: center;
     }
 
     hit := Focusable {
@@ -410,7 +426,7 @@ export component NaviTab inherits Rectangle {
                 width: self.preferred-width;
                 height: 16px;
                 text: group.count == "" ? group.name : group.name + "  " + group.count;
-                color: group.problem == "" ? Theme.muted : Theme.bad;
+                color: group.flagged ? Theme.bad : Theme.muted;
                 font-family: Theme.body;
                 font-size: 11px;
                 font-weight: 700;
@@ -445,42 +461,11 @@ export component NaviTab inherits Rectangle {
             }
         }
 
-        // (The note. Where the navi chooses forms, its place is two lines tall whether it says one or not, and while
-        // the forms have problems it says them instead, in the error red and whole, each once: so a problem appearing
-        // moves nothing (the user, "error messages for beast form/crosses ends up shifting layout"), and it is read
-        // where the selector ends. EXE6's selector leaves room for no more under it at a desktop's height.)
-        if NaviView.form-groups.length == 0: Note {
+        // (The note, as tall as its words: what is wrong with the forms is the header's to say, so nothing here
+        // moves when a problem appears.)
+        Note {
             text: root.note;
             vertical-alignment: top;
-        }
-
-        if NaviView.form-groups.length > 0: Rectangle {
-            height: 2 * 17px;
-            Note {
-                x: 0;
-                y: 0;
-                width: parent.width;
-                height: parent.height;
-                visible: NaviView.problems == "";
-                text: root.note;
-                vertical-alignment: top;
-            }
-
-            Text {
-                x: 0;
-                y: 0;
-                width: parent.width;
-                height: parent.height;
-                visible: NaviView.problems != "";
-                text: NaviView.problems;
-                color: Theme.bad;
-                font-family: Theme.body;
-                font-size: 13px;
-                font-weight: 500;
-                vertical-alignment: top;
-                wrap: word-wrap;
-                overflow: elide;
-            }
         }
     }
 

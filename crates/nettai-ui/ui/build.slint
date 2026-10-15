@@ -7,7 +7,7 @@
 // Build cost (docs/app.md §14): the rows are leaves, each under one `for`.
 
 import { Theme, Audit } from "theme.slint";
-import { Label, Pill, PanelBack, Mono, RowTouch } from "widgets.slint";
+import { Label, Pill, PanelBack, Mono, RowTouch, ProblemMark } from "widgets.slint";
 
 // A version's tag: the version's name as the game's strings have it, in capitals, in the version's own color
 // (the game's builds data's groups state both: `crate::builds::Kit::version_tags`). No text: no tag.
@@ -75,7 +75,8 @@ export struct ChipCell {
     mark: ChipMark,
     element: image,
     code: string,
-    // The folder's rules have something against the entry: its row is marked.
+    // The folder's rules have something against the entry: its name is in the error red (an empty entry's box, which
+    // has no name), as every item of a build is marked that has a problem (docs/design/app-ui.md §2.66).
     flagged: bool,
     // The version its chip is one's own (a Giga chip's), marked after its name; none (no text) outside the editor.
     version: VersionTag,
@@ -454,7 +455,7 @@ export component ChipRow inherits Rectangle {
         x: root.pad;
         width: 22px;
         text: root.number <= 0 ? "" : (root.number < 10 ? "0\{root.number}" : "\{root.number}");
-        color: root.chip.flagged ? Theme.bad : Theme.dim;
+        color: Theme.dim;
         font-family: Theme.mono;
         font-size: 11px;
         font-weight: 500;
@@ -560,10 +561,17 @@ export component BuildRow inherits Rectangle {
         overflow: elide;
     }
 
-    Text {
+    // (A build with problems: their mark before the words, as the editor's header has it.)
+    ProblemMark {
         x: 12px;
+        y: 28px + 5.5px;
+        visible: root.build.bad;
+    }
+
+    Text {
+        x: root.build.bad ? 21px : 12px;
         y: 28px;
-        width: parent.width - 24px;
+        width: parent.width - 24px - (root.build.bad ? 9px : 0px);
         height: 16px;
         text: root.build.status;
         color: root.build.bad ? Theme.bad : Theme.muted;

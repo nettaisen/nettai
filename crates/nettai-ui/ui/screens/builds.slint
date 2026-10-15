@@ -2,8 +2,8 @@
 // builds themselves, + NEW BUILD (and its FROM A SAVE FILE…), and the chosen build's overview with EDIT and its
 // menu of DUPLICATE, RENAME and DELETE are Play's (play.slint).
 //
-// The editor: the build's name, its version's tag (the version's switch) and whether it is ready in the header; a
-// tab bar; and under it the tab chosen. Each tab is one file in builds/ (its view, the global its Rust module sets,
+// The editor: the build's name and what is wrong with it (or that it is ready) in the header; a tab bar; and under it
+// the tab chosen. Each tab is one file in builds/ (its view, the global its Rust module sets,
 // and its component, which is given its place here) and one Rust module in src/screens/builds/; docs/app.md §8 says
 // how a tab is added and what it is given. Its Rust half is src/screens/builds/mod.rs.
 
@@ -39,7 +39,9 @@ export global BuildsView {
     in property <string> name;
     // The ruleset the player plays by, by its name: the build is marked against it.
     in property <string> ruleset;
-    // "✓ Ready to play", or how many problems.
+    // "✓ Ready to play"; or the shown tab's problems (the first's sentence and "+n more"; a phone's, how many the
+    // build has), else how many the build has: the header's, a control that opens them all (docs/design/app-ui.md
+    // §2.66).
     in property <string> state;
     in property <bool> state-good;
     in property <[Tab]> tabs;
@@ -97,6 +99,7 @@ export component BuildsScreen inherits Page {
     game: !Theme.phone;
     state: BuildsView.state;
     state-good: BuildsView.state-good;
+    state-nav: "problems";
     hints: BuildsView.shown == EditorTab.navi ? NaviView.hints : BuildsView.shown == EditorTab.folder ? FolderView.hints : BuildsView.shown == EditorTab.navicust ? NavicustView.hints : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.hints : AutoBattleView.hints;
     status: BuildsView.shown == EditorTab.navi ? NaviView.status : BuildsView.shown == EditorTab.folder ? FolderView.status : BuildsView.shown == EditorTab.navicust ? NavicustView.status : BuildsView.shown == EditorTab.patch-cards ? PatchCardsView.status : AutoBattleView.status;
 

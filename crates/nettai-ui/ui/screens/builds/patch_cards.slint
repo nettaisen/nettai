@@ -14,7 +14,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable, Drag } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch } from "../../widgets.slint";
+import { Cut, PanelBack, Label, Field, Select, Button, ButtonKind, ListView, RowTouch, Refusal } from "../../widgets.slint";
 import { Tween, Flash, Shake, Count } from "../../motion.slint";
 import { LibraryHead, DropGap, RemoveTarget } from "folder.slint";
 import { VersionTag, VersionMark } from "../../build.slint";
@@ -559,21 +559,6 @@ export component PatchCardsTab inherits Rectangle {
         overflow: elide;
     }
 
-    // (Why the card can't go in, or what the rules have against the build's cards.)
-    Text {
-        x: 16px;
-        y: root.top + 74px;
-        width: 224px;
-        height: 16px;
-        visible: !Theme.phone;
-        text: PatchCardsView.detail.problem;
-        color: Theme.bad;
-        font-family: Theme.body;
-        font-size: 12px;
-        font-weight: 500;
-        vertical-alignment: center;
-        overflow: elide;
-    }
 
     GroupColumn {
         x: 256px;
@@ -593,6 +578,18 @@ export component PatchCardsTab inherits Rectangle {
         visible: !Theme.phone && PatchCardsView.detail.there;
         title: Theme.phone ? "" : PatchCardsView.detail.second-title;
         lines: PatchCardsView.detail.second;
+    }
+
+    // (Why the card under the cursor can't go in, or why it wasn't put in: the strip's refusal, at its top right as
+    // every tab's strip has it.)
+    Refusal {
+        x: parent.width / 2;
+        y: root.top + 19px;
+        width: parent.width / 2 - 16px;
+        visible: !Theme.phone;
+        text: PatchCardsView.detail.problem;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
     }
 
     // ---- The build's cards, framed: the title and the counts, the cards, what they add up to.

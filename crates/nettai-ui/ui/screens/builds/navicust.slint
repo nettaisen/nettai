@@ -17,7 +17,7 @@
 import { Theme, Audit } from "../../theme.slint";
 import { Nav, Focusable } from "../../nav.slint";
 import { Shell, Hint, PadButton } from "../../shell.slint";
-import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message } from "../../widgets.slint";
+import { PanelBack, Label, ListView, ArrowLeft, ArrowRight, Message, Refusal } from "../../widgets.slint";
 import { Tween, Pulse, Shake } from "../../motion.slint";
 import { RemoveTarget } from "folder.slint";
 
@@ -58,16 +58,16 @@ export enum ProgramState {
     not-allowed,
 }
 
-// One of a program's colors, as its row offers it: the color, and whether the ruleset the player plays by doesn't
-// allow its part (a ring in the error red).
+// One of a program's colors, as its row offers it. (A program the ruleset holds back is held back whole: its row says
+// so at its end, and its name is in the error red where it is placed: `ProgramRow.flagged`.)
 export struct ProgramColor {
     tone: color,
-    not-allowed: bool,
 }
 
 // A program, as the list shows it: its name, in the color chosen (`color`, its place among `colors`, the colors it
 // comes in: a choice on the row where there is more than one); where that color's part is, and `copies`, how many of
-// it are placed.
+// it are placed; `flagged`, the build's problems are about a placed copy of it (its name in the error red, as every
+// tab marks an item of the build's: docs/design/app-ui.md §2.66).
 export struct ProgramRow {
     name: string,
     tone: color,
@@ -76,6 +76,7 @@ export struct ProgramRow {
     copies: int,
     colors: [ProgramColor],
     color: int,
+    flagged: bool,
 }
 
 // A line of the effects or the bugs: a title, an effect, a bug with its level or amount (`extent`), a list with
@@ -463,7 +464,7 @@ component ProgramRowView inherits Rectangle {
         // (Up to its state's words, where it has any: a name is cut only where they meet.)
         width: max(0px, root.state-right - (state.text == "" ? 0px : min(110px, state.preferred-width) + 8px) - 32px);
         text: root.program.name;
-        color: Theme.text;
+        color: root.program.flagged ? Theme.bad : Theme.text;
         font-family: Theme.body;
         font-size: root.big ? 14px : 12px;
         font-weight: 600;
@@ -477,8 +478,8 @@ component ProgramRowView inherits Rectangle {
         width: 14px;
         height: 14px;
         visible: root.choice;
-        border-width: c.not-allowed ? (i == root.program.color ? 2px : 1px) : (i == root.program.color ? 1px : 0px);
-        border-color: c.not-allowed ? Theme.bad : Theme.text;
+        border-width: i == root.program.color ? 1px : 0px;
+        border-color: Theme.text;
         Rectangle {
             x: 3px;
             y: 3px;
@@ -833,7 +834,7 @@ export component NavicustTab inherits Rectangle {
     Text {
         x: root.words-x + 26px;
         y: root.top + 19px;
-        width: parent.width - self.x - 16px;
+        width: parent.width / 2 - self.x - 8px;
         height: 20px;
         visible: !Theme.phone;
         text: NavicustView.detail.name;
@@ -1095,11 +1096,23 @@ export component NavicustTab inherits Rectangle {
         }
     }
 
-    // (Why the piece in hand couldn't be put down.)
+    // (Why the piece in hand couldn't be put down: the strip's refusal, at its top right as every tab's strip has it.
+    // A phone has no strip: its line is under the key.)
+    Refusal {
+        x: parent.width / 2;
+        y: root.top + 19px;
+        width: parent.width / 2 - 16px;
+        visible: !Theme.phone;
+        text: NavicustView.notice;
+
+        Rectangle { }  // (Copied in: docs/app.md §14.)
+    }
+
     Message {
         x: 0;
         y: root.key-y + root.key-height + 10px;
         width: root.board-width;
+        visible: Theme.phone;
         text: NavicustView.notice;
     }
 

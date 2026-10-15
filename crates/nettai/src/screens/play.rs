@@ -215,8 +215,8 @@ struct Live {
     /// The match's ruleset, and whether this player is the host, who chooses it.
     ruleset: Option<nettai_match::ruleset::Ruleset>,
     host: bool,
-    /// What is wrong with this player's build under the settings: the first thing.
-    problem: Option<nettai_match::check::Problem>,
+    /// What is wrong with this player's build under the settings (the line says the first and how many more).
+    problems: Vec<nettai_match::check::Problem>,
     closed: bool,
     bars: i32,
     ping: i32,
@@ -460,7 +460,7 @@ impl Play {
             // (What is wrong, in the player's words: the editor's for each kind. The game's rules' problems come
             // before the ruleset's.)
             Some(build) => {
-                let reason = builds::kit(shell).and_then(|kit| words::first_problem(shell, &kit, &build.problems));
+                let reason = builds::kit(shell).and_then(|kit| words::summary(shell, &kit, &build.problems));
                 Err(UserError::BuildUnusable { reason: reason.filter(|r| !r.is_empty()) })
             }
         }
@@ -911,9 +911,8 @@ impl Play {
             closed: lobby.settings().closed_builds,
             bars: if reconnecting.is_some() { 0 } else { steady.map_or(ping.map_or(0, |p| p.quality().bars() as i32), |s| s.0) },
             ping: if reconnecting.is_some() { -1 } else { steady.map_or(ping.map_or(-1, |p| p.ms.round() as i32), |s| s.1) },
-            // (A build the settings can't play: the lobby's own check, typed. Until the Builds screen words each
-            // kind, the line says only that it can't be used so.)
-            problem: lobby.problems().first().cloned(),
+            // (A build the settings can't play: the lobby's own check, typed.)
+            problems: lobby.problems().to_vec(),
             note: Some(match (reconnecting, ready, their_ready) {
                 (Some(_), ..) => LobbyNote::Reconnecting,
                 (None, ..) if !lobby.problems().is_empty() => LobbyNote::Unusable,
@@ -957,10 +956,10 @@ impl Play {
                 page.follow(shell, ruleset);
             }
         }
-        // (The build's problem in the player's words: the Builds screen's for each kind.)
-        if live.problem != self.live.problem || live.ruleset != self.live.ruleset {
-            let said = match (&live.problem, shell.ready()) {
-                (Some(problem), Some((game, ready))) => Some(words::problem(shell, &game, &ready, problem)),
+        // (The build's problems in the player's words, as the editor's header says them: the first and "+n more".)
+        if live.problems != self.live.problems || live.ruleset != self.live.ruleset {
+            let said = match (live.problems.is_empty(), shell.ready()) {
+                (false, Some((game, ready))) => Some(words::problems(shell, &game, &ready, &live.problems)),
                 _ => None,
             };
             let line = said.map(|said| UserError::BuildUnusable { reason: Some(said).filter(|s| !s.is_empty()) }.line(&ui));
@@ -1205,6 +1204,8 @@ impl Screen for Play {
             None => self.notice.as_str().into(),
         });
         view.set_message_quiet(self.problem.is_none());
+        // (A build's problems have their mark: what keeps it from being played is the build's, not the control's.)
+        view.set_message_problem(matches!(self.problem, Some(UserError::BuildUnusable { .. })));
         // The direct connection's dialog.
         view.set_direct(self.direct.is_some());
         if let Some(direct) = &self.direct {

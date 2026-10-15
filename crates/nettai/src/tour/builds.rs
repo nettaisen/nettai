@@ -328,7 +328,8 @@ pub(super) fn steps(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut
 /// version made beside the walk's; on the Navi tab the selector's first form focused (`builds-forms-focus`: EXE6's
 /// Cybeast, EXE4's and EXE5's first soul; the build ready); the other version's first form of the selector's first
 /// fact chosen (`builds-forms-mixed`: EXE6's other Cybeast, an EXE4 or EXE5 build's other version's soul too; under
-/// the Standard ruleset, one version per build, the build mixes the versions); and the first version's again
+/// the Standard ruleset, one version per build, the build mixes the versions, which the header says; and the header's
+/// line opened, its problems listed: `builds-forms-problems`); and the first version's again
 /// (`builds-forms-back`: ready). A step after each picture checks the focus and the build's state are as it says.
 fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, Step), &'static str, Pair)) {
     const NAME: &str = "Switched";
@@ -357,6 +358,10 @@ fn switched(add: &mut dyn FnMut(u64, Step), shot: &dyn Fn(&mut dyn FnMut(u64, St
     shot(add, "builds-forms-mixed", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
     add(0, state("builds-forms-mixed", true, false));
+    // (The header's line opened: the build's problems, each by its tab.)
+    add(SETTLE, press("problems", 0));
+    shot(add, "builds-forms-problems", Pair::None);
+    add(SETTLE, act(Action::Back));
     add(SETTLE, choose_other(false));
     shot(add, "builds-forms-back", Pair::None);
     add(90, on_tab(EditorTab::Navi, "Navi"));
