@@ -12,7 +12,11 @@
 //! cursor stays in the library; Enter (or Del, or a click) on a card of the library that is in takes it out again,
 //! so a card is put in and taken out from where the cursor is. Del takes the build's card under the cursor out;
 //! `[` and `]` (the pad's north button: up) move it in the list's order, which matters (a later card can undo an
-//! earlier one's work).
+//! earlier one's work). **CLEAR** at the right end of the cards' header (or **X**; docs/design/app-ui.md §2.71) takes
+//! every card out (in a game with slots, empties every slot), as one change, asked first (`editor::ask_clear`). A card,
+//! or a card's variant, the ruleset the player plays by holds back isn't put in nor chosen (docs/design/app-ui.md
+//! §2.68): its library row is greyed and says "Not allowed" in the error red, and putting it in is refused as the
+//! budget's refusals are; one a build holds all the same can be taken out.
 //!
 //! **The mouse:** a click on one of the build's cards marks it (the focus stays on it); a right click takes it out, as
 //! Del does (a right click on a library card that is in, too). A card dragged to another place in the list moves
@@ -353,7 +357,13 @@ impl PatchCards {
                 // (A card that is in says so, and isn't greyed: Enter takes it out again. In a game with slots a
                 // card goes in its own slot whatever it holds: no card is refused.)
                 let refusal = if is_in || slots.is_some() || other { None } else { budget.and_then(|b| b.refusal(content, draft.side(), h)) };
-                if is_in {
+                if !draft.allows_item(FIELD, &item(card)) {
+                    // (One the ruleset the player plays by doesn't allow says so in the error red, greyed where it isn't
+                    // in: it can't be put in, docs/design/app-ui.md §2.68. One that is in all the same can be taken out.)
+                    row.note = shell.ui().global::<BuildWords>().invoke_not_allowed_here();
+                    row.refused = !is_in;
+                    row.bad = true;
+                } else if is_in {
                     // (Its note says no reason: the build's card a problem is about is marked in the build's list, its
                     // name in the error red, docs/design/app-ui.md §2.66.)
                     row.note = shell.ui().global::<BuildWords>().invoke_installed();
@@ -361,10 +371,6 @@ impl PatchCards {
                     row.note = draft.with_words(shell, |w| w.entry_refusal(refusal)).into();
                     row.refused = true;
                     row.bad = matches!(refusal, EntryRefusal::Needs { .. });
-                } else if !draft.allows_item(FIELD, &item(card)) {
-                    // (One the ruleset the player plays by doesn't allow says so quietly: it goes in, and is then the
-                    // build's problem, docs/design/app-ui.md §2.68.)
-                    row.note = shell.ui().global::<BuildWords>().invoke_not_allowed_here();
                 }
                 row
             })
@@ -415,6 +421,7 @@ impl PatchCards {
         let detail = draft.with_words(shell, |words| {
             // Why a library's card can't go in, the strip's refusal, said before what is against it.
             let problem = match (&card, at) {
+                (Some(c), None) if !draft.allows_item(FIELD, &item(c)) && !installed.contains(&Some(c.clone())) => Some(say.invoke_not_allowed_here().to_string()),
                 (Some((h, _)), None) if slots.is_none() => budget.and_then(|b| b.refusal(content, draft.side(), *h)).filter(|r| matches!(r, EntryRefusal::Needs { .. })).map(|r| words.entry_refusal(r)),
                 _ => None,
             };
@@ -493,6 +500,11 @@ impl PatchCards {
             return self.remove(shell, draft, i);
         }
         if let Some(i) = installed.iter().position(|c| c.as_ref().is_some_and(|c| c.0 == h)) {
+            // (A variant the ruleset doesn't allow isn't chosen either.)
+            if !draft.allows_item(FIELD, &item(&card)) {
+                self.refuse(shell, draft, row, &card);
+                return;
+            }
             if draft.edit(|content, side| edit::variant(content, side, FIELD, i, card.1.as_deref())) {
                 self.land(shell, draft, row, h, i);
             }
@@ -523,14 +535,16 @@ impl PatchCards {
         self.land(shell, draft, row, h, landed);
     }
 
-    /// Whether the list can't take row `row`'s card `h` (its MB, or no room): if so its row shakes, and the strip says
-    /// why. (In a game with slots a card goes in its own slot, whatever it holds: none is refused.)
+    /// Whether the list can't take row `row`'s card `h` (the ruleset the player plays by doesn't allow it, its MB, or no
+    /// room): if so its row shakes, and the strip says why. (In a game with slots a card goes in its own slot, whatever
+    /// it holds: only the ruleset refuses one.)
     fn refuse(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, card: &Card) -> bool {
         let h = card.0;
         let budget = PatchCards::budget(draft);
         let refusal = (!PatchCards::slotted(draft)).then(|| budget.as_ref().and_then(|b| b.refusal(draft.content(), draft.side(), h))).flatten();
         let room = PatchCards::slotted(draft) || PatchCards::installed(draft).iter().flatten().count() < room_of(draft.content(), FIELD);
-        if refusal.is_none() && room {
+        let allowed = draft.allows_item(FIELD, &item(card));
+        if refusal.is_none() && room && allowed {
             return false;
         }
         let ui = shell.ui();
@@ -539,7 +553,10 @@ impl PatchCards {
         view.set_refused(row as i32);
         view.set_refused_seq(self.refused);
         shell.sound.play(Cue::Refused);
-        self.notice = refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r)));
+        self.notice = match allowed {
+            false => Some(shell.ui().global::<BuildWords>().invoke_not_allowed_here().to_string()),
+            true => refusal.map(|r| draft.with_words(shell, |w| w.entry_refusal(r))),
+        };
         self.show_detail(shell, draft, budget.as_ref());
         true
     }
@@ -578,6 +595,10 @@ impl PatchCards {
         if let Some(i) = held {
             // (Of another variant: this one is chosen first.)
             if installed[i].as_ref() != Some(&card) {
+                if !draft.allows_item(FIELD, &item(&card)) {
+                    self.refuse(shell, draft, row, &card);
+                    return;
+                }
                 draft.edit(|content, side| edit::variant(content, side, FIELD, i, card.1.as_deref()));
             }
             let to = if at > i { at - 1 } else { at };
@@ -610,6 +631,18 @@ impl PatchCards {
             shell.sound.play(Cue::Back);
             self.changed(shell, draft);
         }
+    }
+
+    /// CLEAR, answered: every card taken out (in a game with slots, every slot emptied), as one change. The cursor goes
+    /// to the build's first row.
+    fn clear(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        self.notice = None;
+        if draft.edit(|content, side| edit::list(content, side, FIELD, ListEdit::Clear)) {
+            shell.sound.play(Cue::Back);
+        }
+        self.slot = 0;
+        self.changed(shell, draft);
+        shell.nav.focus("card", 0);
     }
 
     /// Move the build's card in row `i` up or down the list.
@@ -762,6 +795,10 @@ impl Tab for PatchCards {
             "lib.up" => self.shift(shell, draft, self.slot, true),
             "lib.down" => self.shift(shell, draft, self.slot, false),
             "lib.close" => self.leave_library(shell),
+            "clear" => {
+                let empty = PatchCards::installed(draft).iter().all(Option::is_none);
+                editor::ask_clear(shell, view.get_clear_question(), empty);
+            }
             _ => {}
         }
     }
@@ -867,8 +904,12 @@ impl Tab for PatchCards {
         }
     }
 
-    /// `[` and `]` on one of the build's cards move it.
+    /// `[` and `]` on one of the build's cards move it; X, CLEAR.
     fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
+        if editor::clear_key(shell, key) {
+            self.activate(shell, draft, "clear", 0);
+            return true;
+        }
         if let Some(i) = PatchCards::focused_card(shell) {
             match key.code {
                 KeyCode::BracketLeft if !key.repeat => self.shift(shell, draft, i, true),
@@ -904,6 +945,12 @@ impl Tab for PatchCards {
             return true;
         }
         false
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) {
+            self.clear(shell, draft);
+        }
     }
 }
 

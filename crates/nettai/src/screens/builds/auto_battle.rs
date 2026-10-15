@@ -5,16 +5,18 @@
 //! named in its strings' `auto_battle_lists`; a game whose block states none has its places as one). A build states
 //! the places alone (its pattern records are the rules' default, nothing learned), so a place holds a chip or nothing.
 //! What a place may hold is the rules' (`validate`: a chip its navi can play, and in a list they hold to one class of
-//! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. The ruleset the
-//! player plays by refuses none: a chip its auto battle category (the places' own, apart from the folder's) holds back
-//! goes in, and each place of it is the build's problem, its row saying "Not allowed" quietly. The library offers
+//! chip, one of that class): a chip they refuse isn't put, its row shakes and the strip says why. So is a chip the
+//! ruleset the player plays by holds back in its auto battle category (the places' own, apart from the folder's;
+//! docs/design/app-ui.md §2.68), its row greyed and saying "Not allowed"; a build that holds one all the same has each
+//! place of it as its problem. The library offers
 //! what the place being filled can hold, a row a chip: in a list held to one class (the list's `class`: EXE4's and
 //! EXE5's mega, giga and program advance lists), the game's chips of that class, the Program Advances among them,
 //! which no folder holds; in another, the chips a folder of the build can hold.
 //!
 //! **Enter on a place goes to the library** (on a phone, its sheet); **Enter on a chip puts it in the place and goes
 //! on to the next;** Enter (or Del, or a click) on the chip the place holds already takes it out again. Del empties
-//! the place. **The mouse:** a click on a place marks it (the focus stays on it); a right click empties it, as Del does
+//! the place. **CLEAR** at the right end of the places' header (or **X**; docs/design/app-ui.md §2.71) empties every
+//! place, as one change, asked first (`editor::ask_clear`). **The mouse:** a click on a place marks it (the focus stays on it); a right click empties it, as Del does
 //! (a right click on the library's chip the place holds, too). A place's chip dragged to another place of its list
 //! moves there, the places between shifting toward where it was (`Edit::Move`); to a place of another list, the two
 //! trade what they hold (`Edit::Swap`), unless the rules refuse either there: then nothing changes, the place dragged
@@ -26,7 +28,7 @@
 
 use crate::builds::auto::{self, AutoBattle as Data, Edit, Entry, Holds};
 use crate::builds::words::kind;
-use crate::input::Action;
+use crate::input::{Action, KeyPress};
 use crate::screens::builds::editor::{self, Draft, Tab};
 use crate::shell::Shell;
 use crate::sound::Cue;
@@ -214,9 +216,10 @@ impl AutoBattle {
                 .map(|&chip| {
                     let record = content.chip(chip);
                     let copies = data.places.iter().filter(|e| **e == Entry::Chip(chip)).count() as i32;
-                    // (One the ruleset the player plays by holds back here says so, quietly: it goes in, and is then
-                    // the build's problem.)
-                    let note = if !draft.allows(auto::PLACES_FIELD, chip.0) {
+                    // (One the ruleset the player plays by holds back here is greyed and says so: it can't be put in,
+                    // docs/design/app-ui.md §2.68.)
+                    let banned = !draft.allows(auto::PLACES_FIELD, chip.0);
+                    let note = if banned {
                         say.invoke_not_allowed_here()
                     } else if copies > 0 {
                         view.invoke_in_places(copies)
@@ -228,7 +231,7 @@ impl AutoBattle {
                         name: words.names.chip(chip).into(),
                         kind: kind(record.class),
                         note,
-                        refused: false,
+                        refused: banned,
                         megabytes: say.invoke_megabytes(record.mb as i32),
                         attack: if record.damage > 0 { record.damage.to_string().into() } else { Default::default() },
                         element: draft.kit.pictures.chip_element(chip),
@@ -360,10 +363,26 @@ impl AutoBattle {
         self.leave_library(shell);
     }
 
-    /// Put row `row`'s chip in place `place`: whether it went in. A chip the rules refuse there isn't put: its row
-    /// shakes, and the strip says why.
+    /// Put row `row`'s chip in place `place`: whether it went in. A chip the rules refuse there, or the ruleset the
+    /// player plays by, isn't put: its row shakes, and the strip says why.
     fn put_in(&mut self, shell: &mut Shell, draft: &mut Draft, row: usize, place: usize) -> bool {
         let Some(&chip) = self.rows.get(row) else { return false };
+        let ui = shell.ui();
+        let view = ui.global::<AutoBattleView>();
+        let refuse = |tab: &mut AutoBattle, shell: &mut Shell, draft: &mut Draft, why: String| {
+            tab.refused += 1;
+            view.set_refused(row as i32);
+            view.set_refused_place(-1);
+            view.set_refused_seq(tab.refused);
+            shell.sound.play(Cue::Refused);
+            tab.notice = Some(why);
+            tab.show_detail(shell, draft);
+        };
+        // (One the ruleset the player plays by holds back here isn't put: docs/design/app-ui.md §2.68.)
+        if !draft.allows(auto::PLACES_FIELD, chip.0) {
+            refuse(self, shell, draft, ui.global::<BuildWords>().invoke_not_allowed_here().to_string());
+            return false;
+        }
         let before = draft.side().clone();
         let field = Some(auto::PLACES_FIELD);
         let had: Vec<String> = draft.checked.problems.iter().filter(|p| p.field.as_deref() == field && p.entry == Some(place)).map(|p| p.text.clone()).collect();
@@ -371,22 +390,16 @@ impl AutoBattle {
             shell.sound.play(Cue::Refused);
             return false;
         }
-        let ui = shell.ui();
-        let view = ui.global::<AutoBattleView>();
-        // (The game's rules alone refuse: a chip the ruleset holds back goes in, and is the build's problem.)
+        // (What the game's rules have against it there: a ruleset's problem is another place's chip's, which this one
+        // didn't bring.)
         let against = draft.checked.problems.iter().find(|p| p.field.as_deref() == field && p.entry == Some(place) && !p.what.of_ruleset() && !had.contains(&p.text)).cloned();
         if let Some(problem) = against {
             draft.edit(|_, side| {
                 *side = before;
                 true
             });
-            self.refused += 1;
-            view.set_refused(row as i32);
-            view.set_refused_place(-1);
-            view.set_refused_seq(self.refused);
-            shell.sound.play(Cue::Refused);
-            self.notice = Some(draft.with_words(shell, |w| w.problem(&problem)));
-            self.show_detail(shell, draft);
+            let why = draft.with_words(shell, |w| w.problem(&problem));
+            refuse(self, shell, draft, why);
             return false;
         }
         let (icon, name) = draft.with_words(shell, |w| (draft.kit.pictures.icon(chip), w.names.chip(chip)));
@@ -447,6 +460,16 @@ impl AutoBattle {
         } else {
             shell.sound.play(Cue::Refused);
         }
+    }
+
+    /// CLEAR, answered: every place emptied, as one change (`Edit::Clear`). The cursor goes to the place being filled.
+    fn clear(&mut self, shell: &mut Shell, draft: &mut Draft) {
+        self.notice = None;
+        if draft.edit(|content, side| auto::update(content, side, Edit::Clear)) {
+            shell.sound.play(Cue::Back);
+        }
+        self.changed(shell, draft);
+        shell.nav.focus("places.place", self.place as i32);
     }
 
     /// The list place `place` is in (where the game lays out none, all are one).
@@ -592,6 +615,10 @@ impl Tab for AutoBattle {
                 self.leave_library(shell);
             }
             "lib.close" => self.leave_library(shell),
+            "clear" => {
+                let empty = Data::of_side(draft.content(), draft.side()).entries() == 0;
+                editor::ask_clear(shell, view.get_clear_question(), empty);
+            }
             _ => {}
         }
     }
@@ -684,6 +711,15 @@ impl Tab for AutoBattle {
         }
     }
 
+    /// X, CLEAR.
+    fn key(&mut self, shell: &mut Shell, draft: &mut Draft, key: &KeyPress) -> bool {
+        if editor::clear_key(shell, key) {
+            self.activate(shell, draft, "clear", 0);
+            return true;
+        }
+        false
+    }
+
     /// Delete empties the place.
     fn action(&mut self, shell: &mut Shell, draft: &mut Draft, action: Action) -> bool {
         match (action, AutoBattle::focused_place(shell)) {
@@ -702,5 +738,11 @@ impl Tab for AutoBattle {
             return true;
         }
         false
+    }
+
+    fn answered(&mut self, shell: &mut Shell, draft: &mut Draft, tag: &str, choice: usize) {
+        if editor::cleared(tag, choice) {
+            self.clear(shell, draft);
+        }
     }
 }

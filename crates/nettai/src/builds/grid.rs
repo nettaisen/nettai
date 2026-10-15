@@ -321,6 +321,8 @@ pub enum Edit {
     /// The piece in hand dropped; the placed one at this place taken off.
     Drop,
     Remove(usize),
+    /// Every placed piece taken off, and the piece in hand dropped (the NaviCust tab's CLEAR).
+    Clear,
     /// The board, by its place among the boards.
     Board(usize),
 }
@@ -407,6 +409,13 @@ pub fn edit(d: &GridData, c: &Content, side: &mut Side, held: &mut Option<Held>,
                 return false;
             }
             parts.remove(i);
+        }
+        Edit::Clear => {
+            *held = None;
+            if parts.is_empty() {
+                return false;
+            }
+            parts.clear();
         }
         Edit::Board(b) => {
             if !d.sized || b >= d.boards.len() || board_index(c, side) == Some(b) {
@@ -496,6 +505,12 @@ mod tests {
         assert_eq!(board_index(&content, side), Some(1));
         assert!(go(side, &mut held, Edit::Board(2)));
         assert_eq!(nettai_match::check_match(&content, &m), Vec::<String>::new());
+        // Cleared: every piece off the board at once, the one in hand dropped, the board kept.
+        let side = &mut m.sides[0];
+        assert!(go(side, &mut held, Edit::PickUp(0, 2, 2)) && held.is_some());
+        assert!(go(side, &mut held, Edit::Clear) && held.is_none());
+        assert!(placed(&content, side).is_empty() && !go(side, &mut held, Edit::Clear));
+        assert_eq!(board_index(&content, side), Some(2));
     }
 
     /// A program is placed as many times as it is taken from the list: a second copy in the same color (and one in
