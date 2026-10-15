@@ -515,15 +515,6 @@ impl Rulesets {
                 Data::Str(v) if v == "mixed" => false,
                 _ => return Err(format!("{module}: preset {id}: its `versions` is \"one_per_build\" or \"mixed\"")),
             };
-            let groups: Vec<&str> = items(p.field("groups")).iter().filter_map(Data::str).collect();
-            if let Some(g) = groups.iter().find(|g| out.group(g).is_none()) {
-                return Err(format!("{module}: preset {id}: no group {g:?}"));
-            }
-            if !groups.is_empty() {
-                for category in out.categories.clone() {
-                    ruleset.allow_groups(&out, &category, &groups);
-                }
-            }
             if let Data::Map(only) = p.field("only") {
                 for (fact, allowed) in only {
                     let DataKey::Str(fact) = fact else { continue };
@@ -722,24 +713,28 @@ mod tests {
                     assert_eq!(r.group_items(cards, g), [(*v).clone()], "{game}");
                 }
             }
-            // The presets: Standard, one version per build; Mixed; each group alone; no patch cards.
+            // The presets: Masters class, one version per build; Senior class, without patch cards; Unrestricted.
             let names: Vec<Name> = r.presets.iter().map(|p| p.name.clone()).collect();
-            let expected: Vec<Name> = ["standard", "mixed", groups[0], groups[1], "no_patch_cards"].iter().map(|n| Name::Preset(n.to_string())).collect();
+            let expected: Vec<Name> = ["masters", "senior", "unrestricted"].iter().map(|n| Name::Preset(n.to_string())).collect();
             assert_eq!(names, expected, "{game}");
             assert!(!r.first().bans_anything() && r.first().one_per_build);
-            assert!(!r.preset("mixed").unwrap().one_per_build);
-            let one = r.preset(groups[0]).unwrap();
-            assert_eq!(one.groups_chosen(&r, category), Some(vec![groups[0]]));
-            assert_eq!(one.groups_chosen(&r, chips), Some(vec![groups[0]]));
+            assert!(!r.preset("unrestricted").unwrap().one_per_build);
             assert_eq!(r.first().groups_chosen(&r, category), Some(groups.to_vec()));
-            assert_eq!(r.preset("no_patch_cards").unwrap().allowed_count(cards), 0);
-            // A new build of each group plays under Standard and its own version's preset.
+            assert_eq!(r.first().groups_chosen(&r, chips), Some(groups.to_vec()));
+            let senior = r.preset("senior").unwrap();
+            assert!(senior.one_per_build && senior.allowed_count(cards) == 0);
+            // A new build of each group plays under Masters class; one version's alone (the page's quick choice)
+            // refuses the other's.
             let builds = Builds::of(&content, game).unwrap();
             for (v, other) in [(groups[0], groups[1]), (groups[1], groups[0])] {
                 let side = builds.new_build(&content, v).unwrap();
                 assert!(Checked::under(&content, game, &side, &r, r.first()).ready(), "{game} {v}");
-                assert!(Checked::under(&content, game, &side, &r, r.preset(v).unwrap()).ready(), "{game} {v}");
-                let problems = Checked::under(&content, game, &side, &r, r.preset(other).unwrap()).problems;
+                let mut alone = Ruleset::open(Name::Own(other.to_string()));
+                alone.one_per_build = true;
+                for c in r.categories.clone() {
+                    alone.allow_groups(&r, &c, &[other]);
+                }
+                let problems = Checked::under(&content, game, &side, &r, &alone).problems;
                 assert!(!problems.is_empty() && problems.iter().all(|p| [forms, "cybeast"].contains(&p.field.as_deref().unwrap_or_default())), "{game} {v}");
             }
         }
@@ -754,8 +749,13 @@ mod tests {
         let r = Rulesets::of(&content, "exe6").unwrap();
         let builds = Builds::of(&content, "exe6").unwrap();
         let gregar = builds.new_build(&content, "gregar").unwrap();
-        // Falzar's preset: Gregar's Cybeast and five Crosses aren't allowed.
-        let problems = Checked::under(&content, "exe6", &gregar, &r, r.preset("falzar").unwrap()).problems;
+        // Falzar's alone: Gregar's Cybeast and five Crosses aren't allowed.
+        let mut falzar = Ruleset::open(Name::Own("Falzar".into()));
+        falzar.one_per_build = true;
+        for c in r.categories.clone() {
+            falzar.allow_groups(&r, &c, &["falzar"]);
+        }
+        let problems = Checked::under(&content, "exe6", &gregar, &r, &falzar).problems;
         assert_eq!(problems.len(), 6);
         assert!(problems.iter().all(|p| ["crosses", "cybeast"].contains(&p.field.as_deref().unwrap()) && matches!(p.what, Wrong::NotAllowed { registry: Registry::Form, .. })));
         assert_eq!(problems.iter().map(|p| p.entry).collect::<Vec<_>>(), [None].into_iter().chain((0..5).map(Some)).collect::<Vec<_>>());
@@ -786,7 +786,7 @@ mod tests {
         // Patch cards none: a build holding one has its problem, at its entry.
         let mut carded = gregar.clone();
         carded.set_fact(&content, crate::facts::PATCH_CARDS, &patch_cards(&content, "exe6", "starman")).unwrap();
-        let problems = r.preset("no_patch_cards").unwrap().problems(&r, &content, &carded);
+        let problems = r.preset("senior").unwrap().problems(&r, &content, &carded);
         assert_eq!(problems.len(), 1);
         assert_eq!((problems[0].field.as_deref(), problems[0].entry), (Some("patch_cards"), Some(0)));
     }
@@ -835,7 +835,7 @@ mod tests {
         let problems = r.first().problems(&r, &content, &side);
         assert_eq!(problems.len(), 1);
         assert_eq!(problems[0].what, Wrong::Mixed { groups: vec!["gregar".into(), "falzar".into()], items: falzar[..2].iter().map(|h| (Registry::Form, h.clone())).collect() });
-        assert!(r.preset("mixed").unwrap().problems(&r, &content, &side).is_empty());
+        assert!(r.preset("unrestricted").unwrap().problems(&r, &content, &side).is_empty());
         // Gregar's Crosses alone with Falzar's Cybeast: it mixes them.
         let mut beast = builds.new_build(&content, "gregar").unwrap();
         beast.set_fact(&content, "cybeast", &[crate::facts::version_fact(&content, "falzar").unwrap()]).unwrap();

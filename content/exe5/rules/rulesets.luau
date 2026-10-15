@@ -16,17 +16,15 @@ return {
         { fact = "patch_cards" },
         { fact = "souls" },
     },
-    -- The rulesets ready-made, the first a player's and a new lobby's until they pick another. `versions`: whether
-    -- each build must be one team's (`one_per_build`: what it holds of the teams' own things all one's) or `mixed`;
-    -- `groups`: the teams whose own things it allows (none said: both); `only`: what a category allows, by the items'
-    -- names (a category it doesn't name allows everything). Standard is the cartridges' own rules (the user: "you
-    -- should have a standard ruleset for each game that enforces version-specific stuff"); Mixed lets a build mix the
-    -- teams; then each team alone, and no patch cards.
+    -- The rulesets ready-made, the first a player's and a new lobby's until they pick another. `versions`: whether each
+    -- build must be one team's (`one_per_build`: what it holds of the teams' own things all one's) or `mixed`; `only`:
+    -- what a category allows, by the items' names (a category it doesn't name allows everything). Masters class is the
+    -- cartridges' own rules, one team per build with patch cards; Senior class the same without patch cards;
+    -- Unrestricted lets a build mix the teams (the user: "no patch card rules is known as "senior class". patch card
+    -- rules is known as "masters class". mixed rules is known as "unrestricted". get rid of version only rules").
     presets = {
-        { id = "standard", versions = "one_per_build" },
-        { id = "mixed", versions = "mixed" },
-        { id = "protoman", versions = "one_per_build", groups = { "protoman" } },
-        { id = "colonel", versions = "one_per_build", groups = { "colonel" } },
-        { id = "no_patch_cards", versions = "one_per_build", only = { patch_cards = {} } },
+        { id = "masters", versions = "one_per_build" },
+        { id = "senior", versions = "one_per_build", only = { patch_cards = {} } },
+        { id = "unrestricted", versions = "mixed" },
     },
 }

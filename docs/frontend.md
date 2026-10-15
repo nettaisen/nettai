@@ -650,7 +650,7 @@ host calls, in order:
     `Wrong::NotAllowed`), or two versions' things under one version per
     build (`Wrong::Mixed`), can't be played. Nothing is taken out of a
     build: a match is played of the sides as they are, and a ruleset that
-    allows no patch cards (each game's `no_patch_cards` preset) refuses a
+    allows no patch cards (each game's `senior` preset, Senior class) refuses a
     build that holds any, where the lobby's Patch cards off used to play
     each build without its cards.
     - `lobby.problems()` is what is wrong with this player's build as the
