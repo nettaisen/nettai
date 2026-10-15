@@ -262,7 +262,7 @@ fn encode(out: &std::path::Path, (width, height): (u32, u32), frames: Receiver<F
     });
     let video = nut::Video { width, height, frame_time: (1, RATE as u32) };
     let written = (|| -> std::io::Result<()> {
-        let mut nut = nut::Writer::new(BufWriter::with_capacity(1 << 22, stdin), video, Some(nut::Audio { sample_rate: SAMPLE_RATE as u32 }))?;
+        let mut nut = nut::Writer::new(BufWriter::with_capacity(1 << 22, stdin), video, Some(nut::Audio { sample_rate: SAMPLE_RATE as u32, tracks: 1 }))?;
         let mut rgb = Vec::with_capacity(width as usize * height as usize * 3);
         for frame in frames {
             if (frame.width, frame.height) != (width, height) {
@@ -270,7 +270,7 @@ fn encode(out: &std::path::Path, (width, height): (u32, u32), frames: Receiver<F
             }
             rgb.clear();
             rgb.extend(frame.rgba.chunks_exact(4).flat_map(|p| [p[0], p[1], p[2]]));
-            nut.frame(&rgb, &frame.sound)?;
+            nut.frame(&rgb, &[&frame.sound[..]])?;
         }
         nut.finish()?.flush()
     })();
