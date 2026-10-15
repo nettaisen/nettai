@@ -1434,8 +1434,8 @@ end, the counts ending before it on that line; its word counts in the room the o
 
 **CLEAR** (docs/design/app-ui.md §2.71): the Folder, NaviCust, Patch cards and Auto battle tabs each have one small
 word (`WordButton`, a control of its own, `clear`) at the right end of a pane's header: the folder's, the cards',
-PROGRAMS' title line, the places'; a phone's at the right end of the counts' box's first line, PROGRAMS' line, the
-places' problem line. `activate("clear", 0)`, or X on the tab (`editor::clear_key`: not on a text field, not a key
+the board's key's first line (PROGRAMS' title line where the game draws no board), the places'; a phone's at the
+right end of the counts' box's first line, the board's key's, the places' problem line. `activate("clear", 0)`, or X on the tab (`editor::clear_key`: not on a text field, not a key
 the menus take; the NaviCust's with no piece in hand), asks first (`editor::ask_clear`: `Shell::ask`, the tag
 `editor::CLEAR`, the tab's `clear-question` and CANCEL focused, CLEAR in the error red), and is refused where the
 part holds nothing (the word is then dim and disabled: the folder's chips, the cards, `NavicustView.clearable`, the
@@ -1471,7 +1471,7 @@ program's shape, compressed shape, colors and plus mark from its definition; a b
   `ProgramRow.color`, outlined; one the ruleset doesn't allow ringed in the error red), the state's column ending
   where the list's most colors start (`NavicustView.most-colors`), so the states line up. Left and Right on the
   row (`Tab::route`: past the first or the last the focus moves on) choose the color alone; a click or a tap on a
-  box (`choose("color")`) chooses it and takes its part in hand, as a click on the row does (design §2.65); it
+  box (`choose("color")`) chooses it alone, as Left and Right do (design §2.72; a click on the row takes it); it
   starts at the color the build has placed first (`Navicust::color`). Where that color's part is, before the
   boxes: Placed (with how many copies, Placed ×2, where more than one is: `ProgramRow.copies`), In hand, Not
   allowed, or Out of bounds (a placed copy over the ring: no error, and nothing red).

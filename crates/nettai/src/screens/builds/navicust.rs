@@ -919,15 +919,11 @@ impl Tab for Navicust {
     fn choose(&mut self, shell: &mut Shell, draft: &mut Draft, id: &str, index: i32, choice: i32) {
         match id {
             "drag" => self.pointed(shell, draft, index, choice),
-            // (A click or a tap on one of a row's colors chooses it and takes that color's part in hand, as a click on
-            // the row does: the user, "selecting the color in the ncp editor should also pick up the ncp". Left and
-            // Right choose alone: taking a part puts the cursor on the board, and the next color would be a key
-            // away no more.)
-            "color" => {
-                let row = index.max(0) as usize;
-                self.choose_color(shell, draft, row, choice.max(0) as usize);
-                self.pointed(shell, draft, PRESS_ROW, row as i32);
-            }
+            // (A click or a tap on one of a row's colors chooses it alone, as Left and Right do; a click on the row
+            // takes the part. The user first asked that it take the part too, "selecting the color in the ncp editor
+            // should also pick up the ncp", then: "selecting a color on the palette shouldn't pick up the navicust
+            // part actually".)
+            "color" => self.choose_color(shell, draft, index.max(0) as usize, choice.max(0) as usize),
             _ => {}
         }
     }
