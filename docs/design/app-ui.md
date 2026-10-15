@@ -894,9 +894,10 @@ online, read in that order. In the body's units (1216 by 644 at the reference wi
     the server, and the wait (what CREATE INVITE was).
   - 24 after it **JOIN's field** (208 wide; "Invite code" in it while it is empty) and 8 after that **JOIN**, a
     regular button. The field takes an invite's code: what is typed is kept as its six characters, capitals, in
-    threes (a hyphen or a space typed or not).
-  - **DIRECT CONNECT**, a regular button as wide as its words, at the row's right end, its right edge the
-    overview's. It opens the direct connection's dialog (below).
+    threes (a hyphen or a space typed or not); a seventh character typed doesn't go in (the user: "why does
+    the invite code allow more than 6 characters?").
+  - **DIRECT CONNECT**, a text button (no fill, no line, its words muted) as wide as its words, at the row's
+    right end, its right edge the overview's (the user: "direct connect should be deemphasized"). It opens the direct connection's dialog (below).
   Under them at 626 the reserved line (18 tall, as wide as the overview, 12). Pressed with no build, PRACTICE,
   HOST and JOIN say there "Make a build first." (§7); with a build that can't be played, why; a code no match
   has, "No match with that code.". The list and the overview grow down to 16 over the row: both end at 564 (the

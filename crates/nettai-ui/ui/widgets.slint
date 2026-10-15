@@ -849,6 +849,12 @@ export component Field inherits Rectangle {
             selection-foreground-color: Theme.text;
             edited => {
                 Nav.edited(root.nav, root.nav-index, self.text);
+                // (The app may keep the same text it held before, a code already six long or a name at its
+                // length: then `text` doesn't change, and the field takes it back here.)
+                if self.text != root.text {
+                    self.text = root.text;
+                    self.set-selection-offsets(100000, 100000);
+                }
             }
             accepted => {
                 Nav.edit-done(root.nav, root.nav-index, self.text);
