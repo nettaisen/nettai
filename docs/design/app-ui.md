@@ -769,8 +769,8 @@ Each is settled unless the user changes it.
       lobby starts on the ruleset that player plays by (below).
     - *The ruleset a player plays by* is one choice for each game, remembered: the one the lobby starts on when
       they host, and the one the build editor marks builds against. The build editor's is a select at the tab
-      bar's right end ("Ruleset", then the select, and EDIT), on every tab; a phone has it at the top of the Navi
-      tab. Picked in either place it is the other's too (a joiner's lobby shows the host's and changes nothing).
+      bar's right end ("Ruleset", then the select, and EDIT), on every tab; a phone has it on the Navi tab, a row
+      between the navi's panel and the grid. Picked in either place it is the other's too (a joiner's lobby shows the host's and changes nothing).
       The game's first preset (Standard) until one is picked, or when the one picked is deleted.
     - *What the editor marks:* a navi's card it doesn't allow (a red line under its name, "Not allowed"); a chip
       in the folder's library (its row's reason, as another version's Giga chip's: "Not allowed", in the error
@@ -1342,8 +1342,8 @@ A replay that fails as it is opened, or whose engine stops as it plays, is its l
    (`Slots::own` and `name`, `held`, `put`). docs/design/rules-in-luau.md's last section says how the rules
    answer.
 8. **Replays:** seeking, by keeping snapshots; export through `nettai-video` and ffmpeg; no build names in the file.
-9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds and Closed builds as
-   shared settings; and holds the start until both sides have loaded.
+9. **The lobby's protocol** stops sending a build's name, version and navi; carries the rounds, the Ruleset (by
+   names: §2.59) and Closed builds as shared settings; and holds the start until both sides have loaded.
 10. **Random builds** are removed from Play, Practice and the lobby.
 11. **Practice's** new options (§3) need new support in the battle engine.
 12. **The screenshot pass** (the old `NETTAI_TOUR`) walks every screen in each language and size and is compared
